@@ -649,7 +649,7 @@ export class World {
   private stepToward(p: Player, gx: number, gy: number, dt: number, stopAt: number): boolean {
     const u = p.unit;
     const gd = Math.hypot(gx - u.x, gy - u.y);
-    if (gd <= stopAt) return false;
+    if (gd <= stopAt + 0.5) return false;
     const wp = p.nav.next(this.map, u.x, u.y, gx, gy, PLAYER_RADIUS, this.time);
     if (!wp) return false;
     const final = wp.x === gx && wp.y === gy;
@@ -657,9 +657,11 @@ export class World {
     const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy) || 1;
     const sp = Math.min(this.playerSpeed(p) * dt, final ? d - stopAt : d);
     const n = moveWithCollision(this.map, u.x, u.y, (dx / d) * sp, (dy / d) * sp, PLAYER_RADIUS);
-    const moved = n.x !== u.x || n.y !== u.y;
-    u.x = Math.round(n.x * 10) / 10;
-    u.y = Math.round(n.y * 10) / 10;
+    // сравниваем уже округлённые координаты: иначе добавка <0,05 px давала «движение» вечно
+    const rx = Math.round(n.x * 10) / 10, ry = Math.round(n.y * 10) / 10;
+    const moved = rx !== u.x || ry !== u.y;
+    u.x = rx;
+    u.y = ry;
     u.dir = World.dirTo(dx, dy);
     return moved;
   }

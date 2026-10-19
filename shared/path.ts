@@ -131,6 +131,7 @@ export class Nav {
   reset() {
     this.path = [];
     this.goal = null;
+    this.at = -1e9;
   }
 
   next(m: WorldMap, x: number, y: number, gx: number, gy: number, r: number, now: number): { x: number; y: number } | null {
@@ -138,7 +139,7 @@ export class Nav {
       this.path = [];
       return { x: gx, y: gy };
     }
-    const moved = !this.goal || Math.hypot(this.goal.x - gx, this.goal.y - gy) > 40;
+    const moved = !this.goal || Math.hypot(this.goal.x - gx, this.goal.y - gy) > 4;
     if (moved || !this.path.length || now - this.at > 800) {
       this.goal = { x: gx, y: gy };
       this.at = now;

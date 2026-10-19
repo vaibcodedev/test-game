@@ -48,6 +48,7 @@ export function registerCombat(on: On, world: () => World) {
     const x = num(m.x, 0, w().map.w * TILE), y = num(m.y, 0, w().map.h * TILE);
     if (x === null || y === null) return;
     p.moveTo = { x, y };
+    p.nav.reset();
     p.targetId = null;
   });
   on<{ id: unknown }>("target", (p, m) => {
