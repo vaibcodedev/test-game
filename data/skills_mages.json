@@ -6,7 +6,7 @@
       "target": "enemy", "range": 320, "cd": [7, -0.3], "mana": [18, 0],
       "v": { "dmg": [150, 22], "jumps": [2, 0], "falloff": [20, 0], "radius": [150, 0] },
       "desc": "Молния бьёт цель ({dmg}% урона) и перескакивает по ближайшим врагам в {radius} пикс. по прямой видимости (прыжков: {jumps}); каждый прыжок слабее на {falloff}%. Поражённые получают «шок».",
-      "icon": { "glyph": "mg_bolt", "bg": "purple", "fg": "frost" }, "tree": [1, 1]
+      "icon": { "glyph": "mg_bolt", "bg": "purple", "fg": "frost" }, "tree": [3, 2]
     },
     "mg_barrier": {
       "cls": "mage", "name": "Чародейский барьер", "slot": 5, "maxRank": 5, "reqLevel": 12, "req": { "id": "blink", "rank": 1 },
@@ -20,7 +20,7 @@
       "target": "point", "range": 300, "cd": [17, -0.5], "mana": [30, 0],
       "v": { "dmg": [80, 14], "len": [180, 0], "dur": [6, 0] },
       "desc": "Стена огня длиной {len} пикс. на {dur} с (поперёк прицела): каждую секунду {dmg}% огненного урона всем врагам в пламени (с «Воспламенением» поджигает).",
-      "icon": { "glyph": "mg_firewall", "bg": "black", "fg": "fire" }, "tree": [3, 2]
+      "icon": { "glyph": "mg_firewall", "bg": "black", "fg": "fire" }, "tree": [0, 2]
     },
     "mg_storm": {
       "cls": "mage", "name": "Грозовой шторм", "slot": 7, "maxRank": 5, "reqLevel": 21, "req": { "id": "mg_conduction", "rank": 1 },
@@ -47,7 +47,7 @@
       "cls": "mage", "name": "Раскол", "kind": "passive", "maxRank": 3, "reqLevel": 7, "req": { "id": "frostnova", "rank": 1 },
       "v": { "bonus": [6, 6] },
       "desc": "Урон по замедленным, обездвиженным и оглушённым врагам +{bonus}%. Лёд замедляет, огонь и молния раскалывают.",
-      "icon": { "glyph": "mg_shatter", "bg": "purple", "fg": "frost" }, "tree": [2, 1]
+      "icon": { "glyph": "mg_shatter", "bg": "purple", "fg": "frost" }, "tree": [1, 1]
     },
     "mg_conduction": {
       "cls": "mage", "name": "Проводимость", "kind": "passive", "maxRank": 3, "reqLevel": 9, "req": { "id": "mg_bolt", "rank": 1 },
@@ -59,19 +59,19 @@
       "cls": "mage", "name": "Фазовый след", "kind": "passive", "maxRank": 3, "reqLevel": 14, "req": { "id": "blink", "rank": 2 },
       "v": { "dmg": [100, 50], "radius": [90, 0], "slow": [40, 0] },
       "desc": "«Мерцание» взрывается в точке старта: {dmg}% урона арканой врагам рядом ({radius} пикс.) и замедление {slow}% на 2 с.",
-      "icon": { "glyph": "mg_phase", "bg": "purple", "fg": "purple" }, "tree": [3, 0]
+      "icon": { "glyph": "mg_phase", "bg": "purple", "fg": "purple" }, "tree": [2, 1]
     },
     "mg_rhythm": {
       "cls": "mage", "name": "Стихийный ритм", "kind": "passive", "maxRank": 3, "reqLevel": 16, "req": { "id": "mg_bolt", "rank": 2 },
       "v": { "per": [5, 3], "max": [3, 0] },
       "desc": "Каждое боевое умение другой школы (огонь, лёд, молния) подряд даёт заряд ритма (до {max}, 6 с): урон умений +{per}% за заряд. Повтор той же школы заряды не прибавляет.",
-      "icon": { "glyph": "mg_rhythm", "bg": "black", "fg": "gold" }, "tree": [4, 0]
+      "icon": { "glyph": "mg_rhythm", "bg": "black", "fg": "gold" }, "tree": [3, 1]
     },
     "mg_manaward": {
       "cls": "mage", "name": "Мановая броня", "kind": "passive", "maxRank": 3, "reqLevel": 19, "req": { "id": "mg_barrier", "rank": 1 },
       "v": { "pct": [30, 10] },
       "desc": "{pct}% получаемого урона принимает на себя мана (1 мана за 1.5 урона), пока она есть. Пустая мана — беззащитный маг.",
-      "icon": { "glyph": "mg_manaward", "bg": "purple", "fg": "blue" }, "tree": [5, 0]
+      "icon": { "glyph": "mg_manaward", "bg": "purple", "fg": "blue" }, "tree": [6, 0]
     },
     "mg_expl_barrier": {
       "cls": "mage", "name": "Взрывной барьер", "kind": "passive", "maxRank": 3, "reqLevel": 22, "req": { "id": "mg_barrier", "rank": 2 },
@@ -83,7 +83,7 @@
       "cls": "mage", "name": "Аварийный скачок", "kind": "passive", "maxRank": 3, "reqLevel": 24, "req": { "id": "mg_manaward", "rank": 1 },
       "v": { "icd": [60, -10], "shield": [10, 5] },
       "desc": "Упав ниже 30% здоровья, вы мгновенно отскакиваете от врага (до 220 пикс.) и получаете щит {shield}% здоровья на 4 с (раз в {icd} с).",
-      "icon": { "glyph": "mg_escape", "bg": "purple", "fg": "frost" }, "tree": [6, 0]
+      "icon": { "glyph": "mg_escape", "bg": "purple", "fg": "frost" }, "tree": [7, 0]
     },
 
     "wl_hex": {
@@ -98,7 +98,7 @@
       "target": "enemy", "range": 300, "cd": [10, -0.3], "mana": [20, 0],
       "v": { "tick": [45, 8], "dur": [6, 0], "heal": [60, 10] },
       "desc": "Тянет жизнь из цели {dur} с: {tick}% урона в секунду, {heal}% нанесённого лечит вас.",
-      "icon": { "glyph": "mg_siphon", "bg": "black", "fg": "green" }, "tree": [2, 1]
+      "icon": { "glyph": "mg_siphon", "bg": "black", "fg": "green" }, "tree": [2, 2]
     },
     "wl_demon": {
       "cls": "warlock", "name": "Призыв демона", "slot": 6, "maxRank": 5, "reqLevel": 13, "req": { "id": "wl_skeletons", "rank": 1 },
@@ -144,7 +144,7 @@
       "cls": "warlock", "name": "Пожиратель магии", "kind": "passive", "maxRank": 3, "reqLevel": 11, "req": { "id": "wl_drain_mana", "rank": 2 },
       "v": { "heal": [3, 2], "weak": [10, 5] },
       "desc": "«Вытягивание маны» ещё лечит вас на {heal}% здоровья и ослабляет цель на {weak}% на 5 с.",
-      "icon": { "glyph": "mg_leech", "bg": "purple", "fg": "blue" }, "tree": [2, 2]
+      "icon": { "glyph": "mg_leech", "bg": "purple", "fg": "blue" }, "tree": [2, 1]
     },
     "wl_life_tap": {
       "cls": "warlock", "name": "Тёмное питание", "kind": "passive", "maxRank": 3, "reqLevel": 14, "req": { "id": "wl_siphon", "rank": 1 },
