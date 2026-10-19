@@ -886,5 +886,807 @@
    "orbit": "motes",
    "shape": "drop"
   }
+ },
+ "dead_king_spear": {
+  "name": "Копьё Мёртвого Престола",
+  "base": "spear",
+  "variant": "deathknight",
+  "tier": 50,
+  "tint": "#8e6cd8",
+  "stats": {
+   "str": 46,
+   "vit": 22,
+   "crit": 5
+  },
+  "lore": "Древко из рёбер павшего короля, а наконечник тянется к живой крови.",
+  "effect": {
+   "type": "leech"
+  },
+  "look": {
+   "c2": "#d0d8e8",
+   "fx": "souls",
+   "pommel": "skull"
+  }
+ },
+ "ash_harvest": {
+  "name": "Коса Пепельной Жатвы",
+  "base": "scythe",
+  "variant": "reaver",
+  "tier": 50,
+  "tint": "#6a1a2a",
+  "stats": {
+   "str": 48,
+   "vit": 20,
+   "crit": 5
+  },
+  "lore": "Урожай здесь не зерно, а души, и жнец всегда голоден.",
+  "effect": {
+   "type": "rage"
+  },
+  "look": {
+   "c2": "#ff6a50",
+   "fx": "ember",
+   "pommel": "skull"
+  }
+ },
+ "bone_bulwark": {
+  "name": "Щит Костяного Пути",
+  "base": "shield",
+  "variant": "deathknight",
+  "tier": 50,
+  "tint": "#4a3a6a",
+  "stats": {
+   "str": 30,
+   "vit": 24,
+   "hp": 110
+  },
+  "lore": "Кости павших вплетены в узор, и каждая держит удар.",
+  "effect": {
+   "type": "barrier"
+  },
+  "look": {
+   "c2": "#c8c0e0",
+   "fx": "snow",
+   "orbit": "runes"
+  }
+ },
+ "night_steps": {
+  "name": "Поступь Ночного Дозора",
+  "base": "leather_boots",
+  "variant": "rogue",
+  "tier": 50,
+  "tint": "#7acc3a",
+  "stats": {
+   "agi": 36,
+   "vit": 14,
+   "crit": 5
+  },
+  "lore": "Шаги дозорного не слышны, пока не стало поздно.",
+  "effect": {
+   "type": "killhaste"
+  },
+  "look": {
+   "c2": "#d8f0c0",
+   "fx": "snow",
+   "boots": "wings"
+  }
+ },
+ "prophet_slippers": {
+  "name": "Туфли Чёрного Пророка",
+  "base": "cloth_boots",
+  "variant": "warlock",
+  "tier": 50,
+  "tint": "#7a2a9a",
+  "stats": {
+   "int": 36,
+   "vit": 12,
+   "hp": 100
+  },
+  "lore": "Каждый шаг в них оставляет на пепле чужое имя.",
+  "effect": {
+   "type": "weaken"
+  },
+  "look": {
+   "c2": "#e0c0ff",
+   "fx": "souls",
+   "boots": "flame"
+  }
+ },
+ "watch_standard": {
+  "name": "Знамя Утренней Стражи",
+  "base": "cloak",
+  "variant": "ranger",
+  "tier": 50,
+  "tint": "#2a5ac8",
+  "stats": {
+   "agi": 38,
+   "vit": 18,
+   "crit": 4
+  },
+  "lore": "Знамя видно дозорным со стены, пока оно не опущено.",
+  "effect": {
+   "type": "chill"
+  },
+  "look": {
+   "c2": "#f0f8ff",
+   "fx": "leaf",
+   "back": "banner",
+   "crest": "star",
+   "flag": "#1f3a7a"
+  }
+ },
+ "last_wall_plate": {
+  "name": "Латы Последней Стены",
+  "base": "plate_armor",
+  "variant": "warrior",
+  "tier": 50,
+  "tint": "#f0d080",
+  "stats": {
+   "str": 40,
+   "vit": 26,
+   "hp": 110
+  },
+  "lore": "Последние короли Сольгарда клялись умереть в них стоя.",
+  "effect": {
+   "type": "thorns"
+  },
+  "look": {
+   "c2": "#ffffff",
+   "fx": "spark",
+   "pauld": "crystal"
+  }
+ },
+ "quiet_communion": {
+  "name": "Кольцо Тихого Причастия",
+  "base": "ring",
+  "variant": "healer",
+  "tier": 50,
+  "tint": "#ffe27a",
+  "stats": {
+   "int": 36,
+   "vit": 16,
+   "hp": 60
+  },
+  "lore": "Свет, что гаснет в одном, зажигается в другом.",
+  "effect": {
+   "type": "mending"
+  },
+  "look": {
+   "c2": "#fff8e0",
+   "fx": "spark",
+   "orbit": "motes"
+  }
+ },
+ "noon_staff": {
+  "name": "Посох Полуденного Пламени",
+  "base": "staff",
+  "variant": "mage",
+  "tier": 70,
+  "tint": "#ff7a30",
+  "stats": {
+   "int": 60,
+   "vit": 18,
+   "hp": 160,
+   "crit": 6
+  },
+  "lore": "Маг держит в нём полдень, чтобы ночь не посмела войти.",
+  "effect": {
+   "type": "meteor"
+  },
+  "look": {
+   "c2": "#ffd0a0",
+   "fx": "ember",
+   "orbit": "runes"
+  }
+ },
+ "reaver_fangs": {
+  "name": "Парные Клыки Пустоши",
+  "base": "twinblades",
+  "variant": "reaver",
+  "tier": 70,
+  "tint": "#9a4ae0",
+  "stats": {
+   "str": 58,
+   "agi": 16,
+   "vit": 16,
+   "crit": 7
+  },
+  "lore": "Умбратские жнецы говорят, что клыки сами ищут шею.",
+  "effect": {
+   "type": "frenzy"
+  },
+  "look": {
+   "c2": "#e0c8ff",
+   "fx": "souls",
+   "ghost": true
+  }
+ },
+ "white_wall_axe": {
+  "name": "Топор Белой Стены",
+  "base": "axe",
+  "variant": "warrior",
+  "tier": 70,
+  "tint": "#e8c040",
+  "stats": {
+   "str": 56,
+   "vit": 24,
+   "hp": 120,
+   "crit": 5
+  },
+  "lore": "Им рубили первую осаду; стена держалась, пока топор помнил клятву.",
+  "effect": {
+   "type": "stun"
+  },
+  "look": {
+   "c2": "#fff4d0",
+   "fx": "spark",
+   "pommel": "star"
+  }
+ },
+ "cursed_wind_bow": {
+  "name": "Лук Проклятого Ветра",
+  "base": "bow",
+  "variant": "darkranger",
+  "tier": 70,
+  "tint": "#8ad84a",
+  "stats": {
+   "agi": 66,
+   "vit": 18,
+   "crit": 8
+  },
+  "lore": "Ветер, пойманный в тетиву, несёт проклятие дальше стрелы.",
+  "effect": {
+   "type": "weaken"
+  },
+  "look": {
+   "c2": "#c8ff80",
+   "fx": "souls",
+   "blade": "long"
+  }
+ },
+ "blood_bonds_tome": {
+  "name": "Книга Кровавых Уз",
+  "base": "tome",
+  "variant": "bloodweaver",
+  "tier": 70,
+  "tint": "#c02040",
+  "stats": {
+   "int": 50,
+   "vit": 16,
+   "hp": 180
+  },
+  "lore": "Страницы написаны кровью тех, кто добровольно связал себя клятвой.",
+  "effect": {
+   "type": "leech"
+  },
+  "look": {
+   "c2": "#ffb0c0",
+   "fx": "drip",
+   "orbit": "motes"
+  }
+ },
+ "dawn_sabatons": {
+  "name": "Сабатоны Стража Зари",
+  "base": "plate_boots",
+  "variant": "warrior",
+  "tier": 70,
+  "tint": "#c0c8d8",
+  "stats": {
+   "str": 48,
+   "vit": 22,
+   "hp": 100
+  },
+  "lore": "Каждый шаг по полю звенит, как колокол тревоги.",
+  "effect": {
+   "type": "thorns"
+  },
+  "look": {
+   "c2": "#fff0c0",
+   "fx": "spark",
+   "boots": "wings"
+  }
+ },
+ "morning_crown_cowl": {
+  "name": "Венец Утреннего Света",
+  "base": "cloth_helm",
+  "variant": "healer",
+  "tier": 70,
+  "tint": "#fff0b0",
+  "stats": {
+   "int": 60,
+   "vit": 22,
+   "hp": 200,
+   "crit": 4
+  },
+  "lore": "Свет в нём не угасает, пока жив хотя бы один раненый.",
+  "effect": {
+   "type": "mending"
+  },
+  "look": {
+   "c2": "#ffffff",
+   "fx": "spark",
+   "helm": "halo"
+  }
+ },
+ "moon_scout_jacket": {
+  "name": "Куртка Лунного Дозора",
+  "base": "leather_armor",
+  "variant": "ranger",
+  "tier": 70,
+  "tint": "#6a8a40",
+  "stats": {
+   "agi": 60,
+   "vit": 26,
+   "hp": 160
+  },
+  "lore": "Кожа, пропитанная лунным маслом, не выдаёт ни звука.",
+  "effect": {
+   "type": "chill"
+  },
+  "look": {
+   "c2": "#e0f0b0",
+   "fx": "snow",
+   "pauld": "frost"
+  }
+ },
+ "undying_standard": {
+  "name": "Хоругвь Мёртвой Короны",
+  "base": "cloak",
+  "variant": "deathknight",
+  "tier": 70,
+  "tint": "#4a1a6a",
+  "stats": {
+   "str": 42,
+   "vit": 30,
+   "hp": 180
+  },
+  "lore": "Под ней павшие короли ведут армии на битву без конца.",
+  "effect": {
+   "type": "rally"
+  },
+  "look": {
+   "c2": "#d0a0ff",
+   "fx": "souls",
+   "back": "banner",
+   "crest": "skull",
+   "flag": "#4a1a6a"
+  }
+ },
+ "moon_eater_amulet": {
+  "name": "Амулет Пожирающей Луны",
+  "base": "amulet",
+  "variant": "warlock",
+  "tier": 70,
+  "tint": "#b04ae0",
+  "stats": {
+   "int": 50,
+   "vit": 22,
+   "hp": 150,
+   "crit": 2
+  },
+  "lore": "Луна гаснет каждый раз, когда он касается чужой воли.",
+  "effect": {
+   "type": "ignite"
+  },
+  "look": {
+   "c2": "#d080ff",
+   "fx": "souls",
+   "orbit": "motes"
+  }
+ },
+ "throne_fall_greataxe": {
+  "name": "Секира Падшего Трона",
+  "base": "greataxe",
+  "variant": "deathknight",
+  "tier": 85,
+  "tint": "#5a0a14",
+  "stats": {
+   "str": 64,
+   "vit": 32,
+   "hp": 220,
+   "crit": 4
+  },
+  "lore": "Тяжесть трона держит её рукоять, а кровь — лезвие.",
+  "effect": {
+   "type": "execute"
+  },
+  "look": {
+   "c2": "#d8c8ff",
+   "fx": "souls",
+   "pommel": "skull",
+   "ghost": true
+  }
+ },
+ "dawn_mace": {
+  "name": "Булава Нерушимого Дня",
+  "base": "mace",
+  "variant": "warrior",
+  "tier": 85,
+  "tint": "#f2b84a",
+  "stats": {
+   "str": 66,
+   "vit": 34,
+   "hp": 180,
+   "crit": 3
+  },
+  "lore": "Удар её созывает знамёна Сольгарда на стену.",
+  "effect": {
+   "type": "stun"
+  },
+  "look": {
+   "c2": "#fff2c0",
+   "fx": "spark",
+   "pommel": "star",
+   "orbit": "blades"
+  }
+ },
+ "icy_volley_crossbow": {
+  "name": "Арбалет Ледяного Залпа",
+  "base": "crossbow",
+  "variant": "ranger",
+  "tier": 85,
+  "tint": "#d4e6ff",
+  "stats": {
+   "agi": 72,
+   "vit": 24,
+   "crit": 14
+  },
+  "lore": "Болты летят в инее и оставляют на цели узор изо льда.",
+  "effect": {
+   "type": "extra"
+  },
+  "look": {
+   "c2": "#e8f4ff",
+   "fx": "snow",
+   "blade": "long",
+   "orbit": "runes"
+  }
+ },
+ "midnight_whisper_daggers": {
+  "name": "Кинжалы Полуночного Шёпота",
+  "base": "dagger",
+  "variant": "rogue",
+  "tier": 85,
+  "tint": "#5a9a30",
+  "stats": {
+   "agi": 80,
+   "vit": 22,
+   "crit": 12
+  },
+  "lore": "Они шепчут имя жертвы, пока та ещё думает, что спит.",
+  "effect": {
+   "type": "echo"
+  },
+  "look": {
+   "c2": "#c8ffb0",
+   "fx": "drip",
+   "pommel": "skull",
+   "ghost": true
+  }
+ },
+ "five_skulls_staff": {
+  "name": "Посох Пяти Черепов",
+  "base": "staff",
+  "variant": "warlock",
+  "tier": 85,
+  "tint": "#7a1a9a",
+  "stats": {
+   "int": 76,
+   "vit": 22,
+   "hp": 180,
+   "crit": 6
+  },
+  "lore": "Пять черепов говорят разом, и их голоса читают чужие сны.",
+  "effect": {
+   "type": "soulburst"
+  },
+  "look": {
+   "c2": "#e0a0ff",
+   "fx": "drip",
+   "pommel": "skull",
+   "orbit": "blades"
+  }
+ },
+ "endless_scepter": {
+  "name": "Жезл Вечного Причастия",
+  "base": "scepter",
+  "variant": "healer",
+  "tier": 85,
+  "tint": "#ffd060",
+  "stats": {
+   "int": 70,
+   "vit": 26,
+   "hp": 200,
+   "crit": 4
+  },
+  "lore": "Каждое исцеление берёт меньше, чем обещает.",
+  "effect": {
+   "type": "lifeburst"
+  },
+  "look": {
+   "c2": "#fffbe0",
+   "fx": "orbit",
+   "pommel": "star",
+   "orbit": "motes"
+  }
+ },
+ "undimmed_flame_banner": {
+  "name": "Знамя Негасимого Огня",
+  "base": "cloak",
+  "variant": "mage",
+  "tier": 85,
+  "tint": "#ff6a20",
+  "stats": {
+   "int": 60,
+   "vit": 32,
+   "hp": 230
+  },
+  "lore": "Пламя над ним не гаснет ни в бурю, ни в осаду.",
+  "effect": {
+   "type": "rally"
+  },
+  "look": {
+   "c2": "#ffd890",
+   "fx": "ember",
+   "back": "banner",
+   "crest": "flame",
+   "flag": "#c04a10",
+   "train": true
+  }
+ },
+ "rotmoon_hood": {
+  "name": "Капюшон Гниющей Луны",
+  "base": "leather_helm",
+  "variant": "darkranger",
+  "tier": 85,
+  "tint": "#7adf40",
+  "stats": {
+   "agi": 76,
+   "vit": 30,
+   "hp": 200
+  },
+  "lore": "Тот, кто его надевает, видит чужую смерть раньше своей.",
+  "effect": {
+   "type": "weaken"
+  },
+  "look": {
+   "c2": "#c0ffa0",
+   "fx": "souls",
+   "helm": "horns",
+   "eyes": true
+  }
+ },
+ "sunburnt_crown_hammer": {
+  "name": "Молот Сожжённой Короны",
+  "base": "hammer",
+  "variant": "reaver",
+  "tier": 85,
+  "tint": "#8a2a4a",
+  "stats": {
+   "str": 70,
+   "vit": 32,
+   "hp": 200,
+   "crit": 2
+  },
+  "lore": "Корона расплавлена, но молот помнит, каким был трон.",
+  "effect": {
+   "type": "ignite"
+  },
+  "look": {
+   "c2": "#ff9a40",
+   "fx": "ember",
+   "pommel": "skull"
+  }
+ },
+ "oathbound_ring": {
+  "name": "Кольцо Безмолвной Клятвы",
+  "base": "ring",
+  "variant": "deathknight",
+  "tier": 85,
+  "tint": "#8a2a2a",
+  "stats": {
+   "str": 52,
+   "vit": 28,
+   "hp": 180
+  },
+  "lore": "Клятва, данная мёртвым, держит крепче любой цепи.",
+  "effect": {
+   "type": "chains"
+  },
+  "look": {
+   "c2": "#ffc0c0",
+   "fx": "souls",
+   "orbit": "runes"
+  }
+ },
+ "exiled_throne_blade": {
+  "name": "Клинок Иссушённого Трона",
+  "base": "sword",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#6a3ab8",
+  "stats": {
+   "str": 78,
+   "vit": 30,
+   "hp": 220,
+   "crit": 8
+  },
+  "lore": "Меч короля, отдавшего жизнь за корону и получившего вечность.",
+  "effect": {
+   "type": "soulburst"
+  },
+  "look": {
+   "c2": "#e0d0ff",
+   "fx": "souls",
+   "pommel": "skull",
+   "ghost": true
+  },
+  "shape": "runic"
+ },
+ "dusk_fangs": {
+  "name": "Клыки Вечерней Тени",
+  "base": "twinblades",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#70d040",
+  "stats": {
+   "agi": 88,
+   "vit": 26,
+   "crit": 14
+  },
+  "lore": "Тень приходит с двух сторон, и клыки не промахиваются.",
+  "effect": {
+   "type": "killhaste"
+  },
+  "look": {
+   "c2": "#d8ffb0",
+   "fx": "leaf",
+   "pommel": "star",
+   "orbit": "blades"
+  },
+  "shape": "twinsaber"
+ },
+ "last_dawn_bow": {
+  "name": "Лук Последнего Рассвета",
+  "base": "bow",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#e6f0ff",
+  "stats": {
+   "agi": 88,
+   "vit": 28,
+   "crit": 16
+  },
+  "lore": "Последняя стрела дня — та, что долетает до солнца.",
+  "effect": {
+   "type": "frost"
+  },
+  "look": {
+   "c2": "#ffffff",
+   "fx": "spark",
+   "blade": "long",
+   "ghost": true
+  },
+  "shape": "crescent"
+ },
+ "blood_font_staff": {
+  "name": "Посох Багряного Истока",
+  "base": "staff",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#b0102a",
+  "stats": {
+   "int": 96,
+   "vit": 24,
+   "hp": 180,
+   "crit": 4
+  },
+  "lore": "Из навершия стекает кровь, и лечит она не того, кого надо.",
+  "effect": {
+   "type": "lifeburst"
+  },
+  "look": {
+   "c2": "#ff9aa8",
+   "fx": "drip",
+   "pommel": "skull",
+   "orbit": "blades"
+  },
+  "shape": "skull"
+ },
+ "flame_crown_standard": {
+  "name": "Знамя Пылающей Короны",
+  "base": "cloak",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#2a0a4a",
+  "stats": {
+   "str": 72,
+   "vit": 24,
+   "hp": 240
+  },
+  "lore": "Пламя не выбирает сторону: под ним падают все.",
+  "effect": {
+   "type": "chains"
+  },
+  "look": {
+   "c2": "#ffb060",
+   "fx": "ember",
+   "back": "banner",
+   "crest": "flame",
+   "flag": "#5a1a8a",
+   "train": true
+  },
+  "shape": "crest"
+ },
+ "last_guard_helm": {
+  "name": "Шлем Последнего Стража",
+  "base": "plate_helm",
+  "variant": "warrior",
+  "tier": 100,
+  "tint": "#e8e0c8",
+  "stats": {
+   "str": 70,
+   "vit": 34,
+   "hp": 260,
+   "crit": 6
+  },
+  "lore": "Крылья на шлеме не украшение: страж летит туда, где нужен.",
+  "effect": {
+   "type": "barrier"
+  },
+  "look": {
+   "c2": "#fff8e0",
+   "fx": "spark",
+   "helm": "wings",
+   "eyes": true
+  },
+  "shape": "plumed"
+ },
+ "dusk_dawn_vestment": {
+  "name": "Риза Вечерней Зари",
+  "base": "cloth_armor",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#fff8e0",
+  "stats": {
+   "int": 84,
+   "vit": 34,
+   "hp": 280
+  },
+  "lore": "Тот, кто её носит, лечит даже тогда, когда лечить уже нечем.",
+  "effect": {
+   "type": "manashield"
+  },
+  "look": {
+   "c2": "#ffffff",
+   "fx": "feather",
+   "back": "wings",
+   "wings": "feather",
+   "pauld": "crystal"
+  },
+  "shape": "vestment"
+ },
+ "silent_hunter_mask": {
+  "name": "Маска Безгласного Охотника",
+  "base": "leather_helm",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#86ff50",
+  "stats": {
+   "agi": 94,
+   "vit": 30,
+   "hp": 220
+  },
+  "lore": "Под маской нет лица, только светящиеся глаза и жажда добычи.",
+  "effect": {
+   "type": "weaken"
+  },
+  "look": {
+   "c2": "#c8ffb0",
+   "fx": "souls",
+   "helm": "horns",
+   "eyes": true
+  },
+  "shape": "mask"
  }
 }

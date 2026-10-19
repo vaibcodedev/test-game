@@ -105,10 +105,14 @@ async function main() {
       if (spec.params.cd) assert(Number(e4.cd) <= Number(e0.cd), `${type}: перезарядка не короче`);
     }
     for (const type of Object.keys(H)) assert(LEGEND_EFFECTS[type], `обработчик ${type} без записи в _effects`);
-    // у каждой из 26 — своё свойство: среди старых 16 и среди образцов типы не повторяются
+    // старые 16 — у каждой своё свойство; в одном ярусе один тип свойства не больше 3 раз (_doc data/legendaries.json)
     const ls = Object.values(LEGENDARIES);
-    const old = ls.filter((l) => OLD16.includes(l.id)).map((l) => l.effect.type), fresh = ls.filter((l) => !OLD16.includes(l.id)).map((l) => l.effect.type);
-    assert(new Set(old).size === old.length && new Set(fresh).size === fresh.length, `повтор свойств: ${old} / ${fresh}`);
+    const old = ls.filter((l) => OLD16.includes(l.id)).map((l) => l.effect.type);
+    assert(new Set(old).size === old.length, `повтор свойств у старых: ${old}`);
+    const per = new Map<string, number>();
+    for (const l of ls) if (!OLD16.includes(l.id)) { const k = l.tier + ":" + l.effect.type; per.set(k, (per.get(k) || 0) + 1); }
+    const over = [...per].filter(([, n]) => n > 3);
+    assert(!over.length, `свойство чаще 3 раз в ярусе: ${over.map(([k, n]) => k + "×" + n)}`);
   });
 
   await check("сохранения: старые 16 на месте, ярус 30, ilvl 32, req 29", () => {
