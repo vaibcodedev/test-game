@@ -176,14 +176,20 @@ export class GearLayers {
     this.sx = 0; this.sy = 0;
 
     // ---- плащ: отдельный слот cloak (доспех плащ не рисует); колышется, кайма по редкости, контур заточки ----
-    if (cl.r >= 0) {
+    // со спины плащ рисуется ПОСЛЕ доспеха и сапог (закрывает спину, но под шлемом); с остальных ракурсов — раньше, за телом
+    const drawCloak = () => {
+      if (cl.r < 0) return;
       const Lc = legOf(cl.leg);
       this.begin();
+      this.sx = 0; this.sy = 0;
       // легендарный плащ: знамя (короткий плащ + штандарт), крылья (без плаща, если нет шлейфа), шлейф, цепи
+      if (up && Lc?.look.back === "wings") { this.g = this.front; this.wings(Lc, view, bob, walking, tt, i.seed); }
       if (!Lc || Lc.look.back !== "wings" || Lc.look.train) this.cloak(cl, cm, pal, i, bob, walking, Lc);
-      if (Lc) this.legendBack(Lc, i, bob, walking, tt, "cloak");
+      if (Lc) this.legendBack(Lc, i, bob, walking, tt, "cloak", up);
       this.end("cloak", cl.plus, Lc);
-    }
+      this.g = this.front;
+    };
+    if (!up) drawCloak();
 
     this.g = this.front;
     // ---- тело без брони: голое, пах скрыт пикселизацией; лохмотья — рваная ткань ----
@@ -327,6 +333,7 @@ export class GearLayers {
       if (L && (L.look.back === "wings" || L.look.chains)) { this.sx = 0; this.sy = 0; this.legendBack(L, i, bob, walking, tt, "armor"); this.sx = lx; this.sy = ly; }
       this.end("armor", a.plus, L);
     }
+    if (up) drawCloak();
     // ---- шлем ----
     this.sx = lx; this.sy = ly;
     if (h.r >= 0) {
@@ -500,7 +507,8 @@ export class GearLayers {
     const shape = L ? (L.look.back === "banner" ? "short" : "long") : m?.look.shape ?? "long", umb = m ? m.fac === "umbrath" : i.faction === "umbrath";
     // шлейф: плащ длиннее ступней и стелется за героем, длина растёт с ярусом
     const train = L?.look.train ? 5 + L.ti * 2 : 0;
-    const len = train ? 14 - bob : ({ short: 8, long: 12, crest: 12, fur: 11, hood: 12, shroud: 13, feather: 12, wings: 12 } as Record<string, number>)[shape] ?? 11;
+    const len = train ? 12 - bob : ({ short: 8, long: 12, crest: 12, fur: 11, hood: 12, shroud: 13, feather: 12, wings: 12 } as Record<string, number>)[shape] ?? 11;
+    const lenUp = up ? Math.min(len, 9) : len;
     const amp = walking ? 2 : 1, fl = Math.round(Math.sin(t / 200 + i.seed) * amp);
     const tail = (k: number) => Math.round(Math.sin(t / 170 + k * 1.3 + i.seed) * amp * 0.8);
     const fur = "#e8e2d2", y0 = 16 + bob;
@@ -512,14 +520,14 @@ export class GearLayers {
       else this.R(x, y, w, 1, edge);
     };
     if (up) {
-      this.R(10, y0, 12, len, body); this.R(10, y0, 2, len, dk); this.R(20, y0, 2, len, dk); this.R(15, y0 + 1, 2, len - 1, mid, 0.5);
-      for (let k = 0; k < 3; k++) hem(10 + k * 4 + fl, 4, y0 + len + tail(k), k);
+      this.R(10, y0, 12, lenUp, body); this.R(10, y0, 2, lenUp, dk); this.R(20, y0, 2, lenUp, dk); this.R(15, y0 + 1, 2, lenUp - 1, mid, 0.5);
+      for (let k = 0; k < 3; k++) hem(10 + k * 4 + fl, 4, y0 + lenUp + tail(k), k);
       if (shape === "shroud") { this.R(13, y0 + 4, 2, 2, "#141018"); this.R(18, y0 + 8, 2, 2, "#141018"); }
       if (shape === "fur") this.R(9, y0 - 1, 14, 3, fur);
       else this.R(11, y0, 10, 1, edge);
       if (shape === "hood") this.R(12, y0 - 3, 8, 3, dk);
       if (shape === "crest") { this.R(13, y0 + 3, 6, 7, edge); this.R(14, y0 + 4, 4, 5, umb ? "#141018" : mid); if (umb) this.R(15, y0 + 5, 2, 2, "#e8e0d0"); else { this.R(15, y0 + 4, 2, 5, edge); this.R(14, y0 + 6, 4, 1, edge); } }
-      if (shape === "feather") for (let k = 0; k < len; k += 2) { this.R(11 + (k % 4), y0 + k, 3, 1, lt); this.R(17 - (k % 4), y0 + k + 1, 3, 1, lt); }
+      if (shape === "feather") for (let k = 0; k < lenUp; k += 2) { this.R(11 + (k % 4), y0 + k, 3, 1, lt); this.R(17 - (k % 4), y0 + k + 1, 3, 1, lt); }
       if (shape === "wings") for (const sd of [-1, 1]) for (let q = 0; q < 4; q++) { const wx = sd < 0 ? 9 - q * 2 : 22 + q * 2, wy = y0 - 2 + q * 2 + Math.round(Math.sin(t / 220 + i.seed + q) * (walking ? 1 : 0.5)); this.R(wx, wy, 2, 5, q % 2 ? lt : mid); this.R(wx, wy, 2, 1, edge); }
     } else if (side) {
       for (let k = 0; k < len; k += 3) this.R(8 + Math.round(fl * (k / len) * 1.5) - (walking ? 1 : 0), y0 + k, 5, 3, k % 2 ? body : mid);
@@ -541,16 +549,13 @@ export class GearLayers {
     // шлейф: сзади (вид со спины) стекает к камере и расширяется, сбоку стелется по земле назад, спереди расходится у ступней
     const wv = (k: number) => Math.sin(t / 210 + k * 0.6 + i.seed) * (walking ? 1.4 : 0.7);
     if (up) {
-      for (let k = 0; k < train; k++) {
-        const w = 12 + Math.round(k * 0.7), x = 16 - w / 2 + Math.round(wv(k));
-        this.R(x, 30 + k, w, 1, k % 3 ? body : mid);
-        this.R(x, 30 + k, 1, 1, dk); this.R(x + w - 1, 30 + k, 1, 1, dk);
-      }
-      const w = 12 + Math.round(train * 0.7);
-      this.R(16 - w / 2 + Math.round(wv(train)), 30 + train, w, 1, edge);
+      // со спины шлейф не выступает ниже ступней: подол плаща заканчивается на уровне лодыжек (см. lenUp)
+      this.R(10 + Math.round(wv(0)), y0 + lenUp, 12, 1, edge);
     } else if (side) {
-      for (let k = 0; k < train; k++) this.R(8 - k + (walking ? -1 : 0), 28 + Math.round(wv(k) * 0.6) + (k > train / 2 ? 1 : 0), 2, 3 - (k > train * 0.7 ? 1 : 0), k % 2 ? body : mid);
-      this.R(8 - train, 29 + Math.round(wv(train) * 0.6), 2, 2, edge);
+      // сбоку шлейф короткий и без волны: за спиной до лодыжек, не по земле
+      const ts = Math.min(train, 3);
+      for (let k = 0; k < ts; k++) this.R(7 - k + (walking ? -1 : 0), 25 + Math.round(wv(k) * 0.3), 2, 4, k % 2 ? body : mid);
+      this.R(7 - ts + (walking ? -1 : 0), 26, 1, 3, edge);
     } else {
       for (const sd of [-1, 1]) for (let k = 0; k < 3 + L!.ti; k++) this.R(sd < 0 ? 8 - k : 23 + k, 28 + Math.round(wv(k + sd) * 0.5), 1, 2, k % 2 ? mid : body);
       this.R(6 - L!.ti, 30, 21 + L!.ti * 2, 1, edge, 0.9);
@@ -561,10 +566,10 @@ export class GearLayers {
    * Легендарная тема за спиной и на плечах (look.back, look.chains): знамя-штандарт, крылья (перья, кости, пламя), призрачные цепи.
    * Рисуется в зоне своей вещи: плащ — спина; доспех — крылья из лопаток и цепи с плеч. Размер растёт с ярусом.
    */
-  private legendBack(L: LegendaryDef, i: GearInput, bob: number, walking: boolean, tt: number, from: "cloak" | "armor") {
+  private legendBack(L: LegendaryDef, i: GearInput, bob: number, walking: boolean, tt: number, from: "cloak" | "armor", wingsDone = false) {
     const lk = L.look, view = i.view, up = view === 1;
     if (from === "cloak" && lk.back === "banner") this.banner(L, i, bob, walking, tt);
-    if (lk.back === "wings") { this.g = up ? this.front : this.back; this.wings(L, view, bob, walking, tt, i.seed); }
+    if (lk.back === "wings" && !wingsDone) { this.g = up ? this.front : this.back; this.wings(L, view, bob, walking, tt, i.seed); }
     if (lk.chains) { this.g = from === "cloak" && !up ? this.back : this.front; this.chains(L, view, bob, walking, tt, i.seed, from); }
     this.g = this.front;
   }
@@ -775,7 +780,7 @@ export class GearLayers {
     if (shp === "tower") { w = 8; h = 13; } else if (shp === "buckler") { w = 5; h = 5; } else if (shp === "round" || shp === "aegis") { w = 8; h = 8; } else if (shp === "spiked") { w = 7; h = 7; } else if (shp === "kite") { w = 7; h = 12; } else if (sp) { w = 7; h = 10; }
     const x = side ? 13 - lx : up ? 22 : 8 - w + 3, y = 17 + bob + (side ? 0 : -sw) + ly;
     const metal = L ? [dark(L.tint, 0.4), dark(L.tint, 0.7), L.tint, L.look.c2] : m;
-    this.g = this.front; this.sx = 0; this.sy = 0;
+    this.g = up ? this.back : this.front; this.sx = 0; this.sy = 0; // со спины щит за спиной/сбоку, под плащом
     const ww = side ? 3 : w, xx = x;
     this.R(xx, y, ww, h, metal[1]);
     this.R(xx, y, ww, 1, metal[3]); this.R(xx, y + h - 1, ww, 1, metal[0]);
@@ -831,12 +836,13 @@ export class GearLayers {
     if (off) { ang = Math.PI - ang; hx = view === 2 ? 14 - swing : view === 0 ? 9.5 : 22.5; if (view === 2) ang = -100 * D; }
     const dx = Math.cos(ang), dy = Math.sin(ang), px = -dy, py = dx;
     // модель каталога: локальный спрайт архетипа, повёрнутый в руку; без свечения (docs/gear-visuals.md 2.1)
-    if (wm && !L) { this.g = this.front; this.blitSprite(weaponSprite(wm, wr), hx, hy, dx, dy); return; }
+    const wg = view === 1 ? this.back : this.front; // со спины оружие в руке за телом и плащом: виден клинок сбоку
+    if (wm && !L) { this.g = wg; this.blitSprite(weaponSprite(wm, wr), hx, hy, dx, dy); return; }
     const pulse = this.themeOn ? 0.75 + 0.25 * Math.sin(t / 150 + i.seed) : 0.9;
     // длина клинка не зависит от заточки (docs/gear-visuals.md 2.2)
     // легендарка: клинок длиннее с каждым ярусом (+3…+7), look.blade = long — ещё +4 (docs: _doc.tierLook)
-    const len = (WLEN[wb] ?? 14) + (L ? 3 + L.ti + (L.look.blade === "long" ? 4 : 0) : wr * 1.5);
-    this.g = this.front;
+    const len = Math.min(18, (WLEN[wb] ?? 14) + (L ? 3 + L.ti + (L.look.blade === "long" ? 4 : 0) : wr * 1.5)); // не длиннее роста героя
+    this.g = wg;
     if (L?.look.ghost) this.ghostBlade(L, wb, hx, hy, ang, len, t, i.seed, off);
     if (L?.look.pommel) this.pommel(L, hx - dx * 3, hy - dy * 3, t);
     if (wb === "sword" || wb === "dagger" || wb === "greatsword" || wb === "twinblades") {
