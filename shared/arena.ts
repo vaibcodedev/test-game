@@ -20,6 +20,8 @@ export const TEAM_SIZE: Record<ArenaMode, number> = { "1v1": 1, "2v2": 2 };
 /** Множитель урона игрока по игроку: PvP длится дольше, чем по мобам. */
 export const PVP_DAMAGE_MULT = 0.03;
 export const START_RATING = 1000;
+/** Бой с ботами (соперник не нашёлся): рейтинг меняется слабее — доля от обычного Elo. История и таблица — как обычно. */
+export const BOT_RATING_MULT = 0.5;
 export const ELO_K = 32;
 /** Окно подбора по рейтингу: ±100, затем +50 каждые 10 с ожидания, не больше ±1000. */
 export const QUEUE_WINDOW_BASE = 100;
@@ -198,6 +200,8 @@ export interface HistoryRow {
   damage: number;
   healing: number;
   durationMs: number;
+  /** Бой с ботами: рейтинг ×BOT_RATING_MULT. */
+  bot?: boolean;
 }
 export interface Reservation {
   sessionId: string;

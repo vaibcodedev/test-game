@@ -5,7 +5,7 @@
  */
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
 import {
-  arenaSpawn, COUNTDOWN_MS, eloDelta, generateArenaMap, MATCH_MS,
+  arenaSpawn, BOT_RATING_MULT, COUNTDOWN_MS, eloDelta, generateArenaMap, MATCH_MS,
   type ArenaMode, type ArenaPlayerResult, type ArenaResultMsg,
 } from "../../../shared/arena";
 import type { ClassId } from "../../../shared/classes";
@@ -35,7 +35,7 @@ export interface ArenaOptions {
   mode: ArenaMode;
   season: number;
   participants: Participant[];
-  /** Матч с ботами: без рейтинга и записи в историю. */
+  /** Матч с ботами: рейтинг ×BOT_RATING_MULT, запись в историю (боты — с ключом «bot:…», без строки в таблице рейтинга). */
   bots?: boolean;
 }
 export interface ArenaAuth {
@@ -284,7 +284,6 @@ export class ArenaRoom extends Room<ArenaState> {
 
   /** Итог матча: Elo по среднему рейтингу команд, запись в базу, экран результатов. */
   private finish(winner: number, reason: ArenaResultMsg["reason"], now: number, record = true) {
-    if (this.withBots) record = false; // бой с ботом: без Elo, истории и сезонных наград
     this.phase = "end";
     this.state.phase = "end";
     this.world.pvpActive = false;
@@ -300,7 +299,8 @@ export class ArenaRoom extends Room<ArenaState> {
     const players: ArenaPlayerResult[] = this.parts.map((x) => {
       const s = this.stats.get(x.nameKey)!;
       const score = s.left ? 0 : winner === 0 ? 0.5 : x.team === winner ? 1 : 0;
-      const delta = this.withBots ? 0 : eloDelta(avg(x.team), avg(x.team === 1 ? 2 : 1), score);
+      const elo = eloDelta(avg(x.team), avg(x.team === 1 ? 2 : 1), score);
+      const delta = this.withBots ? Math.round(elo * BOT_RATING_MULT) : elo;
       return {
         name: x.name, cls: x.cls, team: x.team, damage: Math.round(s.damage), healing: Math.round(s.healing), kills: s.kills, deaths: s.deaths,
         left: s.left, won: score === 1, draw: score === 0.5, ratingBefore: x.rating, ratingAfter: Math.max(0, x.rating + delta),
@@ -315,6 +315,7 @@ export class ArenaRoom extends Room<ArenaState> {
           result: r.won ? "win" : r.draw ? "draw" : "loss",
           ratingBefore: r.ratingBefore, ratingAfter: r.ratingAfter,
           damage: r.damage, healing: r.healing, kills: r.kills, deaths: r.deaths, left: r.left,
+          ...(this.parts[i].bot ? { bot: true } : {}),
         })),
       });
     }

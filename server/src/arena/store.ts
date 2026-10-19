@@ -17,6 +17,9 @@ export interface RatingRow {
   losses: number;
   draws: number;
 }
+/** Ключ бота в истории матчей: не пересекается с ключами игроков. */
+const BOT_KEY = "bot:";
+
 export interface MatchRecord {
   mode: ArenaMode;
   season: number;
@@ -37,6 +40,8 @@ export interface MatchRecord {
     kills: number;
     deaths: number;
     left: boolean;
+    /** Бот: в историю пишется с ключом «bot:…», строка в таблице рейтинга не создаётся. */
+    bot?: boolean;
   }[];
 }
 export interface PendingReward {
@@ -191,8 +196,9 @@ export class ArenaStore {
           wins = wins + excluded.wins, losses = losses + excluded.losses, draws = draws + excluded.draws, updated = excluded.updated`);
       const now = Date.now();
       for (const p of m.players) {
-        ins.run(id, p.nameKey, p.name, p.cls, p.team, p.result, p.ratingBefore, p.ratingAfter, Math.round(p.damage), Math.round(p.healing), p.kills, p.deaths, p.left ? 1 : 0);
-        up.run(m.season, m.mode, p.nameKey, p.name, p.cls, p.ratingAfter, p.result === "win" ? 1 : 0, p.result === "loss" ? 1 : 0, p.result === "draw" ? 1 : 0, now);
+        const key = p.bot ? BOT_KEY + p.nameKey : p.nameKey;
+        ins.run(id, key, p.name, p.cls, p.team, p.result, p.ratingBefore, p.ratingAfter, Math.round(p.damage), Math.round(p.healing), p.kills, p.deaths, p.left ? 1 : 0);
+        if (!p.bot) up.run(m.season, m.mode, p.nameKey, p.name, p.cls, p.ratingAfter, p.result === "win" ? 1 : 0, p.result === "loss" ? 1 : 0, p.result === "draw" ? 1 : 0, now);
       }
       return id;
     });
@@ -218,9 +224,9 @@ export class ArenaStore {
                 FROM arena_match_players mp JOIN arena_matches m ON m.id = mp.match_id
                 WHERE mp.name_key = ? ORDER BY m.id DESC LIMIT ?`)
       .all(nameKey, limit) as { id: number; mode: ArenaMode; started: number; duration: number; team: number; result: HistoryRow["result"]; rating_before: number; rating_after: number; damage: number; healing: number }[];
-    const others = this.db.prepare("SELECT name, team FROM arena_match_players WHERE match_id = ? AND name_key != ?");
+    const others = this.db.prepare("SELECT name, name_key AS key, team FROM arena_match_players WHERE match_id = ? AND name_key != ?");
     return rows.map((r) => {
-      const ps = others.all(r.id, nameKey) as { name: string; team: number }[];
+      const ps = others.all(r.id, nameKey) as { name: string; key: string; team: number }[];
       return {
         id: r.id,
         mode: r.mode,
@@ -233,6 +239,7 @@ export class ArenaStore {
         damage: r.damage,
         healing: r.healing,
         durationMs: r.duration,
+        ...(ps.some((p) => p.key.startsWith(BOT_KEY)) ? { bot: true } : {}),
       };
     });
   }

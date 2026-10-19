@@ -1,6 +1,6 @@
 /** Интерфейс арены: окно (рейтинг, очередь, группа, лидеры, история), подтверждение матча, табло боя, результаты. */
 import {
-  ACCEPT_MS, ARENA_MODES, MODE_NAMES, queueWindow, rankById, rankOf, RANKS,
+  ACCEPT_MS, ARENA_MODES, BOT_RATING_MULT, MODE_NAMES, queueWindow, rankById, rankOf, RANKS,
   type ArenaInfo, type ArenaMode, type ArenaResultMsg, type HistoryRow, type LeaderRow, type MatchFoundMsg,
 } from "../../../shared/arena";
 import { CLASSES, type ClassId } from "../../../shared/classes";
@@ -229,7 +229,7 @@ export class ArenaUI {
     if (!rows.length) return void body.append(el("p", "muted", "Вы ещё не сражались на арене."));
     const res = { win: "Победа", loss: "Поражение", draw: "Ничья" };
     body.append(el("div", "table-wrap", `<table class="arena-table"><thead><tr><th>Когда</th><th>Режим</th><th>Итог</th><th>Рейтинг</th><th>Соперники</th><th>Урон</th><th>Лечение</th></tr></thead><tbody>${rows
-      .map((r) => `<tr><td>${new Date(r.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td><td>${MODE_NAMES[r.mode]}</td><td class="res-${r.result}">${res[r.result]}</td><td class="num">${r.rating} <span class="${r.delta >= 0 ? "up" : "down"}">${r.delta >= 0 ? "+" : ""}${r.delta}</span></td><td>${esc(r.enemies.join(", "))}${r.allies.length ? `<br><span class="muted">с ${esc(r.allies.join(", "))}</span>` : ""}</td><td class="num">${r.damage}</td><td class="num">${r.healing}</td></tr>`)
+      .map((r) => `<tr><td>${new Date(r.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td><td>${MODE_NAMES[r.mode]}${r.bot ? ' <span class="muted" title="Бой с ботом: рейтинг меняется слабее">· бот</span>' : ""}</td><td class="res-${r.result}">${res[r.result]}</td><td class="num">${r.rating} <span class="${r.delta >= 0 ? "up" : "down"}">${r.delta >= 0 ? "+" : ""}${r.delta}</span></td><td>${esc(r.enemies.join(", "))}${r.allies.length ? `<br><span class="muted">с ${esc(r.allies.join(", "))}</span>` : ""}</td><td class="num">${r.damage}</td><td class="num">${r.healing}</td></tr>`)
       .join("")}</tbody></table>`));
   }
 
@@ -245,7 +245,7 @@ export class ArenaUI {
     const total = m.teams.flat().length;
     this.found.hidden = false;
     this.found.innerHTML = `<div class="panel arena-dialog" role="alertdialog" aria-labelledby="found-title">
-      <h2 id="found-title">${m.bot ? "Сразиться с ботом?" : "Матч найден"} · ${MODE_NAMES[m.mode]}</h2>${m.bot ? '<p class="muted">Соперник не найден. Бой с ботом не влияет на рейтинг</p>' : ""}
+      <h2 id="found-title">${m.bot ? "Сразиться с ботом?" : "Матч найден"} · ${MODE_NAMES[m.mode]}</h2>${m.bot ? '<p class="muted">Соперник не найден. Бой с ботом: рейтинг меняется в ${Math.round(1 / BOT_RATING_MULT)} раза слабее</p>' : ""}
       <div class="versus">${m.teams.map((t) => `<div class="team">${t.map((p) => `<div class="${p.name === me ? "me" : ""}">${esc(p.name)} <span class="muted">${clsName(p.cls)} · ${p.rating}</span>${m.accepted.includes(p.name) ? ' <span class="ok">✓</span>' : ""}</div>`).join("")}</div>`).join('<div class="vs">VS</div>')}</div>
       <div class="bar accept"><i data-accept></i></div>
       <div class="row-btns">${this.acceptedSelf
@@ -279,7 +279,7 @@ export class ArenaUI {
     this.results.innerHTML = `<div class="panel arena-dialog wide" role="dialog" aria-labelledby="res-title">
       <h2 id="res-title" class="${me?.won ? "res-win" : me?.draw ? "res-draw" : "res-loss"}">${title}</h2>
       <p class="muted">${MODE_NAMES[r.mode]} · ${reason} · ${mmss(r.durationMs)}</p>
-      ${r.bot ? `<p class="delta muted">Бой с ботом — рейтинг не изменился</p>` : me ? `<p class="delta">Рейтинг: ${me.ratingBefore} → <b>${me.ratingAfter}</b> <span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" : ""}${delta}</span> ${badge(me.ratingAfter)}</p>` : ""}
+      ${me ? `<p class="delta">Рейтинг: ${me.ratingBefore} → <b>${me.ratingAfter}</b> <span class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" : ""}${delta}</span> ${badge(me.ratingAfter)}${r.bot ? ` <span class="muted">· бой с ботом, рейтинг ×${BOT_RATING_MULT}</span>` : ""}</p>` : ""}
       <div class="table-wrap"><table class="arena-table"><thead><tr><th>Герой</th><th>Класс</th><th>Урон</th><th>Лечение</th><th>Убийства</th><th>Рейтинг</th></tr></thead><tbody>
       ${[1, 2].map((t) => r.players.filter((p) => p.team === t).map((p) => `<tr class="team${t} ${p.name === me?.name ? "me" : ""}"><td>${esc(p.name)}${p.left ? ' <span class="down">вышел</span>' : ""}</td><td>${clsName(p.cls)}</td><td class="num">${p.damage}</td><td class="num">${p.healing}</td><td class="num">${p.kills}/${p.deaths}</td><td class="num">${p.ratingAfter} <span class="${p.ratingAfter >= p.ratingBefore ? "up" : "down"}">${p.ratingAfter >= p.ratingBefore ? "+" : ""}${p.ratingAfter - p.ratingBefore}</span></td></tr>`).join("")).join('<tr class="sep"><td colspan="6"></td></tr>')}
       </tbody></table></div>

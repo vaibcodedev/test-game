@@ -1,7 +1,7 @@
 /** Проверки PvP-арены ботами: 1×1, 2×2, подтверждение, Elo, история, повторы, таймер, сезоны. Запуск: npm run test:arena */
 import { generateMap } from "../shared/map";
 import { MAP_SEED } from "../shared/constants";
-import { MAX_REPEAT } from "../shared/arena";
+import { BOT_RATING_MULT, eloDelta, MAX_REPEAT } from "../shared/arena";
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 
 const MAP = generateMap(MAP_SEED);
@@ -53,6 +53,9 @@ async function main() {
     A.send("dbg", { op: "level", v: 30 });
     A.send("dbg", { op: "item", unique: "ashbringer" });
     await A.until(() => A.self!.level === 30 && A.self!.inventory.some((i) => i?.unique === "ashbringer"), 3000, "прокачка");
+    // уникальные вещи боссов — уровня босса (задача 112): поднимаем героя до требования вещи
+    const ash = A.self!.inventory.find((i) => i?.unique === "ashbringer")!;
+    if (ash.req > 30) { A.send("dbg", { op: "level", v: ash.req }); await A.until(() => A.self!.level === ash.req, 3000, "уровень под оружие"); }
     A.send("equip", { index: A.self!.inventory.findIndex((i) => i?.unique === "ashbringer") });
     await A.until(() => A.self!.equip.weapon?.unique === "ashbringer", 2000, "оружие");
     const home = { x: MAP.playerSpawn.x + 64, y: MAP.playerSpawn.y + 32 };
@@ -213,7 +216,7 @@ async function main() {
     console.log("Арена: бой с ботом");
     await stopServer();
     await startServer(true, { ARENA_MATCH_MS: String(MATCH_MS), ARENA_BOT_WAIT_MS: "1500" });
-    await check("1×1 без соперника: предложение боя с ботом, без изменения рейтинга", async () => {
+    await check("1×1 без соперника: бой с ботом — рейтинг ×BOT_RATING_MULT, запись в историю с пометкой бота", async () => {
       const L = await Bot.join("Одинокий", "pass", "warrior");
       L.found = L.go = L.result = null;
       L.send("arena:queue", { mode: "1v1" });
@@ -230,16 +233,25 @@ async function main() {
       const r = L.result;
       assert(r.bot === true, "итог без флага бота");
       const me = r.players.find((x: any) => x.name === "Одинокий"), bot = r.players.find((x: any) => x.name === botName);
-      assert(me && bot && me.ratingAfter === me.ratingBefore && me.ratingBefore === 1000, "рейтинг изменился: " + JSON.stringify(r));
+      assert(me && bot && me.ratingBefore === 1000, "рейтинг до боя: " + JSON.stringify(r));
+      const full = eloDelta(me.ratingBefore, bot.ratingBefore, me.won ? 1 : me.draw ? 0.5 : 0);
+      const want = Math.round(full * BOT_RATING_MULT);
+      assert(me.ratingAfter - me.ratingBefore === want, `рейтинг с ботом: ${me.ratingAfter - me.ratingBefore}, ожидалось ${want} (полный Elo ${full})`);
+      assert(want === 0 || Math.abs(want) < Math.abs(full), "рейтинг с ботом не уменьшен");
       assert(bot.damage > 0, "бот не атаковал");
       await goHome([L]);
       L.info = null;
       L.send("arena:info");
-      await L.until(() => L.info?.ratings["1v1"].rating === 1000, 2000, "рейтинг 1000");
+      await L.until(() => L.info?.ratings["1v1"].rating === me.ratingAfter, 2000, "рейтинг после боя с ботом");
       L.history = null;
       L.send("arena:history");
       await L.until(() => !!L.history, 2000, "история");
-      assert(L.history.length === 0, "бой с ботом записан в историю");
+      assert(L.history.length === 1 && L.history[0].bot === true, "бой с ботом не записан в историю с пометкой: " + JSON.stringify(L.history));
+      assert(L.history[0].enemies[0] === botName && L.history[0].delta === want, "строка истории: " + JSON.stringify(L.history[0]));
+      L.top = null;
+      L.send("arena:top", { mode: "1v1" });
+      await L.until(() => !!L.top, 2000, "таблица");
+      assert(!JSON.stringify(L.top).includes(botName), "бот попал в таблицу рейтинга");
     });
     console.log(`\nВсе проверки арены пройдены: ${passedCount()}`);
   } finally {
