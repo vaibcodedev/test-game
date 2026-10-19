@@ -172,6 +172,7 @@ export class Player {
     const next = xpToNext(save.level);
     save.xp = next ? Math.max(0, Math.min(next - 1, save.xp || 0)) : 0;
     save.equip.offhand ??= null; // старые сохранения без второй руки
+    save.equip.cloak ??= null; // и без плаща (задача 79)
     const u = this.unit;
     u.kind = UnitKind.Player;
     u.name = name;
@@ -238,7 +239,7 @@ export class Player {
     u.level = this.save.level;
     const w = this.save.equip.weapon;
     u.weapon = w ? `${w.base}:${w.rarity}:${w.plus || 0}:${w.legendary || ""}:${w.model || ""}` : "";
-    u.gear = (["helmet", "armor", "boots", "offhand"] as const).map((k) => { const e = this.save.equip[k]; return e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}:${e.model || ""}` : ""; }).join("|");
+    u.gear = (["helmet", "armor", "boots", "offhand", "cloak"] as const).map((k) => { const e = this.save.equip[k]; return e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}:${e.model || ""}` : ""; }).join("|");
     this.selfDirty = true;
   }
 

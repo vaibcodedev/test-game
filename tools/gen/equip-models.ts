@@ -951,6 +951,31 @@ function amulet(k: K, shape: string) {
   if (k.L.deco === "chains") for (const s of [-1, 1]) for (let i = 0; i < 4; i++) c.ellipse(24 + s * (6 + i), cy + 6 + i * 2, 0.9, 0.9, k.trim[3]);
 }
 
+/** Плащ: ткань модели (look.cloth), кайма и застёжка по редкости; архетипы: long, crest, fur, short, wings, feather, hood, shroud. */
+function cloak(k: K, shape: string) {
+  const c = k.c, cc = shape === "shroud" ? RP("shroud", "grey") : k.cloth, tr = k.trim;
+  const bot = shape === "short" ? 34 : 46;
+  if (shape === "wings") {
+    for (const s of [-1, 1]) { wing(c, 24 + s * 5, 12, s, 19, cc); wing(c, 24 + s * 5, 20, s, 14, [cc[0], cc[1], cc[1], cc[2], cc[3]]); }
+    c.poly([[17, 9], [31, 9], [29, 40], [19, 40]], lit(cc, 20, 12, 7, 0, 4));
+  } else {
+    const hem = shape === "shroud" ? 0 : 1;
+    c.poly([[17, 6], [31, 6], [38, 14], [bot < 40 ? 38 : 41, bot], [7, bot], [10, 14]], lit(cc, 17, 12, 9, 0, 4));
+    c.line(24, 12, 24, bot, cc[0], 1);
+    for (const x of [15, 19, 29, 33]) c.line(x, 18, x - (x < 24 ? 2 : -2), bot, cc[1], 1);
+    if (hem) c.rect(bot < 40 ? 11 : 8, bot - 1, bot < 40 ? 27 : 33, 1, tr[3]);
+    if (shape === "shroud") { for (let x = 8; x < 41; x += 3) c.line(x, bot - 1, x + 1, bot + 1 + (x % 2), cc[1], 1); for (const [x, y] of [[16, 28], [30, 34], [22, 40]]) c.rect(x, y, 2, 3, DARK); }
+  }
+  if (shape === "fur") { c.shadedEllipse(24, 9, 14, 5.4, RP("whitefur", "white")); for (let x = 9; x < 40; x += 2) c.set(x, 13 + (x % 4 ? 0 : 1), RP("whitefur", "white")[3]); c.rect(9, 44, 31, 2, RP("whitefur", "white")[3]); }
+  if (shape === "hood") { c.poly([[16, 3], [32, 3], [35, 13], [13, 13]], lit(cc, 18, 6, 4, 0, 3)); c.ellipse(24, 9, 5.5, 3.5, DARK); c.line(14, 13, 34, 13, tr[2], 1); }
+  if (shape === "crest") { c.poly([[17, 24], [31, 24], [31, 34], [24, 41], [17, 34]], lit(tr, 20, 26, 5, 1, 4)); c.poly([[20, 27], [28, 27], [28, 33], [24, 37], [20, 33]], k.umb ? DARK : cc[2]); if (k.umb) skull(k, 24, 30, 0.7); else { c.rect(23, 27, 2, 8, tr[4]); c.rect(21, 29, 6, 2, tr[4]); } }
+  if (shape === "feather") for (let i = 0; i < 7; i++) { const x = 11 + i * 4.4, y = 24 + (i % 2) * 5; stroke(c, [[x, y], [x + (i < 3 ? -1 : 1), y + 8], [x + (i < 3 ? -2 : 2), y + 15]], 3.2, 1, (t) => cc[cl(3 - t * 2, 1, 4)]); c.line(Math.round(x), y, Math.round(x + (i < 3 ? -2 : 2)), y + 15, tr[2], 1); }
+  if (shape !== "shroud" && shape !== "wings") c.line(14, 12, 34, 12, tr[2], 1);
+  c.shadedEllipse(24, 11, 2.6, 2.6, tr);
+  if (k.gem) gemAt(k, 24, 11, 1.8); else c.set(24, 11, k.stone[3]);
+  if (k.L.deco === "runes") for (let i = 0; i < 2; i++) rune(c, 17 + i * 14, 40, k.fx[3], i + k.h);
+}
+
 // ---------------- сборка ----------------
 const NEUTRAL_TRIM = new Set(["gold", "bronze", "silver", "iron", "steel", "bone", "obsidian", "divine"]);
 const rarRamp = (r: number): Ramp => { const c = hex(RARITY_COLORS[r]); return [mix(c, DARK, 0.65), mix(c, DARK, 0.38), c, mix(c, WHITE, 0.45), WHITE]; };
@@ -962,7 +987,7 @@ const DRAW: Record<string, (k: K, shape: string) => void> = {
   spear, scythe, bow, crossbow, staff, scepter, orb, tome, shield,
   plate_helm: plateHelm, leather_helm: leatherHelm, cloth_helm: clothHelm,
   plate_armor: plateArmor, leather_armor: leatherArmor, cloth_armor: clothArmor,
-  plate_boots: boots, leather_boots: boots, cloth_boots: boots, ring, amulet,
+  plate_boots: boots, leather_boots: boots, cloth_boots: boots, cloak, ring, amulet,
 };
 export const MODEL_CATS = Object.keys(DRAW);
 
@@ -992,7 +1017,7 @@ export const buildModelIcon = (m: ItemModel, rar = 0): PC => drawModel(m.cat, m.
 const BASE_SHAPE: Record<string, string> = {
   greatsword: "claymore", twinblades: "twin", greataxe: "moon", hammer: "hammer", spear: "leaf", scythe: "scythe", crossbow: "light",
   orb: "orb", tome: "book", plate_helm: "open", leather_helm: "hood", cloth_helm: "wizard", plate_armor: "plate", leather_armor: "jacket",
-  cloth_armor: "robe", plate_boots: "boot", leather_boots: "high", cloth_boots: "shoe",
+  cloth_armor: "robe", cloak: "long", plate_boots: "boot", leather_boots: "high", cloth_boots: "shoe",
 };
 export function buildBaseIcons(): Record<string, PC> {
   const out: Record<string, PC> = {};

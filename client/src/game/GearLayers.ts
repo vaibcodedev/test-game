@@ -1,5 +1,5 @@
 /**
- * Слоёвая внешность героя по снаряжению: шлем, доспех (наплечники, плащ), сапоги и оружие рисуются
+ * Слоёвая внешность героя по снаряжению: шлем, доспех (наплечники), плащ (слот cloak), сапоги и оружие рисуются
  * пиксельными слоями поверх спрайта класса. Вид зависит от типа, модели каталога (data/items.json -> look: форма, материал,
  * ткань, украшения), редкости своей детали (кайма и камень) и легендарной темы (data/legendaries.json -> look).
  * Эффекты по docs/gear-visuals.md: заточка — бирюзовый контур своей детали по ступеням +4/+7/+10 (двухпроходная отрисовка),
@@ -56,7 +56,9 @@ const ROBES = new Set(["mage", "healer", "bloodweaver", "warlock"]);
 
 export interface Piece { r: number; plus: number; leg: string; rag: boolean; base: string; model: string }
 export function parseGear(gear: string): Piece[] {
-  return (gear || "|||").split("|").map((s) => { const [r, p, l, g, bs, md] = s.split(":"); return s ? { r: Number(r || 0), plus: Number(p || 0), leg: l || "", rag: g === "1", base: bs || "", model: md || "" } : { r: -1, plus: 0, leg: "", rag: false, base: "", model: "" }; });
+  const parts = (gear || "").split("|");
+  while (parts.length < 5) parts.push(""); // старая строка без плаща: пятая деталь пуста
+  return parts.map((s) => { const [r, p, l, g, bs, md] = s.split(":"); return s ? { r: Number(r || 0), plus: Number(p || 0), leg: l || "", rag: g === "1", base: bs || "", model: md || "" } : { r: -1, plus: 0, leg: "", rag: false, base: "", model: "" }; });
 }
 
 export interface GearInput {
@@ -123,10 +125,10 @@ export class GearLayers {
   }
 
   draw(i: GearInput) {
-    const [h, a, b, o] = parseGear(i.gear);
+    const [h, a, b, o, cl] = parseGear(i.gear);
     const [wb, wrs, wps, wl, wmd] = (i.weapon || "").split(":");
     const am = a.leg ? undefined : modelOf(a.model), bm = b.leg ? undefined : modelOf(b.model), hm = h.leg ? undefined : modelOf(h.model);
-    const wm = wl ? undefined : modelOf(wmd), om = o.leg ? undefined : modelOf(o.model);
+    const wm = wl ? undefined : modelOf(wmd), om = o.leg ? undefined : modelOf(o.model), cm = cl.leg ? undefined : modelOf(cl.model);
     const wr = Number(wrs || 0), wplus = Number(wps || 0);
     this.back.clear().setVisible(true);
     this.front.clear().setVisible(true);
@@ -142,6 +144,7 @@ export class GearLayers {
       { slot: "helmet", L: legOf(h.leg), plus: h.r >= 0 ? h.plus : 0 },
       { slot: "armor", L: legOf(a.leg), plus: a.r >= 0 && !a.rag ? a.plus : 0 },
       { slot: "boots", L: legOf(b.leg), plus: b.r >= 0 && !b.rag ? b.plus : 0 },
+      { slot: "cloak", L: legOf(cl.leg), plus: cl.r >= 0 ? cl.plus : 0 },
     ]);
     // анимация тем легендарок: своему герою всегда, чужим — по настройке; иначе темы замирают (статичный кадр)
     const tt = this.themeOn ? t : 0;
@@ -159,25 +162,11 @@ export class GearLayers {
     const bareTorso = a.r < 0 || a.rag;
     this.sx = 0; this.sy = 0;
 
-    // ---- плащ: только у модели-плаща или легендарного доспеха (не признак эпика); колышется ----
-    const capeModel = !!am && ["cloak", "mantle", "hooded", "coat"].includes(am.look.shape);
-    if ((am ? capeModel : !!legOf(a.leg)) && !a.rag) {
-      const L = legOf(a.leg), ap = am ? piecePal(am, a.r) : null;
-      const c = L ? dark(L.tint, 0.55) : ap ? ap.acc[1] : pal.cape, edge = L ? L.look.c2 : ap ? ap.tr : pal.capeEdge;
-      const amp = walking ? 2 : 1, fl = Math.round(Math.sin(t / 200 + i.seed) * amp), len = L ? 13 : 10;
-      const tail = (k: number) => Math.round(Math.sin(t / 170 + k * 1.3 + i.seed) * amp * 0.8);
-      this.g = up ? this.front : this.back;
-      if (up) {
-        this.R(10, 16 + bob, 12, len, c); this.R(10, 16 + bob, 2, len, dark(c, 0.7)); this.R(20, 16 + bob, 2, len, dark(c, 0.7));
-        for (let k = 0; k < 3; k++) this.R(10 + k * 4 + fl, 16 + bob + len + tail(k), 4, 1, edge);
-        this.R(12, 16 + bob, 8, 1, edge);
-        if (L) { this.R(15, 18 + bob, 2, 5, L.look.c2, 0.8); this.R(14, 20 + bob, 4, 1, L.look.c2, 0.8); }
-      } else if (side) {
-        for (let k = 0; k < len; k += 3) this.R(8 + Math.round(fl * (k / len) * 1.5) - (walking ? 1 : 0), 16 + bob + k, 5, 3, c);
-        this.R(8 + fl * 2, 16 + bob + len, 5, 1, edge);
-      } else {
-        for (const x of [8, 22]) { for (let k = 0; k < len - 1; k += 3) this.R(x + Math.round(fl * (k / len)) * (x < 16 ? -1 : 1), 17 + bob + k, 2, 3, c); this.R(x, 17 + bob + len - 1 + tail(x), 2, 1, edge); }
-      }
+    // ---- плащ: отдельный слот cloak (доспех плащ не рисует); колышется, кайма по редкости, контур заточки ----
+    if (cl.r >= 0) {
+      this.begin();
+      this.cloak(cl, cm, pal, i, bob, walking);
+      this.end("cloak", cl.plus);
     }
 
     this.g = this.front;
@@ -444,6 +433,51 @@ export class GearLayers {
     }
   }
 
+  /** Плащ за спиной. Вид — архетип модели (look.shape): short, long, crest, fur, hood, shroud, feather, wings; ткань — look.cloth, кайма — по редкости. */
+  private cloak(c: Piece, m: ItemModel | undefined, pal: typeof PAL.solgard, i: GearInput, bob: number, walking: boolean) {
+    const view = i.view, side = view === 2, up = view === 1, t = i.t;
+    const cp = m ? PR(m.look.cloth, "red") : null;
+    const body = cp ? cp[1] : pal.cape, mid = cp ? cp[2] : pal.cape, dk = dark(body, 0.65), lt = cp ? cp[3] : pal.cape;
+    const edge = c.leg ? RARITY_COLORS[3] : m ? rimOf(m.look, c.r, m.fac).T : pal.capeEdge;
+    const shape = m?.look.shape ?? "long", umb = m ? m.fac === "umbrath" : i.faction === "umbrath";
+    const len = ({ short: 8, long: 12, crest: 12, fur: 11, hood: 12, shroud: 13, feather: 12, wings: 12 } as Record<string, number>)[shape] ?? 11;
+    const amp = walking ? 2 : 1, fl = Math.round(Math.sin(t / 200 + i.seed) * amp);
+    const tail = (k: number) => Math.round(Math.sin(t / 170 + k * 1.3 + i.seed) * amp * 0.8);
+    const fur = "#e8e2d2", y0 = 16 + bob;
+    this.g = up ? this.front : this.back;
+    const hem = (x: number, w: number, y: number, k: number) => {
+      if (shape === "shroud") this.R(x, y, w, [1, 2, 1, 3][k % 4], dk);
+      else if (shape === "feather") this.R(x, y, w, 2, k % 2 ? lt : mid);
+      else if (shape === "fur") this.R(x, y, w, 1, fur);
+      else this.R(x, y, w, 1, edge);
+    };
+    if (up) {
+      this.R(10, y0, 12, len, body); this.R(10, y0, 2, len, dk); this.R(20, y0, 2, len, dk); this.R(15, y0 + 1, 2, len - 1, mid, 0.5);
+      for (let k = 0; k < 3; k++) hem(10 + k * 4 + fl, 4, y0 + len + tail(k), k);
+      if (shape === "shroud") { this.R(13, y0 + 4, 2, 2, "#141018"); this.R(18, y0 + 8, 2, 2, "#141018"); }
+      if (shape === "fur") this.R(9, y0 - 1, 14, 3, fur);
+      else this.R(11, y0, 10, 1, edge);
+      if (shape === "hood") this.R(12, y0 - 3, 8, 3, dk);
+      if (shape === "crest") { this.R(13, y0 + 3, 6, 7, edge); this.R(14, y0 + 4, 4, 5, umb ? "#141018" : mid); if (umb) this.R(15, y0 + 5, 2, 2, "#e8e0d0"); else { this.R(15, y0 + 4, 2, 5, edge); this.R(14, y0 + 6, 4, 1, edge); } }
+      if (shape === "feather") for (let k = 0; k < len; k += 2) { this.R(11 + (k % 4), y0 + k, 3, 1, lt); this.R(17 - (k % 4), y0 + k + 1, 3, 1, lt); }
+      if (shape === "wings") for (const sd of [-1, 1]) for (let q = 0; q < 4; q++) { const wx = sd < 0 ? 9 - q * 2 : 22 + q * 2, wy = y0 - 2 + q * 2 + Math.round(Math.sin(t / 220 + i.seed + q) * (walking ? 1 : 0.5)); this.R(wx, wy, 2, 5, q % 2 ? lt : mid); this.R(wx, wy, 2, 1, edge); }
+    } else if (side) {
+      for (let k = 0; k < len; k += 3) this.R(8 + Math.round(fl * (k / len) * 1.5) - (walking ? 1 : 0), y0 + k, 5, 3, k % 2 ? body : mid);
+      hem(8 + fl * 2, 5, y0 + len, 0);
+      if (shape === "fur") this.R(10, y0 - 1, 5, 2, fur);
+      if (shape === "hood") this.R(11, y0 - 2, 4, 3, dk);
+      if (shape === "wings") for (let q = 0; q < 3; q++) { this.R(7 - q, y0 - 3 + q * 2 + (walking ? fl : 0), 3, 4, q % 2 ? lt : mid); this.R(7 - q, y0 - 3 + q * 2 + (walking ? fl : 0), 1, 4, edge); }
+    } else {
+      for (const x of [8, 22]) {
+        const sd = x < 16 ? -1 : 1;
+        for (let k = 0; k < len - 1; k += 3) this.R(x + Math.round(fl * (k / len)) * sd, y0 + 1 + k, 2, 3, k % 2 ? mid : body);
+        hem(x + fl * sd, 2, y0 + len, x);
+        if (shape === "fur") this.R(x - (sd < 0 ? 1 : 0), y0 - 1, 3, 2, fur);
+        if (shape === "wings") for (let q = 0; q < 3; q++) { this.R(x + sd * (1 + q) - (sd < 0 ? 1 : 0), y0 - 3 - q + (walking ? fl : 0), 2, 4, q % 2 ? lt : mid); this.R(x + sd * (1 + q) - (sd < 0 ? 1 : 0), y0 - 3 - q + (walking ? fl : 0), 2, 1, edge); }
+        if (shape === "crest" && sd > 0) this.R(23, y0 + 3, 1, 3, edge);
+      }
+    }
+  }
   private helmet(h: Piece, L: LegendaryDef | undefined, tr: string, pal: typeof PAL.solgard, cx: number, view: number, bob: number, t: number, seed: number) {
     const m = pal.m, up = view === 1, side = view === 2, y = bob;
     const metal = L ? [dark(L.tint, 0.4), dark(L.tint, 0.7), L.tint, L.look.c2] : m;

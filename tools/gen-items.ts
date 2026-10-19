@@ -66,6 +66,14 @@ const CATS: Cat[] = [
       { key: "int", arch: [A("амулет", "m", "medallion"), A("медальон", "m", "locket"), A("амулет", "m", "sun"), A("амулет", "m", "holy")], cls: byStat("int"), affix: ["int", "vit"] },
     ],
   },
+  {
+    id: "cloak", kind: "cloth", cls: [], affix: () => [], arch: [],
+    variants: [
+      { key: "str", arch: [A("плащ", "m", "long"), A("плащ с гербом", "m", "crest"), A("меховая мантия", "f", "fur")], cls: byStat("str"), affix: ["vit", "hp"] },
+      { key: "agi", arch: [A("накидка", "f", "short"), A("плащ-крылья", "m", "wings"), A("перьевой плащ", "m", "feather")], cls: byStat("agi"), affix: ["agi", "crit"] },
+      { key: "int", arch: [A("плащ с капюшоном", "m", "hood"), A("саван", "m", "shroud")], cls: byStat("int"), affix: ["int", "hp"] },
+    ],
+  },
 ];
 
 /** Тема яруса: прилагательное (м|ж|ср|мн), родительный эпитет, материалы и убранство. */

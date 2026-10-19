@@ -21,9 +21,9 @@ const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;"
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const PAGE = 120;
 
-type Group = "weapon" | "offhand" | "armor" | "jewelry" | "unique" | "legend" | "stuff";
-const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"]];
-const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", armor: "Броня", boots: "Броня", ring: "Бижутерия", amulet: "Бижутерия" };
+type Group = "weapon" | "offhand" | "armor" | "cloak" | "jewelry" | "unique" | "legend" | "stuff";
+const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["cloak", "Плащ"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"]];
+const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", armor: "Броня", boots: "Броня", cloak: "Плащ", ring: "Бижутерия", amulet: "Бижутерия" };
 /** Подписи видов предметов (typeName у секиры — «Двуручный топор», а игрок знает «Секира»). */
 const CHIP: Record<string, string> = { sword: "Одноручный меч", greatsword: "Двуручный меч", twinblades: "Парные мечи", dagger: "Кинжалы", axe: "Топор", greataxe: "Секира", mace: "Булава", hammer: "Молот", spear: "Копьё", scythe: "Коса", bow: "Лук", crossbow: "Арбалет", staff: "Посох", scepter: "Жезл", shield: "Щит", orb: "Сфера", tome: "Книга", ring: "Кольцо", amulet: "Амулет" };
 const STUFF: [string, string][] = [["potion", "Зелья"], ["food", "Еда"], ["material", "Материалы улучшения"], ["resource", "Ресурсы биомов"]];
@@ -43,7 +43,7 @@ interface Entry {
   tier: number; tiers: number; best: boolean; hi: boolean; hay: string; base: string;
 }
 
-const slotGroup = (s: Slot | "consumable"): Group => (s === "weapon" ? "weapon" : s === "offhand" ? "offhand" : s === "ring" || s === "amulet" ? "jewelry" : s === "consumable" ? "stuff" : "armor");
+const slotGroup = (s: Slot | "consumable"): Group => (s === "weapon" ? "weapon" : s === "offhand" ? "offhand" : s === "cloak" ? "cloak" : s === "ring" || s === "amulet" ? "jewelry" : s === "consumable" ? "stuff" : "armor");
 const handsOf = (b: { id: string; hands?: 2; slot: string }): Entry["hands"] => (b.slot !== "weapon" ? "" : b.hands === 2 ? "two" : b.id === "twinblades" || b.id === "dagger" ? "pair" : "one");
 const typeLabel = (cat: string) => CHIP[cat] ?? BASE_ITEMS[cat]?.typeName ?? BASE_ITEMS[cat]?.name ?? cat;
 

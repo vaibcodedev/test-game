@@ -271,7 +271,7 @@ function power(cls: ClassId, level: number, alloc: Stats, skills: Record<string,
 function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Record<string, number>): Record<Slot, Item | null> {
   const cats = categories(cls);
   const tank = role(cls) === "tank";
-  const eq: Record<Slot, Item | null> = { weapon: null, offhand: null, helmet: null, armor: null, boots: null, ring: null, amulet: null };
+  const eq: Record<Slot, Item | null> = { weapon: null, offhand: null, helmet: null, armor: null, boots: null, cloak: null, ring: null, amulet: null };
   const of = (slot: Slot) => cats.filter((b) => b.slot === slot);
   for (const s of ["helmet", "armor", "boots", "ring", "amulet"] as Slot[]) { const c = of(s)[0]; if (c) eq[s] = gearItem(c.id, level, cls); }
   const pickWeapon = () => {

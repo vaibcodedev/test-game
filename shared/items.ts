@@ -4,8 +4,8 @@ import { RESOURCES } from "./biomes";
 import { MATERIALS, PLUS_BONUS } from "./upgrade";
 import catalog from "../data/items.json";
 
-export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "ring" | "amulet";
-export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "ring", "amulet"];
+export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "cloak" | "ring" | "amulet";
+export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"];
 /** Вторая рука: щит или второй клинок у Храмовника и Рыцаря смерти, сфера или книга у заклинателей. */
 export const OFFHAND_CLASSES: ClassId[] = ["warrior", "deathknight", "mage", "healer", "warlock", "bloodweaver"];
 /** Одноручное оружие: у Рыцаря смерти может занять вторую руку. */
@@ -18,6 +18,7 @@ export const SLOT_NAMES: Record<Slot, string> = {
   helmet: "Шлем",
   armor: "Доспех",
   boots: "Сапоги",
+  cloak: "Плащ",
   ring: "Кольцо",
   amulet: "Амулет",
 };
@@ -127,6 +128,8 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   plate_boots: { id: "plate_boots", name: "Сабатоны", typeName: "Латные сапоги", slot: "boots", icon: "plate_boots", armorType: "plate", classes: STR_MELEE, roll: (l) => ({ armor: r1(2 + l * 1.5), vit: r1(1 + l * 0.05) }) },
   leather_boots: { id: "leather_boots", name: "Ботинки", typeName: "Кожаные сапоги", slot: "boots", icon: "leather_boots", armorType: "leather", classes: LEATHER, roll: (l) => ({ armor: r1(1 + l * 1.0), agi: r1(1 + l * 0.08) }) },
   cloth_boots: { id: "cloth_boots", name: "Туфли", typeName: "Тканевые туфли", slot: "boots", icon: "cloth_boots", armorType: "cloth", classes: CASTERS, roll: (l) => ({ armor: r1(1 + l * 0.7), int: r1(1 + l * 0.06) }) },
+  // плащ: отдельный слот, общий для всех классов; броня + аффиксы модели (BALANCE.md «Экипировка»)
+  cloak: { id: "cloak", name: "Плащ", typeName: "Плащ", slot: "cloak", icon: "cloak", roll: (l) => ({ armor: r1(1 + l * 1.1) }) },
   ring: { id: "ring", name: "Кольцо", typeName: "Кольцо", slot: "ring", icon: "ring", roll: () => ({}) },
   amulet: { id: "amulet", name: "Амулет", typeName: "Амулет", slot: "amulet", icon: "amulet", roll: (l) => ({ hp: r1(6 + l * 3) }) },
   hp_potion: { id: "hp_potion", name: "Зелье здоровья", slot: "consumable", icon: "potion_red", price: 15, stack: 20 },
