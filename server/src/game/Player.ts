@@ -239,7 +239,11 @@ export class Player {
     u.level = this.save.level;
     const w = this.save.equip.weapon;
     u.weapon = w ? `${w.base}:${w.rarity}:${w.plus || 0}:${w.legendary || ""}:${w.model || ""}` : "";
-    u.gear = (["helmet", "armor", "boots", "offhand", "cloak"] as const).map((k) => { const e = this.save.equip[k]; return e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}:${e.model || ""}` : ""; }).join("|");
+    const piece = (e: Item | null | undefined) => (e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}:${e.model || ""}` : "");
+    const gear = (["helmet", "armor", "boots", "offhand", "cloak"] as const).map((k) => piece(this.save.equip[k]));
+    // кольцо и амулет — 6-й и 7-й куски, только когда хоть одно из них легендарное (тема «вокруг героя»); иначе строка из 5 кусков
+    const jewel = (["ring", "amulet"] as const).map((k) => (this.save.equip[k]?.legendary ? piece(this.save.equip[k]) : ""));
+    u.gear = (jewel.some(Boolean) ? [...gear, ...jewel] : gear).join("|");
     this.selfDirty = true;
   }
 

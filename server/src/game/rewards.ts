@@ -3,7 +3,7 @@ import { questProgress } from "./cities";
 import { LOOT_BAG_TTL_MS, MAX_LEVEL } from "../../../shared/constants";
 import { xpForKill, xpToNext } from "../../../shared/formulas";
 import { BASE_ITEMS, makeItem, makeLoot, makeUnique, rollRarity, Rarity, UNIQUES, type Item } from "../../../shared/items";
-import { LEGENDARIES, makeLegendary } from "../../../shared/legendary";
+import { LEGEND_TIERS, makeLegendary, rollLegendary } from "../../../shared/legendary";
 import { ELITE } from "../../../shared/elites";
 import { MATERIALS } from "../../../shared/upgrade";
 import type { LootBag } from "../../../shared/protocol";
@@ -80,7 +80,7 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
         return !b.classes || b.classes.includes(p.cls);
       });
       const uid = pool[Math.floor(Math.random() * pool.length)];
-      if (uid) items.push(makeUnique(uid));
+      if (uid) items.push(makeUnique(uid, m.level)); // уникальная вещь — уровня босса
       for (let i = 0; i < 2; i++) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random, 0.45)));
       items.push({ ...makeItem("hp_potion", 1, 0), qty: 3 });
     } else {
@@ -100,9 +100,10 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
       const r = Math.max(rollRarity(Math.random, ELITE.lootBonus), Rarity.Rare) as Rarity;
       items.push(makeLoot(p.cls, m.level, r));
     }
-    if (Math.random() < (boss ? 0.04 : m.elite ? 0.005 : 0)) {
-      const ids = Object.keys(LEGENDARIES).filter((id) => { const b = BASE_ITEMS[LEGENDARIES[id].base]; return !b.classes || b.classes.includes(p.cls); });
-      const id = ids[Math.floor(Math.random() * ids.length)];
+    // легендарка: ярус не выше уровня источника, ближайший — чаще (shared/legendary.ts rollLegendary)
+    const dr = LEGEND_TIERS.drop;
+    if (Math.random() < (boss ? dr.boss : m.elite ? dr.elite : 0)) {
+      const id = rollLegendary(p.cls, m.level);
       if (id) {
         const it = makeLegendary(id);
         items.push(it);

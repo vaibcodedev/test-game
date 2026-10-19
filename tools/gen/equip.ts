@@ -1,9 +1,9 @@
-/** Иконки экипировки 32×32: тип × класс (шлем/доспех/сапоги) × редкость, уникальные, легендарные и модели каталога (equip-models.ts). */
-import { PC, hex, mix, withA, type RGBA, type Ramp } from "./canvas";
+/** Иконки экипировки 32×32: тип × класс (шлем/доспех/сапоги) × редкость, уникальные; легендарные 48×48 и модели каталога (equip-models.ts). */
+import { PC, hex, mix, ramp, withA, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
-import { LEGENDARIES } from "../../shared/legendary";
-import { BASE_ITEMS, ICON_VARIANT_SLOTS, ICON_VARIANTS, UNIQUES, iconId, type Rarity } from "../../shared/items";
-import { buildAllModelIcons, buildBaseIcons, MODEL_CATS } from "./equip-models";
+import { LEGENDARIES, type LegendaryDef } from "../../shared/legendary";
+import { BASE_ITEMS, ICON_VARIANT_SLOTS, ICON_VARIANTS, ITEM_PALETTES, UNIQUES, iconId, type ModelLook, type Rarity } from "../../shared/items";
+import { BASE_SHAPE, ICON, buildAllModelIcons, buildBaseIcons, drawModel, MODEL_CATS } from "./equip-models";
 
 const GEM: Ramp[] = [P.magic.green, P.magic.blue, P.magic.purple];
 const GLOW: RGBA[] = [hex("#ffffff"), hex("#7ab8ff"), hex("#c47bff")];
@@ -210,22 +210,172 @@ export function buildUniqueIcon(id: string): PC {
   return c;
 }
 
-/** Легендарная иконка: эпическая база, оранжевая окраска, золотая кайма и яркий ореол. */
-export function buildLegendaryIcon(id: string): PC {
-  const u = LEGENDARIES[id];
-  const tint = hex(u.tint), orange = hex("#ff9a2e");
-  const c = draw(BASE_ITEMS[u.base].icon, u.variant as V, 2);
-  c.map((p) => (p[3] < 255 || p[0] + p[1] + p[2] < 110 ? p : mix(p, tint, 0.35)));
-  const g = new PC(32, 32);
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
-    if (c.alpha(x, y)) continue;
-    let near = 0;
-    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (c.alpha(x + dx, y + dy) > 200) near = Math.max(near, 4 - Math.max(Math.abs(dx), Math.abs(dy)));
-    if (near) g.set(x, y, withA(orange, near === 3 ? 150 : near === 2 ? 90 : 45));
+// ---------------- легендарные иконки 48×48 ----------------
+const WH = hex("#ffffff"), DK = hex("#120e16"), BONE = hex("#e8e0d0"), BONED = hex("#a89c80"), ORANGE = hex("#ff9a2e"), ORANGE_D = hex("#b05a10");
+/** Класс брони варианта: для старых универсальных баз helmet / armor / boots. */
+const ARMOR_OF: Record<string, string> = { warrior: "plate", deathknight: "plate", reaver: "plate", rogue: "leather", ranger: "leather", darkranger: "leather", mage: "cloth", healer: "cloth", warlock: "cloth", bloodweaver: "cloth" };
+/** Архетип старых баз (их нет в BASE_SHAPE). */
+const OLD_SHAPE: Record<string, string> = { sword: "broad", axe: "bearded", mace: "flanged", dagger: "dagger", bow: "long", staff: "rings", scepter: "sun", shield: "heater", ring: "signet", amulet: "medallion" };
+const tintRamp = (c: RGBA): Ramp => [mix(c, DK, 0.62), mix(c, DK, 0.36), c, mix(c, WH, 0.45), WH];
+const palRamp = (key: string, tint: RGBA, k: number): Ramp => ramp(...ITEM_PALETTES[key]).map((c) => mix(c, tint, k));
+const legendCat = (u: LegendaryDef): string => {
+  const a = ARMOR_OF[u.variant] ?? "plate";
+  return u.base === "helmet" ? `${a}_helm` : u.base === "armor" ? `${a}_armor` : u.base === "boots" ? `${a}_boots` : u.base;
+};
+/** Гербы 5×5: 1 — цвет темы, 2 — второй цвет, w — кость, k — тёмный, g — зелень, b — дерево. */
+const CREST: Record<string, string[]> = {
+  sun: ["2.1.2", ".111.", "11211", ".111.", "2.1.2"], skull: [".www.", "wwwww", "wkwkw", "wwwww", ".w.w."], star: ["..1..", ".121.", "12221", ".121.", "..1.."],
+  moon: [".111.", "11...", "1....", "11...", ".111."], rose: [".111.", "11211", ".111.", "..g..", ".gg.."], tree: [".111.", "11211", ".111.", "..b..", ".bbb."],
+  fang: ["11111", "ww.ww", "ww.ww", ".w.w.", "....."], eye: [".....", ".111.", "12k21", ".111.", "....."], flame: ["..2..", ".212.", ".121.", "11211", ".111."],
+};
+function crestAt(c: PC, kind: string, cx: number, cy: number, sc: number, c1: RGBA, c2: RGBA) {
+  const rows = CREST[kind] ?? CREST.sun, map: Record<string, RGBA> = { "1": c1, "2": c2, w: BONE, k: DK, g: hex("#5fa040"), b: hex("#8a5a2a") };
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { const col = map[ch]; if (col) { c.rect(cx + (x - 2.5) * sc, cy + (y - 2.5) * sc, sc, sc, col); c.set(Math.round(cx + (x - 2.5) * sc), Math.round(cy + (y - 2.5) * sc), mix(col, WH, 0.35)); } }));
+}
+function bbox(c: PC) {
+  let x0 = ICON, y0 = ICON, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) if (c.alpha(x, y) > 120) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
+/** Знамя-штандарт (плащ с back = banner): древко, перекладина, полотнище с гербом и ласточкиным хвостом, кисти с яруса 85. */
+function bannerIcon(u: LegendaryDef, tint: RGBA, c2: RGBA): PC {
+  const c = new PC(ICON, ICON), umb = u.faction === "umbrath", ti = u.ti;
+  const flag = hex(u.look.flag ?? (umb ? "#4a1a6a" : "#a8242c")), F = tintRamp(flag), metal = umb ? BONE : hex("#f0c040");
+  const pole = umb ? [hex("#1c1822"), hex("#3a3446")] : [hex("#5a3a1e"), hex("#8a5a2a")];
+  c.line(11, 46, 11, 4, pole[0], 3); c.line(10, 46, 10, 4, pole[1], 1);
+  if (umb) { c.shadedEllipse(11, 3, 3, 2.6, ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff")); c.set(10, 3, DK); c.set(12, 3, DK); }
+  else { c.poly([[11, -1], [14, 4], [8, 4]], metal); c.line(11, 0, 11, 3, WH, 1); }
+  c.rect(9, 6, 33, 2, metal); c.rect(9, 6, 33, 1, mix(metal, WH, 0.4));
+  const x0 = 13, x1 = 40, top = 8, h = 25 + ti;
+  for (let x = x0; x <= x1; x++) {
+    const f = (x - x0) / (x1 - x0), off = Math.round(Math.sin(f * 5.2) * 1.6 * f), cut = Math.max(0, 7 - Math.abs(x - (x0 + x1) / 2) * 1.1);
+    const hh = h - cut, fold = Math.sin(f * 5.2 + 1.2);
+    for (let y = top; y < top + hh + off; y++) c.set(x, y, F[fold > 0.4 ? 3 : fold < -0.4 ? 1 : 2]);
+    c.set(x, top + hh + off, ORANGE); c.set(x, top + hh + off + 1, ORANGE_D);
   }
-  g.blit(c, 0, 0);
-  for (const [x, y] of [[3, 4], [28, 3], [27, 27], [4, 26], [16, 2]]) { g.set(x, y, hex("#ffffff")); g.set(x + 1, y, withA(orange, 220)); g.set(x, y + 1, withA(orange, 220)); g.set(x - 1, y, withA(orange, 140)); }
-  return g;
+  for (let y = top; y < top + h - 7; y++) { c.set(x0, y, ORANGE); c.set(x1, y + Math.round(Math.sin(5.2) * 1.6), ORANGE); }
+  crestAt(c, u.look.crest ?? (umb ? "skull" : "sun"), 27, top + 11, 3, tint, c2);
+  if (ti >= 3) for (const x of [9, 41]) { c.line(x, 8, x, 15, c2, 1); c.rect(x - 1, 15, 3, 3, tint); }
+  c.outline();
+  return c;
+}
+/** Крылья за предметом: перья / кости с перепонкой / пламя; размах растёт с ярусом. */
+function wingsIcon(c: PC, kind: string, tint: RGBA, c2: RGBA, ti: number, cy: number) {
+  const nf = 5 + ti, span = 20 + ti;
+  for (const s of [-1, 1]) {
+    const rx = 24 + s * 3, ry = cy;
+    const tips: [number, number][] = [];
+    for (let j = 0; j < nf; j++) { const f = j / (nf - 1), ang = 1.15 - f * 1.5, l = span * (1 - 0.32 * Math.abs(f - 0.2)); tips.push([rx + s * Math.cos(ang) * l, ry - Math.sin(ang) * l * 0.9]); }
+    if (kind === "bone") {
+      const ex = rx + (tips[0][0] - rx) * 0.45, ey = ry + (tips[0][1] - ry) * 0.45;
+      for (let j = 1; j < nf; j++) c.poly([[ex, ey], tips[j - 1], tips[j]], withA(mix(tint, DK, 0.45), 120));
+      c.line(rx, ry, ex, ey, BONED, 3); c.line(ex, ey, tips[0][0], tips[0][1], BONE, 2);
+      for (let j = 1; j < nf; j++) c.line(ex, ey, tips[j][0], tips[j][1], j % 2 ? BONE : BONED, 1);
+      c.set(Math.round(tips[0][0]), Math.round(tips[0][1]) - 1, c2);
+    } else for (let j = nf - 1; j >= 0; j--) {
+      const [x, y] = tips[j], mx = rx + (x - rx) * 0.55, my = ry + (y - ry) * 0.55;
+      if (kind === "flame") { c.line(rx, ry, mx, my, tint, 3); c.line(mx, my, x, y, c2, 2); c.set(Math.round(x), Math.round(y), WH); }
+      else { c.line(rx, ry, mx, my, j % 2 ? hex("#dce2ec") : c2, 3); c.line(mx, my, x, y, j % 2 ? c2 : WH, 2); c.set(Math.round(x), Math.round(y), tint); }
+    }
+  }
+}
+/** Уменьшение (ближайший сосед) с неподвижной точкой (ax, ay): предмет уступает место крыльям и короне. */
+function shrink(src: PC, k: number, ax: number, ay: number): PC {
+  const out = new PC(src.w, src.h);
+  for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) { const p = src.get(Math.floor(ax + (x + 0.5 - ax) / k), Math.floor(ay + (y + 0.5 - ay) / k)); if (p && p[3]) out.set(x, y, p); }
+  return out;
+}
+const sparkle = (c: PC, x: number, y: number, col: RGBA) => { c.set(x, y, WH); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) c.set(x + dx, y + dy, withA(col, 200)); };
+function orbitIcon(c: PC, kind: string, tint: RGBA, c2: RGBA) {
+  for (const [x, y] of [[6, 7], [41, 6], [42, 40], [5, 41]]) {
+    if (kind === "blades") { c.line(x, y - 3, x, y + 2, c2, 1); c.set(x, y - 3, WH); c.line(x - 1, y + 2, x + 1, y + 2, tint, 1); c.set(x, y + 3, mix(tint, DK, 0.4)); }
+    else if (kind === "runes") { c.rect(x - 1, y - 1, 3, 1, tint); c.set(x - 1, y, c2); c.set(x + 1, y + 1, c2); c.rect(x - 1, y + 2, 3, 1, tint); }
+    else { c.ellipse(x, y, 2.6, 2.6, withA(tint, 90)); c.shadedEllipse(x, y, 1.6, 1.6, tintRamp(tint)); c.set(x - 1, y - 1, c2); }
+  }
+}
+
+/**
+ * Легендарная иконка 48×48: модель категории (архетип look.shape) в палитре темы — камень и руны цвета tint/c2, металл и ткань
+ * с оттенком темы; за предметом — крылья, знамя заменяет плащ; поверх — навершие, гравировка, корона/нимб, наплечники, цепи,
+ * парящие руны и клинки; призрачная копия оружия. Кайма двойная оранжевая (цвет редкости), с яруса 85 — ореол темы.
+ */
+export function buildLegendaryIcon(id: string): PC {
+  const u = LEGENDARIES[id], lk = u.look, ti = u.ti;
+  const tint = hex(u.tint), c2 = hex(lk.c2), umb = u.faction === "umbrath", cat = legendCat(u), slot = BASE_ITEMS[u.base].slot;
+  let item: PC;
+  if (lk.back === "banner") item = bannerIcon(u, tint, c2);
+  else {
+    const shape = lk.shape ?? BASE_SHAPE[cat] ?? OLD_SHAPE[cat] ?? "broad";
+    const look: ModelLook = { shape, mat: umb ? "darksteel" : "silver", trim: umb ? "bone" : "gold", haft: umb ? "darkwood" : "yew", cloth: umb ? "shroud" : "crimson", hide: umb ? "blackleather" : "darkleather", gem: "diamond", rich: 3 };
+    if (lk.helm === "horns" || lk.pauld === "spikes") look.deco = lk.helm === "horns" ? "horns" : "spikes";
+    const T = tintRamp(tint), T2 = tintRamp(c2);
+    item = drawModel(cat, look, u.faction, id.length * 131 + ti, 3, {
+      gem: T, stone: T, fx: T2, mat: palRamp(look.mat, tint, 0.22), trim: palRamp(look.trim, ORANGE, 0.25),
+      cloth: tintRamp(lk.flag ? hex(lk.flag) : mix(tint, DK, 0.25)), hide: palRamp(look.hide!, tint, 0.15),
+    });
+  }
+  // крылья, корона, нимб и пламя над шлемом: предмет меньше и ниже, чтобы тема читалась
+  const roomy = lk.back === "wings" || (slot === "helmet" && !!lk.helm && lk.helm !== "horns") || (slot === "armor" && (lk.pauld === "flame" || lk.pauld === "frost"));
+  if (roomy) item = shrink(item, lk.back === "wings" ? 0.66 : 0.8, 24, 46);
+  const b = bbox(item), out = new PC(ICON, ICON);
+  // фон: ореол темы с яруса 85, крылья
+  if (ti >= 3) for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) { const d = Math.hypot(x + 0.5 - b.cx, y + 0.5 - b.cy) / 26; if (d < 1) out.set(x, y, withA(tint, Math.round(70 * (1 - d) * (ti === 4 ? 1.3 : 1)))); }
+  if (lk.back === "wings") { const wl = new PC(ICON, ICON); wingsIcon(wl, lk.wings ?? "feather", tint, c2, ti, Math.round(b.y0 + (b.y1 - b.y0) * 0.25)); wl.outline(); out.blit(wl, 0, 0); }
+  // призрачная копия оружия — сдвинута поперёк клинка, полупрозрачная, цвета c2
+  if (lk.ghost && slot === "weapon") { const g = item.clone().map((p) => withA(mix(p, c2, 0.75), Math.round(p[3] * 0.42))); out.blit(g, 4, 3); }
+  out.blit(item, 0, 0);
+  // двойная оранжевая кайма по силуэту предмета: внутренняя яркая, внешняя тёмная (детали темы ложатся поверх)
+  const ring = (src: PC, col: RGBA) => { const r = new PC(ICON, ICON); for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) { if (src.alpha(x, y) > 150) continue; if (src.alpha(x - 1, y) > 150 || src.alpha(x + 1, y) > 150 || src.alpha(x, y - 1) > 150 || src.alpha(x, y + 1) > 150) r.set(x, y, col); } return r; };
+  const solid = new PC(ICON, ICON); solid.blit(item, 0, 0);
+  const r1 = ring(solid, ORANGE); solid.blit(r1, 0, 0);
+  const r2 = ring(solid, withA(ORANGE_D, 210));
+  out.blit(r1, 0, 0); out.blit(r2, 0, 0);
+  // поверх: навершие и гравировка оружия (рукоять — внизу слева, острие — вверху справа)
+  if (slot === "weapon" || slot === "offhand") {
+    let hx = 0, hy = 0, tx = 0, ty = 0, lo = Infinity, hi = -Infinity;
+    for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) if (item.alpha(x, y) > 200) { const v = x - y; if (v < lo) { lo = v; hx = x; hy = y; } if (v > hi) { hi = v; tx = x; ty = y; } }
+    if (lk.pommel === "skull") { out.shadedEllipse(hx + 2, hy - 2, 3, 2.8, ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff")); out.set(hx + 1, hy - 2, tint); out.set(hx + 3, hy - 2, tint); }
+    else if (lk.pommel === "star") { out.line(hx - 1, hy - 1, hx + 5, hy - 1, tint, 1); out.line(hx + 2, hy - 4, hx + 2, hy + 2, tint, 1); out.set(hx + 2, hy - 1, WH); out.set(hx, hy - 3, c2); out.set(hx + 4, hy + 1, c2); }
+    if (lk.blade === "long") for (let f = 0.45; f < 0.92; f += 0.07) { const x = Math.round(hx + (tx - hx) * f), y = Math.round(hy + (ty - hy) * f); if (item.alpha(x, y) > 200) out.set(x, y, f > 0.85 ? WH : c2); }
+  }
+  // шлем: корона, нимб, рога уже в модели (deco), светящиеся глаза в прорези
+  if (slot === "helmet") {
+    const gold = umb ? tint : hex("#f0c040");
+    if (lk.helm === "crown") {
+      // корона: обруч и пять зубцов-треугольников (средний выше, растут с ярусом), камни цвета c2
+      const G = tintRamp(gold), cx = Math.round(b.cx), base = b.y0 + 1, w = 9;
+      for (let k = -2; k <= 2; k++) { const x = cx + k * 4, hh = (k === 0 ? 8 : Math.abs(k) === 1 ? 5 : 6) + ti; out.poly([[x - 2, base], [x + 2, base], [x + 0.5, base - hh]], (px) => G[px < x ? 3 : 2]); out.set(x, base - hh + 1, k === 0 ? c2 : WH); }
+      out.rect(cx - w - 1, base - 1, 2 * w + 3, 3, G[2]); out.rect(cx - w - 1, base - 1, 2 * w + 3, 1, G[3]);
+      for (const k of [-2, 0, 2]) out.rect(cx + k * 4 - 1, base, 2, 1, c2);
+    }
+    if (lk.helm === "flame") for (let q = 0; q < 5; q++) { const x = Math.round(b.cx - 6 + q * 3), hh = 6 + ti + (q === 2 ? 4 : q % 2 ? 2 : 0); out.line(x, b.y0 + 1, x, b.y0 + 1 - hh, tint, 2); out.line(x, b.y0, x, b.y0 + 2 - hh, c2, 1); out.set(x, b.y0 + 1 - hh, WH); }
+    if (lk.helm === "wings") for (const s of [-1, 1]) for (let q = 0; q < 4; q++) { const x0 = s < 0 ? b.x0 + 2 : b.x1 - 2; out.line(x0, b.cy - q, x0 + s * (6 + q * 2), b.cy - 6 - q * 3, q % 2 ? c2 : WH, 2); out.set(x0 + s * (6 + q * 2), b.cy - 6 - q * 3, tint); }
+    if (lk.helm === "halo") { for (let a = 0; a < Math.PI * 2; a += 0.05) out.set(Math.round(b.cx + Math.cos(a) * 11), Math.round(b.y0 - 1 + Math.sin(a) * 3), c2); }
+    if (lk.eyes) {
+      let row = -1, best = 0;
+      for (let y = Math.round(b.y0 + (b.y1 - b.y0) * 0.3); y < b.y0 + (b.y1 - b.y0) * 0.75; y++) { let n = 0; for (let x = Math.round(b.cx - 8); x <= b.cx + 8; x++) { const p = item.get(x, y); if (p && p[3] > 200 && p[0] + p[1] + p[2] < 150) n++; } if (n > best) { best = n; row = y; } }
+      if (row < 0) row = Math.round(b.cy);
+      for (const ex of [Math.round(b.cx - 5), Math.round(b.cx + 3)]) { out.rect(ex - 2, row - 2, 6, 5, withA(c2, 90)); out.rect(ex - 1, row - 1, 4, 3, withA(c2, 200)); out.rect(ex, row, 2, 1, WH); }
+    }
+  }
+  // доспех: пламенные / ледяные наплечники над плечами, цепи
+  if (slot === "armor") {
+    for (const [sx, s] of [[b.x0 + 5, -1], [b.x1 - 5, 1]] as const) {
+      if (lk.pauld === "flame") for (let q = 0; q < 3; q++) { const x = sx + (q - 1) * 2, hh = 5 + ti + (q === 1 ? 2 : 0); out.line(x, b.y0 + 2, x + s, b.y0 + 2 - hh, tint, 2); out.line(x, b.y0 + 1, x + s, b.y0 + 3 - hh, c2, 1); out.set(x + s, b.y0 + 2 - hh, WH); }
+      if (lk.pauld === "frost") for (let q = 0; q < 3; q++) { const x = sx + (q - 1) * 2, hh = 4 + ti - Math.abs(q - 1); out.line(x, b.y0 + 3, x + s * (q - 1), b.y0 + 2 - hh, hex("#8ea4d8"), 2); out.line(x, b.y0 + 2, x + s * (q - 1), b.y0 + 2 - hh, q === 1 ? c2 : hex("#d0dcff"), 1); }
+    }
+  }
+  if (slot === "boots" && lk.boots === "wings") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x0 = s < 0 ? b.x0 + 1 : b.x1 - 1, y0 = b.y0 + 6 + q * 2; out.line(x0, y0, x0 + s * (5 + q), y0 - 6 + q, q % 2 ? c2 : WH, 2); }
+  if (slot === "boots" && lk.boots === "flame") for (let q = 0; q < 6; q++) { const x = b.x0 + 3 + q * ((b.x1 - b.x0 - 6) / 5), hh = 4 + (q % 2) * 3; out.line(x, b.y1, x, b.y1 - hh, tint, 2); out.set(Math.round(x), b.y1 - hh, c2); }
+  if (lk.chains && (slot === "armor" || slot === "cloak")) {
+    const n = 12;
+    for (let q = 0; q <= n; q++) { const f = q / n, x = b.x0 + 2 + (b.x1 - b.x0 - 4) * f, y = b.y0 + (b.y1 - b.y0) * (0.3 + 0.45 * f) + Math.sin(f * Math.PI) * 3; if (q % 2) out.rect(x - 1, y, 3, 1, withA(c2, 200)); else out.rect(x, y - 1, 1, 3, withA(q % 3 ? c2 : tint, 220)); }
+  }
+  if (lk.orbit) orbitIcon(out, lk.orbit, tint, c2);
+  // искры по углам: больше с ярусом
+  const sp: [number, number][] = [[3, 3], [44, 3], [44, 44], [3, 44], [24, 1], [46, 24]];
+  for (const [x, y] of sp.slice(0, 2 + Math.min(4, ti + 1))) if (!out.alpha(x, y)) sparkle(out, x, y, ti >= 3 ? tint : ORANGE);
+  return out;
 }
 
 const OLD_KINDS = new Set(["sword", "axe", "staff", "scepter", "dagger", "bow", "mace", "shield", "helmet", "armor", "boots", "ring", "amulet"]);

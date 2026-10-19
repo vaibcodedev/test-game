@@ -9,9 +9,9 @@ import { FACTIONS } from "../../../shared/factions";
 import { ENCHANT_COLOR, ENCHANT_THRESHOLDS, fxText, nextStepText } from "../../../shared/gearFx";
 import {
   BASE_ITEMS, ITEM_STAT_NAMES, RARITY_COLORS, RARITY_NAMES, SLOTS, SLOT_NAMES, canEquip, effStats, iconFor, isBound, isTwoHanded, itemName, itemTypeName,
-  listItemModels, makeItem, makeUnique, previewGear, UNIQUES, type GearPreview, type Item, type ItemStatKey, type Rarity, type Slot,
+  listItemModels, makeItem, makeUnique, previewGear, uniqueLevel, UNIQUES, type GearPreview, type Item, type ItemStatKey, type Rarity, type Slot,
 } from "../../../shared/items";
-import { LEGENDARIES, makeLegendary } from "../../../shared/legendary";
+import { LEGENDARIES, makeLegendary, TIER_LIST } from "../../../shared/legendary";
 import { MATERIALS, MAX_PLUS } from "../../../shared/upgrade";
 import { RESOURCES } from "../../../shared/biomes";
 import type { Net } from "../net";
@@ -55,7 +55,7 @@ function catalog(): Entry[] {
   const models = listItemModels();
   const tiersOf = new Map<string, number[]>();
   for (const m of models) { const l = tiersOf.get(m.base) ?? []; if (!l.includes(m.level)) l.push(m.level); tiersOf.set(m.base, l.sort((a, b) => a - b)); }
-  const push = (e: Omit<Entry, "hay">) => out.push({ ...e, hay: `${e.name} ${e.id} ${e.typeLabel}`.toLowerCase() });
+  const push = (e: Omit<Entry, "hay">) => out.push({ ...e, hay: `${e.name} ${e.id} ${e.typeLabel}${e.kind === "legend" ? " ярус " + LEGENDARIES[e.id].tier : ""}`.toLowerCase() });
   for (const m of models) {
     const b = BASE_ITEMS[m.base], tl = tiersOf.get(m.base)!, tier = tl.indexOf(m.level) + 1;
     push({ key: "m:" + m.id, kind: "model", id: m.id, name: m.name, group: slotGroup(m.slot), cat: m.base, typeLabel: typeLabel(m.base), slot: m.slot, hands: handsOf(b), level: m.level, req: Math.max(1, m.level - 2), allowed: m.allowed, rec: m.classes, faction: m.faction, armorType: b.armorType, tier, tiers: tl.length, best: tier === tl.length, hi: m.level >= 90, base: m.base });
@@ -67,11 +67,12 @@ function catalog(): Entry[] {
   }
   for (const u of Object.values(UNIQUES)) {
     const b = BASE_ITEMS[u.base];
-    push({ key: "u:" + u.id, kind: "unique", id: u.id, name: u.name, group: "unique", cat: u.base, typeLabel: typeLabel(u.base), slot: b.slot, hands: handsOf(b), level: u.ilvl, req: makeUnique(u.id).req, allowed: b.classes ?? null, rec: [], faction: "", armorType: b.armorType, tier: 0, tiers: 0, best: false, hi: u.ilvl >= 90, base: u.base });
+    const ul = uniqueLevel(u.id); // уровень своего босса (data/world.json), у наград арены — ilvl записи
+    push({ key: "u:" + u.id, kind: "unique", id: u.id, name: u.name, group: "unique", cat: u.base, typeLabel: typeLabel(u.base), slot: b.slot, hands: handsOf(b), level: ul, req: makeUnique(u.id, ul).req, allowed: b.classes ?? null, rec: [], faction: "", armorType: b.armorType, tier: 0, tiers: 0, best: false, hi: ul >= 90, base: u.base });
   }
   for (const l of Object.values(LEGENDARIES)) {
     const b = BASE_ITEMS[l.base];
-    push({ key: "l:" + l.id, kind: "legend", id: l.id, name: l.name, group: "legend", cat: l.base, typeLabel: typeLabel(l.base), slot: b.slot, hands: handsOf(b), level: l.ilvl, req: makeLegendary(l.id).req, allowed: b.classes ?? null, rec: [l.variant], faction: CLASSES[l.variant]?.faction ?? "", armorType: b.armorType, tier: 0, tiers: 0, best: false, hi: l.ilvl >= 90, base: l.base });
+    push({ key: "l:" + l.id, kind: "legend", id: l.id, name: l.name, group: "legend", cat: l.base, typeLabel: typeLabel(l.base), slot: b.slot, hands: handsOf(b), level: l.ilvl, req: l.req, allowed: b.classes ?? null, rec: [l.variant], faction: l.faction, armorType: b.armorType, tier: l.ti + 1, tiers: TIER_LIST.length, best: false, hi: l.ilvl >= 90, base: l.base });
   }
   for (const b of Object.values(BASE_ITEMS)) {
     if (b.slot !== "consumable") continue;
@@ -423,7 +424,7 @@ export class GiveTab {
     const slotPart = e.group === "stuff" ? "" : GROUP_TYPE[e.slot] === "Броня" ? SLOT_NAMES[e.slot as Slot] : GROUP_TYPE[e.slot];
     const extra = /ручн/i.test(e.typeLabel) ? "" : e.hands === "two" ? "двуручное" : e.hands === "pair" ? "парное" : e.hands === "one" ? "одноручное" : e.armorType ? ARMOR_T[e.armorType] : "";
     const line = [e.kind === "unique" ? "Уникальный" : e.kind === "legend" ? "Легендарный" : "", e.typeLabel, slotPart, extra].filter((x, i, a) => x && a.indexOf(x) === i).join(" · ");
-    const tierLine = e.kind === "model" ? `Ур. ${e.level} · тир ${e.tier}/${e.tiers}` : e.kind === "stuff" ? "Расходуемое" : e.kind === "base" ? "Старая база · без модели" : `Ур. ${e.level} · ${e.kind === "unique" ? "награда босса" : "легендарка"}`;
+    const tierLine = e.kind === "model" ? `Ур. ${e.level} · тир ${e.tier}/${e.tiers}` : e.kind === "stuff" ? "Расходуемое" : e.kind === "base" ? "Старая база · без модели" : e.kind === "legend" ? `Ярус ${LEGENDARIES[e.id].tier} · ур. ${e.level} · треб. ${e.req}` : `Ур. ${e.level} · награда босса`;
     const classes = e.allowed ? e.allowed.map((c) => `<span class="ag-tag${cls === c ? " me" : ""}" title="${esc(CLASSES[c].name)}">${SHORT[c]}</span>`).join("") : e.group === "stuff" ? "" : `<span class="ag-tag any">все классы</span>`;
     const rec = cls && e.rec.includes(cls) && e.kind === "model" ? `<span class="ag-rec" title="Рекомендовано классу получателя">★ для класса</span>` : "";
     const fac = e.faction ? `<span class="ag-fac" style="--c:${FACTIONS[e.faction as "solgard"]?.color ?? FAC_NEUTRAL}">${esc(FACTIONS[e.faction as "solgard"]?.name ?? e.faction)}</span>` : e.kind === "model" ? `<span class="ag-fac" style="--c:${FAC_NEUTRAL}">Нейтральный</span>` : "";
@@ -439,7 +440,7 @@ export class GiveTab {
   private badge(e: Entry, inline: boolean): string {
     const i = inline ? " inl" : "";
     if (e.best) return `<span class="ag-topb${i}" title="Лучший (максимальный) тир своей категории">★ ЛУЧШИЙ</span>`;
-    if (e.kind === "legend") return `<span class="ag-topb leg${i}">ЛЕГЕНДА</span>`;
+    if (e.kind === "legend") return `<span class="ag-topb leg${i}" title="Легендарка яруса ${LEGENDARIES[e.id].tier}: ур. предмета ${e.level}, требуется ${e.req}">ЛЕГЕНДА ${LEGENDARIES[e.id].tier}</span>`;
     if (e.kind === "unique") return `<span class="ag-topb boss${i}">БОСС</span>`;
     if (e.hi) return `<span class="ag-topb n90${i}" title="Уровень 90 и выше, но не максимальный тир категории">90+</span>`;
     return "";
@@ -487,6 +488,7 @@ export class GiveTab {
     const facts = [
       gear ? `<span class="ag-fact"><i>Слот</i>${esc(slotName)}${e.hands === "two" ? ", две руки" : e.hands === "pair" ? ", парное" : ""}</span>` : "",
       e.kind === "model" ? `<span class="ag-fact"><i>Тир</i>${e.tier} из ${e.tiers}</span>` : "",
+      e.kind === "legend" ? `<span class="ag-fact"><i>Ярус</i>${LEGENDARIES[e.id].tier} (${e.tier} из ${e.tiers}) · ур. ${e.level} · треб. ${e.req}</span>` : "",
       e.faction || e.kind === "model" ? `<span class="ag-fact"><i>Стиль</i>${esc(FACTIONS[e.faction as "solgard"]?.name ?? "нейтральный")}</span>` : "",
     ].join("");
     const rar = [0, 1, 2, 3].map((i) => {

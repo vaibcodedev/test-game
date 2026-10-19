@@ -993,7 +993,8 @@ export const MODEL_CATS = Object.keys(DRAW);
 
 function hashStr(s: string) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0; return h; }
 
-export function drawModel(cat: string, L: ModelLook, fac: string, seed: number, rar = 0): PC {
+/** over — замена палитр (легендарки: камень, руны, ткань и металл в цветах темы). */
+export function drawModel(cat: string, L: ModelLook, fac: string, seed: number, rar = 0, over: Partial<Pick<K, "gem" | "stone" | "fx" | "cloth" | "mat" | "trim" | "hide">> = {}): PC {
   const c = new PC(ICON, ICON), umb = fac === "umbrath", sol = fac === "solgard";
   // кайма: у r0 только нейтральный металл, у r≥1 светлые тона каймы — цвет редкости; камень: r0 тусклый, r≥1 цвет редкости
   const trimBase = RP(rar === 0 && !NEUTRAL_TRIM.has(L.trim) ? "obsidian" : L.trim, "bronze");
@@ -1006,6 +1007,7 @@ export function drawModel(cat: string, L: ModelLook, fac: string, seed: number, 
     cloth: RP(L.cloth, umb ? "shroud" : sol ? "azure" : "brown"), hide: RP(L.hide, umb ? "blackleather" : "leather"), fx: RP(L.fx ?? L.gem, umb ? "fel" : sol ? "sun" : "diamond"),
     grip: RP((L.rich ?? 0) >= 2 ? trimBase === RP("obsidian", "obsidian") ? "blackleather" : L.trim : umb ? "blackleather" : "leather", "leather"), bone: RP("bone", "bone"),
   };
+  Object.assign(k, over);
   (DRAW[cat] ?? DRAW.sword)(k, L.shape);
   c.outline();
   return c;
@@ -1014,7 +1016,7 @@ export function drawModel(cat: string, L: ModelLook, fac: string, seed: number, 
 export const buildModelIcon = (m: ItemModel, rar = 0): PC => drawModel(m.cat, m.look, m.fac, hashStr(m.id), rar);
 
 /** Вид базы без модели (выдача админом по базе): по редкости — железо, сталь с золотом, серебро с камнем. */
-const BASE_SHAPE: Record<string, string> = {
+export const BASE_SHAPE: Record<string, string> = {
   greatsword: "claymore", twinblades: "twin", greataxe: "moon", hammer: "hammer", spear: "leaf", scythe: "scythe", crossbow: "light",
   orb: "orb", tome: "book", plate_helm: "open", leather_helm: "hood", cloth_helm: "wizard", plate_armor: "plate", leather_armor: "jacket",
   cloth_armor: "robe", cloak: "long", plate_boots: "boot", leather_boots: "high", cloth_boots: "shoe",

@@ -9,6 +9,7 @@ import { nightLevel } from "../../../shared/daynight";
 import { mountSprite } from "../../../shared/mounts";
 import { FOE_COLOR, factionColor } from "../../../shared/factions";
 import { GearLayers, parseGear } from "./GearLayers";
+import { LEGENDARIES } from "../../../shared/legendary";
 
 export const FONT = '"Rubik", "Trebuchet MS", sans-serif';
 const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
@@ -312,9 +313,10 @@ export class UnitView {
   /** Насколько шлем (рога, гребень, пламя) выше головы: имя и полоска поднимаются над ним. */
   private gearTop(): number {
     if (this.u.kind !== UnitKind.Player || !this.u.gear) return 0;
-    const h = parseGear(this.u.gear)[0];
-    if (h.r < 0) return 0;
-    return h.leg ? 12 : h.r >= 2 ? 6 : 0;
+    const parts = parseGear(this.u.gear), h = parts[0], cl = LEGENDARIES[parts[4].leg];
+    // знамя легендарного плаща выше головы: подпись поднимается над навершием (высота растёт с ярусом)
+    const banner = cl?.look.back === "banner" ? 12 + cl.ti * 2 + (cl.ti >= 3 ? 2 : 0) : 0;
+    return Math.max(banner, h.r < 0 ? 0 : h.leg ? 12 : h.r >= 2 ? 6 : 0);
   }
 
   /** Баффы кругом под ногами цвета эффекта (без свечения на теле): боевой клич, ускорение, ярость. */

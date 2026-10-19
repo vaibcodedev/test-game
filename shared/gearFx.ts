@@ -37,9 +37,12 @@ export function tierText(slot: Slot, tier: number): string {
 export function legendText(slot: Slot, leg: string | undefined | null): string {
   const look = leg ? LEGENDARIES[leg]?.look : undefined;
   const byBase = slot === "weapon" && leg ? (data.texts.legend.zoneByBase as Record<string, string>)[LEGENDARIES[leg].base] : undefined;
-  const zone = byBase || (data.texts.legend.zone as Record<string, string>)[slot];
+  const zones = data.texts.legend.zone as Record<string, string>;
+  // парящие вокруг героя (look.orbit) — у оружия, второй руки, кольца и амулета; у плаща — знамя или крылья (look.back)
+  const orbit = (slot === "weapon" || slot === "offhand" || slot === "ring" || slot === "amulet") && look?.orbit ? look.orbit : undefined;
+  const zone = orbit ? zones.orbit : byBase || zones[slot];
   if (!look || !zone) return "";
-  const form = slot === "helmet" ? look.helm : slot === "armor" ? look.pauld : slot === "boots" ? look.boots : undefined;
+  const form = orbit ?? (slot === "helmet" ? look.helm : slot === "armor" ? (look.back === "wings" ? "wings" : look.pauld) : slot === "boots" ? look.boots : slot === "cloak" ? look.back : undefined);
   const forms = data.texts.legend.forms as Record<string, string>;
   const fx = data.texts.legend.fx as Record<string, string>;
   const word = (form && forms[form]) || fx[look.fx] || look.fx;

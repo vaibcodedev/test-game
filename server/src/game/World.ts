@@ -401,7 +401,7 @@ export class World {
         amount *= d.critMult;
       }
       if (o.flat) amount = o.flat;
-      else amount *= tanks.outgoing(this, src, dst, o) * healers.outgoing(this, src, dst, o) * mages.outgoing(this, src, dst, o) * archers.outgoing(this, src, dst, o) * rogues.outgoing(this, src, dst, o);
+      else amount *= tanks.outgoing(this, src, dst, o) * healers.outgoing(this, src, dst, o) * mages.outgoing(this, src, dst, o) * archers.outgoing(this, src, dst, o) * rogues.outgoing(this, src, dst, o) * legendary.outgoing(this, src, dst);
     } else {
       amount = o.flat ?? src.stats.dmg * rnd(0.85, 1.15) * (o.mult ?? 1);
       if (src.unit.buffs & 0x20) amount *= 1.3; // ярость босса
@@ -472,7 +472,7 @@ export class World {
       }
     }
     let v = Math.max(1, Math.round(amount));
-    if (this.isPlayer(dst)) v = rogues.beforeLethal(this, dst, mages.beforeLethal(this, dst, healers.beforeLethal(this, dst, tanks.beforeLethal(this, dst, v))));
+    if (this.isPlayer(dst)) v = legendary.beforeLethal(this, dst, rogues.beforeLethal(this, dst, mages.beforeLethal(this, dst, healers.beforeLethal(this, dst, tanks.beforeLethal(this, dst, v)))));
     this.applyDamage(dst, v, src);
     this.onDamage?.(src, dst, v);
     this.emit({ t: "dmg", id: this.idOf(dst), v, crit, k: o.kind ?? "phys" });

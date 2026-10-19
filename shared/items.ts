@@ -3,6 +3,7 @@ import { FOOD } from "./food";
 import { RESOURCES } from "./biomes";
 import { MATERIALS, PLUS_BONUS } from "./upgrade";
 import catalog from "../data/items.json";
+import { MOBS } from "./mobs";
 
 export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "cloak" | "ring" | "amulet";
 export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"];
@@ -411,14 +412,34 @@ export const UNIQUES: Record<string, UniqueDef> = {
   arena_diamond: { id: "arena_diamond", name: "Алмазный медальон арены", base: "amulet", ilvl: 30, stats: { str: 10, agi: 10, int: 10, vit: 10, crit: 5 }, lore: "Награда за сезон арены. Ранг: Алмаз." },
 };
 
-export function makeUnique(id: string): Item {
-  const u = UNIQUES[id];
-  const base = makeItem(u.base, u.ilvl, Rarity.Epic, () => 0.5);
+/** Уровень уникальной вещи по умолчанию: уровень босса, с которого она падает (data/world.json), иначе ilvl записи. */
+export function uniqueLevel(id: string): number {
+  for (const m of Object.values(MOBS)) if (m.uniques?.includes(id)) return m.level ?? UNIQUES[id].ilvl;
+  return UNIQUES[id]?.ilvl ?? 1;
+}
+
+/** Добавочные характеристики уникальной вещи, пересчитанные с её ilvl на уровень lvl (по кривой аффиксов). */
+function scaleUniqueStats(st: ItemStats, from: number, to: number): ItemStats {
+  const out: ItemStats = {};
+  for (const [k, v] of Object.entries(st)) {
+    const key = k as ItemStatKey, f = (l: number) => affixValue(key, l, 1);
+    out[key] = Math.max(1, Math.round((v as number) * f(to) / f(from)));
+  }
+  return out;
+}
+
+/**
+ * Уникальная вещь уровня ilvl (по умолчанию — уровень своего босса, uniqueLevel): основные характеристики базы по ilvl,
+ * добавочные — пересчёт записи UNIQUES с её ilvl. Требование — ilvl − 3, без потолка.
+ */
+export function makeUnique(id: string, ilvl: number = uniqueLevel(id)): Item {
+  const u = UNIQUES[id], lvl = Math.max(1, Math.round(ilvl));
+  const base = makeItem(u.base, lvl, Rarity.Epic, () => 0.5);
   const stats: ItemStats = {};
-  const main = BASE_ITEMS[u.base].roll!(u.ilvl);
+  const main = BASE_ITEMS[u.base].roll!(lvl);
   for (const [k, v] of Object.entries(main)) stats[k as ItemStatKey] = Math.round((v as number) * (k.startsWith("dmg") || k === "armor" ? RARITY_MULT[Rarity.Epic] : 1));
-  for (const [k, v] of Object.entries(u.stats)) stats[k as ItemStatKey] = (stats[k as ItemStatKey] || 0) + (v as number);
-  return { ...base, name: u.name, stats, unique: id, req: Math.min(30, u.ilvl - 3), bound: true };
+  for (const [k, v] of Object.entries(scaleUniqueStats(u.stats, u.ilvl, lvl))) stats[k as ItemStatKey] = (stats[k as ItemStatKey] || 0) + (v as number);
+  return { ...base, name: u.name, stats, unique: id, ilvl: lvl, req: Math.max(1, lvl - 3), bound: true };
 }
 
 /** Уникальные предметы боссов и награды арены привязаны к персонажу. */

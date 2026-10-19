@@ -1,4 +1,4 @@
-/** Выдача сезонных наград арены: титул, рамка и уникальный медальон по рангу. */
+/** Выдача сезонных наград арены: титул, рамка и уникальный медальон по рангу, уровня игрока. */
 import { MODE_NAMES, rankById, RANKS, type ArenaMode } from "../../../shared/arena";
 import { makeUnique } from "../../../shared/items";
 import { addItem } from "../game/inventory";
@@ -20,7 +20,8 @@ export function deliverArenaRewards(p: Player) {
       s.title = best.name;
       s.frame = best.rank;
     }
-    if (!addItem(p, makeUnique(rank.reward))) {
+    // медальон — по уровню игрока на момент выдачи (ранг задаёт его силу через запись UNIQUES)
+    if (!addItem(p, makeUnique(rank.reward, s.level))) {
       p.send("toast", { text: "Награда арены ждёт: освободите место в сумке", kind: "error" });
       continue;
     }
