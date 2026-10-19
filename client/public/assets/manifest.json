@@ -1,0 +1,878 @@
+{
+ "units": {
+  "mount_horse": {
+   "frame": 32
+  },
+  "mount_ashwolf": {
+   "frame": 32
+  },
+  "pet_wolf": {
+   "frame": 32
+  },
+  "pet_ember": {
+   "frame": 32
+  },
+  "pet_turtle": {
+   "frame": 32
+  },
+  "warrior": {
+   "frame": 32
+  },
+  "mage": {
+   "frame": 32
+  },
+  "ranger": {
+   "frame": 32
+  },
+  "healer": {
+   "frame": 32
+  },
+  "rogue": {
+   "frame": 32
+  },
+  "deathknight": {
+   "frame": 32
+  },
+  "bloodweaver": {
+   "frame": 32
+  },
+  "darkranger": {
+   "frame": 32
+  },
+  "warlock": {
+   "frame": 32
+  },
+  "reaver": {
+   "frame": 32
+  },
+  "merchant": {
+   "frame": 32
+  },
+  "arenamaster": {
+   "frame": 32
+  },
+  "guard": {
+   "frame": 32
+  },
+  "guard_desert": {
+   "frame": 32
+  },
+  "guard_snow": {
+   "frame": 32
+  },
+  "citizen_desert": {
+   "frame": 32
+  },
+  "citizen_snow": {
+   "frame": 32
+  },
+  "citizen1": {
+   "frame": 32
+  },
+  "citizen2": {
+   "frame": 32
+  },
+  "citizen3": {
+   "frame": 32
+  },
+  "citizen4": {
+   "frame": 32
+  },
+  "goblin": {
+   "frame": 32
+  },
+  "goblin_shaman": {
+   "frame": 32
+  },
+  "skeleton": {
+   "frame": 32
+  },
+  "skeleton_knight": {
+   "frame": 32
+  },
+  "drowned": {
+   "frame": 32
+  },
+  "imp": {
+   "frame": 32
+  },
+  "slime": {
+   "frame": 32
+  },
+  "toxic_slime": {
+   "frame": 32
+  },
+  "boar": {
+   "frame": 32
+  },
+  "wolf": {
+   "frame": 32
+  },
+  "spider": {
+   "frame": 32
+  },
+  "golem": {
+   "frame": 32
+  },
+  "jackal": {
+   "frame": 32
+  },
+  "scorpion": {
+   "frame": 32
+  },
+  "frost_wolf": {
+   "frame": 32
+  },
+  "ice_golem": {
+   "frame": 32
+  },
+  "magma_slime": {
+   "frame": 32
+  },
+  "lava_hound": {
+   "frame": 32
+  },
+  "sea_crab": {
+   "frame": 32
+  },
+  "jellyfish": {
+   "frame": 32
+  },
+  "sapling": {
+   "frame": 32
+  },
+  "ent": {
+   "frame": 64
+  },
+  "witch": {
+   "frame": 64
+  },
+  "ashlord": {
+   "frame": 64
+  },
+  "nude_warrior": {
+   "frame": 32
+  },
+  "nude_mage": {
+   "frame": 32
+  },
+  "nude_ranger": {
+   "frame": 32
+  },
+  "nude_healer": {
+   "frame": 32
+  },
+  "nude_rogue": {
+   "frame": 32
+  },
+  "nude_deathknight": {
+   "frame": 32
+  },
+  "nude_bloodweaver": {
+   "frame": 32
+  },
+  "nude_darkranger": {
+   "frame": 32
+  },
+  "nude_warlock": {
+   "frame": 32
+  },
+  "nude_reaver": {
+   "frame": 32
+  }
+ },
+ "objects": {
+  "oak": {
+   "w": 64,
+   "h": 64
+  },
+  "pine": {
+   "w": 48,
+   "h": 64
+  },
+  "dead_tree": {
+   "w": 48,
+   "h": 64
+  },
+  "bush": {
+   "w": 32,
+   "h": 32
+  },
+  "rock": {
+   "w": 32,
+   "h": 28
+  },
+  "big_rock": {
+   "w": 64,
+   "h": 44
+  },
+  "house": {
+   "w": 128,
+   "h": 128
+  },
+  "house_blue": {
+   "w": 128,
+   "h": 128
+  },
+  "fountain": {
+   "w": 64,
+   "h": 72
+  },
+  "stall": {
+   "w": 64,
+   "h": 72
+  },
+  "lamp": {
+   "w": 32,
+   "h": 64
+  },
+  "well": {
+   "w": 32,
+   "h": 48
+  },
+  "barrel": {
+   "w": 32,
+   "h": 32
+  },
+  "crate": {
+   "w": 32,
+   "h": 32
+  },
+  "pillar": {
+   "w": 32,
+   "h": 64
+  },
+  "torch": {
+   "w": 32,
+   "h": 32
+  },
+  "flowers": {
+   "w": 32,
+   "h": 32
+  },
+  "tallgrass": {
+   "w": 32,
+   "h": 32
+  },
+  "fern": {
+   "w": 32,
+   "h": 32
+  },
+  "reeds": {
+   "w": 32,
+   "h": 32
+  },
+  "mushrooms": {
+   "w": 32,
+   "h": 32
+  },
+  "mushrooms_glow": {
+   "w": 32,
+   "h": 32
+  },
+  "lilypad": {
+   "w": 32,
+   "h": 32
+  },
+  "bones": {
+   "w": 32,
+   "h": 32
+  },
+  "ember_vent": {
+   "w": 32,
+   "h": 32
+  },
+  "crystal": {
+   "w": 32,
+   "h": 32
+  },
+  "bag": {
+   "w": 32,
+   "h": 32
+  },
+  "bag_boss": {
+   "w": 32,
+   "h": 32
+  },
+  "wall_h": {
+   "w": 32,
+   "h": 56
+  },
+  "wall_v": {
+   "w": 32,
+   "h": 56
+  },
+  "tower": {
+   "w": 64,
+   "h": 136
+  },
+  "gate_arch": {
+   "w": 96,
+   "h": 92
+  },
+  "tavern": {
+   "w": 224,
+   "h": 184
+  },
+  "bank": {
+   "w": 192,
+   "h": 168
+  },
+  "forge": {
+   "w": 160,
+   "h": 140
+  },
+  "arena_gate": {
+   "w": 128,
+   "h": 132
+  },
+  "stall_blue": {
+   "w": 64,
+   "h": 72
+  },
+  "stall_green": {
+   "w": 64,
+   "h": 72
+  },
+  "anvil": {
+   "w": 32,
+   "h": 32
+  },
+  "cauldron": {
+   "w": 32,
+   "h": 36
+  },
+  "dummy": {
+   "w": 32,
+   "h": 48
+  },
+  "weapon_rack": {
+   "w": 32,
+   "h": 48
+  },
+  "hay": {
+   "w": 32,
+   "h": 32
+  },
+  "sand_wall_h": {
+   "w": 32,
+   "h": 56
+  },
+  "sand_wall_v": {
+   "w": 32,
+   "h": 56
+  },
+  "sand_tower": {
+   "w": 64,
+   "h": 136
+  },
+  "sand_gate": {
+   "w": 96,
+   "h": 92
+  },
+  "sand_house": {
+   "w": 128,
+   "h": 128
+  },
+  "sand_house_b": {
+   "w": 128,
+   "h": 128
+  },
+  "tent": {
+   "w": 96,
+   "h": 80
+  },
+  "stall_sand": {
+   "w": 64,
+   "h": 72
+  },
+  "pal_h": {
+   "w": 32,
+   "h": 56
+  },
+  "pal_v": {
+   "w": 32,
+   "h": 56
+  },
+  "pal_tower": {
+   "w": 64,
+   "h": 136
+  },
+  "pal_gate": {
+   "w": 96,
+   "h": 92
+  },
+  "log_house": {
+   "w": 128,
+   "h": 128
+  },
+  "log_house_b": {
+   "w": 128,
+   "h": 128
+  },
+  "brazier": {
+   "w": 32,
+   "h": 48
+  },
+  "teleport_stone": {
+   "w": 48,
+   "h": 80
+  },
+  "sol_wall_h": {
+   "w": 32,
+   "h": 56
+  },
+  "sol_wall_v": {
+   "w": 32,
+   "h": 56
+  },
+  "sol_tower": {
+   "w": 64,
+   "h": 136
+  },
+  "sol_gate": {
+   "w": 96,
+   "h": 92
+  },
+  "sol_house": {
+   "w": 128,
+   "h": 128
+  },
+  "sol_temple": {
+   "w": 128,
+   "h": 128
+  },
+  "stall_gold": {
+   "w": 64,
+   "h": 72
+  },
+  "sun_banner": {
+   "w": 32,
+   "h": 96
+  },
+  "sun_statue": {
+   "w": 32,
+   "h": 96
+  },
+  "umb_wall_h": {
+   "w": 32,
+   "h": 56
+  },
+  "umb_wall_v": {
+   "w": 32,
+   "h": 56
+  },
+  "umb_tower": {
+   "w": 64,
+   "h": 136
+  },
+  "umb_gate": {
+   "w": 96,
+   "h": 92
+  },
+  "umb_house": {
+   "w": 128,
+   "h": 128
+  },
+  "umb_crypt": {
+   "w": 128,
+   "h": 128
+  },
+  "stall_purple": {
+   "w": 64,
+   "h": 72
+  },
+  "soul_brazier": {
+   "w": 32,
+   "h": 48
+  },
+  "crown_banner": {
+   "w": 32,
+   "h": 96
+  },
+  "bone_pile": {
+   "w": 32,
+   "h": 32
+  },
+  "dark_obelisk": {
+   "w": 32,
+   "h": 96
+  },
+  "signpost": {
+   "w": 32,
+   "h": 64
+  },
+  "bridge_h": {
+   "w": 192,
+   "h": 96
+  },
+  "bridge_v": {
+   "w": 96,
+   "h": 192
+  },
+  "ruin_pillar": {
+   "w": 32,
+   "h": 64
+  },
+  "ruin_wall": {
+   "w": 64,
+   "h": 48
+  },
+  "campfire": {
+   "w": 32,
+   "h": 32
+  },
+  "cactus": {
+   "w": 32,
+   "h": 44
+  },
+  "cactus_small": {
+   "w": 32,
+   "h": 28
+  },
+  "palm": {
+   "w": 64,
+   "h": 80
+  },
+  "dry_bush": {
+   "w": 32,
+   "h": 32
+  },
+  "sandstone": {
+   "w": 32,
+   "h": 28
+  },
+  "snow_pine": {
+   "w": 48,
+   "h": 64
+  },
+  "snow_rock": {
+   "w": 32,
+   "h": 28
+  },
+  "ice_spike": {
+   "w": 32,
+   "h": 48
+  },
+  "snow_bush": {
+   "w": 32,
+   "h": 32
+  },
+  "obsidian_spire": {
+   "w": 32,
+   "h": 56
+  },
+  "basalt": {
+   "w": 32,
+   "h": 28
+  },
+  "coral_a": {
+   "w": 32,
+   "h": 40
+  },
+  "coral_b": {
+   "w": 32,
+   "h": 32
+  },
+  "kelp": {
+   "w": 32,
+   "h": 56
+  },
+  "shell": {
+   "w": 32,
+   "h": 32
+  },
+  "air_vent": {
+   "w": 32,
+   "h": 32
+  },
+  "node_cactus": {
+   "w": 32,
+   "h": 40
+  },
+  "node_ice": {
+   "w": 32,
+   "h": 40
+  },
+  "node_obsidian": {
+   "w": 32,
+   "h": 32
+  },
+  "node_pearl": {
+   "w": 32,
+   "h": 32
+  }
+ },
+ "icons": [
+  "sword_0",
+  "sword_1",
+  "sword_2",
+  "axe_0",
+  "axe_1",
+  "axe_2",
+  "mace_0",
+  "mace_1",
+  "mace_2",
+  "shield_0",
+  "shield_1",
+  "shield_2",
+  "staff_0",
+  "staff_1",
+  "staff_2",
+  "scepter_0",
+  "scepter_1",
+  "scepter_2",
+  "dagger_0",
+  "dagger_1",
+  "dagger_2",
+  "bow_0",
+  "bow_1",
+  "bow_2",
+  "helmet_warrior_0",
+  "helmet_warrior_1",
+  "helmet_warrior_2",
+  "helmet_mage_0",
+  "helmet_mage_1",
+  "helmet_mage_2",
+  "helmet_ranger_0",
+  "helmet_ranger_1",
+  "helmet_ranger_2",
+  "helmet_healer_0",
+  "helmet_healer_1",
+  "helmet_healer_2",
+  "armor_warrior_0",
+  "armor_warrior_1",
+  "armor_warrior_2",
+  "armor_mage_0",
+  "armor_mage_1",
+  "armor_mage_2",
+  "armor_ranger_0",
+  "armor_ranger_1",
+  "armor_ranger_2",
+  "armor_healer_0",
+  "armor_healer_1",
+  "armor_healer_2",
+  "boots_warrior_0",
+  "boots_warrior_1",
+  "boots_warrior_2",
+  "boots_mage_0",
+  "boots_mage_1",
+  "boots_mage_2",
+  "boots_ranger_0",
+  "boots_ranger_1",
+  "boots_ranger_2",
+  "boots_healer_0",
+  "boots_healer_1",
+  "boots_healer_2",
+  "ring_0",
+  "ring_1",
+  "ring_2",
+  "amulet_0",
+  "amulet_1",
+  "amulet_2",
+  "uq_heartwood_staff",
+  "uq_rootbreaker",
+  "uq_whisperwind",
+  "uq_bark_helm",
+  "uq_hexed_ring",
+  "uq_bog_mantle",
+  "uq_witch_eye",
+  "uq_swamp_treads",
+  "uq_ashbringer",
+  "uq_cinder_staff",
+  "uq_phoenix_bow",
+  "uq_ashen_crown",
+  "uq_arena_bronze",
+  "uq_arena_silver",
+  "uq_arena_gold",
+  "uq_arena_platinum",
+  "uq_arena_diamond",
+  "lg_storm_blade",
+  "lg_blood_reaper",
+  "lg_nova_staff",
+  "lg_winter_bow",
+  "lg_twin_string",
+  "lg_arcane_mantle",
+  "lg_thorn_plate",
+  "lg_hunter_treads",
+  "lg_doom_blade",
+  "lg_dawn_eater",
+  "lg_soul_staff",
+  "lg_night_bow",
+  "lg_void_horns",
+  "lg_ember_helm",
+  "lg_sun_scepter",
+  "lg_shadow_fang",
+  "potion_red",
+  "potion_blue",
+  "gold",
+  "coin",
+  "food_bread",
+  "food_porridge",
+  "food_fish_soup",
+  "food_pie",
+  "food_borsch",
+  "food_roast",
+  "food_trout",
+  "food_feast",
+  "food_heat_stew",
+  "mat_ash_ore",
+  "mat_star_dust",
+  "res_cactus_juice",
+  "res_ice_crystal",
+  "res_obsidian",
+  "res_pearl",
+  "sk_taunt",
+  "sk_shieldblock",
+  "sk_quake",
+  "sk_unbending",
+  "sk_laststand",
+  "sk_cleave",
+  "sk_charge",
+  "sk_toughness",
+  "sk_warcry",
+  "sk_bloodlust",
+  "sk_whirlwind",
+  "sk_berserk",
+  "sk_fireball",
+  "sk_frostnova",
+  "sk_wisdom",
+  "sk_blink",
+  "sk_focus",
+  "sk_meteor",
+  "sk_shield",
+  "sk_aimed",
+  "sk_volley",
+  "sk_precision",
+  "sk_roll",
+  "sk_heal",
+  "sk_circle",
+  "sk_grace",
+  "sk_renew",
+  "sk_smite",
+  "sk_resurrect",
+  "sk_holyshield",
+  "sk_insight",
+  "sk_backstab",
+  "sk_venom",
+  "sk_deadly",
+  "sk_shadowstep",
+  "sk_evasion",
+  "sk_poisoner",
+  "sk_stealth",
+  "sk_quickhands",
+  "sk_rain",
+  "sk_hunter",
+  "sk_dk_rune_strike",
+  "sk_dk_death_grip",
+  "sk_dk_bone_armor",
+  "sk_dk_blood_drain",
+  "sk_bw_blood_bolt",
+  "sk_bw_blood_bond",
+  "sk_bw_sacrifice",
+  "sk_bw_crimson_pool",
+  "sk_dr_cursed_arrow",
+  "sk_dr_weakening",
+  "sk_dr_raven",
+  "sk_dr_shadowmeld",
+  "sk_wl_agony",
+  "sk_wl_drain_mana",
+  "sk_wl_skeletons",
+  "sk_wl_doom",
+  "sk_rv_lacerate",
+  "sk_rv_leap",
+  "sk_rv_carve",
+  "sk_rv_frenzy",
+  "sk_tp_tempering",
+  "sk_tp_bulwark",
+  "sk_tp_shield_bash",
+  "sk_tp_glare",
+  "sk_tp_hammer",
+  "sk_tp_fortitude",
+  "sk_tp_banner",
+  "sk_tp_vanguard",
+  "sk_tp_retribution",
+  "sk_tp_martyr",
+  "sk_tp_avenger",
+  "sk_tp_divine",
+  "sk_dk_vampiric",
+  "sk_dk_icebound",
+  "sk_dk_icy_touch",
+  "sk_dk_winters_bite",
+  "sk_dk_rune_mastery",
+  "sk_dk_frost_thorns",
+  "sk_dk_soul_reap",
+  "sk_dk_iron_chains",
+  "sk_dk_rune_blade",
+  "sk_dk_mortality",
+  "sk_dk_blood_tap",
+  "sk_dk_chain_storm",
+  "sk_dk_unholy_vigor",
+  "sk_dk_anti_magic",
+  "sk_dk_rune_fury",
+  "sk_dk_deaths_embrace",
+  "sk_cl_absolution",
+  "sk_cl_radiance",
+  "sk_cl_ward_wrath",
+  "sk_cl_blessing",
+  "sk_cl_cleanse",
+  "sk_cl_pure_light",
+  "sk_cl_echo",
+  "sk_cl_spark",
+  "sk_cl_aegis",
+  "sk_cl_guardian",
+  "sk_cl_hymn",
+  "sk_cl_last_gift",
+  "sk_bw_flow",
+  "sk_bw_thirst",
+  "sk_bw_leech",
+  "sk_bw_deep_bonds",
+  "sk_bw_blood_burst",
+  "sk_bw_scavenger",
+  "sk_bw_temper",
+  "sk_bw_coagulation",
+  "sk_bw_pool",
+  "sk_bw_transfusion",
+  "sk_bw_resonance",
+  "sk_bw_gift",
+  "sk_bw_blood_circle",
+  "sk_bw_blood_mana",
+  "sk_bw_last_drop",
+  "sk_bw_tide",
+  "mount_horse",
+  "mount_ashwolf",
+  "pet_wolf",
+  "pet_ember",
+  "pet_turtle",
+  "amulet",
+  "armor",
+  "axe",
+  "boots",
+  "bow",
+  "helmet",
+  "ring",
+  "staff",
+  "sword"
+ ],
+ "fx": [
+  "arrow",
+  "arcane",
+  "fireball",
+  "holy",
+  "fire",
+  "poison",
+  "shadow",
+  "frost",
+  "spark",
+  "glow",
+  "smoke",
+  "ember",
+  "leaf",
+  "shard",
+  "bubble",
+  "shadow_blob",
+  "slash",
+  "ring",
+  "target"
+ ]
+}
