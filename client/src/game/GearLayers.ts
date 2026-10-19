@@ -16,6 +16,8 @@ import { gearFxMode } from "./overlay";
 import { onGearFlash, setHiddenParticles, type HiddenReason } from "./gearHooks";
 
 const ENCHANT = GEAR_FX.enchant, LIMITS = GEAR_FX.limits;
+/** Заточка на герое — приглушённый тон (data/gear-fx.json heroColor), в интерфейсе остаётся яркий ENCHANT_COLOR. */
+const HERO_ENCH: string = (ENCHANT as { heroColor?: string }).heroColor ?? ENCHANT_COLOR, HERO_CORE: string = (ENCHANT as { heroCore?: string }).heroCore ?? ENCHANT.core;
 /** Пиксель кадра в ключ множества (координаты мира могут быть малыми и отрицательными у края). */
 const PK = 1 << 17, OFF = 8192;
 const KEY = (x: number, y: number) => (x + OFF) * PK + (y + OFF);
@@ -207,7 +209,7 @@ export class GearLayers {
       for (const [fx] of feet) { const w = side ? 5 : 4; this.R(fx, 27, w, 3, "#5a4630"); this.R(fx, 28, w, 1, "#3a2a1a"); this.R(fx, 26, w - 1, 1, "#8a6a48"); }
     } else if (b.r >= 0) {
       const L = legOf(b.leg), bp = bm ? piecePal(bm, b.r) : null, tr = bp ? bp.tr : trimOf(b), m = bp ? bp.m : pal.m;
-      const bRobe = bp ? bp.bt === "cloth" : robe, tall = !!bm && ["high", "greave", "cuff", "fur", "boot", "winged", "silk"].includes(bm.look.shape);
+      const bRobe = bp ? bp.bt === "cloth" : robe, lf = L?.look.form ?? "", tall = !!bm && ["high", "greave", "cuff", "fur", "boot", "winged", "silk"].includes(bm.look.shape) || ["high", "winged", "wrapped", "sabaton"].includes(lf);
       const top = bRobe ? 28 : tall ? 25 : 26;
       this.begin();
       for (const [fx, k] of feet) {
@@ -229,7 +231,11 @@ export class GearLayers {
         if (L) {
           // вид легендарных сапог — поле look.boots: крылья у щиколоток или пламя у ступней
           if (L.look.boots === "wings") { const wv = Math.round(Math.sin(tt / 150 + k * 2)), e2 = Math.round(L.ti / 2); this.line(fx - 1, top, fx - 4 - e2, top - 4 - e2 + wv, L.look.c2, 1); this.line(fx - 1, top + 1, fx - 5 - e2, top - 1 - e2 + wv, L.tint, 1); }
-          else this.flame(fx + 2, 30, 2, 3 + Math.round(L.ti / 2) + Math.min(3, b.plus / 3), L.tint, L.look.c2, tt, k);
+          else if (L.look.boots === "flame") this.flame(fx + 2, 30, 2, 3 + Math.round(L.ti / 2) + Math.min(3, b.plus / 3), L.tint, L.look.c2, tt, k);
+          else if (L.look.boots === "rune") { const lit = this.themeOn && Math.floor(tt / 400 + k) % 2 === 0; this.R(fx, top + 2, w, 1, L.look.c2, lit ? 1 : 0.6); this.R(fx + 1, top + 3, 1, 1, L.tint); }
+          if (lf === "wrapped") { this.R(fx, top + 1, w, 1, dark(L.tint, 0.5)); this.R(fx, top + 3, w, 1, dark(L.tint, 0.5)); }
+          if (lf === "curled") this.R(fx + (side ? 5 : k ? 4 : -1), 28, 1, 2, L.look.c2);
+          if (lf === "sabaton" || lf === "winged") this.R(fx + (side ? 4 : k ? 3 : 0), top - 1, 1, 1, L.look.c2);
         }
       }
       this.end("boots", b.plus, L);
@@ -409,18 +415,18 @@ export class GearLayers {
         const halo = new Set<number>();
         const ex = T.haloExpand ?? 2;
         for (const k of px) { const x = KX(k), y = KY(k); for (let dy = -ex; dy <= ex; dy++) for (let dx = -ex; dx <= ex; dx++) { const q = KEY(x + dx, y + dy); if (!px.has(q) && !ring.has(q)) halo.add(q); } }
-        g.fillStyle(C(ENCHANT_COLOR), T.haloAlpha ?? 0.25);
+        g.fillStyle(C(HERO_ENCH), T.haloAlpha ?? 0.25);
         for (const k of halo) g.fillRect(KX(k), KY(k), 1, 1);
       }
       const alpha = flashOn ? 1 : tier === 2 ? (T.outlineAlphaMin ?? 0.7) + ((T.outlineAlphaMax ?? 1) - (T.outlineAlphaMin ?? 0.7)) * (0.5 + 0.5 * Math.sin((t / (T.pulseMs ?? 1600)) * Math.PI * 2)) : T.outlineAlpha ?? 1;
-      g.fillStyle(C(flashOn ? this.flash!.color : ENCHANT_COLOR), alpha);
+      g.fillStyle(C(flashOn ? this.flash!.color : HERO_ENCH), alpha);
       for (const k of ring) g.fillRect(KX(k), KY(k), 1, 1);
       // +4…+6: раз в 2 с по контуру пробегает точка 2 px (бирюза с белым ядром)
       if (!flashOn && tier === 1) {
         const per = (ENCHANT.tiers[1] as { dotPeriodMs?: number }).dotPeriodMs ?? 2000, ph = ((t + this.seedOf(slot) * 97) % per) / per;
         if (ph < 0.45) {
           const path = this.ringPath(ring), k = path[Math.floor((ph / 0.45) * path.length) % path.length];
-          if (k !== undefined) { const x = KX(k), y = KY(k); g.fillStyle(C(ENCHANT_COLOR), 1).fillRect(x - 1, y - 1, 2, 2); g.fillStyle(C(ENCHANT.core), 1).fillRect(x, y, 1, 1); }
+          if (k !== undefined) { const x = KX(k), y = KY(k); g.fillStyle(C(HERO_ENCH), 1).fillRect(x - 1, y - 1, 2, 2); g.fillStyle(C(HERO_CORE), 1).fillRect(x, y, 1, 1); }
         }
       }
     }
@@ -451,7 +457,7 @@ export class GearLayers {
     for (let k = 0; k < n; k++) {
       const ph = (t / 1200 + k / n + seed * 0.013) % 1, cyc = Math.floor(t / 1200 + k / n + seed * 0.013);
       const from = arr[(cyc * 7919 + k * 104729 + seed) % arr.length], fx = KX(from), fy = KY(from);
-      let x = fx, y = fy - ph * 7, c = ENCHANT_COLOR, a = 1 - ph, w = 1;
+      let x = fx, y = fy - ph * 7, c = HERO_ENCH, a = 1 - ph, w = 1;
       if (L?.look.orbit) { this.orbiter(g, L, k, n); continue; }
       if (L) {
         const lk = L.look;
@@ -466,7 +472,7 @@ export class GearLayers {
           default: x += Math.sin(ph * 7 + k) * 2; c = lk.c2; a *= 0.85; w = ph < 0.3 ? 2 : 1;
         }
       }
-      if (a > 0.02) { g.fillStyle(C(c), Math.max(0, Math.min(1, a))).fillRect(Math.round(x), Math.round(y), w, w); if (!L && ph < 0.5) g.fillStyle(C(ENCHANT.core), a).fillRect(Math.round(x), Math.round(y), 1, 1); }
+      if (a > 0.02) { g.fillStyle(C(c), Math.max(0, Math.min(1, a))).fillRect(Math.round(x), Math.round(y), w, w); if (!L && ph < 0.5) g.fillStyle(C(HERO_CORE), a).fillRect(Math.round(x), Math.round(y), 1, 1); }
     }
   }
 
@@ -611,6 +617,8 @@ export class GearLayers {
       case "tree": R(-2, -2, 5, 2); R(-1, -2, 3, 1, c2); R(0, 0, 1, 3, "#8a5a2a"); R(-1, 2, 3, 1, "#8a5a2a"); break;
       case "fang": R(-2, -2, 5, 1); R(-2, -1, 2, 2, "#e8e0d0"); R(1, -1, 2, 2, "#e8e0d0"); R(-1, 1, 1, 1, "#e8e0d0"); R(1, 1, 1, 1, "#e8e0d0"); break;
       case "eye": R(-2, 0, 5, 1); R(-1, -1, 3, 3); R(0, 0, 1, 1, "#141018"); R(-1, -1, 1, 1, c2); break;
+      case "crown": { const w = "#e8e0d0"; R(-2, -2, 1, 2, w); R(0, -2, 1, 2, w); R(2, -2, 1, 2, w); R(-2, 0, 5, 2, w); R(-1, 1, 1, 1, c2); R(1, 1, 1, 1, c2); break; }
+      case "raven": { const w = "#e8e0d0"; R(0, -2, 3, 1, w); R(-2, -1, 5, 2, w); R(-1, 1, 3, 1, w); R(1, -1, 1, 1, "#141018"); R(-2, 2, 1, 1, w); R(0, 2, 1, 1, w); break; }
       case "flame": R(0, -2, 1, 1, c2); R(-1, -1, 2, 2); R(0, -1, 1, 2, c2); R(-1, 1, 3, 1); R(-2, 0, 1, 2); R(2, 0, 1, 2); break;
       default: R(-1, -1, 3, 3); R(0, -3 + 1, 1, 1); R(0, 2, 1, 1); R(-2, 0, 1, 1); R(2, 0, 1, 1); R(-2, -2, 1, 1, c2); R(2, -2, 1, 1, c2); R(-2, 2, 1, 1, c2); R(2, 2, 1, 1, c2); R(0, 0, 1, 1, c2);
     }
@@ -725,6 +733,12 @@ export class GearLayers {
     }
     if (!L) return;
     const lk = L.look, pw = 1 + h.plus / 6;
+    const fm = lk.form;
+    if (fm === "cowl" || fm === "hood") { this.R(x0 - 1, 5 + y, w + 2, 2, metal[1]); this.R(x0 - 1, 7 + y, 2, 6, metal[0]); if (!side) this.R(x0 + w - 1, 7 + y, 2, 6, metal[0]); this.R(cx - 1, 3 + y, 2, 1, metal[2]); this.R(cx, 2 + y, 1, 1, metal[2]); }
+    else if (fm === "mask") { this.R(x0, 12 + y, w, 3, metal[1]); this.R(x0 + 2, 13 + y, w - 4, 1, "#0c0a10"); this.R(cx - 1, 11 + y, 2, 1, lk.c2); }
+    else if (fm === "armet" || fm === "great") { this.R(cx - 1, 4 + y, 2, 8, metal[3]); this.R(x0, 7 + y, w, 1, metal[3]); this.R(x0 + 1, 3 + y, w - 2, 1, metal[2]); }
+    else if (fm === "plumed") { for (let q = 0; q < 6; q++) this.R(cx - 1 + Math.round(Math.sin(t / 300 + q) * (q > 2 ? 1 : 0)) - (side ? q : 0), 3 + y - q, 2, 1, q % 2 ? lk.c2 : L.tint); }
+    else if (fm === "diadem" || fm === "horncrown") { this.R(x0 + 1, 5 + y, w - 2, 1, lk.c2); this.R(cx - 1, 3 + y, 2, 2, lk.c2); this.R(cx, 3 + y, 1, 1, "#ffffff"); if (fm === "horncrown") for (const s of side ? [-1] : [-1, 1]) this.line(cx + s * 5, 5 + y, cx + s * 7, 0 + y, lk.c2, 1); }
     if (lk.helm === "horns") {
       for (const s of side ? [-1] : [-1, 1]) {
         const pts: [number, number][] = [[cx + s * 5, 5], [cx + s * 7, 2], [cx + s * 10, -1], [cx + s * 10, -5], [cx + s * 8, -8]];
@@ -802,7 +816,7 @@ export class GearLayers {
     // базы без модели: прежний рисунок, цвет клинка — по своей редкости
     const base = L ? L.tint : RARITY_COLORS[Math.min(2, wr)];
     const hi = L ? L.look.c2 : "#ffffff";
-    const haftC = "#8a5a2a", trimC = pal.gold, gemC = base, shp: string = ""; // без модели — формы по умолчанию
+    const haftC = "#8a5a2a", trimC = pal.gold, gemC = base, shp: string = L?.look.form ?? ""; // без модели — формы по умолчанию; у легендарки — look.form
     const F = view === 0 ? Math.PI / 2 : view === 1 ? -Math.PI / 2 : 0;
     const D = Math.PI / 180;
     const atk = col >= 4 && col < 8 ? col - 4 : -1;
@@ -890,6 +904,11 @@ export class GearLayers {
       else if (shp === "crook") { this.line(ox, oy, ox + px * 2, oy + py * 2 - 2, haftC, 1); this.line(ox + px * 2, oy + py * 2 - 2, ox + px * 3, oy + py * 3 + 1, haftC, 1); this.R(Math.round(ox + px * 3), Math.round(oy + py * 3 + 2), 1, 1, gemC); }
       else if (shp === "crescent") { for (const q of [-2, -1, 0, 1, 2]) this.R(Math.round(ox + px * q - dx * (2 - Math.abs(q)) * 0.6), Math.round(oy + py * q - dy * (2 - Math.abs(q)) * 0.6), 1, 1, trimC); this.R(Math.round(ox), Math.round(oy), 1, 1, gemC); }
       else if (shp === "crystal") { this.R(Math.round(ox), Math.round(oy - 2), 1, 4, head); this.R(Math.round(ox - 1), Math.round(oy - 1), 3, 2, head); this.R(Math.round(ox), Math.round(oy - 2), 1, 1, "#ffffff"); }
+      else if (shp === "star") { const X = Math.round(ox), Y = Math.round(oy); this.R(X, Y - 4, 1, 9, head); this.R(X - 4, Y, 9, 1, head); this.R(X - 1, Y - 1, 3, 3, hi); for (const [a, b] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) this.R(X + a, Y + b, 1, 1, head); this.R(X, Y, 1, 1, "#ffffff"); }
+      else if (shp === "sun") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 2, Y - 1, 5, 3, head); this.R(X - 1, Y - 2, 3, 5, head); this.R(X - 1, Y - 1, 3, 3, hi); for (const [a, b] of [[0, -4], [0, 4], [-4, 0], [4, 0], [-3, -3], [3, -3], [-3, 3], [3, 3]]) this.R(X + a, Y + b, 1, 1, hi, 0.85); }
+      else if (shp === "flame") { this.R(Math.round(ox - 2), Math.round(oy + 2), 5, 1, trimC); this.flame(Math.round(ox), Math.round(oy) + 1, 3, 8, L!.tint, hi, t, i.seed); }
+      else if (shp === "cage") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 3, Y - 3, 7, 1, trimC); this.R(X - 3, Y + 3, 7, 1, trimC); this.R(X - 3, Y - 2, 1, 5, trimC); this.R(X + 3, Y - 2, 1, 5, trimC); this.R(X - 1, Y - 1, 3, 3, head, 0.9); this.R(X, Y - 1, 1, 2, hi); this.R(X, Y - 5, 1, 2, trimC); }
+      else if (shp === "censer") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 3, Y - 2, 7, 5, trimC); this.R(X - 2, Y - 1, 5, 3, head); this.R(X - 1, Y + 3, 3, 1, trimC); this.R(X, Y - 4, 1, 2, "#e8e8e8", 0.6); this.R(X + 1, Y - 6, 1, 2, "#e8e8e8", 0.35); }
       else if (shp === "wand") { this.R(Math.round(ox), Math.round(oy), 1, 1, "#ffffff"); this.R(Math.round(ox - 1), Math.round(oy), 3, 1, head, 0.8); this.R(Math.round(ox), Math.round(oy - 1), 1, 3, head, 0.8); }
       else {
         if (shp === "fork") { this.R(Math.round(ox - r / 2 - 1), Math.round(oy - r / 2), 1, r, trimC); this.R(Math.round(ox + r / 2), Math.round(oy - r / 2), 1, r, trimC); }

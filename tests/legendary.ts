@@ -15,11 +15,11 @@ import { LEGEND_EFFECTS, LEGEND_TIERS, LEGENDARIES, TIER_LIST, effectAt, legenda
 import data from "../data/legendaries.json";
 
 const OLD16 = ["storm_blade", "blood_reaper", "nova_staff", "winter_bow", "twin_string", "arcane_mantle", "thorn_plate", "hunter_treads", "doom_blade", "dawn_eater", "soul_staff", "night_bow", "void_horns", "ember_helm", "sun_scepter", "shadow_fang"];
-const LOOK: Record<string, string[] | "bool" | "color"> = {
+const LOOK: Record<string, string[] | "bool" | "color" | "form"> = {
   c2: "color", fx: ["ember", "spark", "drip", "snow", "leaf", "orbit", "souls", "feather"], helm: ["horns", "flame", "crown", "wings", "halo"], eyes: "bool",
-  pauld: ["flame", "frost", "spikes", "bolts", "crystal"], chains: "bool", boots: ["wings", "flame"], back: ["banner", "wings"], wings: ["feather", "bone", "flame"],
-  crest: ["sun", "star", "rose", "tree", "skull", "moon", "fang", "eye", "flame"], flag: "color", train: "bool", blade: ["long"], pommel: ["skull", "star"], ghost: "bool",
-  orbit: ["blades", "runes", "motes"], shape: [],
+  pauld: ["flame", "frost", "spikes", "bolts", "crystal"], chains: "bool", boots: ["wings", "flame", "rune"], back: ["banner", "wings"], wings: ["feather", "bone", "flame"],
+  crest: ["sun", "star", "rose", "tree", "skull", "moon", "fang", "eye", "flame", "crown", "raven"], flag: "color", train: "bool", blade: ["long"], pommel: ["skull", "star"], ghost: "bool",
+  orbit: ["blades", "runes", "motes"], shape: [], form: "form",
 };
 const MAIN: Record<string, string> = { warrior: "str", deathknight: "str", reaver: "str", ranger: "agi", rogue: "agi", darkranger: "agi", mage: "int", healer: "int", warlock: "int", bloodweaver: "int" };
 /** Бирюза заточки: тон 129–209° при насыщенности (HSV) > 35%. */
@@ -62,6 +62,7 @@ async function main() {
         const rule = LOOK[k];
         assert(rule !== undefined, `${l.id}: look.${k} — неизвестное поле`);
         if (rule === "bool") assert(typeof v === "boolean", `${l.id}: look.${k}`);
+        else if (rule === "form") assert(typeof v === "string" && /^[a-z]{3,12}$/.test(v), `${l.id}: look.form`);
         else if (rule === "color") assert(typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v), `${l.id}: look.${k}`);
         else if (k === "shape") assert(Object.values(ITEM_MODELS).some((m) => m.cat === l.base && m.look.shape === v), `${l.id}: look.shape ${v} не из каталога ${l.base}`);
         else assert(rule.includes(String(v)), `${l.id}: look.${k} = ${v}`);

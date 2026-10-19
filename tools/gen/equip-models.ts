@@ -496,6 +496,20 @@ function staff(k: K, shape: string) {
       break;
     }
     case "spine": for (const s of [-1, 0, 1]) dstroke(k, [[top, s * 1.2], [top + 4, s * 5.5], [top + 10, s * 5], [top + 13, s * 2.8]], 2.6, 1, (t) => k.bone[t > 0.7 ? 4 : 3]); gemAt(k, ...P(top + 8, 0), 3.8, G); skull(k, ...P(top - 1, 0), 0.9, G[2]); break;
+    case "star": {
+      const pts: Pt[] = []; for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 4.6 : 12.5; pts.push([hx + Math.cos(a) * r, hy - 3 + Math.sin(a) * r]); }
+      k.c.poly(pts, (x, y) => k.trim[cl(2.4 - (x - hx + y - hy) / 9, 1, 4)]);
+      const pin: Pt[] = []; for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 2.2 : 7; pin.push([hx + Math.cos(a) * r, hy - 3 + Math.sin(a) * r]); }
+      k.c.poly(pin, (x, y) => G[cl(2.6 - (x - hx + y - hy) / 6, 1, 4)]); k.c.set(Math.round(hx - 1), Math.round(hy - 4), WHITE);
+      break;
+    }
+    case "flame": {
+      dpoly(k, [[top - 1, -3.4], [top + 3, -4.4], [top + 3, 4.4], [top - 1, 3.4]], k.trim, 0, 1.6);
+      const tongue = (dx: number, h: number, w: number, col: Ramp) => { const bx = hx + dx, by = hy + 2; k.c.poly([[bx - w, by], [bx - w * 0.4, by - h * 0.55], [bx + 1 - dx * 0.2, by - h], [bx + w * 0.5, by - h * 0.5], [bx + w, by]], (x, y) => col[cl(1.2 + (by - y) / h * 3.2, 1, 4)]); };
+      tongue(-5.5, 11, 3.2, k.fx); tongue(5.5, 12, 3.2, k.fx); tongue(0, 17, 4.6, G); tongue(0, 10, 2.4, k.fx);
+      k.c.set(Math.round(hx), Math.round(hy - 6), WHITE);
+      break;
+    }
     case "fork": {
       dpoly(k, [[top - 1, -3.6], [top + 2, -3.6], [top + 2, 3.6], [top - 1, 3.6]], k.trim, 0, 1.6);
       for (const s of [-1, 1]) dstroke(k, [[top + 1, s * 2.4], [top + 5, s * 7.4], [top + 11, s * 7.4], [top + 16, s * 5]], 3.6, 1.2, (t) => k.trim[t > 0.6 ? 4 : 3]);
@@ -516,7 +530,7 @@ function staff(k: K, shape: string) {
       break;
     }
   }
-  if (k.rich >= 3 && shape !== "skull" && shape !== "crescent") for (const s of [-1, 1]) dpoly(k, [[top - 0.5, s * 2], [top - 4, s * 7.5], [top + 1.5, s * 3]], k.trim, s * 4, 2);
+  if (k.rich >= 3 && shape !== "skull" && shape !== "crescent" && shape !== "star" && shape !== "flame") for (const s of [-1, 1]) dpoly(k, [[top - 0.5, s * 2], [top - 4, s * 7.5], [top + 1.5, s * 3]], k.trim, s * 4, 2);
   if (k.L.deco === "wings" && shape !== "skull") for (const s of [-1, 1]) wing(k.c, ...P(top - 3, s * 1.8), s, 9, k.trim);
   if (k.L.deco === "chains") for (let i = 0; i < 5; i++) { const [x, y] = P(top - 2 - i * 1.4, 2.4 + i * 1.5); k.c.ellipse(x, y, 1, 1, k.trim[i % 2 ? 2 : 3]); }
 }

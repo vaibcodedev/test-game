@@ -36,15 +36,9 @@
   },
   "slots": "Где что рисуется (поля чужого слота игнорируются): оружие — blade pommel ghost orbit fx; вторая рука — orbit fx; шлем — helm eyes fx; доспех — pauld chains back(wings) fx; сапоги — boots fx; плащ — back crest flag wings train chains fx; кольцо и амулет — orbit fx. Тема рисуется только в зоне своей вещи; бирюза — только у заточки.",
   "tierLook": "Ярус усиливает вид сам: клинок длиннее (+3…+7 px), размах крыльев и высота знамени растут, корона выше, с яруса 85 — двойной нимб, кисти и навершие знамени, на ярусе 100 — крупный силуэт, узнаваемый издалека. Элементов look: 30 — 1, 50 — 1–2, 70 — 2, 85 — 2–3, 100 — 3 и больше, среди них знамя, крылья, призрачная копия или парящие клинки. Иконка: двойная оранжевая кайма, тематические детали (крылья, знамя, корона, навершие, руны, призрачный клинок).",
-  "balance": [
-   "Бюджет stats в очках: 1 очко = 1 str/agi/int/vit, 10 hp = 1 очко, 1 crit = 2 очка. Бюджет = _tiers.budget[ярус] × _tiers.slot[слот базы], допуск ±20%.",
-   "Главная характеристика класса variant (str — warrior deathknight reaver; agi — ranger rogue darkranger; int — mage healer warlock bloodweaver) не меньше 25% очков.",
-   "crit не больше _tiers.critMax[ярус].",
-   "Свойство меняет игру: тип из _effects. На одном ярусе не повторяйте пару «категория + тип свойства».",
-   "Ярус 100: не больше одной записи на категорию.",
-   "Числа свойств задаёт ярус (_effects.params); переопределение — не дальше ±15%."
-  ],
-  "effectsDoc": "_effects: hook — когда срабатывает (hit — свой удар, out — множитель своего урона, damaged — получен урон, absorb — поглощение входящего урона, kill — убийство моба, lethal — смертельный удар по владельцу); params — значения по ярусам 30/50/70/85/100; text — шаблон описания. В шаблоне {chance} {pct} {mult} {below} {hp} — доли, выводятся в процентах; {ms} {cd} {icd} — мс, выводятся в секундах; прочие — как есть. Новый тип: запись в _effects + обработчик в server/src/game/legendary.ts (HANDLERS)."
+  "balance": ["Бюджет stats в очках: 1 очко = 1 str/agi/int/vit, 10 hp = 1 очко, 1 crit = 2 очка. Бюджет = _tiers.budget[ярус] × _tiers.slot[слот базы], допуск ±20%.", "Главная характеристика класса variant (str — warrior deathknight reaver; agi — ranger rogue darkranger; int — mage healer warlock bloodweaver) не меньше 25% очков.", "crit не больше _tiers.critMax[ярус].", "Свойство меняет игру: тип из _effects. На одном ярусе не повторяйте пару «категория + тип свойства».", "Ярус 100: не больше одной записи на категорию.", "Числа свойств задаёт ярус (_effects.params); переопределение — не дальше ±15%."],
+  "effectsDoc": "_effects: hook — когда срабатывает (hit — свой удар, out — множитель своего урона, damaged — получен урон, absorb — поглощение входящего урона, kill — убийство моба, lethal — смертельный удар по владельцу); params — значения по ярусам 30/50/70/85/100; text — шаблон описания. В шаблоне {chance} {pct} {mult} {below} {hp} — доли, выводятся в процентах; {ms} {cd} {icd} — мс, выводятся в секундах; прочие — как есть. Новый тип: запись в _effects + обработчик в server/src/game/legendary.ts (HANDLERS).",
+  "form": "look.form — форма модели для иконки и вида на герое (перекрывает shape); у каждой легендарки своя комбинация form/герба/навершия, без повторов. Гербы знамён: sun, skull, star, raven, flame, crown."
  },
  "_tiers": {
   "list": [30, 50, 70, 85, 100],
@@ -309,6 +303,7 @@
    "type": "chain"
   },
   "look": {
+   "form": "jagged",
    "c2": "#ffffff",
    "helm": "crown",
    "pauld": "bolts",
@@ -331,6 +326,7 @@
    "type": "lifeburst"
   },
   "look": {
+   "form": "executioner",
    "c2": "#ff6a50",
    "helm": "horns",
    "pauld": "spikes",
@@ -353,6 +349,7 @@
    "type": "novacrit"
   },
   "look": {
+   "form": "star",
    "c2": "#ffe060",
    "helm": "flame",
    "pauld": "flame",
@@ -375,6 +372,7 @@
    "type": "frost"
   },
   "look": {
+   "form": "recurve",
    "c2": "#ffffff",
    "helm": "crown",
    "pauld": "crystal",
@@ -397,6 +395,7 @@
    "type": "extra"
   },
   "look": {
+   "form": "horn",
    "c2": "#e8ffc0",
    "helm": "wings",
    "pauld": "crystal",
@@ -419,6 +418,7 @@
    "type": "manashield"
   },
   "look": {
+   "form": "shroud",
    "c2": "#e0c8ff",
    "helm": "halo",
    "pauld": "crystal",
@@ -441,6 +441,7 @@
    "type": "thorns"
   },
   "look": {
+   "form": "brigandine",
    "c2": "#c8f0a0",
    "helm": "horns",
    "pauld": "spikes",
@@ -463,6 +464,7 @@
    "type": "killhaste"
   },
   "look": {
+   "form": "winged",
    "c2": "#fff0a0",
    "helm": "wings",
    "pauld": "spikes",
@@ -486,6 +488,7 @@
    "type": "leech"
   },
   "look": {
+   "form": "serrated",
    "c2": "#e0d0ff",
    "helm": "horns",
    "pauld": "spikes",
@@ -508,6 +511,7 @@
    "type": "rage"
   },
   "look": {
+   "form": "bonecleaver",
    "c2": "#ffb060",
    "helm": "horns",
    "pauld": "flame",
@@ -530,6 +534,7 @@
    "type": "weaken"
   },
   "look": {
+   "form": "crescent",
    "c2": "#ffb0b8",
    "helm": "crown",
    "pauld": "crystal",
@@ -552,6 +557,7 @@
    "type": "execute"
   },
   "look": {
+   "form": "bladed",
    "c2": "#e0b0ff",
    "helm": "wings",
    "pauld": "crystal",
@@ -574,6 +580,7 @@
    "type": "barrier"
   },
   "look": {
+   "form": "horncrown",
    "c2": "#d8ffb0",
    "helm": "horns",
    "pauld": "spikes",
@@ -596,6 +603,7 @@
    "type": "ignite"
   },
   "look": {
+   "form": "armet",
    "c2": "#ffe060",
    "helm": "flame",
    "pauld": "flame",
@@ -618,6 +626,7 @@
    "type": "mending"
   },
   "look": {
+   "form": "sun",
    "c2": "#ffffff",
    "helm": "halo",
    "pauld": "crystal",
@@ -640,6 +649,7 @@
    "type": "echo"
   },
   "look": {
+   "form": "fang",
    "c2": "#d8ffb0",
    "helm": "wings",
    "pauld": "spikes",
@@ -812,6 +822,7 @@
    "type": "stun"
   },
   "look": {
+   "form": "ballista",
    "c2": "#ffffff",
    "fx": "spark",
    "blade": "long",
@@ -903,6 +914,7 @@
    "type": "leech"
   },
   "look": {
+   "form": "partisan",
    "c2": "#d0d8e8",
    "fx": "souls",
    "pommel": "skull"
@@ -924,6 +936,7 @@
    "type": "rage"
   },
   "look": {
+   "form": "warscythe",
    "c2": "#ff6a50",
    "fx": "ember",
    "pommel": "skull"
@@ -945,6 +958,7 @@
    "type": "barrier"
   },
   "look": {
+   "form": "bone",
    "c2": "#c8c0e0",
    "fx": "snow",
    "orbit": "runes"
@@ -966,9 +980,9 @@
    "type": "killhaste"
   },
   "look": {
+   "form": "moccasin",
    "c2": "#d8f0c0",
-   "fx": "snow",
-   "boots": "wings"
+   "fx": "snow"
   }
  },
  "prophet_slippers": {
@@ -987,9 +1001,10 @@
    "type": "weaken"
   },
   "look": {
+   "form": "curled",
    "c2": "#e0c0ff",
    "fx": "souls",
-   "boots": "flame"
+   "boots": "rune"
   }
  },
  "watch_standard": {
@@ -1031,6 +1046,7 @@
    "type": "thorns"
   },
   "look": {
+   "form": "tabard",
    "c2": "#ffffff",
    "fx": "spark",
    "pauld": "crystal"
@@ -1052,6 +1068,7 @@
    "type": "mending"
   },
   "look": {
+   "form": "twist",
    "c2": "#fff8e0",
    "fx": "spark",
    "orbit": "motes"
@@ -1074,6 +1091,7 @@
    "type": "meteor"
   },
   "look": {
+   "form": "flame",
    "c2": "#ffd0a0",
    "fx": "ember",
    "orbit": "runes"
@@ -1096,6 +1114,7 @@
    "type": "frenzy"
   },
   "look": {
+   "form": "claws",
    "c2": "#e0c8ff",
    "fx": "souls",
    "ghost": true
@@ -1118,6 +1137,7 @@
    "type": "stun"
   },
   "look": {
+   "form": "bardiche",
    "c2": "#fff4d0",
    "fx": "spark",
    "pommel": "star"
@@ -1139,6 +1159,7 @@
    "type": "weaken"
   },
   "look": {
+   "form": "bone",
    "c2": "#c8ff80",
    "fx": "souls",
    "blade": "long"
@@ -1160,6 +1181,7 @@
    "type": "leech"
   },
   "look": {
+   "form": "grimoire",
    "c2": "#ffb0c0",
    "fx": "drip",
    "orbit": "motes"
@@ -1181,9 +1203,10 @@
    "type": "thorns"
   },
   "look": {
+   "form": "sabaton",
    "c2": "#fff0c0",
    "fx": "spark",
-   "boots": "wings"
+   "boots": "flame"
   }
  },
  "morning_crown_cowl": {
@@ -1203,6 +1226,7 @@
    "type": "mending"
   },
   "look": {
+   "form": "diadem",
    "c2": "#ffffff",
    "fx": "spark",
    "helm": "halo"
@@ -1224,6 +1248,7 @@
    "type": "chill"
   },
   "look": {
+   "form": "coat",
    "c2": "#e0f0b0",
    "fx": "snow",
    "pauld": "frost"
@@ -1248,8 +1273,8 @@
    "c2": "#d0a0ff",
    "fx": "souls",
    "back": "banner",
-   "crest": "skull",
-   "flag": "#4a1a6a"
+   "crest": "raven",
+   "flag": "#26262e"
   }
  },
  "moon_eater_amulet": {
@@ -1269,6 +1294,7 @@
    "type": "ignite"
   },
   "look": {
+   "form": "crescent",
    "c2": "#d080ff",
    "fx": "souls",
    "orbit": "motes"
@@ -1291,6 +1317,7 @@
    "type": "execute"
   },
   "look": {
+   "form": "labrys",
    "c2": "#d8c8ff",
    "fx": "souls",
    "pommel": "skull",
@@ -1314,6 +1341,7 @@
    "type": "stun"
   },
   "look": {
+   "form": "holy",
    "c2": "#fff2c0",
    "fx": "spark",
    "pommel": "star",
@@ -1336,6 +1364,7 @@
    "type": "extra"
   },
   "look": {
+   "form": "repeater",
    "c2": "#e8f4ff",
    "fx": "snow",
    "blade": "long",
@@ -1358,6 +1387,7 @@
    "type": "echo"
   },
   "look": {
+   "form": "stiletto",
    "c2": "#c8ffb0",
    "fx": "drip",
    "pommel": "skull",
@@ -1381,6 +1411,7 @@
    "type": "soulburst"
   },
   "look": {
+   "form": "skull",
    "c2": "#e0a0ff",
    "fx": "drip",
    "pommel": "skull",
@@ -1404,6 +1435,7 @@
    "type": "lifeburst"
   },
   "look": {
+   "form": "censer",
    "c2": "#fffbe0",
    "fx": "orbit",
    "pommel": "star",
@@ -1450,6 +1482,7 @@
    "type": "weaken"
   },
   "look": {
+   "form": "cowl",
    "c2": "#c0ffa0",
    "fx": "souls",
    "helm": "horns",
@@ -1473,6 +1506,7 @@
    "type": "ignite"
   },
   "look": {
+   "form": "crusher",
    "c2": "#ff9a40",
    "fx": "ember",
    "pommel": "skull"
@@ -1494,6 +1528,7 @@
    "type": "chains"
   },
   "look": {
+   "form": "signet",
    "c2": "#ffc0c0",
    "fx": "souls",
    "orbit": "runes"
@@ -1516,6 +1551,7 @@
    "type": "soulburst"
   },
   "look": {
+   "form": "falchion",
    "c2": "#e0d0ff",
    "fx": "souls",
    "pommel": "skull",
@@ -1539,6 +1575,7 @@
    "type": "killhaste"
   },
   "look": {
+   "form": "sickles",
    "c2": "#d8ffb0",
    "fx": "leaf",
    "pommel": "star",
@@ -1562,6 +1599,7 @@
    "type": "frost"
   },
   "look": {
+   "form": "long",
    "c2": "#ffffff",
    "fx": "spark",
    "blade": "long",
@@ -1586,6 +1624,7 @@
    "type": "lifeburst"
   },
   "look": {
+   "form": "cage",
    "c2": "#ff9aa8",
    "fx": "drip",
    "pommel": "skull",
@@ -1612,8 +1651,8 @@
    "c2": "#ffb060",
    "fx": "ember",
    "back": "banner",
-   "crest": "flame",
-   "flag": "#5a1a8a",
+   "crest": "crown",
+   "flag": "#6a1428",
    "train": true
   },
   "shape": "crest"
@@ -1635,6 +1674,7 @@
    "type": "barrier"
   },
   "look": {
+   "form": "plumed",
    "c2": "#fff8e0",
    "fx": "spark",
    "helm": "wings",
@@ -1658,6 +1698,7 @@
    "type": "manashield"
   },
   "look": {
+   "form": "cassock",
    "c2": "#ffffff",
    "fx": "feather",
    "back": "wings",
@@ -1682,10 +1723,9 @@
    "type": "weaken"
   },
   "look": {
+   "form": "mask",
    "c2": "#c8ffb0",
-   "fx": "souls",
-   "helm": "horns",
-   "eyes": true
+   "fx": "souls"
   },
   "shape": "mask"
  }

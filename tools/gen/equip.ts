@@ -227,6 +227,7 @@ const CREST: Record<string, string[]> = {
   sun: ["2.1.2", ".111.", "11211", ".111.", "2.1.2"], skull: [".www.", "wwwww", "wkwkw", "wwwww", ".w.w."], star: ["..1..", ".121.", "12221", ".121.", "..1.."],
   moon: [".111.", "11...", "1....", "11...", ".111."], rose: [".111.", "11211", ".111.", "..g..", ".gg.."], tree: [".111.", "11211", ".111.", "..b..", ".bbb."],
   fang: ["11111", "ww.ww", "ww.ww", ".w.w.", "....."], eye: [".....", ".111.", "12k21", ".111.", "....."], flame: ["..2..", ".212.", ".121.", "11211", ".111."],
+  crown: ["w.w.w", "wwwww", "w2w2w", "wwwww", "....."], raven: ["..www", ".wwkw", "wwww.", ".www.", "..w.w"],
 };
 function crestAt(c: PC, kind: string, cx: number, cy: number, sc: number, c1: RGBA, c2: RGBA) {
   const rows = CREST[kind] ?? CREST.sun, map: Record<string, RGBA> = { "1": c1, "2": c2, w: BONE, k: DK, g: hex("#5fa040"), b: hex("#8a5a2a") };
@@ -305,7 +306,7 @@ export function buildLegendaryIcon(id: string): PC {
   let item: PC;
   if (lk.back === "banner") item = bannerIcon(u, tint, c2);
   else {
-    const shape = lk.shape ?? BASE_SHAPE[cat] ?? OLD_SHAPE[cat] ?? "broad";
+    const shape = lk.form ?? lk.shape ?? BASE_SHAPE[cat] ?? OLD_SHAPE[cat] ?? "broad";
     const look: ModelLook = { shape, mat: umb ? "darksteel" : "silver", trim: umb ? "bone" : "gold", haft: umb ? "darkwood" : "yew", cloth: umb ? "shroud" : "crimson", hide: umb ? "blackleather" : "darkleather", gem: "diamond", rich: 3 };
     if (lk.helm === "horns" || lk.pauld === "spikes") look.deco = lk.helm === "horns" ? "horns" : "spikes";
     const T = tintRamp(tint), T2 = tintRamp(c2);
@@ -366,6 +367,7 @@ export function buildLegendaryIcon(id: string): PC {
     }
   }
   if (slot === "boots" && lk.boots === "wings") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x0 = s < 0 ? b.x0 + 1 : b.x1 - 1, y0 = b.y0 + 6 + q * 2; out.line(x0, y0, x0 + s * (5 + q), y0 - 6 + q, q % 2 ? c2 : WH, 2); }
+  if (slot === "boots" && lk.boots === "rune") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x = Math.round(s < 0 ? b.x0 + 2 : b.x1 - 3), y = b.y0 + 4 + q * 4; out.rect(x, y, 2, 3, withA(c2, 220)); out.set(x, y + 1, WH); out.set(x + (s < 0 ? 2 : -1), y + 2, tint); }
   if (slot === "boots" && lk.boots === "flame") for (let q = 0; q < 6; q++) { const x = b.x0 + 3 + q * ((b.x1 - b.x0 - 6) / 5), hh = 4 + (q % 2) * 3; out.line(x, b.y1, x, b.y1 - hh, tint, 2); out.set(Math.round(x), b.y1 - hh, c2); }
   if (lk.chains && (slot === "armor" || slot === "cloak")) {
     const n = 12;

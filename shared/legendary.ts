@@ -12,6 +12,8 @@ export interface LegendaryLook {
   helm?: string; eyes?: boolean; pauld?: string; chains?: boolean; boots?: string;
   back?: string; wings?: string; crest?: string; flag?: string; train?: boolean;
   blade?: string; pommel?: string; ghost?: boolean; orbit?: string; shape?: string;
+  /** Форма модели иконки и вида на герое (шлем, навершие посоха, сапоги…): перекрывает shape, без проверки по каталогу. */
+  form?: string;
 }
 export type LegendaryEffect = { type: string; [k: string]: number | string };
 export interface LegendaryDef {
