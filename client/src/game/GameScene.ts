@@ -402,9 +402,9 @@ export class GameScene extends Phaser.Scene {
       // правый клик по другому игроку — меню обмена
       if (p.rightButtonDown() && net.kind === "world") {
         for (const [uid, v] of this.units) {
-          if (uid === net.id || v.u.kind !== UnitKind.Player || v.hitTest(wx, wy) > 20) continue;
+          if (uid === net.id || v.u.kind !== UnitKind.Player || v.unseen || v.hitTest(wx, wy) > 20) continue;
           const ev = p.event as MouseEvent;
-          return this.hud.trade.showMenu(uid, v.u.name, ev.clientX, ev.clientY);
+          return this.hud.trade.showMenu(uid, v.u.name, ev.clientX, ev.clientY, () => this.hud.inspect.open(uid));
         }
       }
       const id = this.pick(wx, wy) ?? (net.self && CLASSES[net.self.cls].role === "healer" ? this.pickFriend(wx, wy) : null);
@@ -565,8 +565,8 @@ export class GameScene extends Phaser.Scene {
       img.y -= 30;
       this.tweens.add({ targets: img, y: b.y, duration: 380, ease: "Bounce.easeOut" });
       const best = Math.max(...b.items.map((it) => it.rarity));
-      if (best > 0 || b.boss) {
-        const glow = this.add.image(b.x, b.y - 8, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(best >= 3 ? 0xff9a2e : best >= 2 || b.boss ? 0xc47bff : 0x5fa8ff).setScale(0.9).setDepth(b.y - 2);
+      if (best > 0) {
+        const glow = this.add.image(b.x, b.y - 8, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(best >= 3 ? 0xff9a2e : best >= 2 ? 0xc47bff : 0x5fa8ff).setScale(0.9).setDepth(b.y - 2);
         this.tweens.add({ targets: glow, alpha: { from: 0.7, to: 0.25 }, duration: 700, yoyo: true, repeat: -1 });
         img.once("destroy", () => glow.destroy());
       }
@@ -706,6 +706,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.frame({
       me: me?.u ?? null,
       target: this.targetId ? (this.units.get(this.targetId)?.u ?? null) : null,
+      targetId: this.targetId,
       pos: this.pos,
       units: this.units,
     });

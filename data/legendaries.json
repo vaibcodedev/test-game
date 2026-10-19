@@ -80,7 +80,7 @@
   "base": "bow",
   "variant": "ranger",
   "ilvl": 32,
-  "tint": "#70d8ff",
+  "tint": "#d0e8ff",
   "stats": {
    "agi": 26,
    "vit": 8,
@@ -196,6 +196,7 @@
    "c2": "#fff0a0",
    "helm": "wings",
    "pauld": "spikes",
+   "boots": "wings",
    "fx": "ember"
   }
  },
@@ -218,7 +219,7 @@
   },
   "desc": "12% шанс при ударе: восстанавливает 8% максимального здоровья.",
   "look": {
-   "c2": "#7ad8ff",
+   "c2": "#e0d0ff",
    "helm": "horns",
    "pauld": "spikes",
    "fx": "souls"
@@ -379,7 +380,7 @@
   "base": "dagger",
   "variant": "ranger",
   "ilvl": 32,
-  "tint": "#40e0a0",
+  "tint": "#60d040",
   "stats": {
    "agi": 26,
    "vit": 8,
@@ -393,7 +394,7 @@
   },
   "desc": "После убийства: скорость атаки +30% на 5 сек.",
   "look": {
-   "c2": "#b0ffd8",
+   "c2": "#d8ffb0",
    "helm": "wings",
    "pauld": "spikes",
    "fx": "drip"

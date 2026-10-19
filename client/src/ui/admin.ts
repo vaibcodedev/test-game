@@ -1,9 +1,8 @@
 /** Админ-панель (F10): игроки, выдача, мир, логи. Кнопка видна только админам; все права проверяет сервер. */
-import { BASE_ITEMS, UNIQUES } from "../../../shared/items";
-import { LEGENDARIES } from "../../../shared/legendary";
 import { ZONES } from "../../../shared/map";
 import { MOBS } from "../../../shared/mobs";
 import type { Net } from "../net";
+import { GiveTab } from "./adminGive";
 
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU");
@@ -21,6 +20,8 @@ export class AdminUI {
   private logName = "";
   private target = "";
   private bannerTimer = 0;
+  /** Вкладка «Выдача» — каталог предметов (adminGive.ts). Создаётся при первом открытии (обычным игрокам не нужна) и хранит состояние при смене вкладок. */
+  private giveTab?: GiveTab;
 
   constructor(root: HTMLElement) {
     this.win.className = "panel win win-admin";
@@ -32,7 +33,7 @@ export class AdminUI {
 
   bind(net: Net) {
     this.net = net;
-    net.on("admin:players", (m) => { this.players = m; if (this.tab === "players") this.render(); });
+    net.on("admin:players", (m) => { this.players = m; this.giveTab?.setPlayers(m); if (this.tab === "players") this.render(); });
     net.on("admin:logs", (m) => { this.logs = m; if (this.tab === "logs") this.render(); });
     net.on("admin:banner", (m) => {
       this.banner.textContent = m.text;
@@ -52,15 +53,28 @@ export class AdminUI {
     return was;
   }
 
+  private give(): GiveTab {
+    if (!this.giveTab) {
+      this.giveTab = new GiveTab({ send: (t, m) => this.net.send(t, m), selfName: () => this.net.self?.name ?? "" });
+      this.giveTab.bind(this.net);
+      this.giveTab.setPlayers(this.players);
+    }
+    return this.giveTab;
+  }
+
   private refresh() {
-    if (this.tab === "players") this.net.send("admin:players");
+    if (this.tab === "players" || this.tab === "give") this.net.send("admin:players");
     if (this.tab === "logs") this.net.send("admin:logs", { kind: this.logKind, name: this.logName });
     this.render();
   }
 
   private render() {
     const tabs = TABS.map(([id, n]) => `<button class="btn small" data-tab="${id}" aria-pressed="${id === this.tab}">${n}</button>`).join("");
-    this.win.innerHTML = `<h2><span>Админ-панель</span><button class="x" aria-label="Закрыть">×</button></h2><div class="adm-tabs">${tabs}</div><div class="adm-body">${this.body()}</div>`;
+    this.win.classList.toggle("adm-wide", this.tab === "give");
+    this.win.innerHTML = `<h2><span>Админ-панель</span><button class="x" aria-label="Закрыть">×</button></h2><div class="adm-tabs">${tabs}</div><div class="adm-body">${this.tab === "give" ? "" : this.body()}</div>`;
+    if (this.tab === "give") { const g = this.give(); this.win.querySelector(".adm-body")!.append(g.el); g.activate(this.target); this.target = ""; /* явный выбор получателя действует один раз */ }
+    // окно сдвигали и оно стало шире: пусть модуль перетаскивания заново вернёт его в экран
+    if (this.win.dataset.moved) requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => (this.win.hidden = true);
     this.win.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((b) => (b.onclick = () => { this.tab = b.dataset.tab!; this.refresh(); }));
     this.wire();
@@ -77,15 +91,6 @@ export class AdminUI {
       return `<div class="adm-row"><button class="btn small" data-act="reload">Обновить</button><input id="adm-ban-h" type="number" min="0" placeholder="Бан, часов (0 = навсегда)" style="width:200px"><input id="adm-ban-r" class="wide" placeholder="Причина бана"></div>
         <div class="adm-row"><input id="adm-who" class="wide" placeholder="Имя героя (для разбана офлайн)"><button class="btn small" data-act="unban-name">Разбан</button></div>
         <div class="adm-scroll"><table class="adm-table"><tr><th>Имя</th><th>Класс/ур.</th><th>x,y</th><th></th></tr>${rows}</table></div>`;
-    }
-    if (this.tab === "give") {
-      const bases = Object.keys(BASE_ITEMS), uniq = Object.keys(UNIQUES), leg = Object.keys(LEGENDARIES);
-      return `<div class="adm-row"><input id="g-name" class="wide" placeholder="Имя игрока" value="${esc(this.target)}"></div>
-        <div class="adm-row"><select id="g-id"><optgroup label="Базовые">${opts(bases, (i) => BASE_ITEMS[i].name)}</optgroup><optgroup label="Уникальные">${opts(uniq, (i) => UNIQUES[i].name)}</optgroup><optgroup label="Легендарные">${opts(leg, (i) => LEGENDARIES[i].name)}</optgroup></select>
-        <select id="g-rar"><option value="0">Обычное</option><option value="1">Редкое</option><option value="2">Эпическое</option><option value="3">Легендарное</option></select>
-        <input id="g-ilvl" type="number" min="1" max="60" value="10" title="Ур. предмета" style="width:70px"><input id="g-qty" type="number" min="1" max="99" value="1" title="Кол-во" style="width:70px"><button class="btn small" data-act="give-item">Выдать предмет</button></div>
-        <div class="adm-row"><input id="g-gold" type="number" value="1000" style="width:100px"><button class="btn small" data-act="give-gold">Выдать золото</button></div>
-        <div class="adm-row"><input id="g-xp" type="number" value="1000" style="width:100px"><button class="btn small" data-act="give-xp">Выдать опыт</button><input id="g-lv" type="number" min="1" max="100" value="100" style="width:70px"><button class="btn small" data-act="give-lv">Поднять до уровня</button></div>`;
     }
     if (this.tab === "world") {
       const zones = ZONES.map((z, i) => (z.name === "Арена" ? "" : `<option value="${i}">${esc(z.name)}</option>`)).join("");
@@ -121,15 +126,7 @@ export class AdminUI {
         case "ban": return send("admin:ban", { name: n, hours: nv("adm-ban-h"), reason: val("adm-ban-r") });
         case "unban": return send("admin:unban", { name: n });
         case "unban-name": return send("admin:unban", { name: val("adm-who") });
-        case "give": this.target = n; this.tab = "give"; return this.render();
-        case "give-item": {
-          const id = val("g-id");
-          const key = LEGENDARIES[id] || UNIQUES[id] ? "unique" : "base";
-          return send("admin:give", { name: val("g-name"), [key]: id, rarity: nv("g-rar"), ilvl: nv("g-ilvl"), qty: nv("g-qty") });
-        }
-        case "give-gold": return send("admin:gold", { name: val("g-name"), v: nv("g-gold") });
-        case "give-xp": return send("admin:xp", { name: val("g-name"), xp: nv("g-xp") });
-        case "give-lv": return send("admin:xp", { name: val("g-name"), level: nv("g-lv") });
+        case "give": this.target = n; this.tab = "give"; return this.refresh();
         case "spawn": return send("admin:spawn", { mob: val("w-mob"), level: nv("w-lv") });
         case "announce": return send("admin:announce", { text: val("w-text") });
         case "tp-name": return send("admin:tp", { name: val("w-tp-name") });

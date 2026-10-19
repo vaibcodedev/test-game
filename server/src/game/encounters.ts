@@ -1,9 +1,8 @@
 /** Случайные встречи в пути: режиссёр раз в 2-4 минуты подбрасывает игроку путника, засаду или торговца. Тексты и шансы — data/encounters.json. */
 import data from "../../../data/encounters.json";
-import { CLASSES } from "../../../shared/classes";
 import { MERCHANT_RANGE, TILE } from "../../../shared/constants";
 import { FOOD_IDS, FOOD } from "../../../shared/food";
-import { BASE_ITEMS, EQUIP_BASES, itemValue, makeItem, Rarity, type Item } from "../../../shared/items";
+import { BASE_ITEMS, itemValue, makeItem, makeLoot, Rarity, type Item } from "../../../shared/items";
 import { isTownZone, roadDist, walkable, zoneAtPx, Zone, ZONES } from "../../../shared/map";
 import { MOBS } from "../../../shared/mobs";
 import type { On } from "../rooms/common";
@@ -37,7 +36,6 @@ const toast = (p: Player, text: string, kind = "info") => p.send("toast", { text
 const get = (w: World) => encs.get(w) ?? encs.set(w, new Map()).get(w)!;
 
 const npcDef = (k: "traveler" | "merchant") => D[k].npc as { name: string; sprite: string; tint: string; color: string; icon: string; lying?: boolean };
-const classPool = (p: Player) => EQUIP_BASES.filter((b) => !BASE_ITEMS[b].classes || BASE_ITEMS[b].classes!.includes(p.cls));
 const badZone = (z: Zone) => isTownZone(z) || z === Zone.Dungeon || z === Zone.Arena || z === Zone.Frontier;
 
 /** Подходящая точка рядом с игроком: проходимая, не в городе/подземелье, по возможности у дороги. */
@@ -90,11 +88,9 @@ function sendNpc(p: Player, e: Enc) {
 
 function makeStock(p: Player): Enc["stock"] {
   const stock: Enc["stock"] = [];
-  const pool = classPool(p);
-  const weapons = CLASSES[p.cls].weaponTypes;
   for (let i = 0; i < D.merchant.rareItems; i++) {
-    const base = i === 0 ? pick(pool.filter((b) => weapons.includes(b)).concat(pool)) : pick(pool);
-    const it = makeItem(base, p.level, Math.random() < 0.35 ? Rarity.Epic : Rarity.Rare);
+    // первый товар — оружие класса, остальные — любая экипировка; модели по уровню героя (data/items.json)
+    const it = makeLoot(p.cls, p.level, Math.random() < 0.35 ? Rarity.Epic : Rarity.Rare, Math.random, i === 0 ? 1 : 0.3);
     stock.push({ item: it, price: Math.round(itemValue(it) * 4 * D.merchant.priceMul), sold: false });
   }
   const dishes = FOOD_IDS.filter((id) => FOOD[id].req <= p.level);
@@ -164,7 +160,7 @@ function rewardTraveler(w: World, p: Player, e: Enc) {
   gainXp(w, p, xp);
   let extra = "";
   if (Math.random() < T.rareChance) {
-    const it = makeItem(pick(classPool(p)), e.level, Rarity.Rare);
+    const it = makeLoot(p.cls, e.level, Rarity.Rare);
     if (addItem(p, it)) extra = `, ${it.name}`;
   }
   p.selfDirty = true;

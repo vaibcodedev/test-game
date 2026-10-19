@@ -7,12 +7,15 @@
 import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear, walkable } from "../../../shared/map";
 import { petUnitId, type PetDef } from "../../../shared/pets";
-import { SUMMONS, type SkillDef } from "../../../shared/skills";
+import { SKILLS, SUMMONS, type SkillDef } from "../../../shared/skills";
 import { Anim, type FxKind } from "../../../shared/protocol";
 import { bondDur, onSacrifice, poolBonus, sacrificeCost } from "./healers";
 import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { applyHeal, healPower, reachable, resolveAlly, type Ally } from "./skills";
+import { bleedMods } from "./reaver";
+import { dotMult } from "./mages";
+import { applyHaste } from "./effects";
 import { World, type Actor } from "./World";
 
 export interface CastCtx {
@@ -29,36 +32,66 @@ export interface CastCtx {
   aim: number;
   /** Списать ману, поставить перезарядку (всегда вызывать перед эффектом). */
   ok: () => null;
-  stun: (a: Actor, ms: number) => void;
-  slow: (a: Actor, pct: number, ms: number) => void;
+  /** Контроль и дебаффы от героя (effects.ts): нейтральный город, «Несгибаемый», слияние с живым эффектом; true — эффект лёг. */
+  stun: (a: Actor, ms: number) => boolean;
+  slow: (a: Actor, pct: number, ms: number) => boolean;
+  root: (a: Actor, ms: number) => boolean;
+  weaken: (a: Actor, pct: number, ms: number) => boolean;
   threat: (a: Actor, v: number) => void;
   isBoss: (a: Actor) => boolean;
 }
 
 // ---------- урон со временем: проклятия и кровотечения ----------
-interface Dot { stacks: number; until: number; dmg: number }
-const dots = new Map<string, Dot>();
+export interface Dot { stacks: number; until: number; dmg: number }
+export const dots = new Map<string, Dot>();
 
-/** Периодический урон от героя по цели: тик раз в секунду, stacks — до maxStacks, повтор обновляет срок. */
+/**
+ * Периодический урон от героя по цели: тик раз в секунду, stacks — до maxStacks, повтор продлевает срок (никогда не укорачивает).
+ * Не ложится, если герой выбыл или не может задеть цель (w.canAffect: нейтральный город, ушедший герой).
+ */
 export function addDot(w: World, p: Player, target: Actor, key: "curse" | "bleed" | "agony" | "plague", dmg: number, durS: number, kind: FxKind, maxStacks = 1) {
+  if (w.gone(p) || w.isDead(target) || !w.canAffect(p, target)) return;
   const k = `${p.id}|${target.id}|${key}`;
   const cur = dots.get(k);
   const live = cur && cur.until > w.time;
   const e: Dot = live ? cur : { stacks: 0, until: 0, dmg };
   e.stacks = Math.min(maxStacks, e.stacks + 1);
   e.dmg = Math.max(e.dmg, dmg);
-  e.until = w.time + durS * 1000;
+  e.until = Math.max(e.until, w.time + durS * 1000);
   dots.set(k, e);
   if (key === "bleed") target.bleedUntil = Math.max(target.bleedUntil, e.until);
   else target.curseUntil = Math.max(target.curseUntil, e.until);
   if (live) return;
   const tick = () => {
     const c = dots.get(k);
-    if (c !== e || e.until <= w.time || w.isDead(target) || w.isDead(p) || !w.hostile(p, target)) { if (c === e) dots.delete(k); return; }
-    w.hit(p, target, { flat: Math.max(1, Math.round(e.dmg * e.stacks)), canCrit: false, kind, noBreak: true, noProc: true });
+    if (c !== e || e.until <= w.time || w.gone(target) || w.gone(p) || !w.hostile(p, target)) { if (c === e) dots.delete(k); return; }
+    w.hit(p, target, { flat: Math.max(1, Math.round(e.dmg * e.stacks * dotMult(w, p, target))), canCrit: false, kind, noBreak: true, noProc: true });
     w.later(1000, tick);
   };
   w.later(1000, tick);
+}
+
+/** Живые периодические эффекты героя на цели (для «Взрыва проклятий» и «Эпидемии»). */
+export function dotsOf(w: World, p: Player, target: Actor): { key: string; dmg: number; stacks: number; left: number }[] {
+  const out: { key: string; dmg: number; stacks: number; left: number }[] = [];
+  const pre = `${p.id}|${target.id}|`;
+  for (const [k, e] of dots) if (k.startsWith(pre) && e.until > w.time) out.push({ key: k.slice(pre.length), dmg: e.dmg, stacks: e.stacks, left: e.until - w.time });
+  return out;
+}
+/** Снять периодические эффекты героя с цели (после «Взрыва проклятий»). */
+export function removeDots(p: Player, target: Actor) {
+  const pre = `${p.id}|${target.id}|`;
+  for (const k of [...dots.keys()]) if (k.startsWith(pre)) dots.delete(k);
+}
+
+/** Живой эффект героя p на цели (для умений Потрошителя: server/src/game/reaver.ts). */
+export function dotOf(w: World, p: Player, t: Actor, key: "curse" | "bleed" | "agony" | "plague"): Dot | undefined {
+  const e = dots.get(`${p.id}|${t.id}|${key}`);
+  return e && e.until > w.time ? e : undefined;
+}
+/** Оборвать эффект героя p на цели (тик сам остановится). */
+export function endDot(p: Player, t: Actor, key: "curse" | "bleed" | "agony" | "plague") {
+  dots.delete(`${p.id}|${t.id}|${key}`);
 }
 
 /** Снять все периодические эффекты героев с цели (очищение). */
@@ -67,13 +100,6 @@ export function clearDots(targetId: string) {
 }
 
 const weaponAvg = (p: Player) => ((p.derived.dmgMin + p.derived.dmgMax) / 2) * p.derived.skillMult;
-
-/** Ослабление цели: её урон −pct% на ms. */
-function weaken(w: World, a: Actor, pct: number, ms: number) {
-  a.weakUntil = w.time + ms;
-  a.weakPct = pct;
-  w.emit({ t: "buff", id: a.id, k: "weak", ms });
-}
 
 /** Самый раненый союзник (или сам герой) в радиусе: для «Кровавой стрелы». */
 export function mostWounded(w: World, p: Player, r: number): Ally {
@@ -272,7 +298,7 @@ export function castUmbrath(c: CastCtx): string | null {
       c.ok(); face(t);
       shoot(w, p, t, "poison", 800, () => {
         w.hit(p, t, { mult: v.dmg / 100, skill: true, kind: "poison" });
-        weaken(w, t, v.weak, v.dur * 1000);
+        c.weaken(t, v.weak, v.dur * 1000);
         c.slow(t, v.slow, 3000);
       });
       return null;
@@ -331,7 +357,7 @@ export function castUmbrath(c: CastCtx): string | null {
       w.emit({ t: "aoe", k: "shadow", x: pt.x, y: pt.y, r: v.radius });
       for (const m of w.enemiesInCircle(p, pt.x, pt.y, v.radius)) {
         w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "shadow" });
-        m.rootUntil = w.time + v.root * 1000 * (w.isPlayer(m) ? 1 - m.derived.ccReduce : 1);
+        c.root(m, v.root * 1000);
       }
       // скелет-прислужник вместо питомца (вне арены)
       if (w.opts.mobs !== false && p.team === 0) summonSkeleton(w, p, pt, v.dur * 1000);
@@ -343,7 +369,7 @@ export function castUmbrath(c: CastCtx): string | null {
       w.emit({ t: "hazard", id: w.uid("h"), k: "poison", x: pt.x, y: pt.y, r: v.radius, ms: 1500 });
       for (const m of w.enemiesInCircle(p, pt.x, pt.y, v.radius)) {
         addDot(w, p, m, "plague", (weaponAvg(p) * v.tick) / 100, v.dur, "poison");
-        weaken(w, m, v.weak, v.dur * 1000);
+        c.weaken(m, v.weak, v.dur * 1000);
         c.threat(m, 30);
       }
       return null;
@@ -391,8 +417,8 @@ export function castUmbrath(c: CastCtx): string | null {
       c.ok();
       u.hp = Math.max(1, u.hp - cost);
       if (cost > 0) w.emit({ t: "dmg", id: p.id, v: cost, k: "blood" });
-      p.hasteUntil = p.frenzyUntil = w.time + v.dur * 1000;
-      p.hastePct = v.haste;
+      p.frenzyUntil = w.time + v.dur * 1000;
+      applyHaste(w, p, v.haste, v.dur * 1000);
       p.frenzyLeech = v.leech;
       w.emit({ t: "buff", id: p.id, k: "enrage", ms: v.dur * 1000 });
       return null;
@@ -402,10 +428,11 @@ export function castUmbrath(c: CastCtx): string | null {
 }
 
 /** Кровотечение «Рваной раны» (ранг из сохранения, минимум 1). */
-function bleed(w: World, p: Player, t: Actor) {
+export function bleed(w: World, p: Player, t: Actor) {
   const r = Math.max(1, p.save.skills.rv_lacerate || 0);
-  const lv = { tick: 20 + 4 * (r - 1), dur: 6, stacks: 3 };
-  addDot(w, p, t, "bleed", (weaponAvg(p) * lv.tick) / 100, lv.dur, "blood", lv.stacks);
+  const lv = SKILLS.rv_lacerate.v(r); // числа из data/skills.json
+  const m = bleedMods(p); // «Глубокие раны»
+  addDot(w, p, t, "bleed", (weaponAvg(p) * lv.tick * m.dmg) / 100, lv.dur + m.dur, "blood", lv.stacks + m.stacks);
 }
 
 /** Скелет-прислужник: временный питомец (данные — data/skills.json → summons). */

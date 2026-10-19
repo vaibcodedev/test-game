@@ -10,9 +10,10 @@ import { MOUNTS } from "../../../shared/mounts";
 import { buyPet, selectPet, togglePet } from "../game/Pet";
 import { MAX_LEVEL, MERCHANT_RANGE, PLAYER_RADIUS } from "../../../shared/constants";
 import { MAP_VERSION, walkable } from "../../../shared/map";
-import { makeItem, makeUnique, Rarity } from "../../../shared/items";
+import { makeItem, makeUnique, Rarity, SLOTS } from "../../../shared/items";
 import { makeLegendary } from "../../../shared/legendary";
-import type { JoinOptions } from "../../../shared/protocol";
+import { INSPECT_COOLDOWN_MS, INSPECT_RANGE } from "../../../shared/gearFx";
+import type { InspectReply, JoinOptions } from "../../../shared/protocol";
 import { canLearn, SKILLS } from "../../../shared/skills";
 import { Parties } from "../arena/party";
 import { ArenaQueue, type PendingMatch } from "../arena/queue";
@@ -479,6 +480,27 @@ export class WorldRoom extends Room<WorldState> {
       p.send("toast", { text: "Предмет лежит в окне обмена", kind: "error" });
       return true;
     };
+    // осмотр игрока (docs/gear-visuals.md, раздел 4): цель в зоне видимости, не чаще раза в секунду
+    on<{ sid: unknown }>("inspect", (p, m) => {
+      if (typeof m.sid !== "string") return;
+      if (w().time - p.lastInspect < INSPECT_COOLDOWN_MS) return p.send("toast", { text: "Не так быстро", kind: "error" });
+      p.lastInspect = w().time;
+      const t = w().players.get(m.sid);
+      if (!t || (t !== p && w().stealthed(t))) return;
+      if (t !== p && w().dist(p, t) > INSPECT_RANGE) return p.send("toast", { text: "Игрок слишком далеко", kind: "error" });
+      const reply: InspectReply = {
+        sid: m.sid,
+        name: t.name,
+        cls: t.cls,
+        lvl: t.level,
+        fac: t.faction,
+        equip: SLOTS.map((slot) => {
+          const it = t.save.equip[slot];
+          return { slot, base: it?.base ?? "", r: it?.rarity ?? 0, plus: it?.plus || 0, leg: it?.legendary ?? "", model: it?.model ?? "", item: it ?? null };
+        }),
+      };
+      p.send("inspect", reply);
+    });
     on<{ index: unknown }>("equip", (p, m) => !lock(p, m.index) && equip(w(), p, m.index));
     on<{ slot: unknown }>("unequip", (p, m) => unequip(p, m.slot));
     on<{ index: unknown }>("use", (p, m) => !lock(p, m.index) && useItem(w(), p, m.index));

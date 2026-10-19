@@ -1,7 +1,7 @@
 /** Инвентарь, экипировка, зелья, торговец, подбор добычи. Каждая операция проверяется на сервере. */
 import { COOKS, FOOD, foodOf, type Dish } from "../../../shared/food";
 import { MERCHANT_RANGE, PICKUP_RANGE } from "../../../shared/constants";
-import { BASE_ITEMS, ONEHAND, canEquip, iconFor, itemValue, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
+import { BASE_ITEMS, ONEHAND, canEquip, isTwoHanded, iconFor, itemName, itemValue, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
 import { MATERIALS } from "../../../shared/upgrade";
 import { RESOURCES } from "../../../shared/biomes";
 import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
@@ -52,6 +52,16 @@ export function equip(w: World, p: Player, index: unknown) {
   let slot = BASE_ITEMS[it.base].slot as Slot;
   // Рыцарь смерти: второй одноручный клинок идёт во вторую руку
   if (slot === "weapon" && p.cls === "deathknight" && ONEHAND.includes(it.base) && p.save.equip.weapon && ONEHAND.includes(p.save.equip.weapon.base) && !p.save.equip.offhand) slot = "offhand";
+  // двуручное оружие занимает обе руки: вторая рука снимается в сумку; во вторую руку при двуручном — нельзя
+  if (slot === "offhand" && isTwoHanded(p.save.equip.weapon?.base)) return err(p, "Двуручное оружие занимает обе руки");
+  if (slot === "weapon" && isTwoHanded(it.base) && p.save.equip.offhand) {
+    const free = p.save.inventory.findIndex((x, k) => !x && k !== index);
+    if (free < 0 && p.save.equip.weapon) return err(p, "Сумка полна: некуда снять вторую руку");
+    const off = p.save.equip.offhand;
+    p.save.equip.offhand = null;
+    if (free >= 0) p.save.inventory[free] = off;
+    else { p.save.equip.weapon = it; p.save.inventory[index] = off; p.recalc(); return; }
+  }
   const prev = p.save.equip[slot];
   p.save.equip[slot] = it;
   p.save.inventory[index] = prev;
@@ -146,7 +156,7 @@ export function sell(w: World, p: Player, index: unknown) {
   p.save.inventory[index] = null;
   p.save.gold += gold;
   p.selfDirty = true;
-  p.send("toast", { text: `Продано: ${it.name}${qty > 1 ? ` ×${qty}` : ""} (+${gold} з)`, kind: "loot" });
+  p.send("toast", { text: `Продано: ${itemName(it)}${qty > 1 ? ` ×${qty}` : ""} (+${gold} з)`, kind: "loot" });
   sendPrices(p);
 }
 
@@ -190,7 +200,7 @@ export function pickup(w: World, p: Player, bagId: unknown) {
   if (w.dist(p, bag) > PICKUP_RANGE + 8) return err(p, "Подойдите ближе");
   const left = [];
   for (const it of bag.items) {
-    if (addItem(p, it)) p.send("toast", { text: `Получено: ${it.name}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}`, kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes });
+    if (addItem(p, it)) p.send("toast", { text: `Получено: ${itemName(it)}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}`, kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes });
     else left.push(it);
   }
   if (left.length) {

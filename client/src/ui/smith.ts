@@ -3,14 +3,24 @@ import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
 import { MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, stepFor } from "../../../shared/upgrade";
+import { enchantTier, GEAR_FX, smithNextText, tierText } from "../../../shared/gearFx";
 import type { Net } from "../net";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 type Sel = { index: number } | { slot: Slot } | null;
 
+/**
+ * Значок «+N» на ячейке по ступеням заточки (docs/gear-visuals.md, 2.2): +1…3 белый, +4…6 бирюзовый,
+ * +4…10 бирюзовый, без заливки и контура ячейки (решение пользователя). Стили: .plus.pt0…pt3.
+ */
+export function plusBadgeN(plus: number): string {
+  if (!plus) return "";
+  const t = enchantTier(plus);
+  return `<span class="plus pt${t}">+${plus}</span>`;
+}
 /** Значок «+N» на ячейке предмета. */
-export const plusBadge = (it: Item) => (it.plus ? `<span class="plus">+${it.plus}</span>` : "");
+export const plusBadge = (it: Pick<Item, "plus">) => plusBadgeN(it.plus || 0);
 
 function statLines(it: Item): string {
   const st = effStats(it);
@@ -72,9 +82,15 @@ export class SmithUI {
       c.ondragstart = (e) => { this.sel = sel; e.dataTransfer!.setData("text/plain", "smith"); };
       pick.append(c);
     };
+    const note = (cls: string, text: string) => pick.append(Object.assign(document.createElement("div"), { className: cls, textContent: text }));
+    note("smith-sec muted", "Надето");
+    let n = pick.children.length;
     for (const slot of SLOTS) add(s.equip[slot], { slot }, SLOT_NAMES[slot]);
+    if (pick.children.length === n) note("smith-none muted", "ничего не надето");
+    note("smith-sec muted", "Сумка");
+    n = pick.children.length;
     s.inventory.forEach((item, index) => add(item, { index }));
-    if (!pick.children.length) pick.innerHTML = `<span class="muted">Нет предметов для улучшения</span>`;
+    if (pick.children.length === n) note("smith-none muted", "нет предметов для улучшения");
 
     const info = this.win.querySelector<HTMLElement>(".smith-info")!;
     if (!it) info.innerHTML = `<p class="muted">Выберите предмет из сумки или надетый.</p>`;
@@ -83,7 +99,12 @@ export class SmithUI {
       const step = stepFor(plus);
       const next = { ...it, plus: plus + 1 };
       const have = { ore: this.count(s, "ash_ore"), dust: this.count(s, "star_dust") };
-      let html = `<div class="t r${it.rarity}">${esc(itemName(it))}</div><div class="muted">Сейчас: ${statLines(it)}</div>`;
+      const slot = BASE_ITEMS[it.base].slot as Slot;
+      const tier = enchantTier(plus);
+      const nextFx = smithNextText(slot, plus) || (slot === "ring" || slot === "amulet" ? tierText(slot, 0) : GEAR_FX.texts.smithMax);
+      let html = `<div class="t r${it.rarity}">${esc(itemName(it))}</div><div class="muted">Сейчас: ${statLines(it)}</div>
+        <div class="smith-fx muted">Сейчас на герое: ${esc(tier > 0 ? tierText(slot, tier) : "эффекта заточки нет")}</div>
+        <div class="smith-fx">${esc(nextFx)}</div>`;
       if (!step) html += `<div class="ok">Максимальное улучшение +${MAX_PLUS}</div>`;
       else {
         const okMat = have.ore >= step.ore && have.dust >= step.dust && s.gold >= step.gold;

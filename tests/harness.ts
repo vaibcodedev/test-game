@@ -1,6 +1,7 @@
 /** Запуск тестового сервера и ботов на colyseus.js. */
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { Client, type Room } from "colyseus.js";
@@ -10,7 +11,17 @@ export const PORT = Number(process.env.TEST_PORT) || 2601;
 let server: ChildProcess | null = null;
 export const dbFile = path.join(os.tmpdir(), `emberfall-test-${process.pid}.sqlite`);
 
+/** Порт уже слушает кто-то ещё (например тест параллельного агента): наш сервер не поднимется, а боты тихо подключились бы к чужому. */
+const portBusy = () => new Promise<boolean>((resolve) => {
+  const c = net.createConnection({ port: PORT, host: "127.0.0.1" });
+  c.once("connect", () => { c.destroy(); resolve(true); });
+  c.once("error", () => resolve(false));
+});
+
 export async function startServer(fresh = true, env: Record<string, string> = {}) {
+  // после stopServer() порт освобождается не мгновенно: ждём до 1.5 с, чужой процесс за это время не уйдёт
+  for (let i = 0; i < 10 && (await portBusy()); i++) await sleep(150);
+  if (await portBusy()) throw new Error(`порт ${PORT} уже занят другим процессом: задайте свободный, например TEST_PORT=${PORT + 100} npx tsx ...`);
   if (fresh) for (const f of [dbFile, dbFile + "-wal", dbFile + "-shm"]) fs.rmSync(f, { force: true });
   server = spawn(process.execPath, ["--import", "tsx", "server/src/index.ts"], {
     env: { ...process.env, PORT: String(PORT), DB_PATH: dbFile, TEST_MODE: "1", ...env },
@@ -22,7 +33,9 @@ export async function startServer(fresh = true, env: Record<string, string> = {}
     log += d;
     process.stderr.write("[server] " + d);
   });
-  for (let i = 0; i < 100; i++) {
+  let exited = false;
+  server.once("exit", () => (exited = true));
+  for (let i = 0; i < 100 && !exited; i++) {
     try {
       const r = await fetch(`http://localhost:${PORT}/health`);
       if (r.ok) return;

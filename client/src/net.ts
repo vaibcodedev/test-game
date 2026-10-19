@@ -5,7 +5,7 @@ import type { RumorMsg } from "../../shared/rumors";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../shared/encounters";
 import type { TradeView } from "../../shared/trade";
 import type { BankView } from "../../shared/bank";
-import type { ChatLine, CooldownMsg, Fx, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
+import type { ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
 import { ROOM_NAME } from "../../shared/protocol";
 import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, RECONNECT_SEC } from "../../shared/accounts";
 
@@ -70,10 +70,14 @@ type Events = {
   "trade:state": TradeView | null;
   "trade:done": Record<string, never>;
   bank: BankView;
+  /** Осмотр игрока: ответ на send("inspect"). */
+  inspect: InspectReply;
   "market:prices": Record<string, number>;
   "admin:players": { name: string; cls: string; level: number; x: number; y: number; admin: boolean }[];
   "admin:logs": { kind: "trades" | "admin"; rows: any[] };
   "admin:banner": { text: string };
+  /** Итог выдачи предмета из админ-панели (server/src/game/admin.ts): ok / warn (выдано, но не всё) / error. */
+  "admin:give:result": { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
 };
 
 export interface ArenaWelcome {
@@ -344,7 +348,7 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "market:prices", "admin:players", "admin:logs", "admin:banner"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:give:result"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

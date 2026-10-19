@@ -1,5 +1,198 @@
 {
-  "_doc": "Умения (задачи 42–44), формат как в data/skills.json.",
-  "skills": {},
-  "summons": {}
+  "_doc": "Умения магов (задача 43): Боевой маг (mage, Сольгард) и Чернокнижник (warlock, Умбрат). Формат как в data/skills.json: числа [база, прибавка за ранг], reqLevel по проектной шкале 1..30. Старые умения Боевого мага — в shared/skills.ts, базовые умения Чернокнижника — в data/skills.json. Логика — server/src/game/mages.ts. У каждого класса 9 активных (слоты 0–8) и 11 пассивных умений. Боевой маг — чередование школ магии, всплеск урона, барьер и телепорты; Чернокнижник — проклятия и урон со временем, призыв, мана и жизнь врагов.",
+  "skills": {
+    "mg_bolt": {
+      "cls": "mage", "name": "Цепная молния", "slot": 4, "maxRank": 5, "reqLevel": 6, "req": { "id": "fireball", "rank": 2 },
+      "target": "enemy", "range": 320, "cd": [7, -0.3], "mana": [18, 0],
+      "v": { "dmg": [150, 22], "jumps": [2, 0], "falloff": [20, 0], "radius": [150, 0] },
+      "desc": "Молния бьёт цель ({dmg}% урона) и перескакивает по ближайшим врагам в {radius} пикс. по прямой видимости (прыжков: {jumps}); каждый прыжок слабее на {falloff}%. Поражённые получают «шок».",
+      "icon": { "glyph": "mg_bolt", "bg": "purple", "fg": "frost" }, "tree": [1, 1]
+    },
+    "mg_barrier": {
+      "cls": "mage", "name": "Чародейский барьер", "slot": 5, "maxRank": 5, "reqLevel": 12, "req": { "id": "blink", "rank": 1 },
+      "target": "self", "range": 0, "cd": [26, -1], "mana": [26, 0],
+      "v": { "absorb": [20, 4], "dur": [8, 0] },
+      "desc": "Барьер из чистой магии поглощает урон в {absorb}% вашего здоровья ({dur} с).",
+      "icon": { "glyph": "mg_barrier", "bg": "purple", "fg": "blue" }, "tree": [5, 1]
+    },
+    "mg_firewall": {
+      "cls": "mage", "name": "Огненная стена", "slot": 6, "maxRank": 5, "reqLevel": 17, "req": { "id": "fireball", "rank": 3 },
+      "target": "point", "range": 300, "cd": [17, -0.5], "mana": [30, 0],
+      "v": { "dmg": [80, 14], "len": [180, 0], "dur": [6, 0] },
+      "desc": "Стена огня длиной {len} пикс. на {dur} с (поперёк прицела): каждую секунду {dmg}% огненного урона всем врагам в пламени (с «Воспламенением» поджигает).",
+      "icon": { "glyph": "mg_firewall", "bg": "black", "fg": "fire" }, "tree": [3, 2]
+    },
+    "mg_storm": {
+      "cls": "mage", "name": "Грозовой шторм", "slot": 7, "maxRank": 5, "reqLevel": 21, "req": { "id": "mg_conduction", "rank": 1 },
+      "target": "point", "range": 320, "cd": [28, -1], "mana": [42, 0],
+      "v": { "dmg": [110, 16], "radius": [130, 0], "strikes": [10, 0] },
+      "desc": "Грозовая туча в точке на 5 с: {strikes} ударов молний по случайным врагам в круге, каждый — {dmg}% урона и «шок».",
+      "icon": { "glyph": "mg_storm", "bg": "purple", "fg": "frost" }, "tree": [5, 2]
+    },
+    "mg_timewarp": {
+      "cls": "mage", "name": "Искажение времени", "slot": 8, "maxRank": 5, "reqLevel": 26, "req": { "id": "mg_storm", "rank": 1 },
+      "target": "self", "range": 0, "cd": [80, -4], "mana": [45, 0],
+      "v": { "radius": [170, 0], "slow": [55, 0], "dur": [5, 0.5], "haste": [30, 5], "cdr": [100, 0] },
+      "desc": "На {dur} с время вокруг вас искажается: враги в {radius} пикс. замедлены на {slow}%, ваши перезарядки идут вдвое быстрее, скорость атаки +{haste}%.",
+      "icon": { "glyph": "mg_timewarp", "bg": "black", "fg": "purple" }, "tree": [6, 2]
+    },
+
+    "mg_ignite": {
+      "cls": "mage", "name": "Воспламенение", "kind": "passive", "maxRank": 3, "reqLevel": 4, "req": { "id": "fireball", "rank": 1 },
+      "v": { "pct": [25, 12], "dur": [4, 0] },
+      "desc": "Огненные умения поджигают цель: ещё {pct}% нанесённого урона за {dur} с (при крите — вдвое больше).",
+      "icon": { "glyph": "mg_ignite", "bg": "black", "fg": "fire" }, "tree": [0, 0]
+    },
+    "mg_shatter": {
+      "cls": "mage", "name": "Раскол", "kind": "passive", "maxRank": 3, "reqLevel": 7, "req": { "id": "frostnova", "rank": 1 },
+      "v": { "bonus": [6, 6] },
+      "desc": "Урон по замедленным, обездвиженным и оглушённым врагам +{bonus}%. Лёд замедляет, огонь и молния раскалывают.",
+      "icon": { "glyph": "mg_shatter", "bg": "purple", "fg": "frost" }, "tree": [2, 1]
+    },
+    "mg_conduction": {
+      "cls": "mage", "name": "Проводимость", "kind": "passive", "maxRank": 3, "reqLevel": 9, "req": { "id": "mg_bolt", "rank": 1 },
+      "v": { "jumps": [1, 1], "shock": [8, 4] },
+      "desc": "«Цепная молния» делает больше прыжков: +{jumps}. Враги под «шоком» (5 с) получают от вас на {shock}% больше урона.",
+      "icon": { "glyph": "mg_conduction", "bg": "black", "fg": "frost" }, "tree": [4, 2]
+    },
+    "mg_phase": {
+      "cls": "mage", "name": "Фазовый след", "kind": "passive", "maxRank": 3, "reqLevel": 14, "req": { "id": "blink", "rank": 2 },
+      "v": { "dmg": [100, 50], "radius": [90, 0], "slow": [40, 0] },
+      "desc": "«Мерцание» взрывается в точке старта: {dmg}% урона арканой врагам рядом ({radius} пикс.) и замедление {slow}% на 2 с.",
+      "icon": { "glyph": "mg_phase", "bg": "purple", "fg": "purple" }, "tree": [3, 0]
+    },
+    "mg_rhythm": {
+      "cls": "mage", "name": "Стихийный ритм", "kind": "passive", "maxRank": 3, "reqLevel": 16, "req": { "id": "mg_bolt", "rank": 2 },
+      "v": { "per": [5, 3], "max": [3, 0] },
+      "desc": "Каждое боевое умение другой школы (огонь, лёд, молния) подряд даёт заряд ритма (до {max}, 6 с): урон умений +{per}% за заряд. Повтор той же школы заряды не прибавляет.",
+      "icon": { "glyph": "mg_rhythm", "bg": "black", "fg": "gold" }, "tree": [4, 0]
+    },
+    "mg_manaward": {
+      "cls": "mage", "name": "Мановая броня", "kind": "passive", "maxRank": 3, "reqLevel": 19, "req": { "id": "mg_barrier", "rank": 1 },
+      "v": { "pct": [30, 10] },
+      "desc": "{pct}% получаемого урона принимает на себя мана (1 мана за 1.5 урона), пока она есть. Пустая мана — беззащитный маг.",
+      "icon": { "glyph": "mg_manaward", "bg": "purple", "fg": "blue" }, "tree": [5, 0]
+    },
+    "mg_expl_barrier": {
+      "cls": "mage", "name": "Взрывной барьер", "kind": "passive", "maxRank": 3, "reqLevel": 22, "req": { "id": "mg_barrier", "rank": 2 },
+      "v": { "pct": [60, 40], "radius": [130, 0] },
+      "desc": "Когда «Чародейский барьер» разбит или истёк, он взрывается: {pct}% поглощённого урона арканой по врагам в {radius} пикс.",
+      "icon": { "glyph": "mg_expl_barrier", "bg": "black", "fg": "blue" }, "tree": [6, 1]
+    },
+    "mg_escape": {
+      "cls": "mage", "name": "Аварийный скачок", "kind": "passive", "maxRank": 3, "reqLevel": 24, "req": { "id": "mg_manaward", "rank": 1 },
+      "v": { "icd": [60, -10], "shield": [10, 5] },
+      "desc": "Упав ниже 30% здоровья, вы мгновенно отскакиваете от врага (до 220 пикс.) и получаете щит {shield}% здоровья на 4 с (раз в {icd} с).",
+      "icon": { "glyph": "mg_escape", "bg": "purple", "fg": "frost" }, "tree": [6, 0]
+    },
+
+    "wl_hex": {
+      "cls": "warlock", "name": "Проклятие рока", "slot": 4, "maxRank": 5, "reqLevel": 6, "req": { "id": "wl_agony", "rank": 2 },
+      "target": "enemy", "range": 300, "cd": [14, -0.5], "mana": [16, 0],
+      "v": { "amp": [12, 3], "weak": [10, 0], "dur": [12, 0] },
+      "desc": "Проклятие рока на {dur} с: цель получает от вас (и от ваших проклятий) на {amp}% больше урона, а её собственный урон −{weak}%.",
+      "icon": { "glyph": "mg_hex", "bg": "purple", "fg": "green" }, "tree": [1, 1]
+    },
+    "wl_siphon": {
+      "cls": "warlock", "name": "Похищение души", "slot": 5, "maxRank": 5, "reqLevel": 10, "req": { "id": "wl_hex", "rank": 1 },
+      "target": "enemy", "range": 300, "cd": [10, -0.3], "mana": [20, 0],
+      "v": { "tick": [45, 8], "dur": [6, 0], "heal": [60, 10] },
+      "desc": "Тянет жизнь из цели {dur} с: {tick}% урона в секунду, {heal}% нанесённого лечит вас.",
+      "icon": { "glyph": "mg_siphon", "bg": "black", "fg": "green" }, "tree": [2, 1]
+    },
+    "wl_demon": {
+      "cls": "warlock", "name": "Призыв демона", "slot": 6, "maxRank": 5, "reqLevel": 13, "req": { "id": "wl_skeletons", "rank": 1 },
+      "target": "point", "range": 260, "cd": [45, -2], "mana": [40, 0],
+      "v": { "dur": [25, 2], "power": [100, 15] },
+      "desc": "Призывает демона-прислужника на {dur} с (вместо питомца): мощь {power}% базовой. Бьёт тенью издалека.",
+      "icon": { "glyph": "mg_demon", "bg": "purple", "fg": "red" }, "tree": [3, 0]
+    },
+    "wl_detonate": {
+      "cls": "warlock", "name": "Взрыв проклятий", "slot": 7, "maxRank": 5, "reqLevel": 18, "req": { "id": "wl_doom", "rank": 1 },
+      "target": "enemy", "range": 320, "cd": [12, -0.4], "mana": [24, 0],
+      "v": { "mult": [110, 15], "shard": [10, 0] },
+      "desc": "Взрывает все ваши периодические эффекты на цели: сразу наносит {mult}% их оставшегося урона (+{shard}% за каждый осколок души).",
+      "icon": { "glyph": "mg_detonate", "bg": "black", "fg": "purple" }, "tree": [4, 1]
+    },
+    "wl_meta": {
+      "cls": "warlock", "name": "Метаморфоза", "slot": 8, "maxRank": 5, "reqLevel": 27, "req": { "id": "wl_shards", "rank": 1 },
+      "target": "self", "range": 0, "cd": [90, -4], "mana": [45, 0],
+      "v": { "dur": [12, 1], "dmg": [25, 5], "leech": [12, 2] },
+      "desc": "Демоническая форма на {dur} с: ваш урон (включая проклятия) +{dmg}%, {leech}% нанесённого урона возвращается здоровьем.",
+      "icon": { "glyph": "mg_meta", "bg": "black", "fg": "red" }, "tree": [6, 1]
+    },
+
+    "wl_malice": {
+      "cls": "warlock", "name": "Злоба", "kind": "passive", "maxRank": 3, "reqLevel": 4, "req": { "id": "wl_agony", "rank": 1 },
+      "v": { "pct": [10, 8] },
+      "desc": "Урон ваших проклятий и тлеющих эффектов +{pct}%.",
+      "icon": { "glyph": "mg_malice", "bg": "black", "fg": "green" }, "tree": [0, 0]
+    },
+    "wl_web": {
+      "cls": "warlock", "name": "Паутина проклятий", "kind": "passive", "maxRank": 3, "reqLevel": 7, "req": { "id": "wl_agony", "rank": 2 },
+      "v": { "pct": [10, 6] },
+      "desc": "Каждое дополнительное проклятие на цели (Агония, Чумной туман, Похищение души) усиливает все ваши проклятия на ней на {pct}%.",
+      "icon": { "glyph": "mg_web", "bg": "black", "fg": "bone" }, "tree": [0, 2]
+    },
+    "wl_oppress": {
+      "cls": "warlock", "name": "Гнёт", "kind": "passive", "maxRank": 3, "reqLevel": 9, "req": { "id": "wl_hex", "rank": 1 },
+      "v": { "pct": [10, 5] },
+      "desc": "Проклятые вами враги наносят вам на {pct}% меньше урона.",
+      "icon": { "glyph": "mg_oppress", "bg": "purple", "fg": "bone" }, "tree": [1, 2]
+    },
+    "wl_leech": {
+      "cls": "warlock", "name": "Пожиратель магии", "kind": "passive", "maxRank": 3, "reqLevel": 11, "req": { "id": "wl_drain_mana", "rank": 2 },
+      "v": { "heal": [3, 2], "weak": [10, 5] },
+      "desc": "«Вытягивание маны» ещё лечит вас на {heal}% здоровья и ослабляет цель на {weak}% на 5 с.",
+      "icon": { "glyph": "mg_leech", "bg": "purple", "fg": "blue" }, "tree": [2, 2]
+    },
+    "wl_life_tap": {
+      "cls": "warlock", "name": "Тёмное питание", "kind": "passive", "maxRank": 3, "reqLevel": 14, "req": { "id": "wl_siphon", "rank": 1 },
+      "v": { "pct": [3, 2] },
+      "desc": "Каждый тик ваших проклятий лечит вас на {pct}% нанесённого урона.",
+      "icon": { "glyph": "mg_life_tap", "bg": "black", "fg": "red" }, "tree": [3, 2]
+    },
+    "wl_demonology": {
+      "cls": "warlock", "name": "Демонология", "kind": "passive", "maxRank": 3, "reqLevel": 16, "req": { "id": "wl_demon", "rank": 1 },
+      "v": { "pct": [15, 10] },
+      "desc": "Скелеты и демоны крепче: здоровье и урон прислужников +{pct}%.",
+      "icon": { "glyph": "mg_demonology", "bg": "purple", "fg": "red" }, "tree": [4, 0]
+    },
+    "wl_pandemic": {
+      "cls": "warlock", "name": "Эпидемия", "kind": "passive", "maxRank": 3, "reqLevel": 19, "req": { "id": "wl_doom", "rank": 2 },
+      "v": { "targets": [1, 1] },
+      "desc": "Погибший проклятый враг передаёт ваши проклятия ближайшим врагам в 170 пикс. (с оставшимся сроком). Число целей: до {targets}.",
+      "icon": { "glyph": "mg_pandemic", "bg": "black", "fg": "green" }, "tree": [4, 2]
+    },
+    "wl_shroud": {
+      "cls": "warlock", "name": "Костяной саван", "kind": "passive", "maxRank": 3, "reqLevel": 20, "req": { "id": "wl_demonology", "rank": 1 },
+      "v": { "shield": [15, 8], "icd": [40, -5] },
+      "desc": "Упав ниже 40% здоровья, вы закутываетесь в саван из костей: щит {shield}% здоровья на 6 с (раз в {icd} с).",
+      "icon": { "glyph": "mg_shroud", "bg": "black", "fg": "bone" }, "tree": [5, 0]
+    },
+    "wl_shards": {
+      "cls": "warlock", "name": "Осколки душ", "kind": "passive", "maxRank": 3, "reqLevel": 22, "req": { "id": "wl_detonate", "rank": 1 },
+      "v": { "pct": [3, 2] },
+      "desc": "Каждое убийство даёт осколок души (до 5, 30 с): ваш урон +{pct}% за осколок. «Взрыв проклятий» расходует осколки.",
+      "icon": { "glyph": "mg_shards", "bg": "purple", "fg": "green" }, "tree": [5, 1]
+    },
+    "wl_eternal": {
+      "cls": "warlock", "name": "Вечные муки", "kind": "passive", "maxRank": 3, "reqLevel": 23, "req": { "id": "wl_pandemic", "rank": 1 },
+      "v": { "cd": [0.3, 0.2] },
+      "desc": "Тики ваших проклятий сокращают перезарядку «Проклятия рока» и «Взрыва проклятий» на {cd} с (не чаще раза в секунду).",
+      "icon": { "glyph": "mg_eternal", "bg": "black", "fg": "purple" }, "tree": [5, 2]
+    },
+    "wl_soul_ward": {
+      "cls": "warlock", "name": "Обмен душ", "kind": "passive", "maxRank": 3, "reqLevel": 25, "req": { "id": "wl_shroud", "rank": 1 },
+      "v": { "hp": [20, 10], "icd": [180, -30] },
+      "desc": "Смертельный удар сжигает всю вашу ману (нужно не менее 30% запаса): вы остаётесь с 1 здоровья и сразу лечитесь на {hp}% (раз в {icd} с).",
+      "icon": { "glyph": "mg_soul_ward", "bg": "black", "fg": "blue" }, "tree": [6, 0]
+    }
+  },
+  "summons": {
+    "wl_demon": {
+      "name": "Демон-прислужник", "sprite": "imp", "projectile": "shadow", "price": 0, "level": 0, "hp": 1.4, "dmg": 1.7, "armor": 1.0,
+      "speed": 130, "range": 190, "attackCd": 1.3, "radius": 11, "skills": []
+    }
+  }
 }

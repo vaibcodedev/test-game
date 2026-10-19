@@ -12,6 +12,7 @@ import { SKILLS } from "../../../shared/skills";
 import type { Player } from "./Player";
 import { reachable } from "./skills";
 import type { CastCtx } from "./umbrath";
+import { applyRoot, applySlow } from "./effects";
 import type { Actor, HitOpts, World } from "./World";
 
 interface Mark { n: number; until: number }
@@ -88,7 +89,6 @@ export function castTank(c: CastCtx): string | null | undefined {
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };
-  const weaken = (a: Actor, pct: number, ms: number) => { a.weakUntil = w.time + ms; a.weakPct = pct; w.emit({ t: "buff", id: a.id, k: "weak", ms }); };
 
   switch (c.id) {
     // ---------- Храмовник ----------
@@ -108,7 +108,7 @@ export function castTank(c: CastCtx): string | null | undefined {
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });
       w.emit({ t: "aoe", k: "glare", x: u.x, y: u.y, r: v.radius });
       for (const m of w.enemiesInCircle(p, u.x, u.y, v.radius)) {
-        weaken(m, v.weak, v.dur * 1000);
+        c.weaken(m, v.weak, v.dur * 1000);
         c.threat(m, v.threat);
       }
       return null;
@@ -160,10 +160,7 @@ export function castTank(c: CastCtx): string | null | undefined {
         w.emit({ t: "aoe", k: "frost", x: t.x, y: t.y, r: 36 });
         w.hit(p, t, { mult: v.dmg / 100, skill: true, kind: "frost" });
         c.slow(t, v.slow, v.dur * 1000);
-        if (wasSlowed && !c.isBoss(t)) {
-          t.rootUntil = w.time + v.root * 1000 * (w.isPlayer(t) ? 1 - t.derived.ccReduce : 1);
-          w.emit({ t: "buff", id: t.id, k: "frozen", ms: v.root * 1000 });
-        }
+        if (wasSlowed && !c.isBoss(t) && c.root(t, v.root * 1000)) w.emit({ t: "buff", id: t.id, k: "frozen", ms: v.root * 1000 });
       });
       return null;
     }
@@ -240,13 +237,12 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
       const t = target;
       w.later(40, () => {
         if (p.dead) return;
-        if (!w.isPlayer(t) && t.def.boss) { t.rootUntil = w.time + m.root * 1000; w.emit({ t: "buff", id: t.id, k: "frozen", ms: m.root * 1000 }); }
+        if (!w.isPlayer(t) && t.def.boss && applyRoot(w, p, t, m.root * 1000)) w.emit({ t: "buff", id: t.id, k: "frozen", ms: m.root * 1000 });
         for (const o of w.enemiesInCircle(p, t.x, t.y, m.radius)) {
           if (o === t || (!w.isPlayer(o) && o.def.boss)) continue;
           w.emit({ t: "chain", pts: [p.x, p.y - 12, o.x, o.y - 12], k: "shadow" });
           pull(w, p, o);
-          o.slowUntil = w.time + 1500;
-          o.slowPct = 40;
+          applySlow(w, p, o, 40, 1500);
         }
       });
     }
@@ -386,8 +382,7 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number, o: Hi
   if (th && !w.isDead(src) && w.dist(src, dst) <= 120) {
     const m = pv(dst, "dk_frost_thorns");
     w.hit(dst, src, { flat: Math.max(1, Math.round((v * m.pct) / 100)), canCrit: false, kind: "frost", noProc: true, noReflect: true });
-    src.slowUntil = Math.max(src.slowUntil, w.time + 2000);
-    src.slowPct = Math.max(src.slowPct, m.slow);
+    applySlow(w, dst, src, m.slow, 2000);
   }
 
   const bt = rk(dst, "dk_blood_tap");

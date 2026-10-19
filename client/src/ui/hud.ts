@@ -2,12 +2,14 @@
 import { gold, goldify } from "./gold";
 import { initWindowDrag, resetWindowPositions } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
-import { FACTIONS, FOE_COLOR } from "../../../shared/factions";
+import { FACTIONS, FOE_COLOR, factionColor } from "../../../shared/factions";
 import * as sfx from "../game/sfx";
-import { overlay, setOverlay } from "../game/overlay";
+import { gearFxMode, overlay, setGearFxMode, setOverlay, type GearFxMode } from "../game/overlay";
+import { flashGear } from "../game/gearHooks";
+import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
 import { MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
-import { OFFHAND_CLASSES, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
+import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
 import { isTownZone, T, Zone, ZONES, zoneAtPx, type WorldMap } from "../../../shared/map";
 import { CITIES, CITY_WALL } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
@@ -22,6 +24,8 @@ import { AdminUI } from "./admin";
 import { BestiaryUI } from "./bestiary";
 import { RumorUI } from "./rumor";
 import { EncounterUI } from "./encounter";
+import { InspectUI } from "./inspect";
+import { enchantTotal, gearRows, legendBlock } from "./gearfx";
 import { CookUI, foodTip } from "./cook";
 import { QuestUI, TeleportUI } from "./cities";
 import { fillHelp, GameMenu, HOTKEYS } from "./gamemenu";
@@ -56,6 +60,8 @@ export interface HudCtx {
 export interface FrameInfo {
   me: UnitState | null;
   target: UnitState | null;
+  /** id цели в списке юнитов (для осмотра игрока по клику на рамку цели). */
+  targetId?: string | null;
   pos: { x: number; y: number };
   units: Map<string, { u: UnitState; x: number; y: number; dead: boolean }>;
 }
@@ -105,6 +111,8 @@ export class Hud {
   private gameMenu!: GameMenu;
   readonly rumor: RumorUI;
   readonly enc: EncounterUI;
+  readonly inspect: InspectUI;
+  private targetSid: string | null = null;
   readonly cook: CookUI;
   readonly smith: SmithUI;
   readonly bank: BankUI;
@@ -167,7 +175,9 @@ export class Hud {
     this.bestiary = new BestiaryUI(root, icon);
     this.admin = new AdminUI(root);
     this.rumor = new RumorUI(root);
-    this.enc = new EncounterUI(root);
+    this.enc = new EncounterUI(root, { itemTip: (it, s) => this.itemTip(it, s, false, true), tipFor: (e, h) => this.tipFor(e, h) });
+    this.inspect = new InspectUI(root, { itemTip: (it, s) => this.itemTip(it, s, false, true), tipFor: (e, h) => this.tipFor(e, h) });
+    this.targetBox.onclick = () => { if (this.targetSid && this.ctx?.net.kind === "world") this.inspect.open(this.targetSid); };
     this.cook = new CookUI(root);
     this.smith = new SmithUI(root);
     this.quest = new QuestUI(root);
@@ -208,6 +218,7 @@ export class Hud {
   reset() {
     this.gameMenu.close();
     this.bank.close();
+    this.inspect.close();
     for (const w of Object.values(this.wins)) w.hidden = true;
     this.chatLog.replaceChildren();
     this.death.hidden = true;
@@ -238,6 +249,7 @@ export class Hud {
       });
       this.rumor.bind(n);
       this.enc.bind(n);
+      this.inspect.bind(n);
       this.admin.bind(n);
       this.cook.bind(n);
       this.smith.bind(n);
@@ -296,7 +308,11 @@ export class Hud {
       d.className = "foreign";
       d.title = `${FACTIONS[l.faction ?? "solgard"]?.name ?? ""}: чужой язык`;
       d.innerHTML = `<b style="color:${c}">${esc(l.from)}:</b> <i style="color:${c}">${esc(l.text)}</i>`;
-    } else d.innerHTML = `<b style="color:${CLASS_COLOR[l.cls ?? ""] ?? "#ffb070"}">${esc(l.from)}:</b> ${esc(l.text)}`;
+    } else {
+      // Умбрат: имя в цвете фракции (#8fd46a, правило 2.6): цвета классов (маг, тёмный следопыт, рыцарь смерти) совпадали с эпиком и бирюзой
+      const c = l.faction === "umbrath" ? factionColor(l.faction) : CLASS_COLOR[l.cls ?? ""] ?? "#ffb070";
+      d.innerHTML = `<b style="color:${c}">${esc(l.from)}:</b> ${esc(l.text)}`;
+    }
     const atBottom = this.chatLog.scrollTop + this.chatLog.clientHeight >= this.chatLog.scrollHeight - 4;
     this.chatLog.append(d);
     while (this.chatLog.children.length > 80) this.chatLog.firstElementChild!.remove();
@@ -362,7 +378,7 @@ export class Hud {
     const byCls: Record<string, () => boolean> = {
       "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-enc": () => this.enc.close(),
       "win-cook": () => this.cook.close(), "win-quest": () => this.quest.close(), "win-qlog": () => this.quest.closeLog(), "win-tp": () => this.tp.close(),
-      "win-smith": () => this.smith.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
+      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
     };
     const cls = [...top.classList].find((c) => byCls[c]);
     if (cls) byCls[cls]();
@@ -396,6 +412,8 @@ export class Hud {
       <div class="set-row"><label for="set-selfBars">Моя полоска здоровья</label><input id="set-selfBars" type="checkbox"></div>
       <div class="set-row"><label for="set-names">Ники всех остальных</label><input id="set-names" type="checkbox"></div>
       <div class="set-row"><label for="set-bars">Полоски здоровья всех остальных</label><input id="set-bars" type="checkbox"></div>
+      <div class="set-row set-gearfx"><label>${esc(GEAR_FX.setting.label)}</label><div class="set-seg" role="group" aria-label="${esc(GEAR_FX.setting.label)}">${GEAR_FX.setting.modes.map((m) => `<button type="button" class="btn small" data-m="${m.id}">${esc(m.label)}</button>`).join("")}</div></div>
+      <p class="muted set-note">${esc(GEAR_FX.setting.note)}</p>
       <div class="set-row"><button class="btn" id="set-resetwin">Сбросить расположение окон</button></div>
       <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Горячие клавиши</h3>
       <dl class="keys">${keys.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>`;
@@ -420,6 +438,10 @@ export class Hud {
       c.checked = overlay[key];
       c.onchange = () => setOverlay(key, c.checked);
     }
+    const segs = [...body.querySelectorAll<HTMLButtonElement>(".set-seg [data-m]")];
+    const paintSegs = () => segs.forEach((x) => { const on = x.dataset.m === gearFxMode(); x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); });
+    segs.forEach((x) => (x.onclick = () => { setGearFxMode(x.dataset.m as GearFxMode); paintSegs(); }));
+    paintSegs();
     this.settingsBody = body;
   }
   private settingsBody: Element | null = null;
@@ -446,7 +468,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.arena.close() || this.trade.close();
+    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.arena.close() || this.trade.close() || this.inspect.close();
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -474,11 +496,17 @@ export class Hud {
   // ---------- подсказки ----------
   tipFor(elm: HTMLElement, html: () => string) {
     elm.addEventListener("mouseenter", (e) => {
+      // нативная подсказка title (название слота) не должна лезть поверх своей
+      const t = elm.getAttribute("title");
+      if (t) { elm.dataset.title = t; elm.removeAttribute("title"); }
       this.tip.innerHTML = html();
       this.tip.hidden = false;
       this.moveTip(e);
     });
-    elm.addEventListener("mouseleave", () => (this.tip.hidden = true));
+    elm.addEventListener("mouseleave", () => {
+      this.tip.hidden = true;
+      if (elm.dataset.title) { elm.title = elm.dataset.title; delete elm.dataset.title; }
+    });
   }
   private moveTip(e: MouseEvent) {
     if (this.tip.hidden) return;
@@ -490,7 +518,8 @@ export class Hud {
     this.tip.style.left = x / z + "px";
     this.tip.style.top = y / z + "px";
   }
-  itemTip(it: Item, s: SelfState, equipped = false): string {
+  /** Подсказка предмета. bare — без цены и подсказок по клику (осмотр чужого героя, лавка встречи, окно «Герой»). */
+  itemTip(it: Item, s: SelfState, equipped = false, bare = false): string {
     const b = BASE_ITEMS[it.base];
     const lines: string[] = [`<div class="t r${it.rarity}">${esc(itemName(it))}</div>`];
     if (b.slot === "consumable") {
@@ -499,29 +528,45 @@ export class Hud {
       if (MATERIALS[it.base]) return lines.join("") + `<div class="d">Материал для улучшения у кузнеца Грома · ${it.qty ?? 1} шт.</div><div class="d">Цена: ${this.priceHtml(it)}</div>`;
       lines.push(`<div class="d">Расходуемое · ${it.qty ?? 1} шт.</div>`, `<div>${it.base === "hp_potion" ? "Восстанавливает 45% здоровья" : "Восстанавливает 50% маны"}</div>`, `<div class="d">Клавиша ${it.base === "hp_potion" ? "Q" : "E"} или клик</div>`);
     } else {
-      lines.push(`<div class="d">${RARITY_NAMES[it.rarity]} · ${SLOT_NAMES[b.slot]} · ур. предмета ${it.ilvl}</div>`);
+      const slot = b.slot, plus = it.plus || 0;
+      // у надетой вещи в строке типа название слота (title ячейки снимается при наведении, tipFor)
+      const typ = itemTypeName(it), typTxt = equipped && SLOT_NAMES[slot] !== typ ? `${SLOT_NAMES[slot]}: ${typ}` : typ;
+      lines.push(`<div class="d">${RARITY_NAMES[it.rarity]} · ${typTxt}${isTwoHanded(it.base) ? " (двуручное)" : ""} · ур. предмета ${it.ilvl}</div>`);
       const st = effStats(it);
-      if (it.plus) lines.push(`<div class="st">Улучшение +${it.plus}</div>`);
-      if (st.dmgMin) lines.push(`<div>Урон: ${st.dmgMin}–${st.dmgMax}</div>`);
-      if (st.armor) lines.push(`<div>Броня: ${st.armor}</div>`);
-      for (const [k, v] of Object.entries(st)) if (!["dmgMin", "dmgMax", "armor"].includes(k)) lines.push(`<div class="st">+${v}${k === "crit" ? "%" : ""} ${ITEM_STAT_NAMES[k as ItemStatKey]}</div>`);
-      if (b.classes) lines.push(`<div class="${b.classes.includes(s.cls) ? "d" : "warn"}">Класс: ${b.classes.map((c) => CLASSES[c].name).join(", ")}</div>`);
-      lines.push(`<div class="${it.req > s.level ? "warn" : "d"}">Требуется уровень ${it.req}</div>`);
-      if (isBound(it)) lines.push(`<div class="warn">Привязан к персонажу</div>`);
+      // доля заточки: разница между характеристикой с заточкой и без неё
+      const up = (k: ItemStatKey) => (st[k] || 0) - (it.stats[k] || 0);
+      const fromPlus = (txt: string) => (txt ? ` <span class="st">(${txt} от заточки)</span>` : "");
+      if (st.dmgMin) {
+        const lo = up("dmgMin"), hi = up("dmgMax");
+        lines.push(`<div>Урон: ${st.dmgMin}–${st.dmgMax}${fromPlus(hi > 0 ? `+${lo === hi ? hi : `${lo}–${hi}`}` : "")}</div>`);
+      }
+      if (st.armor) lines.push(`<div>Броня: ${st.armor}${fromPlus(up("armor") > 0 ? `+${up("armor")}` : "")}</div>`);
+      for (const [k, v] of Object.entries(st)) if (!["dmgMin", "dmgMax", "armor"].includes(k)) lines.push(`<div class="st">+${v}${k === "crit" ? "%" : ""} ${ITEM_STAT_NAMES[k as ItemStatKey]}${fromPlus(up(k as ItemStatKey) > 0 ? `+${up(k as ItemStatKey)}` : "")}</div>`);
+      // что нарисовано на герое: ступень заточки и тема легендарки (data/gear-fx.json)
+      // бирюза только у видимой заточки (ступень 1+); для +1…+3 строка серая, тема легендарки в цвете легендарки (правило 2.6)
+      if (plus > 0) lines.push(`<div class="fx${enchantTier(plus) >= 1 ? " ench" : ""}">Заточка +${plus}: ${esc(tierText(slot, enchantTier(plus)))}.${nextStepText(slot, plus) ? ` ${esc(nextStepText(slot, plus))}` : ""}</div>`);
+      const theme = legendText(slot, it.legendary);
+      if (theme) lines.push(`<div class="fx theme">Тема: ${esc(theme)}</div>`);
+      if (b.classes) lines.push(`<div class="${b.classes.includes(s.cls) || bare ? "d" : "warn"}">Класс: ${b.classes.map((c) => CLASSES[c].name).join(", ")}</div>`);
+      lines.push(`<div class="${it.req > s.level && !bare ? "warn" : "d"}">Требуется уровень ${it.req}</div>`);
+      if (isBound(it)) lines.push(`<div class="${bare ? "d" : "warn"}">Привязан к персонажу</div>`);
       if (it.legendary && LEGENDARIES[it.legendary]) lines.push(`<div class="legend">★ ${esc(LEGENDARIES[it.legendary].desc)}</div>`, `<div class="lore">${esc(LEGENDARIES[it.legendary].lore)}</div>`);
       if (it.unique) lines.push(`<div class="lore">${esc(UNIQUES[it.unique].lore)}</div>`);
       if (!equipped) {
-        const cur = s.equip[b.slot];
+        const cur = s.equip[slot];
         if (cur && cur.uid !== it.uid) {
           const diff = (k: ItemStatKey) => (st[k] || 0) - (effStats(cur)[k] || 0);
           const parts = (["dmgMax", "armor", "str", "agi", "int", "vit", "hp", "crit"] as ItemStatKey[]).map((k) => [k, diff(k)] as const).filter(([, v]) => v !== 0);
-          if (parts.length) lines.push(`<div class="d">Сравнение с надетым: ${parts.map(([k, v]) => `<span style="color:${v > 0 ? "var(--ok)" : "var(--bad)"}">${v > 0 ? "+" : ""}${v} ${k === "dmgMax" ? "урон" : ITEM_STAT_NAMES[k].toLowerCase()}</span>`).join(", ")}</div>`);
+          if (parts.length) lines.push(`<div class="d">Сравнение с надетым (${esc(itemName(cur))}): ${parts.map(([k, v]) => `<span style="color:${v > 0 ? "var(--ok)" : "var(--bad)"}">${v > 0 ? "+" : ""}${v} ${k === "dmgMax" ? "урон" : ITEM_STAT_NAMES[k].toLowerCase()}</span>`).join(", ")}</div>`);
         }
       }
     }
-    lines.push(`<div class="d">${!this.wins.shop.hidden && !equipped ? "Клик — продать за " : "Цена у торговца: "}${this.priceHtml(it)}</div>`);
-    if (equipped) lines.push(`<div class="d">Клик — снять</div>`);
-    else if (b.slot !== "consumable" && this.wins.shop.hidden) lines.push(`<div class="d">Клик — надеть · перетаскивание — переложить</div>`);
+    if (!bare) {
+      lines.push(`<div class="d">${!this.wins.shop.hidden && !equipped ? "Клик — продать за " : "Цена у торговца: "}${this.priceHtml(it)}</div>`);
+      if (equipped) lines.push(`<div class="d">Клик — снять</div>`);
+      else if (b.slot !== "consumable" && this.wins.shop.hidden) lines.push(`<div class="d">Клик — надеть · перетаскивание — переложить</div>`);
+    }
+    if (b.slot !== "consumable" && (it.plus || it.rarity > 0)) lines.push(`<div class="hint">${esc(GEAR_FX.texts.tooltipHint)}</div>`);
     return lines.join("");
   }
   skillTip(def: SkillDef, s: SelfState): string {
@@ -630,7 +675,7 @@ export class Hud {
   private renderChar(s: SelfState) {
     const b = this.body("char");
     const d = s.derived;
-    b.innerHTML = `<p class="muted">Свободно очков: <b class="gold">${s.statPoints}</b> (3 за уровень)</p><div class="stats"></div>
+    b.innerHTML = `<div class="char-cols"><div class="char-main"><p class="muted">Свободно очков: <b class="gold">${s.statPoints}</b> (3 за уровень)</p><div class="stats"></div>
       <div class="derived">
         <span>Урон</span><span>${d.dmgMin}–${d.dmgMax}</span>
         <span>Здоровье</span><span>${d.maxHp}</span>
@@ -646,7 +691,15 @@ export class Hud {
         ${d.lifesteal ? `<span>Вампиризм</span><span>${Math.round(d.lifesteal * 100)}%</span>` : ""}
         <span>Убито врагов</span><span>${s.kills}</span>
         <span>Повержено боссов</span><span>${Object.values(s.bossKills).reduce((a, c) => a + c, 0)}</span>
-      </div>`;
+      </div></div><div class="char-side"></div></div>`;
+    const gear = el("div", "gear-block");
+    gear.append(el("h3", "gear-h", "Снаряжение"), gearRows(SLOTS.map((slot) => ({ slot, item: s.equip[slot] })), s.id, {
+      tip: (elm, it) => this.tipFor(elm, () => this.itemTip(it, this.ctx.net.self!, true, true)),
+      hover: (slot) => { if (slot) flashGear(s.id, slot); },
+    }));
+    const total = enchantTotal(SLOTS.map((slot) => s.equip[slot]));
+    if (total) gear.append(el("p", "muted gear-total", total));
+    b.querySelector(".char-side")!.append(gear, legendBlock());
     const grid = b.querySelector(".stats")!;
     for (const k of ["str", "agi", "int", "vit"] as StatKey[]) {
       const main = CLASSES[s.cls].mainStat === k;
@@ -666,6 +719,7 @@ export class Hud {
       c.classList.add(`r${it.rarity}`);
       if (BASE_ITEMS[it.base].slot !== "consumable" && canEquip(it, s.cls, s.level)) c.classList.add("cant");
       c.innerHTML = `<img src="${icon(iconFor(it))}" alt="${esc(itemName(it))}">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}`;
+      if (label) c.title = label;
     } else if (label) {
       // пустой слот экипировки: бледный силуэт вещи, название — в подсказке
       const base = ghostBase[label];
@@ -740,7 +794,7 @@ export class Hud {
     for (const slot of SLOTS) {
       if (slot === "offhand" && !OFFHAND_CLASSES.includes(s.cls)) continue;
       const it = s.equip[slot];
-      ghostBase[SLOT_NAMES[slot]] = slot === "weapon" ? CLASSES[s.cls].startWeapon : slot === "offhand" ? "shield" : slot;
+      ghostBase[SLOT_NAMES[slot]] = slot === "weapon" ? CLASSES[s.cls].startWeapon : slot === "offhand" ? offhandGhost(s.cls) : slot;
       const c = this.cell(it, s, "", SLOT_NAMES[slot]);
       if (it) {
         c.onclick = () => this.ctx.net.send("unequip", { slot });
@@ -788,6 +842,8 @@ export class Hud {
     const defs = classSkills(s.cls);
     const rows = Math.max(...defs.map((d) => d.tree[0])) + 1;
     tree.style.gridTemplateRows = `repeat(${rows}, auto)`;
+    // по умолчанию 3 колонки; у деревьев лучников узлы стоят и в 4-й (иначе линии req проходят через чужие узлы)
+    tree.style.gridTemplateColumns = `repeat(${Math.max(3, ...defs.map((d) => d.tree[1] + 1))}, 1fr)`;
     const nodes = new Map<string, HTMLElement>();
     for (const def of defs) {
       const r = s.skills[def.id] || 0;
@@ -919,15 +975,15 @@ export class Hud {
       s.inventory.forEach((it, i) => {
         if (!it) return;
         any = true;
-        const c = el("button", `sell-cell r${it.rarity}`, `<img src="${icon(iconFor(it))}" alt="">${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}<span class="sp">${this.sellInfo(it).price}</span>`);
+        const c = el("button", `sell-cell r${it.rarity}`, `<img src="${icon(iconFor(it))}" alt="">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}<span class="sp">${this.sellInfo(it).price}</span>`);
         c.onclick = () => this.ctx.net.send("sell", { index: i });
         this.tipFor(c, () => this.itemTip(it, s));
         grid.append(c);
       });
       list.append(any ? grid : el("p", "muted", "Сумка пуста."));
-      const junk = s.inventory.map((it, i) => [it, i] as const).filter(([it]) => it && it.rarity === 0 && BASE_ITEMS[it.base].slot !== "consumable");
+      const junk = s.inventory.map((it, i) => [it, i] as const).filter(([it]) => it && it.rarity === 0 && !it.plus && BASE_ITEMS[it.base].slot !== "consumable");
       const junkSum = junk.reduce((a, [it]) => a + this.sellInfo(it!).price * (it!.qty ?? 1), 0);
-      const sellAll = el("button", "btn", `Продать все обычные вещи (${junk.length}) · ${gold(junkSum, "~")}`);
+      const sellAll = el("button", "btn", `Продать все обычные вещи без заточки (${junk.length}) · ${gold(junkSum, "~")}`);
       sellAll.disabled = !junk.length;
       sellAll.onclick = () => junk.slice().reverse().forEach(([, i]) => this.ctx.net.send("sell", { index: i }));
       list.append(sellAll);
@@ -1037,6 +1093,9 @@ export class Hud {
     }
     // цель
     const t = info.target;
+    this.targetSid = t && t.anim !== Anim.Dead && t.kind === UnitKind.Player && this.ctx.net.kind === "world" ? info.targetId ?? null : null;
+    this.targetBox.classList.toggle("inspectable", !!this.targetSid);
+    this.targetBox.title = this.targetSid ? "Клик — осмотреть" : "";
     if (t && t.anim !== Anim.Dead) {
       this.targetBox.hidden = false;
       const boss = t.kind === UnitKind.Boss;

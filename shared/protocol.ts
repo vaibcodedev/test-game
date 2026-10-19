@@ -78,6 +78,8 @@ export interface ClientMessages {
   "pet:select": { id: string };
   "pet:buy": { id: string };
   "bag:expand": Record<string, never>;
+  /** Осмотр игрока: sid — id сессии из state.players. Ответ — сообщение "inspect" (InspectReply). */
+  inspect: { sid: string };
   "tp:go": { id: string };
   "quest:accept": { id: string };
   "quest:turn": { id: string };
@@ -119,6 +121,28 @@ export interface SelfState {
   cities?: string[];
   quests?: QuestSave;
   /** Входящие запросы на обмен отключены. */
+}
+
+/** Одна из 7 вещей в ответе на осмотр. Пустой слот: base "", item null. r — редкость, leg — id легендарки. */
+export interface InspectSlot {
+  slot: Slot;
+  base: string;
+  r: number;
+  plus: number;
+  leg: string;
+  model: string;
+  /** Полный предмет (характеристики для подсказки со сравнением); имя клиент берёт из каталога или из него. */
+  item: Item | null;
+}
+
+/** Ответ сервера на "inspect": герой и 7 вещей в порядке SLOTS. */
+export interface InspectReply {
+  sid: string;
+  name: string;
+  cls: ClassId;
+  lvl: number;
+  fac: FactionId;
+  equip: InspectSlot[];
 }
 
 export interface LootBag {

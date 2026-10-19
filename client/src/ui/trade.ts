@@ -64,15 +64,20 @@ export class TradeUI {
     return true;
   }
 
-  /** Контекстное меню по правому клику на игроке. */
-  showMenu(id: string, name: string, x: number, y: number) {
-    this.menu.innerHTML = `<div class="d">${esc(name)}</div><button class="btn small">Предложить обмен</button>`;
+  /** Контекстное меню по правому клику на игроке: «Осмотреть» (если передан onInspect) и «Предложить обмен». */
+  showMenu(id: string, name: string, x: number, y: number, onInspect?: () => void) {
+    this.menu.innerHTML = `<div class="d">${esc(name)}</div>${onInspect ? `<button class="btn small" data-a="inspect">Осмотреть</button>` : ""}<button class="btn small" data-a="trade">Предложить обмен</button>`;
     this.menu.style.left = Math.min(x, innerWidth - 180) + "px";
-    this.menu.style.top = Math.min(y, innerHeight - 80) + "px";
+    this.menu.style.top = Math.min(y, innerHeight - 110) + "px";
     this.menu.hidden = false;
-    this.menu.querySelector("button")!.onclick = () => {
+    this.menu.querySelector<HTMLButtonElement>("[data-a=trade]")!.onclick = () => {
       this.menu.hidden = true;
       this.net.send("trade:request", { id });
+    };
+    const insp = this.menu.querySelector<HTMLButtonElement>("[data-a=inspect]");
+    if (insp) insp.onclick = () => {
+      this.menu.hidden = true;
+      onInspect!();
     };
   }
 

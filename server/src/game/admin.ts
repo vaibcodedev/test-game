@@ -1,6 +1,7 @@
 /** Админ-команды ("admin:*"): права читаются из БД на каждое действие, остальные игроки игнорируются. */
 import { LEGENDARIES, makeLegendary } from "../../../shared/legendary";
-import { BASE_ITEMS, makeItem, makeUnique, UNIQUES, Rarity, type Item } from "../../../shared/items";
+import { BASE_ITEMS, ITEM_MODELS, canEquip, isTwoHanded, itemName, makeItem, makeUnique, UNIQUES, Rarity, type Item } from "../../../shared/items";
+import { MAX_PLUS } from "../../../shared/upgrade";
 import { MAX_LEVEL } from "../../../shared/constants";
 import { xpToNext } from "../../../shared/formulas";
 import { ZONES } from "../../../shared/map";
@@ -13,7 +14,7 @@ import { createBoss } from "./bosses";
 import { Mob } from "./Mob";
 import type { Player } from "./Player";
 import { gainXp } from "./rewards";
-import { addItem } from "./inventory";
+import { addItem, equip } from "./inventory";
 import { startEncounter, type EncKind } from "./encounters";
 
 const PERMA = 9e12;
@@ -24,11 +25,18 @@ export function registerAdmin(room: WorldRoom, on: On) {
   const str = (v: unknown, max = 60) => (typeof v === "string" ? cleanText(v).slice(0, max) : "");
   const toast = (p: Player, text: string, kind = "info") => p.send("toast", { text, kind });
 
-  /** Регистрирует админ-сообщение: не-админ молча игнорируется и пишется в журнал как попытка. */
+  /** Отказы не-админам пишем не чаще раза в DENY_LOG_MS на игрока и тип сообщения: иначе поток сообщений раздувает БД и консоль. */
+  const deniedAt = new Map<string, number>();
+  const DENY_LOG_MS = 10_000;
+  /** Регистрирует админ-сообщение: не-админ молча игнорируется и пишется в журнал как попытка (с ограничением частоты). */
   const adm = <T>(type: string, fn: (p: Player, m: T) => void) =>
     on<T>(type, (p, m) => {
       if (!db().isAdmin(p.name)) {
         p.admin = false;
+        const now = Date.now(), key = p.name + "|" + type;
+        if (now - (deniedAt.get(key) ?? 0) < DENY_LOG_MS) return;
+        if (deniedAt.size > 500) for (const [k, at] of deniedAt) if (now - at >= DENY_LOG_MS) deniedAt.delete(k);
+        deniedAt.set(key, now);
         console.warn(`[admin] попытка без прав: ${p.name} -> ${type}`);
         try { db().adminLog(p.name, "denied:" + type, "", {}); } catch {}
         return;
@@ -43,27 +51,78 @@ export function registerAdmin(room: WorldRoom, on: On) {
     p.send("admin:players", [...w().players.values()].map((x) => ({ name: x.name, cls: x.cls, level: x.level, x: Math.round(x.unit.x), y: Math.round(x.unit.y), admin: x.admin })));
   });
 
-  adm<{ name: unknown; base: unknown; unique: unknown; rarity: unknown; ilvl: unknown; qty: unknown }>("admin:give", (p, m) => {
-    const t = online(str(m.name));
-    if (!t) return toast(p, "Игрок не в сети", "error");
-    const id = str(m.base) || str(m.unique);
-    const qty = Math.round(num(m.qty, 1, 99) ?? 1);
-    const mk = (): Item | null => {
-      if (LEGENDARIES[id]) return makeLegendary(id);
-      if (UNIQUES[id]) return makeUnique(id);
-      if (BASE_ITEMS[id]) return makeItem(id, Math.round(num(m.ilvl, 1, 60) ?? 1), Math.round(num(m.rarity, 0, 3) ?? 0) as Rarity);
-      return null;
+  /**
+   * Выдача предмета. Ключ id — один из: model (модель каталога data/items.json), base (база/расходник), unique (босс; для совместимости
+   * принимает и легендарный), legendary. Числа строго проверяются: редкость 0..2 (3 бывает только у настоящих легендарок из каталога),
+   * ilvl 1..100 (у модели по умолчанию её уровень), заточка 0..MAX_PLUS, количество 1..99; не целое или вне диапазона — отказ, ничего
+   * не выдаётся. equip — сразу надеть (одну вещь). Итог всегда один: тост админу и сообщение admin:give:result { kind, text, given, worn }.
+   */
+  adm<{ name: unknown; model: unknown; base: unknown; unique: unknown; legendary: unknown; rarity: unknown; ilvl: unknown; plus: unknown; qty: unknown; equip: unknown }>("admin:give", (p, m) => {
+    const reply = (kind: "info" | "warn" | "error", text: string, extra: object = {}) => {
+      toast(p, text, kind === "info" ? "info" : "error");
+      p.send("admin:give:result", { kind, text, given: 0, worn: false, ...extra });
     };
-    const first = mk();
-    if (!first) return toast(p, `Нет предмета «${id}»`, "error");
+    const t = online(str(m.name));
+    if (!t) return reply("error", "Игрок не в сети");
+    // таблицы — обычные объекты: ключи прототипа («constructor», «__proto__») за предмет не считаются
+    const own = (o: object, k: string) => Object.hasOwn(o, k);
+    const sm = str(m.model), sl = str(m.legendary), su = str(m.unique), sb = str(m.base);
+    const id = sm || sl || su || sb;
+    let kind: "model" | "legendary" | "unique" | "base";
+    if (sm) { if (!own(ITEM_MODELS, id)) return reply("error", `Нет модели «${id}»`); kind = "model"; }
+    else if (sl) { if (!own(LEGENDARIES, id)) return reply("error", `Нет легендарного предмета «${id}»`); kind = "legendary"; }
+    else if (su && own(LEGENDARIES, id)) kind = "legendary";
+    else if (su && own(UNIQUES, id)) kind = "unique";
+    else if (!su && (own(BASE_ITEMS, id) || own(ITEM_MODELS, id))) kind = "base";
+    else return reply("error", `Нет предмета «${id}»`);
+    const int = (v: unknown, min: number, max: number, def: number): number | undefined =>
+      v === undefined || v === null ? def : typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : undefined;
+    const fixed = kind === "legendary" || kind === "unique";
+    const rarity = int(m.rarity, 0, kind === "legendary" ? 3 : 2, 0), ilvl = int(m.ilvl, 1, MAX_LEVEL, own(ITEM_MODELS, id) ? ITEM_MODELS[id].lvl : 1);
+    const plus = int(m.plus, 0, MAX_PLUS, 0), qty = int(m.qty, 1, 99, 1);
+    if (rarity === undefined || ilvl === undefined || plus === undefined || qty === undefined || (m.equip !== undefined && typeof m.equip !== "boolean"))
+      return reply("error", `Неверные значения: редкость 0–2, ур. предмета 1–${MAX_LEVEL}, заточка 0–${MAX_PLUS}, количество 1–99`);
+    const mk = (): Item => {
+      const it = kind === "legendary" ? makeLegendary(id) : kind === "unique" ? makeUnique(id) : makeItem(id, ilvl, rarity as Rarity);
+      if (plus && BASE_ITEMS[it.base].slot !== "consumable") it.plus = plus;
+      return it;
+    };
+    let first: Item;
+    try { first = mk(); } catch { return reply("error", `Не удалось создать предмет «${id}»`); }
+    const stack = BASE_ITEMS[first.base].stack ?? 0;
+    const want = fixed || stack ? (stack ? qty : 1) : qty;
     let given = 0;
-    if (BASE_ITEMS[first.base].stack) {
-      first.qty = qty;
-      given = addItem(t, first) ? qty : 0;
-    } else for (let i = 0; i < (LEGENDARIES[id] || UNIQUES[id] ? 1 : qty); i++) if (addItem(t, i ? mk()! : first)) given++;
-    if (given) toast(t, `Администратор выдал: ${first.name}${given > 1 ? " ×" + given : ""}`, "loot");
-    toast(p, given ? `Выдано ${first.name} ×${given} → ${t.name}` : "Нет места в сумке", given ? "info" : "error");
-    log(p, "give", t.name, { id, rarity: first.rarity, ilvl: first.ilvl, qty, given });
+    if (stack) {
+      // место считаем заранее: addItem при нехватке места не откатывает уже долитые стопки
+      let room = 0;
+      for (const s of t.save.inventory) room += !s ? stack : s.base === first.base ? Math.max(0, stack - (s.qty ?? 1)) : 0;
+      given = Math.min(qty, room);
+      if (given) { first.qty = given; if (!addItem(t, first)) given = 0; }
+    } else for (let i = 0; i < want; i++) if (addItem(t, i ? mk() : first)) given++;
+    t.selfDirty = true;
+    const nm = itemName(first);
+    if (!given) {
+      log(p, "give", t.name, { id, rarity: first.rarity, ilvl: first.ilvl, plus, qty, given, equip: false });
+      return reply("error", `Нет места в сумке: ${nm} не выдано → ${t.name}`);
+    }
+    // надеть: причину отказа отдаём админу в том же ответе (equip() сам шлёт тост получателю)
+    let worn = false, notWorn = "";
+    if (m.equip === true && BASE_ITEMS[first.base].slot !== "consumable") {
+      const why = canEquip(first, t.cls, t.level), at = t.save.inventory.indexOf(first), slot = BASE_ITEMS[first.base].slot;
+      if (why) notWorn = why.charAt(0).toLowerCase() + why.slice(1);
+      else if (at < 0) notWorn = "вещь не попала в сумку";
+      else {
+        equip(w(), t, at);
+        worn = Object.values(t.save.equip).includes(first);
+        t.selfDirty = true;
+        if (!worn) notWorn = slot === "offhand" && isTwoHanded(t.save.equip.weapon?.base) ? "двуручное оружие занимает обе руки" : slot === "weapon" && isTwoHanded(first.base) && t.save.equip.offhand ? "сумка полна: некуда снять вторую руку" : "не удалось надеть";
+      }
+    }
+    toast(t, `Администратор выдал: ${nm}${given > 1 ? " ×" + given : ""}`, "loot");
+    const part = given < want ? ` · не влезло: ${want - given}` : "";
+    const text = `Выдано ${nm}${given > 1 ? " ×" + given : ""}${worn ? " (надето)" : ""} → ${t.name}${part}${notWorn ? ` · не надето: ${notWorn}` : ""}`;
+    reply(notWorn || part ? "warn" : "info", text, { given, worn });
+    log(p, "give", t.name, { id, rarity: first.rarity, ilvl: first.ilvl, plus, qty, given, equip: worn, ...(notWorn ? { notWorn } : {}) });
   });
 
   adm<{ name: unknown; v: unknown }>("admin:gold", (p, m) => {

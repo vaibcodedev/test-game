@@ -4,6 +4,7 @@ import { CLASSES, type ClassId } from "../../../shared/classes";
 import { FACTIONS, FACTION_IDS, factionColor, type FactionId } from "../../../shared/factions";
 import { NAME_RE } from "../../../shared/constants";
 import { SLOT_NAMES } from "../../../shared/items";
+import { plusBadgeN } from "./smith";
 import { api } from "../account";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -141,7 +142,7 @@ export class CharSelect {
       b.setAttribute("aria-pressed", String(c.name === this.sel));
       b.dataset.name = c.name;
       const cv = heroCanvas(96, c.cls, c.look);
-      const eq = c.equip.map((e) => `<span class="cell r${e.rarity}" title="${esc(SLOT_NAMES[e.slot] + ": " + e.name)}"><img src="/assets/icons/${esc(e.icon)}.png" alt=""></span>`).join("");
+      const eq = c.equip.map((e) => `<span class="cell r${e.rarity}" title="${esc(SLOT_NAMES[e.slot] + ": " + e.name)}"><img src="/assets/icons/${esc(e.icon)}.png" alt="">${plusBadgeN(e.plus)}</span>`).join("");
       b.innerHTML = `<div class="cs-eq">${eq || `<span class="muted">без снаряжения</span>`}</div>
         <span class="nm">${esc(c.name)}</span><span class="meta">${esc(CLASSES[c.cls]?.name ?? c.cls)} · ${c.level} ур.</span><span class="meta fac" style="color:${factionColor(c.faction)}">${esc(FACTIONS[c.faction]?.name ?? "")}</span>
         <span class="meta zone">${esc(c.zone)}</span>${c.banned ? `<span class="cs-banned">${esc(c.banned)}</span>` : ""}`;

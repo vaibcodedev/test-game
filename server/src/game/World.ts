@@ -21,12 +21,16 @@ import { createBoss } from "./bosses";
 import * as legendary from "./legendary";
 import * as tanks from "./tanks";
 import * as healers from "./healers";
+import * as mages from "./mages";
+import * as archers from "./archers";
 import { rogueProc } from "./rogue";
+import * as rogues from "./rogue";
 import { grantKillRewards } from "./rewards";
 import { tickEncounters } from "./encounters";
 import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
+import { applySlow, tickEffects } from "./effects";
 import type { Player } from "./Player";
 
 export type Broadcast = (type: string, msg: unknown) => void;
@@ -49,7 +53,18 @@ export interface HitOpts {
   noBreak?: boolean;
 }
 
-const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+/**
+ * Итог удара (World.hitEx). landed — удар дошёл до цели: не промах (уклонение, нейтральный город, мёртвый
+ * или выбывший актёр). Удар, целиком поглощённый щитом, блоком или incoming-защитой, — попадание (landed, dealt = 0).
+ * Контроль и дебаффы умений вешаются по landed; вампиризм, лечение от урона, ярость — по dealt.
+ */
+export interface HitResult {
+  landed: boolean;
+  dealt: number;
+}
+const MISS: Readonly<HitResult> = Object.freeze({ landed: false, dealt: 0 });
+
+const rnd =(a: number, b: number) => a + Math.random() * (b - a);
 
 export interface WorldOptions {
   /** Своя карта (арена); по умолчанию — карта мира. */
@@ -76,7 +91,7 @@ export class World {
   /** Время симуляции в мс (растёт только в тиках). */
   time = 0;
   private fx: Fx[] = [];
-  private timers: { at: number; fn: () => void }[] = [];
+  private timers: { at: number; fn: () => void; owner?: Actor; life: number }[] = [];
   private nextId = 1;
   /** Постоянные зоны урона (лужи яда, огонь). */
   /** Стражники и горожане города (только в мире, не на арене). */
@@ -97,8 +112,12 @@ export class World {
   emit(fx: Fx) {
     this.fx.push(fx);
   }
-  later(ms: number, fn: () => void) {
-    this.timers.push({ at: this.time + ms, fn });
+  /**
+   * Отложенный вызов через ms. owner — чей это таймер (умение героя): вызов пропускается, если к сроку владелец
+   * погиб (даже если уже возродился) или ушёл из этого мира. Без owner вызывается всегда (уборка, конец эффекта).
+   */
+  later(ms: number, fn: () => void, owner?: Actor) {
+    this.timers.push({ at: this.time + ms, fn, owner, life: owner ? owner.deadAt : 0 });
   }
   chat(line: ChatLine) {
     this.broadcast("chat", line);
@@ -172,10 +191,33 @@ export class World {
       p.send("toast", { text: "В нейтральном городе сражаться нельзя! Стража атакует нарушителя", kind: "error" });
     }
   }
-  /** Живые враги в круге: мобы и враждебные игроки. */
+  /** Бой героев в нейтральном городе (в мире): запрещён, кроме отпора нарушителю. */
+  private townSafe(src: Actor, dst: Actor): boolean {
+    if (src === dst || !this.isPlayer(src) || !this.isPlayer(dst)) return false;
+    if (!this.inNeutral(src.x, src.y) && !this.inNeutral(dst.x, dst.y)) return false;
+    return !(dst.outlawUntil > this.time && src.outlawUntil <= this.time);
+  }
+  /** Герой уже не в этом мире (вышел, ушёл на арену): его отложенные умения никого не задевают. */
+  private absent(a: Actor): boolean {
+    return this.isPlayer(a) && this.players.get(a.id) !== a;
+  }
+  /**
+   * Может ли src задеть dst уроном, контролем, дебаффом или автоцелью: нет, если герой (src или dst) уже не в этом мире
+   * или это бой героев в нейтральном городе (кроме отпора нарушителю). Ничего не отмечает: клеймо нарушителя ставит только прямой удар (hit).
+   * Автоцели и пассивки по площади — через enemiesInCircle; контроль и дебаффы — через помощники effects.ts.
+   */
+  canAffect(src: Actor, dst: Actor): boolean {
+    return !this.absent(src) && !this.absent(dst) && !this.townSafe(src, dst);
+  }
+  /** Актёр выбыл: мёртв или (герой) уже не в этом мире — проверка для таймеров умений. */
+  gone(a: Actor): boolean {
+    return this.isDead(a) || this.absent(a);
+  }
+  /** Живые враги в круге, которых src может задеть (canAffect): мобы и враждебные игроки. */
   enemiesInCircle(src: Actor, x: number, y: number, r: number): Actor[] {
+    if (this.absent(src)) return [];
     const out: Actor[] = this.mobsInCircle(x, y, r);
-    for (const p of this.playersInCircle(x, y, r)) if (this.hostile(src, p)) out.push(p);
+    for (const p of this.playersInCircle(x, y, r)) if (this.hostile(src, p) && this.canAffect(src, p)) out.push(p);
     // урон по площади не проходит сквозь стены
     return out.filter((a) => lineClear(this.map, x, y, (a as { x: number }).x, (a as { y: number }).y));
   }
@@ -249,6 +291,7 @@ export class World {
     if (!due.length) return;
     this.timers = this.timers.filter((t) => t.at > this.time);
     for (const t of due) {
+      if (t.owner && (this.gone(t.owner) || t.owner.deadAt !== t.life)) continue;
       try {
         t.fn();
       } catch (e) {
@@ -300,23 +343,29 @@ export class World {
     return out;
   }
 
-  /** Нанесение урона с бронёй, критом, вампиризмом и наградой за убийство. */
+  /** Нанесение урона с бронёй, критом, вампиризмом и наградой за убийство. Возвращает нанесённый урон (0 и при промахе, и при поглощении). */
   hit(src: Actor, dst: Actor, o: HitOpts = {}): number {
-    if (this.isDead(dst) || this.isDead(src)) return 0;
+    return this.hitEx(src, dst, o).dealt;
+  }
+
+  /** То же, что hit, но отличает промах от попадания: см. HitResult. Контроль умений вешать по landed. */
+  hitEx(src: Actor, dst: Actor, o: HitOpts = {}): Readonly<HitResult> {
+    if (this.isDead(dst) || this.isDead(src)) return MISS;
+    // отложенный удар героя, который уже не в этом мире (или по такому герою), не проходит: ни урона, ни угрозы, ни награды
+    if (this.absent(src) || this.absent(dst)) return MISS;
     // нейтральный город: герой не может ранить героя (кроме отпора нарушителю); попытка — нарушение
-    if (this.isPlayer(src) && this.isPlayer(dst) && src !== dst && (this.inNeutral(src.x, src.y) || this.inNeutral(dst.x, dst.y))) {
-      if (!(dst.outlawUntil > this.time && src.outlawUntil <= this.time)) {
-        if (!o.noProc) this.markOutlaw(src);
-        return 0;
-      }
+    if (this.townSafe(src, dst)) {
+      if (!o.noProc) this.markOutlaw(src as Player);
+      return MISS;
     }
-    if (this.isPlayer(src) && !o.noBreak) src.stealthUntil = 0;
+    if (this.isPlayer(src) && !o.noBreak) { rogues.onBreak(this, src); src.stealthUntil = 0; }
     // уклонение (Ловкость): обычные удары мобов и игроков, кроме фиксированного урона (зоны боссов, отражение, DoT)
     if (this.isPlayer(dst) && o.flat === undefined && src !== dst && Math.random() < dst.derived.dodge) {
       dst.combatAt = this.time;
       if (this.isPlayer(src)) src.combatAt = this.time;
       this.emit({ t: "dmg", id: this.idOf(dst), v: 0, miss: true });
-      return 0;
+      rogues.onDodge(this, dst, src);
+      return MISS;
     }
     let amount: number, crit = false;
     if (this.isPlayer(src)) {
@@ -331,12 +380,12 @@ export class World {
       if (!this.isPlayer(dst) && dst.def.boss) amount *= d.bossMult;
       const forced = o.flat === undefined && src.critNextUntil > this.time;
       if (forced) src.critNextUntil = 0;
-      if (o.canCrit !== false && (forced || Math.random() < d.crit)) {
+      if (o.canCrit !== false && (forced || Math.random() < d.crit + rogues.critBonus(this, src, dst))) {
         crit = true;
         amount *= d.critMult;
       }
       if (o.flat) amount = o.flat;
-      else amount *= tanks.outgoing(this, src, dst, o) * healers.outgoing(this, src, dst, o);
+      else amount *= tanks.outgoing(this, src, dst, o) * healers.outgoing(this, src, dst, o) * mages.outgoing(this, src, dst, o) * archers.outgoing(this, src, dst, o) * rogues.outgoing(this, src, dst, o);
     } else {
       amount = o.flat ?? src.stats.dmg * rnd(0.85, 1.15) * (o.mult ?? 1);
       if (src.unit.buffs & 0x20) amount *= 1.3; // ярость босса
@@ -364,18 +413,14 @@ export class World {
         amount *= 1 - dst.blockPct / 100;
       }
       // костяная броня: бьющий вплотную замедлен
-      if (dst.boneUntil > this.time && src !== dst && this.dist(src, dst) < 90) {
-        const live = src.slowUntil > this.time ? src.slowPct : 0;
-        src.slowUntil = Math.max(src.slowUntil, this.time + 1500 * (this.isPlayer(src) ? 1 - src.derived.ccReduce : 1));
-        src.slowPct = Math.max(dst.boneChill, live);
-      }
+      if (dst.boneUntil > this.time && src !== dst && this.dist(src, dst) < 90) applySlow(this, dst, src, dst.boneChill, 1500);
       const before = amount;
-      amount = healers.incoming(this, src, dst, tanks.incoming(this, src, dst, amount, o), o);
+      amount = rogues.incoming(this, src, dst, mages.incoming(this, src, dst, healers.incoming(this, src, dst, tanks.incoming(this, src, dst, amount, o), o), o));
       if (amount <= 0) {
         dst.combatAt = this.time;
         if (this.isPlayer(src)) src.combatAt = this.time;
         this.emit({ t: "dmg", id: dst.id, v: Math.round(before), abs: true });
-        return 0;
+        return { landed: true, dealt: 0 };
       }
     }
     if (this.isPlayer(src) && this.isPlayer(dst)) amount *= PVP_DAMAGE_MULT;
@@ -387,11 +432,12 @@ export class World {
         amount -= ab;
         if (dst.shieldBy) this.onHeal?.(dst.shieldBy, Math.round(ab));
         healers.onAbsorb(this, dst.shieldBy, dst, ab, src);
+        mages.onAbsorb(this, dst, ab);
         if (amount < 0.5) {
           dst.combatAt = this.time;
           if (this.isPlayer(src)) src.combatAt = this.time;
           this.emit({ t: "dmg", id: dst.id, v: Math.round(ab), abs: true });
-          return 0;
+          return { landed: true, dealt: 0 };
         }
       } else dst.shieldAmt = 0;
     }
@@ -409,7 +455,7 @@ export class World {
       }
     }
     let v = Math.max(1, Math.round(amount));
-    if (this.isPlayer(dst)) v = healers.beforeLethal(this, dst, tanks.beforeLethal(this, dst, v));
+    if (this.isPlayer(dst)) v = rogues.beforeLethal(this, dst, mages.beforeLethal(this, dst, healers.beforeLethal(this, dst, tanks.beforeLethal(this, dst, v))));
     this.applyDamage(dst, v, src);
     this.onDamage?.(src, dst, v);
     this.emit({ t: "dmg", id: this.idOf(dst), v, crit, k: o.kind ?? "phys" });
@@ -417,15 +463,21 @@ export class World {
       const ls = src.derived.lifesteal + (src.frenzyUntil > this.time ? src.frenzyLeech / 100 : 0);
       if (ls > 0) this.heal(src, Math.round(v * ls), false);
       tanks.afterDealt(this, src, dst, v, o);
+      rogues.afterDealt(this, src, dst, v, o);
       healers.afterDealt(this, src, dst, v, o);
+      mages.afterDealt(this, src, dst, v, o, crit);
+      archers.afterDealt(this, src, dst, v, o, crit);
     }
     if (this.isPlayer(dst) && !o.noProc) tanks.afterDamaged(this, src, dst, v, o);
     if (this.isPlayer(dst)) healers.afterDamaged(this, src, dst, v, o);
+    if (this.isPlayer(dst)) mages.afterDamaged(this, src, dst, v, o);
+    if (this.isPlayer(dst)) archers.afterDamaged(this, src, dst, v, o);
+    if (this.isPlayer(dst)) rogues.afterDamaged(this, src, dst, v);
     if (!this.isPlayer(dst)) dst.addThreat(this.idOf(src), v * (o.threat ?? 1) * (this.isPlayer(src) ? CLASSES[src.cls].threat : 1));
     if (reflect >= 1 && !o.noReflect && !this.isDead(src)) this.hit(dst, src, { flat: Math.round(reflect), canCrit: false, noReflect: true, noProc: true, threat: 1 });
     legendary.onHit(this, src, dst, v, crit, o);
     legendary.onDamaged(this, src, dst, v, o);
-    return v;
+    return { landed: true, dealt: v };
   }
 
   idOf(a: Actor) {
@@ -491,7 +543,7 @@ export class World {
     m.respawnAt = this.time + respawn;
     m.boss?.onDeath();
     if (m.boss) this.bossKills.set(m.def.id, { by: killer && this.isPlayer(killer) ? killer.name : "неизвестный герой", at: this.time });
-    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); }
+    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); }
     grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined);
     if (m.summoned) this.later(2500, () => this.removeMob(m));
   }
@@ -599,6 +651,8 @@ export class World {
     const u = p.unit;
     if (p.dead) return;
     const t = this.time;
+    tickEffects(this, p);
+    archers.tickArcher(this, p);
     // эффекты состояния -> флаги для клиентов
     let b = 0;
     if (p.slowUntil > t) b |= BUFF_SLOW;
@@ -708,11 +762,11 @@ export class World {
         if (this.isDead(target) || !this.hostile(p, target)) return;
         this.hit(p, target, { kind: atk.hit });
         if (cls === "rogue") rogueProc(this, p, target);
-      });
+      }, p);
     } else {
       const ms = (this.dist(u, target) / (atk.speed ?? 500)) * 1000;
       this.emit({ t: "proj", k: atk.proj ?? "arcane", from: p.id, to: target.id, tx: target.x, ty: target.y, ms });
-      this.later(ms, () => { if (!this.isDead(target) && this.hostile(p, target)) this.hit(p, target, { kind: atk.hit }); });
+      this.later(ms, () => { if (!this.isDead(target) && this.hostile(p, target)) this.hit(p, target, { kind: atk.hit }); }, p);
     }
   }
 
@@ -795,6 +849,7 @@ export class World {
       }
       return;
     }
+    tickEffects(this, m);
     let b = 0;
     if (m.slowUntil > t) b |= BUFF_SLOW;
     if (m.stunUntil > t) b |= BUFF_STUN;

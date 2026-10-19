@@ -6,9 +6,12 @@ import { SKILLS } from "../../../shared/skills";
 import { CLASSES } from "../../../shared/classes";
 import { castUmbrath } from "./umbrath";
 import { castTank, onCast } from "./tanks";
+import { castMage, onCast as mageCast } from "./mages";
 import { castHealer, powerMult } from "./healers";
+import { castArcher, onCast as onCastArcher } from "./archers";
 import type { Pet } from "./Pet";
-import { applyPoison, facing, isBehind } from "./rogue";
+import { applyPoison, castRogue, facing, isBehind, onCast as onRogueCast } from "./rogue";
+import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effects";
 import type { Player } from "./Player";
 import { World, type Actor } from "./World";
 
@@ -54,10 +57,11 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
   const isBoss = (a: Actor) => !w.isPlayer(a) && !!a.def.boss;
   const threat = (a: Actor, v: number) => { if (!w.isPlayer(a)) a.addThreat(p.id, v); };
   const range = def.range ?? 0;
-  /** Контроль с учётом «Несгибаемого» у игроков. */
-  const ccMs = (a: Actor, ms: number) => (w.isPlayer(a) ? ms * (1 - a.derived.ccReduce) : ms);
-  const stun = (a: Actor, ms: number) => { a.stunUntil = w.time + ccMs(a, ms); };
-  const slow = (a: Actor, pct: number, ms: number) => { a.slowUntil = w.time + ccMs(a, ms); a.slowPct = pct; };
+  /** Контроль и дебаффы героя — общие помощники effects.ts: нейтральный город, «Несгибаемый», слияние с живым эффектом. */
+  const stun = (a: Actor, ms: number) => applyStun(w, p, a, ms);
+  const slow = (a: Actor, pct: number, ms: number) => applySlow(w, p, a, pct, ms);
+  const root = (a: Actor, ms: number) => applyRoot(w, p, a, ms);
+  const weaken = (a: Actor, pct: number, ms: number) => applyWeaken(w, p, a, pct, ms);
 
   // точка прицела по умолчанию — перед героем
   if (!Number.isFinite(ax) || !Number.isFinite(ay)) { ax = u.x; ay = u.y + 1; }
@@ -68,6 +72,9 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
     if (id !== "stealth" && id !== "dr_shadowmeld") p.stealthUntil = 0;
     u.mp -= mana;
     onCast(w, p, id, liveTarget);
+    mageCast(w, p, id, liveTarget);
+    onCastArcher(w, p, id, liveTarget);
+    onRogueCast(w, p, id, wasStealthed);
     const cd = def.cd!(rank) * 1000;
     p.cds.set(id, w.time + cd);
     p.send("cd", { id, ms: cd });
@@ -79,7 +86,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
   };
 
   // танки: новые умения (server/src/game/tanks.ts); классы Умбрата: своя механика (server/src/game/umbrath.ts)
-  const ctx = { w, p, id, def, rank, v, liveTarget, targetId, ax, ay, aim, ok, stun, slow, threat, isBoss };
+  const ctx = { w, p, id, def, rank, v, liveTarget, targetId, ax, ay, aim, ok, stun, slow, root, weaken, threat, isBoss };
   if (def.cls === "warrior" || def.cls === "deathknight") {
     const r = castTank(ctx);
     if (r !== undefined) return r;
@@ -87,6 +94,21 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
   // лекари: новые умения Клирика и Кровотворца (server/src/game/healers.ts)
   if (def.cls === "healer" || def.cls === "bloodweaver") {
     const r = castHealer(ctx);
+    if (r !== undefined) return r;
+  }
+  // разбойники: новые умения Ассасина (rogue.ts) и Потрошителя (reaver.ts)
+  if (def.cls === "rogue" || def.cls === "reaver") {
+    const r = castRogue(ctx);
+    if (r !== undefined) return r;
+  }
+  // лучники: новые умения Егеря и Тёмного следопыта (server/src/game/archers.ts)
+  if (def.cls === "ranger" || def.cls === "darkranger") {
+    const r = castArcher(ctx);
+    if (r !== undefined) return r;
+  }
+  // маги: новые умения Боевого мага и Чернокнижника (server/src/game/mages.ts)
+  if (def.cls === "mage" || def.cls === "warlock") {
+    const r = castMage(ctx);
     if (r !== undefined) return r;
   }
   if (CLASSES[def.cls].faction === "umbrath") return castUmbrath(ctx);
@@ -102,8 +124,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       if (v.radius > 0) for (const m of w.enemiesInCircle(p, liveTarget.x, liveTarget.y, v.radius)) hitTargets.add(m);
       for (const t of hitTargets) {
         if (w.isPlayer(t)) {
-          t.weakUntil = w.time + v.weakDur * 1000;
-          w.emit({ t: "buff", id: t.id, k: "weak", ms: v.weakDur * 1000 });
+          weaken(t, 20, v.weakDur * 1000); // −20% урона (прежнее значение героя по умолчанию)
           continue;
         }
         let top = 0;
@@ -173,7 +194,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
         const main = alive ? aimTarget : w.enemiesInCircle(p, ix, iy, 20)[0];
         if (main) w.hit(p, main, { mult: v.dmg / 100, skill: true, kind: "fire" });
         for (const m of w.enemiesInCircle(p, ix, iy, v.splash)) if (m !== main) w.hit(p, m, { mult: v.dmg / 200, skill: true, kind: "fire" });
-      });
+      }, p);
       return null;
     }
     case "frostnova": {
@@ -181,8 +202,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       w.emit({ t: "aoe", k: "frost", x: u.x, y: u.y, r: v.radius });
       for (const m of w.enemiesInCircle(p, u.x, u.y, v.radius)) {
         w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "frost" });
-        m.slowUntil = w.time + v.dur * 1000;
-        m.slowPct = v.slow;
+        slow(m, v.slow, v.dur * 1000);
       }
       return null;
     }
@@ -207,7 +227,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       w.later(v.delay * 1000, () => {
         w.emit({ t: "aoe", k: "fire", x: tx, y: ty, r: v.radius });
         for (const m of w.enemiesInCircle(p, tx, ty, v.radius)) w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "fire" });
-      });
+      }, p);
       return null;
     }
 
@@ -219,7 +239,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       ok();
       const ms = (w.dist(u, liveTarget) / 900) * 1000;
       w.emit({ t: "proj", k: "arrow", from: p.id, to: liveTarget.id, tx: liveTarget.x, ty: liveTarget.y, ms });
-      w.later(ms, () => { if (!w.isDead(liveTarget) && w.hostile(p, liveTarget)) w.hit(p, liveTarget, { mult: v.dmg / 100, skill: true }); });
+      w.later(ms, () => { if (!w.isDead(liveTarget) && w.hostile(p, liveTarget)) w.hit(p, liveTarget, { mult: v.dmg / 100, skill: true }); }, p);
       return null;
     }
     case "volley": {
@@ -243,7 +263,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
           const m = best;
           const repeat = used.has(m);
           used.add(m);
-          w.later(ms, () => { if (!w.isDead(m) && w.hostile(p, m)) w.hit(p, m, { mult: (v.dmg / 100) * (repeat ? 0.6 : 1), skill: true }); });
+          w.later(ms, () => { if (!w.isDead(m) && w.hostile(p, m)) w.hit(p, m, { mult: (v.dmg / 100) * (repeat ? 0.6 : 1), skill: true }); }, p);
         }
       }
       return null;
@@ -257,8 +277,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       u.y = dest.y;
       p.moveTo = null;
       p.rootUntil = 0;
-      p.hasteUntil = w.time + v.dur * 1000;
-      p.hastePct = v.haste;
+      applyHaste(w, p, v.haste, v.dur * 1000);
       w.emit({ t: "buff", id: p.id, k: "haste", ms: v.dur * 1000 });
       return null;
     }
@@ -275,10 +294,9 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
           }
           for (const m of w.enemiesInCircle(p, tx, ty, v.radius)) {
             w.hit(p, m, { mult: v.dmg / 100, skill: true });
-            m.slowUntil = w.time + 800;
-            m.slowPct = v.slow;
+            slow(m, v.slow, 800);
           }
-        });
+        }, p);
       return null;
     }
 
@@ -297,6 +315,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
     case "venom": {
       if (!liveTarget) return "Нужна цель";
       if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
       ok();
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
       applyPoison(w, p, liveTarget, rank);
@@ -306,6 +325,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
     case "shadowstep": {
       if (!liveTarget) return "Нужна цель";
       if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
       const [fx, fy] = facing(liveTarget);
       const off = w.radiusOf(liveTarget) + PLAYER_RADIUS + 2;
       const base = Math.atan2(-fy, -fx);
@@ -403,7 +423,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
           const pl = w.players.get(a.id), pet = w.pets.get(a.id);
           if (pl && !pl.dead) applyHeal(w, p, { id: pl.id, x: pl.x, y: pl.y, player: pl }, amt);
           else if (pet && !pet.dead) applyHeal(w, p, { id: pet.id, x: pet.unit.x, y: pet.unit.y, pet }, amt);
-        });
+        }, p);
       return null;
     }
     case "holyshield": {
@@ -468,5 +488,5 @@ function smite(w: World, p: Player, healed: number) {
   const m = best, dmg = Math.max(1, Math.round((healed * SKILLS.smite.v(r).pct) / 100));
   const ms = (bd / 450) * 1000;
   w.emit({ t: "proj", k: "holy", from: p.id, to: m.id, tx: m.x, ty: m.y, ms });
-  w.later(ms, () => { if (!w.isDead(m) && w.hostile(p, m)) w.hit(p, m, { flat: dmg, canCrit: false, kind: "holy", skill: true }); });
+  w.later(ms, () => { if (!w.isDead(m) && w.hostile(p, m)) w.hit(p, m, { flat: dmg, canCrit: false, kind: "holy", skill: true }); }, p);
 }

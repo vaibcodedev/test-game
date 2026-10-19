@@ -38,7 +38,7 @@ async function main() {
       for (const c of f.classes) {
         assert(CLASSES[c].faction === f.id, `${c}: не та фракция`);
         // классы с полным набором (9 активных + 11 пассивных); задачи 42–44 дописывают сюда свои классы
-        const FULL: string[] = ["warrior", "deathknight", "healer", "bloodweaver"];
+        const FULL: string[] = ["warrior", "deathknight", "healer", "bloodweaver", "mage", "warlock", "rogue", "reaver", "ranger", "darkranger"];
         const tank = FULL.includes(c);
         assert(tank ? activeSkills(c).length === 9 : activeSkills(c).length >= 3 && activeSkills(c).length <= 4, `${c}: умений ${activeSkills(c).length}`);
         if (tank) assert(classSkills(c).filter((s) => s.kind === "passive").length === 11, `${c}: пассивок мало`);
@@ -70,7 +70,7 @@ async function main() {
     // мобы спорной зоны теперь 38+ уровня: убираем их, проверяем только умения
     for (const m of [...w.mobs.values()]) w.removeMob(m);
     const p0 = pvpSpot()!;
-    for (const cls of [...FACTIONS.umbrath.classes, "healer" as const]) {
+    for (const cls of [...FACTIONS.umbrath.classes, "healer" as const, "mage" as const]) {
       const save = newSave(cls, p0);
       save.level = 20;
       for (const s of activeSkills(cls)) save.skills[s.id] = 1;
@@ -81,7 +81,7 @@ async function main() {
       for (const s of activeSkills(cls)) {
         p.unit.mp = p.unit.maxMp; p.unit.hp = p.unit.maxHp; mob.unit.hp = mob.unit.maxHp;
         const err = castSkill(w, p, s.id, mob.x, mob.y, mob.id);
-        assert(err === null || err === "Выберите союзника или призовите питомца", `${s.id}: ${err}`);
+        assert(err === null || err === "Выберите союзника или призовите питомца" || err === "На цели нет ваших проклятий", `${s.id}: ${err}`);
         for (let i = 0; i < 40; i++) w.update(50);
       }
       w.removePlayer(p.id);

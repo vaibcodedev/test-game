@@ -9,7 +9,7 @@ import { MAX_CHARS, normLook, type AccountView, type CharSummary } from "../../s
 import { CLASSES, isClassId, type ClassId } from "../../shared/classes";
 import { FACTIONS, isFactionId } from "../../shared/factions";
 import { NAME_RE } from "../../shared/constants";
-import { iconFor, SLOTS } from "../../shared/items";
+import { iconFor, itemName, SLOTS } from "../../shared/items";
 import { MAP_VERSION, ZONES, zoneAtPx, type WorldMap } from "../../shared/map";
 import { inArena } from "./arena/registry";
 import { GameDB, type CharRow, type PlayerSave } from "./db";
@@ -81,7 +81,7 @@ function summary(row: CharRow, map: WorldMap | null): CharSummary {
   for (const slot of SLOTS) {
     const it = save.equip?.[slot];
     if (!it) continue;
-    try { equip.push({ slot, icon: iconFor(it), rarity: it.rarity, name: it.name }); } catch {}
+    try { equip.push({ slot, icon: iconFor(it), rarity: it.rarity, name: itemName(it), plus: it.plus || 0 }); } catch {}
   }
   const now = Date.now();
   return {

@@ -8,9 +8,11 @@ import { TeleportFx } from "./teleportFx";
 
 const MAX_BURST = 36;
 const MAX_POOL = 90;
-const SFX_OF: Record<string, sfx.SfxName> = { blood: "shadow", fire: "fire", frost: "frost", poison: "poison", arcane: "arcane", shadow: "shadow", holy: "holy", nature: "poison", phys: "hit", bash: "slam", glare: "holy", banner: "holy", divine: "holy", nova: "holy", rune: "frost", chains: "shadow", reap: "shadow", antimagic: "arcane", ray: "holy", hymn: "heal", ward: "shield", cleanse: "heal", pact: "shadow", burst: "explosion", tide: "shadow" };
+const SFX_OF: Record<string, sfx.SfxName> = { bolt: "arcane", storm: "arcane", timewarp: "arcane", hex: "shadow", soul: "shadow", meta: "shadow",blood: "shadow", fire: "fire", frost: "frost", poison: "poison", arcane: "arcane", shadow: "shadow", holy: "holy", nature: "poison", phys: "hit", bash: "slam", glare: "holy", banner: "holy", divine: "holy", nova: "holy", rune: "frost", chains: "shadow", reap: "shadow", antimagic: "arcane", ray: "holy", hymn: "heal", ward: "shield", cleanse: "heal", pact: "shadow", burst: "explosion", tide: "shadow" };
 
 const KIND_COLOR: Record<string, number> = {
+  // умения магов
+  bolt: 0xa8e8ff, storm: 0xc8f0ff, timewarp: 0xb080ff, hex: 0xa040ff, soul: 0x8aff9a, meta: 0xc040ff,
   phys: 0xffffff, fire: 0xff8a3a, frost: 0x8ad0ff, poison: 0x9aff5a, arcane: 0xc08aff, shadow: 0xa070ff, nature: 0x8adf5a, holy: 0xfff0a0, heal: 0x9affb8, blood: 0xe0304a,
   // умения танков
   bash: 0xffe090, glare: 0xfff4b0, banner: 0xffd060, divine: 0xffffff, nova: 0xfff0a0, rune: 0x7ad8ff, chains: 0xb080ff, reap: 0x8aff9a, antimagic: 0xc080ff,
@@ -21,6 +23,9 @@ const PROJ_TEX: Record<string, string> = { arrow: "fx_arrow", arcane: "fx_arcane
 
 export class Effects {
   private hazards = new Map<string, Phaser.GameObjects.GameObject[]>();
+  /** Живые пузыри щитов: ключ `${id}:${k}` -> снять пузырь (buff с ms <= 0 или повтор). */
+  private bubbles = new Map<string, () => void>();
+  private rings = new Map<string, () => void>();
 
   constructor(
     readonly scene: Phaser.Scene,
@@ -86,6 +91,25 @@ export class Effects {
   private flash(x: number, y: number, color: number, size = 1) {
     const g = this.scene.add.image(x, y, "fx_glow").setTint(color).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.top - 32).setScale(0.3 * size).setAlpha(0.95);
     this.scene.tweens.add({ targets: g, scale: 1.1 * size, alpha: 0, duration: 160, onComplete: () => g.destroy() });
+  }
+
+  /** Круг под ногами юнита цвета эффекта (бафы вместо свечения на теле); идёт за юнитом ms миллисекунд. */
+  private groundRing(id: string, kind: string, color: number, ms: number, w: number) {
+    // один круг на (герой, вид): новый заменяет прежний, ms <= 0 снимает; круг гаснет вместе с юнитом (ушёл из видимости, умер)
+    const key = `${id}:${kind}`;
+    this.rings.get(key)?.();
+    if (ms <= 0) return;
+    const s = this.scene, u0 = this.unit(id);
+    if (!u0 || u0.dead) return;
+    const k = u0.frame > 32 ? 2 : 1;
+    const ring = s.add.ellipse(Math.round(u0.x), Math.round(u0.y) - 1, w * k, Math.round(w * k * 0.45), color, 0.16).setStrokeStyle(1, color, 0.9).setDepth(DEPTH.ground + 7);
+    const end = s.time.delayedCall(ms, () => drop());
+    const follow = s.time.addEvent({ delay: 30, loop: true, callback: () => { const q = this.unit(id); if (!q || q.dead) drop(); else ring.setPosition(Math.round(q.x), Math.round(q.y) - 1); } });
+    const drop = () => {
+      end.remove(false); follow.remove(); ring.destroy();
+      if (this.rings.get(key) === drop) this.rings.delete(key);
+    };
+    this.rings.set(key, drop);
   }
 
   /** «+N» с маленькой монетой над юнитом. */
@@ -247,6 +271,19 @@ export class Effects {
           for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; g2.lineBetween(f.x + Math.cos(a) * f.r * 0.8, f.y + Math.sin(a) * f.r * 0.55, f.x + Math.cos(a + 0.5) * f.r * 0.5, f.y + Math.sin(a + 0.5) * f.r * 0.35); }
           s.tweens.add({ targets: g2, alpha: 0, duration: 700, onComplete: () => g2.destroy() });
         }
+        // умения магов (задача 43)
+        if (f.k === "storm") {
+          const bolt = s.add.image(f.x, f.y - 40, "fx_glow").setTint(0xc8f0ff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.5, 8).setDepth(DEPTH.top - 30).setAlpha(0.95);
+          s.tweens.add({ targets: bolt, scaleX: 0.1, alpha: 0, duration: 260, onComplete: () => bolt.destroy() });
+          this.shake(f.x, f.y, 120, 0.003);
+        }
+        if (f.k === "timewarp" || f.k === "hex" || f.k === "meta") {
+          for (let i = 0; i < (f.k === "timewarp" ? 4 : 3); i++) {
+            const rr = s.add.image(f.x, f.y, "fx_ring").setTint(KIND_COLOR[f.k]).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1, 0.07);
+            s.tweens.add({ targets: rr, scaleX: f.r / 26, scaleY: (f.r / 26) * 0.7, alpha: { from: 0.9, to: 0 }, duration: 700, delay: i * 130, ease: "Cubic.easeOut", onComplete: () => rr.destroy() });
+          }
+          if (f.k === "meta") { this.shake(f.x, f.y, 260, 0.006); this.burst(f.x, f.y - 6, "fx_smoke", 0x6020a0, 16, f.r, 900, -20, 1.4); }
+        }
         if (f.k === "fire" && f.r >= 90) {
           this.shake(f.x, f.y, 180, 0.004);
           this.burst(f.x, f.y - 6, "fx_smoke", 0x605050, 12, 40, 900, -20, 1.5);
@@ -355,7 +392,7 @@ export class Effects {
       case "buff": {
         const u = this.unit(f.id);
         if (!u) return;
-        const color = f.k === "warcry" ? 0xff6a3a : f.k === "haste" ? 0x6aff8a : f.k === "enrage" ? 0xff2a1a : 0xffffff;
+        const color = f.k === "warcry" ? 0xff6a3a : f.k === "haste" ? 0xc0f050 : f.k === "enrage" ? 0xff2a1a : 0xffffff;
         if (f.k === "heal" || f.k === "renew") {
           this.sound("heal", u.x, u.y);
           this.burst(u.x, u.y - 6, "fx_spark", f.k === "heal" ? 0x9affb8 : 0xffe890, 14, 30, 900, -80, 0.8);
@@ -367,33 +404,52 @@ export class Effects {
         }
         if (f.k === "bless" || f.k === "tide") {
           const bl = f.k === "bless";
+          if (f.ms <= 0) { this.groundRing(f.id, f.k, 0, 0, 0); break; }
           this.sound(bl ? "holy" : "shadow", u.x, u.y);
           this.burst(u.x, u.y - 10, "fx_spark", bl ? 0xfff0a0 : 0xe0304a, 18, 70, 800, -70, 0.9);
-          const halo = s.add.ellipse(u.x, u.y - 34, 22, 7, 0, 0).setStrokeStyle(2, bl ? 0xffe890 : 0xff5060, 0.9).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.top - 30);
-          const follow2 = s.time.addEvent({ delay: 30, loop: true, callback: () => { const q = this.unit(f.id); if (q) halo.setPosition(q.x, q.y - 34); } });
-          s.tweens.add({ targets: halo, alpha: { from: 1, to: 0.4 }, yoyo: true, repeat: -1, duration: 400 });
-          s.time.delayedCall(Math.min(f.ms, 20000), () => { follow2.remove(); s.tweens.killTweensOf(halo); halo.destroy(); });
+          this.groundRing(f.id, f.k, bl ? 0xffe890 : 0xff5060, Math.min(f.ms, 20000), 26);
           break;
         }
         if (f.k === "rune" || f.k === "frozen") {
+          if (f.ms <= 0) { this.groundRing(f.id, f.k, 0, 0, 0); break; }
           this.sound("frost", u.x, u.y);
-          this.burst(u.x, u.y - 10, "fx_shard", 0x9ae8ff, 16, 60, 700);
-          if (f.k === "rune") {
-            const rep = s.time.addEvent({ delay: 250, loop: true, callback: () => { const q = this.unit(f.id); if (q) this.burst(q.x, q.y - 10, "fx_spark", 0x7ad8ff, 2, 30, 500, -40, 0.7); } });
-            s.time.delayedCall(f.ms, () => rep.remove());
-          } else {
-            const ice = s.add.image(u.x, u.y - 8, "fx_glow").setTint(0x9ae8ff).setBlendMode(Phaser.BlendModes.ADD).setScale(1.3).setDepth(DEPTH.top - 30).setAlpha(0.7);
-            s.tweens.add({ targets: ice, alpha: 0, duration: Math.min(f.ms, 1500), onComplete: () => ice.destroy() });
-          }
+          this.burst(u.x, u.y - 10, "fx_shard", 0xd0e8ff, 16, 60, 700);
+          // ледяной почти белый: голубой (тон 194-198) слишком близок к бирюзе заточки (правило 2.6)
+          if (f.k === "rune") this.groundRing(f.id, f.k, 0xd0e8ff, Math.min(f.ms, 30000), 30);
+          else this.groundRing(f.id, f.k, 0xd0e8ff, Math.min(f.ms, 1500), 24);
+          break;
+        }
+        if (f.k === "warp" || f.k === "meta") {
+          if (f.ms <= 0) { this.groundRing(f.id, f.k, 0, 0, 0); break; }
+          this.sound(f.k === "warp" ? "arcane" : "shadow", u.x, u.y);
+          const col = f.k === "warp" ? 0xb080ff : 0xc040ff;
+          this.burst(u.x, u.y - 10, "fx_spark", col, 18, 70, 800, -50, 0.9);
+          // баф до 30 с: круг под ногами вместо повторяющихся искр и дыма на теле (раздел 2.5)
+          this.groundRing(f.id, f.k, col, Math.min(f.ms, 30000), 28);
+          break;
+        }
+        if (f.k === "shock" || f.k === "burn" || f.k === "rhythm" || f.k === "soul") {
+          this.burst(u.x, u.y - 12, f.k === "burn" ? "fx_ember" : "fx_spark", f.k === "shock" ? 0xa8e8ff : f.k === "burn" ? 0xff7a2a : f.k === "soul" ? 0x8aff9a : 0xffd060, 10, 60, 450, -30);
           break;
         }
         if (f.k === "block" || f.k === "shield" || f.k === "invuln" || f.k === "antimagic") {
+          // один пузырь на (герой, вид): новый заменяет прежний, ms <= 0 снимает (барьер разбит или истёк)
+          const bk = `${f.id}:${f.k}`;
+          this.bubbles.get(bk)?.();
+          this.bubbles.delete(bk);
+          if (f.ms <= 0) break;
           this.sound(f.k === "antimagic" ? "arcane" : "shield", u.x, u.y);
           const gold = f.k === "shield" || f.k === "invuln";
           const bub = s.add.ellipse(u.x, u.y - 10, f.k === "invuln" ? 56 : 44, f.k === "invuln" ? 64 : 52, f.k === "antimagic" ? 0xa060ff : gold ? 0xffd84a : 0x6ac0ff, 0.22).setStrokeStyle(2, f.k === "antimagic" ? 0xe0c8ff : gold ? 0xfff0b0 : 0xbfe6ff, 0.9).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.top - 30);
           const follow = s.time.addEvent({ delay: 30, loop: true, callback: () => { const q = this.unit(f.id); if (q) bub.setPosition(q.x, q.y - 10); } });
           s.tweens.add({ targets: bub, alpha: { from: 0.9, to: 0.5 }, yoyo: true, repeat: -1, duration: 300 });
-          s.time.delayedCall(f.ms, () => { follow.remove(); s.tweens.killTweensOf(bub); s.tweens.add({ targets: bub, alpha: 0, duration: 200, onComplete: () => bub.destroy() }); });
+          const end = s.time.delayedCall(f.ms, () => { drop(); });
+          const drop = () => {
+            end.remove(false); follow.remove(); s.tweens.killTweensOf(bub);
+            if (this.bubbles.get(bk) === drop) this.bubbles.delete(bk);
+            s.tweens.add({ targets: bub, alpha: 0, duration: 200, onComplete: () => bub.destroy() });
+          };
+          this.bubbles.set(bk, drop);
           break;
         }
         this.burst(u.x, u.y - 12, "fx_spark", f.k === "taunted" ? 0xff8030 : f.k === "weak" ? 0x8a6a9a : color, 20, 80, 600, -40);

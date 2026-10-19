@@ -1,9 +1,8 @@
 /** Награды за убийство: опыт и уровни, золото, личные мешки с добычей. */
 import { questProgress } from "./cities";
-import { CLASSES } from "../../../shared/classes";
 import { LOOT_BAG_TTL_MS, MAX_LEVEL } from "../../../shared/constants";
 import { xpForKill, xpToNext } from "../../../shared/formulas";
-import { BASE_ITEMS, EQUIP_BASES, makeItem, makeUnique, rollRarity, Rarity, UNIQUES, type Item } from "../../../shared/items";
+import { BASE_ITEMS, makeItem, makeLoot, makeUnique, rollRarity, Rarity, UNIQUES, type Item } from "../../../shared/items";
 import { LEGENDARIES, makeLegendary } from "../../../shared/legendary";
 import { ELITE } from "../../../shared/elites";
 import { MATERIALS } from "../../../shared/upgrade";
@@ -34,13 +33,6 @@ export function gainXp(w: World, p: Player, xp: number) {
     if (s.level % 5 === 0 || s.level === MAX_LEVEL) w.system(`${p.name} достигает ${s.level} уровня!`);
   }
   p.selfDirty = true;
-}
-
-function pickBase(p: Player): string {
-  const weapons = CLASSES[p.cls].weaponTypes;
-  if (Math.random() < 0.3) return weapons[Math.floor(Math.random() * weapons.length)];
-  const armor = EQUIP_BASES.filter((b) => BASE_ITEMS[b].slot !== "weapon" && (!BASE_ITEMS[b].classes || BASE_ITEMS[b].classes!.includes(p.cls)));
-  return armor[Math.floor(Math.random() * armor.length)];
 }
 
 function dropBag(w: World, p: Player, x: number, y: number, items: Item[], boss = false) {
@@ -89,12 +81,12 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
       });
       const uid = pool[Math.floor(Math.random() * pool.length)];
       if (uid) items.push(makeUnique(uid));
-      for (let i = 0; i < 2; i++) items.push(makeItem(pickBase(p), m.level, rollRarity(Math.random, 0.45)));
+      for (let i = 0; i < 2; i++) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random, 0.45)));
       items.push({ ...makeItem("hp_potion", 1, 0), qty: 3 });
     } else {
       const chance = p.forceDrop ? 1 : 0.3;
-      if (Math.random() < chance) items.push(makeItem(pickBase(p), m.level, rollRarity(Math.random)));
-      if (Math.random() < (p.forceDrop ? 0 : 0.08)) items.push(makeItem(pickBase(p), m.level, rollRarity(Math.random)));
+      if (Math.random() < chance) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
+      if (Math.random() < (p.forceDrop ? 0 : 0.08)) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
       if (Math.random() < 0.1) items.push({ ...makeItem(Math.random() < 0.6 ? "hp_potion" : "mp_potion", 1, 0), qty: 1 });
     }
     // материалы кузнеца
@@ -106,7 +98,7 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
     }
     if (m.elite) {
       const r = Math.max(rollRarity(Math.random, ELITE.lootBonus), Rarity.Rare) as Rarity;
-      items.push(makeItem(pickBase(p), m.level, r));
+      items.push(makeLoot(p.cls, m.level, r));
     }
     if (Math.random() < (boss ? 0.04 : m.elite ? 0.005 : 0)) {
       const ids = Object.keys(LEGENDARIES).filter((id) => { const b = BASE_ITEMS[LEGENDARIES[id].base]; return !b.classes || b.classes.includes(p.cls); });

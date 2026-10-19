@@ -43,7 +43,8 @@ export interface CharSummary {
   level: number;
   zone: string;
   look: number;
-  equip: { slot: Slot; icon: string; rarity: Rarity; name: string }[];
+  /** name — уже с суффиксом «+N» (itemName), plus — ступень заточки для значка ячейки. */
+  equip: { slot: Slot; icon: string; rarity: Rarity; name: string; plus: number }[];
   /** Текст блокировки, если герой забанен. */
   banned?: string;
 }

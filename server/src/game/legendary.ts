@@ -1,6 +1,7 @@
 /** Эффекты легендарных предметов (data/legendaries.json). Вызываются из World.hit / killMob. */
 import { LEGENDARIES } from "../../../shared/legendary";
 import type { Actor, HitOpts, World } from "./World";
+import { applyHaste, applySlow } from "./effects";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 
@@ -49,9 +50,7 @@ export function onHit(w: World, src: Actor, dst: Actor, v: number, crit: boolean
         }
         break;
       case "frost":
-        if (!w.isPlayer(dst) && Math.random() < n(e, "chance")) {
-          dst.slowUntil = w.time + n(e, "ms");
-          dst.slowPct = n(e, "slow");
+        if (!w.isPlayer(dst) && Math.random() < n(e, "chance") && applySlow(w, src, dst, n(e, "slow"), n(e, "ms"))) {
           w.emit({ t: "aoe", k: "frost", x: dst.x, y: dst.y, r: 30 });
         }
         break;
@@ -92,8 +91,7 @@ export function onDamaged(w: World, src: Actor, dst: Actor, v: number, o: HitOpt
 export function onKill(w: World, killer: Player, _m: Mob) {
   for (const e of effects(killer)) {
     if (e.type === "killhaste") {
-      killer.hasteUntil = w.time + n(e, "ms");
-      killer.hastePct = Math.max(killer.hastePct, n(e, "haste"));
+      applyHaste(w, killer, n(e, "haste"), n(e, "ms"));
       w.emit({ t: "buff", id: killer.id, k: "haste", ms: n(e, "ms") });
     }
   }

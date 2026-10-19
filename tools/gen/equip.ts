@@ -1,8 +1,9 @@
-/** Иконки экипировки 32×32: тип × класс (шлем/доспех/сапоги) × редкость, плюс уникальные. */
+/** Иконки экипировки 32×32: тип × класс (шлем/доспех/сапоги) × редкость, уникальные, легендарные и модели каталога (equip-models.ts). */
 import { PC, hex, mix, withA, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
 import { LEGENDARIES } from "../../shared/legendary";
 import { BASE_ITEMS, ICON_VARIANT_SLOTS, ICON_VARIANTS, UNIQUES, iconId, type Rarity } from "../../shared/items";
+import { buildAllModelIcons, buildBaseIcons, MODEL_CATS } from "./equip-models";
 
 const GEM: Ramp[] = [P.magic.green, P.magic.blue, P.magic.purple];
 const GLOW: RGBA[] = [hex("#ffffff"), hex("#7ab8ff"), hex("#c47bff")];
@@ -227,14 +228,19 @@ export function buildLegendaryIcon(id: string): PC {
   return g;
 }
 
+const OLD_KINDS = new Set(["sword", "axe", "staff", "scepter", "dagger", "bow", "mace", "shield", "helmet", "armor", "boots", "ring", "amulet"]);
+
 /** Все id иконок экипировки: имя -> холст. */
 export function buildEquipIcons(): Record<string, PC> {
   const out: Record<string, PC> = {};
   for (const b of Object.values(BASE_ITEMS)) {
     if (b.slot === "consumable") continue;
+    // новые базы рисует генератор моделей (equip-models.ts); старые — прежний рисовальщик
+    if (MODEL_CATS.includes(b.id) && !OLD_KINDS.has(b.icon)) continue;
     const variants = ICON_VARIANT_SLOTS.includes(b.icon) ? ICON_VARIANTS : [ICON_VARIANTS[0]];
     for (const v of variants) for (const r of [0, 1, 2] as Rarity[]) out[iconId(b.icon, v, r)] = draw(b.icon, v as V, r);
   }
+  Object.assign(out, buildBaseIcons(), buildAllModelIcons());
   for (const id of Object.keys(UNIQUES)) out["uq_" + id] = buildUniqueIcon(id);
   for (const id of Object.keys(LEGENDARIES)) out["lg_" + id] = buildLegendaryIcon(id);
   return out;

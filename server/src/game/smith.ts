@@ -68,5 +68,5 @@ export function upgradeItem(w: World, p: Player, index: unknown, slot: unknown, 
     p.unit.hp = Math.max(1, Math.round(p.unit.maxHp * ratio));
   }
   p.selfDirty = true;
-  p.send("toast", { text: ok ? `Успех! ${itemName(it)}` : `Неудача, уровень снижен до +${it.plus || 0}`, kind: ok ? "loot" : "error" });
+  p.send("toast", { text: ok ? `Успех! ${itemName(it)}` : `Неудача: ${it.name}, уровень снижен до +${it.plus || 0}`, kind: ok ? "loot" : "error" });
 }

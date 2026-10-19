@@ -17,7 +17,7 @@
       "race": "Нежить",
       "symbol": "Чёрная корона с черепом",
       "desc": "Павшие короли восстали и ведут мёртвых, чтобы забрать мир живых. Ценят силу, власть и бессмертие.",
-      "color": "#c070ff",
+      "color": "#8fd46a",
       "ui": { "accent": "#b46ae8", "accent2": "#7aff6a", "glow": "#e6c8ff" },
       "classes": ["deathknight", "bloodweaver", "darkranger", "warlock", "reaver"]
     }

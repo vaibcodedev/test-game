@@ -1,17 +1,25 @@
 /** Окна случайных встреч: диалог путника и лавка бродячего торговца. */
 import { gold as goldHtml } from "./gold";
 import type { EncDialogMsg, EncShopMsg } from "../../../shared/encounters";
-import { iconFor, itemName, RARITY_COLORS } from "../../../shared/items";
+import { iconFor, itemName, RARITY_COLORS, type Item } from "../../../shared/items";
+import type { SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
+import { plusBadge } from "./smith";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/** Подсказки предметов лавки: те же, что в сумке (Hud.itemTip без цены и подсказок по клику). */
+export interface EncounterHost {
+  itemTip(it: Item, s: SelfState): string;
+  tipFor(elm: HTMLElement, html: () => string): void;
+}
 
 export class EncounterUI {
   private win = document.createElement("div");
   private net!: Net;
   private id = "";
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, private host?: EncounterHost) {
     this.win.className = "panel win win-enc";
     this.win.hidden = true;
     root.append(this.win);
@@ -74,7 +82,9 @@ export class EncounterUI {
       const row = document.createElement("div");
       row.className = "shoprow";
       const it = s.item;
-      row.innerHTML = `<img src="/assets/icons/${iconFor(it)}.png" alt=""><div><span style="color:${RARITY_COLORS[it.rarity]}">${esc(itemName(it))}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}</span><br><span class="muted">ур. ${it.req}</span></div>`;
+      row.innerHTML = `<div class="cell r${it.rarity}"><img src="/assets/icons/${iconFor(it)}.png" alt="">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}</div><div><span style="color:${RARITY_COLORS[it.rarity]}">${esc(itemName(it))}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}</span><br><span class="muted">ур. ${it.req}</span></div>`;
+      const cell = row.querySelector<HTMLElement>(".cell")!;
+      if (this.host && this.net.self) this.host.tipFor(cell, () => this.host!.itemTip(it, this.net.self!));
       const btn = document.createElement("button");
       btn.className = "btn small";
       btn.innerHTML = `${goldHtml(s.price)}`;

@@ -128,6 +128,8 @@ export class Player {
   forceDrop = false;
   selfDirty = true;
   lastChat = 0;
+  /** Время последнего запроса осмотра (мс World.time): не чаще раза в секунду. */
+  lastInspect = -1e9;
   /** Арена: номер команды (0 — вне арены), заморозка до начала боя, флаги переходов. */
   team = 0;
   frozenUntil = 0;
@@ -235,9 +237,8 @@ export class Player {
     u.mp = Math.min(u.mp, u.maxMp);
     u.level = this.save.level;
     const w = this.save.equip.weapon;
-    const maxPlus = Math.max(0, ...Object.values(this.save.equip).map((e) => (e && e.plus) || 0));
-    u.weapon = w ? `${w.base}:${w.rarity}:${maxPlus}:${w.legendary || ""}` : "";
-    u.gear = (["helmet", "armor", "boots", "offhand"] as const).map((k) => { const e = this.save.equip[k]; return e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}` : ""; }).join("|");
+    u.weapon = w ? `${w.base}:${w.rarity}:${w.plus || 0}:${w.legendary || ""}:${w.model || ""}` : "";
+    u.gear = (["helmet", "armor", "boots", "offhand"] as const).map((k) => { const e = this.save.equip[k]; return e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}:${e.model || ""}` : ""; }).join("|");
     this.selfDirty = true;
   }
 
