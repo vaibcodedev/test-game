@@ -16,10 +16,11 @@ import data from "../data/legendaries.json";
 
 const OLD16 = ["storm_blade", "blood_reaper", "nova_staff", "winter_bow", "twin_string", "arcane_mantle", "thorn_plate", "hunter_treads", "doom_blade", "dawn_eater", "soul_staff", "night_bow", "void_horns", "ember_helm", "sun_scepter", "shadow_fang"];
 const LOOK: Record<string, string[] | "bool" | "color" | "form"> = {
-  c2: "color", fx: ["ember", "spark", "drip", "snow", "leaf", "orbit", "souls", "feather"], helm: ["horns", "flame", "crown", "wings", "halo"], eyes: "bool",
-  pauld: ["flame", "frost", "spikes", "bolts", "crystal"], chains: "bool", boots: ["wings", "flame", "rune"], back: ["banner", "wings"], wings: ["feather", "bone", "flame"],
-  crest: ["sun", "star", "rose", "tree", "skull", "moon", "fang", "eye", "flame", "crown", "raven"], flag: "color", train: "bool", blade: ["long"], pommel: ["skull", "star"], ghost: "bool",
-  orbit: ["blades", "runes", "motes"], shape: [], form: "form",
+  c2: "color", fx: ["ember", "spark", "drip", "snow", "leaf", "orbit", "souls", "feather", "vortex", "ice", "bones", "stardust", "blood", "bolt"], helm: ["horns", "flame", "crown", "wings", "halo", "antlers", "spires", "thorns", "moon", "plume"], eyes: "bool",
+  pauld: ["flame", "frost", "spikes", "bolts", "crystal", "feathers", "bone", "leaves", "stars"], chains: "bool", boots: ["wings", "flame", "rune", "frost", "shadow", "thorns", "spark"], back: ["banner", "wings", "plumage", "shadow"], wings: ["feather", "bone", "flame", "crystal", "shadow", "leaf"],
+  crest: ["sun", "star", "rose", "tree", "skull", "moon", "fang", "eye", "flame", "crown", "raven", "bolt", "wolf", "serpent", "wing", "hammer", "drop", "leaf", "frost"], flag: "color", train: "bool", blade: ["long", "jagged", "flaming", "crystal"], pommel: ["skull", "star", "eye", "flame", "gem", "fang", "leaf", "drop"], ghost: "bool",
+  orbit: ["blades", "runes", "motes", "shards", "leaves", "drops", "bolts", "stars", "bones"], shape: [], form: "form",
+  stone: ["cut", "drop", "shard", "eye", "square", "star"], setting: ["claws", "thorns", "wings", "halo", "leaves", "crown"],
 };
 const MAIN: Record<string, string> = { warrior: "str", deathknight: "str", reaver: "str", ranger: "agi", rogue: "agi", darkranger: "agi", mage: "int", healer: "int", warlock: "int", bloodweaver: "int" };
 /** Бирюза заточки: тон 129–209° при насыщенности (HSV) > 35%. */
@@ -91,9 +92,13 @@ async function main() {
       assert(main >= p * 0.25, `${l.id}: главная ${MAIN[l.variant]} = ${main} из ${p}`);
       assert((l.stats.crit ?? 0) <= LEGEND_TIERS.critMax[l.ti], `${l.id}: крит ${l.stats.crit}`);
     }
-    // ярус 100: не больше одной записи на категорию
-    const t100 = Object.values(LEGENDARIES).filter((l) => l.tier === 100).map((l) => l.base);
-    assert(new Set(t100).size === t100.length, "ярус 100: повтор категории " + t100.join(","));
+    // ярус 100: внутри категории нет двух записей с одинаковой комбинацией form/head/emblem/темы
+    const seen = new Map<string, string>();
+    for (const l of Object.values(LEGENDARIES).filter((x) => x.tier === 100)) {
+      const k = l.look, key = JSON.stringify([l.base, k.form ?? k.shape ?? "", k.helm, k.crest, k.pommel, k.blade, k.ghost, k.pauld, k.boots, k.back, k.wings, k.stone, k.setting, k.orbit, k.fx, k.eyes, k.chains, k.train]);
+      assert(!seen.has(key), `ярус 100: ${l.id} и ${seen.get(key)} — одна комбинация вида в категории ${l.base}`);
+      seen.set(key, l.id);
+    }
   });
 
   await check("свойства: каждый тип _effects имеет обработчик своего хука, значения растут с ярусом", () => {

@@ -76,7 +76,7 @@ export interface GearInput {
 
 const MELEE = new Set(["sword", "axe", "dagger", "mace", "greatsword", "twinblades", "greataxe", "hammer", "spear", "scythe"]);
 const WLEN: Record<string, number> = { dagger: 6, twinblades: 8, axe: 10, sword: 11, mace: 11, scepter: 10, greatsword: 15, greataxe: 13, hammer: 13, spear: 17, scythe: 16 };
-const CURVED = new Set<string>(), WAVY = new Set<string>();
+const CURVED = new Set<string>(["scimitar", "talon"]), WAVY = new Set<string>(["bolt", "bloodletter", "tidal"]);
 
 export class GearLayers {
   private back: Phaser.GameObjects.Graphics;
@@ -238,6 +238,10 @@ export class GearLayers {
           // вид легендарных сапог — поле look.boots: крылья у щиколоток или пламя у ступней
           if (L.look.boots === "wings") { const wv = Math.round(Math.sin(tt / 150 + k * 2)), e2 = Math.round(L.ti / 2); this.line(fx - 1, top, fx - 4 - e2, top - 4 - e2 + wv, L.look.c2, 1); this.line(fx - 1, top + 1, fx - 5 - e2, top - 1 - e2 + wv, L.tint, 1); }
           else if (L.look.boots === "flame") this.flame(fx + 2, 30, 2, 3 + Math.round(L.ti / 2) + Math.min(3, b.plus / 3), L.tint, L.look.c2, tt, k);
+          else if (L.look.boots === "frost") { this.R(fx - 1, top + 1, 2, 1, "#cfe0ff"); this.R(fx - 2, top, 1, 2, "#ffffff"); this.R(fx + w - 1, top + 1, 2, 1, L.look.c2); this.R(fx + w, top, 1, 2, "#cfe0ff"); }
+          else if (L.look.boots === "shadow") { for (let q = 0; q < 3; q++) this.R(fx + q + Math.round(Math.sin(tt / 200 + q + k * 2)), top + 3 - q * 2 - (this.themeOn ? Math.floor((tt / 120 + q * 3) % 3) : 0), 1, 2, q % 2 ? L.look.c2 : dark(L.tint, 0.5), 0.6); }
+          else if (L.look.boots === "thorns") { this.R(fx - 1, top + 1, 2, 1, "#e8e0d0"); this.R(fx - 2, top, 1, 1, L.look.c2); this.R(fx + w - 1, top + 3, 2, 1, "#e8e0d0"); }
+          else if (L.look.boots === "spark") { if (this.themeOn && Math.floor(tt / 100 + k * 2) % 3 === 0) { this.line(fx - 1, top, fx - 2, top + 2, L.look.c2, 1); this.R(fx - 3, top + 2, 1, 1, "#ffffff"); } else this.R(fx - 1, top + 1, 1, 2, L.look.c2, 0.7); }
           else if (L.look.boots === "rune") { const lit = this.themeOn && Math.floor(tt / 400 + k) % 2 === 0; this.R(fx, top + 2, w, 1, L.look.c2, lit ? 1 : 0.6); this.R(fx + 1, top + 3, 1, 1, L.tint); }
           if (lf === "wrapped") { this.R(fx, top + 1, w, 1, dark(L.tint, 0.5)); this.R(fx, top + 3, w, 1, dark(L.tint, 0.5)); }
           if (lf === "curled") this.R(fx + (side ? 5 : k ? 4 : -1), 28, 1, 2, L.look.c2);
@@ -316,6 +320,10 @@ export class GearLayers {
               if (this.themeOn && Math.floor(tt / 160 + k * 3) % 6 === 0) this.R(cxs, y + 1 - hgt, 1, 1, "#ffffff");
             }
             else if (lk.pauld === "spikes") { this.line(cxs, y + 1, cxs + s * 5, y - 6, L.tint, 2); this.line(cxs + s, y, cxs + s * 5, y - 6, lk.c2, 1); }
+            else if (lk.pauld === "feathers") { for (let q = 0; q < 3; q++) this.line(cxs + (q - 1), y + 1, cxs + (q - 1) * 2 + s, y - 4 - L.ti - (q === 1 ? 1 : 0), q % 2 ? "#dce2ec" : lk.c2, 1); this.R(cxs + s, y - 5 - L.ti, 1, 1, L.tint); }
+            else if (lk.pauld === "bone") { this.line(cxs, y + 1, cxs + s * 2, y - 4 - L.ti, "#e8e0d0", 2); this.line(cxs + s, y + 1, cxs + s * 4, y - 2, "#a89c80", 1); this.R(cxs + s * 2, y - 5 - L.ti, 1, 1, lk.c2); }
+            else if (lk.pauld === "leaves") { for (let q = 0; q < 3; q++) { const lf = this.themeOn ? Math.round(Math.sin(tt / 400 + q + k * 2)) : 0; this.R(cxs + (q - 1) * 2, y - 2 - q - Math.floor(L.ti / 2) + lf, 2, 2, q % 2 ? "#5fa040" : "#8ac060"); } this.R(cxs, y - 1, 1, 1, lk.c2); }
+            else if (lk.pauld === "stars") { for (let q = 0; q < 2; q++) { const tw = this.themeOn ? 0.5 + 0.5 * Math.sin(tt / 200 + q * 2 + k) : 1, sx2 = cxs + (q ? -s * 2 : s), sy2 = y - 3 - q * 3; this.R(sx2, sy2, 1, 1, "#ffffff", tw); this.R(sx2 - 1, sy2, 3, 1, L.tint, 0.5 * tw); this.R(sx2, sy2 - 1, 1, 3, lk.c2, 0.5 * tw); } }
             else if (lk.pauld === "bolts") {
               if (!this.themeOn || ((Math.floor(t / 90) + k * 3) % 4) !== 0) {
                 let bx = cxs, by = y;
@@ -475,6 +483,12 @@ export class GearLayers {
           case "spark": x = fx; y = fy; a = ((Math.floor(t / 70) + k) % 5 === 0) ? 1 : 0; c = lk.c2; break;
           case "drip": y = fy + ph * 6; c = L.tint; break;
           case "snow": y = y0 - 4 + ph * (y1 - y0 + 6); x = cx + Math.sin(ph * 6 + k) * (x1 - x0 + 2) / 2; c = "#ffffff"; break;
+          case "vortex": { const ang = ph * 7 + (k * Math.PI * 2) / n, r = (1 - ph) * ((x1 - x0) / 2 + 3); x = cx + Math.cos(ang) * r; y = cy + Math.sin(ang) * r * 0.7; a = Math.sin(ph * Math.PI); c = k % 2 ? lk.c2 : L.tint; break; }
+          case "ice": y = fy + ph * 5; x = fx + Math.sin(ph * 4 + k) * 1.2; c = ph < 0.5 ? "#cfe0ff" : lk.c2; w = ph < 0.4 ? 2 : 1; break;
+          case "bones": x = fx + (k % 2 ? 1 : -1) * ph * 4; y = fy - ph * 3 + ph * ph * 9; c = "#e8e0d0"; break;
+          case "stardust": x = fx + ((k * 5) % 7) - 3; y = fy + ((k * 3) % 5) - 2; a = Math.abs(Math.sin(ph * Math.PI)); c = k % 2 ? "#ffffff" : lk.c2; break;
+          case "blood": y = fy + ph * ph * 9; c = k % 3 ? L.tint : dark(L.tint, 0.6); break;
+          case "bolt": { const fl = Math.floor(t / 90) + k; a = fl % 4 === 0 ? 1 : 0; x = fx + ((fl * 7) % 3 - 1) * 2; y = fy - (fl % 2) * 2; c = k % 2 ? "#ffffff" : lk.c2; break; }
           case "leaf": case "orbit": { const ang = t / 800 + (k * Math.PI * 2) / n; x = cx + Math.cos(ang) * ((x1 - x0) / 2 + 3); y = cy + Math.sin(ang) * ((y1 - y0) / 4 + 2); a = Math.sin(ang) > 0 ? 1 : 0.5; w = lk.fx === "leaf" ? 2 : 1; break; }
           default: x += Math.sin(ph * 7 + k) * 2; c = lk.c2; a *= 0.85; w = ph < 0.3 ? 2 : 1;
         }
@@ -493,6 +507,12 @@ export class GearLayers {
     const a = Math.sin(ang) > 0 ? 1 : 0.45, P = (dx: number, dy: number, w: number, h: number, c: string, al = a) => g.fillStyle(C(c), al).fillRect(x + dx, y + dy, w, h);
     if (lk.orbit === "blades") { P(0, -3, 1, 4, lk.c2); P(0, -3, 1, 1, "#ffffff"); P(-1, 1, 3, 1, L.tint); P(0, 2, 1, 1, dark(L.tint, 0.6)); }
     else if (lk.orbit === "runes") { const r = (k + Math.floor(t / 1500)) % 3; P(-2, -2, 5, 5, L.tint, 0.18 * a); P(-1, -1, 3, 1, L.tint); P(-1, 1, 3, 1, L.tint); P(r === 0 ? -1 : 1, 0, 1, 1, lk.c2); P(0, r === 2 ? -1 : 0, 1, 2, lk.c2); }
+    else if (lk.orbit === "shards") { P(0, -3, 1, 5, "#cfe0ff"); P(-1, -1, 3, 1, "#cfe0ff"); P(0, -3, 1, 1, "#ffffff"); P(0, 0, 1, 1, lk.c2); }
+    else if (lk.orbit === "leaves") { P(0, -2, 1, 4, "#5fa040"); P(-1, -1, 3, 2, "#8ac060"); P(0, -1, 1, 2, lk.c2); }
+    else if (lk.orbit === "drops") { P(0, -3, 1, 1, L.tint); P(-1, -1, 3, 2, L.tint); P(0, 1, 1, 1, dark(L.tint, 0.6)); P(-1, -1, 1, 1, "#ffffff", 0.8 * a); }
+    else if (lk.orbit === "bolts") { P(1, -3, 1, 2, lk.c2); P(0, -1, 2, 1, lk.c2); P(-1, 0, 1, 2, lk.c2); P(0, 2, 1, 1, "#ffffff"); }
+    else if (lk.orbit === "stars") { P(-2, 0, 5, 1, L.tint); P(0, -2, 1, 5, L.tint); P(0, 0, 1, 1, "#ffffff"); P(-1, -1, 1, 1, lk.c2, 0.7 * a); }
+    else if (lk.orbit === "bones") { P(-2, 0, 5, 1, "#e8e0d0"); P(-2, -1, 1, 3, "#e8e0d0"); P(2, -1, 1, 3, "#e8e0d0"); P(0, 0, 1, 1, lk.c2); }
     else { P(-2, -2, 5, 5, L.tint, 0.22 * a); P(-1, -1, 3, 3, L.tint); P(-1, -1, 1, 1, lk.c2); P(0, 0, 1, 1, "#ffffff", 0.8 * a); }
   }
 
@@ -571,7 +591,29 @@ export class GearLayers {
     if (from === "cloak" && lk.back === "banner") this.banner(L, i, bob, walking, tt);
     if (lk.back === "wings" && !wingsDone) { this.g = up ? this.front : this.back; this.wings(L, view, bob, walking, tt, i.seed); }
     if (lk.chains) { this.g = from === "cloak" && !up ? this.back : this.front; this.chains(L, view, bob, walking, tt, i.seed, from); }
+    if (from === "cloak" && (lk.back === "plumage" || lk.back === "shadow")) this.cloakTheme(L, i, bob, walking, tt);
     this.g = this.front;
+  }
+
+  /**
+   * Тема плаща без знамени и крыльев (look.back): plumage — оперение (чешуя перьев по спине, перья по краям спереди и сбоку),
+   * shadow — тень (полупрозрачная дымка и вихри от подола). Рисуется внутри контура плаща: не ниже лодыжек, со спины закрывает спину.
+   */
+  private cloakTheme(L: LegendaryDef, i: GearInput, bob: number, walking: boolean, tt: number) {
+    const lk = L.look, view = i.view, up = view === 1, side = view === 2, y0 = 16 + bob, len = up ? 9 : 12, t = this.themeOn ? tt : 0;
+    this.g = up ? this.front : this.back;
+    const cols: number[] = side ? [8] : [8, 22], wd = side ? 5 : 2;
+    if (lk.back === "plumage") {
+      if (up) for (let row = 0; row < 4; row++) for (let q = 0; q < 4; q++) {
+        const sh = Math.round(Math.sin(t / 220 + q + row) * (walking ? 1 : 0.4)), x = 10 + q * 3 + (row % 2) + sh, y = y0 + 1 + row * 2;
+        this.R(x, y, 2, 2, (q + row) % 2 ? "#dce2ec" : lk.c2); this.R(x, y + 1, 1, 1, (q + row) % 3 ? "#ffffff" : L.tint);
+      }
+      else for (const x of cols) for (let k = 0; k < len - 1; k += 2) this.R(x, y0 + 1 + k, wd, 1, (k / 2) % 2 ? "#dce2ec" : lk.c2);
+    } else {
+      const dm = dark(L.tint, 0.3);
+      if (up) { this.R(10, y0 + 2, 12, len - 2, dm, 0.4); for (let q = 0; q < 4; q++) this.R(11 + q * 3, Math.round(y0 + len - ((t / 110 + q * 5) % len)), 1, 2, lk.c2, 0.55); }
+      else for (const x of cols) { this.R(x, y0 + 2, wd, len - 2, dm, 0.4); for (let q = 0; q < 2; q++) this.R(x + (q % wd), Math.round(y0 + len - ((t / 110 + q * 5 + x) % len)), 1, 2, lk.c2, 0.5); }
+    }
   }
 
   /** Знамя-штандарт: древко над плечом, перекладина, полотнище с гербом колышется (сильнее при ходьбе); с яруса 85 кисти и крупное навершие. */
@@ -598,14 +640,17 @@ export class GearLayers {
     for (let q = 0; q < fw; q++) {
       const far = side ? fw - 1 - q : dir > 0 ? q : fw - 1 - q; // 0 — у древка
       const off = Math.round(Math.sin(tt / 170 - far * 0.7 + i.seed) * amp * (far / fw)), x = fx0 + q + (side ? Math.round(-far * 0.15 * (walking ? 1 : 0)) : 0);
-      const notch = Math.abs(q - (fw - 1) / 2) < 1.2 ? 2 : 0, hgt = fh - notch;
+      if (lk.form === "double" && Math.abs(q - (fw - 1) / 2) < 0.6) continue; // двойное знамя: щель между полотнищами
+      const notch = lk.form === "torn" ? 1 + ((q * 5 + i.seed) % 4) : lk.form === "pennant" ? Math.round((far / fw) * (fh - 2)) : lk.form === "double" ? (q < fw / 2 ? 2 : 0) : Math.abs(q - (fw - 1) / 2) < 1.2 ? 2 : 0, hgt = fh - notch;
       this.R(x, top + 2 + off, 1, hgt, q % 2 ? flag : dark(flag, 0.88));
       this.R(x, top + 2 + off + hgt, 1, 1, RARITY_COLORS[3]); // кайма — цвет редкости
       if (q === 0 || q === fw - 1) this.R(x, top + 2 + off, 1, hgt, dark(flag, 0.7));
     }
     // герб в середине полотнища (движется вместе с ним)
     const mid = Math.floor(fw / 2), cOff = Math.round(Math.sin(tt / 170 - mid * 0.7 + i.seed) * amp * 0.5);
-    this.crest(lk.crest ?? (umb ? "skull" : "sun"), fx0 + mid, top + 2 + Math.floor(fh / 2) - 1 + cOff, L.tint, lk.c2);
+    const nearCol = side ? fw - 1 : dir > 0 ? 0 : fw - 1, sgn = nearCol === 0 ? 1 : -1;
+    if (lk.form === "double") for (const qx of [1, fw - 2]) { this.R(fx0 + qx, top + 2 + Math.floor(fh / 2) + cOff, 1, 2, L.tint); this.R(fx0 + qx, top + 2 + Math.floor(fh / 2) + cOff, 1, 1, lk.c2); }
+    else this.crest(lk.crest ?? (umb ? "skull" : "sun"), fx0 + (lk.form === "pennant" ? nearCol + sgn * 2 : mid), top + 2 + Math.floor(fh / 2) - 1 + cOff, L.tint, lk.c2);
     // кисти на концах перекладины (ярус 85+)
     if (ti >= 3) for (const x of [Math.min(fx0, bx) - (side ? 1 : 0), Math.min(fx0, bx) + fw + 1 - (side ? 1 : 0)]) { const sw = Math.round(Math.sin(tt / 200 + x) * (walking ? 1 : 0.5)); this.R(x + sw, top + 2, 1, 3, lk.c2); this.R(x + sw, top + 5, 1, 1, L.tint); }
     this.g = this.front;
@@ -625,6 +670,14 @@ export class GearLayers {
       case "crown": { const w = "#e8e0d0"; R(-2, -2, 1, 2, w); R(0, -2, 1, 2, w); R(2, -2, 1, 2, w); R(-2, 0, 5, 2, w); R(-1, 1, 1, 1, c2); R(1, 1, 1, 1, c2); break; }
       case "raven": { const w = "#e8e0d0"; R(0, -2, 3, 1, w); R(-2, -1, 5, 2, w); R(-1, 1, 3, 1, w); R(1, -1, 1, 1, "#141018"); R(-2, 2, 1, 1, w); R(0, 2, 1, 1, w); break; }
       case "flame": R(0, -2, 1, 1, c2); R(-1, -1, 2, 2); R(0, -1, 1, 2, c2); R(-1, 1, 3, 1); R(-2, 0, 1, 2); R(2, 0, 1, 2); break;
+      case "bolt": R(1, -2, 2, 1); R(0, -1, 2, 1); R(-1, 0, 4, 1); R(1, 0, 1, 1, c2); R(0, 1, 2, 1); R(-1, 2, 2, 1); break;
+      case "wolf": { const w = "#e8e0d0"; R(-2, -2, 1, 1, w); R(2, -2, 1, 1, w); R(-2, -1, 5, 2, w); R(-1, -1, 1, 1, "#141018"); R(1, -1, 1, 1, "#141018"); R(-1, 1, 3, 1, w); R(0, 2, 1, 1, "#141018"); break; }
+      case "serpent": R(-1, -2, 3, 1); R(1, -2, 1, 1, c2); R(-2, -1, 1, 1); R(-1, 0, 3, 1); R(1, 1, 1, 1); R(-1, 2, 3, 1); break;
+      case "wing": R(1, -2, 2, 1); R(-1, -1, 4, 1); R(-2, 0, 5, 1); R(-2, 1, 3, 1, c2); R(-2, 2, 1, 1); R(0, 2, 1, 1); break;
+      case "hammer": R(-2, -2, 5, 3); R(0, -1, 1, 1, c2); R(0, 1, 1, 2, "#8a5a2a"); break;
+      case "drop": R(0, -2, 1, 1); R(-1, -1, 3, 1); R(-2, 0, 5, 2); R(-1, 2, 3, 1); R(0, 0, 1, 1, c2); break;
+      case "leaf": R(1, -2, 2, 1); R(0, -1, 3, 1); R(-1, 0, 3, 1); R(0, 0, 1, 1, c2); R(0, 1, 2, 1); R(-2, 1, 1, 2, "#5fa040"); break;
+      case "frost": R(-2, -2, 1, 1); R(2, -2, 1, 1); R(-2, 2, 1, 1); R(2, 2, 1, 1); R(0, -2, 1, 5); R(-2, 0, 5, 1); R(0, 0, 1, 1, c2); break;
       default: R(-1, -1, 3, 3); R(0, -3 + 1, 1, 1); R(0, 2, 1, 1); R(-2, 0, 1, 1); R(2, 0, 1, 1); R(-2, -2, 1, 1, c2); R(2, -2, 1, 1, c2); R(-2, 2, 1, 1, c2); R(2, 2, 1, 1, c2); R(0, 0, 1, 1, c2);
     }
   }
@@ -658,7 +711,16 @@ export class GearLayers {
       } else {
         for (let j = nf - 1; j >= 0; j--) {
           const [x, y] = tips[j], mx = rx + (x - rx) * 0.6, my = ry + (y - ry) * 0.6;
-          if (kind === "flame") {
+          if (kind === "crystal") {
+            this.line(rx, ry, mx, my, j % 2 ? "#cfe0ff" : lk.c2, 2, alpha); this.line(mx, my, x, y, j % 2 ? lk.c2 : "#ffffff", 1, alpha);
+            if (this.themeOn && (Math.floor(tt / 110) + j) % 5 === 0) this.R(Math.round(x), Math.round(y), 1, 1, "#ffffff", alpha);
+          } else if (kind === "shadow") {
+            const dr = this.themeOn ? Math.sin(tt / 200 + j) * 1.2 : 0;
+            this.line(rx, ry, mx, my + dr * 0.5, dark(L.tint, 0.55), 3, 0.55 * alpha); this.line(mx, my + dr * 0.5, x, y + dr, dark(L.tint, 0.7), 2, 0.4 * alpha);
+            this.R(Math.round(x), Math.round(y + dr), 1, 1, lk.c2, 0.8 * alpha);
+          } else if (kind === "leaf") {
+            this.line(rx, ry, mx, my, "#3a6a2a", 2, alpha); this.R(Math.round(x) - 1, Math.round(y) - 1, 3, 2, j % 2 ? "#5fa040" : "#8ac060", alpha); this.R(Math.round(x), Math.round(y), 1, 1, lk.c2, alpha);
+          } else if (kind === "flame") {
             this.line(rx, ry, mx, my, L.tint, 2, 0.9 * alpha);
             this.line(mx, my, x, y, lk.c2, 1, 0.95 * alpha);
             if (this.themeOn && (Math.floor(tt / 80) + j) % 4 === 0) this.R(Math.round(x), Math.round(y), 1, 1, "#ffffff", alpha);
@@ -698,11 +760,40 @@ export class GearLayers {
       if (up) { this.R(13, 15 + bob, 6, 1, dark(L.tint, 0.6)); return; } // со спины виден только шнурок
       const x = side ? 18 : 15, y = 17 + bob;
       this.R(x - 1, y - 1, 1, 1, "#a89c80"); this.R(x + 2, y - 1, 1, 1, "#a89c80");
-      this.R(x, y, 2, 2, L.tint); this.R(x, y, 1, 1, L.look.c2);
+      this.pendant(L, x, y);
       if (this.themeOn) this.R(x - 1, y - 1, 4, 4, L.tint, 0.2 + 0.12 * Math.sin(tt / 300));
     } else {
       const sw = col < 4 ? [0, 1, 0, -1][col] : 0, x = side ? 18 + sw : up ? 9 : 22, y = 22 + bob;
       this.R(x, y, 1, 1, L.tint); if (this.themeOn && Math.floor(tt / 200) % 5 === 0) this.R(x, y - 1, 1, 1, "#ffffff");
+      this.setBits(L.look.setting, x, y, L, 0);
+    }
+  }
+  /** Подвеска амулета: камень look.stone (по умолчанию круглый 2×2) и оправа look.setting вокруг него. */
+  private pendant(L: LegendaryDef, x: number, y: number) {
+    const lk = L.look, T = L.tint, C2 = lk.c2, W = "#ffffff";
+    const px = (pts: number[][], c: string) => { for (const [a, b] of pts) this.R(x + a, y + b, 1, 1, c); };
+    switch (lk.stone) {
+      case "cut": px([[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], T); px([[0, 0]], C2); px([[0, -1]], W); break;
+      case "drop": px([[0, -1], [0, 0], [1, 0], [0, 1], [1, 1]], T); px([[0, 0]], C2); break;
+      case "shard": px([[0, -2], [0, -1], [1, -1], [0, 0], [1, 0], [0, 1]], T); px([[0, -1]], C2); px([[0, -2]], W); break;
+      case "eye": px([[-1, 0], [0, 0], [1, 0], [2, 0], [0, -1], [1, -1]], "#e8e2d0"); px([[0, 0]], T); px([[1, 0]], "#141018"); break;
+      case "square": px([[0, -1], [1, -1], [2, -1], [0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]], T); px([[1, 0]], C2); break;
+      case "star": px([[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], T); px([[0, 0]], W); px([[0, -2], [-2, 0], [2, 0], [0, 2]], C2); break;
+      default: this.R(x, y, 2, 2, T); this.R(x, y, 1, 1, C2);
+    }
+    this.setBits(lk.setting, x, y, L, 1);
+  }
+  /** Оправа look.setting: claws — когти, thorns — шипы, wings — крылышки, halo — точки по кругу, leaves — листья, crown — зубцы. big = подвеска (шире), иначе кольцо на руке. */
+  private setBits(kind: string | undefined, x: number, y: number, L: LegendaryDef, big: number) {
+    if (!kind) return;
+    const d = big ? 2 : 1, tt = this.themeOn ? this.t : 0, c2 = L.look.c2, gold = "#f0c040";
+    switch (kind) {
+      case "claws": for (const [a, b] of [[-d, -d], [d + big, -d], [-d, d + big], [d + big, d + big]]) this.R(x + a, y + b, 1, 1, "#e8e0d0"); break;
+      case "thorns": this.R(x, y - d - 1, 1, 1, "#e8e0d0"); this.R(x + big, y + d + big + 1, 1, 1, "#e8e0d0"); this.R(x - d - 1, y, 1, 1, "#a89c80"); this.R(x + d + big + 1, y, 1, 1, "#a89c80"); break;
+      case "wings": this.R(x - d - 1, y, 2, 1, c2); this.R(x + d + big, y, 2, 1, c2); this.R(x - d - 2, y - 1, 1, 1, "#ffffff"); this.R(x + d + big + 2, y - 1, 1, 1, "#ffffff"); break;
+      case "halo": for (let q = 0; q < 6; q++) { const a = tt / 500 + (q * Math.PI) / 3; this.R(Math.round(x + big / 2 + Math.cos(a) * (d + 2)), Math.round(y + big / 2 + Math.sin(a) * (d + 2)), 1, 1, q % 2 ? c2 : gold, 0.8); } break;
+      case "leaves": this.R(x - d - 1, y - 1, 1, 2, "#5fa040"); this.R(x + d + big + 1, y - 1, 1, 2, "#8ac060"); break;
+      case "crown": for (const a of [-1, 0, 1]) this.R(x + a * 2 + (big ? 0 : 0), y - d - 1 - (a === 0 ? 1 : 0), 1, 1, gold); break;
     }
   }
   private helmet(h: Piece, L: LegendaryDef | undefined, tr: string, pal: typeof PAL.solgard, cx: number, view: number, bob: number, t: number, seed: number) {
@@ -760,6 +851,16 @@ export class GearLayers {
       for (let k = 0; k < 5; k++) { const sx = cx - 6 + k * 2.5, hh = k % 2 ? 2 : 4 + eh - (k === 0 || k === 4 ? Math.ceil(eh / 2) : 0); this.R(sx, 3 + y - hh, 2, hh, gold); this.R(sx, 3 + y - hh, 2, 1, k % 2 ? "#ffffff" : lk.c2); }
       if (L.ti >= 3) { this.R(cx - 1, -1 - eh + y + 2, 2, 2, L.look.c2); this.R(cx - 1, -1 - eh + y + 2, 1, 1, "#ffffff"); }
       this.R(cx - 1, 3 + y, 2, 1, lk.c2);
+    } else if (lk.helm === "antlers") {
+      for (const s of side ? [-1] : [-1, 1]) { this.line(cx + s * 5, 5 + y, cx + s * 7, 0 + y, "#e8e0d0", 2); this.line(cx + s * 7, 0 + y, cx + s * 8, -5 - L.ti + y, "#e8e0d0", 1); this.line(cx + s * 6, 2 + y, cx + s * 10, -1 + y, "#a89c80", 1); this.R(cx + s * 8, -6 - L.ti + y, 1, 1, lk.c2); this.R(cx + s * 10, -2 + y, 1, 1, L.tint); }
+    } else if (lk.helm === "spires") {
+      for (let q = -2; q <= 2; q++) { const hh = 3 + L.ti + (2 - Math.abs(q)); this.R(cx + q * 2, 3 + y - hh, 1, hh, q % 2 ? lk.c2 : L.tint); this.R(cx + q * 2, 3 + y - hh, 1, 1, "#ffffff"); }
+    } else if (lk.helm === "thorns") {
+      for (let q = 0; q < 7; q++) { const hh = q % 2 ? 2 : 4 + (L.ti >= 3 ? 1 : 0); this.R(cx - 6 + q * 2, 3 + y - hh, 1, hh, q % 2 ? "#a89c80" : "#e8e0d0"); this.R(cx - 6 + q * 2, 3 + y - hh, 1, 1, q % 3 ? L.tint : lk.c2); }
+    } else if (lk.helm === "moon") {
+      for (let a2 = Math.PI * 0.65; a2 < Math.PI * 1.9; a2 += 0.2) { this.R(cx + Math.round(Math.cos(a2) * 5), -3 - L.ti + y + Math.round(Math.sin(a2) * 5), 1, 1, L.tint); this.R(cx + Math.round(Math.cos(a2) * 4) + 1, -3 - L.ti + y + Math.round(Math.sin(a2) * 4) + 1, 1, 1, lk.c2, 0.8); }
+    } else if (lk.helm === "plume") {
+      for (let q = 0; q < 8; q++) this.R(cx - 1 + Math.round(q * 0.5 + Math.sin(t / 260 + q * 0.6) * q * 0.25) - (side ? q * 0.5 : 0), 2 + y - q - (L.ti >= 3 ? 1 : 0), 2, 1, q % 2 ? lk.c2 : L.tint);
     } else if (lk.helm === "wings") {
       for (const s of side ? [-1] : [-1, 1]) for (let k = 0; k < 4; k++) this.line(cx + s * 5, 7 + y - k, cx + s * (9 + k * 2), 4 + y - k * 3 - Math.round(Math.sin(t / 300 + k) * 1), k % 2 ? lk.c2 : L.tint, 1);
     } else {
@@ -775,9 +876,9 @@ export class GearLayers {
     const { view, t } = i, up = view === 1, side = view === 2;
     const sp = sm && !L ? piecePal(sm, o.r) : null, m = sp ? sp.m : pal.m;
     if (sp) tr = sp.tr;
-    const shp = sm?.look.shape ?? "";
+    const shp = sm?.look.shape ?? (L ? L.look.form ?? L.look.shape ?? "" : "");
     let w = 6 + Math.min(3, o.r + (L ? 1 : 0)), h = 8 + Math.min(4, o.r * 1.5 + (L ? 2 : 0));
-    if (shp === "tower") { w = 8; h = 13; } else if (shp === "buckler") { w = 5; h = 5; } else if (shp === "round" || shp === "aegis") { w = 8; h = 8; } else if (shp === "spiked") { w = 7; h = 7; } else if (shp === "kite") { w = 7; h = 12; } else if (sp) { w = 7; h = 10; }
+    if (shp === "tower") { w = 8; h = 13; } else if (shp === "buckler") { w = 5; h = 5; } else if (shp === "round" || shp === "aegis") { w = 8; h = 8; } else if (shp === "spiked") { w = 7; h = 7; } else if (shp === "kite" || shp === "crystal") { w = 7; h = 12; } else if (shp === "ward") { w = 8; h = 11; } else if (sp) { w = 7; h = 10; }
     const x = side ? 13 - lx : up ? 22 : 8 - w + 3, y = 17 + bob + (side ? 0 : -sw) + ly;
     const metal = L ? [dark(L.tint, 0.4), dark(L.tint, 0.7), L.tint, L.look.c2] : m;
     this.g = up ? this.back : this.front; this.sx = 0; this.sy = 0; // со спины щит за спиной/сбоку, под плащом
@@ -802,6 +903,8 @@ export class GearLayers {
         if (sm!.look.deco === "spikes" || shp === "spiked") { this.R(xx - 1, y + 1, 1, 1, m[3]); this.R(xx + ww, y + 1, 1, 1, m[3]); this.R(xx - 1, y + h - 2, 1, 1, m[3]); this.R(xx + ww, y + h - 2, 1, 1, m[3]); }
         this.R(xx + Math.floor(ww / 2) - 1 + (shp === "bone" ? 0 : 0), y + Math.floor(h / 2), 2, 1, sp.st);
         if (sp.hi) this.R(xx + Math.floor(ww / 2) - 1, y + Math.floor(h / 2), 1, 1, "#ffffff");
+      } else if (!up && L?.look.crest) {
+        this.crest(L.look.crest, xx + Math.floor(ww / 2), y + Math.floor(h / 2), L.tint, L.look.c2); // герб щита (look.crest)
       } else if (!up) {
         if (pal === PAL.umbrath) { this.R(xx + ww / 2 - 1, y + 2, 2, 2, pal.gold); this.R(xx + ww / 2 - 1, y + 5, 2, 1, pal.gold2); } else { this.R(xx + Math.floor(ww / 2) - 1, y + 2, 2, h - 4, ec); this.R(xx + 1, y + Math.floor(h / 2) - 1, ww - 2, 2, ec); }
         if (o.r >= 1 && tr) { this.R(xx, y, ww, 1, tr); this.R(xx, y + h - 1, ww, 1, tr); }
@@ -811,6 +914,8 @@ export class GearLayers {
     if (L) {
       const pulse = this.themeOn ? 0.6 + 0.4 * Math.sin(t / 220 + i.seed) : 0.8;
       this.R(xx - 1, y - 1, ww + 2, 1, L.tint, 0.5 * pulse); this.R(xx - 1, y + h, ww + 2, 1, L.look.c2, 0.4 * pulse);
+      if (shp === "crescent") { this.R(xx, y - 2, 1, 2, metal[3]); this.R(xx + ww - 1, y - 2, 1, 2, metal[3]); }
+      if (shp === "winged" && !side) for (const sd of [-1, 1]) for (let q = 0; q < 3; q++) this.R(sd < 0 ? xx - 1 - q : xx + ww + q, y + 1 - q + (this.themeOn ? Math.round(Math.sin(t / 240 + q)) : 0), 1, 2, q % 2 ? L.look.c2 : "#ffffff");
       if (L.look.pauld === "flame" || L.look.fx === "ember") this.flame(xx + ww / 2, y, 3, 4, L.tint, L.look.c2, this.themeOn ? t : 0, 2);
       else if (!up) for (const sp of [0, 1]) this.line(xx + sp * (ww - 1), y, xx + sp * (ww - 1) + (sp ? 2 : -2), y - 4, L.tint, 1);
     }
@@ -857,6 +962,10 @@ export class GearLayers {
       const gw = wb === "greatsword" ? 4 : wb === "dagger" ? 2 : 3;
       this.line(hx - px * gw, hy - py * gw, hx + px * gw, hy + py * gw, trimC, 1);
       if (L) for (let s = 3; s < len; s += 3) this.R(Math.round(hx + dx * s + px * 2), Math.round(hy + dy * s + py * 2), 1, 1, hi, pulse);
+      // look.blade: jagged — зубцы по кромке, flaming — пламя вдоль клинка, crystal — грани-блики
+      if (L?.look.blade === "jagged") for (let s = 3; s < len; s += 2) this.R(Math.round(hx + dx * s - px * 2), Math.round(hy + dy * s - py * 2), 1, 1, s % 4 ? hi : base);
+      else if (L?.look.blade === "flaming") for (let s = 4; s < len; s += 2) { const fl = this.themeOn ? Math.round(Math.sin(t / 90 + s)) : 0; this.R(Math.round(hx + dx * s + px * (2 + fl)), Math.round(hy + dy * s + py * (2 + fl)), 1, 1, s % 4 ? L.tint : hi, 0.85); }
+      else if (L?.look.blade === "crystal") for (let s = 3; s < len; s += 3) this.R(Math.round(hx + dx * s - px), Math.round(hy + dy * s - py), 1, 1, s % 6 ? "#cfe0ff" : "#ffffff");
       // гравировка удлинённого клинка: руны по долу цветом c2, бегущий блик
       if (L?.look.blade === "long") for (let s = 4; s < len - 2; s += 2) { const lit = this.themeOn && Math.abs(((t / 40) % (len + 8)) - s) < 2; this.R(Math.round(hx + dx * s), Math.round(hy + dy * s), 1, 1, lit ? "#ffffff" : L.look.c2, lit ? 1 : 0.8); }
     } else if (wb === "spear" || wb === "scythe") {
@@ -864,6 +973,10 @@ export class GearLayers {
       const ex = hx + dx * len, ey = hy + dy * len;
       if (wb === "spear") {
         if (shp === "trident") for (const q of [-2, 0, 2]) this.line(ex + px * q, ey + py * q, ex + px * q + dx * 3, ey + py * q + dy * 3, q ? base : hi, 1);
+        else if (shp === "forked") for (const q of [-1.5, 1.5]) this.line(ex + px * q, ey + py * q, ex + px * q + dx * 4, ey + py * q + dy * 4, base, 1);
+        else if (shp === "crystal") { this.line(ex, ey, ex + dx * 4, ey + dy * 4, "#cfe0ff", 2); this.R(Math.round(ex + dx * 5), Math.round(ey + dy * 5), 1, 1, "#ffffff"); }
+        else if (shp === "bolt") { this.line(ex, ey, ex + px + dx * 2, ey + py + dy * 2, base, 1); this.line(ex + px + dx * 2, ey + py + dy * 2, ex - px + dx * 3, ey - py + dy * 3, hi, 1); this.line(ex - px + dx * 3, ey - py + dy * 3, ex + dx * 5, ey + dy * 5, base, 1); }
+        else if (shp === "harpoon") { this.line(ex, ey, ex + dx * 4, ey + dy * 4, base, 1); for (const q of [-1, 1]) this.line(ex + dx * 3 + px * q * 2, ey + dy * 3 + py * q * 2, ex + dx * 3, ey + dy * 3, hi, 1); }
         else { this.line(ex, ey, ex + dx * 4, ey + dy * 4, base, 2); this.R(Math.round(ex + dx * 5), Math.round(ey + dy * 5), 1, 1, hi); }
         if (shp === "boar" || shp === "partisan") this.line(ex - px * 2, ey - py * 2, ex + px * 2, ey + py * 2, trimC, 1);
       } else {
@@ -876,6 +989,9 @@ export class GearLayers {
       this.line(ex - px * hw, ey - py * hw, ex + px * hw, ey + py * hw, base, 3);
       this.line(ex - px * hw + dx, ey - py * hw + dy, ex + px * hw + dx, ey + py * hw + dy, hi, 1);
       if (shp === "crusher") this.line(ex - px * hw, ey - py * hw, ex - px * (hw + 3), ey - py * (hw + 3) - dy, base, 1);
+      if (shp === "anvil") this.line(ex + px * hw, ey + py * hw, ex + px * (hw + 3) + dx, ey + py * (hw + 3) + dy, base, 2);
+      else if (shp === "crystal") this.line(ex - px * hw, ey - py * hw, ex + px * hw, ey + py * hw, "#cfe0ff", 1);
+      else if (shp === "star") { this.R(Math.round(ex + dx * 3), Math.round(ey + dy * 3), 1, 1, hi); this.R(Math.round(ex - dx * 3), Math.round(ey - dy * 3), 1, 1, hi); }
 
     } else if (wb === "crossbow") {
       const ex = hx + dx * 7, ey = hy + dy * 7, ps = (shp === "heavy" ? 6 : shp === "hand" ? 3 : 5) + (L ? Math.round(L.ti / 2) + (L.look.blade === "long" ? 2 : 0) : 0);
@@ -897,6 +1013,9 @@ export class GearLayers {
       this.line(ex - px * 1, ey - py * 1, ex + px * hl, ey + py * hl, base, L || big ? 4 : 3);
       this.line(ex + px * hl + dx * 2, ey + py * hl + dy * 2, ex + px * hl - dx * (big ? 5 : 3), ey + py * hl - dy * (big ? 5 : 3), hi, 1);
       if (L || shp === "labrys" || shp === "pick") this.line(ex - px, ey - py, ex - px * 4, ey - py * 4, base, 2);
+      if (shp === "crescent" || shp === "hooked") this.line(ex + px * hl, ey + py * hl, ex + px * (hl - 1) - dx * 4, ey + py * (hl - 1) - dy * 4, base, 2);
+      if (shp === "sawtooth" || shp === "thorned") for (let q = 0; q < 3; q++) this.R(Math.round(ex + px * (hl + 1) + dx * (q * 2 - 2)), Math.round(ey + py * (hl + 1) + dy * (q * 2 - 2)), 1, 1, hi);
+      if (shp === "triple" || shp === "fan") for (const sg of [-1, 1]) this.line(ex + px * hl, ey + py * hl, ex + px * (hl + 1) + dx * sg * 4, ey + py * (hl + 1) + dy * sg * 4, base, 1);
     } else if (wb === "bow") {
       for (let tt = -1; tt <= 1.001; tt += 0.125) this.R(Math.round(hx + px * tt * 7 + dx * (1 - tt * tt) * 3), Math.round(hy + py * tt * 7 + dy * (1 - tt * tt) * 3), L ? 2 : 1, L ? 2 : 1, tt > 0.7 || tt < -0.7 ? hi : base, 0.95);
       if (L) this.line(hx + px * 7, hy + py * 7, hx - px * 7, hy - py * 7, hi, 1, 0.35 * pulse);
@@ -912,6 +1031,12 @@ export class GearLayers {
       else if (shp === "crystal") { this.R(Math.round(ox), Math.round(oy - 2), 1, 4, head); this.R(Math.round(ox - 1), Math.round(oy - 1), 3, 2, head); this.R(Math.round(ox), Math.round(oy - 2), 1, 1, "#ffffff"); }
       else if (shp === "star") { const X = Math.round(ox), Y = Math.round(oy); this.R(X, Y - 4, 1, 9, head); this.R(X - 4, Y, 9, 1, head); this.R(X - 1, Y - 1, 3, 3, hi); for (const [a, b] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) this.R(X + a, Y + b, 1, 1, head); this.R(X, Y, 1, 1, "#ffffff"); }
       else if (shp === "sun") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 2, Y - 1, 5, 3, head); this.R(X - 1, Y - 2, 3, 5, head); this.R(X - 1, Y - 1, 3, 3, hi); for (const [a, b] of [[0, -4], [0, 4], [-4, 0], [4, 0], [-3, -3], [3, -3], [-3, 3], [3, 3]]) this.R(X + a, Y + b, 1, 1, hi, 0.85); }
+      else if (shp === "vortex") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 1, Y - 1, 3, 3, head); for (let q = 0; q < 3; q++) { const a3 = t / 200 + q * 2.1; this.R(Math.round(X + Math.cos(a3) * 3.5), Math.round(Y + Math.sin(a3) * 3.5), 1, 1, q ? hi : "#ffffff"); } }
+      else if (shp === "drop") { const X = Math.round(ox), Y = Math.round(oy); this.R(X, Y - 3, 1, 1, head); this.R(X - 1, Y - 2, 3, 2, head); this.R(X - 2, Y, 5, 2, head); this.R(X - 1, Y + 2, 3, 1, head); this.R(X - 1, Y - 1, 1, 1, "#ffffff"); }
+      else if (shp === "leafy") { const X = Math.round(ox), Y = Math.round(oy); for (const [a2, b2] of [[-2, -2], [2, -2], [0, -3], [-1, -1], [1, -1]]) this.R(X + a2, Y + b2, 1, 2, a2 % 2 ? "#5fa040" : "#8ac060"); this.R(X, Y, 1, 1, head); }
+      else if (shp === "bolt") { const X = Math.round(ox), Y = Math.round(oy); this.R(X + 1, Y - 4, 1, 2, hi); this.R(X, Y - 2, 2, 1, head); this.R(X - 1, Y - 1, 1, 2, hi); this.R(X, Y + 1, 2, 1, head); this.R(X + 1, Y + 2, 1, 1, "#ffffff"); }
+      else if (shp === "antler") { const X = Math.round(ox), Y = Math.round(oy); for (const sg of [-1, 1]) { this.line(X, Y + 1, X + sg * 2, Y - 3, "#e8e0d0", 1); this.R(X + sg * 3, Y - 2, 1, 1, "#e8e0d0"); this.R(X + sg * 2, Y - 4, 1, 1, hi); } this.R(X, Y - 1, 1, 2, head); }
+      else if (shp === "bloom") { const X = Math.round(ox), Y = Math.round(oy); for (const [a2, b2] of [[0, -2], [2, 0], [0, 2], [-2, 0]]) this.R(X + a2, Y + b2, 1, 1, head); this.R(X - 1, Y - 1, 3, 3, head); this.R(X, Y, 1, 1, hi); }
       else if (shp === "flame") { this.R(Math.round(ox - 2), Math.round(oy + 2), 5, 1, trimC); this.flame(Math.round(ox), Math.round(oy) + 1, 3, 8, L!.tint, hi, t, i.seed); }
       else if (shp === "cage") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 3, Y - 3, 7, 1, trimC); this.R(X - 3, Y + 3, 7, 1, trimC); this.R(X - 3, Y - 2, 1, 5, trimC); this.R(X + 3, Y - 2, 1, 5, trimC); this.R(X - 1, Y - 1, 3, 3, head, 0.9); this.R(X, Y - 1, 1, 2, hi); this.R(X, Y - 5, 1, 2, trimC); }
       else if (shp === "censer") { const X = Math.round(ox), Y = Math.round(oy); this.R(X - 3, Y - 2, 7, 5, trimC); this.R(X - 2, Y - 1, 5, 3, head); this.R(X - 1, Y + 3, 3, 1, trimC); this.R(X, Y - 4, 1, 2, "#e8e8e8", 0.6); this.R(X + 1, Y - 6, 1, 2, "#e8e8e8", 0.35); }
@@ -935,7 +1060,13 @@ export class GearLayers {
   /** Навершие рукояти (look.pommel): череп или звезда, у звезды мерцают лучи. */
   private pommel(L: LegendaryDef, x: number, y: number, t: number) {
     const X = Math.round(x), Y = Math.round(y);
-    if (L.look.pommel === "skull") { this.R(X - 1, Y - 1, 3, 2, "#e8e0d0"); this.R(X, Y + 1, 1, 1, "#e8e0d0"); this.R(X - 1, Y - 1, 1, 1, L.tint); this.R(X + 1, Y - 1, 1, 1, L.tint); }
+    if (L.look.pommel === "eye") { this.R(X - 1, Y - 1, 3, 2, "#e8e0d0"); this.R(X, Y - 1, 1, 2, L.tint); this.R(X, Y - 1, 1, 1, "#141018"); }
+    else if (L.look.pommel === "flame") this.flame(X, Y + 1, 2, 4, L.tint, L.look.c2, this.themeOn ? t : 0, X);
+    else if (L.look.pommel === "gem") { this.R(X - 1, Y - 1, 3, 3, L.tint); this.R(X - 1, Y - 1, 1, 1, "#ffffff"); this.R(X + 1, Y + 1, 1, 1, L.look.c2); }
+    else if (L.look.pommel === "fang") { this.R(X - 1, Y - 1, 3, 1, "#e8e0d0"); this.R(X - 1, Y, 2, 1, "#e8e0d0"); this.R(X, Y + 1, 1, 1, "#a89c80"); this.R(X - 1, Y - 1, 1, 1, L.look.c2); }
+    else if (L.look.pommel === "leaf") { this.R(X, Y - 2, 2, 3, "#5fa040"); this.R(X - 1, Y, 2, 1, "#8ac060"); this.R(X, Y - 1, 1, 1, L.look.c2); }
+    else if (L.look.pommel === "drop") { this.R(X, Y - 2, 1, 1, L.tint); this.R(X - 1, Y - 1, 3, 2, L.tint); this.R(X - 1, Y - 1, 1, 1, "#ffffff"); this.R(X, Y + 1, 1, 1, dark(L.tint, 0.6)); }
+    else if (L.look.pommel === "skull") { this.R(X - 1, Y - 1, 3, 2, "#e8e0d0"); this.R(X, Y + 1, 1, 1, "#e8e0d0"); this.R(X - 1, Y - 1, 1, 1, L.tint); this.R(X + 1, Y - 1, 1, 1, L.tint); }
     else { const tw = this.themeOn && Math.floor(t / 180) % 4 === 0; this.R(X - 1, Y, 3, 1, L.tint); this.R(X, Y - 1, 1, 3, L.tint); this.R(X, Y, 1, 1, "#ffffff"); if (tw) { this.R(X - 2, Y, 1, 1, L.look.c2, 0.8); this.R(X + 2, Y, 1, 1, L.look.c2, 0.8); this.R(X, Y - 2, 1, 1, L.look.c2, 0.8); this.R(X, Y + 2, 1, 1, L.look.c2, 0.8); } }
   }
 
@@ -1072,7 +1203,7 @@ export class GearLayers {
   private focus(o: Piece, md: ItemModel | undefined, pal: typeof PAL.solgard, i: GearInput, bob: number, L?: LegendaryDef) {
     const { view } = i, side = view === 2, up = view === 1;
     // легендарка: камень цвета темы, оправа — второй цвет, форма — look.shape
-    const lk = L ? { shape: L.look.shape, cloth: undefined, haft: undefined } : md?.look, p = md && !L ? piecePal(md, o.r) : null;
+    const lk = L ? { shape: L.look.form ?? L.look.shape, cloth: undefined, haft: undefined } : md?.look, p = md && !L ? piecePal(md, o.r) : null;
     const st = L ? L.tint : p ? p.st : RARITY_COLORS[Math.min(3, Math.max(0, o.r))], std = L ? dark(L.tint, 0.55) : p ? p.std : "#6a7080", tr = L ? L.look.c2 : p ? p.trb : pal.gold;
     const x = side ? 12 : up ? 22 : 8, y = 19 + bob;
     this.g = side ? this.back : this.front;
@@ -1085,6 +1216,11 @@ export class GearLayers {
         case "lantern": this.R(x, y - 1, 3, 4, tr); this.R(x + 1, y, 1, 2, st); this.R(x + 1, y - 2, 1, 1, tr); break;
         case "skull": this.R(x, y, 3, 3, "#e0d8c8"); this.R(x, y + 1, 1, 1, st); this.R(x + 2, y + 1, 1, 1, st); this.R(x + 1, y + 3, 1, 1, "#a8a090"); break;
         case "orbit": this.R(x, y, 3, 3, st); this.R(x - 1, y + 1, 5, 1, tr); break;
+        case "vortex": { this.R(x, y, 3, 3, st); this.R(x + 1, y + 1, 1, 1, tr); if (this.themeOn) { const a3 = i.t / 200; this.R(x + 1 + Math.round(Math.cos(a3) * 2), y + 1 + Math.round(Math.sin(a3) * 2), 1, 1, "#ffffff"); } break; }
+        case "blood": this.R(x, y, 3, 3, st); this.R(x + 1, y + 3 + (this.themeOn ? Math.floor(i.t / 300) % 2 : 0), 1, 1, st); break;
+        case "galaxy": this.R(x, y, 3, 3, std); this.R(x + 1, y, 1, 1, "#ffffff"); this.R(x - 1, y + 2, 5, 1, tr, 0.8); break;
+        case "thorn": this.R(x, y, 3, 3, st); this.R(x - 1, y, 1, 1, "#e8e0d0"); this.R(x + 3, y + 2, 1, 1, "#e8e0d0"); this.R(x + 1, y - 1, 1, 1, "#e8e0d0"); break;
+        case "storm": this.R(x, y, 3, 3, std); this.R(x + 1, y, 1, 1, "#ffffff"); this.R(x, y + 1, 1, 1, tr); this.R(x + 2, y + 2, 1, 1, tr); break;
         default: this.R(x, y, 3, 3, st); this.R(x + 2, y + 2, 1, 1, std); this.R(x, y + 3, 3, 1, tr);
       }
       if (p?.hi || L) this.R(x, y, 1, 1, "#ffffff");
@@ -1098,6 +1234,12 @@ export class GearLayers {
         if (sh === "prayer") { this.R(x + 1, y + 1, 1, 3, tr); this.R(x, y + 2, 3, 1, tr); }
         else if (sh === "grimoire") { this.R(x + 1, y + 2, 2, 1, "#e0d8c8"); this.R(x + 1, y + 2, 1, 1, st); }
         else if (sh === "star") { this.R(x + 1, y + 1, 1, 1, "#ffffff"); this.R(x + 2, y + 3, 1, 1, "#ffffff"); }
+        else if (sh === "eye") { this.R(x + 1, y + 2, 2, 1, "#e8e2d0"); this.R(x + 1, y + 2, 1, 1, st); }
+        else if (sh === "frost") { this.R(x + 1, y + 1, 1, 3, "#cfe0ff"); this.R(x, y + 2, 3, 1, "#cfe0ff"); }
+        else if (sh === "blood") { this.R(x + 1, y + 1, 1, 2, st); this.R(x, y + 3, 3, 1, st); }
+        else if (sh === "bolt") { this.R(x + 2, y + 1, 1, 1, tr); this.R(x + 1, y + 2, 1, 1, tr); this.R(x + 2, y + 3, 1, 1, tr); }
+        else if (sh === "leaf") { this.R(x + 1, y + 1, 2, 2, "#5fa040"); this.R(x + 1, y + 3, 1, 1, "#3a6a2a"); }
+        else if (sh === "wing") { this.R(x, y + 1, 1, 2, tr); this.R(x + 2, y + 1, 1, 2, tr); this.R(x + 1, y + 2, 1, 1, st); }
         else this.R(x + 1, y + 2, 1, 1, st);
         if (sh === "thick") this.R(x + 3, y + 5, 1, 1, "#c8c0ae");
       }

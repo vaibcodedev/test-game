@@ -32,6 +32,8 @@ interface K {
   c: PC; L: ModelLook; cat: string; fac: string; h: number; umb: boolean; sol: boolean; rich: number; rar: number;
   /** stone — «камень» навершия/вставки (камень модели или цвет рун) по правилу редкости. */
   mat: Ramp; trim: Ramp; gem: Ramp | null; stone: Ramp; haft: Ramp; cloth: Ramp; hide: Ramp; fx: Ramp; grip: Ramp; bone: Ramp;
+  /** Легендарки (задача 113): герб на щите, огранка камня и оправа кольца/амулета. */
+  crestKind?: string; stoneKind?: string; setting?: string;
 }
 
 // ---------------- примитивы ----------------
@@ -176,6 +178,22 @@ const SW: Record<string, SwordDef> = {
   runeblade: { len: 34, hw: (t) => [3.3 - 0.6 * t, 3.3 - 0.6 * t], grip: 14, o: { fuller: true, runes: true, tip: 0.14 }, guard: "ornate", gh: 8 },
   cleaver: { len: 30, hw: (t) => [2.4, 2.4 + 2.6 * t], grip: 13, o: { tip: 0.05, ridge: false }, guard: "bar", gh: 5.5 },
   bastard: { len: 33, hw: (t) => [2.6 - 0.8 * t, 2.6 - 0.8 * t], grip: 12, o: { fuller: true, tip: 0.22 }, guard: "curved", gh: 7, pommel: "gem" },
+  // новые формы (задача 113): мечи
+  gladius: { len: 24, hw: (t) => { const w = 2.4 + 0.5 * Math.sin(t * Math.PI); return [w, w]; }, grip: 8, o: { fuller: true, tip: 0.2 }, guard: "bar", gh: 5, pommel: "ball" },
+  crystal: { len: 29, hw: (t) => { const w = 2.2 + 1.5 * Math.abs(Math.sin(t * 9)); return [w, w]; }, grip: 9, o: { tip: 0.1 }, guard: "claw", gh: 6 },
+  bolt: { len: 31, hw: () => [1.9, 1.9], grip: 9, o: { cv: (t) => 2 * (Math.abs(((t * 4) % 2) - 1) - 0.5), tip: 0.1, ridge: false }, guard: "ornate", gh: 6 },
+  bone: { len: 30, hw: () => [2.4, 2.4], grip: 9, o: { teeth: 3.4, backTeeth: 5 }, guard: "claw", gh: 6, pommel: "skull" },
+  scimitar: { len: 30, hw: (t) => [1.4, 1.6 + 2.2 * Math.sin(Math.PI * Math.min(1, t * 1.1))], grip: 9, o: { cv: (t) => -7 * t * t, tip: 0.18, ridge: false }, guard: "curved", gh: 5 },
+  // двуручные
+  icicle: { len: 35, hw: (t) => [3.5 * (1 - 0.78 * t), 3.5 * (1 - 0.78 * t)], grip: 13, o: { fuller: true, tip: 0.06 }, guard: "disc", gh: 7 },
+  tidal: { len: 34, hw: () => [2.5, 2.5], grip: 14, o: { cv: (t) => 2.4 * Math.sin(t * Math.PI * 4) * (0.3 + t), tip: 0.1 }, guard: "wings", gh: 7.5 },
+  obsidian: { len: 32, hw: (t) => [3.4, 3.4 - 0.9 * t], grip: 13, o: { backTeeth: 3.2, teeth: 3.2, hole: 0.62, tip: 0.14 }, guard: "claw", gh: 6.5 },
+  // кинжалы и парные
+  thorn: { len: 16, hw: () => [1.5, 1.5], grip: 6, o: { teeth: 2.4, backTeeth: 2.4, tip: 0.35 }, guard: "claw", gh: 3, pommel: "spike" },
+  shard: { len: 17, hw: (t) => { const w = 1.4 + 1.2 * Math.abs(Math.sin(t * 7)); return [w, w]; }, grip: 6, o: { tip: 0.3 }, guard: "bar", gh: 3.4 },
+  bloodletter: { len: 18, hw: () => [1.4, 1.4], grip: 6, o: { cv: (t) => 1.4 * Math.sin(t * Math.PI * 3), fuller: true, tip: 0.35 }, guard: "ornate", gh: 3.6, pommel: "gem" },
+  talon: { len: 22, hw: () => [1.3, 2.4], grip: 7, o: { cv: (t) => -4.6 * t * t, tip: 0.3, ridge: false }, guard: "claw", gh: 4 },
+  splinter: { len: 21, hw: (t) => { const w = 1.3 + 1.1 * Math.abs(Math.sin(t * 6)); return [w, w]; }, grip: 7, o: { tip: 0.2 }, guard: "bar", gh: 4 },
   twin: { len: 22, hw: () => [1.9, 1.9], grip: 7, o: { fuller: true }, gh: 4.5 },
   twinsaber: { len: 22, hw: () => [1.2, 2.2], grip: 7, o: { cv: (t) => -3.5 * t * t, tip: 0.2, ridge: false }, guard: "curved", gh: 4 },
   kris: { len: 21, hw: () => [1.8, 1.8], grip: 7, o: { cv: (t) => 1.1 * Math.sin(t * Math.PI * 6), tip: 0.18 }, gh: 4 },
@@ -190,7 +208,7 @@ const SW: Record<string, SwordDef> = {
 function sword(k: K, shape: string, u0 = 2, vo = 0) {
   const s = SW[shape] ?? SW.broad;
   const g = u0 + s.grip, gtype = s.guard ?? k.L.guard ?? "cross";
-  const bladeR = shape === "fang" ? k.bone : k.mat;
+  const bladeR = shape === "fang" || shape === "bone" ? k.bone : k.mat;
   wraps(k, u0 + 1.5, g - 0.5, s.grip > 10 ? 3.2 : 2.8, k.grip, vo);
   if (s.grip > 10) band(k, u0 + s.grip * 0.55, 3.4, vo);
   blade(k, g + 1, s.len, s.hw, { ...s.o, vo, r: bladeR });
@@ -240,7 +258,7 @@ function twin(k: K, shape: string) {
     });
     return;
   }
-  crossed(k, (kk) => sword(kk, shape === "twinsaber" || shape === "kris" ? shape : "twin", 3, 0));
+  crossed(k, (kk) => sword(kk, SW[shape] && SW[shape].len <= 23 ? shape : "twin", 3, 0));
 }
 function daggers(k: K, shape: string) {
   sword(k, shape, 9, -5.5);
@@ -269,6 +287,12 @@ function axe(k: K, shape: string, two: boolean) {
     case "labrys": for (const s of [-1, 1]) { const o = arc(35, 0, 10, s < 0 ? Math.PI * 1.1 : Math.PI * 0.1, s < 0 ? Math.PI * 1.9 : Math.PI * 0.9, 16).map(([u, v]) => [u, v + s * 2] as Pt); H([[39, s * 1.6], ...o.reverse(), [31, s * 1.6]], s * 6, 3); E(o); } k.c.shadedEllipse(...P(hu, 0), 2.5, 2.5, k.trim); break;
     case "executioner": H([[31, -1.6], [44, -1.6], [45.5, -13], [30, -13]], -7, 4); E([[45.5, -13], [30, -13]]); { const [x, y] = P(hu + 5, -8.5); for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) if (Math.hypot(xx, yy) < 2.2) k.c.clear(Math.round(x) + xx, Math.round(y) + yy); } break;
     case "winged": H([[31, -1.6], [41, -1.6], [47, -6], [42, -8], [45, -12], [38, -11], [39, -15], [32, -11], [28, -12], [29.5, -6]], -7, 3.5); E([[47, -6], [42, -8], [45, -12], [38, -11], [39, -15]]); break;
+    case "crescent": { const o = arc(36, -1, 9, Math.PI * 0.66, Math.PI * 1.34, 18); const i = arc(37.5, -1, 5.4, Math.PI * 0.74, Math.PI * 1.26, 12).reverse(); H([...o, ...i], -6, 3); E(o.map(([u, v]) => [u, v - 0.3] as Pt)); break; }
+    case "sawtooth": H([[31, -1.6], [38, -1.6], [38, -10.5], [31, -10.5]], -6, 3); E([[38, -10.5], [38, -1.6]]); for (let i = 0; i < 5; i++) H([[38, -2 - i * 1.9], [41.5, -3 - i * 1.9], [38, -4 - i * 1.9]], -3 - i * 1.9, 1); H([[32, 1.6], [37, 1.6], [36, 4.5], [33, 4.5]], 3); break;
+    case "fan": H([[32, -1.6], [38, -1.6], [45, -3], [42, -6.5], [46, -9.5], [40, -10.5], [41, -14], [34, -11], [29, -12], [30, -6]], -7, 3.5); E([[45, -3], [42, -6.5], [46, -9.5], [41, -14]]); I([[34, -4], [41, -8]]); break;
+    case "triple": for (const [tu, tv] of [[26, -11], [35, -15], [44, -9]] as Pt[]) { H([[32, -1.6], [38, -1.6], [tu + 3, tv], [tu - 2, tv + 1.5]], tv / 2, 4); E([[tu + 3, tv], [tu - 2, tv + 1.5]]); } break;
+    case "thorned": H([[30, -1.6], [43, -1.6], [45, -11], [38, -13], [30, -10]], -6, 3.5); E([[45, -11], [38, -13], [30, -10]]); for (let i = 0; i < 4; i++) H([[31 + i * 3.4, -1.6], [33 + i * 3.4, -1.6], [30 + i * 3.4, 4.5 + (i % 2)]], 2, 1.2); for (let i = 0; i < 3; i++) H([[33 + i * 4, -12.4], [35.4 + i * 4, -12.4], [34.6 + i * 4, -16.6]], -14, 1.2); break;
+    case "hooked": H([[31, -1.6], [43, -1.6], [47, -8], [44, -14], [38, -12], [42, -8], [36, -6], [30, -9]], -7, 3.5); E([[47, -8], [44, -14], [38, -12]]); H([[32, 1.6], [40, 1.6], [42, 8], [37, 6], [33, 4]], 4, 3); break;
     case "bonecleaver": H([[29, -1.6], [43, -1.6], [45, -11], [41, -10], [40, -13], [35, -11], [32, -13], [28, -9]], -6, 3.5, k.bone); for (let u = 16; u < top - 8; u += 4) { const [x, y] = P(u, 0); k.c.shadedEllipse(x, y, 2.3, 2.3, k.bone); } skull(k, ...P(hu - 1, 1.5), 0.8); break;
     default: H([[31, -1.6], [39, -1.6], [42.5, -10], [40, -12.8], [34, -11.6], [28.5, -8.6], [30, -5]], -6); E([[42.5, -10], [40, -12.8]]); E([[34, -11.6], [28.5, -8.6]]); I([[33, -4], [39, -7.5]]); H([[32, 1.6], [38, 1.6], [36.5, 4], [33.5, 4]], 2.5);
   }
@@ -306,6 +330,9 @@ function mace(k: K, shape: string) {
     case "flanged": for (const v of [-5, -2.5, 2.5, 5]) dpoly(k, [[top + 1, v * 0.35], [top + 5, v], [top + 10, v], [top + 11.5, v * 0.35]], k.mat, v * 0.6, 1.8); shaft(k, top + 1, top + 11, 2.4, k.mat); dpoly(k, [[top + 11, -1.4], [top + 14, 0], [top + 11, 1.4]], k.trim, 0, 1); if (k.gem) dgem(k, top + 6, 0, 1.6); break;
     case "star": for (let a = 0; a < 12; a++) { const an = (a / 12) * TAU; k.c.poly([[hx + Math.cos(an - 0.22) * 4.6, hy + Math.sin(an - 0.22) * 4.6], [hx + Math.cos(an) * 8.6, hy + Math.sin(an) * 8.6], [hx + Math.cos(an + 0.22) * 4.6, hy + Math.sin(an + 0.22) * 4.6]], a % 3 ? k.mat[3] : k.mat[4]); } k.c.shadedEllipse(hx, hy, 5.6, 5.6, k.mat); if (k.gem) gemAt(k, hx, hy, 2); break;
     case "holy": for (let a = 0; a < 12; a++) { const an = (a / 12) * TAU; k.c.poly([[hx + Math.cos(an - 0.2) * 5, hy + Math.sin(an - 0.2) * 5], [hx + Math.cos(an) * (a % 2 ? 7.5 : 9.5), hy + Math.sin(an) * (a % 2 ? 7.5 : 9.5)], [hx + Math.cos(an + 0.2) * 5, hy + Math.sin(an + 0.2) * 5]], k.trim[a % 2 ? 3 : 4]); } k.c.shadedEllipse(hx, hy, 5.6, 5.6, k.trim); gemAt(k, hx, hy, 2.6, k.stone); break;
+    case "crystal": k.c.poly([[hx, hy - 11], [hx + 5.5, hy - 3], [hx + 4, hy + 5], [hx, hy + 8], [hx - 4, hy + 5], [hx - 5.5, hy - 3]], (x, y) => k.stone[cl(2.8 - (x - hx) / 3.6, 1, 4)]); k.c.line(hx, hy - 11, hx, hy + 8, k.stone[4], 1); k.c.poly([[hx - 6, hy + 1], [hx - 10, hy - 5], [hx - 3, hy - 2]], k.stone[2]); k.c.poly([[hx + 6, hy + 2], [hx + 10, hy - 3], [hx + 3, hy - 1]], k.stone[3]); break;
+    case "thorn": k.c.shadedEllipse(hx, hy, 5.2, 5.2, k.haft); for (let a = 0; a < 9; a++) { const an = (a / 9) * TAU + 0.3; k.c.poly([[hx + Math.cos(an - 0.24) * 4.4, hy + Math.sin(an - 0.24) * 4.4], [hx + Math.cos(an) * 10, hy + Math.sin(an) * 10], [hx + Math.cos(an + 0.24) * 4.4, hy + Math.sin(an + 0.24) * 4.4]], k.bone[a % 2 ? 3 : 2]); } k.c.shadedEllipse(hx, hy, 3, 3, k.stone); break;
+    case "drop": k.c.poly([[hx, hy - 10], [hx + 5.5, hy - 0.5], [hx + 4.4, hy + 5], [hx, hy + 7.4], [hx - 4.4, hy + 5], [hx - 5.5, hy - 0.5]], lit(k.stone, hx - 3, hy - 4, 5, 1, 4)); k.c.set(Math.round(hx - 2), Math.round(hy - 1), WHITE); k.c.rect(Math.round(hx - 5), Math.round(hy + 6), 10, 2, k.trim[2]); break;
     case "skull": for (const a of [-2.4, -1.6, -0.8]) k.c.poly([[hx + Math.cos(a) * 4 - 1, hy + Math.sin(a) * 4], [hx + Math.cos(a) * 9.5, hy + Math.sin(a) * 9.5], [hx + Math.cos(a) * 4 + 1, hy + Math.sin(a) * 4]], k.mat[3]); skull(k, hx, hy, 1.6); break;
     default: k.c.shadedEllipse(hx, hy, 6, 6, k.mat); for (let a = 0; a < 8; a++) { const an = (a / 8) * TAU + 0.2; k.c.shadedEllipse(hx + Math.cos(an) * 4.2, hy + Math.sin(an) * 4.2, 1.3, 1.3, k.trim); } dpoly(k, [[top + 11.5, -1.4], [top + 15, 0], [top + 11.5, 1.4]], k.mat, 0, 1); if (k.gem) gemAt(k, hx, hy, 2);
   }
@@ -321,6 +348,9 @@ function hammer(k: K, shape: string) {
     case "holy": blk(hu - 4, hu + 4, -6.5, 6.5, k.trim); for (const s of [-1, 1]) for (let i = 0; i < 3; i++) dstroke(k, [[hu, s * 6.5], [hu - 3 - i * 2.2, s * (11 - i * 0.6)]], 2.6 - i * 0.4, 1, k.trim[4 - i]); dgem(k, hu, 0, 2.6, k.stone); break;
     case "rune": blk(hu - 5, hu + 5, -8, 8, RP("grey", "grey")); for (let i = 0; i < 4; i++) { const [x, y] = P(hu - 2.5 + (i % 2) * 5, -4 + Math.floor(i / 2) * 8); rune(k.c, Math.round(x), Math.round(y), k.fx[3], i + k.h); } break;
     case "spiked": blk(hu - 4, hu + 4, -7, 7); for (const v of [-7, 7]) for (const u of [hu - 2, hu + 2]) dpoly(k, [[u - 1, v], [u + 1, v], [u, v + Math.sign(v) * 3]], k.mat, v, 1); dpoly(k, [[hu + 4, -1.5], [hu + 8, 0], [hu + 4, 1.5]], k.mat, 0, 1); break;
+    case "anvil": blk(hu - 5, hu + 5, -8, 8); blk(hu - 2, hu + 2, 8, 12); dpoly(k, [[hu + 5, -5], [hu + 11, -2], [hu + 5, 1]], k.mat, -2, 2); dgem(k, hu, 0, 1.8, k.gem ?? k.trim); break;
+    case "crystal": dpoly(k, [[hu - 4, -5], [hu, -9.5], [hu + 5, -5], [hu + 5, 5], [hu, 9.5], [hu - 4, 5]], k.stone, 0, 6, 1, 4); dline(k, hu, -9.5, hu, 9.5, k.stone[4], 1); band(k, hu - 4.5, 6.4, 0); band(k, hu + 4.5, 6.4, 0); break;
+    case "star": dpoly(k, Array.from({ length: 16 }, (_, i) => { const a = (i / 16) * TAU; return [hu + Math.cos(a) * (i % 2 ? 4.6 : 10), Math.sin(a) * (i % 2 ? 4.6 : 10)] as Pt; }), k.mat, 0, 6); dgem(k, hu, 0, 2.4, k.gem ?? k.stone); break;
     default: blk(hu - 4, hu + 4, -7.5, 7.5); dline(k, hu, -7.5, hu, 7.5, k.trim[2], 2); dpoly(k, [[hu - 2.5, -7.5], [hu + 2.5, -7.5], [hu, -11]], k.mat, -9, 1); if (k.gem) dgem(k, hu, 0, 1.8);
   }
   if (k.L.deco === "skull") skull(k, ...P(hu - 8, 0), 0.7);
@@ -344,6 +374,10 @@ function spear(k: K, shape: string) {
     return;
   }
   switch (shape) {
+    case "forked": for (const v of [-3.4, 3.4]) blade(k, 36, 13, () => [1.1, 1.1], { vo: v, tip: 0.4, ridge: false }); dpoly(k, [[35.5, -5], [37.5, -5], [37.5, 5], [35.5, 5]], k.mat, 0, 2.4); blade(k, 37, 7, () => [1, 1], { tip: 0.5 }); break;
+    case "crystal": blade(k, 35.5, 15, (t) => { const w = 2.2 + 2.4 * Math.sin(Math.PI * Math.min(1, t * 1.15)); return [w, w]; }, { r: k.stone, tip: 0.12 }); break;
+    case "bolt": blade(k, 35.5, 16, () => [2, 2], { cv: (t) => 2.2 * (Math.abs(((t * 3) % 2) - 1) - 0.5), tip: 0.2, ridge: false }); break;
+    case "harpoon": blade(k, 35.5, 14, () => [1.2, 1.2], { tip: 0.5 }); for (const s of [-1, 1]) dpoly(k, [[40, s * 1.2], [43, s * 5.2], [37.4, s * 1.2]], k.mat, s * 3, 1.5); break;
     case "pike": blade(k, 35, 16, () => [1.8, 1.8], { tip: 0.6 }); break;
     case "boar": blade(k, 36.5, 13, (t) => { const w = 2 + 3 * Math.sin(Math.PI * Math.min(1, t * 1.1)); return [w, w]; }, { tip: 0.3 }); dpoly(k, [[36, -5], [37.5, -5], [37.5, 5], [36, 5]], k.trim, 0, 2); break;
     case "partisan": blade(k, 35.5, 15, () => [2.5, 2.5], { tip: 0.4 }); for (const s of [-1, 1]) dpoly(k, [[36, s * 1.6], [37, s * 7], [40, s * 8.4], [39.5, s * 5.5], [38.5, s * 1.6]], k.mat, s * 4, 1.8); break;
@@ -365,10 +399,12 @@ function scythe(k: K, shape: string) {
     case "halberd": dpoly(k, [[top - 6, -1.5], [top + 1, -1.5], [top + 2.5, -9], [top - 7.5, -9]], k.mat, -5, 2.8); edge(k, [[top + 2.5, -9], [top - 7.5, -9]]); blade(k, top, 7, () => [1.2, 1.2], { tip: 0.6 }); dpoly(k, [[top - 4, 1.5], [top - 1.5, 1.5], [top - 6, 8]], k.mat, 4, 1.5); break;
     default: {
       const o: Pt[] = [[top - 1, -1.2], [top + 2.2, -2.4], [top + 0.5, -9], [top - 5, -14], [top - 14, -16], [top - 22, -15], [top - 13, -12.5], [top - 6.5, -8.5], [top - 3.4, -2]];
-      dpoly(k, o, k.mat, -9, 3.2); edge(k, [[top - 22, -15], [top - 14, -16], [top - 5, -14], [top + 0.5, -9]]);
+      dpoly(k, o, shape === "crystal" ? k.stone : shape === "boneblade" ? k.bone : k.mat, -9, 3.2); edge(k, [[top - 22, -15], [top - 14, -16], [top - 5, -14], [top + 0.5, -9]]);
       inlay(k, [[top - 15, -14], [top - 6, -11.5], [top - 2, -5]]);
       if (shape === "double") { const o2: Pt[] = [[3, 1.2], [0, 2.4], [1.5, 8], [6, 11.5], [13, 12], [7.5, 9.5], [4, 6]]; dpoly(k, o2, k.mat, 7, 3); edge(k, [[13, 12], [6, 11.5], [1.5, 8]]); }
       if (shape === "reaper") skull(k, ...P(top - 1, 0.5), 0.9);
+      if (shape === "thorn") for (const [u, v] of [[top - 4, -14], [top - 9, -15.6], [top - 14, -16.2], [top - 19, -15.6]]) dpoly(k, [[u - 1.3, v + 0.5], [u + 1.3, v + 0.5], [u - 0.2, v - 4]], k.mat, v, 1.4);
+      if (shape === "bleeding") for (const [u, v, h] of [[top - 9, -9.5, 5], [top - 14, -11, 7], [top - 18, -12, 4]]) { dstroke(k, [[u, v], [u, v + h]], 2.2, 1, k.stone[3]); dset(k, u, v + h + 1.2, k.stone[4]); }
     }
   }
   if (k.gem) dgem(k, top - 1, 0, 1.6);
@@ -378,7 +414,7 @@ function scythe(k: K, shape: string) {
 // ---------------- стрелковое ----------------
 function bow(k: K, shape: string) {
   const c = k.c, metal = shape === "bladed" || shape === "crescent";
-  const limb = shape === "bone" || shape === "horn" ? k.bone : metal ? k.mat : k.haft;
+  const limb = shape === "bone" || shape === "horn" ? k.bone : metal ? k.mat : shape === "ice" ? k.stone : k.haft;
   const tall = shape === "long" ? 21.5 : 19.5, depth = shape === "long" ? 9 : shape === "crescent" ? 14 : 12, cx = shape === "crescent" ? 14 : 17;
   const X = (t: number) => {
     let x = cx + (1 - t * t) * depth;
@@ -399,6 +435,9 @@ function bow(k: K, shape: string) {
   if (shape === "bone") for (let t = -0.85; t <= 0.85; t += 0.17) { const [x, y] = tip(t); c.ellipse(x, y, 2.3, 1.2, k.bone[3]); c.set(Math.floor(x + 1), Math.floor(y), k.bone[0]); }
   if (shape === "horn") { for (let t = -0.9; t <= 0.9; t += 0.1) { const [x, y] = tip(t); c.line(x - 1.5, y, x + 1.5, y + 0.6, limb[1], 1); } for (const s of [-1, 1]) { const [x, y] = tip(s); stroke(c, [[x, y], [x - 3, y - s * 0.5], [x - 4, y + s * 2.4], [x - 2, y + s * 3.5]], 3, 1, limb[3]); } }
   if (shape === "bladed") for (const t of [-0.75, -0.4, 0.4, 0.75]) { const [x, y] = tip(t); c.poly([[x + 1, y - 2], [x + 6.5, y + Math.sign(t) * 2], [x + 1, y + 1.5]], k.mat[3]); c.line(x + 1.5, y - 1, x + 6, y + Math.sign(t) * 2, k.mat[4], 1); }
+  if (shape === "ice") for (const [t, l] of [[-0.8, 4], [-0.45, 7], [0.45, 7], [0.8, 4]]) { const [x, y] = tip(t); c.poly([[x + 1, y - 1.6], [x + 1 + l, y + Math.sign(t) * 1.2], [x + 1, y + 1.6]], k.stone[3]); c.line(x + 1.5, y - 0.6, x + l, y + Math.sign(t), k.stone[4], 1); }
+  if (shape === "thorn") for (const t of [-0.85, -0.55, -0.25, 0.25, 0.55, 0.85]) { const [x, y] = tip(t); c.poly([[x + 1, y - 1.1], [x + 4.6, y + Math.sign(t) * 3], [x + 1, y + 1.1]], k.bone[3]); }
+  if (shape === "plume") for (const t of [-0.9, -0.65, -0.4, 0.4, 0.65, 0.9]) { const [x, y] = tip(t), sg = Math.sign(t); stroke(c, [[x - 1, y], [x - 5, y + sg * 2], [x - 8, y + sg * 5.5]], 3.2, 1, (q) => k.cloth[cl(3.4 - q * 2)]); }
   for (const s of [-1, 1]) { const [x, y] = tip(s * 0.985); c.shadedEllipse(x, y, 1.7, 1.7, k.trim); }
   const [gx] = tip(0);
   if (shape === "bone") skull(k, gx - 0.5, 23, 1.1);
@@ -429,6 +468,10 @@ function crossbow(k: K, shape: string) {
     stroke(k.c, prod, heavy ? 4 : 3, heavy ? 3.4 : 2.4, (t) => k.mat[t < 0.5 ? 3 : 2]);
     stroke(k.c, prod.map(([x, y]) => [x - 0.8, y - 0.8] as Pt), 1, 1, k.mat[4]);
     if (shape === "ballista") stroke(k.c, prodAt(-4), 3, 3, k.mat[2]);
+    if (shape === "crystal" || shape === "bone" || shape === "thorn") {
+      stroke(k.c, prod, 3.4, 2.6, shape === "crystal" ? k.stone[3] : shape === "bone" ? k.bone[3] : k.haft[3]);
+      for (const i of [3, 6, 10, 13]) { const [x, y] = prod[i]; if (shape === "crystal") k.c.poly([[x - 1, y - 2], [x + 4, y + (i < 8 ? -2 : 2)], [x - 1, y + 1]], k.stone[4]); else if (shape === "thorn") k.c.poly([[x - 1, y - 1], [x + 4, y + (i < 8 ? -3 : 3)], [x, y + 1]], k.bone[3]); else k.c.ellipse(x, y, 2.2, 1.2, k.bone[4]); }
+    }
   }
   const ns = pu - 9, ends = shape === "spider" ? [P(pu - 5, -13), P(pu - 5, 13)] : [prod[0], prod[16]];
   stroke(k.c, [ends[0], P(ns, 0), ends[1]], 1, 1, hex("#e8e4d8"));
@@ -440,6 +483,68 @@ function crossbow(k: K, shape: string) {
   else if (k.gem) dgem(k, pu - 3, 0, 1.6);
   if (k.L.deco === "skull") skull(k, ...P(s0 + 7, 0.6), 0.7);
   if (k.L.deco === "wings" && shape !== "spider") for (const s of [-1, 1]) dpoly(k, [[pu - 2, s * span * 0.6], [pu - 8, s * (span + 2)], [pu - 3, s * span]], k.trim, s * span, 2);
+}
+
+// ---------------- гербы 5×5 (знамёна, щиты, обложки) ----------------
+/** 1 — цвет темы, 2 — второй цвет, w — кость, k — тёмный, g — зелень, b — дерево. */
+export const CREST: Record<string, string[]> = {
+  sun: ["2.1.2", ".111.", "11211", ".111.", "2.1.2"], skull: [".www.", "wwwww", "wkwkw", "wwwww", ".w.w."], star: ["..1..", ".121.", "12221", ".121.", "..1.."],
+  moon: [".111.", "11...", "1....", "11...", ".111."], rose: [".111.", "11211", ".111.", "..g..", ".gg.."], tree: [".111.", "11211", ".111.", "..b..", ".bbb."],
+  fang: ["11111", "ww.ww", "ww.ww", ".w.w.", "....."], eye: [".....", ".111.", "12k21", ".111.", "....."], flame: ["..2..", ".212.", ".121.", "11211", ".111."],
+  crown: ["w.w.w", "wwwww", "w2w2w", "wwwww", "....."], raven: ["..www", ".wwkw", "wwww.", ".www.", "..w.w"],
+  // задача 113
+  bolt: ["..111", ".11..", "11221", "..11.", ".11.."], wolf: ["w...w", "wwwww", "wkwkw", ".www.", "..k.."], serpent: [".112.", "11...", ".111.", "...11", ".111."],
+  wing: ["...11", ".1111", "11111", "1122.", "1.1.."], hammer: ["11111", "11211", "11111", "..b..", "..b.."], drop: ["..1..", ".111.", "11211", "11111", ".111."],
+  leaf: ["...11", "..111", ".1121", "g111.", "g...."], frost: ["1.1.1", ".121.", "11211", ".121.", "1.1.1"],
+};
+export function crestAt(c: PC, kind: string, cx: number, cy: number, sc: number, c1: RGBA, c2: RGBA) {
+  const rows = CREST[kind] ?? CREST.sun, map: Record<string, RGBA> = { "1": c1, "2": c2, w: hex("#e8e0d0"), k: DARK, g: hex("#5fa040"), b: hex("#8a5a2a") };
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { const col = map[ch]; if (col) { c.rect(cx + (x - 2.5) * sc, cy + (y - 2.5) * sc, sc, sc, col); c.set(Math.round(cx + (x - 2.5) * sc), Math.round(cy + (y - 2.5) * sc), mix(col, WHITE, 0.35)); } }));
+}
+const TOME_CREST: Record<string, string> = { eye: "eye", frost: "frost", blood: "drop", bolt: "bolt", leaf: "leaf", wing: "wing" };
+
+// ---------------- общие навершия легендарок (задача 113): посохи, жезлы ----------------
+const collar = (k: K, top: number) => dpoly(k, [[top - 1, -3.4], [top + 3, -4.4], [top + 3, 4.4], [top - 1, 3.4]], k.trim, 0, 1.6);
+function headCrystal(k: K, x: number, y: number, s = 1) {
+  for (const [dx, h, w] of [[-5, 9, 3], [5, 10, 3], [0, 15, 4]]) {
+    const X = x + dx * s, b = y + 4 * s, hh = h * s, ww = w * s;
+    k.c.poly([[X - ww, b], [X - ww * 0.6, b - hh * 0.7], [X, b - hh], [X + ww * 0.6, b - hh * 0.7], [X + ww, b]], (px) => k.stone[cl(2.8 - ((px - X) / ww) * 1.3, 1, 4)]);
+    k.c.line(X, b - hh, X, b, k.stone[4], 1);
+  }
+}
+function headVortex(k: K, x: number, y: number, s = 1) {
+  for (let i = 0; i < 60; i++) { const a = i * 0.3, r = (1.8 + i * 0.16) * s; k.c.ellipse(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.95, 1.1, 1.1, k.stone[i % 3 ? 3 : 4]); }
+  k.c.shadedEllipse(x, y, 2.4 * s, 2.4 * s, k.stone);
+}
+function headDrop(k: K, x: number, y: number, s = 1) {
+  k.c.poly([[x, y - 11 * s], [x + 6 * s, y - s], [x + 5 * s, y + 5 * s], [x, y + 8 * s], [x - 5 * s, y + 5 * s], [x - 6 * s, y - s]], lit(k.stone, x - 3 * s, y - 4 * s, 5 * s, 1, 4));
+  k.c.set(Math.round(x - 2 * s), Math.round(y - s), WHITE); k.c.set(Math.round(x - 2 * s), Math.round(y), withA(WHITE, 150));
+  for (const sg of [-1, 1]) stroke(k.c, [[x + sg * 7 * s, y + 5 * s], [x + sg * 8 * s, y - 3 * s], [x + sg * 3 * s, y - 10 * s]], 2, 1, k.trim[3]);
+}
+function headBolt(k: K, x: number, y: number, s = 1) {
+  const z: Pt[] = [[x - 3 * s, y - 13 * s], [x + 2 * s, y - 6 * s], [x - 2 * s, y - 4 * s], [x + 3 * s, y + 3 * s], [x - s, y + 5 * s], [x + s, y + 10 * s]];
+  stroke(k.c, z, 3.4, 2.4, k.fx[2]); stroke(k.c, z, 1.4, 1, k.fx[4]); k.c.shadedEllipse(x, y - 2 * s, 2.6 * s, 2.6 * s, k.stone);
+}
+function headLeaves(k: K, x: number, y: number, s = 1) {
+  const gr = RP("green", "green");
+  for (const [a, l] of [[-1.05, 10], [-0.45, 13], [0.45, 13], [1.05, 10]]) {
+    const pts: Pt[] = [[x, y + 3 * s], [x + Math.sin(a) * l * 0.5 * s, y + 3 * s - Math.cos(a) * l * 0.5 * s], [x + Math.sin(a) * l * s, y + 3 * s - Math.cos(a) * l * s]];
+    stroke(k.c, pts, 4.2, 1, (t) => gr[cl(3.6 - t * 2)]); stroke(k.c, pts, 1, 1, gr[4]);
+  }
+  k.c.shadedEllipse(x, y + 2 * s, 2.2 * s, 2.2 * s, k.stone);
+}
+function headAntler(k: K, x: number, y: number, s = 1) {
+  const B = k.bone;
+  for (const sg of [-1, 1]) {
+    stroke(k.c, [[x, y + 3 * s], [x + sg * 4 * s, y - 2 * s], [x + sg * 6 * s, y - 9 * s], [x + sg * 5 * s, y - 14 * s]], 3.2, 1, B[3]);
+    stroke(k.c, [[x + sg * 5 * s, y - 4 * s], [x + sg * 10 * s, y - 7 * s]], 2.2, 1, B[3]);
+    stroke(k.c, [[x + sg * 6 * s, y - 9 * s], [x + sg * 10 * s, y - 12 * s]], 2, 1, B[2]);
+  }
+  k.c.shadedEllipse(x, y - 2 * s, 3 * s, 3 * s, k.stone);
+}
+function headBloom(k: K, x: number, y: number, s = 1) {
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU - Math.PI / 2; k.c.shadedEllipse(x + Math.cos(a) * 5.4 * s, y + Math.sin(a) * 5.4 * s, 3.4 * s, 3.4 * s, k.stone); }
+  k.c.shadedEllipse(x, y, 3.4 * s, 3.4 * s, k.trim); k.c.set(Math.round(x - 1), Math.round(y - 1), WHITE);
 }
 
 // ---------------- посохи и жезлы ----------------
@@ -518,6 +623,12 @@ function staff(k: K, shape: string) {
       dstroke(k, zig, 2.6, 2.6, k.fx[2]); dstroke(k, zig, 1, 1, k.fx[4]);
       break;
     }
+    case "crystal": collar(k, top); headCrystal(k, hx, hy - 1); break;
+    case "vortex": collar(k, top); headVortex(k, hx, hy - 1); break;
+    case "drop": collar(k, top); headDrop(k, hx, hy - 2); break;
+    case "leafy": collar(k, top); headLeaves(k, hx, hy); break;
+    case "bolt": collar(k, top); headBolt(k, hx, hy); break;
+    case "antler": collar(k, top); headAntler(k, hx, hy); break;
     case "feather": {
       dpoly(k, [[top, -2.6], [top + 5, -3.4], [top + 7, 0], [top + 5, 3.4], [top, 2.6]], k.haft, 0, 1.6);
       dgem(k, top + 4.5, 0, 3.2, G); dpoly(k, [[top + 7.5, -1.4], [top + 13, 0], [top + 7.5, 1.4]], k.trim, 0, 1);
@@ -575,6 +686,10 @@ function scepter(k: K, shape: string) {
       k.c.shadedEllipse(hx, hy, 6.2, 4.4, k.bone); k.c.shadedEllipse(hx, hy, 3.2, 3.2, G); k.c.ellipse(hx, hy, 1, 2.2, VOIDC); if (k.rar) k.c.set(Math.round(hx - 1.5), Math.round(hy - 1.5), WHITE);
       break;
     }
+    case "crystal": collar(k, top); headCrystal(k, hx, hy - 1, 0.9); break;
+    case "bloom": collar(k, top); headBloom(k, hx, hy, 1); break;
+    case "drop": collar(k, top); headDrop(k, hx, hy - 1, 0.9); break;
+    case "bolt": collar(k, top); headBolt(k, hx, hy, 0.9); break;
     default: dpoly(k, [[top - 1, -4], [top + 2.5, -4], [top + 2.5, 4], [top - 1, 4]], k.trim, 0, 1.8); for (const s of [-1, 1]) dstroke(k, [[top + 2, s * 3.2], [top + 6.5, s * 6], [top + 12, s * 3]], 2.6, 1, (t) => k.trim[t > 0.5 ? 4 : 3]); gemAt(k, hx + 1, hy - 1, 4.4, G); dpoly(k, [[top + 12.5, -1.2], [top + 16.5, 0], [top + 12.5, 1.2]], k.trim, 0, 1);
   }
   if (k.rich >= 3 && shape !== "sun" && shape !== "eye") for (const s of [-1, 1]) dpoly(k, [[top - 1, s * 2.4], [top - 4.5, s * 7], [top + 1, s * 3.4]], k.trim, s * 4, 2);
@@ -603,6 +718,11 @@ function orb(k: K, shape: string) {
     case "prism": c.poly([[cx, 4], [39, 34], [24, 41], [9, 34]], (x, y) => G[cl(3.4 - (x - 14) / 7 + (y < 14 ? 1 : 0), 1, 4)]); c.line(cx, 4, cx, 41, G[4], 1); c.line(9, 34, 24, 41, G[1], 1); for (const [a, b] of [[cx, 0], [2, 46], [46, 46], [46, 20], [2, 20]]) c.line(cx, 26, a, b, withA(G[4], 70), 1); break;
     case "skull": stand(); skull(k, cx, 22, 2.7, k.fx[3]); for (const s of [-1, 1]) c.ellipse(cx + s * 3.6, 16, 1.6, 3, withA(k.umb ? k.fx[3] : RP("fire", "fire")[3], 200)); c.line(cx + 2, 13, cx + 5, 18, k.fx[3], 1); break;
     case "orbit": stand(); c.shadedEllipse(cx, 21, 7, 7, G); c.set(cx - 3, 18, WHITE); for (const [rx, ry, rot] of [[13, 4.5, 0.4], [13, 4.5, -0.6]] as number[][]) for (let a = 0; a < TAU; a += 0.02) { const x = Math.cos(a) * rx, y = Math.sin(a) * ry, X = cx + x * Math.cos(rot) - y * Math.sin(rot), Y = 21 + x * Math.sin(rot) + y * Math.cos(rot); if (Math.sin(a) > 0 || Math.hypot(X - cx, Y - 21) > 7.5) c.set(Math.round(X), Math.round(Y), k.trim[Math.sin(a) > 0 ? 3 : 2]); } for (const [x, y] of [[cx + 12, 16], [cx - 10, 27]]) c.shadedEllipse(x, y, 1.8, 1.8, k.trim); break;
+    case "vortex": stand(); c.shadedEllipse(cx, 21, 11, 11, G); for (let i = 0; i < 70; i++) { const a = i * 0.32, r = 1 + i * 0.14; c.ellipse(cx + Math.cos(a) * r, 21 + Math.sin(a) * r, 0.9, 0.9, G[i % 3 ? 4 : 1]); } c.set(cx - 5, 15, WHITE); break;
+    case "blood": stand(); c.shadedEllipse(cx, 21, 11, 11, G); for (const [dx, dy] of [[-4, -3], [3, -5], [2, 4], [-3, 5]]) c.poly([[cx + dx, 18 + dy], [cx + dx + 2, 21 + dy], [cx + dx, 23 + dy], [cx + dx - 2, 21 + dy]], G[4]); stroke(c, [[cx, 32], [cx, 37]], 2.4, 1, G[3]); c.ellipse(cx, 38, 1.3, 1.6, G[4]); c.set(cx - 5, 15, WHITE); break;
+    case "galaxy": stand(); c.shadedEllipse(cx, 21, 11, 11, [VOIDC, G[0], G[0], G[1], G[1]]); for (let a = 0; a < TAU; a += 0.04) { const x = Math.cos(a) * 9, y = Math.sin(a) * 3; c.set(Math.round(cx + x * 0.94 - y * 0.34), Math.round(21 + x * 0.34 + y * 0.94), G[3]); } for (const [dx, dy] of [[-5, -4], [4, -6], [6, 3], [-3, 6], [0, -1]]) sparkle(c, cx + dx, 21 + dy, G, 1); break;
+    case "thorn": stand(); c.shadedEllipse(cx, 21, 10, 10, G); for (const ph of [0, 2.6]) for (let i = 0; i <= 40; i++) { const t = i / 40, a = ph + t * 7, x = cx + Math.sin(a) * 11 * Math.sin(t * Math.PI * 0.9 + 0.1), y = 12 + t * 22; c.ellipse(x, y, 1.1, 1.1, k.haft[2]); if (i % 5 === 2) c.poly([[x - 1, y], [x + (Math.cos(a) > 0 ? 4 : -4), y - 2], [x + 1, y + 1]], k.bone[3]); } break;
+    case "storm": { stand(); c.shadedEllipse(cx, 21, 11, 11, [G[0], G[0], G[1], G[1], G[2]]); const z: Pt[] = [[cx - 3, 12], [cx + 3, 19], [cx - 2, 21], [cx + 4, 29]]; stroke(c, z, 3, 2, k.fx[3]); stroke(c, z, 1.2, 1, WHITE); for (const [dx, dy] of [[-7, 18], [7, 16]]) sparkle(c, cx + dx, dy, G, 1); break; }
     default: stand(); c.shadedEllipse(cx, 21, 11, 11, G); c.shadedEllipse(cx - 3.5, 17, 3, 3, [G[3], G[4], WHITE, WHITE, WHITE]); for (let i = 0; i < 6; i++) { const a = i * 1.1 + (k.h & 3); c.set(Math.round(cx + Math.cos(a) * 6), Math.round(21 + Math.sin(a) * 6), withA(G[4], 160)); }
   }
   if (k.L.deco === "skull" && shape !== "eye" && shape !== "skull") skull(k, cx, 40, 1.2);
@@ -631,6 +751,7 @@ function tome(k: K, shape: string) {
     case "grimoire": skull(k, 22, 22, 1.9, k.fx[3]); c.line(6, 15, 42, 19, k.trim[2], 2); c.line(6, 33, 42, 29, k.trim[2], 2); for (const [x, y] of [[9, 15], [39, 18], [9, 33], [39, 30]]) c.ellipse(x, y, 1.4, 1.4, k.trim[3]); break;
     case "prayer": c.rect(20, 11, 4, 24, k.trim[3]); c.rect(14, 18, 16, 4, k.trim[3]); c.rect(21, 12, 1, 22, k.trim[4]); gemAt(k, 22, 20, 1.8, G); for (const [x, col] of [[28, k.cloth[4]], [31, RP("red", "red")[2]]] as [number, RGBA][]) c.line(x, 43, x + 1, 47, col, 2); break;
     case "star": { const W2 = withA(WHITE, 120); c.ellipse(22, 24, 9, 9, withA(k.trim[3], 110)); c.ellipse(22, 24, 8, 8, covR[2]); for (const [[a, b], [d, e]] of [[[15, 13], [22, 17]], [[22, 17], [29, 12]], [[22, 17], [26, 25]], [[26, 25], [17, 29]], [[17, 29], [20, 37]]] as Pt[][]) c.line(a, b, d, e, W2, 1); for (const [x, y] of [[15, 13], [22, 17], [29, 12], [26, 25], [17, 29], [30, 34], [20, 37]]) sparkle(c, x, y, G, 1); break; }
+    case "eye": case "frost": case "blood": case "bolt": case "leaf": case "wing": crestAt(c, TOME_CREST[shape], 22, 24, 4, k.trim[3], k.stone[3]); for (const [x, y] of [[13, 14], [31, 14], [13, 34], [31, 34]]) c.set(x, y, k.trim[4]); break;
     default: c.ellipse(22, 24, 8, 8, k.trim[2]); c.ellipse(22, 24, 6.4, 6.4, covR[1]); for (let a = 0; a < 8; a++) { const an = (a / 8) * TAU; c.line(22 + Math.cos(an) * 6.5, 24 + Math.sin(an) * 6.5, 22 + Math.cos(an) * 9.5, 24 + Math.sin(an) * 9.5, k.trim[3], 1); } gemAt(k, 22, 24, 3.6, G); if (k.umb) c.ellipse(22, 24, 1, 2.6, VOIDC);
   }
   c.shadedRect(34, 20, 6, 7, k.trim, 1); c.set(36, 22, k.trim[4]);
@@ -653,8 +774,11 @@ function shield(k: K, shape: string) {
     kite: [[24, 2], [37, 8], [36, 22], [30, 34], [24, 46], [18, 34], [12, 22], [11, 8]],
     buckler: arc(24, 24, 14, 0, TAU, 36), round: arc(24, 24, 19, 0, TAU, 40), aegis: arc(24, 24, 19, 0, TAU, 40), spiked: arc(24, 24, 16, 0, TAU, 36),
     bone: [[10, 8], [24, 4], [38, 8], [36, 30], [24, 44], [12, 30]],
+    ward: [[24, 3], [39, 11], [39, 33], [24, 45], [9, 33], [9, 11]],
+    crescent: [[8, 5], [19, 8], [24, 4], [29, 8], [40, 5], [40, 21], [36, 31], [24, 44], [12, 31], [8, 21]],
+    crystal: [[24, 2], [40, 16], [34, 42], [24, 46], [14, 42], [8, 16]],
   };
-  const outer = shapes[shape] ?? shapes.heater, cy = shape === "kite" || shape === "heater" || shape === "bone" ? 21 : 24;
+  const outer = shapes[shape] ?? shapes.heater, cy = shape === "kite" || shape === "heater" || shape === "bone" || shape === "crescent" || shape === "winged" ? 21 : 24;
   const inset = (pts: Pt[], f: number) => pts.map(([x, y]) => [24 + (x - 24) * f, cy + (y - cy) * f] as Pt);
   if (shape === "spiked") for (let a = 0; a < 12; a++) { const an = (a / 12) * TAU; c.poly([[24 + Math.cos(an - 0.15) * 15, 24 + Math.sin(an - 0.15) * 15], [24 + Math.cos(an) * 22.5, 24 + Math.sin(an) * 22.5], [24 + Math.cos(an + 0.15) * 15, 24 + Math.sin(an + 0.15) * 15]], k.mat[a % 3 ? 3 : 4]); }
   c.poly(outer, lit(shape === "bone" ? k.bone : shape === "aegis" ? k.trim : k.mat, 16, 14, 7));
@@ -679,10 +803,11 @@ function shield(k: K, shape: string) {
   } else {
     const inner = inset(outer, 0.8);
     c.poly(inner, (x, y) => (k.h & 2 && shape !== "tower" && (x < 24) !== (y < cy) ? lit(k.cloth, 18, 14, 8, 0, 2)(x, y) : lit(k.cloth, 18, 14, 8, 1, 3)(x, y)));
-    emblem(k, 24, cy, shape === "tower" ? 1.2 : 1);
+    if (k.crestKind) crestAt(c, k.crestKind, 24, cy, 4.2, k.trim[3], k.stone[3]); else emblem(k, 24, cy, shape === "tower" ? 1.2 : 1);
     if (shape === "tower") { for (const [x, y] of [[12, 9], [36, 9], [12, 38], [36, 38], [24, 6], [24, 42]]) c.shadedEllipse(x, y, 1.1, 1.1, k.trim); c.rect(16, 11, 16, 2, DARK); }
   }
-  if (k.gem && shape !== "bone") gemAt(k, 24, cy, shape === "buckler" ? 2.6 : 3);
+  if (shape === "winged") { wing(c, 9, 12, 1, 11, k.trim); wing(c, 39, 12, -1, 11, k.trim); }
+  if (k.gem && shape !== "bone" && !k.crestKind) gemAt(k, 24, cy, shape === "buckler" ? 2.6 : 3);
   if (k.L.deco === "spikes" && shape !== "spiked") for (const [x, y, dx] of [[10, 7, -4], [38, 7, 4]] as number[][]) c.poly([[x, y + 2], [x + dx, y - 4], [x - Math.sign(dx) * 2, y]], k.mat[4]);
   if (k.L.deco === "wings") { wing(c, 9, 12, 1, 9, k.trim); wing(c, 39, 12, -1, 9, k.trim); }
   if (k.L.deco === "chains") for (let x = 9; x < 40; x += 2.5) c.ellipse(x, 32 + Math.sin(x / 4) * 1.5, 1, 1, k.trim[3]);
@@ -723,6 +848,8 @@ function plateHelm(k: K, shape: string) {
       c.rect(17, 30, 5, 7, DARK); c.rect(26, 30, 5, 7, DARK); c.line(16, 8, 30, 8, m[4], 1);
       if (shape === "horned") for (const s of [-1, 1]) horn(c, 24 + s * 11, 22, s, 14, k.bone);
       if (shape === "plumed") plume(k, 24, 6);
+      if (shape === "spired") for (const [x, hh] of [[14, 7], [19, 11], [24, 15], [29, 11], [34, 7]]) c.poly([[x - 2, 10], [x, 10 - hh], [x + 2, 10]], lit(m, x - 1, 4, 3));
+      if (shape === "antlered") for (const s of [-1, 1]) { stroke(c, [[24 + s * 8, 13], [24 + s * 12, 6], [24 + s * 13, 1]], 3, 1, k.bone[3]); stroke(c, [[24 + s * 11, 8], [24 + s * 17, 5]], 2, 1, k.bone[3]); stroke(c, [[24 + s * 12.5, 3], [24 + s * 17, 1]], 2, 1, k.bone[2]); }
     }
   }
   if (k.umb && (shape === "great" || shape === "barbute" || shape === "armet" || shape === "bascinet")) for (const x of [18, 29]) c.rect(x, shape === "great" ? 20 : shape === "bascinet" ? 23 : shape === "armet" ? 20 : 18, 2, 1, k.fx[3]);
@@ -759,6 +886,8 @@ function leatherHelm(k: K, shape: string) {
       if (shape === "mask") { c.poly([[15, 24], [33, 24], [31, 34], [17, 34]], lit(cc, 19, 26, 4, 1, 3)); c.line(17, 27, 31, 27, cc[0], 1); c.line(17, 30, 31, 30, cc[0], 1); }
       c.line(10, 39, 38, 39, cc[2], 2);
       if (shape === "cowl") for (let x = 10; x < 39; x += 3) c.line(x, 40, x + 1, 43, hd[1], 1);
+      if (shape === "antlered") for (const s of [-1, 1]) { stroke(c, [[24 + s * 10, 12], [24 + s * 13, 6], [24 + s * 14, 1]], 3, 1, k.bone[3]); stroke(c, [[24 + s * 12, 8], [24 + s * 18, 5]], 2, 1, k.bone[3]); }
+      if (shape === "beaked") { c.poly([[19, 20], [29, 20], [24, 40]], lit(k.bone, 21, 24, 5, 1, 4)); c.line(24, 20, 24, 38, k.bone[1], 1); c.poly([[24, 20], [24, 38], [27, 26]], k.bone[2]); }
     }
   }
   if (k.gem && shape !== "band") gemAt(k, 24, 38, 1.8);
@@ -782,6 +911,9 @@ function clothHelm(k: K, shape: string) {
     case "veil": c.poly([[24, 4], [37, 12], [41, 44], [7, 44], [11, 12]], lit(cc, 16, 12, 8, 0, 4)); c.poly([[14, 18], [34, 18], [35, 44], [13, 44]], withA(k.umb ? RP("black", "black")[1] : RP("white", "white")[3], 200)); for (let y = 20; y < 44; y += 3) c.line(14, y, 34, y + 1, withA(cc[0], 120), 1); c.rect(13, 16, 22, 3, k.trim[2]); for (const x of [16, 24, 32]) { c.line(x, 19, x, 24, k.trim[3], 1); c.shadedEllipse(x, 25, 1.2, 1.2, k.gem ?? k.trim); } if (k.umb) for (const x of [20, 28]) c.rect(x, 26, 2, 1, k.fx[3]); break;
     case "horncrown": c.poly([[10, 30], [38, 30], [36, 36], [12, 36]], lit(k.trim, 14, 31, 5)); for (const s of [-1, 1]) { horn(c, 24 + s * 6, 30, s, 16, k.bone); stroke(c, [[24 + s * 11, 30], [24 + s * 16, 22], [24 + s * 21, 18]], 2.4, 1, k.bone[3]); stroke(c, [[24 + s * 3, 30], [24 + s * 4, 21]], 2, 1, k.bone[2]); } gemAt(k, 24, 32.5, 2.4); break;
     case "cowl": c.poly([[24, 4], [37, 13], [41, 44], [7, 44], [11, 13]], lit(cc, 16, 12, 8, 0, 4)); c.ellipse(24, 26, 8, 10, VOIDC); c.line(12, 42, 36, 42, k.trim[2], 2); c.line(24, 5, 15, 14, cc[4], 1); for (const x of [20, 28]) c.rect(x, 24, 2, 1, k.umb ? k.fx[3] : withA(WHITE, 140)); break;
+    case "moon": c.poly([[10, 30], [38, 30], [36, 37], [12, 37]], lit(k.trim, 14, 31, 5)); c.rect(10, 30, 28, 1, k.trim[4]); c.shadedEllipse(24, 17, 11, 11, k.trim); for (let y = 0; y < 28; y++) for (let x = 0; x < ICON; x++) if (Math.hypot(x + 0.5 - 28, y + 0.5 - 13) < 9.4) c.clear(x, y); gemAt(k, 24, 33.5, 2.4); break;
+    case "thorns": c.poly([[9, 30], [39, 30], [37, 36], [11, 36]], lit(k.haft, 14, 31, 5)); for (let i = 0; i < 9; i++) { const x = 12 + i * 3, hh = i % 2 ? 9 : 14 - Math.abs(i - 4) * 1.2; c.poly([[x - 1.8, 31], [x, 31 - hh], [x + 1.8, 31]], lit(k.bone, x - 1, 24, 3, 1, 4)); } gemAt(k, 24, 33.5, 2); break;
+    case "starred": { c.poly([[8, 30], [40, 30], [38, 36], [10, 36]], lit(k.trim, 14, 31, 5)); const pts: Pt[] = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 5 : 13; return [24 + Math.cos(a) * r, 17 + Math.sin(a) * r] as Pt; }); c.poly(pts, (x, y) => k.trim[cl(2.4 - (x - 24 + y - 17) / 9, 1, 4)]); gemAt(k, 24, 17, 2.8, k.stone); break; }
     default:
       c.ellipse(24, 37, 21, 6, cc[1]); c.ellipse(24, 36, 20, 4.6, cc[2]);
       c.poly([[22, 2], [33, 18], [37, 35], [11, 35], [16, 18]], lit(cc, 19, 16, 6, 1, 4)); c.poly([[22, 2], [33, 2], [36, 8], [26, 7]], cc[2]); c.shadedEllipse(36, 8, 2, 2, k.trim);
@@ -915,13 +1047,36 @@ function boots(k: K, shape: string) {
 }
 
 // ---------------- бижутерия ----------------
+/** Камень с огранкой и оправой (look.stone / look.setting легендарок); мелкие камни и обычные модели — прежний gemAt. */
+function jem(k: K, x: number, y: number, r: number, g: Ramp | null = k.gem) {
+  if (r < 2.2 || (!k.stoneKind && !k.setting)) return gemAt(k, x, y, r, g);
+  const c = k.c, t = k.trim, G = g ?? k.stone, gr = RP("green", "green"), at = (a: number, d: number): Pt => [x + Math.cos(a) * d, y + Math.sin(a) * d];
+  switch (k.setting) {
+    case "claws": for (const a of [0.78, 2.36, 3.93, 5.5]) stroke(c, [at(a, r + 1.6), at(a, r * 0.4)], 2.6, 1.4, t[3]); break;
+    case "thorns": for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + 0.2; c.poly([at(a - 0.22, r + 0.6), at(a, r + 4.2), at(a + 0.22, r + 0.6)], k.bone[i % 2 ? 3 : 2]); } break;
+    case "wings": for (const s of [-1, 1]) wing(c, x + s * (r + 0.4), y + 1, s, r * 2.6 + 3, t); break;
+    case "halo": for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; c.ellipse(x + Math.cos(a) * (r + 2.6), y + Math.sin(a) * (r + 2.6) * 0.9, 0.9, 0.9, t[i % 2 ? 3 : 4]); } break;
+    case "leaves": for (const s of [-1, 1]) { stroke(c, [[x + s * r * 0.4, y - r * 0.4], [x + s * (r + 3), y - r - 1], [x + s * (r + 5), y - r - 4]], 3.2, 1, (q) => gr[cl(3.4 - q * 2)]); stroke(c, [[x + s * r * 0.4, y + r * 0.6], [x + s * (r + 3), y + r + 1], [x + s * (r + 5), y + r + 3]], 2.6, 1, (q) => gr[cl(3 - q * 2)]); } break;
+    case "crown": for (let i = 0; i < 5; i++) { const px = x + (i - 2) * (r * 0.75); c.poly([[px - 1.2, y - r * 0.6], [px, y - r - 3.6 - (i === 2 ? 2 : 0)], [px + 1.2, y - r * 0.6]], t[i % 2 ? 3 : 4]); } break;
+  }
+  const hi = () => { if (k.rar >= 1) c.set(Math.round(x - r * 0.45), Math.round(y - r * 0.55), WHITE); };
+  switch (k.stoneKind) {
+    case "cut": c.poly([[x, y - r * 1.4], [x + r * 1.15, y], [x, y + r * 1.4], [x - r * 1.15, y]], (px) => G[cl(2.8 - ((px - x) / r) * 1.4, 1, 4)]); c.line(x - r * 1.1, y, x + r * 1.1, y, G[4], 1); hi(); break;
+    case "drop": c.poly([[x, y - r * 1.6], [x + r * 0.9, y - r * 0.2], [x + r, y + r * 0.5], [x, y + r * 1.2], [x - r, y + r * 0.5], [x - r * 0.9, y - r * 0.2]], lit(G, x - r * 0.4, y - r * 0.6, r * 1.6, 1, 4)); hi(); break;
+    case "shard": c.poly([[x, y - r * 1.8], [x + r * 0.85, y - r * 0.6], [x + r * 0.85, y + r], [x, y + r * 1.5], [x - r * 0.85, y + r], [x - r * 0.85, y - r * 0.6]], (px) => G[cl(2.8 - ((px - x) / r) * 1.6, 1, 4)]); c.line(x, y - r * 1.8, x, y + r * 1.5, G[4], 1); hi(); break;
+    case "eye": c.poly([[x - r * 1.5, y], [x, y - r * 0.95], [x + r * 1.5, y], [x, y + r * 0.95]], lit(k.bone, x - r * 0.5, y - r * 0.5, r * 2, 1, 4)); c.ellipse(x, y, r * 0.62, r * 0.62, G[2]); c.ellipse(x, y, 0.6, r * 0.55, VOIDC); hi(); break;
+    case "square": c.shadedRect(x - r, y - r * 0.85, r * 2, r * 1.7, G, 1); c.rect(x - r + 1, y - r * 0.85 + 1, r * 2 - 2, 1, G[4]); hi(); break;
+    case "star": c.poly(Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * TAU - Math.PI / 2, d = i % 2 ? r * 0.5 : r * 1.7; return [x + Math.cos(a) * d, y + Math.sin(a) * d] as Pt; }), lit(G, x - r * 0.5, y - r * 0.5, r * 1.8, 1, 4)); hi(); break;
+    default: c.ellipse(x, y, r + 0.9, r + 0.9, t[1]); c.shadedEllipse(x, y, r, r, G); hi();
+  }
+}
 function ring(k: K, shape: string) {
   const c = k.c, band2 = shape === "twist" ? k.trim : k.mat;
   const hole = (r: number, cx = 24, cy = 29) => { for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) if (Math.hypot((x + 0.5 - cx) / r, (y + 0.5 - cy) / (r * 0.72)) < 1) c.clear(x, y); };
   if (shape === "double") {
     const a = new PC(ICON, ICON); a.shadedEllipse(19, 29, 11, 9, k.mat); for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) if (Math.hypot((x + 0.5 - 19) / 7, (y + 0.5 - 29) / 5.4) < 1) a.clear(x, y);
     c.shadedEllipse(29, 29, 11, 9, k.trim); hole(7, 29, 29); c.blit(a, 0, 0);
-    gemAt(k, 24, 18, 2.8); return;
+    jem(k, 24, 18, 2.8); return;
   }
   if (shape === "serpent") {
     for (let a = 0; a < TAU; a += 0.02) { const x = 24 + Math.cos(a) * 11, y = 30 + Math.sin(a) * 8.5, w = 2.4 - (a / TAU) * 1.3; c.ellipse(x, y, w, w, (Math.floor(a * 6) % 2 ? k.mat : k.trim)[Math.sin(a) < 0 ? 3 : 2]); }
@@ -933,12 +1088,12 @@ function ring(k: K, shape: string) {
   c.line(14, 29, 15, 35, band2[4], 1);
   if (shape === "twist") for (let a = 0; a < 18; a++) { const an = (a / 18) * TAU; c.ellipse(24 + Math.cos(an) * 10.8, 29 + Math.sin(an) * 8.6, 1, 1, a % 2 ? k.mat[3] : k.mat[1]); }
   switch (shape) {
-    case "signet": c.shadedRect(16, 9, 16, 11, k.mat, 3); c.rect(18, 11, 12, 7, k.mat[1]); gemAt(k, 24, 14.5, 3.4); break;
-    case "claw": for (const dx of [-5, -2, 2, 5]) c.line(24 + dx, 19, 24 + dx * 0.55, 8, k.trim[3], 1); gemAt(k, 24, 12, 5.2); break;
+    case "signet": c.shadedRect(16, 9, 16, 11, k.mat, 3); c.rect(18, 11, 12, 7, k.mat[1]); jem(k, 24, 14.5, 3.4); break;
+    case "claw": for (const dx of [-5, -2, 2, 5]) c.line(24 + dx, 19, 24 + dx * 0.55, 8, k.trim[3], 1); jem(k, 24, 12, 5.2); break;
     case "skull": skull(k, 24, 14, 2.1); break;
-    case "crown": c.shadedRect(16, 14, 16, 5, k.trim, 1); for (const x of [16, 21, 26, 31]) c.poly([[x, 14], [x + 1.5, 7], [x + 3, 14]], k.trim[3]); gemAt(k, 24, 12.5, 3.2); break;
-    case "band": for (const x of [16, 24, 32]) gemAt(k, x, x === 24 ? 18 : 20, x === 24 ? 2.4 : 1.7, k.stone); break;
-    default: gemAt(k, 24, 15, 4.4);
+    case "crown": c.shadedRect(16, 14, 16, 5, k.trim, 1); for (const x of [16, 21, 26, 31]) c.poly([[x, 14], [x + 1.5, 7], [x + 3, 14]], k.trim[3]); jem(k, 24, 12.5, 3.2); break;
+    case "band": for (const x of [16, 24, 32]) jem(k, x, x === 24 ? 18 : 20, x === 24 ? 2.4 : 1.7, k.stone); break;
+    default: jem(k, 24, 15, 4.4);
   }
 }
 function amulet(k: K, shape: string) {
@@ -950,15 +1105,15 @@ function amulet(k: K, shape: string) {
     case "fang": stroke(c, [[24, 23], [26.5, 31], [25, 40], [21.5, 45]], 5.4, 1, (t) => k.bone[cl(3.4 - t * 2)]); c.shadedEllipse(24, 23, 3, 3, G); break;
     case "skull": skull(k, 24, cy, 2.5); break;
     case "beads": c.shadedEllipse(24, cy - 3, 5.6, 5.6, G); c.set(22, cy - 5, WHITE); break;
-    case "disc": c.shadedEllipse(24, cy, 9.6, 9.6, k.mat); c.ellipse(24, cy, 7, 7, k.mat[1]); for (let a = 0; a < 8; a++) { const an = (a / 8) * TAU; rune(c, Math.round(24 + Math.cos(an) * 4.6), Math.round(cy + Math.sin(an) * 4.6), k.trim[4], a); } gemAt(k, 24, cy, 2.2); break;
-    case "crescent": c.shadedEllipse(24, cy, 10, 10, k.mat); for (let y = -11; y <= 11; y++) for (let x = -11; x <= 11; x++) if (Math.hypot(x + 0.5 - 4, y + 0.5 + 2.6) < 7.6) c.clear(24 + x, cy + y); gemAt(k, 27, cy - 2, 2.2); sparkle(c, 30, cy - 9, G, 1); break;
+    case "disc": c.shadedEllipse(24, cy, 9.6, 9.6, k.mat); c.ellipse(24, cy, 7, 7, k.mat[1]); for (let a = 0; a < 8; a++) { const an = (a / 8) * TAU; rune(c, Math.round(24 + Math.cos(an) * 4.6), Math.round(cy + Math.sin(an) * 4.6), k.trim[4], a); } jem(k, 24, cy, k.stoneKind || k.setting ? 3 : 2.2); break;
+    case "crescent": c.shadedEllipse(24, cy, 10, 10, k.mat); for (let y = -11; y <= 11; y++) for (let x = -11; x <= 11; x++) if (Math.hypot(x + 0.5 - 4, y + 0.5 + 2.6) < 7.6) c.clear(24 + x, cy + y); jem(k, 27, cy - 2, 2.2); sparkle(c, 30, cy - 9, G, 1); break;
     case "drop": c.poly([[24, 21], [31, 33], [29, 41], [19, 41], [17, 33]], lit(G, 20, 28, 4, 1, 4)); c.shadedRect(21, 19, 6, 3, k.trim, 1); c.set(21, 30, WHITE); c.set(21, 31, withA(WHITE, 150)); break;
     case "eye": c.poly([[12, cy], [24, cy - 8], [36, cy], [24, cy + 8]], lit(k.mat, 18, cy - 3, 5)); c.shadedEllipse(24, cy, 5, 5, G); c.ellipse(24, cy, 1.4, 3.4, VOIDC); c.set(22, cy - 2, WHITE); break;
-    case "locket": c.shadedEllipse(24, cy, 8, 10, k.mat); c.ellipse(24, cy, 5.8, 7.6, k.mat[1]); c.shadedEllipse(24, cy, 4.4, 6, k.mat); c.shadedRect(22, 21, 4, 3, k.trim, 1); for (let a = 0; a < 10; a++) { const an = (a / 10) * TAU; c.set(Math.round(24 + Math.cos(an) * 7), Math.round(cy + Math.sin(an) * 9), k.trim[4]); } break;
-    case "sun": for (let a = 0; a < 16; a++) { const an = (a / 16) * TAU; c.poly([[24 + Math.cos(an - 0.14) * 5, cy + Math.sin(an - 0.14) * 5], [24 + Math.cos(an) * (a % 2 ? 9 : 12), cy + Math.sin(an) * (a % 2 ? 9 : 12)], [24 + Math.cos(an + 0.14) * 5, cy + Math.sin(an + 0.14) * 5]], k.trim[a % 2 ? 3 : 4]); } c.shadedEllipse(24, cy, 5.6, 5.6, k.trim); gemAt(k, 24, cy, 3); break;
-    case "holy": for (let a = 0; a < TAU; a += 0.03) c.set(Math.round(24 + Math.cos(a) * 7), Math.round(cy - 3 + Math.sin(a) * 7), k.trim[2]); c.rect(22, cy - 11, 4, 22, k.trim[3]); c.rect(16, cy - 5, 16, 4, k.trim[3]); c.rect(22, cy - 11, 1, 22, k.trim[4]); gemAt(k, 24, cy - 3, 2.2); break;
+    case "locket": c.shadedEllipse(24, cy, 8, 10, k.mat); c.ellipse(24, cy, 5.8, 7.6, k.mat[1]); c.shadedEllipse(24, cy, 4.4, 6, k.mat); c.shadedRect(22, 21, 4, 3, k.trim, 1); for (let a = 0; a < 10; a++) { const an = (a / 10) * TAU; c.set(Math.round(24 + Math.cos(an) * 7), Math.round(cy + Math.sin(an) * 9), k.trim[4]); } if (k.stoneKind || k.setting) jem(k, 24, cy, 3.4, k.stone); break;
+    case "sun": for (let a = 0; a < 16; a++) { const an = (a / 16) * TAU; c.poly([[24 + Math.cos(an - 0.14) * 5, cy + Math.sin(an - 0.14) * 5], [24 + Math.cos(an) * (a % 2 ? 9 : 12), cy + Math.sin(an) * (a % 2 ? 9 : 12)], [24 + Math.cos(an + 0.14) * 5, cy + Math.sin(an + 0.14) * 5]], k.trim[a % 2 ? 3 : 4]); } c.shadedEllipse(24, cy, 5.6, 5.6, k.trim); jem(k, 24, cy, 3); break;
+    case "holy": for (let a = 0; a < TAU; a += 0.03) c.set(Math.round(24 + Math.cos(a) * 7), Math.round(cy - 3 + Math.sin(a) * 7), k.trim[2]); c.rect(22, cy - 11, 4, 22, k.trim[3]); c.rect(16, cy - 5, 16, 4, k.trim[3]); c.rect(22, cy - 11, 1, 22, k.trim[4]); jem(k, 24, cy - 3, 2.2); break;
     case "rune": c.poly([[17, 25], [31, 24], [33, 38], [24, 43], [15, 38]], lit(RP("grey", "grey"), 20, 28, 5, 1, 4)); for (let i = 0; i < 3; i++) rune(c, 20 + i * 4, 31 + (i % 2) * 4, k.fx[3], i + k.h); c.shadedRect(21, 21, 6, 3, k.trim, 1); break;
-    default: c.shadedEllipse(24, cy, 9.6, 10.4, k.trim); c.shadedEllipse(24, cy, 5.6, 6.2, G); c.set(21, cy - 3, WHITE); for (const [x, y] of [[24, cy - 10], [14, cy], [34, cy], [24, cy + 10]]) gemAt(k, x, y, 1.2);
+    default: c.shadedEllipse(24, cy, 9.6, 10.4, k.trim); if (k.stoneKind || k.setting) jem(k, 24, cy, 4.4, G); else c.shadedEllipse(24, cy, 5.6, 6.2, G); c.set(21, cy - 3, WHITE); for (const [x, y] of [[24, cy - 10], [14, cy], [34, cy], [24, cy + 10]]) jem(k, x, y, 1.2);
   }
   if (k.L.deco === "wings") for (const s of [-1, 1]) wing(c, 24 + s * 8, cy - 2, s, 9, k.trim);
   if (k.L.deco === "horns" && shape !== "fang") for (const s of [-1, 1]) horn(c, 24 + s * 6, cy - 6, s, 7, k.bone);
@@ -980,6 +1135,8 @@ function cloak(k: K, shape: string) {
     if (hem) c.rect(bot < 40 ? 11 : 8, bot - 1, bot < 40 ? 27 : 33, 1, tr[3]);
     if (shape === "shroud") { for (let x = 8; x < 41; x += 3) c.line(x, bot - 1, x + 1, bot + 1 + (x % 2), cc[1], 1); for (const [x, y] of [[16, 28], [30, 34], [22, 40]]) c.rect(x, y, 2, 3, DARK); }
   }
+  if (shape === "ragged") { for (let x = 8; x < 42; x += 3) { const d = 2 + ((x * 7) % 5) * 1.6; for (let y = Math.round(bot - d); y <= bot + 1; y++) for (let w = 0; w < 2; w++) c.clear(x + w, y); } for (const x of [16, 28]) c.line(x, 26, x + 3, 34, DARK, 1); }
+  if (shape === "smoke") for (let y = 24; y < ICON; y++) for (let x = 0; x < ICON; x++) { const i = (y * ICON + x) * 4 + 3, f = Math.max(0, 1 - (y - 24) / 24); c.data[i] = Math.round(c.data[i] * (f + (((x * 5 + y * 3) % 7) / 7 - 0.5) * 0.4)); }
   if (shape === "fur") { c.shadedEllipse(24, 9, 14, 5.4, RP("whitefur", "white")); for (let x = 9; x < 40; x += 2) c.set(x, 13 + (x % 4 ? 0 : 1), RP("whitefur", "white")[3]); c.rect(9, 44, 31, 2, RP("whitefur", "white")[3]); }
   if (shape === "hood") { c.poly([[16, 3], [32, 3], [35, 13], [13, 13]], lit(cc, 18, 6, 4, 0, 3)); c.ellipse(24, 9, 5.5, 3.5, DARK); c.line(14, 13, 34, 13, tr[2], 1); }
   if (shape === "crest") { c.poly([[17, 24], [31, 24], [31, 34], [24, 41], [17, 34]], lit(tr, 20, 26, 5, 1, 4)); c.poly([[20, 27], [28, 27], [28, 33], [24, 37], [20, 33]], k.umb ? DARK : cc[2]); if (k.umb) skull(k, 24, 30, 0.7); else { c.rect(23, 27, 2, 8, tr[4]); c.rect(21, 29, 6, 2, tr[4]); } }
@@ -1008,7 +1165,7 @@ export const MODEL_CATS = Object.keys(DRAW);
 function hashStr(s: string) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0; return h; }
 
 /** over — замена палитр (легендарки: камень, руны, ткань и металл в цветах темы). */
-export function drawModel(cat: string, L: ModelLook, fac: string, seed: number, rar = 0, over: Partial<Pick<K, "gem" | "stone" | "fx" | "cloth" | "mat" | "trim" | "hide">> = {}): PC {
+export function drawModel(cat: string, L: ModelLook, fac: string, seed: number, rar = 0, over: Partial<Pick<K, "gem" | "stone" | "fx" | "cloth" | "mat" | "trim" | "hide" | "crestKind" | "stoneKind" | "setting">> = {}): PC {
   const c = new PC(ICON, ICON), umb = fac === "umbrath", sol = fac === "solgard";
   // кайма: у r0 только нейтральный металл, у r≥1 светлые тона каймы — цвет редкости; камень: r0 тусклый, r≥1 цвет редкости
   const trimBase = RP(rar === 0 && !NEUTRAL_TRIM.has(L.trim) ? "obsidian" : L.trim, "bronze");

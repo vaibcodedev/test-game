@@ -14,6 +14,8 @@ export interface LegendaryLook {
   blade?: string; pommel?: string; ghost?: boolean; orbit?: string; shape?: string;
   /** Форма модели иконки и вида на герое (шлем, навершие посоха, сапоги…): перекрывает shape, без проверки по каталогу. */
   form?: string;
+  /** Кольцо и амулет: огранка камня (cut drop shard eye square star) и оправа (claws thorns wings halo leaves crown). */
+  stone?: string; setting?: string;
 }
 export type LegendaryEffect = { type: string; [k: string]: number | string };
 export interface LegendaryDef {

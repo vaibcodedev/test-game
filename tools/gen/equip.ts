@@ -3,7 +3,7 @@ import { PC, hex, mix, ramp, withA, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
 import { LEGENDARIES, type LegendaryDef } from "../../shared/legendary";
 import { BASE_ITEMS, ICON_VARIANT_SLOTS, ICON_VARIANTS, ITEM_PALETTES, UNIQUES, iconId, type ModelLook, type Rarity } from "../../shared/items";
-import { BASE_SHAPE, ICON, buildAllModelIcons, buildBaseIcons, drawModel, MODEL_CATS } from "./equip-models";
+import { BASE_SHAPE, ICON, buildAllModelIcons, buildBaseIcons, crestAt, drawModel, MODEL_CATS } from "./equip-models";
 
 const GEM: Ramp[] = [P.magic.green, P.magic.blue, P.magic.purple];
 const GLOW: RGBA[] = [hex("#ffffff"), hex("#7ab8ff"), hex("#c47bff")];
@@ -222,17 +222,6 @@ const legendCat = (u: LegendaryDef): string => {
   const a = ARMOR_OF[u.variant] ?? "plate";
   return u.base === "helmet" ? `${a}_helm` : u.base === "armor" ? `${a}_armor` : u.base === "boots" ? `${a}_boots` : u.base;
 };
-/** Гербы 5×5: 1 — цвет темы, 2 — второй цвет, w — кость, k — тёмный, g — зелень, b — дерево. */
-const CREST: Record<string, string[]> = {
-  sun: ["2.1.2", ".111.", "11211", ".111.", "2.1.2"], skull: [".www.", "wwwww", "wkwkw", "wwwww", ".w.w."], star: ["..1..", ".121.", "12221", ".121.", "..1.."],
-  moon: [".111.", "11...", "1....", "11...", ".111."], rose: [".111.", "11211", ".111.", "..g..", ".gg.."], tree: [".111.", "11211", ".111.", "..b..", ".bbb."],
-  fang: ["11111", "ww.ww", "ww.ww", ".w.w.", "....."], eye: [".....", ".111.", "12k21", ".111.", "....."], flame: ["..2..", ".212.", ".121.", "11211", ".111."],
-  crown: ["w.w.w", "wwwww", "w2w2w", "wwwww", "....."], raven: ["..www", ".wwkw", "wwww.", ".www.", "..w.w"],
-};
-function crestAt(c: PC, kind: string, cx: number, cy: number, sc: number, c1: RGBA, c2: RGBA) {
-  const rows = CREST[kind] ?? CREST.sun, map: Record<string, RGBA> = { "1": c1, "2": c2, w: BONE, k: DK, g: hex("#5fa040"), b: hex("#8a5a2a") };
-  rows.forEach((row, y) => [...row].forEach((ch, x) => { const col = map[ch]; if (col) { c.rect(cx + (x - 2.5) * sc, cy + (y - 2.5) * sc, sc, sc, col); c.set(Math.round(cx + (x - 2.5) * sc), Math.round(cy + (y - 2.5) * sc), mix(col, WH, 0.35)); } }));
-}
 function bbox(c: PC) {
   let x0 = ICON, y0 = ICON, x1 = -1, y1 = -1;
   for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) if (c.alpha(x, y) > 120) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
@@ -247,15 +236,23 @@ function bannerIcon(u: LegendaryDef, tint: RGBA, c2: RGBA): PC {
   if (umb) { c.shadedEllipse(11, 3, 3, 2.6, ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff")); c.set(10, 3, DK); c.set(12, 3, DK); }
   else { c.poly([[11, -1], [14, 4], [8, 4]], metal); c.line(11, 0, 11, 3, WH, 1); }
   c.rect(9, 6, 33, 2, metal); c.rect(9, 6, 33, 1, mix(metal, WH, 0.4));
-  const x0 = 13, x1 = 40, top = 8, h = 25 + ti;
+  const x0 = 13, x1 = 40, top = 8, h = 25 + ti, form = u.look.form ?? "swallow";
   for (let x = x0; x <= x1; x++) {
-    const f = (x - x0) / (x1 - x0), off = Math.round(Math.sin(f * 5.2) * 1.6 * f), cut = Math.max(0, 7 - Math.abs(x - (x0 + x1) / 2) * 1.1);
+    const f = (x - x0) / (x1 - x0), off = Math.round(Math.sin(f * 5.2) * 1.6 * f);
+    // низ полотнища: ласточкин хвост | рваный край | вымпел | двойное (два полотнища разной длины, щель между ними)
+    let cut = Math.max(0, 7 - Math.abs(x - (x0 + x1) / 2) * 1.1);
+    if (form === "torn") cut = 2 + ((x * 7) % 5) * 1.7 + f * 4;
+    else if (form === "pennant") cut = h * 0.86 * f;
+    else if (form === "double") { if (Math.abs(x - (x0 + x1) / 2) < 1.2) continue; cut = (x < (x0 + x1) / 2 ? 6 : 0) + Math.max(0, 3 - Math.abs(x - (x < (x0 + x1) / 2 ? x0 + 6 : x1 - 6)) * 0.7); }
     const hh = h - cut, fold = Math.sin(f * 5.2 + 1.2);
     for (let y = top; y < top + hh + off; y++) c.set(x, y, F[fold > 0.4 ? 3 : fold < -0.4 ? 1 : 2]);
     c.set(x, top + hh + off, ORANGE); c.set(x, top + hh + off + 1, ORANGE_D);
   }
   for (let y = top; y < top + h - 7; y++) { c.set(x0, y, ORANGE); c.set(x1, y + Math.round(Math.sin(5.2) * 1.6), ORANGE); }
-  crestAt(c, u.look.crest ?? (umb ? "skull" : "sun"), 27, top + 11, 3, tint, c2);
+  const crest = u.look.crest ?? (umb ? "skull" : "sun");
+  if (form === "double") { crestAt(c, crest, 33, top + 12, 2.4, tint, c2); crestAt(c, "star", 19, top + 8, 2, c2, tint); }
+  else if (form === "pennant") crestAt(c, crest, 21, top + 7, 2.6, tint, c2);
+  else crestAt(c, crest, 27, top + 11, 3, tint, c2);
   if (ti >= 3) for (const x of [9, 41]) { c.line(x, 8, x, 15, c2, 1); c.rect(x - 1, 15, 3, 3, tint); }
   c.outline();
   return c;
@@ -275,7 +272,10 @@ function wingsIcon(c: PC, kind: string, tint: RGBA, c2: RGBA, ti: number, cy: nu
       c.set(Math.round(tips[0][0]), Math.round(tips[0][1]) - 1, c2);
     } else for (let j = nf - 1; j >= 0; j--) {
       const [x, y] = tips[j], mx = rx + (x - rx) * 0.55, my = ry + (y - ry) * 0.55;
-      if (kind === "flame") { c.line(rx, ry, mx, my, tint, 3); c.line(mx, my, x, y, c2, 2); c.set(Math.round(x), Math.round(y), WH); }
+      if (kind === "crystal") { c.poly([[rx, ry - 2], [rx, ry + 2], [x, y]], j % 2 ? hex("#cfe0ff") : mix(c2, WH, 0.35)); c.line(rx, ry, x, y, j % 2 ? c2 : WH, 1); c.set(Math.round(x), Math.round(y), tint); }
+      else if (kind === "shadow") { c.line(rx, ry, mx, my, withA(mix(tint, DK, 0.65), 190), 4); c.line(mx, my, x, y, withA(mix(tint, DK, 0.5), 140), 2); c.set(Math.round(x), Math.round(y), withA(c2, 220)); if (j % 2) c.set(Math.round(mx), Math.round(my) + 2, withA(c2, 140)); }
+      else if (kind === "leaf") { c.line(rx, ry, mx, my, hex("#3a6a2a"), 2); c.ellipse(x, y, 3.2, 2, j % 2 ? hex("#5fa040") : hex("#8ac060")); c.line(mx, my, x, y, c2, 1); c.set(Math.round(x), Math.round(y), tint); }
+      else if (kind === "flame") { c.line(rx, ry, mx, my, tint, 3); c.line(mx, my, x, y, c2, 2); c.set(Math.round(x), Math.round(y), WH); }
       else { c.line(rx, ry, mx, my, j % 2 ? hex("#dce2ec") : c2, 3); c.line(mx, my, x, y, j % 2 ? c2 : WH, 2); c.set(Math.round(x), Math.round(y), tint); }
     }
   }
@@ -287,12 +287,25 @@ function shrink(src: PC, k: number, ax: number, ay: number): PC {
   return out;
 }
 const sparkle = (c: PC, x: number, y: number, col: RGBA) => { c.set(x, y, WH); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) c.set(x + dx, y + dy, withA(col, 200)); };
-function orbitIcon(c: PC, kind: string, tint: RGBA, c2: RGBA) {
-  for (const [x, y] of [[6, 7], [41, 6], [42, 40], [5, 41]]) {
-    if (kind === "blades") { c.line(x, y - 3, x, y + 2, c2, 1); c.set(x, y - 3, WH); c.line(x - 1, y + 2, x + 1, y + 2, tint, 1); c.set(x, y + 3, mix(tint, DK, 0.4)); }
-    else if (kind === "runes") { c.rect(x - 1, y - 1, 3, 1, tint); c.set(x - 1, y, c2); c.set(x + 1, y + 1, c2); c.rect(x - 1, y + 2, 3, 1, tint); }
-    else { c.ellipse(x, y, 2.6, 2.6, withA(tint, 90)); c.shadedEllipse(x, y, 1.6, 1.6, tintRamp(tint)); c.set(x - 1, y - 1, c2); }
+const ICEC = hex("#cfe0ff"), GREENC = hex("#5fa040");
+/** Мелкий знак темы (5–7 px): парящий предмет look.orbit или частица look.fx. */
+function glyph(c: PC, kind: string, x: number, y: number, tint: RGBA, c2: RGBA) {
+  switch (kind) {
+    case "blades": c.line(x, y - 3, x, y + 2, c2, 1); c.set(x, y - 3, WH); c.line(x - 1, y + 2, x + 1, y + 2, tint, 1); c.set(x, y + 3, mix(tint, DK, 0.4)); break;
+    case "runes": c.rect(x - 1, y - 1, 3, 1, tint); c.set(x - 1, y, c2); c.set(x + 1, y + 1, c2); c.rect(x - 1, y + 2, 3, 1, tint); break;
+    case "motes": c.ellipse(x, y, 2.6, 2.6, withA(tint, 90)); c.shadedEllipse(x, y, 1.6, 1.6, tintRamp(tint)); c.set(x - 1, y - 1, c2); break;
+    case "shards": case "ice": c.poly([[x, y - 4], [x + 2, y], [x, y + 3], [x - 2, y]], ICEC); c.line(x, y - 4, x, y + 3, c2, 1); c.set(x - 1, y - 1, WH); break;
+    case "leaves": case "leaf": c.ellipse(x, y, 1.8, 3.2, GREENC); c.line(x, y - 3, x, y + 3, c2, 1); c.set(x, y - 3, tint); break;
+    case "drops": case "blood": c.poly([[x, y - 4], [x + 2, y], [x, y + 3], [x - 2, y]], tint); c.set(x - 1, y - 1, WH); c.set(x, y + 1, mix(tint, DK, 0.4)); break;
+    case "bolts": case "bolt": c.line(x + 1, y - 4, x - 1, y - 1, c2, 1); c.line(x - 1, y - 1, x + 1, y, c2, 1); c.line(x + 1, y, x - 1, y + 4, c2, 1); c.set(x + 1, y - 4, WH); c.set(x, y - 1, tint); break;
+    case "stars": case "stardust": c.set(x, y, WH); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { c.set(x + dx, y + dy, tint); c.set(x + dx * 2, y + dy * 2, withA(c2, 200)); } break;
+    case "bones": case "bonespike": c.rect(x - 3, y, 7, 1, BONE); for (const sx of [-3, 3]) { c.set(x + sx, y - 1, BONE); c.set(x + sx, y + 1, BONE); } c.set(x, y, c2); break;
+    case "vortex": for (let i = 0; i < 14; i++) { const a = i * 0.7, r = 0.5 + i * 0.22; c.set(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), i % 2 ? c2 : tint); } break;
   }
+}
+const FX_GLYPH = new Set(["vortex", "ice", "bones", "stardust", "blood", "bolt"]);
+function orbitIcon(c: PC, kind: string, tint: RGBA, c2: RGBA) {
+  for (const [x, y] of [[6, 7], [41, 6], [42, 40], [5, 41]]) glyph(c, kind, x, y, tint, c2);
 }
 
 /**
@@ -313,6 +326,7 @@ export function buildLegendaryIcon(id: string): PC {
     item = drawModel(cat, look, u.faction, id.length * 131 + ti, 3, {
       gem: T, stone: T, fx: T2, mat: palRamp(look.mat, tint, 0.22), trim: palRamp(look.trim, ORANGE, 0.25),
       cloth: tintRamp(lk.flag ? hex(lk.flag) : mix(tint, DK, 0.25)), hide: palRamp(look.hide!, tint, 0.15),
+      crestKind: slot === "offhand" ? lk.crest : undefined, stoneKind: lk.stone, setting: lk.setting,
     });
   }
   // крылья, корона, нимб и пламя над шлемом: предмет меньше и ниже, чтобы тема читалась
@@ -336,7 +350,16 @@ export function buildLegendaryIcon(id: string): PC {
     let hx = 0, hy = 0, tx = 0, ty = 0, lo = Infinity, hi = -Infinity;
     for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) if (item.alpha(x, y) > 200) { const v = x - y; if (v < lo) { lo = v; hx = x; hy = y; } if (v > hi) { hi = v; tx = x; ty = y; } }
     if (lk.pommel === "skull") { out.shadedEllipse(hx + 2, hy - 2, 3, 2.8, ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff")); out.set(hx + 1, hy - 2, tint); out.set(hx + 3, hy - 2, tint); }
+    else if (lk.pommel === "eye") { out.ellipse(hx + 2, hy - 2, 3.6, 2.4, BONE); out.ellipse(hx + 2, hy - 2, 1.5, 1.5, tint); out.set(hx + 2, hy - 2, DK); out.set(hx + 1, hy - 3, WH); }
+    else if (lk.pommel === "flame") for (let q = 0; q < 3; q++) { const x = hx + q * 2; out.line(x, hy - 1, x, hy - 5 - (q === 1 ? 3 : 1), q === 1 ? c2 : tint, 2); out.set(x, hy - 6 - (q === 1 ? 3 : 1), WH); }
+    else if (lk.pommel === "gem") { out.shadedEllipse(hx + 2, hy - 2, 3, 3, tintRamp(tint)); out.set(hx + 1, hy - 3, WH); out.ellipse(hx + 2, hy - 2, 4, 4, withA(c2, 80)); }
+    else if (lk.pommel === "fang") { out.poly([[hx - 1, hy - 4], [hx + 4, hy - 4], [hx + 1, hy + 3]], BONE); out.poly([[hx + 1, hy - 4], [hx + 4, hy - 4], [hx + 1, hy + 3]], BONED); out.set(hx + 1, hy - 3, c2); }
+    else if (lk.pommel === "leaf") { out.poly([[hx - 2, hy], [hx + 1, hy - 6], [hx + 5, hy - 2]], GREENC); out.line(hx - 1, hy - 1, hx + 4, hy - 3, c2, 1); }
+    else if (lk.pommel === "drop") { out.poly([[hx + 2, hy - 6], [hx + 5, hy - 2], [hx + 2, hy + 1], [hx - 1, hy - 2]], tint); out.set(hx + 1, hy - 3, WH); }
     else if (lk.pommel === "star") { out.line(hx - 1, hy - 1, hx + 5, hy - 1, tint, 1); out.line(hx + 2, hy - 4, hx + 2, hy + 2, tint, 1); out.set(hx + 2, hy - 1, WH); out.set(hx, hy - 3, c2); out.set(hx + 4, hy + 1, c2); }
+    if (lk.blade === "jagged") for (let f = 0.3; f < 0.92; f += 0.1) { const x = Math.round(hx + (tx - hx) * f), y = Math.round(hy + (ty - hy) * f); out.poly([[x, y - 1], [x + 2, y - 4], [x + 3, y - 1]], f > 0.8 ? WH : c2); }
+    if (lk.blade === "flaming") for (let f = 0.35; f < 0.95; f += 0.12) { const x = Math.round(hx + (tx - hx) * f), y = Math.round(hy + (ty - hy) * f); out.line(x, y - 1, x - 1, y - 5 - (f > 0.6 ? 2 : 0), tint, 2); out.set(x - 1, y - 6 - (f > 0.6 ? 2 : 0), c2); }
+    if (lk.blade === "crystal") for (let f = 0.3; f < 0.95; f += 0.1) { const x = Math.round(hx + (tx - hx) * f), y = Math.round(hy + (ty - hy) * f); if (item.alpha(x, y) > 200) { out.set(x, y, f > 0.8 ? WH : ICEC); out.set(x + 1, y - 1, withA(c2, 220)); } }
     if (lk.blade === "long") for (let f = 0.45; f < 0.92; f += 0.07) { const x = Math.round(hx + (tx - hx) * f), y = Math.round(hy + (ty - hy) * f); if (item.alpha(x, y) > 200) out.set(x, y, f > 0.85 ? WH : c2); }
   }
   // шлем: корона, нимб, рога уже в модели (deco), светящиеся глаза в прорези
@@ -351,6 +374,11 @@ export function buildLegendaryIcon(id: string): PC {
     }
     if (lk.helm === "flame") for (let q = 0; q < 5; q++) { const x = Math.round(b.cx - 6 + q * 3), hh = 6 + ti + (q === 2 ? 4 : q % 2 ? 2 : 0); out.line(x, b.y0 + 1, x, b.y0 + 1 - hh, tint, 2); out.line(x, b.y0, x, b.y0 + 2 - hh, c2, 1); out.set(x, b.y0 + 1 - hh, WH); }
     if (lk.helm === "wings") for (const s of [-1, 1]) for (let q = 0; q < 4; q++) { const x0 = s < 0 ? b.x0 + 2 : b.x1 - 2; out.line(x0, b.cy - q, x0 + s * (6 + q * 2), b.cy - 6 - q * 3, q % 2 ? c2 : WH, 2); out.set(x0 + s * (6 + q * 2), b.cy - 6 - q * 3, tint); }
+    if (lk.helm === "antlers") for (const s of [-1, 1]) { const x0 = b.cx + s * 7, y0 = b.y0 + 4; out.line(x0, y0, x0 + s * 4, y0 - 7, BONE, 3); out.line(x0 + s * 4, y0 - 7, x0 + s * 5, y0 - 13, BONE, 2); out.line(x0 + s * 2, y0 - 3, x0 + s * 8, y0 - 6, BONE, 2); out.line(x0 + s * 4.5, y0 - 9, x0 + s * 9, y0 - 12, BONED, 2); out.set(x0 + s * 5, y0 - 14, tint); out.set(x0 + s * 9, y0 - 12, c2); out.set(x0 + s * 8, y0 - 6, c2); }
+    if (lk.helm === "spires") for (let q = -3; q <= 3; q++) { const x = Math.round(b.cx + q * 3.2), hh = 7 + ti + (3 - Math.abs(q)) * 2; out.poly([[x - 1.6, b.y0 + 2], [x, b.y0 + 2 - hh], [x + 1.6, b.y0 + 2]], q % 2 ? tint : c2); out.set(x, b.y0 + 2 - hh, WH); out.line(x, b.y0 + 2, x, b.y0 + 4 - hh, mix(tint, WH, 0.5), 1); }
+    if (lk.helm === "thorns") for (let q = 0; q < 9; q++) { const x = Math.round(b.x0 + 3 + q * ((b.x1 - b.x0 - 6) / 8)), hh = 6 + ti + (q % 2 ? 0 : 4); out.poly([[x - 1.4, b.y0 + 3], [x + (q - 4) * 0.4, b.y0 + 3 - hh], [x + 1.4, b.y0 + 3]], q % 2 ? BONED : BONE); out.set(Math.round(x + (q - 4) * 0.4), b.y0 + 3 - hh, q % 3 ? tint : c2); }
+    if (lk.helm === "moon") { const my = b.y0 - 5 - ti; out.ellipse(b.cx, my, 9, 9, mix(tint, WH, 0.15)); for (let y = my - 11; y < my + 11; y++) for (let x = Math.round(b.cx - 12); x < b.cx + 12; x++) if (Math.hypot(x + 0.5 - (b.cx + 3.5), y + 0.5 - (my - 2)) < 8) out.clear(x, y); out.ellipse(b.cx - 1, my + 4, 1.6, 1.6, c2); out.set(Math.round(b.cx + 5), Math.round(my - 6), WH); }
+    if (lk.helm === "plume") for (let q = 0; q < 6; q++) { const sx = b.cx - 1, sy = b.y0 + 3, ex = sx + 3 + q * 2.6, ey = sy - 12 + q * 1.5; out.line(sx, sy, (sx + ex) / 2 - 2, (sy + ey) / 2 - 5, q % 2 ? c2 : tint, 3); out.line((sx + ex) / 2 - 2, (sy + ey) / 2 - 5, ex, ey, q % 2 ? WH : c2, 2); }
     if (lk.helm === "halo") { for (let a = 0; a < Math.PI * 2; a += 0.05) out.set(Math.round(b.cx + Math.cos(a) * 11), Math.round(b.y0 - 1 + Math.sin(a) * 3), c2); }
     if (lk.eyes) {
       let row = -1, best = 0;
@@ -363,17 +391,28 @@ export function buildLegendaryIcon(id: string): PC {
   if (slot === "armor") {
     for (const [sx, s] of [[b.x0 + 5, -1], [b.x1 - 5, 1]] as const) {
       if (lk.pauld === "flame") for (let q = 0; q < 3; q++) { const x = sx + (q - 1) * 2, hh = 5 + ti + (q === 1 ? 2 : 0); out.line(x, b.y0 + 2, x + s, b.y0 + 2 - hh, tint, 2); out.line(x, b.y0 + 1, x + s, b.y0 + 3 - hh, c2, 1); out.set(x + s, b.y0 + 2 - hh, WH); }
+      if (lk.pauld === "feathers") for (let q = 0; q < 4; q++) { const x = sx + (q - 1.5) * 2.4, hh = 7 + ti - Math.abs(q - 1.5) * 2; out.line(x, b.y0 + 3, x + s * (q - 1.5) * 1.5, b.y0 + 3 - hh, q % 2 ? hex("#dce2ec") : c2, 2); out.line(x, b.y0 + 2, x + s * (q - 1.5) * 1.5, b.y0 + 3 - hh, WH, 1); out.set(Math.round(x + s * (q - 1.5) * 1.5), b.y0 + 3 - hh, tint); }
+      if (lk.pauld === "bone") for (let q = 0; q < 3; q++) { const x = sx + (q - 1) * 3; out.poly([[x - 1.6, b.y0 + 4], [x + s * (q - 1) * 1.4, b.y0 + 4 - 6 - ti - (q === 1 ? 3 : 0)], [x + 1.6, b.y0 + 4]], q === 1 ? BONE : BONED); out.set(x, b.y0 + 3, c2); }
+      if (lk.pauld === "leaves") for (let q = 0; q < 3; q++) { const x = sx + (q - 1) * 3, hh = 6 + ti - Math.abs(q - 1) * 2; out.ellipse(x + s * (q - 1) * 2, b.y0 + 2 - hh * 0.55, 2, hh * 0.55, q % 2 ? hex("#5fa040") : hex("#8ac060")); out.line(x, b.y0 + 3, x + s * (q - 1) * 2, b.y0 + 2 - hh, c2, 1); }
+      if (lk.pauld === "stars") { for (const [dx, dy, r] of [[0, 4, 3], [-s * 4, 8, 2], [s * 3, 10, 2]] as number[][]) { const x = sx + dx, y = b.y0 + 4 - dy; out.set(x, y, WH); for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { for (let k2 = 1; k2 <= r; k2++) out.set(x + ax * k2, y + ay * k2, k2 === 1 ? tint : withA(c2, 190)); } } }
       if (lk.pauld === "frost") for (let q = 0; q < 3; q++) { const x = sx + (q - 1) * 2, hh = 4 + ti - Math.abs(q - 1); out.line(x, b.y0 + 3, x + s * (q - 1), b.y0 + 2 - hh, hex("#8ea4d8"), 2); out.line(x, b.y0 + 2, x + s * (q - 1), b.y0 + 2 - hh, q === 1 ? c2 : hex("#d0dcff"), 1); }
     }
   }
   if (slot === "boots" && lk.boots === "wings") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x0 = s < 0 ? b.x0 + 1 : b.x1 - 1, y0 = b.y0 + 6 + q * 2; out.line(x0, y0, x0 + s * (5 + q), y0 - 6 + q, q % 2 ? c2 : WH, 2); }
   if (slot === "boots" && lk.boots === "rune") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x = Math.round(s < 0 ? b.x0 + 2 : b.x1 - 3), y = b.y0 + 4 + q * 4; out.rect(x, y, 2, 3, withA(c2, 220)); out.set(x, y + 1, WH); out.set(x + (s < 0 ? 2 : -1), y + 2, tint); }
+  if (slot === "boots" && lk.boots === "frost") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x0 = s < 0 ? b.x0 + 1 : b.x1 - 1, y0 = b.y0 + 6 + q * 4; out.poly([[x0, y0 - 2], [x0 + s * (5 + q), y0 + 1], [x0, y0 + 2]], q % 2 ? ICEC : mix(c2, WH, 0.3)); out.line(x0, y0, x0 + s * (5 + q), y0 + 1, WH, 1); }
+  if (slot === "boots" && lk.boots === "shadow") for (let q = 0; q < 7; q++) { const x = b.x0 + 2 + q * ((b.x1 - b.x0 - 4) / 6); out.line(x, b.y1 - 2, x + (q % 2 ? 2 : -2), b.y1 - 9 - (q % 3) * 3, withA(mix(tint, DK, 0.6), 190), 3); out.line(x, b.y1 - 4, x + (q % 2 ? 2 : -2), b.y1 - 9 - (q % 3) * 3, withA(c2, 150), 1); }
+  if (slot === "boots" && lk.boots === "thorns") for (const s of [-1, 1]) for (let q = 0; q < 3; q++) { const x0 = s < 0 ? b.x0 + 1 : b.x1 - 1, y0 = b.y0 + 6 + q * 5; out.poly([[x0, y0 - 1.5], [x0 + s * 6, y0 - 4 + q], [x0, y0 + 1.5]], BONE); out.set(x0 + s * 6, y0 - 4 + q, c2); }
+  if (slot === "boots" && lk.boots === "spark") for (const s of [-1, 1]) { const x0 = s < 0 ? b.x0 : b.x1; out.line(x0, b.y0 + 4, x0 + s * 3, b.y0 + 8, c2, 1); out.line(x0 + s * 3, b.y0 + 8, x0 + s * 1, b.y0 + 10, c2, 1); out.line(x0 + s, b.y0 + 10, x0 + s * 4, b.y0 + 15, c2, 1); out.set(x0, b.y0 + 4, WH); }
   if (slot === "boots" && lk.boots === "flame") for (let q = 0; q < 6; q++) { const x = b.x0 + 3 + q * ((b.x1 - b.x0 - 6) / 5), hh = 4 + (q % 2) * 3; out.line(x, b.y1, x, b.y1 - hh, tint, 2); out.set(Math.round(x), b.y1 - hh, c2); }
   if (lk.chains && (slot === "armor" || slot === "cloak")) {
     const n = 12;
     for (let q = 0; q <= n; q++) { const f = q / n, x = b.x0 + 2 + (b.x1 - b.x0 - 4) * f, y = b.y0 + (b.y1 - b.y0) * (0.3 + 0.45 * f) + Math.sin(f * Math.PI) * 3; if (q % 2) out.rect(x - 1, y, 3, 1, withA(c2, 200)); else out.rect(x, y - 1, 1, 3, withA(q % 3 ? c2 : tint, 220)); }
   }
+  if (lk.back === "plumage") for (let row = 0; row < 3; row++) for (let q = 0; q < 8; q++) { const x = b.x0 + 3 + q * ((b.x1 - b.x0 - 6) / 7) + (row % 2) * 2, y = b.y0 + 6 + row * 9; out.line(x, y, x + (q < 4 ? -1 : 1), y + 8, (q + row) % 2 ? hex("#dce2ec") : c2, 3); out.line(x, y + 1, x + (q < 4 ? -1 : 1), y + 8, (q + row) % 3 ? WH : tint, 1); }
+  if (lk.back === "shadow") for (let q = 0; q < 9; q++) { const x = b.x0 + 2 + q * ((b.x1 - b.x0 - 4) / 8), y = b.y1 - 3; out.line(x, y, x + (q % 2 ? 3 : -3), y + 3 + (q % 3) * 2, withA(mix(tint, DK, 0.65), 200), 3); out.line(x, y - 6, x + (q % 2 ? 2 : -2), y + 2, withA(c2, 120), 1); }
   if (lk.orbit) orbitIcon(out, lk.orbit, tint, c2);
+  else if (FX_GLYPH.has(lk.fx)) for (const [x, y] of [[6, 8], [41, 7], [41, 41]]) glyph(out, lk.fx, x, y, tint, c2);
   // искры по углам: больше с ярусом
   const sp: [number, number][] = [[3, 3], [44, 3], [44, 44], [3, 44], [24, 1], [46, 24]];
   for (const [x, y] of sp.slice(0, 2 + Math.min(4, ti + 1))) if (!out.alpha(x, y)) sparkle(out, x, y, ti >= 3 ? tint : ORANGE);
