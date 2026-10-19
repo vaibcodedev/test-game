@@ -54,8 +54,9 @@ export interface HitOpts {
 }
 
 /**
- * Итог удара (World.hitEx). landed — удар дошёл до цели: не промах (уклонение, нейтральный город, мёртвый
- * или выбывший актёр). Удар, целиком поглощённый щитом, блоком или incoming-защитой, — попадание (landed, dealt = 0).
+ * Итог удара (World.hitEx). landed — удар дошёл до цели: не промах (уклонение, полная неуязвимость World.isImmune,
+ * нейтральный город, мёртвый или выбывший актёр). Удар, целиком поглощённый щитом, блоком или частичным снижением
+ * урона (incoming), — попадание (landed, dealt = 0).
  * Контроль и дебаффы умений вешаются по landed; вампиризм, лечение от урона, ярость — по dealt.
  */
 export interface HitResult {
@@ -209,6 +210,14 @@ export class World {
   canAffect(src: Actor, dst: Actor): boolean {
     return !this.absent(src) && !this.absent(dst) && !this.townSafe(src, dst);
   }
+  /**
+   * Полная неуязвимость («Божественный щит» tp_divine, «Танец клинков» as_dance): удар по актёру — промах (hitEx),
+   * контроль и дебаффы (effects.ts) не ложатся. Каждую новую полную неуязвимость подключать только сюда.
+   * Щит, блок и частичное снижение урона неуязвимостью не считаются.
+   */
+  isImmune(a: Actor): boolean {
+    return this.isPlayer(a) && (tanks.immune(this, a) || rogues.immune(this, a));
+  }
   /** Актёр выбыл: мёртв или (герой) уже не в этом мире — проверка для таймеров умений. */
   gone(a: Actor): boolean {
     return this.isDead(a) || this.absent(a);
@@ -359,6 +368,13 @@ export class World {
       return MISS;
     }
     if (this.isPlayer(src) && !o.noBreak) { rogues.onBreak(this, src); src.stealthUntil = 0; }
+    // полная неуязвимость цели — промах: ни урона, ни контроля (щит, блок и частичное снижение — попадание)
+    if (this.isPlayer(dst) && this.isImmune(dst)) {
+      dst.combatAt = this.time;
+      if (this.isPlayer(src)) src.combatAt = this.time;
+      this.emit({ t: "dmg", id: dst.id, v: 0, imm: true });
+      return MISS;
+    }
     // уклонение (Ловкость): обычные удары мобов и игроков, кроме фиксированного урона (зоны боссов, отражение, DoT)
     if (this.isPlayer(dst) && o.flat === undefined && src !== dst && Math.random() < dst.derived.dodge) {
       dst.combatAt = this.time;
@@ -415,6 +431,7 @@ export class World {
       // костяная броня: бьющий вплотную замедлен
       if (dst.boneUntil > this.time && src !== dst && this.dist(src, dst) < 90) applySlow(this, dst, src, dst.boneChill, 1500);
       const before = amount;
+      // incoming — только частичное снижение; полная неуязвимость отсечена выше (isImmune), здесь урон съеден целиком — попадание
       amount = rogues.incoming(this, src, dst, mages.incoming(this, src, dst, healers.incoming(this, src, dst, tanks.incoming(this, src, dst, amount, o), o), o));
       if (amount <= 0) {
         dst.combatAt = this.time;

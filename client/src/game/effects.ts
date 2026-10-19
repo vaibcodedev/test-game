@@ -138,6 +138,7 @@ export class Effects {
         if (!u) return;
         const y = u.y - (u.frame > 32 ? 56 : 28);
         if (f.miss) return this.number(u.x, y, "Уклонение", "#c8c0b0");
+        if (f.imm) return this.number(u.x, y, "Неуязвим", "#ffd84a");
         if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x9affb8, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, "#7aff7a"); }
         if (f.abs) this.sound("shield", u.x, u.y);
         if (f.abs) return this.number(u.x, y, `Щит ${f.v}`, "#ffd84a");

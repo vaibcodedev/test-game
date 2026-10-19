@@ -4,6 +4,7 @@
  * (слабый эффект не тянет сильный, истёкший процент не учитывается). Слабый, но более долгий эффект не теряется:
  * он ждёт в «хвосте» и вступает, когда сильный истечёт (tickEffects из World). Снятие эффекта (until = 0) стирает и хвост.
  * Контроль и дебаффы от героя проверяют w.canAffect (нейтральный город, ушедший из мира герой) и не ложатся от мёртвого источника.
+ * Ни контроль, ни дебаффы (из любого источника, и без него) не ложатся на полностью неуязвимого (w.isImmune).
  */
 import type { Player } from "./Player";
 import type { Actor, World } from "./World";
@@ -76,9 +77,9 @@ export function tickEffects(w: World, a: Actor) {
 /** Длительность контроля с учётом «Несгибаемого» у героев. */
 export const ccMs = (w: World, a: Actor, ms: number) => (w.isPlayer(a) ? ms * (1 - a.derived.ccReduce) : ms);
 
-/** Может ли by наложить эффект на a; by = null — эффект без источника (среда, система). */
+/** Может ли by наложить эффект на a; by = null — эффект без источника (среда, система). На неуязвимого (w.isImmune) — нет. */
 function allowed(w: World, by: Actor | null, a: Actor) {
-  return !w.isDead(a) && (!by || (!w.isDead(by) && w.canAffect(by, a)));
+  return !w.isDead(a) && !w.isImmune(a) && (!by || (!w.isDead(by) && w.canAffect(by, a)));
 }
 
 /** Замедление a на pct% на ms (контроль: срок режет «Несгибаемый»). by — кто накладывает. true — замедление действует. */

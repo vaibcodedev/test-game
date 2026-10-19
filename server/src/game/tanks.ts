@@ -274,11 +274,15 @@ export function outgoing(w: World, src: Player, dst: Actor, o: HitOpts): number 
   return k;
 }
 
-/** Входящий урон героя-танка (после брони). 0 — полная неуязвимость. */
+/** «Божественный щит» (tp_divine): полная неуязвимость — для World.isImmune (удары — промах, контроль не ложится). */
+export function immune(w: World, p: Player): boolean {
+  return (states.get(p)?.invulnUntil ?? 0) > w.time;
+}
+
+/** Входящий урон героя-танка (после брони): только частичное снижение; неуязвимость — World.isImmune. */
 export function incoming(w: World, src: Actor, dst: Player, amount: number, o: HitOpts): number {
   if (!isTank(dst)) return banner(w, dst, amount);
   const s = st(dst);
-  if (s.invulnUntil > w.time) return 0;
   if (s.amUntil > w.time && o.kind && o.kind !== "phys") {
     const prevented = (amount * s.amPct) / 100;
     amount -= prevented;

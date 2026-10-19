@@ -255,9 +255,13 @@ export function outgoing(w: World, src: Player, dst: Actor, o: HitOpts): number 
   return k;
 }
 
-/** Входящий урон героя-разбойника (после других модификаторов). 0 — «Танец теней». */
+/** «Танец клинков» (as_dance): полная неуязвимость на время танца — для World.isImmune (удары — промах, контроль не ложится). */
+export function immune(w: World, p: Player): boolean {
+  return p.cls === "rogue" && (states.get(p)?.danceUntil ?? 0) > w.time;
+}
+
+/** Входящий урон героя-разбойника (после других модификаторов): только частичное снижение; неуязвимость — World.isImmune. */
 export function incoming(w: World, src: Actor, dst: Player, amount: number): number {
-  if (dst.cls === "rogue") return st(dst).danceUntil > w.time ? 0 : amount;
   if (dst.cls === "reaver") return rv.incoming(w, src, dst, amount);
   return amount;
 }

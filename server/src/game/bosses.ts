@@ -8,6 +8,7 @@ import { MOBS } from "../../../shared/mobs";
 import { Anim, BUFF_ENRAGE } from "../../../shared/protocol";
 import { walkable } from "../../../shared/map";
 import { Mob } from "./Mob";
+import { applyRoot } from "./effects";
 import type { Player } from "./Player";
 import type { World } from "./World";
 
@@ -141,8 +142,7 @@ class Ent extends Boss {
   private roots(n: number) {
     for (const p of this.randomPlayers(n))
       this.w.telegraph(this.m, "circle", p.x, p.y, 54, 1300, (q) => {
-        this.w.hit(this.m, q, { flat: this.m.stats.dmg * 1.3, kind: "nature" });
-        q.rootUntil = this.w.time + 1500;
+        if (this.w.hitEx(this.m, q, { flat: this.m.stats.dmg * 1.3, kind: "nature" }).landed) applyRoot(this.w, this.m, q, 1500);
       }, { k: "nature" });
   }
   protected onPhase() {
