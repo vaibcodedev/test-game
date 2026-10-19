@@ -1,5 +1,13 @@
 import type { ClassId } from "./classes";
-import skillData from "../data/skills.json";
+import skillBase from "../data/skills.json";
+import skillArchers from "../data/skills_archers.json";
+import skillMages from "../data/skills_mages.json";
+import skillRogues from "../data/skills_rogues.json";
+/** Все умения из /data: базовый файл + файлы ролей (лучники, маги, разбойники). */
+const skillData = {
+  skills: { ...skillBase.skills, ...skillArchers.skills, ...skillMages.skills, ...skillRogues.skills } as Record<string, unknown>,
+  summons: { ...skillBase.summons, ...skillArchers.summons, ...skillMages.summons, ...skillRogues.summons } as Record<string, unknown>,
+};
 import { skillUnlockLevel } from "./formulas";
 
 export type SkillTarget = "enemy" | "point" | "self" | "ally";

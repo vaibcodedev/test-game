@@ -37,7 +37,9 @@ async function main() {
       assert(f.classes.length === 5, `${f.name}: классов не 5`);
       for (const c of f.classes) {
         assert(CLASSES[c].faction === f.id, `${c}: не та фракция`);
-        const tank = c === "warrior" || c === "deathknight" || c === "healer" || c === "bloodweaver";
+        // классы с полным набором (9 активных + 11 пассивных); задачи 42–44 дописывают сюда свои классы
+        const FULL: string[] = ["warrior", "deathknight", "healer", "bloodweaver"];
+        const tank = FULL.includes(c);
         assert(tank ? activeSkills(c).length === 9 : activeSkills(c).length >= 3 && activeSkills(c).length <= 4, `${c}: умений ${activeSkills(c).length}`);
         if (tank) assert(classSkills(c).filter((s) => s.kind === "passive").length === 11, `${c}: пассивок мало`);
       }
