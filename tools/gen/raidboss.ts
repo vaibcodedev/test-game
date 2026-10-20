@@ -962,8 +962,8 @@ function idlePoses(): Pose[] {
 /** Шаг: меч на отлёте в правой руке, левая рука качается, корпус переваливается, плащ тянется назад. */
 function walkPoses(): Pose[] {
   return [0, 1, 2, 3].map((i) => {
-    const bob = [-1.4, 0.9, -1.4, 0.9][i];
-    const ry = [9, 1, -8, 1][i], ly = [-8, 1, 9, 1][i], rz = [0, 0, 0, 6][i], lz = [0, 6, 0, 0][i];
+    const bob = [-2.2, 1.4, -2.2, 1.4][i];
+    const ry = [9, 1, -8, 1][i], ly = [-8, 1, 9, 1][i], rz = [0, 0, 0, 9][i], lz = [0, 9, 0, 0][i];
     const H = V(20, 9, 67 + bob * 0.5);
     const carry = (d: V3): SwordT => {
       const D = norm(d);
@@ -971,7 +971,7 @@ function walkPoses(): Pose[] {
     };
     const dz = [0, 0.04, 0, 0.04][i];
     return base({
-      seed: 100 + i, bob, lean: 2.5, yaw: [0.1, 0, -0.1, 0][i], sway: [1.3, 0, -1.3, 0][i], legs: [{ y: ry, z: rz }, { y: ly, z: lz }],
+      seed: 100 + i, bob, lean: 2.5, yaw: [0.1, 0, -0.1, 0][i], sway: [2.2, 0, -2.2, 0][i], legs: [{ y: ry, z: rz }, { y: ly, z: lz }],
       sword: carry(V(0.72, -0.2, 0.62 + dz)), swordView: { side: carry(V(0.25, -0.85, 0.46 + dz)) },
       handL: V(-26, [8, 2, -8, 2][i], 55 + [0.5, 0, 0.5, 0][i]), cloak: 4 + [0, 1, 0, 1][i], heat: 0.5 + [0, 0.1, 0, 0.1][i], embers: 6,
     });
