@@ -6,11 +6,11 @@
 }
 
 .ag {
-  --ag-card: #1b1520;
+  /* hover карточки: чуть светлее --card; общего токена нет, поэтому локальный */
   --ag-card-hi: #261d2d;
   display: grid;
   grid-template-columns: 218px minmax(0, 1fr) 336px;
-  gap: 12px;
+  gap: var(--sp-3);
   align-items: start;
   min-height: 0;
 }
@@ -22,7 +22,7 @@
   min-height: 360px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
+  padding-right: var(--sp-1);
 }
 .ag-panel {
   display: flex;
@@ -44,7 +44,7 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: var(--sp-1);
 }
 .ag-main {
   display: flex;
@@ -53,26 +53,26 @@
   padding-right: 0;
 }
 .ag-lb {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--dim);
-  margin: 0 0 4px;
+  margin: 0 0 var(--sp-1);
 }
 .ag-lb small {
   text-transform: none;
   letter-spacing: 0;
   opacity: 0.75;
-  margin-left: 4px;
+  margin-left: var(--sp-1);
 }
 .ag-fl {
-  margin-bottom: 10px;
+  margin-bottom: var(--sp-2);
 }
 .ag-lbrow {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .ag-lbrow span {
   text-transform: none;
@@ -84,14 +84,14 @@
 .ag-bar2 select,
 .ag-ilrow input,
 .ag-whorow input {
-  background: #1d1722;
+  background: var(--card);
   color: var(--fg);
   border: 1px solid var(--line-hi);
-  border-radius: 4px;
-  padding: 4px 6px;
+  border-radius: var(--r-2);
+  padding: var(--sp-1) var(--sp-1h);
   min-width: 0;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs);
 }
 .ag-fl select {
   width: 100%;
@@ -101,36 +101,36 @@
 .ag-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .ag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--sp-1);
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 .ag-rl {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--dim);
 }
 .ag-chip {
   background: #231b27;
   color: var(--fg);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 1px 9px;
+  border-radius: var(--r-pill);
+  padding: var(--sp-0) var(--sp-2);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   cursor: pointer;
   white-space: nowrap;
 }
 .ag-chip small {
   opacity: 0.9;
-  margin-left: 4px;
-  font-size: 12px;
+  margin-left: var(--sp-1);
+  font-size: var(--fs-xs);
 }
 .ag-chip.zero {
   color: var(--dim);
@@ -146,7 +146,7 @@
   background: #7a5418;
   border-color: var(--gold);
   color: #fff;
-  font-weight: 700;
+  font-weight: var(--fw-b);
 }
 .ag-chip:disabled {
   opacity: 0.4;
@@ -156,7 +156,7 @@
   border-color: color-mix(in srgb, var(--c) 55%, transparent);
 }
 .ag-chip.fac[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--c) 22%, #1b1520);
+  background: color-mix(in srgb, var(--c) 22%, var(--card));
   border-color: var(--c);
   color: #fff;
 }
@@ -167,29 +167,29 @@
 .ag-rng {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   flex-wrap: wrap;
 }
 .ag-rng input {
   width: 54px;
 }
 .ag-rng .ag-chip {
-  margin-top: 4px;
+  margin-top: var(--sp-1);
 }
 
 /* верхняя полоса списка */
 .ag-bar2 {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-1h);
 }
 .ag-search {
   flex: 1;
   min-width: 0;
 }
 .ag-count {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: #cfc4b0;
-  margin: 4px 2px;
+  margin: var(--sp-1) var(--sp-0);
 }
 .ag-cards {
   flex: 1;
@@ -197,29 +197,29 @@
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
-  gap: 6px;
+  gap: var(--sp-1h);
   align-content: start;
-  padding: 2px 4px 2px 2px;
+  padding: var(--sp-0) var(--sp-1) var(--sp-0) var(--sp-0);
 }
 .ag-empty,
 .ag-more {
   grid-column: 1 / -1;
 }
 .ag-empty {
-  padding: 24px;
+  padding: var(--sp-5);
   text-align: center;
   color: var(--dim);
 }
 .ag-emptyhint {
-  margin: 6px 0 10px;
-  color: #ffb35a;
+  margin: var(--sp-1h) 0 var(--sp-2);
+  color: var(--warn);
 }
 .ag-link {
   background: none;
   border: 0;
   padding: 0;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: #7fe8d6;
   text-decoration: underline;
   cursor: pointer;
@@ -235,11 +235,11 @@
 .ag-card {
   position: relative;
   display: flex;
-  gap: 8px;
-  padding: 7px 8px;
-  background: var(--ag-card);
+  gap: var(--sp-2);
+  padding: var(--sp-1h) var(--sp-2);
+  background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--r-3);
   cursor: pointer;
   min-width: 0;
   content-visibility: auto;
@@ -259,7 +259,7 @@
 }
 .ag-card.top {
   border-color: #a87a2c;
-  background: linear-gradient(135deg, rgba(240, 192, 80, 0.16), rgba(240, 192, 80, 0) 55%), var(--ag-card);
+  background: linear-gradient(135deg, rgba(240, 192, 80, 0.16), rgba(240, 192, 80, 0) 55%), var(--card);
 }
 .ag-card.top:hover {
   background: linear-gradient(135deg, rgba(240, 192, 80, 0.24), rgba(240, 192, 80, 0.03) 55%), var(--ag-card-hi);
@@ -288,9 +288,9 @@
   flex: none;
   width: 64px;
   height: 64px;
-  background: #0e0b10;
+  background: var(--well);
   border: 2px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--r-2);
 }
 .ag-ico img {
   display: block;
@@ -315,11 +315,11 @@
   left: -2px;
   bottom: -2px;
   min-width: 24px;
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   background: rgba(10, 6, 12, 0.92);
   border: 1px solid var(--line-hi);
-  border-radius: 4px 6px 4px 4px;
-  font-size: 14px;
+  border-radius: var(--r-2) var(--r-3) var(--r-2) var(--r-2);
+  font-size: var(--fs);
   line-height: 18px;
   text-align: center;
   color: #fff;
@@ -328,59 +328,59 @@
   background: linear-gradient(#ffd86a, #d98a1c);
   border-color: #fff0b0;
   color: #2a1604;
-  font-weight: 700;
+  font-weight: var(--fw-b);
 }
 .ag-ci {
   flex: 1;
   min-width: 0;
 }
 .ag-nm {
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 .ag-tr .ag-topb {
   float: right;
-  margin: -1px 0 0 4px;
-  padding: 0 5px;
+  margin: -1px 0 0 var(--sp-1);
+  padding: 0 var(--sp-1h);
   letter-spacing: 0.02em;
 }
 .ag-ty {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--dim);
   line-height: 1.3;
 }
 .ag-tr {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 18px;
   color: #d8c9a8;
-  margin-top: 1px;
+  margin-top: var(--sp-0);
 }
 .ag-bar {
   display: block;
   height: 5px;
-  margin: 3px 0 4px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #7a6a8a var(--p), #2a2230 0);
+  margin: var(--sp-0) 0 var(--sp-1);
+  border-radius: var(--r-1);
+  background: linear-gradient(90deg, #7a6a8a var(--p), var(--panel-2) 0);
   -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
   mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
 }
 .ag-bar.top {
-  background: linear-gradient(90deg, #ffd86a var(--p), #2a2230 0);
+  background: linear-gradient(90deg, #ffd86a var(--p), var(--panel-2) 0);
 }
 .ag-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: var(--sp-0);
   align-items: center;
 }
 .ag-tag,
 .ag-fac,
 .ag-rec {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
-  padding: 0 5px;
-  border-radius: 3px;
+  padding: 0 var(--sp-1h);
+  border-radius: var(--r-1);
   white-space: nowrap;
 }
 .ag-tag {
@@ -404,28 +404,28 @@
   color: #c9f0b8;
 }
 .ag-why {
-  margin-top: 3px;
-  font-size: 12px;
-  font-weight: 600;
+  margin-top: var(--sp-0);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-b);
 }
 .ag-why.cls {
   color: var(--bad);
 }
 .ag-why.lvl {
-  color: #ffb35a;
+  color: var(--warn);
 }
 
 /* метка ТОП */
 .ag-topb {
-  padding: 0 7px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 0 var(--sp-1h);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-b);
   line-height: 18px;
   letter-spacing: 0.06em;
   color: #2a1604;
   background: linear-gradient(#ffe38a, #e4901e);
   border: 1px solid #fff0b0;
-  border-radius: 3px;
+  border-radius: var(--r-1);
   box-shadow: 0 0 6px rgba(255, 190, 70, 0.55);
   white-space: nowrap;
 }
@@ -452,38 +452,38 @@
 
 /* панель выдачи */
 .ag-whobox select {
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 .ag-whorow {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 .ag-whorow input {
   flex: 1;
   min-width: 0;
 }
 .ag-whoinfo {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--dim);
   text-align: right;
 }
 .ag-whoinfo.bad {
-  color: #ffb35a;
+  color: var(--warn);
 }
 .ag-hint {
-  padding: 28px 12px;
+  padding: var(--sp-5) var(--sp-3);
   text-align: center;
   color: var(--dim);
   border: 1px dashed var(--line);
-  border-radius: 6px;
+  border-radius: var(--r-3);
 }
 .ag-selhead {
   display: flex;
-  gap: 10px;
+  gap: var(--sp-2);
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-1h);
 }
 .ag-big {
   flex: none;
@@ -497,22 +497,22 @@
   min-width: 0;
 }
 .ag-selname {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 .ag-badges {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
   flex-wrap: wrap;
-  margin-top: 4px;
+  margin-top: var(--sp-1);
   align-items: center;
 }
 .ag-ilvl {
-  font-size: 12px;
-  padding: 0 7px;
+  font-size: var(--fs-xs);
+  padding: 0 var(--sp-1h);
   line-height: 18px;
-  border-radius: 3px;
+  border-radius: var(--r-1);
   background: #2c2332;
   border: 1px solid var(--line-hi);
 }
@@ -524,40 +524,40 @@
 .ag-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
-  margin-bottom: 8px;
+  gap: var(--sp-0);
+  margin-bottom: var(--sp-2);
 }
 .ag-fact {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   background: #221a27;
   border: 1px solid var(--line);
-  border-radius: 3px;
-  padding: 1px 6px;
+  border-radius: var(--r-1);
+  padding: var(--sp-0) var(--sp-1h);
 }
 .ag-fact i {
   font-style: normal;
   color: var(--dim);
-  margin-right: 5px;
+  margin-right: var(--sp-1h);
 }
 .ag-rars {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .ag-rb {
-  background: #1d1722;
+  background: var(--card);
   color: var(--c);
   border: 2px solid color-mix(in srgb, var(--c) 40%, transparent);
-  border-radius: 4px;
-  padding: 3px 2px;
+  border-radius: var(--r-2);
+  padding: var(--sp-0);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
   overflow: hidden;
   cursor: pointer;
 }
 .ag-rb[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--c) 24%, #1d1722);
+  background: color-mix(in srgb, var(--c) 24%, var(--card));
   border-color: var(--c);
   color: #fff;
   box-shadow: 0 0 8px color-mix(in srgb, var(--c) 45%, transparent);
@@ -570,7 +570,7 @@
 }
 .ag-ilrow {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -579,19 +579,19 @@
 }
 .ag-pls {
   display: flex;
-  gap: 2px;
+  gap: var(--sp-0);
 }
 .ag-pl {
   position: relative;
   flex: 1 1 0;
   min-width: 0;
-  padding: 3px 0;
-  background: #1d1722;
+  padding: var(--sp-0) 0;
+  background: var(--card);
   color: var(--fg);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--r-2);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 .ag-pl.step::after {
@@ -603,20 +603,20 @@
   height: 2px;
   margin-left: -5px;
   background: var(--ench);
-  border-radius: 1px;
+  border-radius: var(--r-1);
 }
 .ag-pl[aria-pressed="true"] {
   background: #94661a;
   border-color: var(--gold);
   color: #fff;
-  font-weight: 700;
+  font-weight: var(--fw-b);
   box-shadow: 0 0 6px rgba(240, 192, 80, 0.45);
 }
 .ag-lbv {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .ag-lbv .ag-link {
   text-transform: none;
@@ -624,7 +624,7 @@
 }
 .ag-plv {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: var(--fw-b);
   line-height: 1;
   letter-spacing: 0;
   text-transform: none;
@@ -634,33 +634,33 @@
   color: var(--gold);
 }
 .ag-plv .ag-link {
-  font-size: 12px;
-  font-weight: 400;
-  margin-left: 4px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw);
+  margin-left: var(--sp-1);
   vertical-align: middle;
 }
 .ag-note {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--dim);
-  margin-top: 4px;
+  margin-top: var(--sp-1);
 }
 .ag-note.warn {
-  color: #ffb35a;
+  color: var(--warn);
 }
 .ag-note.ench {
   color: #7fe8d6;
 }
 .ag-prev {
-  margin: 8px 0 4px;
-  padding: 8px 10px;
+  margin: var(--sp-2) 0 var(--sp-1);
+  padding: var(--sp-2);
   background: #130e17;
   border: 1px solid var(--line-hi);
-  border-radius: 6px;
-  font-size: 14px;
+  border-radius: var(--r-3);
+  font-size: var(--fs);
   line-height: 1.4;
 }
 .ag-t {
-  font-size: 15px;
+  font-size: var(--fs-md);
 }
 .ag-d {
   color: var(--dim);
@@ -679,30 +679,30 @@
   font-style: italic;
 }
 .ag-rnd {
-  font-size: 12px;
-  margin-top: 3px;
+  font-size: var(--fs-xs);
+  margin-top: var(--sp-0);
 }
 .ag-rndline {
-  margin-top: 2px;
-  color: #ffb35a;
+  margin-top: var(--sp-0);
+  color: var(--warn);
 }
 .ag-actbar {
   flex: none;
-  margin-top: 6px;
-  padding: 6px 0 2px;
-  background: #1b1520;
+  margin-top: var(--sp-1h);
+  padding: var(--sp-1h) 0 var(--sp-0);
+  background: var(--card);
   border-top: 1px solid var(--line-hi);
 }
 .ag-eqwhy {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 .ag-eqwhy:empty {
   display: none;
 }
 .ag-eqwhy.bad {
-  color: #ffb35a;
+  color: var(--warn);
 }
 .ag-eqwhy.ok {
   color: var(--ok);
@@ -710,12 +710,12 @@
 .ag-act {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: var(--sp-1h);
 }
 .ag-give {
-  padding: 8px 6px;
-  font-size: 15px;
-  background: linear-gradient(#8a5a22, #5e3a16);
+  padding: var(--sp-2) var(--sp-1h);
+  font-size: var(--fs-md);
+  background: var(--btn-primary);
   border-color: var(--gold);
 }
 .ag-give.eq {
@@ -727,8 +727,8 @@
 }
 .ag-status {
   min-height: 18px;
-  margin-top: 4px;
-  font-size: 13px;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sm);
 }
 .ag-status.ok {
   color: var(--ok);
@@ -737,13 +737,13 @@
   color: var(--bad);
 }
 .ag-status.warn {
-  color: #ffb35a;
+  color: var(--warn);
 }
 .ag-extra summary {
   cursor: pointer;
   color: var(--dim);
-  font-size: 13px;
-  margin: 8px 0 4px;
+  font-size: var(--fs-sm);
+  margin: var(--sp-2) 0 var(--sp-1);
 }
 
 @media (max-width: 1000px) {
