@@ -5,8 +5,11 @@ const STORE: Record<OverlayKey, string> = { selfNames: "showSelfNames", selfBars
 function load(key: string): boolean {
   try { return localStorage.getItem(key) !== "0"; } catch { return true; }
 }
+function loadOff(key: string): boolean {
+  try { return localStorage.getItem(key) === "1"; } catch { return false; }
+}
 export const overlay: Record<OverlayKey, boolean> = {
-  selfNames: load(STORE.selfNames), selfBars: load(STORE.selfBars), names: load(STORE.names), bars: load(STORE.bars), autoNames: load(STORE.autoNames), crowdNums: load(STORE.crowdNums),
+  selfNames: load(STORE.selfNames), selfBars: load(STORE.selfBars), names: load(STORE.names), bars: load(STORE.bars), autoNames: loadOff(STORE.autoNames), crowdNums: load(STORE.crowdNums),
 };
 export function setOverlay(key: OverlayKey, on: boolean) {
   overlay[key] = on;

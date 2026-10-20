@@ -56,6 +56,8 @@ async function clickText(p: Page, selector: string, text: string) {
   await p.waitForFunction((s, t) => [...document.querySelectorAll<HTMLElement>(s)].some((b) => b.offsetParent && b.textContent?.includes(t)), { timeout: 10000 }, selector, text);
   await p.evaluate((s, t) => [...document.querySelectorAll<HTMLElement>(s)].find((b) => b.offsetParent && b.textContent?.includes(t))!.click(), selector, text);
 }
+/** Выбрать целью босса (boss=true) или чужого героя. */
+const pick = (p: Page, boss: boolean) => p.evaluate((b) => { const sc = (window as any).__game.scene.getScene("game"); for (const [id, v] of sc.units) if (id !== (window as any).__net.id && !v.dead && (v.frame >= 96) === b && (b || v.u.kind === 0)) { sc.setTarget(id); return; } }, boss);
 const shot = (p: Page, name: string) => p.screenshot({ path: path.join(OUT, `raid-${name}.png`) });
 /** Состояние босса у клиента. */
 const boss = (p: Page) => p.evaluate(() => {
@@ -109,6 +111,8 @@ async function main() {
       await sleep(900);
       await shot(a, `${6 + i - 1}-phase${i}`);
       await sleep(i === 3 ? 9000 : 7000);
+      await pick(a, i !== 3);
+      await sleep(400);
       await shot(a, `${6 + i - 1}-phase${i}-fight`);
     }
     console.log("  босс:", JSON.stringify(await boss(a)));

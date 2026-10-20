@@ -471,7 +471,7 @@ export class Hud {
       <div class="set-row"><label for="set-selfBars">Моя полоска здоровья</label><input id="set-selfBars" type="checkbox"></div>
       <div class="set-row"><label for="set-names">Ники всех остальных</label><input id="set-names" type="checkbox"></div>
       <div class="set-row"><label for="set-bars">Полоски здоровья всех остальных</label><input id="set-bars" type="checkbox"></div>
-      <div class="set-row"><label for="set-autoNames">Ники в толпе: только свои, цель, группа, раненые (авто)</label><input id="set-autoNames" type="checkbox"></div>
+      <div class="set-row"><label for="set-autoNames">В толпе прятать уровень у ников, кроме цели, группы и раненых (авто)</label><input id="set-autoNames" type="checkbox"></div>
       <div class="set-row"><label for="set-crowdNums">Чужие цифры урона в толпе приглушать</label><input id="set-crowdNums" type="checkbox"></div>
       <div class="set-row set-gearfx"><label>${esc(GEAR_FX.setting.label)}</label><div class="set-seg" role="group" aria-label="${esc(GEAR_FX.setting.label)}">${GEAR_FX.setting.modes.map((m) => `<button type="button" class="btn small" data-m="${m.id}">${esc(m.label)}</button>`).join("")}</div></div>
       <p class="muted set-note">${esc(GEAR_FX.setting.note)}</p>
@@ -1152,7 +1152,9 @@ export class Hud {
     this.targetSid = t && t.anim !== Anim.Dead && t.kind === UnitKind.Player && this.ctx.net.kind === "world" ? info.targetId ?? null : null;
     this.targetBox.classList.toggle("inspectable", !!this.targetSid);
     this.targetBox.title = this.targetSid ? "Клик — осмотреть" : "";
-    if (t && t.anim !== Anim.Dead) {
+    const inRaid = this.ctx.net.kind === "raid";
+    this.targetBox.classList.toggle("in-raid", inRaid);
+    if (t && t.anim !== Anim.Dead && !(inRaid && t.kind === UnitKind.Boss)) { // в рейде у босса своя полоса сверху
       this.targetBox.hidden = false;
       const boss = t.kind === UnitKind.Boss;
       this.targetBox.classList.toggle("boss", boss);

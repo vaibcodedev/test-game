@@ -19,7 +19,8 @@ export function layoutLabels(units: Map<string, UnitView>, selfId: string, targe
   const crowd = overlay.autoNames && heroes > CROWD;
   for (const v of vis) {
     if (v.u.kind !== UnitKind.Player || v.isSelf) { v.nameOk = true; continue; }
-    v.nameOk = !crowd || v.id === targetId || v.hovered || partyNames.has(v.u.name) || v.u.hp < v.u.maxHp;
+    v.nameOk = true;
+    v.shortName = crowd && !(v.id === targetId || v.hovered || partyNames.has(v.u.name) || v.u.hp < v.u.maxHp);
   }
   // приоритет: свой, цель, остальные снизу вверх (нижние ближе к зрителю)
   const rank = (v: UnitView) => (v.isSelf ? 0 : v.id === targetId ? 1 : 2);

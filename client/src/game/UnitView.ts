@@ -64,6 +64,8 @@ export class UnitView {
   private offX = 0;
   private offY = 0;
   nameOk = true;
+  /** В толпе (режим «авто») у героев без уровня: имя остаётся, прячется только « · 100». */
+  shortName = false;
   topY = 0;
   /** Ширина блока подписи для проверки перекрытий. */
   blockW(): number {
@@ -117,7 +119,7 @@ export class UnitView {
     if (u.kind === UnitKind.Mob) return `${u.name} · ${u.level}`;
     if (u.kind === UnitKind.Boss || u.kind === UnitKind.Guard || u.kind === UnitKind.Citizen) return u.name;
     if (u.kind === UnitKind.Pet) return `${u.name} (${net.unit(u.ownerId)?.name ?? "?"}) · ${u.level}`;
-    return `${u.outlaw ? "⚔ " : ""}${u.name} · ${u.level}`;
+    return `${u.outlaw ? "⚔ " : ""}${u.name}${this.shortName ? "" : ` · ${u.level}`}`;
   }
 
   /** Короткий след удара оружием в сторону взгляда. */

@@ -324,6 +324,9 @@ input:focus-visible {
   padding: 3px 8px 4px;
   text-align: center;
 }
+.hud-target.in-raid {
+  top: 112px;
+}
 .hud-target[hidden] {
   display: none;
 }
