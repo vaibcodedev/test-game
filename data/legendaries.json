@@ -13,7 +13,8 @@
    "lore": "Одна фраза до 90 знаков.",
    "effect": "{\"type\": \"<тип из _effects>\"}. Значения подставляются из _effects[type].params по ярусу. Отдельный параметр можно переопределить, не дальше ±15% от значения яруса.",
    "desc": "Необязательно: текст свойства. По умолчанию собирается из _effects[type].text со значениями яруса.",
-   "look": "Вид на герое и на иконке, раздел look."
+   "look": "Вид на герое и на иконке, раздел look.",
+   "source": "Необязательно: \"raid\" — трофей рейда «Рогатый Рыцарь Хаоса» (награды data/raid.json, раздел rewards). Такие вещи яруса 100 падают только с рейда, из обычной добычи не выпадают. Без поля — обычная добыча."
   },
   "look": {
    "c2": "Обязательно. Второй цвет темы (блики, перья, гравировка, глаза).",
@@ -1777,5 +1778,1402 @@
    "fx": "souls"
   },
   "shape": "mask"
+ },
+ "frost_aegis": {
+  "name": "Аргус Ледяного Рассвета",
+  "base": "shield",
+  "variant": "warrior",
+  "tier": 100,
+  "tint": "#8ab4e6",
+  "stats": {
+   "str": 60,
+   "vit": 40,
+   "hp": 260
+  },
+  "lore": "Щит, на котором иней не тает даже в бою.",
+  "effect": {
+   "type": "chill"
+  },
+  "look": {
+   "form": "aegis",
+   "c2": "#e8f6ff",
+   "fx": "ice",
+   "crest": "frost"
+  }
+ },
+ "cuirass_steel_dawn": {
+  "name": "Кираса Стальной Зари",
+  "base": "plate_armor",
+  "variant": "warrior",
+  "tier": 100,
+  "tint": "#7d8a9c",
+  "stats": {
+   "str": 72,
+   "vit": 56,
+   "hp": 200
+  },
+  "lore": "Сталь, проведённая золотой нитью: на ней не остаётся вмятин.",
+  "effect": {
+   "type": "thorns"
+  },
+  "look": {
+   "form": "cuirass",
+   "c2": "#ffd76a",
+   "fx": "spark",
+   "pauld": "bolts",
+   "chains": true
+  }
+ },
+ "greave_clangor": {
+  "name": "Поножи Звонкого Шага",
+  "base": "plate_boots",
+  "variant": "warrior",
+  "tier": 100,
+  "tint": "#b8c4d4",
+  "stats": {
+   "str": 66,
+   "vit": 33,
+   "hp": 180
+  },
+  "lore": "Каждый шаг звенит, и каждый удар ускоряет следующий.",
+  "effect": {
+   "type": "frenzy"
+  },
+  "look": {
+   "form": "greave",
+   "c2": "#ffd27a",
+   "fx": "ember",
+   "boots": "flame"
+  }
+ },
+ "raid_chaos_banner": {
+  "name": "Знамя Рогатого Рыцаря",
+  "base": "cloak",
+  "variant": "warrior",
+  "tier": 100,
+  "tint": "#4a5264",
+  "stats": {
+   "str": 60,
+   "vit": 40,
+   "hp": 220
+  },
+  "lore": "Лоскут, что реял над воротами Цитадели. Герб из пламени тлеет без ветра.",
+  "effect": {
+   "type": "rally"
+  },
+  "look": {
+   "form": "torn",
+   "back": "banner",
+   "crest": "flame",
+   "c2": "#ffc070",
+   "fx": "ember",
+   "flag": "#9a1e1e"
+  },
+  "source": "raid"
+ },
+ "lion_signet": {
+  "name": "Печать Стального Льва",
+  "base": "ring",
+  "variant": "warrior",
+  "tier": 100,
+  "tint": "#c9ad5a",
+  "stats": {
+   "str": 62,
+   "vit": 40,
+   "crit": 8
+  },
+  "lore": "Лев на печати держит меч, а не щит.",
+  "effect": {
+   "type": "stun"
+  },
+  "look": {
+   "form": "signet",
+   "stone": "square",
+   "setting": "wings",
+   "c2": "#fff3c4",
+   "fx": "spark"
+  }
+ },
+ "bone_crown_helm": {
+  "name": "Шлем Иссохшего Престола",
+  "base": "plate_helm",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "str": 78,
+   "vit": 34,
+   "hp": 200,
+   "crit": 8
+  },
+  "lore": "Корона из костей и терний: король высох, но не сдался.",
+  "effect": {
+   "type": "rage"
+  },
+  "look": {
+   "form": "crowned",
+   "helm": "thorns",
+   "eyes": true,
+   "c2": "#e8e0d0",
+   "fx": "bones"
+  }
+ },
+ "grave_bone_plate": {
+  "name": "Доспех Могильной Тени",
+  "base": "plate_armor",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#2b2630",
+  "stats": {
+   "str": 72,
+   "vit": 56,
+   "hp": 200
+  },
+  "lore": "Кости срослись с пластинами и сами тянут жизнь из врагов.",
+  "effect": {
+   "type": "leech"
+  },
+  "look": {
+   "form": "bone",
+   "c2": "#c8a0ff",
+   "fx": "souls",
+   "pauld": "spikes",
+   "chains": true
+  }
+ },
+ "grave_sabatons": {
+  "name": "Сабатоны Могильщика",
+  "base": "plate_boots",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#3a3346",
+  "stats": {
+   "str": 66,
+   "vit": 33,
+   "hp": 190
+  },
+  "lore": "Могильщик ходит по костям, и кости складываются под шаг.",
+  "effect": {
+   "type": "chains"
+  },
+  "look": {
+   "form": "spiked",
+   "c2": "#b8b0c8",
+   "fx": "bones",
+   "boots": "thorns"
+  }
+ },
+ "skull_ring_king": {
+  "name": "Перстень Костяного Короля",
+  "base": "ring",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#6a3ab8",
+  "stats": {
+   "str": 62,
+   "vit": 40,
+   "crit": 8
+  },
+  "lore": "Внутри пусто, но пустота жадно тянется к чужим душам.",
+  "effect": {
+   "type": "soulburst"
+  },
+  "look": {
+   "form": "skull",
+   "stone": "eye",
+   "setting": "thorns",
+   "c2": "#9dff7a",
+   "fx": "souls"
+  }
+ },
+ "fallen_crown_medal": {
+  "name": "Медальон Павшей Короны",
+  "base": "amulet",
+  "variant": "deathknight",
+  "tier": 100,
+  "tint": "#4a2a6a",
+  "stats": {
+   "str": 62,
+   "vit": 40,
+   "hp": 240,
+   "crit": 4
+  },
+  "lore": "Он не умирает, пока корона ждёт нового короля.",
+  "effect": {
+   "type": "phoenix"
+  },
+  "look": {
+   "form": "medallion",
+   "stone": "drop",
+   "setting": "crown",
+   "c2": "#d8c0ff",
+   "fx": "souls",
+   "orbit": "bones"
+  }
+ },
+ "moon_trail_hood": {
+  "name": "Капюшон Лунного Следа",
+  "base": "leather_helm",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#8ab4e6",
+  "stats": {
+   "agi": 84,
+   "vit": 26,
+   "hp": 140,
+   "crit": 12
+  },
+  "lore": "Лунный след остаётся там, где охотник уже был.",
+  "effect": {
+   "type": "execute"
+  },
+  "look": {
+   "form": "hood",
+   "helm": "moon",
+   "eyes": true,
+   "c2": "#b0ccff",
+   "fx": "stardust"
+  }
+ },
+ "azure_wind_harness": {
+  "name": "Упряжь Лазурного Ветра",
+  "base": "leather_armor",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#2e4a84",
+  "stats": {
+   "agi": 72,
+   "vit": 40,
+   "hp": 180,
+   "crit": 9
+  },
+  "lore": "Ремни держат ветер: тот, кто их носит, всегда чуть впереди.",
+  "effect": {
+   "type": "echo"
+  },
+  "look": {
+   "form": "harness",
+   "c2": "#bfe6ff",
+   "fx": "feather",
+   "pauld": "feathers",
+   "back": "wings",
+   "wings": "feather"
+  }
+ },
+ "moon_lightning_moccasin": {
+  "name": "Мокасины Голубой Молнии",
+  "base": "leather_boots",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#4a6a9a",
+  "stats": {
+   "agi": 70,
+   "vit": 28,
+   "hp": 40,
+   "crit": 8
+  },
+  "lore": "Молния в каждом шаге, а следы гаснут за спиной.",
+  "effect": {
+   "type": "frenzy"
+  },
+  "look": {
+   "form": "moccasin",
+   "c2": "#b0ccff",
+   "fx": "spark",
+   "boots": "spark"
+  }
+ },
+ "azure_smoke_cloak": {
+  "name": "Плащ Голубого Дыма",
+  "base": "cloak",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#34507a",
+  "stats": {
+   "agi": 66,
+   "vit": 30,
+   "hp": 180,
+   "crit": 6
+  },
+  "lore": "Он приходит первым и уходит последним.",
+  "effect": {
+   "type": "killhaste"
+  },
+  "look": {
+   "form": "smoke",
+   "back": "shadow",
+   "c2": "#b0ccff",
+   "fx": "vortex"
+  }
+ },
+ "twist_shade_ring": {
+  "name": "Кольцо Гибкой Тени",
+  "base": "ring",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#c7d6e8",
+  "stats": {
+   "agi": 62,
+   "vit": 40,
+   "crit": 8
+  },
+  "lore": "Тень скользит по металлу и не оставляет следа.",
+  "effect": {
+   "type": "weaken"
+  },
+  "look": {
+   "form": "twist",
+   "stone": "shard",
+   "setting": "wings",
+   "c2": "#e0f0ff",
+   "fx": "stardust"
+  }
+ },
+ "azure_fang_amulet": {
+  "name": "Клык Голубой Тени",
+  "base": "amulet",
+  "variant": "rogue",
+  "tier": 100,
+  "tint": "#5a7aa8",
+  "stats": {
+   "agi": 84,
+   "vit": 30,
+   "hp": 200
+  },
+  "lore": "Клык из лунного света режет быстрее, чем светит луна.",
+  "effect": {
+   "type": "stun"
+  },
+  "look": {
+   "form": "fang",
+   "stone": "cut",
+   "setting": "claws",
+   "c2": "#e4f6ff",
+   "fx": "stardust"
+  }
+ },
+ "antler_watch_crown": {
+  "name": "Венец Оленьего Дозора",
+  "base": "leather_helm",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#8a6a2a",
+  "stats": {
+   "agi": 84,
+   "vit": 30,
+   "hp": 180,
+   "crit": 8
+  },
+  "lore": "Олени в его ветвях всегда смотрят в сторону добычи.",
+  "effect": {
+   "type": "extra"
+  },
+  "look": {
+   "form": "antlered",
+   "helm": "antlers",
+   "c2": "#ffe9a0",
+   "fx": "leaf"
+  }
+ },
+ "silver_trail_mantle": {
+  "name": "Мантия Серебряной Тропы",
+  "base": "leather_armor",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#a8864a",
+  "stats": {
+   "agi": 74,
+   "vit": 40,
+   "hp": 180,
+   "crit": 8
+  },
+  "lore": "Листья шепчут тропинку, и раненые находят её сами.",
+  "effect": {
+   "type": "mending"
+  },
+  "look": {
+   "form": "mantle",
+   "c2": "#ffe08a",
+   "fx": "leaf",
+   "pauld": "leaves",
+   "back": "wings",
+   "wings": "leaf"
+  }
+ },
+ "frost_fur_stride": {
+  "name": "Поступь Серебряного Инея",
+  "base": "leather_boots",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#8fa6b8",
+  "stats": {
+   "agi": 70,
+   "vit": 30,
+   "hp": 180
+  },
+  "lore": "Иней ложится под ноги и не тает, пока охотник в пути.",
+  "effect": {
+   "type": "chill"
+  },
+  "look": {
+   "form": "fur",
+   "c2": "#e6f4ff",
+   "fx": "snow",
+   "boots": "frost"
+  }
+ },
+ "azure_plumage_cloak": {
+  "name": "Плащ Лазурного Оперения",
+  "base": "cloak",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#3a4f8a",
+  "stats": {
+   "agi": 72,
+   "vit": 32,
+   "hp": 200,
+   "crit": 1
+  },
+  "lore": "Оперение лазури: ветер несёт его, а не охотник.",
+  "effect": {
+   "type": "rally"
+  },
+  "look": {
+   "form": "crest",
+   "back": "plumage",
+   "c2": "#b8d8ff",
+   "fx": "feather"
+  }
+ },
+ "lazure_hunt_claw": {
+  "name": "Коготь Лазурной Охоты",
+  "base": "ring",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#d4a94a",
+  "stats": {
+   "agi": 66,
+   "vit": 36,
+   "crit": 8
+  },
+  "lore": "Коготь цепляется за добычу, а кровь возвращается к охотнику.",
+  "effect": {
+   "type": "leech"
+  },
+  "look": {
+   "form": "claw",
+   "stone": "shard",
+   "setting": "leaves",
+   "c2": "#fff0b8",
+   "fx": "leaf"
+  }
+ },
+ "gold_bowstring_crescent": {
+  "name": "Полумесяц Золотой Тетивы",
+  "base": "amulet",
+  "variant": "ranger",
+  "tier": 100,
+  "tint": "#e0b84a",
+  "stats": {
+   "agi": 84,
+   "vit": 30,
+   "hp": 200
+  },
+  "lore": "Полумесяц, с которого не сорвётся ни одна стрела.",
+  "effect": {
+   "type": "frost"
+  },
+  "look": {
+   "form": "crescent",
+   "stone": "star",
+   "setting": "halo",
+   "c2": "#fff3c0",
+   "fx": "stardust",
+   "orbit": "stars"
+  }
+ },
+ "silent_bolt_crossbow": {
+  "name": "Арбалет Беззвучного Залпа",
+  "base": "crossbow",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#3a3a46",
+  "stats": {
+   "agi": 98,
+   "vit": 30,
+   "hp": 160,
+   "crit": 2
+  },
+  "lore": "Болт без звука, и тишина следует за ним.",
+  "effect": {
+   "type": "ignite"
+  },
+  "look": {
+   "form": "bone",
+   "c2": "#c8b8ff",
+   "fx": "souls",
+   "pommel": "skull",
+   "orbit": "bones"
+  }
+ },
+ "rot_trail_pelt": {
+  "name": "Шкура Гнилого Следа",
+  "base": "leather_armor",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "agi": 70,
+   "vit": 50,
+   "hp": 180,
+   "crit": 5
+  },
+  "lore": "Шкура пахнет болотом и тенью: по ней не читают след.",
+  "effect": {
+   "type": "chill"
+  },
+  "look": {
+   "form": "pelt",
+   "c2": "#b78cff",
+   "fx": "souls",
+   "pauld": "spikes",
+   "chains": true
+  }
+ },
+ "rot_shade_wraps": {
+  "name": "Обмотки Гнилой Тени",
+  "base": "leather_boots",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#2e2a3a",
+  "stats": {
+   "agi": 74,
+   "vit": 30,
+   "hp": 150
+  },
+  "lore": "Обмотки глушат шаг, и даже тень не слышит охотника.",
+  "effect": {
+   "type": "stun"
+  },
+  "look": {
+   "form": "wrapped",
+   "c2": "#a0ff90",
+   "fx": "souls",
+   "boots": "shadow"
+  }
+ },
+ "raven_mist_veil": {
+  "name": "Покров Вороньего Тумана",
+  "base": "cloak",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#2a1a3a",
+  "stats": {
+   "agi": 70,
+   "vit": 30,
+   "hp": 200,
+   "crit": 3
+  },
+  "lore": "Ворон пролетает первым, а туман ложится за ним.",
+  "effect": {
+   "type": "echo"
+  },
+  "look": {
+   "form": "wings",
+   "back": "shadow",
+   "crest": "raven",
+   "c2": "#c8a8ff",
+   "fx": "vortex"
+  }
+ },
+ "serpent_venom_ring": {
+  "name": "Кольцо Ядовитой Змеи",
+  "base": "ring",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#3f6a3a",
+  "stats": {
+   "agi": 66,
+   "vit": 36,
+   "crit": 8
+  },
+  "lore": "Яд не виден, но голова змеи всегда смотрит на жертву.",
+  "effect": {
+   "type": "weaken"
+  },
+  "look": {
+   "form": "serpent",
+   "stone": "eye",
+   "setting": "thorns",
+   "c2": "#a0ff90",
+   "fx": "drip"
+  }
+ },
+ "rot_moon_eye": {
+  "name": "Око Гнилой Луны",
+  "base": "amulet",
+  "variant": "darkranger",
+  "tier": 100,
+  "tint": "#2e3a2a",
+  "stats": {
+   "agi": 90,
+   "vit": 22,
+   "hp": 200,
+   "crit": 1
+  },
+  "lore": "Око видит слабость там, где другие видят только тьму.",
+  "effect": {
+   "type": "execute"
+  },
+  "look": {
+   "form": "eye",
+   "stone": "eye",
+   "setting": "thorns",
+   "c2": "#b8ff9a",
+   "fx": "souls"
+  }
+ },
+ "noon_rings_staff": {
+  "name": "Посох Лазурного Полудня",
+  "base": "staff",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#8ab4e6",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 180,
+   "crit": 5
+  },
+  "lore": "В навершии кружат кольца, и каждое отмеряет полдень.",
+  "effect": {
+   "type": "meteor"
+  },
+  "look": {
+   "form": "rings",
+   "c2": "#ffe9a0",
+   "fx": "stardust",
+   "orbit": "runes"
+  }
+ },
+ "stardust_orb": {
+  "name": "Сфера Звёздной Пыли",
+  "base": "orb",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#4a6ab8",
+  "stats": {
+   "int": 92,
+   "vit": 12,
+   "hp": 160,
+   "crit": 3
+  },
+  "lore": "Звёзды внутри рождаются заново каждый вечер.",
+  "effect": {
+   "type": "manasurge"
+  },
+  "look": {
+   "form": "galaxy",
+   "c2": "#fff2c0",
+   "fx": "stardust"
+  }
+ },
+ "starfall_helm": {
+  "name": "Венец Полуденного Звездопада",
+  "base": "cloth_helm",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#f0e2a8",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 160,
+   "crit": 6
+  },
+  "lore": "Звёзды на венце падают вниз, цепляя врагов как молнии.",
+  "effect": {
+   "type": "chain"
+  },
+  "look": {
+   "form": "starred",
+   "helm": "halo",
+   "c2": "#fff0c0",
+   "fx": "stardust"
+  }
+ },
+ "starfall_robe": {
+  "name": "Мантия Лазурного Звездопада",
+  "base": "cloth_armor",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#2a3a6a",
+  "stats": {
+   "int": 90,
+   "vit": 30,
+   "hp": 200,
+   "crit": 4
+  },
+  "lore": "Мантия из звёздного света: в бою она не даёт упасть.",
+  "effect": {
+   "type": "frost"
+  },
+  "look": {
+   "form": "battle",
+   "c2": "#b0ccff",
+   "fx": "stardust",
+   "back": "wings",
+   "wings": "crystal"
+  }
+ },
+ "runic_steps_slippers": {
+  "name": "Туфли Рунного Шага",
+  "base": "cloth_boots",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#5a4a9a",
+  "stats": {
+   "int": 87,
+   "vit": 14,
+   "hp": 170
+  },
+  "lore": "Руны на туфлях вспыхивают, когда мана идёт вперёд.",
+  "effect": {
+   "type": "manasurge"
+  },
+  "look": {
+   "form": "sandal",
+   "c2": "#ffe9a0",
+   "fx": "stardust",
+   "boots": "rune"
+  }
+ },
+ "dusk_star_train": {
+  "name": "Шлейф Закатной Звезды",
+  "base": "cloak",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#2a3a7a",
+  "stats": {
+   "int": 80,
+   "vit": 20,
+   "hp": 180,
+   "crit": 4
+  },
+  "lore": "Шлейф тянется за звездопадом и гаснет только к утру.",
+  "effect": {
+   "type": "novacrit"
+  },
+  "look": {
+   "form": "feather",
+   "back": "plumage",
+   "train": true,
+   "crest": "star",
+   "c2": "#ffe9a0",
+   "fx": "stardust"
+  }
+ },
+ "noon_sun_disc": {
+  "name": "Диск Полуденного Солнца",
+  "base": "amulet",
+  "variant": "mage",
+  "tier": 100,
+  "tint": "#e8c060",
+  "stats": {
+   "int": 92,
+   "vit": 20,
+   "hp": 200,
+   "crit": 1
+  },
+  "lore": "Диск, в котором полдень не кончается.",
+  "effect": {
+   "type": "ignite"
+  },
+  "look": {
+   "form": "sun",
+   "stone": "star",
+   "setting": "halo",
+   "c2": "#fff4c0",
+   "fx": "ember"
+  }
+ },
+ "bone_spine_staff": {
+  "name": "Посох Костяного Позвоночника",
+  "base": "staff",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#3a2a4a",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 180,
+   "crit": 5
+  },
+  "lore": "Позвонки срослись в навершие и шепчут, когда маг молчит.",
+  "effect": {
+   "type": "soulburst"
+  },
+  "look": {
+   "form": "spine",
+   "c2": "#b890ff",
+   "fx": "souls",
+   "orbit": "bones"
+  }
+ },
+ "dead_crown_grimoire": {
+  "name": "Гримуар Мёртвой Короны",
+  "base": "tome",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#4a2a6a",
+  "stats": {
+   "int": 92,
+   "vit": 12,
+   "hp": 160,
+   "crit": 3
+  },
+  "lore": "Страницы из кожи, и каждая запись стоит чьей-то крови.",
+  "effect": {
+   "type": "lifeburst"
+  },
+  "look": {
+   "form": "grimoire",
+   "c2": "#a0ff90",
+   "fx": "blood"
+  }
+ },
+ "thorn_dead_crown_helm": {
+  "name": "Венец Мёртвых Терний",
+  "base": "cloth_helm",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 160,
+   "crit": 6
+  },
+  "lore": "Венец из мёртвых терний не колет, а тянет.",
+  "effect": {
+   "type": "novacrit"
+  },
+  "look": {
+   "form": "thorns",
+   "helm": "thorns",
+   "c2": "#9dff8a",
+   "fx": "souls"
+  }
+ },
+ "shadow_throne_robe": {
+  "name": "Ризы Теневого Трона",
+  "base": "cloth_armor",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#1e1426",
+  "stats": {
+   "int": 90,
+   "vit": 30,
+   "hp": 200,
+   "crit": 4
+  },
+  "lore": "Ризы сшиты из теней, и в них нет ни одной прорехи.",
+  "effect": {
+   "type": "manashield"
+  },
+  "look": {
+   "form": "robe",
+   "c2": "#9dff8a",
+   "fx": "souls",
+   "back": "wings",
+   "wings": "shadow"
+  }
+ },
+ "curled_steps_boots": {
+  "name": "Туфли Кривого Шага",
+  "base": "cloth_boots",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "int": 87,
+   "vit": 14,
+   "hp": 170
+  },
+  "lore": "Туфли кривые, но шаг у них твёрдый.",
+  "effect": {
+   "type": "chains"
+  },
+  "look": {
+   "form": "curled",
+   "c2": "#b890ff",
+   "fx": "souls",
+   "boots": "shadow"
+  }
+ },
+ "smoke_crown_veil": {
+  "name": "Покров Дымной Короны",
+  "base": "cloak",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#3a1a4a",
+  "stats": {
+   "int": 80,
+   "vit": 20,
+   "hp": 180,
+   "crit": 4
+  },
+  "lore": "Дым короны застилает глаза, прежде чем придёт смерть.",
+  "effect": {
+   "type": "rally"
+  },
+  "look": {
+   "form": "ragged",
+   "back": "shadow",
+   "crest": "crown",
+   "c2": "#c0a0ff",
+   "fx": "vortex"
+  }
+ },
+ "ember_crown_ring": {
+  "name": "Перстень Тлеющей Короны",
+  "base": "ring",
+  "variant": "warlock",
+  "tier": 100,
+  "tint": "#5a2a4a",
+  "stats": {
+   "int": 60,
+   "vit": 40,
+   "crit": 9
+  },
+  "lore": "Перстень горит, но не жжёт того, кто его носит.",
+  "effect": {
+   "type": "ignite"
+  },
+  "look": {
+   "form": "crown",
+   "stone": "drop",
+   "setting": "crown",
+   "c2": "#ffb0c0",
+   "fx": "ember"
+  }
+ },
+ "censer_dawn_light": {
+  "name": "Кадило Утреннего Света",
+  "base": "scepter",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#f2d06a",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 180,
+   "crit": 5
+  },
+  "lore": "Дым кадила гонит тьму, а в его чаше тлеет утро.",
+  "effect": {
+   "type": "lifeburst"
+  },
+  "look": {
+   "form": "censer",
+   "c2": "#fff3c4",
+   "fx": "stardust",
+   "pommel": "star"
+  }
+ },
+ "prayer_morning_star": {
+  "name": "Молитвенник Утренней Звезды",
+  "base": "tome",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#e8d8a0",
+  "stats": {
+   "int": 92,
+   "vit": 12,
+   "hp": 160,
+   "crit": 3
+  },
+  "lore": "Молитва, записанная светом, лечит даже тех, кто не слышит.",
+  "effect": {
+   "type": "mending"
+  },
+  "look": {
+   "form": "scroll",
+   "c2": "#fff8e0",
+   "fx": "feather"
+  }
+ },
+ "dawn_diadem": {
+  "name": "Диадема Зари",
+  "base": "cloth_helm",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#f0e6c0",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 180,
+   "crit": 5
+  },
+  "lore": "Диадема, в которой гаснет любой яд.",
+  "effect": {
+   "type": "barrier"
+  },
+  "look": {
+   "form": "diadem",
+   "helm": "halo",
+   "c2": "#fff8e0",
+   "fx": "spark"
+  }
+ },
+ "dawn_steps_wraps": {
+  "name": "Обмотки Рассветного Шага",
+  "base": "cloth_boots",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#e8e0c8",
+  "stats": {
+   "int": 87,
+   "vit": 14,
+   "hp": 170
+  },
+  "lore": "Белый шёлк на ногах: раны после него затягиваются быстрее.",
+  "effect": {
+   "type": "manasurge"
+  },
+  "look": {
+   "form": "wrap",
+   "c2": "#fff4d0",
+   "fx": "feather",
+   "boots": "wings"
+  }
+ },
+ "dawn_sun_cloak": {
+  "name": "Плащ Рассветного Солнца",
+  "base": "cloak",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#ffd76a",
+  "stats": {
+   "int": 80,
+   "vit": 20,
+   "hp": 180,
+   "crit": 4
+  },
+  "lore": "Капюшон рассвета прячет того, кто идёт к раненым.",
+  "effect": {
+   "type": "barrier"
+  },
+  "look": {
+   "form": "hood",
+   "back": "plumage",
+   "crest": "sun",
+   "c2": "#fff8e0",
+   "fx": "feather"
+  }
+ },
+ "holy_disc_dawn": {
+  "name": "Святой Диск Зари",
+  "base": "amulet",
+  "variant": "healer",
+  "tier": 100,
+  "tint": "#fff0c0",
+  "stats": {
+   "int": 90,
+   "vit": 20,
+   "hp": 200,
+   "crit": 2
+  },
+  "lore": "Святой диск не даёт умирать тем, кто уже у края.",
+  "effect": {
+   "type": "mending"
+  },
+  "look": {
+   "form": "holy",
+   "stone": "star",
+   "setting": "halo",
+   "c2": "#ffffff",
+   "fx": "stardust",
+   "orbit": "motes"
+  }
+ },
+ "blood_moon_orb": {
+  "name": "Сфера Кровавой Луны",
+  "base": "orb",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#4a1a3a",
+  "stats": {
+   "int": 92,
+   "vit": 12,
+   "hp": 160,
+   "crit": 3
+  },
+  "lore": "Кровавая луна стекает по стенкам и кормит того, кто её держит.",
+  "effect": {
+   "type": "leech"
+  },
+  "look": {
+   "form": "skull",
+   "c2": "#ff8aa0",
+   "fx": "blood"
+  }
+ },
+ "crimson_chalice_crown": {
+  "name": "Корона Алой Чаши",
+  "base": "cloth_helm",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#2a1a2a",
+  "stats": {
+   "int": 100,
+   "vit": 20,
+   "hp": 160,
+   "crit": 6
+  },
+  "lore": "Корона из рогов, и каждый рог пьёт кровь.",
+  "effect": {
+   "type": "thorns"
+  },
+  "look": {
+   "form": "horncrown",
+   "helm": "crown",
+   "eyes": true,
+   "c2": "#ff8090",
+   "fx": "blood"
+  }
+ },
+ "crimson_rite_mantle": {
+  "name": "Мантия Багряного Причастия",
+  "base": "cloth_armor",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#3a1a2a",
+  "stats": {
+   "int": 90,
+   "vit": 30,
+   "hp": 200,
+   "crit": 4
+  },
+  "lore": "Багряная мантия сшита из шёлка, пропитанного чужой кровью.",
+  "effect": {
+   "type": "frenzy"
+  },
+  "look": {
+   "form": "hooded",
+   "c2": "#ff9aa8",
+   "fx": "blood",
+   "pauld": "bone",
+   "chains": true
+  }
+ },
+ "dew_slippers_red": {
+  "name": "Туфли Алой Росы",
+  "base": "cloth_boots",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#4a1a2a",
+  "stats": {
+   "int": 87,
+   "vit": 14,
+   "hp": 170
+  },
+  "lore": "Алая роса на подошве: след остаётся красным.",
+  "effect": {
+   "type": "killhaste"
+  },
+  "look": {
+   "form": "slipper",
+   "c2": "#ff9aa8",
+   "fx": "drip",
+   "boots": "thorns"
+  }
+ },
+ "full_moon_cloak": {
+  "name": "Накидка Полной Луны",
+  "base": "cloak",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#3a1a3a",
+  "stats": {
+   "int": 80,
+   "vit": 20,
+   "hp": 180,
+   "crit": 4
+  },
+  "lore": "Меховая накидка, в которой горит полная луна.",
+  "effect": {
+   "type": "echo"
+  },
+  "look": {
+   "form": "short",
+   "back": "shadow",
+   "crest": "moon",
+   "c2": "#ff8aa0",
+   "fx": "blood"
+  }
+ },
+ "double_rim_ring": {
+  "name": "Двойной Обод Багрянца",
+  "base": "ring",
+  "variant": "bloodweaver",
+  "tier": 100,
+  "tint": "#8a1a3a",
+  "stats": {
+   "int": 60,
+   "vit": 40,
+   "crit": 9
+  },
+  "lore": "Два обода, одна капля: кровь текла через оба.",
+  "effect": {
+   "type": "manashield"
+  },
+  "look": {
+   "form": "double",
+   "stone": "drop",
+   "setting": "thorns",
+   "c2": "#ff6a80",
+   "fx": "blood"
+  }
+ },
+ "ash_reap_scythe": {
+  "name": "Коса Пепельного Серпа",
+  "base": "scythe",
+  "variant": "reaver",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "str": 90,
+   "vit": 30,
+   "hp": 160,
+   "crit": 6
+  },
+  "lore": "Коса режет тени и жнёт тех, кто стоит впереди.",
+  "effect": {
+   "type": "rage"
+  },
+  "look": {
+   "form": "boneblade",
+   "c2": "#c8ffb0",
+   "fx": "souls",
+   "blade": "jagged",
+   "pommel": "skull"
+  }
+ },
+ "chaos_horns_helm": {
+  "name": "Рога Хаоса",
+  "base": "plate_helm",
+  "variant": "reaver",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "str": 86,
+   "vit": 31,
+   "hp": 150,
+   "crit": 8
+  },
+  "lore": "Кончики рогов тлеют, а в прорези визора горит огонь.",
+  "effect": {
+   "type": "meteor"
+  },
+  "look": {
+   "form": "horned",
+   "helm": "horns",
+   "eyes": true,
+   "c2": "#ff7a30",
+   "fx": "ember"
+  },
+  "source": "raid"
+ },
+ "ash_wing_sabatons": {
+  "name": "Сабатоны Пепельного Крыла",
+  "base": "plate_boots",
+  "variant": "reaver",
+  "tier": 100,
+  "tint": "#3a3a44",
+  "stats": {
+   "str": 66,
+   "vit": 33,
+   "hp": 190
+  },
+  "lore": "Крылья из пепла хрустят при каждом шаге.",
+  "effect": {
+   "type": "novacrit"
+  },
+  "look": {
+   "form": "boot",
+   "c2": "#c8b8ff",
+   "fx": "ember",
+   "boots": "flame"
+  }
+ },
+ "grey_legion_pelt": {
+  "name": "Шкура Серого Легиона",
+  "base": "cloak",
+  "variant": "reaver",
+  "tier": 100,
+  "tint": "#2a2a33",
+  "stats": {
+   "str": 76,
+   "vit": 28,
+   "hp": 160,
+   "crit": 3
+  },
+  "lore": "Шкура серого волка, что вёл легион в последний бой.",
+  "effect": {
+   "type": "thorns"
+  },
+  "look": {
+   "form": "fur",
+   "back": "shadow",
+   "crest": "wolf",
+   "c2": "#9fb0c8",
+   "fx": "souls"
+  }
+ },
+ "black_ash_claw": {
+  "name": "Коготь Чёрного Пепла",
+  "base": "ring",
+  "variant": "reaver",
+  "tier": 100,
+  "tint": "#4a4a58",
+  "stats": {
+   "str": 62,
+   "vit": 40,
+   "crit": 8
+  },
+  "lore": "Коготь черного пепла царапает душу, а не кожу.",
+  "effect": {
+   "type": "blades"
+  },
+  "look": {
+   "form": "claw",
+   "stone": "eye",
+   "setting": "thorns",
+   "c2": "#d0c8ff",
+   "fx": "bones"
+  }
+ },
+ "ash_harvest_drop": {
+  "name": "Капля Пепельной Жатвы",
+  "base": "amulet",
+  "variant": "reaver",
+  "tier": 100,
+  "tint": "#5a1a2a",
+  "stats": {
+   "str": 84,
+   "vit": 30,
+   "hp": 200
+  },
+  "lore": "Капля пепла, что падает с каждой жатвы.",
+  "effect": {
+   "type": "chain"
+  },
+  "look": {
+   "form": "drop",
+   "stone": "drop",
+   "setting": "claws",
+   "c2": "#ff9aa0",
+   "fx": "drip"
+  }
  }
 }
