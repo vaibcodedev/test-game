@@ -33,7 +33,10 @@
 - Публичное — Schema, личное — сообщения владельцу, эффекты — пакет fx.
 - Переносы предметов (обмен, банк) — в памяти + сохранение одной транзакцией SQLite с откатом.
 - Новый контент — в /data, не в коде.
-- PvP-урон умножается на PVP_DAMAGE_MULT (shared/arena.ts).
+- Баланс: data/balance.json + shared/balance.ts (кривые мобов и боссов, PvP-модель: устойчивость, потолки урона, лимит матча); проверка — tools/balance/sim.ts, таблицы — BALANCE.md. Бои с ботами на арене — рейтинг ×BOT_RATING_MULT (shared/arena.ts).
+- Рейд: server/src/raid/ (director, chaosKnight, ai ботов, chatter, muster, rewards), rooms/RaidRoom.ts, shared/raid.ts, data/raid.json, клиент ui/raid.ts и game/raidBoss.ts; описание — docs/raid.md.
+- Десктоп: desktop/ (Electron: main.ts, server.ts — встроенный сервер отдельным процессом, import-db.ts, launcher/), electron-builder.yml; база и логи в %APPDATA%\AshenReach.
+- Спецификации: docs/controls.md (управление), docs/gear-visuals.md (заточка, редкость, вид вещей), docs/raid.md.
 - NPC города стоят со смещением от TOWN; новые места проверять через walkable().
 - Обрыв связи: WorldRoom/ArenaRoom.onLeave без согласия → allowReconnection(RECONNECT_SEC=30), герой стоит в мире, обмен отменён; иначе сохранение и удаление. Вход тем же аккаунтом с другой вкладки вытесняет старую сессию (KICK_CODE).
 - Маунты (задача 118): data/mounts.json (ярус, источник, фракция); виды — tools/gen/mounts*.ts (3D-каркас -> листы 12x6 в assets/mounts, manifest.mounts с посадкой всадника); отрисовка в UnitView; получение — server/src/game/mountDrops.ts (босс, awardMount, raidMountTrophies, arenaMountRewards).
