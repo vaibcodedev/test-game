@@ -1,12 +1,12 @@
-// Сверяет цвета shared/palette.ts с токенами :root в client/src/styles.css:
+// Сверяет цвета shared/palette.ts с токенами :root в client/src/styles/tokens.css:
 // ключ P.numGold ↔ --num-gold, P.lineHi ↔ --line-hi и т. д.
 import fs from "node:fs";
 import path from "node:path";
 import { P } from "../shared/palette";
 
-const css = fs.readFileSync(path.resolve("client/src/styles.css"), "utf8");
+const css = fs.readFileSync(path.resolve("client/src/styles/tokens.css"), "utf8");
 const root = css.match(/:root\s*\{([^}]*)\}/);
-if (!root) throw new Error("в styles.css нет блока :root");
+if (!root) throw new Error("в styles/tokens.css нет блока :root");
 
 const vars = new Map<string, string>();
 for (const m of root[1].matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) vars.set(m[1], m[2].trim());

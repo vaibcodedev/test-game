@@ -1,0 +1,86 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--fs);
+  line-height: 1.35;
+}
+body {
+  /* свечение выбора следует акценту фракции: --gold меняется темой на body */
+  --glow-sel: 0 0 10px color-mix(in srgb, var(--gold) 50%, transparent);
+}
+#game {
+  position: fixed;
+  inset: 0;
+}
+#game canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+#ui > * {
+  pointer-events: auto;
+}
+#ui .passthru {
+  pointer-events: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+.btn {
+  background: var(--btn);
+  border: 1px solid var(--line-hi);
+  border-radius: var(--r-2);
+  padding: var(--sp-1h) var(--sp-3);
+  cursor: pointer;
+  color: var(--fg);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn:hover {
+  background: var(--btn-hover);
+  border-color: var(--gold);
+}
+.btn:active {
+  background: var(--btn-active);
+  transform: translateY(1px);
+}
+.btn:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn.primary {
+  background: var(--btn-primary);
+  border-color: var(--gold);
+  font-size: var(--fs-lg);
+  padding: var(--sp-2);
+}
+.btn.small {
+  padding: var(--sp-0) var(--sp-2);
+  font-size: var(--fs);
+}
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-panel);
+}

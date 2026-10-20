@@ -1,0 +1,107 @@
+/* ---------- вход ---------- */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: radial-gradient(ellipse at 50% 30%, #3a2a2a 0%, #140e14 70%);
+}
+.login {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.login h1 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 38px;
+  color: var(--gold);
+  text-shadow: var(--shadow-head);
+  letter-spacing: 1px;
+  text-wrap: balance;
+}
+.login .sub {
+  margin: 0;
+  color: var(--dim);
+  line-height: 1.4;
+}
+.login label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  color: var(--dim);
+}
+.login input {
+  background: var(--well);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  padding: var(--sp-2);
+  border-radius: var(--r-2);
+  font: inherit;
+  font-size: var(--fs-md);
+}
+.classes {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: var(--sp-2);
+}
+.classes legend {
+  color: var(--dim);
+  margin-bottom: var(--sp-1);
+}
+.classes button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-1);
+  text-align: center;
+}
+.classes .cls-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  background-size: 768px 192px;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}
+.classes button:hover .cls-sprite {
+  animation: walk 0.5s steps(4) infinite;
+}
+@keyframes walk {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -256px 0;
+  }
+}
+.classes button small {
+  color: var(--dim);
+  font-size: var(--fs);
+  line-height: 1.25;
+}
+.classes button[aria-pressed="true"] {
+  border-color: var(--gold);
+  background: var(--sel);
+}
+.login .error {
+  color: var(--bad);
+  margin: 0;
+  min-height: 1.2em;
+}
+.login .hint {
+  color: var(--dim);
+  font-size: var(--fs);
+  margin: 0;
+  line-height: 1.5;
+}

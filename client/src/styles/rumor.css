@@ -1,0 +1,147 @@
+/* ---------- городские слухи ---------- */
+.win-rumor {
+  left: 50%;
+  bottom: 150px;
+  top: auto;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 24px));
+  z-index: 4;
+}
+.rumor-text {
+  margin: var(--sp-2) 0 var(--sp-3);
+  line-height: 1.4;
+  min-height: 3em;
+}
+.rumor-btns {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}
+
+.win-cook {
+  left: 50%;
+  top: 90px;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 24px));
+  z-index: 4;
+}
+.cook-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.cook-list .shoprow img {
+  width: 32px;
+  height: 32px;
+}
+.food-buff {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  cursor: help;
+}
+.food-buff img {
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+}
+.win-smith {
+  left: 50%;
+  top: 70px;
+  transform: translateX(-50%);
+  width: min(480px, calc(100vw - 24px));
+  z-index: 4;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.win-bags {
+  left: 50%;
+  top: 90px;
+  transform: translateX(-50%);
+  width: min(380px, calc(100vw - 24px));
+  z-index: 4;
+}
+.win-bank {
+  left: 50%;
+  top: 70px;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 24px));
+  z-index: 4;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.bank-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.bank-tabs .btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.bank-gold {
+  display: flex;
+  gap: var(--sp-1h);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bank-gold input {
+  width: 90px;
+}
+.bank-buy {
+  display: flex;
+  justify-content: flex-end;
+}
+.smith-pick {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--sp-1);
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: var(--sp-1h);
+}
+.smith-sec,
+.smith-none {
+  grid-column: 1 / -1;
+  font-size: var(--fs-sm);
+}
+.smith-sec {
+  border-bottom: 1px solid var(--line);
+  margin-top: var(--sp-0);
+}
+.smith-fx {
+  font-size: var(--fs);
+}
+.smith-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-2);
+}
+.smith-info .warn {
+  color: var(--bad);
+}
+.cell .plus,
+.sell-cell .plus {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  z-index: 1;
+  font-size: var(--fs);
+  font-weight: var(--fw-b);
+  line-height: 1.2;
+  color: #fff;
+  text-shadow:
+    0 1px 0 #000,
+    0 0 3px #000;
+}
+.cell .plus.pt1,
+.cell .plus.pt2,
+.cell .plus.pt3,
+.sell-cell .plus.pt1,
+.sell-cell .plus.pt2,
+.sell-cell .plus.pt3 {
+  color: var(--enchant);
+}

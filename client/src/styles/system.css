@@ -1,0 +1,22 @@
+/* системные окна: переподключение, ошибка, вход с другого устройства — поверх всего, даже без HUD */
+.sys-back {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: grid;
+  place-items: center;
+  background: var(--overlay);
+  padding: var(--sp-4);
+  box-sizing: border-box;
+}
+.sys-back.reconnect {
+  background: rgba(8, 4, 10, 0.5);
+}
+.sys-panel h2 {
+  font-size: 24px;
+}
+.sys-text {
+  margin: 0 0 var(--sp-1h);
+  text-align: center;
+  line-height: 1.45;
+}

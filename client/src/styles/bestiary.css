@@ -1,0 +1,70 @@
+/* ---------- бестиарий ---------- */
+.win-bestiary {
+  left: 50%;
+  top: 70px;
+  transform: translateX(-50%);
+  width: min(680px, calc(100vw - 24px));
+}
+.bst {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: var(--sp-3);
+  min-height: 280px;
+}
+.bst-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  max-height: 360px;
+  overflow: auto;
+}
+.bst-list .btn {
+  text-align: left;
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs);
+}
+.bst-list .btn[aria-pressed="true"] {
+  border-color: var(--gold);
+}
+.bst-list .btn.locked {
+  color: var(--dim);
+}
+.bst-det {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.bst-head {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.bst-sprite {
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+  flex: none;
+}
+.bst-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-1h);
+}
+.bst-loot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1h);
+}
+.bst-loot img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: var(--card);
+}
+@media (max-width: 560px) {
+  .bst {
+    grid-template-columns: 1fr;
+  }
+}

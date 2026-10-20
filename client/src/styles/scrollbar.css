@@ -1,0 +1,58 @@
+/* ---------- полосы прокрутки: тёмное дерево и латунь ---------- */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #9a7a3a var(--well);
+  }
+}
+.win,
+.shop-list,
+.bst-list,
+.table-wrap,
+.adm-scroll,
+.cook-list,
+.enc-list,
+.quest-list,
+.tp-list,
+.smith-pick,
+.hud-chat .log,
+.login,
+.grid,
+.bag {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--well);
+  border-left: 1px solid #000;
+  box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.8);
+  border-radius: var(--r-3);
+}
+::-webkit-scrollbar-corner {
+  background: var(--well);
+}
+::-webkit-scrollbar-thumb {
+  border: 1px solid #3a2810;
+  border-radius: var(--r-3);
+  min-height: 36px;
+  min-width: 36px;
+  background:
+    repeating-linear-gradient(
+        #0000 0 calc(50% - 5px),
+        rgba(40, 25, 5, 0.75) calc(50% - 5px) calc(50% - 4px),
+        #0000 calc(50% - 4px) calc(50% - 1px),
+        rgba(40, 25, 5, 0.75) calc(50% - 1px) calc(50% + 0px),
+        #0000 calc(50% + 0px) calc(50% + 3px),
+        rgba(40, 25, 5, 0.75) calc(50% + 3px) calc(50% + 4px),
+        #0000 calc(50% + 4px)
+      )
+      no-repeat center / 100% 100%,
+    linear-gradient(90deg, #7a5a24, #d9a840 45%, #b88a30 60%, #6e4f1e);
+}
+::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.2);
+}

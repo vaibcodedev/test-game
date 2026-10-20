@@ -1,0 +1,21 @@
+/* Настройки → Управление */
+.ctl-h { margin: var(--sp-2) 0 0; font-size: var(--fs-md); color: var(--gold); }
+.ctl-opts { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ctl-opts .set-row input[type="range"] { flex: 1; }
+.ctl-hint { font-size: var(--fs-sm); min-height: 2.6em; margin-top: var(--sp-1h); }
+.ctl-hint.bad { color: var(--bad); }
+.ctl-group h4 { margin: var(--sp-2) 0 var(--sp-1); font-size: var(--fs); color: var(--gold); border-bottom: 1px solid var(--line); }
+.ctl-row { display: flex; align-items: center; gap: var(--sp-1h); padding: var(--sp-0) 0; }
+.ctl-name { flex: 1; }
+.ctl-chip { min-width: 74px; padding: var(--sp-0) var(--sp-2); font: inherit; font-size: var(--fs-sm); color: var(--fg); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); cursor: pointer; text-align: center; }
+.ctl-chip:hover { border-color: var(--gold); color: var(--gold); }
+.ctl-chip.empty { color: var(--dim); }
+.ctl-chip.wait { border-color: var(--gold); color: var(--gold); animation: ctl-blink 1s infinite; }
+.ctl-chip.fixed { cursor: default; opacity: .7; }
+.ctl-chip.fixed:hover { border-color: var(--line); color: inherit; }
+@keyframes ctl-blink { 50% { opacity: .55; } }
+.ctl-modal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; background: var(--overlay); }
+.ctl-ask { max-width: 380px; padding: var(--sp-4); background: var(--panel); border: 2px solid var(--line); border-radius: var(--r-3); box-shadow: var(--shadow-panel); }
+.ctl-ask p { margin: 0 0 var(--sp-3); line-height: 1.4; }
+.ctl-ask-btns { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+.ctl-opts .set-seg .btn, #ctl-preset .btn { white-space: normal; padding-left: var(--sp-1); padding-right: var(--sp-1); }

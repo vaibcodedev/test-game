@@ -1,0 +1,64 @@
+/* ---------- Фракции (задача 38): цвета интерфейса по фракции героя ---------- */
+body[data-faction="solgard"] {
+  --gold: #d6a84b;
+  --line-hi: #8a6a4a;
+  --xp: #7ec8ff;
+}
+body[data-faction="umbrath"] {
+  --gold: #8fd46a;
+  --line-hi: #6a4a8a;
+  --line: #3e3050;
+  --panel: rgba(18, 14, 26, 0.95);
+  --panel-2: #241c34;
+  --xp: #7aff6a;
+}
+body[data-faction="umbrath"] .panel {
+  box-shadow: 0 0 0 1px #000, 0 0 18px rgba(140, 80, 220, 0.25), 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+.fac-badge {
+  margin-left: var(--sp-1h);
+  padding: 0 var(--sp-1h);
+  border: 1px solid var(--gold);
+  border-radius: var(--r-1);
+  color: var(--gold);
+  font-size: var(--fs-xs);
+}
+.cs-factions .factions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.cs-factions .btn.fac {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-0);
+}
+.cs-factions .btn.fac small {
+  color: var(--dim);
+  font-size: var(--fs-xs);
+}
+.cs-factions .btn.fac[aria-pressed="true"] {
+  border-color: currentColor;
+  box-shadow: 0 0 10px currentColor inset;
+}
+.cs-factions .fdesc {
+  margin: var(--sp-1h) 0 0;
+  font-size: var(--fs-sm);
+}
+.charsel[data-faction="umbrath"] .cs-stage {
+  background: radial-gradient(circle at 50% 70%, rgba(150, 80, 230, 0.35), transparent 70%);
+}
+.charsel[data-faction="solgard"] .cs-stage {
+  background: radial-gradient(circle at 50% 70%, rgba(255, 210, 90, 0.3), transparent 70%);
+}
+.cs-preview .trait {
+  color: var(--gold);
+  font-weight: var(--fw-b);
+}
+.cs-slot .meta.fac {
+  font-size: var(--fs-xs);
+}
+.hud-chat .log .foreign i {
+  opacity: 0.85;
+}

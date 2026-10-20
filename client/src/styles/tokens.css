@@ -1,0 +1,77 @@
+/* Токены дизайн-системы: цвета, шрифты, отступы, радиусы, поверхности, тени.
+   Новые значения — только здесь; цвета для TS/canvas/Phaser — в shared/palette.ts (сверяет tests/style-tokens.ts). */
+:root {
+  --bg: #120f16;
+  --panel: rgba(24, 19, 28, 0.94);
+  --panel-2: #2a2230;
+  --well: #0e0b10;
+  --card: #1a141e;
+  --line: #4d3f4a;
+  --line-hi: #8a6a4a;
+  --fg: #efe6d2;
+  --dim: #bdb09c;
+  --gold: #d6a84b;
+  --hp: #d0443c;
+  --mp: #3f7ad8;
+  --xp: #b08aff;
+  --ok: #7ad05a;
+  --bad: #ff6a5a;
+  --common: #e8e2d0;
+  --rare: #5fa8ff;
+  --epic: #c47bff;
+  --legend: #ff9a2e;
+  --enchant: #3ff0d0;
+  --text: var(--fg);
+  --foe: #ff3030;
+  --ally: #9ae07a;
+  --self: #5ad04a;
+  --heal: #7aff7a;
+  --num-gold: #ffd84a;
+  --boss: #ff6a2a;
+  --bad-line: #8a2a2a;
+  /* предупреждение: оранжевый текст */
+  --warn: #ffb35a;
+  /* команды арены: полоса в таблице и цвет врага на табло */
+  --team-1: #6ac8ff;
+  --team-2: #ff8a7a;
+  /* светлый текст рейд-босса: реплика и метки на полосе */
+  --boss-soft: #ffd0a0;
+  --font: "Rubik", "Trebuchet MS", system-ui, sans-serif;
+  --font-head: "Pixelify Sans", "Rubik", system-ui, sans-serif;
+  --sp-0: 2px;
+  --sp-1: 4px;
+  --sp-1h: 6px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --r-1: 3px;
+  --r-2: 4px;
+  --r-3: 6px;
+  --r-pill: 12px;
+  --shadow-panel: 0 0 0 1px #000, 0 8px 30px rgba(0,0,0,.6);
+  --shadow-head: 0 3px 0 #5a2a10;
+  --shadow-text: 0 1px 0 #000;
+  --glow-boss: 0 0 18px rgba(255,80,40,.35);
+  /* поверхности: кнопки, выбранное, затемнение под модальным окном */
+  --btn: linear-gradient(#3a2e3a, #2a2130);
+  --btn-hover: linear-gradient(#4a3a46, #33283a);
+  --btn-active: linear-gradient(#2a2130, #1e1628);
+  --btn-primary: linear-gradient(#8a5a22, #5e3a16);
+  --btn-danger: linear-gradient(#8a2a22, #5e1a16);
+  --sel: linear-gradient(#5a4428, #3a2a1a);
+  --overlay: rgba(8, 4, 10, 0.62);
+  /* шрифты: шкала размеров; начертаний два — загружены только 400 и 600 */
+  --fs-2xs: 10px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs: 14px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-h: 20px;
+  --fs-chat: 14px;
+  --fw: 400;
+  --fw-b: 600;
+  --pad-win: 12px 14px 14px;
+  color-scheme: dark;
+}

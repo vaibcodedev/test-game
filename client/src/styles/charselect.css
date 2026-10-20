@@ -1,0 +1,278 @@
+/* ---------- выбор героя ---------- */
+.login-btns {
+  display: flex;
+  gap: var(--sp-2);
+}
+.login-btns .btn {
+  flex: 1;
+}
+.login-btns .btn:not(.primary) {
+  font-size: var(--fs-md);
+}
+.btn.danger {
+  background: var(--btn-danger);
+  border-color: var(--bad);
+}
+.charsel {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.cs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--sp-2);
+}
+.cs-head h1 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 32px;
+  color: var(--gold);
+  text-shadow: var(--shadow-head);
+}
+.cs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+.cs-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);
+  min-height: 236px;
+  background: linear-gradient(#2a2130, var(--card));
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  cursor: pointer;
+  text-align: center;
+}
+.cs-slot:hover {
+  border-color: var(--line-hi);
+}
+.cs-slot:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.cs-slot[aria-pressed="true"] {
+  border-color: var(--gold);
+  background: var(--sel);
+  box-shadow: var(--glow-sel);
+}
+.cs-slot .cs-hero {
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.45));
+}
+.cs-slot .nm {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-b);
+  color: var(--gold);
+}
+.cs-slot .meta {
+  color: var(--dim);
+}
+.cs-slot .zone {
+  font-size: var(--fs-sm);
+}
+.cs-slot.empty {
+  justify-content: center;
+  color: var(--dim);
+  border-style: dashed;
+  background: rgba(14, 11, 16, 0.6);
+}
+.cs-slot.empty .plus {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--line-hi);
+}
+.cs-slot.empty:hover .plus {
+  color: var(--gold);
+}
+.cs-eq {
+  display: flex;
+  gap: var(--sp-1);
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.cs-eq .cell {
+  width: 32px;
+  cursor: default;
+}
+.cs-eq .cell .plus {
+  font-size: var(--fs-xs);
+  left: 1px;
+}
+.cs-banned {
+  color: var(--bad);
+  font-size: var(--fs-sm);
+}
+.charsel .error {
+  color: var(--bad);
+  margin: 0;
+  min-height: 1.2em;
+  text-align: center;
+}
+.cs-bar {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cs-bar .btn.primary {
+  min-width: 180px;
+}
+.cs-sp {
+  flex: 1;
+}
+.cs-form {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--sp-5);
+}
+.cs-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+}
+.cs-stage {
+  width: 224px;
+  height: 224px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3);
+  background: radial-gradient(ellipse at 50% 80%, #3a2e2a 0%, var(--well) 70%);
+}
+.cs-stage .cs-hero {
+  width: 192px;
+  height: 192px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.5));
+}
+.cs-preview .nm {
+  color: var(--gold);
+  font-size: var(--fs-lg);
+}
+.cs-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.cs-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  color: var(--dim);
+}
+.charsel input,
+.cs-del input {
+  background: var(--well);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  padding: var(--sp-2);
+  border-radius: var(--r-2);
+  font: inherit;
+  font-size: var(--fs-md);
+}
+.cs-del label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.cs-looks {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.cs-looks legend {
+  color: var(--dim);
+  margin-bottom: var(--sp-1);
+}
+.looks {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.look {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  cursor: pointer;
+  padding: 0;
+}
+.look:hover {
+  border-color: var(--line-hi);
+}
+.look[aria-pressed="true"] {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 2px var(--well),
+    0 0 0 4px var(--gold);
+}
+.logout-wait {
+  font-size: 40px;
+  text-align: center;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-head);
+}
+.cs-create .classes {
+  grid-template-columns: repeat(5, 1fr);
+}
+.cs-create .classes button {
+  padding: var(--sp-2) var(--sp-0);
+}
+@media (max-width: 760px) {
+  .cs-create .classes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .cs-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cs-form {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 460px) {
+  .cs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.login h2 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 22px;
+  color: var(--fg);
+}
+
+.shop-card .si-btns .btn {
+  flex-direction: column;
+  gap: var(--sp-0);
+  padding: var(--sp-1) var(--sp-1);
+  line-height: 1.15;
+}
+.shop-card .si-btns .btn .q {
+  color: var(--dim);
+  font-size: var(--fs);
+}
+.si-text b,
+.si-text span {
+  overflow-wrap: anywhere;
+}

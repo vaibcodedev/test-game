@@ -1,0 +1,17 @@
+/* air bar (under water) */
+.air-bar-box { position: fixed; left: 50%; bottom: 150px; width: 200px; transform: translateX(-50%); z-index: 20; pointer-events: none; }
+.air-bar-label { font-size: var(--fs-sm); color: #cfeaff; text-shadow: var(--shadow-text); text-align: center; }
+.air-bar-track { height: 8px; background: #06121c; border: 1px solid #4a7a9a; margin-top: var(--sp-0); }
+.air-bar-fill { display: block; height: 100%; width: var(--p, 100%); background: #4ab8ff; transition: width .4s linear; }
+.air-bar-fill.low { background: var(--bad); }
+
+/* mount cast bar */
+.mount-cast-box { position: fixed; left: 50%; bottom: 110px; width: 180px; transform: translateX(-50%); z-index: 20; pointer-events: none; }
+.mount-cast-label { font-size: var(--fs); color: #fff; text-shadow: var(--shadow-text); text-align: center; }
+.mount-cast-track { height: 6px; background: var(--well); border: 1px solid #6a5a46; margin-top: var(--sp-0); }
+.mount-cast-fill { display: block; height: 100%; width: 0; background: var(--gold); transition: width var(--dur, 2000ms) linear; }
+
+/* raid result win/loss title */
+.raid-res-win { color: var(--gold); }
+.raid-res-loss { color: var(--bad); }
+.raid-title-gold { color: var(--gold); }

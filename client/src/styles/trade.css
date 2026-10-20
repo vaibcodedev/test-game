@@ -1,0 +1,78 @@
+/* обмен */
+.win-trade {
+  left: 50%;
+  top: 90px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  z-index: 4;
+}
+.trade-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+.trade-col h3 {
+  margin: 0 0 var(--sp-1h);
+  font-size: var(--fs-md);
+  color: var(--gold);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-1h);
+}
+.trade-col .ok {
+  color: var(--ok);
+  font-size: var(--fs);
+}
+.trade-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+.trade-gold {
+  display: flex;
+  gap: var(--sp-1h);
+  align-items: center;
+  margin-top: var(--sp-2);
+  padding: var(--sp-0) var(--sp-1);
+  border-radius: var(--r-2);
+}
+.trade-gold input {
+  width: 90px;
+  background: var(--well);
+  border: 1px solid var(--line);
+  color: var(--gold);
+  font: inherit;
+  padding: var(--sp-0) var(--sp-1);
+}
+.trade-gift {
+  text-align: center;
+  color: var(--ok);
+  border: 1px dashed var(--ok);
+  border-radius: var(--r-2);
+  padding: var(--sp-1);
+}
+.cell.changed,
+.trade-gold.changed {
+  outline: 2px solid var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+}
+.cell.locked {
+  opacity: 0.4;
+  outline: 1px dashed var(--gold);
+}
+.ctx-menu {
+  position: absolute;
+  padding: var(--sp-1h);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  z-index: 6;
+}
+.ctx-menu .d {
+  color: var(--dim);
+  font-size: var(--fs);
+  text-align: center;
+}
+@media (max-width: 520px) {
+  .trade-cols {
+    grid-template-columns: 1fr;
+  }
+}

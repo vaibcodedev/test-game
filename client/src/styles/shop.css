@@ -1,0 +1,188 @@
+/* ---------- торговка ---------- */
+.shop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.shop-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-1);
+}
+.shop-tabs .btn.on {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--sel);
+}
+.shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+  max-height: calc(100vh - 470px);
+  min-height: 160px;
+  overflow-y: auto;
+  padding-right: var(--sp-0);
+}
+.shop-head {
+  font-family: var(--font-head);
+  color: var(--gold);
+  font-size: 15px;
+  margin-top: var(--sp-1);
+  padding-bottom: var(--sp-0);
+  border-bottom: 1px solid var(--line);
+}
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1h) var(--sp-2);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+.si-pic {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  image-rendering: pixelated;
+}
+.si-pic.sprite {
+  width: 48px;
+  height: 48px;
+  background-size: 576px 144px;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}
+.si-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  font-size: var(--fs);
+}
+.si-btns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  flex: none;
+}
+.si-btns .btn {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 92px;
+  font-size: var(--fs);
+}
+.shop-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-top: var(--sp-1h);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs);
+}
+.sell-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: var(--sp-1);
+}
+.sell-cell {
+  position: relative;
+  height: 64px;
+  padding: var(--sp-0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+.sell-cell:hover {
+  border-color: var(--gold);
+}
+.sell-cell img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+.sell-cell .qty {
+  position: absolute;
+  right: 3px;
+  top: 26px;
+  font-size: var(--fs);
+  color: #fff;
+  text-shadow: var(--shadow-text);
+}
+.sell-cell .sp {
+  font-size: var(--fs);
+  color: var(--gold);
+  line-height: 1;
+  margin-top: var(--sp-0);
+}
+.sell-cell.r1 {
+  border-color: var(--rare);
+}
+.sell-cell.r2 {
+  border-color: var(--epic);
+}
+.sell-cell.r3 {
+  border-color: var(--legend);
+  box-shadow:
+    inset 0 0 0 1px var(--well),
+    inset 0 0 0 2px var(--legend);
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-1h);
+}
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+  padding: var(--sp-2);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+.shop-card:hover {
+  border-color: #8a7350;
+}
+.sc-top {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.sc-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+.sc-icon img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+.shop-card .si-btns {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.shop-card .si-btns .btn {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-1h);
+  white-space: nowrap;
+  justify-content: center;
+  gap: var(--sp-1);
+}
