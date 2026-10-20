@@ -159,13 +159,13 @@ async function main() {
     }
     await page.click("#set-mute");
     ok("после флажка WASD работают сразу");
-    // список клавиш в настройках — из раскладки
-    const setKeys = await page.$eval(".win-settings dl.keys", (e) => (e as HTMLElement).innerText);
-    must(setKeys.includes("1–9") && !setKeys.includes("1–4"), "настройки: " + setKeys);
+    // справка (окно ещё закрыто) собрана из раскладки; списка «Горячие клавиши» в настройках больше нет — там клавиши показаны плашками «Управления»
+    const setKeys = await page.$eval(".win-help .keys", (e) => (e as HTMLElement).innerText);
+    must(setKeys.includes("1–9") && !setKeys.includes("1–4"), "справка: " + setKeys);
     await page.keyboard.press("Escape");
     await sleep(200);
     must(!(await open(page, ".win-settings")), "Esc не закрыл настройки");
-    ok("Esc закрывает верхнее окно; «Горячие клавиши» в настройках — «1–9»");
+    ok("Esc закрывает верхнее окно; справка из раскладки — «1–9»");
 
     // 3. кнопка HUD не нажимается второй раз
     await page.click(".hud-menu .mbtn");

@@ -1,14 +1,10 @@
 /* ---------- окна ---------- */
-.win {
-  position: absolute;
-  padding: var(--pad-win);
-  display: flex;
-  flex-direction: column;
+/* каркас .win, заголовок .win > h2, тело .win > .body и кнопка .x — в kit.css.
+   Окна без .body (ещё не переведённые) прокручиваются целиком и с прежним зазором. */
+.win:not(:has(> .body)) {
   gap: var(--sp-2);
-  max-height: calc(100vh - 140px);
   overflow: auto;
 }
-/* заголовок окна .win > h2, тело .win > .body и кнопка .x — в kit.css */
 .win-char {
   left: 12px;
   top: 150px;

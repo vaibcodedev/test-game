@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import {
   ACTION_IDS, ACTIONS, GROUPS, HeldKeys, Keybinds, MAX_COMBOS, PRESETS, STORAGE_KEY,
-  comboKey, comboLabel, hotkeyRows, isForbidden, isTextField, mouseCode, parseSaved, skillKeys,
+  comboKey, comboLabel, hotkeyRows, hotkeySections, isForbidden, isTextField, mouseCode, parseSaved, skillKeys,
   loadMouseOpts, MOUSE_DEFAULTS,
   type ActionId, type Combo, type PresetId, type Store,
 } from "../client/src/game/keybinds";
@@ -329,6 +329,30 @@ test("подписи и справка строятся из раскладки:
   assert.equal(comboLabel({ code: "Mouse4" }), "Mouse4");
   assert.equal(comboLabel({ code: "Numpad5" }), "Num 5");
   assert.equal(comboLabel({ code: "F10" }), "F10");
+});
+
+test("справка по разделам: GROUPS, строка на действие, «стрелки» и «клик» словами, действия без клавиши пропускаются", () => {
+  const kb = classicKb();
+  const table = (k: Keybinds) => new Map(hotkeySections(k).map((s) => [s.title, s.rows.map((r) => `${r.keys.map((x) => x.text).join(" / ")} — ${r.what}`)] as const));
+  const c = table(kb);
+  assert.deepEqual([...c.keys()], [GROUPS.move, GROUPS.target, GROUPS.bar, GROUPS.act, GROUPS.ui]);
+  assert.deepEqual(c.get("Движение"), ["WASD / стрелки / клик — Ходьба", "R / NumLock — Автобег"]);
+  assert.deepEqual(c.get("Цель"), ["Tab — Следующая цель", "Shift+Tab — Предыдущая цель", "T — Атаковать цель", "F1 — Выбрать себя", "F2–F5 — Выбрать члена группы"]);
+  assert.deepEqual(c.get("Панель умений"), ["1–9 — Умения", "Q — Зелье здоровья", "E — Зелье маны"]);
+  assert.deepEqual(c.get("Действия"), ["Пробел — Подобрать или поговорить", "F — Поговорить с NPC", "X / Shift+X — Ездовое животное", "G / Shift+G — Питомец", "Shift+F — Следовать за целью"]);
+  assert.deepEqual(c.get("Интерфейс"), ["C — Герой", "I — Сумка", "K — Умения", "M — Карта", "B — Бестиарий", "P — Арена", "Enter — Чат", "Esc — Закрыть окно, снять цель, меню"]);
+  assert.deepEqual(hotkeySections(kb)[0].rows[0].keys.map((x) => !!x.word), [false, true, true], "«стрелки» и «клик» — слова, не плашки");
+  // «Экшен»: атаки на T и разговора на F нет — строк нет; автобег NumLock / V
+  kb.setPreset("action");
+  const a = table(kb);
+  assert.deepEqual(a.get("Движение"), ["стрелки / клик — Ходьба", "NumLock / V — Автобег"]);
+  assert.deepEqual(a.get("Панель умений"), ["Q W E R A S D F T — Умения", "1 — Зелье здоровья", "2 — Зелье маны"]);
+  assert.ok(!a.get("Цель")!.some((r) => r.endsWith("Атаковать цель")) && !a.get("Действия")!.some((r) => r.endsWith("Поговорить с NPC")), "строки без клавиши пропускаются");
+  assert.ok(a.get("Действия")!.includes("Z / Shift+Z — Питомец"));
+  // клавиши группы не подряд идущие F — перечислением, не «F2–F5»
+  const kb2 = classicKb();
+  kb2.rebind("selectParty2", 0, { code: "KeyJ" });
+  assert.ok(table(kb2).get("Цель")!.includes("F2 J F4 F5 — Выбрать члена группы"));
 });
 
 test("кнопки мыши: СКМ, Mouse4, Mouse5 назначаются, ЛКМ и ПКМ — указатель игры", () => {

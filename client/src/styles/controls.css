@@ -1,21 +1,12 @@
-/* Настройки → Управление */
-.ctl-h { margin: var(--sp-2) 0 0; font-size: var(--fs-md); color: var(--gold); }
-.ctl-opts { display: flex; flex-direction: column; gap: var(--sp-2); }
-.ctl-opts .set-row input[type="range"] { flex: 1; }
-.ctl-hint { font-size: var(--fs-sm); min-height: 2.6em; margin-top: var(--sp-1h); }
+/* Настройки → Управление: опции — строки .set-list (kit.css), клавиши — группы строк с плашками .kbd; разделы — .sec и .sec-h из kit.css */
+#set-controls { gap: var(--sp-3); } /* между «Управлением» и «Клавишами» — как между остальными разделами окна */
+.ctl-hint { min-height: 2.9em; } /* две строки заранее: текст меняется при переназначении, а список под ним не прыгает */
 .ctl-hint.bad { color: var(--bad); }
-.ctl-group h4 { margin: var(--sp-2) 0 var(--sp-1); font-size: var(--fs); color: var(--gold); border-bottom: 1px solid var(--line); }
-.ctl-row { display: flex; align-items: center; gap: var(--sp-1h); padding: var(--sp-0) 0; }
-.ctl-name { flex: 1; }
-.ctl-chip { min-width: 74px; padding: var(--sp-0) var(--sp-2); font: inherit; font-size: var(--fs-sm); color: var(--fg); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); cursor: pointer; text-align: center; }
-.ctl-chip:hover { border-color: var(--gold); color: var(--gold); }
-.ctl-chip.empty { color: var(--dim); }
-.ctl-chip.wait { border-color: var(--gold); color: var(--gold); animation: ctl-blink 1s infinite; }
-.ctl-chip.fixed { cursor: default; opacity: .7; }
-.ctl-chip.fixed:hover { border-color: var(--line); color: inherit; }
-@keyframes ctl-blink { 50% { opacity: .55; } }
-.ctl-modal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; background: var(--overlay); }
-.ctl-ask { max-width: 380px; padding: var(--sp-4); background: var(--panel); border: 2px solid var(--line); border-radius: var(--r-3); box-shadow: var(--shadow-panel); }
-.ctl-ask p { margin: 0 0 var(--sp-3); line-height: 1.4; }
-.ctl-ask-btns { display: flex; gap: var(--sp-2); justify-content: flex-end; }
-.ctl-opts .set-seg .btn, #ctl-preset .btn { white-space: normal; padding-left: var(--sp-1); padding-right: var(--sp-1); }
+#ctl-groups { display: flex; flex-direction: column; gap: var(--sp-3); }
+.ctl-group { display: flex; flex-direction: column; gap: var(--sp-1); }
+/* строка клавиши: плашки стоят в колонке контролов, высота строки — как у остальных строк настроек (32px) */
+.set-list > .set-row.ctl-row { padding-top: var(--sp-0); padding-bottom: var(--sp-0); }
+.ctl-row .set-ctl { justify-content: flex-start; }
+.ctl-foot > .set-row { border-top: 1px solid var(--line); } /* строка сброса отделена линией от списка клавиш: без неё она читается как ещё одна клавиша */
+/* плашка сочетания: две в колонке контролов (кнопка поверх button.kbd); «Нажмите клавишу» и длинные сочетания переносятся, а не режутся */
+.ctl-chip { flex: none; width: calc((var(--set-ctl-w) - var(--sp-2)) / 2); height: var(--ctl-h-sm); padding: 0 var(--sp-1); white-space: normal; overflow-wrap: anywhere; }

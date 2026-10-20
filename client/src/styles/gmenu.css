@@ -32,24 +32,22 @@
 }
 .gm-item {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
   font-size: var(--fs-lg);
   padding: var(--sp-1h) var(--sp-3);
   text-align: left;
 }
-.gm-item kbd {
-  font-family: var(--font);
+/* клавиша и пометка справа мельче названия; цвет и подсветку клавиши даёт .btn > kbd (kit.css) */
+.gm-item > kbd,
+.gm-item > small {
   font-size: var(--fs-md);
+}
+.gm-item > small {
   color: var(--dim);
 }
-.gm-item:hover kbd {
-  color: var(--gold);
-}
-.gm-item small {
-  font-size: var(--fs-md);
-  color: var(--dim);
+.gm-note {
+  text-align: center;
 }
 .win-qlog {
   left: 50%;
@@ -57,12 +55,53 @@
   transform: translateX(-50%);
   width: min(440px, calc(100vw - 24px));
 }
+/* окно «Помощь»: ширина .win.m и тело .body — kit.css */
 .win-help {
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  width: min(480px, calc(100vw - 24px));
   z-index: 5;
+}
+/* все разделы клавиш лежат в одном .keys и делят колонку клавиш (dl и .keys-row — display: contents); заголовок раздела — на всю ширину, между разделами линия */
+.win-help .keys > dl {
+  display: contents;
+}
+.win-help .keys > .sec-h {
+  grid-column: 1 / -1;
+  margin-bottom: var(--sp-2);
+}
+.win-help .keys > .sec-h:not(:first-child) {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+/* советы: список с золотыми ромбиками; клавиши в тексте — мелкие плашки .kbd */
+.tips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tips li {
+  position: relative;
+  padding-left: var(--sp-4);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.tips li::before {
+  content: "";
+  position: absolute;
+  left: var(--sp-1);
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  background: var(--gold);
+  transform: rotate(45deg);
+}
+.tips .kbd {
+  height: 20px;
 }
 .win-worldmap {
   left: 50%;

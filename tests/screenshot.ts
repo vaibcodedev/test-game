@@ -332,7 +332,7 @@ async function main() {
       await page.screenshot({ path: path.join(OUT, "shot-win-escmenu.png") });
       await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".gm-item")].find((b) => b.textContent?.includes("Настройки"))!.click());
       await sleep(300);
-      await page.evaluate(() => { const r = document.getElementById("set-scale") as HTMLInputElement; r.value = "120"; r.dispatchEvent(new Event("input")); });
+      await page.evaluate(() => { const r = document.getElementById("set-scale") as HTMLInputElement; r.value = "120"; r.dispatchEvent(new Event("input")); r.dispatchEvent(new Event("change")); });
       await sleep(300);
       await page.screenshot({ path: path.join(OUT, "shot-win-settings.png") });
       await page.keyboard.press("Escape");

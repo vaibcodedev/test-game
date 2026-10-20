@@ -1,25 +1,41 @@
 /** Игровое меню по Esc, окно помощи и большая карта мира. */
 import type { LogoutMode, Net } from "../net";
-import { hotkeyRows, keybinds, type ActionId } from "../game/keybinds";
+import { hotkeySections, keybinds, mouseOpts, type ActionId, type HelpKey } from "../game/keybinds";
 
-/** Справка «клавиши — действие» из текущей раскладки (client/src/game/keybinds.ts). */
-export const hotkeys = (): [string, string][] => hotkeyRows(keybinds);
-/** Те же строки для списка <dl class="keys">. */
-export const keysHtml = () => hotkeys().map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("");
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 /** Подпись клавиши действия. */
 const key = (a: ActionId) => keybinds.label(a, 0);
+/** Клавиша плашкой (kit.css, .kbd). */
+const kbd = (t: string) => `<kbd class="kbd">${esc(t)}</kbd>`;
+/** Клавиши строки справки: плашки через « / », слова («стрелки», «клик») — текстом. « / » остаётся текстом между плашками: innerText даёт «G / Shift+G». */
+const keysCell = (keys: HelpKey[]) => keys.map((k) => (k.word ? `<span class="c-dim">${esc(k.text)}</span>` : kbd(k.text))).join(' <span class="kbd-plus">/</span> ');
 
-const tips = () => [
-  `Клик по врагу — атака, клик по земле — движение. Зелья: ${key("potionHp")} и ${key("potionMp")}.`,
-  "Города безопасны. За стенами уровень врагов растёт — смотрите на подпись зоны под картой.",
-  "Задания берите у NPC в городах: награда золотом и опытом.",
-  "Тачпад: двухпальцевый тап — ПКМ (атака, взаимодействие); колесо или щипок — масштаб; «Крупные цели» — в настройках «Управление».",
-  `Тяжёлые вещи продавайте торговцу, лучшие надевайте через сумку (${key("winInv")}).`,
-];
+/** Совет про мышь: зависит от схемы клавиш и от опции «ЛКМ атакует» (Настройки → Управление). */
+const mouseTip = () => {
+  const classic = keybinds.presetId === "classic";
+  if (mouseOpts.lmbAttacks) return classic ? "Клик по врагу — атака, клик по земле — движение." : "ЛКМ и ПКМ по врагу — атака, ПКМ по земле — движение.";
+  return classic ? "Клик по земле — движение, ПКМ по врагу — атака, ЛКМ по врагу — выбор цели." : "ЛКМ — выбор цели, ПКМ — атака и движение.";
+};
+const tips = (): string[] => {
+  const hp = key("potionHp"), mp = key("potionMp"), inv = key("winInv");
+  return [
+    mouseTip(),
+    ...(hp && mp ? [`Зелья здоровья и маны — клавиши ${kbd(hp)} и ${kbd(mp)}.`] : []),
+    "Города безопасны. За стенами уровень врагов растёт — смотрите на подпись зоны под картой.",
+    "Задания берите у NPC в городах: награда золотом и опытом.",
+    "Тачпад: двухпальцевый тап — ПКМ (атака, взаимодействие); колесо или щипок — масштаб; «Крупные цели» — в настройках «Управление».",
+    `Тяжёлые вещи продавайте торговцу, лучшие надевайте через сумку${inv ? ` (${kbd(inv)})` : ""}.`,
+  ];
+};
 
+/**
+ * Окно «Помощь»: клавиши по разделам (hotkeySections) и советы. Все разделы лежат в одном .keys — у таблицы одна колонка клавиш;
+ * её читает tests/keybinds-screens.ts (innerText первого .keys).
+ */
 export function fillHelp(body: Element) {
-  body.innerHTML = `<h3 style="margin:0;font-size:16px;color:var(--gold)">Управление</h3><dl class="keys">${keysHtml()}</dl>
-    <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Советы</h3><ul style="margin:0;padding-left:20px;line-height:1.5">${tips().map((t) => `<li>${t}</li>`).join("")}</ul>`;
+  const sections = hotkeySections(keybinds).map((s) => `<h3 class="sec-h">${esc(s.title)}</h3><dl>${s.rows.map((r) => `<div class="keys-row"><dt><span>${keysCell(r.keys)}</span></dt><dd>${esc(r.what)}</dd></div>`).join("")}</dl>`).join("");
+  body.innerHTML = `<section class="sec"><div class="keys">${sections}</div></section>
+    <section class="sec"><h3 class="sec-h">Советы</h3><ul class="tips">${tips().map((t) => `<li>${t}</li>`).join("")}</ul></section>`;
 }
 
 export interface MenuActions {
@@ -82,7 +98,7 @@ export class GameMenu {
     for (const [text, key, fn] of items) {
       const b = document.createElement("button");
       b.className = "btn gm-item";
-      b.innerHTML = `<span>${text}</span>${fn ? (key ? `<kbd>${key}</kbd>` : "") : `<small>${text.startsWith("Сменить") || text.startsWith("Выйти") ? "не на арене" : "скоро"}</small>`}`;
+      b.innerHTML = `<span>${text}</span>${fn ? (key ? `<kbd>${key}</kbd>` : "") : `<small>${text.startsWith("Сменить") || text.startsWith("Выйти") ? "Не на арене" : "Скоро"}</small>`}`;
       b.disabled = !fn;
       if (fn) b.onclick = () => { this.close(); fn(); };
       p.append(b);
@@ -102,7 +118,7 @@ export class GameMenu {
     const p = document.createElement("div");
     p.className = "panel gmenu";
     const title = mode === "char" ? "Сменить героя?" : "Выйти из аккаунта?";
-    p.innerHTML = `<h2>${title}</h2><p class="muted" style="margin:0;text-align:center">${mode === "char" ? "Вы вернётесь к выбору героя." : "Вы вернётесь на экран входа."} Прогресс сохранится.</p>`;
+    p.innerHTML = `<h2>${title}</h2><p class="note gm-note">${mode === "char" ? "Вы вернётесь к выбору героя." : "Вы вернётесь на экран входа."} Прогресс сохранится.</p>`;
     const yes = document.createElement("button"), no = document.createElement("button");
     yes.className = "btn gm-item primary"; yes.textContent = mode === "char" ? "Сменить героя" : "Выйти";
     no.className = "btn gm-item"; no.textContent = "Отмена";
@@ -130,7 +146,7 @@ export class GameMenu {
     const end = performance.now() + ms;
     const p = document.createElement("div");
     p.className = "panel gmenu";
-    p.innerHTML = `<h2>${title}</h2><p class="muted" style="margin:0;text-align:center">Вы в бою: выход через</p><div class="logout-wait"></div><p class="muted" style="margin:0;text-align:center">Полученный урон прервёт выход.</p>`;
+    p.innerHTML = `<h2>${title}</h2><p class="note gm-note">Вы в бою: выход через</p><div class="logout-wait"></div><p class="note gm-note">Полученный урон прервёт выход.</p>`;
     const cancel = document.createElement("button");
     cancel.className = "btn gm-item"; cancel.textContent = "Отмена";
     cancel.onclick = () => this.close();

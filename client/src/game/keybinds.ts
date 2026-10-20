@@ -397,18 +397,33 @@ export function skillKeys(kb: Keybinds): string {
   if (keys.length > 1 && keys.every((x) => /^\d$/.test(x)) && n.every((v, i) => i === 0 || v === n[i - 1] + 1)) return `${keys[0]}–${keys[keys.length - 1]}`;
   return keys.join(" ");
 }
-/** Клавиши движения: «WASD / стрелки / клик». */
-function moveKeys(kb: Keybinds): string {
+/** Часть подписи клавиш в справке: сочетание (рисуется плашкой) или слово — «стрелки», «клик» (word, без плашки). */
+export interface HelpKey { text: string; word?: boolean }
+/** Строка справки: клавиши (в окне — через « / ») и что они делают. */
+export interface HelpRow { keys: HelpKey[]; what: string }
+export interface HelpSection { title: string; rows: HelpRow[] }
+/** Клавиши движения частями: «WASD», «стрелки», «клик» — последние два словами. */
+function moveParts(kb: Keybinds): HelpKey[] {
   const dirs: MoveAction[] = ["moveUp", "moveLeft", "moveDown", "moveRight"];
-  const parts: string[] = [];
+  const parts: HelpKey[] = [];
   for (const i of [0, 1]) {
     const ks = dirs.map((a) => kb.label(a, i));
     const have = ks.filter(Boolean);
     if (!have.length) continue;
-    if (have.length < 4) parts.push(have.join(" "));
-    else parts.push(ks.every((x) => /^[←↑→↓]$/.test(x)) ? "стрелки" : ks.every((x) => x.length === 1) ? ks.join("") : ks.join(" "));
+    if (have.length < 4) parts.push({ text: have.join(" ") });
+    else if (ks.every((x) => /^[←↑→↓]$/.test(x))) parts.push({ text: "стрелки", word: true });
+    else parts.push({ text: ks.every((x) => x.length === 1) ? ks.join("") : ks.join(" ") });
   }
-  return [...parts, "клик"].join(" / ");
+  return [...parts, { text: "клик", word: true }];
+}
+/** Клавиши движения: «WASD / стрелки / клик». */
+const moveKeys = (kb: Keybinds) => moveParts(kb).map((p) => p.text).join(" / ");
+/** Клавиши выбора членов группы: подряд идущие F-клавиши — «F2–F5», иначе перечисление. */
+function partyKeys(kb: Keybinds): string {
+  const ks = (["selectParty1", "selectParty2", "selectParty3", "selectParty4"] as const).map((a) => kb.label(a, 0)).filter(Boolean);
+  const n = ks.map((k) => Number(/^F(\d+)$/.exec(k)?.[1]));
+  if (ks.length > 1 && n.every((v, i) => v > 0 && (i === 0 || v === n[i - 1] + 1))) return `${ks[0]}–${ks[ks.length - 1]}`;
+  return ks.join(" ");
 }
 /** Строки справки «клавиши — действие» из раскладки; действия без клавиши пропускаются. */
 export function hotkeyRows(kb: Keybinds): [string, string][] {
@@ -437,6 +452,28 @@ export function hotkeyRows(kb: Keybinds): [string, string][] {
   add(first("chat"), "чат");
   add(first("escape"), "закрыть окно, снять цель, меню");
   return rows;
+}
+/**
+ * Справка «клавиши — действие» по разделам GROUPS (те же, что в Настройки → Клавиши): строка на действие, у маунта и питомца — на пару.
+ * Названия берутся из DEFS (с заглавной), действия без клавиши пропускаются. Плоский список hotkeyRows остаётся: его сверяет tests/keybinds.ts.
+ */
+export function hotkeySections(kb: Keybinds): HelpSection[] {
+  /** Строка по действиям ids: все их сочетания; what по умолчанию — название первого действия. */
+  const row = (ids: ActionId[], what = DEFS[ids[0]].name): HelpRow | null => {
+    const keys = ids.flatMap((a) => kb.combos(a).map((c): HelpKey => ({ text: comboLabel(c) })));
+    return keys.length ? { keys, what } : null;
+  };
+  /** Строка с готовой подписью клавиш («1–9», «F2–F5»). */
+  const text = (t: string, what: string): HelpRow | null => (t ? { keys: [{ text: t }], what } : null);
+  const sec = (g: GroupId, rows: (HelpRow | null)[]): HelpSection => ({ title: GROUPS[g], rows: rows.filter((r): r is HelpRow => r !== null) });
+  const wins = (...ids: ActionId[]) => ids.map((a) => row([a]));
+  return [
+    sec("move", [{ keys: moveParts(kb), what: "Ходьба" }, row(["autorun"])]), // не «Движение»: так уже называется раздел
+    sec("target", [row(["targetNext"]), row(["targetPrev"]), row(["attack"]), row(["selectSelf"]), text(partyKeys(kb), "Выбрать члена группы")]),
+    sec("bar", [text(skillKeys(kb), "Умения"), row(["potionHp"]), row(["potionMp"])]),
+    sec("act", [row(["interact"]), row(["talk"]), row(["mount", "mountNext"], "Ездовое животное"), row(["pet", "petNext"], "Питомец"), row(["follow"])]),
+    sec("ui", [...wins("winChar", "winInv", "winSkills", "winMap", "winBestiary", "winArena"), row(["chat"]), row(["escape"])]),
+  ].filter((s) => s.rows.length > 0);
 }
 
 /**

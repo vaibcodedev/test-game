@@ -1,51 +1,21 @@
 /* ---------- арена ---------- */
+/* Каркас окна (h2 → .tabs → .body → .win-foot), ширина .l, вкладки, карточки, поле с кнопкой, разделы, списки, таблицы, чипы и диалоги — kit.css.
+   Здесь — положение окна и то, чего в kit.css нет. */
 .win-arena {
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  width: min(640px, calc(100vw - 24px));
 }
-.tabs {
-  display: flex;
-  gap: var(--sp-1h);
-  flex-wrap: wrap;
-}
-.tabs [aria-selected="true"] {
-  border-color: var(--gold);
-  background: var(--sel);
-}
-.mode-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: var(--sp-2);
-}
-.mode-card {
-  border: 1px solid var(--line);
-  border-radius: var(--r-3);
-  padding: var(--sp-2) var(--sp-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1h);
-  background: var(--card);
-  min-width: 0;
-}
-.mode-title {
-  font-size: var(--fs-md);
-  color: var(--dim);
-}
+/* карточка режима (.card, .cards.two, .card-actions — kit.css) */
 .mode-rating {
   font-size: 34px;
   line-height: 1;
-  color: var(--fg);
   font-variant-numeric: tabular-nums;
 }
-.rank {
-  color: var(--rank);
-  border: 1px solid var(--rank);
-  border-radius: var(--r-pill);
-  padding: 0 var(--sp-2);
-  font-size: var(--fs);
-  white-space: nowrap;
+.mode-rank {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 .queue-status {
   color: var(--gold);
@@ -72,145 +42,32 @@
     animation: none;
   }
 }
-.arena-section {
-  border-top: 1px solid var(--line);
-  padding-top: var(--sp-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1h);
-}
-.arena-section h3 {
-  margin: 0;
-  font-size: var(--fs-md);
-  color: var(--gold);
+
+/* таблицы (.tbl-wrap, .tbl — kit.css): изменение рейтинга и итог боя */
+.delta {
   font-weight: var(--fw-b);
 }
-.invite-row {
-  display: flex;
-  gap: var(--sp-1h);
-}
-.invite-row input {
-  flex: 1;
-  min-width: 0;
-  background: var(--well);
-  border: 1px solid var(--line);
-  color: var(--fg);
-  padding: var(--sp-1h) var(--sp-2);
-  border-radius: var(--r-2);
-  font: inherit;
-}
-.title-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1h);
-}
-.title-list [aria-pressed="true"] {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-.table-wrap {
-  overflow-x: auto;
-  max-height: 52vh;
-  overflow-y: auto;
-}
-.arena-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs);
-}
-.arena-table th {
-  text-align: left;
-  color: var(--dim);
-  font-weight: var(--fw);
-  border-bottom: 1px solid var(--line);
-  padding: var(--sp-1) var(--sp-1h);
-  position: sticky;
-  top: 0;
-  background: var(--panel);
-}
-.arena-table td {
-  padding: var(--sp-1) var(--sp-1h);
-  border-bottom: 1px solid var(--panel-2);
-  vertical-align: top;
-}
-.arena-table .num {
+.tbl .delta {
+  display: inline-block;
+  min-width: 4ch; /* дельты разной длины встают в столбец, и рейтинги слева от них тоже */
+  margin-left: var(--sp-1);
   text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
-.arena-table tr.me td {
-  color: var(--gold);
+.tbl .res {
+  font-weight: var(--fw-b);
 }
-.arena-table tr.sep td {
-  border: 0;
-  padding: var(--sp-0);
-}
-.arena-table tr.team1 td:first-child {
-  box-shadow: inset 3px 0 0 var(--team-1);
-}
-.arena-table tr.team2 td:first-child {
-  box-shadow: inset 3px 0 0 var(--team-2);
-}
-.up {
-  color: var(--ok);
-}
-.down {
-  color: var(--bad);
-}
-.res-win {
-  color: var(--ok);
-}
-.res-loss {
-  color: var(--bad);
-}
-.res-draw {
-  color: var(--dim);
-}
-.arena-modal {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: var(--overlay);
-  z-index: 5;
-  padding: var(--sp-4);
-}
-.arena-dialog {
-  padding: var(--sp-4);
-  width: min(460px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-.arena-dialog.small {
-  width: min(360px, 100%);
-}
-.arena-dialog.wide {
-  width: min(640px, 100%);
-}
-.arena-dialog h2 {
-  margin: 0;
-  font-size: 24px;
-  color: var(--gold);
-  text-align: center;
-}
-.arena-dialog p {
-  margin: 0;
-  text-align: center;
-}
-.arena-dialog .delta {
-  font-size: var(--fs-lg);
-}
+
+/* диалоги арены: подложка .modal и .dialog — kit.css, arena-modal / arena-dialog — метки для tests/ */
 .versus {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: var(--sp-2);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--sp-3);
   align-items: center;
 }
 .versus .team {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
   min-width: 0;
 }
 .versus .team:last-child {
@@ -219,16 +76,71 @@
 .versus .vs {
   color: var(--bad);
   font-size: var(--fs-h);
+  font-weight: var(--fw-b);
 }
-.versus .me {
+.vs-p {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+  min-width: 0;
+}
+.vs-p > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-name {
+  font-weight: var(--fw-b);
+}
+.vs-p.me .vs-name {
   color: var(--gold);
 }
-.versus .ok {
-  color: var(--ok);
-}
 .bar.accept > i {
-  background: linear-gradient(#ffe08a, var(--gold));
+  background: var(--gold);
   transition: none;
+}
+.res-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
+}
+.res-rating b {
+  font-weight: var(--fw-b);
+}
+
+/* запрос обмена (trade.ts) пока на старой разметке: подложка .arena-modal и диалог .arena-dialog без .modal / .dialog.
+   Окна арены уже на kit.css, поэтому правила сужены :not(); удалить вместе с .row-btns, когда обмен перейдёт на компоненты */
+.arena-modal:not(.modal) {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--overlay);
+  z-index: 5;
+  padding: var(--sp-4);
+}
+.arena-dialog:not(.dialog) {
+  padding: var(--sp-4);
+  width: min(460px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.arena-dialog.small:not(.dialog) {
+  width: min(360px, 100%);
+}
+.arena-dialog:not(.dialog) h2 {
+  margin: 0;
+  font-size: 24px;
+  color: var(--gold);
+  text-align: center;
+}
+.arena-dialog:not(.dialog) p {
+  margin: 0;
+  text-align: center;
 }
 .row-btns {
   display: flex;
@@ -236,6 +148,8 @@
   justify-content: center;
   flex-wrap: wrap;
 }
+
+/* ---------- табло матча, отсчёт, группа в мире ---------- */
 .arena-board {
   position: absolute;
   top: 12px;

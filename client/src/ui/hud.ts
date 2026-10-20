@@ -29,9 +29,10 @@ import { InspectUI } from "./inspect";
 import { enchantTotal, gearRows, legendBlock } from "./gearfx";
 import { CookUI, foodTip } from "./cook";
 import { QuestUI, TeleportUI } from "./cities";
-import { fillHelp, GameMenu, keysHtml } from "./gamemenu";
+import { fillHelp, GameMenu } from "./gamemenu";
 import { isTextField, keybinds, skillKeys } from "../game/keybinds";
-import { buildControls, offerSchemeOnce } from "./controls";
+import { buildControls, buttonRow, checkRow, offerSchemeOnce, rangeRow, segRow } from "./controls";
+import { rangeFill, seg } from "./kit";
 import { Hotbar } from "./hotbar";
 import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
@@ -202,7 +203,7 @@ export class Hud {
       toggle: (id) => this.toggle(id),
       openQuests: () => this.quest.toggleLog(),
       openMap: () => this.openWorldMap(),
-      openHelp: () => { this.wins.help.hidden = false; },
+      openHelp: () => { fillHelp(this.wins.help.querySelector(".body")!); this.wins.help.hidden = false; }, // советы про мышь зависят от опций, поэтому справка собирается при открытии
       isAdmin: () => !!this.ctx.net.self?.isAdmin,
       net: () => this.ctx.net,
     });
@@ -236,11 +237,9 @@ export class Hud {
     keybinds.onChange(() => this.refreshKeys());
   }
 
-  /** Раскладка изменилась: справка, список клавиш в настройках, меню под картой, чат и панель умений. */
+  /** Раскладка изменилась: справка, меню под картой, чат и панель умений (список клавиш в настройках обновляет controls.ts). */
   private refreshKeys() {
     fillHelp(this.wins.help.querySelector(".body")!);
-    const dl = this.wins.settings.querySelector("dl.keys");
-    if (dl) dl.innerHTML = keysHtml();
     this.menuBar.replaceChildren();
     this.buildMenu();
     this.chatInput.placeholder = `${keybinds.label("chat", 0)} — написать в чат`;
@@ -401,9 +400,9 @@ export class Hud {
     mk("inv", "win-inv", "Снаряжение и сумка");
     mk("skills", "win-skills", "Дерево умений");
     mk("shop", "win-shop", "Торговка Марфа");
-    mk("settings", "win-settings", "Настройки");
+    mk("settings", "win-settings m", "Настройки");
     this.buildSettings(this.wins.settings.querySelector(".body")!);
-    mk("help", "win-help", "Помощь");
+    mk("help", "win-help m", "Помощь");
     fillHelp(this.wins.help.querySelector(".body")!);
     mk("worldmap", "win-worldmap", "Карта мира");
   }
@@ -463,50 +462,66 @@ export class Hud {
       this.uiScale = Math.min(150, Math.max(80, Number(localStorage.getItem("uiScale")) || 100));
       this.chatSize = Math.min(22, Math.max(14, Number(localStorage.getItem("chatSize")) || 14));
     } catch {}
-    body.innerHTML = `<div class="set-row"><label for="set-scale">Масштаб интерфейса</label><input id="set-scale" type="range" min="80" max="150" step="5"><output id="set-scale-v"></output></div>
-      <div class="set-row"><label for="set-chat">Размер шрифта чата</label><input id="set-chat" type="range" min="14" max="22" step="1"><output id="set-chat-v"></output></div>
-      <div class="set-row"><label for="set-vol">Громкость звуков</label><input id="set-vol" type="range" min="0" max="100" step="5"><output id="set-vol-v"></output></div>
-      <div class="set-row"><label for="set-music">Громкость музыки</label><input id="set-music" type="range" min="0" max="100" step="5"><output id="set-music-v"></output></div>
-      <div class="set-row"><label for="set-mute">Без звука</label><input id="set-mute" type="checkbox"></div>
-      <div class="set-row"><label for="set-selfNames">Мой ник над персонажем</label><input id="set-selfNames" type="checkbox"></div>
-      <div class="set-row"><label for="set-selfBars">Моя полоска здоровья</label><input id="set-selfBars" type="checkbox"></div>
-      <div class="set-row"><label for="set-names">Ники всех остальных</label><input id="set-names" type="checkbox"></div>
-      <div class="set-row"><label for="set-bars">Полоски здоровья всех остальных</label><input id="set-bars" type="checkbox"></div>
-      <div class="set-row"><label for="set-autoNames">В толпе прятать уровень у ников, кроме цели, группы и раненых (авто)</label><input id="set-autoNames" type="checkbox"></div>
-      <div class="set-row"><label for="set-crowdNums">Чужие цифры урона в толпе приглушать</label><input id="set-crowdNums" type="checkbox"></div>
-      <div class="set-row set-gearfx"><label>${esc(GEAR_FX.setting.label)}</label><div class="set-seg" role="group" aria-label="${esc(GEAR_FX.setting.label)}">${GEAR_FX.setting.modes.map((m) => `<button type="button" class="btn small" data-m="${m.id}">${esc(m.label)}</button>`).join("")}</div></div>
-      <p class="muted set-note">${esc(GEAR_FX.setting.note)}</p>
-      <div class="set-row"><button class="btn" id="set-resetwin">Сбросить расположение окон</button></div>
-      <div id="set-controls"></div>
-      <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Горячие клавиши</h3>
-      <dl class="keys">${keysHtml()}</dl>`;
-    body.querySelector<HTMLButtonElement>("#set-resetwin")!.onclick = () => resetWindowPositions();
-    buildControls(body.querySelector<HTMLElement>("#set-controls")!);
+    // разделы окна — .sec с заголовком .sec-h, строки — .set-list (kit.css); сами строки строят helpers из controls.ts
+    body.innerHTML = `<section class="sec">
+        <h3 class="sec-h">Интерфейс</h3>
+        <div class="set-list">
+          ${rangeRow("set-scale", "Масштаб интерфейса", 80, 150, 5)}
+          ${rangeRow("set-chat", "Размер шрифта чата", 14, 22, 1)}
+          ${buttonRow("set-resetwin", "Расположение окон", "", "Сбросить")}
+        </div>
+      </section>
+      <section class="sec">
+        <h3 class="sec-h">Звук</h3>
+        <div class="set-list">
+          ${rangeRow("set-vol", "Громкость звуков", 0, 100, 5)}
+          ${rangeRow("set-music", "Громкость музыки", 0, 100, 5)}
+          ${checkRow("set-mute", "Без звука")}
+        </div>
+      </section>
+      <section class="sec">
+        <h3 class="sec-h">Надписи и эффекты</h3>
+        <div class="set-list">
+          ${checkRow("set-selfNames", "Мой ник над персонажем")}
+          ${checkRow("set-selfBars", "Моя полоска здоровья")}
+          ${checkRow("set-names", "Ники всех остальных")}
+          ${checkRow("set-bars", "Полоски здоровья всех остальных")}
+          ${checkRow("set-autoNames", "В толпе прятать уровень у ников", "Кроме цели, группы и раненых (авто)")}
+          ${checkRow("set-crowdNums", "Чужие цифры урона в толпе приглушать")}
+          ${segRow("set-gearfx", GEAR_FX.setting.label, GEAR_FX.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.setting.note)}
+        </div>
+      </section>
+      <div class="sec" id="set-controls"></div>`;
+    const q = <T extends HTMLElement>(sel: string) => body.querySelector<T>(sel)!;
+    q("#set-resetwin").onclick = () => resetWindowPositions();
+    buildControls(q("#set-controls"));
     void offerSchemeOnce();
-    const sc = body.querySelector<HTMLInputElement>("#set-scale")!, ch = body.querySelector<HTMLInputElement>("#set-chat")!;
+    const sc = q<HTMLInputElement>("#set-scale"), ch = q<HTMLInputElement>("#set-chat");
     sc.value = String(this.uiScale);
     ch.value = String(this.chatSize);
-    sc.oninput = () => { this.uiScale = Number(sc.value); this.applySettings(); try { localStorage.setItem("uiScale", sc.value); } catch {} };
+    // масштаб применяется, когда ползунок отпущен: пока его тянут, интерфейс не меняет размер и ползунок не уезжает из-под курсора
+    sc.oninput = () => { q("#set-scale-v").textContent = sc.value + "%"; };
+    sc.onchange = () => { this.uiScale = Number(sc.value); this.applySettings(); try { localStorage.setItem("uiScale", sc.value); } catch {} };
     ch.oninput = () => { this.chatSize = Number(ch.value); this.applySettings(); try { localStorage.setItem("chatSize", ch.value); } catch {} };
-    const vol = body.querySelector<HTMLInputElement>("#set-vol")!, mute = body.querySelector<HTMLInputElement>("#set-mute")!, volV = body.querySelector<HTMLOutputElement>("#set-vol-v")!;
+    const vol = q<HTMLInputElement>("#set-vol"), mute = q<HTMLInputElement>("#set-mute"), volV = q<HTMLOutputElement>("#set-vol-v");
     vol.value = String(Math.round(sfx.getVolume() * 100));
     volV.textContent = vol.value + "%";
     mute.checked = sfx.isMuted();
-    const mus = body.querySelector<HTMLInputElement>("#set-music")!, musV = body.querySelector<HTMLOutputElement>("#set-music-v")!;
+    const mus = q<HTMLInputElement>("#set-music"), musV = q<HTMLOutputElement>("#set-music-v");
     mus.value = String(Math.round(sfx.getMusicVolume() * 100));
     musV.textContent = mus.value + "%";
     mus.oninput = () => { sfx.setMusicVolume(Number(mus.value) / 100); musV.textContent = mus.value + "%"; };
     vol.oninput = () => { sfx.setVolume(Number(vol.value) / 100); volV.textContent = vol.value + "%"; sfx.play("hit"); };
     mute.onchange = () => sfx.setMuted(mute.checked);
+    // заливку дорожки ставим после начальных значений; на input её обновляет сам rangeFill
+    for (const r of [sc, ch, vol, mus]) rangeFill(r);
     for (const key of ["selfNames", "selfBars", "names", "bars", "autoNames", "crowdNums"] as const) {
-      const c = body.querySelector<HTMLInputElement>("#set-" + key)!;
+      const c = q<HTMLInputElement>("#set-" + key);
       c.checked = overlay[key];
       c.onchange = () => setOverlay(key, c.checked);
     }
-    const segs = [...body.querySelectorAll<HTMLButtonElement>(".set-seg [data-m]")];
-    const paintSegs = () => segs.forEach((x) => { const on = x.dataset.m === gearFxMode(); x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); });
-    segs.forEach((x) => (x.onclick = () => { setGearFxMode(x.dataset.m as GearFxMode); paintSegs(); }));
-    paintSegs();
+    // режим эффектов — только свой #set-gearfx: у «Режима прицела» в controls.ts тоже data-m
+    seg(q("#set-gearfx"), (m) => setGearFxMode(m as GearFxMode), "m").set(gearFxMode());
     this.settingsBody = body;
   }
   private settingsBody: Element | null = null;

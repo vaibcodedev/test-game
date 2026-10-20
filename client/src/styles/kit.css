@@ -10,7 +10,7 @@
 .panel { background: var(--panel); border: 2px solid var(--line); border-radius: var(--r-3); box-shadow: var(--shadow-panel); }
 
 /* ---------- каркас окна: h2 (не прокручивается) → .body (единственная прокрутка) → .win-foot ----------
-   Ширина — классами .s/.m/.l/.xl. Пока .win в windows.css перебивает gap и overflow, окна без .body прокручиваются целиком. */
+   Ширина — классами .s/.m/.l/.xl. Окна без .body (ещё не переведённые) прокручиваются целиком — правило в windows.css. */
 .win { position: absolute; display: flex; flex-direction: column; gap: var(--sp-3); width: min(var(--win-w, var(--win-m)), calc(100vw - 24px)); max-height: calc(100vh - 140px); padding: var(--pad-win); overflow: hidden; }
 .win.s { --win-w: var(--win-s); }
 .win.m { --win-w: var(--win-m); }
@@ -94,6 +94,9 @@
 .tab.drop { color: var(--gold); background: var(--sel); } /* банк: вещь тащат на вкладку */
 .tab .count { color: var(--dim); font-size: var(--fs-sm); font-weight: var(--fw); }
 .tabs.fill > .tab { flex: 1 1 0; justify-content: center; }
+/* вкладка на кнопке .btn.tab (такую разметку кликают tests/): наведение и нажатие .btn не перекрашивают вкладку */
+.btn.tab:active:not(:disabled):not([aria-selected="true"]) { background: var(--panel-2); }
+.btn.tab[aria-selected="true"]:is(:hover, :active):not(:disabled) { background: var(--card); }
 .tabpanel { display: flex; flex-direction: column; gap: var(--sp-3); }
 
 /* ---------- переключатель вариантов .seg / .seg-opt (хелпер seg() в ui/kit.ts) ---------- */
@@ -188,6 +191,13 @@ select.input { padding-right: var(--sp-4); }
 .set-list > .set-row:hover { background: var(--panel-2); }
 .set-list > .set-row.stack { grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-1h); }
 .set-list > .set-row.stack:hover { background: none; }
+/* строка-флажок: подпись во всю ширину, флажок у того же правого края, что контролы в колонке --set-ctl-w */
+.set-list > .set-row.check { grid-template-columns: minmax(0, 1fr) auto; }
+/* варианты в строке: колонки почти равные, текст не режется; не поместился — вариант целиком уходит на новую строку */
+.set-list .seg { flex-wrap: wrap; }
+.set-list .seg-opt { min-width: max-content; }
+/* строки .set-list выходят на 8px за край текста (подсветка, линии): слева в теле окна нужен такой же запас, иначе прокрутка их обрежет */
+.win > .body:has(.set-list) { margin-left: calc(-1 * var(--sp-2)); padding-left: var(--sp-2); }
 .set-label { display: flex; flex-direction: column; gap: var(--sp-0); min-width: 0; color: var(--fg); line-height: 1.3; }
 .set-hint { color: var(--dim); font-size: var(--fs-xs); font-weight: var(--fw); }
 .set-ctl { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); min-width: 0; }
@@ -503,6 +513,7 @@ button.uframe.dead:hover { border-color: var(--gold); }
 .dialog-title { margin: 0; font-family: var(--font-head); font-size: round(nearest, var(--fs-head-win), var(--hu)); font-weight: var(--fw); word-spacing: var(--head-ws); line-height: 1.2; color: var(--gold); }
 .dialog-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); overflow-y: auto; overscroll-behavior: contain; }
 .dialog-body > * { flex: none; }
+.dialog-body > p { margin: 0; line-height: 1.45; }
 .dialog-foot { flex: none; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--line); }
 .dialog-foot > .win-foot-info { margin-right: auto; }
 .dialog.center .dialog-head, .dialog.center .dialog-foot { justify-content: center; }
@@ -525,7 +536,6 @@ button.uframe.dead:hover { border-color: var(--gold); }
 .login-btns .btn.primary, .cs-bar .btn.primary { min-height: 40px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-lg); } /* вход и выбор героя: главная кнопка крупная (станет .btn.lg) */
 .raid-banner.win { width: auto; } /* баннер рейда: класс win — цвет победы, не окно */
 .mbtn, .raid-leave { min-height: 0; } /* меню под мини-картой (height 30px) и компактная «Покинуть рейд»: высота своя, не min-height у .btn (уйдёт с переводом HUD) */
-.win-arena > .body { flex: none; overflow: visible; margin: 0; padding: 0; } /* арена пересоздаёт .body при каждой перерисовке и теряла бы прокрутку: как раньше, прокручивается .win (уйдёт с переводом арены) */
 
 /* ---------- цветовые утилиты: в конце файла, чтобы перебивать цвета компонентов ---------- */
 .c-r0 { color: var(--common); }
