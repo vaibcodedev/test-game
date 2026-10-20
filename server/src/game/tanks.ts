@@ -13,6 +13,7 @@ import type { Player } from "./Player";
 import { reachable } from "./skills";
 import type { CastCtx } from "./umbrath";
 import { applyRoot, applySlow } from "./effects";
+import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
 
@@ -34,6 +35,14 @@ function st(p: Player): St {
   }
   return s;
 }
+// значки в рамке героя (auras.ts): неуязвимость, антимагия, рунный клинок
+registerAuraHook((a, _now, aura) => {
+  const s = states.get(a as Player);
+  if (!s) return;
+  aura("invuln", s.invulnUntil);
+  aura("antimagic", s.amUntil, { v: s.amPct });
+  aura("runeblade", s.bladeUntil, { v: s.bladePct });
+});
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
 const isTank = (p: Player) => p.cls === "warrior" || p.cls === "deathknight";

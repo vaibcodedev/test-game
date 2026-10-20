@@ -101,7 +101,7 @@
 .bar.xp > i {
   background: linear-gradient(#e0c8ff, var(--xp));
 }
-/* нижняя строка: опыт, очки, еда слева, золото — у правого края */
+/* нижняя строка: опыт, очки, золото — у правого края */
 .hud-player .pts {
   display: flex;
   flex-wrap: wrap;
@@ -111,6 +111,38 @@
 }
 .hud-player .pts > .gold-amt {
   margin-left: auto;
+}
+/* бафы и дебафы (еда — тоже баф): строка значков под всем остальным; нет эффектов — нет строки (hidden), рамка растёт только вместе с ней */
+.hud-player .auras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.hud-player .auras .cell {
+  --cell: 26px;
+  cursor: help;
+}
+.hud-player .auras .cell.debuff {
+  border-color: var(--bad);
+}
+/* стаки — справа вверху, оставшееся время — снизу по центру */
+.hud-player .auras .qty {
+  top: 0;
+  bottom: auto;
+  font-size: var(--fs-2xs);
+  line-height: 1.1;
+}
+.hud-player .auras .tm {
+  position: absolute;
+  inset: auto 0 0;
+  text-align: center;
+  color: var(--fg);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-b);
+  line-height: 1.2;
+  text-shadow: var(--shadow-text), 0 0 3px var(--well);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 .pill {
   font-size: var(--fs);

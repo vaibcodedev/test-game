@@ -34,6 +34,7 @@ import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
 import { applySlow, tickEffects } from "./effects";
+import { auraPack } from "./auras";
 import type { Player } from "./Player";
 
 export type Broadcast = (type: string, msg: unknown) => void;
@@ -323,10 +324,17 @@ export class World {
       this.broadcast("fx", this.fx);
       this.fx = [];
     }
+    const wall = Date.now();
     for (const p of this.players.values()) {
       if (p.selfDirty) {
         p.selfDirty = false;
         p.send("self", p.selfState());
+      }
+      // эффекты на герое (значки в рамке): весь список уходит отдельным сообщением и только при смене набора, сроков, стаков или величин
+      const au = auraPack(p, this.time, wall);
+      if (au.sig !== p.aurasSig) {
+        p.aurasSig = au.sig;
+        p.send("auras", au.list);
       }
       if (p.bagsDirty) {
         p.bagsDirty = false;
@@ -605,7 +613,7 @@ export class World {
     p.petCast = null;
     p.dead = true;
     p.shieldAmt = 0;
-    p.bondUntil = p.boneUntil = p.frenzyUntil = p.curseUntil = p.bleedUntil = 0;
+    p.bondUntil = p.boneUntil = p.frenzyUntil = p.curseUntil = p.bleedUntil = p.venomUntil = 0;
     p.deadAt = this.time;
     p.unit.anim = Anim.Dead;
     p.unit.buffs = 0;

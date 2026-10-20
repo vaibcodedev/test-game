@@ -36,17 +36,6 @@
   width: 32px;
   height: 32px;
 }
-.food-buff {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  cursor: help;
-}
-.food-buff img {
-  width: 20px;
-  height: 20px;
-  image-rendering: pixelated;
-}
 /* кузнец: каркас, разделы, таблица, строки .row и кнопки цены — kit.css; ширина — .m, прокручивается только .body */
 .win-smith {
   left: 50%;

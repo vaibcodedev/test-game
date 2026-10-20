@@ -12,6 +12,7 @@ import type { Player } from "./Player";
 import { reachable } from "./skills";
 import { bleed, dotOf, endDot, type CastCtx } from "./umbrath";
 import { applyHaste } from "./effects";
+import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
 
@@ -22,6 +23,11 @@ function st(p: Player): St {
   if (!s) { s = { furyStacks: 0, furyUntil: 0, defReady: 0, defPending: false, massacre: 0 }; states.set(p, s); }
   return s;
 }
+// значок в рамке героя (auras.ts): «Разъярённый» со стаками
+registerAuraHook((a, _now, aura) => {
+  const s = states.get(a as Player);
+  if (s && s.furyStacks > 0) aura("fury", s.furyUntil, { n: s.furyStacks });
+});
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);

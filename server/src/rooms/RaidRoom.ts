@@ -150,6 +150,7 @@ export class RaidRoom extends Room<RaidState> {
           this.welcome(fresh);
           p.selfDirty = true;
           p.bagsDirty = true;
+          p.aurasSig = null; // список эффектов — заново
           return;
         }
       } catch {}

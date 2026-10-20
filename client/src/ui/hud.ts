@@ -14,7 +14,7 @@ import { isTownZone, T, Zone, ZONES, zoneAtPx, type WorldMap } from "../../../sh
 import { CITIES, CITY_WALL } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
 import { MOBS } from "../../../shared/mobs";
-import { Anim, UnitKind, type ChatLine, type SelfState, type ToastMsg } from "../../../shared/protocol";
+import { Anim, UnitKind, type Aura, type ChatLine, type SelfState, type ToastMsg } from "../../../shared/protocol";
 import { canLearn, classSkills, SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import type { Net, UnitState } from "../net";
 import { rankById } from "../../../shared/arena";
@@ -43,6 +43,7 @@ import { MOUNTS, MOUNT_IDS, MOUNT_SOURCES, MOUNT_TIERS, TIER_COLOR, mountSprite 
 import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
+import { AURAS, auraCompare, auraText, auraTimeLabel, auraTimeWords, foodOfAura } from "../../../shared/auras";
 import { DODGE_CAP, STAT_K } from "../../../shared/formulas";
 import { P } from "../../../shared/palette";
 
@@ -78,6 +79,9 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""):
   if (html) e.innerHTML = html;
   return e;
 }
+
+/** Эффект на герое в HUD: end — performance.now() окончания, 0 — бессрочный. */
+interface AuraRow { k: string; n?: number; v?: number; end: number }
 
 /** Слот экипировки → базовый предмет для силуэта пустой ячейки. */
 const ghostBase: Record<string, string> = {};
@@ -134,11 +138,15 @@ export class Hud {
   readonly bags: BagsUI;
   readonly quest: QuestUI;
   readonly tp: TeleportUI;
-  private foodUntil = 0;
-  private foodId = "";
+  /** Бафы и дебафы героя (сообщение "auras"): строка значков под полосами в рамке героя; еда — тоже баф. */
+  private auras: AuraRow[] = [];
+  private aurasEl = el("div", "auras");
+  private auraCells = new Map<string, { el: HTMLElement; tm: HTMLElement; st: HTMLElement; a: AuraRow }>();
+  /** Ключ эффекта, над значком которого сейчас подсказка (остаток времени в ней обновляется раз в секунду). */
+  private auraHover = "";
 
   /** Панели под рамкой героя (группа, питомец, задания) встают столбиком и не налезают друг на друга,
-   *  даже когда рамка растёт (очки, «В бою», еда) или панель появляется и пропадает. */
+   *  даже когда рамка растёт (очки, «В бою», строка эффектов) или панель появляется и пропадает. */
   private stackLeftPanels() {
     const order = [".hud-player", ".hud-party", ".hud-pet", ".hud-quests"];
     const layout = () => {
@@ -209,7 +217,8 @@ export class Hud {
     });
     this.bank = new BankUI(root, { itemTip: (it, s) => this.itemTip(it, s), tipFor: (e, h) => this.tipFor(e, h), hideTip: () => (this.tip.hidden = true), showInv: () => { if (this.wins.inv.hidden && this.ctx?.net.self) { this.wins.inv.hidden = false; this.renderSelf(this.ctx.net.self); } } });
     this.bags = new BagsUI(root, () => this.showInvWin());
-    window.setInterval(() => this.updateFoodLabel(), 15000);
+    this.aurasEl.hidden = true;
+    window.setInterval(() => this.tickAuras(), 1000);
     this.trade = new TradeUI(root, { itemTip: (it, s) => this.itemTip(it, s), tipFor: (e, h) => this.tipFor(e, h), hideTip: () => (this.tip.hidden = true) });
     this.trade.onChange = () => {
       if (this.trade.isOpen) this.wins.inv.hidden = false;
@@ -256,6 +265,7 @@ export class Hud {
     this.death.hidden = true;
     this.tip.hidden = true;
     this.targetBox.hidden = true;
+    this.setAuras([]);
   }
 
   /** Вызывается при каждом запуске сцены (мир или арена); подписки на сеть — один раз. */
@@ -271,6 +281,7 @@ export class Hud {
         if (document.body.dataset.faction !== s.faction) document.body.dataset.faction = s.faction;
         this.renderSelf(s);
       });
+      n.on("auras", (l) => this.setAuras(l));
       n.on("chat", (l) => this.chatLine(l));
       n.on("toast", (t) => this.toast(t));
       n.on("combat", (m) => this.setCombat(m.on));
@@ -682,8 +693,6 @@ export class Hud {
     this.bestiary.update(s);
     if (!s.isAdmin) this.admin.close();
     if (!s) return;
-    this.foodId = s.food?.id ?? "";
-    this.foodUntil = s.food ? Date.now() + s.food.left : 0;
     this.cook.update(s);
     this.quest.update(s);
     this.tp.update(s, this.lastPos);
@@ -702,8 +711,9 @@ export class Hud {
       <div class="bar hp"><i id="hp-fill"></i><span id="hp-text"></span></div>
       <div class="bar mp"><i id="mp-fill"></i><span id="mp-text"></span></div>
       ${s.xpNext ? `<div class="bar xp" title="Опыт: ${xpPct}%"><i style="width:${xpPct}%"></i></div>` : ""}
-      <div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}<span class="food-buff" hidden></span>${gold(s.gold)}</div>`;
-    this.updateFoodLabel();
+      <div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}${gold(s.gold)}</div>`;
+    // строка эффектов — один и тот же элемент: значки и подсказки переживают перерисовку рамки
+    this.player.append(this.aurasEl);
     this.player.querySelectorAll<HTMLElement>("[data-open]").forEach((p) => (p.onclick = () => this.toggle(p.dataset.open!)));
 
     // панель умений: строится один раз, см. ui/hotbar.ts
@@ -736,19 +746,73 @@ export class Hud {
     if (!this.wins.shop.hidden) this.renderShop(s);
   }
 
-  /** Иконка активной еды у рамки героя: оставшиеся минуты и подсказка с бонусами. */
-  private updateFoodLabel() {
-    const box = this.player.querySelector<HTMLElement>(".food-buff");
-    if (!box) return;
-    const d = FOOD[this.foodId];
-    const left = this.foodUntil - Date.now();
-    if (!d || left <= 0) { box.hidden = true; return; }
-    const min = Math.max(1, Math.ceil(left / 60000));
-    box.hidden = false;
-    box.innerHTML = `<img src="${icon(d.icon)}" alt=""><span>${min} мин.</span>`;
-    box.onmouseenter = (e) => { this.tip.innerHTML = foodTip(d, Math.max(1, Math.ceil((this.foodUntil - Date.now()) / 60000))); this.tip.hidden = false; this.moveTip(e); };
-    box.onmousemove = (e) => this.moveTip(e);
-    box.onmouseleave = () => (this.tip.hidden = true);
+  // ---------- бафы и дебафы в рамке героя ----------
+  /** Новый полный список эффектов (сообщение "auras" или синтетический из аудита): отсчёт идёт здесь, от момента получения. */
+  setAuras(list: Aura[]) {
+    const t = performance.now();
+    this.auras = list.map((a) => ({ k: a.k, n: a.n, v: a.v, end: a.ms > 0 ? t + a.ms : 0 }));
+    this.renderAuras();
+  }
+
+  /** Строка значков под полосами: сначала бафы, затем дебафы. Ячейки живут между обновлениями (меняется только время и стаки), нет эффектов — нет строки. */
+  private renderAuras() {
+    const t = performance.now();
+    const rows = this.auras.filter((a) => AURAS[a.k] && (!a.end || a.end > t)).sort((a, b) => auraCompare(a.k, b.k));
+    this.auras = rows;
+    const keep = new Set(rows.map((r) => r.k));
+    for (const [k, c] of this.auraCells) {
+      if (keep.has(k)) continue;
+      if (this.auraHover === k) { this.auraHover = ""; this.tip.hidden = true; }
+      c.el.remove();
+      this.auraCells.delete(k);
+    }
+    rows.forEach((a, i) => {
+      let c = this.auraCells.get(a.k);
+      if (!c) this.auraCells.set(a.k, (c = this.makeAuraCell(a)));
+      c.a = a;
+      if (this.aurasEl.children[i] !== c.el) this.aurasEl.insertBefore(c.el, this.aurasEl.children[i] ?? null);
+      const tm = a.end ? auraTimeLabel(a.end - t) : "";
+      if (c.tm.textContent !== tm) c.tm.textContent = tm;
+      const st = a.n && a.n > 1 ? String(a.n) : "";
+      if (c.st.textContent !== st) { c.st.textContent = st; c.st.hidden = !st; }
+    });
+    this.aurasEl.hidden = rows.length === 0;
+  }
+
+  /** Ячейка эффекта: значок, стаки, время; у дебафа красная рамка; еда — .food-buff. Подсказка — общая (this.tip). */
+  private makeAuraCell(a: AuraRow) {
+    const d = AURAS[a.k];
+    const e = el("div", `cell aura${d.kind === "debuff" ? " debuff" : ""}${foodOfAura(a.k) ? " food-buff" : ""}`, `<img src="${icon(d.icon)}" alt=""><span class="qty" hidden></span><span class="tm"></span>`);
+    e.setAttribute("role", "img");
+    e.setAttribute("aria-label", d.name);
+    const c = { el: e, tm: e.querySelector<HTMLElement>(".tm")!, st: e.querySelector<HTMLElement>(".qty")!, a };
+    e.onmouseenter = (ev) => { this.auraHover = a.k; this.tip.innerHTML = this.auraTip(c.a); this.tip.hidden = false; this.moveTip(ev); };
+    e.onmousemove = (ev) => this.moveTip(ev);
+    e.onmouseleave = () => { if (this.auraHover === a.k) { this.auraHover = ""; this.tip.hidden = true; } };
+    return c;
+  }
+
+  /** Подсказка эффекта: название, вид и остаток времени, описание с величиной и стаками; у еды — подсказка блюда. */
+  private auraTip(a: AuraRow): string {
+    const d = AURAS[a.k];
+    if (!d) return "";
+    const left = a.end ? Math.max(0, a.end - performance.now()) : 0;
+    const dish = foodOfAura(a.k);
+    if (dish) return foodTip(FOOD[dish], Math.max(1, Math.ceil(left / 60000)));
+    const bad = d.kind === "debuff";
+    return [
+      `<div class="t${bad ? " warn" : ""}">${esc(d.name)}</div>`,
+      `<div class="d">${bad ? "Дебафф" : "Бафф"} · ${a.end ? `осталось ${auraTimeWords(left)}` : "без срока"}</div>`,
+      `<div>${esc(auraText(d.desc, a.v, a.n, formatNumber))}</div>`,
+    ].join("");
+  }
+
+  /** Раз в секунду: время в углу значков, исчезновение истёкших и остаток в открытой подсказке. */
+  private tickAuras() {
+    if (!this.auras.length) return;
+    this.renderAuras();
+    const c = this.auraHover ? this.auraCells.get(this.auraHover) : undefined;
+    if (c && !this.tip.hidden) this.tip.innerHTML = this.auraTip(c.a);
   }
 
   /** Раздел «Эффекты снаряжения» в окне «Герой» открыт? Окно пересоздаёт разметку при каждом обновлении, поэтому состояние живёт здесь и в localStorage. */

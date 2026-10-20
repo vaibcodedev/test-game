@@ -163,6 +163,7 @@ export class ArenaRoom extends Room<ArenaState> {
         if (part && this.world.players.get(client.sessionId) === p) {
           this.welcome(fresh, part);
           p.selfDirty = true;
+          p.aurasSig = null; // список эффектов — заново
           if (this.result) fresh.send("arena:result", this.result);
           return;
         }

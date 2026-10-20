@@ -16,6 +16,7 @@ import type { Player } from "./Player";
 import { reachable } from "./skills";
 import { addDot, dotsOf, removeDots, type CastCtx } from "./umbrath";
 import { applyHaste, applySlow, applyWeaken } from "./effects";
+import { registerAuraHook } from "./auras";
 import { World, type Actor, type HitOpts } from "./World";
 import { leechMult } from "../../../shared/balance";
 
@@ -44,6 +45,14 @@ function st(p: Player): St {
   }
   return s;
 }
+// значки в рамке героя (auras.ts): стихийный ритм, осколки душ, метаморфоза
+registerAuraHook((a, _now, aura) => {
+  const s = states.get(a as Player);
+  if (!s) return;
+  if (s.rhythm.n > 0) aura("rhythm", s.rhythm.until, { n: s.rhythm.n });
+  if (s.shards > 0) aura("shards", s.shardUntil, { n: s.shards });
+  aura("meta", s.metaUntil, { v: s.metaPct });
+});
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
 const weaponAvg = (p: Player) => ((p.derived.dmgMin + p.derived.dmgMax) / 2) * p.derived.skillMult;

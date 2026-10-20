@@ -6,7 +6,7 @@ import type { RumorMsg } from "../../shared/rumors";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../shared/encounters";
 import type { TradeView } from "../../shared/trade";
 import type { BankView } from "../../shared/bank";
-import type { ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
+import type { Aura, ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
 import { ROOM_NAME } from "../../shared/protocol";
 import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, RECONNECT_SEC } from "../../shared/accounts";
 
@@ -28,6 +28,8 @@ function timeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 
 type Events = {
   self: SelfState;
+  /** Эффекты на герое (бафы и дебафы): полный список, приходит при смене набора или сроков. */
+  auras: Aura[];
   fx: Fx[];
   chat: ChatLine;
   toast: ToastMsg;
@@ -345,6 +347,7 @@ export class Net {
       this.self = s;
       this.emit("self", s);
     });
+    room.onMessage("auras", (list: Aura[]) => this.emit("auras", list));
     room.onMessage("fx", (list: Fx[]) => this.emit("fx", list));
     room.onMessage("chat", (l: ChatLine) => this.emit("chat", l));
     room.onMessage("toast", (t: ToastMsg) => this.emit("toast", t));

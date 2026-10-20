@@ -223,6 +223,7 @@ export class WorldRoom extends Room<WorldState> {
     p.offline = false;
     p.selfDirty = true;
     p.bagsDirty = true;
+    p.aurasSig = null; // список эффектов — заново: пока связи не было, сообщения терялись
     const key = p.name.toLowerCase();
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: false, resumed: true });
     sendNodes(this.world, p);

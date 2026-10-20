@@ -474,6 +474,23 @@ async function stageHud() {
     await sleep(300);
   }, { zoom: true });
   await item("hud-player-combat", "Рамка героя: «В бою»", ".hud-player", "hud.setCombat(true)", () => run("hud.setCombat(true)"), { zoom: true, after: () => run("hud.setCombat(false)") });
+  // сроки подлиннее: отсчёт идёт в самой странице, и значки не должны истечь, пока делается снимок
+  await item("hud-player-auras", "Рамка героя: бафы и дебафы", ".hud-player", "hud.setAuras(): синтетический список — бафы (щит, обновление, ускорение, ярость со стаками, еда на 1 ч), затем дебафы (оглушение, замедление, кровотечение и яд со стаками, горение, бессрочный «Чужак»)", () => run(`
+    window.__aurasKeep = hud.auras;
+    hud.setAuras(a);
+  `, [
+    { k: "shield", ms: 45000, v: 340 },
+    { k: "renew", ms: 58000, v: 52 },
+    { k: "haste", ms: 30000, v: 25 },
+    { k: "fury", ms: 120000, n: 4 },
+    { k: "food_feast", ms: 3600000 },
+    { k: "stun", ms: 40000 },
+    { k: "slow", ms: 90000, v: 30 },
+    { k: "bleed", ms: 300000, n: 2 },
+    { k: "venom", ms: 55000, n: 3 },
+    { k: "burn", ms: 35000 },
+    { k: "intruder", ms: 0 },
+  ]), { zoom: true, after: () => run("hud.auras = window.__aurasKeep || []; delete window.__aurasKeep; hud.renderAuras();") });
   await item("hud-minimap", "Миникарта с кнопками меню", ".hud-mini", "кнопки «Сумка/Умения/Карта/Меню» и кнопка сворачивания", async () => {}, { zoom: true });
   await item("hud-minimap-collapsed", "Миникарта свёрнута", ".hud-mini", "hud.toggleMinimap()", () => run("hud.toggleMinimap()"), { zoom: true, after: () => run("hud.toggleMinimap()") });
   await item("hud-hotbar", "Панель умений (хотбар)", ".hud-bar", "изученные умения встали на панель, рядом слоты маунта и питомца", async () => {}, { zoom: true });

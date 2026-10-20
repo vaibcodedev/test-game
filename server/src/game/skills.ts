@@ -427,6 +427,8 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       const token = (hotToken.get(a.id) || 0) + 1;
       hotToken.set(a.id, token);
       const amt = healPower(p) * v.tick / 100;
+      // значок эффекта в рамке героя (auras.ts): сами тики ниже; новое «Обновление» заменяет прежнее (token)
+      if (a.player) { a.player.renewUntil = w.time + v.dur * 1000; a.player.renewAmt = Math.round(amt); a.player.renewBy = p; }
       w.emit({ t: "buff", id: a.id, k: "renew", ms: v.dur * 1000 });
       for (let i = 1; i <= v.ticks; i++)
         w.later(i * 1000, () => {

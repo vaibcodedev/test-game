@@ -95,6 +95,8 @@ export class Player {
   /** Умбрат: проклятие и кровотечение на герое (для значков), кровавые узы, костяная броня, безумие. */
   curseUntil = 0;
   bleedUntil = 0;
+  /** Стаки кровотечения на герое (addDot): для значка эффекта (auras.ts). */
+  bleedStacks = 0;
   bondBy: Player | null = null;
   bondUntil = 0;
   bondShare = 0;
@@ -113,6 +115,10 @@ export class Player {
   lastStandUntil = 0;
   lastStandReady = 0;
   hastePct = 0;
+  /** «Обновление» (лечение со временем) на герое: до какого момента, лечение за секунду и кто лечит. Только для значка эффекта (auras.ts): сами тики — таймеры skills.ts. */
+  renewUntil = 0;
+  renewAmt = 0;
+  renewBy: Player | null = null;
   /** Последний момент боя: вне боя регенерация быстрее. */
   combatAt = -1e9;
   /** Последнее отправленное клиенту состояние «в бою». */
@@ -138,6 +144,9 @@ export class Player {
   critNextUntil = 0;
   poisons = new Map<string, { stacks: number; until: number; dmg: number }>();
   burnUntil = 0;
+  /** Яд разбойника-героя на этом герое (applyPoison): срок и стаки для значка эффекта (auras.ts). */
+  venomUntil = 0;
+  venomStacks = 0;
   regenAcc = 0;
   manaAcc = 0;
   bags = new Map<string, LootBag>();
@@ -145,6 +154,8 @@ export class Player {
   /** Только для тестов: гарантированный лут. */
   forceDrop = false;
   selfDirty = true;
+  /** Подпись последнего списка эффектов, отправленного клиенту ("auras", auras.ts); null — клиенту список ещё не слали (вход, переподключение). */
+  aurasSig: string | null = null;
   lastChat = 0;
   /** Время последнего запроса осмотра (мс World.time): не чаще раза в секунду. */
   lastInspect = -1e9;

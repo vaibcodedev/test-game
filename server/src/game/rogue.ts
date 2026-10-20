@@ -11,6 +11,7 @@ import type { Player } from "./Player";
 import * as rv from "./reaver";
 import type { CastCtx } from "./umbrath";
 import { applyHaste, applyWeaken } from "./effects";
+import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 
 const FACE: Record<number, [number, number]> = { [Dir.Down]: [0, 1], [Dir.Up]: [0, -1], [Dir.Left]: [-1, 0], [Dir.Right]: [1, 0] };
@@ -25,6 +26,13 @@ function st(p: Player): St {
   if (!s) { s = { ambushUntil: 0, danceUntil: 0, escapeReady: 0 }; states.set(p, s); }
   return s;
 }
+// значки в рамке героя (auras.ts): «Засада» и танец теней (неуязвимость)
+registerAuraHook((a, _now, aura) => {
+  const s = states.get(a as Player);
+  if (!s) return;
+  aura("as_ambush", s.ambushUntil);
+  aura("dance", s.danceUntil);
+});
 
 /** Единичный вектор взгляда цели. */
 export function facing(a: Actor): [number, number] {
@@ -65,6 +73,7 @@ export function applyPoison(w: World, p: Player, target: Actor, rank: number, ad
   e.dmg = Math.max(e.dmg, dmg);
   e.until = w.time + v.dur * 1000;
   p.poisons.set(target.id, e);
+  if (w.isPlayer(target)) { target.venomUntil = e.until; target.venomStacks = e.stacks; } // значок яда у героя-жертвы (auras.ts)
   w.emit({ t: "aoe", k: "poison", x: target.x, y: target.y, r: 28 });
   if (live) return;
   const tick = () => {
@@ -119,6 +128,7 @@ export function castRogue(c: CastCtx): string | null | undefined {
       c.ok(); face(t);
       const stacks = poisonOf(w, p, t)?.stacks ?? 0;
       p.poisons.delete(t.id); // тик яда сам оборвётся
+      if (w.isPlayer(t)) t.venomUntil = 0;
       w.emit({ t: "aoe", k: "poison", x: t.x, y: t.y, r: 36 + stacks * 8 });
       w.hit(p, t, { mult: (v.dmg + v.burst * stacks) / 100, skill: true, kind: "poison", threat: 1 });
       return null;

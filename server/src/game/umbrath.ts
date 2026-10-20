@@ -60,8 +60,10 @@ export function addDot(w: World, p: Player, target: Actor, key: "curse" | "bleed
   e.dmg = Math.max(e.dmg, dmg);
   e.until = Math.max(e.until, w.time + durS * 1000);
   dots.set(k, e);
-  if (key === "bleed") target.bleedUntil = Math.max(target.bleedUntil, e.until);
-  else target.curseUntil = Math.max(target.curseUntil, e.until);
+  if (key === "bleed") {
+    target.bleedUntil = Math.max(target.bleedUntil, e.until);
+    if (w.isPlayer(target)) target.bleedStacks = e.stacks; // стаки для значка эффекта в рамке героя (auras.ts)
+  } else target.curseUntil = Math.max(target.curseUntil, e.until);
   if (live) return;
   const tick = () => {
     const c = dots.get(k);

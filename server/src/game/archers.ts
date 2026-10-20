@@ -13,6 +13,7 @@ import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { addDot, dots, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
+import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
 
@@ -45,6 +46,14 @@ function st(p: Player): St {
   }
   return s;
 }
+// значки в рамке героя (auras.ts): окна «Ловкого отскока», «Засады» и «Мастера теней» (метка охотника лежит на цели, не на герое)
+registerAuraHook((a, _now, aura) => {
+  const s = states.get(a as Player);
+  if (!s) return;
+  aura("trickroll", s.rollUntil, { v: s.rollPct });
+  aura("dr_ambush", s.ambushUntil);
+  aura("meld", s.meldUntil);
+});
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
 const isArcher = (p: Player) => p.cls === "ranger" || p.cls === "darkranger";

@@ -15,6 +15,7 @@ import { SKILLS } from "../../../shared/skills";
 import type { Player } from "./Player";
 import { applyHeal, healPower, reachable, resolveAlly, type Ally } from "./skills";
 import { clearDots, mostWounded, type CastCtx } from "./umbrath";
+import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { BAL, leechMult, pvpHealMult } from "../../../shared/balance";
 
@@ -36,6 +37,14 @@ function st(p: Player): St {
   }
   return s;
 }
+// значки в рамке героя (auras.ts): усиление урона, защита благословения, алый прилив
+registerAuraHook((a, _now, aura) => {
+  const s = states.get(a as Player);
+  if (!s) return;
+  aura("dmgboost", s.dmgUntil, { v: s.dmgPct });
+  aura("bless", s.blessUntil, { v: s.blessReduce });
+  aura("tide", s.tideUntil, { v: s.tidePct });
+});
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
 const weaponAvg = (p: Player) => ((p.derived.dmgMin + p.derived.dmgMax) / 2) * p.derived.skillMult;

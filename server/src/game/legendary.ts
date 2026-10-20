@@ -9,6 +9,7 @@ import type { Actor, HitOpts, World } from "./World";
 import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effects";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
+import { registerAuraHook } from "./auras";
 import { leechMult } from "../../../shared/balance";
 
 type Eff = LegendaryEffect;
@@ -25,6 +26,13 @@ const st = (p: Player): St => {
   if (!s) STATE.set(p, (s = { cd: {}, shield: 0, shieldUntil: 0, stacks: 0, stacksUntil: 0, reviveUntil: 0 }));
   return s;
 };
+// значки в рамке героя (auras.ts): барьер и заряды «frenzy» (окно «phoenix», 0,4 с, — не эффект)
+registerAuraHook((a, _now, aura) => {
+  const s = STATE.get(a as Player);
+  if (!s) return;
+  if (s.shield >= 1) aura("leg_barrier", s.shieldUntil, { v: s.shield });
+  if (s.stacks > 0) aura("leg_frenzy", s.stacksUntil, { n: s.stacks });
+});
 /** Перезарядка свойства: true — готово (и сразу ставится заново на ms). */
 function ready(w: World, p: Player, key: string, ms: number): boolean {
   const s = st(p);
