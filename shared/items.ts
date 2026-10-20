@@ -284,8 +284,8 @@ export function newUid(): string {
   return Date.now().toString(36) + "-" + uidCounter.toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36);
 }
 
-/** Множитель урона и брони базы по редкости. Был [1, 1.2, 1.45, 1.7]: с заточкой +10 эпик/легендарка давали ×3.7 к урону героя (задача 45). */
-export const RARITY_MULT = [1, 1.2, 1.35, 1.5];
+/** Множитель урона и брони базы по редкости. Был [1, 1.2, 1.45, 1.7]: с заточкой +10 эпик/легендарка давали ×3.7 к урону героя, теперь максимальная экипировка ≈ ×2 (задача 45). */
+export const RARITY_MULT = [1, 1.2, 1.3, 1.4];
 
 /** Предмет по базе или по id модели каталога (data/items.json). prefer — приоритет аффиксов. */
 export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () => number = Math.random, prefer: ItemStatKey[] = []): Item {

@@ -161,8 +161,11 @@ async function main() {
     for (const b of [P1, P2]) b.send("dbg", { op: "level", v: 30 });
     P1.send("dbg", { op: "item", unique: "ashbringer" });
     await P1.until(() => P1.self!.inventory.some((i) => i?.unique === "ashbringer"), 3000, "оружие");
+    // как в 1×1: уровень под требование оружия, иначе «Щит» бьёт стартовым мечом и не укладывается в бой
+    const ash2 = P1.self!.inventory.find((i) => i?.unique === "ashbringer")!;
+    if (ash2.req > 30) { P1.send("dbg", { op: "level", v: ash2.req }); await P1.until(() => P1.self!.level === ash2.req, 3000, "уровень под оружие"); }
     P1.send("equip", { index: P1.self!.inventory.findIndex((i) => i?.unique === "ashbringer") });
-    await sleep(200);
+    await P1.until(() => P1.self!.equip.weapon?.unique === "ashbringer", 2000, "оружие надето");
     await check("группа: приглашение и принятие", async () => {
       P1.send("party:invite", { name: "Посох" });
       await P2.until(() => !!P2.partyInvite, 2000, "приглашение");

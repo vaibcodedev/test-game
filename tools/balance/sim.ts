@@ -3,10 +3,15 @@
  * Player/Mob, castSkill (server/src/game/skills.ts) и модули умений классов. Формулы не переписываются.
  *
  * Запуск: npx tsx tools/balance/sim.ts [--out tools/balance/report.json] [--seed 1] [--quick] [--stable]
- *         [--only dummy,pve,heal,pvp] [--classes warrior,mage] [--levels 10,30,60,100] [--pvp-levels 30,100] [--reps 5]
- *         [--dummy-seeds 5] [--pdummy-n 3]
+ *         [--only dummy,pve,heal,pvp,pvpmax,boss] [--classes warrior,mage] [--levels 10,30,60,100] [--pvp-levels 30,100] [--reps 5]
+ *         [--dummy-seeds 5] [--pdummy-n 3] [--no-max] [--boss-seeds 2] [--solo-limit 600] [--group-limit 480]
+ * Блоки: dummy — манекен 60 с (+ максимальная экипировка на 100); pve — моб, элита, серия, выносливость; heal — лекари;
+ *         pvp — дуэли на арене (экипировка уровня), pvpmax — дуэли 100 ур. в максимальной экипировке (эпик +10, легендарки +10);
+ *         boss — соло на уровне босса (уровня/макс./стоя), группа из 5 (Сольгард/Умбрат), герой 100 и группа 100 (подстройка босса).
  * Разбор: --trace <умение|dot:вид|auto> (удары по манекену), --pve1 warrior,30,drowned[,приставка] (один бой),
- *         --duel warrior,mage,100[,повтор] (тот же бой, что в матрице PvP).
+ *         --duel warrior,mage,100[,повтор][,max] (тот же бой, что в матрице PvP),
+ *         --boss1 ashlord,46,warrior:max+healer+mage[,stand][,уровень героев] (один бой с боссом: урон, смерти, лечение).
+ * GCD (data/balance.json gcd) соблюдается: castSkill не пускает второе умение без offGcd раньше отката.
  * --stable: без блока run (время запуска и длительность), чтобы отчёты двух прогонов сравнивались побайтно.
  *
  * Math.random подменён генератором mulberry32 с сидом (каждый бой — свой сид), время — только w.update(TICK_MS).
@@ -53,11 +58,13 @@ const QUICK = argv.includes("--quick");
 const STABLE = argv.includes("--stable");
 const OUT = arg("out") ?? "tools/balance/report.json";
 const BASE_SEED = Number(arg("seed") ?? 1) || 1;
-const ONLY = new Set((arg("only") ?? "dummy,pve,heal,pvp").split(","));
+const ONLY = new Set((arg("only") ?? "dummy,pve,heal,pvp,pvpmax,boss").split(","));
 const LEVELS = (arg("levels") ?? "10,30,60,100").split(",").map(Number);
 const PVP_LEVELS = (arg("pvp-levels") ?? "30,100").split(",").map(Number);
 const PVP_REPS = Number(arg("reps") ?? (QUICK ? 1 : 5));
 const PVE_SEEDS = QUICK ? 1 : 3;
+/** --pve-gear max: блок pve в максимальной экипировке (эпик +10, легендарки +10) — проверка «моб не быстрее ~2 с». */
+const PVE_GEAR: "level" | "max" = arg("pve-gear") === "max" ? "max" : "level";
 const ELITE_SEEDS = QUICK ? 2 : 5;
 /** Сидов на клетку манекена (среднее и разброс). */
 const DUMMY_SEEDS = Math.max(1, Number(arg("dummy-seeds") ?? (QUICK ? 2 : 5)));
@@ -618,19 +625,21 @@ function think(w: World, a: Agent) {
     const d = w.dist(p, e);
     if (d < best) { best = d; target = e; }
   }
-  if (!target) { p.targetId = null; p.unit.target = ""; p.moveTo = null; return; }
+  if (!target) { p.targetId = null; p.unit.target = ""; p.moveTo = null; p.engaged = p.approach = false; return; }
+  // выбор цели и атака раздельно (задача 115): бот, как команда attack, включает автоатаку и подход
+  const engage = (e: Actor) => { p.targetId = e.id; p.unit.target = e.id; p.engaged = p.approach = true; };
   // уход из телеграфа/лужи: пока цель уклонения не достигнута, бот только бежит (без умений и автоатаки)
   if (a.danger) {
     const zones = a.danger().filter((z) => t - z.at >= REACT_MS);
     if (zones.some((z) => inDanger(z, p.x, p.y, 4))) {
       if (!a.escape || zones.some((z) => inDanger(z, a.escape!.x, a.escape!.y, 6))) { a.escape = findSafe(w, p, zones, target, a.anchor); if (a.escape) a.dodges++; }
-      if (a.escape) { p.targetId = target.id; p.unit.target = target.id; p.moveTo = { ...a.escape }; return; }
+      if (a.escape) { engage(target); p.moveTo = { ...a.escape }; return; }
     } else if (a.escape) { a.escape = null; p.moveTo = null; }
   }
   // далеко от центра арены босса — шаг назад к центру (тянем босса за собой и не даём ему уйти в возврат)
   if (a.anchor && Math.hypot(p.x - a.anchor.x, p.y - a.anchor.y) > a.anchor.r * 0.7) {
     const ang = Math.atan2(a.anchor.y - p.y, a.anchor.x - p.x);
-    p.targetId = target.id; p.unit.target = target.id;
+    engage(target);
     p.moveTo = { x: p.x + Math.cos(ang) * 70, y: p.y + Math.sin(ang) * 70 };
     return;
   }
@@ -639,11 +648,11 @@ function think(w: World, a: Agent) {
     // из скрытности не бьём автоатакой: подходим и открываем умением
     p.targetId = null;
     p.unit.target = "";
+    p.engaged = p.approach = false;
     const reach = p.ranged() ? 280 : 48 + w.radiusOf(target);
     p.moveTo = best > reach ? { x: target.x, y: target.y } : null;
   } else {
-    p.targetId = target.id;
-    p.unit.target = target.id;
+    engage(target);
     if (a.kite && p.ranged() && best < KEEP_MIN) {
       const ang = Math.atan2(p.y - target.y, p.x - target.x);
       for (const da of [0, 0.7, -0.7, 1.4, -1.4]) {
@@ -834,7 +843,7 @@ interface FightResult { win: boolean; dead: boolean; timeout: boolean; kills: nu
 function pveRun(cls: ClassId, level: number, queue: { def: MobDef; elite: number }[], seedKey: string, limitSec: number, verbose = false): FightResult {
   seedRng("pve", cls, level, seedKey);
   const w = makeWorld(FIELD, true);
-  const b = build(cls, level);
+  const b = build(cls, level, "pve", PVE_GEAR);
   const p = spawnPlayer(w, b, FIELD_C.x, FIELD_C.y);
   let cur: Mob | null = null, idx = 0, startAt = 0, firstAt = -1;
   const ttk: number[] = [], approach: number[] = [];
@@ -875,7 +884,7 @@ function pveRun(cls: ClassId, level: number, queue: { def: MobDef; elite: number
 function endureRun(cls: ClassId, level: number, def: MobDef, seedKey: string, limitSec = 300) {
   seedRng("endure", cls, level, def.id, seedKey);
   const w = makeWorld(FIELD, true);
-  const p = spawnPlayer(w, build(cls, level), FIELD_C.x, FIELD_C.y);
+  const p = spawnPlayer(w, build(cls, level, "pve", PVE_GEAR), FIELD_C.x, FIELD_C.y);
   const m = spawnMob(w, def, level, p.x + 170, p.y);
   immortal(m);
   const a = makeAgent(p, { enemies: () => [m] });
@@ -1306,13 +1315,14 @@ const report: Record<string, unknown> = {
       "Код боя настоящий: World.update(TICK_MS), Player/Mob, castSkill и модули умений; модель PvP (data/balance.json pvp) применяется внутри World.hit/heal; таймеры умений с owner (гибель/уход владельца отменяет их, как в игре).",
       "Характеристики: танк — Сила/Выносливость 1:1; остальные — 2/3 в главную, 1/3 в Выносливость.",
       "Умения, PvE-сборка: уронные активные (поле урона или усиление урона; у лекарей и лечение) по кругу до максимума → прочие пассивки → утилитарные/защитные активные → защитные пассивки (требования доучиваются). PvP-сборка: утилитарные/защитные активные → уронные → защитные пассивки → прочие.",
-      "Экипировка: Rare, ilvl = уровень, средний бросок аффиксов; аффикс — главная характеристика (+Выносливость у кольца/амулета); база слота — лучшая по оценке урона×живучести; модель — rollModel (только имя/вид). Сборка идёт на своём генераторе и не сдвигает случайность боёв.",
-      "Без зелий, еды, питомцев и легендарок. Бот решает раз в 0.25 с, не больше одного умения за решение (как боты арены).",
+      "Экипировка уровня: Rare, ilvl = уровень, средний бросок аффиксов; аффикс — главная характеристика (+Выносливость у кольца/амулета); все 8 слотов (с плащом); база слота — лучшая по оценке урона×живучести; модель — rollModel (только имя/вид). Максимальная: эпическая +10 того же уровня (аффиксы: главная, крит, Выносливость, здоровье; танку — Выносливость и здоровье) и легендарки +10 яруса не выше уровня, если подходят классу (при почти равной оценке берётся легендарка). Сборка идёт на своём генераторе и не сдвигает случайность боёв.",
+      "Без зелий и еды. Бот решает раз в 0.25 с, не больше одного умения за решение (как боты арены), соблюдает GCD. Цель выбирается и атакуется (engaged/approach, как команда attack).",
+      "Боссы: настоящий контроллер (фазы, телеграфы, лужи, помощники), арена из карты мира, бот с уклонением видит телеграф через 0.35 с и бежит в ближайшую безопасную точку внутри арены; «стоя» — не уклоняется. Время — от первого урона по боссу; лимит соло 600 с, группы 480 с.",
       "Защитные умения — при просадке здоровья; taunt — только если моб бьёт не героя (по игроку — всегда), tp_glare/tp_banner — если героя били последние 3 с, ауры Кровотворца — если рядом раненый; лекари лечат по порогам; остальное — по готовности, длинная перезарядка первой. Без кайта бот подходит к цели под уронное умение по площади вокруг себя.",
       `Манекен 60 с, ${DUMMY_SEEDS} сидов на клетку (среднее, min–max). Чистый: бессмертный, не бьёт. Под давлением: HP кабана своего уровня ×${PDUMMY_N}, сразу появляется заново (казни и «при убийстве» работают), бьёт героя уроном кабана своего уровня раз в 1.5 с; HP героя ниже 25% поднимается до 50%. Классы ранжируются по DPS под давлением.`,
       "Доли урона: прямые удары — по умению, тики DoT и прочий фиксированный урон без процов (flat + noBreak + noProc + без крита) — dot:<вид>, а не умению, начавшему цепочку.",
       "PvE: самые частые мобы мира около уровня (generateMap), моб появляется в 170 пикс.; TTK — от первого урона героя до смерти моба, подход отдельно; элита — настоящий Mob.rollElite с заданной приставкой; опыт выключен. Выносливость: герой только стоит и бьёт автоатакой моба своего уровня с бесконечным HP — время от первого удара моба до смерти (цель BALANCE.md ~45 с).",
-      `Лекари: оба лечат одну цель — Храмовника своего уровня без агента и без умений (характеристики и экипировка PvE-сборки, фракция лекаря); 4 «громилы» своего уровня (кабан с множителями 1, урон × k), случайная фаза атак, бесконечное HP, всё время на цели. Базовый k — бисекция: без лекаря цель падает в среднем за ${BASE_DEATH} с. Предел — бисекция по log k: цель живёт 60 с во всех ${HEAL_SEEDS} сидах. Перелечено — без лечения себя при полном HP (отдельная строка selfFullPerSec); overhealTargeted — только целевые лечения HEAL_FIRST по цели.`,
+      `Лекари: оба лечат одну цель — Храмовника своего уровня без агента и без умений (характеристики и экипировка PvE-сборки, фракция лекаря); 4 «громилы» своего уровня (кабан с множителями 1, урон × k), случайная фаза атак, бесконечное HP, всё время на цели. Базовый k — бисекция: без лекаря цель падает в среднем за ${BASE_DEATH} с. Предел — бисекция по log k: цель живёт 60 с во всех ${HEAL_SEEDS} сидах. Перелечено — только лечение цели (танка); лечение себя — отдельно (selfOverPerSec, selfFullPerSec при полном HP); overhealTargeted — только целевые лечения HEAL_FIRST по цели.`,
       "PvP: настоящая карта арены и точки появления, лимит 180 с, по времени побеждает больший % здоровья (как ArenaRoom); дальний бой держит дистанцию 140 как боты арены.",
       "Рост «урон ×8 от 30-го» (BALANCE.md) — это рост среднего удара персонажа (derive), он выводится отдельно; рост DPS включает умения, открывающиеся после 30, и с ×8 не сравнивается.",
     ],

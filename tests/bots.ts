@@ -26,11 +26,17 @@ function mobNear(b: Bot, x: number, y: number, r = 200, sprite?: string): string
 async function killNear(b: Bot, mob: string, timeout = 20000) {
   // живой моб нужного типа у ближайшей к городу точки появления
   let id: string | null = null, sp = spawnOf(mob);
-  for (const s of MAP.spawns.filter((x) => x.mob === mob).sort((p, q) => Math.hypot(p.x - town.x, p.y - town.y) - Math.hypot(q.x - town.x, q.y - town.y))) {
+  // сначала точки самого низкого уровня (герой в стартовой экипировке), среди них — ближайшие к городу
+  for (const s of MAP.spawns.filter((x) => x.mob === mob).sort((p, q) => p.level - q.level || Math.hypot(p.x - town.x, p.y - town.y) - Math.hypot(q.x - town.x, q.y - town.y))) {
     id = mobNear(b, s.x, s.y, 120, mob);
     if (id) { sp = s; break; }
   }
   b.send("dbg", { op: "god" }); // задача 74: без бессмертия герой гибнет у слизня раньше, чем нанесёт урон
+  // безопасный уровень: не ниже уровня точки появления (HP мобов теперь по кривой data/balance.json, герой 1-го уровня бьёт слизня 5–10-го ~20 с)
+  if ((b.self?.level ?? 1) < sp.level) {
+    b.send("dbg", { op: "level", v: sp.level });
+    await b.until(() => b.self!.level === sp.level, 3000, "уровень точки появления");
+  }
   b.send("dbg", { op: "tp", x: sp.x + 30, y: sp.y });
   await sleep(300);
   assert(id, "моб " + mob + " не найден у точки появления");
@@ -319,8 +325,10 @@ async function main() {
       await sleep(id === "ashlord" ? 9000 : 7000);
       const why = expect(g.fx);
       assert(!why, why!);
-      g.send("dbg", { op: "mobhp", id: bossId, v: 0.0001 });
-      await g.until(() => g.room.state.mobs.get(bossId)?.anim === 4, 8000, "босс повержен").catch((e) => { const m = g.room.state.mobs.get(bossId), me = g.me(); throw new Error(`${e.message}: target=${me.target} hp=${me.hp} me(${me.x|0},${me.y|0}) boss(${m.x|0},${m.y|0}) hp=${m.hp}/${m.maxHp}`); });
+      // 1 HP: у боссов теперь миллионы здоровья (data/balance.json bosses), доля 0.0001 — это сотни HP, которые герой 30-го уровня
+      // в стартовой экипировке не снимает за 8 с
+      g.send("dbg", { op: "mobhp", id: bossId, v: 1e-9 });
+      await g.until(() => g.room.state.mobs.get(bossId)?.anim === 4, 8000, "босс повержен");
       await g.until(() => g.bags.some((b) => b.boss), 2000, "мешок босса");
       const bag = g.bags.find((b) => b.boss)!;
       const uniq = bag.items.find((it: any) => it.unique);
