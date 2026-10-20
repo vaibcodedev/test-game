@@ -181,11 +181,11 @@ export class RaidHud {
     const rows = [...r.players].sort((a, b) => b.damage - a.damage).map((p) =>
       `<tr class="${p.name === me ? "me" : ""}"><td>${ROLE_ICON[p.role]} ${esc(p.name)}${p.bot ? ` <span class="muted">бот</span>` : ""}</td><td>${num(p.damage)}</td><td>${num(p.healing)}</td><td>${p.deaths}</td><td>${p.revives}</td></tr>`).join("");
     const loot = r.loot.length ? r.loot.map((it) => `<span class="raid-loot" style="color:${RARITY_COLORS[it.rarity] ?? "#e8e2d0"}">${esc(it.name)}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}</span>`).join("") : `<span class="muted">${r.locked ? "Добыча не положена (откат)" : "Добычи нет"}</span>`;
-    this.result.innerHTML = `<div class="panel raid-dialog raid-res"><h2><span style="color:${r.win ? "#ffd84a" : "#ff6a5a"}">${r.win ? "Победа" : "Рейд пал"}</span></h2>
+    this.result.innerHTML = `<div class="panel raid-dialog raid-res"><h2><span class="${r.win ? "raid-res-win" : "raid-res-loss"}">${r.win ? "Победа" : "Рейд пал"}</span></h2>
       <p class="muted">Попытка ${r.attempt} · бой ${mmss(r.durationMs / 1000)}</p>
       <table class="raid-table"><thead><tr><th>Герой</th><th>Урон</th><th>Лечение</th><th>Смерти</th><th>Воскр.</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="raid-lootbox"><b>Моя добыча</b><div>${loot}</div></div>
-      ${r.title ? `<p>Титул: <b style="color:#ffd84a">${esc(r.title)}</b></p>` : ""}${r.frame ? `<p>Рамка: <b style="color:${RAID.frame.color}">${esc(r.frame)}</b></p>` : ""}
+      ${r.title ? `<p>Титул: <b class="raid-title-gold">${esc(r.title)}</b></p>` : ""}${r.frame ? `<p>Рамка: <b style="color:${RAID.frame.color}">${esc(r.frame)}</b></p>` : ""}
       <div class="raid-btns"><button class="btn primary" data-world>В мир</button></div></div>`;
     this.result.querySelector<HTMLButtonElement>("[data-world]")!.onclick = () => { this.result.hidden = true; this.net.send("raid:leave", {}); };
     this.result.hidden = false;

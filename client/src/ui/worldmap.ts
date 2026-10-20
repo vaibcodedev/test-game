@@ -5,8 +5,12 @@ import { factionColor } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
 import { PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
 import world from "../../../data/world.json";
+import { P } from "../../../shared/palette";
 
-const FONT = `"Pixelify Sans", "Rubik", system-ui, sans-serif`;
+const HEAD = `"Pixelify Sans", "Rubik", system-ui, sans-serif`;
+const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
+const head = (px: number) => `600 ${px}px ${HEAD}`;
+const CITY = "#ffe08a";
 const KIND_NAME: Record<string, string> = { village: "Деревня", camp: "Лагерь", ruins: "Руины", meeting: "Место встречи" };
 const KIND_COLOR: Record<string, string> = { village: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
 const ROADS = Object.entries(world.roads as unknown as Record<string, unknown>).filter(([k]) => k !== "_doc").map(([, v]) => v as [number, number][]);
@@ -54,7 +58,7 @@ export class WorldMapView {
     btn("Центрировать на мне", "Перейти к герою", () => this.centerMe());
     const leg = document.createElement("div");
     leg.className = "wm-legend";
-    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:#f0c050"></i>Город <i style="background:${KIND_COLOR.village}"></i>Деревня <i style="background:${KIND_COLOR.camp}"></i>Лагерь <i style="background:${KIND_COLOR.ruins}"></i>Руины <i class="road"></i>Дорога <i class="river"></i>Река <i style="background:${factionColor("solgard")}"></i>Сольгард <i style="background:${factionColor("umbrath")}"></i>Умбрат`;
+    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>Город <i style="background:${KIND_COLOR.village}"></i>Деревня <i style="background:${KIND_COLOR.camp}"></i>Лагерь <i style="background:${KIND_COLOR.ruins}"></i>Руины <i class="road"></i>Дорога <i class="river"></i>Река <i style="background:${factionColor("solgard")}"></i>Сольгард <i style="background:${factionColor("umbrath")}"></i>Умбрат`;
     bar.append(leg);
     this.wrap.className = "wm-view";
     this.tip.className = "wm-tip";
@@ -190,7 +194,7 @@ export class WorldMapView {
     const m = this.map, s = this.s, dpr = window.devicePixelRatio || 1;
     const g = this.cv.getContext("2d")!;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = "#0e0b10";
+    g.fillStyle = P.well;
     g.fillRect(0, 0, this.W, this.H);
     const X = (tx: number) => this.W / 2 + (tx - this.cx) * s, Y = (ty: number) => this.H / 2 + (ty - this.cy) * s;
     g.imageSmoothingEnabled = false;
@@ -229,36 +233,38 @@ export class WorldMapView {
 
     const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
     const hits: Hit[] = [];
-    const label = (text: string, x: number, y: number, size: number, fill: string, weight = 600): boolean => {
-      g.font = `${weight} ${size}px ${FONT}`;
-      const w = g.measureText(text).width;
-      const r = { x0: x - w / 2 - 2, y0: y - size, x1: x + w / 2 + 2, y1: y + 2 };
+    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16): boolean => {
+      g.font = font;
+      const w = Math.ceil(g.measureText(text).width);
+      const lx = Math.round(x - w / 2), ly = Math.round(y);
+      const r = { x0: lx - 2, y0: ly - size, x1: lx + w + 2, y1: ly + 2 };
       if (r.x1 < 0 || r.x0 > this.W || r.y1 < 0 || r.y0 > this.H) return false;
       if (placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) return false;
       placed.push(r);
       g.lineWidth = 4;
       g.strokeStyle = "rgba(14,10,16,0.92)";
       g.lineJoin = "round";
-      g.strokeText(text, x, y);
+      g.strokeText(text, lx, ly);
       g.fillStyle = fill;
-      g.fillText(text, x, y);
+      g.fillText(text, lx, ly);
       return true;
     };
-    g.textAlign = "center";
+    g.textAlign = "left";
     g.textBaseline = "alphabetic";
     const { known, faction } = this.getKnown();
     // города (приоритет 1)
     if (big) for (const c of CITIES) {
       const x = X(c.x), y = Y(c.y);
       const open = !known || cityKnown(c, known, faction);
-      const col = c.capital ? factionColor(c.capital) : open ? "#f0c050" : "#8a8290";
+      const col = c.capital ? factionColor(c.capital) : open ? CITY : "#8a8290";
       const r = (c.capital ? 7 : 5.5) + Math.min(4, s * 0.4);
       g.fillStyle = "#120a10";
       g.fillRect(x - r - 1.5, y - r - 1.5, r * 2 + 3, r * 2 + 3);
       g.fillStyle = col;
       g.fillRect(x - r, y - r, r * 2, r * 2);
       if (c.capital) { g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.strokeRect(x - r, y - r, r * 2, r * 2); }
-      label(open || c.capital ? c.name : "???", x, y - r - 5, c.capital ? 17 : 15, c.capital ? col : open ? "#ffe08a" : "#a8a0b0");
+      const fs = c.capital ? 17 : 15;
+      label(open || c.capital ? c.name : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", head(fs), fs);
       hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : "Неизвестный город", sub: open || c.capital ? (c.capital ? "Столица фракции" : "Город") + " · безопасно" : "Ещё не открыт" });
     }
     // Врата Цитадели Хаоса (рейд)
@@ -268,13 +274,13 @@ export class WorldMapView {
       g.beginPath(); g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); g.fill();
       g.fillStyle = "#ff6a2a";
       g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
-      label(RAID.map.gate, x, y - r - 6, 15, "#ff9a5a");
+      label(RAID.map.gate, x, y - r - 6, P.boss, head(15), 15);
       hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: `Рейд · ${RAID.boss.name} · ${RAID.raid.minLevel}+ ур.` });
     }
     // названия рек
     if (big && s >= 1) for (const r of RIVERS) {
       const mid = r.path[Math.floor(r.path.length / 2)];
-      label(`р. ${r.name}`, X(mid[0]), Y(mid[1]), 12, "#9ac4f0", 500);
+      label(`р. ${r.name}`, X(mid[0]), Y(mid[1]), "#9ac4f0", `500 12px ${TEXT}`, 12);
     }
     // поселения по приоритету и масштабу
     if (big) {
@@ -292,7 +298,8 @@ export class WorldMapView {
         g.fillStyle = KIND_COLOR[p.kind];
         if (p.kind === "village") g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
         else { g.beginPath(); g.moveTo(x, y - sz - 1); g.lineTo(x + sz + 1, y + sz); g.lineTo(x - sz - 1, y + sz); g.closePath(); g.fill(); }
-        if (s >= minS[p.kind]) label(p.name, x, y - sz - 5, p.kind === "village" ? 13 : 11, KIND_COLOR[p.kind], 500);
+        const fs = p.kind === "village" ? 13 : 11;
+        if (s >= minS[p.kind]) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], `500 ${fs}px ${TEXT}`, fs);
         hits.push({ x, y, r: sz + 5, title: p.name, sub });
       }
       // указатели
@@ -305,7 +312,8 @@ export class WorldMapView {
       // зоны
       const za = s < 3 ? 0.75 : s < 6 ? 0.5 : 0.28;
       g.globalAlpha = za;
-      for (const z of this.zoneLabels) label(z.text.toUpperCase(), X(z.x), Y(z.y), s < 3 ? 15 : 18, "#ffffff", 600);
+      const zs = s < 3 ? 15 : 18;
+      for (const z of this.zoneLabels) label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", head(zs), zs);
       g.globalAlpha = 1;
     }
     this.hits = hits;
@@ -357,7 +365,7 @@ export class WorldMapView {
       g.beginPath(); g.moveTo(12, 0); g.lineTo(-8, -9); g.lineTo(-8, 9); g.closePath(); g.fill(); g.stroke();
       g.restore();
     } else {
-      g.font = `600 13px ${FONT}`;
+      g.font = `600 13px ${TEXT}`;
       g.textAlign = "center";
       g.lineWidth = 4;
       g.strokeStyle = "rgba(14,10,16,0.92)";

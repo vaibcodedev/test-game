@@ -31,14 +31,14 @@ export const MOUNT_COMBAT_LOCK_MS = data.combatLockMs;
 export const MOUNT_TIERS = data.tiers as Record<MountTier, string>;
 export const MOUNT_SOURCES = data.sources as Record<MountSource, string>;
 export const mountSprite = (id: string) => `mount_${id}`;
-/** Цвет яруса для рамок и подписей. Синхронизован с RARITY_COLORS из items.ts. */
+/** Цвет яруса для рамок и подписей: четыре яруса совпадают с RARITY_COLORS предметов,
+ *  «необычный» есть только у маунтов — у него свой зелёный. */
 export const TIER_COLOR: Record<MountTier, string> = {
-  common:    RARITY_COLORS[0], // #e8e2d0
-  // TODO: uncommon не входит в RARITY_COLORS предметов — использовать rare до введения отдельного яруса
-  uncommon:  RARITY_COLORS[1], // временно = rare (#5fa8ff); ранее "#6adf6a"
-  rare:      RARITY_COLORS[1], // #5fa8ff
-  epic:      RARITY_COLORS[2], // #c47bff
-  legendary: RARITY_COLORS[3], // #ff9a2e
+  common:    RARITY_COLORS[0],
+  uncommon:  "#6adf6a",
+  rare:      RARITY_COLORS[1],
+  epic:      RARITY_COLORS[2],
+  legendary: RARITY_COLORS[3],
 };
 
 /** Метаданные листа кадров (manifest.mounts): кадр, линия земли, высота парения, посадка таза всадника по [вид][кадр]. */

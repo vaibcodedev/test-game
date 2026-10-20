@@ -943,15 +943,14 @@ export class Hud {
     let box = document.getElementById("air-bar");
     if (air < 0) return void box?.remove();
     if (!box) {
-      box = el("div", "", `<div style="font-size:13px;color:#cfeaff;text-shadow:0 1px 0 #000;text-align:center">Воздух</div><div style="height:8px;background:#06121c;border:1px solid #4a7a9a;margin-top:2px"><i style="display:block;height:100%;width:100%;background:#4ab8ff;transition:width .4s linear"></i></div>`);
+      box = el("div", "air-bar-box", `<div class="air-bar-label">Воздух</div><div class="air-bar-track"><i class="air-bar-fill"></i></div>`);
       box.id = "air-bar";
-      box.style.cssText = "position:fixed;left:50%;bottom:150px;width:200px;transform:translateX(-50%);z-index:20;pointer-events:none";
       document.body.append(box);
     }
     const bar = box.querySelector("i") as HTMLElement;
     const k = Math.max(0, Math.min(1, air / max));
-    bar.style.width = `${k * 100}%`;
-    bar.style.background = k < 0.25 ? "#ff5a4a" : "#4ab8ff";
+    bar.style.setProperty("--p", `${k * 100}%`);
+    bar.classList.toggle("low", k < 0.25);
   }
 
   private inCombat = false;
@@ -965,9 +964,9 @@ export class Hud {
     let box = document.getElementById("mount-cast");
     if (!ms) return void box?.remove();
     box?.remove();
-    box = el("div", "", `<div style="font-size: 14px;color:#fff;text-shadow:0 1px 0 #000;text-align:center">${esc(name ?? "Маунт")}</div><div style="height:6px;background:#0a0608;border:1px solid #6a5a46;margin-top:2px"><i style="display:block;height:100%;width:0;background:${P.gold};transition:width ${ms}ms linear"></i></div>`);
+    box = el("div", "mount-cast-box", `<div class="mount-cast-label">${esc(name ?? "Маунт")}</div><div class="mount-cast-track"><i class="mount-cast-fill"></i></div>`);
     box.id = "mount-cast";
-    box.style.cssText = "position:fixed;left:50%;bottom:110px;width:180px;transform:translateX(-50%);z-index:20;pointer-events:none";
+    box.style.setProperty("--dur", `${ms}ms`);
     document.body.append(box);
     const bar = box.querySelector("i") as HTMLElement;
     requestAnimationFrame(() => requestAnimationFrame(() => (bar.style.width = "100%")));
@@ -1091,7 +1090,7 @@ export class Hud {
     const vy = big ? Math.max(0, Math.min(m.h - vh, info.pos.y / TILE - vh / 2)) : 0;
     const ox = (CW - vw * k) / 2 - vx * k, oy = (CH - vh * k) / 2 - vy * k;
     const X = (px: number) => ox + (px / TILE) * k, Y = (py: number) => oy + (py / TILE) * k;
-    g.fillStyle = P.bg;
+    g.fillStyle = P.well;
     g.fillRect(0, 0, CW, CH);
     if (this.miniBase) g.drawImage(this.miniBase, ox, oy, m.w * k, m.h * k);
     const dot = Math.max(1.5, k * 0.9);

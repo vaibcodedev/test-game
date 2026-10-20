@@ -11,8 +11,8 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 type Sel = { index: number } | { slot: Slot } | null;
 
 /**
- * Значок «+N» на ячейке по ступеням заточки (docs/gear-visuals.md, 2.2): +1…3 белый, +4…6 бирюзовый,
- * +4…10 бирюзовый, без заливки и контура ячейки (решение пользователя). Стили: .plus.pt0…pt3.
+ * Значок «+N» на ячейке по ступеням заточки (docs/gear-visuals.md, 2.2): +1…+3 белый, +4…+10 бирюза (--enchant),
+ * без заливки и контура ячейки (решение пользователя). Стили: .plus.pt0…pt3.
  */
 export function plusBadgeN(plus: number): string {
   if (!plus) return "";

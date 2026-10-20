@@ -121,7 +121,7 @@ export class Effects {
 
   /** «+N» с маленькой монетой над юнитом. */
   goldPop(x: number, y: number, n: number) {
-    const t = this.scene.add.text(x - 5, y, "+" + n.toLocaleString("ru-RU"), { fontFamily: FONT, fontSize: "11px", color: P.goldNum, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: "600" }).setOrigin(1, 0.5).setDepth(DEPTH.top);
+    const t = this.scene.add.text(x - 5, y, "+" + n.toLocaleString("ru-RU"), { fontFamily: FONT, fontSize: "11px", color: P.numGold, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: "600" }).setOrigin(1, 0.5).setDepth(DEPTH.top);
     const c = this.scene.add.image(x - 1, y, "coin_icon").setDisplaySize(11, 11).setOrigin(0, 0.5).setDepth(DEPTH.top);
     this.scene.tweens.add({ targets: [t, c], y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 200, onComplete: () => { t.destroy(); c.destroy(); } });
   }
@@ -189,7 +189,7 @@ export class Effects {
         const crowdy = overlay.crowdNums && this.heroes > CROWD && f.id !== this.selfId;
         const dim = crowdy ? (u.selected ? 0.75 : 0.5) : 1;
         if (f.miss) return this.number(u.x, y, "Уклонение", "#c8c0b0", false, 1, f.id, false, dim);
-        if (f.imm) return this.number(u.x, y, "Неуязвим", P.goldNum, false, 1, f.id, false, dim);
+        if (f.imm) return this.number(u.x, y, "Неуязвим", P.numGold, false, 1, f.id, false, dim);
         if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x7aff7a, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, P.heal, false, 1, f.id, f.v < 0.02 * u.u.maxHp, dim); }
         if (f.abs) this.sound("shield", u.x, u.y);
         if (f.abs) return this.number(u.x, y, `Щит ${f.v}`, "#ffd84a", false, 1, f.id, false, dim);
@@ -198,7 +198,7 @@ export class Effects {
         this.flash(u.x, u.y - 14, f.crit ? 0xffe070 : (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff), f.crit ? 1.2 : 0.7);
         this.sound(f.crit ? "crit" : (SFX_OF[f.k ?? "phys"] ?? "hit"), u.x, u.y);
         if (mine ? f.crit || f.v > 40 : f.crit) this.shake(u.x, u.y, 90, mine ? 0.003 : 0.002);
-        const col = mine ? "#ff6a5a" : f.crit ? P.goldNum : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
+        const col = mine ? "#ff6a5a" : f.crit ? P.numGold : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
         const small = !f.crit && !raidBoss && f.v < Math.max(4, 0.025 * u.u.maxHp);
         if (small || crowdy) this.tick(f.id, u.x, y, f.v, col, dim);
         else this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1, f.id, false, dim);
@@ -445,7 +445,7 @@ export class Effects {
         const col = s.add.image(u.x, u.y - 30, "fx_glow").setTint(0xffd84a).setBlendMode(Phaser.BlendModes.ADD).setScale(1, 4).setDepth(DEPTH.top - 30).setAlpha(0.9);
         s.tweens.add({ targets: col, scaleX: 0.2, alpha: 0, duration: 1100, onComplete: () => col.destroy() });
         this.burst(u.x, u.y - 10, "fx_spark", 0xffd84a, 30, 90, 900, -60);
-        this.number(u.x, u.y - 44, `Уровень ${f.level}!`, P.goldNum, true);
+        this.number(u.x, u.y - 44, `Уровень ${f.level}!`, P.numGold, true);
         break;
       }
       case "buff": {
