@@ -258,7 +258,7 @@ export class RaidDirector {
     const r = RAID_CFG.revives;
     this.revives = Math.min(r.max, this.revives + r.perPhase);
     const ph = RAID_PHASES[n];
-    if (n >= 3) this.banner("enrage", RAID.banners.enrage, ph.name);
+    if (n >= 3) this.banner("enrage", RAID.banners.enrage, RAID.banners.phase.replace("{n}", phaseNo(n)).replace("{name}", ph.name));
     else this.banner("phase", RAID.banners.phase.replace("{n}", phaseNo(n)).replace("{name}", phaseName(n)));
   }
 

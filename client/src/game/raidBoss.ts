@@ -25,12 +25,16 @@ export class RaidBoss {
     scene.events.once("shutdown", () => this.destroy());
   }
 
+  /** id юнита босса: состояние комнаты (RaidState.boss), запасной — welcome. */
+  private bossId(): string {
+    return ((net.room?.state as { boss?: string } | undefined)?.boss || net.raid?.boss) ?? "";
+  }
   private boss(): UnitView | undefined {
-    const id = net.raid?.boss;
+    const id = this.bossId();
     return id ? this.unit(id) : undefined;
   }
   private isBoss(id: string) {
-    return id === net.raid?.boss;
+    return id === this.bossId();
   }
 
   /** fx pose / yell / shake; true — обработано. */

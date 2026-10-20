@@ -128,7 +128,7 @@ export class Effects {
       .text(x + (Math.random() - 0.5) * 10, y, text, { fontFamily: FONT, fontSize: big ? "14px" : "11px", color, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: big ? "bold" : "600" })
       .setOrigin(0.5)
       .setDepth(DEPTH.top);
-    if (big) t.setScale(1.6 * mul);
+    if (big) t.setScale((mul > 1 ? 1.25 : 1.6) * mul); // у рейд-босса цифры и так крупные — без большого «скачка»
     else if (mul !== 1) t.setScale(mul);
     this.scene.tweens.add({ targets: t, scale: mul, duration: 140 });
     this.scene.tweens.add({ targets: t, y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 120, onComplete: () => t.destroy() });
@@ -154,7 +154,7 @@ export class Effects {
         this.sound(f.crit ? "crit" : (SFX_OF[f.k ?? "phys"] ?? "hit"), u.x, u.y);
         if (mine ? f.crit || f.v > 40 : f.crit) this.shake(u.x, u.y, 90, mine ? 0.003 : 0.002);
         const col = mine ? "#ff6a5a" : f.crit ? "#ffd84a" : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
-        this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 2 : 1.5) : 1);
+        this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1);
         if (f.k && f.k !== "phys") this.burst(u.x, u.y - 12, "fx_spark", KIND_COLOR[f.k], 6, 50, 350);
         else this.burst(u.x, u.y - 12, "fx_spark", 0xffffff, 3, 40, 200, 0, 0.6);
         break;

@@ -145,7 +145,7 @@ export const PILLAR_HALF = TILE;
 /** Точка появления героя в Преддверии: ряды по 5. */
 export function raidSpawn(i: number): { x: number; y: number } {
   const col = i % 5, row = Math.floor(i / 5);
-  return { x: (M.spawn.x - 2 + col) * TILE, y: (M.spawn.y - 1.5 + row * 1.0) * TILE };
+  return { x: (M.spawn.x - 4.4 + col * 2.2) * TILE, y: (M.spawn.y - 2 + row * 1.3) * TILE };
 }
 
 /** Внутри зала (эллипс, тайлы → пиксели). k — масштаб эллипса (1 — край пола). */
@@ -273,7 +273,7 @@ export interface RaidMusterMsg {
   /** Рейд уже идёт (сбор закрыт до его конца). */
   running: boolean;
 }
-/** welcome в комнате рейда. */
+/** welcome в комнате рейда: boss — id юнита босса. */
 export interface RaidWelcome { raid: true; members: RaidMemberInfo[]; attempts: number; enrageMs: number; boss: string }
 /** raid:cast — полоса каста босса (ms 0 — скрыть). */
 export interface RaidCastMsg { name: string; ms: number }

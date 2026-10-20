@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { createServer } from "vite";
-import { PORT, sleep, startServer, stopServer } from "./harness";
+import { ensureChar, PORT, sleep, startServer, stopServer } from "./harness";
 import { RAID_HERALDS } from "../shared/raid";
 
 const OUT = path.resolve("tools/out");
@@ -22,18 +22,23 @@ function chromePath() {
   return p;
 }
 async function openClient(browser: Browser, name: string, cls: string): Promise<Page> {
+  await ensureChar(name, "secret", name, cls);
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
   await page.setViewport({ width: 1280, height: 800 });
   page.on("console", (m) => { if (m.type() === "error") errors.push(`${name}: ${m.text()}`); });
   page.on("pageerror", (e) => errors.push(`${name}: ${(e as Error).stack ?? e}`));
-  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
+  await page.evaluateOnNewDocument(() => { try { localStorage.setItem("mouse:v1", JSON.stringify({})); } catch {} });
+  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#login-name", { visible: true, timeout: 15000 });
   await page.type("#login-name", name);
   await page.type("#login-pass", "secret");
-  await page.$eval(`[data-cls="${cls}"]`, (b) => (b as HTMLElement).click());
   await page.click("#login-go");
-  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game"), { timeout: 60000 });
-  await sleep(800);
+  await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 15000 });
+  await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
+  await page.click('.cs-list [data-a="play"]');
+  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self, { timeout: 90000 });
+  await sleep(1000);
   return page;
 }
 const send = (p: Page, type: string, m: Record<string, unknown> = {}) => p.evaluate((t, x) => (window as any).__net.send(t, x), type, m);

@@ -99,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     // сцена перезапускается при переходе мир ⇄ арена: сбрасываем состояние прошлого запуска
     this.units = new Map();
+    this.farUnits = new Map(); // иначе дальние юниты прошлой комнаты (мир) всплывают в рейде/на арене
     this.me = null;
     this.targetId = null;
     this.bagViews = new Map();

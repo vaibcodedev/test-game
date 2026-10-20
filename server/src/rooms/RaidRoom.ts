@@ -75,6 +75,7 @@ export class RaidRoom extends Room<RaidState> {
       if (!m.bot) return;
       const p = new Player(`rb${i}_${this.roomId}`, m.name, JSON.parse(JSON.stringify(m.save)) as PlayerSave, () => {});
       this.director.addPlayer(p, m, true);
+      p.unit.title = ""; // титул наёмника — в составе и итогах; над головой 14 одинаковых подписей мешали бы видеть бой
     });
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
@@ -125,7 +126,7 @@ export class RaidRoom extends Room<RaidState> {
       members: this.members.map(({ name, cls, level, role, bot }) => ({ name, cls, level, role, bot })),
       attempts: RAID_CFG.attempts,
       enrageMs: RAID_CFG.enrageMs,
-      boss: RAID_BOSS.name,
+      boss: this.director.boss.id,
     };
     client.send("welcome", msg);
     if (this.resultSent) this.sendResult(client);
