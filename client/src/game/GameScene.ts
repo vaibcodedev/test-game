@@ -6,7 +6,7 @@ import { ENV } from "../../../shared/biomes";
 import * as sfx from "./sfx";
 import { nightLevel } from "../../../shared/daynight";
 import { Anim, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
-import { activeSkills, SKILLS } from "../../../shared/skills";
+import { SKILLS } from "../../../shared/skills";
 import { RUMOR_NPCS } from "../../../shared/rumors";
 import { COOK } from "../../../shared/food";
 import { CITIES } from "../../../shared/cities";
@@ -176,10 +176,9 @@ export class GameScene extends Phaser.Scene {
     this.hud.bind({
       net,
       map: this.map,
-      useSkill: (i) => this.useSkill(i),
+      pressSlot: (bar, i) => this.pressSlot(bar, i),
       toggleMount: () => this.toggleMount(),
       togglePet: () => this.togglePet(),
-      usePotion: (k) => this.usePotion(k),
       closeTarget: () => this.setTarget(null),
       focusGame: () => this.game.canvas.focus(),
     });
@@ -406,11 +405,10 @@ export class GameScene extends Phaser.Scene {
   // ---------- ввод ----------
   private setupInput() {
     // что делает каждое действие раскладки; какая клавиша какое действие — keybinds.ts. Движение (удержание) ведёт HeldKeys
+    const noop = () => {};
     const run: Record<Exclude<ActionId, MoveAction>, () => void> = {
-      slot1: () => this.useSkill(0), slot2: () => this.useSkill(1), slot3: () => this.useSkill(2), slot4: () => this.useSkill(3), slot5: () => this.useSkill(4),
-      slot6: () => this.useSkill(5), slot7: () => this.useSkill(6), slot8: () => this.useSkill(7), slot9: () => this.useSkill(8),
-      potionHp: () => this.usePotion("hp_potion"),
-      potionMp: () => this.usePotion("mp_potion"),
+      // слоты панели обрабатывает pressSlot (ниже, в onKeyDown): ссылка слота решает, что это — умение, предмет или действие
+      slot1: noop, slot2: noop, slot3: noop, slot4: noop, slot5: noop, slot6: noop, slot7: noop, slot8: noop, slot9: noop, slot10: noop, potionHp: noop, potionMp: noop,
       targetNext: () => this.cycleTarget(1), targetPrev: () => this.cycleTarget(-1), attack: () => this.attackTarget(),
       selectSelf: () => this.setTarget(net.id),
       selectParty1: () => this.selectParty(0), selectParty2: () => this.selectParty(1), selectParty3: () => this.selectParty(2), selectParty4: () => this.selectParty(3),
@@ -437,6 +435,8 @@ export class GameScene extends Phaser.Scene {
       if (this.hud.isTyping() || e.isComposing) return;
       // умолчания браузера, мешающие игре: Tab уводит фокус на кнопки, F1–F5 — справка, поиск, обновление страницы
       if (e.code === "Tab" || (/^F[1-5]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey)) e.preventDefault();
+      const bs = keybinds.barSlotFor(e);
+      if (bs) { e.preventDefault(); if (!e.repeat) this.pressSlot(bs.bar, bs.i); return; }
       const acts = keybinds.actionsFor(e);
       if (!acts.length) return;
       e.preventDefault();
@@ -609,11 +609,24 @@ export class GameScene extends Phaser.Scene {
     this.hud.toast({ text: `Маунт: ${MOUNTS[next]?.name ?? next}`, kind: "info" });
   }
 
-  useSkill(i: number) {
+  /** Нажатие слота панели (клавиша или клик): умение, предмет (по base) или действие. */
+  pressSlot(bar: number, i: number) {
+    const ref = net.self?.bars?.[bar]?.[i];
+    if (!ref) return;
+    this.hud.flashSlot(bar, i);
+    if ("s" in ref) this.useSkillId(ref.s);
+    else if ("i" in ref) { if (net.self && !this.me?.dead) net.send("use:base", { base: ref.i }); }
+    else if (ref.a === "mount") this.toggleMount();
+    else if (ref.a === "pet") this.togglePet();
+    else if (ref.a === "attack") this.attackTarget();
+    else this.pickupNearest();
+  }
+
+  useSkillId(id: string) {
     const self = net.self;
     if (!self || !this.me || this.me.dead) return;
-    const def = activeSkills(self.cls)[i];
-    if (!def) return;
+    const def = SKILLS[id];
+    if (!def || def.cls !== self.cls || def.kind !== "active") return;
     if (!self.skills[def.id]) return this.hud.toast({ text: `«${def.name}» ещё не изучено (K — умения)`, kind: "error" });
     const p = this.input.activePointer;
     let x = p.worldX, y = p.worldY;
@@ -624,14 +637,6 @@ export class GameScene extends Phaser.Scene {
     // умения-лечилки: врага в цель не берём (сервер лечит самого лекаря)
     const target = def.target === "ally" && t && this.isEnemy(t) ? null : this.targetId;
     net.send("skill", { id: def.id, x, y, target });
-  }
-
-  usePotion(base: string) {
-    const inv = net.self?.inventory;
-    if (!inv) return;
-    const idx = inv.findIndex((it) => it && it.base === base);
-    if (idx < 0) return this.hud.toast({ text: base === "hp_potion" ? "Нет зелий здоровья" : "Нет зелий маны", kind: "error" });
-    net.send("use", { index: idx });
   }
 
   pickupNearest() {

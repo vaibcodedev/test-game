@@ -11,7 +11,7 @@ export interface Combo { code: string; shift?: boolean; ctrl?: boolean; alt?: bo
 export interface KeyLike { code: string; shiftKey: boolean; ctrlKey: boolean; altKey: boolean; metaKey?: boolean }
 
 export type MoveAction = "moveUp" | "moveDown" | "moveLeft" | "moveRight";
-export type SlotAction = `slot${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`;
+export type SlotAction = `slot${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 export type ActionId =
   | MoveAction | SlotAction
   | "targetNext" | "targetPrev" | "attack" | "selectSelf" | "selectParty1" | "selectParty2" | "selectParty3" | "selectParty4" | "potionHp" | "potionMp" | "interact" | "talk" | "mount" | "mountNext" | "pet" | "petNext" | "autorun" | "follow"
@@ -38,6 +38,7 @@ const DEFS: Record<ActionId, Def> = {
   selectParty2: { group: "target", name: "Выбрать члена группы 2" },
   selectParty3: { group: "target", name: "Выбрать члена группы 3" },
   selectParty4: { group: "target", name: "Выбрать члена группы 4" },
+  slot10: { group: "bar", name: "Слот 10" },
   slot1: slot(1), slot2: slot(2), slot3: slot(3), slot4: slot(4), slot5: slot(5), slot6: slot(6), slot7: slot(7), slot8: slot(8), slot9: slot(9),
   potionHp: { group: "bar", name: "Зелье здоровья" },
   potionMp: { group: "bar", name: "Зелье маны" },
@@ -62,6 +63,8 @@ const DEFS: Record<ActionId, Def> = {
 export const ACTION_IDS = Object.keys(DEFS) as ActionId[];
 export const ACTIONS: ActionDef[] = ACTION_IDS.map((id) => ({ id, ...DEFS[id] }));
 export const SLOT_IDS: SlotAction[] = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7", "slot8", "slot9"];
+/** Действия слотов панели 1 по порядку (12 слотов); панель 2 — те же клавиши с Shift. Схема решает, какая клавиша какому слоту (docs/controls.md, раздел 8). */
+export const BAR_ACTIONS: ActionId[] = [...SLOT_IDS, "potionHp", "potionMp", "slot10"];
 const MOVE_IDS: MoveAction[] = ["moveUp", "moveDown", "moveLeft", "moveRight"];
 export const isMoveAction = (a: ActionId): a is MoveAction => (MOVE_IDS as string[]).includes(a);
 export const MAX_COMBOS = 2;
@@ -78,7 +81,7 @@ const CLASSIC: Layout = {
   moveUp: [k("KeyW"), k("ArrowUp")], moveDown: [k("KeyS"), k("ArrowDown")], moveLeft: [k("KeyA"), k("ArrowLeft")], moveRight: [k("KeyD"), k("ArrowRight")],
   targetNext: [k("Tab")], targetPrev: [shift("Tab")], attack: [k("KeyT")],
   selectSelf: [k("F1")], selectParty1: [k("F2")], selectParty2: [k("F3")], selectParty3: [k("F4")], selectParty4: [k("F5")],
-  slot1: [k("Digit1")], slot2: [k("Digit2")], slot3: [k("Digit3")], slot4: [k("Digit4")], slot5: [k("Digit5")], slot6: [k("Digit6")], slot7: [k("Digit7")], slot8: [k("Digit8")], slot9: [k("Digit9")],
+  slot1: [k("Digit1")], slot2: [k("Digit2")], slot3: [k("Digit3")], slot4: [k("Digit4")], slot5: [k("Digit5")], slot6: [k("Digit6")], slot7: [k("Digit7")], slot8: [k("Digit8")], slot9: [k("Digit9")], slot10: [k("Digit0")],
   potionHp: [k("KeyQ")], potionMp: [k("KeyE")],
   interact: [k("Space")], talk: [k("KeyF")],
   autorun: [k("KeyR"), k("NumLock")], follow: [shift("KeyF")],
@@ -94,11 +97,11 @@ const ACTION: Layout = {
   ...CLASSIC,
   moveUp: [k("ArrowUp")], moveDown: [k("ArrowDown")], moveLeft: [k("ArrowLeft")], moveRight: [k("ArrowRight")],
   slot1: [k("KeyQ")], slot2: [k("KeyW")], slot3: [k("KeyE")], slot4: [k("KeyR")], slot5: [k("KeyA")], slot6: [k("KeyS")], slot7: [k("KeyD")], slot8: [k("KeyF")], slot9: [k("KeyT")],
-  potionHp: [k("Digit1")], potionMp: [k("Digit2")],
+  potionHp: [k("Digit1")], potionMp: [k("Digit2")], slot10: [k("Digit3")],
   // G уже «подобрать, а рядом с NPC — поговорить», отдельная клавиша разговора не нужна
   interact: [k("KeyG")], talk: [],
   pet: [k("KeyZ")], petNext: [shift("KeyZ")],
-  autorun: [k("NumLock"), shift("KeyR")], // R занята умением 4
+  autorun: [k("NumLock"), k("KeyV")], // R занята умением 4, Shift+R — слот 4 панели 2
   attack: [], // T занята умением 9; в «Экшене» атакуют ПКМ
 };
 export const PRESETS: Record<PresetId, { name: string; layout: Layout }> = {
@@ -243,6 +246,21 @@ export class Keybinds {
     return (i === undefined ? this.eff[a] : this.eff[a].slice(i, i + 1)).map(comboLabel).join(" / ");
   }
   /** Подпись клавиши i-го умения панели (с нуля); у умения без клавиши — пусто. */
+  /** Слот панели (0 — основная, 1 — с Shift) → подпись клавиши схемы: «Q», «⇧Q»; пусто, если клавиши нет. */
+  barLabel(bar: number, i: number): string {
+    const a = BAR_ACTIONS[i];
+    const c = a ? this.eff[a][0] : undefined;
+    return c ? (bar ? "⇧" : "") + comboLabel(c) : "";
+  }
+  /** Нажатие → слот панели: сочетание действия слота (панель 1) либо оно же с Shift (панель 2). Точное совпадение других действий (Shift+Tab, Shift+X) главнее. */
+  barSlotFor(e: KeyLike): { bar: number; i: number } | null {
+    if (e.metaKey || e.ctrlKey || e.altKey) return null;
+    const acts = this.actionsFor(e);
+    for (const a of acts) { const i = BAR_ACTIONS.indexOf(a); if (i >= 0) return { bar: 0, i }; }
+    if (!e.shiftKey || acts.length) return null;
+    for (const a of this.actionsFor({ ...e, shiftKey: false })) { const i = BAR_ACTIONS.indexOf(a); if (i >= 0) return { bar: 1, i }; }
+    return null;
+  }
   slotLabel(i: number): string { return i >= 0 && i < SLOT_IDS.length ? this.label(SLOT_IDS[i], 0) : ""; }
 
   /**

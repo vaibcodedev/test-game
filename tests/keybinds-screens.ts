@@ -82,6 +82,7 @@ async function main() {
   const must = (cond: unknown, msg: string) => { if (!cond) throw new Error(msg); };
   try {
     const page = await browser.newPage();
+    await page.evaluateOnNewDocument(() => localStorage.setItem("keybinds:v1", JSON.stringify({ v: 1, preset: "classic", custom: {} }))); // тест описывает «Классику»
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
     await enter(page, "Клавиши", "Клавиши");
@@ -102,9 +103,9 @@ async function main() {
     });
 
     // 0. подписи из раскладки
-    const kbd = await page.$$eval(".hud-bar .slot kbd", (els) => els.map((e) => e.textContent));
+    const kbd = await page.$$eval(".hud-bar .hb-row.r1 .hb-slot kbd, .hud-bar .hb-extras .slot kbd", (els) => els.map((e) => e.textContent));
     must(JSON.stringify(kbd.slice(0, 9)) === JSON.stringify(["1", "2", "3", "4", "5", "6", "7", "8", "9"]), "подписи умений: " + kbd.join(","));
-    must(kbd.slice(-4).join(",") === "Q,E,X,G", "подписи зелий, маунта, питомца: " + kbd.join(","));
+    must(kbd.slice(9, 11).join(",") === "Q,E" && kbd.slice(-2).join(",") === "X,G", "подписи зелий, маунта, питомца: " + kbd.join(","));
     const log = await page.$eval(".hud-chat .log", (e) => (e as HTMLElement).innerText);
     must(log.includes("Умения: 1–9") && log.includes("Арена — клавиша P"), "приветствие: " + log.slice(0, 160));
     ok("панель и приветствие построены из раскладки: 1–9, Q, E, X, G, «Умения: 1–9»");
@@ -228,7 +229,7 @@ async function main() {
     await clearSent(page);
     await page.keyboard.press("KeyQ");
     await sleep(200);
-    must((await sent(page, "use")).length === 1 || (await toasts(page)).includes("зелий"), "Q: ни use, ни «Нет зелий»");
+    must((await sent(page, "use:base")).length === 1 || (await toasts(page)).includes("зелий"), "Q: ни use:base, ни «Нет зелий»");
     await page.keyboard.press("KeyX");
     await page.keyboard.press("KeyG");
     await sleep(200);

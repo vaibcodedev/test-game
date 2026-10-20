@@ -15,7 +15,7 @@ import { CITIES, CITY_WALL } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
 import { MOBS } from "../../../shared/mobs";
 import { Anim, UnitKind, type ChatLine, type SelfState, type ToastMsg } from "../../../shared/protocol";
-import { activeSkills, canLearn, classSkills, SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
+import { canLearn, classSkills, SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import type { Net, UnitState } from "../net";
 import { rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
@@ -30,6 +30,8 @@ import { CookUI, foodTip } from "./cook";
 import { QuestUI, TeleportUI } from "./cities";
 import { fillHelp, GameMenu, keysHtml } from "./gamemenu";
 import { isTextField, keybinds, skillKeys } from "../game/keybinds";
+import { Hotbar } from "./hotbar";
+import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
 import { plusBadge, SmithUI } from "./smith";
 import { BankUI, parseBankDrag } from "./bank";
@@ -51,8 +53,7 @@ const TERRAIN_COLORS = ["#2a5a9e", "#e05412", "#d0b07e", "#3c432c", "#463e40", "
 export interface HudCtx {
   net: Net;
   map: WorldMap;
-  useSkill: (i: number) => void;
-  usePotion: (base: string) => void;
+  pressSlot: (bar: number, i: number) => void;
   toggleMount?: () => void;
   togglePet?: () => void;
   closeTarget: () => void;
@@ -89,6 +90,8 @@ export class Hud {
   private miniBase: HTMLCanvasElement | null = null;
   private wmView: WorldMapView | null = null;
   private bar = el("div", "panel hud-bar");
+  private hotbar = new Hotbar();
+  private barExtras = el("div", "hb-extras");
   private menuBar = el("div", "hud-menu");
   private uiScale = 100;
   private chatSize = 14;
@@ -149,6 +152,7 @@ export class Hud {
   }
 
   constructor(readonly root: HTMLElement) {
+    this.bar.append(this.hotbar.el, this.barExtras);
     root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.death, this.tip);
     initWindowDrag(root, () => this.ctx?.net.self?.name ?? "");
     this.stackLeftPanels();
@@ -245,9 +249,11 @@ export class Hud {
   }
 
   /** Вызывается при каждом запуске сцены (мир или арена); подписки на сеть — один раз. */
+  flashSlot(bar: number, i: number) { this.hotbar.flash(bar, i); }
   bind(ctx: HudCtx) {
     this.ctx = ctx;
     const n = ctx.net;
+    this.hotbar.bind({ net: n, map: ctx.map, press: (b, i) => ctx.pressSlot(b, i), tipFor: (e, h) => this.tipFor(e, h), skillTip: (d, s) => this.skillTip(d, s) });
     if (!this.netBound) {
       this.netBound = true;
       n.on("self", (s) => {
@@ -304,7 +310,7 @@ export class Hud {
   // ---------- сообщения ----------
   toast(t: ToastMsg) {
     const d = el("div", `toast ${t.kind ?? "info"}`);
-    d.innerHTML = this.lootHtml(t);
+    d.innerHTML = this.lootHtml(t.slot ? { ...t, text: `${t.text} — клавиша ${this.hotbar.keyOf(t.slot.bar, t.slot.i)}` } : t);
     this.toasts.append(d);
     while (this.toasts.children.length > 4) this.toasts.firstElementChild!.remove();
     setTimeout(() => d.remove(), 3300);
@@ -589,7 +595,8 @@ export class Hud {
   skillTip(def: SkillDef, s: SelfState): string {
     const r = s.skills[def.id] || 0;
     // клавиша — по месту умения среди активных (так его вызывает панель), а не по полю slot, и по раскладке игрока
-    const key = def.kind === "active" ? keybinds.slotLabel(activeSkills(s.cls).findIndex((d) => d.id === def.id)) : "";
+    const at = def.kind === "active" ? findRef(s.bars, { s: def.id }) : null;
+    const key = at ? this.hotbar.keyOf(at.bar, at.i) : "";
     const lines = [`<div class="t">${def.name}</div>`, `<div class="d">${def.kind === "active" ? `Активное${key ? ` · клавиша ${key}` : ""}` : "Пассивное"} · ранг ${r}/${def.maxRank}</div>`];
     lines.push(`<div>${def.desc(Math.max(1, r))}</div>`);
     if (def.kind === "active") lines.push(`<div class="d">Мана: ${skillMana(def, r, s.level)} · Перезарядка: ${def.cd!(Math.max(1, r)).toFixed(1)} с${def.range ? ` · Дальность: ${Math.round(def.range / TILE)} кл.` : ""}</div>`);
@@ -631,25 +638,9 @@ export class Hud {
     this.updateFoodLabel();
     this.player.querySelectorAll<HTMLElement>("[data-open]").forEach((p) => (p.onclick = () => this.toggle(p.dataset.open!)));
 
-    // панель умений
-    this.bar.innerHTML = "";
-    activeSkills(s.cls).forEach((def, i) => {
-      const r = s.skills[def.id] || 0;
-      const b = el("button", `slot ${r ? "" : "locked"}`, `<img src="${icon(def.icon)}" alt=""><kbd>${keybinds.slotLabel(i)}</kbd><i class="cd" data-cd="${def.id}" style="transform:scaleY(0)"></i><span class="cdt" data-cdt="${def.id}"></span>`);
-      b.dataset.skill = def.id;
-      b.onclick = () => this.ctx.useSkill(i);
-      this.tipFor(b, () => this.skillTip(def, net.self!));
-      this.bar.append(b);
-    });
-    this.bar.append(el("span", "sep"));
-    for (const [base, key] of [["hp_potion", keybinds.label("potionHp", 0)], ["mp_potion", keybinds.label("potionMp", 0)]]) {
-      const qty = s.inventory.reduce((a, it) => a + (it && it.base === base ? it.qty ?? 1 : 0), 0);
-      const b = el("button", `slot ${qty ? "" : "empty"}`, `<img src="${icon(BASE_ITEMS[base].icon)}" alt=""><kbd>${key}</kbd><span class="qty">${qty}</span>`);
-      b.onclick = () => this.ctx.usePotion(base);
-      this.tipFor(b, () => `<div class="t">${BASE_ITEMS[base].name}</div><div class="d">${qty} шт. · клавиша ${key}</div>`);
-      this.bar.append(b);
-    }
-
+    // панель умений: строится один раз, см. ui/hotbar.ts
+    this.hotbar.update(s);
+    this.barExtras.innerHTML = "";
     {
       const mid = s.mount ?? "";
       const md = MOUNTS[mid];
@@ -657,7 +648,7 @@ export class Hud {
       const b = el("button", `slot ${md ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${mounted ? "⤓" : "♞"}</span><kbd>${keybinds.label("mount", 0)}</kbd>`);
       b.onclick = () => this.ctx.toggleMount?.();
       this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">Скорость ×${md.speed} · призыв 2 с, стоя на месте. ${keybinds.label("mount", 0)} — сесть/слезть, ${keybinds.label("mountNext", 0)} — сменить. Не в бою, не на арене.</div>` : `<div class="t">Маунт</div><div class="d">Бурый конь — с 10 уровня</div>`);
-      this.bar.append(b);
+      this.barExtras.append(b);
     }
     {
       const pd = PETS[s.pet ?? ""];
@@ -668,7 +659,7 @@ export class Hud {
       this.tipFor(b, () => pd && rec
         ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${keybinds.label("pet", 0)} — призвать (2 с) / отпустить, ${keybinds.label("petNext", 0)} — сменить. Погиб — призыв через 60 с. Не на арене.</div>`
         : `<div class="t">Питомец</div><div class="d">Волчонок — с 5 уровня. Другие — у торговки или редкая добыча.</div>`);
-      this.bar.append(b);
+      this.barExtras.append(b);
     }
     if (!this.wins.char.hidden) this.renderChar(s);
     if (!this.wins.inv.hidden) this.renderInv(s);
@@ -872,6 +863,7 @@ export class Hud {
       n.style.gridColumn = String(def.tree[1] + 1);
       const btn = el("button", `slot ${r ? "" : "locked"}`, `<img src="${icon(def.icon)}" alt="">`);
       btn.onclick = () => this.ctx.net.send("learn", { id: def.id });
+      if (def.kind === "active" && r) { btn.draggable = true; btn.ondragstart = (e) => e.dataTransfer!.setData("text/plain", `skill:${def.id}`); }
       this.tipFor(btn, () => this.skillTip(def, this.ctx.net.self!));
       n.append(btn, el("span", "nm", def.name), el("span", "rk", `${r}/${def.maxRank} · ур.${def.reqLevel}`));
       tree.append(n);
@@ -1140,22 +1132,10 @@ export class Hud {
       }
     } else this.petBox.hidden = true;
 
-    // перезарядки и мана
-    const self = this.ctx.net.self;
-    if (self) {
-      const now = performance.now();
-      for (const def of activeSkills(self.cls)) {
-        const end = this.ctx.net.cooldowns.get(def.id) ?? 0;
-        const cdEl = this.bar.querySelector<HTMLElement>(`[data-cd="${def.id}"]`);
-        const txt = this.bar.querySelector<HTMLElement>(`[data-cdt="${def.id}"]`);
-        if (!cdEl || !txt) continue;
-        const left = Math.max(0, end - now);
-        const total = def.cd!(Math.max(1, self.skills[def.id] || 1)) * 1000;
-        cdEl.style.transform = `scaleY(${Math.min(1, left / total)})`;
-        txt.textContent = left > 0 ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : "";
-        const slot = cdEl.parentElement!;
-        slot.classList.toggle("nomana", !!me && me.mp < skillMana(def, self.skills[def.id] || 1, self.level) && !!self.skills[def.id]);
-      }
+    // панель умений: перезарядки, мана, дальность, видимость, цель
+    if (me) {
+      const tu = info.targetId ? info.units.get(info.targetId) : undefined;
+      this.hotbar.frame({ mp: me.mp, pos: info.pos, target: info.target && info.target.anim !== Anim.Dead && tu ? { x: tu.x, y: tu.y } : null });
     }
     this.arena.frame(info.units);
     const now = performance.now();

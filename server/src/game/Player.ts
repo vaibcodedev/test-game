@@ -11,6 +11,7 @@ import { petXpToNext } from "../../../shared/pets";
 import { makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
 import { Anim, UnitKind, type LootBag, type SelfState } from "../../../shared/protocol";
 import { hasUnknownSkills, starterSkill } from "../../../shared/skills";
+import { defaultBars, hasBars, migrateBars, validateBars, type Bars } from "../../../shared/hotbar";
 import type { PlayerSave } from "../db";
 import { Unit } from "../rooms/schema";
 
@@ -42,6 +43,7 @@ export function newSave(cls: ClassId, spawn: { x: number; y: number }): PlayerSa
     kills: 0,
     bossKills: {},
     mobKills: {},
+    bars: defaultBars(cls),
   };
 }
 
@@ -123,6 +125,9 @@ export class Player {
   followId: string | null = null;
   followGo = false;
   potionAt = 0;
+  /** Окно ограничения bars:set / bars:swap (10 в секунду). */
+  barsWin = 0;
+  barsHits = 0;
   poisonUntil = 0;
   /** Разбойник: скрытность до, гарантированный крит до, яды на целях. */
   stealthUntil = 0;
@@ -293,6 +298,13 @@ export class Player {
     return true;
   }
 
+  /** Панели: у героя без них — миграция по изученным умениям; в сохранении всегда допустимая раскладка. */
+  bars(): Bars {
+    const s = this.save;
+    s.bars = hasBars(s.bars) ? validateBars(s.bars, s.cls) : migrateBars(s.cls, s.skills);
+    return s.bars;
+  }
+
   selfState(): SelfState {
     this.grantMounts();
     return {
@@ -314,6 +326,7 @@ export class Player {
       skillPoints: this.skillPoints(),
       skills: this.save.skills,
       inventory: this.save.inventory,
+      bars: this.bars(),
       equip: this.save.equip,
       derived: this.derived,
       kills: this.save.kills,

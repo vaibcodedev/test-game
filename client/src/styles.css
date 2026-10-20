@@ -496,6 +496,26 @@ input:focus-visible {
 .slot.empty {
   opacity: 0.35;
 }
+/* ---------- панель умений (ui/hotbar.ts) ---------- */
+.hb { display: flex; flex-direction: column; gap: 4px; }
+.hb-row { display: flex; gap: 4px; align-items: flex-end; }
+.hb-row.r2.empty { display: none; }
+.hb.dragging .hb-row.r2.empty { display: flex; opacity: 0.7; }
+.hb-extras { display: flex; gap: 6px; align-items: flex-end; }
+.hb-slot:not(.filled) { opacity: 0.45; }
+.hb-slot:not(.filled) kbd { color: var(--dim); }
+.hb-slot.drag { border-color: var(--gold); box-shadow: 0 0 8px rgba(240, 192, 80, 0.6); opacity: 1; }
+.hb-slot .act { display: block; font-size: 26px; line-height: 50px; text-align: center; }
+.hb-slot.unlearned img, .hb-slot.none img { filter: grayscale(1) brightness(0.4); }
+.hb-slot.unlearned::after { content: "🔒"; position: absolute; right: 3px; bottom: 2px; font-size: 14px; }
+.hb-slot.nomana img { filter: saturate(0.3) brightness(0.6) sepia(1) hue-rotate(180deg); }
+.hb-slot.notarget img { opacity: 0.5; }
+.hb-slot.oor kbd, .hb-slot.nolos kbd { color: #ff4a4a; }
+.hb-slot.oor, .hb-slot.nolos { border-color: #8a2a2a; }
+.hb-slot.press { animation: hb-press 0.18s ease-out; }
+@keyframes hb-press { from { box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.85); } to { box-shadow: none; } }
+.hb-lock { align-self: center; width: 26px; height: 26px; border: 1px solid var(--line-hi); border-radius: 5px; background: #0e0b10; padding: 0; cursor: pointer; font-size: 13px; }
+.hb-lock.open { border-color: var(--gold); }
 .sep {
   width: 1px;
   align-self: stretch;

@@ -4,6 +4,7 @@ import { CHAT_MAX_LEN, TILE } from "../../../shared/constants";
 import type { Player } from "../game/Player";
 import { castSkill } from "../game/skills";
 import type { World } from "../game/World";
+import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
 
 export const num = (v: unknown, min: number, max: number): number | null =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null;
@@ -92,6 +93,31 @@ export function registerCombat(on: On, world: () => World) {
     const x = num(m.x, 0, w().map.w * TILE) ?? p.x, y = num(m.y, 0, w().map.h * TILE) ?? p.y;
     const err = castSkill(w(), p, m.id, x, y, typeof m.target === "string" ? m.target : null);
     if (err) p.send("toast", { text: err, kind: "error" });
+  });
+  // панели умений (docs/controls.md, раздел 8): не чаще 10 изменений в секунду
+  const barsOk = (p: Player) => {
+    const now = Date.now();
+    if (now - p.barsWin > 1000) { p.barsWin = now; p.barsHits = 0; }
+    return ++p.barsHits <= 10;
+  };
+  on<{ bar: unknown; i: unknown; ref: unknown }>("bars:set", (p, m) => {
+    if (!validPos(m.bar, m.i) || !barsOk(p)) return;
+    const ref = cleanRef(m.ref ?? null, p.cls);
+    if (ref === undefined) return void p.send("toast", { text: "Это нельзя поставить на панель", kind: "error" });
+    p.save.bars = setSlot(p.bars(), m.bar as number, m.i as number, ref);
+    p.selfDirty = true;
+  });
+  const pos = (v: unknown): { bar: number; i: number } | null => {
+    const o = v as { bar?: unknown; i?: unknown } | null;
+    return o && typeof o === "object" && validPos(o.bar, o.i) ? { bar: o.bar as number, i: o.i as number } : null;
+  };
+  on<{ a: unknown; b: unknown }>("bars:swap", (p, m) => {
+    const a = pos(m.a), b = pos(m.b);
+    if (!a || !b || !barsOk(p)) return;
+    const bars = p.bars().map((r) => r.slice());
+    [bars[a.bar][a.i], bars[b.bar][b.i]] = [bars[b.bar][b.i], bars[a.bar][a.i]];
+    p.save.bars = bars;
+    p.selfDirty = true;
   });
   on("mount:toggle", (p) => w().toggleMount(p));
   on<{ text: unknown }>("chat", (p, m) => {

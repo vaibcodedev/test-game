@@ -2,6 +2,7 @@
 import { COOKS, FOOD, foodOf, type Dish } from "../../../shared/food";
 import { MERCHANT_RANGE, PICKUP_RANGE } from "../../../shared/constants";
 import { BASE_ITEMS, ONEHAND, canEquip, isTwoHanded, iconFor, itemName, itemValue, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
+import { usableBase } from "../../../shared/hotbar";
 import { MATERIALS } from "../../../shared/upgrade";
 import { RESOURCES } from "../../../shared/biomes";
 import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
@@ -102,10 +103,19 @@ export function useItem(w: World, p: Player, index: unknown) {
     u.mp = Math.min(u.maxMp, u.mp + Math.round(u.maxMp * 0.5));
   }
   p.potionAt = now + 1500;
+  p.send("cd", { id: "potion", ms: 1500 });
   w.emit({ t: "aoe", k: it.base === "hp_potion" ? "nature" : "frost", x: u.x, y: u.y, r: 24 });
   it.qty = (it.qty ?? 1) - 1;
   if (it.qty <= 0) p.save.inventory[index] = null;
   p.selfDirty = true;
+}
+
+/** use:base — первая стопка предмета в сумке (зелье или еда); индексы клиента не нужны, гонки с перестановкой нет. */
+export function useBase(w: World, p: Player, base: unknown, locked: (i: number) => boolean = () => false) {
+  if (!usableBase(base) || p.dead) return;
+  const i = p.save.inventory.findIndex((it, j) => !!it && it.base === base && !locked(j));
+  if (i < 0) return err(p, base === "hp_potion" ? "Нет зелий здоровья" : base === "mp_potion" ? "Нет зелий маны" : "Нет такого предмета");
+  useItem(w, p, i);
 }
 
 /** Съесть блюдо: мгновенное лечение и бафф; новый бафф заменяет старый. На арене нельзя. */

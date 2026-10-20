@@ -1,4 +1,5 @@
 /** Хранилище аккаунтов и прогресса: встроенный в Node модуль node:sqlite. */
+import type { Bars } from "../../shared/hotbar";
 import { DatabaseSync } from "node:sqlite";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
@@ -49,6 +50,8 @@ export interface PlayerSave {
   quests?: QuestSave;
   /** Внешность: индекс оттенка (shared/accounts LOOKS), выбирается при создании героя. */
   look?: number;
+  /** Панели умений (shared/hotbar.ts); нет в старых сохранениях — миграция при первом входе. */
+  bars?: Bars;
 }
 
 export interface CharRow {

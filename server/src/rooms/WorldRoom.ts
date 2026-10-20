@@ -26,7 +26,7 @@ import { registerAdmin } from "../game/admin";
 import { registerEncounters } from "../game/encounters";
 import { registerBiomes, sendNodes } from "../game/biomes";
 import { questProgress, registerCities } from "../game/cities";
-import { addItem, buy, buyFood, nearMerchant, equip, pickup, sell, swap, unequip, useItem } from "../game/inventory";
+import { addItem, buy, buyFood, nearMerchant, equip, pickup, sell, swap, unequip, useBase, useItem } from "../game/inventory";
 import { Player } from "../game/Player";
 import { gainXp } from "../game/rewards";
 import { forgetRumors, rumorFor } from "../game/rumors";
@@ -36,6 +36,7 @@ import { BankService } from "../game/bank";
 import { expandBag } from "../game/bags";
 import type { ArenaOptions, Participant } from "./ArenaRoom";
 import { makeOn, registerCombat, type On } from "./common";
+import { autoPlace, setSlot } from "../../../shared/hotbar";
 import { WorldState } from "./schema";
 
 interface AuthResult {
@@ -471,9 +472,14 @@ export class WorldRoom extends Room<WorldState> {
       if (!def || def.cls !== p.cls) return;
       const why = canLearn(def, p.save.skills, p.level, p.skillPoints());
       if (why) return p.send("toast", { text: why, kind: "error" });
+      const bars = p.bars(); // миграция по прежним умениям — до вложения очка
+      const first = !p.save.skills[def.id];
       p.save.skills[def.id] = (p.save.skills[def.id] || 0) + 1;
       p.recalc();
-      p.send("toast", { text: `${def.name}: ранг ${p.save.skills[def.id]}`, kind: "info" });
+      // ранг 0→1: активное умение встаёт в свободный слот; клиент допишет «— клавиша R» по своей схеме
+      const at = first && def.kind === "active" ? autoPlace(bars, p.cls, def.id) : null;
+      if (at) { p.save.bars = setSlot(bars, at.bar, at.i, { s: def.id }); p.selfDirty = true; }
+      p.send("toast", { text: `${def.name}: ранг ${p.save.skills[def.id]}`, kind: "info", ...(at ? { slot: at } : {}) });
     });
     const lock = (p: Player, ...idx: unknown[]) => {
       if (!idx.some((i) => this.trade.locked(p, i))) return false;
@@ -504,6 +510,7 @@ export class WorldRoom extends Room<WorldState> {
     on<{ index: unknown }>("equip", (p, m) => !lock(p, m.index) && equip(w(), p, m.index));
     on<{ slot: unknown }>("unequip", (p, m) => unequip(p, m.slot));
     on<{ index: unknown }>("use", (p, m) => !lock(p, m.index) && useItem(w(), p, m.index));
+    on<{ base: unknown }>("use:base", (p, m) => useBase(w(), p, m.base, (j) => this.trade.locked(p, j)));
     on<unknown>("market:get", (p) => sendPrices(p));
     on<{ index: unknown }>("sell",(p, m) => !lock(p, m.index) && sell(w(), p, m.index));
     on<{ a: unknown; b: unknown }>("swap", (p, m) => !lock(p, m.a, m.b) && swap(p, m.a, m.b));

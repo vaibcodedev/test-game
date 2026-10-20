@@ -2,6 +2,7 @@
 import type { ClassId, FactionId, StatKey, Stats } from "./classes";
 import type { Derived } from "./formulas";
 import type { Item, Slot } from "./items";
+import type { Bars, SlotRef } from "./hotbar";
 import type { QuestSave } from "./quests";
 
 export const ROOM_NAME = "world";
@@ -62,6 +63,9 @@ export interface ClientMessages {
   equip: { index: number };
   unequip: { slot: Slot };
   use: { index: number };
+  "use:base": { base: string };
+  "bars:set": { bar: number; i: number; ref: SlotRef | null };
+  "bars:swap": { a: { bar: number; i: number }; b: { bar: number; i: number } };
   sell: { index: number };
   swap: { a: number; b: number };
   buy: { base: string; qty?: number };
@@ -100,6 +104,8 @@ export interface SelfState {
   skillPoints: number;
   skills: Record<string, number>;
   inventory: (Item | null)[];
+  /** Панели умений: 2 × 12 слотов (shared/hotbar.ts). */
+  bars: Bars;
   equip: Record<Slot, Item | null>;
   derived: Derived;
   kills: number;
@@ -187,6 +193,8 @@ export interface ToastMsg {
   /** Ключ иконки предмета (iconFor) и классы, для которых он предназначен. */
   icon?: string;
   classes?: string[];
+  /** Куда автоматически встало изученное умение: клиент дописывает «— клавиша R» по своей схеме. */
+  slot?: { bar: number; i: number };
 }
 
 export interface CooldownMsg {
