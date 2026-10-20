@@ -1,8 +1,11 @@
 /* Интерфейс: тёмный кожаный пергамент, золото на акцентах, пиксельный шрифт.
    Стили разбиты по разделам; порядок подключения = порядок каскада, его не менять.
-   Токены (цвета, шрифты, отступы, радиусы, тени) — styles/tokens.css, темы фракций — styles/factions.css. */
+   Токены (цвета, шрифты, отступы, радиусы, тени, размеры) — styles/tokens.css, общие компоненты (кнопка, поле, вкладки, ячейка …) — styles/kit.css,
+   темы фракций — styles/factions.css. */
+@import "./styles/fonts.css";
 @import "./styles/tokens.css";
 @import "./styles/base.css";
+@import "./styles/kit.css";
 @import "./styles/login.css";
 @import "./styles/hud.css";
 @import "./styles/hotbar.css";

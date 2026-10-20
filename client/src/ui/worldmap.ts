@@ -7,9 +7,14 @@ import { PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
 import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 
-const HEAD = `"Pixelify Sans", "Rubik", system-ui, sans-serif`;
+const HEAD = `"Ark Pixel 10", "Rubik", system-ui, sans-serif`;
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
-const head = (px: number) => `600 ${px}px ${HEAD}`;
+/** Шрифт заголовков на canvas: пиксель шрифта = 1/10 кегля, поэтому кегль — целое число раз по 10 пикселей экрана
+ *  (не меньше двух пикселей шрифта); пробел сужен с 5 до 3 пикселей шрифта, как в styles/tokens.css (--head-ws). */
+const head = (px: number, dpr: number) => {
+  const k = Math.max(2, Math.round((px * dpr) / 10));
+  return { font: `${(k * 10) / dpr}px ${HEAD}`, size: (k * 10) / dpr, ws: `${(-2 * k) / dpr}px` };
+};
 const CITY = "#ffe08a";
 const KIND_NAME: Record<string, string> = { village: "Деревня", camp: "Лагерь", ruins: "Руины", meeting: "Место встречи" };
 const KIND_COLOR: Record<string, string> = { village: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
@@ -233,10 +238,12 @@ export class WorldMapView {
 
     const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
     const hits: Hit[] = [];
-    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16): boolean => {
+    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16, ws = "0px"): boolean => {
       g.font = font;
+      g.wordSpacing = ws;
       const w = Math.ceil(g.measureText(text).width);
-      const lx = Math.round(x - w / 2), ly = Math.round(y);
+      // начало подписи — в целых пикселях экрана (не CSS), иначе пиксельный шрифт размывается
+      const lx = Math.round((x - w / 2) * dpr) / dpr, ly = Math.round(y * dpr) / dpr;
       const r = { x0: lx - 2, y0: ly - size, x1: lx + w + 2, y1: ly + 2 };
       if (r.x1 < 0 || r.x0 > this.W || r.y1 < 0 || r.y0 > this.H) return false;
       if (placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) return false;
@@ -263,8 +270,8 @@ export class WorldMapView {
       g.fillStyle = col;
       g.fillRect(x - r, y - r, r * 2, r * 2);
       if (c.capital) { g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.strokeRect(x - r, y - r, r * 2, r * 2); }
-      const fs = c.capital ? 17 : 15;
-      label(open || c.capital ? c.name : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", head(fs), fs);
+      const hf = head(c.capital ? 17 : 15, dpr);
+      label(open || c.capital ? c.name : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", hf.font, hf.size, hf.ws);
       hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : "Неизвестный город", sub: open || c.capital ? (c.capital ? "Столица фракции" : "Город") + " · безопасно" : "Ещё не открыт" });
     }
     // Врата Цитадели Хаоса (рейд)
@@ -274,7 +281,8 @@ export class WorldMapView {
       g.beginPath(); g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); g.fill();
       g.fillStyle = "#ff6a2a";
       g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
-      label(RAID.map.gate, x, y - r - 6, P.boss, head(15), 15);
+      const hf = head(15, dpr);
+      label(RAID.map.gate, x, y - r - 6, P.boss, hf.font, hf.size, hf.ws);
       hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: `Рейд · ${RAID.boss.name} · ${RAID.raid.minLevel}+ ур.` });
     }
     // названия рек
@@ -312,8 +320,8 @@ export class WorldMapView {
       // зоны
       const za = s < 3 ? 0.75 : s < 6 ? 0.5 : 0.28;
       g.globalAlpha = za;
-      const zs = s < 3 ? 15 : 18;
-      for (const z of this.zoneLabels) label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", head(zs), zs);
+      const hz = head(s < 3 ? 15 : 18, dpr);
+      for (const z of this.zoneLabels) label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws);
       g.globalAlpha = 1;
     }
     this.hits = hits;

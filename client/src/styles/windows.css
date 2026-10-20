@@ -8,40 +8,7 @@
   max-height: calc(100vh - 140px);
   overflow: auto;
 }
-.win h2 {
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  margin: 0;
-  font-family: var(--font-head);
-  font-weight: var(--fw-b);
-  font-size: var(--fs-h);
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid var(--line);
-  color: var(--gold);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--sp-3);
-}
-.win .x {
-  background: #2a2130;
-  border: 1px solid var(--line-hi);
-  border-radius: var(--r-2);
-  color: var(--fg);
-  font-size: var(--fs-lg);
-  line-height: 1;
-  cursor: pointer;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  flex: none;
-}
-.win .x:hover {
-  background: var(--bad);
-  border-color: var(--bad);
-  color: #fff;
-}
+/* заголовок окна .win > h2, тело .win > .body и кнопка .x — в kit.css */
 .win-char {
   left: 12px;
   top: 150px;

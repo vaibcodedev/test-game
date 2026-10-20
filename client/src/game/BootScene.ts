@@ -57,6 +57,7 @@ export class BootScene extends Phaser.Scene {
         this.anims.create({ key: `m_${id}-idle-${row}`, frames: f(8, 11), frameRate: 4, repeat: -1 });
       }
     }
-    document.fonts.load('16px "Pixelify Sans"').finally(() => this.scene.start("game"));
+    // все шрифты, которыми рисуют Phaser и canvas карты мира: иначе в текстуры подписей запечётся запасной шрифт
+    Promise.all([document.fonts.load('400 14px "Rubik"'), document.fonts.load('600 14px "Rubik"'), document.fonts.load('20px "Ark Pixel 10"')]).finally(() => this.scene.start("game"));
   }
 }

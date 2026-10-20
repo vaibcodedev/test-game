@@ -71,9 +71,10 @@ copy("desktop/launcher/index.html", "launcher/index.html");
 copy("desktop/launcher/launcher.css", "launcher/launcher.css");
 copy("desktop/build/icon.png", "launcher/icon.png");
 copy("desktop/build/icon.ico", "icon.ico");
+// шрифт заголовков — тот же, что в клиенте (client/src/styles/fonts.css), вместе с лицензией
+copy("client/src/fonts/ark-pixel-10px.woff2", "launcher/fonts/ark-pixel-10px.woff2");
+copy("client/src/fonts/OFL-ark-pixel.txt", "launcher/fonts/OFL-ark-pixel.txt");
 for (const f of [
-  "pixelify-sans/files/pixelify-sans-cyrillic-600-normal.woff2",
-  "pixelify-sans/files/pixelify-sans-latin-600-normal.woff2",
   "rubik/files/rubik-cyrillic-400-normal.woff2",
   "rubik/files/rubik-latin-400-normal.woff2",
   "rubik/files/rubik-cyrillic-500-normal.woff2",

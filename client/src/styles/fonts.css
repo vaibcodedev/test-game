@@ -1,0 +1,10 @@
+/* Шрифт заголовков — Ark Pixel 10px Proportional (latin-сборка с кириллицей), © TakWolf, OFL 1.1: client/src/fonts/OFL-ark-pixel.txt.
+   Начертание одно; диапазон 100–900 объявлен, чтобы браузер не рисовал «поддельный жирный» — он размывает пиксельный шрифт.
+   Чёткость: пиксель шрифта = 1/10 em, поэтому кегль заголовков кратен --hu (10 пикселей экрана, см. tokens.css). */
+@font-face {
+  font-family: "Ark Pixel 10";
+  src: url("../fonts/ark-pixel-10px.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}

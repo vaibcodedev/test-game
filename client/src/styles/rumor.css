@@ -123,25 +123,4 @@
 .smith-info .warn {
   color: var(--bad);
 }
-.cell .plus,
-.sell-cell .plus {
-  position: absolute;
-  left: 2px;
-  top: 0;
-  z-index: 1;
-  font-size: var(--fs);
-  font-weight: var(--fw-b);
-  line-height: 1.2;
-  color: #fff;
-  text-shadow:
-    0 1px 0 #000,
-    0 0 3px #000;
-}
-.cell .plus.pt1,
-.cell .plus.pt2,
-.cell .plus.pt3,
-.sell-cell .plus.pt1,
-.sell-cell .plus.pt2,
-.sell-cell .plus.pt3 {
-  color: var(--enchant);
-}
+/* значок заточки .cell .plus — в kit.css */

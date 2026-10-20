@@ -9,10 +9,6 @@
 .login-btns .btn:not(.primary) {
   font-size: var(--fs-md);
 }
-.btn.danger {
-  background: var(--btn-danger);
-  border-color: var(--bad);
-}
 .charsel {
   width: min(980px, 100%);
   max-height: calc(100vh - 24px);
@@ -34,7 +30,9 @@
 .cs-head h1 {
   margin: 0;
   font-family: var(--font-head);
-  font-size: 32px;
+  font-size: round(nearest, var(--fs-head-page), var(--hu));
+  font-weight: var(--fw);
+  word-spacing: var(--head-ws);
   color: var(--gold);
   text-shadow: var(--shadow-head);
 }
@@ -227,7 +225,8 @@
     0 0 0 4px var(--gold);
 }
 .logout-wait {
-  font-size: 40px;
+  font-size: round(nearest, var(--fs-head-screen), var(--hu));
+  font-weight: var(--fw);
   text-align: center;
   color: var(--gold);
   font-variant-numeric: tabular-nums;
@@ -258,7 +257,9 @@
 .login h2 {
   margin: 0;
   font-family: var(--font-head);
-  font-size: 22px;
+  font-size: round(nearest, var(--fs-head-win), var(--hu));
+  font-weight: var(--fw);
+  word-spacing: var(--head-ws);
   color: var(--fg);
 }
 

@@ -6,9 +6,12 @@
 
 Изображения рисует код генератора в `tools/gen/` (`canvas.ts`, `palette.ts`, `tiles.ts`, `units.ts`, `objects.ts`). Команда `npm run assets` пересоздаёт их в `client/public/assets/`. Палитра собрана вручную в `tools/gen/palette.ts`.
 
-## Шрифт
+## Шрифты
 
-- **Pixelify Sans**, автор Stefie Justprince. Лицензия SIL Open Font License 1.1. Подключён через пакет [`@fontsource/pixelify-sans`](https://fontsource.org/fonts/pixelify-sans) и собирается вместе с клиентом, поэтому интернет для шрифта не нужен.
+Оба шрифта собираются вместе с клиентом и лаунчером, интернет для них не нужен.
+
+- **Ark Pixel 10px Proportional** (заголовки, карта мира), автор TakWolf, [ark-pixel-font.takwolf.com](https://ark-pixel-font.takwolf.com). Лицензия SIL Open Font License 1.1, текст лицензии — `client/src/fonts/OFL-ark-pixel.txt`. Файл `client/src/fonts/ark-pixel-10px.woff2` — latin-сборка (латиница и кириллица).
+- **Rubik** (основной текст), подключён через пакет [`@fontsource/rubik`](https://fontsource.org/fonts/rubik). Лицензия SIL Open Font License 1.1.
 
 ## Звук
 

@@ -24,9 +24,9 @@
   padding-right: var(--sp-0);
 }
 .shop-head {
-  font-family: var(--font-head);
   color: var(--gold);
-  font-size: 15px;
+  font-weight: var(--fw-b);
+  font-size: var(--fs-md);
   margin-top: var(--sp-1);
   padding-bottom: var(--sp-0);
   border-bottom: 1px solid var(--line);

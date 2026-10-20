@@ -72,9 +72,6 @@
     animation: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .walk, .hb-press, .toast-anim, .hb-err, .ctl-blink, .raid-banner { animation: none; }
-}
 .arena-section {
   border-top: 1px solid var(--line);
   padding-top: var(--sp-2);

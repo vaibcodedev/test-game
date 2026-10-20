@@ -510,9 +510,18 @@ export class Hud {
     this.settingsBody = body;
   }
   private settingsBody: Element | null = null;
+  /** Пиксель шрифта заголовков внутри HUD (--hu, styles/tokens.css): учитывает и масштаб экрана, и zoom интерфейса. */
+  private headDpr = 0;
+  private syncHeadUnit = () => {
+    const dpr = window.devicePixelRatio || 1;
+    this.root.style.setProperty("--hu", `${10 / (dpr * this.uiScale / 100)}px`);
+    // подписка на смену масштаба экрана — одна на каждое значение dpr
+    if (dpr !== this.headDpr) { this.headDpr = dpr; matchMedia(`(resolution: ${dpr}dppx)`).addEventListener("change", this.syncHeadUnit, { once: true }); }
+  };
   private applySettings() {
     (this.root.style as CSSStyleDeclaration & { zoom: string }).zoom = String(this.uiScale / 100);
     this.root.style.setProperty("--fs-chat", this.chatSize + "px");
+    this.syncHeadUnit();
     const b = this.settingsBody;
     if (b) { b.querySelector("#set-scale-v")!.textContent = this.uiScale + "%"; b.querySelector("#set-chat-v")!.textContent = this.chatSize + "px"; }
   }

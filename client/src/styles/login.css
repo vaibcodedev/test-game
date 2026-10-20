@@ -20,10 +20,11 @@
 .login h1 {
   margin: 0;
   font-family: var(--font-head);
-  font-size: 38px;
+  font-size: round(nearest, var(--fs-head-screen), var(--hu));
+  font-weight: var(--fw);
+  word-spacing: var(--head-ws);
   color: var(--gold);
   text-shadow: var(--shadow-head);
-  letter-spacing: 1px;
   text-wrap: balance;
 }
 .login .sub {

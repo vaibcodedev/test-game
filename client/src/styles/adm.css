@@ -69,10 +69,6 @@
   pointer-events: none;
   z-index: 50;
 }
-[hidden] {
-  display: none !important;
-}
-
 .win-enc {
   left: 50%;
   top: 90px;

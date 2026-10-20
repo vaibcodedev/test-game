@@ -1,7 +1,5 @@
 import "@fontsource/rubik/400.css";
 import "@fontsource/rubik/600.css";
-import "@fontsource/pixelify-sans/400.css";
-import "@fontsource/pixelify-sans/600.css";
 import "./styles.css";
 import Phaser from "phaser";
 import { api, apiBase, session } from "./account";
@@ -12,6 +10,13 @@ import { CharSelect } from "./ui/charselect";
 import { Hud } from "./ui/hud";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+// пиксель шрифта заголовков (styles/tokens.css, --hu): 10 пикселей экрана в CSS-px; меняется с масштабом Windows и браузера
+const syncHeadUnit = () => {
+  document.documentElement.style.setProperty("--hu", `${10 / (window.devicePixelRatio || 1)}px`);
+  matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`).addEventListener("change", syncHeadUnit, { once: true });
+};
+syncHeadUnit();
 const netMsg = (ex: unknown) => {
   const msg = (ex as Error)?.message || String(ex);
   return /ECONNREFUSED|Failed to fetch|NetworkError|offline/i.test(msg) ? "Сервер недоступен. Запущен ли npm run dev?" : msg;
