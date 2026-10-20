@@ -7,7 +7,7 @@
   --line-hi: #8a6a4a;
   --fg: #efe6d2;
   --dim: #bdb09c;
-  --gold: #f0c050;
+  --gold: #d6a84b;
   --hp: #d0443c;
   --mp: #3f7ad8;
   --xp: #b08aff;
@@ -18,12 +18,29 @@
   --epic: #c47bff;
   --legend: #ff9a2e;
   --enchant: #3ff0d0;
+  --text: var(--fg);
+  --foe: #ff3030;
+  --ally: #9ae07a;
+  --self: #5ad04a;
+  --heal: #7aff7a;
+  --num-gold: #ffd84a;
+  --boss: #ff6a2a;
+  --bad-line: #8a2a2a;
   --font: "Rubik", "Trebuchet MS", system-ui, sans-serif;
   --font-head: "Pixelify Sans", "Rubik", system-ui, sans-serif;
+  --sp-0: 2px;
   --sp-1: 4px;
+  --sp-1h: 6px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
+  --r-1: 3px;
+  --r-2: 4px;
+  --r-3: 6px;
+  --r-pill: 12px;
+  --shadow-panel: 0 0 0 1px #000, 0 8px 30px rgba(0,0,0,.6);
+  --glow-sel: 0 0 10px rgba(240,192,80,.5);
+  --glow-boss: 0 0 18px rgba(255,80,40,.35);
   --fs: 14px;
   --fs-h: 20px;
   --fs-chat: 14px;
@@ -2666,12 +2683,12 @@ img.coin {
 
 /* ---------- Фракции (задача 38): цвета интерфейса по фракции героя ---------- */
 body[data-faction="solgard"] {
-  --gold: #f0c050;
+  --gold: #d6a84b;
   --line-hi: #8a6a4a;
   --xp: #7ec8ff;
 }
 body[data-faction="umbrath"] {
-  --gold: #c890ff;
+  --gold: #8fd46a;
   --line-hi: #6a4a8a;
   --line: #3e3050;
   --panel: rgba(18, 14, 26, 0.95);
