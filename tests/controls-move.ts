@@ -1,6 +1,6 @@
 /**
  * Браузерная проверка движения (задача 115, шаг 3), схема «Экшен»: удержание ПКМ ведёт за курсором плавно,
- * короткий ПКМ — moveTo, автобег (Shift+R), полоса каста по сообщению cast.
+ * короткий ПКМ — moveTo, автобег (V), полоса каста по сообщению cast.
  * Запуск: TEST_PORT=2796 npx tsx tests/controls-move.ts
  */
 import fs from "node:fs";
@@ -95,17 +95,17 @@ async function main() {
     must(Math.hypot(s2.x - s1.x, s2.y - s1.y) < 3, "герой не остановился: " + JSON.stringify([s1, s2, p1]));
     ok(`удержание ПКМ: input к курсору, ход ${(p1.x - p0.x).toFixed(0)} px, макс. откат ${jump.toFixed(1)}, отпустил — стоп`);
 
-    // автобег (Shift+R): бежит к курсору, повтор останавливает
+    // автобег (V): бежит к курсору, повтор останавливает
     const q0 = await spos();
     const c2 = await toScreen(page, q0.x - 120, q0.y);
     await page.mouse.move(c2.x, c2.y);
-    await page.keyboard.down("Shift"); await page.keyboard.press("KeyR"); await page.keyboard.up("Shift");
+    await page.keyboard.press("KeyV");
     await sleep(400);
     if (process.env.DBG) console.log(JSON.stringify(await page.evaluate(() => { const g = (window as any).__game.scene.getScene('game'); return { ar: g.autorun, anim: g.me.u.anim, sent: (window as any).__sent.slice(-3) }; })));
     await sleep(800);
     const q1 = await spos();
     must(q0.x - q1.x > 35, "автобег не ведёт к курсору: " + (q0.x - q1.x));
-    await page.keyboard.down("Shift"); await page.keyboard.press("KeyR"); await page.keyboard.up("Shift");
+    await page.keyboard.press("KeyV");
     await sleep(600);
     const q2 = await spos(); await sleep(400); const q3 = await spos();
     must(Math.hypot(q3.x - q2.x, q3.y - q2.y) < 3, "повтор R не остановил автобег");

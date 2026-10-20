@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { PC } from "./canvas";
-import { renderLayer, proj, type V3 } from "./mounts-rig";
+import { renderLayer, proj, cfg, type V3 } from "./mounts-rig";
 import type { Built } from "./mounts-quad";
 import { MODELS } from "./mounts-all";
 import type { MountMeta } from "../../shared/mounts";
@@ -32,14 +32,16 @@ export interface MountModel {
 function frames(m: MountModel, id: string) {
   const back: PC[][] = [[], [], []], front: PC[][] = [[], [], []];
   const seat: [number, number][][] = [[], [], []];
+  const G = process.env.MLAT ? { lat: Number(process.env.MLAT), yk: Number(process.env.MYK || 0.85) } : { lat: 2.6, yk: 0.85 };
   for (let col = 0; col < MOUNT_COLS; col++) {
     const run = col < MOUNT_RUN;
     const ph = run ? col / MOUNT_RUN : (col - MOUNT_RUN) / MOUNT_IDLE;
     const b = m.build(ph, run);
+    cfg.lat = m.fly ? 1.85 : G.lat; cfg.yk = m.fly ? 0.72 : G.yk; cfg.ex = m.fly ? 0 : Number(process.env.MEX || 0.4);
     for (let v = 0; v < 3; v++) {
       back[v].push(renderLayer(b.rig.prims, v, m.F, m.gy, false).outline(undefined, true));
       front[v].push(renderLayer(b.rig.prims, v, m.F, m.gy, true).outline(undefined, true));
-      const p = proj(v, b.seat as V3);
+      const p = proj(v, (!m.fly ? [b.seat[0], b.seat[1], b.seat[2] - (v < 2 ? 2.5 : 2)] : b.seat) as V3);
       seat[v].push([Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]);
     }
   }

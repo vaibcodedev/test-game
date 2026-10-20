@@ -50,7 +50,7 @@ function horseQ(look: HorseLook, o: Partial<Q> = {}): Q {
     up: 10, low: 9.6, legR: heavy ? [3.1, 2.3] : [2.6, 1.8], legX: heavy ? 4.6 : 3.7, stride: heavy ? 6 : 7.5, lift: heavy ? 4 : 5.2,
     foot: "hoof", neck: [heavy ? 7 : 8, heavy ? 13 : 14], neckR: heavy ? [6, 4.4] : [5, 3.5], neckW: heavy ? 5 : 3.8,
     body: look.body, legs: look.sock ? look.body : look.body, belly: look.belly, seatY: -1.5, seatZ: 0.8,
-    head: (r, c) => horseHead(r, c, look, heavy ? 1.15 : 1),
+    head: (r, c) => horseHead(r, c, look, heavy ? 1.3 : 1.18),
     tail: (r, c) => horseTail(r, c, look.mane),
     ...o,
   };
@@ -172,14 +172,14 @@ export const SKEL_HORSE = (ph: number, run: boolean): Built =>
     },
   }, ph, run);
 
-const NIGHT = ramp("#06040a", "#120c18", "#221828", "#382a42", "#554268");
+const NIGHT = ramp("#0e0814", "#221830", "#3c2e50", "#5a4a72", "#7a6a96");
 const HELLFIRE = ramp("#5a0c08", "#a81c0c", "#e8541a", "#ffa030", "#ffee90");
 export const NIGHTMARE = (ph: number, run: boolean): Built =>
   quad(horseQ({ body: NIGHT, mane: HELLFIRE, eye: hx("#ffd040"), heavy: true, ears: true, chanfron: undefined }, {
     legR: [2.9, 2.0], stride: 8, lift: 6,
     hoof: ramp("#5a0c08", "#c23a12", "#f08a2c", "#ffe07a"),
     head: (r, c) => {
-      horseHead(r, c, { body: NIGHT, mane: ramp("#1a0a10", "#2a1018", "#44202a", "#5c2c38"), eye: hx("#ffe060") }, 1.15);
+      horseHead(r, c, { body: NIGHT, mane: ramp("#1a0a10", "#2a1018", "#44202a", "#5c2c38"), eye: hx("#ffe060") }, 1.3);
       // рога и горящая грива
       r.pair((s) => r.chain([V(s * 2.2, c.N[1] + 0.6, c.N[2] + 3.4), V(s * 3.6, c.N[1] - 1.2, c.N[2] + 7), V(s * 3.2, c.N[1] - 3.4, c.N[2] + 10.5)], 1.3, 0.4, ramp("#120c12", "#2a2028", "#4c4048", "#7a6e76"), { front: VIEW_DOWN }));
       r.pair((s) => r.dot(V(s * 3.4, c.N[1] + 6.5, c.N[2] - 1.4), 1.5, HELLFIRE[4], { views: s > 0 ? VIEW_SIDE | VIEW_DOWN : VIEW_DOWN, front: VIEW_DOWN, bias: 5 }));

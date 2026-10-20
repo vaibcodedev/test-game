@@ -9,6 +9,7 @@ import { lineClear, type WorldMap } from "../../../shared/map";
 import type { SelfState } from "../../../shared/protocol";
 import { skillMana, SKILLS, type SkillDef } from "../../../shared/skills";
 import { keybinds } from "../game/keybinds";
+import { mountSprite } from "../../../shared/mounts";
 import type { Net } from "../net";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -242,6 +243,15 @@ export class Hotbar {
       for (let i = 0; i < BAR_SLOTS; i++) {
         const c = this.cells[bar][i], ref = c.ref;
         if (!ref) continue;
+        if ("a" in ref && ref.a === "mount") {
+          // слот X показывает выбранного маунта
+          const mid = s.mount ?? "";
+          const want = mid ? `<img src="${icon(mountSprite(mid))}" alt="" draggable="false" style="object-fit:contain;image-rendering:pixelated">` : `<span class="act">${ACTION_INFO.mount.glyph}</span>`;
+          if (c.root.dataset.mnt !== mid) {
+            c.root.dataset.mnt = mid;
+            c.root.querySelector(".act, img")?.replaceWith(Object.assign(document.createElement("span"), { innerHTML: want }).firstElementChild!);
+          }
+        }
         const cls: string[] = [];
         let cdId = "", total = 0, q = "";
         if ("s" in ref) {

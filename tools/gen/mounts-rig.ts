@@ -71,13 +71,13 @@ export class Rig {
 }
 
 /** Растяжение ширины при взгляде спереди/сзади (иначе зверь выглядит палкой). */
-const LAT = 1.85;
+export const cfg = { lat: 1.85, yk: 0.72, ex: 0 };
 
 /** Проекция точки: [экранный сдвиг x, экранный сдвиг y (вниз +), глубина]. */
 export function proj(view: number, p: V3): [number, number, number] {
   const [x, y, z] = p;
-  if (view === 0) return [-x * LAT, -z + 0.72 * y, y];
-  if (view === 1) return [x * LAT, -z - 0.72 * y, -y];
+  if (view === 0) return [-x * cfg.lat, -z + cfg.yk * y + cfg.ex * Math.max(0, y - 10), y];
+  if (view === 1) return [x * cfg.lat, -z - cfg.yk * y - cfg.ex * Math.max(0, y - 10), -y];
   return [y + 0.35 * x, -z + 0.3 * x, x];
 }
 
@@ -145,7 +145,7 @@ export function renderLayer(prims: Prim[], view: number, F: number, gy: number, 
     }
     const a = proj(view, p.a), b = p.b ? proj(view, p.b) : a;
     const side = view === 2;
-    const ra = side ? p.ra : p.wa * LAT * 0.92, rb = side ? p.rb : p.wb * LAT * 0.92;
+    const ra = side ? p.ra : p.wa * cfg.lat * 0.92, rb = side ? p.rb : p.wb * cfg.lat * 0.92;
     const far = side && (p.a[0] + (p.b ? p.b[0] : p.a[0])) / 2 < -0.8 ? -1 : 0;
     list.push({ tone: p.tone + far, x: cx + a[0], y: cy + a[1], x2: cx + b[0], y2: cy + b[1], ra, rb, d: (a[2] + b[2]) / 2 + p.bias, p });
   }
