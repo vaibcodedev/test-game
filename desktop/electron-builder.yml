@@ -1,0 +1,63 @@
+# Десктоп-сборка «Пепельного Предела» (задача 116): npm run desktop:build → release/
+# Приложение собирается из desktop/out/app (свой package.json, без node_modules);
+# сервер (бандл) и клиент (dist) лежат рядом с app.asar в resources/server.
+appId: com.ashenreach.game
+productName: Пепельный Предел
+copyright: © 2026 Пепельный Предел
+
+directories:
+  app: desktop/out/app
+  output: release
+  buildResources: desktop/build
+
+files:
+  - "**/*"
+  - "!**/*.map"
+
+extraResources:
+  - from: desktop/out/server
+    to: server
+  - from: dist
+    to: server/dist
+
+asar: true
+# зависимости уже внутри бандлов: без этого хука electron-builder упаковал бы node_modules корня проекта
+beforeBuild: ./desktop/scripts/before-build.cjs
+electronLanguages: [ru, en-US]
+publish: null
+
+# Сервер работает в utilityProcess, режим ELECTRON_RUN_AS_NODE не нужен — отключаем его и прочие лазейки
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: desktop/build/icon.ico
+  executableName: AshenReach
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Пепельный Предел
+  uninstallDisplayName: Пепельный Предел
+  installerIcon: desktop/build/icon.ico
+  uninstallerIcon: desktop/build/icon.ico
+  installerHeaderIcon: desktop/build/icon.ico
+  language: "1049"
+  installerLanguages: [ru_RU]
+  multiLanguageInstaller: false
+  deleteAppDataOnUninstall: false
+  artifactName: AshenReach-Setup-${version}.${ext}
+
+portable:
+  artifactName: AshenReach-Portable-${version}.${ext}

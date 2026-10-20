@@ -2,7 +2,8 @@
 import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear, walkable } from "../../../shared/map";
 import { Anim } from "../../../shared/protocol";
-import { SKILLS } from "../../../shared/skills";
+import { SKILLS, skillMana } from "../../../shared/skills";
+import { BAL, healPowerMult } from "../../../shared/balance";
 import { CLASSES } from "../../../shared/classes";
 import { castUmbrath } from "./umbrath";
 import { castTank, onCast } from "./tanks";
@@ -47,7 +48,8 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
   if (p.frozenUntil > w.time) return "Бой ещё не начался";
   const ready = p.cds.get(id) || 0;
   if (w.time < ready) return null; // молча: кнопку уже показывают на перезарядке
-  const mana = def.mana!(rank);
+  if (!def.offGcd && w.time < p.gcdUntil) return null; // общий откат (data/balance.json gcd): молча, как перезарядка
+  const mana = skillMana(def, rank, p.level);
   if (p.unit.mp < mana) return "Недостаточно маны";
   const v = def.v(rank);
   const u = p.unit;
@@ -77,6 +79,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
     onRogueCast(w, p, id, wasStealthed);
     const cd = def.cd!(rank) * 1000;
     p.cds.set(id, w.time + cd);
+    if (!def.offGcd) p.gcdUntil = w.time + BAL.gcd * 1000;
     p.send("cd", { id, ms: cd });
     u.aseq = (u.aseq + 1) % 65535;
     u.dir = World.dirTo(ax - u.x, ay - u.y);
@@ -458,10 +461,10 @@ export function resolveAlly(w: World, p: Player, targetId: string | null): Ally 
   return self;
 }
 
-/** Сила лечения: средний урон оружия × сила умений × «Благодать». */
+/** Сила лечения: средний урон оружия × сила умений × «Благодать» × кривая по уровню (data/balance.json heal.power). */
 export function healPower(p: Player): number {
   const d = p.derived;
-  return ((d.dmgMin + d.dmgMax) / 2) * d.skillMult * (1 + 0.06 * (p.save.skills.grace || 0)) * powerMult(p);
+  return ((d.dmgMin + d.dmgMax) / 2) * d.skillMult * (1 + 0.06 * (p.save.skills.grace || 0)) * powerMult(p) * healPowerMult(p.level);
 }
 
 export function applyHeal(w: World, p: Player, a: Ally, amount: number): number {

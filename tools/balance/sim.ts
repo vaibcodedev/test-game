@@ -24,14 +24,18 @@ import { castSkill } from "../../server/src/game/skills";
 import { WorldState } from "../../server/src/rooms/schema";
 import type { PlayerSave } from "../../server/src/db";
 import { CLASSES, CLASS_IDS, type ClassId, type ClassRole, type Stats } from "../../shared/classes";
-import { activeSkills, classSkills, SKILLS, type SkillDef } from "../../shared/skills";
+import { activeSkills, classSkills, SKILLS, skillMana, type SkillDef } from "../../shared/skills";
 import { armorReduction, derive, mobStats, skillPointsAt, statPointsAt } from "../../shared/formulas";
 import * as itemsMod from "../../shared/items";
-import { BASE_ITEMS, makeItem, OFFHAND_CLASSES, Rarity, type BaseItem, type Item, type Slot } from "../../shared/items";
+import { BASE_ITEMS, makeItem, OFFHAND_CLASSES, Rarity, type BaseItem, type Item, type ItemStatKey, type Slot } from "../../shared/items";
+import { LEGENDARIES, legendaryFits, makeLegendary } from "../../shared/legendary";
+import { MAX_PLUS } from "../../shared/upgrade";
 import { MOBS, type MobDef } from "../../shared/mobs";
+import { createBoss } from "../../server/src/game/bosses";
 import { ELITE } from "../../shared/elites";
-import { arenaSpawn, generateArenaMap, MATCH_MS, PVP_DAMAGE_MULT } from "../../shared/arena";
-import { CELL_BLOCK, CELL_WALL, generateMap, T, walkable, Zone, type WorldMap } from "../../shared/map";
+import { arenaSpawn, generateArenaMap, MATCH_MS } from "../../shared/arena";
+import { BAL } from "../../shared/balance";
+import { BOSS_SPAWNS, CELL_BLOCK, CELL_WALL, generateMap, T, walkable, Zone, zoneAtPx, type WorldMap } from "../../shared/map";
 import { findPath } from "../../shared/path";
 import { MAP_SEED, PLAYER_RADIUS, TICK_MS } from "../../shared/constants";
 
@@ -246,9 +250,13 @@ function categories(cls: ClassId): BaseItem[] {
  * Предмет уровня: makeItem(база, уровень, Rare) с аффиксом главной характеристики (+Выносливость у бижутерии) и средним броском.
  * Модель каталога (rollModel, если есть) — только имя/вид: характеристики модели те же, что у базы.
  */
-function gearItem(baseId: string, level: number, cls: ClassId): Item {
+function gearItem(baseId: string, level: number, cls: ClassId, gear: GearMode = "level"): Item {
   const main = CLASSES[cls].mainStat;
-  const it = makeItem(baseId, level, Rarity.Rare, () => 0.5, [main, "vit"]);
+  const max = gear === "max";
+  // максимальная: эпическая +10, аффиксы — главная характеристика, крит/Выносливость (танк — Выносливость и здоровье)
+  const prefer: ItemStatKey[] = !max ? [main, "vit"] : role(cls) === "tank" ? [main, "vit", "hp", "crit"] : [main, "crit", "vit", "hp"];
+  const it = makeItem(baseId, level, max ? Rarity.Epic : Rarity.Rare, () => 0.5, prefer);
+  if (max) it.plus = MAX_PLUS;
   it.req = Math.min(it.req, level);
   const roll = loose.rollModel as ((cat: string, ilvl: number, c?: ClassId, f?: string, r?: () => number) => ModelLike | undefined) | undefined;
   if (roll) {
@@ -267,22 +275,36 @@ function power(cls: ClassId, level: number, alloc: Stats, skills: Record<string,
   return r === "tank" ? Math.sqrt(off) * ehp : off * Math.sqrt(ehp);
 }
 
-/** Экипировка уровня: оружие(+вторая рука) и каждый слот брони — лучшая база по оценке power (танк — одноручное + щит). */
-function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Record<string, number>): Record<Slot, Item | null> {
+/** Легендарки для максимальной экипировки: ярус и требование не выше уровня, класс может надеть, нужный слот; +10. */
+function legendsFor(cls: ClassId, level: number, slot: Slot): Item[] {
+  return Object.values(LEGENDARIES)
+    .filter((l) => l.tier <= level && l.req <= level && legendaryFits(l.id, cls) && BASE_ITEMS[l.base]?.slot === slot)
+    .map((l) => ({ ...makeLegendary(l.id), plus: MAX_PLUS }));
+}
+const GEAR_SLOTS: Slot[] = ["helmet", "armor", "boots", "cloak", "ring", "amulet"];
+/**
+ * Экипировка: оружие(+вторая рука) и каждый слот брони — лучшая база по оценке power (танк — одноручное + щит).
+ * level — редкая уровня; max — эпическая +10 уровня и легендарки +10 (ярус ≤ уровня; у легендарки есть свойство, поэтому
+ * при почти равной оценке берётся она — как у полностью прокачанного игрока с админ-выдачей).
+ */
+function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Record<string, number>, gear: GearMode = "level"): Record<Slot, Item | null> {
   const cats = categories(cls);
   const tank = role(cls) === "tank";
+  const max = gear === "max";
   const eq: Record<Slot, Item | null> = { weapon: null, offhand: null, helmet: null, armor: null, boots: null, cloak: null, ring: null, amulet: null };
   const of = (slot: Slot) => cats.filter((b) => b.slot === slot);
-  for (const s of ["helmet", "armor", "boots", "ring", "amulet"] as Slot[]) { const c = of(s)[0]; if (c) eq[s] = gearItem(c.id, level, cls); }
+  const cands = (slot: Slot): Item[] => [...of(slot).map((b) => gearItem(b.id, level, cls, gear)), ...(max ? legendsFor(cls, level, slot) : [])];
+  const bias = (it: Item | null) => (it?.legendary ? 1.03 : 1);
+  for (const s of GEAR_SLOTS) { const c = cands(s)[0]; if (c) eq[s] = c; }
   const pickWeapon = () => {
     let best = -1, bw: Item | null = null, bo: Item | null = null;
-    const offs = OFFHAND_CLASSES.includes(cls) ? of("offhand").filter((o) => !tank || o.id === "shield") : [];
-    for (const wb of of("weapon")) {
+    const offs = OFFHAND_CLASSES.includes(cls) ? cands("offhand").filter((o) => !tank || o.base === "shield") : [];
+    for (const wi of cands("weapon")) {
+      const wb = BASE_ITEMS[wi.base];
       if (tank && wb.hands === 2) continue;
-      const wi = gearItem(wb.id, level, cls);
-      const ohs: (Item | null)[] = wb.hands === 2 || !offs.length ? [null] : offs.map((o) => gearItem(o.id, level, cls));
+      const ohs: (Item | null)[] = wb.hands === 2 || !offs.length ? [null] : offs;
       for (const oi of ohs) {
-        const sc = power(cls, level, alloc, skills, { ...eq, weapon: wi, offhand: oi });
+        const sc = power(cls, level, alloc, skills, { ...eq, weapon: wi, offhand: oi }) * bias(wi) * bias(oi);
         if (sc > best) { best = sc; bw = wi; bo = oi; }
       }
     }
@@ -290,11 +312,10 @@ function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Record<stri
     eq.offhand = bo;
   };
   pickWeapon();
-  for (const s of ["helmet", "armor", "boots", "ring", "amulet"] as Slot[]) {
+  for (const s of GEAR_SLOTS) {
     let best = -1, bi: Item | null = eq[s];
-    for (const b of of(s)) {
-      const it = gearItem(b.id, level, cls);
-      const sc = power(cls, level, alloc, skills, { ...eq, [s]: it });
+    for (const it of cands(s)) {
+      const sc = power(cls, level, alloc, skills, { ...eq, [s]: it }) * bias(it);
       if (sc > best) { best = sc; bi = it; }
     }
     eq[s] = bi;
@@ -303,14 +324,15 @@ function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Record<stri
   return eq;
 }
 
-interface Build { cls: ClassId; level: number; mode: BuildMode; save: PlayerSave }
+type GearMode = "level" | "max";
+interface Build { cls: ClassId; level: number; mode: BuildMode; gear: GearMode; save: PlayerSave }
 const buildCache = new Map<string, Build>();
 /**
  * Сборка (кэш). newSave/makeItem зовут newUid → Math.random: на время сборки Math.random — свой генератор,
  * поэтому порядок прогонов и кэш не сдвигают случайность боя (--duel/--pve1 повторяют бои из матрицы).
  */
-function build(cls: ClassId, level: number, mode: BuildMode = "pve"): Build {
-  const key = `${cls}|${level}|${mode}`;
+function build(cls: ClassId, level: number, mode: BuildMode = "pve", gear: GearMode = "level"): Build {
+  const key = `${cls}|${level}|${mode}${gear === "max" ? "|max" : ""}`;
   const hit = buildCache.get(key);
   if (hit) return hit;
   Math.random = localRand(`build|${key}`);
@@ -319,9 +341,9 @@ function build(cls: ClassId, level: number, mode: BuildMode = "pve"): Build {
     save.level = level;
     save.alloc = allocStats(cls, level);
     save.skills = learnSkills(cls, level, mode);
-    save.equip = pickGear(cls, level, save.alloc, save.skills);
+    save.equip = pickGear(cls, level, save.alloc, save.skills, gear);
     save.inventory = save.inventory.map(() => null); // без зелий: бот их не пьёт
-    const b: Build = { cls, level, mode, save };
+    const b: Build = { cls, level, mode, gear, save };
     buildCache.set(key, b);
     return b;
   } finally {
@@ -343,7 +365,7 @@ function buildInfo(b: Build) {
   return {
     alloc: b.save.alloc,
     skills: b.save.skills,
-    gear: Object.fromEntries(Object.entries(b.save.equip).filter(([, it]) => it).map(([s, it]) => [s, { base: it!.base, model: it!.model ?? null, ilvl: it!.ilvl, stats: it!.stats }])),
+    gear: Object.fromEntries(Object.entries(b.save.equip).filter(([, it]) => it).map(([s, it]) => [s, { base: it!.base, model: it!.model ?? null, legendary: it!.legendary ?? null, rarity: it!.rarity, plus: it!.plus ?? 0, ilvl: it!.ilvl, stats: it!.stats }])),
     derived: { hp: d.maxHp, mp: d.maxMp, dmg: [d.dmgMin, d.dmgMax], armor: d.armor, crit: +d.crit.toFixed(3), critMult: +d.critMult.toFixed(2), dodge: +d.dodge.toFixed(3), attackCd: +d.attackCd.toFixed(3), skillMult: +d.skillMult.toFixed(3), hpRegen: +d.hpRegen.toFixed(2), mpRegen: +d.mpRegen.toFixed(2) },
   };
 }
@@ -356,9 +378,11 @@ function avgHit(b: Build) {
 // ======================================================================
 //                         мобы
 // ======================================================================
-const DUMMY_DEF: MobDef = { ...MOBS.boar, id: "sim_dummy", name: "Манекен", hp: 1, dmg: 1, armor: 1, xp: 0, speed: 0, aggro: 0, range: 0, projectile: undefined };
+// aggro 4000: манекен всегда «видит» героя и не уходит в возврат (в возврате моб восстанавливает 5% HP за тик и сбрасывает эффекты —
+// раньше это съедало урон тиков, когда у манекена не было угрозы, например при скрытности героя)
+const DUMMY_DEF: MobDef = { ...MOBS.boar, id: "sim_dummy", name: "Манекен", hp: 1, dmg: 1, armor: 1, xp: 0, speed: 0, aggro: 4000, range: 0, projectile: undefined };
 /** Манекен под давлением: здоровье кабана × N, броня как у манекена, не ходит (удары — вручную в dummyRun). */
-const PDUMMY_DEF: MobDef = { ...MOBS.boar, id: "sim_dummy_p", name: "Манекен-кабан", hp: MOBS.boar.hp * PDUMMY_N, armor: 1, xp: 0, speed: 0, aggro: 0, range: 0, projectile: undefined };
+const PDUMMY_DEF: MobDef = { ...MOBS.boar, id: "sim_dummy_p", name: "Манекен-кабан", hp: MOBS.boar.hp * PDUMMY_N, armor: 1, xp: 0, speed: 0, aggro: 4000, range: 0, projectile: undefined };
 const BRUTE_DEF: MobDef = { ...MOBS.boar, id: "sim_brute", name: "Громила", hp: 1, dmg: 1, armor: 1, xp: 0 };
 const INF = 1e9;
 
@@ -401,6 +425,53 @@ interface Agent {
   fails: Record<string, number>;
   spent: number;
   side: number;
+  /** Опасные зоны (телеграфы боссов и мобов, лужи): бот с ними уходит из зоны, без них — стоит на месте. */
+  danger: (() => Danger[]) | null;
+  escape: { x: number; y: number } | null;
+  dodges: number;
+  /** Центр и радиус арены босса: уклоняемся внутрь неё и возвращаемся, если отошли (иначе босс уходит в возврат по поводку). */
+  anchor: { x: number; y: number; r: number } | null;
+}
+/** Телеграф (circle | cone | ring) или лужа, at — когда появился (реакция бота — REACT_MS), until — когда сработает/исчезнет. */
+interface Danger { shape: "circle" | "cone" | "ring"; x: number; y: number; r: number; r2?: number; a?: number; w?: number; at: number; until: number }
+/** Реакция игрока на телеграф: зона видна, но уходить начинаем через 0.35 с. */
+const REACT_MS = 350;
+function inDanger(d: Danger, x: number, y: number, m: number): boolean {
+  const dx = x - d.x, dy = y - d.y, dist = Math.hypot(dx, dy);
+  if (d.shape === "circle") return dist <= d.r + PLAYER_RADIUS * 0.5 + m;
+  if (d.shape === "ring") return dist >= d.r - m && dist <= (d.r2 ?? d.r * 2) + m;
+  let da = Math.atan2(dy, dx) - (d.a ?? 0);
+  while (da > Math.PI) da -= Math.PI * 2;
+  while (da < -Math.PI) da += Math.PI * 2;
+  return dist <= d.r + m && Math.abs(da) <= (d.w ?? 1) / 2 + m / Math.max(dist, 30);
+}
+/** Записывает телеграфы мира (w.telegraph) и лужи (w.hazards): список опасных зон на текущий момент. */
+function trackDanger(w: World): () => Danger[] {
+  let list: Danger[] = [];
+  const orig = w.telegraph.bind(w);
+  w.telegraph = (owner, shape, x, y, r, ms, onHit, extra = {}) => {
+    list.push({ shape, x, y, r, r2: extra.r2, a: extra.a, w: extra.w, at: w.time, until: w.time + ms });
+    orig(owner, shape, x, y, r, ms, onHit, extra);
+  };
+  return () => {
+    list = list.filter((d) => d.until >= w.time);
+    return [...list, ...w.hazards.map((h): Danger => ({ shape: "circle", x: h.x, y: h.y, r: h.r, at: -1e9, until: h.until }))];
+  };
+}
+/** Ближайшая безопасная точка (по возможности — в пределах атаки по цели). */
+function findSafe(w: World, p: Player, zones: Danger[], target: Actor | undefined, anchor: Agent["anchor"] = null): { x: number; y: number } | null {
+  let best: { x: number; y: number } | null = null, bestCost = Infinity;
+  const want = target ? p.attackRange() + w.radiusOf(target) : 0;
+  for (const r of [24, 40, 60, 85, 115, 150, 190, 240, 300, 360]) for (let k = 0; k < 16; k++) {
+    const ang = (k / 16) * Math.PI * 2;
+    const x = p.x + Math.cos(ang) * r, y = p.y + Math.sin(ang) * r;
+    if (!walkable(w.map, x, y, PLAYER_RADIUS) || zones.some((z) => inDanger(z, x, y, 10))) continue;
+    let cost = r;
+    if (target) { const dt = Math.hypot(x - target.x, y - target.y); if (dt > want) cost += (dt - want) * 0.6; }
+    if (anchor) cost += Math.max(0, Math.hypot(x - anchor.x, y - anchor.y) - anchor.r * 0.5) * 1.5;
+    if (cost < bestCost) { bestCost = cost; best = { x, y }; }
+  }
+  return best;
 }
 const hurt = (w: World, q: Player) => w.time - q.hurtAt <= HURT_MS;
 const nearHurt = (w: World, a: Agent, r: number) => a.allies().some((q) => !q.dead && w.dist(a.p, q) <= r + PLAYER_RADIUS && (ratio(q) < 0.9 || hurt(w, q)));
@@ -421,7 +492,7 @@ function makeAgent(p: Player, o: { kite?: boolean; allies?: () => Player[]; enem
   const learned = activeSkills(p.cls).filter((s) => (p.save.skills[s.id] || 0) > 0);
   const hp = (s: SkillDef) => { const i = HEAL_FIRST.indexOf(s.id); return i < 0 ? 99 : i; };
   const order = learned.sort((a, b) => hp(a) - hp(b) || b.cd!(p.save.skills[b.id]) - a.cd!(p.save.skills[a.id]) || (a.slot ?? 0) - (b.slot ?? 0));
-  return { p, kite: !!o.kite, allies: o.allies ?? (() => [p]), enemies: o.enemies, order, next: 0, blocked: new Map(), timers: new Map(), casts: {}, fails: {}, spent: 0, side: 1 };
+  return { p, kite: !!o.kite, allies: o.allies ?? (() => [p]), enemies: o.enemies, order, next: 0, blocked: new Map(), timers: new Map(), casts: {}, fails: {}, spent: 0, side: 1, danger: null, escape: null, dodges: 0, anchor: null };
 }
 
 interface Plan { x: number; y: number; tid: string | null; after?: () => void }
@@ -478,8 +549,8 @@ function planCast(w: World, a: Agent, s: SkillDef, rank: number, target: Actor, 
     case "dr_shadowmeld": {
       // уходим в тень, только если сразу готов «открывающий» удар по цели
       if (dist > 300) return null;
-      const mana = s.mana!(rank);
-      const opener = a.order.find((o) => o.id !== s.id && o.target === "enemy" && hasDmg(o, p.save.skills[o.id]) && (p.cds.get(o.id) || 0) <= t + 600 && p.unit.mp >= mana + o.mana!(p.save.skills[o.id]));
+      const mana = skillMana(s, rank, p.level);
+      const opener = a.order.find((o) => o.id !== s.id && o.target === "enemy" && hasDmg(o, p.save.skills[o.id]) && (p.cds.get(o.id) || 0) <= t + 600 && p.unit.mp >= mana + skillMana(o, p.save.skills[o.id], p.level));
       return opener ? at(target, target.id) : null;
     }
   }
@@ -498,8 +569,8 @@ function planCast(w: World, a: Agent, s: SkillDef, rank: number, target: Actor, 
 function tryCast(w: World, a: Agent, s: SkillDef, target: Actor, dist: number): boolean {
   const p = a.p, t = w.time;
   const rank = p.save.skills[s.id] || 0;
-  if (!rank || (p.cds.get(s.id) || 0) > t || (a.blocked.get(s.id) || 0) > t) return false;
-  const mana = s.mana!(rank);
+  if (!rank || (p.cds.get(s.id) || 0) > t || (a.blocked.get(s.id) || 0) > t || (!s.offGcd && p.gcdUntil > t)) return false;
+  const mana = skillMana(s, rank, p.level);
   if (p.unit.mp < mana) return false;
   const plan = planCast(w, a, s, rank, target, dist);
   if (!plan) return false;
@@ -528,7 +599,7 @@ function approachForAoe(w: World, a: Agent, target: Actor, dist: number) {
   for (const s of a.order) {
     if (s.id in DEFENSIVE || s.id in UTILITY) continue;
     const rank = p.save.skills[s.id] || 0;
-    if (!rank || !hasDmg(s, rank) || (p.cds.get(s.id) || 0) > t || (a.blocked.get(s.id) || 0) > t || p.unit.mp < s.mana!(rank)) continue;
+    if (!rank || !hasDmg(s, rank) || (p.cds.get(s.id) || 0) > t || (a.blocked.get(s.id) || 0) > t || p.unit.mp < skillMana(s, rank, p.level)) continue;
     const lim = selfAoeLimit(w, s, rank, target);
     if (lim === null || dist <= lim || dist > lim + 120) continue;
     const k = (dist - (lim - 6)) / dist;
@@ -548,6 +619,21 @@ function think(w: World, a: Agent) {
     if (d < best) { best = d; target = e; }
   }
   if (!target) { p.targetId = null; p.unit.target = ""; p.moveTo = null; return; }
+  // уход из телеграфа/лужи: пока цель уклонения не достигнута, бот только бежит (без умений и автоатаки)
+  if (a.danger) {
+    const zones = a.danger().filter((z) => t - z.at >= REACT_MS);
+    if (zones.some((z) => inDanger(z, p.x, p.y, 4))) {
+      if (!a.escape || zones.some((z) => inDanger(z, a.escape!.x, a.escape!.y, 6))) { a.escape = findSafe(w, p, zones, target, a.anchor); if (a.escape) a.dodges++; }
+      if (a.escape) { p.targetId = target.id; p.unit.target = target.id; p.moveTo = { ...a.escape }; return; }
+    } else if (a.escape) { a.escape = null; p.moveTo = null; }
+  }
+  // далеко от центра арены босса — шаг назад к центру (тянем босса за собой и не даём ему уйти в возврат)
+  if (a.anchor && Math.hypot(p.x - a.anchor.x, p.y - a.anchor.y) > a.anchor.r * 0.7) {
+    const ang = Math.atan2(a.anchor.y - p.y, a.anchor.x - p.x);
+    p.targetId = target.id; p.unit.target = target.id;
+    p.moveTo = { x: p.x + Math.cos(ang) * 70, y: p.y + Math.sin(ang) * 70 };
+    return;
+  }
   const hidden = p.stealthUntil > t;
   if (hidden) {
     // из скрытности не бьём автоатакой: подходим и открываем умением
@@ -590,7 +676,7 @@ class Mana {
   private prevSpent = 0;
   constructor(private a: Agent) {
     const p = a.p;
-    const costs = a.order.map((s) => s.mana!(p.save.skills[s.id])).filter((c) => c > 0);
+    const costs = a.order.map((s) => skillMana(s, p.save.skills[s.id], p.level)).filter((c) => c > 0);
     this.min = costs.length ? Math.min(...costs) : 0;
     this.prev = p.unit.mp;
   }
@@ -656,10 +742,10 @@ const isDot = (o: HitOpts) => o.flat !== undefined && !!o.noBreak && !!o.noProc 
  * появляется на том же месте (казни, «при убийстве»), бьёт героя уроном кабана своего уровня раз в attackCd кабана
  * (фаза случайна, оглушение задерживает удар); при здоровье героя ниже 25% оно поднимается до 50% (герой не гибнет).
  */
-function dummyRun(cls: ClassId, level: number, seed: number, pressure: boolean) {
+function dummyRun(cls: ClassId, level: number, seed: number, pressure: boolean, gear: GearMode = "level") {
   seedRng(pressure ? "pdummy" : "dummy", cls, level, seed);
   const w = makeWorld(FIELD, true);
-  const b = build(cls, level);
+  const b = build(cls, level, "pve", gear);
   const melee = !CLASSES[cls].projectile;
   const spawn = () => { const mm = spawnMob(w, pressure ? PDUMMY_DEF : DUMMY_DEF, level, FIELD_C.x, FIELD_C.y); if (!pressure) immortal(mm); return mm; };
   let m = spawn();
@@ -680,17 +766,19 @@ function dummyRun(cls: ClassId, level: number, seed: number, pressure: boolean) 
     return v;
   };
   if (pressure) w.onDamage = (_s, dst) => { if (dst === p && !p.dead && p.unit.hp < p.unit.maxHp * 0.25) { p.unit.hp = Math.round(p.unit.maxHp * 0.5); rescues++; } };
+  // урон считается по applyDamage (все пути: удары, тики, питомцы), а не по убыли HP за тик
+  const origApply = w.applyDamage.bind(w);
+  w.applyDamage = (dst, v, src) => {
+    if (dst === m && !m.dead) { const d = Math.min(v, m.unit.hp); total += d; if (w.time <= 10000) first10 += d; }
+    origApply(dst, v, src);
+  };
   const mobCd = MOBS.boar.attackCd * 1000;
   let mobAt = Math.floor(rng() * mobCd);
   const SEC = 60;
   for (let i = 0; i < (SEC * 1000) / TICK_MS && !p.dead; i++) {
     think(w, a);
-    const hp0 = m.unit.hp;
     w.update(TICK_MS);
-    const dmg = hp0 - m.unit.hp;
     if (!pressure) m.unit.hp = INF;
-    total += dmg;
-    if (w.time <= 10000) first10 += dmg;
     mana.tick(w.time);
     if (pressure) {
       if (m.dead) { kills++; w.removeMob(m); m = spawn(); mobAt = Math.max(mobAt, w.time + TICK_MS); }
@@ -701,8 +789,8 @@ function dummyRun(cls: ClassId, level: number, seed: number, pressure: boolean) 
   if (!pressure && total - known > 0.5) by.other = total - known; // питомцы/призывы (applyDamage мимо hit)
   return { dps60: total / SEC, dps10: first10 / 10, by, mana: mana.report(SEC), casts: a.casts, fails: a.fails, kills, rescues, died: p.dead };
 }
-function dummy(cls: ClassId, level: number, pressure: boolean) {
-  const runs = Array.from({ length: DUMMY_SEEDS }, (_, s) => dummyRun(cls, level, s, pressure));
+function dummy(cls: ClassId, level: number, pressure: boolean, gear: GearMode = "level") {
+  const runs = Array.from({ length: DUMMY_SEEDS }, (_, s) => dummyRun(cls, level, s, pressure, gear));
   const dps = runs.map((r) => r.dps60);
   const by: Record<string, number> = {};
   for (const r of runs) for (const [k, v] of Object.entries(r.by)) by[k] = (by[k] || 0) + v;
@@ -725,9 +813,11 @@ function dummy(cls: ClassId, level: number, pressure: boolean) {
 //                 2) PvE: 1 на 1, элита, серия из 5, выносливость
 // ======================================================================
 let SPAWN_TABLE: { mob: string; level: number }[] | null = null;
+let WORLD_MAP: WorldMap | null = null;
+const worldMap = () => (WORLD_MAP ??= generateMap(MAP_SEED));
 /** Самые частые мобы мира около уровня L (по generateMap(MAP_SEED).spawns). */
 function mobsAt(level: number, n = 3): string[] {
-  SPAWN_TABLE ??= generateMap(MAP_SEED).spawns.map((s) => ({ mob: s.mob, level: s.level }));
+  SPAWN_TABLE ??= worldMap().spawns.map((s) => ({ mob: s.mob, level: s.level }));
   for (const band of [5, 10, 20, 40]) {
     const cnt = new Map<string, number>();
     for (const s of SPAWN_TABLE) if (Math.abs(s.level - level) <= band && MOBS[s.mob] && !MOBS[s.mob].boss) cnt.set(s.mob, (cnt.get(s.mob) || 0) + 1);
@@ -890,7 +980,7 @@ function tankRun(healerCls: ClassId | null, level: number, k: number, seedKey: s
   const allies = () => [tank, ...(healer ? [healer] : [])];
   const ha = healer ? makeAgent(healer, { enemies: () => mobs, allies }) : null;
   const mana = ha ? new Mana(ha) : null;
-  let taken = 0, onTank = 0, onSelf = 0, over = 0, counted = 0, selfFull = 0, tOver = 0, tGot = 0, absorb = 0, inHeal = 0;
+  let taken = 0, onTank = 0, onSelf = 0, over = 0, counted = 0, selfFull = 0, selfOver = 0, tOver = 0, tGot = 0, absorb = 0, inHeal = 0;
   const heals: Record<string, { n: number; got: number; over: number }> = {};
   const ev: [number, number][] = [];
   w.onDamage = (_src, dst, v) => { if (dst === tank) { taken += v; ev.push([w.time, v]); } };
@@ -904,8 +994,10 @@ function tankRun(healerCls: ClassId | null, level: number, k: number, seedKey: s
       const ov = Math.max(0, Math.round(v) - (q.unit.hp - before));
       const tgt = q === tank ? "tank" : q === healer ? (full ? "self(full)" : "self") : "other";
       if (q === tank) onTank += got; else if (q === healer) onSelf += got;
-      if (tgt === "self(full)") selfFull += Math.round(v); // лечение себя при полном здоровье — побочный эффект, не «перелечено»
-      else { over += ov; counted += got; }
+      // перелечено — только лечение цели (танка); лечение себя (побочный эффект вампиризма, «Крови» и т. п.) — отдельно
+      if (tgt === "self(full)") selfFull += Math.round(v);
+      else if (q === tank) { over += ov; counted += got; }
+      else if (q === healer) selfOver += ov;
       const key = `${CTX ?? "auto"}→${tgt}`;
       const e = (heals[key] ??= { n: 0, got: 0, over: 0 });
       e.n++; e.got += got; e.over += ov;
@@ -928,7 +1020,7 @@ function tankRun(healerCls: ClassId | null, level: number, k: number, seedKey: s
   const t = w.time / 1000;
   return {
     survived: tankDeath === null, tankDeath, healerDeath, sec: t, dtps: taken / t, hpsTank: (onTank + absorb) / t, hpsHeal: onTank / t, hpsAbsorb: absorb / t, hpsSelf: onSelf / t,
-    over, counted, selfFull, tOver, tGot, heals, burst: burst05(ev, tank.unit.maxHp), tankMaxHp: tank.unit.maxHp, mana: mana?.report(t) ?? null, casts: ha?.casts ?? {},
+    over, counted, selfFull, selfOver, tOver, tGot, heals, burst: burst05(ev, tank.unit.maxHp), tankMaxHp: tank.unit.maxHp, mana: mana?.report(t) ?? null, casts: ha?.casts ?? {},
   };
 }
 type TankRun = ReturnType<typeof tankRun>;
@@ -972,6 +1064,7 @@ function summarize(rs: TankRun[]) {
     overheal: r3(sum((r) => r.over) / Math.max(1, sum((r) => r.over + r.counted))),
     overhealTargeted: r3(sum((r) => r.tOver) / Math.max(1, sum((r) => r.tOver + r.tGot))),
     selfFullPerSec: Math.round(sum((r) => r.selfFull) / secs),
+    selfOverPerSec: Math.round(sum((r) => r.selfOver) / secs),
     burst05: r3(avg(rs.map((r) => r.burst))),
     healerDeaths: rs.filter((r) => r.healerDeath !== null).length,
     heals: sorted, mana: manaAvg(rs.map((r) => r.mana!).filter(Boolean)),
@@ -1001,7 +1094,7 @@ function healPair(h: ClassId, level: number) {
     atBase: summarize(atBase.rs),
     limit: {
       dmgMult: lo.all ? +lo.k.toFixed(3) : null, ratio: lo.all ? r3(lo.k / base.k) : 0, dtps: L?.dtps ?? null, hpsTank: L?.hpsTank ?? null, hpsPctTankHp: L?.hpsPctTankHp ?? null,
-      overheal: L?.overheal ?? null, oomAt: L?.mana.oomAt ?? null, sustain: L?.mana.sustain ?? null, burst05: L?.burst05 ?? null,
+      overheal: L?.overheal ?? null, overhealTargeted: L?.overhealTargeted ?? null, oomAt: L?.mana.oomAt ?? null, sustain: L?.mana.sustain ?? null, burst05: L?.burst05 ?? null,
       failAt: hi ? { dmgMult: +hi.k.toFixed(3), deaths: fails.length, deathAt: fails.length ? r1(avg(fails.map((r) => r.tankDeath!))) : null, burst05: fails.length ? r3(avg(fails.map((r) => r.burst))) : null, oomRuns: fails.filter((r) => r.mana?.oomAt != null).length, oomAt: fails.some((r) => r.mana?.oomAt != null) ? r1(avg(fails.filter((r) => r.mana?.oomAt != null).map((r) => r.mana!.oomAt!))) : null } : null,
       casts: L ? lo.rs[0].casts : null,
     },
@@ -1011,9 +1104,9 @@ function healPair(h: ClassId, level: number) {
 // ======================================================================
 //                 4) PvP: дуэли на арене (PvP-сборка: защитные умения в приоритете)
 // ======================================================================
-function duel(ca: ClassId, cb: ClassId, level: number, rep: number, verbose = false) {
-  const bA = build(ca, level, "pvp"), bB = build(cb, level, "pvp"); // до seedRng (и всё равно изолированы)
-  seedRng("pvp", ca, cb, level, rep);
+function duel(ca: ClassId, cb: ClassId, level: number, rep: number, verbose = false, gear: GearMode = "level") {
+  const bA = build(ca, level, "pvp", gear), bB = build(cb, level, "pvp", gear); // до seedRng (и всё равно изолированы)
+  seedRng("pvp", ca, cb, level, rep, gear);
   const w = makeWorld(ARENA, false);
   w.pvpActive = true;
   // стороны арены и порядок обновления в тике чередуем по повтору (у симметричных ботов решает первый выстрел)
@@ -1043,28 +1136,29 @@ function duel(ca: ClassId, cb: ClassId, level: number, rep: number, verbose = fa
   let winner = 0;
   if (pa.dead !== pb.dead) winner = pa.dead ? 2 : 1;
   else if (!pa.dead) { const h1 = ratio(pa), h2 = ratio(pb); winner = Math.abs(h1 - h2) < 1e-4 ? 0 : h1 > h2 ? 1 : 2; } // по времени — как ArenaRoom.checkEnd
-  if (verbose) log(`  итог: победитель ${winner === 1 ? ca : winner === 2 ? cb : "ничья"}, ${t} с, первый урон на ${first} с; умения ${ca}: ${JSON.stringify(A.casts)}; ${cb}: ${JSON.stringify(B.casts)}`);
+  if (verbose) log(`  итог: победитель ${winner === 1 ? ca : winner === 2 ? cb : "ничья"}, ${t} с, первый урон на ${first} с; умения ${ca}: ${JSON.stringify(A.casts)} отказы ${JSON.stringify(A.fails)} мана ${Math.round(pa.unit.mp)}/${pa.unit.maxMp}; ${cb}: ${JSON.stringify(B.casts)} отказы ${JSON.stringify(B.fails)} мана ${Math.round(pb.unit.mp)}/${pb.unit.maxMp}`);
   return { winner, sec: t, fight: first < 0 ? 0 : r1(t - first), timeout: !pa.dead && !pb.dead, hpA: r3(ratio(pa)), hpB: r3(ratio(pb)), dpsA: Math.round(dmgA / t), dpsB: Math.round(dmgB / t) };
 }
-function pvp(level: number) {
-  const cells: Record<string, Record<string, { win: number; draws: number; sec: number; fight: number; timeouts: number; dps: number; errors: number; reps: number[] }>> = {};
+function pvp(level: number, gear: GearMode = "level") {
+  const cells: Record<string, Record<string, { win: number; draws: number; sec: number; fight: number; timeouts: number; dps: number; errors: number; reps: number[]; margin: number }>> = {};
   for (const a of CLS) {
     cells[a] = {};
     for (const b of CLS) {
       let win = 0, draws = 0, timeouts = 0, errors = 0;
-      const secs: number[] = [], dps: number[] = [], fights: number[] = [], reps: number[] = [];
+      const secs: number[] = [], dps: number[] = [], fights: number[] = [], reps: number[] = [], margins: number[] = [];
       for (let r = 0; r < PVP_REPS; r++) {
-        const d = safe(`pvp ${a}-${b} L${level} #${r}`, () => duel(a, b, level, r));
+        const d = safe(`pvp ${a}-${b} L${level} #${r}`, () => duel(a, b, level, r, false, gear));
         if (!d) { errors++; reps.push(-1); continue; }
         if (d.winner === 1) win++; else if (d.winner === 0) draws++;
         if (d.timeout) timeouts++;
         secs.push(d.sec);
         fights.push(d.fight);
         dps.push(d.dpsA);
+        margins.push(d.hpA - d.hpB);
         reps.push(d.winner);
       }
       const n = Math.max(1, PVP_REPS - errors);
-      cells[a][b] = { win: r3((win + draws / 2) / n), draws, sec: r1(avg(secs)), fight: r1(avg(fights)), timeouts, dps: Math.round(avg(dps)), errors, reps };
+      cells[a][b] = { win: r3((win + draws / 2) / n), draws, sec: r1(avg(secs)), fight: r1(avg(fights)), timeouts, dps: Math.round(avg(dps)), errors, reps, margin: r3(avg(margins)) };
     }
   }
   // процент побед класса: обе стороны (A против B и B против A), без зеркал
@@ -1075,15 +1169,124 @@ function pvp(level: number) {
     classWin[a] = { win: r3(avg(ws)), sec: r1(avg(ss)), fight: r1(avg(fs)) };
   }
   const ROLES: [string, ClassId, ClassId][] = [["танк", "warrior", "deathknight"], ["лекарь", "healer", "bloodweaver"], ["лучник", "ranger", "darkranger"], ["маг", "mage", "warlock"], ["разбойник", "rogue", "reaver"]];
-  const roles = ROLES.filter(([, s, u]) => CLS.includes(s) && CLS.includes(u)).map(([name, s, u]) => ({ role: name, solgard: s, umbrath: u, solgardWin: r3((cells[s][u].win + 1 - cells[u][s].win) / 2), sec: r1((cells[s][u].sec + cells[u][s].sec) / 2) }));
+  // margin — средняя разница долей здоровья в конце боя (+ в пользу Сольгарда): непрерывная мера силы пары, когда победы ~0/100%
+  const roles = ROLES.filter(([, s, u]) => CLS.includes(s) && CLS.includes(u)).map(([name, s, u]) => ({ role: name, solgard: s, umbrath: u, solgardWin: r3((cells[s][u].win + 1 - cells[u][s].win) / 2), margin: r3((cells[s][u].margin - cells[u][s].margin) / 2), sec: r1((cells[s][u].sec + cells[u][s].sec) / 2) }));
   const cross: number[] = [];
   for (const a of CLS) for (const b of CLS) if (CLASSES[a].faction === "solgard" && CLASSES[b].faction === "umbrath") cross.push(cells[a][b].win, 1 - cells[b][a].win);
   // самые перекошенные пары (обе стороны вместе)
   const pairs: { a: ClassId; b: ClassId; aWin: number }[] = [];
   CLS.forEach((a, i) => CLS.forEach((b, j) => { if (j > i) pairs.push({ a, b, aWin: r3((cells[a][b].win + 1 - cells[b][a].win) / 2) }); }));
   const skewed = pairs.sort((x, y) => Math.abs(y.aWin - 0.5) - Math.abs(x.aWin - 0.5) || x.a.localeCompare(y.a) || x.b.localeCompare(y.b)).slice(0, 8);
-  return { level, reps: PVP_REPS, matrix: cells, classWin, roles, solgardVsUmbrath: r3(avg(cross)), skewed };
+  const all = CLS.flatMap((a) => CLS.filter((b) => b !== a).map((b) => cells[a][b].fight));
+  return { level, gear, reps: PVP_REPS, matrix: cells, classWin, roles, solgardVsUmbrath: r3(avg(cross)), skewed, fight: r1(avg(all)), fightMin: r1(Math.min(...all)), fightMax: r1(Math.max(...all)) };
 }
+
+// ======================================================================
+//                 5) боссы: соло и группа из 5
+// ======================================================================
+const BOSS_IDS = Object.values(MOBS).filter((m) => m.boss).map((m) => m.id);
+const BOSS_SEEDS = Math.max(1, Number(arg("boss-seeds") ?? (QUICK ? 1 : 2)));
+const SOLO_LIMIT = Number(arg("solo-limit") ?? 600);
+const GROUP_LIMIT = Number(arg("group-limit") ?? 480);
+const PARTIES: Record<string, ClassId[]> = {
+  solgard: ["warrior", "healer", "ranger", "mage", "rogue"],
+  umbrath: ["deathknight", "bloodweaver", "darkranger", "warlock", "reaver"],
+};
+/** Арена босса из карты мира и где он стоит: подземелье (Пепельные чертоги) или открытый мир. */
+function bossPlace(id: string) {
+  const s = BOSS_SPAWNS.find((b) => b.id === id);
+  const zone = s ? zoneAtPx(worldMap(), s.x, s.y) : Zone.Meadow;
+  return { arena: s?.arena ?? 320, where: zone === Zone.Dungeon ? "подземелье" : "мир" };
+}
+interface Member { cls: ClassId; level: number; gear: GearMode }
+interface BossOut {
+  win: boolean; wipe: boolean; timeout: boolean; sec: number; bossHp: number; bossLevel: number; bossMaxHp: number;
+  deaths: { cls: ClassId; at: number; by?: string }[]; dps: number; byCls: Record<string, number>; taken: { auto: number; mech: number; adds: number }; dodges: number; resets: number;
+}
+/**
+ * Бой с боссом: настоящий контроллер (createBoss: фазы, телеграфы, лужи, помощники) на ровном поле, арена — из карты мира.
+ * Танк — перед боссом, ближний бой — с другой стороны, дальний и лекарь — в 210 пикс. dodge: бот уходит из телеграфов и луж
+ * (реакция 0.35 с, без умений на бегу), stand: стоит и бьёт. Время — от первого урона по боссу. Помощников бьёт тот, к кому они ближе.
+ */
+function bossRun(bossId: string, bossLevel: number, party: Member[], dodge: boolean, seedKey: string, limitSec: number, verbose = false): BossOut {
+  const builds = party.map((m) => build(m.cls, m.level, "pve", m.gear));
+  seedRng("boss", bossId, bossLevel, party.map((m) => `${m.cls}${m.level}${m.gear}`).join(","), dodge ? "dodge" : "stand", seedKey);
+  const w = makeWorld(FIELD, true);
+  const danger = trackDanger(w);
+  const place = bossPlace(bossId);
+  const boss = new Mob(gid("b"), MOBS[bossId], bossLevel, { x: FIELD_C.x, y: FIELD_C.y });
+  boss.boss = createBoss(w, boss, place.arena);
+  w.addMob(boss);
+  let ri = 0, mi = 0;
+  const players = builds.map((b) => {
+    const tank = role(b.cls) === "tank", melee = !CLASSES[b.cls].projectile;
+    let x: number, y: number;
+    if (tank || (party.length === 1 && melee)) { x = FIELD_C.x + 60; y = FIELD_C.y; }
+    else if (melee) { x = FIELD_C.x - 55; y = FIELD_C.y + (mi++ % 2 ? 30 : -30); }
+    else { const ang = Math.PI + (ri++ - 1) * 0.45; x = FIELD_C.x + Math.cos(ang) * 210; y = FIELD_C.y + Math.sin(ang) * 210; }
+    return spawnPlayer(w, b, x, y);
+  });
+  const enemies = () => [...w.mobs.values()].filter((m) => !m.dead) as Actor[];
+  const anchor = { x: boss.home.x, y: boss.home.y, r: Math.min(place.arena, 1.4 * MOBS[bossId].aggro + 260) };
+  const agents = players.map((p) => { const a = makeAgent(p, { allies: () => players, enemies }); if (dodge) { a.danger = danger; a.anchor = anchor; } a.next = Math.floor(rng() * 5) * TICK_MS; return a; });
+  const dealt: Record<string, number> = {};
+  const taken = { auto: 0, mech: 0, adds: 0 };
+  let flat = false, firstAt = -1;
+  const hx = w.hitEx.bind(w);
+  w.hitEx = (s, d, o = {}) => { const prev = flat; flat = o.flat !== undefined; try { return hx(s, d, o); } finally { flat = prev; } };
+  const lastHit = new Map<Player, string>();
+  w.onDamage = (src, dst, v) => {
+    if (w.isPlayer(dst) && !w.isPlayer(src)) lastHit.set(dst, `${src === boss ? (flat ? "зона" : "удар") : (src as Mob).def.id} ${v}`);
+    if (w.isPlayer(src) && dst === boss) { dealt[src.cls] = (dealt[src.cls] || 0) + v; if (firstAt < 0) firstAt = w.time; }
+    else if (w.isPlayer(dst) && !w.isPlayer(src)) { if (src === boss) { if (flat) taken.mech += v; else taken.auto += v; } else taken.adds += v; }
+    if (verbose && (w.isPlayer(dst) || dst === boss) && v >= (w.isPlayer(dst) ? 1 : boss.unit.maxHp * 0.01)) log(`  [${(w.time / 1000).toFixed(2)}] ${w.isPlayer(src) ? src.cls : (src as Mob).def.id} → ${w.isPlayer(dst) ? dst.cls : (dst as Mob).def.id} ${v}${flat ? " (зона)" : ""}  босс ${boss.unit.hp}/${boss.unit.maxHp} ф${boss.unit.phase}`);
+  };
+  const healBy: Record<string, number> = {};
+  if (verbose) {
+    const oh = w.heal.bind(w);
+    w.heal = (q, v, show = true, by) => { const got = oh(q, v, show, by); const k = `${q.cls}<-${CTX ?? "passive"}`; healBy[k] = (healBy[k] || 0) + got; return got; };
+    const oa = w.applyDamage.bind(w);
+    let absorbed = 0;
+    w.onHeal = (q, v) => { absorbed += v; healBy[`${q.cls}<-щиты/поглощение`] = absorbed; };
+    void oa;
+  }
+  const deaths: { cls: ClassId; at: number; by?: string }[] = [];
+  const seen = new Set<Player>();
+  const ticks = (limitSec * 1000) / TICK_MS;
+  let resets = 0, prevHp = boss.unit.hp / boss.unit.maxHp, lastState = boss.state;
+  for (let i = 0; i < ticks; i++) {
+    for (const a of agents) think(w, a);
+    w.update(TICK_MS);
+    if (verbose && boss.state !== lastState) { log(`  [${(w.time / 1000).toFixed(2)}] босс: ${lastState} → ${boss.state}, цель ${boss.targetId ?? "-"}, от дома ${Math.round(w.dist(boss, boss.home))}, угроза ${JSON.stringify([...boss.threat].map(([k, v]) => [k, Math.round(v)]))}, герои ${players.map((p) => `${p.cls}:${Math.round(w.dist(p, boss.home))}${p.stealthUntil > w.time ? "(тень)" : ""}`).join(" ")}`); lastState = boss.state; }
+    const f = boss.unit.hp / Math.max(1, boss.unit.maxHp);
+    if (f > prevHp + 0.05) { resets++; if (verbose) log(`  [${(w.time / 1000).toFixed(2)}] сброс/восстановление босса ${Math.round(prevHp * 100)}% → ${Math.round(f * 100)}% (${boss.state})`); }
+    prevHp = f;
+    for (const p of players) if (p.dead && !seen.has(p)) { seen.add(p); deaths.push({ cls: p.cls, at: r1(w.time / 1000), by: lastHit.get(p) ?? "?" }); if (verbose) log(`  [${(w.time / 1000).toFixed(2)}] погиб ${p.cls}; ${players.map((q) => `${q.cls} hp${Math.round(ratio(q) * 100)}% mp${Math.round((q.unit.mp / Math.max(1, q.unit.maxMp)) * 100)}%`).join(", ")}; босс ${Math.round((boss.unit.hp / boss.unit.maxHp) * 100)}% ф${boss.unit.phase}`); }
+    if (boss.dead || players.every((p) => p.dead)) break;
+  }
+  if (verbose) log(`  лечение: ${JSON.stringify(Object.fromEntries(Object.entries(healBy).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, Math.round(v)])))}`);
+  const t0f = firstAt < 0 ? 0 : firstAt;
+  const sec = Math.max(0.05, (w.time - t0f) / 1000);
+  const total = Object.values(dealt).reduce((s, x) => s + x, 0);
+  return {
+    win: boss.dead, wipe: players.every((p) => p.dead), timeout: !boss.dead && !players.every((p) => p.dead), sec: r1(sec), bossHp: r3(boss.unit.hp / Math.max(1, boss.unit.maxHp)),
+    bossLevel: boss.level, bossMaxHp: boss.unit.maxHp, deaths, dps: Math.round(total / sec), byCls: Object.fromEntries(Object.entries(dealt).map(([k, v]) => [k, Math.round(v / sec)])),
+    taken: { auto: Math.round(taken.auto / sec), mech: Math.round(taken.mech / sec), adds: Math.round(taken.adds / sec) }, dodges: agents.reduce((s, a) => s + a.dodges, 0), resets,
+  };
+}
+function bossAgg(rs: BossOut[]) {
+  const wins = rs.filter((r) => r.win);
+  return {
+    runs: rs.length, wins: wins.length, wipes: rs.filter((r) => r.wipe).length, timeouts: rs.filter((r) => r.timeout).length,
+    sec: wins.length ? r1(avg(wins.map((r) => r.sec))) : null, endSec: r1(avg(rs.map((r) => r.sec))), bossHp: r3(avg(rs.map((r) => r.bossHp))),
+    deaths: r1(avg(rs.map((r) => r.deaths.length))), firstDeath: rs.some((r) => r.deaths.length) ? r1(avg(rs.filter((r) => r.deaths.length).map((r) => r.deaths[0].at))) : null,
+    dps: Math.round(avg(rs.map((r) => r.dps))), taken: { auto: Math.round(avg(rs.map((r) => r.taken.auto))), mech: Math.round(avg(rs.map((r) => r.taken.mech))), adds: Math.round(avg(rs.map((r) => r.taken.adds))) },
+    bossLevel: rs[0]?.bossLevel, bossMaxHp: rs[0]?.bossMaxHp, byCls: rs[0]?.byCls, order: rs[0]?.deaths.map((d) => `${d.cls}@${d.at}`).join(" ") ?? "", resets: rs.reduce((s, r) => s + r.resets, 0),
+  };
+}
+type BossAgg = ReturnType<typeof bossAgg>;
+const fmtBoss = (a: BossAgg) => (a.wins ? `${a.wins}/${a.runs} ${a.sec}с` : `0/${a.runs} ${a.wipes ? `смерть ${a.firstDeath}с` : `таймаут`} ост.${Math.round(a.bossHp * 100)}%`);
+const runsOf = (n: number, f: (s: string) => BossOut | null) => Array.from({ length: n }, (_, s) => f(`s${s}`)).filter((r): r is BossOut => !!r);
 
 // ======================================================================
 //                         запуск и отчёт
@@ -1096,11 +1299,11 @@ const k1 = (x: number) => (x >= 10000 ? `${r1(x / 1000)}k` : `${Math.round(x)}`)
 
 const report: Record<string, unknown> = {
   meta: {
-    seed: BASE_SEED, quick: QUICK, tickMs: TICK_MS, thinkMs: THINK_MS, pvpDamageMult: PVP_DAMAGE_MULT, matchSec: MATCH_MS / 1000,
+    seed: BASE_SEED, quick: QUICK, tickMs: TICK_MS, thinkMs: THINK_MS, pvp: BAL.pvp, matchSec: MATCH_MS / 1000,
     levels: LEVELS, pvpLevels: PVP_LEVELS, classes: CLS, dummySeeds: DUMMY_SEEDS, pdummyN: PDUMMY_N, healSeeds: HEAL_SEEDS, healBaseDeath: BASE_DEATH,
     code: CODE_AT_START,
     assumptions: [
-      "Код боя настоящий: World.update(TICK_MS), Player/Mob, castSkill и модули умений; PVP_DAMAGE_MULT применяется внутри World.hit; таймеры умений с owner (гибель/уход владельца отменяет их, как в игре).",
+      "Код боя настоящий: World.update(TICK_MS), Player/Mob, castSkill и модули умений; модель PvP (data/balance.json pvp) применяется внутри World.hit/heal; таймеры умений с owner (гибель/уход владельца отменяет их, как в игре).",
       "Характеристики: танк — Сила/Выносливость 1:1; остальные — 2/3 в главную, 1/3 в Выносливость.",
       "Умения, PvE-сборка: уронные активные (поле урона или усиление урона; у лекарей и лечение) по кругу до максимума → прочие пассивки → утилитарные/защитные активные → защитные пассивки (требования доучиваются). PvP-сборка: утилитарные/защитные активные → уронные → защитные пассивки → прочие.",
       "Экипировка: Rare, ilvl = уровень, средний бросок аффиксов; аффикс — главная характеристика (+Выносливость у кольца/амулета); база слота — лучшая по оценке урона×живучести; модель — rollModel (только имя/вид). Сборка идёт на своём генераторе и не сдвигает случайность боёв.",
@@ -1124,11 +1327,19 @@ if (PVE1) {
   log(JSON.stringify(r));
   process.exit(0);
 }
+const BOSS1 = arg("boss1");
+if (BOSS1) {
+  // разбор одного боя с боссом: --boss1 ashlord,46,warrior:max+healer+mage[,stand][,уровень героев]
+  const [id, l, ps, mode, hl] = BOSS1.split(",");
+  const party = ps.split("+").map((x) => { const [c, g] = x.split(":"); return { cls: c as ClassId, level: Number(hl) || Number(l), gear: (g === "max" ? "max" : "level") as GearMode }; });
+  log(JSON.stringify(bossRun(id, Number(l) || MOBS[id].level!, party, mode !== "stand", "dbg", party.length > 1 ? GROUP_LIMIT : SOLO_LIMIT, true)));
+  process.exit(0);
+}
 const DUEL = arg("duel");
 if (DUEL) {
   // разбор одной дуэли: --duel warrior,mage,100[,повтор] — тот же бой, что ячейка матрицы (сборка изолирована от потока боя)
-  const [a, b, l, r] = DUEL.split(",");
-  duel(a as ClassId, b as ClassId, Number(l) || 100, Number(r) || 0, true);
+  const [a, b, l, r, g] = DUEL.split(",");
+  duel(a as ClassId, b as ClassId, Number(l) || 100, Number(r) || 0, true, g === "max" ? "max" : "level");
   process.exit(0);
 }
 
@@ -1136,6 +1347,7 @@ const allLevels = [...new Set([...LEVELS, ...PVP_LEVELS])].sort((a, b) => a - b)
 if (ONLY.has("dummy") || ONLY.has("pve") || ONLY.has("heal") || ONLY.has("pvp")) {
   const builds: Record<string, unknown> = {}, buildsPvp: Record<string, unknown> = {};
   for (const c of CLS) for (const l of allLevels) builds[`${c}@${l}`] = buildInfo(build(c, l));
+  for (const c of CLS) builds[`${c}@100max`] = buildInfo(build(c, 100, "pve", "max"));
   for (const c of CLS) for (const l of PVP_LEVELS) buildsPvp[`${c}@${l}`] = { skills: build(c, l, "pvp").save.skills };
   report.builds = builds;
   report.buildsPvp = buildsPvp;
@@ -1159,6 +1371,20 @@ if (ONLY.has("dummy")) {
     log(line);
   }
   report.dummy = dummyRows;
+  // манекен в максимальной экипировке на 100 (эпик +10 и легендарки яруса 100): во сколько раз сильнее экипировки уровня
+  if (LEVELS.includes(100) && !argv.includes("--no-max")) {
+    const mx: Record<string, unknown> = {};
+    log(`\nМаксимальная экипировка L100 (эпик +10, легендарки +10): DPS чистый | под давлением | ×к экипировке уровня`);
+    for (const c of CLS) {
+      const lv = dummyRows.find((r) => r.cls === c && r.level === 100);
+      const cl = safe(`dummy max ${c}`, () => dummy(c, 100, false, "max")), pr = safe(`pdummy max ${c}`, () => dummy(c, 100, true, "max"));
+      if (!cl || !pr || !lv) continue;
+      mx[c] = { clean: cl.dps60, pressure: pr.dps60, x: r3(pr.dps60 / Math.max(1, lv.pressure.dps60)), share: cl.share, oom: cl.mana.oomAt };
+      log(`${name(c)} ${pad(k1(cl.dps60), 7)} | ${pad(k1(pr.dps60), 7)} | ×${r1(pr.dps60 / Math.max(1, lv.pressure.dps60))}`);
+    }
+    report.dummyMax = mx;
+    summary.dummyMax = mx;
+  }
   // рост 30 → 100: средний удар (метрика BALANCE.md ×8) и DPS по средним (без сравнения с ×8)
   const lo = LEVELS.includes(30) ? 30 : LEVELS[0], hi = LEVELS.includes(100) ? 100 : LEVELS[LEVELS.length - 1];
   const growth: Record<string, unknown> = {};
@@ -1213,19 +1439,61 @@ if (ONLY.has("heal")) {
   summary.healers = rows.map((r) => ({ level: r.level, healer: r.healer, baseK: r.baseline.dmgMult, limitK: r.limit.dmgMult, ratio: r.limit.ratio, hpsPctAtLimit: r.limit.hpsPctTankHp, hpsAtLimit: r.limit.hpsTank, overhealBase: r.atBase.overheal, overhealTargetedBase: r.atBase.overhealTargeted, failBurst05: r.limit.failAt?.burst05 ?? null, oomAtLimit: r.limit.oomAt }));
 }
 
-if (ONLY.has("pvp")) {
+if (ONLY.has("pvp") || ONLY.has("pvpmax")) {
   const out: ReturnType<typeof pvp>[] = [];
-  for (const l of PVP_LEVELS) {
-    const r = pvp(l);
+  const cells: [number, GearMode][] = [...(ONLY.has("pvp") ? PVP_LEVELS.map((l): [number, GearMode] => [l, "level"]) : []), ...(ONLY.has("pvpmax") ? [[100, "max"] as [number, GearMode]] : [])];
+  for (const [l, g] of cells) {
+    const r = pvp(l, g);
     out.push(r);
-    log(`\n== 4) PvP L${l}: % побед строки над столбцом (${r.reps} повт.); бой — от первого урона до конца, с`);
+    log(`\n== 4) PvP L${l}${g === "max" ? " МАКС. ЭКИПИРОВКА (эпик +10, легендарки +10)" : ""}: % побед строки над столбцом (${r.reps} повт.); бой — от первого урона до конца, с (среднее ${r.fight}, ${r.fightMin}–${r.fightMax})`);
     log(`${"".padEnd(12)}${CLS.map((c) => pad(c.slice(0, 5), 6)).join("")}   итог  бой,с`);
     for (const a of CLS) log(`${name(a)}${CLS.map((b) => pad(Math.round(r.matrix[a][b].win * 100), 6)).join("")}${pad(Math.round(r.classWin[a].win * 100) + "%", 7)}${pad(r.classWin[a].fight, 6)}`);
     log(`Сольгард против Умбрата: ${Math.round(r.solgardVsUmbrath * 100)}% побед Сольгарда; по ролям: ${r.roles.map((x) => `${x.role} ${Math.round(x.solgardWin * 100)}%`).join(", ")}`);
     log(`Перекошенные пары: ${r.skewed.map((x) => `${x.a}–${x.b} ${Math.round(x.aWin * 100)}%`).join(", ")}`);
   }
   report.pvp = out;
-  summary.pvp = out.map((r) => ({ level: r.level, solgardVsUmbrath: r.solgardVsUmbrath, roles: r.roles.map((x) => ({ role: x.role, solgardWin: x.solgardWin })), classWin: Object.fromEntries(Object.entries(r.classWin).map(([c, v]) => [c, v.win])), skewed: r.skewed }));
+  summary.pvp = out.map((r) => ({ level: r.level, gear: r.gear, fight: r.fight, fightRange: [r.fightMin, r.fightMax], solgardVsUmbrath: r.solgardVsUmbrath, roles: r.roles.map((x) => ({ role: x.role, solgardWin: x.solgardWin, sec: x.sec })), classWin: Object.fromEntries(Object.entries(r.classWin).map(([c, v]) => [c, v.win])), skewed: r.skewed }));
+}
+
+if (ONLY.has("boss")) {
+  const rows: Record<string, unknown>[] = [];
+  log(`\n== 5) Боссы (${BOSS_SEEDS} сид.): соло на уровне босса — экипировка уровня / макс. (эпик +10, легендарки +10), уклоняется; стоя (макс.) | группа из 5 — экипировка уровня, уклоняется / стоя. Формат: побед/боёв время | смерть на N с`);
+  for (const id of BOSS_IDS) {
+    const L = MOBS[id].level!, place = bossPlace(id);
+    const hp = mobStats(MOBS[id], L).maxHp;
+    log(`-- ${id} (${MOBS[id].name}), L${L}, ${place.where}, HP ${k1(hp)}`);
+    for (const c of CLS) {
+      const lv = bossAgg(runsOf(BOSS_SEEDS, (s) => safe(`boss ${id} ${c}`, () => bossRun(id, L, [{ cls: c, level: L, gear: "level" }], true, s, SOLO_LIMIT))));
+      const mx = bossAgg(runsOf(BOSS_SEEDS, (s) => safe(`boss ${id} ${c} max`, () => bossRun(id, L, [{ cls: c, level: L, gear: "max" }], true, s, SOLO_LIMIT))));
+      const st = bossAgg(runsOf(1, (s) => safe(`boss ${id} ${c} stand`, () => bossRun(id, L, [{ cls: c, level: L, gear: "max" }], false, s, SOLO_LIMIT))));
+      rows.push({ boss: id, level: L, kind: "solo", cls: c, level_gear: lv, max_gear: mx, stand_max: st });
+      log(`${name(c)} ${pad(fmtBoss(lv), 26)} ${pad(fmtBoss(mx), 26)} ${pad(fmtBoss(st), 26)}  DPS ${k1(lv.dps)}/${k1(mx.dps)}`);
+    }
+    for (const [fac, list] of Object.entries(PARTIES)) {
+      if (!list.every((c) => CLS.includes(c))) continue;
+      const party = list.map((c) => ({ cls: c, level: L, gear: "level" as GearMode }));
+      const g = bossAgg(runsOf(BOSS_SEEDS, (s) => safe(`boss ${id} group ${fac}`, () => bossRun(id, L, party, true, s, GROUP_LIMIT))));
+      const gs = bossAgg(runsOf(1, (s) => safe(`boss ${id} group ${fac} stand`, () => bossRun(id, L, party, false, s, GROUP_LIMIT))));
+      rows.push({ boss: id, level: L, kind: "group", faction: fac, party: list, dodge: g, stand: gs });
+      log(`группа ${fac.padEnd(8)} ${pad(fmtBoss(g), 26)} смертей ${g.deaths}${g.order ? ` (${g.order})` : ""}${g.resets ? ` сбросов ${g.resets}` : ""} | стоя: ${fmtBoss(gs)}, смертей ${gs.deaths}  DPS ${k1(g.dps)} ${JSON.stringify(g.byCls)}`);
+    }
+    // жалоба: герой 100 уровня в максимальной экипировке соло против этого босса (без подстройки уровня — босс на своём)
+    for (const c of CLS.filter((x) => ["warrior", "mage", "rogue", "ranger", "deathknight", "warlock"].includes(x))) {
+      const r = bossAgg(runsOf(BOSS_SEEDS, (s) => safe(`boss ${id} L100 ${c}`, () => bossRun(id, L, [{ cls: c, level: 100, gear: "max" }], true, s, SOLO_LIMIT))));
+      rows.push({ boss: id, level: L, kind: "hero100", cls: c, max_gear: r });
+      log(`  герой 100 ${name(c)} макс.: ${fmtBoss(r)} (босс L${r.bossLevel}, HP ${k1(r.bossMaxHp ?? 0)})`);
+    }
+    // группа 100 уровня в экипировке уровня: босс подстраивается под неё (data/balance.json bosses.scaleToAttacker)
+    for (const [fac, list] of Object.entries(PARTIES)) {
+      if (!list.every((c) => CLS.includes(c))) continue;
+      const party = list.map((c) => ({ cls: c, level: 100, gear: "level" as GearMode }));
+      const g = bossAgg(runsOf(BOSS_SEEDS, (s) => safe(`boss ${id} group100 ${fac}`, () => bossRun(id, L, party, true, s, GROUP_LIMIT))));
+      rows.push({ boss: id, level: L, kind: "group100", faction: fac, party: list, dodge: g });
+      log(`  группа 100 ${fac.padEnd(8)} ${pad(fmtBoss(g), 24)} смертей ${g.deaths}${g.order ? ` (${g.order})` : ""}${g.resets ? ` сбросов ${g.resets}` : ""} (босс L${g.bossLevel})  DPS ${k1(g.dps)}`);
+    }
+  }
+  report.bosses = rows;
+  summary.bosses = rows.map((r) => ({ ...r, ...(r.kind === "solo" ? { level_gear: undefined, max_gear: undefined, stand_max: undefined, lv: fmtBoss(r.level_gear as BossAgg), mx: fmtBoss(r.max_gear as BossAgg), st: fmtBoss(r.stand_max as BossAgg) } : {}) }));
 }
 
 report.summary = summary;

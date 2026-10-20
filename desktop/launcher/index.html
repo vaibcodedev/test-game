@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Пепельный Предел</title>
+    <link rel="stylesheet" href="launcher.css" />
+  </head>
+  <body>
+    <div class="embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+    <header class="titlebar">
+      <span class="tb-title">Пепельный Предел</span>
+      <div class="tb-buttons">
+        <button type="button" class="tb-btn" id="win-min" title="Свернуть" aria-label="Свернуть">&#x2013;</button>
+        <button type="button" class="tb-btn close" id="win-close" title="Закрыть" aria-label="Закрыть">&#x2715;</button>
+      </div>
+    </header>
+
+    <main class="card">
+      <img class="logo" src="icon.png" alt="" width="104" height="104" />
+      <h1>Пепельный Предел</h1>
+      <p class="tagline">2D MMORPG · мир, который ещё тлеет</p>
+
+      <button type="button" class="btn primary" id="play">Играть</button>
+
+      <div class="zone">
+        <p class="hint" id="hint">Свой мир на этом компьютере — без интернета</p>
+
+        <div class="progress" id="progress" hidden>
+          <div class="bar"><span id="bar"></span></div>
+          <p class="status" id="status" aria-live="polite">Запуск…</p>
+        </div>
+
+        <div class="error" id="error" role="alert" hidden>
+          <b id="error-title">Сервер не запустился</b>
+          <p id="error-text"></p>
+          <p class="log" id="error-log-row" hidden>Журнал: <code id="error-log"></code></p>
+          <div class="error-btns">
+            <button type="button" class="btn small" id="open-log">Открыть журнал</button>
+            <button type="button" class="btn small" id="open-logs">Папка журналов</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"><span>или сетевой сервер</span></div>
+
+      <form class="remote" id="remote" autocomplete="off">
+        <label for="address">Адрес сервера</label>
+        <div class="row">
+          <input id="address" type="text" inputmode="url" spellcheck="false" placeholder="192.168.1.20:2567" maxlength="300" />
+          <button type="submit" class="btn" id="connect">Подключиться</button>
+        </div>
+      </form>
+    </main>
+
+    <footer class="foot">
+      <span id="version">версия —</span>
+      <button type="button" class="link" id="logs-link">Папка журналов</button>
+    </footer>
+
+    <script src="launcher.js"></script>
+  </body>
+</html>

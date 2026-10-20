@@ -1,5 +1,6 @@
 /** Питомцы из /data/pets.json: характеристики, умения, прокачка. */
 import data from "../data/pets.json";
+import { petDmgGrowth } from "./balance";
 
 export interface PetSkill {
   id: string;
@@ -42,7 +43,8 @@ export const FIRST_PET = "wolf";
 
 export const petStats = (def: PetDef, level: number) => ({
   maxHp: Math.round(def.hp * (40 + level * 24)),
-  dmg: def.dmg * (4 + level * 1.7),
+  // урон растёт вместе с HP мобов (data/balance.json pet): иначе на 100 уровне питомцы и призывы бьют в 10 раз слабее, чем на 10
+  dmg: def.dmg * (4 + level * 1.7) * petDmgGrowth(level),
   armor: Math.round(def.armor * level * 1.6),
 });
 export const petXpToNext = (level: number) => Math.round(30 * level ** 1.5);

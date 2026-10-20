@@ -16,6 +16,7 @@ import type { Player } from "./Player";
 import { applyHeal, healPower, reachable, resolveAlly, type Ally } from "./skills";
 import { clearDots, mostWounded, type CastCtx } from "./umbrath";
 import type { Actor, HitOpts, World } from "./World";
+import { BAL, leechMult, pvpHealMult } from "../../../shared/balance";
 
 interface St {
   /** Баффы на герое: урон +dmgPct% (Благословение, «Дар ярости»), входящий урон −blessReduce%. */
@@ -71,6 +72,8 @@ const woundedAround = (w: World, p: Player, x: number, y: number, r: number, n: 
 /** Щит на герое: суммируется с действующим, не выше cap от здоровья. Штраф нарушителя режет и щиты. */
 function shield(w: World, by: Player, t: Player, amt: number, ms: number, cap = 0.6) {
   if (by.outlawUntil > w.time || by.intruder) amt *= OUTLAW.healMul;
+  // щит из силы лечения в PvP режется как лечение (data/balance.json pvp.heal)
+  if (w.pvpActive || w.time - t.pvpAt < BAL.pvp.healWindowMs) amt *= pvpHealMult(t.level);
   const live = t.shieldUntil > w.time;
   t.shieldAmt = Math.min(t.unit.maxHp * cap, (live ? t.shieldAmt : 0) + Math.round(amt));
   t.shieldUntil = Math.max(live ? t.shieldUntil : 0, w.time + ms);
@@ -215,7 +218,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
           if (dealt <= 0) return;
           const a = mostWounded(w, p, 320);
           w.emit({ t: "chain", pts: [target.x, target.y - 12, a.x, a.y - 12], k: "blood" });
-          applyHeal(w, p, a, (dealt * v.heal) / 100);
+          applyHeal(w, p, a, ((dealt * v.heal) / 100) * leechMult(p.level));
         });
       return null;
     }
@@ -236,7 +239,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
         const list = woundedAround(w, p, p.x, p.y, 320, 3);
         for (const a of list) {
           w.emit({ t: "chain", pts: [pt.x, pt.y - 8, a.x, a.y - 12], k: "heal" });
-          applyHeal(w, p, a, (got * v.heal) / 100 / list.length);
+          applyHeal(w, p, a, ((got * v.heal) / 100 / list.length) * leechMult(p.level));
         }
       });
       return null;
@@ -306,9 +309,10 @@ export function powerMult(p: Player): number {
   const missing = Math.max(0, 1 - p.unit.hp / Math.max(1, p.unit.maxHp));
   return 1 + (pv(p, "bw_flow").pct * missing) / 100;
 }
-/** «Закалённая кровь»: «Жертва крови» стоит меньше здоровья. */
-export function sacrificeCost(p: Player, cost: number): number {
-  return rk(p, "bw_temper") ? Math.max(1, Math.round(cost * (1 - pv(p, "bw_temper").cost / 100))) : cost;
+/** «Закалённая кровь»: «Жертва крови» стоит меньше здоровья. В PvP цена крови — по той же кривой, что и лечение (data/balance.json pvp.heal). */
+export function sacrificeCost(p: Player, cost: number, w?: World): number {
+  const c = rk(p, "bw_temper") ? Math.max(1, Math.round(cost * (1 - pv(p, "bw_temper").cost / 100))) : cost;
+  return w && (w.pvpActive || w.time - p.pvpAt < BAL.pvp.healWindowMs) ? Math.max(1, Math.round(c * pvpHealMult(p.level))) : c;
 }
 /** Заплаченная кровь становится щитом. */
 export function onSacrifice(w: World, p: Player, paid: number) {
@@ -496,13 +500,13 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
   if (s && s.tideUntil > w.time && !o.noProc) {
     const a = mostWounded(w, src, 320);
     if (a.id !== src.id) w.emit({ t: "chain", pts: [dst.x, dst.y - 12, a.x, a.y - 12], k: "blood" });
-    applyHeal(w, src, a, (v * s.tidePct) / 100);
+    applyHeal(w, src, a, ((v * s.tidePct) / 100) * leechMult(src.level));
   }
   if (o.noProc) return;
   // «Багровая жажда»: удар по истекающему кровью/проклятому лечит союзника
   if (rk(src, "bw_thirst") && (dst.bleedUntil > w.time || dst.curseUntil > w.time)) {
     const a = mostWounded(w, src, 320);
-    applyHeal(w, src, a, (v * pv(src, "bw_thirst").pct) / 100);
+    applyHeal(w, src, a, ((v * pv(src, "bw_thirst").pct) / 100) * leechMult(src.level));
   }
   // «Алая мана»: урон кровью возвращает ману
   if (o.kind === "blood" && rk(src, "bw_blood_mana")) src.unit.mp = Math.min(src.unit.maxMp, src.unit.mp + (v * pv(src, "bw_blood_mana").pct) / 100);

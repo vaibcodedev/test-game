@@ -5,10 +5,11 @@
  */
 import { CLASSES, type ClassId, type FactionId } from "../../../shared/classes";
 import { FACTIONS } from "../../../shared/factions";
-import { canEquip, makeItem, SLOTS, type Item, type Slot } from "../../../shared/items";
+import { BASE_ITEMS, canEquip, lootCategories, makeItem, OFFHAND_CLASSES, Rarity, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
+import { LEGEND_TIERS, LEGENDARIES } from "../../../shared/legendary";
 import { walkable } from "../../../shared/map";
 import { findPath } from "../../../shared/path";
-import { SKILLS, activeSkills, classSkills } from "../../../shared/skills";
+import { SKILLS, activeSkills, classSkills, skillMana } from "../../../shared/skills";
 import { PLAYER_RADIUS } from "../../../shared/constants";
 import { skillPointsAt, statPointsAt } from "../../../shared/formulas";
 import type { PlayerSave } from "../db";
@@ -27,6 +28,31 @@ export interface BotSpec {
 
 const BOT_NAMES = ["Гром", "Вихрь", "Клык", "Тень", "Искра", "Буран", "Шип", "Ворон"];
 
+/**
+ * Вещь бота «как у образца» в слоте: если класс бота может её надеть — копия (с заточкой, моделью и легендаркой);
+ * иначе — вещь его класса того же слота, уровня, редкости и заточки; за чужую легендарку — добавка её бюджета
+ * (data/legendaries.json _tiers.budget × вес слота) в главную характеристику и Выносливость.
+ */
+function mirrorItem(it: Item, slot: Slot, cls: ClassId, level: number): Item | null {
+  if (!canEquip(it, cls, level)) return JSON.parse(JSON.stringify(it)) as Item;
+  const main = CLASSES[cls].mainStat;
+  const bases = slot === "weapon" ? [BASE_ITEMS[CLASSES[cls].startWeapon]] : lootCategories(cls).filter((b) => b.slot === slot);
+  const base = bases.find((b) => b && b.slot === slot);
+  if (!base) return null;
+  const rarity = Math.min(it.rarity, Rarity.Legendary) as Rarity;
+  const out = makeItem(base.id, it.ilvl, rarity, () => 0.5, [main, "vit"]);
+  out.req = Math.min(out.req, level);
+  if (it.plus) out.plus = it.plus;
+  const leg = it.legendary ? LEGENDARIES[it.legendary] : undefined;
+  if (leg) {
+    const pts = LEGEND_TIERS.budget[leg.ti] * (LEGEND_TIERS.slot[slot] ?? 1);
+    const add = (k: ItemStatKey, v: number) => { out.stats[k] = (out.stats[k] || 0) + Math.round(v); };
+    add(main, pts * 0.6);
+    add("vit", pts * 0.4);
+  }
+  return out;
+}
+
 /** Сохранение бота: уровень и предметы как у образца, очки характеристик и умений распределены. */
 export function botSave(cls: ClassId, level: number, like?: PlayerSave): PlayerSave {
   const s = newSave(cls, { x: 0, y: 0 });
@@ -37,15 +63,15 @@ export function botSave(cls: ClassId, level: number, like?: PlayerSave): PlayerS
   s.alloc[main] = Math.ceil(pts * 0.6);
   s.alloc.vit = pts - s.alloc[main];
   if (like) {
+    // зеркально честно: заточка, редкость и уровень вещей — как у образца (раньше оружие создавалось заново без заточки)
     for (const slot of SLOTS as Slot[]) {
       const it = like.equip[slot];
       if (!it) continue;
-      if (slot === "weapon") {
-        const w = makeItem(CLASSES[cls].startWeapon, it.ilvl, it.rarity);
-        w.req = Math.min(w.req, level);
-        s.equip.weapon = w;
-      } else if (!canEquip(it, cls, level)) s.equip[slot] = JSON.parse(JSON.stringify(it)) as Item;
+      if (slot === "offhand" && !OFFHAND_CLASSES.includes(cls)) continue;
+      s.equip[slot] = mirrorItem(it, slot, cls, level);
     }
+    const w = s.equip.weapon;
+    if (w && BASE_ITEMS[w.base]?.hands === 2) s.equip.offhand = null;
   }
   // очки умений (skillPointsAt, стартовое уже вложено) — по кругу по доступным умениям
   let free = skillPointsAt(level) - 1;
@@ -89,7 +115,7 @@ function healerThink(w: World, bot: Player) {
   const hurt = mates.filter((x) => ratio(x) < 0.7);
   const can = (id: string) => {
     const rank = bot.save.skills[id] || 0;
-    return rank > 0 && (bot.cds.get(id) || 0) <= w.time && bot.unit.mp >= SKILLS[id].mana!(rank);
+    return rank > 0 && (bot.cds.get(id) || 0) <= w.time && bot.unit.mp >= skillMana(SKILLS[id], rank, bot.level);
   };
   const low = [...mates].sort((a, b) => ratio(a) - ratio(b))[0];
   if (!low) return;
@@ -123,7 +149,7 @@ export function botThink(w: World, bot: Player, enemies: Player[]) {
   // умения
   for (const s of activeSkills(bot.cls)) {
     const rank = bot.save.skills[s.id] || 0;
-    if (!rank || s.id === "stealth" || s.id === "dr_shadowmeld" || (bot.cds.get(s.id) || 0) > w.time || bot.unit.mp < s.mana!(rank)) continue;
+    if (!rank || s.id === "stealth" || s.id === "dr_shadowmeld" || (bot.cds.get(s.id) || 0) > w.time || bot.unit.mp < skillMana(s, rank, bot.level)) continue;
     const reach = s.target === "self" ? Math.max(bot.attackRange(), 90) : (s.range ?? bot.attackRange()) + 20;
     if (best > reach) continue;
     if (!castSkill(w, bot, s.id, target.x, target.y, target.id)) break; // одно умение за раз

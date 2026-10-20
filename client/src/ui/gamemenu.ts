@@ -1,18 +1,24 @@
 /** Игровое меню по Esc, окно помощи и большая карта мира. */
 import type { LogoutMode, Net } from "../net";
+import { hotkeyRows, keybinds, type ActionId } from "../game/keybinds";
 
-export const HOTKEYS: [string, string][] = [["WASD / клик", "движение"], ["1–4", "умения"], ["Q / E", "зелья здоровья и маны"], ["Tab", "следующая цель"], ["Пробел", "подобрать предмет"], ["F", "поговорить с NPC"], ["X / Shift+X", "ездовое животное"], ["C / I / K", "герой / сумка / умения"], ["P / B / M", "арена / бестиарий / карта"], ["Enter", "чат"], ["Esc", "закрыть окно, снять цель, меню"]];
+/** Справка «клавиши — действие» из текущей раскладки (client/src/game/keybinds.ts). */
+export const hotkeys = (): [string, string][] => hotkeyRows(keybinds);
+/** Те же строки для списка <dl class="keys">. */
+export const keysHtml = () => hotkeys().map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("");
+/** Подпись клавиши действия. */
+const key = (a: ActionId) => keybinds.label(a, 0);
 
-const TIPS = [
-  "Клик по врагу — атака, клик по земле — движение. Зелья: Q и E.",
+const tips = () => [
+  `Клик по врагу — атака, клик по земле — движение. Зелья: ${key("potionHp")} и ${key("potionMp")}.`,
   "Города безопасны. За стенами уровень врагов растёт — смотрите на подпись зоны под картой.",
   "Задания берите у NPC в городах: награда золотом и опытом.",
-  "Тяжёлые вещи продавайте торговцу, лучшие надевайте через сумку (I).",
+  `Тяжёлые вещи продавайте торговцу, лучшие надевайте через сумку (${key("winInv")}).`,
 ];
 
 export function fillHelp(body: Element) {
-  body.innerHTML = `<h3 style="margin:0;font-size:16px;color:var(--gold)">Управление</h3><dl class="keys">${HOTKEYS.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>
-    <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Советы</h3><ul style="margin:0;padding-left:20px;line-height:1.5">${TIPS.map((t) => `<li>${t}</li>`).join("")}</ul>`;
+  body.innerHTML = `<h3 style="margin:0;font-size:16px;color:var(--gold)">Управление</h3><dl class="keys">${keysHtml()}</dl>
+    <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Советы</h3><ul style="margin:0;padding-left:20px;line-height:1.5">${tips().map((t) => `<li>${t}</li>`).join("")}</ul>`;
 }
 
 export interface MenuActions {
@@ -52,23 +58,23 @@ export class GameMenu {
     const a = this.a;
     // [текст, клавиша, действие | null = скоро]
     const items: [string, string, (() => void) | null][] = [
-      ["Продолжить", "Esc", () => {}],
-      ["Персонаж", "C", () => a.toggle("char")],
-      ["Инвентарь", "I", () => a.toggle("inv")],
-      ["Умения", "K", () => a.toggle("skills")],
+      ["Продолжить", key("escape"), () => {}],
+      ["Персонаж", key("winChar"), () => a.toggle("char")],
+      ["Инвентарь", key("winInv"), () => a.toggle("inv")],
+      ["Умения", key("winSkills"), () => a.toggle("skills")],
       ["Квесты", "", () => a.openQuests()],
-      ["Бестиарий", "B", () => a.toggle("bestiary")],
-      ["Арена", "P", () => a.toggle("arena")],
+      ["Бестиарий", key("winBestiary"), () => a.toggle("bestiary")],
+      ["Арена", key("winArena"), () => a.toggle("arena")],
       ["Достижения", "", null],
       ["Друзья и гильдия", "", null],
-      ["Карта", "M", () => a.openMap()],
+      ["Карта", key("winMap"), () => a.openMap()],
       ["Настройки", "", () => a.toggle("settings")],
       ["Помощь", "", () => a.openHelp()],
       ["Переподключиться", "", () => void window.dispatchEvent(new CustomEvent("emberfall:reconnect"))],
       ["Сменить персонажа", "", a.net().kind === "arena" ? null : () => this.confirmLogout("char")],
       ["Выйти из аккаунта", "", a.net().kind === "arena" ? null : () => this.confirmLogout("account")],
     ];
-    if (a.isAdmin()) items.splice(7, 0, ["Админ-панель", "F10", () => a.toggle("admin")]);
+    if (a.isAdmin()) items.splice(7, 0, ["Админ-панель", key("winAdmin"), () => a.toggle("admin")]);
     const p = document.createElement("div");
     p.className = "panel gmenu";
     p.innerHTML = `<h2>Пепельный Предел</h2>`;

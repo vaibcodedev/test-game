@@ -61,6 +61,8 @@ export class Player {
 
   attackAt = 0;
   cds = new Map<string, number>();
+  /** Конец общего отката (GCD): умения без offGcd до этого момента не кастуются. */
+  gcdUntil = 0;
   stunUntil = 0;
   rootUntil = 0;
   slowUntil = 0;
@@ -151,6 +153,11 @@ export class Player {
   petCdUntil = 0;
   /** Последний полученный урон (World.time): прерывает выход из игры в бою. */
   hurtAt = -1e9;
+  /** Последний удар героя по этому герою (PvP): лечение в окне pvp.healWindowMs режется (data/balance.json). */
+  pvpAt = -1e9;
+  /** Урон от героев в текущем окне 1 с (потолок data/balance.json pvp.burstCapHp). */
+  pvpBurst = 0;
+  pvpBurstAt = -1e9;
   /** Выход из игры в бою: отсчёт (World.time). */
   logout: { start: number; end: number } | null = null;
   /** Аккаунт героя (общий склад). */

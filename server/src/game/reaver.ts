@@ -13,6 +13,7 @@ import { reachable } from "./skills";
 import { bleed, dotOf, endDot, type CastCtx } from "./umbrath";
 import { applyHaste } from "./effects";
 import type { Actor, HitOpts, World } from "./World";
+import { leechMult } from "../../../shared/balance";
 
 interface St { furyStacks: number; furyUntil: number; defReady: number; defPending: boolean; massacre: number }
 const states = new WeakMap<Player, St>();
@@ -91,7 +92,7 @@ export function castReaver(c: CastCtx): string | null | undefined {
         w.emit({ t: "chain", pts: [m.x, m.y - 12, u.x, u.y - 12], k: "blood" });
         total += w.hit(p, m, { flat: Math.max(1, Math.round((left * v.burst) / 100)), canCrit: false, kind: "blood", skill: true, threat: 1 });
       }
-      if (total > 0) w.heal(p, Math.round((total * v.heal) / 100));
+      if (total > 0) w.heal(p, Math.round(((total * v.heal) / 100) * leechMult(p.level)));
       return null;
     }
     case "rv_gore": {
@@ -100,7 +101,7 @@ export function castReaver(c: CastCtx): string | null | undefined {
       c.ok(); face(t);
       w.emit({ t: "aoe", k: "burst", x: t.x, y: t.y, r: 40 });
       const dealt = w.hit(p, t, { mult: (v.dmg + v.stack * stacks) / 100, skill: true, threat: 1 });
-      if (dealt > 0) w.heal(p, Math.round((dealt * v.heal) / 100));
+      if (dealt > 0) w.heal(p, Math.round(((dealt * v.heal) / 100) * leechMult(p.level)));
       return null;
     }
     case "rv_throw": {
@@ -147,7 +148,7 @@ export function castReaver(c: CastCtx): string | null | undefined {
             total += dealt; // лечение — от нанесённого урона
             if (landed && !w.isDead(m)) bleed(w, p, m);
           }
-          if (total > 0) w.heal(p, Math.round((total * v.heal) / 100));
+          if (total > 0) w.heal(p, Math.round(((total * v.heal) / 100) * leechMult(p.level)));
         }, p);
       return null;
     }
@@ -216,7 +217,7 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number) {
 /** Герой нанёс урон v: «Вкус крови» — тик кровотечения лечит. */
 export function afterDealt(w: World, src: Player, _dst: Actor, v: number, o: HitOpts) {
   if (v <= 0 || o.kind !== "blood" || !o.noBreak || !o.noProc || !rk(src, "rv_taste")) return;
-  w.heal(src, Math.round((v * pv(src, "rv_taste").heal) / 100), false);
+  w.heal(src, Math.round(((v * pv(src, "rv_taste").heal) / 100) * leechMult(src.level)), false);
 }
 
 /** Убийство моба: «Резня». */

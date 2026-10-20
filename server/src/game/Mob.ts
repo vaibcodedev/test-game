@@ -121,6 +121,16 @@ export class Mob {
     this.boss?.reset();
   }
 
+  /** Новый уровень (подстройка босса под героев): характеристики пересчитываются, доля здоровья сохраняется. */
+  setLevel(level: number) {
+    const u = this.unit, f = u.maxHp > 0 ? u.hp / u.maxHp : 1;
+    this.level = level;
+    u.level = level;
+    this.baseStats = this.stats = mobStats(this.def, level);
+    u.maxHp = this.stats.maxHp;
+    u.hp = Math.max(1, Math.round(this.stats.maxHp * f));
+  }
+
   addThreat(pid: string, v: number) {
     this.threat.set(pid, (this.threat.get(pid) || 0) + v);
   }

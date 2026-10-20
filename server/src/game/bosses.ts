@@ -5,6 +5,7 @@
  *  - Повелитель Пепла: огненное дыхание и сокрушение; во 2-й — метеоритный дождь; в 3-й — кольцо пламени и бесы.
  */
 import { MOBS } from "../../../shared/mobs";
+import { BAL, bossBal } from "../../../shared/balance";
 import { Anim, BUFF_ENRAGE } from "../../../shared/protocol";
 import { walkable } from "../../../shared/map";
 import { Mob } from "./Mob";
@@ -20,12 +21,34 @@ abstract class Boss {
   protected abilities: Ability[] = [];
   protected adds = new Set<Mob>();
   protected yells: string[] = [];
+  /** Уровень без подстройки (data/world.json или админка). */
+  protected readonly baseLevel: number;
+  /** Множитель урона способностей (телеграфы, лужи) к урону удара босса: data/balance.json bosses.<id>.mech. */
+  protected get mech(): number {
+    return bossBal(this.m.def.id)?.mech ?? 1;
+  }
 
   constructor(
     protected w: World,
     protected m: Mob,
     protected arena: number,
-  ) {}
+  ) {
+    this.baseLevel = m.level;
+  }
+
+  /**
+   * Подстройка (data/balance.json bosses.scaleToAttacker): в бою уровень поднимается до уровня самого сильного героя на арене
+   * или среди нанёсших урон — босс рассчитан на группу своего уровня, а не на героя на 50 уровней старше. Вниз — только при сбросе.
+   */
+  private scaleUp() {
+    if (!BAL.bosses.scaleToAttacker || this.m.dead) return;
+    // вне боя — по героям на арене в обе стороны (прошёл мимо — вернулся к своему), в бою — только вверх
+    const idle = this.m.state === "idle";
+    let lv = idle ? this.baseLevel : this.m.level;
+    for (const p of this.inArena()) if (p.level > lv) lv = p.level;
+    for (const id of this.m.damageBy.keys()) { const p = this.w.players.get(id); if (p && p.level > lv) lv = p.level; }
+    if (lv > this.m.level || (idle && lv !== this.m.level)) this.m.setLevel(lv);
+  }
 
   protected abstract thresholds: number[];
   protected abstract onPhase(n: number): void;
@@ -75,6 +98,7 @@ abstract class Boss {
 
   update(dt: number) {
     const m = this.m;
+    this.scaleUp();
     if (m.state !== "chase") return;
     const hp = m.unit.hp / m.unit.maxHp;
     let ph = 0;
@@ -105,6 +129,7 @@ abstract class Boss {
     for (const a of this.abilities) a.at = a.every * 0.5;
     for (const add of this.adds) if (!add.dead) this.w.removeMob(add);
     this.adds.clear();
+    if (this.m.level !== this.baseLevel) this.m.setLevel(this.baseLevel);
   }
 
   onDeath() {
@@ -120,7 +145,7 @@ class Ent extends Boss {
   protected override yells = ["", "Лес поднимется против вас!", "Корни... уходят... в землю..."];
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
-    const dmg = () => this.m.stats.dmg;
+    const dmg = () => this.m.stats.dmg * this.mech;
     // корни под ногами у игроков
     this.ability(7, [0], () => this.roots(3));
     this.ability(4.5, [1], () => this.roots(4));
@@ -142,7 +167,7 @@ class Ent extends Boss {
   private roots(n: number) {
     for (const p of this.randomPlayers(n))
       this.w.telegraph(this.m, "circle", p.x, p.y, 54, 1300, (q) => {
-        if (this.w.hitEx(this.m, q, { flat: this.m.stats.dmg * 1.3, kind: "nature" }).landed) applyRoot(this.w, this.m, q, 1500);
+        if (this.w.hitEx(this.m, q, { flat: this.m.stats.dmg * this.mech * 1.3, kind: "nature" }).landed) applyRoot(this.w, this.m, q, 1500);
       }, { k: "nature" });
   }
   protected onPhase() {
@@ -155,7 +180,7 @@ class Witch extends Boss {
   protected override yells = ["", "Топь заберёт ваши кости!", "Довольно! Вы сгниёте здесь!", "Нет... моё болото..."];
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
-    const dmg = () => this.m.stats.dmg;
+    const dmg = () => this.m.stats.dmg * this.mech;
     const pools = (n: number) => {
       const spots = this.randomPlayers(n).map((p) => ({ x: p.x, y: p.y }));
       for (const s of spots) w.telegraph(m, "circle", s.x, s.y, 62, 900, () => {}, { k: "poison" });
@@ -189,7 +214,7 @@ class AshLord extends Boss {
   protected override yells = ["", "Пепел к пеплу! Небо падёт на вас!", "ГОРИТЕ! ВСЕ ГОРИТЕ!", "Пламя... гаснет..."];
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
-    const dmg = () => this.m.stats.dmg;
+    const dmg = () => this.m.stats.dmg * this.mech;
     this.ability(8, [0, 1, 2], () => {
       const t = this.target();
       if (!t) return;

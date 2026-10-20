@@ -1,7 +1,8 @@
 /** Игровой мир: вся симуляция на сервере. Комната Colyseus только передаёт сюда сообщения. */
 import { MAP_SEED, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
 import { armorReduction } from "../../../shared/formulas";
-import { PVP_DAMAGE_MULT } from "../../../shared/arena";
+import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
+import { PLUS_BONUS } from "../../../shared/upgrade";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, isTownZone, zoneAtPx, Zone, type WorldMap } from "../../../shared/map";
 import { tickBiomes } from "./biomes";
 import { tickCities } from "./cities";
@@ -396,9 +397,11 @@ export class World {
       if (!this.isPlayer(dst) && dst.def.boss) amount *= d.bossMult;
       const forced = o.flat === undefined && src.critNextUntil > this.time;
       if (forced) src.critNextUntil = 0;
-      if (o.canCrit !== false && (forced || Math.random() < d.crit + rogues.critBonus(this, src, dst))) {
+      // по герою — потолок шанса и силы крита (data/balance.json pvp): крит-цепочки не решают бой одним залпом
+      const vsHero = this.isPlayer(dst), critP = d.crit + rogues.critBonus(this, src, dst);
+      if (o.canCrit !== false && (forced || Math.random() < (vsHero ? Math.min(critP, BAL.pvp.critChanceMax) : critP))) {
         crit = true;
-        amount *= d.critMult;
+        amount *= vsHero ? Math.min(d.critMult, BAL.pvp.critMultMax) : d.critMult;
       }
       if (o.flat) amount = o.flat;
       else amount *= tanks.outgoing(this, src, dst, o) * healers.outgoing(this, src, dst, o) * mages.outgoing(this, src, dst, o) * archers.outgoing(this, src, dst, o) * rogues.outgoing(this, src, dst, o) * legendary.outgoing(this, src, dst);
@@ -412,6 +415,16 @@ export class World {
     if (o.kind && o.kind !== "phys") armor *= 0.5;
     amount *= 1 - armorReduction(armor, level);
     if (!this.isPlayer(dst)) amount *= dst.ai.weak?.dmg?.[o.kind ?? "phys"] ?? 1;
+    // PvP (BALANCE.md «PvP»): устойчивость по уровню цели, бонус заточки оружия атакующего — долей plusShare. Сразу после брони:
+    // поглощения ресурсом («Мановая броня»), щиты и лечение от заблокированного считаются в единицах здоровья, а урон героя растёт как L².
+    const pvpHit = this.isPlayer(src) && this.isPlayer(dst) && src !== dst;
+    let pvpK = 1;
+    if (pvpHit) {
+      dst.pvpAt = this.time;
+      const wp = src.save.equip.weapon?.plus || 0;
+      pvpK = (pvpDamageMult(dst.level) * pvpClassMult(src.cls, dst.cls) * (1 + PLUS_BONUS * wp * BAL.pvp.plusShare)) / (1 + PLUS_BONUS * wp);
+      amount *= pvpK;
+    }
     let reflect = 0;
     if (this.isPlayer(dst)) {
       amount *= dst.derived.dmgTaken;
@@ -425,7 +438,7 @@ export class World {
       if (dst.lastStandUntil > this.time) amount *= 1 - (SKILLS.laststand.v(ls || 1).reduce) / 100;
       if (dst.blockUntil > this.time) {
         tanks.onBlock(this, dst, (amount * dst.blockPct) / 100);
-        reflect = (amount * dst.blockPct * dst.blockReflect) / 10000;
+        reflect = (amount / pvpK * dst.blockPct * dst.blockReflect) / 10000; // отражение — обычным уроном, PvP-множитель получит его удар
         amount *= 1 - dst.blockPct / 100;
       }
       // костяная броня: бьющий вплотную замедлен
@@ -440,7 +453,6 @@ export class World {
         return { landed: true, dealt: 0 };
       }
     }
-    if (this.isPlayer(src) && this.isPlayer(dst)) amount *= PVP_DAMAGE_MULT;
     amount = legendary.absorb(this, dst, amount);
     if (this.isPlayer(dst) && dst.shieldAmt > 0) {
       if (dst.shieldUntil > this.time) {
@@ -457,6 +469,15 @@ export class World {
           return { landed: true, dealt: 0 };
         }
       } else dst.shieldAmt = 0;
+    }
+    // PvP: один удар — не больше hitCapHp здоровья цели, за 1 с — не больше burstCapHp (после щитов: потолок того, что дошло до здоровья).
+    // Только в бою близких уровней (атакующий не выше цели больше чем на capLevelGap): старший по уровню остаётся сильнее.
+    if (pvpHit && this.isPlayer(src) && this.isPlayer(dst) && src.level <= dst.level + BAL.pvp.capLevelGap) {
+      amount = Math.min(amount, dst.unit.maxHp * BAL.pvp.hitCapHp);
+      // потолок урона от героев за секунду (burstCapHp здоровья): серия ударов, процов и тиков не убивает за 2–3 с
+      if (this.time - dst.pvpBurstAt >= 1000) { dst.pvpBurstAt = this.time; dst.pvpBurst = 0; }
+      amount = Math.max(0, Math.min(amount, dst.unit.maxHp * BAL.pvp.burstCapHp - dst.pvpBurst));
+      dst.pvpBurst += amount;
     }
     if (this.isPlayer(dst)) amount = tanks.redirect(this, src, dst, amount);
     // кровавые узы: часть урона по союзнику принимает Кровотворец
@@ -478,7 +499,7 @@ export class World {
     this.emit({ t: "dmg", id: this.idOf(dst), v, crit, k: o.kind ?? "phys" });
     if (this.isPlayer(src)) {
       const ls = src.derived.lifesteal + (src.frenzyUntil > this.time ? src.frenzyLeech / 100 : 0);
-      if (ls > 0) this.heal(src, Math.round(v * ls), false);
+      if (ls > 0) this.heal(src, Math.round(v * ls * leechMult(src.level)), false);
       tanks.afterDealt(this, src, dst, v, o);
       rogues.afterDealt(this, src, dst, v, o);
       healers.afterDealt(this, src, dst, v, o);
@@ -518,6 +539,8 @@ export class World {
   heal(p: Player, v: number, show = true, by?: Player): number {
     if (p.dead || v <= 0) return 0;
     if (p.outlawUntil > this.time || p.intruder) v = Math.max(1, Math.round(v * OUTLAW.healMul)); // клеймо нарушителя режет лечение
+    // PvP: лечение растёт с уровнем как урон (L²), здоровье — как L; на арене и после удара героя оно режется по кривой pvp.heal
+    if (this.pvpActive || this.time - p.pvpAt < BAL.pvp.healWindowMs) v = Math.max(1, Math.round(v * pvpHealMult(p.level)));
     const before = p.unit.hp;
     p.unit.hp = Math.min(p.unit.maxHp, p.unit.hp + v);
     const got = p.unit.hp - before;
@@ -848,6 +871,10 @@ export class World {
     }
     return best;
   }
+  /** Угроза питомца для моба: боссы почти не замечают питомцев (data/balance.json bosses.petThreat) — призывом босса не затанковать. */
+  private petThreat(m: Mob, pet: Pet): number {
+    return (m.threat.get(pet.id) || 0) * (m.def.boss ? BAL.bosses.petThreat : 1);
+  }
 
   private announceElite(m: Mob) {
     const r = ELITE.announceTiles * 32;
@@ -896,7 +923,7 @@ export class World {
     } else {
       const target = this.pickTarget(m);
       const pet = this.threatPet(m);
-      if (pet && (!target || (m.threat.get(pet.id) || 0) > (m.threat.get(target.id) || 0))) {
+      if (pet && (!target || this.petThreat(m, pet) > (m.threat.get(target.id) || 0))) {
         m.state = "chase";
         m.targetId = pet.id;
         u.target = pet.id;
@@ -938,6 +965,8 @@ export class World {
           } else if (m.ai.slam && m.windUntil <= t && t >= m.slamAt && d <= m.ai.slam.r + PLAYER_RADIUS + 20 && clear) this.mobSlam(m, target);
           else if ((d > reach || !clear) && canMove) moving = this.moveMob(m, target.x, target.y, dt, this.mobSpeed(m), m.def.projectile ? reach * 0.8 : reach - 6);
           else if (d <= reach + 4 && clear && t >= m.attackAt && m.windUntil <= t) this.mobAttack(m, target);
+          // бросок по цели вне ближнего боя (data/mobAI.json throw): кайт не спасает от урона босса
+          if (m.ai.throw && d > reach + 4 && d <= m.ai.throw.range && clear && t >= m.attackAt && m.windUntil <= t && !(m.boss && (m.boss as { casting?: boolean }).casting)) this.mobThrow(m, target);
           if (!moving && d > reach && m.def.projectile && canMove) moving = this.moveMob(m, target.x, target.y, dt, this.mobSpeed(m), 20);
         }
       } else if (m.state === "chase") {
@@ -1007,6 +1036,21 @@ export class World {
     m.unit.aseq = (m.unit.aseq + 1) % 65535;
     const kind = (["phys", "fire", "frost", "poison", "arcane", "shadow", "nature", "holy"].includes(s.k) ? s.k : "phys") as FxKind;
     this.telegraph(m, "circle", m.x, m.y, s.r, s.ms, (p) => { if (m.stunUntil <= this.time) this.hit(m, p, { kind, mult: s.mult }); }, { k: kind });
+  }
+
+  /** Бросок снаряда (data/mobAI.json throw): mult урона удара, тип k. */
+  mobThrow(m: Mob, target: Player) {
+    const tw = m.ai.throw!, u = m.unit;
+    m.attackAt = this.time + m.def.attackCd * 1000 * (u.buffs & 0x20 ? 0.7 : 1);
+    u.dir = World.dirTo(target.x - u.x, target.y - u.y);
+    u.aseq = (u.aseq + 1) % 65535;
+    const kind = (["phys", "fire", "frost", "poison", "arcane", "shadow", "nature", "holy"].includes(tw.k) ? tw.k : "phys") as FxKind;
+    const ms = (this.dist(u, target) / 300) * 1000;
+    this.emit({ t: "proj", k: kind === "fire" ? "fire" : kind === "nature" ? "poison" : "shadow", from: m.id, to: target.id, tx: target.x, ty: target.y, ms });
+    this.later(ms, () => {
+      if (m.dead || target.dead || !lineClear(this.map, m.x, m.y, target.x, target.y)) return;
+      this.hit(m, target, { kind, mult: tw.mult });
+    });
   }
 
   mobAttack(m: Mob, target: Player, mult = 1) {

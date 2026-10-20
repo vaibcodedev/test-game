@@ -264,7 +264,8 @@ const AFFIX_KEYS: ItemStatKey[] = ["str", "agi", "int", "vit", "hp", "crit"];
 function affixValue(k: ItemStatKey, ilvl: number, mult: number): number {
   switch (k) {
     case "hp": return Math.round((8 + ilvl * 4) * mult);
-    case "crit": return Math.max(1, Math.round((1 + ilvl * 0.12) * mult));
+    // крит — доля, а не очки: рост с ilvl медленный (был 0.12/ур.: +19% крита с одной эпической вещи 100 ур., 4 вещи — потолок 75%)
+    case "crit": return Math.max(1, Math.round((1 + ilvl * 0.025) * mult));
     default: return Math.max(1, Math.round((1 + ilvl * 0.4) * mult));
   }
 }
@@ -283,7 +284,8 @@ export function newUid(): string {
   return Date.now().toString(36) + "-" + uidCounter.toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36);
 }
 
-export const RARITY_MULT = [1, 1.2, 1.45, 1.7];
+/** Множитель урона и брони базы по редкости. Был [1, 1.2, 1.45, 1.7]: с заточкой +10 эпик/легендарка давали ×3.7 к урону героя (задача 45). */
+export const RARITY_MULT = [1, 1.2, 1.35, 1.5];
 
 /** Предмет по базе или по id модели каталога (data/items.json). prefer — приоритет аффиксов. */
 export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () => number = Math.random, prefer: ItemStatKey[] = []): Item {
@@ -472,7 +474,7 @@ export function rollRarity(rand: () => number, bonus = 0): Rarity {
 /** Название с уровнем улучшения: «Лук Феникса +7». */
 export const itemName = (it: Pick<Item, "name" | "plus">): string => (it.plus ? `${it.name} +${it.plus}` : it.name);
 
-/** Характеристики с учётом улучшения: +6% базы за уровень для урона, брони и главной характеристики. */
+/** Характеристики с учётом улучшения: +PLUS_BONUS (data/upgrade.json bonusPerLevel) за уровень для урона, брони и главной характеристики. */
 export function effStats(it: Pick<Item, "stats" | "plus">): ItemStats {
   const plus = it.plus || 0;
   if (!plus) return it.stats;

@@ -1,11 +1,14 @@
 import world from "../data/world.json";
 import ai from "../data/mobAI.json";
+import { bossBal } from "./balance";
 
 /** Поведение моба из data/mobAI.json. */
 export interface MobAI {
   kite?: { min: number };
   heal?: { range: number; pct: number; cd: number };
   slam?: { r: number; ms: number; mult: number; cd: number; k: string };
+  /** Бросок: цель вне ближнего боя, но ближе range — снаряд с mult урона удара (k — тип) вместо удара; против бесконечного кайта. */
+  throw?: { range: number; mult: number; k: string };
   weak?: { dmg?: Record<string, number>; cc?: Partial<Record<"stun" | "slow" | "root", number>> };
 }
 export const MOB_AI = ai as unknown as Record<string, MobAI>;
@@ -78,8 +81,12 @@ export const MOBS: Record<string, MobDef> = {
   },
 };
 
-// уровни боссов — из data/world.json (пересчитываются вместе с уровнями зон)
+// уровни боссов — из data/world.json (пересчитываются вместе с уровнями зон); здоровье, урон и броня — data/balance.json bosses
 {
   const scale = world.levels.levelCap / world.levels.designCap;
   for (const [id, lv] of Object.entries(world.bosses)) if (MOBS[id]) MOBS[id].level = Math.max(1, Math.round(lv * scale));
+  for (const m of Object.values(MOBS)) {
+    const b = m.boss ? bossBal(m.id) : undefined;
+    if (b) { m.hp = b.hp; m.dmg = b.dmg; m.armor = b.armor; }
+  }
 }

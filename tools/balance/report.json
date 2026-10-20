@@ -4,7 +4,7 @@
   "quick": false,
   "tickMs": 50,
   "thinkMs": 250,
-  "pvpDamageMult": 0.25,
+  "pvpDamageMult": 0.03,
   "matchSec": 180,
   "levels": [
    10,
@@ -33,7 +33,7 @@
   "healSeeds": 3,
   "healBaseDeath": 15,
   "code": {
-   "sha1": "bf51742b48ed455433b5055a992492fa7c500b1c",
+   "sha1": "ab04e9944d021574b1c88138c542209b07362015",
    "files": 84,
    "roots": [
     "server/src/game",
@@ -41,39 +41,9 @@
     "data",
     "tools/balance/sim.ts"
    ],
-   "gitHead": "cc4153b7adc178bef45f86da03307c76f08b6239",
-   "uncommitted": true,
-   "uncommittedFiles": [
-    "data/factions.json",
-    "data/gear-fx.json",
-    "data/items.json",
-    "data/legendaries.json",
-    "data/skills_archers.json",
-    "data/skills_mages.json",
-    "data/skills_rogues.json",
-    "server/src/game/Player.ts",
-    "server/src/game/World.ts",
-    "server/src/game/admin.ts",
-    "server/src/game/archers.ts",
-    "server/src/game/effects.ts",
-    "server/src/game/encounters.ts",
-    "server/src/game/inventory.ts",
-    "server/src/game/legendary.ts",
-    "server/src/game/mages.ts",
-    "server/src/game/reaver.ts",
-    "server/src/game/rewards.ts",
-    "server/src/game/rogue.ts",
-    "server/src/game/skills.ts",
-    "server/src/game/smith.ts",
-    "server/src/game/tanks.ts",
-    "server/src/game/umbrath.ts",
-    "shared/accounts.ts",
-    "shared/gearFx.ts",
-    "shared/items.ts",
-    "shared/legendary.ts",
-    "shared/protocol.ts",
-    "tools/balance/sim.ts"
-   ]
+   "gitHead": "fddc0270541fd84f91aa4197efc2ef1196f7a25a",
+   "uncommitted": false,
+   "uncommittedFiles": []
   },
   "assumptions": [
    "Код боя настоящий: World.update(TICK_MS), Player/Mob, castSkill и модули умений; PVP_DAMAGE_MULT применяется внутри World.hit; таймеры умений с owner (гибель/уход владельца отменяет их, как в игре).",
@@ -4445,13 +4415,13 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 89,
+    "dps60": 88,
     "min": 85,
     "max": 93,
     "seeds": 5,
     "perSeed": [
      87,
-     93,
+     90,
      93,
      85,
      85
@@ -4524,20 +4494,20 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 431,
-    "min": 415,
+    "dps60": 432,
+    "min": 420,
     "max": 449,
     "seeds": 5,
     "perSeed": [
      435,
      449,
      424,
-     415,
+     420,
      433
     ],
     "dps10": 430,
     "share": {
-     "auto": 0.741,
+     "auto": 0.742,
      "tp_shield_bash": 0.152,
      "charge": 0.107
     },
@@ -4705,8 +4675,8 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 4452,
-    "min": 4226,
+    "dps60": 4376,
+    "min": 4093,
     "max": 4567,
     "seeds": 5,
     "perSeed": [
@@ -4714,15 +4684,15 @@
      4226,
      4442,
      4567,
-     4474
+     4093
     ],
     "dps10": 4561,
     "share": {
-     "auto": 0.585,
-     "tp_hammer": 0.141,
-     "tp_shield_bash": 0.122,
-     "charge": 0.079,
-     "quake": 0.073
+     "auto": 0.573,
+     "tp_hammer": 0.143,
+     "tp_shield_bash": 0.127,
+     "charge": 0.08,
+     "quake": 0.077
     },
     "mana": {
      "maxMp": 358,
@@ -5199,22 +5169,22 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 1117,
-    "min": 1101,
-    "max": 1128,
+    "dps60": 1130,
+    "min": 1102,
+    "max": 1185,
     "seeds": 5,
     "perSeed": [
-     1121,
-     1128,
+     1185,
+     1125,
      1117,
-     1101,
+     1102,
      1120
     ],
     "dps10": 1728,
     "share": {
-     "auto": 0.651,
-     "aimed": 0.294,
-     "hr_pierce": 0.041,
+     "auto": 0.646,
+     "aimed": 0.3,
+     "hr_pierce": 0.04,
      "volley": 0.014
     },
     "mana": {
@@ -5239,7 +5209,7 @@
      "aimed": 14
     },
     "fails": {},
-    "killsPerMin": 17,
+    "killsPerMin": 17.2,
     "rescues": 1.8,
     "mobHp": 4059,
     "deaths": 0
@@ -5295,22 +5265,22 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 5257,
+    "dps60": 5143,
     "min": 4741,
-    "max": 5554,
+    "max": 5390,
     "seeds": 5,
     "perSeed": [
-     5385,
+     5015,
      5215,
-     5554,
+     5390,
      4741,
-     5388
+     5355
     ],
     "dps10": 6425,
     "share": {
-     "auto": 0.636,
-     "aimed": 0.266,
-     "rain": 0.065,
+     "auto": 0.64,
+     "aimed": 0.26,
+     "rain": 0.066,
      "hr_pierce": 0.018,
      "volley": 0.016
     },
@@ -5338,7 +5308,7 @@
      "aimed": 14
     },
     "fails": {},
-    "killsPerMin": 27.4,
+    "killsPerMin": 26.8,
     "rescues": 2.2,
     "mobHp": 11583,
     "deaths": 0
@@ -5396,53 +5366,53 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 20808,
-    "min": 20244,
-    "max": 21315,
+    "dps60": 21079,
+    "min": 20533,
+    "max": 21447,
     "seeds": 5,
     "perSeed": [
-     20644,
-     20244,
+     20863,
+     21238,
      20533,
      21315,
-     21308
+     21447
     ],
-    "dps10": 30042,
+    "dps10": 31010,
     "share": {
-     "auto": 0.464,
+     "auto": 0.468,
      "aimed": 0.205,
-     "hr_pierce": 0.109,
-     "rain": 0.105,
-     "hr_barrage": 0.075,
-     "volley": 0.042
+     "hr_pierce": 0.11,
+     "rain": 0.1,
+     "hr_barrage": 0.078,
+     "volley": 0.039
     },
     "mana": {
      "maxMp": 364,
-     "oomAt": 33,
+     "oomAt": 31.4,
      "oomRuns": 5,
      "runs": 5,
-     "spendPerSec": 16.3,
+     "spendPerSec": 16.2,
      "regenPerSec": 2,
-     "procPerSec": 8.4,
+     "procPerSec": 8.3,
      "wastedAtCap": 0,
-     "sustain": 1.004,
-     "emptyShare": 0.345,
-     "mpLeft": 4
+     "sustain": 1.011,
+     "emptyShare": 0.372,
+     "mpLeft": 10
     },
     "casts": {
      "hr_barrage": 1,
      "hr_beast": 3,
      "rain": 4.4,
-     "hr_mark": 6.6,
-     "hr_trap": 9.6,
-     "hr_pierce": 8.6,
+     "hr_mark": 6.4,
+     "hr_trap": 9,
+     "hr_pierce": 9,
      "volley": 9,
-     "roll": 11.2,
-     "aimed": 16.2
+     "roll": 11,
+     "aimed": 15.6
     },
     "fails": {},
     "killsPerMin": 50.8,
-    "rescues": 2,
+    "rescues": 2.2,
     "mobHp": 27159,
     "deaths": 0
    }
@@ -5488,22 +5458,22 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 185,
-    "min": 179,
-    "max": 196,
+    "dps60": 191,
+    "min": 182,
+    "max": 197,
     "seeds": 5,
     "perSeed": [
-     184,
+     191,
      182,
-     179,
+     197,
      196,
      187
     ],
     "dps10": 196,
     "share": {
-     "fireball": 0.577,
-     "auto": 0.338,
-     "frostnova": 0.086
+     "fireball": 0.582,
+     "auto": 0.334,
+     "frostnova": 0.084
     },
     "mana": {
      "maxMp": 586,
@@ -5523,7 +5493,7 @@
      "frostnova": 7
     },
     "fails": {},
-    "killsPerMin": 11.4,
+    "killsPerMin": 11.8,
     "rescues": 3,
     "mobHp": 1023,
     "deaths": 0
@@ -5573,7 +5543,7 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 1212,
+    "dps60": 1225,
     "min": 1148,
     "max": 1256,
     "seeds": 5,
@@ -5581,16 +5551,16 @@
      1148,
      1229,
      1247,
-     1180,
+     1244,
      1256
     ],
     "dps10": 1240,
     "share": {
-     "fireball": 0.499,
-     "auto": 0.238,
-     "mg_bolt": 0.164,
+     "fireball": 0.502,
+     "auto": 0.235,
+     "mg_bolt": 0.162,
      "frostnova": 0.072,
-     "dot:fire": 0.028
+     "dot:fire": 0.029
     },
     "mana": {
      "maxMp": 1611,
@@ -5611,7 +5581,7 @@
      "frostnova": 7
     },
     "fails": {},
-    "killsPerMin": 22.6,
+    "killsPerMin": 22.8,
     "rescues": 3.2,
     "mobHp": 4059,
     "deaths": 0
@@ -5665,25 +5635,25 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 6654,
-    "min": 6389,
+    "dps60": 6681,
+    "min": 6348,
     "max": 6910,
     "seeds": 5,
     "perSeed": [
-     6389,
-     6534,
+     6514,
+     6787,
      6848,
      6910,
-     6592
+     6348
     ],
-    "dps10": 6709,
+    "dps10": 6783,
     "share": {
-     "fireball": 0.392,
-     "mg_firewall": 0.175,
-     "mg_bolt": 0.13,
-     "meteor": 0.124,
-     "auto": 0.119,
-     "frostnova": 0.054,
+     "fireball": 0.397,
+     "mg_firewall": 0.173,
+     "mg_bolt": 0.129,
+     "meteor": 0.12,
+     "auto": 0.118,
+     "frostnova": 0.057,
      "dot:fire": 0.006
     },
     "mana": {
@@ -5707,8 +5677,8 @@
      "frostnova": 7
     },
     "fails": {},
-    "killsPerMin": 42.4,
-    "rescues": 3.2,
+    "killsPerMin": 43.2,
+    "rescues": 3.4,
     "mobHp": 11583,
     "deaths": 0
    }
@@ -5764,25 +5734,25 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 28291,
-    "min": 27819,
+    "dps60": 28432,
+    "min": 26912,
     "max": 29241,
     "seeds": 5,
     "perSeed": [
-     28050,
-     28426,
+     28912,
+     29175,
      29241,
      27920,
-     27819
+     26912
     ],
     "dps10": 42757,
     "share": {
-     "fireball": 0.292,
-     "mg_storm": 0.225,
+     "fireball": 0.29,
+     "mg_storm": 0.224,
      "mg_firewall": 0.159,
-     "meteor": 0.127,
-     "mg_bolt": 0.11,
-     "frostnova": 0.048,
+     "meteor": 0.13,
+     "mg_bolt": 0.111,
+     "frostnova": 0.047,
      "auto": 0.039,
      "dot:fire": 0
     },
@@ -5810,8 +5780,8 @@
      "mg_barrier": 2.6
     },
     "fails": {},
-    "killsPerMin": 75.2,
-    "rescues": 1.6,
+    "killsPerMin": 75.4,
+    "rescues": 1.8,
     "mobHp": 27159,
     "deaths": 0
    }
@@ -5857,12 +5827,12 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 175,
-    "min": 165,
+    "dps60": 177,
+    "min": 175,
     "max": 184,
     "seeds": 5,
     "perSeed": [
-     165,
+     175,
      175,
      175,
      178,
@@ -5870,9 +5840,9 @@
     ],
     "dps10": 173,
     "share": {
-     "auto": 0.71,
-     "backstab": 0.169,
-     "dot:poison": 0.121
+     "auto": 0.711,
+     "backstab": 0.168,
+     "dot:poison": 0.122
     },
     "mana": {
      "maxMp": 88,
@@ -5892,7 +5862,7 @@
      "venom": 17
     },
     "fails": {},
-    "killsPerMin": 11.8,
+    "killsPerMin": 12,
     "rescues": 1.8,
     "mobHp": 1023,
     "deaths": 0
@@ -5944,24 +5914,24 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 1189,
-    "min": 1154,
+    "dps60": 1169,
+    "min": 1119,
     "max": 1239,
     "seeds": 5,
     "perSeed": [
      1180,
      1154,
      1156,
-     1216,
+     1119,
      1239
     ],
-    "dps10": 1122,
+    "dps10": 1110,
     "share": {
-     "auto": 0.705,
-     "backstab": 0.117,
-     "dot:poison": 0.108,
-     "as_dose": 0.049,
-     "as_fan": 0.022
+     "auto": 0.706,
+     "backstab": 0.119,
+     "dot:poison": 0.104,
+     "as_dose": 0.05,
+     "as_fan": 0.021
     },
     "mana": {
      "maxMp": 148,
@@ -5984,8 +5954,8 @@
      "venom": 16
     },
     "fails": {},
-    "killsPerMin": 20.2,
-    "rescues": 1.8,
+    "killsPerMin": 20,
+    "rescues": 1.6,
     "mobHp": 4059,
     "deaths": 0
    }
@@ -6038,20 +6008,20 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 4366,
-    "min": 4324,
+    "dps60": 4329,
+    "min": 4153,
     "max": 4401,
     "seeds": 5,
     "perSeed": [
      4373,
-     4337,
+     4153,
      4401,
      4392,
      4324
     ],
     "dps10": 4087,
     "share": {
-     "auto": 0.71,
+     "auto": 0.708,
      "backstab": 0.106,
      "dot:poison": 0.083,
      "as_dose": 0.075,
@@ -6081,7 +6051,7 @@
     },
     "fails": {},
     "killsPerMin": 27,
-    "rescues": 1.4,
+    "rescues": 1.6,
     "mobHp": 11583,
     "deaths": 0
    }
@@ -6136,51 +6106,51 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 13038,
-    "min": 11773,
-    "max": 14497,
+    "dps60": 15096,
+    "min": 12568,
+    "max": 17619,
     "seeds": 5,
     "perSeed": [
-     12718,
-     12606,
-     11773,
-     14497,
-     13598
+     12568,
+     17619,
+     16397,
+     14598,
+     14296
     ],
-    "dps10": 15932,
+    "dps10": 16800,
     "share": {
-     "backstab": 0.384,
-     "as_dose": 0.214,
-     "as_dance": 0.15,
-     "auto": 0.138,
-     "as_fan": 0.096,
-     "dot:poison": 0.018
+     "backstab": 0.37,
+     "as_dose": 0.203,
+     "as_dance": 0.199,
+     "auto": 0.118,
+     "as_fan": 0.093,
+     "dot:poison": 0.016
     },
     "mana": {
      "maxMp": 358,
-     "oomAt": 52.6,
-     "oomRuns": 2,
+     "oomAt": null,
+     "oomRuns": 0,
      "runs": 5,
-     "spendPerSec": 44.6,
+     "spendPerSec": 46.1,
      "regenPerSec": 1.9,
-     "procPerSec": 37.9,
+     "procPerSec": 40.3,
      "wastedAtCap": 0,
-     "sustain": 1.026,
-     "emptyShare": 0.013,
-     "mpLeft": 69
+     "sustain": 1.044,
+     "emptyShare": 0,
+     "mpLeft": 122
     },
     "casts": {
-     "as_dance": 7.2,
-     "stealth": 16,
-     "as_cheap": 22.2,
-     "shadowstep": 31,
-     "as_fan": 29.6,
-     "as_dose": 30.8,
-     "backstab": 31.4,
-     "venom": 24.8
+     "as_dance": 7.6,
+     "stealth": 16.8,
+     "as_cheap": 23.6,
+     "shadowstep": 32.6,
+     "as_fan": 31.2,
+     "as_dose": 31.6,
+     "backstab": 31.8,
+     "venom": 22.8
     },
     "fails": {},
-    "killsPerMin": 90.8,
+    "killsPerMin": 96.8,
     "rescues": 0.6,
     "mobHp": 27159,
     "deaths": 0
@@ -6311,23 +6281,23 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 628,
+    "dps60": 627,
     "min": 615,
     "max": 653,
     "seeds": 5,
     "perSeed": [
      617,
-     619,
+     615,
      653,
      634,
      615
     ],
     "dps10": 697,
     "share": {
-     "auto": 0.502,
-     "dk_rune_strike": 0.29,
-     "dk_icy_touch": 0.157,
-     "dk_death_grip": 0.051
+     "auto": 0.499,
+     "dk_rune_strike": 0.296,
+     "dk_icy_touch": 0.156,
+     "dk_death_grip": 0.05
     },
     "mana": {
      "maxMp": 154,
@@ -6402,24 +6372,24 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 1825,
+    "dps60": 1851,
     "min": 1746,
-    "max": 1905,
+    "max": 1942,
     "seeds": 5,
     "perSeed": [
      1811,
-     1823,
+     1942,
      1746,
      1838,
-     1905
+     1920
     ],
     "dps10": 2565,
     "share": {
-     "auto": 0.437,
-     "dk_rune_strike": 0.265,
+     "auto": 0.438,
+     "dk_rune_strike": 0.263,
      "dk_soul_reap": 0.128,
-     "dk_icy_touch": 0.093,
-     "dk_death_grip": 0.046,
+     "dk_icy_touch": 0.092,
+     "dk_death_grip": 0.048,
      "dk_blood_drain": 0.031
     },
     "mana": {
@@ -6444,7 +6414,7 @@
      "dk_rune_strike": 10.6
     },
     "fails": {},
-    "killsPerMin": 16.2,
+    "killsPerMin": 16.4,
     "rescues": 0,
     "mobHp": 11583,
     "deaths": 0
@@ -6500,25 +6470,25 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 6563,
-    "min": 6208,
+    "dps60": 6659,
+    "min": 6473,
     "max": 6822,
     "seeds": 5,
     "perSeed": [
      6648,
-     6208,
+     6473,
      6822,
-     6724,
-     6411
+     6718,
+     6635
     ],
-    "dps10": 6815,
+    "dps10": 6783,
     "share": {
-     "dk_soul_reap": 0.262,
-     "dk_rune_strike": 0.238,
-     "auto": 0.228,
-     "dk_icy_touch": 0.129,
-     "dk_death_grip": 0.061,
-     "dk_blood_drain": 0.059,
+     "dk_soul_reap": 0.254,
+     "dk_rune_strike": 0.239,
+     "auto": 0.232,
+     "dk_icy_touch": 0.132,
+     "dk_blood_drain": 0.061,
+     "dk_death_grip": 0.06,
      "dk_chain_storm": 0.023
     },
     "mana": {
@@ -6528,23 +6498,23 @@
      "runs": 5,
      "spendPerSec": 18.4,
      "regenPerSec": 2,
-     "procPerSec": 15.2,
+     "procPerSec": 15.1,
      "wastedAtCap": 0,
-     "sustain": 1.263,
+     "sustain": 1.261,
      "emptyShare": 0,
-     "mpLeft": 289
+     "mpLeft": 287
     },
     "casts": {
      "dk_rune_blade": 5,
      "dk_chain_storm": 5,
-     "dk_blood_drain": 7.6,
-     "dk_soul_reap": 15.6,
+     "dk_blood_drain": 7.8,
+     "dk_soul_reap": 15.2,
      "dk_death_grip": 10,
      "dk_icy_touch": 14,
      "dk_rune_strike": 18.4
     },
     "fails": {},
-    "killsPerMin": 35.8,
+    "killsPerMin": 35.6,
     "rescues": 0,
     "mobHp": 27159,
     "deaths": 0
@@ -6589,7 +6559,7 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 145,
+    "dps60": 144,
     "min": 138,
     "max": 151,
     "seeds": 5,
@@ -6597,8 +6567,8 @@
      144,
      151,
      145,
-     145,
-     138
+     138,
+     144
     ],
     "dps10": 155,
     "share": {
@@ -6684,10 +6654,10 @@
     ],
     "dps10": 1160,
     "share": {
-     "bw_blood_bolt": 0.488,
+     "bw_blood_bolt": 0.491,
      "auto": 0.322,
      "bw_blood_burst": 0.111,
-     "dot:blood": 0.078
+     "dot:blood": 0.076
     },
     "mana": {
      "maxMp": 1438,
@@ -6759,23 +6729,23 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 3951,
+    "dps60": 3942,
     "min": 3788,
     "max": 4007,
     "seeds": 5,
     "perSeed": [
      3788,
      3965,
-     4005,
+     3960,
      3988,
      4007
     ],
     "dps10": 4485,
     "share": {
-     "bw_blood_bolt": 0.441,
-     "auto": 0.227,
+     "bw_blood_bolt": 0.442,
+     "auto": 0.226,
      "bw_crimson_pool": 0.196,
-     "bw_blood_burst": 0.1,
+     "bw_blood_burst": 0.101,
      "dot:blood": 0.035
     },
     "mana": {
@@ -6785,9 +6755,9 @@
      "runs": 5,
      "spendPerSec": 8,
      "regenPerSec": 50.8,
-     "procPerSec": 0.9,
-     "wastedAtCap": 43.7,
-     "sustain": 12.016,
+     "procPerSec": 1,
+     "wastedAtCap": 43.8,
+     "sustain": 12.019,
      "emptyShare": 0,
      "mpLeft": 2686
     },
@@ -6849,12 +6819,12 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 10335,
-    "min": 9911,
+    "dps60": 10345,
+    "min": 9958,
     "max": 10748,
     "seeds": 5,
     "perSeed": [
-     9911,
+     9958,
      10289,
      10748,
      10326,
@@ -6862,10 +6832,10 @@
     ],
     "dps10": 10864,
     "share": {
-     "bw_blood_bolt": 0.438,
-     "bw_crimson_pool": 0.242,
-     "auto": 0.181,
-     "bw_blood_burst": 0.109,
+     "bw_blood_bolt": 0.436,
+     "bw_crimson_pool": 0.244,
+     "auto": 0.18,
+     "bw_blood_burst": 0.11,
      "dot:blood": 0.03
     },
     "mana": {
@@ -6890,7 +6860,7 @@
      "bw_blood_circle": 2
     },
     "fails": {},
-    "killsPerMin": 22,
+    "killsPerMin": 22.2,
     "rescues": 0,
     "mobHp": 27159,
     "deaths": 0
@@ -6940,21 +6910,21 @@
    "pressure": {
     "dps60": 215,
     "min": 210,
-    "max": 220,
+    "max": 222,
     "seeds": 5,
     "perSeed": [
      219,
      210,
      212,
-     220,
+     222,
      214
     ],
     "dps10": 240,
     "share": {
-     "auto": 0.607,
-     "dr_cursed_arrow": 0.238,
-     "dot:shadow": 0.079,
-     "dr_weakening": 0.075
+     "auto": 0.61,
+     "dr_cursed_arrow": 0.241,
+     "dot:shadow": 0.077,
+     "dr_weakening": 0.071
     },
     "mana": {
      "maxMp": 100,
@@ -6974,7 +6944,7 @@
      "dr_cursed_arrow": 15
     },
     "fails": {},
-    "killsPerMin": 12,
+    "killsPerMin": 12.2,
     "rescues": 1.4,
     "mobHp": 1023,
     "deaths": 0
@@ -7028,26 +6998,26 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 1375,
-    "min": 1335,
+    "dps60": 1377,
+    "min": 1336,
     "max": 1406,
     "seeds": 5,
     "perSeed": [
      1336,
      1406,
      1402,
-     1335,
+     1342,
      1399
     ],
     "dps10": 1831,
     "share": {
-     "auto": 0.669,
-     "dr_cursed_arrow": 0.194,
-     "dot:shadow": 0.059,
+     "auto": 0.667,
+     "dr_cursed_arrow": 0.198,
+     "dot:shadow": 0.058,
      "dr_weakening": 0.025,
      "dr_detonate": 0.023,
      "dr_raven": 0.017,
-     "dr_hexswarm": 0.013
+     "dr_hexswarm": 0.012
     },
     "mana": {
      "maxMp": 160,
@@ -7071,7 +7041,7 @@
     },
     "fails": {},
     "killsPerMin": 19.6,
-    "rescues": 1.6,
+    "rescues": 1.4,
     "mobHp": 4059,
     "deaths": 0
    }
@@ -7127,26 +7097,26 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 5611,
+    "dps60": 5615,
     "min": 5279,
     "max": 5876,
     "seeds": 5,
     "perSeed": [
      5279,
-     5525,
-     5690,
+     5522,
+     5715,
      5685,
      5876
     ],
     "dps10": 5914,
     "share": {
-     "auto": 0.651,
+     "auto": 0.655,
      "dr_cursed_arrow": 0.188,
-     "dr_weakening": 0.053,
-     "dr_detonate": 0.043,
+     "dr_weakening": 0.05,
+     "dr_detonate": 0.042,
      "dr_hexswarm": 0.031,
      "dr_raven": 0.018,
-     "dot:shadow": 0.017
+     "dot:shadow": 0.016
     },
     "mana": {
      "maxMp": 250,
@@ -7172,7 +7142,7 @@
     },
     "fails": {},
     "killsPerMin": 28.6,
-    "rescues": 0.8,
+    "rescues": 1,
     "mobHp": 11583,
     "deaths": 0
    }
@@ -7231,27 +7201,27 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 19639,
-    "min": 19220,
+    "dps60": 19715,
+    "min": 19591,
     "max": 20040,
     "seeds": 5,
     "perSeed": [
      19651,
-     19220,
-     19691,
+     19692,
+     19600,
      19591,
      20040
     ],
     "dps10": 24987,
     "share": {
-     "auto": 0.552,
-     "dr_cursed_arrow": 0.157,
-     "dr_ravens": 0.152,
-     "dot:shadow": 0.05,
+     "auto": 0.556,
+     "dr_ravens": 0.153,
+     "dr_cursed_arrow": 0.152,
+     "dot:shadow": 0.045,
      "dr_weakening": 0.038,
-     "dr_detonate": 0.026,
-     "dr_hexswarm": 0.017,
-     "dr_raven": 0.008
+     "dr_detonate": 0.027,
+     "dr_hexswarm": 0.018,
+     "dr_raven": 0.011
     },
     "mana": {
      "maxMp": 370,
@@ -7260,11 +7230,11 @@
      "runs": 5,
      "spendPerSec": 13.6,
      "regenPerSec": 2.1,
-     "procPerSec": 12.1,
+     "procPerSec": 12.2,
      "wastedAtCap": 1,
-     "sustain": 1.501,
+     "sustain": 1.507,
      "emptyShare": 0,
-     "mpLeft": 348
+     "mpLeft": 354
     },
     "casts": {
      "dr_ravens": 2,
@@ -7278,8 +7248,8 @@
      "dr_cursed_arrow": 15
     },
     "fails": {},
-    "killsPerMin": 43,
-    "rescues": 0,
+    "killsPerMin": 43.2,
+    "rescues": 0.2,
     "mobHp": 27159,
     "deaths": 0
    }
@@ -7428,10 +7398,10 @@
     ],
     "dps10": 728,
     "share": {
-     "auto": 0.394,
-     "dot:shadow": 0.275,
+     "auto": 0.397,
+     "dot:shadow": 0.272,
      "wl_drain_mana": 0.121,
-     "wl_agony": 0.116,
+     "wl_agony": 0.117,
      "dot:blood": 0.062,
      "wl_skeletons": 0.031
     },
@@ -7457,7 +7427,7 @@
     },
     "fails": {},
     "killsPerMin": 13,
-    "rescues": 0.6,
+    "rescues": 0.8,
     "mobHp": 4059,
     "deaths": 0
    }
@@ -7514,24 +7484,24 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 2552,
-    "min": 2504,
+    "dps60": 2533,
+    "min": 2441,
     "max": 2597,
     "seeds": 5,
     "perSeed": [
      2504,
-     2537,
+     2441,
      2597,
      2544,
      2580
     ],
     "dps10": 2565,
     "share": {
-     "wl_detonate": 0.498,
-     "auto": 0.178,
-     "dot:shadow": 0.106,
-     "wl_agony": 0.079,
-     "wl_drain_mana": 0.073,
+     "wl_detonate": 0.507,
+     "auto": 0.175,
+     "dot:shadow": 0.104,
+     "wl_agony": 0.077,
+     "wl_drain_mana": 0.071,
      "dot:blood": 0.035,
      "wl_skeletons": 0.021,
      "dot:poison": 0.01
@@ -7562,7 +7532,7 @@
     "fails": {
      "wl_detonate": 24
     },
-    "killsPerMin": 18.4,
+    "killsPerMin": 18.2,
     "rescues": 0,
     "mobHp": 11583,
     "deaths": 0
@@ -7621,38 +7591,38 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 6897,
-    "min": 6426,
+    "dps60": 6977,
+    "min": 6538,
     "max": 7455,
     "seeds": 5,
     "perSeed": [
-     6426,
-     6723,
+     6579,
+     6968,
      6538,
      7455,
      7345
     ],
     "dps10": 6737,
     "share": {
-     "wl_detonate": 0.578,
-     "auto": 0.154,
-     "wl_agony": 0.081,
-     "wl_drain_mana": 0.075,
-     "dot:shadow": 0.055,
-     "wl_skeletons": 0.024,
+     "wl_detonate": 0.568,
+     "auto": 0.158,
+     "wl_agony": 0.08,
+     "wl_drain_mana": 0.077,
+     "dot:shadow": 0.06,
+     "wl_skeletons": 0.025,
      "dot:blood": 0.022,
-     "dot:poison": 0.011
+     "dot:poison": 0.01
     },
     "mana": {
      "maxMp": 4726,
      "oomAt": null,
      "oomRuns": 0,
      "runs": 5,
-     "spendPerSec": 14.1,
+     "spendPerSec": 14,
      "regenPerSec": 89.2,
      "procPerSec": 0,
-     "wastedAtCap": 74.9,
-     "sustain": 11.9,
+     "wastedAtCap": 75,
+     "sustain": 11.969,
      "emptyShare": 0,
      "mpLeft": 4726
     },
@@ -7662,15 +7632,15 @@
      "wl_skeletons": 2,
      "wl_doom": 4,
      "wl_hex": 6,
-     "wl_detonate": 6,
+     "wl_detonate": 5.8,
      "wl_siphon": 7,
      "wl_drain_mana": 8,
      "wl_agony": 20
     },
     "fails": {
-     "wl_detonate": 59
+     "wl_detonate": 65
     },
-    "killsPerMin": 23,
+    "killsPerMin": 23.2,
     "rescues": 0,
     "mobHp": 27159,
     "deaths": 0
@@ -7718,23 +7688,23 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 185,
+    "dps60": 186,
     "min": 178,
-    "max": 188,
+    "max": 199,
     "seeds": 5,
     "perSeed": [
      186,
-     188,
+     199,
      187,
-     187,
+     182,
      178
     ],
     "dps10": 163,
     "share": {
-     "auto": 0.624,
-     "rv_lacerate": 0.275,
-     "rv_leap": 0.075,
-     "dot:blood": 0.027
+     "auto": 0.62,
+     "rv_lacerate": 0.272,
+     "rv_leap": 0.078,
+     "dot:blood": 0.03
     },
     "mana": {
      "maxMp": 82,
@@ -7754,7 +7724,7 @@
      "rv_lacerate": 15
     },
     "fails": {},
-    "killsPerMin": 15.6,
+    "killsPerMin": 15.8,
     "rescues": 0,
     "mobHp": 1023,
     "deaths": 0
@@ -7805,23 +7775,23 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 1060,
+    "dps60": 1052,
     "min": 1034,
-    "max": 1086,
+    "max": 1078,
     "seeds": 5,
     "perSeed": [
      1078,
      1054,
      1048,
      1034,
-     1086
+     1047
     ],
     "dps10": 924,
     "share": {
-     "auto": 0.639,
-     "rv_lacerate": 0.244,
-     "rv_carve": 0.049,
-     "rv_leap": 0.043,
+     "auto": 0.642,
+     "rv_lacerate": 0.243,
+     "rv_carve": 0.048,
+     "rv_leap": 0.042,
      "dot:blood": 0.025
     },
     "mana": {
@@ -7844,7 +7814,7 @@
      "rv_lacerate": 14
     },
     "fails": {},
-    "killsPerMin": 23,
+    "killsPerMin": 22.8,
     "rescues": 0.2,
     "mobHp": 4059,
     "deaths": 0
@@ -7902,53 +7872,53 @@
     }
    },
    "pressure": {
-    "dps60": 3483,
-    "min": 3366,
+    "dps60": 3453,
+    "min": 3215,
     "max": 3614,
     "seeds": 5,
     "perSeed": [
      3421,
      3446,
      3567,
-     3366,
+     3215,
      3614
     ],
     "dps10": 3405,
     "share": {
-     "auto": 0.595,
-     "rv_lacerate": 0.201,
-     "rv_gore": 0.06,
-     "rv_reap": 0.057,
-     "rv_carve": 0.038,
+     "auto": 0.582,
+     "rv_lacerate": 0.197,
+     "rv_reap": 0.079,
+     "rv_gore": 0.057,
      "rv_leap": 0.037,
-     "dot:blood": 0.013
+     "rv_carve": 0.035,
+     "dot:blood": 0.012
     },
     "mana": {
      "maxMp": 232,
-     "oomAt": 24.8,
+     "oomAt": 24.1,
      "oomRuns": 5,
      "runs": 5,
      "spendPerSec": 5.6,
      "regenPerSec": 1.7,
      "procPerSec": 0,
      "wastedAtCap": 0,
-     "sustain": 1.007,
-     "emptyShare": 0.567,
+     "sustain": 1.008,
+     "emptyShare": 0.579,
      "mpLeft": 2
     },
     "casts": {
      "rv_frenzy": 2,
      "rv_gore": 3,
      "rv_leap": 3,
-     "rv_carve": 4,
-     "rv_reap": 1,
+     "rv_carve": 3.8,
+     "rv_reap": 1.2,
      "rv_hamstring": 3,
-     "rv_lacerate": 14
+     "rv_lacerate": 13.8
     },
     "fails": {
-     "rv_reap": 54
+     "rv_reap": 48
     },
-    "killsPerMin": 29,
+    "killsPerMin": 28.4,
     "rescues": 0,
     "mobHp": 11583,
     "deaths": 0
@@ -8006,26 +7976,26 @@
     "fails": {}
    },
    "pressure": {
-    "dps60": 10490,
-    "min": 10275,
-    "max": 10949,
+    "dps60": 10494,
+    "min": 10336,
+    "max": 10908,
     "seeds": 5,
     "perSeed": [
      10369,
      10465,
-     10275,
-     10949,
+     10336,
+     10908,
      10390
     ],
-    "dps10": 18134,
+    "dps10": 17848,
     "share": {
-     "auto": 0.555,
-     "rv_leap": 0.172,
-     "rv_lacerate": 0.162,
+     "auto": 0.552,
+     "rv_leap": 0.168,
+     "rv_lacerate": 0.163,
      "rv_reap": 0.062,
-     "rv_gore": 0.028,
+     "rv_gore": 0.032,
      "rv_carve": 0.018,
-     "dot:blood": 0.003
+     "dot:blood": 0.005
     },
     "mana": {
      "maxMp": 352,
@@ -8036,23 +8006,23 @@
      "regenPerSec": 1.7,
      "procPerSec": 0,
      "wastedAtCap": 0,
-     "sustain": 1.033,
-     "emptyShare": 0.773,
-     "mpLeft": 7
+     "sustain": 1.032,
+     "emptyShare": 0.781,
+     "mpLeft": 6
     },
     "casts": {
      "rv_massacre": 1,
      "rv_frenzy": 1,
      "rv_reap": 1,
-     "rv_gore": 1.6,
+     "rv_gore": 1.8,
      "rv_throw": 1,
-     "rv_leap": 15.2,
+     "rv_leap": 14.8,
      "rv_carve": 2,
      "rv_hamstring": 2,
-     "rv_lacerate": 12.6
+     "rv_lacerate": 12.8
     },
     "fails": {},
-    "killsPerMin": 37.6,
+    "killsPerMin": 37.8,
     "rescues": 0,
     "mobHp": 27159,
     "deaths": 0
@@ -9609,7 +9579,7 @@
     "kills": 5,
     "cleared": 3,
     "runs": 3,
-    "hpLeft": 0.953,
+    "hpLeft": 0.954,
     "mpLeft": 0.547,
     "sec": 3.5
    },
@@ -10463,7 +10433,7 @@
     "kills": 5,
     "cleared": 3,
     "runs": 3,
-    "hpLeft": 0.935,
+    "hpLeft": 0.95,
     "mpLeft": 0.706,
     "sec": 5.7
    },
@@ -12295,7 +12265,7 @@
     "runs": 3,
     "hpLeft": 1,
     "mpLeft": 1,
-    "sec": 1.3
+    "sec": 1.4
    },
    "endure": {
     "perMob": {
@@ -12539,7 +12509,7 @@
     "runs": 3,
     "hpLeft": 1,
     "mpLeft": 1,
-    "sec": 5.8
+    "sec": 6.2
    },
    "endure": {
     "perMob": {
@@ -13819,91 +13789,75 @@
     "warrior": {
      "warrior": {
       "win": 0.6,
-      "draws": 0,
-      "sec": 67.4,
-      "fight": 65.4,
-      "timeouts": 0,
-      "dps": 53,
+      "draws": 2,
+      "sec": 180,
+      "fight": 177.4,
+      "timeouts": 5,
+      "dps": 7,
       "errors": 0,
       "reps": [
+       0,
+       0,
+       1,
        2,
-       1,
-       1,
-       1,
-       2
+       1
       ]
      },
      "healer": {
-      "win": 0,
+      "win": 0.8,
       "draws": 0,
       "sec": 180,
-      "fight": 178,
+      "fight": 177.8,
       "timeouts": 5,
-      "dps": 95,
+      "dps": 12,
       "errors": 0,
       "reps": [
+       1,
+       1,
+       1,
        2,
-       2,
-       2,
-       2,
-       2
+       1
       ]
      },
      "ranger": {
-      "win": 1,
+      "win": 0.6,
       "draws": 0,
-      "sec": 15.4,
-      "fight": 13.4,
-      "timeouts": 0,
-      "dps": 88,
+      "sec": 180,
+      "fight": 177.5,
+      "timeouts": 5,
+      "dps": 10,
       "errors": 0,
       "reps": [
        1,
        1,
        1,
-       1,
-       1
+       2,
+       2
       ]
      },
      "mage": {
       "win": 0.4,
       "draws": 0,
-      "sec": 18.1,
-      "fight": 16.2,
-      "timeouts": 0,
-      "dps": 64,
+      "sec": 180,
+      "fight": 177.9,
+      "timeouts": 5,
+      "dps": 6,
       "errors": 0,
       "reps": [
-       1,
        2,
+       1,
        2,
        1,
        2
       ]
      },
      "rogue": {
-      "win": 1,
-      "draws": 0,
-      "sec": 11.4,
-      "fight": 9.2,
-      "timeouts": 0,
-      "dps": 106,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "deathknight": {
       "win": 0,
       "draws": 0,
-      "sec": 30,
-      "fight": 28,
-      "timeouts": 0,
-      "dps": 56,
+      "sec": 180,
+      "fight": 176.8,
+      "timeouts": 5,
+      "dps": 11,
       "errors": 0,
       "reps": [
        2,
@@ -13913,45 +13867,61 @@
        2
       ]
      },
-     "bloodweaver": {
-      "win": 0.8,
+     "deathknight": {
+      "win": 0.2,
       "draws": 0,
-      "sec": 31.1,
-      "fight": 29,
-      "timeouts": 0,
-      "dps": 137,
+      "sec": 180,
+      "fight": 177.7,
+      "timeouts": 5,
+      "dps": 8,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 180,
+      "fight": 178,
+      "timeouts": 5,
+      "dps": 14,
       "errors": 0,
       "reps": [
        1,
-       1,
-       1,
-       1,
+       2,
+       2,
+       2,
        2
       ]
      },
      "darkranger": {
-      "win": 1,
+      "win": 0.8,
       "draws": 0,
-      "sec": 13.6,
-      "fight": 11.4,
-      "timeouts": 0,
-      "dps": 92,
+      "sec": 180,
+      "fight": 176.9,
+      "timeouts": 5,
+      "dps": 8,
       "errors": 0,
       "reps": [
        1,
        1,
        1,
-       1,
+       2,
        1
       ]
      },
      "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 15.5,
-      "fight": 13.5,
+      "sec": 169.5,
+      "fight": 166.9,
       "timeouts": 0,
-      "dps": 73,
+      "dps": 7,
       "errors": 0,
       "reps": [
        2,
@@ -13964,10 +13934,10 @@
      "reaver": {
       "win": 0,
       "draws": 0,
-      "sec": 15.1,
-      "fight": 13,
-      "timeouts": 0,
-      "dps": 112,
+      "sec": 180,
+      "fight": 177.3,
+      "timeouts": 5,
+      "dps": 11,
       "errors": 0,
       "reps": [
        2,
@@ -13980,12 +13950,498 @@
     },
     "healer": {
      "warrior": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.5,
+      "timeouts": 5,
+      "dps": 3,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       2,
+       2
+      ]
+     },
+     "healer": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 14,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "ranger": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.5,
+      "timeouts": 5,
+      "dps": 13,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       2,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.7,
+      "timeouts": 5,
+      "dps": 11,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       2,
+       1
+      ]
+     },
+     "rogue": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 180,
+      "fight": 176.9,
+      "timeouts": 5,
+      "dps": 4,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       1,
+       2,
+       2
+      ]
+     },
+     "deathknight": {
+      "win": 0.3,
+      "draws": 3,
+      "sec": 180,
+      "fight": 177.8,
+      "timeouts": 5,
+      "dps": 5,
+      "errors": 0,
+      "reps": [
+       0,
+       2,
+       0,
+       0,
+       2
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.8,
+      "timeouts": 5,
+      "dps": 17,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "darkranger": {
       "win": 1,
       "draws": 0,
       "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 12,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.8,
+      "timeouts": 5,
+      "dps": 12,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0.4,
+      "draws": 4,
+      "sec": 180,
       "fight": 178.1,
       "timeouts": 5,
+      "dps": 4,
+      "errors": 0,
+      "reps": [
+       0,
+       0,
+       0,
+       2,
+       0
+      ]
+     }
+    },
+    "ranger": {
+     "warrior": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177,
+      "timeouts": 5,
+      "dps": 15,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.3,
+      "timeouts": 5,
+      "dps": 29,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "ranger": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 70.3,
+      "fight": 68.3,
+      "timeouts": 0,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       1,
+       2,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0,
+      "draws": 0,
+      "sec": 49.6,
+      "fight": 46.9,
+      "timeouts": 0,
+      "dps": 26,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "rogue": {
+      "win": 0,
+      "draws": 0,
+      "sec": 45.5,
+      "fight": 42.6,
+      "timeouts": 0,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "deathknight": {
+      "win": 0,
+      "draws": 0,
+      "sec": 121.7,
+      "fight": 119.5,
+      "timeouts": 0,
+      "dps": 11,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "bloodweaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 59.4,
+      "fight": 57.5,
+      "timeouts": 0,
+      "dps": 41,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "darkranger": {
+      "win": 0,
+      "draws": 0,
+      "sec": 31.3,
+      "fight": 29.1,
+      "timeouts": 0,
+      "dps": 32,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 48.6,
+      "fight": 45.9,
+      "timeouts": 0,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 25.7,
+      "fight": 23.5,
+      "timeouts": 0,
+      "dps": 30,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     }
+    },
+    "mage": {
+     "warrior": {
+      "win": 0.7,
+      "draws": 1,
+      "sec": 180,
+      "fight": 177.9,
+      "timeouts": 5,
       "dps": 25,
+      "errors": 0,
+      "reps": [
+       2,
+       0,
+       1,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.9,
+      "timeouts": 5,
+      "dps": 38,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 50.8,
+      "fight": 48.6,
+      "timeouts": 0,
+      "dps": 33,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 66.2,
+      "fight": 63.5,
+      "timeouts": 0,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       1,
+       2,
+       2
+      ]
+     },
+     "rogue": {
+      "win": 1,
+      "draws": 0,
+      "sec": 51.2,
+      "fight": 48.4,
+      "timeouts": 0,
+      "dps": 32,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "deathknight": {
+      "win": 1,
+      "draws": 0,
+      "sec": 164,
+      "fight": 161.4,
+      "timeouts": 0,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 77.9,
+      "fight": 75.5,
+      "timeouts": 0,
+      "dps": 44,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "darkranger": {
+      "win": 0,
+      "draws": 0,
+      "sec": 44,
+      "fight": 41.4,
+      "timeouts": 0,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 80.6,
+      "fight": 77.6,
+      "timeouts": 0,
+      "dps": 31,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 29.5,
+      "fight": 27.1,
+      "timeouts": 0,
+      "dps": 32,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     }
+    },
+    "rogue": {
+     "warrior": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 176.9,
+      "timeouts": 5,
+      "dps": 26,
       "errors": 0,
       "reps": [
        1,
@@ -13996,12 +14452,416 @@
       ]
      },
      "healer": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.8,
+      "timeouts": 5,
+      "dps": 42,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 45.3,
+      "fight": 42.9,
+      "timeouts": 0,
+      "dps": 35,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0,
+      "draws": 0,
+      "sec": 56.6,
+      "fight": 54.1,
+      "timeouts": 0,
+      "dps": 15,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "rogue": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 32.4,
+      "fight": 30.1,
+      "timeouts": 0,
+      "dps": 42,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       1
+      ]
+     },
+     "deathknight": {
+      "win": 0,
+      "draws": 0,
+      "sec": 112.7,
+      "fight": 110.1,
+      "timeouts": 0,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "bloodweaver": {
+      "win": 1,
+      "draws": 0,
+      "sec": 43.4,
+      "fight": 40.5,
+      "timeouts": 0,
+      "dps": 57,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "darkranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 51.1,
+      "fight": 48.2,
+      "timeouts": 0,
+      "dps": 32,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 55.6,
+      "fight": 53.1,
+      "timeouts": 0,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 20.3,
+      "fight": 17,
+      "timeouts": 0,
+      "dps": 44,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     }
+    },
+    "deathknight": {
+     "warrior": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.1,
+      "timeouts": 5,
+      "dps": 17,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0.3,
+      "draws": 3,
+      "sec": 180,
+      "fight": 177.5,
+      "timeouts": 5,
+      "dps": 20,
+      "errors": 0,
+      "reps": [
+       0,
+       2,
+       2,
+       0,
+       0
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 105.2,
+      "fight": 102.5,
+      "timeouts": 0,
+      "dps": 22,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0,
+      "draws": 0,
+      "sec": 174.5,
+      "fight": 172.4,
+      "timeouts": 1,
+      "dps": 14,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "rogue": {
+      "win": 1,
+      "draws": 0,
+      "sec": 110,
+      "fight": 107.2,
+      "timeouts": 0,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "deathknight": {
       "win": 0.4,
       "draws": 0,
       "sec": 180,
-      "fight": 178.1,
+      "fight": 177.4,
       "timeouts": 5,
-      "dps": 121,
+      "dps": 19,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 179.6,
+      "fight": 176.5,
+      "timeouts": 4,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       2,
+       2
+      ]
+     },
+     "darkranger": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 136.4,
+      "fight": 133.5,
+      "timeouts": 0,
+      "dps": 17,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       2,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.7,
+      "timeouts": 5,
+      "dps": 14,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 70.2,
+      "fight": 67.5,
+      "timeouts": 0,
+      "dps": 24,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     }
+    },
+    "bloodweaver": {
+     "warrior": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.3,
+      "timeouts": 5,
+      "dps": 17,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.2,
+      "timeouts": 5,
+      "dps": 31,
+      "errors": 0,
+      "reps": [
+       1,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 67.4,
+      "fight": 64.8,
+      "timeouts": 0,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0.4,
+      "draws": 0,
+      "sec": 72.4,
+      "fight": 70.2,
+      "timeouts": 0,
+      "dps": 25,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       1,
+       2
+      ]
+     },
+     "rogue": {
+      "win": 0,
+      "draws": 0,
+      "sec": 55,
+      "fight": 52.1,
+      "timeouts": 0,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "deathknight": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.3,
+      "timeouts": 5,
+      "dps": 21,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.4,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.5,
+      "timeouts": 5,
+      "dps": 36,
       "errors": 0,
       "reps": [
        2,
@@ -14011,13 +14871,95 @@
        1
       ]
      },
+     "darkranger": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 58.2,
+      "fight": 55.6,
+      "timeouts": 0,
+      "dps": 28,
+      "errors": 0,
+      "reps": [
+       1,
+       2,
+       2,
+       1,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 70.4,
+      "fight": 68,
+      "timeouts": 0,
+      "dps": 26,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 23.2,
+      "fight": 20.4,
+      "timeouts": 0,
+      "dps": 22,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     }
+    },
+    "darkranger": {
+     "warrior": {
+      "win": 0.4,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177,
+      "timeouts": 5,
+      "dps": 13,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       1,
+       1,
+       2
+      ]
+     },
+     "healer": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.7,
+      "timeouts": 5,
+      "dps": 41,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       1
+      ]
+     },
      "ranger": {
       "win": 1,
       "draws": 0,
-      "sec": 18.2,
-      "fight": 16.2,
+      "sec": 37.1,
+      "fight": 34.8,
       "timeouts": 0,
-      "dps": 91,
+      "dps": 43,
       "errors": 0,
       "reps": [
        1,
@@ -14030,10 +14972,10 @@
      "mage": {
       "win": 1,
       "draws": 0,
-      "sec": 11.5,
-      "fight": 9.7,
+      "sec": 43,
+      "fight": 40.4,
       "timeouts": 0,
-      "dps": 110,
+      "dps": 37,
       "errors": 0,
       "reps": [
        1,
@@ -14044,48 +14986,210 @@
       ]
      },
      "rogue": {
-      "win": 0.2,
+      "win": 0,
       "draws": 0,
-      "sec": 17,
-      "fight": 15,
+      "sec": 53.1,
+      "fight": 50,
       "timeouts": 0,
-      "dps": 48,
+      "dps": 20,
       "errors": 0,
       "reps": [
        2,
        2,
        2,
-       1,
+       2,
        2
       ]
      },
      "deathknight": {
-      "win": 0.6,
+      "win": 0.2,
       "draws": 0,
-      "sec": 180,
-      "fight": 178.1,
-      "timeouts": 5,
-      "dps": 29,
+      "sec": 143.6,
+      "fight": 141,
+      "timeouts": 0,
+      "dps": 15,
       "errors": 0,
       "reps": [
        2,
+       2,
+       2,
+       2,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.4,
+      "draws": 0,
+      "sec": 61.6,
+      "fight": 59,
+      "timeouts": 0,
+      "dps": 51,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       1,
+       1
+      ]
+     },
+     "darkranger": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 32.9,
+      "fight": 30,
+      "timeouts": 0,
+      "dps": 43,
+      "errors": 0,
+      "reps": [
+       1,
        1,
        1,
        1,
        2
       ]
      },
-     "bloodweaver": {
-      "win": 0.6,
+     "warlock": {
+      "win": 0,
       "draws": 0,
-      "sec": 180,
-      "fight": 178,
-      "timeouts": 5,
-      "dps": 139,
+      "sec": 41.6,
+      "fight": 38.9,
+      "timeouts": 0,
+      "dps": 34,
       "errors": 0,
       "reps": [
        2,
        2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 24.8,
+      "fight": 21.9,
+      "timeouts": 0,
+      "dps": 34,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       1
+      ]
+     }
+    },
+    "warlock": {
+     "warrior": {
+      "win": 1,
+      "draws": 0,
+      "sec": 173.3,
+      "fight": 170,
+      "timeouts": 2,
+      "dps": 24,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177,
+      "timeouts": 5,
+      "dps": 40,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 37.9,
+      "fight": 35.8,
+      "timeouts": 0,
+      "dps": 40,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 1,
+      "draws": 0,
+      "sec": 53.2,
+      "fight": 50.8,
+      "timeouts": 0,
+      "dps": 32,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "rogue": {
+      "win": 1,
+      "draws": 0,
+      "sec": 57.1,
+      "fight": 54.7,
+      "timeouts": 0,
+      "dps": 31,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "deathknight": {
+      "win": 1,
+      "draws": 0,
+      "sec": 161.9,
+      "fight": 159.5,
+      "timeouts": 4,
+      "dps": 27,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 1,
+      "draws": 0,
+      "sec": 69.1,
+      "fight": 66.4,
+      "timeouts": 0,
+      "dps": 46,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
        1,
        1,
        1
@@ -14094,10 +15198,172 @@
      "darkranger": {
       "win": 1,
       "draws": 0,
-      "sec": 10.8,
-      "fight": 8.8,
+      "sec": 36.2,
+      "fight": 33.8,
       "timeouts": 0,
-      "dps": 116,
+      "dps": 41,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 123.8,
+      "fight": 121.2,
+      "timeouts": 0,
+      "dps": 35,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "reaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 54.8,
+      "fight": 52.4,
+      "timeouts": 0,
+      "dps": 29,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     }
+    },
+    "reaver": {
+     "warrior": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 176.9,
+      "timeouts": 5,
+      "dps": 39,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0.8,
+      "draws": 2,
+      "sec": 180,
+      "fight": 177.5,
+      "timeouts": 5,
+      "dps": 66,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       0,
+       0
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 25.4,
+      "fight": 22.9,
+      "timeouts": 0,
+      "dps": 53,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 1,
+      "draws": 0,
+      "sec": 26.1,
+      "fight": 24.3,
+      "timeouts": 0,
+      "dps": 53,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "rogue": {
+      "win": 1,
+      "draws": 0,
+      "sec": 19.4,
+      "fight": 16.3,
+      "timeouts": 0,
+      "dps": 66,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "deathknight": {
+      "win": 1,
+      "draws": 0,
+      "sec": 70,
+      "fight": 67.3,
+      "timeouts": 0,
+      "dps": 42,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 1,
+      "draws": 0,
+      "sec": 24.2,
+      "fight": 21.4,
+      "timeouts": 0,
+      "dps": 78,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "darkranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 21.6,
+      "fight": 18.6,
+      "timeouts": 0,
+      "dps": 60,
       "errors": 0,
       "reps": [
        1,
@@ -14110,10 +15376,10 @@
      "warlock": {
       "win": 1,
       "draws": 0,
-      "sec": 13.7,
-      "fight": 11.8,
+      "sec": 67.4,
+      "fight": 64.7,
       "timeouts": 0,
-      "dps": 118,
+      "dps": 44,
       "errors": 0,
       "reps": [
        1,
@@ -14126,10 +15392,310 @@
      "reaver": {
       "win": 0.2,
       "draws": 0,
-      "sec": 81.8,
-      "fight": 79.8,
-      "timeouts": 2,
-      "dps": 44,
+      "sec": 29.7,
+      "fight": 27,
+      "timeouts": 0,
+      "dps": 75,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       2,
+       2
+      ]
+     }
+    }
+   },
+   "classWin": {
+    "warrior": {
+     "win": 0.272,
+     "sec": 179,
+     "fight": 176.4
+    },
+    "healer": {
+     "win": 0.522,
+     "sec": 180,
+     "fight": 177.6
+    },
+    "ranger": {
+     "win": 0.078,
+     "sec": 81.7,
+     "fight": 79.3
+    },
+    "mage": {
+     "win": 0.494,
+     "sec": 94.1,
+     "fight": 91.7
+    },
+    "rogue": {
+     "win": 0.533,
+     "sec": 83.1,
+     "fight": 80.3
+    },
+    "deathknight": {
+     "win": 0.478,
+     "sec": 146.1,
+     "fight": 143.5
+    },
+    "bloodweaver": {
+     "win": 0.433,
+     "sec": 97.9,
+     "fight": 95.3
+    },
+    "darkranger": {
+     "win": 0.344,
+     "sec": 83.5,
+     "fight": 80.9
+    },
+    "warlock": {
+     "win": 0.889,
+     "sec": 95.4,
+     "fight": 92.8
+    },
+    "reaver": {
+     "win": 0.956,
+     "sec": 67.9,
+     "fight": 65.3
+    }
+   },
+   "roles": [
+    {
+     "role": "танк",
+     "solgard": "warrior",
+     "umbrath": "deathknight",
+     "solgardWin": 0.1,
+     "sec": 180
+    },
+    {
+     "role": "лекарь",
+     "solgard": "healer",
+     "umbrath": "bloodweaver",
+     "solgardWin": 0.8,
+     "sec": 180
+    },
+    {
+     "role": "лучник",
+     "solgard": "ranger",
+     "umbrath": "darkranger",
+     "solgardWin": 0,
+     "sec": 34.2
+    },
+    {
+     "role": "маг",
+     "solgard": "mage",
+     "umbrath": "warlock",
+     "solgardWin": 0,
+     "sec": 66.9
+    },
+    {
+     "role": "разбойник",
+     "solgard": "rogue",
+     "umbrath": "reaver",
+     "solgardWin": 0,
+     "sec": 19.9
+    }
+   ],
+   "solgardVsUmbrath": 0.284,
+   "skewed": [
+    {
+     "a": "bloodweaver",
+     "b": "reaver",
+     "aWin": 0
+    },
+    {
+     "a": "bloodweaver",
+     "b": "warlock",
+     "aWin": 0
+    },
+    {
+     "a": "darkranger",
+     "b": "warlock",
+     "aWin": 0
+    },
+    {
+     "a": "deathknight",
+     "b": "reaver",
+     "aWin": 0
+    },
+    {
+     "a": "deathknight",
+     "b": "warlock",
+     "aWin": 0
+    },
+    {
+     "a": "healer",
+     "b": "warlock",
+     "aWin": 0
+    },
+    {
+     "a": "mage",
+     "b": "darkranger",
+     "aWin": 0
+    },
+    {
+     "a": "mage",
+     "b": "deathknight",
+     "aWin": 1
+    }
+   ]
+  },
+  {
+   "level": 100,
+   "reps": 5,
+   "matrix": {
+    "warrior": {
+     "warrior": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.1,
+      "timeouts": 5,
+      "dps": 36,
+      "errors": 0,
+      "reps": [
+       1,
+       2,
+       2,
+       1,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0.4,
+      "draws": 2,
+      "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 28,
+      "errors": 0,
+      "reps": [
+       2,
+       0,
+       1,
+       0,
+       2
+      ]
+     },
+     "ranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 25.9,
+      "fight": 23.4,
+      "timeouts": 0,
+      "dps": 164,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 43.5,
+      "fight": 40.2,
+      "timeouts": 0,
+      "dps": 103,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "rogue": {
+      "win": 1,
+      "draws": 0,
+      "sec": 30.9,
+      "fight": 28,
+      "timeouts": 0,
+      "dps": 158,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "deathknight": {
+      "win": 1,
+      "draws": 0,
+      "sec": 178.8,
+      "fight": 176.1,
+      "timeouts": 4,
+      "dps": 93,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 134,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "darkranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 39.3,
+      "fight": 36.7,
+      "timeouts": 0,
+      "dps": 119,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0,
+      "draws": 0,
+      "sec": 16.1,
+      "fight": 13.5,
+      "timeouts": 0,
+      "dps": 99,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 50.6,
+      "fight": 47.4,
+      "timeouts": 1,
+      "dps": 160,
       "errors": 0,
       "reps": [
        2,
@@ -14140,62 +15706,62 @@
       ]
      }
     },
-    "ranger": {
+    "healer": {
      "warrior": {
-      "win": 0,
-      "draws": 0,
-      "sec": 15.2,
-      "fight": 13.2,
-      "timeouts": 0,
-      "dps": 95,
+      "win": 0.4,
+      "draws": 4,
+      "sec": 180,
+      "fight": 178.1,
+      "timeouts": 5,
+      "dps": 17,
       "errors": 0,
       "reps": [
+       0,
        2,
-       2,
-       2,
-       2,
-       2
+       0,
+       0,
+       0
       ]
      },
      "healer": {
-      "win": 0,
-      "draws": 0,
-      "sec": 11.5,
-      "fight": 9.5,
-      "timeouts": 0,
-      "dps": 394,
+      "win": 0.6,
+      "draws": 2,
+      "sec": 180,
+      "fight": 177.1,
+      "timeouts": 5,
+      "dps": 22,
       "errors": 0,
       "reps": [
+       1,
        2,
-       2,
-       2,
-       2,
-       2
+       1,
+       0,
+       0
       ]
      },
      "ranger": {
-      "win": 0.6,
+      "win": 1,
       "draws": 0,
-      "sec": 3,
-      "fight": 1,
+      "sec": 47.9,
+      "fight": 46.1,
       "timeouts": 0,
-      "dps": 368,
+      "dps": 109,
       "errors": 0,
       "reps": [
-       2,
        1,
        1,
-       2,
+       1,
+       1,
        1
       ]
      },
      "mage": {
       "win": 1,
       "draws": 0,
-      "sec": 9.9,
-      "fight": 8,
+      "sec": 86.3,
+      "fight": 84.1,
       "timeouts": 0,
-      "dps": 326,
+      "dps": 74,
       "errors": 0,
       "reps": [
        1,
@@ -14208,10 +15774,10 @@
      "rogue": {
       "win": 1,
       "draws": 0,
-      "sec": 2.7,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 449,
+      "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 46,
       "errors": 0,
       "reps": [
        1,
@@ -14222,10 +15788,156 @@
       ]
      },
      "deathknight": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.8,
+      "timeouts": 5,
+      "dps": 47,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "bloodweaver": {
+      "win": 0.9,
+      "draws": 1,
+      "sec": 180,
+      "fight": 177.9,
+      "timeouts": 5,
+      "dps": 149,
+      "errors": 0,
+      "reps": [
+       1,
+       0,
+       1,
+       1,
+       1
+      ]
+     },
+     "darkranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 69.8,
+      "fight": 67.4,
+      "timeouts": 1,
+      "dps": 103,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 8.7,
-      "fight": 6.7,
+      "sec": 34.7,
+      "fight": 32.5,
+      "timeouts": 0,
+      "dps": 124,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "reaver": {
+      "win": 1,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.9,
+      "timeouts": 5,
+      "dps": 47,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     }
+    },
+    "ranger": {
+     "warrior": {
+      "win": 0,
+      "draws": 0,
+      "sec": 40,
+      "fight": 37.3,
+      "timeouts": 0,
+      "dps": 133,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "healer": {
+      "win": 0,
+      "draws": 0,
+      "sec": 53.3,
+      "fight": 50.9,
+      "timeouts": 0,
+      "dps": 136,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "ranger": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 4.9,
+      "fight": 2.4,
+      "timeouts": 0,
+      "dps": 587,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       1,
+       2
+      ]
+     },
+     "mage": {
+      "win": 0.4,
+      "draws": 0,
+      "sec": 4.8,
+      "fight": 2.6,
+      "timeouts": 0,
+      "dps": 615,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       2,
+       1
+      ]
+     },
+     "rogue": {
+      "win": 0,
+      "draws": 0,
+      "sec": 5.1,
+      "fight": 2.2,
       "timeouts": 0,
       "dps": 198,
       "errors": 0,
@@ -14237,29 +15949,45 @@
        2
       ]
      },
-     "bloodweaver": {
-      "win": 0.4,
+     "deathknight": {
+      "win": 0,
       "draws": 0,
-      "sec": 4.3,
-      "fight": 2.3,
+      "sec": 19.4,
+      "fight": 17.5,
       "timeouts": 0,
-      "dps": 403,
+      "dps": 465,
       "errors": 0,
       "reps": [
        2,
-       1,
        2,
-       1,
+       2,
+       2,
+       2
+      ]
+     },
+     "bloodweaver": {
+      "win": 0,
+      "draws": 0,
+      "sec": 13.4,
+      "fight": 11.2,
+      "timeouts": 0,
+      "dps": 967,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
        2
       ]
      },
      "darkranger": {
       "win": 0,
       "draws": 0,
-      "sec": 2.6,
-      "fight": 0.6,
+      "sec": 4.1,
+      "fight": 1.7,
       "timeouts": 0,
-      "dps": 255,
+      "dps": 584,
       "errors": 0,
       "reps": [
        2,
@@ -14272,10 +16000,10 @@
      "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 6.1,
-      "fight": 4.1,
+      "sec": 7.3,
+      "fight": 4.8,
       "timeouts": 0,
-      "dps": 175,
+      "dps": 450,
       "errors": 0,
       "reps": [
        2,
@@ -14286,16 +16014,16 @@
       ]
      },
      "reaver": {
-      "win": 1,
+      "win": 0.8,
       "draws": 0,
-      "sec": 3.7,
-      "fight": 1.7,
+      "sec": 6.7,
+      "fight": 4.4,
       "timeouts": 0,
-      "dps": 442,
+      "dps": 783,
       "errors": 0,
       "reps": [
        1,
-       1,
+       2,
        1,
        1,
        1
@@ -14306,29 +16034,29 @@
      "warrior": {
       "win": 0.4,
       "draws": 0,
-      "sec": 17.1,
-      "fight": 15.2,
+      "sec": 50.9,
+      "fight": 48.6,
       "timeouts": 0,
-      "dps": 150,
+      "dps": 300,
       "errors": 0,
       "reps": [
-       2,
-       2,
        1,
+       2,
+       2,
        1,
        2
       ]
      },
      "healer": {
-      "win": 0,
-      "draws": 0,
-      "sec": 11.5,
-      "fight": 9.6,
-      "timeouts": 0,
-      "dps": 251,
+      "win": 0.1,
+      "draws": 1,
+      "sec": 127.4,
+      "fight": 125,
+      "timeouts": 2,
+      "dps": 394,
       "errors": 0,
       "reps": [
-       2,
+       0,
        2,
        2,
        2,
@@ -14336,131 +16064,131 @@
       ]
      },
      "ranger": {
-      "win": 0.2,
+      "win": 0.6,
       "draws": 0,
-      "sec": 4.5,
-      "fight": 2.6,
+      "sec": 4.3,
+      "fight": 2.1,
       "timeouts": 0,
-      "dps": 136,
+      "dps": 767,
       "errors": 0,
       "reps": [
        2,
+       2,
        1,
-       2,
-       2,
-       2
+       1,
+       1
       ]
      },
      "mage": {
-      "win": 0.4,
+      "win": 0.8,
       "draws": 0,
-      "sec": 4.9,
-      "fight": 3.1,
+      "sec": 3.7,
+      "fight": 1.3,
       "timeouts": 0,
-      "dps": 201,
+      "dps": 962,
       "errors": 0,
       "reps": [
        1,
        1,
        2,
-       2,
-       2
+       1,
+       1
       ]
      },
      "rogue": {
-      "win": 1,
+      "win": 0.2,
       "draws": 0,
-      "sec": 4.7,
-      "fight": 2.7,
+      "sec": 6.1,
+      "fight": 3.4,
       "timeouts": 0,
-      "dps": 292,
+      "dps": 132,
       "errors": 0,
       "reps": [
+       2,
+       2,
        1,
-       1,
-       1,
-       1,
-       1
+       2,
+       2
       ]
      },
      "deathknight": {
-      "win": 0,
+      "win": 0.8,
       "draws": 0,
-      "sec": 7.8,
-      "fight": 5.9,
+      "sec": 27.9,
+      "fight": 25.9,
       "timeouts": 0,
-      "dps": 141,
+      "dps": 571,
       "errors": 0,
       "reps": [
+       1,
        2,
-       2,
-       2,
-       2,
-       2
+       1,
+       1,
+       1
       ]
      },
      "bloodweaver": {
-      "win": 0,
-      "draws": 0,
-      "sec": 4.8,
-      "fight": 2.9,
-      "timeouts": 0,
-      "dps": 245,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "darkranger": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 188,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "warlock": {
       "win": 0.4,
       "draws": 0,
-      "sec": 5.1,
-      "fight": 3.2,
+      "sec": 13.3,
+      "fight": 11.1,
       "timeouts": 0,
-      "dps": 244,
+      "dps": 1335,
       "errors": 0,
       "reps": [
+       2,
        2,
        1,
        2,
-       2,
        1
+      ]
+     },
+     "darkranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 4.3,
+      "fight": 1.8,
+      "timeouts": 0,
+      "dps": 812,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 7.2,
+      "fight": 4.5,
+      "timeouts": 0,
+      "dps": 761,
+      "errors": 0,
+      "reps": [
+       1,
+       2,
+       1,
+       1,
+       2
       ]
      },
      "reaver": {
       "win": 0.6,
       "draws": 0,
-      "sec": 4.7,
-      "fight": 2.9,
+      "sec": 6.6,
+      "fight": 4.1,
       "timeouts": 0,
-      "dps": 326,
+      "dps": 637,
       "errors": 0,
       "reps": [
-       1,
-       1,
+       2,
        2,
        1,
-       2
+       1,
+       1
       ]
      }
     },
@@ -14468,10 +16196,10 @@
      "warrior": {
       "win": 0,
       "draws": 0,
-      "sec": 12.5,
-      "fight": 10.4,
+      "sec": 32.3,
+      "fight": 28.7,
       "timeouts": 0,
-      "dps": 112,
+      "dps": 294,
       "errors": 0,
       "reps": [
        2,
@@ -14482,12 +16210,28 @@
       ]
      },
      "healer": {
+      "win": 0,
+      "draws": 0,
+      "sec": 174.2,
+      "fight": 171.9,
+      "timeouts": 4,
+      "dps": 107,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "ranger": {
       "win": 1,
       "draws": 0,
-      "sec": 9.6,
-      "fight": 7.6,
+      "sec": 4.1,
+      "fight": 2,
       "timeouts": 0,
-      "dps": 472,
+      "dps": 850,
       "errors": 0,
       "reps": [
        1,
@@ -14497,50 +16241,34 @@
        1
       ]
      },
-     "ranger": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 114,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
      "mage": {
-      "win": 0,
+      "win": 1,
       "draws": 0,
-      "sec": 4.8,
-      "fight": 2.8,
+      "sec": 4.5,
+      "fight": 2.4,
       "timeouts": 0,
-      "dps": 70,
+      "dps": 856,
       "errors": 0,
       "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
+       1,
+       1,
+       1,
+       1,
+       1
       ]
      },
      "rogue": {
-      "win": 0.4,
+      "win": 0.2,
       "draws": 0,
-      "sec": 3.2,
-      "fight": 0.9,
+      "sec": 13.9,
+      "fight": 8.3,
       "timeouts": 0,
-      "dps": 291,
+      "dps": 293,
       "errors": 0,
       "reps": [
+       1,
        2,
-       1,
-       1,
+       2,
        2,
        2
       ]
@@ -14548,58 +16276,58 @@
      "deathknight": {
       "win": 0.2,
       "draws": 0,
-      "sec": 5.8,
-      "fight": 3.7,
+      "sec": 19.3,
+      "fight": 14.4,
       "timeouts": 0,
-      "dps": 158,
+      "dps": 485,
       "errors": 0,
       "reps": [
        2,
        2,
+       1,
        2,
-       2,
-       1
+       2
       ]
      },
      "bloodweaver": {
-      "win": 1,
+      "win": 0.8,
       "draws": 0,
-      "sec": 3.2,
-      "fight": 0.9,
+      "sec": 9.9,
+      "fight": 5.6,
       "timeouts": 0,
-      "dps": 555,
+      "dps": 578,
       "errors": 0,
       "reps": [
        1,
-       1,
+       2,
        1,
        1,
        1
       ]
      },
      "darkranger": {
-      "win": 0,
+      "win": 0.8,
       "draws": 0,
-      "sec": 3.3,
-      "fight": 1,
+      "sec": 4.7,
+      "fight": 1.9,
       "timeouts": 0,
-      "dps": 147,
+      "dps": 634,
       "errors": 0,
       "reps": [
+       1,
+       1,
        2,
-       2,
-       2,
-       2,
-       2
+       1,
+       1
       ]
      },
      "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 4.7,
-      "fight": 2.5,
+      "sec": 10.9,
+      "fight": 8,
       "timeouts": 0,
-      "dps": 97,
+      "dps": 396,
       "errors": 0,
       "reps": [
        2,
@@ -14610,16 +16338,16 @@
       ]
      },
      "reaver": {
-      "win": 0,
+      "win": 0.2,
       "draws": 0,
-      "sec": 3.1,
-      "fight": 1,
+      "sec": 7,
+      "fight": 4,
       "timeouts": 0,
-      "dps": 322,
+      "dps": 885,
       "errors": 0,
       "reps": [
        2,
-       2,
+       1,
        2,
        2,
        2
@@ -14628,12 +16356,76 @@
     },
     "deathknight": {
      "warrior": {
+      "win": 0,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 98,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "healer": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 180,
+      "fight": 177.8,
+      "timeouts": 5,
+      "dps": 35,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       1,
+       2
+      ]
+     },
+     "ranger": {
+      "win": 0.6,
+      "draws": 0,
+      "sec": 20.7,
+      "fight": 17.7,
+      "timeouts": 0,
+      "dps": 172,
+      "errors": 0,
+      "reps": [
+       2,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
+     "mage": {
+      "win": 0,
+      "draws": 0,
+      "sec": 22.2,
+      "fight": 19.9,
+      "timeouts": 0,
+      "dps": 106,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       2
+      ]
+     },
+     "rogue": {
       "win": 1,
       "draws": 0,
-      "sec": 24.9,
-      "fight": 22.9,
+      "sec": 19.3,
+      "fight": 16.4,
       "timeouts": 0,
-      "dps": 115,
+      "dps": 235,
       "errors": 0,
       "reps": [
        1,
@@ -14643,43 +16435,11 @@
        1
       ]
      },
-     "healer": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 180,
-      "fight": 178.1,
-      "timeouts": 5,
-      "dps": 165,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 7.4,
-      "fight": 5.5,
-      "timeouts": 0,
-      "dps": 154,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       2
-      ]
-     },
-     "mage": {
+     "deathknight": {
       "win": 1,
       "draws": 0,
-      "sec": 7.6,
-      "fight": 5.7,
+      "sec": 121.8,
+      "fight": 119.3,
       "timeouts": 0,
       "dps": 162,
       "errors": 0,
@@ -14691,61 +16451,29 @@
        1
       ]
      },
-     "rogue": {
-      "win": 1,
-      "draws": 0,
-      "sec": 7.1,
-      "fight": 5,
-      "timeouts": 0,
-      "dps": 172,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "deathknight": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 13.1,
-      "fight": 11.1,
-      "timeouts": 0,
-      "dps": 164,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       2,
-       1
-      ]
-     },
      "bloodweaver": {
-      "win": 1,
+      "win": 0,
       "draws": 0,
-      "sec": 10.6,
-      "fight": 8.6,
+      "sec": 76.8,
+      "fight": 73.7,
       "timeouts": 0,
-      "dps": 245,
+      "dps": 204,
       "errors": 0,
       "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
+       2,
+       2,
+       2,
+       2,
+       2
       ]
      },
      "darkranger": {
       "win": 1,
       "draws": 0,
-      "sec": 7.1,
-      "fight": 5,
+      "sec": 18.9,
+      "fight": 15.9,
       "timeouts": 0,
-      "dps": 174,
+      "dps": 213,
       "errors": 0,
       "reps": [
        1,
@@ -14758,10 +16486,10 @@
      "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 12.5,
-      "fight": 10.5,
+      "sec": 22.4,
+      "fight": 19.7,
       "timeouts": 0,
-      "dps": 121,
+      "dps": 119,
       "errors": 0,
       "reps": [
        2,
@@ -14774,10 +16502,10 @@
      "reaver": {
       "win": 0,
       "draws": 0,
-      "sec": 6.5,
-      "fight": 4.4,
+      "sec": 18,
+      "fight": 15.9,
       "timeouts": 0,
-      "dps": 186,
+      "dps": 272,
       "errors": 0,
       "reps": [
        2,
@@ -14790,76 +16518,76 @@
     },
     "bloodweaver": {
      "warrior": {
-      "win": 0,
-      "draws": 0,
-      "sec": 22.4,
-      "fight": 20.3,
-      "timeouts": 0,
-      "dps": 71,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "healer": {
       "win": 0.8,
       "draws": 0,
       "sec": 180,
-      "fight": 178,
+      "fight": 177,
       "timeouts": 5,
-      "dps": 258,
+      "dps": 136,
       "errors": 0,
       "reps": [
        1,
        1,
        1,
-       1,
+       2,
+       1
+      ]
+     },
+     "healer": {
+      "win": 0.1,
+      "draws": 1,
+      "sec": 180,
+      "fight": 177.6,
+      "timeouts": 5,
+      "dps": 74,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       0,
        2
       ]
      },
      "ranger": {
-      "win": 0.4,
+      "win": 1,
       "draws": 0,
-      "sec": 5.7,
-      "fight": 3.7,
+      "sec": 18.1,
+      "fight": 15.6,
       "timeouts": 0,
-      "dps": 193,
+      "dps": 261,
       "errors": 0,
       "reps": [
-       2,
        1,
-       2,
        1,
-       2
+       1,
+       1,
+       1
       ]
      },
      "mage": {
-      "win": 0.8,
+      "win": 0.6,
       "draws": 0,
-      "sec": 5.2,
-      "fight": 3.3,
+      "sec": 14,
+      "fight": 10.9,
       "timeouts": 0,
-      "dps": 231,
+      "dps": 189,
       "errors": 0,
       "reps": [
        1,
-       1,
        2,
        1,
+       2,
        1
       ]
      },
      "rogue": {
       "win": 0,
       "draws": 0,
-      "sec": 3.3,
-      "fight": 1,
+      "sec": 11.2,
+      "fight": 8.3,
       "timeouts": 0,
-      "dps": 153,
+      "dps": 56,
       "errors": 0,
       "reps": [
        2,
@@ -14870,44 +16598,60 @@
       ]
      },
      "deathknight": {
-      "win": 0,
+      "win": 1,
       "draws": 0,
-      "sec": 9.5,
-      "fight": 7.4,
+      "sec": 81.6,
+      "fight": 78.7,
       "timeouts": 0,
-      "dps": 131,
+      "dps": 219,
       "errors": 0,
       "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
+       1,
+       1,
+       1,
+       1,
+       1
       ]
      },
      "bloodweaver": {
       "win": 0.4,
       "draws": 0,
-      "sec": 5.1,
-      "fight": 2.6,
-      "timeouts": 0,
-      "dps": 306,
+      "sec": 180,
+      "fight": 176.8,
+      "timeouts": 5,
+      "dps": 441,
       "errors": 0,
       "reps": [
        2,
-       1,
        2,
+       1,
        2,
        1
       ]
      },
      "darkranger": {
+      "win": 1,
+      "draws": 0,
+      "sec": 12.5,
+      "fight": 9.6,
+      "timeouts": 0,
+      "dps": 308,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 2.7,
-      "fight": 0.3,
+      "sec": 24.4,
+      "fight": 21.5,
       "timeouts": 0,
-      "dps": 53,
+      "dps": 285,
       "errors": 0,
       "reps": [
        2,
@@ -14915,127 +16659,13 @@
        2,
        2,
        2
-      ]
-     },
-     "warlock": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 6.4,
-      "fight": 4.3,
-      "timeouts": 0,
-      "dps": 253,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       1,
-       1
       ]
      },
      "reaver": {
       "win": 0,
       "draws": 0,
-      "sec": 3.1,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 174,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     }
-    },
-    "darkranger": {
-     "warrior": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 17.1,
-      "fight": 14.8,
-      "timeouts": 0,
-      "dps": 119,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       2,
-       2,
-       2
-      ]
-     },
-     "healer": {
-      "win": 0,
-      "draws": 0,
-      "sec": 11.1,
-      "fight": 9.1,
-      "timeouts": 0,
-      "dps": 365,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.6,
-      "fight": 0.6,
-      "timeouts": 0,
-      "dps": 453,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "mage": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 457,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "rogue": {
-      "win": 1,
-      "draws": 0,
-      "sec": 4.7,
-      "fight": 2.3,
-      "timeouts": 0,
-      "dps": 260,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "deathknight": {
-      "win": 0,
-      "draws": 0,
-      "sec": 8,
-      "fight": 5.8,
+      "sec": 14.9,
+      "fight": 12,
       "timeouts": 0,
       "dps": 175,
       "errors": 0,
@@ -15046,558 +16676,32 @@
        2,
        2
       ]
-     },
-     "bloodweaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 495,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 413,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 413,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "reaver": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 3.2,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 431,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       1,
-       2
-      ]
      }
-    },
-    "warlock": {
-     "warrior": {
-      "win": 1,
-      "draws": 0,
-      "sec": 16,
-      "fight": 14,
-      "timeouts": 0,
-      "dps": 138,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "healer": {
-      "win": 0,
-      "draws": 0,
-      "sec": 16.3,
-      "fight": 14.4,
-      "timeouts": 0,
-      "dps": 209,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 5.2,
-      "fight": 3.2,
-      "timeouts": 0,
-      "dps": 166,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       2
-      ]
-     },
-     "mage": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 5.4,
-      "fight": 3.6,
-      "timeouts": 0,
-      "dps": 202,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       2,
-       1
-      ]
-     },
-     "rogue": {
-      "win": 1,
-      "draws": 0,
-      "sec": 5.3,
-      "fight": 3.2,
-      "timeouts": 0,
-      "dps": 222,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "deathknight": {
-      "win": 1,
-      "draws": 0,
-      "sec": 12.7,
-      "fight": 10.7,
-      "timeouts": 0,
-      "dps": 157,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "bloodweaver": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 6.8,
-      "fight": 4.7,
-      "timeouts": 0,
-      "dps": 289,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       1,
-       2,
-       2
-      ]
-     },
-     "darkranger": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 144,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "warlock": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 7.1,
-      "fight": 5,
-      "timeouts": 0,
-      "dps": 208,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       2,
-       2
-      ]
-     },
-     "reaver": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 6.3,
-      "fight": 4.3,
-      "timeouts": 0,
-      "dps": 221,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       2,
-       1,
-       1
-      ]
-     }
-    },
-    "reaver": {
-     "warrior": {
-      "win": 1,
-      "draws": 0,
-      "sec": 15.4,
-      "fight": 13.3,
-      "timeouts": 0,
-      "dps": 236,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "healer": {
-      "win": 1,
-      "draws": 0,
-      "sec": 14.2,
-      "fight": 12.2,
-      "timeouts": 0,
-      "dps": 438,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "ranger": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 5.1,
-      "fight": 3.1,
-      "timeouts": 0,
-      "dps": 82,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       2,
-       2,
-       2
-      ]
-     },
-     "mage": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 3.3,
-      "fight": 1.5,
-      "timeouts": 0,
-      "dps": 375,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       1
-      ]
-     },
-     "rogue": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.6,
-      "timeouts": 0,
-      "dps": 431,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "deathknight": {
-      "win": 1,
-      "draws": 0,
-      "sec": 6.7,
-      "fight": 4.6,
-      "timeouts": 0,
-      "dps": 299,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "bloodweaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.1,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 516,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 3,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 321,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       2
-      ]
-     },
-     "warlock": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 6.4,
-      "fight": 4.4,
-      "timeouts": 0,
-      "dps": 221,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       2,
-       1
-      ]
-     },
-     "reaver": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 3.2,
-      "fight": 1.1,
-      "timeouts": 0,
-      "dps": 442,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       2,
-       1,
-       2
-      ]
-     }
-    }
-   },
-   "classWin": {
-    "warrior": {
-     "win": 0.478,
-     "sec": 36.2,
-     "fight": 34.1
-    },
-    "healer": {
-     "win": 0.7,
-     "sec": 72.6,
-     "fight": 70.7
-    },
-    "ranger": {
-     "win": 0.4,
-     "sec": 7.3,
-     "fight": 5.3
-    },
-    "mage": {
-     "win": 0.267,
-     "sec": 7.3,
-     "fight": 5.4
-    },
-    "rogue": {
-     "win": 0.222,
-     "sec": 6.1,
-     "fight": 3.9
-    },
-    "deathknight": {
-     "win": 0.678,
-     "sec": 29.6,
-     "fight": 27.6
-    },
-    "bloodweaver": {
-     "win": 0.311,
-     "sec": 26.9,
-     "fight": 24.8
     },
     "darkranger": {
-     "win": 0.611,
-     "sec": 5.8,
-     "fight": 3.6
-    },
-    "warlock": {
-     "win": 0.589,
-     "sec": 8.3,
-     "fight": 6.3
-    },
-    "reaver": {
-     "win": 0.744,
-     "sec": 10.4,
-     "fight": 8.3
-    }
-   },
-   "roles": [
-    {
-     "role": "танк",
-     "solgard": "warrior",
-     "umbrath": "deathknight",
-     "solgardWin": 0,
-     "sec": 27.5
-    },
-    {
-     "role": "лекарь",
-     "solgard": "healer",
-     "umbrath": "bloodweaver",
-     "solgardWin": 0.4,
-     "sec": 180
-    },
-    {
-     "role": "лучник",
-     "solgard": "ranger",
-     "umbrath": "darkranger",
-     "solgardWin": 0,
-     "sec": 2.6
-    },
-    {
-     "role": "маг",
-     "solgard": "mage",
-     "umbrath": "warlock",
-     "solgardWin": 0.3,
-     "sec": 5.3
-    },
-    {
-     "role": "разбойник",
-     "solgard": "rogue",
-     "umbrath": "reaver",
-     "solgardWin": 0,
-     "sec": 3
-    }
-   ],
-   "solgardVsUmbrath": 0.344,
-   "skewed": [
-    {
-     "a": "bloodweaver",
-     "b": "darkranger",
-     "aWin": 0
-    },
-    {
-     "a": "bloodweaver",
-     "b": "reaver",
-     "aWin": 0
-    },
-    {
-     "a": "darkranger",
-     "b": "warlock",
-     "aWin": 1
-    },
-    {
-     "a": "deathknight",
-     "b": "bloodweaver",
-     "aWin": 1
-    },
-    {
-     "a": "deathknight",
-     "b": "darkranger",
-     "aWin": 1
-    },
-    {
-     "a": "deathknight",
-     "b": "reaver",
-     "aWin": 0
-    },
-    {
-     "a": "deathknight",
-     "b": "warlock",
-     "aWin": 0
-    },
-    {
-     "a": "healer",
-     "b": "darkranger",
-     "aWin": 1
-    }
-   ]
-  },
-  {
-   "level": 100,
-   "reps": 5,
-   "matrix": {
-    "warrior": {
      "warrior": {
-      "win": 0.4,
+      "win": 0,
       "draws": 0,
-      "sec": 19.6,
-      "fight": 17.3,
+      "sec": 44.5,
+      "fight": 41.8,
       "timeouts": 0,
-      "dps": 417,
+      "dps": 123,
       "errors": 0,
       "reps": [
-       1,
        2,
        2,
-       1,
+       2,
+       2,
        2
       ]
      },
      "healer": {
       "win": 0,
       "draws": 0,
-      "sec": 50.7,
-      "fight": 48.8,
+      "sec": 60.8,
+      "fight": 58.6,
       "timeouts": 0,
-      "dps": 507,
+      "dps": 152,
       "errors": 0,
       "reps": [
        2,
@@ -15610,172 +16714,10 @@
      "ranger": {
       "win": 1,
       "draws": 0,
-      "sec": 3.7,
-      "fight": 1.7,
+      "sec": 5.5,
+      "fight": 3.5,
       "timeouts": 0,
-      "dps": 1252,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "mage": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 7,
-      "fight": 4.7,
-      "timeouts": 0,
-      "dps": 653,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       1,
-       2
-      ]
-     },
-     "rogue": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.2,
-      "fight": 1,
-      "timeouts": 0,
-      "dps": 126,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "deathknight": {
-      "win": 1,
-      "draws": 0,
-      "sec": 12.8,
-      "fight": 10.7,
-      "timeouts": 0,
-      "dps": 1009,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "bloodweaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.4,
-      "fight": 1,
-      "timeouts": 0,
-      "dps": 1375,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 3.3,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 1123,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 6.1,
-      "fight": 3.8,
-      "timeouts": 0,
-      "dps": 951,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       1
-      ]
-     },
-     "reaver": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 4.2,
-      "fight": 1.9,
-      "timeouts": 0,
-      "dps": 1345,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       1,
-       1
-      ]
-     }
-    },
-    "healer": {
-     "warrior": {
-      "win": 1,
-      "draws": 0,
-      "sec": 45.9,
-      "fight": 43.9,
-      "timeouts": 0,
-      "dps": 278,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "healer": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 40.9,
-      "fight": 39,
-      "timeouts": 0,
-      "dps": 630,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       2,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.2,
-      "fight": 0.2,
-      "timeouts": 0,
-      "dps": 1787,
+      "dps": 757,
       "errors": 0,
       "reps": [
        1,
@@ -15788,10 +16730,10 @@
      "mage": {
       "win": 0,
       "draws": 0,
-      "sec": 3.3,
-      "fight": 1.3,
+      "sec": 4.6,
+      "fight": 1.8,
       "timeouts": 0,
-      "dps": 563,
+      "dps": 518,
       "errors": 0,
       "reps": [
        2,
@@ -15802,18 +16744,18 @@
       ]
      },
      "rogue": {
-      "win": 1,
+      "win": 0.2,
       "draws": 0,
-      "sec": 4.5,
-      "fight": 2.2,
+      "sec": 4.8,
+      "fight": 1.8,
       "timeouts": 0,
-      "dps": 1139,
+      "dps": 153,
       "errors": 0,
       "reps": [
-       1,
-       1,
-       1,
-       1,
+       2,
+       2,
+       2,
+       2,
        1
       ]
      },
@@ -15821,9 +16763,9 @@
       "win": 0,
       "draws": 0,
       "sec": 18.2,
-      "fight": 16.1,
+      "fight": 15.3,
       "timeouts": 0,
-      "dps": 383,
+      "dps": 315,
       "errors": 0,
       "reps": [
        2,
@@ -15836,238 +16778,26 @@
      "bloodweaver": {
       "win": 0.2,
       "draws": 0,
-      "sec": 5.7,
-      "fight": 3.7,
+      "sec": 9.8,
+      "fight": 6.7,
       "timeouts": 0,
-      "dps": 1089,
+      "dps": 913,
       "errors": 0,
       "reps": [
+       1,
        2,
        2,
        2,
-       2,
-       1
+       2
       ]
      },
      "darkranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.6,
-      "fight": 0.6,
-      "timeouts": 0,
-      "dps": 1573,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 7.7,
-      "fight": 5.7,
-      "timeouts": 0,
-      "dps": 871,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       2,
-       2
-      ]
-     },
-     "reaver": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 3.3,
-      "fight": 1.2,
-      "timeouts": 0,
-      "dps": 1470,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       2,
-       2
-      ]
-     }
-    },
-    "ranger": {
-     "warrior": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.4,
-      "fight": 1.2,
-      "timeouts": 0,
-      "dps": 899,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "healer": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 1546,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.2,
-      "fight": 0.1,
-      "timeouts": 0,
-      "dps": 969,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       1,
-       2,
-       1
-      ]
-     },
-     "mage": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.4,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 645,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "rogue": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 1374,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       1,
-       1
-      ]
-     },
-     "deathknight": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3,
-      "fight": 1,
-      "timeouts": 0,
-      "dps": 2469,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "bloodweaver": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.5,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 1810,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       2,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.6,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 1427,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 2.6,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 1241,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       1
-      ]
-     },
-     "reaver": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.5,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 971,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     }
-    },
-    "mage": {
-     "warrior": {
       "win": 0.4,
       "draws": 0,
-      "sec": 5.3,
-      "fight": 3,
+      "sec": 4.4,
+      "fight": 1.8,
       "timeouts": 0,
-      "dps": 1192,
+      "dps": 698,
       "errors": 0,
       "reps": [
        1,
@@ -16075,796 +16805,36 @@
        2,
        2,
        2
-      ]
-     },
-     "healer": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.2,
-      "fight": 1.3,
-      "timeouts": 0,
-      "dps": 3794,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "ranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.5,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 2286,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "mage": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 1027,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       1,
-       2,
-       2
-      ]
-     },
-     "rogue": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 225,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "deathknight": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.6,
-      "fight": 1.6,
-      "timeouts": 0,
-      "dps": 3250,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "bloodweaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 3743,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.4,
-      "fight": 0.1,
-      "timeouts": 0,
-      "dps": 2030,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 1911,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       2,
-       2
-      ]
-     },
-     "reaver": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 2095,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       2,
-       2,
-       1
-      ]
-     }
-    },
-    "rogue": {
-     "warrior": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.1,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 1731,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "healer": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 1136,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       2,
-       1,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 873,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       2,
-       1
-      ]
-     },
-     "mage": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 2.4,
-      "fight": 0.2,
-      "timeouts": 0,
-      "dps": 727,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       2,
-       2,
-       1
-      ]
-     },
-     "rogue": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 3,
-      "fight": 0.6,
-      "timeouts": 0,
-      "dps": 720,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       2,
-       1
-      ]
-     },
-     "deathknight": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.2,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 2671,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "bloodweaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 2012,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 1275,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 1950,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "reaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 2351,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     }
-    },
-    "deathknight": {
-     "warrior": {
-      "win": 0,
-      "draws": 0,
-      "sec": 13.8,
-      "fight": 11.7,
-      "timeouts": 0,
-      "dps": 493,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "healer": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 25,
-      "fight": 23,
-      "timeouts": 0,
-      "dps": 1583,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       1,
-       1
-      ]
-     },
-     "ranger": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 709,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       1,
-       2,
-       2
-      ]
-     },
-     "mage": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 6.3,
-      "fight": 4.2,
-      "timeouts": 0,
-      "dps": 712,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       1,
-       2,
-       1
-      ]
-     },
-     "rogue": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.1,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 38,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "deathknight": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 13.5,
-      "fight": 11.5,
-      "timeouts": 0,
-      "dps": 1443,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       1,
-       2
-      ]
-     },
-     "bloodweaver": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.5,
-      "fight": 1.4,
-      "timeouts": 0,
-      "dps": 2377,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "darkranger": {
-      "win": 1,
-      "draws": 0,
-      "sec": 3.2,
-      "fight": 1,
-      "timeouts": 0,
-      "dps": 1238,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       1
       ]
      },
      "warlock": {
       "win": 0,
       "draws": 0,
-      "sec": 9,
-      "fight": 6.9,
-      "timeouts": 0,
-      "dps": 1043,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "reaver": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 934,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     }
-    },
-    "bloodweaver": {
-     "warrior": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.3,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 300,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "healer": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 5.8,
+      "sec": 6.6,
       "fight": 3.9,
       "timeouts": 0,
-      "dps": 1414,
+      "dps": 577,
       "errors": 0,
       "reps": [
-       1,
+       2,
        2,
        2,
        2,
        2
       ]
      },
-     "ranger": {
+     "reaver": {
       "win": 0.2,
       "draws": 0,
-      "sec": 2.3,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 332,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       1,
-       2
-      ]
-     },
-     "mage": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3,
-      "fight": 0.8,
-      "timeouts": 0,
-      "dps": 474,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "rogue": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.7,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 0,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "deathknight": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.6,
+      "sec": 4.1,
       "fight": 1.4,
       "timeouts": 0,
-      "dps": 1160,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "bloodweaver": {
-      "win": 0.8,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 1608,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       1,
-       2
-      ]
-     },
-     "darkranger": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 991,
-      "errors": 0,
-      "reps": [
-       1,
-       2,
-       2,
-       1,
-       1
-      ]
-     },
-     "warlock": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.7,
-      "timeouts": 0,
-      "dps": 266,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "reaver": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 514,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     }
-    },
-    "darkranger": {
-     "warrior": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.4,
-      "fight": 1,
-      "timeouts": 0,
-      "dps": 1125,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "healer": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2,
-      "fight": 0.1,
-      "timeouts": 0,
-      "dps": 0,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "ranger": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.4,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 184,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "mage": {
-      "win": 0.4,
-      "draws": 0,
-      "sec": 2.6,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 720,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       1,
-       2,
-       2
-      ]
-     },
-     "rogue": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.3,
-      "timeouts": 0,
-      "dps": 495,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       2,
-       2,
-       2
-      ]
-     },
-     "deathknight": {
-      "win": 0,
-      "draws": 0,
-      "sec": 3.3,
-      "fight": 1.1,
-      "timeouts": 0,
-      "dps": 1968,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
-      ]
-     },
-     "bloodweaver": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.5,
-      "timeouts": 0,
-      "dps": 1090,
+      "dps": 480,
       "errors": 0,
       "reps": [
        2,
        2,
        1,
-       2,
-       2
-      ]
-     },
-     "darkranger": {
-      "win": 0.6,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.4,
-      "timeouts": 0,
-      "dps": 1489,
-      "errors": 0,
-      "reps": [
-       1,
-       1,
-       1,
-       2,
-       2
-      ]
-     },
-     "warlock": {
-      "win": 0.2,
-      "draws": 0,
-      "sec": 2.9,
-      "fight": 0.9,
-      "timeouts": 0,
-      "dps": 1078,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
-       2,
-       1
-      ]
-     },
-     "reaver": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.5,
-      "fight": 0.1,
-      "timeouts": 0,
-      "dps": 681,
-      "errors": 0,
-      "reps": [
-       2,
-       2,
-       2,
        2,
        2
       ]
@@ -16872,17 +16842,17 @@
     },
     "warlock": {
      "warrior": {
-      "win": 0.6,
+      "win": 1,
       "draws": 0,
-      "sec": 7,
-      "fight": 4.7,
+      "sec": 16.9,
+      "fight": 13.7,
       "timeouts": 0,
-      "dps": 857,
+      "dps": 485,
       "errors": 0,
       "reps": [
        1,
-       2,
-       2,
+       1,
+       1,
        1,
        1
       ]
@@ -16890,10 +16860,10 @@
      "healer": {
       "win": 1,
       "draws": 0,
-      "sec": 5.1,
-      "fight": 3.1,
+      "sec": 43,
+      "fight": 40.8,
       "timeouts": 0,
-      "dps": 3027,
+      "dps": 382,
       "errors": 0,
       "reps": [
        1,
@@ -16904,76 +16874,76 @@
       ]
      },
      "ranger": {
-      "win": 0.6,
+      "win": 1,
       "draws": 0,
-      "sec": 2.7,
-      "fight": 0.7,
+      "sec": 6.1,
+      "fight": 3.9,
       "timeouts": 0,
-      "dps": 1445,
+      "dps": 639,
       "errors": 0,
       "reps": [
-       2,
-       2,
+       1,
+       1,
        1,
        1,
        1
       ]
      },
      "mage": {
-      "win": 0.2,
+      "win": 0.6,
       "draws": 0,
-      "sec": 3,
-      "fight": 0.8,
+      "sec": 7.9,
+      "fight": 4.9,
       "timeouts": 0,
-      "dps": 673,
+      "dps": 370,
       "errors": 0,
       "reps": [
-       2,
        1,
        2,
-       2,
+       1,
+       1,
        2
       ]
      },
      "rogue": {
-      "win": 0,
+      "win": 1,
       "draws": 0,
-      "sec": 2.8,
-      "fight": 0.5,
+      "sec": 10.9,
+      "fight": 8.1,
       "timeouts": 0,
-      "dps": 0,
+      "dps": 378,
       "errors": 0,
       "reps": [
-       2,
-       2,
-       2,
-       2,
-       2
+       1,
+       1,
+       1,
+       1,
+       1
       ]
      },
      "deathknight": {
-      "win": 0.6,
+      "win": 1,
       "draws": 0,
-      "sec": 8.1,
-      "fight": 6.1,
+      "sec": 24.4,
+      "fight": 21.7,
       "timeouts": 0,
-      "dps": 2298,
+      "dps": 501,
       "errors": 0,
       "reps": [
        1,
-       2,
        1,
-       2,
+       1,
+       1,
        1
       ]
      },
      "bloodweaver": {
       "win": 1,
       "draws": 0,
-      "sec": 3,
-      "fight": 0.6,
+      "sec": 24.9,
+      "fight": 21.5,
       "timeouts": 0,
-      "dps": 2944,
+      "dps": 866,
       "errors": 0,
       "reps": [
        1,
@@ -16984,16 +16954,16 @@
       ]
      },
      "darkranger": {
-      "win": 0.8,
+      "win": 1,
       "draws": 0,
-      "sec": 2.8,
-      "fight": 0.6,
+      "sec": 6,
+      "fight": 3.2,
       "timeouts": 0,
-      "dps": 1388,
+      "dps": 579,
       "errors": 0,
       "reps": [
        1,
-       2,
+       1,
        1,
        1,
        1
@@ -17002,124 +16972,124 @@
      "warlock": {
       "win": 0.6,
       "draws": 0,
-      "sec": 3.1,
-      "fight": 1,
+      "sec": 13.5,
+      "fight": 11.1,
       "timeouts": 0,
-      "dps": 2669,
+      "dps": 820,
       "errors": 0,
       "reps": [
        1,
+       2,
+       2,
        1,
-       2,
-       2,
        1
       ]
      },
      "reaver": {
       "win": 0.6,
       "draws": 0,
-      "sec": 3,
-      "fight": 0.7,
+      "sec": 12.5,
+      "fight": 9.6,
       "timeouts": 0,
-      "dps": 2599,
+      "dps": 639,
       "errors": 0,
       "reps": [
-       1,
+       2,
        1,
        2,
        1,
-       2
+       1
       ]
      }
     },
     "reaver": {
      "warrior": {
-      "win": 0.6,
+      "win": 0.8,
       "draws": 0,
-      "sec": 4.1,
-      "fight": 1.8,
-      "timeouts": 0,
-      "dps": 2124,
+      "sec": 50.8,
+      "fight": 47.4,
+      "timeouts": 1,
+      "dps": 483,
       "errors": 0,
       "reps": [
        1,
        2,
        1,
-       2,
+       1,
        1
       ]
      },
      "healer": {
-      "win": 1,
+      "win": 0.2,
       "draws": 0,
-      "sec": 3.3,
-      "fight": 1.2,
-      "timeouts": 0,
-      "dps": 4595,
+      "sec": 180,
+      "fight": 177.3,
+      "timeouts": 5,
+      "dps": 149,
       "errors": 0,
       "reps": [
+       2,
        1,
-       1,
-       1,
-       1,
-       1
+       2,
+       2,
+       2
       ]
      },
      "ranger": {
-      "win": 0.8,
+      "win": 0.2,
       "draws": 0,
-      "sec": 2.5,
-      "fight": 0.5,
+      "sec": 7.5,
+      "fight": 5,
       "timeouts": 0,
-      "dps": 1614,
-      "errors": 0,
-      "reps": [
-       2,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "mage": {
-      "win": 1,
-      "draws": 0,
-      "sec": 2.4,
-      "fight": 0.2,
-      "timeouts": 0,
-      "dps": 1864,
+      "dps": 245,
       "errors": 0,
       "reps": [
        1,
-       1,
-       1,
-       1,
-       1
-      ]
-     },
-     "rogue": {
-      "win": 0,
-      "draws": 0,
-      "sec": 2.8,
-      "fight": 0.6,
-      "timeouts": 0,
-      "dps": 0,
-      "errors": 0,
-      "reps": [
-       2,
        2,
        2,
        2,
        2
       ]
      },
+     "mage": {
+      "win": 0.2,
+      "draws": 0,
+      "sec": 6.7,
+      "fight": 4.5,
+      "timeouts": 0,
+      "dps": 354,
+      "errors": 0,
+      "reps": [
+       2,
+       2,
+       2,
+       2,
+       1
+      ]
+     },
+     "rogue": {
+      "win": 0.8,
+      "draws": 0,
+      "sec": 6.2,
+      "fight": 4,
+      "timeouts": 0,
+      "dps": 626,
+      "errors": 0,
+      "reps": [
+       1,
+       1,
+       2,
+       1,
+       1
+      ]
+     },
      "deathknight": {
       "win": 1,
       "draws": 0,
-      "sec": 3.1,
-      "fight": 1.1,
+      "sec": 17.5,
+      "fight": 14.6,
       "timeouts": 0,
-      "dps": 3680,
+      "dps": 989,
       "errors": 0,
       "reps": [
        1,
@@ -17132,10 +17102,10 @@
      "bloodweaver": {
       "win": 1,
       "draws": 0,
-      "sec": 3,
-      "fight": 0.7,
+      "sec": 15.3,
+      "fight": 12.7,
       "timeouts": 0,
-      "dps": 6512,
+      "dps": 1357,
       "errors": 0,
       "reps": [
        1,
@@ -17148,103 +17118,103 @@
      "darkranger": {
       "win": 0.8,
       "draws": 0,
-      "sec": 2.5,
-      "fight": 0.1,
+      "sec": 5.2,
+      "fight": 2.3,
       "timeouts": 0,
-      "dps": 1695,
+      "dps": 931,
       "errors": 0,
       "reps": [
        1,
-       1,
        2,
+       1,
        1,
        1
       ]
      },
      "warlock": {
-      "win": 0.8,
+      "win": 0,
       "draws": 0,
-      "sec": 2.7,
-      "fight": 0.4,
+      "sec": 13.2,
+      "fight": 10.9,
       "timeouts": 0,
-      "dps": 2039,
+      "dps": 523,
       "errors": 0,
       "reps": [
-       1,
-       1,
        2,
-       1,
-       1
+       2,
+       2,
+       2,
+       2
       ]
      },
      "reaver": {
-      "win": 0.4,
+      "win": 1,
       "draws": 0,
-      "sec": 2.8,
-      "fight": 0.5,
+      "sec": 5.5,
+      "fight": 3,
       "timeouts": 0,
-      "dps": 3787,
+      "dps": 1410,
       "errors": 0,
       "reps": [
        1,
-       2,
-       2,
        1,
-       2
+       1,
+       1,
+       1
       ]
      }
     }
    },
    "classWin": {
     "warrior": {
-     "win": 0.633,
-     "sec": 10.2,
-     "fight": 8
+     "win": 0.6,
+     "sec": 84.5,
+     "fight": 81.7
     },
     "healer": {
-     "win": 0.489,
-     "sec": 10.8,
-     "fight": 8.8
+     "win": 0.794,
+     "sec": 128.7,
+     "fight": 126.5
     },
     "ranger": {
-     "win": 0.4,
-     "sec": 2.7,
-     "fight": 0.6
+     "win": 0.156,
+     "sec": 16.3,
+     "fight": 14
     },
     "mage": {
-     "win": 0.611,
-     "sec": 3.4,
-     "fight": 1.2
+     "win": 0.517,
+     "sec": 24.6,
+     "fight": 22.1
     },
     "rogue": {
-     "win": 0.811,
-     "sec": 2.9,
-     "fight": 0.6
+     "win": 0.433,
+     "sec": 30.1,
+     "fight": 27.2
     },
     "deathknight": {
-     "win": 0.444,
-     "sec": 7.1,
-     "fight": 5
+     "win": 0.322,
+     "sec": 62.5,
+     "fight": 59.8
     },
     "bloodweaver": {
-     "win": 0.167,
-     "sec": 3.3,
-     "fight": 1
+     "win": 0.511,
+     "sec": 58.9,
+     "fight": 56.1
     },
     "darkranger": {
-     "win": 0.122,
-     "sec": 2.8,
-     "fight": 0.5
+     "win": 0.167,
+     "sec": 18,
+     "fight": 15.3
     },
     "warlock": {
-     "win": 0.6,
-     "sec": 4.3,
-     "fight": 2.1
+     "win": 0.922,
+     "sec": 16.4,
+     "fight": 13.7
     },
     "reaver": {
-     "win": 0.722,
-     "sec": 3,
-     "fight": 0.7
+     "win": 0.578,
+     "sec": 33.5,
+     "fight": 30.9
     }
    },
    "roles": [
@@ -17253,38 +17223,38 @@
      "solgard": "warrior",
      "umbrath": "deathknight",
      "solgardWin": 1,
-     "sec": 13.3
+     "sec": 179.4
     },
     {
      "role": "лекарь",
      "solgard": "healer",
      "umbrath": "bloodweaver",
-     "solgardWin": 0.5,
-     "sec": 5.8
+     "solgardWin": 0.9,
+     "sec": 180
     },
     {
      "role": "лучник",
      "solgard": "ranger",
      "umbrath": "darkranger",
-     "solgardWin": 1,
-     "sec": 2.5
+     "solgardWin": 0,
+     "sec": 4.8
     },
     {
      "role": "маг",
      "solgard": "mage",
      "umbrath": "warlock",
-     "solgardWin": 0.6,
-     "sec": 3
+     "solgardWin": 0.5,
+     "sec": 7.6
     },
     {
      "role": "разбойник",
      "solgard": "rogue",
      "umbrath": "reaver",
-     "solgardWin": 1,
-     "sec": 2.8
+     "solgardWin": 0.2,
+     "sec": 6.6
     }
    ],
-   "solgardVsUmbrath": 0.66,
+   "solgardVsUmbrath": 0.5,
    "skewed": [
     {
      "a": "bloodweaver",
@@ -17297,9 +17267,14 @@
      "aWin": 0
     },
     {
+     "a": "darkranger",
+     "b": "warlock",
+     "aWin": 0
+    },
+    {
      "a": "deathknight",
      "b": "bloodweaver",
-     "aWin": 1
+     "aWin": 0
     },
     {
      "a": "deathknight",
@@ -17312,18 +17287,13 @@
      "aWin": 0
     },
     {
-     "a": "healer",
-     "b": "darkranger",
-     "aWin": 1
-    },
-    {
-     "a": "healer",
-     "b": "mage",
+     "a": "deathknight",
+     "b": "warlock",
      "aWin": 0
     },
     {
-     "a": "mage",
-     "b": "bloodweaver",
+     "a": "healer",
+     "b": "darkranger",
      "aWin": 1
     }
    ]
@@ -17341,7 +17311,7 @@
     "hitX": 8.5,
     "hitTarget": 8,
     "dpsX": 10,
-    "pressureDpsX": 10.3
+    "pressureDpsX": 10.1
    },
    "healer": {
     "from": 30,
@@ -17365,7 +17335,7 @@
     "hitX": 8.5,
     "hitTarget": 8,
     "dpsX": 18,
-    "pressureDpsX": 18.6
+    "pressureDpsX": 18.7
    },
    "mage": {
     "from": 30,
@@ -17377,7 +17347,7 @@
     "hitX": 8,
     "hitTarget": 8,
     "dpsX": 39.7,
-    "pressureDpsX": 23.3
+    "pressureDpsX": 23.2
    },
    "rogue": {
     "from": 30,
@@ -17389,7 +17359,7 @@
     "hitX": 8.6,
     "hitTarget": 8,
     "dpsX": 13.6,
-    "pressureDpsX": 11
+    "pressureDpsX": 12.9
    },
    "deathknight": {
     "from": 30,
@@ -17401,7 +17371,7 @@
     "hitX": 8.5,
     "hitTarget": 8,
     "dpsX": 11.7,
-    "pressureDpsX": 10.5
+    "pressureDpsX": 10.6
    },
    "bloodweaver": {
     "from": 30,
@@ -17437,7 +17407,7 @@
     "hitX": 8,
     "hitTarget": 8,
     "dpsX": 10,
-    "pressureDpsX": 8.6
+    "pressureDpsX": 8.7
    },
    "reaver": {
     "from": 30,
@@ -17449,7 +17419,7 @@
     "hitX": 8.6,
     "hitTarget": 8,
     "dpsX": 11,
-    "pressureDpsX": 9.9
+    "pressureDpsX": 10
    }
   },
   "dpsRank": {
@@ -17482,39 +17452,39 @@
     },
     {
      "cls": "mage",
-     "pressure": 185,
+     "pressure": 191,
      "clean": 212,
      "cleanRange": [
       204,
       218
      ],
-     "vsTop": 0.86,
+     "vsTop": 0.888,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 3.967
     },
     {
      "cls": "reaver",
-     "pressure": 185,
+     "pressure": 186,
      "clean": 306,
      "cleanRange": [
       296,
       312
      ],
-     "vsTop": 0.86,
+     "vsTop": 0.865,
      "oomClean": 36.3,
      "oomPressure": 36.3,
      "sustain": 1.036
     },
     {
      "cls": "rogue",
-     "pressure": 175,
+     "pressure": 177,
      "clean": 289,
      "cleanRange": [
       289,
       291
      ],
-     "vsTop": 0.814,
+     "vsTop": 0.823,
      "oomClean": 25.1,
      "oomPressure": 25.1,
      "sustain": 1.018
@@ -17534,26 +17504,26 @@
     },
     {
      "cls": "bloodweaver",
-     "pressure": 145,
+     "pressure": 144,
      "clean": 172,
      "cleanRange": [
       167,
       177
      ],
-     "vsTop": 0.674,
+     "vsTop": 0.67,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 6.761
     },
     {
      "cls": "warrior",
-     "pressure": 89,
+     "pressure": 88,
      "clean": 93,
      "cleanRange": [
       89,
       99
      ],
-     "vsTop": 0.414,
+     "vsTop": 0.409,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 3.36
@@ -17588,7 +17558,7 @@
    "L30": [
     {
      "cls": "darkranger",
-     "pressure": 1375,
+     "pressure": 1377,
      "clean": 1908,
      "cleanRange": [
       1849,
@@ -17601,52 +17571,52 @@
     },
     {
      "cls": "mage",
-     "pressure": 1212,
+     "pressure": 1225,
      "clean": 2054,
      "cleanRange": [
       1943,
       2182
      ],
-     "vsTop": 0.881,
+     "vsTop": 0.89,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 7.614
     },
     {
      "cls": "rogue",
-     "pressure": 1189,
+     "pressure": 1169,
      "clean": 2060,
      "cleanRange": [
       2017,
       2084
      ],
-     "vsTop": 0.865,
+     "vsTop": 0.849,
      "oomClean": 16.1,
      "oomPressure": 16.1,
      "sustain": 1.014
     },
     {
      "cls": "ranger",
-     "pressure": 1117,
+     "pressure": 1130,
      "clean": 1691,
      "cleanRange": [
       1654,
       1737
      ],
-     "vsTop": 0.812,
+     "vsTop": 0.821,
      "oomClean": 14.1,
      "oomPressure": 14.1,
      "sustain": 1.018
     },
     {
      "cls": "reaver",
-     "pressure": 1060,
+     "pressure": 1052,
      "clean": 2540,
      "cleanRange": [
       2498,
       2600
      ],
-     "vsTop": 0.771,
+     "vsTop": 0.764,
      "oomClean": 24.8,
      "oomPressure": 24.8,
      "sustain": 1.027
@@ -17659,7 +17629,7 @@
       1318,
       1367
      ],
-     "vsTop": 0.689,
+     "vsTop": 0.688,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 8.185
@@ -17679,26 +17649,26 @@
     },
     {
      "cls": "deathknight",
-     "pressure": 628,
+     "pressure": 627,
      "clean": 700,
      "cleanRange": [
       682,
       715
      ],
-     "vsTop": 0.457,
+     "vsTop": 0.455,
      "oomClean": 42.3,
      "oomPressure": 42.3,
      "sustain": 1.018
     },
     {
      "cls": "warrior",
-     "pressure": 431,
+     "pressure": 432,
      "clean": 467,
      "cleanRange": [
       453,
       492
      ],
-     "vsTop": 0.313,
+     "vsTop": 0.314,
      "oomClean": null,
      "oomPressure": 34.2,
      "sustain": 1.006
@@ -17711,7 +17681,7 @@
       433,
       475
      ],
-     "vsTop": 0.31,
+     "vsTop": 0.309,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 9.721
@@ -17720,7 +17690,7 @@
    "L60": [
     {
      "cls": "mage",
-     "pressure": 6654,
+     "pressure": 6681,
      "clean": 15046,
      "cleanRange": [
       13849,
@@ -17733,91 +17703,91 @@
     },
     {
      "cls": "darkranger",
-     "pressure": 5611,
+     "pressure": 5615,
      "clean": 7709,
      "cleanRange": [
       7644,
       7761
      ],
-     "vsTop": 0.843,
+     "vsTop": 0.84,
      "oomClean": 25.6,
      "oomPressure": 56.3,
      "sustain": 1.076
     },
     {
      "cls": "ranger",
-     "pressure": 5257,
+     "pressure": 5143,
      "clean": 7313,
      "cleanRange": [
       7065,
       7606
      ],
-     "vsTop": 0.79,
+     "vsTop": 0.77,
      "oomClean": 17.3,
      "oomPressure": 17.3,
      "sustain": 1.013
     },
     {
      "cls": "rogue",
-     "pressure": 4366,
+     "pressure": 4329,
      "clean": 7227,
      "cleanRange": [
       6835,
       7423
      ],
-     "vsTop": 0.656,
+     "vsTop": 0.648,
      "oomClean": 18.6,
      "oomPressure": 17.8,
      "sustain": 1.005
     },
     {
      "cls": "bloodweaver",
-     "pressure": 3951,
+     "pressure": 3942,
      "clean": 6077,
      "cleanRange": [
       5974,
       6132
      ],
-     "vsTop": 0.594,
+     "vsTop": 0.59,
      "oomClean": null,
      "oomPressure": null,
-     "sustain": 12.016
+     "sustain": 12.019
     },
     {
      "cls": "reaver",
-     "pressure": 3483,
+     "pressure": 3453,
      "clean": 7596,
      "cleanRange": [
       7435,
       7824
      ],
-     "vsTop": 0.523,
+     "vsTop": 0.517,
      "oomClean": 21.3,
-     "oomPressure": 24.8,
-     "sustain": 1.007
+     "oomPressure": 24.1,
+     "sustain": 1.008
     },
     {
      "cls": "warlock",
-     "pressure": 2552,
+     "pressure": 2533,
      "clean": 6027,
      "cleanRange": [
       5998,
       6063
      ],
-     "vsTop": 0.384,
+     "vsTop": 0.379,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 7.364
     },
     {
      "cls": "deathknight",
-     "pressure": 1825,
+     "pressure": 1851,
      "clean": 2729,
      "cleanRange": [
       2652,
       2851
      ],
-     "vsTop": 0.274,
+     "vsTop": 0.277,
      "oomClean": 29.6,
      "oomPressure": 27.8,
      "sustain": 1.013
@@ -17830,7 +17800,7 @@
       1761,
       1821
      ],
-     "vsTop": 0.239,
+     "vsTop": 0.238,
      "oomClean": 58.3,
      "oomPressure": 20.9,
      "sustain": 1.022
@@ -17843,7 +17813,7 @@
       1425,
       1478
      ],
-     "vsTop": 0.202,
+     "vsTop": 0.201,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 19.777
@@ -17852,7 +17822,7 @@
    "L100": [
     {
      "cls": "mage",
-     "pressure": 28291,
+     "pressure": 28432,
      "clean": 81469,
      "cleanRange": [
       73535,
@@ -17865,104 +17835,104 @@
     },
     {
      "cls": "ranger",
-     "pressure": 20808,
+     "pressure": 21079,
      "clean": 30393,
      "cleanRange": [
       30082,
       30755
      ],
-     "vsTop": 0.735,
+     "vsTop": 0.741,
      "oomClean": 28.1,
-     "oomPressure": 33,
-     "sustain": 1.004
+     "oomPressure": 31.4,
+     "sustain": 1.011
     },
     {
      "cls": "darkranger",
-     "pressure": 19639,
+     "pressure": 19715,
      "clean": 26006,
      "cleanRange": [
       25557,
       26972
      ],
-     "vsTop": 0.694,
+     "vsTop": 0.693,
      "oomClean": 30.1,
      "oomPressure": null,
-     "sustain": 1.501
+     "sustain": 1.507
     },
     {
      "cls": "rogue",
-     "pressure": 13038,
+     "pressure": 15096,
      "clean": 27981,
      "cleanRange": [
       27679,
       28630
      ],
-     "vsTop": 0.461,
+     "vsTop": 0.531,
      "oomClean": 28.8,
-     "oomPressure": 52.6,
-     "sustain": 1.026
+     "oomPressure": null,
+     "sustain": 1.044
     },
     {
      "cls": "reaver",
-     "pressure": 10490,
+     "pressure": 10494,
      "clean": 27924,
      "cleanRange": [
       27870,
       28026
      ],
-     "vsTop": 0.371,
+     "vsTop": 0.369,
      "oomClean": 26.3,
      "oomPressure": 11.2,
-     "sustain": 1.033
+     "sustain": 1.032
     },
     {
      "cls": "bloodweaver",
-     "pressure": 10335,
+     "pressure": 10345,
      "clean": 18184,
      "cleanRange": [
       17819,
       18620
      ],
-     "vsTop": 0.365,
+     "vsTop": 0.364,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 16.76
     },
     {
      "cls": "warlock",
-     "pressure": 6897,
+     "pressure": 6977,
      "clean": 20265,
      "cleanRange": [
       20099,
       20367
      ],
-     "vsTop": 0.244,
+     "vsTop": 0.245,
      "oomClean": null,
      "oomPressure": null,
-     "sustain": 11.9
+     "sustain": 11.969
     },
     {
      "cls": "deathknight",
-     "pressure": 6563,
+     "pressure": 6659,
      "clean": 8162,
      "cleanRange": [
       7677,
       8614
      ],
-     "vsTop": 0.232,
+     "vsTop": 0.234,
      "oomClean": 22.3,
      "oomPressure": null,
-     "sustain": 1.263
+     "sustain": 1.261
     },
     {
      "cls": "warrior",
-     "pressure": 4452,
+     "pressure": 4376,
      "clean": 4683,
      "cleanRange": [
       4568,
       4797
      ],
-     "vsTop": 0.157,
+     "vsTop": 0.154,
      "oomClean": null,
      "oomPressure": 59.1,
      "sustain": 1.011
@@ -17975,7 +17945,7 @@
       3553,
       3746
      ],
-     "vsTop": 0.116,
+     "vsTop": 0.115,
      "oomClean": null,
      "oomPressure": null,
      "sustain": 39.846
@@ -18425,15 +18395,15 @@
   "pvp": [
    {
     "level": 30,
-    "solgardVsUmbrath": 0.344,
+    "solgardVsUmbrath": 0.284,
     "roles": [
      {
       "role": "танк",
-      "solgardWin": 0
+      "solgardWin": 0.1
      },
      {
       "role": "лекарь",
-      "solgardWin": 0.4
+      "solgardWin": 0.8
      },
      {
       "role": "лучник",
@@ -18441,7 +18411,7 @@
      },
      {
       "role": "маг",
-      "solgardWin": 0.3
+      "solgardWin": 0
      },
      {
       "role": "разбойник",
@@ -18449,42 +18419,32 @@
      }
     ],
     "classWin": {
-     "warrior": 0.478,
-     "healer": 0.7,
-     "ranger": 0.4,
-     "mage": 0.267,
-     "rogue": 0.222,
-     "deathknight": 0.678,
-     "bloodweaver": 0.311,
-     "darkranger": 0.611,
-     "warlock": 0.589,
-     "reaver": 0.744
+     "warrior": 0.272,
+     "healer": 0.522,
+     "ranger": 0.078,
+     "mage": 0.494,
+     "rogue": 0.533,
+     "deathknight": 0.478,
+     "bloodweaver": 0.433,
+     "darkranger": 0.344,
+     "warlock": 0.889,
+     "reaver": 0.956
     },
     "skewed": [
-     {
-      "a": "bloodweaver",
-      "b": "darkranger",
-      "aWin": 0
-     },
      {
       "a": "bloodweaver",
       "b": "reaver",
       "aWin": 0
      },
      {
+      "a": "bloodweaver",
+      "b": "warlock",
+      "aWin": 0
+     },
+     {
       "a": "darkranger",
       "b": "warlock",
-      "aWin": 1
-     },
-     {
-      "a": "deathknight",
-      "b": "bloodweaver",
-      "aWin": 1
-     },
-     {
-      "a": "deathknight",
-      "b": "darkranger",
-      "aWin": 1
+      "aWin": 0
      },
      {
       "a": "deathknight",
@@ -18498,14 +18458,24 @@
      },
      {
       "a": "healer",
+      "b": "warlock",
+      "aWin": 0
+     },
+     {
+      "a": "mage",
       "b": "darkranger",
+      "aWin": 0
+     },
+     {
+      "a": "mage",
+      "b": "deathknight",
       "aWin": 1
      }
     ]
    },
    {
     "level": 100,
-    "solgardVsUmbrath": 0.66,
+    "solgardVsUmbrath": 0.5,
     "roles": [
      {
       "role": "танк",
@@ -18513,32 +18483,32 @@
      },
      {
       "role": "лекарь",
-      "solgardWin": 0.5
+      "solgardWin": 0.9
      },
      {
       "role": "лучник",
-      "solgardWin": 1
+      "solgardWin": 0
      },
      {
       "role": "маг",
-      "solgardWin": 0.6
+      "solgardWin": 0.5
      },
      {
       "role": "разбойник",
-      "solgardWin": 1
+      "solgardWin": 0.2
      }
     ],
     "classWin": {
-     "warrior": 0.633,
-     "healer": 0.489,
-     "ranger": 0.4,
-     "mage": 0.611,
-     "rogue": 0.811,
-     "deathknight": 0.444,
-     "bloodweaver": 0.167,
-     "darkranger": 0.122,
-     "warlock": 0.6,
-     "reaver": 0.722
+     "warrior": 0.6,
+     "healer": 0.794,
+     "ranger": 0.156,
+     "mage": 0.517,
+     "rogue": 0.433,
+     "deathknight": 0.322,
+     "bloodweaver": 0.511,
+     "darkranger": 0.167,
+     "warlock": 0.922,
+     "reaver": 0.578
     },
     "skewed": [
      {
@@ -18552,9 +18522,14 @@
       "aWin": 0
      },
      {
+      "a": "darkranger",
+      "b": "warlock",
+      "aWin": 0
+     },
+     {
       "a": "deathknight",
       "b": "bloodweaver",
-      "aWin": 1
+      "aWin": 0
      },
      {
       "a": "deathknight",
@@ -18567,18 +18542,13 @@
       "aWin": 0
      },
      {
-      "a": "healer",
-      "b": "darkranger",
-      "aWin": 1
-     },
-     {
-      "a": "healer",
-      "b": "mage",
+      "a": "deathknight",
+      "b": "warlock",
       "aWin": 0
      },
      {
-      "a": "mage",
-      "b": "bloodweaver",
+      "a": "healer",
+      "b": "darkranger",
       "aWin": 1
      }
     ]
@@ -18587,7 +18557,7 @@
  },
  "errors": [],
  "run": {
-  "generated": "2026-10-19T14:47:48.769Z",
-  "runSec": 353.4
+  "generated": "2026-10-19T17:18:00.128Z",
+  "runSec": 83.5
  }
 }

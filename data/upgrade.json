@@ -16,5 +16,5 @@
     { "gold": 3200, "ore": 22, "dust": 7, "chance": 35 },
     { "gold": 5000, "ore": 28, "dust": 10, "chance": 25 }
   ],
-  "bonusPerLevel": 0.06
+  "bonusPerLevel": 0.035
 }

@@ -9,6 +9,7 @@ const skillData = {
   summons: { ...skillBase.summons, ...skillArchers.summons, ...skillMages.summons, ...skillRogues.summons } as Record<string, unknown>,
 };
 import { skillUnlockLevel } from "./formulas";
+import { manaMult } from "./balance";
 
 export type SkillTarget = "enemy" | "point" | "self" | "ally";
 
@@ -33,21 +34,29 @@ export interface SkillDef {
   desc: (r: number) => string;
   /** Позиция в дереве: строка (ярус) и столбец. */
   tree: [number, number];
+  /** Вне общего отката (GCD, data/balance.json gcd): рывки и защиты — мерцание, перекат, щитовой блок, скрытность и т. п. */
+  offGcd?: boolean;
 }
 
 const pct = (n: number) => `${Math.round(n)}%`;
 
+/** Цена умения в мане для героя уровня level: число из описания × manaMult (data/balance.json mana; маги и лекари). */
+export const skillMana = (def: SkillDef, rank: number, level: number): number => {
+  const base = def.mana ? def.mana(Math.max(1, rank)) : 0;
+  return base > 0 ? Math.round(base * manaMult(def.cls, level)) : 0;
+};
+
 export const SKILLS: Record<string, SkillDef> = {
   // ---------------- Воин (танк) ----------------
   taunt: {
-    id: "taunt", cls: "warrior", name: "Провокация", kind: "active", slot: 0, maxRank: 5, reqLevel: 1, icon: "sk_taunt",
+    id: "taunt", cls: "warrior", name: "Провокация", kind: "active", slot: 0, maxRank: 5, reqLevel: 1, icon: "sk_taunt", offGcd: true,
     target: "enemy", range: 260, cd: () => 8, mana: () => 8,
     v: (r) => ({ dur: 4, extra: 60 + 40 * r, radius: r >= 3 ? 90 : 0, weak: 20, weakDur: 3 }),
     desc: (r) => `Крик заставляет цель${r >= 3 ? " и врагов рядом" : ""} атаковать вас 4 с и даёт много угрозы. Против игрока: его урон −20% на 3 с.`,
     tree: [0, 1],
   },
   shieldblock: {
-    id: "shieldblock", cls: "warrior", name: "Щитовой блок", kind: "active", slot: 1, maxRank: 5, reqLevel: 3, req: { id: "taunt", rank: 1 }, icon: "sk_shieldblock",
+    id: "shieldblock", cls: "warrior", name: "Щитовой блок", kind: "active", slot: 1, maxRank: 5, reqLevel: 3, req: { id: "taunt", rank: 1 }, icon: "sk_shieldblock", offGcd: true,
     target: "self", range: 0, cd: () => 16, mana: () => 12,
     v: (r) => ({ block: 60, dur: 4, reflect: r >= 3 ? 8 * (r - 2) : 0 }),
     desc: (r) => `На 4 с блокирует 60% получаемого урона${r >= 3 ? `, возвращает врагу ${8 * (r - 2)}% поглощённого урона` : ""}.`,
@@ -62,8 +71,8 @@ export const SKILLS: Record<string, SkillDef> = {
   charge: {
     id: "charge", cls: "warrior", name: "Рывок", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "shieldblock", rank: 1 }, icon: "sk_charge",
     target: "enemy", range: 260, cd: (r) => 12 - 0.5 * (r - 1), mana: () => 12,
-    v: (r) => ({ dmg: 80 + 10 * (r - 1), stun: 1.2, threat: 120 + 30 * r }),
-    desc: (r) => `Бросок к врагу (до 8 клеток): ${pct(80 + 10 * (r - 1))} урона, оглушение 1.2 с и угроза.`,
+    v: (r) => ({ dmg: 120 + 15 * (r - 1), stun: 1.2, threat: 120 + 30 * r }),
+    desc: (r) => `Бросок к врагу (до 8 клеток): ${pct(120 + 15 * (r - 1))} урона, оглушение 1.2 с и угроза.`,
     tree: [2, 1],
   },
   bloodlust: {
@@ -75,8 +84,8 @@ export const SKILLS: Record<string, SkillDef> = {
   quake: {
     id: "quake", cls: "warrior", name: "Сотрясение земли", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "charge", rank: 1 }, icon: "sk_quake",
     target: "self", range: 0, cd: () => 14, mana: () => 20,
-    v: (r) => ({ dmg: 100 + 15 * (r - 1), radius: 130, slow: 40, dur: 3, threat: 150 + 30 * r }),
-    desc: (r) => `Удар по земле: ${pct(100 + 15 * (r - 1))} урона всем вокруг, замедление 40% на 3 с, много угрозы.`,
+    v: (r) => ({ dmg: 140 + 20 * (r - 1), radius: 130, slow: 40, dur: 3, threat: 150 + 30 * r }),
+    desc: (r) => `Удар по земле: ${pct(140 + 20 * (r - 1))} урона всем вокруг, замедление 40% на 3 с, много угрозы.`,
     tree: [4, 1],
   },
   unbending: {
@@ -114,7 +123,7 @@ export const SKILLS: Record<string, SkillDef> = {
     tree: [5, 0],
   },
   blink: {
-    id: "blink", cls: "mage", name: "Мерцание", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "frostnova", rank: 1 }, icon: "sk_blink",
+    id: "blink", cls: "mage", name: "Мерцание", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "frostnova", rank: 1 }, icon: "sk_blink", offGcd: true,
     target: "point", range: 0, cd: (r) => 9 - 0.6 * (r - 1), mana: () => 12,
     v: (r) => ({ dist: 200 + 20 * (r - 1) }),
     desc: (r) => `Мгновенный перенос к курсору на ${200 + 20 * (r - 1)} пикселей.`,
@@ -129,8 +138,8 @@ export const SKILLS: Record<string, SkillDef> = {
   meteor: {
     id: "meteor", cls: "mage", name: "Метеор", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "blink", rank: 1 }, icon: "sk_meteor",
     target: "point", range: 340, cd: () => 16, mana: () => 35,
-    v: (r) => ({ dmg: 380 + 60 * (r - 1), radius: 110, delay: 1 }),
-    desc: (r) => `Через секунду в точку падает метеор: ${pct(380 + 60 * (r - 1))} урона по площади.`,
+    v: (r) => ({ dmg: 340 + 50 * (r - 1), radius: 110, delay: 1 }),
+    desc: (r) => `Через секунду в точку падает метеор: ${pct(340 + 50 * (r - 1))} урона по площади.`,
     tree: [3, 0],
   },
   arcane_shield: {
@@ -162,7 +171,7 @@ export const SKILLS: Record<string, SkillDef> = {
     tree: [0, 3],
   },
   roll: {
-    id: "roll", cls: "ranger", name: "Перекат", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "volley", rank: 1 }, icon: "sk_roll",
+    id: "roll", cls: "ranger", name: "Перекат", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "volley", rank: 1 }, icon: "sk_roll", offGcd: true,
     target: "point", range: 0, cd: (r) => 8 - 0.5 * (r - 1), mana: () => 10,
     v: (r) => ({ dist: 170, haste: 40 + 10 * (r - 1), dur: 3 }),
     desc: (r) => `Перекат к курсору, затем 3 с скорость атаки +${40 + 10 * (r - 1)}%.`,
@@ -264,7 +273,7 @@ export const SKILLS: Record<string, SkillDef> = {
     tree: [5, 0],
   },
   shadowstep: {
-    id: "shadowstep", cls: "rogue", name: "Теневой шаг", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "venom", rank: 1 }, icon: "sk_shadowstep",
+    id: "shadowstep", cls: "rogue", name: "Теневой шаг", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "venom", rank: 1 }, icon: "sk_shadowstep", offGcd: true,
     target: "enemy", range: 256, cd: (r) => 12 - 0.8 * (r - 1), mana: () => 14,
     v: () => ({ crit: 1 }),
     desc: () => "Мгновенно переносит за спину цели (до 8 клеток). Следующий удар — гарантированный крит.",
@@ -283,7 +292,7 @@ export const SKILLS: Record<string, SkillDef> = {
     tree: [3, 0],
   },
   stealth: {
-    id: "stealth", cls: "rogue", name: "Скрытность", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "shadowstep", rank: 1 }, icon: "sk_stealth",
+    id: "stealth", cls: "rogue", name: "Скрытность", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "shadowstep", rank: 1 }, icon: "sk_stealth", offGcd: true,
     target: "self", range: 0, cd: () => 20, mana: () => 12,
     v: (r) => ({ dur: 6 + r, slow: 30 }),
     desc: (r) => `Невидимость до ${6 + r} с (мобы не замечают, игроки не видят и не выбирают целью). Движение −30%. Прерывается атакой, умением или уроном.`,
@@ -296,7 +305,7 @@ type Lin = [number, number];
 interface RawSkill {
   cls: ClassId; name: string; slot?: number; maxRank: number; reqLevel: number; req?: { id: string; rank: number };
   target?: SkillTarget; range?: number; cd?: Lin; mana?: Lin; v: Record<string, Lin>; desc: string;
-  icon: { glyph: string; bg: string; fg: string }; tree: [number, number]; kind?: "active" | "passive";
+  icon: { glyph: string; bg: string; fg: string }; tree: [number, number]; kind?: "active" | "passive"; offGcd?: boolean;
 }
 const lin = ([a, b]: Lin, r: number) => Math.round((a + b * (Math.max(1, r) - 1)) * 100) / 100;
 /** Иконки умений из данных (для генератора ассетов): id иконки → рисунок и палитры. */
@@ -313,6 +322,7 @@ for (const [id, s] of Object.entries(skillData.skills as unknown as Record<strin
     v,
     desc: (r) => { const vals = v(r); return s.desc.replace(/\{(\w+)\}/g, (_, k: string) => String(vals[k] ?? "?")); },
     tree: s.tree,
+    ...(s.offGcd ? { offGcd: true } : {}),
   };
 }
 // reqLevel выше задан по проектной шкале 1..30 — переводим в реальный уровень 1..MAX_LEVEL (BALANCE.md)

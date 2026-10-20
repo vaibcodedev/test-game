@@ -23,6 +23,7 @@ import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
 import { FONT, UnitView } from "./UnitView";
+import { HeldKeys, isMoveAction, keybinds, type ActionId, type MoveAction } from "./keybinds";
 
 type NpcKind = "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
@@ -53,7 +54,8 @@ export class GameScene extends Phaser.Scene {
   me: UnitView | null = null;
   /** Предсказанная позиция своего героя. */
   pos = { x: 0, y: 0 };
-  keys = new Set<string>();
+  /** Зажатые клавиши движения (раскладка — keybinds.ts). */
+  held = new HeldKeys();
   lastInput = { mx: 0, my: 0, at: 0 };
   targetId: string | null = null;
   bagViews = new Map<string, Phaser.GameObjects.Image>();
@@ -90,7 +92,7 @@ export class GameScene extends Phaser.Scene {
     this.pendingPickup = null;
     this.pendingNpc = null;
     this.bubbles = [];
-    this.keys.clear();
+    this.held.clear();
     this.ambient = {};
     this.dustAt = new Map();
     this.npcs = [];
@@ -328,38 +330,47 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- ввод ----------
   private setupInput() {
-    const isTyping = () => this.hud.isTyping();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isTyping()) return;
-      const k = e.key.toLowerCase();
-      const code = e.code;
-      if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code)) {
-        this.keys.add(code);
-        this.pendingPickup = null;
-        this.pendingNpc = null;
-        e.preventDefault();
-        return;
-      }
-      if (e.repeat) return;
-      if (code.startsWith("Digit") && "123456789".includes(code.slice(5))) this.useSkill(Number(code.slice(5)) - 1);
-      else if (code === "KeyQ") this.usePotion("hp_potion");
-      else if (code === "KeyE") this.usePotion("mp_potion");
-      else if (code === "Tab") { e.preventDefault(); this.cycleTarget(); }
-      else if (code === "Space") { e.preventDefault(); this.pickupNearest(); }
-      else if (code === "KeyF") this.talkNearest();
-      else if (code === "KeyX") { if (e.shiftKey) this.cycleMount(); else this.toggleMount(); }
-      else if (code === "KeyG") { if (e.shiftKey) this.cyclePet(); else this.togglePet(); }
-      else if (code === "KeyP") this.hud.toggle("arena");
-      else if (code === "KeyB") this.hud.toggle("bestiary");
-      else if (code === "F10") { e.preventDefault(); this.hud.toggle("admin"); }
-      else if (code === "KeyM") this.hud.toggleWorldMap();
-      else if (code === "Escape") this.hud.escape(!!this.targetId, () => this.setTarget(null));
-      else if (code === "KeyI" || code === "KeyC" || code === "KeyK") this.hud.toggle(code === "KeyI" ? "inv" : code === "KeyC" ? "char" : "skills");
-      else if (code === "Enter") { e.preventDefault(); this.hud.focusChat(); }
-      void k;
+    // что делает каждое действие раскладки; какая клавиша какое действие — keybinds.ts. Движение (удержание) ведёт HeldKeys
+    const run: Record<Exclude<ActionId, MoveAction>, () => void> = {
+      slot1: () => this.useSkill(0), slot2: () => this.useSkill(1), slot3: () => this.useSkill(2), slot4: () => this.useSkill(3), slot5: () => this.useSkill(4),
+      slot6: () => this.useSkill(5), slot7: () => this.useSkill(6), slot8: () => this.useSkill(7), slot9: () => this.useSkill(8),
+      potionHp: () => this.usePotion("hp_potion"),
+      potionMp: () => this.usePotion("mp_potion"),
+      targetNext: () => this.cycleTarget(),
+      interact: () => this.pickupNearest(),
+      talk: () => this.talkNearest(),
+      mount: () => this.toggleMount(),
+      mountNext: () => this.cycleMount(),
+      pet: () => this.togglePet(),
+      petNext: () => this.cyclePet(),
+      winChar: () => this.hud.toggle("char"),
+      winInv: () => this.hud.toggle("inv"),
+      winSkills: () => this.hud.toggle("skills"),
+      winMap: () => this.hud.toggleWorldMap(),
+      winBestiary: () => this.hud.toggle("bestiary"),
+      winArena: () => this.hud.toggle("arena"),
+      winAdmin: () => this.hud.toggle("admin"),
+      chat: () => this.hud.focusChat(),
+      escape: () => this.hud.escape(!!this.targetId, () => this.setTarget(null)),
     };
-    const onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.code);
-    const onBlur = () => this.keys.clear();
+    // единственный обработчик клавиатуры; молчит только при вводе текста (ползунки, флажки и кнопки ему не мешают)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (this.hud.isTyping() || e.isComposing) return;
+      // умолчания браузера, мешающие игре: Tab уводит фокус на кнопки, F1–F5 — справка, поиск, обновление страницы
+      if (e.code === "Tab" || (/^F[1-5]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey)) e.preventDefault();
+      const acts = keybinds.actionsFor(e);
+      if (!acts.length) return;
+      e.preventDefault();
+      for (const a of acts) {
+        if (isMoveAction(a)) {
+          this.held.press(e.code, a);
+          this.pendingPickup = null;
+          this.pendingNpc = null;
+        } else if (!e.repeat) run[a]();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => this.held.release(e.code);
+    const onBlur = () => this.held.clear();
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
@@ -592,12 +603,7 @@ export class GameScene extends Phaser.Scene {
     // движение своего героя: предсказание + мягкая сверка с сервером
     const me = this.me;
     let mx = 0, my = 0;
-    if (me && !me.dead && !this.hud.isTyping()) {
-      if (this.keys.has("KeyA") || this.keys.has("ArrowLeft")) mx -= 1;
-      if (this.keys.has("KeyD") || this.keys.has("ArrowRight")) mx += 1;
-      if (this.keys.has("KeyW") || this.keys.has("ArrowUp")) my -= 1;
-      if (this.keys.has("KeyS") || this.keys.has("ArrowDown")) my += 1;
-    }
+    if (me && !me.dead && !this.hud.isTyping()) ({ mx, my } = this.held.axis());
     const now = this.time.now;
     if (mx !== this.lastInput.mx || my !== this.lastInput.my || ((mx || my) && now - this.lastInput.at > 250)) {
       net.send("input", { mx, my });

@@ -2,6 +2,7 @@ import { CLASSES, type ClassId, type Stats, type StatKey } from "./classes";
 import { BASE_ITEMS, effStats, type Item, type ItemStats, type Slot } from "./items";
 import { MAX_LEVEL, STAT_POINTS_PER_LEVEL } from "./constants";
 import type { MobDef } from "./mobs";
+import { BAL, bossHpLevelMult, mobHpAt } from "./balance";
 
 /** Начало «длинного хвоста»: до этого уровня кривая прежняя (старые сохранения ≤30 валидны без пересчёта). */
 export const XP_TAIL_FROM = 30;
@@ -84,7 +85,9 @@ export const STAT_K = {
   agiCrit: 0.002, // Ловкость: шанс крита за очко
   agiDodge: 0.0006, // Ловкость: уклонение за очко
   agiRanged: 0.005, // Ловкость: +% урона дальнего боя (магу)
-  intSkill: 0.0015, // Интеллект: +% силы умений за очко
+  // Интеллект: +% силы умений за очко. Был 0.0015: Интеллект — уже главная характеристика (mainK), второй множитель от него
+  // давал заклинателям и лекарям урон ~L³ (×1.6 к росту 30→100 сверх оружия) — задача 45.
+  intSkill: 0.0005,
   vitHp: 7, // Выносливость: здоровье за очко
   vitArmor: 0.35, // Выносливость: броня за очко
 };
@@ -140,8 +143,9 @@ export interface MobStats {
 }
 export function mobStats(def: MobDef, level: number): MobStats {
   return {
-    maxHp: Math.round((30 + level * 22 + level * level * 0.6) * def.hp),
-    dmg: (4 + level * 2.6) * def.dmg,
+    // кривая HP — data/balance.json mob.hp (BALANCE.md «Цели боя»)
+    maxHp: Math.round(mobHpAt(level) * def.hp * (def.boss ? bossHpLevelMult(level) : 1)),
+    dmg: (BAL.mob.dmg[0] + level * BAL.mob.dmg[1]) * def.dmg,
     armor: Math.round(level * 2.5 * def.armor),
     xp: Math.round(mobXpBase(level) * def.xp),
     gold: [Math.round(level * def.xp), Math.round(level * 3 * def.xp) + 2],

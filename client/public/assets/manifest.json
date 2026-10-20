@@ -179,6 +179,10 @@
   },
   "nude_reaver": {
    "frame": 32
+  },
+  "chaos_knight": {
+   "frame": 128,
+   "cols": 24
   }
  },
  "objects": {
@@ -2638,6 +2642,7 @@
   "shadow_blob",
   "slash",
   "ring",
-  "target"
+  "target",
+  "chaos_halo"
  ]
 }

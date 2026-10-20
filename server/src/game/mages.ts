@@ -17,6 +17,7 @@ import { reachable } from "./skills";
 import { addDot, dotsOf, removeDots, type CastCtx } from "./umbrath";
 import { applyHaste, applySlow, applyWeaken } from "./effects";
 import { World, type Actor, type HitOpts } from "./World";
+import { leechMult } from "../../../shared/balance";
 
 interface St {
   // Боевой маг
@@ -24,7 +25,7 @@ interface St {
   shock: Map<string, number>;
   barrier: { until: number; absorbed: number } | null;
   escapeReady: number;
-  burns: Map<string, { dmg: number; until: number }>;
+  burns: Map<string, { dmg: number; left: number; until: number }>;
   // Чернокнижник
   hex: Map<string, { until: number; pct: number }>;
   shards: number; shardUntil: number;
@@ -422,11 +423,11 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
   }
   if (src.cls !== "warlock") return;
   const s = st(src);
-  if (s.metaUntil > w.time && s.metaLeech > 0) w.heal(src, Math.round((v * s.metaLeech) / 100), false);
+  if (s.metaUntil > w.time && s.metaLeech > 0) w.heal(src, Math.round(((v * s.metaLeech) / 100) * leechMult(src.level)), false);
   // тик проклятия (см. addDot): фиксированный урон без крита и срыва скрытности
   if (!(o.flat !== undefined && o.noBreak && o.noProc && o.canCrit === false)) return;
-  if (rk(src, "wl_life_tap")) w.heal(src, Math.round((v * pv(src, "wl_life_tap").pct) / 100), false);
-  if (o.kind === "blood" && rk(src, "wl_siphon")) w.heal(src, Math.round((v * pv(src, "wl_siphon").heal) / 100));
+  if (rk(src, "wl_life_tap")) w.heal(src, Math.round(((v * pv(src, "wl_life_tap").pct) / 100) * leechMult(src.level)), false);
+  if (o.kind === "blood" && rk(src, "wl_siphon")) w.heal(src, Math.round(((v * pv(src, "wl_siphon").heal) / 100) * leechMult(src.level)));
   if (rk(src, "wl_eternal") && w.time >= s.eternalAt) {
     s.eternalAt = w.time + 1000; // не чаще раза в секунду, сколько бы целей и проклятий ни тикало
     const cut = pv(src, "wl_eternal").cd * 1000;
@@ -437,19 +438,30 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
   }
 }
 
-/** «Воспламенение»: огненный удар умения поджигает цель. */
+/**
+ * «Воспламенение»: огненный удар умения поджигает цель на {pct}% нанесённого урона (при крите — вдвое) за {dur} с.
+ * Новый поджог складывается с непрогоревшим остатком и снова делится на {dur} тиков: горение отдаёт ровно сумму поджогов,
+ * а не максимальный тик на весь бой (раньше обновление брало max(тик) и продлевало срок — горение от крит-метеора шло вечно).
+ */
 function ignite(w: World, p: Player, dst: Actor, v: number, crit: boolean) {
   const m = pv(p, "mg_ignite"), s = st(p);
-  const per = Math.max(1, Math.round((v * (m.pct / 100) * (crit ? 2 : 1)) / m.dur));
+  const add = v * (m.pct / 100) * (crit ? 2 : 1);
   const until = w.time + m.dur * 1000 + 500; // +0,5 с запаса: тик на границе срока не теряется, тиков ровно {dur}
   const cur = s.burns.get(dst.id);
-  if (cur && cur.until > w.time) { cur.dmg = Math.max(cur.dmg, per); cur.until = until; return; }
-  const b = { dmg: per, until };
+  if (cur && cur.until > w.time && cur.left > 0) {
+    cur.left += add;
+    cur.dmg = Math.max(1, Math.round(cur.left / m.dur));
+    cur.until = until;
+    return;
+  }
+  const b = { dmg: Math.max(1, Math.round(add / m.dur)), left: add, until };
   s.burns.set(dst.id, b);
   w.emit({ t: "buff", id: dst.id, k: "burn", ms: 400 });
   const tick = () => {
-    if (s.burns.get(dst.id) !== b || b.until <= w.time || w.gone(dst) || w.gone(p) || !w.hostile(p, dst)) { if (s.burns.get(dst.id) === b) s.burns.delete(dst.id); return; }
-    w.hit(p, dst, { flat: b.dmg, canCrit: false, kind: "fire", noBreak: true, noProc: true });
+    if (s.burns.get(dst.id) !== b || b.until <= w.time || b.left < 0.5 || w.gone(dst) || w.gone(p) || !w.hostile(p, dst)) { if (s.burns.get(dst.id) === b) s.burns.delete(dst.id); return; }
+    const d = Math.max(1, Math.round(Math.min(b.dmg, b.left)));
+    b.left -= d;
+    w.hit(p, dst, { flat: d, canCrit: false, kind: "fire", noBreak: true, noProc: true });
     w.later(1000, tick);
   };
   w.later(1000, tick);

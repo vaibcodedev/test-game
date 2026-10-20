@@ -4,12 +4,12 @@
     "mg_bolt": {
       "cls": "mage", "name": "Цепная молния", "slot": 4, "maxRank": 5, "reqLevel": 6, "req": { "id": "fireball", "rank": 2 },
       "target": "enemy", "range": 320, "cd": [7, -0.3], "mana": [18, 0],
-      "v": { "dmg": [150, 22], "jumps": [2, 0], "falloff": [20, 0], "radius": [150, 0] },
+      "v": { "dmg": [135, 20], "jumps": [2, 0], "falloff": [20, 0], "radius": [150, 0] },
       "desc": "Молния бьёт цель ({dmg}% урона) и перескакивает по ближайшим врагам в {radius} пикс. по прямой видимости (прыжков: {jumps}); каждый прыжок слабее на {falloff}%. Поражённые получают «шок».",
       "icon": { "glyph": "mg_bolt", "bg": "purple", "fg": "frost" }, "tree": [3, 2]
     },
     "mg_barrier": {
-      "cls": "mage", "name": "Чародейский барьер", "slot": 5, "maxRank": 5, "reqLevel": 12, "req": { "id": "blink", "rank": 1 },
+      "offGcd": true, "cls": "mage", "name": "Чародейский барьер", "slot": 5, "maxRank": 5, "reqLevel": 12, "req": { "id": "blink", "rank": 1 },
       "target": "self", "range": 0, "cd": [26, -1], "mana": [26, 0],
       "v": { "absorb": [20, 4], "dur": [8, 0] },
       "desc": "Барьер из чистой магии поглощает урон в {absorb}% вашего здоровья ({dur} с).",
@@ -18,14 +18,14 @@
     "mg_firewall": {
       "cls": "mage", "name": "Огненная стена", "slot": 6, "maxRank": 5, "reqLevel": 17, "req": { "id": "fireball", "rank": 3 },
       "target": "point", "range": 300, "cd": [17, -0.5], "mana": [30, 0],
-      "v": { "dmg": [80, 14], "len": [180, 0], "dur": [6, 0] },
+      "v": { "dmg": [55, 9], "len": [180, 0], "dur": [6, 0] },
       "desc": "Стена огня длиной {len} пикс. на {dur} с (поперёк прицела): каждую секунду {dmg}% огненного урона всем врагам в пламени (с «Воспламенением» поджигает).",
       "icon": { "glyph": "mg_firewall", "bg": "black", "fg": "fire" }, "tree": [0, 2]
     },
     "mg_storm": {
       "cls": "mage", "name": "Грозовой шторм", "slot": 7, "maxRank": 5, "reqLevel": 21, "req": { "id": "mg_conduction", "rank": 1 },
       "target": "point", "range": 320, "cd": [28, -1], "mana": [42, 0],
-      "v": { "dmg": [110, 16], "radius": [130, 0], "strikes": [10, 0] },
+      "v": { "dmg": [70, 10], "radius": [130, 0], "strikes": [10, 0] },
       "desc": "Грозовая туча в точке на 5 с: {strikes} ударов молний по случайным врагам в круге, каждый — {dmg}% урона и «шок».",
       "icon": { "glyph": "mg_storm", "bg": "purple", "fg": "frost" }, "tree": [5, 2]
     },
@@ -39,7 +39,7 @@
 
     "mg_ignite": {
       "cls": "mage", "name": "Воспламенение", "kind": "passive", "maxRank": 3, "reqLevel": 4, "req": { "id": "fireball", "rank": 1 },
-      "v": { "pct": [25, 12], "dur": [4, 0] },
+      "v": { "pct": [12, 5], "dur": [4, 0] },
       "desc": "Огненные умения поджигают цель: ещё {pct}% нанесённого урона за {dur} с (при крите — вдвое больше).",
       "icon": { "glyph": "mg_ignite", "bg": "black", "fg": "fire" }, "tree": [0, 0]
     },
@@ -96,7 +96,7 @@
     "wl_siphon": {
       "cls": "warlock", "name": "Похищение души", "slot": 5, "maxRank": 5, "reqLevel": 10, "req": { "id": "wl_hex", "rank": 1 },
       "target": "enemy", "range": 300, "cd": [10, -0.3], "mana": [20, 0],
-      "v": { "tick": [45, 8], "dur": [6, 0], "heal": [60, 10] },
+      "v": { "tick": [45, 8], "dur": [6, 0], "heal": [25, 5] },
       "desc": "Тянет жизнь из цели {dur} с: {tick}% урона в секунду, {heal}% нанесённого лечит вас.",
       "icon": { "glyph": "mg_siphon", "bg": "black", "fg": "green" }, "tree": [2, 2]
     },
@@ -117,7 +117,7 @@
     "wl_meta": {
       "cls": "warlock", "name": "Метаморфоза", "slot": 8, "maxRank": 5, "reqLevel": 27, "req": { "id": "wl_shards", "rank": 1 },
       "target": "self", "range": 0, "cd": [90, -4], "mana": [45, 0],
-      "v": { "dur": [12, 1], "dmg": [25, 5], "leech": [12, 2] },
+      "v": { "dur": [12, 1], "dmg": [40, 8], "leech": [12, 2] },
       "desc": "Демоническая форма на {dur} с: ваш урон (включая проклятия) +{dmg}%, {leech}% нанесённого урона возвращается здоровьем.",
       "icon": { "glyph": "mg_meta", "bg": "black", "fg": "red" }, "tree": [6, 1]
     },
@@ -148,7 +148,7 @@
     },
     "wl_life_tap": {
       "cls": "warlock", "name": "Тёмное питание", "kind": "passive", "maxRank": 3, "reqLevel": 14, "req": { "id": "wl_siphon", "rank": 1 },
-      "v": { "pct": [3, 2] },
+      "v": { "pct": [2, 1] },
       "desc": "Каждый тик ваших проклятий лечит вас на {pct}% нанесённого урона.",
       "icon": { "glyph": "mg_life_tap", "bg": "black", "fg": "red" }, "tree": [3, 2]
     },

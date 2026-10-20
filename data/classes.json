@@ -5,8 +5,8 @@
     "desc": "Танк Сольгарда: святой щит, провокация, оглушающий натиск. Блокирует урон и держит врагов на себе.",
     "trait": "Щит веры: блок и отражение урона, двойная угроза.",
     "base": { "str": 10, "agi": 5, "int": 3, "vit": 9 }, "perLevel": { "str": 1, "vit": 1 },
-    "mainStat": "str", "mainK": 0.025, "attackRange": 50, "attackCd": 1.0,
-    "attack": { "melee": true, "hit": "phys" }, "threat": 2,
+    "mainStat": "str", "mainK": 0.042, "attackRange": 50, "attackCd": 0.85,
+    "attack": { "melee": true, "hit": "phys" }, "threat": 3.5,
     "weaponTypes": ["sword", "axe", "mace"], "startWeapon": "sword"
   },
   "healer": {
@@ -14,7 +14,7 @@
     "desc": "Лекарь Сольгарда: лечение светом, благословения, щит веры и воскрешение павших. В одиночку разит святым светом.",
     "trait": "Свет: лечение и щиты тратят только ману.",
     "base": { "str": 3, "agi": 4, "int": 11, "vit": 7 }, "perLevel": { "int": 1, "vit": 1 },
-    "mainStat": "int", "mainK": 0.021, "attackRange": 220, "attackCd": 1.2,
+    "mainStat": "int", "mainK": 0.026, "attackRange": 220, "attackCd": 0.95,
     "attack": { "melee": false, "proj": "holy", "hit": "holy", "speed": 400 }, "threat": 1,
     "weaponTypes": ["scepter", "staff"], "startWeapon": "scepter"
   },
@@ -52,7 +52,7 @@
     "trait": "Вытягивание жизни: удары умений лечат рыцаря, угроза ×2.",
     "base": { "str": 10, "agi": 4, "int": 4, "vit": 9 }, "perLevel": { "str": 1, "vit": 1 },
     "mainStat": "str", "mainK": 0.025, "attackRange": 50, "attackCd": 1.05,
-    "attack": { "melee": true, "hit": "frost" }, "threat": 2,
+    "attack": { "melee": true, "hit": "frost" }, "threat": 3.5,
     "weaponTypes": ["sword", "axe", "mace"], "startWeapon": "sword"
   },
   "bloodweaver": {
@@ -87,7 +87,7 @@
     "desc": "Разбойник Умбрата: кровотечения, прыжок с разрезом, удары по нескольким целям. Чем тяжелее раны, тем страшнее ярость.",
     "trait": "Ярость от ран: урон растёт, когда здоровья мало.",
     "base": { "str": 11, "agi": 7, "int": 2, "vit": 7 }, "perLevel": { "str": 1, "vit": 1 },
-    "mainStat": "str", "mainK": 0.026, "attackRange": 50, "attackCd": 0.8,
+    "mainStat": "str", "mainK": 0.024, "attackRange": 50, "attackCd": 0.9,
     "attack": { "melee": true, "hit": "phys" }, "threat": 1, "rage": 0.5,
     "weaponTypes": ["axe", "dagger"], "startWeapon": "axe"
   }

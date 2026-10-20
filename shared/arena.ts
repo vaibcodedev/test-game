@@ -17,8 +17,7 @@ export const MODE_NAMES: Record<ArenaMode, string> = {
 };
 export const TEAM_SIZE: Record<ArenaMode, number> = { "1v1": 1, "2v2": 2 };
 
-/** Множитель урона игрока по игроку: PvP длится дольше, чем по мобам. */
-export const PVP_DAMAGE_MULT = 0.03;
+/** Урон и лечение героя по герою — модель PvP в data/balance.json pvp (shared/balance.ts): устойчивость по уровню, потолки крита и удара. */
 export const START_RATING = 1000;
 /** Бой с ботами (соперник не нашёлся): рейтинг меняется слабее — доля от обычного Elo. История и таблица — как обычно. */
 export const BOT_RATING_MULT = 0.5;

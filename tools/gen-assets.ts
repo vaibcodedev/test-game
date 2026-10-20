@@ -8,12 +8,14 @@ import path from "node:path";
 import { buildEquipIcons } from "./gen/equip";
 import { buildItemIcon, buildSkillIcon, FX_ART, ITEM_ICONS, OBJECT_ART, SKILL_ICONS } from "./gen/objects";
 import { buildLavaGlow, buildTileset, buildWater } from "./gen/tiles";
+import { buildChaosHalo, buildChaosKnightSheet, KNIGHT_COLS, KNIGHT_FRAME } from "./gen/raidboss";
 import { buildUnitSheet, UNIT_ART } from "./gen/units";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
 const manifest = {
-  units: {} as Record<string, { frame: number }>,
+  /** cols — число столбцов листа, если не 12 (рейд-босс: 24). */
+  units: {} as Record<string, { frame: number; cols?: number }>,
   objects: {} as Record<string, { w: number; h: number }>,
   icons: [] as string[],
   fx: [] as string[],
@@ -27,6 +29,9 @@ for (const [id, art] of Object.entries(UNIT_ART)) {
   buildUnitSheet(id).save(path.join(OUT, `units/${id}.png`));
   manifest.units[id] = { frame: art.frame };
 }
+// рейд-босс «Рогатый Рыцарь Хаоса»: кадр 128, 24 столбца (шаг, удар, смерть, удар в землю, рёв, стойка), см. tools/gen/raidboss.ts
+buildChaosKnightSheet().save(path.join(OUT, "units/chaos_knight.png"));
+manifest.units.chaos_knight = { frame: KNIGHT_FRAME, cols: KNIGHT_COLS };
 for (const [id, art] of Object.entries(OBJECT_ART)) {
   const pc = art();
   pc.save(path.join(OUT, `objects/${id}.png`));
@@ -56,6 +61,9 @@ for (const [id, art] of Object.entries(FX_ART)) {
   art().save(path.join(OUT, `fx/${id}.png`));
   manifest.fx.push(id);
 }
+// ореол за спиной рейд-босса (160×160, рисуется под боссом режимом ADD)
+buildChaosHalo().save(path.join(OUT, "fx/chaos_halo.png"));
+manifest.fx.push("chaos_halo");
 
 // Ручные PNG (не из генератора) тоже попадают в манифест: можно просто положить файл в папку.
 const pngSize = (f: string) => {

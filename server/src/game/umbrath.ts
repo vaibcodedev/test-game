@@ -17,6 +17,7 @@ import { bleedMods } from "./reaver";
 import { dotMult } from "./mages";
 import { applyHaste } from "./effects";
 import { World, type Actor } from "./World";
+import { leechMult } from "../../../shared/balance";
 
 export interface CastCtx {
   w: World;
@@ -149,7 +150,7 @@ export function castUmbrath(c: CastCtx): string | null {
       w.emit({ t: "aoe", k: "frost", x: t.x, y: t.y, r: 34 });
       const dealt = w.hit(p, t, { mult: v.dmg / 100, skill: true, kind: "frost" });
       c.threat(t, v.threat);
-      if (dealt > 0) w.heal(p, Math.round((dealt * v.leech) / 100));
+      if (dealt > 0) w.heal(p, Math.round(((dealt * v.leech) / 100) * leechMult(p.level)));
       return null;
     }
     case "dk_death_grip": {
@@ -198,7 +199,7 @@ export function castUmbrath(c: CastCtx): string | null {
         c.threat(m, v.threat);
         w.emit({ t: "chain", pts: [m.x, m.y - 12, u.x, u.y - 12], k: "heal" });
       }
-      if (got > 0) w.heal(p, Math.round((got * v.heal) / 100));
+      if (got > 0) w.heal(p, Math.round(((got * v.heal) / 100) * leechMult(p.level)));
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });
       return null;
     }
@@ -244,7 +245,7 @@ export function castUmbrath(c: CastCtx): string | null {
     }
     case "bw_sacrifice": {
       const a = resolveAlly(w, p, c.targetId);
-      const cost = sacrificeCost(p, Math.round((u.maxHp * v.cost) / 100));
+      const cost = sacrificeCost(p, Math.round((u.maxHp * v.cost) / 100), w);
       if (u.hp <= cost) return "Слишком мало здоровья для жертвы";
       if (a.player?.dead) return "Цель мертва";
       if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";

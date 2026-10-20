@@ -52,7 +52,8 @@ services.arena = new ArenaStore(WorldRoom.db.raw);
 gameServer.define(ROOM_NAME, WorldRoom);
 gameServer.define("arena", ArenaRoom);
 
-await gameServer.listen(PORT);
+// HOST — только для десктопа (127.0.0.1, без запроса брандмауэра); без переменной слушаем все интерфейсы, как раньше
+await gameServer.listen(PORT, process.env.HOST || undefined);
 await matchMaker.createRoom(ROOM_NAME, {});
 console.log(`[server] Пепельный Предел: http://localhost:${PORT}  (ws на том же порту)`);
 if (!fs.existsSync(path.join(dist, "index.html"))) console.log("[server] Клиент в режиме разработки: http://localhost:5173");

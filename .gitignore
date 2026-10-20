@@ -6,3 +6,6 @@ tools/out/
 *.sqlite-wal
 *.sqlite-shm
 .claude/worktrees/
+# десктоп (задача 116): промежуточная сборка и установщики
+desktop/out/
+release/

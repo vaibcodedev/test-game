@@ -2,13 +2,14 @@
  * Свойства легендарных предметов (data/legendaries.json -> _effects). Набор расширяемый: тип свойства = запись в _effects
  * (hook, параметры по ярусам, текст) + обработчик в HANDLERS. Значения уже подставлены по ярусу (shared/legendary.ts effectAt).
  * Хуки вызываются из World.hit (outgoing, absorb, beforeLethal, onHit, onDamaged) и World.killMob (onKill).
- * В PvP все дополнительные удары идут через World.hit и получают PVP_DAMAGE_MULT.
+ * В PvP все дополнительные удары идут через World.hit и получают модель PvP (data/balance.json pvp).
  */
 import { LEGENDARIES, type LegendaryEffect } from "../../../shared/legendary";
 import type { Actor, HitOpts, World } from "./World";
 import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effects";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
+import { leechMult } from "../../../shared/balance";
 
 type Eff = LegendaryEffect;
 const n = (e: Eff, k: string) => Number(e[k]);
@@ -146,7 +147,7 @@ export const HANDLERS: Record<string, Handler> = {
       src.selfDirty = true;
     },
   },
-  leech: { hit(w, src, _d, v, _c, e) { const h = Math.round(v * n(e, "pct")); if (h > 0) w.heal(src, h, false); } },
+  leech: { hit(w, src, _d, v, _c, e) { const h = Math.round(v * n(e, "pct") * leechMult(src.level)); if (h > 0) w.heal(src, h, false); } },
   mending: {
     hit(w, src, _d, _v, _c, e) {
       if (!roll(e)) return;

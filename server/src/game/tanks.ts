@@ -14,6 +14,7 @@ import { reachable } from "./skills";
 import type { CastCtx } from "./umbrath";
 import { applyRoot, applySlow } from "./effects";
 import type { Actor, HitOpts, World } from "./World";
+import { leechMult } from "../../../shared/balance";
 
 interface Mark { n: number; until: number }
 interface St {
@@ -170,7 +171,7 @@ export function castTank(c: CastCtx): string | null | undefined {
       w.emit({ t: "aoe", k: "reap", x: t.x, y: t.y, r: 46 });
       const low = t.unit.hp < t.unit.maxHp * (v.execute / 100);
       const dealt = w.hit(p, t, { mult: (v.dmg / 100) * (low ? v.mult : 1), skill: true, kind: "shadow", threat: 1 });
-      if (dealt > 0) w.heal(p, Math.round((dealt * v.heal) / 100));
+      if (dealt > 0) w.heal(p, Math.round(((dealt * v.heal) / 100) * leechMult(p.level)));
       if (w.isDead(t)) {
         w.heal(p, Math.round((u.maxHp * v.healKill) / 100));
         setCd(p, w, c.id, 2000);
@@ -405,7 +406,7 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
   const s = st(src);
   const vamp = rk(src, "dk_vampiric");
   if (vamp) {
-    const amt = Math.round((v * pv(src, "dk_vampiric").leech) / 100);
+    const amt = Math.round(((v * pv(src, "dk_vampiric").leech) / 100) * leechMult(src.level));
     const got = w.heal(src, amt, false);
     const over = amt - got;
     if (over > 0) {
@@ -419,7 +420,7 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
     const cut = pv(src, "dk_rune_fury").cd * 1000;
     for (const [id, ready] of src.cds) if (ready > w.time) setCd(src, w, id, Math.max(0, ready - w.time - cut));
   }
-  if (s.bladeUntil > w.time && s.bladeLeech > 0) w.heal(src, Math.round((v * s.bladeLeech) / 100), false);
+  if (s.bladeUntil > w.time && s.bladeLeech > 0) w.heal(src, Math.round(((v * s.bladeLeech) / 100) * leechMult(src.level)), false);
   if (!o.skill || w.isDead(src)) return;
   if (s.runes >= 5 && rk(src, "dk_rune_mastery") && !w.isDead(dst)) {
     s.runes = 0;

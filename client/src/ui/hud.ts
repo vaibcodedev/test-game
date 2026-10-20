@@ -15,7 +15,7 @@ import { CITIES, CITY_WALL } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
 import { MOBS } from "../../../shared/mobs";
 import { Anim, UnitKind, type ChatLine, type SelfState, type ToastMsg } from "../../../shared/protocol";
-import { activeSkills, canLearn, classSkills, SKILLS, type SkillDef } from "../../../shared/skills";
+import { activeSkills, canLearn, classSkills, SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import type { Net, UnitState } from "../net";
 import { rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
@@ -28,7 +28,8 @@ import { InspectUI } from "./inspect";
 import { enchantTotal, gearRows, legendBlock } from "./gearfx";
 import { CookUI, foodTip } from "./cook";
 import { QuestUI, TeleportUI } from "./cities";
-import { fillHelp, GameMenu, HOTKEYS } from "./gamemenu";
+import { fillHelp, GameMenu, keysHtml } from "./gamemenu";
+import { isTextField, keybinds, skillKeys } from "../game/keybinds";
 import { WorldMapView } from "./worldmap";
 import { plusBadge, SmithUI } from "./smith";
 import { BankUI, parseBankDrag } from "./bank";
@@ -155,7 +156,7 @@ export class Hud {
     this.petBox.hidden = true;
     this.death.hidden = true;
     this.tip.hidden = true;
-    this.chatInput.placeholder = "Enter — написать в чат";
+    this.chatInput.placeholder = `${keybinds.label("chat", 0)} — написать в чат`;
     this.chatInput.maxLength = 140;
     this.chatInput.id = "chat-input";
     this.chatBox.append(this.chatLog, this.chatInput);
@@ -212,6 +213,23 @@ export class Hud {
       } else if (e.key === "Escape") this.chatInput.blur();
     });
     document.addEventListener("mousemove", (e) => this.moveTip(e));
+    // кнопки, ползунки и флажки окон не держат фокус после клика мышью: иначе Пробел и Enter нажмут кнопку ещё раз, а стрелки сдвинут ползунок
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t instanceof HTMLElement && root.contains(t) && t.matches("button, input[type=range], input[type=checkbox], input[type=radio]")) t.blur();
+    }, true);
+    keybinds.onChange(() => this.refreshKeys());
+  }
+
+  /** Раскладка изменилась: справка, список клавиш в настройках, меню под картой, чат и панель умений. */
+  private refreshKeys() {
+    fillHelp(this.wins.help.querySelector(".body")!);
+    const dl = this.wins.settings.querySelector("dl.keys");
+    if (dl) dl.innerHTML = keysHtml();
+    this.menuBar.replaceChildren();
+    this.buildMenu();
+    this.chatInput.placeholder = `${keybinds.label("chat", 0)} — написать в чат`;
+    if (this.ctx?.net.self) this.renderSelf(this.ctx.net.self);
   }
 
   /** Выход из мира (смена героя): закрыть окна и очистить чат прошлого героя. */
@@ -257,7 +275,7 @@ export class Hud {
       this.bags.bind(n);
       this.quest.bind(n);
       this.tp.bind(n);
-      this.chatLine({ from: "", text: "Добро пожаловать! Клик по земле — идти, по врагу — атаковать. Умения: 1–4. Арена — клавиша P.", sys: true });
+      this.chatLine({ from: "", text: `Добро пожаловать! Клик по земле — идти, по врагу — атаковать. Умения: ${skillKeys(keybinds)}. Арена — клавиша ${keybinds.label("winArena", 0)}.`, sys: true });
     }
     this.arena.bind(n);
     if (!this.tradeBound) { this.tradeBound = true; this.trade.bind(n); }
@@ -275,9 +293,9 @@ export class Hud {
     this.player.style.boxShadow = r ? `0 0 0 1px #000, 0 0 14px ${r.color}66` : "";
   }
 
+  /** Печатают ли сейчас: хоткеи и движение молчат только в текстовом поле, ползунок, флажок или кнопка в фокусе не мешают. */
   isTyping() {
-    const a = document.activeElement;
-    return !!a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
+    return isTextField(document.activeElement);
   }
   focusChat() {
     this.chatInput.focus();
@@ -388,7 +406,7 @@ export class Hud {
   }
   /** Меню под мини-картой: текстовые пункты с горячей клавишей справа. */
   private buildMenu() {
-    const items: [string, string, string, string][] = [["inv", "Сумка", "I", "Сумка"], ["skills", "Умения", "K", "Умения"], ["map", "Карта", "M", "Карта мира"], ["menu", "Меню", "Esc", "Игровое меню"]];
+    const items: [string, string, string, string][] = [["inv", "Сумка", keybinds.label("winInv", 0), "Сумка"], ["skills", "Умения", keybinds.label("winSkills", 0), "Умения"], ["map", "Карта", keybinds.label("winMap", 0), "Карта мира"], ["menu", "Меню", keybinds.label("escape", 0), "Игровое меню"]];
     for (const [k, text, key, label] of items) {
       const b = el("button", "btn mbtn", `<span class="ml">${text}</span><kbd>${key}</kbd>`);
       b.title = key ? `${label} (${key})` : label;
@@ -402,7 +420,6 @@ export class Hud {
       this.uiScale = Math.min(150, Math.max(80, Number(localStorage.getItem("uiScale")) || 100));
       this.chatSize = Math.min(22, Math.max(14, Number(localStorage.getItem("chatSize")) || 14));
     } catch {}
-    const keys = HOTKEYS;
     body.innerHTML = `<div class="set-row"><label for="set-scale">Масштаб интерфейса</label><input id="set-scale" type="range" min="80" max="150" step="5"><output id="set-scale-v"></output></div>
       <div class="set-row"><label for="set-chat">Размер шрифта чата</label><input id="set-chat" type="range" min="14" max="22" step="1"><output id="set-chat-v"></output></div>
       <div class="set-row"><label for="set-vol">Громкость звуков</label><input id="set-vol" type="range" min="0" max="100" step="5"><output id="set-vol-v"></output></div>
@@ -416,7 +433,7 @@ export class Hud {
       <p class="muted set-note">${esc(GEAR_FX.setting.note)}</p>
       <div class="set-row"><button class="btn" id="set-resetwin">Сбросить расположение окон</button></div>
       <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Горячие клавиши</h3>
-      <dl class="keys">${keys.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>`;
+      <dl class="keys">${keysHtml()}</dl>`;
     body.querySelector<HTMLButtonElement>("#set-resetwin")!.onclick = () => resetWindowPositions();
     const sc = body.querySelector<HTMLInputElement>("#set-scale")!, ch = body.querySelector<HTMLInputElement>("#set-chat")!;
     sc.value = String(this.uiScale);
@@ -571,9 +588,11 @@ export class Hud {
   }
   skillTip(def: SkillDef, s: SelfState): string {
     const r = s.skills[def.id] || 0;
-    const lines = [`<div class="t">${def.name}</div>`, `<div class="d">${def.kind === "active" ? `Активное · клавиша ${(def.slot ?? 0) + 1}` : "Пассивное"} · ранг ${r}/${def.maxRank}</div>`];
+    // клавиша — по месту умения среди активных (так его вызывает панель), а не по полю slot, и по раскладке игрока
+    const key = def.kind === "active" ? keybinds.slotLabel(activeSkills(s.cls).findIndex((d) => d.id === def.id)) : "";
+    const lines = [`<div class="t">${def.name}</div>`, `<div class="d">${def.kind === "active" ? `Активное${key ? ` · клавиша ${key}` : ""}` : "Пассивное"} · ранг ${r}/${def.maxRank}</div>`];
     lines.push(`<div>${def.desc(Math.max(1, r))}</div>`);
-    if (def.kind === "active") lines.push(`<div class="d">Мана: ${def.mana!(Math.max(1, r))} · Перезарядка: ${def.cd!(Math.max(1, r)).toFixed(1)} с${def.range ? ` · Дальность: ${Math.round(def.range / TILE)} кл.` : ""}</div>`);
+    if (def.kind === "active") lines.push(`<div class="d">Мана: ${skillMana(def, r, s.level)} · Перезарядка: ${def.cd!(Math.max(1, r)).toFixed(1)} с${def.range ? ` · Дальность: ${Math.round(def.range / TILE)} кл.` : ""}</div>`);
     if (r > 0 && r < def.maxRank) lines.push(`<div class="st">След. ранг: ${def.desc(r + 1)}</div>`);
     const why = canLearn(def, s.skills, s.level, s.skillPoints);
     if (why && r < def.maxRank) lines.push(`<div class="warn">${why}</div>`);
@@ -616,14 +635,14 @@ export class Hud {
     this.bar.innerHTML = "";
     activeSkills(s.cls).forEach((def, i) => {
       const r = s.skills[def.id] || 0;
-      const b = el("button", `slot ${r ? "" : "locked"}`, `<img src="${icon(def.icon)}" alt=""><kbd>${i + 1}</kbd><i class="cd" data-cd="${def.id}" style="transform:scaleY(0)"></i><span class="cdt" data-cdt="${def.id}"></span>`);
+      const b = el("button", `slot ${r ? "" : "locked"}`, `<img src="${icon(def.icon)}" alt=""><kbd>${keybinds.slotLabel(i)}</kbd><i class="cd" data-cd="${def.id}" style="transform:scaleY(0)"></i><span class="cdt" data-cdt="${def.id}"></span>`);
       b.dataset.skill = def.id;
       b.onclick = () => this.ctx.useSkill(i);
       this.tipFor(b, () => this.skillTip(def, net.self!));
       this.bar.append(b);
     });
     this.bar.append(el("span", "sep"));
-    for (const [base, key] of [["hp_potion", "Q"], ["mp_potion", "E"]]) {
+    for (const [base, key] of [["hp_potion", keybinds.label("potionHp", 0)], ["mp_potion", keybinds.label("potionMp", 0)]]) {
       const qty = s.inventory.reduce((a, it) => a + (it && it.base === base ? it.qty ?? 1 : 0), 0);
       const b = el("button", `slot ${qty ? "" : "empty"}`, `<img src="${icon(BASE_ITEMS[base].icon)}" alt=""><kbd>${key}</kbd><span class="qty">${qty}</span>`);
       b.onclick = () => this.ctx.usePotion(base);
@@ -635,19 +654,19 @@ export class Hud {
       const mid = s.mount ?? "";
       const md = MOUNTS[mid];
       const mounted = !!(this.ctx.net.unit(s.id)?.mount);
-      const b = el("button", `slot ${md ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${mounted ? "⤓" : "♞"}</span><kbd>X</kbd>`);
+      const b = el("button", `slot ${md ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${mounted ? "⤓" : "♞"}</span><kbd>${keybinds.label("mount", 0)}</kbd>`);
       b.onclick = () => this.ctx.toggleMount?.();
-      this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">Скорость ×${md.speed} · призыв 2 с, стоя на месте. X — сесть/слезть, Shift+X — сменить. Не в бою, не на арене.</div>` : `<div class="t">Маунт</div><div class="d">Бурый конь — с 10 уровня</div>`);
+      this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">Скорость ×${md.speed} · призыв 2 с, стоя на месте. ${keybinds.label("mount", 0)} — сесть/слезть, ${keybinds.label("mountNext", 0)} — сменить. Не в бою, не на арене.</div>` : `<div class="t">Маунт</div><div class="d">Бурый конь — с 10 уровня</div>`);
       this.bar.append(b);
     }
     {
       const pd = PETS[s.pet ?? ""];
       const rec = s.pets?.[s.pet ?? ""];
       const out = !!this.ctx.net.unit(petUnitId(s.id));
-      const b = el("button", `slot ${pd ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${out ? "✕" : "🐾"}</span><kbd>G</kbd>`);
+      const b = el("button", `slot ${pd ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${out ? "✕" : "🐾"}</span><kbd>${keybinds.label("pet", 0)}</kbd>`);
       b.onclick = () => this.ctx.togglePet?.();
       this.tipFor(b, () => pd && rec
-        ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>G — призвать (2 с) / отпустить, Shift+G — сменить. Погиб — призыв через 60 с. Не на арене.</div>`
+        ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${keybinds.label("pet", 0)} — призвать (2 с) / отпустить, ${keybinds.label("petNext", 0)} — сменить. Погиб — призыв через 60 с. Не на арене.</div>`
         : `<div class="t">Питомец</div><div class="d">Волчонок — с 5 уровня. Другие — у торговки или редкая добыча.</div>`);
       this.bar.append(b);
     }
@@ -1135,7 +1154,7 @@ export class Hud {
         cdEl.style.transform = `scaleY(${Math.min(1, left / total)})`;
         txt.textContent = left > 0 ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : "";
         const slot = cdEl.parentElement!;
-        slot.classList.toggle("nomana", !!me && me.mp < def.mana!(Math.max(1, self.skills[def.id] || 1)) && !!self.skills[def.id]);
+        slot.classList.toggle("nomana", !!me && me.mp < skillMana(def, self.skills[def.id] || 1, self.level) && !!self.skills[def.id]);
       }
     }
     this.arena.frame(info.units);

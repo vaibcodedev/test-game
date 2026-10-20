@@ -14,6 +14,7 @@ import type { Player } from "./Player";
 import { addDot, dots, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
 import type { Actor, HitOpts, World } from "./World";
+import { leechMult } from "../../../shared/balance";
 
 interface St {
   /** «Стойка стрелка»: где и с какого момента стоит герой. */
@@ -500,7 +501,7 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
   // ---------- Тёмный следопыт ----------
   // тик проклятия (фиксированный урон тенью без эффектов): «Усиление проклятий» лечит; «Взрыв проклятий» — не тик, не лечит
   if (o.flat !== undefined && o.noProc && o.noBreak && o.kind === "shadow") {
-    if (!bursting && rk(src, "dr_curse_power")) w.heal(src, Math.round((v * pv(src, "dr_curse_power").leech) / 100), false);
+    if (!bursting && rk(src, "dr_curse_power")) w.heal(src, Math.round(((v * pv(src, "dr_curse_power").leech) / 100) * leechMult(src.level)), false);
     return;
   }
   if (!strike || o.noBreak) return;
