@@ -3,7 +3,8 @@ import Phaser from "phaser";
 import { Anim, Dir, type Fx } from "../../../shared/protocol";
 import { net } from "../net";
 import { DEPTH } from "./terrain";
-import { FONT, type UnitView } from "./UnitView";
+import type { UnitView } from "./UnitView";
+import { placeText, worldText } from "./worldText";
 import type { Hud } from "../ui/hud";
 
 type Pose = "swing" | "slam" | "roar" | "idle";
@@ -52,7 +53,7 @@ export class RaidBoss {
       case "yell": {
         const v = this.unit(f.id);
         if (!v) return true;
-        const t = this.scene.add.text(v.x, v.y, f.text, { fontFamily: FONT, fontSize: "16px", fontStyle: "600", color: "#ff9a3a", stroke: "#200800", strokeThickness: 6, resolution: 4, align: "center", wordWrap: { width: 280 } }).setOrigin(0.5, 1).setDepth(DEPTH.top);
+        const t = placeText(worldText(this.scene, 0, 0, f.text, "plain", { fontSize: "16px", fontStyle: "600", color: "#ff9a3a", stroke: "#200800", strokeThickness: 6, align: "center", wordWrap: { width: 280 } }).setDepth(DEPTH.top), v.x, v.y, 0.5, 1);
         this.yells.push({ t, id: f.id, until: this.scene.time.now + Math.max(4000, 60 * f.text.length) });
         (this.scene.registry.get("hud") as Hud | undefined)?.chatLine({ from: v.u.name, text: f.text, sys: false, boss: true });
         return true;
@@ -76,7 +77,7 @@ export class RaidBoss {
     // реплики
     for (const y of this.yells) {
       const b = this.unit(y.id);
-      if (b) y.t.setPosition(Math.round(b.x), Math.round(b.y - 0.95 * b.frame));
+      if (b) placeText(y.t, b.x, b.y - 0.95 * b.frame, 0.5, 1);
       const left = y.until - now;
       y.t.setAlpha(left < 500 ? Math.max(0, left / 500) : 1);
     }
@@ -90,8 +91,7 @@ export class RaidBoss {
     // тень, кольцо, подпись, полоска
     v.shadow.setScale(1.1 * k);
     v.ring.setScale(k);
-    v.label.setY(Math.round(v.y - 0.9 * v.frame));
-    if (v.titleText.text) v.titleText.setY(Math.round(v.label.y - v.label.height));
+    // подпись и титул босса ставит сам UnitView от метрик шрифта, как у героев (низ ника на 0.9 роста выше ног, nameRise); здесь — без полоски
     v.bar.clear();
     // анимация
     const sp = v.sprite, cur = sp.anims.currentAnim?.key ?? "";

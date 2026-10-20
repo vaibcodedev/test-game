@@ -24,6 +24,10 @@ body {
   display: block;
   image-rendering: pixelated;
 }
+/* Курсор игры: золотая стрелка (токены курсоров — tokens.css). В мире вид по цели ставит setCursor() из game/cursor.ts, у полей ввода — свой. */
+html, body, #game canvas {
+  cursor: var(--cur-arrow);
+}
 #ui {
   position: fixed;
   inset: 0;

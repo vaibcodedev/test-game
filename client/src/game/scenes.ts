@@ -4,7 +4,7 @@ import data from "../../../data/scenes.json";
 import { TILE } from "../../../shared/constants";
 import { TOWN, walkable, type WorldMap } from "../../../shared/map";
 import { DEPTH } from "./terrain";
-import { FONT } from "./UnitView";
+import { placeText, scaleText, worldText } from "./worldText";
 
 const cx = (o: number) => (TOWN.x + o) * TILE + 16;
 const cy = (o: number) => (TOWN.y + o) * TILE + 16;
@@ -63,7 +63,7 @@ export class Scenes {
     const s = sc.add.sprite(x, y, `u_${tex}`, 0).setOrigin(0.5, 30 / 32).setScale(scale).setTint(tint);
     const shadow = sc.add.image(x, y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5).setScale(scale);
     const bg = sc.add.graphics();
-    const txt = sc.add.text(0, 0, "", { fontFamily: FONT, fontSize: "9px", fontStyle: "600", color: "#2a1a10", stroke: "#fff4dc", strokeThickness: 1, resolution: 4, align: "center" }).setOrigin(0.5, 1);
+    const txt = worldText(sc, 0, 0, "", "plain", { fontSize: "9px", fontStyle: "600", color: "#2a1a10", stroke: "#fff4dc", strokeThickness: 1, align: "center" });
     const bubble = sc.add.container(x, y, [bg, txt]).setDepth(DEPTH.top - 4).setVisible(false);
     const a: Actor = { s, shadow, bubble, txt, bg, tex, x, y, shown: "" };
     this.actors.push(a);
@@ -73,7 +73,7 @@ export class Scenes {
   private mkNotes(x: number, y: number, every: number): Notes {
     const n = Math.ceil(2.4 / every) + 1;
     const pool = Array.from({ length: n }, () =>
-      this.sc.add.text(0, 0, "♪", { fontFamily: FONT, fontSize: "11px", fontStyle: "700", color: "#ffe9a0", stroke: "#120a10", strokeThickness: 3, resolution: 4 }).setOrigin(0.5).setDepth(DEPTH.top - 6));
+      worldText(this.sc, 0, 0, "♪", "plain", { fontSize: "11px", fontStyle: "700", color: "#ffe9a0", stroke: "#120a10", strokeThickness: 3 }).setDepth(DEPTH.top - 6));
     return { x, y, every, pool };
   }
 
@@ -118,12 +118,13 @@ export class Scenes {
     if (a.shown !== text) {
       a.shown = text;
       a.txt.setText(text);
-      const w = a.txt.width + 10, h = a.txt.height + 6;
-      a.bg.clear().fillStyle(0xfff4dc, 0.95).lineStyle(1.5, 0x3a2418, 1).fillRoundedRect(-w / 2, -h - 3, w, h, 4).strokeRoundedRect(-w / 2, -h - 3, w, h, 4);
+      // облако и текст в целых пикселях: левый край облака — целое, текст на 5 px правее, низ текста на 6 px выше нижнего края
+      const w = a.txt.width + 10, h = a.txt.height + 6, x0 = -Math.round(w / 2);
+      a.bg.clear().fillStyle(0xfff4dc, 0.95).lineStyle(1.5, 0x3a2418, 1).fillRoundedRect(x0, -h - 3, w, h, 4).strokeRoundedRect(x0, -h - 3, w, h, 4);
       a.bg.fillTriangle(-3, -3, 3, -3, 0, 2);
-      a.txt.setPosition(0, -6);
+      a.txt.setPosition(x0 + 5, -6 - a.txt.height);
     }
-    a.bubble.setPosition(a.x, a.y - (34 * a.s.scaleY + 2)).setVisible(true);
+    a.bubble.setPosition(Math.round(a.x), Math.round(a.y - (34 * a.s.scaleY + 2))).setVisible(true);
   }
 
   private emit(n: Notes, t: number) {
@@ -139,7 +140,9 @@ export class Scenes {
       const h = Math.sin(slot * 12.9898) * 43758.5453;
       const r = h - Math.floor(h);
       const k = age / life;
-      o.setVisible(true).setPosition(n.x + (r - 0.5) * 22 + Math.sin(age * 3 + r * 6) * 4, n.y - age * 14).setAlpha(1 - k * k).setText(r > 0.5 ? "♪" : "♫").setScale(0.9 + r * 0.4);
+      o.setVisible(true).setAlpha(1 - k * k).setText(r > 0.5 ? "♪" : "♫");
+      scaleText(o, 0.9 + r * 0.4);
+      placeText(o, n.x + (r - 0.5) * 22 + Math.sin(age * 3 + r * 6) * 4, n.y - age * 14, 0.5, 0.5); // каждый кадр, в целые пиксели
     });
   }
 

@@ -91,5 +91,18 @@
   --win-l: 640px;
   --win-xl: 760px;
   --set-ctl-w: 200px;
+  /* рамка окон и диалогов (border-image) и разделитель заголовка: PNG из client/public/ui, Kenney Fantasy UI Borders (CC0), вариант B — рамка 11, разделитель 0.
+     --frame-w — размер угла рамки в px картинки (и толщина её области), --frame-slice — то же числом для border-image-slice;
+     --div-h — высота разделителя, --div-cap — ширина его украшения справа. Штрих рамки 2 px = пиксель шрифта заголовков ×2.
+     Вариант @2x (штрих 4 px): значения ×2 (24px, 24, 44px, 32px) и имена файлов *@2x.png в kit.css (рамка .win/.dialog, разделители .win > h2 и .dialog-head); padding окон тогда не меньше --frame-w. */
+  --frame-w: 12px;
+  --frame-slice: 12;
+  --div-h: 22px;
+  --div-cap: 16px;
+  /* курсоры (Kenney Cursor Pixel Pack, CC0, золотые; client/public/ui/cursors): стрелка, рука — кнопки и ссылки, перчатка — перетаскивание окна.
+     В мире вид курсора по цели ставит setCursor() из game/cursor.ts (меч — враг, рука — NPC, перчатка — добыча) */
+  --cur-arrow: url("/ui/cursors/cursor_arrow.png") 2 0, default;
+  --cur-pointer: url("/ui/cursors/cursor_talk.png") 10 2, pointer;
+  --cur-grab: url("/ui/cursors/cursor_take.png") 16 16, grab;
   color-scheme: dark;
 }

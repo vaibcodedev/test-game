@@ -151,7 +151,7 @@
   background: #3a2a1a;
   border: 1px solid var(--gold);
   color: var(--gold);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 
 .hud-pet {
@@ -187,7 +187,7 @@
   top: 112px;
 }
 .hud-target.inspectable {
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .hud-target.inspectable:hover {
   border-color: var(--gold);
@@ -281,7 +281,7 @@
   background: rgba(18, 10, 16, 0.7);
   border: 1px solid var(--gold);
   border-radius: var(--r-1);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .hud-mini .mini-toggle:hover {
   background: rgba(60, 40, 20, 0.9);
@@ -315,7 +315,7 @@
   border: 1px solid var(--line-hi);
   border-radius: var(--r-2);
   background: var(--well);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
   padding: 0;
 }
 .slot img {

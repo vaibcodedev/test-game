@@ -25,7 +25,9 @@ import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
-import { FONT, UnitView } from "./UnitView";
+import { UnitView } from "./UnitView";
+import { placeText, syncTextRes, worldText } from "./worldText";
+import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
 import { resolveCast, type CastUnit } from "./castResolve";
@@ -73,6 +75,8 @@ export class GameScene extends Phaser.Scene {
   castHold = 0;
   targetId: string | null = null;
   private layoutAt = 0;
+  /** Масштаб камеры, под который сделаны текстуры мировых текстов (разрешение текста = zoom). */
+  private textZoom = 0;
   bagViews = new Map<string, Phaser.GameObjects.Image>();
   pendingPickup: string | null = null;
   /** NPC города (только в мире): торговка и распорядитель арены. */
@@ -138,6 +142,9 @@ export class GameScene extends Phaser.Scene {
     let userZoom: number | null = null;
     try { const z = Number(localStorage.getItem("zoom:v1")); if (z >= 2 && z <= 3) userZoom = z; } catch {}
     fitZoom();
+    // тексты мира (таблички) созданы в buildWorld ещё при zoom 1 — перерисовываем; новые создаются сразу с этим разрешением, дальше смену масштаба ловит update
+    this.textZoom = cam.zoom;
+    syncTextRes(cam.zoom);
     // колесо / жест щипка (ctrl+wheel) над игровым полем: масштаб 2–3 (опция «Колесо — масштаб»); над окнами интерфейса не работает
     const onWheel = (e: WheelEvent) => {
       if (!mouseOpts.zoomWheel || e.target !== this.game.canvas) return;
@@ -213,9 +220,9 @@ export class GameScene extends Phaser.Scene {
     const s = this.add.sprite(at.x, at.y, tex, 0).setOrigin(0.5, 30 / 32).setDepth(at.y);
     if (tint) s.setTint(tint);
     const shadow = this.add.image(at.x, at.y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5);
-    const label = { fontFamily: FONT, fontSize: "9px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 4, resolution: 4 };
-    const nameT = this.add.text(at.x, at.y - 31, name, label).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
-    const mark = this.add.text(at.x, at.y - 40, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "raid" ? "☀" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : "!", { ...label, fontSize: "10px", color: "#ffd84a" }).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
+    const label = { fontSize: "9px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 4 };
+    const nameT = placeText(worldText(this, 0, 0, name, "plain", label).setDepth(DEPTH.top - 5), at.x, at.y - 31, 0.5, 1);
+    const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "raid" ? "☀" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : "!", "plain", { ...label, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, at.y - 40, 0.5, 1);
     this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
     this.npcExtras = [shadow, nameT, mark];
     this.npcs.push({ sprite: s, kind, id, name });
@@ -243,7 +250,7 @@ export class GameScene extends Phaser.Scene {
       net.on("enc:say", (m) => {
         const n = find(m.id);
         if (!n) return;
-        const t = this.add.text(n.sprite.x, n.sprite.y - 52, m.text, { fontFamily: FONT, fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, resolution: 4, align: "center", wordWrap: { width: 160 } }).setOrigin(0.5, 1).setDepth(DEPTH.top);
+        const t = placeText(worldText(this, 0, 0, m.text, "plain", { fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, align: "center", wordWrap: { width: 160 } }).setDepth(DEPTH.top), n.sprite.x, n.sprite.y - 52, 0.5, 1);
         this.time.delayedCall(3500, () => t.destroy());
         this.hud.chatLine({ from: n.name ?? "", text: m.text, sys: false });
       }),
@@ -252,7 +259,9 @@ export class GameScene extends Phaser.Scene {
         if (!n) return;
         n.sprite.setAngle(0);
         const dx = m.x - n.sprite.x, dy = m.y - n.sprite.y;
-        this.tweens.add({ targets: [n.sprite, ...(n.objs ?? [])], x: `+=${dx}`, y: `+=${dy}`, duration: m.ms });
+        // надписи NPC идут вместе с ним, но стоят на целых пикселях каждый кадр (твин даёт дробные координаты)
+        const texts = (n.objs ?? []).filter((o): o is Phaser.GameObjects.Text => o instanceof Phaser.GameObjects.Text);
+        this.tweens.add({ targets: [n.sprite, ...(n.objs ?? [])], x: `+=${dx}`, y: `+=${dy}`, duration: m.ms, onUpdate: () => { for (const t of texts) if (t.scene) t.setPosition(Math.round(t.x), Math.round(t.y)); } });
         this.tweens.add({ targets: n.sprite, alpha: 0, delay: m.ms * 0.7, duration: m.ms * 0.3 });
         n.sprite.setDepth(m.y);
       }),
@@ -510,14 +519,15 @@ export class GameScene extends Phaser.Scene {
       window.removeEventListener("blur", onBlur);
     });
 
+    preloadCursors();
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       const id = this.pick(p.worldX, p.worldY);
       if (id !== this.hoverId) {
         if (this.hoverId) { const v = this.units.get(this.hoverId); if (v) v.hovered = false; }
         this.hoverId = id;
         if (id) { const v = this.units.get(id); if (v) v.hovered = true; }
-        this.game.canvas.style.cursor = id ? "crosshair" : "default";
       }
+      setCursor(this.cursorAt(p.worldX, p.worldY, id));
     });
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (!this.me || this.me.dead) return;
@@ -577,6 +587,15 @@ export class GameScene extends Phaser.Scene {
       this.clickMark.setPosition(wx, wy).setVisible(true).setAlpha(1).setScale(0.9);
       this.tweens.add({ targets: this.clickMark, alpha: 0, scale: 0.4, duration: 500 });
     });
+  }
+
+  /** Курсор над миром — те же зоны попадания, что у клика: враг — меч, NPC — рука, мешок и узел добычи — перчатка, иначе стрелка. */
+  private cursorAt(wx: number, wy: number, foe: string | null): CursorKind {
+    if (foe) return "attack";
+    for (const n of this.npcs) if (Math.hypot(n.sprite.x - wx, n.sprite.y - 14 - wy) < 18) return "talk";
+    for (const img of this.bagViews.values()) if (Math.hypot(img.x - wx, img.y - 10 - wy) < 16) return "take";
+    for (const n of this.map.nodes) if (!this.depletedNodes.has(n.id) && Math.hypot(n.x - wx, n.y - 16 - wy) <= 24) return "take";
+    return "arrow";
   }
 
   /** Враг ли юнит: мобы всегда; игроки — на арене из другой команды, в мире — противоположная фракция в спорной зоне или нейтральном городе (как World.hostile). */
@@ -845,7 +864,7 @@ export class GameScene extends Phaser.Scene {
   say(id: string, text: string) {
     const v = this.units.get(id);
     if (!v) return;
-    const t = this.add.text(v.x, v.y - 70, text, { fontFamily: FONT, fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, resolution: 4, align: "center", wordWrap: { width: 160 } }).setOrigin(0.5, 1).setDepth(DEPTH.top);
+    const t = placeText(worldText(this, 0, 0, text, "plain", { fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, align: "center", wordWrap: { width: 160 } }).setDepth(DEPTH.top), v.x, v.y - 70, 0.5, 1);
     this.bubbles.push({ t, id, until: this.time.now + 3500 });
     this.hud.chatLine({ from: v.u.name, text, sys: false });
   }
@@ -853,6 +872,13 @@ export class GameScene extends Phaser.Scene {
   // ---------- кадр ----------
   override update(_time: number, deltaMs: number) {
     const dt = Math.min(0.05, deltaMs / 1000);
+    // разрешение текстур мировых текстов (подписи, цифры, реплики, таблички) = масштаб камеры: тогда 1 тексель = 1 пиксель холста
+    // и NEAREST не выбрасывает тексели. Сверяем здесь, а не только в fitZoom: колесо, resize и tests/screenshot.ts (setZoom напрямую) меняют zoom по-разному
+    const zoom = this.cameras.main.zoom;
+    if (zoom !== this.textZoom) {
+      this.textZoom = zoom;
+      syncTextRes(zoom);
+    }
     this.updateAim();
     this.world.update(this.cameras.main);
     this.world.drift.x += dt * 6;
@@ -985,7 +1011,7 @@ export class GameScene extends Phaser.Scene {
     this.bubbles = this.bubbles.filter((b) => {
       const v = this.units.get(b.id);
       if (!v || now > b.until) { b.t.destroy(); return false; }
-      b.t.setPosition(v.x, v.y - (v.frame > 32 ? 76 : 44));
+      placeText(b.t, v.x, v.y - (v.frame > 32 ? 76 : 44), 0.5, 1); // каждый кадр, в целые пиксели: юнит движется
       return true;
     });
 

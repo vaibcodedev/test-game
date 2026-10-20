@@ -51,7 +51,7 @@
   background: linear-gradient(#2a2130, var(--card));
   border: 1px solid var(--line);
   border-radius: var(--r-3);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
   text-align: center;
 }
 .cs-slot:hover {
@@ -107,7 +107,7 @@
 }
 .cs-eq .cell {
   width: 32px;
-  cursor: default;
+  cursor: var(--cur-arrow);
 }
 .cs-eq .cell .plus {
   font-size: var(--fs-xs);
@@ -212,7 +212,7 @@
   height: 34px;
   border-radius: 50%;
   border: 2px solid var(--line);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
   padding: 0;
 }
 .look:hover {
@@ -261,19 +261,4 @@
   font-weight: var(--fw);
   word-spacing: var(--head-ws);
   color: var(--fg);
-}
-
-.shop-card .si-btns .btn {
-  flex-direction: column;
-  gap: var(--sp-0);
-  padding: var(--sp-1) var(--sp-1);
-  line-height: 1.15;
-}
-.shop-card .si-btns .btn .q {
-  color: var(--dim);
-  font-size: var(--fs);
-}
-.si-text b,
-.si-text span {
-  overflow-wrap: anywhere;
 }

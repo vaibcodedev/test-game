@@ -50,7 +50,7 @@
 .raid-rhp i { display: block; height: 100%; background: var(--self); }
 .raid-rn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
 .raid-row em { position: absolute; right: 4px; font-size: var(--fs-2xs); font-style: normal; color: #ff9a8a; }
-.raid-row.dead { cursor: pointer; opacity: 0.8; }
+.raid-row.dead { cursor: var(--cur-pointer); opacity: 0.8; }
 .raid-row.dead .raid-rn { color: #a08a8a; text-decoration: line-through; }
 .raid-row.dead:hover { background: rgba(255, 200, 80, 0.2); }
 .raid-leave { font-size: var(--fs-xs); padding: var(--sp-1) var(--sp-2); }

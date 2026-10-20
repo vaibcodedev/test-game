@@ -12,8 +12,10 @@ import { FOE_COLOR, factionColor } from "../../../shared/factions";
 import { P } from "../../../shared/palette";
 import { GearLayers, parseGear } from "./GearLayers";
 import { LEGENDARIES } from "../../../shared/legendary";
+import { capBand, placeText, worldText } from "./worldText";
 
-export const FONT = '"Rubik", "Trebuchet MS", sans-serif';
+/** Тёмная подложка рамок и щита — цвет «колодца» из палитры. */
+const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
 
@@ -70,9 +72,19 @@ export class UnitView {
   /** В толпе (режим «авто») у героев без уровня: имя остаётся, прячется только « · 100». */
   shortName = false;
   topY = 0;
+  /** Гигантский спрайт (рейд-босс, кадр 128): на сколько пикселей выше ног стоит низ ника; иначе подпись идёт от роста героя. Титул, рамка и разводка считаются от него так же, как у героев. */
+  private nameRise?: number;
+  /** Базовая линия и верх заглавных ника от верха его блока (пиксели мира): от них центруются рамка и щит. Постоянны, пока жив текст. */
+  private band: { base: number; cap: number };
+  /** Сколько пикселей блок подписи (титул, рамка, ник) поднимается над topY: считается в update от фактических размеров текста. */
+  private blockUp = 14;
   /** Ширина блока подписи для проверки перекрытий. */
   blockW(): number {
     return Math.max(this.label.visible ? this.label.width : 0, this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20);
+  }
+  /** Высота блока подписи для проверки перекрытий: от верхнего края титула (или ника) до низа полоски здоровья. */
+  blockH(): number {
+    return this.blockUp + 3;
   }
   /** Городской NPC (стражник, горожанин): не цель, без полоски здоровья. */
   readonly npc: boolean;
@@ -91,6 +103,7 @@ export class UnitView {
     const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_slime";
     this.frame = scene.textures.get(tex).get(0).width;
     const big = this.frame > 32;
+    if (this.frame >= 96) this.nameRise = 0.9 * this.frame;
     this.shadow = scene.add.image(u.x, u.y, "fx_shadow_blob").setScale(big ? 2.2 : 1, big ? 2 : 1).setDepth(DEPTH.ground + 5);
     this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 6).setScale(big ? 2 : 1);
     this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, 30 / 32);
@@ -99,14 +112,15 @@ export class UnitView {
       this.shadow.setScale(0.8);
     }
     this.lastAseq = u.aseq;
-    const color = u.kind === UnitKind.Player ? (isSelf ? "#ffe9a8" : "#a8e0ff") : u.kind === UnitKind.Boss ? "#ff8a5a" : u.kind === UnitKind.Pet ? "#8ae88a"
+    const color = u.kind === UnitKind.Player ? (isSelf ? P.fg : "#a8e0ff") : u.kind === UnitKind.Boss ? "#ff8a5a" : u.kind === UnitKind.Pet ? "#8ae88a"
       : u.kind === UnitKind.Guard ? "#ffc861" : u.kind === UnitKind.Citizen ? "#d8cfc0" : "#f0e6d2";
-    this.label = scene.add
-      .text(u.x, u.y, this.labelText(), { fontFamily: FONT, fontSize: u.kind === UnitKind.Boss ? "9px" : u.kind === UnitKind.Pet || u.kind === UnitKind.Citizen ? "6px" : "7px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 3, resolution: 4 })
-      .setOrigin(0.5, 1)
+    // origin слева-снизу: левый край ставится в целых пикселях мира (см. update)
+    this.label = worldText(scene, u.x, u.y, this.labelText(), u.kind === UnitKind.Boss ? "boss" : u.kind === UnitKind.Pet || u.kind === UnitKind.Citizen ? "small" : "name", { color })
+      .setOrigin(0, 1)
       .setDepth(DEPTH.top - 5);
+    this.band = capBand(this.label);
     this.bar = scene.add.graphics().setDepth(DEPTH.top - 6);
-    this.titleText = scene.add.text(u.x, u.y, "", { fontFamily: FONT, fontSize: "6px", color: "#f0c050", stroke: "#120a10", strokeThickness: 3, resolution: 4 }).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
+    this.titleText = worldText(scene, u.x, u.y, "", "title").setOrigin(0, 1).setDepth(DEPTH.top - 5);
     this.frameGfx = scene.add.graphics().setDepth(DEPTH.top - 7);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (a: Phaser.Animations.Animation) => {
       if (a.key.includes("-attack-")) {
@@ -268,7 +282,7 @@ export class UnitView {
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
     this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible(this.selected && !this.dead);
-    let top = this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
+    let top = this.nameRise !== undefined ? this.y - this.nameRise + 4 : this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
     // плавный переход к назначенному разводкой сдвигу
     const sk = Math.min(1, dt * 9);
     this.offX += (this.tgtX - this.offX) * sk;
@@ -277,17 +291,22 @@ export class UnitView {
     const lx = Math.round(this.x + this.offX);
     const top0 = top;
     top = top0 + Math.round(this.offY);
-    this.label.setPosition(lx, Math.round(top - 4));
     const lt = this.labelText();
     if (lt !== this.lastLabel) { this.lastLabel = lt; this.label.setText(lt); }
+    if (u.title !== this.lastTitle) { this.lastTitle = u.title; this.titleText.setText(u.title ? `«${u.title.replace(/ \(.*\)$/, "")}»` : ""); }
+    // Вся геометрия подписи — в целых пикселях мира и от фактической высоты блока ника (метрики шрифта + обводка), а не от констант.
+    // Левый край считается сам (origin 0,1): при origin 0.5 и нечётной ширине он падал бы на дробный пиксель, текст мылился и дрожал при ходьбе.
+    const lh = Math.round(this.label.height);
+    const nameY = Math.round(top - 4);
+    const left = lx - Math.round(this.label.width / 2);
+    this.label.setPosition(left, nameY);
     // на арене: союзники зелёные, враги красные; в нейтральном городе враг — цвет своей фракции, в PvP-зоне — красный
     if (u.kind === UnitKind.Player) {
       // в рейде обе фракции — союзники: никого не красим врагом
       const foe = !this.isSelf && net.kind !== "raid" && !!u.faction && !!net.self && u.faction !== net.self.faction;
-      const color = this.isSelf ? "#ffe9a8" : net.kind === "arena" && u.team ? (u.team === net.arena?.team ? P.ally : "#ff8a7a") : u.outlaw ? "#ff5a4a" : foe ? (this.inNeutralZone && u.faction ? factionColor(u.faction) : FOE_COLOR) : u.faction === "umbrath" ? factionColor("umbrath") : "#a8e0ff";
+      const color = this.isSelf ? P.fg : net.kind === "arena" && u.team ? (u.team === net.arena?.team ? P.ally : "#ff8a7a") : u.outlaw ? "#ff5a4a" : foe ? (this.inNeutralZone && u.faction ? factionColor(u.faction) : FOE_COLOR) : u.faction === "umbrath" ? factionColor("umbrath") : "#a8e0ff";
       if (color !== this.lastColor) { this.lastColor = color; this.label.setColor(color); }
     }
-    if (u.title !== this.lastTitle) { this.lastTitle = u.title; this.titleText.setText(u.title ? `«${u.title.replace(/ \(.*\)$/, "")}»` : ""); }
     // скрытность: себе и союзникам по команде — полупрозрачно, остальным — невидим
     const stealthy = !!(u.buffs & BUFF_STEALTH) && !this.dead && u.kind === UnitKind.Player;
     if (stealthy) {
@@ -308,27 +327,28 @@ export class UnitView {
     }
     if (!(this.isSelf ? overlay.selfNames : overlay.names) || (!this.isSelf && !this.nameOk)) this.label.setVisible(false);
     const showName = !this.dead && this.label.visible;
-    this.titleText.setVisible(showName && !!u.title).setPosition(lx, Math.round(top - 13));
+    const rank = u.frame ? rankById(u.frame) : undefined;
+    // Рамка (элита, ранг арены) — вокруг самого ника, а не вокруг его блока: блок несимметричен (сверху запас под акценты, снизу под хвосты
+    // букв и округление высоты). band даёт верх заглавных и базовую линию; от них до внутреннего края линии рамки — по 2 px сверху и снизу,
+    // сама линия 1 px (отсюда 3). Поля слева и справа равны (см. nameFrame).
+    const baseY = nameY - lh + this.band.base;
+    const frameTop = Math.floor(nameY - lh + this.band.cap) - 3, frameBot = baseY + 3;
+    const framed = showName && (!!u.elite || !!rank);
+    // Титул — над ником, его блок заходит на 1 px в пустое поле над заглавными (там запас шрифта под акценты, чернил нет);
+    // над рамкой — с зазором 1 px от её верха. Хвосты букв титула и обводки с ником и рамкой не соприкасаются.
+    const titleOn = showName && !!u.title;
+    const titleY = framed ? frameTop - 1 : nameY - lh + 1;
+    this.titleText.setVisible(titleOn).setPosition(lx - Math.round(this.titleText.width / 2), titleY);
+    // высота блока подписи для разводки (labelLayout): от верхнего края титула, рамки или ника до низа полоски
+    this.blockUp = Math.round(top - Math.min(framed ? frameTop : nameY - lh, titleOn ? titleY - Math.round(this.titleText.height) : Infinity));
     this.frameGfx.clear();
-    if (u.kind === UnitKind.Guard && showName) this.guardBadge(top, lx);
+    if (u.kind === UnitKind.Guard && showName) this.guardBadge(left, (baseY + nameY - lh + this.band.cap) / 2);
     this.torch(!this.dead && u.kind === UnitKind.Guard && nightLevel(Date.now()) > 0.35);
     if (u.elite && showName) {
-      const w = this.label.width + 6, h = 9;
-      const fx = Math.round(lx - w / 2), fy = Math.round(top - 4 - h + 1);
-      this.frameGfx.fillStyle(0x120a10, 0.55).fillRoundedRect(fx, fy, w, h, 3);
-      this.frameGfx.lineStyle(1, 0xf0c040, 1).strokeRoundedRect(fx, fy, w, h, 3);
-      this.frameGfx.fillStyle(0xf0c040, 1).fillRect(fx - 2, fy + h / 2 - 1, 2, 2).fillRect(fx + w, fy + h / 2 - 1, 2, 2);
+      this.nameFrame(left, frameTop, frameBot, 0xf0c040);
       if (this.lastColor !== "#ffd24a") { this.lastColor = "#ffd24a"; this.label.setColor("#ffd24a"); }
     }
-    const rank = u.frame ? rankById(u.frame) : undefined;
-    if (rank && showName) {
-      const w = this.label.width + 6, h = 9;
-      const fx = Math.round(lx - w / 2), fy = Math.round(top - 4 - h + 1);
-      const c = Phaser.Display.Color.HexStringToColor(rank.color).color;
-      this.frameGfx.fillStyle(0x120a10, 0.55).fillRoundedRect(fx, fy, w, h, 3);
-      this.frameGfx.lineStyle(1, c, 1).strokeRoundedRect(fx, fy, w, h, 3);
-      this.frameGfx.fillStyle(c, 1).fillRect(fx - 2, fy + h / 2 - 1, 2, 2).fillRect(fx + w, fy + h / 2 - 1, 2, 2);
-    }
+    if (rank && showName) this.nameFrame(left, frameTop, frameBot, Phaser.Display.Color.HexStringToColor(rank.color).color);
 
     // цвет: вспышка от удара и эффекты
     const b = u.buffs;
@@ -350,8 +370,8 @@ export class UnitView {
     if (this.aura) this.aura.setVisible(auraOn).setPosition(this.x, this.y - 12).setDepth(this.y - 1).setScale(this.frame > 32 ? 2.2 : 1.1);
     this.buffRings(this.dead ? 0 : b & (BUFF_WARCRY | BUFF_HASTE | BUFF_ENRAGE));
     if (b & BUFF_STUN && !this.dead) {
-      this.stun ??= this.scene.add.text(0, 0, "✦ ✦", { fontFamily: FONT, fontSize: "8px", color: "#fff070", stroke: "#000", strokeThickness: 2, resolution: 4 }).setOrigin(0.5).setDepth(DEPTH.top - 4);
-      this.stun.setVisible(true).setPosition(this.x + Math.sin(this.scene.time.now / 120) * 3, top - 14);
+      this.stun ??= worldText(this.scene, 0, 0, "✦ ✦", "name", { fontSize: "8px", fontStyle: "", color: "#fff070" }).setDepth(DEPTH.top - 4);
+      placeText(this.stun.setVisible(true), this.x + Math.sin(this.scene.time.now / 120) * 3, top - 14, 0.5, 0.5);
     } else this.stun?.setVisible(false);
 
     const gearOn = u.kind === UnitKind.Player && !this.dead && !(b & BUFF_STEALTH) && this.frame === 32;
@@ -407,12 +427,26 @@ export class UnitView {
     g.setVisible(this.sprite.alpha > 0).setPosition(Math.round(this.x), Math.round(this.y) - 1);
   }
 
-  /** Значок щита слева от имени: цвет города (красный, бирюзовый, синий) со стальной каймой. */
-  private guardBadge(top: number, lx: number) {
-    const c = this.u.sprite === "guard_desert" ? 0x2fb0a2 : this.u.sprite === "guard_snow" ? 0x4a8ae8 : 0xd02a34;
-    const bx = Math.round(lx - this.label.width / 2 - 9), by = Math.round(top - 14);
+  /** Рамка вокруг ника (элита, ранг арены) от fy до fb по вертикали (границы заданы в update по заглавным буквам ника).
+   *  По горизонтали — ровно по блоку ника с полями по 3 px слева и справа. Линия рамки в 1 px лежит на пикселях, а не на их границе;
+   *  усики по бокам — по середине высоты (у нечётной рамки 3 px, у чётной 2). */
+  private nameFrame(left: number, fy: number, fb: number, c: number) {
+    const w = this.label.width + 6, h = fb - fy;
+    const fx = left - 3;
     const g = this.frameGfx;
-    g.fillStyle(0x120a10, 0.9).fillRect(bx - 1, by - 1, 9, 11).fillRect(bx, by + 9, 7, 1).fillRect(bx + 1, by + 10, 5, 1);
+    g.fillStyle(WELL, 0.55).fillRoundedRect(fx, fy, w, h, 3);
+    g.lineStyle(1, c, 1).strokeRoundedRect(fx + 0.5, fy + 0.5, w - 1, h - 1, 3);
+    const nh = h % 2 ? 3 : 2, ny = fy + (h - nh) / 2;
+    g.fillStyle(c, 1).fillRect(fx - 2, ny, 2, nh).fillRect(fx + w, ny, 2, nh);
+  }
+
+  /** Значок щита слева от имени: цвет города (красный, бирюзовый, синий) со стальной каймой; cy — середина заглавных букв ника.
+   *  Щит с каймой занимает строки by-1..by+10 (середина by+5); полпикселя при нечётной разнице уходит вниз: остриё щита лёгкое, его масса выше середины. */
+  private guardBadge(left: number, cy: number) {
+    const c = this.u.sprite === "guard_desert" ? 0x2fb0a2 : this.u.sprite === "guard_snow" ? 0x4a8ae8 : 0xd02a34;
+    const bx = left - 9, by = Math.round(cy - 5);
+    const g = this.frameGfx;
+    g.fillStyle(WELL, 0.9).fillRect(bx - 1, by - 1, 9, 11).fillRect(bx, by + 9, 7, 1).fillRect(bx + 1, by + 10, 5, 1);
     g.fillStyle(0xaab4c4, 1).fillRect(bx, by, 7, 8).fillRect(bx + 1, by + 8, 5, 1).fillRect(bx + 2, by + 9, 3, 1);
     g.fillStyle(c, 1).fillRect(bx + 1, by + 1, 5, 7).fillRect(bx + 2, by + 8, 3, 1);
     g.fillStyle(0xffe08a, 1).fillRect(bx + 3, by + 2, 1, 5).fillRect(bx + 2, by + 3, 3, 1);

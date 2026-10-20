@@ -17,14 +17,21 @@
 .win.l { --win-w: var(--win-l); }
 .win.xl { --win-w: var(--win-xl); }
 .win.free { overflow: visible; max-height: none; } /* карта мира */
+/* Рамка окон и диалогов из PNG (Kenney Fantasy UI Borders, CC0; client/public/ui, вариант B, штрих 2 px): border-image ×2 к сетке пикселя, без размытия.
+   Рисуется поверх обычной рамки панели: если файл не загрузился, остаются border 2px --line, скругление и фон. Раскладка не меняется — толщина border
+   по-прежнему 2px, а угол картинки (--frame-w) ложится на отступ: у окна padding ≥ 12px, у диалога отступы шапки, тела и подвала ≥ 12px.
+   Заливки в картинке нет (без fill): фон окна — CSS --panel. Скругление убрано: углы картинки квадратные. */
+.win, .dialog { border-radius: 0; border-image: url("/ui/frame-b.png") var(--frame-slice) / var(--frame-w) stretch; image-rendering: pixelated; }
 .win > h2 {
   flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  margin: 0; padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line);
+  /* разделитель заголовка из PNG (вариант B) вместо линии border-bottom: растягиваемая линия слева, украшение справа; размеры — токены --div-h, --div-cap */
+  margin: 0; padding-bottom: var(--div-h);
+  background: url("/ui/divider-b-cap.png") right bottom / var(--div-cap) var(--div-h) no-repeat, url("/ui/divider-b-line.png") left bottom / calc(100% - var(--div-cap)) var(--div-h) no-repeat;
   font-family: var(--font-head); font-size: round(nearest, var(--fs-head-win), var(--hu)); font-weight: var(--fw); word-spacing: var(--head-ws); line-height: 1.2; color: var(--gold);
-  cursor: grab; touch-action: none; user-select: none;
+  cursor: var(--cur-grab); touch-action: none; user-select: none;
 }
 .win > h2 > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.win > h2:active { cursor: grabbing; }
+.win > h2:active { cursor: var(--cur-grab); }
 .win > .body {
   flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3);
   overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable;
@@ -42,12 +49,12 @@
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1h); flex-shrink: 0;
   min-height: var(--ctl-h); padding: var(--sp-1) var(--sp-3);
   background: var(--btn); border: 1px solid var(--line-hi); border-radius: var(--r-2);
-  color: var(--fg); font: inherit; font-size: var(--fs); font-weight: var(--fw-b); line-height: 1.2; text-align: center; cursor: pointer;
+  color: var(--fg); font: inherit; font-size: var(--fs); font-weight: var(--fw-b); line-height: 1.2; text-align: center; cursor: var(--cur-pointer);
 }
 .btn:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--gold); }
 .btn:active:not(:disabled) { background: var(--btn-active); transform: translateY(1px); }
 .btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: default; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: var(--cur-arrow); }
 .btn:is([aria-pressed="true"], [aria-selected="true"], .on, .active, .cur),
 .btn:is([aria-pressed="true"], [aria-selected="true"], .on, .active, .cur):hover:not(:disabled) { background: var(--sel); border-color: var(--gold); color: var(--gold); }
 .btn.primary { background: var(--btn-primary); border-color: var(--gold); }
@@ -72,12 +79,12 @@
 .x {
   flex: none; display: inline-grid; place-items: center; width: var(--ctl-h-sm); height: var(--ctl-h-sm); padding: 0;
   background: var(--btn); border: 1px solid var(--line-hi); border-radius: var(--r-2);
-  color: var(--dim); font-family: var(--font); font-size: var(--fs-lg); font-weight: var(--fw); line-height: 1; cursor: pointer;
+  color: var(--dim); font-family: var(--font); font-size: var(--fs-lg); font-weight: var(--fw); line-height: 1; cursor: var(--cur-pointer);
 }
 .x:hover:not(:disabled) { background: var(--btn-danger); border-color: var(--bad); color: var(--fg); }
 .x:active:not(:disabled) { background: var(--btn-active); transform: translateY(1px); }
 .x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.x:disabled { opacity: .45; cursor: default; }
+.x:disabled { opacity: .45; cursor: var(--cur-arrow); }
 
 /* ---------- вкладки .tabs / .tab (хелпер tabs() в ui/kit.ts) ---------- */
 .tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
@@ -85,13 +92,13 @@
 .tab {
   display: inline-flex; align-items: center; gap: var(--sp-1); min-height: var(--ctl-h); margin-bottom: -1px; padding: 0 var(--sp-3);
   background: none; border: 0; border-bottom: 2px solid transparent; border-radius: var(--r-2) var(--r-2) 0 0;
-  color: var(--dim); font: inherit; font-weight: var(--fw-b); white-space: nowrap; cursor: pointer;
+  color: var(--dim); font: inherit; font-weight: var(--fw-b); white-space: nowrap; cursor: var(--cur-pointer);
 }
 .tab:hover:not(:disabled):not([aria-selected="true"]) { color: var(--fg); background: var(--panel-2); border-bottom-color: var(--line-hi); }
 .tab:active:not(:disabled) { transform: translateY(1px); }
 .tab:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 .tab[aria-selected="true"] { color: var(--gold); background: var(--card); border-bottom-color: var(--gold); }
-.tab:disabled { opacity: .45; cursor: default; }
+.tab:disabled { opacity: .45; cursor: var(--cur-arrow); }
 .tab.drop { color: var(--gold); background: var(--sel); } /* банк: вещь тащат на вкладку */
 .tab .count { color: var(--dim); font-size: var(--fs-sm); font-weight: var(--fw); }
 .tabs.fill > .tab { flex: 1 1 0; justify-content: center; }
@@ -106,13 +113,13 @@
   flex: 1 1 0; min-width: 0; min-height: var(--ctl-h-sm); padding: var(--sp-1) var(--sp-2);
   background: none; border: 1px solid transparent; border-radius: var(--r-2);
   color: var(--dim); font: inherit; font-size: var(--fs-sm); font-weight: var(--fw-b); line-height: 1.2; text-align: center;
-  white-space: normal; overflow-wrap: anywhere; cursor: pointer;
+  white-space: normal; overflow-wrap: anywhere; cursor: var(--cur-pointer);
 }
 .seg-opt:hover:not(:disabled):not([aria-pressed="true"]) { color: var(--fg); background: var(--panel-2); }
 .seg-opt:active:not(:disabled) { transform: translateY(1px); }
 .seg-opt:focus-visible { outline: 2px solid var(--gold); outline-offset: 0; }
 .seg-opt[aria-pressed="true"] { color: var(--gold); background: var(--sel); border-color: var(--gold); }
-.seg-opt:disabled { opacity: .45; cursor: default; }
+.seg-opt:disabled { opacity: .45; cursor: var(--cur-arrow); }
 .seg.inline { display: inline-flex; width: auto; align-self: flex-start; }
 .seg.inline > .seg-opt { flex: 0 0 auto; padding: var(--sp-1) var(--sp-3); }
 .choice { display: flex; flex-wrap: wrap; gap: var(--sp-1h); }
@@ -120,7 +127,7 @@
 /* ---------- чекбокс: действует на любой input[type=checkbox], класс .chk — то же для нестандартной разметки ---------- */
 .chk, input[type="checkbox"] {
   appearance: none; -webkit-appearance: none; flex: none; display: inline-grid; place-content: center; width: 18px; height: 18px; margin: 0;
-  background: var(--well); border: 1px solid var(--line-hi); border-radius: var(--r-1); cursor: pointer; transition: background-color .12s, border-color .12s;
+  background: var(--well); border: 1px solid var(--line-hi); border-radius: var(--r-1); cursor: var(--cur-pointer); transition: background-color .12s, border-color .12s;
 }
 .chk::after, input[type="checkbox"]::after { content: ""; width: 9px; height: 5px; margin-top: -2px; border: solid var(--bg); border-width: 0 0 2px 2px; transform: rotate(-45deg); opacity: 0; }
 .chk:hover:not(:disabled), input[type="checkbox"]:hover:not(:disabled), label:hover :is(.chk, input[type="checkbox"]):not(:disabled) { border-color: var(--gold); }
@@ -131,12 +138,12 @@
 .chk:indeterminate::after, input[type="checkbox"]:indeterminate::after { width: 8px; height: 0; margin: 0; border-width: 0 0 2px; border-color: var(--gold); transform: none; opacity: 1; }
 .chk:active:not(:disabled), input[type="checkbox"]:active:not(:disabled) { transform: translateY(1px); }
 .chk:focus-visible, input[type="checkbox"]:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.chk:disabled, input[type="checkbox"]:disabled { opacity: .45; cursor: default; }
+.chk:disabled, input[type="checkbox"]:disabled { opacity: .45; cursor: var(--cur-arrow); }
 
 /* ---------- ползунок .range; заливку дорожки ставит --p (rangeFill() в ui/kit.ts) ----------
    Только с классом .range: ползунки без класса (Настройки, Управление) остаются системными с золотой заливкой (menu.css), пока окна не переведены.
    Пока --p не задан, дорожка без заливки (в Firefox заливает сам браузер). */
-.range { --p: 0%; -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 18px; margin: 0; background: none; cursor: pointer; }
+.range { --p: 0%; -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 18px; margin: 0; background: none; cursor: var(--cur-pointer); }
 .range::-webkit-slider-runnable-track {
   height: 6px; border: 1px solid var(--line); border-radius: var(--r-pill);
   background: linear-gradient(var(--gold), var(--gold)) 0 0 / var(--p) 100% no-repeat, var(--well);
@@ -153,7 +160,7 @@
 .range:active:not(:disabled)::-webkit-slider-thumb { background: var(--gold); }
 .range:active:not(:disabled)::-moz-range-thumb { background: var(--gold); }
 .range:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: var(--r-1); }
-.range:disabled { opacity: .45; cursor: default; }
+.range:disabled { opacity: .45; cursor: var(--cur-arrow); }
 .set-val { flex: none; min-width: 48px; text-align: right; color: var(--gold); font-weight: var(--fw-b); font-variant-numeric: tabular-nums; }
 
 /* ---------- поле ввода .input и группа «поле + кнопка» ----------
@@ -167,7 +174,7 @@
 .input::placeholder, :where(input:not([type]), input[type="text"], input[type="number"], input[type="password"], input[type="search"])::placeholder { color: var(--dim); opacity: .7; }
 .input:hover:not(:disabled):not(:focus), :where(input:not([type]), input[type="text"], input[type="number"], input[type="password"], input[type="search"], select):where(:hover:not(:disabled):not(:focus)) { border-color: var(--line-hi); }
 .input:focus, .input:focus-visible, :where(input:not([type]), input[type="text"], input[type="number"], input[type="password"], input[type="search"], select):where(:focus) { outline: none; border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
-.input:disabled, :where(input:not([type]), input[type="text"], input[type="number"], input[type="password"], input[type="search"], select):where(:disabled) { opacity: .45; cursor: default; }
+.input:disabled, :where(input:not([type]), input[type="text"], input[type="number"], input[type="password"], input[type="search"], select):where(:disabled) { opacity: .45; cursor: var(--cur-arrow); }
 .input[aria-invalid="true"] { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad-line); }
 .input.num { width: 96px; text-align: right; color: var(--gold); font-variant-numeric: tabular-nums; }
 .input.lg { height: 40px; font-size: var(--fs-md); }
@@ -188,7 +195,7 @@ select.input { padding-right: var(--sp-4); }
   min-height: var(--ctl-h); margin: 0 calc(-1 * var(--sp-2)); padding: var(--sp-1h) var(--sp-2); border-bottom: 1px solid var(--line);
 }
 .set-list > .set-row:last-child { border-bottom: 0; }
-.set-list > label.set-row { cursor: pointer; }
+.set-list > label.set-row { cursor: var(--cur-pointer); }
 .set-list > .set-row:hover { background: var(--panel-2); }
 .set-list > .set-row.stack { grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-1h); }
 .set-list > .set-row.stack:hover { background: none; }
@@ -215,7 +222,7 @@ select.input { padding-right: var(--sp-4); }
 .divider.dashed { border-top-style: dashed; }
 .divider.v { width: 0; height: auto; align-self: stretch; border-top: 0; border-left: 1px solid var(--line); }
 details.disclosure { display: block; }
-.disclosure > summary { display: flex; align-items: center; gap: var(--sp-1h); list-style: none; cursor: pointer; }
+.disclosure > summary { display: flex; align-items: center; gap: var(--sp-1h); list-style: none; cursor: var(--cur-pointer); }
 .disclosure > summary::-webkit-details-marker { display: none; }
 .disclosure > summary::before { content: "▸"; color: var(--dim); font-size: var(--fs-sm); transition: transform .12s; }
 .disclosure[open] > summary::before { transform: rotate(90deg); }
@@ -243,7 +250,7 @@ details.disclosure { display: block; }
 .row-title .meta { margin-left: var(--sp-1); }
 .row-sub { color: var(--dim); font-size: var(--fs-sm); line-height: 1.35; }
 .row-end { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-1h); }
-button.row { cursor: pointer; }
+button.row { cursor: var(--cur-pointer); }
 button.row:hover:not(:disabled) { background: var(--panel-2); }
 button.row:active:not(:disabled) { background: var(--btn-active); }
 button.row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
@@ -251,7 +258,7 @@ button.row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px;
 .row[aria-selected="true"] .row-title, .row[aria-pressed="true"] .row-title { color: var(--gold); }
 .row.current { box-shadow: inset 3px 0 0 var(--ok); }
 .row.locked .row-title, .row:disabled .row-title { color: var(--dim); font-weight: var(--fw); }
-.row:disabled { cursor: default; }
+.row:disabled { cursor: var(--cur-arrow); }
 .row.dense { min-height: var(--ctl-h-sm); padding: var(--sp-1) var(--sp-2); }
 
 /* ---------- таблица .tbl ---------- */
@@ -287,13 +294,13 @@ button.row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px;
   color: var(--fg); font-family: var(--font); font-size: var(--fs-xs); font-weight: var(--fw-b); line-height: 1; white-space: nowrap;
 }
 .kbd-plus { color: var(--dim); font-size: var(--fs-xs); }
-button.kbd { min-width: 72px; height: var(--ctl-h-sm); cursor: pointer; }
+button.kbd { min-width: 72px; height: var(--ctl-h-sm); cursor: var(--cur-pointer); }
 button.kbd:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 button.kbd:active:not(:disabled) { transform: translateY(1px); border-bottom-width: 1px; }
 button.kbd:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 button.kbd.empty { color: var(--dim); border-style: dashed; border-bottom-width: 1px; }
 button.kbd.wait { color: var(--gold); border-color: var(--gold); background: var(--sel); animation: kbd-blink 1s infinite; }
-.kbd.fixed, button.kbd:disabled { opacity: .7; cursor: default; }
+.kbd.fixed, button.kbd:disabled { opacity: .7; cursor: var(--cur-arrow); }
 @keyframes kbd-blink { 50% { opacity: .55; } }
 .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--sp-3); margin: 0; font-variant-numeric: tabular-nums; }
 .kv > dt, .kv > dd { margin: 0; padding: var(--sp-1) 0; border-bottom: 1px solid var(--line); line-height: 1.3; }
@@ -314,12 +321,12 @@ button.kbd.wait { color: var(--gold); border-color: var(--gold); background: var
 .card { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; padding: var(--sp-3); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-3); }
 .card.compact { gap: var(--sp-1h); padding: var(--sp-2); }
 .card.done { opacity: .6; }
-button.card, .card.interactive { color: inherit; font: inherit; text-align: left; cursor: pointer; }
+button.card, .card.interactive { color: inherit; font: inherit; text-align: left; cursor: var(--cur-pointer); }
 button.card:hover:not(:disabled), .card.interactive:hover { border-color: var(--line-hi); background: var(--panel-2); }
 button.card:active:not(:disabled) { transform: translateY(1px); }
 button.card:focus-visible, .card.interactive:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .card[aria-pressed="true"], .card[aria-selected="true"] { border-color: var(--gold); box-shadow: var(--glow-sel); }
-button.card:disabled { opacity: .45; cursor: default; }
+button.card:disabled { opacity: .45; cursor: var(--cur-arrow); }
 .card-head { display: flex; align-items: flex-start; gap: var(--sp-2); }
 .card-icon { flex: none; width: 44px; height: 44px; display: grid; place-items: center; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); }
 .card-icon img { width: 40px; height: 40px; image-rendering: pixelated; }
@@ -358,11 +365,11 @@ img.coin { height: 1em; width: 1em; vertical-align: middle; margin-left: 0.2em; 
 .chip.xp { --c: var(--xp); }
 .chip.boss { --c: var(--boss); }
 .chip.ench { --c: var(--enchant); }
-button.chip { cursor: pointer; }
+button.chip { cursor: var(--cur-pointer); }
 button.chip:hover:not(:disabled) { background: color-mix(in srgb, var(--c) 28%, transparent); }
 button.chip:active:not(:disabled) { transform: translateY(1px); }
 button.chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-button.chip:disabled { opacity: .45; cursor: default; }
+button.chip:disabled { opacity: .45; cursor: var(--cur-arrow); }
 button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
 .badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 var(--sp-1); border-radius: var(--r-pill); background: var(--gold); color: var(--bg); font-size: var(--fs-2xs); font-weight: var(--fw-b); line-height: 1; font-variant-numeric: tabular-nums; }
 .badge.bad { background: var(--bad); }
@@ -384,7 +391,7 @@ button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
    Выбор у ячейки — aria-pressed. */
 .cells { --cols: 6; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--sp-1); }
 .cells.auto { grid-template-columns: repeat(auto-fill, minmax(var(--cell-min, 48px), 1fr)); }
-.cell { --cell: 48px; position: relative; display: block; flex: none; width: var(--cell); aspect-ratio: 1; padding: 0; overflow: hidden; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); cursor: pointer; }
+.cell { --cell: 48px; position: relative; display: block; flex: none; width: var(--cell); aspect-ratio: 1; padding: 0; overflow: hidden; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); cursor: var(--cur-pointer); }
 .cells > .cell, .tile > .cell, .equip > .cell, .grid > .cell { width: 100%; } /* старые сетки (.equip .grid) тянут ячейку на всю колонку */
 .cell.sm { --cell: 32px; }
 .cell.md { --cell: 40px; }
@@ -428,14 +435,14 @@ button.cell:active:not(:disabled) { transform: translateY(1px); }
 .cell.cant img { filter: grayscale(.7) brightness(.6); }
 .cell.held { opacity: .4; }
 .cell.unbought { opacity: .35; background: repeating-linear-gradient(135deg, var(--well) 0 4px, var(--card) 4px 8px); }
-.cell.empty, .cell:disabled { cursor: default; }
+.cell.empty, .cell:disabled { cursor: var(--cur-arrow); }
 .cell .ghost { opacity: .22; filter: grayscale(1); }
 .cell .lbl { position: absolute; inset: 0; display: grid; place-items: center; color: color-mix(in srgb, var(--dim) 50%, transparent); font-size: var(--fs-xs); text-align: center; }
-.tile { display: flex; flex-direction: column; align-items: center; gap: var(--sp-0); padding: var(--sp-1); background: none; border: 1px solid transparent; border-radius: var(--r-2); color: inherit; font: inherit; cursor: pointer; }
+.tile { display: flex; flex-direction: column; align-items: center; gap: var(--sp-0); padding: var(--sp-1); background: none; border: 1px solid transparent; border-radius: var(--r-2); color: inherit; font: inherit; cursor: var(--cur-pointer); }
 .tile:hover:not(:disabled) { background: var(--panel-2); border-color: var(--line-hi); }
 .tile:active:not(:disabled) { transform: translateY(1px); }
 .tile:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
-.tile:disabled { opacity: .45; cursor: default; }
+.tile:disabled { opacity: .45; cursor: var(--cur-arrow); }
 .tile-cap { font-size: var(--fs-xs); font-weight: var(--fw-b); }
 
 /* ---------- полосы .bar и рамки юнитов .uf / .uframe ----------
@@ -466,7 +473,7 @@ button.cell:active:not(:disabled) { transform: translateY(1px); }
 .uframe > .bar { grid-column: 1 / -1; }
 .uframe-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-b); }
 .uframe-st { color: var(--dim); white-space: nowrap; }
-button.uframe { cursor: pointer; }
+button.uframe { cursor: var(--cur-pointer); }
 button.uframe:hover:not(:disabled) { background: var(--panel-2); border-color: var(--line-hi); }
 button.uframe:active:not(:disabled) { transform: translateY(1px); }
 button.uframe:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
@@ -514,7 +521,12 @@ button.uframe.dead:hover { border-color: var(--gold); }
 .dialog { display: flex; flex-direction: column; width: min(var(--win-m), 100%); max-height: calc(100vh - 2 * var(--sp-4)); overflow: hidden; }
 .dialog.sm { width: min(var(--win-s), 100%); }
 .dialog.lg { width: min(var(--win-l), 100%); }
-.dialog-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-2); border-bottom: 1px solid var(--line); }
+.dialog-head {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  /* тот же разделитель из PNG, что у .win > h2; вровень с текстом (отступ --sp-4 слева и справа) */
+  padding: var(--sp-3) var(--sp-4) var(--div-h);
+  background: url("/ui/divider-b-cap.png") right var(--sp-4) bottom / var(--div-cap) var(--div-h) no-repeat, url("/ui/divider-b-line.png") left var(--sp-4) bottom / calc(100% - 2 * var(--sp-4) - var(--div-cap)) var(--div-h) no-repeat;
+}
 .dialog-title { margin: 0; font-family: var(--font-head); font-size: round(nearest, var(--fs-head-win), var(--hu)); font-weight: var(--fw); word-spacing: var(--head-ws); line-height: 1.2; color: var(--gold); }
 .dialog-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); overflow-y: auto; overscroll-behavior: contain; }
 .dialog-body > * { flex: none; }

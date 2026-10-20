@@ -3,7 +3,8 @@ import { overlay } from "./overlay";
 import Phaser from "phaser";
 import type { Fx } from "../../../shared/protocol";
 import { DEPTH } from "./terrain";
-import { FONT, type UnitView } from "./UnitView";
+import type { UnitView } from "./UnitView";
+import { placeText, worldText } from "./worldText";
 import * as sfx from "./sfx";
 import { TeleportFx } from "./teleportFx";
 import { RaidBoss } from "./raidBoss";
@@ -121,9 +122,19 @@ export class Effects {
 
   /** «+N» с маленькой монетой над юнитом. */
   goldPop(x: number, y: number, n: number) {
-    const t = this.scene.add.text(x - 5, y, "+" + n.toLocaleString("ru-RU"), { fontFamily: FONT, fontSize: "11px", color: P.numGold, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: "600" }).setOrigin(1, 0.5).setDepth(DEPTH.top);
-    const c = this.scene.add.image(x - 1, y, "coin_icon").setDisplaySize(11, 11).setOrigin(0, 0.5).setDepth(DEPTH.top);
-    this.scene.tweens.add({ targets: [t, c], y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 200, onComplete: () => { t.destroy(); c.destroy(); } });
+    const x0 = Math.round(x);
+    const t = worldText(this.scene, 0, 0, "+" + n.toLocaleString("ru-RU"), "plain", { fontSize: "11px", color: P.numGold, stroke: "#14080c", strokeThickness: 4, fontStyle: "600" }).setDepth(DEPTH.top);
+    const c = this.scene.add.image(x0 - 1, Math.round(y), "coin_icon").setDisplaySize(11, 11).setOrigin(0, 0.5).setDepth(DEPTH.top);
+    // твин двигает общий центр и прозрачность, а текст и монета каждый кадр ставятся в целые пиксели
+    const a = { y, al: 1 };
+    const put = () => {
+      if (!t.scene) return;
+      const ry = Math.round(a.y);
+      placeText(t, x0 - 5, ry, 1, 0.5).setAlpha(a.al);
+      c.setPosition(x0 - 1, ry).setAlpha(a.al);
+    };
+    put();
+    this.scene.tweens.add({ targets: a, y: y - 26, al: 0, duration: 900, ease: "Cubic.easeOut", delay: 200, onUpdate: put, onComplete: () => { t.destroy(); c.destroy(); } });
   }
 
   /** Число героев в кадре (ставит GameScene): в толпе чужие цифры мельче и прозрачнее. */
@@ -151,18 +162,19 @@ export class Effects {
       if (this.numState.size > 200) for (const [k, v] of this.numState) if (now - v.at > 2000) this.numState.delete(k);
     } else dx = (Math.random() - 0.5) * 24;
     const size = small ? 8 : big ? 13 : 10;
-    const t = this.scene.add
-      .text(x + dx, y + dy, text, { fontFamily: FONT, fontSize: `${size}px`, color, stroke: "#14080c", strokeThickness: small ? 2 : 3, resolution: 4, fontStyle: big ? "bold" : "600" })
-      .setOrigin(0.5)
-      .setDepth(DEPTH.top);
     const base = (big ? (mul > 1 ? 1.15 : 1.4) * mul : mul) * (dim < 1 ? 0.8 : 1);
     const a0 = (small ? 0.65 : 1) * dim;
-    t.setScale(base * 0.7).setAlpha(a0);
-    this.scene.tweens.add({ targets: t, scale: base, duration: 140 });
+    // цифру растягивают в base раз: рисуем в base раз чётче, и в покое 1 тексель = 1 пиксель холста
+    const t = worldText(this.scene, 0, 0, text, "plain", { fontSize: `${size}px`, color, stroke: "#14080c", strokeThickness: small ? 2 : 3, fontStyle: big ? "bold" : "600" }, base).setDepth(DEPTH.top);
     const rise = small ? 18 : big ? 34 : 26;
-    // дуга: по x плавно уходит в сторону, по y — вверх; крупные цифры поднимаются выше, чтобы не закрывать цель
-    this.scene.tweens.add({ targets: t, x: t.x + arc, duration: 900, ease: "Sine.easeOut", delay: 100 });
-    this.scene.tweens.add({ targets: t, y: t.y - rise, alpha: { from: a0, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 120, onComplete: () => t.destroy() });
+    // твины двигают центр (x, y), масштаб (s) и прозрачность (al) в объекте a, а текст каждый кадр ставится в целые пиксели:
+    // появление — масштаб от 0.7 до 1; дуга — по x плавно уходит в сторону, по y вверх (крупные цифры выше, чтобы не закрывать цель)
+    const a = { x: x + dx, y: y + dy, s: base * 0.7, al: a0 };
+    const put = () => { if (t.scene) placeText(t, a.x, a.y, 0.5, 0.5, a.s).setAlpha(a.al); };
+    put();
+    this.scene.tweens.add({ targets: a, s: base, duration: 140, onUpdate: put });
+    this.scene.tweens.add({ targets: a, x: a.x + arc, duration: 900, ease: "Sine.easeOut", delay: 100, onUpdate: put });
+    this.scene.tweens.add({ targets: a, y: a.y - rise, al: 0, duration: 900, ease: "Cubic.easeOut", delay: 120, onUpdate: put, onComplete: () => t.destroy() });
   }
 
   /** Мелкие тики по одной цели складываются в одну цифру раз в ~0,3 с. */

@@ -57,7 +57,10 @@ export class BootScene extends Phaser.Scene {
         this.anims.create({ key: `m_${id}-idle-${row}`, frames: f(8, 11), frameRate: 4, repeat: -1 });
       }
     }
-    // все шрифты, которыми рисуют Phaser и canvas карты мира: иначе в текстуры подписей запечётся запасной шрифт
-    Promise.all([document.fonts.load('400 14px "Rubik"'), document.fonts.load('600 14px "Rubik"'), document.fonts.load('20px "Ark Pixel 10"')]).finally(() => this.scene.start("game"));
+    // все шрифты, которыми рисуют Phaser и canvas карты мира: иначе в текстуры подписей запечётся запасной шрифт.
+    // Rubik из @fontsource порезан по unicode-range: без образца текста load() берёт пробел и грузит только латиницу,
+    // а ники и титулы — кириллица, поэтому просим и латиницу, и кириллицу
+    const sample = "AaЯя";
+    Promise.all([document.fonts.load('400 14px "Rubik"', sample), document.fonts.load('600 14px "Rubik"', sample), document.fonts.load('20px "Ark Pixel 10"')]).finally(() => this.scene.start("game"));
   }
 }
