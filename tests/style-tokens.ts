@@ -1,5 +1,5 @@
 // Минимальный тест палитры: проверяет ключевые значения shared/palette.ts
-import { P } from "../shared/palette.ts";
+import { P } from "../shared/palette";
 
 const checks: [keyof typeof P, string][] = [
   ["gold",    "#d6a84b"],
