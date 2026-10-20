@@ -245,7 +245,7 @@ export class ArenaUI {
     const total = m.teams.flat().length;
     this.found.hidden = false;
     this.found.innerHTML = `<div class="panel arena-dialog" role="alertdialog" aria-labelledby="found-title">
-      <h2 id="found-title">${m.bot ? "Сразиться с ботом?" : "Матч найден"} · ${MODE_NAMES[m.mode]}</h2>${m.bot ? '<p class="muted">Соперник не найден. Бой с ботом: рейтинг меняется в ${Math.round(1 / BOT_RATING_MULT)} раза слабее</p>' : ""}
+      <h2 id="found-title">${m.bot ? "Сразиться с ботом?" : "Матч найден"} · ${MODE_NAMES[m.mode]}</h2>${m.bot ? `<p class="muted">Соперник не найден. Бой с ботом: рейтинг меняется в ${Math.round(1 / BOT_RATING_MULT)} раза слабее</p>` : ""}
       <div class="versus">${m.teams.map((t) => `<div class="team">${t.map((p) => `<div class="${p.name === me ? "me" : ""}">${esc(p.name)} <span class="muted">${clsName(p.cls)} · ${p.rating}</span>${m.accepted.includes(p.name) ? ' <span class="ok">✓</span>' : ""}</div>`).join("")}</div>`).join('<div class="vs">VS</div>')}</div>
       <div class="bar accept"><i data-accept></i></div>
       <div class="row-btns">${this.acceptedSelf
