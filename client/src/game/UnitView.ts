@@ -58,6 +58,17 @@ export class UnitView {
   dead = false;
   selected = false;
   hovered = false;
+  /** Разводка подписей (labelLayout): целевой и текущий сдвиг блока имя+титул+полоска, показывать ли ник в толпе, базовая точка блока. */
+  tgtX = 0;
+  tgtY = 0;
+  private offX = 0;
+  private offY = 0;
+  nameOk = true;
+  topY = 0;
+  /** Ширина блока подписи для проверки перекрытий. */
+  blockW(): number {
+    return Math.max(this.label.visible ? this.label.width : 0, this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20);
+  }
   /** Городской NPC (стражник, горожанин): не цель, без полоски здоровья. */
   readonly npc: boolean;
 
@@ -76,7 +87,7 @@ export class UnitView {
     this.frame = scene.textures.get(tex).get(0).width;
     const big = this.frame > 32;
     this.shadow = scene.add.image(u.x, u.y, "fx_shadow_blob").setScale(big ? 2.2 : 1, big ? 2 : 1).setDepth(DEPTH.ground + 5);
-    this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setDepth(DEPTH.ground + 6).setScale(big ? 2 : 1);
+    this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 6).setScale(big ? 2 : 1);
     this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, 30 / 32);
     if (u.kind === UnitKind.Pet) {
       this.sprite.setScale(0.8);
@@ -252,8 +263,16 @@ export class UnitView {
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
     this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible(this.selected && !this.dead);
-    const top = this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
-    this.label.setPosition(Math.round(this.x), Math.round(top - 4));
+    let top = this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
+    // плавный переход к назначенному разводкой сдвигу
+    const sk = Math.min(1, dt * 9);
+    this.offX += (this.tgtX - this.offX) * sk;
+    this.offY += (this.tgtY - this.offY) * sk;
+    this.topY = top;
+    const lx = Math.round(this.x + this.offX);
+    const top0 = top;
+    top = top0 + Math.round(this.offY);
+    this.label.setPosition(lx, Math.round(top - 4));
     const lt = this.labelText();
     if (lt !== this.lastLabel) { this.lastLabel = lt; this.label.setText(lt); }
     // на арене: союзники зелёные, враги красные; в мире герои противоположной фракции — в цвете своей фракции
@@ -282,15 +301,15 @@ export class UnitView {
       this.unseen = false;
       if (!this.dead) { this.sprite.setAlpha(1); this.shadow.setAlpha(1); this.label.setVisible(true); }
     }
-    if (!(this.isSelf ? overlay.selfNames : overlay.names)) this.label.setVisible(false);
+    if (!(this.isSelf ? overlay.selfNames : overlay.names) || (!this.isSelf && !this.nameOk)) this.label.setVisible(false);
     const showName = !this.dead && this.label.visible;
-    this.titleText.setVisible(showName && !!u.title).setPosition(Math.round(this.x), Math.round(top - 13));
+    this.titleText.setVisible(showName && !!u.title).setPosition(lx, Math.round(top - 13));
     this.frameGfx.clear();
-    if (u.kind === UnitKind.Guard && showName) this.guardBadge(top);
+    if (u.kind === UnitKind.Guard && showName) this.guardBadge(top, lx);
     this.torch(!this.dead && u.kind === UnitKind.Guard && nightLevel(Date.now()) > 0.35);
     if (u.elite && showName) {
       const w = this.label.width + 6, h = 9;
-      const fx = Math.round(this.x - w / 2), fy = Math.round(top - 4 - h + 1);
+      const fx = Math.round(lx - w / 2), fy = Math.round(top - 4 - h + 1);
       this.frameGfx.fillStyle(0x120a10, 0.55).fillRoundedRect(fx, fy, w, h, 3);
       this.frameGfx.lineStyle(1, 0xf0c040, 1).strokeRoundedRect(fx, fy, w, h, 3);
       this.frameGfx.fillStyle(0xf0c040, 1).fillRect(fx - 2, fy + h / 2 - 1, 2, 2).fillRect(fx + w, fy + h / 2 - 1, 2, 2);
@@ -299,7 +318,7 @@ export class UnitView {
     const rank = u.frame ? rankById(u.frame) : undefined;
     if (rank && showName) {
       const w = this.label.width + 6, h = 9;
-      const fx = Math.round(this.x - w / 2), fy = Math.round(top - 4 - h + 1);
+      const fx = Math.round(lx - w / 2), fy = Math.round(top - 4 - h + 1);
       const c = Phaser.Display.Color.HexStringToColor(rank.color).color;
       this.frameGfx.fillStyle(0x120a10, 0.55).fillRoundedRect(fx, fy, w, h, 3);
       this.frameGfx.lineStyle(1, c, 1).strokeRoundedRect(fx, fy, w, h, 3);
@@ -338,17 +357,18 @@ export class UnitView {
       this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf });
     } else this.layers?.hide();
 
-    // полоска здоровья
-    const showBar = (this.isSelf ? overlay.selfBars : overlay.bars) && !this.dead && !this.npc && (u.kind !== UnitKind.Player || u.hp < u.maxHp || this.isSelf);
+    // полоска здоровья: у мобов только раненых или выбранных (боссы — всегда), тонкая, 2 px
+    const mobHidden = (u.kind === UnitKind.Mob || u.kind === UnitKind.Pet) && u.hp >= u.maxHp && !this.selected;
+    const showBar = (this.isSelf ? overlay.selfBars : overlay.bars) && !this.dead && !this.npc && !mobHidden && (u.kind !== UnitKind.Player || u.hp < u.maxHp || this.isSelf);
     if (!showBar) this.bar.clear();
-    else if (u.hp !== this.lastHp || true) {
+    else {
       this.lastHp = u.hp;
-      const w = (this.frame > 32 ? 44 : 22) + (u.elite ? 8 : 0);
-      const bx = Math.round(this.x - w / 2), by = Math.round(top - 2);
+      const w = (this.frame > 32 ? 40 : 20) + (u.elite ? 8 : 0);
+      const bx = Math.round(lx - w / 2), by = Math.round(top - 2);
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
       this.bar.clear();
-      this.bar.fillStyle(u.elite ? 0xf0c040 : 0x0a0608, 0.9).fillRect(bx - 1, by - 1, w + 2, 4);
-      if (u.elite) this.bar.fillStyle(0x0a0608, 1).fillRect(bx, by, w, 2);
+      this.bar.fillStyle(u.elite ? 0xf0c040 : 0x0a0608, 0.55).fillRect(bx - 1, by - 1, w + 2, 4);
+      this.bar.fillStyle(0x0a0608, 0.9).fillRect(bx, by, w, 2);
       const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena" && net.kind !== "raid";
       const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
       this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * k), 2);
@@ -383,9 +403,9 @@ export class UnitView {
   }
 
   /** Значок щита слева от имени: цвет города (красный, бирюзовый, синий) со стальной каймой. */
-  private guardBadge(top: number) {
+  private guardBadge(top: number, lx: number) {
     const c = this.u.sprite === "guard_desert" ? 0x2fb0a2 : this.u.sprite === "guard_snow" ? 0x4a8ae8 : 0xd02a34;
-    const bx = Math.round(this.x - this.label.width / 2 - 9), by = Math.round(top - 14);
+    const bx = Math.round(lx - this.label.width / 2 - 9), by = Math.round(top - 14);
     const g = this.frameGfx;
     g.fillStyle(0x120a10, 0.9).fillRect(bx - 1, by - 1, 9, 11).fillRect(bx, by + 9, 7, 1).fillRect(bx + 1, by + 10, 5, 1);
     g.fillStyle(0xaab4c4, 1).fillRect(bx, by, 7, 8).fillRect(bx + 1, by + 8, 5, 1).fillRect(bx + 2, by + 9, 3, 1);

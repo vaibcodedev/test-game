@@ -1,12 +1,12 @@
 /** Подписи над юнитами: ники и полоски здоровья — отдельно для своего героя и для остальных. Хранится в localStorage. */
 import { GEAR_FX } from "../../../shared/gearFx";
-export type OverlayKey = "selfNames" | "selfBars" | "names" | "bars";
-const STORE: Record<OverlayKey, string> = { selfNames: "showSelfNames", selfBars: "showSelfBars", names: "showNames", bars: "showBars" };
+export type OverlayKey = "selfNames" | "selfBars" | "names" | "bars" | "autoNames" | "crowdNums";
+const STORE: Record<OverlayKey, string> = { selfNames: "showSelfNames", selfBars: "showSelfBars", names: "showNames", bars: "showBars", autoNames: "autoNames", crowdNums: "crowdNums" };
 function load(key: string): boolean {
   try { return localStorage.getItem(key) !== "0"; } catch { return true; }
 }
 export const overlay: Record<OverlayKey, boolean> = {
-  selfNames: load(STORE.selfNames), selfBars: load(STORE.selfBars), names: load(STORE.names), bars: load(STORE.bars),
+  selfNames: load(STORE.selfNames), selfBars: load(STORE.selfBars), names: load(STORE.names), bars: load(STORE.bars), autoNames: load(STORE.autoNames), crowdNums: load(STORE.crowdNums),
 };
 export function setOverlay(key: OverlayKey, on: boolean) {
   overlay[key] = on;

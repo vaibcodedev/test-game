@@ -1,3 +1,4 @@
+import { layoutLabels } from "./labelLayout";
 import Phaser from "phaser";
 import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../../../shared/constants";
 import { Nav } from "../../../shared/path";
@@ -71,6 +72,7 @@ export class GameScene extends Phaser.Scene {
   /** Сервер держит героя (канал, воскрешение, танец) до этого момента: шаги не предсказываем. */
   castHold = 0;
   targetId: string | null = null;
+  private layoutAt = 0;
   bagViews = new Map<string, Phaser.GameObjects.Image>();
   pendingPickup: string | null = null;
   /** NPC города (только в мире): торговка и распорядитель арены. */
@@ -939,6 +941,10 @@ export class GameScene extends Phaser.Scene {
         v.stepAt = now + 330 + Math.random() * 60;
         if (k > 0.03) { sfx.play("step", k * 0.8); if (Math.random() < 0.28) sfx.play("clink", k * 0.7); }
       }
+    }
+    if (now >= this.layoutAt) {
+      this.layoutAt = now + 100;
+      this.fx.heroes = layoutLabels(this.units, net.id, this.targetId, new Set(net.party?.members.map((m) => m.name) ?? []), this.cameras.main.worldView);
     }
     this.scenes?.update(this.pos.x, this.pos.y);
     if (this.targetId && !this.units.get(this.targetId)) this.targetId = null;

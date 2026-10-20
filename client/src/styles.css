@@ -317,11 +317,11 @@ input:focus-visible {
 .hud-target {
   position: absolute;
   left: 50%;
-  top: 12px;
+  top: 8px;
   transform: translateX(-50%);
-  width: min(420px, calc(100vw - 600px));
-  min-width: 240px;
-  padding: 8px 12px;
+  width: min(190px, calc(100vw - 600px));
+  min-width: 150px;
+  padding: 3px 8px 4px;
   text-align: center;
 }
 .hud-target[hidden] {
@@ -334,19 +334,31 @@ input:focus-visible {
   border-color: var(--gold);
 }
 .hud-target .nm {
-  font-size: 16px;
-  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 14px;
+  margin-bottom: 2px;
+}
+.hud-target .bar.hp {
+  height: 7px;
+  border-radius: 2px;
+}
+.hud-target .bar.hp > span {
+  font-size: 8px;
+  line-height: 7px;
 }
 .hud-target.boss {
   border-color: #a04030;
   box-shadow: 0 0 18px rgba(255, 80, 40, 0.35);
 }
+.hud-target.boss {
+  width: min(240px, calc(100vw - 600px));
+}
 .hud-target.boss .nm {
   color: #ff9a6a;
-  font-size: 18px;
+  font-size: 13px;
 }
 .hud-target .phase {
-  font-size: 14px;
+  font-size: 10px;
   color: var(--dim);
   margin-top: 3px;
 }
@@ -1039,7 +1051,7 @@ input:focus-visible {
   }
   .hud-target {
     top: 150px;
-    width: calc(100vw - 24px);
+    width: min(190px, calc(100vw - 24px));
   }
   .slot {
     width: 44px;

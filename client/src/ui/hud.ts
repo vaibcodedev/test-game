@@ -471,6 +471,8 @@ export class Hud {
       <div class="set-row"><label for="set-selfBars">Моя полоска здоровья</label><input id="set-selfBars" type="checkbox"></div>
       <div class="set-row"><label for="set-names">Ники всех остальных</label><input id="set-names" type="checkbox"></div>
       <div class="set-row"><label for="set-bars">Полоски здоровья всех остальных</label><input id="set-bars" type="checkbox"></div>
+      <div class="set-row"><label for="set-autoNames">Ники в толпе: только свои, цель, группа, раненые (авто)</label><input id="set-autoNames" type="checkbox"></div>
+      <div class="set-row"><label for="set-crowdNums">Чужие цифры урона в толпе приглушать</label><input id="set-crowdNums" type="checkbox"></div>
       <div class="set-row set-gearfx"><label>${esc(GEAR_FX.setting.label)}</label><div class="set-seg" role="group" aria-label="${esc(GEAR_FX.setting.label)}">${GEAR_FX.setting.modes.map((m) => `<button type="button" class="btn small" data-m="${m.id}">${esc(m.label)}</button>`).join("")}</div></div>
       <p class="muted set-note">${esc(GEAR_FX.setting.note)}</p>
       <div class="set-row"><button class="btn" id="set-resetwin">Сбросить расположение окон</button></div>
@@ -495,7 +497,7 @@ export class Hud {
     mus.oninput = () => { sfx.setMusicVolume(Number(mus.value) / 100); musV.textContent = mus.value + "%"; };
     vol.oninput = () => { sfx.setVolume(Number(vol.value) / 100); volV.textContent = vol.value + "%"; sfx.play("hit"); };
     mute.onchange = () => sfx.setMuted(mute.checked);
-    for (const key of ["selfNames", "selfBars", "names", "bars"] as const) {
+    for (const key of ["selfNames", "selfBars", "names", "bars", "autoNames", "crowdNums"] as const) {
       const c = body.querySelector<HTMLInputElement>("#set-" + key)!;
       c.checked = overlay[key];
       c.onchange = () => setOverlay(key, c.checked);
@@ -1159,7 +1161,7 @@ export class Hud {
       const sig = `${t.name}|${t.level}|${t.hp}|${t.maxHp}|${t.phase}`;
       if (this.targetBox.dataset.sig !== sig) {
         this.targetBox.dataset.sig = sig;
-        this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i><span>${t.hp} / ${t.maxHp}</span></div>${phase}`;
+        this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i><span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
       }
     } else this.targetBox.hidden = true;
 

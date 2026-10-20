@@ -1,4 +1,5 @@
 /** Визуальные эффекты: цифры урона, снаряды, взрывы, телеграфы атак боссов, лужи, частицы. */
+import { overlay } from "./overlay";
 import Phaser from "phaser";
 import type { Fx } from "../../../shared/protocol";
 import { DEPTH } from "./terrain";
@@ -123,15 +124,55 @@ export class Effects {
     this.scene.tweens.add({ targets: [t, c], y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 200, onComplete: () => { t.destroy(); c.destroy(); } });
   }
 
-  number(x: number, y: number, text: string, color: string, big = false, mul = 1) {
+  /** Число героев в кадре (ставит GameScene): в толпе чужие цифры мельче и прозрачнее. */
+  heroes = 0;
+  private numState = new Map<string, { at: number; n: number; side: number }>();
+  private tickAcc = new Map<string, { v: number; x: number; y: number; col: string; dim: number }>();
+
+  /**
+   * Всплывающая цифра. id — цель: последовательные цифры по одной цели идут со сдвигом по вертикали и в разные стороны;
+   * small — тики и DoT (мельче, прозрачнее); dim — множитель прозрачности/размера для чужих цифр в толпе.
+   */
+  number(x: number, y: number, text: string, color: string, big = false, mul = 1, id = "", small = false, dim = 1) {
+    let dx = 0, dy = 0, arc = 0;
+    const now = this.scene.time.now;
+    if (id) {
+      const st = this.numState.get(id) ?? { at: 0, n: 0, side: Math.random() < 0.5 ? -1 : 1 };
+      st.n = now - st.at < 700 ? st.n + 1 : 0;
+      st.at = now;
+      st.side = -st.side;
+      this.numState.set(id, st);
+      const wide = mul > 1 ? 3 : 1; // у рейд-босса большая цель: разброс шире
+      dy = -(st.n % 5) * 8 * (wide > 1 ? 1.6 : 1);
+      dx = st.side * (6 + Math.random() * 10) * wide;
+      arc = st.side * (4 + Math.random() * 8) * wide;
+      if (this.numState.size > 200) for (const [k, v] of this.numState) if (now - v.at > 2000) this.numState.delete(k);
+    } else dx = (Math.random() - 0.5) * 24;
+    const size = small ? 8 : big ? 13 : 10;
     const t = this.scene.add
-      .text(x + (Math.random() - 0.5) * 10, y, text, { fontFamily: FONT, fontSize: big ? "14px" : "11px", color, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: big ? "bold" : "600" })
+      .text(x + dx, y + dy, text, { fontFamily: FONT, fontSize: `${size}px`, color, stroke: "#14080c", strokeThickness: small ? 2 : 3, resolution: 4, fontStyle: big ? "bold" : "600" })
       .setOrigin(0.5)
       .setDepth(DEPTH.top);
-    if (big) t.setScale((mul > 1 ? 1.25 : 1.6) * mul); // у рейд-босса цифры и так крупные — без большого «скачка»
-    else if (mul !== 1) t.setScale(mul);
-    this.scene.tweens.add({ targets: t, scale: mul, duration: 140 });
-    this.scene.tweens.add({ targets: t, y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 120, onComplete: () => t.destroy() });
+    const base = (big ? (mul > 1 ? 1.15 : 1.4) * mul : mul) * (dim < 1 ? 0.8 : 1);
+    const a0 = (small ? 0.65 : 1) * dim;
+    t.setScale(base * 0.7).setAlpha(a0);
+    this.scene.tweens.add({ targets: t, scale: base, duration: 140 });
+    const rise = small ? 18 : big ? 34 : 26;
+    // дуга: по x плавно уходит в сторону, по y — вверх; крупные цифры поднимаются выше, чтобы не закрывать цель
+    this.scene.tweens.add({ targets: t, x: t.x + arc, duration: 900, ease: "Sine.easeOut", delay: 100 });
+    this.scene.tweens.add({ targets: t, y: t.y - rise, alpha: { from: a0, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 120, onComplete: () => t.destroy() });
+  }
+
+  /** Мелкие тики по одной цели складываются в одну цифру раз в ~0,3 с. */
+  private tick(id: string, x: number, y: number, v: number, col: string, dim: number) {
+    const acc = this.tickAcc.get(id);
+    if (acc) { acc.v += v; return; }
+    this.tickAcc.set(id, { v, x, y, col, dim });
+    this.scene.time.delayedCall(300, () => {
+      const a = this.tickAcc.get(id);
+      this.tickAcc.delete(id);
+      if (a) this.number(a.x, a.y, String(a.v), a.col, false, 1, id, true, a.dim);
+    });
   }
 
   private one(f: Fx) {
@@ -143,18 +184,22 @@ export class Effects {
         if (!u) return;
         const raidBoss = u.frame >= 96;
         const y = raidBoss ? u.y - 0.9 * u.frame : u.y - (u.frame > 32 ? 56 : 28);
-        if (f.miss) return this.number(u.x, y, "Уклонение", "#c8c0b0");
-        if (f.imm) return this.number(u.x, y, "Неуязвим", "#ffd84a");
-        if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x9affb8, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, "#7aff7a"); }
+        const crowdy = overlay.crowdNums && this.heroes > 8 && f.id !== this.selfId;
+        const dim = crowdy ? (u.selected ? 0.75 : 0.5) : 1;
+        if (f.miss) return this.number(u.x, y, "Уклонение", "#c8c0b0", false, 1, f.id, false, dim);
+        if (f.imm) return this.number(u.x, y, "Неуязвим", "#ffd84a", false, 1, f.id, false, dim);
+        if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x9affb8, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, "#7aff7a", false, 1, f.id, f.v < 0.02 * u.u.maxHp, dim); }
         if (f.abs) this.sound("shield", u.x, u.y);
-        if (f.abs) return this.number(u.x, y, `Щит ${f.v}`, "#ffd84a");
+        if (f.abs) return this.number(u.x, y, `Щит ${f.v}`, "#ffd84a", false, 1, f.id, false, dim);
         u.flash();
         const mine = f.id === this.selfId;
         this.flash(u.x, u.y - 14, f.crit ? 0xffe070 : (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff), f.crit ? 1.2 : 0.7);
         this.sound(f.crit ? "crit" : (SFX_OF[f.k ?? "phys"] ?? "hit"), u.x, u.y);
         if (mine ? f.crit || f.v > 40 : f.crit) this.shake(u.x, u.y, 90, mine ? 0.003 : 0.002);
         const col = mine ? "#ff6a5a" : f.crit ? "#ffd84a" : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
-        this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1);
+        const small = !f.crit && !raidBoss && f.v < Math.max(4, 0.025 * u.u.maxHp);
+        if (small || crowdy) this.tick(f.id, u.x, y, f.v, col, dim);
+        else this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1, f.id, false, dim);
         if (f.k && f.k !== "phys") this.burst(u.x, u.y - 12, "fx_spark", KIND_COLOR[f.k], 6, 50, 350);
         else this.burst(u.x, u.y - 12, "fx_spark", 0xffffff, 3, 40, 200, 0, 0.6);
         break;
