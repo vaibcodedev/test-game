@@ -292,9 +292,12 @@ export class GearLayers {
             else { this.R(px, y + 2, 3, 2, m[2]); this.R(px, y + 2, 3, 1, ap!.hide[3]); }
             return;
           }
-          this.R(px, y + 1, 3 + (big ? 1 : 0), 3 + (big ? 1 : 0), m[2]);
-          this.R(px, y + 1, 3 + (big ? 1 : 0), 1, am ? m[3] : tr || gold);
-          this.R(px, y + 3 + (big ? 1 : 0), 3 + (big ? 1 : 0), 1, am ? tr : m[0]);
+          if (am && plateModel) { this.platePauldron(am, ap!, px, y, s, big); }
+          else {
+            this.R(px, y + 1, 3 + (big ? 1 : 0), 3 + (big ? 1 : 0), m[2]);
+            this.R(px, y + 1, 3 + (big ? 1 : 0), 1, am ? m[3] : tr || gold);
+            this.R(px, y + 3 + (big ? 1 : 0), 3 + (big ? 1 : 0), 1, am ? tr : m[0]);
+          }
           const md = am?.look.deco;
           if (!L && am && md) {
             if (md === "spikes") { this.line(px + 1, y + 1, px + 1 + s * 2, y - 3, m[3], 1); this.line(px + 2, y + 1, px + 2 + s, y - 2, m[3], 1); }
@@ -1169,6 +1172,21 @@ export class GearLayers {
   }
 
   /** Детали доспеха по модели: узор нагрудника, ремни, табард, рёбра, саван, кайма и камень по редкости. Без свечения. */
+  /** Наплечник латной модели: 3 пластины внахлёст (r3 — 4); кайма и заклёпка с r1; Сольгард — скруглённый (золото, лазурь), Умбрат — угловатый (шип, кость). */
+  private platePauldron(md: ItemModel, p: ReturnType<typeof piecePal>, px: number, y: number, s: number, big: boolean) {
+    const r = md.look.rich ?? 0, n = r >= 3 ? 4 : 3, M = p.m, umb = md.fac === "umbrath", sol = md.fac === "solgard";
+    for (let j = n - 1; j >= 0; j--) {
+      const wj = 3 + Math.min(j, 2) + (big && j === n - 1 ? 1 : 0), xj = s < 0 ? px + 3 - wj + 1 : px, yj = y + j;
+      this.R(xj, yj, wj, 2, M[2]);
+      this.R(xj + (s < 0 ? 0 : 1), yj, wj - 1, 1, M[3]);
+      this.R(xj, yj + 1, wj, 1, r >= 1 ? (umb && r < 3 ? "#cfc8b8" : p.tr) : M[0]);
+      if (!umb && j === n - 1) this.R(xj + (s < 0 ? 0 : wj - 1), yj, 1, 1, M[0]);
+      if (r >= 1 && j === 1) this.R(xj + (wj >> 1), yj, 1, 1, p.trb);
+      if (sol && j === 1) this.R(xj + 1, yj, 1, 1, p.acc[2]);
+      if (umb && j === 0) { this.R(xj + (wj >> 1), yj - 1, 1, 1, M[3]); if (r >= 2) this.R(xj + (wj >> 1) + s, yj - 2, 1, 1, "#e8e0d0"); }
+    }
+  }
+
   private armorModel(md: ItemModel, p: ReturnType<typeof piecePal>, x0: number, w: number, y0: number, up: boolean, side: boolean, walking: boolean, t: number, seed: number) {
     const sh = md.look.shape, M = p.m;
     if (!up) {
@@ -1190,6 +1208,25 @@ export class GearLayers {
       if (sh === "robe" && !side) this.R(15, y0 + 7, 2, 5, p.trb);
       if (md.look.deco === "runes" && !side) for (const xx of [1, w - 2]) this.R(x0 + xx, y0 + 3, 1, 1, p.fx[2]);
       if (md.look.deco === "skull" && !side) { this.R(15, y0 + 2, 2, 2, "#e8e0d0"); this.R(15, y0 + 3, 1, 1, "#141018"); }
+      // слои богатства (look.rich): с 2 — горжет/воротник, набедренники; у ткани подол расширяется книзу
+      const rich = md.look.rich ?? 0;
+      if (rich >= 2) {
+        if (p.bt === "plate") {
+          this.R(x0, y0 - 1, w, 1, M[2]); this.R(x0 + 1, y0 - 2, w - 2, 1, M[3]); this.R(x0 + 1, y0 - 1, w - 2, 1, p.tr);
+          const rows = sh === "cuirass" ? (rich >= 3 ? 3 : 2) : sh === "full" ? 3 : rich >= 3 ? 2 : 1;
+          for (let q = 0; q < rows; q++) { this.R(x0 - 1 + (q % 2), y0 + 8 + q * 2, w + 2 - 2 * (q % 2), 1, M[q % 2 ? 1 : 3]); this.R(x0 - 1 + (q % 2), y0 + 9 + q * 2, w + 2 - 2 * (q % 2), 1, q === rows - 1 ? p.tr : M[2]); for (let xx = 2; xx < w; xx += 3) this.R(x0 + xx, y0 + 8 + q * 2, 1, 2, M[0]); }
+        } else if (p.bt === "leather") {
+          this.R(x0 - 1, y0 - 1, w + 2, 2, md.fac === "umbrath" ? "#3a3444" : "#e8e2d2"); this.R(x0, y0 - 2, w - 2, 1, md.fac === "umbrath" ? "#54506a" : "#f6f2e8");
+          for (let xx = 0; xx < w; xx += 3) this.R(x0 + xx, y0 + 8, 2, 2, p.hide[1]);
+        } else {
+          this.R(x0 - 2, y0 - 1, w + 4, 2, p.acc[2]); this.R(x0 - 1, y0 - 2, w + 2, 1, p.acc[3]); this.R(x0 - 2, y0, w + 4, 1, p.trb);
+        }
+      }
+      if (p.bt === "cloth" && !side) {
+        this.R(x0 - 2, y0 + 10, w + 4, 2, M[0]); this.R(x0 - 3, y0 + 11, w + 6, 1, M[0]);
+        for (const xx of [1, 4, 7]) this.R(x0 + xx - 1, y0 + 8, 1, 4, M[1]);
+        if (rich >= 1) this.R(x0 - 3, y0 + 12, w + 6, 1, p.trb);
+      }
       // кайма 1 px и камень — по редкости доспеха
       this.R(x0, y0, w, 1, p.tr);
       if (!side && (md.look.gem || p.hi)) this.R(15, y0 + 3, 2, 1, p.st);

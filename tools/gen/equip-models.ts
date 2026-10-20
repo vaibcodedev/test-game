@@ -93,6 +93,14 @@ function wing(c: PC, x: number, y: number, dir: number, size: number, r: Ramp) {
     stroke(c, [[x, y], [(x + ex) / 2 - dir * 0.6, (y + ey) / 2 - 0.6], [ex, ey]], 3 - i * 0.35, 1, (t) => r[t < 0.3 ? 2 : i % 2 ? 3 : 4]);
   }
 }
+/** Крыло обычной модели: общий веер из 4 перьев с зубчатым нижним краем (не пальцы), без анимации. */
+function wingPlate(c: PC, x: number, y: number, dir: number, size: number, r: Ramp) {
+  const top: Pt[] = [[x, y], [x + dir * size * 0.4, y - size * 0.62], [x + dir * size, y - size * 0.55]];
+  const low: Pt[] = [];
+  for (let i = 0; i < 4; i++) { const f = i / 3; low.push([x + dir * size * (1 - f * 0.78), y - size * 0.3 + f * size * 0.62 + 1.6], [x + dir * size * (0.9 - f * 0.78), y - size * 0.3 + f * size * 0.62 - 0.4]); }
+  c.poly([...top, ...low], (px, py) => r[cl(4.4 - (Math.abs(px - x) / size) * 2.1 + (y - py) * 0.12, 1, 4)]);
+  for (let i = 1; i < 4; i++) { const f = i / 3; c.line(x + dir * 2, y - 0.5, x + dir * size * (0.92 - f * 0.78), y - size * 0.3 + f * size * 0.62, r[1], 1); }
+}
 function horn(c: PC, x: number, y: number, dir: number, size: number, r: Ramp) {
   const pts: Pt[] = [[x, y], [x + dir * size * 0.45, y - size * 0.2], [x + dir * size * 0.8, y - size * 0.6], [x + dir * size * 0.75, y - size], [x + dir * size * 0.5, y - size * 1.2]];
   stroke(c, pts, Math.max(2.5, size * 0.38), 1, (t) => r[cl(4 - t * 2.4, 1, 4)]);
@@ -815,23 +823,52 @@ function shield(k: K, shape: string) {
 
 // ---------------- шлемы ----------------
 function helmDeco(k: K, top: number, cx = 24) {
-  const c = k.c;
+  const c = k.c, tr = k.trim;
   switch (k.L.deco) {
     case "horns": for (const s of [-1, 1]) horn(c, cx + s * 9, top + 8, s, 11, k.bone); break;
-    case "wings": for (const s of [-1, 1]) wing(c, cx + s * 11, top + 10, s, 11, RP("silver", "silver")); break;
-    case "halo": c.rect(cx - 11, top + 8, 22, 2, k.trim[3]); c.rect(cx - 11, top + 8, 22, 1, k.trim[4]); for (const x of [cx - 6, cx, cx + 6]) gemAt(k, x, top + 9, 1.1, k.stone); break; // нимб — только у легендарок, у моделей обруч
+    case "wings": for (const s of [-1, 1]) wingPlate(c, cx + s * 10, top + 14, s, 12, RP("silver", "silver")); break;
+    case "halo": { // обруч над головой (нимб — только у легендарок)
+      const hy = Math.max(3, top - 2);
+      for (let a = 0; a < TAU; a += 0.06) { const x = Math.round(cx + Math.cos(a) * 11), y = Math.round(hy + Math.sin(a) * 2.8); c.set(x, y, Math.sin(a) > 0 ? tr[4] : tr[2]); c.set(x, y + 1, Math.sin(a) > 0 ? tr[3] : tr[1]); }
+      break;
+    }
     case "spikes": for (const x of [cx - 7, cx, cx + 7]) c.poly([[x - 1.6, top + 5], [x, top - 3 - (x === cx ? 3 : 0)], [x + 1.6, top + 5]], lit(k.mat, x - 1, top, 2)); break;
     case "skull": skull(k, cx, top + 9, 1.2); break;
     case "runes": for (let i = 0; i < 3; i++) rune(c, cx - 7 + i * 7, top + 11, k.fx[3], i + k.h); break;
-    case "filigree": for (let x = cx - 9; x <= cx + 9; x += 2) c.set(x, top + 8 + ((x >> 1) % 2), k.trim[3]); break;
-    case "chains": for (let x = cx - 10; x <= cx + 10; x += 2.5) c.ellipse(x, top + 22 + Math.sin(x / 3), 1, 1, k.trim[3]); break;
+    case "filigree": for (let x = cx - 9; x <= cx + 9; x += 2) c.set(x, top + 8 + ((x >> 1) % 2), tr[3]); break;
+    case "chains": for (let x = cx - 10; x <= cx + 10; x += 2.5) c.ellipse(x, top + 22 + Math.sin(x / 3), 1, 1, tr[3]); break;
   }
+}
+/** Слои шлема по look.rich: 1 — кайма/строчка/заклёпки; 2 — наназатыльник-бармица или меховая опушка/подвесы и гравировка; 3 — крупный гребень, 2–3 камня; затем look.deco. */
+function helmFinish(k: K, top: number, brow = top + 9, bottom = 41) {
+  const c = k.c, R = k.rich, tr = k.trim, plate = k.cat === "plate_helm", leather = k.cat === "leather_helm";
+  const fur = RP(k.umb ? "black" : "whitefur", "white");
+  if (R >= 1) {
+    if (plate) { c.line(12, brow, 36, brow, tr[3], 1); rivet(k, 13, brow + 2); rivet(k, 34, brow + 2); c.line(12, bottom - 1, 36, bottom - 1, tr[2], 1); }
+    else if (leather) { stitch(c, [[14, top + 6], [12, bottom - 3]], k.hide[3]); stitch(c, [[34, top + 6], [36, bottom - 3]], k.hide[3]); c.line(13, bottom - 1, 35, bottom - 1, tr[3], 1); }
+    else { c.line(11, brow + 3, 37, brow + 3, tr[3], 1); for (let x = 13; x < 36; x += 4) c.set(x, brow + 4, tr[4]); }
+  }
+  if (R >= 2) {
+    if (plate) { // бармица и горжет-пластины под шлемом
+      for (let y = bottom; y < 46; y++) for (let x = 12; x < 37; x++) if ((x + y) % 2 === 0) c.set(x, y, k.mat[(x + y) % 4 ? 1 : 3]);
+      c.poly([[10, bottom + 1], [38, bottom + 1], [36, 46], [12, 46]], hard(k.mat, 24, bottom - 4)); c.line(11, bottom + 2, 37, bottom + 2, tr[3], 1); c.line(13, 45, 35, 45, tr[1], 1); c.line(11, bottom + 1, 37, bottom + 1, k.mat[4], 1);
+    } else if (leather) { c.shadedEllipse(24, bottom - 1, 14, 3.4, fur); for (let x = 10; x < 39; x += 3) c.set(x, bottom + 1 + (x % 2), fur[2]); for (const s of [-1, 1]) c.poly([[24 + s * 13, top + 12], [24 + s * 17, top + 17], [24 + s * 16, bottom - 2], [24 + s * 12, bottom - 4]], fur[3]); }
+    else { for (const s of [-1, 1]) { stroke(c, [[24 + s * 12, brow + 4], [24 + s * 14, brow + 12], [24 + s * 13, brow + 18]], 2.6, 1.4, tr[3]); c.shadedEllipse(24 + s * 13, brow + 19, 1.5, 1.5, tr); } for (let y = brow + 6; y < bottom - 3; y += 4) { c.set(14, y, tr[3]); c.set(34, y, tr[3]); } }
+  }
+  if (R >= 3) {
+    if (plate) c.poly([[17, top + 5], [23, top - 4], [27, top - 4], [33, top + 5]], lit(tr, 20, top, 3));
+    else if (leather) for (let i = 0; i < 5; i++) stroke(c, [[24, top + 4], [24 + (i - 2) * 3.5, top - 4 - (i === 2 ? 3 : 0)], [24 + (i - 2) * 5, top - 7 - (i === 2 ? 3 : 0)]], 3, 1, (t) => k.cloth[cl(3.4 - t * 2)]);
+    else { c.poly([[20, brow], [24, Math.max(1, top - 8)], [28, brow]], lit(tr, 21, top, 3)); c.set(24, Math.max(1, top - 8), WHITE); }
+    for (const x of [17, 31]) gemAt(k, x, brow + 1, 1.3, k.gem ?? k.stone);
+  }
+  helmDeco(k, top);
+  if (plate || leather ? R >= 3 || (k.gem && k.L.deco !== "skull") : R >= 3) gemAt(k, 24, Math.max(4, brow - 1), 2, k.gem ?? k.stone);
 }
 function plume(k: K, x: number, y: number) {
   for (let i = 0; i < 5; i++) stroke(k.c, [[x, y], [x + 3 + i * 2, y - 8 + i], [x + 6 + i * 3, y - 3 + i * 1.6]], 3, 1, (t) => k.cloth[cl(4 - t * 2 - (i % 2))]);
 }
 function plateHelm(k: K, shape: string) {
-  const c = k.c, m = k.mat, L = lit(m, 16, 12, 6);
+  const c = k.c, m = k.mat, L = hard(m, 22, 6);
   const dome = (top: number, bottom: number) => c.shadedEllipse(24, top + 11, 14, 12, m, undefined, true, bottom);
   const cheeks = (y: number) => { c.poly([[10, y], [17, y], [17, 39], [12, 39]], lit(m, 12, y + 3, 4, 1, 3)); c.poly([[31, y], [38, y], [36, 39], [31, 39]], lit(m, 33, y + 3, 4, 0, 2)); };
   const mail = (y: number) => { for (let yy = y; yy < 46; yy++) for (let x = 11; x < 38; x++) if ((x + yy) % 2 === 0) c.set(x, yy, m[(x + yy) % 4 ? 1 : 3]); };
@@ -853,8 +890,7 @@ function plateHelm(k: K, shape: string) {
     }
   }
   if (k.umb && (shape === "great" || shape === "barbute" || shape === "armet" || shape === "bascinet")) for (const x of [18, 29]) c.rect(x, shape === "great" ? 20 : shape === "bascinet" ? 23 : shape === "armet" ? 20 : 18, 2, 1, k.fx[3]);
-  if (!(shape === "horned" && k.L.deco === "horns")) helmDeco(k, top);
-  if (k.gem && shape !== "crowned" && k.L.deco !== "skull") gemAt(k, 24, top + 7, 2);
+  helmFinish(k, top, shape === "great" ? 18 : top + 9, shape === "bascinet" || shape === "great" ? 38 : 40);
 }
 function leatherHelm(k: K, shape: string) {
   const c = k.c, hd = k.hide, cc = k.cloth, eye = k.umb ? k.fx[3] : k.sol ? hex("#a8d4ff") : hex("#ffe070");
@@ -880,7 +916,7 @@ function leatherHelm(k: K, shape: string) {
     }
     default: {
       const peak: Pt = shape === "cowl" ? [32, 2] : [24, 4];
-      c.poly([peak, [36, 13], [40, 42], [31, 36], [17, 36], [8, 42], [12, 13]], lit(hd, 16, 13, 7, 0, 3));
+      c.poly([peak, [36, 13], [40, 42], [31, 36], [17, 36], [8, 42], [12, 13]], leatherFill(hd, 24, 6));
       c.line(peak[0], peak[1] + 1, 14, 14, hd[3], 1);
       face(15, 33, 10, 34);
       if (shape === "mask") { c.poly([[15, 24], [33, 24], [31, 34], [17, 34]], lit(cc, 19, 26, 4, 1, 3)); c.line(17, 27, 31, 27, cc[0], 1); c.line(17, 30, 31, 30, cc[0], 1); }
@@ -890,10 +926,8 @@ function leatherHelm(k: K, shape: string) {
       if (shape === "beaked") { c.poly([[19, 20], [29, 20], [24, 40]], lit(k.bone, 21, 24, 5, 1, 4)); c.line(24, 20, 24, 38, k.bone[1], 1); c.poly([[24, 20], [24, 38], [27, 26]], k.bone[2]); }
     }
   }
-  if (k.gem && shape !== "band") gemAt(k, 24, 38, 1.8);
-  if (k.L.deco === "horns" && shape !== "pelt") for (const s of [-1, 1]) horn(c, 24 + s * 9, 13, s, 9, k.bone);
-  if (k.L.deco === "spikes") for (const x of [14, 34]) c.poly([[x - 1.5, 13], [x + (x < 24 ? -5 : 5), 5], [x + 1.5, 13]], k.mat[3]);
-  if (k.L.deco === "runes") for (let i = 0; i < 3; i++) rune(c, 17 + i * 7, 41, k.fx[3], i + k.h);
+  const LT: Record<string, number> = { fur: 11, cap: 9, pelt: 6, band: 12 };
+  helmFinish(k, LT[shape] ?? 4, (LT[shape] ?? 4) + 12, 38);
 }
 function clothHelm(k: K, shape: string) {
   const c = k.c, cc = k.cloth;
@@ -906,143 +940,344 @@ function clothHelm(k: K, shape: string) {
       break;
     }
     case "diadem": c.poly([[8, 30], [40, 30], [38, 36], [10, 36]], lit(k.trim, 14, 31, 5)); c.rect(10, 30, 28, 1, k.trim[4]); for (const [x, hh] of [[12, 6], [18, 11], [24, 20], [30, 11], [36, 6]]) { c.poly([[x - 2.6, 30], [x, 30 - hh], [x + 2.6, 30]], lit(k.trim, x - 1, 24, 3)); c.set(x, 30 - hh, WHITE); } gemAt(k, 24, 22, 3); gemAt(k, 17, 33, 1.5); gemAt(k, 31, 33, 1.5); break;
-    case "mitre": c.poly([[11, 42], [11, 16], [22, 3], [24, 9], [26, 3], [37, 16], [37, 42]], lit(cc, 16, 14, 8, 1, 4)); c.rect(21, 9, 6, 33, k.trim[3]); c.rect(22, 9, 1, 33, k.trim[4]); c.rect(15, 20, 18, 5, k.trim[3]); c.rect(11, 37, 26, 5, k.trim[2]); gemAt(k, 24, 22.5, 2.2); for (const s of [-1, 1]) c.rect(24 + s * 9 - 1, 42, 3, 5, cc[1]); break;
+    case "mitre": c.poly([[11, 42], [11, 16], [22, 3], [24, 9], [26, 3], [37, 16], [37, 42]], clothFill(cc, 22, 12, 0.3)); c.rect(21, 9, 6, 33, k.trim[3]); c.rect(22, 9, 1, 33, k.trim[4]); c.rect(15, 20, 18, 5, k.trim[3]); c.rect(11, 37, 26, 5, k.trim[2]); gemAt(k, 24, 22.5, 2.2); for (const s of [-1, 1]) c.rect(24 + s * 9 - 1, 42, 3, 5, cc[1]); break;
     case "turban": for (let i = 0; i < 5; i++) c.shadedEllipse(24, 37 - i * 4.6, 15 - i * 2, 5, cc); c.shadedEllipse(24, 14, 6, 4.5, cc); for (let i = 0; i < 4; i++) c.line(11 + i * 2, 36 - i * 4, 37 - i * 2, 31 - i * 4, cc[1], 1); gemAt(k, 24, 27, 3); stroke(c, [[25, 24], [31, 10], [35, 3]], 3.4, 1, (t) => RP("white", "white")[cl(4 - t * 2)]); break;
-    case "veil": c.poly([[24, 4], [37, 12], [41, 44], [7, 44], [11, 12]], lit(cc, 16, 12, 8, 0, 4)); c.poly([[14, 18], [34, 18], [35, 44], [13, 44]], withA(k.umb ? RP("black", "black")[1] : RP("white", "white")[3], 200)); for (let y = 20; y < 44; y += 3) c.line(14, y, 34, y + 1, withA(cc[0], 120), 1); c.rect(13, 16, 22, 3, k.trim[2]); for (const x of [16, 24, 32]) { c.line(x, 19, x, 24, k.trim[3], 1); c.shadedEllipse(x, 25, 1.2, 1.2, k.gem ?? k.trim); } if (k.umb) for (const x of [20, 28]) c.rect(x, 26, 2, 1, k.fx[3]); break;
+    case "veil": c.poly([[24, 4], [37, 12], [41, 44], [7, 44], [11, 12]], clothFill(cc, 22, 12, 0.3)); c.poly([[14, 18], [34, 18], [35, 44], [13, 44]], withA(k.umb ? RP("black", "black")[1] : RP("white", "white")[3], 200)); for (let y = 20; y < 44; y += 3) c.line(14, y, 34, y + 1, withA(cc[0], 120), 1); c.rect(13, 16, 22, 3, k.trim[2]); for (const x of [16, 24, 32]) { c.line(x, 19, x, 24, k.trim[3], 1); c.shadedEllipse(x, 25, 1.2, 1.2, k.gem ?? k.trim); } if (k.umb) for (const x of [20, 28]) c.rect(x, 26, 2, 1, k.fx[3]); break;
     case "horncrown": c.poly([[10, 30], [38, 30], [36, 36], [12, 36]], lit(k.trim, 14, 31, 5)); for (const s of [-1, 1]) { horn(c, 24 + s * 6, 30, s, 16, k.bone); stroke(c, [[24 + s * 11, 30], [24 + s * 16, 22], [24 + s * 21, 18]], 2.4, 1, k.bone[3]); stroke(c, [[24 + s * 3, 30], [24 + s * 4, 21]], 2, 1, k.bone[2]); } gemAt(k, 24, 32.5, 2.4); break;
-    case "cowl": c.poly([[24, 4], [37, 13], [41, 44], [7, 44], [11, 13]], lit(cc, 16, 12, 8, 0, 4)); c.ellipse(24, 26, 8, 10, VOIDC); c.line(12, 42, 36, 42, k.trim[2], 2); c.line(24, 5, 15, 14, cc[4], 1); for (const x of [20, 28]) c.rect(x, 24, 2, 1, k.umb ? k.fx[3] : withA(WHITE, 140)); break;
+    case "cowl": c.poly([[24, 4], [37, 13], [41, 44], [7, 44], [11, 13]], clothFill(cc, 22, 12, 0.3)); c.ellipse(24, 26, 8, 10, VOIDC); c.line(12, 42, 36, 42, k.trim[2], 2); c.line(24, 5, 15, 14, cc[4], 1); for (const x of [20, 28]) c.rect(x, 24, 2, 1, k.umb ? k.fx[3] : withA(WHITE, 140)); break;
     case "moon": c.poly([[10, 30], [38, 30], [36, 37], [12, 37]], lit(k.trim, 14, 31, 5)); c.rect(10, 30, 28, 1, k.trim[4]); c.shadedEllipse(24, 17, 11, 11, k.trim); for (let y = 0; y < 28; y++) for (let x = 0; x < ICON; x++) if (Math.hypot(x + 0.5 - 28, y + 0.5 - 13) < 9.4) c.clear(x, y); gemAt(k, 24, 33.5, 2.4); break;
     case "thorns": c.poly([[9, 30], [39, 30], [37, 36], [11, 36]], lit(k.haft, 14, 31, 5)); for (let i = 0; i < 9; i++) { const x = 12 + i * 3, hh = i % 2 ? 9 : 14 - Math.abs(i - 4) * 1.2; c.poly([[x - 1.8, 31], [x, 31 - hh], [x + 1.8, 31]], lit(k.bone, x - 1, 24, 3, 1, 4)); } gemAt(k, 24, 33.5, 2); break;
     case "starred": { c.poly([[8, 30], [40, 30], [38, 36], [10, 36]], lit(k.trim, 14, 31, 5)); const pts: Pt[] = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 5 : 13; return [24 + Math.cos(a) * r, 17 + Math.sin(a) * r] as Pt; }); c.poly(pts, (x, y) => k.trim[cl(2.4 - (x - 24 + y - 17) / 9, 1, 4)]); gemAt(k, 24, 17, 2.8, k.stone); break; }
     default:
       c.ellipse(24, 37, 21, 6, cc[1]); c.ellipse(24, 36, 20, 4.6, cc[2]);
-      c.poly([[22, 2], [33, 18], [37, 35], [11, 35], [16, 18]], lit(cc, 19, 16, 6, 1, 4)); c.poly([[22, 2], [33, 2], [36, 8], [26, 7]], cc[2]); c.shadedEllipse(36, 8, 2, 2, k.trim);
+      c.poly([[22, 2], [33, 18], [37, 35], [11, 35], [16, 18]], clothFill(cc, 22, 12, 0.3)); c.poly([[22, 2], [33, 2], [36, 8], [26, 7]], cc[2]); c.shadedEllipse(36, 8, 2, 2, k.trim);
       c.rect(13, 29, 23, 5, k.trim[2]); c.rect(13, 29, 23, 1, k.trim[4]); gemAt(k, 24, 31.5, 2.4);
       for (const [x, y] of [[20, 14], [27, 20], [23, 24], [17, 22]]) sparkle(c, x, y, k.fx, 1);
   }
-  if (k.L.deco === "horns" && shape !== "horncrown") for (const s of [-1, 1]) horn(c, 24 + s * 9, 22, s, 11, k.bone);
-  if (k.L.deco === "wings") for (const s of [-1, 1]) wing(c, 24 + s * 13, 26, s, 10, k.trim);
+  const CT: Record<string, number> = { circlet: 16, diadem: 8, mitre: 3, turban: 5, veil: 4, horncrown: 14, cowl: 4, moon: 6, thorns: 15, starred: 4 };
+  helmFinish(k, CT[shape] ?? 2, shape === "circlet" ? 27 : (CT[shape] ?? 2) + 14, shape === "circlet" || shape === "diadem" || shape === "horncrown" || shape === "moon" || shape === "thorns" ? 40 : 43);
 }
 
 // ---------------- доспехи ----------------
-function pauldron(k: K, x: number, s: number, big: boolean, R = k.mat) {
-  const c = k.c, r = big ? 8 : 6.5;
-  c.shadedEllipse(x, 15, r, r * 0.8, R, undefined, true, 21);
-  for (let i = 0; i < 2; i++) c.line(x - r + 1, 18 + i * 2.5, x + r - 1, 18 + i * 2.5, R[1], 1);
-  c.rect(Math.round(x - r), 20, Math.round(r * 2), 1, k.trim[2]);
-  if (k.L.deco === "spikes") for (const d of [-2.5, 2.5]) c.poly([[x + d - 1.4, 12], [x + d * 2 + s * 2, 3], [x + d + 1.4, 12]], R[4]);
-  if (k.L.deco === "horns") horn(c, x, 13, s, 10, k.bone);
-  if (k.L.deco === "wings") wing(c, x + s * 3, 12, s, 10, RP("silver", "silver"));
-  if (k.L.deco === "skull") skull(k, x, 15, 1.1);
-  if (k.L.deco === "filigree" || k.L.deco === "runes") c.ellipse(x, 15, 2, 1.6, k.L.deco === "runes" ? k.fx[3] : k.trim[3]);
+// Язык материалов (задача 109): латы — жёсткие плоскости света/тени, блики 1–2 px, заклёпки, кромки пластин;
+// кожа — матовая, без светлого тона, пунктир строчки, ремни, пряжки, подсумки; ткань — силуэт расширяется книзу,
+// широкие рукава, складки подола, мягкие (с растушёвкой) переходы. Свет сверху-слева. Слои по look.rich:
+// 0 — голая форма; 1 — кайма, заклёпки, строчка; 2 — горжет/воротник, набедренники, гравировка; 3 — крупный элемент силуэта и 2–3 камня.
+const BAYER = [[0.125, 0.625], [0.875, 0.375]];
+/** Латы: две жёсткие плоскости (слева светлее, справа темнее), верхняя кромка светлее, низ темнее. Без диагонали. */
+const hard = (r: Ramp, cx = 24, y0 = 12) => (x: number, y: number) => r[cl((x + 0.5 < cx ? 3.1 : 1.4) + (y < y0 + 2 && x + 0.5 < cx ? 0.9 : 0) - (y > y0 + 19 ? 0.8 : 0), 0, 4)];
+/** Кожа: матовая — три вертикальные полосы тона и редкое зерно, без самого светлого тона. */
+const leatherFill = (r: Ramp, cx = 24, w = 6) => (x: number, y: number) => r[cl((x + 0.5 < cx - w ? 3 : x + 0.5 > cx + w ? 1 : 2) - ((x * 5 + y * 7) % 13 === 0 ? 1 : 0), 0, 3)];
+/** Ткань: мягкий свет с растушёвкой и вертикальные складки. */
+const clothFill = (r: Ramp, cx = 24, w = 14, fold = 0.32) => (x: number, y: number) => {
+  const v = 2.3 - ((x + 0.5 - cx) / w) * 0.75 - (y - 6) * 0.006 + Math.sin((x - cx) * 0.95) * fold, f = Math.floor(v);
+  const q = v - f;
+  return r[cl(q < 0.3 ? f : q > 0.7 ? f + 1 : f + (q > BAYER[y & 1][x & 1] ? 1 : 0), 0, 4)];
+};
+/** Пунктир строчки по ломаной. */
+function stitch(c: PC, pts: Pt[], col: RGBA, step = 2) {
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0)));
+    for (let s = 0; s <= n; s += step) c.set(Math.round(x0 + ((x1 - x0) * s) / n), Math.round(y0 + ((y1 - y0) * s) / n), col);
+  }
+}
+const rivet = (k: K, x: number, y: number) => { k.c.set(x, y, k.trim[4]); k.c.set(x, y + 1, k.trim[0]); };
+/** За спиной: солнечный диск (halo), крылья, высокий веерный воротник тканевого доспеха. */
+function armorBack(k: K, fan = false) {
+  const c = k.c;
+  if (k.L.deco === "halo") {
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * TAU; c.poly([[24 + Math.cos(a - 0.13) * 10, 10 + Math.sin(a - 0.13) * 10], [24 + Math.cos(a) * 15, 10 + Math.sin(a) * 15], [24 + Math.cos(a + 0.13) * 10, 10 + Math.sin(a + 0.13) * 10]], k.trim[i % 2 ? 2 : 3]); }
+    c.shadedEllipse(24, 10, 10, 10, k.trim); c.ellipse(24, 10, 7, 7, k.trim[1]); c.ellipse(24, 10, 5.4, 5.4, k.trim[2]);
+  }
+  if (k.L.deco === "wings") for (const s of [-1, 1]) wingPlate(c, 24 + s * 7, 15, s, 17, RP("silver", "silver"));
+  if (fan && k.rich >= 3) c.poly([[13, 12], [14, 3], [19, 8], [24, 0], [29, 8], [34, 3], [35, 12]], clothFill(k.cloth, 22, 12, 0.2));
+}
+/** Спереди: украшения look.deco на плечах и груди (общие для всех трёх тканей брони). */
+function armorDeco(k: K, cy = 22, sy = 15, hem = 44) {
+  const c = k.c, d = k.L.deco, tr = k.trim;
+  if (d === "horns") for (const s of [-1, 1]) horn(c, 24 + s * 13, sy - 2, s, 10, k.bone);
+  if (d === "spikes") for (const s of [-1, 1]) for (const dx of [8, 12.5, 17]) c.poly([[24 + s * dx - 1.5, sy - 2], [24 + s * (dx + 1.2), sy - 8 + (dx > 12 ? 2 : 0)], [24 + s * dx + 1.5, sy - 2]], k.mat[3]);
+  if (d === "skull") skull(k, 24, cy + 1, 1.1);
+  if (d === "runes") for (const [i, [x, y]] of [[17, cy - 2], [31, cy - 2], [17, cy + 5], [31, cy + 5]].entries()) rune(c, x, y, k.fx[3], i + k.h);
+  if (d === "filigree") for (const s of [-1, 1]) { stroke(c, [[24 + s * 3, 15], [24 + s * 7, 18], [24 + s * 9, 24], [24 + s * 6, 29]], 1, 1, tr[3]); for (let x = 12; x < 37; x += 3) c.set(x, hem - 2, tr[4]); }
+  if (d === "chains") for (let x = 13; x < 36; x += 2.4) c.ellipse(x, cy - 3 + Math.sin(((x - 13) / 22) * Math.PI) * 4, 1, 1, tr[3]);
+}
+/** Камни крупных ярусов: 2–3 камня, камень модели или камень по редкости. */
+function armorGems(k: K, pts: Pt[]) {
+  const n = k.rich >= 3 ? Math.min(3, pts.length) : k.gem && k.L.deco !== "skull" ? 1 : 0;
+  for (let i = 0; i < n; i++) gemAt(k, pts[i][0], pts[i][1], i === 0 ? 2.2 : 1.5, k.gem ?? k.stone);
+}
+const dx0 = (x: number, s: number, a: number) => x + s * a;
+/** Наплечник из 3 пластин внахлёст (r3 — 4) с каймой и заклёпками. Сольгард — скруглённый, золото и лазурь; Умбрат — угловатый, шипы и кость. */
+function pauldron(k: K, x: number, s: number, big: boolean, R = k.mat, n = k.rich >= 3 ? 4 : 3) {
+  const c = k.c, r = k.rich, tr = k.trim, az = RP("azure", "azure");
+  for (let j = n - 1; j >= 0; j--) {
+    const w = 4.4 + j * 1.7 + (big ? 0.8 : 0) + (r >= 2 ? 0.5 : 0), yt = 8.5 + j * 3.4 - (n === 4 ? 1.5 : 0), yb = yt + 5.6;
+    const dx = (a: number) => x + s * a; // a>0 — наружу
+    const pts: Pt[] = k.umb
+      ? [[dx(-w), yb], [dx(-w * 0.55), yt], [dx(w * 0.55), yt], [dx(w), yb - 2.4], [dx(w + 1.6), yb + 0.4], [dx(w * 0.2), yb + 1]]
+      : [[dx(-w), yb], [dx(-w * 0.85), yt + 1.8], [dx(-w * 0.4), yt + 0.2], [dx(w * 0.3), yt], [dx(w * 0.8), yt + 1.8], [dx(w), yb]];
+    c.poly(pts, (px, py) => R[cl(3.2 - ((px + 0.5 - (x - w)) / (2 * w)) * 1.9 + (py < yt + 1.7 ? 0.9 : 0) - (py > yb - 1.3 ? 0.9 : 0), 0, 4)]);
+    c.line(x - w + 1, yb - 0.5, x + w - 1, yb - 0.5, r >= 1 ? (k.umb && r < 3 ? k.bone[3] : tr[3]) : R[0], 1);
+    if (r >= 1) { rivet(k, Math.round(x - w * 0.5), Math.round(yb - 3)); rivet(k, Math.round(x + w * 0.5), Math.round(yb - 3)); }
+    if (k.sol && j === 1) c.line(x - w * 0.5, yt + 2.5, x + w * 0.5, yt + 2.5, az[3], 1);
+    if (k.umb && j < 2) c.poly([[dx(w * 0.1) - 1.3, yt + 0.5], [dx(w * 0.4), yt - 3.6 - (r >= 2 ? 1.5 : 0)], [dx(w * 0.1) + 1.3, yt + 0.5]], R[4]);
+    if (k.umb && j === 1) c.shadedEllipse(dx(-w * 0.15), yt + 3, 1.8, 1.4, k.bone);
+  }
+  if (r >= 3) { // гребень-стойка и камень на верхней пластине
+    if (k.umb) c.poly([[dx0(x, s, 1) - 1.5, 9], [dx0(x, s, 3), 1.5], [dx0(x, s, 1) + 1.5, 9]], k.bone[3]);
+    else { c.shadedEllipse(x, 7.5, 1.9, 1.9, tr); c.set(x - 1, 6, tr[4]); }
+  }
+  if (k.L.deco === "horns") horn(c, x, 11, s, 9, k.bone);
+  if (k.L.deco === "skull" && r < 3) skull(k, x, 16, 0.9);
 }
 function pattern(c: PC, fn: (x: number, y: number, p: RGBA) => RGBA | null, y0 = 0, y1 = ICON) {
   for (let y = y0; y < y1; y++) for (let x = 0; x < ICON; x++) { const p = c.get(x, y); if (!p || p[3] < 255) continue; const n = fn(x, y, p); if (n) c.set(x, y, n); }
 }
 const TORSO: Pt[] = [[13, 12], [35, 12], [37, 23], [34, 41], [14, 41], [11, 23]];
+/** Набедренники: ряды пластин внахлёст (нижний ряд рисуется первым). */
+function tassets(k: K, m: Ramp, rows: number, y0: number, x0 = 13, x1 = 35) {
+  const c = k.c;
+  for (let i = rows - 1; i >= 0; i--) {
+    const y = y0 + i * 4, n = Math.round((x1 - x0) / 5);
+    for (let j = 0; j < n; j++) {
+      const x = x0 + ((x1 - x0) / n) * j, w = (x1 - x0) / n;
+      c.poly([[x, y], [x + w, y], [x + w - 0.5, y + 5.4], [x + w / 2, y + 6.4], [x + 0.5, y + 5.4]], hard(m, x + w / 2, y - 8));
+      c.line(x, y + 5, x + w - 1, y + 5, k.rich >= 1 ? k.trim[3] : m[0], 1);
+      if (k.rich >= 1) c.set(Math.round(x + w / 2 - 0.5), y + 2, k.trim[4]);
+    }
+  }
+}
 function plateArmor(k: K, shape: string) {
-  const t = new PC(ICON, ICON), m = shape === "bone" ? k.bone : k.mat, c = k.c;
-  t.poly(TORSO, lit(m, 18, 16, 6));
+  const t = new PC(ICON, ICON), m = shape === "bone" ? k.bone : k.mat, c = k.c, R = k.rich, tr = k.trim;
+  armorBack(k);
+  const cuir = shape === "cuirass";
+  const body: Pt[] = cuir ? [[13, 12], [35, 12], [38, 21], [32, 30], [35, 41], [13, 41], [16, 30], [10, 21]] : TORSO;
+  t.poly(body, hard(m, 24));
   if (shape === "scale") pattern(t, (x, y) => { const row = (y - 12) >> 1, cx = (x + (row % 2) * 2) % 4; return (y - 12) % 2 === 1 ? m[1] : cx === 0 ? m[3] : null; }, 12, 41);
   if (shape === "chain") pattern(t, (x, y, p) => ((x + y) % 2 ? mix(p, m[0], 0.5) : (x + y) % 4 === 0 ? mix(p, m[4], 0.4) : null), 12, 41);
-  if (shape === "brigandine") { t.poly(TORSO, lit(k.cloth, 18, 16, 6, 1, 3)); pattern(t, (x, y) => (x % 4 === 1 && y % 4 === 0 ? k.trim[3] : null), 12, 41); }
-  if (shape === "bone") { t.poly(TORSO, lit(RP("black", "black"), 18, 16, 6, 1, 3)); for (let i = 0; i < 5; i++) for (const s of [-1, 1]) stroke(t, [[24, 16 + i * 4.5], [24 + s * 6, 17 + i * 4.5], [24 + s * 10, 20 + i * 4.2]], 2.6, 1.4, k.bone[3 - (i % 2)]); t.rect(23, 14, 3, 26, k.bone[2]); for (let y = 15; y < 40; y += 3) t.set(24, y, k.bone[0]); }
-  if (shape === "plate" || shape === "full" || shape === "tabard") { t.line(24, 13, 24, 30, m[4], 1); t.line(25, 13, 25, 30, m[1], 1); for (const y of [31, 34, 37]) { t.line(14, y, 34, y, m[1], 1); t.line(14, y + 1, 34, y + 1, m[3], 1); } }
-  if (shape === "cuirass") { t.line(24, 14, 24, 28, m[4], 1); t.shadedEllipse(19, 21, 5, 6, m); t.shadedEllipse(29, 21, 5, 6, [m[0], m[1], m[2], m[2], m[3]]); }
+  if (shape === "brigandine") { t.poly(TORSO, hard(k.cloth, 24)); pattern(t, (x, y) => (x % 4 === 1 && y % 4 === 0 ? tr[3] : null), 12, 41); }
+  if (shape === "bone") { t.poly(TORSO, hard(RP("black", "black"), 24)); for (let i = 0; i < 5; i++) for (const s of [-1, 1]) stroke(t, [[24, 16 + i * 4.5], [24 + s * 6, 17 + i * 4.5], [24 + s * 10, 20 + i * 4.2]], 2.6, 1.4, k.bone[3 - (i % 2)]); t.rect(23, 14, 3, 26, k.bone[2]); for (let y = 15; y < 40; y += 3) t.set(24, y, k.bone[0]); }
+  if (shape !== "bone" && shape !== "brigandine") { // ребро кирасы: светлое слева, тёмное справа
+    t.line(23, 13, 23, 30, m[3], 1); t.line(24, 13, 24, 30, m[4], 1); t.line(25, 13, 25, 30, m[0], 1);
+  }
+  if (cuir) { for (const [a, b] of [[[15, 25], [23, 27.5]], [[34, 25], [26, 27.5]]] as Pt[][]) t.line(a[0], a[1], b[0], b[1], m[0], 1); t.line(15, 24, 23, 26.5, m[4], 1); t.line(16, 18, 22, 22, m[1], 1); t.line(32, 18, 26, 22, m[0], 1); }
+  if (shape === "plate" || shape === "full" || shape === "tabard") for (const y of [31, 34, 37]) { t.line(14, y, 34, y, m[1], 1); t.line(14, y + 1, 34, y + 1, m[3], 1); }
+  t.line(14, 12, 34, 12, m[4], 1); t.line(13, 13, 11, 22, m[4], 1); t.line(35, 13, 37, 22, m[0], 1);
   c.blit(t, 0, 0);
   c.poly([[19, 12], [24, 16], [29, 12]], DARK);
-  if (shape === "cuirass") for (const x of [14, 19, 24, 29]) c.poly([[x, 37], [x + 5, 37], [x + 5, 45], [x, 44]], lit(m, x + 1, 38, 3, 1, 3));
-  if (shape === "full") { c.shadedEllipse(24, 11, 7, 3.4, m); for (const s of [-1, 1]) c.poly([[24 + s * 1.5, 33], [24 + s * 11, 33], [24 + s * 11, 46], [24 + s * 1.5, 45]], lit(m, 24 + s * 6, 36, 4, 1, 3)); }
-  if (shape === "tabard") { c.poly([[18, 16], [30, 16], [31, 47], [24, 44], [17, 47]], lit(k.cloth, 20, 20, 6, 1, 4)); c.rect(18, 16, 12, 1, k.trim[3]); c.line(17, 46, 24, 43, k.trim[3], 1); c.line(31, 46, 24, 43, k.trim[3], 1); emblem(k, 24, 27, 0.6); }
-  c.rect(14, 30, 20, 3, k.hide[1]); c.rect(14, 30, 20, 1, k.hide[3]); c.shadedRect(22, 29, 4, 5, k.trim, 1);
-  const big = shape === "plate" || shape === "full" || !!k.L.deco;
-  pauldron(k, 11, -1, big, m); pauldron(k, 37, 1, big, m);
-  if (k.gem) gemAt(k, 24, 22, 2.2);
-  if (k.L.deco === "runes") for (const [i, [x, y]] of [[16, 20], [32, 20], [16, 26], [32, 26]].entries()) rune(c, x, y, k.fx[3], i + k.h);
-  if (k.L.deco === "chains") for (let x = 13; x < 36; x += 2.5) c.ellipse(x, 19 + (x - 13) * 0.3, 1, 1, k.trim[3]);
+  // подол: у каждой формы свой силуэт
+  if (cuir) tassets(k, m, 1 + (R >= 2 ? 1 : 0) + (R >= 3 ? 1 : 0), 33, 14, 34);
+  else if (shape === "full") {
+    for (const s of [-1, 1]) { const x0 = s < 0 ? 13 : 24.5; c.poly([[x0, 33], [x0 + 10.5, 33], [x0 + 10, 46], [x0 + 0.5, 45]], hard(m, x0 + 5, 30)); for (const y of [38, 42]) { c.line(x0 + 1, y, x0 + 9, y, m[1], 1); c.line(x0 + 1, y + 1, x0 + 9, y + 1, m[3], 1); } if (R >= 1) c.line(x0 + 1, 45, x0 + 9, 45, tr[3], 1); }
+    if (R >= 2) tassets(k, m, R >= 3 ? 2 : 1, 33, 12, 36);
+  } else if (shape === "tabard") {
+    c.poly([[18, 15], [30, 15], [32, 47], [24, 43.5], [16, 47]], clothFill(k.cloth, 22, 10, 0.2)); c.rect(18, 15, 12, 1, tr[3]);
+    for (const s of [-1, 1]) c.line(24 + s * 8, 46, 24, 43, tr[3], 1);
+    emblem(k, 24, 27, 0.6);
+    if (R >= 2) for (const s of [-1, 1]) c.poly([[24 + s * 9, 33], [24 + s * 15, 33], [24 + s * 15, 43], [24 + s * 9.5, 44]], hard(m, 24 + s * 12, 30));
+    if (R >= 3) { c.line(18, 38, 30, 38, tr[3], 1); c.line(17, 42, 31, 42, tr[3], 1); }
+  } else if (shape === "chain" || shape === "scale" || shape === "brigandine") {
+    if (R >= 1) { c.poly([[13, 40], [35, 40], [38, 46], [10, 46]], hard(shape === "brigandine" ? k.cloth : m, 24, 30)); c.line(11, 45, 37, 45, tr[3], 1); }
+    if (R >= 2) tassets(k, m, 1, 36, 12, 36);
+  } else if (shape === "plate" || shape === "bone") {
+    if (R >= 1) tassets(k, m, 1 + (R >= 3 ? 1 : 0), 38, 12, 36);
+    if (R >= 2) for (const s of [-1, 1]) c.poly([[24 + s * 10, 31], [24 + s * 16, 31], [24 + s * 15, 41], [24 + s * 11, 42]], hard(m, 24 + s * 13, 28));
+  }
+  if (R >= 1) { c.line(14, 40, 34, 40, tr[3], 1); for (const [x, y] of [[15, 15], [33, 15], [15, 27], [33, 27]] as Pt[]) rivet(k, x, y); }
+  // пояс: ремень с пряжкой
+  const bw = cuir ? 16 : 20;
+  c.rect(24 - bw / 2, 30, bw, 3, k.hide[1]); c.rect(24 - bw / 2, 30, bw, 1, k.hide[3]); c.shadedRect(22, 29, 4, 5, tr, 1);
+  // горжет
+  if (R >= 2) {
+    c.shadedEllipse(24, 11, 9, 3.8, m);
+    for (let a = 0.2; a < Math.PI; a += 0.12) c.set(Math.round(24 + Math.cos(a) * 9), Math.round(11 + Math.sin(a) * 3.6), tr[3]);
+    if (R >= 3) { c.line(14, 14, 34, 14, m[1], 1); for (let a = 0.3; a < Math.PI - 0.2; a += 0.14) c.set(Math.round(24 + Math.cos(a) * 11), Math.round(13.5 + Math.sin(a) * 3.2), tr[4]); }
+  }
+  const big = shape === "plate" || shape === "full" || R >= 2;
+  pauldron(k, 10, -1, big, m); pauldron(k, 38, 1, big, m);
+  armorGems(k, [[24, 22], [18, 19], [30, 19]]);
+  armorDeco(k, 21, 14, 44);
 }
 function leatherArmor(k: K, shape: string) {
-  const c = k.c, hd = k.hide, cc = k.cloth;
+  const c = k.c, hd = k.hide, cc = k.cloth, R = k.rich, tr = k.trim, fur = RP(k.umb ? "black" : "whitefur", "white");
+  armorBack(k);
   if (shape === "cloak") {
-    c.poly([[24, 5], [35, 9], [41, 45], [7, 45], [13, 9]], lit(cc, 16, 14, 9, 0, 4));
-    c.poly([[19, 28], [29, 28], [31, 45], [17, 45]], lit(hd, 20, 30, 4, 1, 3));
+    c.poly([[24, 5], [35, 9], [41, 45], [7, 45], [13, 9]], clothFill(cc, 18, 12, 0.3));
+    c.poly([[19, 28], [29, 28], [31, 45], [17, 45]], leatherFill(hd, 24, 4));
+    stitch(c, [[19, 29], [17, 44]], hd[3]); stitch(c, [[29, 29], [31, 44]], hd[3]);
     c.line(24, 14, 24, 45, cc[0], 1); for (let x = 8; x < 41; x += 3) c.line(x, 44, x + 1, 46, cc[1], 1);
     c.shadedEllipse(24, 9, 10, 4.6, cc); c.ellipse(24, 10, 5, 2, cc[0]);
-    gemAt(k, 24, 14, 2.6); c.line(15, 13, 33, 13, k.trim[2], 1);
+    c.line(15, 13, 33, 13, tr[2], 1);
+    if (R >= 1) c.line(9, 44, 39, 44, tr[3], 1);
+    if (R >= 2) { c.shadedEllipse(24, 10, 11, 4, fur); for (const [dx, dy] of [[-8, 11], [-4, 13], [4, 13], [8, 11], [0, 14]]) c.set(24 + dx, dy, fur[4]); }
+    if (R >= 3) for (const s of [-1, 1]) { c.poly([[24 + s * 12, 12], [24 + s * 17, 8], [24 + s * 19, 18], [24 + s * 14, 17]], leatherFill(hd, 24 + s * 17, 3)); stitch(c, [[24 + s * 13, 13], [24 + s * 18, 10]], hd[3]); }
+    armorGems(k, [[24, 15], [18, 13], [30, 13]]);
+    armorDeco(k, 24, 12, 44);
     return;
   }
   const sleeves = shape !== "vest" && shape !== "harness", long = shape === "coat";
-  const body: Pt[] = sleeves ? [[14, 11], [34, 11], [39, 17], [39, 30], [34, 30], [34, long ? 46 : 41], [14, long ? 46 : 41], [14, 30], [9, 30], [9, 17]] : [[14, 11], [34, 11], [35, 18], [34, 41], [14, 41], [13, 18]];
-  c.poly(body, lit(shape === "gambeson" ? cc : hd, 17, 15, 7, 0, 4));
+  const hemY = long ? 46 : 41;
+  const body: Pt[] = sleeves ? [[14, 11], [34, 11], [39, 17], [39, 30], [34, 30], [34, hemY], [14, hemY], [14, 30], [9, 30], [9, 17]] : [[14, 11], [34, 11], [35, 18], [34, 41], [14, 41], [13, 18]];
+  c.poly(body, shape === "gambeson" ? clothFill(cc, 22, 14, 0.2) : leatherFill(hd, 24, 5));
+  if (sleeves) { c.line(14, 12, 9, 18, hd[3], 1); c.line(34, 12, 39, 18, hd[0], 1); c.line(14, 12, 14, 29, hd[0], 1); c.line(34, 12, 34, 29, hd[0], 1); }
   switch (shape) {
     case "gambeson": pattern(c, (x, y) => ((x + y) % 5 === 0 || (x - y + 100) % 5 === 0 ? cc[1] : null), 11, 42); c.rect(14, 11, 20, 3, cc[3]); break;
-    case "vest": c.line(14, 13, 34, 33, hd[0], 3); c.line(34, 13, 14, 33, hd[0], 3); c.shadedRect(22, 21, 4, 4, k.trim, 1); for (const x of [16, 28]) c.shadedRect(x, 34, 5, 5, hd, 1); break;
-    case "jacket": c.poly([[17, 11], [24, 19], [31, 11], [31, 9], [17, 9]], cc[2]); for (let y = 20; y < 38; y += 3) { c.line(22, y, 26, y + 1.5, cc[3], 1); c.line(26, y, 22, y + 1.5, cc[3], 1); } for (const x of [9, 35]) c.rect(x, 28, 4, 2, hd[0]); break;
-    case "coat": c.line(24, 12, 24, 46, hd[0], 1); for (let y = 16; y < 40; y += 4) { c.shadedEllipse(21, y, 1, 1, k.trim); c.shadedEllipse(27, y, 1, 1, k.trim); } c.poly([[16, 11], [24, 17], [32, 11], [32, 7], [16, 7]], cc[2]); c.rect(16, 7, 16, 1, cc[4]); break;
-    case "mantle": c.poly([[9, 12], [39, 12], [42, 23], [6, 23]], lit(cc, 14, 15, 6, 1, 4)); for (let x = 7; x < 42; x += 2) c.rect(x, 23, 1, 2 + (x % 4 ? 0 : 2), cc[1]); gemAt(k, 24, 14, 2); break;
-    case "harness": for (const [a, b] of [[[14, 12], [34, 36]], [[34, 12], [14, 36]]] as Pt[][]) c.line(a[0], a[1], b[0], b[1], hd[0], 3); for (const [x, y] of [[19, 17], [29, 17], [24, 24], [19, 31], [29, 31]]) c.shadedRect(x - 1.5, y - 1.5, 3, 3, k.trim, 1); for (const x of [15, 20, 25, 30]) c.shadedRect(x, 34, 4, 6, hd, 1); c.rect(13, 33, 22, 2, hd[0]); break;
-    case "pelt": for (const s of [-1, 1]) c.shadedEllipse(24 + s * 11, 14, 8, 6, RP(k.umb ? "black" : "whitefur", "white")); pattern(c, (x, y, p) => (y < 21 && (x * 7 + y * 5) % 4 === 0 ? mix(p, WHITE, 0.25) : null), 7, 21); c.poly([[19, 10], [29, 10], [27, 16], [21, 16]], RP(k.umb ? "black" : "grey", "grey")[2]); for (const x of [21, 26]) c.set(x, 12, k.fx[3]); break;
+    case "vest": c.line(14, 13, 34, 33, hd[0], 3); c.line(34, 13, 14, 33, hd[0], 3); stitch(c, [[16, 12], [34, 31]], hd[3]); stitch(c, [[32, 12], [14, 31]], hd[3]); c.shadedRect(22, 21, 4, 4, tr, 1); for (const x of [16, 28]) { c.shadedRect(x, 34, 5, 5, hd, 1); c.line(x, 35, x + 4, 35, hd[3], 1); } break;
+    case "jacket": c.poly([[17, 11], [24, 19], [31, 11], [31, 9], [17, 9]], cc[2]); for (let y = 20; y < 38; y += 3) { c.line(22, y, 26, y + 1.5, hd[3], 1); c.line(26, y, 22, y + 1.5, hd[3], 1); } for (const x of [9, 35]) c.rect(x, 28, 4, 2, hd[0]); stitch(c, [[24, 19], [24, 40]], hd[3]); break;
+    case "coat": c.line(24, 12, 24, 46, hd[0], 1); for (let y = 16; y < 40; y += 4) { c.shadedEllipse(21, y, 1, 1, tr); c.shadedEllipse(27, y, 1, 1, tr); } c.poly([[16, 11], [24, 17], [32, 11], [32, 7], [16, 7]], cc[2]); c.rect(16, 7, 16, 1, cc[3]); stitch(c, [[14, 44], [34, 44]], hd[3]); break;
+    case "mantle": c.poly([[9, 12], [39, 12], [42, 23], [6, 23]], clothFill(cc, 20, 14, 0.25)); for (let x = 7; x < 42; x += 2) c.rect(x, 23, 1, 2 + (x % 4 ? 0 : 2), cc[1]); stitch(c, [[10, 21], [38, 21]], cc[3]); break;
+    case "harness": for (const [a, b] of [[[14, 12], [34, 36]], [[34, 12], [14, 36]]] as Pt[][]) { c.line(a[0], a[1], b[0], b[1], hd[0], 3); stitch(c, [[a[0] + 1, a[1]], [b[0] + 1, b[1]]], hd[3]); } for (const [x, y] of [[19, 17], [29, 17], [24, 24], [19, 31], [29, 31]]) c.shadedRect(x - 1.5, y - 1.5, 3, 3, tr, 1); for (const x of [15, 20, 25, 30]) c.shadedRect(x, 34, 4, 6, hd, 1); c.rect(13, 33, 22, 2, hd[0]); break;
+    case "pelt": for (const s of [-1, 1]) c.shadedEllipse(24 + s * 11, 14, 8, 6, fur); pattern(c, (x, y, p) => (y < 21 && (x * 7 + y * 5) % 4 === 0 ? mix(p, WHITE, 0.2) : null), 7, 21); c.poly([[19, 10], [29, 10], [27, 16], [21, 16]], RP(k.umb ? "black" : "grey", "grey")[2]); for (const x of [21, 26]) c.set(x, 12, k.fx[3]); break;
   }
-  if (shape !== "mantle" && shape !== "pelt") { c.rect(14, 31, 20, 3, hd[0]); c.shadedRect(22, 30, 4, 5, k.trim, 1); }
-  if (k.gem && shape !== "mantle") gemAt(k, 24, 32.5, 1.6);
-  if (k.L.deco === "spikes") for (const x of [11, 37]) c.poly([[x - 1.5, 15], [x + (x < 24 ? -5 : 5), 8], [x + 1.5, 15]], k.mat[3]);
-  if (k.L.deco === "skull") skull(k, 24, 23, 1.1);
-  if (k.L.deco === "runes") for (let i = 0; i < 2; i++) rune(c, 18 + i * 12, 24, k.fx[3], i + k.h);
+  if (shape !== "mantle" && shape !== "pelt") { c.rect(14, 31, 20, 3, hd[0]); c.rect(14, 31, 20, 1, hd[2]); stitch(c, [[14, 33], [34, 33]], hd[3], 3); c.shadedRect(22, 30, 4, 5, tr, 1); }
+  // R1: строчка по краям, заклёпки, подсумок
+  if (R >= 1) {
+    stitch(c, [[15, 13], [15, 29]], hd[3]); stitch(c, [[33, 13], [33, 29]], hd[1]); stitch(c, [[15, hemY - 2], [33, hemY - 2]], hd[3]);
+    for (const [x, y] of [[16, 15], [32, 15], [16, 27], [32, 27]] as Pt[]) rivet(k, x, y);
+    if (shape !== "mantle" && shape !== "pelt") { c.shadedRect(15, 34, 6, 5, hd, 1); c.line(15, 35, 20, 35, hd[0], 1); c.set(18, 37, tr[3]); }
+  }
+  // R2: меховой воротник, наплечные накладки, набедренные лапы
+  if (R >= 2) {
+    if (shape !== "pelt") { c.shadedEllipse(24, 11, 9.5, 3.6, fur); for (const [dx, dy] of [[-8, 11], [-5, 13], [5, 13], [8, 11], [-2, 14], [2, 14]]) c.set(24 + dx, dy, fur[4]); }
+    for (const s of [-1, 1]) { const x = 24 + s * 13; for (let j = 0; j < 3; j++) { c.poly([[x - 5, 12 + j * 3.2], [x + 5, 12 + j * 3.2], [x + 4.4, 15.6 + j * 3.2], [x - 4.4, 15.6 + j * 3.2]], leatherFill(hd, x - 1, 4)); c.line(x - 4, 15 + j * 3.2, x + 4, 15 + j * 3.2, hd[0], 1); } stitch(c, [[x - 4, 13], [x + 4, 13]], hd[3]); rivet(k, Math.round(x), 17); }
+    if (shape !== "mantle" && shape !== "pelt") for (let x = 14; x < 34; x += 5) { c.poly([[x, hemY - 1], [x + 4.4, hemY - 1], [x + 3.6, hemY + 4], [x + 0.8, hemY + 4]], leatherFill(hd, x + 2, 2)); stitch(c, [[x + 1, hemY], [x + 1, hemY + 3]], hd[3]); }
+  }
+  // R3: ярусные наплечники с каймой, перевязь, двойной подол
+  if (R >= 3) {
+    for (const s of [-1, 1]) { const x = 24 + s * 14; c.poly([[x - 5, 7], [x + 5, 7], [x + s * 7, 12], [x - s * 5, 11]], leatherFill(hd, x, 3)); c.line(x - 4, 11, x + 4, 11, tr[3], 1); rivet(k, Math.round(x), 8); }
+    c.line(14, 13, 34, 30, hd[0], 2); stitch(c, [[14, 14], [34, 31]], hd[3]);
+    for (let x = 12; x < 36; x += 4) c.poly([[x, hemY + 3], [x + 3.4, hemY + 3], [x + 2.4, Math.min(47, hemY + 6)], [x + 0.8, Math.min(47, hemY + 6)]], hd[1]);
+  }
+  armorGems(k, [[24, 32.5], [19, 19], [29, 19]]);
+  armorDeco(k, 24, 13, hemY);
 }
 function clothArmor(k: K, shape: string) {
-  const c = k.c, cc = shape === "shroud" ? RP("shroud", "grey") : k.cloth, tr = k.trim;
-  if (shape === "hooded") c.poly([[15, 3], [33, 3], [36, 12], [12, 12]], lit(cc, 18, 6, 4, 0, 3));
-  const robe: Pt[] = [[16, 7], [32, 7], [41, 21], [37, 24], [35, 19], [38, 46], [10, 46], [13, 19], [11, 24], [7, 21]];
-  c.poly(robe, lit(cc, 17, 13, 9, 0, 4));
+  const c = k.c, cc = shape === "shroud" ? RP("shroud", "grey") : k.cloth, tr = k.trim, R = k.rich, lin = RP(k.umb ? "violet" : "white", "white");
+  armorBack(k, true);
+  if (shape === "hooded") c.poly([[15, 3], [33, 3], [36, 12], [12, 12]], clothFill(cc, 20, 8, 0.15));
+  // силуэт расширяется книзу: плечи узкие, подол широкий, рукава-колокола
+  c.poly([[16, 7], [32, 7], [34, 20], [41, 46], [7, 46], [14, 20]], clothFill(cc, 18, 18, 0.35));
+  for (const s of [-1, 1]) {
+    c.poly([[24 + s * 8, 8], [24 + s * 12, 9], [24 + s * 19, 22], [24 + s * 22, 34], [24 + s * 12, 35], [24 + s * 11, 22], [24 + s * 8, 17]], clothFill(cc, s < 0 ? 12 : 30, 12, 0.3));
+    c.line(24 + s * 11, 22, 24 + s * 12, 34, cc[0], 1);
+    if (R >= 1) c.line(24 + s * 22, 34, 24 + s * 12, 35, tr[3], 2);
+  }
+  // складки подола
+  for (const x of [12, 17, 22, 27, 32]) c.line(x + (x - 24) * 0.1, 28, x + (x - 24) * 0.45, 46, cc[0], 1);
+  for (const x of [14.5, 19.5, 29.5, 34.5]) c.line(x + (x - 24) * 0.1, 30, x + (x - 24) * 0.4, 45, cc[3], 1);
   c.poly([[19, 7], [24, 13], [29, 7], [24, 20]], tr[2]);
   switch (shape) {
-    case "plain": c.rect(13, 27, 22, 2, k.hide[2]); stroke(c, [[20, 29], [19, 33], [20, 38]], 1.6, 1, k.hide[3]); break;
-    case "cassock": c.line(24, 13, 24, 46, cc[0], 1); for (let y = 15; y < 44; y += 3) c.shadedEllipse(25.5, y, 0.9, 0.9, tr); c.rect(12, 27, 24, 3, cc[0]); break;
-    case "vestment": for (const x of [17, 28]) { c.rect(x, 11, 4, 35, tr[2]); c.rect(x, 11, 1, 35, tr[4]); for (let y = 14; y < 44; y += 5) rune(c, x + 2, y, tr[0], y); } gemAt(k, 24, 27, 2); break;
-    case "wrap": c.poly([[12, 9], [19, 7], [39, 39], [33, 46]], lit(RP(k.umb ? "black" : "white", "white"), 20, 15, 7, 1, 4)); c.line(13, 9, 36, 44, tr[3], 1); break;
-    case "shroud": for (let x = 10; x < 38; x += 3) c.poly([[x, 44], [x + 3, 44], [x + 1.5, 47 + (x % 2)]], cc[1]); for (let x = 11; x < 38; x += 4) for (let y = 30; y < 46; y += 5) c.set(x + (y % 3), y, cc[0]); for (const s of [-1, 1]) stroke(c, [[24 + s * 8, 14], [24 + s * 10, 30], [24 + s * 12, 44]], 1, 1, cc[1]); c.rect(13, 26, 22, 2, RP("bone", "bone")[2]); if (k.umb) skull(k, 24, 30, 1); break;
-    case "battle": for (const s of [-1, 1]) { c.shadedEllipse(24 + s * 13, 15, 6, 4.8, k.mat, undefined, true, 20); c.rect(24 + s * 13 - 6, 18, 12, 1, tr[2]); } c.rect(13, 27, 22, 4, k.hide[1]); c.shadedRect(22, 26, 4, 6, tr, 1); c.poly([[17, 31], [31, 31], [29, 46], [19, 46]], lit(RP(k.umb ? "black" : "white", "white"), 20, 33, 5, 1, 4)); break;
-    default: c.rect(12, 27, 24, 3, tr[2]); c.rect(12, 27, 24, 1, tr[4]); c.rect(22, 30, 4, 15, tr[3]); gemAt(k, 24, 28.5, 2.2); c.rect(10, 43, 28, 3, tr[2]); for (let x = 12; x < 37; x += 4) c.set(x, 44, tr[4]);
+    case "plain": c.rect(14, 27, 20, 2, k.hide[2]); stroke(c, [[20, 29], [19, 33], [20, 38]], 1.6, 1, k.hide[3]); stroke(c, [[27, 29], [29, 34], [28, 40]], 1.6, 1, k.hide[2]); break;
+    case "cassock": c.line(24, 13, 24, 46, cc[0], 1); for (let y = 15; y < 44; y += 3) c.shadedEllipse(25.5, y, 0.9, 0.9, tr); c.rect(13, 27, 22, 3, cc[0]); break;
+    case "vestment": for (const x of [17, 28]) { c.rect(x, 11, 4, 35, tr[2]); c.rect(x, 11, 1, 35, tr[4]); for (let y = 14; y < 44; y += 5) rune(c, x + 2, y, tr[0], y); } break;
+    case "wrap": c.poly([[12, 9], [19, 7], [39, 39], [33, 46]], clothFill(RP(k.umb ? "black" : "white", "white"), 22, 10, 0.2)); c.line(13, 9, 36, 44, tr[3], 1); break;
+    case "shroud": for (let x = 10; x < 38; x += 3) c.poly([[x, 44], [x + 3, 44], [x + 1.5, 47 + (x % 2)]], cc[1]); for (let x = 11; x < 38; x += 4) for (let y = 30; y < 46; y += 5) c.set(x + (y % 3), y, cc[0]); c.rect(13, 26, 22, 2, RP("bone", "bone")[2]); if (k.umb) skull(k, 24, 30, 1); break;
+    case "battle": for (const s of [-1, 1]) pauldron(k, 24 + s * 13.5, s, false, k.mat, 2); c.rect(13, 27, 22, 4, k.hide[1]); c.shadedRect(22, 26, 4, 6, tr, 1); c.poly([[17, 31], [31, 31], [29, 46], [19, 46]], clothFill(RP(k.umb ? "black" : "white", "white"), 22, 8, 0.2)); break;
+    default: c.rect(13, 27, 22, 3, tr[2]); c.rect(13, 27, 22, 1, tr[3]); c.rect(22, 30, 4, 15, tr[3]); c.rect(10, 43, 28, 3, tr[2]); for (let x = 12; x < 37; x += 4) c.set(x, 44, tr[4]);
   }
-  if (k.L.deco === "runes" || k.L.deco === "halo") for (const [i, [x, y]] of [[15, 36], [33, 36], [24, 40], [14, 18], [34, 18]].entries()) rune(c, x, y, k.fx[3], i + k.h);
-  if (k.L.deco === "skull" && shape !== "shroud") skull(k, 24, 20, 1.1);
-  if (k.L.deco === "chains") for (let x = 12; x < 37; x += 2.4) c.ellipse(x, 30 + Math.sin(x / 3), 1, 1, tr[3]);
-  if (k.L.deco === "spikes" || k.L.deco === "horns") for (const s of [-1, 1]) stroke(c, [[24 + s * 12, 13], [24 + s * 16, 5]], 2.4, 1, k.bone[3]);
-  if (k.L.deco === "wings") for (const s of [-1, 1]) wing(c, 24 + s * 13, 13, s, 10, RP("silver", "silver"));
-  if (k.L.deco === "filigree") for (let y = 12; y < 44; y += 2) { c.set(14 + Math.floor((y - 12) / 9), y, tr[3]); c.set(34 - Math.floor((y - 12) / 9), y, tr[3]); }
+  // R1: кайма подола и ворота
+  if (R >= 1) { c.line(8, 45, 40, 45, tr[3], 1); c.line(8, 46, 40, 46, tr[1], 1); c.line(19, 7, 24, 13, tr[4], 1); c.line(29, 7, 24, 13, tr[4], 1); for (let x = 10; x < 39; x += 4) c.set(x, 44, tr[4]); }
+  // R2: широкий воротник-накидка (горжет), набедренные накладки, гравировка
+  if (R >= 2) {
+    c.poly([[10, 10], [38, 10], [36, 16], [24, 20], [12, 16]], clothFill(lin, 22, 12, 0.2)); c.line(11, 16, 24, 20, tr[3], 1); c.line(37, 16, 24, 20, tr[3], 1);
+    for (const s of [-1, 1]) { c.poly([[24 + s * 3, 31], [24 + s * 12, 31], [24 + s * 14, 42], [24 + s * 5, 40]], clothFill(cc, 24 + s * 8 - 2, 5, 0.15)); c.line(24 + s * 3, 31, 24 + s * 12, 31, tr[3], 1); }
+    for (let y = 33; y < 44; y += 3) { c.set(15, y, tr[3]); c.set(33, y, tr[3]); }
+  }
+  // R3: двойной подол (разрез с нижним слоем), длинные хвосты пояса
+  if (R >= 3) {
+    c.poly([[24, 32], [36, 32], [41, 46], [24, 40]], clothFill(lin, 30, 8, 0.2)); c.poly([[24, 32], [12, 32], [7, 46], [24, 40]], clothFill(lin, 14, 8, 0.2));
+    c.line(24, 32, 24, 40, cc[0], 1); c.line(8, 46, 24, 40, tr[3], 1); c.line(40, 46, 24, 40, tr[3], 1);
+    for (const s of [-1, 1]) stroke(c, [[24 + s * 2, 28], [24 + s * 5, 38], [24 + s * 4, 46]], 3, 1.6, tr[2]);
+  }
+  armorGems(k, [[24, 28.5], [24, 17], [24, 38]]);
+  armorDeco(k, 20, 13, 44);
 }
 
 // ---------------- обувь ----------------
+// Латы — жёсткие плоскости и ламели, кожа — матовая со строчкой и пряжками, ткань — мягкие складки и обмотка. Слои по look.rich:
+// 1 — кайма, заклёпки, строчка; 2 — наколенник/меховой отворот/вышивка с кистью; 3 — крупный элемент (двойной наколенник и шпора, широкий отворот, длинные кисти) и 2 камня.
+function bootDeco(k: K, x: number, d: number, top: number, front: boolean) {
+  const c = k.c, tr = k.trim, dc = k.L.deco, my = Math.min(top + 9, 22) + d;
+  if (!front) { // за сапогом: солнечный диск, крылья
+    if (dc === "halo") { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; c.poly([[x + 5 + Math.cos(a - 0.2) * 6, my + Math.sin(a - 0.2) * 6], [x + 5 + Math.cos(a) * 9.4, my + Math.sin(a) * 9.4], [x + 5 + Math.cos(a + 0.2) * 6, my + Math.sin(a + 0.2) * 6]], tr[i % 2 ? 2 : 3]); } c.shadedEllipse(x + 5, my, 6.4, 6.4, tr); }
+    if (dc === "wings") wingPlate(c, x + 1, top + 14 + d, -1, 9, RP("silver", "silver"));
+    return;
+  }
+  if (dc === "horns") c.poly([[x + 9, top + 8 + d], [x + 15, top + 2 + d], [x + 10, top + 12 + d]], k.bone[3]);
+  if (dc === "spikes") for (const y of [top + 8, top + 14]) c.poly([[x + 9, y + d], [x + 14, y - 2 + d], [x + 9, y + 3 + d]], k.mat[4]);
+  if (dc === "skull") skull(k, x + 5, my + 3, 0.8);
+  if (dc === "runes") rune(c, x + 5, my + 2, k.fx[3], x + k.h);
+  if (dc === "filigree") for (let y = top + 6; y < 30; y += 3) { c.set(x + 2 + ((y >> 1) % 2) * 5, y + d, tr[3]); c.set(x + 3 + ((y >> 1) % 2) * 3, y + d, tr[4]); }
+  if (dc === "chains") for (let i = 0; i < 6; i++) c.ellipse(x + 1.5 + i * 1.5, 29 + d + Math.sin(i * 1.2) * 1.2, 0.9, 0.9, tr[3]);
+}
 function boots(k: K, shape: string) {
-  const c = k.c, kind = k.cat;
+  const c = k.c, kind = k.cat, R = k.rich, tr = k.trim;
+  const plate = kind === "plate_boots", leather = kind === "leather_boots", M = plate ? k.mat : leather ? k.hide : k.cloth;
+  const fur = RP(k.umb ? "black" : "whitefur", "white");
+  const fill = (cx: number, y0 = 0) => (plate ? hard(M, cx, y0) : leather ? leatherFill(M, cx, 3) : clothFill(M, cx, 7, 0.28));
+  const top = shape === "high" || shape === "greave" || shape === "cuff" || shape === "silk" || shape === "winged" ? 5 : shape === "slipper" || shape === "moccasin" || shape === "shoe" || shape === "curled" ? 21 : 12;
+  for (const [x, d] of [[9, 0], [25, 2]] as Pt[]) bootDeco(k, x, d, top, false);
   for (const [x, d] of [[9, 0], [25, 2]] as Pt[]) {
-    const R = kind === "plate_boots" ? k.mat : kind === "leather_boots" ? k.hide : k.cloth;
-    const top = shape === "high" || shape === "greave" || shape === "cuff" || shape === "silk" || shape === "winged" ? 5 : shape === "slipper" || shape === "moccasin" || shape === "shoe" || shape === "curled" ? 21 : 12;
     if (shape === "sandal") {
-      c.poly([[x, 21 + d], [x + 9, 21 + d], [x + 9, 32 + d], [x + 15, 36 + d], [x + 15, 39 + d], [x, 39 + d]], lit(RP("bone", "bone"), x + 3, 26 + d, 5, 1, 3));
+      c.poly([[x, 21 + d], [x + 9, 21 + d], [x + 9, 32 + d], [x + 15, 36 + d], [x + 15, 39 + d], [x, 39 + d]], clothFill(RP("bone", "bone"), x + 3, 6, 0.1));
       c.shadedRect(x - 1, 39 + d, 17, 3, k.hide, 1);
       for (let y = 22; y < 38; y += 4) { c.line(x, y + d, x + 9, y + 3 + d, k.hide[1], 2); c.line(x + 9, y + d, x, y + 3 + d, k.hide[2], 1); }
-      c.rect(x, 21 + d, 9, 2, k.trim[2]);
+      c.rect(x, 21 + d, 9, 2, tr[2]);
+      if (R >= 1) { c.line(x, 39 + d, x + 15, 39 + d, tr[3], 1); }
+      if (R >= 2) { c.shadedEllipse(x + 4.5, 28 + d, 2.2, 2.2, tr); c.line(x + 4, 29 + d, x + 3, 36 + d, tr[3], 1); }
+      if (R >= 3) { stroke(c, [[x + 9, 24 + d], [x + 15, 18 + d], [x + 14, 12 + d]], 3, 1, tr[3]); gemAt(k, x + 4.5, 28 + d, 1.6, k.gem ?? k.stone); }
+      bootDeco(k, x, d, top, true);
       continue;
     }
-    c.shadedRect(x, top + d, 10, 40 - top - 9, R, 1);
+    // голенище и носок
+    c.poly([[x, top + d], [x + 10, top + d], [x + 10, 31 + d], [x, 31 + d]], fill(x + 4, top));
     const toe: Pt[] = shape === "sabaton" || shape === "curled" ? [[x, 30 + d], [x + 10, 30 + d], [x + 17, 36 + d], [x + 10, 41 + d], [x, 41 + d]] : shape === "slipper" ? [[x, 30 + d], [x + 9, 30 + d], [x + 14, 34 + d], [x + 17, 30 + d], [x + 16, 39 + d], [x, 39 + d]] : [[x, 30 + d], [x + 10, 30 + d], [x + 15, 35 + d], [x + 15, 41 + d], [x, 41 + d]];
-    c.poly(toe, lit(R, x + 3, 31 + d, 4, 1, 4));
-    c.rect(x, 40 + d, shape === "sabaton" ? 13 : 15, 2, R[0]);
-    if (kind === "plate_boots") { for (let y = top + 4; y < 30; y += 4) { c.rect(x, y + d, 10, 1, R[1]); c.rect(x, y + 1 + d, 10, 1, R[3]); } for (let i = 0; i < 3; i++) c.line(x + 10 + i * 1.6, 31 + i * 2 + d, x + 11 + i * 1.6, 38 + d, R[1], 1); if (shape === "greave" || shape === "boot" || shape === "winged") c.shadedEllipse(x + 5, top + 3 + d, 4.6, 3.4, R); c.rect(x, top + d, 10, 1, k.trim[3]); }
-    if (shape === "spiked") for (const y of [16, 22]) c.poly([[x + 9, y + d], [x + 14, y - 2 + d], [x + 9, y + 2 + d]], R[4]);
+    c.poly(toe, fill(x + 5, 30));
+    c.rect(x, 40 + d, shape === "sabaton" ? 13 : 15, 2, M[0]);
+    if (plate) {
+      for (let y = top + 4; y < 30; y += 4) { c.rect(x, y + d, 10, 1, M[1]); c.rect(x, y + 1 + d, 10, 1, M[3]); }
+      c.line(x, top + d, x, 30 + d, M[4], 1); c.line(x + 9, top + d, x + 9, 30 + d, M[0], 1);
+      for (let i = 0; i < 3; i++) c.line(x + 10 + i * 1.6, 31 + i * 2 + d, x + 11 + i * 1.6, 38 + d, M[1], 1);
+      c.line(x + 1, 31 + d, x + 9, 31 + d, M[4], 1);
+      c.rect(x, top + d, 10, 1, tr[3]);
+      if (R >= 1) { rivet(k, x + 2, 33 + d); rivet(k, x + 7, 33 + d); c.line(x, 40 + d, x + 14, 40 + d, tr[3], 1); }
+      if (R >= 2 && top < 12) { // наколенник и ребро голени
+        c.poly([[x - 2, top + 1 + d], [x + 12, top + 1 + d], [x + 10, top + 8 + d], [x + 5, top + 10 + d], [x, top + 8 + d]], hard(M, x + 5, top));
+        c.line(x - 1, top + 2 + d, x + 10, top + 2 + d, M[4], 1); c.line(x + 5, top + 8 + d, x + 5, top + 20 + d, M[4], 1); c.line(x + 6, top + 8 + d, x + 6, top + 20 + d, M[0], 1);
+        rivet(k, x, top + 4 + d); rivet(k, x + 9, top + 4 + d);
+      } else if (R >= 2) { c.rect(x - 1, 28 + d, 12, 3, M[3]); c.line(x - 1, 30 + d, x + 10, 30 + d, tr[3], 1); }
+      if (R >= 3) { // шпора и острый носок-ламель; крупные ярусные плечи голени
+        stroke(c, [[x + 2, 38 + d], [x - 3, 40 + d], [x - 5, 37 + d]], 2.4, 1, tr[3]); c.poly([[x + 12, 33 + d], [x + 19, 38 + d], [x + 12, 40 + d]], M[3]);
+        if (top < 12) { c.poly([[x - 3, top - 1 + d], [x + 13, top - 1 + d], [x + 10, top + 3 + d], [x, top + 3 + d]], hard(M, x + 5, top)); c.line(x - 2, top + d, x + 12, top + d, tr[4], 1); }
+      }
+      if (shape === "greave" || shape === "boot" || shape === "winged") c.shadedEllipse(x + 5, top + 3 + d, 4.6, 3.4, M);
+    }
+    if (leather) {
+      stitch(c, [[x + 1, top + 1 + d], [x + 1, 30 + d]], M[3]); stitch(c, [[x + 4, 41 + d], [x + 14, 41 + d]], M[3], 3);
+      c.line(x, top + d, x + 9, top + d, M[0], 1); c.line(x, 38 + d, x + 14, 38 + d, M[0], 1);
+      if (R >= 1) { for (const y of [top + 4, top + 9]) { c.rect(x, y + d, 10, 2, M[0]); c.shadedRect(x + 6, y - 1 + d, 3, 4, tr, 1); } stitch(c, [[x + 9, top + 1 + d], [x + 9, 30 + d]], M[1]); c.line(x + 3, 41 + d, x + 14, 41 + d, tr[2], 1); }
+      if (R >= 2) { c.shadedRect(x - 2, top + d, 14, 6, fur, 2); for (let i = 0; i < 5; i++) c.set(x - 1 + i * 3, top + 6 + d, fur[1]); c.shadedRect(x + 9, 25 + d, 5, 5, M, 1); c.line(x + 9, 26 + d, x + 13, 26 + d, M[0], 1); c.set(x + 11, 28 + d, tr[3]); }
+      if (R >= 3) { c.poly([[x - 4, top - 2 + d], [x + 14, top - 2 + d], [x + 12, top + 3 + d], [x - 2, top + 3 + d]], leatherFill(M, x + 4, 3)); c.line(x - 3, top + 3 + d, x + 13, top + 3 + d, tr[3], 1); for (let i = 0; i < 6; i++) c.set(x - 3 + i * 3, top - 1 + d, fur[3]); c.poly([[x + 1, 32 + d], [x + 8, 32 + d], [x + 8, 37 + d], [x + 1, 37 + d]], leatherFill(M, x + 4, 2)); stitch(c, [[x + 1, 33 + d], [x + 8, 33 + d]], M[3], 3); stroke(c, [[x - 1, 39 + d], [x - 5, 41 + d], [x - 6, 38 + d]], 2.4, 1, tr[3]); }
+    }
+    if (kind === "cloth_boots") {
+      for (let y = top + 3; y < 30; y += 4) c.line(x + 1, y + d, x + 9, y + 1 + d, M[0], 1);
+      c.line(x + 3, top + d, x + 3, 30 + d, M[3], 1); c.line(x + 7, top + 2 + d, x + 7, 30 + d, M[1], 1);
+      c.rect(x, top + d, 10, 2, tr[2]);
+      if (R >= 1) { c.rect(x, 29 + d, 10, 2, tr[2]); c.rect(x, 29 + d, 10, 1, tr[4]); c.line(x, 40 + d, x + 14, 40 + d, tr[3], 1); }
+      if (R >= 2) { for (let y = top + 5; y < 28; y += 4) { c.set(x + 2, y + d, tr[3]); c.set(x + 5, y + 1 + d, tr[4]); c.set(x + 8, y + d, tr[3]); } stroke(c, [[x + 8, top + 2 + d], [x + 12, top + 9 + d], [x + 11, top + 15 + d]], 2.6, 1.2, tr[3]); c.shadedEllipse(x + 11, top + 16 + d, 1.4, 1.4, tr); }
+      if (R >= 3) { c.poly([[x - 3, top - 1 + d], [x + 13, top - 1 + d], [x + 11, top + 4 + d], [x - 1, top + 4 + d]], clothFill(RP(k.umb ? "violet" : "white", "white"), x + 4, 6, 0.2)); c.line(x - 2, top + 4 + d, x + 12, top + 4 + d, tr[3], 1); for (const dx of [0, 4, 8]) stroke(c, [[x + dx, top + 5 + d], [x + dx - 1, top + 11 + d], [x + dx, top + 16 + d]], 2, 1, tr[2 + (dx % 8 ? 0 : 1)]); }
+    }
+    if (shape === "spiked") for (const y of [16, 22]) c.poly([[x + 9, y + d], [x + 14, y - 2 + d], [x + 9, y + 2 + d]], M[4]);
     if (shape === "winged") wing(c, x + 1, top + 6 + d, 1, 8, RP("silver", "silver"));
-    if (shape === "fur" || shape === "cuff") c.shadedRect(x - 2, top + d, 14, 6, shape === "fur" ? RP("whitefur", "white") : R, 2);
+    if (shape === "fur" || shape === "cuff") c.shadedRect(x - 2, top + d, 14, 6, shape === "fur" ? fur : M, 2);
     if (shape === "moccasin") for (let i = 0; i < 5; i++) c.line(x + 1 + i * 2, top + d, x + 1 + i * 2, top + 3 + d + (i % 2), k.cloth[3], 1);
-    if (shape === "high" || shape === "wrapped") for (const y of shape === "high" ? [12, 19, 26] : [10, 14, 18, 22, 26]) { c.line(x, y + d, x + 10, y + 2 + d, R[0], shape === "high" ? 2 : 1); if (shape === "high") c.shadedRect(x + 6, y - 1 + d, 3, 3, k.trim, 1); }
-    if (shape === "wrap") for (let y = top + 1; y < 37; y += 3) c.line(x, y + d, x + 10, y + 2 + d, R[1], 1);
-    if (shape === "curled") c.shadedEllipse(x + 17, 34 + d, 1.4, 1.4, k.trim);
-    if (shape === "silk") for (let y = top + 3; y < 30; y += 5) c.line(x + 2, y + d, x + 8, y + d, k.trim[3], 1);
-    if (kind === "cloth_boots") c.rect(x, top + d, 10, 2, k.trim[2]);
-    if (k.gem) gemAt(k, x + 5, top + 6 + d, 1.3);
-    if (k.L.deco === "wings" && shape !== "winged") wing(c, x, top + 6 + d, 1, 7, RP("silver", "silver"));
-    if ((k.L.deco === "spikes" || k.L.deco === "horns") && shape !== "spiked") c.poly([[x + 9, top + 8 + d], [x + 14, top + 3 + d], [x + 9, top + 11 + d]], k.mat[4]);
-    if (k.L.deco === "runes") rune(c, x + 5, top + 12 + d, k.fx[3], x + k.h);
+    if (shape === "high" || shape === "wrapped") for (const y of shape === "high" ? [12, 19, 26] : [10, 14, 18, 22, 26]) { c.line(x, y + d, x + 10, y + 2 + d, M[0], shape === "high" ? 2 : 1); if (shape === "high") c.shadedRect(x + 6, y - 1 + d, 3, 3, tr, 1); }
+    if (shape === "wrap") for (let y = top + 1; y < 37; y += 3) c.line(x, y + d, x + 10, y + 2 + d, M[1], 1);
+    if (shape === "curled") c.shadedEllipse(x + 17, 34 + d, 1.4, 1.4, tr);
+    if (shape === "silk") for (let y = top + 3; y < 30; y += 5) c.line(x + 2, y + d, x + 8, y + d, tr[3], 1);
+    if (k.gem || R >= 3) { gemAt(k, x + 5, top + 6 + d, 1.4, k.gem ?? k.stone); if (R >= 3) gemAt(k, x + 11, 35 + d, 1.1, k.gem ?? k.stone); }
+    bootDeco(k, x, d, top, true);
   }
 }
 
@@ -1070,7 +1305,7 @@ function jem(k: K, x: number, y: number, r: number, g: Ramp | null = k.gem) {
     default: c.ellipse(x, y, r + 0.9, r + 0.9, t[1]); c.shadedEllipse(x, y, r, r, G); hi();
   }
 }
-function ring(k: K, shape: string) {
+function ringBase(k: K, shape: string) {
   const c = k.c, band2 = shape === "twist" ? k.trim : k.mat;
   const hole = (r: number, cx = 24, cy = 29) => { for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) if (Math.hypot((x + 0.5 - cx) / r, (y + 0.5 - cy) / (r * 0.72)) < 1) c.clear(x, y); };
   if (shape === "double") {
@@ -1096,7 +1331,7 @@ function ring(k: K, shape: string) {
     default: jem(k, 24, 15, 4.4);
   }
 }
-function amulet(k: K, shape: string) {
+function amuletBase(k: K, shape: string) {
   const c = k.c;
   if (shape === "beads") for (let t = 0; t <= 1.0001; t += 0.07) { const x = 9 + t * 30, y = 6 + Math.sin(t * Math.PI) * 21; c.shadedEllipse(x, y, 2.2, 2.2, Math.round(t * 14) % 2 ? k.bone : k.trim); }
   else for (let t = 0; t <= 1; t += 0.012) c.set(Math.round(10 + t * 28), Math.round(6 + Math.sin(t * Math.PI) * 17), k.trim[(t * 80) % 2 < 1 ? 3 : 1]);
@@ -1115,9 +1350,49 @@ function amulet(k: K, shape: string) {
     case "rune": c.poly([[17, 25], [31, 24], [33, 38], [24, 43], [15, 38]], lit(RP("grey", "grey"), 20, 28, 5, 1, 4)); for (let i = 0; i < 3; i++) rune(c, 20 + i * 4, 31 + (i % 2) * 4, k.fx[3], i + k.h); c.shadedRect(21, 21, 6, 3, k.trim, 1); break;
     default: c.shadedEllipse(24, cy, 9.6, 10.4, k.trim); if (k.stoneKind || k.setting) jem(k, 24, cy, 4.4, G); else c.shadedEllipse(24, cy, 5.6, 6.2, G); c.set(21, cy - 3, WHITE); for (const [x, y] of [[24, cy - 10], [14, cy], [34, cy], [24, cy + 10]]) jem(k, x, y, 1.2);
   }
-  if (k.L.deco === "wings") for (const s of [-1, 1]) wing(c, 24 + s * 8, cy - 2, s, 9, k.trim);
   if (k.L.deco === "horns" && shape !== "fang") for (const s of [-1, 1]) horn(c, 24 + s * 6, cy - 6, s, 7, k.bone);
   if (k.L.deco === "chains") for (const s of [-1, 1]) for (let i = 0; i < 4; i++) c.ellipse(24 + s * (6 + i), cy + 6 + i * 2, 0.9, 0.9, k.trim[3]);
+}
+
+/** Кольцо: слои по look.rich — 1 желобок и заклёпки на ободе; 2 оправа (плечики, боковые камни); 3 кластер из 3 камней и крупные когти. */
+const RING_STONE: Record<string, Pt> = { signet: [24, 14.5], claw: [24, 12], crown: [24, 12.5], skull: [24, 14], band: [24, 19], double: [24, 18], serpent: [33, 22], twist: [24, 15] };
+function ringBack(k: K, shape: string) {
+  const c = k.c, tr = k.trim, [sx, sy] = RING_STONE[shape] ?? [24, 15];
+  if (k.L.deco === "halo") { for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; c.poly([[sx + Math.cos(a - 0.17) * 7, sy + Math.sin(a - 0.17) * 7], [sx + Math.cos(a) * 11, sy + Math.sin(a) * 11], [sx + Math.cos(a + 0.17) * 7, sy + Math.sin(a + 0.17) * 7]], tr[i % 2 ? 2 : 3]); } c.shadedEllipse(sx, sy, 7.4, 7.4, tr); c.ellipse(sx, sy, 5.6, 5.6, tr[1]); }
+  if (k.L.deco === "wings") for (const s of [-1, 1]) wingPlate(c, sx + s * 4, sy + 3, s, 13, tr);
+}
+function ringFront(k: K, shape: string) {
+  const c = k.c, R = k.rich, tr = k.trim, d = k.L.deco, [sx, sy] = RING_STONE[shape] ?? [24, 15], G = k.gem ?? k.stone;
+  if (R >= 1 && shape !== "serpent" && shape !== "double") for (let a = 0.4; a < Math.PI - 0.4; a += 0.13) c.set(Math.round(24 + Math.cos(a) * 10.8), Math.round(29 + Math.sin(a) * 8.4), tr[4]);
+  if (R >= 2 && shape !== "serpent") {
+    for (const s of [-1, 1]) { c.poly([[sx + s * 6.5, sy + 5], [sx + s * 3, sy + 1.5], [sx + s * 3.5, sy + 6.5]], tr[3]); c.line(sx + s * 6, sy + 5, sx + s * 9, 23, tr[2], 1); }
+    if (shape !== "double") for (const s of [-1, 1]) gemAt(k, 24 + s * 11, 29, 1.25, G);
+  }
+  if (R >= 3 && shape !== "serpent") for (const s of [-1, 1]) gemAt(k, sx + s * 7.5, sy + 3.5, 1.9, G);
+  if (R >= 3 && shape === "serpent") { gemAt(k, 14, 36, 1.5, G); gemAt(k, 35, 34, 1.5, G); }
+  if (d === "spikes") for (const s of [-1, 1]) c.poly([[24 + s * 11, 24], [24 + s * 19, 19], [24 + s * 12, 31]], k.mat[3]);
+  if (d === "horns") for (const s of [-1, 1]) horn(c, sx + s * 6, sy + 2, s, 7, k.bone);
+  if (d === "skull" && shape !== "skull") skull(k, 24, 37.5, 0.55);
+  if (d === "runes") for (const [i, x] of [13, 35].entries()) rune(c, x, 32, k.fx[3], i + k.h);
+  if (d === "filigree") for (let a = Math.PI * 1.1; a < Math.PI * 1.9; a += 0.2) { c.set(Math.round(sx + Math.cos(a) * 8), Math.round(sy + 2 + Math.sin(a) * 6), tr[3]); }
+  if (d === "chains") for (const s of [-1, 1]) for (let i = 0; i < 3; i++) c.ellipse(24 + s * (5 + i * 2.2), 40.5 + i * 0.8, 0.9, 0.9, tr[3]);
+}
+function ring(k: K, shape: string) { ringBack(k, shape); ringBase(k, shape); ringFront(k, shape); }
+/** Амулет: слои по look.rich — 1 вторая нить цепи и ушко; 2 золочёная оправа вокруг подвеса и боковые камни; 3 подвесы-капли и кольцо камней. */
+function amuletFront(k: K, shape: string) {
+  const c = k.c, R = k.rich, tr = k.trim, d = k.L.deco, cy = 33, G = k.gem ?? k.stone;
+  if (R >= 1) { for (let t = 0; t <= 1; t += 0.03) c.set(Math.round(11 + t * 26), Math.round(8 + Math.sin(t * Math.PI) * 17), tr[0]); c.shadedRect(22, 20, 4, 3, tr, 1); }
+  if (R >= 2) { for (let a = 0; a < TAU; a += 0.09) { const x = Math.round(24 + Math.cos(a) * 12.4), y = Math.round(cy + Math.sin(a) * 12.4); if (y >= 22) c.set(x, y, Math.sin(a) < 0 ? tr[4] : tr[2]); } for (const s of [-1, 1]) gemAt(k, 24 + s * 13.5, cy, 1.4, G); }
+  if (R >= 3) { for (const [x, y] of [[17, 43], [24, 46], [31, 43]] as Pt[]) { c.line(x, y - 3, x, y - 1, tr[3], 1); c.poly([[x, y - 2.4], [x + 1.7, y], [x, y + 2.4], [x - 1.7, y]], (px) => G[cl(2.8 - (px - x), 1, 4)]); } for (const [x, y] of [[24, 21], [14, 25], [34, 25]] as Pt[]) gemAt(k, x, y, 1.1, G); }
+  if (d === "spikes") for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) c.poly([[24 + Math.sin(a - 0.12) * 11, cy - Math.cos(a - 0.12) * 11], [24 + Math.sin(a) * 16, cy - Math.cos(a) * 16], [24 + Math.sin(a + 0.12) * 11, cy - Math.cos(a + 0.12) * 11]], k.mat[3]);
+  if (d === "skull" && shape !== "skull") skull(k, 24, 22.5, 0.7);
+  if (d === "runes") for (const [i, s] of [-1, 1].entries()) rune(c, 24 + s * 14, cy + 6, k.fx[3], i + k.h);
+  if (d === "filigree") for (const s of [-1, 1]) stroke(c, [[24 + s * 3, 22], [24 + s * 9, 25], [24 + s * 13, 31]], 1, 1, tr[3]);
+  if (d === "halo") for (let a = 0; a < TAU; a += 0.07) { const x = Math.round(24 + Math.cos(a) * 14.5), y = Math.round(cy + Math.sin(a) * 14.5); if (y >= 17) c.set(x, y, Math.sin(a) < 0 ? tr[4] : tr[2]); }
+}
+function amulet(k: K, shape: string) {
+  if (k.L.deco === "wings") for (const s of [-1, 1]) wingPlate(k.c, 24 + s * 5, 30, s, 14, k.trim);
+  amuletBase(k, shape); amuletFront(k, shape);
 }
 
 /** Плащ: ткань модели (look.cloth), кайма и застёжка по редкости; архетипы: long, crest, fur, short, wings, feather, hood, shroud. */
@@ -1138,7 +1413,7 @@ function cloak(k: K, shape: string) {
   if (shape === "ragged") { for (let x = 8; x < 42; x += 3) { const d = 2 + ((x * 7) % 5) * 1.6; for (let y = Math.round(bot - d); y <= bot + 1; y++) for (let w = 0; w < 2; w++) c.clear(x + w, y); } for (const x of [16, 28]) c.line(x, 26, x + 3, 34, DARK, 1); }
   if (shape === "smoke") for (let y = 24; y < ICON; y++) for (let x = 0; x < ICON; x++) { const i = (y * ICON + x) * 4 + 3, f = Math.max(0, 1 - (y - 24) / 24); c.data[i] = Math.round(c.data[i] * (f + (((x * 5 + y * 3) % 7) / 7 - 0.5) * 0.4)); }
   if (shape === "fur") { c.shadedEllipse(24, 9, 14, 5.4, RP("whitefur", "white")); for (let x = 9; x < 40; x += 2) c.set(x, 13 + (x % 4 ? 0 : 1), RP("whitefur", "white")[3]); c.rect(9, 44, 31, 2, RP("whitefur", "white")[3]); }
-  if (shape === "hood") { c.poly([[16, 3], [32, 3], [35, 13], [13, 13]], lit(cc, 18, 6, 4, 0, 3)); c.ellipse(24, 9, 5.5, 3.5, DARK); c.line(14, 13, 34, 13, tr[2], 1); }
+  if (shape === "hood") { c.poly([[16, 3], [32, 3], [35, 13], [13, 13]], clothFill(cc, 22, 12, 0.3)); c.ellipse(24, 9, 5.5, 3.5, DARK); c.line(14, 13, 34, 13, tr[2], 1); }
   if (shape === "crest") { c.poly([[17, 24], [31, 24], [31, 34], [24, 41], [17, 34]], lit(tr, 20, 26, 5, 1, 4)); c.poly([[20, 27], [28, 27], [28, 33], [24, 37], [20, 33]], k.umb ? DARK : cc[2]); if (k.umb) skull(k, 24, 30, 0.7); else { c.rect(23, 27, 2, 8, tr[4]); c.rect(21, 29, 6, 2, tr[4]); } }
   if (shape === "feather") for (let i = 0; i < 7; i++) { const x = 11 + i * 4.4, y = 24 + (i % 2) * 5; stroke(c, [[x, y], [x + (i < 3 ? -1 : 1), y + 8], [x + (i < 3 ? -2 : 2), y + 15]], 3.2, 1, (t) => cc[cl(3 - t * 2, 1, 4)]); c.line(Math.round(x), y, Math.round(x + (i < 3 ? -2 : 2)), y + 15, tr[2], 1); }
   if (shape !== "shroud" && shape !== "wings") c.line(14, 12, 34, 12, tr[2], 1);
