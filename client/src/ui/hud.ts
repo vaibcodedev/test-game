@@ -43,6 +43,7 @@ import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
 import { DODGE_CAP, STAT_K } from "../../../shared/formulas";
+import { P } from "../../../shared/palette";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -770,7 +771,7 @@ export class Hud {
     if (it) {
       c.classList.add(`r${it.rarity}`);
       if (BASE_ITEMS[it.base].slot !== "consumable" && canEquip(it, s.cls, s.level)) c.classList.add("cant");
-      c.innerHTML = `<img src="${icon(iconFor(it))}" alt="${esc(itemName(it))}">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}`;
+      c.innerHTML = `<img src="${icon(iconFor(it))}" alt="${esc(itemName(it))}" onerror="this.onerror=null;this.style.visibility='hidden'">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}`;
       if (label) c.title = label;
     } else if (label) {
       // пустой слот экипировки: бледный силуэт вещи, название — в подсказке
@@ -927,7 +928,7 @@ export class Hud {
         line.setAttribute("y2", String(c.top + c.height / 2 - tr.top));
         // золотая — оба умения изучены; пунктир — следующее уже доступно; тёмная — закрыто
         const learned = (s.skills[def.id] || 0) > 0;
-        line.setAttribute("stroke", learned && ok ? "#f0c050" : ok ? "#8a7350" : "#4d3f4a");
+        line.setAttribute("stroke", learned && ok ? P.gold : ok ? "#8a7350" : "#4d3f4a");
         line.setAttribute("stroke-width", "3");
         if (ok && !learned) line.setAttribute("stroke-dasharray", "6 5");
         svg.append(line);
@@ -964,7 +965,7 @@ export class Hud {
     let box = document.getElementById("mount-cast");
     if (!ms) return void box?.remove();
     box?.remove();
-    box = el("div", "", `<div style="font-size: 14px;color:#fff;text-shadow:0 1px 0 #000;text-align:center">${esc(name ?? "Маунт")}</div><div style="height:6px;background:#0a0608;border:1px solid #6a5a46;margin-top:2px"><i style="display:block;height:100%;width:0;background:#f0c050;transition:width ${ms}ms linear"></i></div>`);
+    box = el("div", "", `<div style="font-size: 14px;color:#fff;text-shadow:0 1px 0 #000;text-align:center">${esc(name ?? "Маунт")}</div><div style="height:6px;background:#0a0608;border:1px solid #6a5a46;margin-top:2px"><i style="display:block;height:100%;width:0;background:${P.gold};transition:width ${ms}ms linear"></i></div>`);
     box.id = "mount-cast";
     box.style.cssText = "position:fixed;left:50%;bottom:110px;width:180px;transform:translateX(-50%);z-index:20;pointer-events:none";
     document.body.append(box);
@@ -1090,7 +1091,7 @@ export class Hud {
     const vy = big ? Math.max(0, Math.min(m.h - vh, info.pos.y / TILE - vh / 2)) : 0;
     const ox = (CW - vw * k) / 2 - vx * k, oy = (CH - vh * k) / 2 - vy * k;
     const X = (px: number) => ox + (px / TILE) * k, Y = (py: number) => oy + (py / TILE) * k;
-    g.fillStyle = "#0e0b10";
+    g.fillStyle = P.bg;
     g.fillRect(0, 0, CW, CH);
     if (this.miniBase) g.drawImage(this.miniBase, ox, oy, m.w * k, m.h * k);
     const dot = Math.max(1.5, k * 0.9);
@@ -1103,7 +1104,7 @@ export class Hud {
       const near = Math.hypot(v.x - info.pos.x, v.y - info.pos.y) < 900;
       if ((v.u.kind === UnitKind.Mob && !near) || v.u.kind === UnitKind.Citizen) continue;
       const enemy = v.u.kind === UnitKind.Player && (this.ctx.net.kind === "arena" ? v.u.team !== this.ctx.net.arena?.team : !!v.u.faction && v.u.faction !== this.ctx.net.self?.faction);
-      g.fillStyle = v.u.kind === UnitKind.Guard ? "#7a9cc8" : v.u.kind === UnitKind.Player ? (enemy ? "#ff6a5a" : "#6ac8ff") : v.u.kind === UnitKind.Boss ? "#ff3a1a" : "#e84a4a";
+      g.fillStyle = v.u.kind === UnitKind.Guard ? "#7a9cc8" : v.u.kind === UnitKind.Player ? (enemy ? P.bad : "#6ac8ff") : v.u.kind === UnitKind.Boss ? "#ff3a1a" : "#e84a4a";
       const s = v.u.kind === UnitKind.Boss ? 3 : dot;
       g.fillRect(Math.floor(X(v.x)), Math.floor(Y(v.y)), s, s);
     }

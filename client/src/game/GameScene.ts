@@ -278,7 +278,6 @@ export class GameScene extends Phaser.Scene {
     mk("sand", "fx_smoke", { frequency: 90, lifespan: 2600, speedX: { min: 120, max: 220 }, speedY: { min: -10, max: 10 }, scale: { start: 0.35, end: 0.8 }, alpha: { start: 0.18, end: 0 }, tint: 0xe0b878 });
     mk("ash", "fx_smoke", { frequency: 120, lifespan: 5000, speedX: { min: -10, max: 12 }, speedY: { min: 14, max: 30 }, scale: { start: 0.18, end: 0.1 }, alpha: { start: 0.55, end: 0 }, tint: 0x6a6460 });
     mk("fog", "fx_smoke", { frequency: 420, lifespan: 7000, speedX: { min: 6, max: 14 }, scale: { start: 2.2, end: 3.4 }, alpha: { values: [0, 0.14, 0.14, 0] } as any, tint: 0x9ab8a0 });
-    mk("bubbles", "fx_bubble", { frequency: 100, lifespan: 4000, speedY: { min: -50, max: -25 }, speedX: { min: -8, max: 8 }, scale: { start: 0.8, end: 1.6 }, alpha: { start: 0.8, end: 0 } });
     mk("pollen", "fx_spark", { frequency: 500, lifespan: 5000, speedX: { min: 4, max: 14 }, speedY: { min: -4, max: 4 }, scale: 0.2, alpha: { start: 0.8, end: 0 }, tint: 0xfff6c0 });
     this.dust = this.add.particles(0, 0, "fx_smoke", { emitting: false, lifespan: 420, speed: { min: 4, max: 12 }, angle: { min: 200, max: 340 }, scale: { start: 0.45, end: 0.1 }, alpha: { start: 0.45, end: 0 }, tint: 0xc8b898 });
     this.dust.setDepth(DEPTH.ground + 4);
@@ -292,7 +291,7 @@ export class GameScene extends Phaser.Scene {
     const want: Record<string, boolean> = {
       leaves: z === Zone.Forest && zone !== Zone.MistWood, fireflies: z === Zone.Swamp, fog: z === Zone.Swamp || GLOOM.has(zone),
       embers: z === Zone.Ashlands || z === Zone.Dungeon || z === Zone.Arena || z === Zone.Volcano, ash: z === Zone.Volcano,
-      pollen: (z === Zone.Meadow || z === Zone.Town) && zone !== Zone.UmbrathCity, snow: z === Zone.Snow || z === Zone.SnowCity, sand: z === Zone.Desert || z === Zone.OasisCity, bubbles: false,
+      pollen: (z === Zone.Meadow || z === Zone.Town) && zone !== Zone.UmbrathCity, snow: z === Zone.Snow || z === Zone.SnowCity, sand: z === Zone.Desert || z === Zone.OasisCity,
     };
     for (const [k, e] of Object.entries(this.ambient)) {
       e.setPosition(v.x - 40, v.y - (k === "leaves" ? 60 : 0));
@@ -358,7 +357,7 @@ export class GameScene extends Phaser.Scene {
     this.targetId = id;
     if (id) {
       const v = this.units.get(id);
-      if (v) { v.selected = true; v.ring.setTint(this.isEnemy(v) ? 0xff4040 : 0x50e060); }
+      if (v) { v.selected = true; v.ring.setTint(this.isEnemy(v) ? 0xff3030 : 0x9ae07a); }
     }
     net.send("target", { id });
   }

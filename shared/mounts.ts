@@ -1,5 +1,6 @@
 /** Маунты из /data/mounts.json: скорость, ярус, источник получения. Вид рисует tools/gen/mounts.ts (модель = id). */
 import data from "../data/mounts.json";
+import { RARITY_COLORS } from "./items";
 
 export type MountTier = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type MountSource = "start" | "vendor" | "boss" | "raid" | "arena";
@@ -30,8 +31,15 @@ export const MOUNT_COMBAT_LOCK_MS = data.combatLockMs;
 export const MOUNT_TIERS = data.tiers as Record<MountTier, string>;
 export const MOUNT_SOURCES = data.sources as Record<MountSource, string>;
 export const mountSprite = (id: string) => `mount_${id}`;
-/** Цвет яруса для рамок и подписей. */
-export const TIER_COLOR: Record<MountTier, string> = { common: "#c8c8c8", uncommon: "#6adf6a", rare: "#5aa8ff", epic: "#c080ff", legendary: "#ffb030" };
+/** Цвет яруса для рамок и подписей. Синхронизован с RARITY_COLORS из items.ts. */
+export const TIER_COLOR: Record<MountTier, string> = {
+  common:    RARITY_COLORS[0], // #e8e2d0
+  // TODO: uncommon не входит в RARITY_COLORS предметов — использовать rare до введения отдельного яруса
+  uncommon:  RARITY_COLORS[1], // временно = rare (#5fa8ff); ранее "#6adf6a"
+  rare:      RARITY_COLORS[1], // #5fa8ff
+  epic:      RARITY_COLORS[2], // #c47bff
+  legendary: RARITY_COLORS[3], // #ff9a2e
+};
 
 /** Метаданные листа кадров (manifest.mounts): кадр, линия земли, высота парения, посадка таза всадника по [вид][кадр]. */
 export interface MountMeta {

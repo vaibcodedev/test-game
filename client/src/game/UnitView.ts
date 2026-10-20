@@ -9,6 +9,7 @@ import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
 import type { MountMeta } from "../../../shared/mounts";
 import { FOE_COLOR, factionColor } from "../../../shared/factions";
+import { P } from "../../../shared/palette";
 import { GearLayers, parseGear } from "./GearLayers";
 import { LEGENDARIES } from "../../../shared/legendary";
 
@@ -57,6 +58,8 @@ export class UnitView {
   private flashUntil = 0;
   dead = false;
   selected = false;
+  /** В нейтральном городе чужая фракция показывает цвет фракции, а не красный. */
+  inNeutralZone = false;
   hovered = false;
   /** Разводка подписей (labelLayout): целевой и текущий сдвиг блока имя+титул+полоска, показывать ли ник в толпе, базовая точка блока. */
   tgtX = 0;
@@ -277,11 +280,11 @@ export class UnitView {
     this.label.setPosition(lx, Math.round(top - 4));
     const lt = this.labelText();
     if (lt !== this.lastLabel) { this.lastLabel = lt; this.label.setText(lt); }
-    // на арене: союзники зелёные, враги красные; в мире герои противоположной фракции — в цвете своей фракции
+    // на арене: союзники зелёные, враги красные; в нейтральном городе враг — цвет своей фракции, в PvP-зоне — красный
     if (u.kind === UnitKind.Player) {
       // в рейде обе фракции — союзники: никого не красим врагом
       const foe = !this.isSelf && net.kind !== "raid" && !!u.faction && !!net.self && u.faction !== net.self.faction;
-      const color = this.isSelf ? "#ffe9a8" : net.kind === "arena" && u.team ? (u.team === net.arena?.team ? "#9ae07a" : "#ff8a7a") : u.outlaw ? "#ff5a4a" : foe ? FOE_COLOR : u.faction === "umbrath" ? factionColor("umbrath") : "#a8e0ff";
+      const color = this.isSelf ? "#ffe9a8" : net.kind === "arena" && u.team ? (u.team === net.arena?.team ? P.ally : "#ff8a7a") : u.outlaw ? "#ff5a4a" : foe ? (this.inNeutralZone && u.faction ? factionColor(u.faction) : FOE_COLOR) : u.faction === "umbrath" ? factionColor("umbrath") : "#a8e0ff";
       if (color !== this.lastColor) { this.lastColor = color; this.label.setColor(color); }
     }
     if (u.title !== this.lastTitle) { this.lastTitle = u.title; this.titleText.setText(u.title ? `«${u.title.replace(/ \(.*\)$/, "")}»` : ""); }

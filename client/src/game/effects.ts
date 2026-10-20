@@ -8,6 +8,8 @@ import * as sfx from "./sfx";
 import { TeleportFx } from "./teleportFx";
 import { RaidBoss } from "./raidBoss";
 import { net } from "../net";
+import { P } from "../../../shared/palette";
+import { CROWD } from "./labelLayout";
 
 const MAX_BURST = 36;
 const MAX_POOL = 90;
@@ -16,7 +18,7 @@ const SFX_OF: Record<string, sfx.SfxName> = { bolt: "arcane", storm: "arcane", t
 const KIND_COLOR: Record<string, number> = {
   // умения магов
   bolt: 0xa8e8ff, storm: 0xc8f0ff, timewarp: 0xb080ff, hex: 0xa040ff, soul: 0x8aff9a, meta: 0xc040ff,
-  phys: 0xffffff, fire: 0xff8a3a, frost: 0x8ad0ff, poison: 0x9aff5a, arcane: 0xc08aff, shadow: 0xa070ff, nature: 0x8adf5a, holy: 0xfff0a0, heal: 0x9affb8, blood: 0xe0304a,
+  phys: 0xffffff, fire: 0xff8a3a, frost: 0x8ad0ff, poison: 0x9aff5a, arcane: 0xc08aff, shadow: 0xa070ff, nature: 0x8adf5a, holy: 0xfff0a0, heal: 0x7aff7a, blood: 0xe0304a,
   // умения танков
   bash: 0xffe090, glare: 0xfff4b0, banner: 0xffd060, divine: 0xffffff, nova: 0xfff0a0, rune: 0x7ad8ff, chains: 0xb080ff, reap: 0x8aff9a, antimagic: 0xc080ff,
   // умения лекарей
@@ -119,7 +121,7 @@ export class Effects {
 
   /** «+N» с маленькой монетой над юнитом. */
   goldPop(x: number, y: number, n: number) {
-    const t = this.scene.add.text(x - 5, y, "+" + n.toLocaleString("ru-RU"), { fontFamily: FONT, fontSize: "11px", color: "#ffd84a", stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: "600" }).setOrigin(1, 0.5).setDepth(DEPTH.top);
+    const t = this.scene.add.text(x - 5, y, "+" + n.toLocaleString("ru-RU"), { fontFamily: FONT, fontSize: "11px", color: P.goldNum, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: "600" }).setOrigin(1, 0.5).setDepth(DEPTH.top);
     const c = this.scene.add.image(x - 1, y, "coin_icon").setDisplaySize(11, 11).setOrigin(0, 0.5).setDepth(DEPTH.top);
     this.scene.tweens.add({ targets: [t, c], y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 200, onComplete: () => { t.destroy(); c.destroy(); } });
   }
@@ -184,11 +186,11 @@ export class Effects {
         if (!u) return;
         const raidBoss = u.frame >= 96;
         const y = raidBoss ? u.y - 0.9 * u.frame : u.y - (u.frame > 32 ? 56 : 28);
-        const crowdy = overlay.crowdNums && this.heroes > 8 && f.id !== this.selfId;
+        const crowdy = overlay.crowdNums && this.heroes > CROWD && f.id !== this.selfId;
         const dim = crowdy ? (u.selected ? 0.75 : 0.5) : 1;
         if (f.miss) return this.number(u.x, y, "Уклонение", "#c8c0b0", false, 1, f.id, false, dim);
-        if (f.imm) return this.number(u.x, y, "Неуязвим", "#ffd84a", false, 1, f.id, false, dim);
-        if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x9affb8, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, "#7aff7a", false, 1, f.id, f.v < 0.02 * u.u.maxHp, dim); }
+        if (f.imm) return this.number(u.x, y, "Неуязвим", P.goldNum, false, 1, f.id, false, dim);
+        if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x7aff7a, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, P.heal, false, 1, f.id, f.v < 0.02 * u.u.maxHp, dim); }
         if (f.abs) this.sound("shield", u.x, u.y);
         if (f.abs) return this.number(u.x, y, `Щит ${f.v}`, "#ffd84a", false, 1, f.id, false, dim);
         u.flash();
@@ -196,7 +198,7 @@ export class Effects {
         this.flash(u.x, u.y - 14, f.crit ? 0xffe070 : (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff), f.crit ? 1.2 : 0.7);
         this.sound(f.crit ? "crit" : (SFX_OF[f.k ?? "phys"] ?? "hit"), u.x, u.y);
         if (mine ? f.crit || f.v > 40 : f.crit) this.shake(u.x, u.y, 90, mine ? 0.003 : 0.002);
-        const col = mine ? "#ff6a5a" : f.crit ? "#ffd84a" : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
+        const col = mine ? "#ff6a5a" : f.crit ? P.goldNum : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
         const small = !f.crit && !raidBoss && f.v < Math.max(4, 0.025 * u.u.maxHp);
         if (small || crowdy) this.tick(f.id, u.x, y, f.v, col, dim);
         else this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1, f.id, false, dim);
@@ -443,7 +445,7 @@ export class Effects {
         const col = s.add.image(u.x, u.y - 30, "fx_glow").setTint(0xffd84a).setBlendMode(Phaser.BlendModes.ADD).setScale(1, 4).setDepth(DEPTH.top - 30).setAlpha(0.9);
         s.tweens.add({ targets: col, scaleX: 0.2, alpha: 0, duration: 1100, onComplete: () => col.destroy() });
         this.burst(u.x, u.y - 10, "fx_spark", 0xffd84a, 30, 90, 900, -60);
-        this.number(u.x, u.y - 44, `Уровень ${f.level}!`, "#ffd84a", true);
+        this.number(u.x, u.y - 44, `Уровень ${f.level}!`, P.goldNum, true);
         break;
       }
       case "buff": {
@@ -452,9 +454,9 @@ export class Effects {
         const color = f.k === "warcry" ? 0xff6a3a : f.k === "haste" ? 0xc0f050 : f.k === "enrage" ? 0xff2a1a : 0xffffff;
         if (f.k === "heal" || f.k === "renew") {
           this.sound("heal", u.x, u.y);
-          this.burst(u.x, u.y - 6, "fx_spark", f.k === "heal" ? 0x9affb8 : 0xffe890, 14, 30, 900, -80, 0.8);
+          this.burst(u.x, u.y - 6, "fx_spark", f.k === "heal" ? 0x7aff7a : 0xffe890, 14, 30, 900, -80, 0.8);
           if (f.k === "renew") {
-            const rep = s.time.addEvent({ delay: 450, loop: true, callback: () => { const q = this.unit(f.id); if (q) this.burst(q.x, q.y - 4, "fx_spark", 0xb8ffc8, 2, 20, 700, -70, 0.6); } });
+            const rep = s.time.addEvent({ delay: 450, loop: true, callback: () => { const q = this.unit(f.id); if (q) this.burst(q.x, q.y - 4, "fx_spark", 0x7aff7a, 2, 20, 700, -70, 0.6); } });
             s.time.delayedCall(f.ms, () => rep.remove());
           }
           break;

@@ -3,7 +3,7 @@ import { UnitKind } from "../../../shared/protocol";
 import { overlay } from "./overlay";
 import type { UnitView } from "./UnitView";
 
-const CROWD = 8;
+export const CROWD = 8;
 const H = 17;
 /** Кандидаты сдвига (dx, dy): сначала на месте, потом вверх, потом вбок; не дальше 26 px от юнита. */
 const CANDS: [number, number][] = [[0, 0], [0, -7], [12, 0], [-12, 0], [12, -7], [-12, -7], [0, -14], [20, -7], [-20, -7], [12, -14], [-12, -14], [0, -21], [24, -14], [-24, -14], [0, -26]];
