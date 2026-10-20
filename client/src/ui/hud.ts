@@ -30,6 +30,7 @@ import { CookUI, foodTip } from "./cook";
 import { QuestUI, TeleportUI } from "./cities";
 import { fillHelp, GameMenu, keysHtml } from "./gamemenu";
 import { isTextField, keybinds, skillKeys } from "../game/keybinds";
+import { buildControls, offerSchemeOnce } from "./controls";
 import { Hotbar } from "./hotbar";
 import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
@@ -438,9 +439,12 @@ export class Hud {
       <div class="set-row set-gearfx"><label>${esc(GEAR_FX.setting.label)}</label><div class="set-seg" role="group" aria-label="${esc(GEAR_FX.setting.label)}">${GEAR_FX.setting.modes.map((m) => `<button type="button" class="btn small" data-m="${m.id}">${esc(m.label)}</button>`).join("")}</div></div>
       <p class="muted set-note">${esc(GEAR_FX.setting.note)}</p>
       <div class="set-row"><button class="btn" id="set-resetwin">Сбросить расположение окон</button></div>
+      <div id="set-controls"></div>
       <h3 style="margin:8px 0 0;font-size:16px;color:var(--gold)">Горячие клавиши</h3>
       <dl class="keys">${keysHtml()}</dl>`;
     body.querySelector<HTMLButtonElement>("#set-resetwin")!.onclick = () => resetWindowPositions();
+    buildControls(body.querySelector<HTMLElement>("#set-controls")!);
+    void offerSchemeOnce();
     const sc = body.querySelector<HTMLInputElement>("#set-scale")!, ch = body.querySelector<HTMLInputElement>("#set-chat")!;
     sc.value = String(this.uiScale);
     ch.value = String(this.chatSize);

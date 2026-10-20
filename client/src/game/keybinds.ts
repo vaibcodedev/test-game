@@ -439,10 +439,25 @@ export function hotkeyRows(kb: Keybinds): [string, string][] {
   return rows;
 }
 
-/** Настройки мыши (localStorage mouse:v1): «ЛКМ атакует» (по умолчанию выкл), «Преследовать цель» (по умолчанию выкл). */
-export interface MouseOpts { lmbAttacks: boolean; chase: boolean }
+/**
+ * Настройки мыши и управления (localStorage mouse:v1): «ЛКМ атакует», «Преследовать цель», «Режим прицела», «Каст по наведению»,
+ * «Автоцель», «Подходить к цели», «Очередь умений, мс» (0–500), «Крупные цели» (эффект на hitTest — шаг 10).
+ */
+export type AimMode = "preview" | "quick" | "confirm";
+export interface MouseOpts { lmbAttacks: boolean; chase: boolean; aimMode: AimMode; hoverCast: boolean; autoTarget: boolean; approach: boolean; queueMs: number; bigTargets: boolean }
+export const MOUSE_DEFAULTS: MouseOpts = { lmbAttacks: false, chase: false, aimMode: "preview", hoverCast: true, autoTarget: false, approach: true, queueMs: 400, bigTargets: false };
 export function loadMouseOpts(store: Store | null = browserStorage()): MouseOpts {
-  try { const r = JSON.parse(store?.getItem("mouse:v1") ?? "{}"); return { lmbAttacks: r?.lmbAttacks === true, chase: r?.chase === true }; } catch { return { lmbAttacks: false, chase: false }; }
+  let r: Record<string, unknown> = {};
+  try { const p = JSON.parse(store?.getItem("mouse:v1") ?? "{}"); if (p && typeof p === "object") r = p; } catch {}
+  const d = MOUSE_DEFAULTS, bool = (k: keyof MouseOpts): boolean => (typeof r[k] === "boolean" ? (r[k] as boolean) : (d[k] as boolean));
+  const q = Number(r.queueMs);
+  return {
+    lmbAttacks: r.lmbAttacks === true, chase: r.chase === true,
+    aimMode: r.aimMode === "quick" || r.aimMode === "confirm" || r.aimMode === "preview" ? r.aimMode : d.aimMode,
+    hoverCast: bool("hoverCast"), autoTarget: r.autoTarget === true, approach: bool("approach"),
+    queueMs: r.queueMs === undefined || !Number.isFinite(q) ? d.queueMs : Math.min(500, Math.max(0, Math.round(q))),
+    bigTargets: r.bigTargets === true,
+  };
 }
 export const mouseOpts: MouseOpts = loadMouseOpts();
 export function saveMouseOpts(store: Store | null = browserStorage()) { try { store?.setItem("mouse:v1", JSON.stringify(mouseOpts)); } catch {} }

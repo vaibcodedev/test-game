@@ -2863,3 +2863,26 @@ body[data-faction="umbrath"] .panel {
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0, transparent 70%);
 }
+
+/* Настройки → Управление */
+.ctl-h { margin: 8px 0 0; font-size: 16px; color: var(--gold); }
+.ctl-opts { display: flex; flex-direction: column; gap: var(--sp-2, 6px); }
+.ctl-opts .set-row input[type="range"] { flex: 1; }
+.ctl-hint { font-size: 13px; min-height: 2.6em; }
+.ctl-hint.bad { color: #e07a6a; }
+.ctl-group h4 { margin: 8px 0 4px; font-size: 14px; color: var(--gold); border-bottom: 1px solid var(--line, rgba(255,255,255,.12)); }
+.ctl-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.ctl-name { flex: 1; }
+.ctl-chip { min-width: 74px; padding: 2px 8px; font: inherit; font-size: 13px; color: var(--text, #eee); background: rgba(0,0,0,.35); border: 1px solid var(--line, rgba(255,255,255,.25)); border-radius: 4px; cursor: pointer; text-align: center; }
+.ctl-chip:hover { border-color: var(--gold); color: var(--gold); }
+.ctl-chip.empty { color: var(--dim, #999); }
+.ctl-chip.wait { border-color: var(--gold); color: var(--gold); animation: ctl-blink 1s infinite; }
+.ctl-chip.fixed { cursor: default; opacity: .7; }
+.ctl-chip.fixed:hover { border-color: var(--line, rgba(255,255,255,.25)); color: inherit; }
+@keyframes ctl-blink { 50% { opacity: .55; } }
+.ctl-modal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); }
+.ctl-ask { max-width: 380px; padding: 16px 18px; background: var(--panel, #1c1a17); border: 1px solid var(--gold); border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+.ctl-ask p { margin: 0 0 12px; line-height: 1.4; }
+.ctl-ask-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.ctl-opts .set-seg .btn, #ctl-preset .btn { white-space: normal; padding-left: 4px; padding-right: 4px; }
+.ctl-hint { margin-top: 6px; }

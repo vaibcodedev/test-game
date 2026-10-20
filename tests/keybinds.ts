@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   ACTION_IDS, ACTIONS, GROUPS, HeldKeys, Keybinds, MAX_COMBOS, PRESETS, STORAGE_KEY,
   comboKey, comboLabel, hotkeyRows, isForbidden, isTextField, mouseCode, parseSaved, skillKeys,
+  loadMouseOpts, MOUSE_DEFAULTS,
   type ActionId, type Combo, type PresetId, type Store,
 } from "../client/src/game/keybinds";
 
@@ -354,6 +355,36 @@ test("подписка на смену: вызывается при измене
   assert.equal(n, 5);
   kb.rebind("slot1", 0, { code: "ShiftLeft" });
   assert.equal(n, 5, "отказ не считается изменением");
+});
+
+test("шаг 9: 1 → Mouse4, обмен при конфликте, запрет, round-trip", () => {
+  const store = new MemStore();
+  const kb = new Keybinds(store);
+  kb.setPreset("classic");
+  assert.deepEqual(kb.rebind("slot1", 0, { code: "Mouse4" }), { ok: true });
+  assert.equal(kb.label("slot1", 0), "Mouse4");
+  assert.deepEqual(kb.rebind("slot2", 0, { code: "Mouse4" }), { ok: true, swapped: "slot1" });
+  assert.equal(kb.label("slot1", 0), "2", "slot1 получил прежнее сочетание slot2");
+  assert.deepEqual(kb.rebind("slot1", 1, { code: "F12" }), { ok: false, why: "forbidden" });
+  assert.deepEqual(kb.rebind("slot1", 1, { code: "KeyW", ctrl: true }), { ok: false, why: "forbidden" });
+  assert.deepEqual(kb.rebind("slot1", 1, { code: "Escape" }), { ok: false, why: "reserved" });
+  const back = new Keybinds(store);
+  assert.deepEqual(back.layout(), kb.layout());
+  assert.deepEqual(acts(back, "Digit2"), ["slot1"]);
+  assert.equal(back.barLabel(0, 1), "Mouse4");
+});
+
+test("шаг 9: опции мыши — по умолчанию, round-trip, мусор и границы очереди", () => {
+  const store = new MemStore();
+  assert.deepEqual(loadMouseOpts(store), MOUSE_DEFAULTS);
+  assert.deepEqual([MOUSE_DEFAULTS.aimMode, MOUSE_DEFAULTS.hoverCast, MOUSE_DEFAULTS.autoTarget, MOUSE_DEFAULTS.approach, MOUSE_DEFAULTS.queueMs, MOUSE_DEFAULTS.bigTargets], ["preview", true, false, true, 400, false]);
+  const o = { ...MOUSE_DEFAULTS, aimMode: "confirm" as const, hoverCast: false, autoTarget: true, queueMs: 150, bigTargets: true, lmbAttacks: true };
+  store.setItem("mouse:v1", JSON.stringify(o));
+  assert.deepEqual(loadMouseOpts(store), o);
+  store.setItem("mouse:v1", JSON.stringify({ aimMode: "zzz", queueMs: 9999, hoverCast: "x" }));
+  assert.deepEqual(loadMouseOpts(store), { ...MOUSE_DEFAULTS, queueMs: 500 });
+  store.setItem("mouse:v1", "{мусор");
+  assert.deepEqual(loadMouseOpts(store), MOUSE_DEFAULTS);
 });
 
 console.log(`keybinds: ${count} проверок пройдено`);
