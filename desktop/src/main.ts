@@ -8,10 +8,13 @@ import type { Event as ElectronEvent, Input, IpcMainInvokeEvent, WebContents } f
 import fs from "node:fs";
 import path from "node:path";
 import { ConfigStore } from "./config";
+import { commitImport, discardStaged, findProjectDb, normalizeSource, stageImport, type StagedDb } from "./import-db";
 import { EmbeddedServer, pickPort, ServerStartError, type ServerExitInfo } from "./server";
-import { IPC, type ActionResult, type LauncherInfo, type LauncherStatus, type Stage, type WindowAction } from "./shared";
+import { IPC, type ActionResult, type ImportResult, type LauncherInfo, type LauncherStatus, type Stage, type WindowAction } from "./shared";
 
 declare const __APP_VERSION__: string;
+/** Папка проекта, из которой собрано приложение (bundle.ts): там ищется server/data/game.sqlite для переноса аккаунта. */
+declare const __PROJECT_ROOT__: string;
 
 const TITLE = "Пепельный Предел";
 const APP_ID = "com.ashenreach.game";
@@ -22,6 +25,10 @@ const BG = "#120f16";
 const LOAD_TIMEOUT_MS = 60_000;
 const SMOKE = process.env.SMOKE === "1" || process.argv.includes("--smoke");
 const SMOKE_TIMEOUT_MS = 90_000;
+/** SMOKE_CONNECT=адрес — smoke-проверка жмёт «Подключиться» с этим адресом вместо «Играть». */
+const SMOKE_CONNECT = SMOKE ? (process.env.SMOKE_CONNECT ?? "").trim() : "";
+/** Порт сервера проекта (npm start): для подсказки при переносе базы. */
+const PROJECT_PORT = 2567;
 /** DevTools: всегда без упаковки; в собранном приложении — только с флагом --devtools (или ASHEN_DEVTOOLS=1), по Ctrl+Shift+I. */
 const DEVTOOLS = !app.isPackaged || process.argv.includes("--devtools") || process.env.ASHEN_DEVTOOLS === "1";
 
@@ -33,6 +40,8 @@ const LOGS_DIR = path.join(USER_DATA, "logs");
 const MAIN_LOG = path.join(LOGS_DIR, "main.log");
 const SERVER_LOG = path.join(LOGS_DIR, "server.log");
 const DB_PATH = path.join(USER_DATA, "game.sqlite");
+/** Временная папка переноса базы — в userData, чтобы замена была переименованием на том же диске. */
+const IMPORT_DIR = path.join(USER_DATA, "import-tmp");
 /** Без упаковки main.cjs лежит в desktop/out/app — корень проекта тремя уровнями выше. */
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..", "..");
 const SERVER_DIR = app.isPackaged ? path.join(process.resourcesPath, "server") : path.join(PROJECT_ROOT, "desktop", "out", "server");
@@ -283,6 +292,7 @@ function createGameWindow(origin: string): BrowserWindow {
     saveWindowState(win);
   });
   win.on("closed", () => {
+    log("game window closed");
     if (gameWin === win) gameWin = null;
   });
   return win;
@@ -382,6 +392,7 @@ function normalizeAddress(raw: string): string | null {
 
 async function connect(address: string): Promise<ActionResult> {
   if (busy || gameWin) return { ok: false, title: "Игра уже запускается", message: "Подождите несколько секунд." };
+  smoke.stage = "подключение к серверу";
   const url = normalizeAddress(address);
   if (!url) return { ok: false, title: "Неверный адрес сервера", message: "Пример: 192.168.1.20:2567 или https://play.example.com" };
   config.update({ server: url });
@@ -393,17 +404,171 @@ async function connect(address: string): Promise<ActionResult> {
       // любой HTTP-ответ — сервер доступен; сетевые ошибки — понятное сообщение
       await net.fetch(new URL("/health", url).toString(), { signal: AbortSignal.timeout(6000) });
     } catch (err) {
+      if (SMOKE) void smoke.finish(false, `сервер ${host} не отвечает: ${errText(err)}`);
       return { ok: false, title: "Сервер не отвечает", message: `${host}: ${errText(err)}\nПроверьте адрес, порт и что сервер запущен (npm start).` };
     }
     status("client", "Загрузка игры…", 0.8);
     await openGame(url);
     log(`connected to remote ${url}`);
     status("done", "Готово", 1);
+    if (SMOKE && gameWin) smokeGame(gameWin).catch((err) => smoke.finish(false, `${smoke.stage}: ${errText(err)}`));
     return { ok: true };
   } catch (err) {
     log(`remote load failed: ${errText(err)}`);
+    if (SMOKE) void smoke.finish(false, `подключение к ${url}: ${errText(err)}`);
     return failure("Игра не загрузилась", err, MAIN_LOG);
   } finally {
+    busy = false;
+  }
+}
+
+// ---------- перенос аккаунта из базы проекта ----------
+/** Где искать server/data/game.sqlite: папка разработки, папка сборки, папки над exe (release/, release/win-unpacked/). */
+function projectRoots(): string[] {
+  const roots: string[] = [];
+  if (!app.isPackaged) roots.push(PROJECT_ROOT);
+  if (__PROJECT_ROOT__) roots.push(__PROJECT_ROOT__);
+  for (const start of [process.env.PORTABLE_EXECUTABLE_DIR, path.dirname(app.getPath("exe"))]) {
+    let dir = start;
+    for (let i = 0; dir && i < 3; i++, dir = path.dirname(dir)) roots.push(dir);
+  }
+  return [...new Set(roots.map((r) => path.resolve(r)))];
+}
+
+async function pickDbFile(win: BrowserWindow): Promise<string | null> {
+  const near = projectRoots()
+    .map((r) => path.join(r, "server", "data"))
+    .find((d) => fs.existsSync(d));
+  const r = await dialog.showOpenDialog(win, {
+    title: "База проекта: server/data/game.sqlite",
+    defaultPath: near ?? app.getPath("documents"),
+    buttonLabel: "Выбрать",
+    properties: ["openFile", "dontAddToRecent"],
+    filters: [
+      { name: "База SQLite (game.sqlite)", extensions: ["sqlite", "sqlite3", "db"] },
+      { name: "Все файлы", extensions: ["*"] },
+    ],
+  });
+  return r.canceled || !r.filePaths[0] ? null : normalizeSource(r.filePaths[0]);
+}
+
+/** Отвечает ли сервер проекта (npm start): тогда последние изменения героев в сети могут не попасть в копию. */
+async function projectServerUp(): Promise<boolean> {
+  try {
+    const res = await net.fetch(`http://127.0.0.1:${PROJECT_PORT}/health`, { signal: AbortSignal.timeout(800) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function heroWord(n: number): string {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return "герой";
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return "героя";
+  return "героев";
+}
+
+function heroList(st: StagedDb): string {
+  return st.heroes.map((h) => `${h.name} (ур. ${h.level})`).join(", ") + (st.heroCount > st.heroes.length ? ", …" : "");
+}
+
+async function confirmImport(win: BrowserWindow, st: StagedDb): Promise<"import" | "other" | "cancel"> {
+  const lines = [
+    `Источник: ${st.source}`,
+    `Скопировано: ${st.copied.join(", ")}${st.method === "snapshot" ? " (база менялась при копировании — взят снимок через SQLite)" : ""}`,
+    "",
+    st.heroCount
+      ? `В базе ${st.accounts ? `аккаунтов: ${st.accounts}, ` : ""}${st.heroCount} ${heroWord(st.heroCount)}: ${heroList(st)}.`
+      : "В этой базе нет героев.",
+    "",
+    fs.existsSync(DB_PATH)
+      ? "Встроенный сервер остановится, текущая база десктопа сохранится рядом как game.sqlite.bak-<дата> и будет заменена этой копией."
+      : "В десктопе ещё нет своей базы — копия станет основной.",
+    "Войти можно будет прежним логином и паролем.",
+  ];
+  if (/[\\/]server[\\/]data[\\/][^\\/]+$/i.test(st.source) && (await projectServerUp())) {
+    lines.push(
+      "",
+      `Сервер проекта сейчас запущен (порт ${PROJECT_PORT}): изменения героев, которые сейчас в игре, могут не попасть в копию. Для точной копии остановите его и повторите.`,
+    );
+  }
+  const { response } = await dialog.showMessageBox(win, {
+    type: st.heroCount ? "question" : "warning",
+    title: TITLE,
+    message: st.heroCount ? "Перенести героев из базы проекта?" : "Перенести пустую базу?",
+    detail: lines.join("\n"),
+    buttons: ["Перенести", "Другой файл…", "Отмена"],
+    defaultId: st.heroCount ? 0 : 2,
+    cancelId: 2,
+    noLink: true,
+  });
+  return response === 0 ? "import" : response === 1 ? "other" : "cancel";
+}
+
+/**
+ * «Перенести мой аккаунт из базы проекта»: server/data/game.sqlite (+ -wal, -shm) → userData/game.sqlite.
+ * Файл ищется рядом с папкой разработки, иначе — диалог выбора. Перед заменой встроенный сервер
+ * останавливается (герои сохраняются), старая база десктопа переименовывается в game.sqlite.bak-<дата>.
+ */
+async function importAccount(): Promise<ImportResult> {
+  if (busy || gameWin) return { status: "error", title: "Игра уже запущена", message: "Перенос возможен из лаунчера, пока игра не запущена." };
+  const win = launcher;
+  if (!win || win.isDestroyed()) return { status: "cancelled" };
+  busy = true;
+  let staged: StagedDb | null = null;
+  try {
+    let source = findProjectDb(projectRoots());
+    for (;;) {
+      if (!source) {
+        source = await pickDbFile(win);
+        if (!source) return { status: "cancelled" };
+      }
+      status("import", "Чтение базы проекта…", 0.25);
+      try {
+        staged = stageImport(source, IMPORT_DIR, DB_PATH);
+      } catch (err) {
+        log(`import: ${source}: ${errText(err)}`);
+        const { response } = await dialog.showMessageBox(win, {
+          type: "error",
+          title: TITLE,
+          message: "Не удалось прочитать базу",
+          detail: `${source}\n\n${errText(err)}`,
+          buttons: ["Выбрать другой файл…", "Отмена"],
+          defaultId: 0,
+          cancelId: 1,
+          noLink: true,
+        });
+        if (response !== 0) return { status: "cancelled" };
+        source = null;
+        continue;
+      }
+      const answer = await confirmImport(win, staged);
+      if (answer === "import") break;
+      discardStaged(staged.dir);
+      staged = null;
+      if (answer === "cancel") return { status: "cancelled" };
+      source = null;
+    }
+
+    status("import", "Остановка встроенного сервера…", 0.55);
+    const code = await server.stop();
+    if (code !== null) log(`import: embedded server stopped, code ${code}`);
+    status("import", "Перенос базы…", 0.85);
+    const { backup } = commitImport(staged, DB_PATH);
+    log(`import: ${staged.source} [${staged.copied.join(", ")}; ${staged.method}] → ${DB_PATH}; heroes ${staged.heroCount}; backup ${backup ?? "нет"}`);
+    const names = staged.heroes.map((h) => h.name).join(", ") + (staged.heroCount > staged.heroes.length ? ", …" : "");
+    const lines = ["Нажмите «Играть» и войдите прежним логином и паролем."];
+    if (staged.heroCount) lines.push(`Герои (${staged.heroCount}): ${names}.`);
+    if (backup) lines.push(`Прежняя база десктопа: ${path.basename(backup)}`);
+    staged = null;
+    return { status: "done", title: "Аккаунт перенесён", message: lines.join("\n") };
+  } catch (err) {
+    log(`import failed: ${errText(err)}`);
+    return { status: "error", title: "Перенос не удался", message: errText(err), log: MAIN_LOG };
+  } finally {
+    if (staged) discardStaged(staged.dir);
     busy = false;
   }
 }
@@ -421,6 +586,7 @@ function registerIpc(): void {
       logsDir: LOGS_DIR,
       serverLog: SERVER_LOG,
       smoke: SMOKE,
+      smokeConnect: SMOKE_CONNECT,
     };
   });
   ipcMain.handle(IPC.play, (e) => {
@@ -430,6 +596,10 @@ function registerIpc(): void {
   ipcMain.handle(IPC.connect, (e, address: unknown) => {
     guard(e);
     return connect(typeof address === "string" ? address : "");
+  });
+  ipcMain.handle(IPC.importDb, (e) => {
+    guard(e);
+    return importAccount();
   });
   ipcMain.handle(IPC.openLogs, async (e) => {
     guard(e);
@@ -509,7 +679,10 @@ if (!app.requestSingleInstanceLock()) {
     contents.on("will-attach-webview", (e) => e.preventDefault());
   });
 
-  app.on("window-all-closed", () => app.quit());
+  app.on("window-all-closed", () => {
+    log("all windows closed: quit");
+    app.quit();
+  });
 
   // выход: сначала штатно останавливаем сервер (герои сохраняются), потом закрываемся
   app.on("will-quit", (e) => {

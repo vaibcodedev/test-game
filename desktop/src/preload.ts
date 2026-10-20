@@ -6,6 +6,7 @@ const api: LauncherApi = {
   info: () => ipcRenderer.invoke(IPC.info),
   play: () => ipcRenderer.invoke(IPC.play),
   connect: (address: string) => ipcRenderer.invoke(IPC.connect, String(address)),
+  importDb: () => ipcRenderer.invoke(IPC.importDb),
   openLogs: () => ipcRenderer.invoke(IPC.openLogs),
   openServerLog: () => ipcRenderer.invoke(IPC.openServerLog),
   windowAction: (action: WindowAction) => ipcRenderer.invoke(IPC.window, action),

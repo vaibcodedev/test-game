@@ -337,6 +337,45 @@ body.busy .sep {
   opacity: 0.5;
 }
 
+/* ---------- перенос аккаунта ---------- */
+.migrate {
+  width: 100%;
+  margin-top: 14px;
+}
+.btn.ghost {
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--dim);
+  background: rgba(42, 34, 48, 0.55);
+  border-color: var(--line);
+}
+.btn.ghost:hover:not(:disabled) {
+  color: var(--fg);
+}
+.migrate-hint {
+  margin: 5px 0 0;
+  color: var(--mute);
+  font-size: 11.5px;
+}
+/* при открытой рамке ошибки/сообщения места мало — подсказку прячем */
+body.boxed .migrate {
+  margin-top: 8px;
+}
+body.boxed .migrate-hint {
+  display: none;
+}
+.error.ok {
+  border-color: #4f7a3a;
+  background: rgba(26, 48, 22, 0.6);
+}
+.error.ok b {
+  color: #9ed27a;
+}
+.error.ok p {
+  max-height: 74px;
+}
+
 /* ---------- подвал ---------- */
 .foot {
   position: relative;

@@ -39,7 +39,7 @@
           <b id="error-title">Сервер не запустился</b>
           <p id="error-text"></p>
           <p class="log" id="error-log-row" hidden>Журнал: <code id="error-log"></code></p>
-          <div class="error-btns">
+          <div class="error-btns" id="error-btns">
             <button type="button" class="btn small" id="open-log">Открыть журнал</button>
             <button type="button" class="btn small" id="open-logs">Папка журналов</button>
           </div>
@@ -55,6 +55,11 @@
           <button type="submit" class="btn" id="connect">Подключиться</button>
         </div>
       </form>
+
+      <div class="migrate">
+        <button type="button" class="btn ghost" id="import">Перенести мой аккаунт из базы проекта</button>
+        <p class="migrate-hint">Десктоп хранит героев отдельно от сервера проекта</p>
+      </div>
     </main>
 
     <footer class="foot">

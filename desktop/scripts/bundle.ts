@@ -30,7 +30,7 @@ await build({
   format: "cjs",
   target: "node24",
   external: ["electron"],
-  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  define: { __APP_VERSION__: JSON.stringify(pkg.version), __PROJECT_ROOT__: JSON.stringify(root) },
 });
 await build({
   ...common,
