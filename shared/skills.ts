@@ -3,6 +3,7 @@ import skillBase from "../data/skills.json";
 import skillArchers from "../data/skills_archers.json";
 import skillMages from "../data/skills_mages.json";
 import skillRogues from "../data/skills_rogues.json";
+import skillAim from "../data/skills_aim.json";
 /** Все умения из /data: базовый файл + файлы ролей (лучники, маги, разбойники). */
 const skillData = {
   skills: { ...skillBase.skills, ...skillArchers.skills, ...skillMages.skills, ...skillRogues.skills } as Record<string, unknown>,
@@ -12,6 +13,8 @@ import { skillUnlockLevel } from "./formulas";
 import { manaMult } from "./balance";
 
 export type SkillTarget = "enemy" | "point" | "self" | "ally";
+/** Как целится умение: юнит, точка земли, направление, рывок к точке, на себя. */
+export type SkillAim = "unit" | "ground" | "dir" | "dash" | "self";
 
 export interface SkillDef {
   id: string;
@@ -36,6 +39,10 @@ export interface SkillDef {
   tree: [number, number];
   /** Вне общего отката (GCD, data/balance.json gcd): рывки и защиты — мерцание, перекат, щитовой блок, скрытность и т. п. */
   offGcd?: boolean;
+  /** Прицел (data/skills_aim.json; иначе выводится из target). */
+  aim?: SkillAim;
+  /** Радиус превью у курсора (у рывка — длина рывка). */
+  area?: number;
 }
 
 const pct = (n: number) => `${Math.round(n)}%`;
@@ -327,6 +334,16 @@ for (const [id, s] of Object.entries(skillData.skills as unknown as Record<strin
 }
 // reqLevel выше задан по проектной шкале 1..30 — переводим в реальный уровень 1..MAX_LEVEL (BALANCE.md)
 for (const s of Object.values(SKILLS)) s.reqLevel = skillUnlockLevel(s.reqLevel);
+// прицел из data/skills_aim.json: aim/area/offGcd; где не задано — из target и v(1).radius / dist
+const AIM = skillAim as unknown as Record<string, { aim?: SkillAim; area?: number; offGcd?: boolean }>;
+for (const s of Object.values(SKILLS)) {
+  if (s.kind !== "active") continue;
+  const o = AIM[s.id];
+  s.aim = o?.aim ?? (s.target === "enemy" || s.target === "ally" ? "unit" : s.target === "point" ? "ground" : "self");
+  const v = s.v(1), a = o?.area ?? (s.aim === "dash" ? v.dist : v.radius);
+  if (a > 0) s.area = a;
+  if (o?.offGcd) s.offGcd = true;
+}
 /** Временные призванные союзники умений (питомец на время). */
 export const SUMMONS = skillData.summons as Record<string, { name: string; sprite: string; hp: number; dmg: number; armor: number; speed: number; range: number; attackCd: number; radius: number }>;
 

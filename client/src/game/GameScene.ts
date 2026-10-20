@@ -5,8 +5,8 @@ import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, z
 import { ENV } from "../../../shared/biomes";
 import * as sfx from "./sfx";
 import { nightLevel } from "../../../shared/daynight";
-import { Anim, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
-import { SKILLS } from "../../../shared/skills";
+import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
+import { SKILLS, type SkillDef } from "../../../shared/skills";
 import { RUMOR_NPCS } from "../../../shared/rumors";
 import { COOK } from "../../../shared/food";
 import { CITIES } from "../../../shared/cities";
@@ -25,6 +25,8 @@ import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
 import { FONT, UnitView } from "./UnitView";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
+import { AimPreview } from "./aim";
+import { resolveCast, type CastUnit } from "./castResolve";
 
 type NpcKind = "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
@@ -168,6 +170,7 @@ export class GameScene extends Phaser.Scene {
     } else this.scenes = null;
 
     if (mouseOpts.chase) net.send("chase", { on: true });
+    this.aim = new AimPreview(this);
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
 
     net.watchUnits("players", (id, u) => this.addUnit(id, u), (id) => this.removeUnit(id));
@@ -428,7 +431,7 @@ export class GameScene extends Phaser.Scene {
       winArena: () => this.hud.toggle("arena"),
       winAdmin: () => this.hud.toggle("admin"),
       chat: () => this.hud.focusChat(),
-      escape: () => this.hud.escape(!!this.targetId, () => this.setTarget(null)),
+      escape: () => { if (this.aimState) this.cancelAim(); else this.hud.escape(!!this.targetId, () => this.setTarget(null)); },
     };
     // единственный обработчик клавиатуры; молчит только при вводе текста (ползунки, флажки и кнопки ему не мешают)
     const onKeyDown = (e: KeyboardEvent) => {
@@ -436,7 +439,7 @@ export class GameScene extends Phaser.Scene {
       // умолчания браузера, мешающие игре: Tab уводит фокус на кнопки, F1–F5 — справка, поиск, обновление страницы
       if (e.code === "Tab" || (/^F[1-5]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey)) e.preventDefault();
       const bs = keybinds.barSlotFor(e);
-      if (bs) { e.preventDefault(); if (!e.repeat) this.pressSlot(bs.bar, bs.i); return; }
+      if (bs) { e.preventDefault(); if (!e.repeat) this.pressSlot(bs.bar, bs.i, e.code, e.altKey); return; }
       const acts = keybinds.actionsFor(e);
       if (!acts.length) return;
       e.preventDefault();
@@ -456,8 +459,23 @@ export class GameScene extends Phaser.Scene {
         } else if (!e.repeat) run[a]();
       }
     };
-    const onKeyUp = (e: KeyboardEvent) => this.held.release(e.code);
-    const onBlur = () => this.held.clear();
+    const onKeyUp = (e: KeyboardEvent) => {
+      this.held.release(e.code);
+      // «С превью»: клавиша слота отпущена — каст
+      const st = this.aimState;
+      if (st && st.hold === e.code) { this.aimState = null; this.castNow(SKILLS[st.id], e.altKey); }
+    };
+    const onBlur = () => { this.held.clear(); this.cancelAim(); };
+    const onMouseMove = (e: MouseEvent) => { this.overUi = e.target !== this.game.canvas; };
+    // наведение на слот панели с умением: кольцо дальности
+    const onOver = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest?.(".hb-slot") as HTMLElement | null;
+      const ref = el ? net.self?.bars?.[Number(el.dataset.bar)]?.[Number(el.dataset.i)] : null;
+      this.aimHover = ref && "s" in ref ? ref.s : null;
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseover", onOver);
+    this.cleanup.push(() => { window.removeEventListener("mousemove", onMouseMove); window.removeEventListener("mouseover", onOver); });
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
@@ -481,6 +499,13 @@ export class GameScene extends Phaser.Scene {
       (document.activeElement as HTMLElement | null)?.blur?.();
       const wx = p.worldX, wy = p.worldY;
       const right = p.rightButtonDown();
+      // прицел: ПКМ отменяет, ЛКМ в режиме «С подтверждением» кастует; при зажатой клавише клики не двигают героя
+      if (this.aimState) {
+        const st = this.aimState;
+        if (right) this.cancelAim();
+        else if (!st.hold) { this.aimState = null; this.castNow(SKILLS[st.id], (p.event as MouseEvent).altKey); }
+        return;
+      }
       const classic = keybinds.presetId === "classic";
       // в «Экшене» взаимодействуют только ПКМ; в «Классике» обе кнопки
       const act = right || classic;
@@ -610,11 +635,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Нажатие слота панели (клавиша или клик): умение, предмет (по base) или действие. */
-  pressSlot(bar: number, i: number) {
+  pressSlot(bar: number, i: number, code: string | null = null, alt = false) {
     const ref = net.self?.bars?.[bar]?.[i];
     if (!ref) return;
     this.hud.flashSlot(bar, i);
-    if ("s" in ref) this.useSkillId(ref.s);
+    if ("s" in ref) this.useSkillId(ref.s, code, alt);
     else if ("i" in ref) { if (net.self && !this.me?.dead) net.send("use:base", { base: ref.i }); }
     else if (ref.a === "mount") this.toggleMount();
     else if (ref.a === "pet") this.togglePet();
@@ -622,21 +647,64 @@ export class GameScene extends Phaser.Scene {
     else this.pickupNearest();
   }
 
-  useSkillId(id: string) {
+  private aimState: { id: string; hold: string | null } | null = null;
+  private aimHover: string | null = null;
+  private overUi = false;
+  private aim!: AimPreview;
+
+  /** Умение с панели: по режиму прицела — сразу, с прицелом до отпускания клавиши (hold) или до ЛКМ. */
+  useSkillId(id: string, hold: string | null = null, alt = false) {
     const self = net.self;
     if (!self || !this.me || this.me.dead) return;
     const def = SKILLS[id];
     if (!def || def.cls !== self.cls || def.kind !== "active") return;
     if (!self.skills[def.id]) return this.hud.toast({ text: `«${def.name}» ещё не изучено (K — умения)`, kind: "error" });
-    const p = this.input.activePointer;
-    let x = p.worldX, y = p.worldY;
-    const t = this.targetId ? this.units.get(this.targetId) : undefined;
-    if (def.target === "enemy" && !t) return this.hud.toast({ text: "Нужна цель: кликните по врагу", kind: "error" });
-    if (t && def.target !== "self" && (def.target === "enemy" || !this.hud.aimAtCursor)) { x = t.x; y = t.y; }
-    if (def.id === "blink" || def.id === "roll") { x = p.worldX; y = p.worldY; }
-    // умения-лечилки: врага в цель не берём (сервер лечит самого лекаря)
-    const target = def.target === "ally" && t && this.isEnemy(t) ? null : this.targetId;
-    net.send("skill", { id: def.id, x, y, target });
+    this.aimState = null;
+    const mode = mouseOpts.aimMode;
+    if (mode === "quick" || (def.aim === "self" && mode === "confirm")) return this.castNow(def, alt);
+    // «С превью»: клавиша зажата — прицел, каст при отпускании; клик по слоту — сразу
+    if (mode === "preview" && !hold) return this.castNow(def, alt);
+    this.aimState = { id, hold: mode === "preview" ? hold : null };
+  }
+
+  cancelAim() { this.aimState = null; this.aim?.clear(); }
+
+  private castUnit(id: string | null): CastUnit | null {
+    const v = id ? this.units.get(id) : undefined;
+    if (!v) return null;
+    const enemy = this.isEnemy(v);
+    return { id: v.id, x: v.x, y: v.y, enemy, friend: !enemy && (v.u.kind === UnitKind.Player || v.u.kind === UnitKind.Pet), dead: v.dead };
+  }
+
+  /** Вход для resolveCast: курсор (последнее положение над картой), юнит под ним, цель, «вперёд». */
+  private castInput(def: SkillDef, alt: boolean) {
+    const ap = this.input.activePointer, cur = this.cameras.main.getWorldPoint(ap.x, ap.y);
+    const hoverId = this.overUi ? null : def.target === "ally" ? this.pickFriend(cur.x, cur.y) : this.pick(cur.x, cur.y);
+    const d = this.me?.u.dir;
+    const facing = d === Dir.Left ? { x: -1, y: 0 } : d === Dir.Right ? { x: 1, y: 0 } : d === Dir.Up ? { x: 0, y: -1 } : { x: 0, y: 1 };
+    return {
+      skill: { aim: def.aim ?? "self", target: def.target, range: def.range },
+      self: { id: net.id, x: this.pos.x, y: this.pos.y },
+      cursor: { x: cur.x, y: cur.y }, overUi: this.overUi,
+      hover: this.castUnit(hoverId), selected: this.castUnit(this.targetId),
+      units: [...this.units.keys()].map((k) => this.castUnit(k)).filter((x): x is CastUnit => !!x),
+      facing, alt, hoverCast: mouseOpts.hoverCast, autoTarget: mouseOpts.autoTarget,
+    };
+  }
+
+  castNow(def: SkillDef | undefined, alt = false) {
+    if (!def || !this.me || this.me.dead) return;
+    const plan = resolveCast(this.castInput(def, alt));
+    if (!plan.ok) return this.hud.toast({ text: plan.err, kind: "error" });
+    net.send("skill", { id: def.id, x: plan.x, y: plan.y, target: plan.target });
+  }
+
+  /** Каждый кадр: превью по состоянию прицела или наведению на слот. */
+  private updateAim() {
+    const def = SKILLS[this.aimState?.id ?? this.aimHover ?? ""];
+    if (!def || !this.me || this.me.dead) return this.aim.clear();
+    const plan = resolveCast(this.castInput(def, false));
+    this.aim.draw(def, this.pos, plan, !this.aimState || def.aim === "unit");
   }
 
   pickupNearest() {
@@ -710,6 +778,7 @@ export class GameScene extends Phaser.Scene {
   // ---------- кадр ----------
   override update(_time: number, deltaMs: number) {
     const dt = Math.min(0.05, deltaMs / 1000);
+    this.updateAim();
     this.world.update(this.cameras.main);
     this.world.drift.x += dt * 6;
     this.world.drift.y += dt * 3;
