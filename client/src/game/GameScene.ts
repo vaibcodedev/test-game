@@ -2,11 +2,11 @@ import Phaser from "phaser";
 import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../../../shared/constants";
 import { Nav } from "../../../shared/path";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
-import { ENV } from "../../../shared/biomes";
+import { ENV, RESOURCES } from "../../../shared/biomes";
 import * as sfx from "./sfx";
 import { nightLevel } from "../../../shared/daynight";
 import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
-import { SKILLS, type SkillDef } from "../../../shared/skills";
+import { SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import { RUMOR_NPCS } from "../../../shared/rumors";
 import { COOK } from "../../../shared/food";
 import { CITIES } from "../../../shared/cities";
@@ -15,6 +15,7 @@ import { BANKER } from "../../../shared/bank";
 import { BAGMAN } from "../../../shared/bags";
 import { ARENA_NPC, generateArenaMap, MODE_NAMES } from "../../../shared/arena";
 import { MOUNTS } from "../../../shared/mounts";
+import { generateRaidMap, RAID, RAID_HERALDS } from "../../../shared/raid";
 import { net, type UnitState } from "../net";
 import { PETS } from "../../../shared/pets";
 import { CLASSES } from "../../../shared/classes";
@@ -28,7 +29,7 @@ import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAc
 import { AimPreview } from "./aim";
 import { resolveCast, type CastUnit } from "./castResolve";
 
-type NpcKind = "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
+type NpcKind = "raid" | "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
@@ -126,7 +127,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once("destroy", done);
 
     this.hud = this.registry.get("hud") as Hud;
-    this.map = net.kind === "arena" ? generateArenaMap() : generateMap(net.seed);
+    this.map = net.kind === "arena" ? generateArenaMap() : net.kind === "raid" ? generateRaidMap() : generateMap(net.seed);
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
@@ -153,6 +154,7 @@ export class GameScene extends Phaser.Scene {
       net.on("nodes", (m) => { for (const id of m.depleted) { this.depletedNodes.add(id); this.world.setNode(id, false); } }),
     );
     let lastGold = -1;
+    this.cleanup.push(net.on("queue", (m) => { if (m.id) sfx.play("queue"); }));
     this.cleanup.push(net.on("cast", (m) => { this.castHold = m.ms > 0 ? this.time.now + m.ms : 0; }));
     this.cleanup.push(net.on("self", (s) => { if (lastGold >= 0 && s.gold > lastGold) { const u = this.units.get(net.id); if (u) this.fx.goldPop(u.x, u.y - 40, s.gold - lastGold); } lastGold = s.gold; }));
     this.cleanup.push(net.on("fx", (list) => this.fx.play(list)), net.on("loot", (bags) => this.syncBags(bags)));
@@ -166,6 +168,7 @@ export class GameScene extends Phaser.Scene {
       this.addNpc("bank", BANKER.sprite, BANKER, BANKER.name, BANKER.color, BANKER.tint, BANKER.id);
       this.addNpc("bags", BAGMAN.sprite, BAGMAN, BAGMAN.name, BAGMAN.color, BAGMAN.tint, BAGMAN.id);
       for (const r of RUMOR_NPCS) this.addNpc("rumor", r.sprite, r, r.name, r.color, r.tint, r.id);
+      for (const h of RAID_HERALDS) this.addNpc("raid", RAID.npc.sprite, h, h.name, RAID.npc.color, Number(RAID.npc.tint), h.id);
       for (const c of CITIES) {
         if (c.style) {
           const m = c.merchant!, k = c.cook!, q = c.quest!;
@@ -209,7 +212,7 @@ export class GameScene extends Phaser.Scene {
     const shadow = this.add.image(at.x, at.y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5);
     const label = { fontFamily: FONT, fontSize: "9px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 4, resolution: 4 };
     const nameT = this.add.text(at.x, at.y - 31, name, label).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
-    const mark = this.add.text(at.x, at.y - 40, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : "!", { ...label, fontSize: "10px", color: "#ffd84a" }).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
+    const mark = this.add.text(at.x, at.y - 40, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "raid" ? "☀" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : "!", { ...label, fontSize: "10px", color: "#ffd84a" }).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
     this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
     this.npcExtras = [shadow, nameT, mark];
     this.npcs.push({ sprite: s, kind, id, name });
@@ -427,8 +430,8 @@ export class GameScene extends Phaser.Scene {
       targetNext: () => this.cycleTarget(1), targetPrev: () => this.cycleTarget(-1), attack: () => this.attackTarget(),
       selectSelf: () => this.setTarget(net.id),
       selectParty1: () => this.selectParty(0), selectParty2: () => this.selectParty(1), selectParty3: () => this.selectParty(2), selectParty4: () => this.selectParty(3),
-      interact: () => this.pickupNearest(),
-      talk: () => this.talkNearest(),
+      interact: () => this.interactNearest(),
+      talk: () => this.interactNearest(),
       mount: () => this.toggleMount(),
       mountNext: () => this.cycleMount(),
       autorun: () => this.toggleAutorun(),
@@ -443,7 +446,13 @@ export class GameScene extends Phaser.Scene {
       winArena: () => this.hud.toggle("arena"),
       winAdmin: () => this.hud.toggle("admin"),
       chat: () => this.hud.focusChat(),
-      escape: () => { if (this.aimState) this.cancelAim(); else this.hud.escape(!!this.targetId, () => this.setTarget(null)); },
+      // Esc: прицел → очередь, подход, канал (сервер, cancel) → окно, цель, меню
+      escape: () => {
+        if (this.aimState) return this.cancelAim();
+        const busy = !!net.queued || net.pending || this.time.now < this.castHold;
+        net.send("cancel");
+        if (!busy) this.hud.escape(!!this.targetId, () => this.setTarget(null));
+      },
     };
     // единственный обработчик клавиатуры; молчит только при вводе текста (ползунки, флажки и кнопки ему не мешают)
     const onKeyDown = (e: KeyboardEvent) => {
@@ -451,7 +460,7 @@ export class GameScene extends Phaser.Scene {
       // умолчания браузера, мешающие игре: Tab уводит фокус на кнопки, F1–F5 — справка, поиск, обновление страницы
       if (e.code === "Tab" || (/^F[1-5]$/.test(e.code) && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey)) e.preventDefault();
       const bs = keybinds.barSlotFor(e);
-      if (bs) { e.preventDefault(); if (!e.repeat) this.pressSlot(bs.bar, bs.i, e.code, e.altKey); return; }
+      if (bs) { e.preventDefault(); if (!e.repeat) { this.pressSlot(bs.bar, bs.i, e.code, e.altKey); this.startHold(bs.bar, bs.i, e.code, e.altKey); } return; }
       const acts = keybinds.actionsFor(e);
       if (!acts.length) return;
       e.preventDefault();
@@ -473,11 +482,13 @@ export class GameScene extends Phaser.Scene {
     };
     const onKeyUp = (e: KeyboardEvent) => {
       this.held.release(e.code);
+      if (e.code === this.holdCode) this.stopHold();
       // «С превью»: клавиша слота отпущена — каст
       const st = this.aimState;
       if (st && st.hold === e.code) { this.aimState = null; this.castNow(SKILLS[st.id], e.altKey); }
     };
-    const onBlur = () => { this.held.clear(); this.cancelAim(); };
+    const onBlur = () => { this.held.clear(); this.cancelAim(); this.stopHold(); };
+    this.cleanup.push(() => this.stopHold());
     const onMouseMove = (e: MouseEvent) => { this.overUi = e.target !== this.game.canvas; };
     // наведение на слот панели с умением: кольцо дальности
     const onOver = (e: MouseEvent) => {
@@ -656,8 +667,20 @@ export class GameScene extends Phaser.Scene {
     else if (ref.a === "mount") this.toggleMount();
     else if (ref.a === "pet") this.togglePet();
     else if (ref.a === "attack") this.attackTarget();
-    else this.pickupNearest();
+    else this.interactNearest();
   }
+
+  private holdTimer = 0;
+  private holdCode = "";
+  /** Удержание клавиши умения в режиме «Быстрый» повторяет нажатие каждые 150 мс. */
+  private startHold(bar: number, i: number, code: string, alt: boolean) {
+    this.stopHold();
+    const ref = net.self?.bars?.[bar]?.[i];
+    if (!ref || !("s" in ref) || mouseOpts.aimMode !== "quick") return;
+    this.holdCode = code;
+    this.holdTimer = window.setInterval(() => this.pressSlot(bar, i, code, alt), 150);
+  }
+  private stopHold() { clearInterval(this.holdTimer); this.holdTimer = 0; this.holdCode = ""; }
 
   private aimState: { id: string; hold: string | null } | null = null;
   private aimHover: string | null = null;
@@ -707,8 +730,23 @@ export class GameScene extends Phaser.Scene {
   castNow(def: SkillDef | undefined, alt = false) {
     if (!def || !this.me || this.me.dead) return;
     const plan = resolveCast(this.castInput(def, alt));
-    if (!plan.ok) return this.hud.toast({ text: plan.err, kind: "error" });
-    net.send("skill", { id: def.id, x: plan.x, y: plan.y, target: plan.target });
+    const fail = (text: string) => this.hud.castError(text, def.id);
+    if (!plan.ok) return fail(plan.err === "Нет цели" ? "Нет цели — Tab или клик по врагу" : plan.err);
+    // предпроверка до отправки (отклик без RTT): мана, дальность, перезарядка; сервер всё равно судья
+    const self = net.self, mp = this.me.u.mp, need = self ? skillMana(def, self.skills[def.id] || 1, self.level) : 0;
+    if (mp < need) return fail(`Не хватает маны: ${Math.floor(mp)} из ${need}`);
+    if (def.aim === "unit" && def.range && plan.far && !mouseOpts.approach) {
+      const over = Math.hypot(plan.x - this.pos.x, plan.y - this.pos.y) - def.range;
+      return fail(`Слишком далеко: ещё ${Math.max(1, Math.ceil(over / TILE))} кл.`);
+    }
+    const now = performance.now(), cds = net.cooldowns;
+    const own = (cds.get(def.id) ?? 0) - now, gcd = def.offGcd ? 0 : (cds.get("gcd") ?? 0) - now;
+    if (Math.max(own, gcd) > mouseOpts.queueMs) {
+      if (own > 0) fail(`Перезарядка: ${(own / 1000).toFixed(1).replace(".", ",")} с`);
+      return;
+    }
+    this.hud.notePress(def.id);
+    net.send("skill", { id: def.id, x: plan.x, y: plan.y, target: plan.target, q: mouseOpts.queueMs, ap: mouseOpts.approach });
   }
 
   /** Каждый кадр: превью по состоянию прицела или наведению на слот. */
@@ -719,23 +757,44 @@ export class GameScene extends Phaser.Scene {
     this.aim.draw(def, this.pos, plan, !this.aimState || def.aim === "unit");
   }
 
-  pickupNearest() {
-    let best: string | null = null, bd = PICKUP_RANGE + 40;
-    for (const [id, img] of this.bagViews) {
-      const d = Math.hypot(img.x - this.pos.x, img.y - this.pos.y);
-      if (d < bd) { bd = d; best = id; }
-    }
-    if (best) {
-      this.pendingPickup = best;
-      const img = this.bagViews.get(best)!;
-      if (bd > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y });
-    } else this.talkNearest();
-  }
+  pickupNearest() { this.interactNearest(); }
+  talkNearest() { this.interactNearest(); }
 
-  talkNearest() {
-    const n = this.npcs.find((x) => Math.hypot(x.sprite.x - this.pos.x, x.sprite.y - this.pos.y) < MERCHANT_RANGE);
-    if (n) this.talk(n);
+  /** Единое взаимодействие (docs/controls.md, раздел 7): под курсором (24 px) → ближайший в 110 px по приоритету мешок, узел, NPC, камень, встреча → до 300 px с подходом. */
+  private interactList() {
+    type It = { rank: number; d: number; cx: number; cy: number; text: string; under?: boolean; go: () => void };
+    const out: It[] = [], hx = this.pos.x, hy = this.pos.y;
+    const reset = () => { this.pendingPickup = null; this.pendingNpc = null; this.pendingGather = null; };
+    for (const [id, img] of this.bagViews) {
+      const d = Math.hypot(img.x - hx, img.y - hy);
+      out.push({ rank: 0, d, cx: img.x, cy: img.y - 10, text: "Подобрать", go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
+    }
+    for (const n of this.map.nodes) {
+      if (this.depletedNodes.has(n.id)) continue;
+      const d = Math.hypot(n.x - hx, n.y - 14 - hy);
+      out.push({ rank: 1, d, cx: n.x, cy: n.y - 16, text: `Добыть: ${RESOURCES[n.res]?.name ?? "ресурс"}`, go: () => { reset(); this.pendingGather = n.id; if (d > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 }); } });
+    }
+    for (const n of this.npcs) {
+      const d = Math.hypot(n.sprite.x - hx, n.sprite.y - hy);
+      out.push({ rank: n.kind === "stone" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - 14, text: n.kind === "stone" ? "Использовать: Камень телепорта" : `Поговорить: ${n.name ?? "собеседник"}`, go: () => { reset(); this.talk(n); } });
+    }
+    return out;
   }
+  private interactPick() {
+    const list = this.interactList();
+    const by = (a: { rank: number; d: number }, b: { rank: number; d: number }) => a.rank - b.rank || a.d - b.d;
+    if (!this.overUi) {
+      const ap = this.input.activePointer, c = this.cameras.main.getWorldPoint(ap.x, ap.y);
+      const under = list.filter((i) => Math.hypot(i.cx - c.x, i.cy - c.y) < 24).sort(by)[0];
+      if (under) { under.under = true; return under; }
+    }
+    return list.filter((i) => i.d <= 110).sort(by)[0] ?? list.filter((i) => i.d <= 300).sort((a, b) => a.d - b.d)[0] ?? null;
+  }
+  interactNearest() {
+    if (!this.me || this.me.dead) return;
+    this.interactPick()?.go();
+  }
+  private tipAt = 0;
 
   /** Подойти к NPC и открыть его окно. */
   talk(n: Npc) {
@@ -758,6 +817,7 @@ export class GameScene extends Phaser.Scene {
     else if (n.kind === "stone") this.hud.tp.open(this.pos);
     else if (n.kind === "rumor") this.hud.rumor.open(n.id!, n.name!);
     else if (n.kind === "enc") this.hud.enc.open(n.id!);
+    else if (n.kind === "raid") this.hud.raid.open(n.id!);
     else this.hud.arena.open();
   }
 
@@ -880,6 +940,14 @@ export class GameScene extends Phaser.Scene {
     }
     this.scenes?.update(this.pos.x, this.pos.y);
     if (this.targetId && !this.units.get(this.targetId)) this.targetId = null;
+
+    // подсказка взаимодействия над ближайшим объектом (с клавишей из раскладки)
+    if (now >= this.tipAt) {
+      this.tipAt = now + 100;
+      const it = alive ? this.interactPick() : null;
+      const key = keybinds.label("talk", 0) || keybinds.label("interact", 0);
+      this.hud.setInteractTip(it && (it.d <= 110 || it.under) ? `${key ? `[${key}] ` : ""}${it.text}` : null);
+    }
 
     // отложенные действия по прибытии
     if (this.pendingPickup) {

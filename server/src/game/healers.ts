@@ -69,11 +69,15 @@ function alliesAround(w: World, p: Player, x: number, y: number, r: number, los 
 const woundedAround = (w: World, p: Player, x: number, y: number, r: number, n: number) =>
   alliesAround(w, p, x, y, r).filter((a) => frac(a) < 1).sort((a, b) => frac(a) - frac(b)).slice(0, n);
 
+/** Множитель лечения и щитов для героя t: в PvP (арена или удар героя за healWindowMs) — data/balance.json pvp.heal, иначе 1. */
+export function pvpHealScale(w: World, t: Player): number {
+  return w.pvpActive || w.time - t.pvpAt < BAL.pvp.healWindowMs ? pvpHealMult(t.level) : 1;
+}
 /** Щит на герое: суммируется с действующим, не выше cap от здоровья. Штраф нарушителя режет и щиты. */
 function shield(w: World, by: Player, t: Player, amt: number, ms: number, cap = 0.6) {
   if (by.outlawUntil > w.time || by.intruder) amt *= OUTLAW.healMul;
   // щит из силы лечения в PvP режется как лечение (data/balance.json pvp.heal)
-  if (w.pvpActive || w.time - t.pvpAt < BAL.pvp.healWindowMs) amt *= pvpHealMult(t.level);
+  amt *= pvpHealScale(w, t);
   const live = t.shieldUntil > w.time;
   t.shieldAmt = Math.min(t.unit.maxHp * cap, (live ? t.shieldAmt : 0) + Math.round(amt));
   t.shieldUntil = Math.max(live ? t.shieldUntil : 0, w.time + ms);

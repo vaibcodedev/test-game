@@ -10,7 +10,7 @@ export interface Balance {
   mana: { int: { a: number; b: number; q: number }; healer: { a: number; b: number; q: number } };
   pet: { refLevel: number };
   heal: { power: number[][] };
-  pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; class: Record<string, { dmg?: number; taken?: number }> };
+  pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; mitigationCap: number; ccMult: number; class: Record<string, { dmg?: number; taken?: number }> };
 }
 export const BAL = data as unknown as Balance;
 

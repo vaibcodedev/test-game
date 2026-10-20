@@ -7,7 +7,7 @@ import { mouseOpts } from "./keybinds";
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
-import { mountSprite } from "../../../shared/mounts";
+import type { MountMeta } from "../../../shared/mounts";
 import { FOE_COLOR, factionColor } from "../../../shared/factions";
 import { GearLayers, parseGear } from "./GearLayers";
 import { LEGENDARIES } from "../../../shared/legendary";
@@ -28,6 +28,10 @@ export class UnitView {
   titleText: Phaser.GameObjects.Text;
   frameGfx: Phaser.GameObjects.Graphics;
   mountSpr?: Phaser.GameObjects.Sprite;
+  mountFront?: Phaser.GameObjects.Sprite;
+  private mounted = false;
+  private shadowMounted = false;
+  private dustAt = 0;
   /** Факел стражника ночью: пламя и мерцающее свечение. */
   private torchGfx?: Phaser.GameObjects.Graphics;
   private torchGlow?: Phaser.GameObjects.Image;
@@ -193,21 +197,59 @@ export class UnitView {
 
     // позиция и глубина
     const bob = !this.dead && anim === Anim.Idle && !u.mount && !this.attacking ? Math.round(Math.sin(this.scene.time.now / 380 + this.x) * 0.6) : 0;
-    const mounted = !!u.mount && !this.dead && this.scene.textures.exists(`u_${mountSprite(u.mount)}`);
-    if (mounted && (!this.mountSpr || this.mountId !== u.mount)) {
-      this.mountSpr?.destroy();
-      this.mountId = u.mount;
-      this.mountSpr = this.scene.add.sprite(this.x, this.y, `u_${mountSprite(u.mount)}`, 0).setOrigin(0.5, 30 / 32);
+    const mmeta = u.mount ? (this.scene.cache.json.get("manifest")?.mounts?.[u.mount] as MountMeta | undefined) : undefined;
+    const mounted = !!mmeta && !this.dead && this.scene.textures.exists(`m_${u.mount}`);
+    this.mounted = mounted;
+    const big0 = this.frame > 32;
+    let lift = 0, riderDx = 0, riderDy = 0, hover = 0;
+    if (mounted && mmeta) {
+      if (!this.mountSpr || this.mountId !== u.mount) {
+        this.mountSpr?.destroy();
+        this.mountFront?.destroy();
+        this.mountId = u.mount;
+        const oy = mmeta.gy / mmeta.frame;
+        this.mountSpr = this.scene.add.sprite(this.x, this.y, `m_${u.mount}`, 0).setOrigin(0.5, oy);
+        this.mountFront = this.scene.add.sprite(this.x, this.y, `m_${u.mount}`, 0).setOrigin(0.5, oy);
+      }
+      const ms = this.mountSpr, mf = this.mountFront!;
+      const moving = u.anim === Anim.Walk;
+      const flip = u.dir === Dir.Left;
+      const kind = moving ? "run" : "idle";
+      const kb = `m_${u.mount}-${kind}-${row}`;
+      if (ms.anims.currentAnim?.key !== kb) {
+        const t = ms.anims.currentAnim && moving ? ms.anims.getProgress() : 0;
+        ms.play(kb);
+        mf.play(`m_${u.mount}-${kind}-${row + 3}`);
+        if (t) { ms.anims.setProgress(t); mf.anims.setProgress(t); }
+      }
+      const col = (Number(ms.frame.name) || 0) % 12;
+      const seat = mmeta.seat[row]?.[col] ?? [0, -30];
+      riderDx = Math.round(seat[0]) * (flip ? -1 : 1);
+      riderDy = Math.round(seat[1]);
+      hover = mmeta.fly ? Math.round(mmeta.fly + Math.sin(this.scene.time.now / 420 + this.x) * 1.5) : 0;
+      const mx = Math.round(this.x), my = Math.round(this.y) - hover;
+      ms.setVisible(true).setPosition(mx, my).setDepth(this.y - 0.5).setFlipX(flip);
+      mf.setVisible(true).setPosition(mx, my).setDepth(this.y + 0.4).setFlipX(flip);
+      lift = -(riderDy + 9) + hover;
+      // тень на земле: крупнее зверя, у летающих меньше и бледнее
+      const sw = (mmeta.frame / 32) * 0.62 * (mmeta.fly ? 0.8 : 1), sh = mmeta.frame / 32 * 0.32;
+      this.shadow.setScale(sw, sh).setAlpha(mmeta.fly ? 0.6 : 1);
+      this.ring.setScale(sw * 0.8, sh * 0.9);
+      if (moving && !mmeta.fly && this.scene.time.now > this.dustAt) {
+        this.dustAt = this.scene.time.now + 110;
+        const vx = u.dir === Dir.Right ? -1 : u.dir === Dir.Left ? 1 : 0, vy = u.dir === Dir.Down ? -1 : u.dir === Dir.Up ? 1 : 0;
+        for (let k = 0; k < 2; k++) {
+          const d = this.scene.add.circle(this.x + vx * (10 + k * 5) + (Math.random() - 0.5) * 6, this.y + vy * 8 - 1 + (Math.random() - 0.5) * 3, 1.5 + Math.random(), 0xcdb896, 0.55).setDepth(this.y - 0.6);
+          this.scene.tweens.add({ targets: d, y: d.y - 6, alpha: 0, scale: 2.2, duration: 380 + k * 80, onComplete: () => d.destroy() });
+        }
+      }
+    } else {
+      this.mountSpr?.setVisible(false);
+      this.mountFront?.setVisible(false);
+      if (this.shadowMounted) { this.shadow.setScale(big0 ? 2.2 : 1, big0 ? 2 : 1).setAlpha(1); this.ring.setScale(big0 ? 2 : 1); }
     }
-    if (this.mountSpr) {
-      const ms = this.mountSpr;
-      ms.setVisible(mounted).setPosition(Math.round(this.x), Math.round(this.y)).setDepth(this.y - 0.5).setFlipX(u.dir === Dir.Left).setScale(1.15);
-      const key = `${mountSprite(this.mountId)}-walk-0`;
-      if (u.anim === Anim.Walk) ms.play(key, true);
-      else if (ms.anims.isPlaying) { ms.stop(); ms.setFrame(0); }
-    }
-    const lift = mounted ? 9 : 0;
-    this.sprite.setPosition(Math.round(this.x), Math.round(this.y) + bob - lift).setDepth(this.y);
+    this.shadowMounted = mounted;
+    this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
     this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible(this.selected && !this.dead);
     const top = this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
@@ -231,6 +273,7 @@ export class UnitView {
       this.shadow.setAlpha(a);
       this.label.setVisible(seen);
       this.mountSpr?.setVisible(seen && !!u.mount);
+      this.mountFront?.setVisible(seen && !!u.mount);
       this.ring.setVisible(false);
       this.wasStealth = true;
     } else if (this.wasStealth) {
@@ -370,7 +413,7 @@ export class UnitView {
     if (this.dead) return Infinity;
     const big = this.frame > 32;
     const r = Math.max(big ? 30 : mouseOpts.bigTargets ? 24 : 14, magnet && mouseOpts.bigTargets ? 32 : 0);
-    const dx = wx - this.x, dy = wy - (this.y - (this.frame > 32 ? 26 : 12));
+    const dx = wx - this.x, dy = wy - (this.y - (this.frame > 32 || this.mounted ? 28 : 12));
     const d = Math.hypot(dx, dy);
     return d < r ? d : Infinity;
   }
@@ -378,6 +421,7 @@ export class UnitView {
   destroy() {
     this.sprite.destroy();
     this.mountSpr?.destroy();
+    this.mountFront?.destroy();
     this.shadow.destroy();
     this.label.destroy();
     this.bar.destroy();

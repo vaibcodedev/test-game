@@ -69,6 +69,10 @@ export class Player {
   cds = new Map<string, number>();
   /** Конец общего отката (GCD): умения без offGcd до этого момента не кастуются. */
   gcdUntil = 0;
+  /** Очередь умений (одно) и отложенный каст с подходом к цели (docs/controls.md, раздел 6). */
+  queue: import("./skillQueue").SkillReq | null = null;
+  pend: import("./skillQueue").SkillReq | null = null;
+  qSig = "";
   stunUntil = 0;
   rootUntil = 0;
   slowUntil = 0;
@@ -233,10 +237,12 @@ export class Player {
 
   /** Выдаёт бесплатные маунты по уровню. */
   grantMounts() {
-    const own = (this.save.mounts ??= []);
+    // старые сохранения: неизвестные маунты отбрасываем (id horse и ashwolf остались, но получили новый облик)
+    const own = (this.save.mounts = (this.save.mounts ?? []).filter((id) => MOUNTS[id]));
     for (const m of Object.values(MOUNTS)) {
       if (own.includes(m.id)) continue;
-      if ((m.price === 0 && this.save.level >= m.level) || (m.grantLevel > 0 && this.save.level >= m.grantLevel)) own.push(m.id);
+      if (m.faction && m.faction !== this.faction) continue;
+      if ((m.source === "start" && this.save.level >= m.level) || (m.grantLevel > 0 && this.save.level >= m.grantLevel)) own.push(m.id);
     }
     if (!this.save.mount || !own.includes(this.save.mount)) this.save.mount = own[0] ?? "";
   }

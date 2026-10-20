@@ -8,7 +8,7 @@ import { CLASSES } from "../../../shared/classes";
 import { castUmbrath } from "./umbrath";
 import { castTank, onCast } from "./tanks";
 import { castMage, onCast as mageCast } from "./mages";
-import { castHealer, powerMult } from "./healers";
+import { castHealer, powerMult, pvpHealScale } from "./healers";
 import { castArcher, onCast as onCastArcher } from "./archers";
 import type { Pet } from "./Pet";
 import { applyPoison, castRogue, facing, isBehind, onCast as onRogueCast } from "./rogue";
@@ -80,7 +80,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
     onRogueCast(w, p, id, wasStealthed);
     const cd = def.cd!(rank) * 1000;
     p.cds.set(id, w.time + cd);
-    if (!def.offGcd) p.gcdUntil = w.time + BAL.gcd * 1000;
+    if (!def.offGcd) { p.gcdUntil = w.time + BAL.gcd * 1000; p.send("cd", { id: "gcd", ms: BAL.gcd * 1000 }); }
     p.send("cd", { id, ms: cd });
     u.aseq = (u.aseq + 1) % 65535;
     u.dir = World.dirTo(ax - u.x, ay - u.y);
@@ -372,6 +372,8 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
         if (!rr) return "Цель мертва (нужен талант «Воскрешение»)";
         if (p.team !== 0 || w.pvpActive) return "На арене воскрешение недоступно";
         if (w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+        const why = w.reviveCheck?.(p, a.player); // рейд: заряды воскрешения
+        if (why) return why;
         const tp = a.player, rv = SKILLS.resurrect.v(rr);
         ok();
         p.castUntil = w.time + rv.cast * 1000;
@@ -383,7 +385,8 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
           w.castBar(p, 0);
           if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle;
           if (!tp.dead || w.players.get(tp.id) !== tp) return;
-          if (p.dead || p.stunUntil > w.time || w.dist(u, tp) > range + PLAYER_RADIUS + 40) return void p.send("toast", { text: "Воскрешение прервано", kind: "error" });
+          if (p.dead || p.stunUntil > w.time || w.dist(u, tp) > range + PLAYER_RADIUS + 40 || w.reviveCheck?.(p, tp)) return void p.send("toast", { text: "Воскрешение прервано", kind: "error" });
+          w.onRevived?.(p, tp);
           tp.dead = false;
           tp.unit.hp = Math.max(1, Math.round(tp.unit.maxHp * rv.hp / 100));
           tp.unit.anim = Anim.Idle;
@@ -441,7 +444,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
       ok();
       const tp = a.player;
-      tp.shieldAmt = healPower(p) * v.absorb / 100;
+      tp.shieldAmt = healPower(p) * v.absorb / 100 * pvpHealScale(w, tp); // в PvP — как лечение (раньше «Святой щит» шёл мимо)
       tp.shieldUntil = w.time + v.dur * 1000;
       tp.shieldBy = p;
       w.emit({ t: "buff", id: tp.id, k: "shield", ms: v.dur * 1000 });

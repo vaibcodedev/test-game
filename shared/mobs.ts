@@ -1,5 +1,6 @@
 import world from "../data/world.json";
 import ai from "../data/mobAI.json";
+import raid from "../data/raid.json";
 import { bossBal } from "./balance";
 
 /** Поведение моба из data/mobAI.json. */
@@ -18,8 +19,8 @@ export interface MobDef {
   name: string;
   /** Имя спрайт-листа в client/public/assets/units. */
   sprite: string;
-  /** 1 — кадр 32×32, 2 — кадр 64×64 (боссы). */
-  size: 1 | 2;
+  /** 1 — кадр 32×32, 2 — кадр 64×64 (боссы), 4 — кадр 128×128 (рейд-босс). */
+  size: 1 | 2 | 4;
   hp: number;
   dmg: number;
   armor: number;
@@ -31,6 +32,8 @@ export interface MobDef {
   projectile?: string;
   radius: number;
   boss?: boolean;
+  /** Рейд (задача 114): босс и приспешники цитадели — награды выдаёт рейд (World.onRaidKill), а не grantKillRewards. */
+  raid?: boolean;
   /** Боссы: фиксированный уровень, время возрождения и уникальный лут. */
   level?: number;
   respawn?: number;
@@ -88,5 +91,19 @@ export const MOBS: Record<string, MobDef> = {
   for (const m of Object.values(MOBS)) {
     const b = m.boss ? bossBal(m.id) : undefined;
     if (b) { m.hp = b.hp; m.dmg = b.dmg; m.armor = b.armor; }
+  }
+}
+
+// рейд «Рогатый Рыцарь Хаоса» (задача 114): босс и приспешники — data/raid.json; здоровье, урон и броня босса — data/balance.json bosses.chaos_knight
+{
+  const b = raid.boss, bb = bossBal(b.id);
+  MOBS[b.id] = {
+    id: b.id, name: b.name, sprite: b.sprite, size: 4, boss: true, raid: true, level: b.level, hp: bb?.hp ?? 300, dmg: bb?.dmg ?? 5, armor: bb?.armor ?? 2,
+    xp: b.xp, speed: b.speed, aggro: b.aggro, range: b.reach, attackCd: b.attackCd, radius: b.radius, color: b.color,
+  };
+  type RawAdd = { name: string; sprite: string; hp: number; dmg: number; armor: number; speed: number; radius: number; range: number; attackCd: number; projectile?: string };
+  for (const [id, a] of Object.entries(raid.adds as unknown as Record<string, RawAdd>)) {
+    if (id.startsWith("_")) continue;
+    MOBS[id] = { id, name: a.name, sprite: a.sprite, size: 1, raid: true, hp: a.hp, dmg: a.dmg, armor: a.armor, xp: 0, speed: a.speed, aggro: 900, range: a.range, attackCd: a.attackCd, radius: a.radius, projectile: a.projectile, color: "#ff6a2a" };
   }
 }

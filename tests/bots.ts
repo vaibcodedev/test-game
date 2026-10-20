@@ -144,7 +144,7 @@ async function main() {
     await check("неизученное умение отклоняется", async () => {
       a.toasts.length = 0;
       a.send("skill", { id: "quake", x: 0, y: 0 });
-      await a.until(() => a.toasts.includes("Умение не изучено"), 2000, "отказ");
+      await a.until(() => a.toasts.includes("Не изучено — откройте K"), 2000, "отказ");
     });
     await check("маг: огненный шар летит снарядом", async () => {
       const sp = spawnOf("slime");

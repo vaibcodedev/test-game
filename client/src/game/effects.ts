@@ -5,6 +5,8 @@ import { DEPTH } from "./terrain";
 import { FONT, type UnitView } from "./UnitView";
 import * as sfx from "./sfx";
 import { TeleportFx } from "./teleportFx";
+import { RaidBoss } from "./raidBoss";
+import { net } from "../net";
 
 const MAX_BURST = 36;
 const MAX_POOL = 90;
@@ -34,7 +36,9 @@ export class Effects {
     readonly onSay: (id: string, text: string) => void,
   ) {
     this.tp = new TeleportFx(scene, unit, selfId, (x, y) => this.near(x, y, 600));
+    if (net.kind === "raid") this.raid = new RaidBoss(scene, unit);
   }
+  private raid?: RaidBoss;
   private tp: TeleportFx;
 
   play(list: Fx[]) {
@@ -119,13 +123,14 @@ export class Effects {
     this.scene.tweens.add({ targets: [t, c], y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 200, onComplete: () => { t.destroy(); c.destroy(); } });
   }
 
-  number(x: number, y: number, text: string, color: string, big = false) {
+  number(x: number, y: number, text: string, color: string, big = false, mul = 1) {
     const t = this.scene.add
       .text(x + (Math.random() - 0.5) * 10, y, text, { fontFamily: FONT, fontSize: big ? "14px" : "11px", color, stroke: "#14080c", strokeThickness: 4, resolution: 4, fontStyle: big ? "bold" : "600" })
       .setOrigin(0.5)
       .setDepth(DEPTH.top);
-    if (big) t.setScale(1.6);
-    this.scene.tweens.add({ targets: t, scale: big ? 1 : 1, duration: 140 });
+    if (big) t.setScale(1.6 * mul);
+    else if (mul !== 1) t.setScale(mul);
+    this.scene.tweens.add({ targets: t, scale: mul, duration: 140 });
     this.scene.tweens.add({ targets: t, y: y - 26, alpha: { from: 1, to: 0 }, duration: 900, ease: "Cubic.easeOut", delay: 120, onComplete: () => t.destroy() });
   }
 
@@ -136,7 +141,8 @@ export class Effects {
       case "dmg": {
         const u = this.unit(f.id);
         if (!u) return;
-        const y = u.y - (u.frame > 32 ? 56 : 28);
+        const raidBoss = u.frame >= 96;
+        const y = raidBoss ? u.y - 0.9 * u.frame : u.y - (u.frame > 32 ? 56 : 28);
         if (f.miss) return this.number(u.x, y, "Уклонение", "#c8c0b0");
         if (f.imm) return this.number(u.x, y, "Неуязвим", "#ffd84a");
         if (f.heal) { this.sound("heal", u.x, u.y); this.burst(u.x, u.y - 8, "fx_spark", 0x9affb8, 5, 25, 600, -50, 0.7); return this.number(u.x, y, `+${f.v}`, "#7aff7a"); }
@@ -148,7 +154,7 @@ export class Effects {
         this.sound(f.crit ? "crit" : (SFX_OF[f.k ?? "phys"] ?? "hit"), u.x, u.y);
         if (mine ? f.crit || f.v > 40 : f.crit) this.shake(u.x, u.y, 90, mine ? 0.003 : 0.002);
         const col = mine ? "#ff6a5a" : f.crit ? "#ffd84a" : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
-        this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit);
+        this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 2 : 1.5) : 1);
         if (f.k && f.k !== "phys") this.burst(u.x, u.y - 12, "fx_spark", KIND_COLOR[f.k], 6, 50, 350);
         else this.burst(u.x, u.y - 12, "fx_spark", 0xffffff, 3, 40, 200, 0, 0.6);
         break;
@@ -311,6 +317,11 @@ export class Effects {
           if (f.shape === "circle") {
             g.fillCircle(f.x, f.y, f.r).strokeCircle(f.x, f.y, f.r);
             g.fillStyle(color, 0.3).fillCircle(f.x, f.y, f.r * k);
+          } else if (f.shape === "line") {
+            const a = f.a ?? 0, w = f.w ?? 16, ca = Math.cos(a), sa = Math.sin(a);
+            const quad = (len: number) => [{ x: f.x - sa * w, y: f.y + ca * w }, { x: f.x + ca * len - sa * w, y: f.y + sa * len + ca * w }, { x: f.x + ca * len + sa * w, y: f.y + sa * len - ca * w }, { x: f.x + sa * w, y: f.y - ca * w }];
+            g.fillPoints(quad(f.r), true).strokePoints(quad(f.r), true);
+            g.fillStyle(color, 0.3).fillPoints(quad(f.r * k), true);
           } else if (f.shape === "ring") {
             const r2 = f.r2 ?? f.r * 2;
             g.lineStyle(r2 - f.r, color, 0.16 + 0.24 * k).strokeCircle(f.x, f.y, (f.r + r2) / 2);
@@ -457,6 +468,11 @@ export class Effects {
         if (f.k === "enrage") { this.shake(u.x, u.y, 300, 0.006); this.sound("slam", u.x, u.y); }
         break;
       }
+      case "pose":
+      case "yell":
+      case "shake":
+        if (this.raid?.handle(f)) return;
+        break;
       case "say": {
         if (f.snd) {
           // звук у города: слышно в пределах ~20 тайлов, громкость по расстоянию; далеко — без реплики

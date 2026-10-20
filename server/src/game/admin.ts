@@ -16,6 +16,8 @@ import type { Player } from "./Player";
 import { gainXp } from "./rewards";
 import { addItem, equip } from "./inventory";
 import { startEncounter, type EncKind } from "./encounters";
+import { MOUNTS } from "../../../shared/mounts";
+import { awardMount } from "./mountDrops";
 
 const PERMA = 9e12;
 
@@ -57,13 +59,20 @@ export function registerAdmin(room: WorldRoom, on: On) {
    * ilvl 1..100 (у модели по умолчанию её уровень), заточка 0..MAX_PLUS, количество 1..99; не целое или вне диапазона — отказ, ничего
    * не выдаётся. equip — сразу надеть (одну вещь). Итог всегда один: тост админу и сообщение admin:give:result { kind, text, given, worn }.
    */
-  adm<{ name: unknown; model: unknown; base: unknown; unique: unknown; legendary: unknown; rarity: unknown; ilvl: unknown; plus: unknown; qty: unknown; equip: unknown }>("admin:give", (p, m) => {
+  adm<{ name: unknown; model: unknown; base: unknown; unique: unknown; legendary: unknown; mount: unknown; rarity: unknown; ilvl: unknown; plus: unknown; qty: unknown; equip: unknown }>("admin:give", (p, m) => {
     const reply = (kind: "info" | "warn" | "error", text: string, extra: object = {}) => {
       toast(p, text, kind === "info" ? "info" : "error");
       p.send("admin:give:result", { kind, text, given: 0, worn: false, ...extra });
     };
     const t = online(str(m.name));
     if (!t) return reply("error", "Игрок не в сети");
+    // маунт: награда «Маунты» из data/mounts.json
+    if (typeof m.mount === "string" && m.mount) {
+      if (!Object.hasOwn(MOUNTS, m.mount)) return reply("error", `Нет маунта «${m.mount}»`);
+      const ok = awardMount(t, m.mount);
+      log(p, "give", t.name, { mount: m.mount, given: ok ? 1 : 0 });
+      return reply(ok ? "info" : "warn", ok ? `Выдан маунт ${MOUNTS[m.mount].name} → ${t.name}` : `${t.name} уже имеет маунт ${MOUNTS[m.mount].name}`, { given: ok ? 1 : 0 });
+    }
     // таблицы — обычные объекты: ключи прототипа («constructor», «__proto__») за предмет не считаются
     const own = (o: object, k: string) => Object.hasOwn(o, k);
     const sm = str(m.model), sl = str(m.legendary), su = str(m.unique), sb = str(m.base);

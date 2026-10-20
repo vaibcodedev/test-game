@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 
 export interface Manifest {
-  units: Record<string, { frame: number }>;
+  units: Record<string, { frame: number; cols?: number }>;
+  mounts?: Record<string, { frame: number; gy: number; fly: number; cols: number; seat: [number, number][][] }>;
   objects: Record<string, { w: number; h: number }>;
   icons: string[];
   fx: string[];
@@ -26,6 +27,7 @@ export class BootScene extends Phaser.Scene {
       this.load.image("water", "/assets/tiles/water.png");
       this.load.image("lava_glow", "/assets/tiles/lava_glow.png");
       for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frame });
+      for (const [id, u] of Object.entries(m.mounts ?? {})) this.load.spritesheet(`m_${id}`, `/assets/mounts/${id}.png`, { frameWidth: u.frame, frameHeight: u.frame });
       for (const id of Object.keys(m.objects)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`);
       for (const id of m.fx) this.load.image(`fx_${id}`, `/assets/fx/${id}.png`);
     });
@@ -34,11 +36,25 @@ export class BootScene extends Phaser.Scene {
   create() {
     const m = this.cache.json.get("manifest") as Manifest;
     for (const id of Object.keys(m.units)) {
+      const cols = m.units[id].cols ?? 12;
       for (let row = 0; row < 3; row++) {
-        const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * 12 + a, end: row * 12 + b });
+        const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * cols + a, end: row * cols + b });
         this.anims.create({ key: `${id}-walk-${row}`, frames: f(0, 3), frameRate: 8, repeat: -1 });
         this.anims.create({ key: `${id}-attack-${row}`, frames: f(4, 7), frameRate: 14, repeat: 0 });
         this.anims.create({ key: `${id}-death-${row}`, frames: f(8, 11), frameRate: 9, repeat: 0 });
+        if (cols >= 24) {
+          this.anims.create({ key: `${id}-slam-${row}`, frames: f(12, 15), frameRate: 8, repeat: 0 });
+          this.anims.create({ key: `${id}-roar-${row}`, frames: f(16, 19), frameRate: 7, repeat: 0 });
+          this.anims.create({ key: `${id}-idle-${row}`, frames: f(20, 23), frameRate: 3, repeat: -1 });
+        }
+      }
+    }
+    // маунты: строки 0-2 основной слой, 3-5 передний слой; столбцы 0-7 бег, 8-11 покой
+    for (const id of Object.keys(m.mounts ?? {})) {
+      for (let row = 0; row < 6; row++) {
+        const f = (a: number, b: number) => this.anims.generateFrameNumbers(`m_${id}`, { start: row * 12 + a, end: row * 12 + b });
+        this.anims.create({ key: `m_${id}-run-${row}`, frames: f(0, 7), frameRate: 14, repeat: -1 });
+        this.anims.create({ key: `m_${id}-idle-${row}`, frames: f(8, 11), frameRate: 4, repeat: -1 });
       }
     }
     document.fonts.load('16px "Pixelify Sans"').finally(() => this.scene.start("game"));

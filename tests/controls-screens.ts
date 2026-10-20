@@ -1,17 +1,16 @@
 /**
- * Браузерная проверка «Цель ≠ атака» (задача 115, шаг 2), схема «Экшен» по умолчанию:
- * Tab выбирает и не пуллит; ПКМ по врагу атакует; ЛКМ по земле цель не снимает и не двигает; ПКМ по земле двигает.
- * Запуск: TEST_PORT=2797 npx tsx tests/controls-screens.ts
+ * Браузерная проверка шагов 7–8 «Управления»: подсказка взаимодействия у NPC, строка ошибок «Слишком далеко», золотая рамка очереди.
+ * Запуск: TEST_PORT=2680 VITE_TEST_PORT=5280 npx tsx tests/controls-screens.ts
  */
 import fs from "node:fs";
 import path from "node:path";
-import puppeteer, { type Page } from "puppeteer-core";
+import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { createServer } from "vite";
 import { MAP_SEED } from "../shared/constants";
 import { generateMap } from "../shared/map";
 import { ensureChar, PORT, sleep, startServer, stopServer } from "./harness";
 
-const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5197;
+const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5280;
 const MAP = generateMap(MAP_SEED);
 const town = MAP.playerSpawn;
 const sp = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[0];
@@ -22,92 +21,87 @@ function chromePath() {
   if (!p) throw new Error("Chrome не найден: задайте CHROME_PATH");
   return p;
 }
-const sent = (page: Page, type: string) => page.evaluate((t) => ((window as any).__sent as [string, any][]).filter((m) => m[0] === t).map((m) => m[1]), type);
-const clear = (page: Page) => page.evaluate(() => { (window as any).__sent.length = 0; });
-const me = (page: Page) => page.evaluate(() => { const n = (window as any).__net; const p = n.room.state.players.get(n.id); return { x: p.x as number, y: p.y as number, target: p.target as string }; });
-const mobs = (page: Page) => page.evaluate(() => { const out: any[] = []; (window as any).__net.room.state.mobs.forEach((m: any, id: string) => out.push({ id, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, sprite: m.sprite, anim: m.anim })); return out; });
-/** Экран точки мира. */
-const toScreen = (page: Page, wx: number, wy: number) => page.evaluate(([x, y]) => {
-  const s = (window as any).__game.scene.getScene("game"), c = s.cameras.main, r = s.game.canvas.getBoundingClientRect();
-  return { x: r.left + (x - c.worldView.x) * c.zoom * (r.width / s.scale.width), y: r.top + (y - c.worldView.y) * c.zoom * (r.height / s.scale.height) };
-}, [wx, wy]);
+const scene = "(window.__game.scene.getScene('game'))";
+
+async function enter(browser: Browser, name: string, opts: object): Promise<Page> {
+  const ctx = await (browser as any).createBrowserContext();
+  const page: Page = await ctx.newPage();
+  await page.evaluateOnNewDocument((o) => { try { localStorage.setItem("mouse:v1", JSON.stringify(o)); } catch {} }, opts);
+  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#login-name", { visible: true, timeout: 10000 });
+  await page.type("#login-name", name);
+  await page.type("#login-pass", "secret");
+  await page.click("#login-go");
+  await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 15000 });
+  await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
+  await page.click('.cs-list [data-a="play"]');
+  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self, { timeout: 90000 });
+  await sleep(800);
+  return page;
+}
+const keyFor = async (page: Page, skill: string) => {
+  const i = await page.evaluate((id) => (window as any).__net.self.bars[0].findIndex((r: any) => r && r.s === id), skill);
+  if (i < 0) throw new Error("умения нет на панели: " + skill);
+  const label = await page.$eval(`.hb-slot[data-bar="0"][data-i="${i}"] kbd`, (e) => e.textContent ?? "");
+  return /^\d$/.test(label) ? `Digit${label}` : `Key${label}`;
+};
+const tp = (page: Page, x: number, y: number) => page.evaluate(([a, b]) => (window as any).__net.send("dbg", { op: "tp", x: a, y: b }), [x, y]);
 
 async function main() {
   process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
   await startServer(true);
-  await ensureChar("Цели", "secret", "Цели", "warrior");
+  await ensureChar("УправВ", "secret", "УправВ", "warrior");
+  await ensureChar("УправМ", "secret", "УправМ", "mage");
   const vite = await createServer({ configFile: path.resolve("vite.config.ts"), server: { port: VITE_PORT, strictPort: true, hmr: false, watch: { ignored: ["**/*"] } }, logLevel: "error" });
   await vite.listen();
-  const browser = await puppeteer.launch({ executablePath: chromePath(), headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--window-size=1280,800", "--no-sandbox"], defaultViewport: { width: 1280, height: 800 } });
+  const browser = await puppeteer.launch({ executablePath: chromePath(), headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--window-size=1280,800", "--no-sandbox", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"], defaultViewport: { width: 1280, height: 800 } });
   const ok = (s: string) => console.log("  ok   " + s);
   const must = (cond: unknown, msg: string) => { if (!cond) throw new Error(msg); };
   const errors: string[] = [];
   try {
-    const page = await browser.newPage();
-    page.on("pageerror", (e) => errors.push(String(e)));
-    await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-    await page.waitForSelector("#login-name");
-    await page.type("#login-name", "Цели");
-    await page.type("#login-pass", "secret");
-    await page.click("#login-go");
-    await page.waitForSelector('.cs-slot[data-name="Цели"]', { timeout: 10000 });
-    await page.$eval('.cs-slot[data-name="Цели"]', (b) => (b as HTMLElement).click());
-    await page.click('.cs-list [data-a="play"]');
-    await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self, { timeout: 30000 });
-    await sleep(1000);
-    await page.evaluate(() => {
-      const w = window as any, net = w.__net, orig = net.send.bind(net);
-      w.__sent = [];
-      net.send = (t: string, m?: unknown) => { w.__sent.push([t, m]); return orig(t, m); };
-      net.send("dbg", { op: "level", v: 10 });
-      net.send("dbg", { op: "god" });
-    });
-    await page.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y]);
-    await sleep(1500);
-    const scheme = await page.evaluate(() => (JSON.parse(localStorage.getItem("keybinds:v1") ?? "null")?.preset) ?? "(по умолчанию)");
-    must(await page.evaluate(() => (window as any).__game.scene.getScene("game").constructor && true), "сцена");
-    ok("схема по умолчанию: " + scheme);
+    const war = await enter(browser, "УправВ", { approach: false, aimMode: "quick" });
+    const mage = await enter(browser, "УправМ", { aimMode: "quick" });
+    for (const p of [war, mage]) {
+      p.on("pageerror", (e) => errors.push(String(e)));
+      await p.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 20 }); n.send("dbg", { op: "god" }); });
+    }
 
-    // Tab: выбор без подхода и атаки (в «Экшене» Tab не занят)
-    const p0 = await me(page);
-    const near = (await mobs(page)).filter((m) => m.sprite === "slime" && m.anim !== 4 && Math.hypot(m.x - p0.x, m.y - p0.y) < 420).sort((a, b) => Math.hypot(a.x - p0.x, a.y - p0.y) - Math.hypot(b.x - p0.x, b.y - p0.y));
-    must(near.length, "нет слизней рядом");
-    await clear(page);
-    await page.keyboard.press("Tab");
-    await sleep(1800);
-    const p1 = await me(page);
-    must((await sent(page, "target")).length === 1 && p1.target, "Tab не выбрал цель: " + JSON.stringify(await sent(page, "target")));
-    must(Math.hypot(p1.x - p0.x, p1.y - p0.y) < 5, "Tab повёл героя к цели");
-    const picked = (await mobs(page)).find((m) => m.id === p1.target)!;
-    must(picked.hp === picked.maxHp, "Tab атаковал");
-    ok("Tab выбирает цель, герой стоит, моб цел");
-
-    // ЛКМ по земле: цель на месте, moveTo не отправлен
-    await clear(page);
-    const g = await toScreen(page, p1.x - 90, p1.y + 40);
-    await page.mouse.click(g.x, g.y, { button: "left" });
-    await sleep(600);
-    must((await sent(page, "moveTo")).length === 0, "ЛКМ по земле двигает героя");
-    must((await sent(page, "target")).length === 0 && (await me(page)).target === p1.target, "ЛКМ по земле снял цель");
-    ok("ЛКМ по земле: цель не снята, герой не двинулся");
-
-    // ПКМ по земле: движение, цель сохраняется
-    const g2 = await toScreen(page, p1.x - 90, p1.y + 40);
-    await page.mouse.click(g2.x, g2.y, { button: "right" });
+    // подсказка взаимодействия у торговки
+    await tp(war, MAP.merchant.x, MAP.merchant.y + 40);
     await sleep(1200);
-    must((await sent(page, "moveTo")).length === 1, "ПКМ по земле не двигает");
-    must((await me(page)).target === p1.target, "ПКМ по земле снял цель");
-    ok("ПКМ по земле: moveTo, цель сохранена");
+    const tip = await war.$eval(".interact-tip", (e) => e.textContent ?? "");
+    must(/^\[[^\]]+\] Поговорить: Торговка/.test(tip), "подсказка у NPC: «" + tip + "»");
+    ok("подсказка у NPC: " + tip);
 
-    // ПКМ по врагу: attack, моб получает урон
-    await clear(page);
-    const cur = (await mobs(page)).find((m) => m.id === p1.target)!;
-    const e = await toScreen(page, cur.x, cur.y - 10);
-    await page.mouse.click(e.x, e.y, { button: "right" });
+    // строка ошибок: враг вне дальности, подход выключен
+    await tp(war, sp.x + 450, sp.y);
+    await sleep(800);
+    const id = await war.evaluate(`(() => { const s = ${scene}; let b = null, bd = 1e9; for (const [id, v] of s.units) { if (!s.isEnemy(v)) continue; const d = Math.hypot(v.x - s.pos.x, v.y - s.pos.y); if (d > 300 && d < bd) { bd = d; b = id; } } return b; })()`);
+    must(id, "враг не найден");
+    await war.evaluate(`${scene}.setTarget(${JSON.stringify(id)})`);
     await sleep(300);
-    must((await sent(page, "attack")).length === 1, "ПКМ по врагу не шлёт attack: " + JSON.stringify(await sent(page, "attack")));
-    await page.waitForFunction((id) => { const m = (window as any).__net.room.state.mobs.get(id); return !m || m.anim === 4 || m.hp < m.maxHp; }, { timeout: 10000 }, p1.target);
-    ok("ПКМ по врагу: attack, герой подошёл и ударил");
+    const wk = await keyFor(war, "taunt");
+    await war.keyboard.press(wk as any);
+    await sleep(200);
+    const err = await war.$eval(".errline.on", (e) => e.textContent ?? "").catch(() => "");
+    if (!err) console.log(await war.evaluate(`(() => { const s = ${scene}; const v = s.units.get(s.targetId); return JSON.stringify({ t: s.targetId, pos: [s.pos.x, s.pos.y], v: v && [v.x, v.y], ap: window.__net.self.skills, text: document.querySelector('.errline')?.textContent, cls: document.querySelector('.errline')?.className }); })()`));
+    must(/^Слишком далеко: ещё \d+ кл\.$/.test(err), "строка ошибок: «" + err + "»");
+    ok("строка ошибок: " + err);
+
+    // очередь: нажатие за ≤ 400 мс до конца перезарядки — золотая рамка
+    await tp(mage, town.x, town.y);
+    await sleep(600);
+    await mage.evaluate(() => { const w = window as any, n = w.__net, o = n.send.bind(n); w.__sent = []; n.send = (t: string, m?: unknown) => { w.__sent.push([t, JSON.stringify(m), Math.round(performance.now())]); return o(t, m); }; n.room.onMessage("queue", (m: unknown) => w.__sent.push(["Q", JSON.stringify(m), Math.round(performance.now())])); });
+    const mk = await keyFor(mage, "fireball");
+    await mage.keyboard.press(mk as any);
+    // нажатие делаем внутри страницы, чтобы точно попасть в окно очереди
+    await mage.evaluate(`(async () => { for (;;) { const left = window.__net.cooldowns.get("fireball") - performance.now(); if (left <= 330) { ${scene}.useSkillId("fireball"); return; } await new Promise((r) => setTimeout(r, 4)); } })()`);
+    await sleep(120);
+    const queued = await mage.$(".hb-slot.queued");
+    if (!queued) console.log(await mage.evaluate(`JSON.stringify({ sent: window.__sent, now: Math.round(performance.now()), q: window.__net.queued, err: document.querySelector('.errline')?.textContent, mp: window.__net.self.mp, me: ${scene}.me.u.mp })`));
+    must(queued, "слот в очереди без золотой рамки");
+    ok("очередь: слот подсвечен (.queued)");
+
     must(!errors.length, "ошибки страницы: " + errors.join("; "));
   } finally {
     await browser.close();

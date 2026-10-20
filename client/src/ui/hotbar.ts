@@ -41,12 +41,14 @@ interface Cell {
   kbd: HTMLElement;
   cd: HTMLElement | null;
   cdt: HTMLElement | null;
+  gcd: HTMLElement | null;
   qty: HTMLElement | null;
   ref: Slot;
   label: string;
   cls: string;
   cdv: string;
   cdtv: string;
+  gcdv: string;
   qtyv: string;
 }
 
@@ -74,6 +76,16 @@ export class Hotbar {
 
   /** Подпись клавиши слота — для тостов и подсказок. */
   keyOf(bar: number, i: number): string { return keybinds.barLabel(bar, i); }
+
+  /** Красная вспышка слотов умения (отказ каста). */
+  flashErr(skillId: string) {
+    for (const row of this.cells) for (const c of row) {
+      if (!c.ref || !("s" in c.ref) || c.ref.s !== skillId) continue;
+      c.root.classList.remove("errflash");
+      void c.root.offsetWidth;
+      c.root.classList.add("errflash");
+    }
+  }
 
   flash(bar: number, i: number) {
     const c = this.cells[bar]?.[i];
@@ -144,10 +156,10 @@ export class Hotbar {
       else if ("i" in ref) inner = `<img src="${icon(BASE_ITEMS[ref.i].icon)}" alt="" draggable="false">`;
       else inner = `<span class="act">${ACTION_INFO[ref.a].glyph}</span>`;
     }
-    root.innerHTML = `${inner}<kbd>${esc(label)}</kbd>${ref ? `<i class="cd" style="transform:scaleY(0)"></i><span class="cdt"></span>` : ""}${ref && "i" in ref ? `<span class="qty"></span>` : ""}`;
+    root.innerHTML = `${inner}<kbd>${esc(label)}</kbd>${ref ? `<i class="cd" style="transform:scaleY(0)"></i><span class="cdt"></span>${"s" in ref ? `<i class="gcd"></i>` : ""}` : ""}${ref && "i" in ref ? `<span class="qty"></span>` : ""}`;
     const cell: Cell = {
-      root, kbd: root.querySelector("kbd")!, cd: root.querySelector(".cd"), cdt: root.querySelector(".cdt"), qty: root.querySelector(".qty"),
-      ref, label, cls: "", cdv: "", cdtv: "", qtyv: "",
+      root, kbd: root.querySelector("kbd")!, cd: root.querySelector(".cd"), cdt: root.querySelector(".cdt"), gcd: root.querySelector(".gcd"), qty: root.querySelector(".qty"),
+      ref, label, cls: "", cdv: "", cdtv: "", gcdv: "", qtyv: "",
     };
     root.onclick = () => { root.blur(); this.ctx.press(bar, i); };
     if (ref) this.ctx.tipFor(root, () => this.tip(ref, bar, i));
@@ -238,6 +250,7 @@ export class Hotbar {
           total = d.cd ? d.cd(Math.max(1, rank)) * 1000 : 0;
           if (!rank) cls.push("unlearned");
           else {
+            if (this.ctx.net.queued === d.id) cls.push("queued");
             if (f.mp < skillMana(d, rank, s.level)) cls.push("nomana");
             if (d.target === "enemy" && !f.target) cls.push("notarget");
             else if (f.target && d.target !== "self") {
@@ -264,6 +277,11 @@ export class Hotbar {
           if (v !== c.cdv) { c.cdv = v; c.cd.style.transform = v; }
           const t = left > 0 ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : "";
           if (t !== c.cdtv) { c.cdtv = t; c.cdt!.textContent = t; }
+        }
+        if (c.gcd) {
+          const g = "s" in ref && !SKILLS[ref.s].offGcd ? Math.max(0, (cds.get("gcd") ?? 0) - now) : 0;
+          const v = g > 0 ? `scaleX(${Math.min(1, g / this.ctx.net.gcdMs).toFixed(2)})` : "scaleX(0)";
+          if (v !== c.gcdv) { c.gcdv = v; c.gcd.style.transform = v; }
         }
         if (c.qty && q !== c.qtyv) { c.qtyv = q; c.qty.textContent = q; }
       }

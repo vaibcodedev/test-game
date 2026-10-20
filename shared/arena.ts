@@ -29,7 +29,8 @@ export const QUEUE_WINDOW_EVERY_MS = 10_000;
 export const QUEUE_WINDOW_MAX = 1000;
 export const ACCEPT_MS = 15_000;
 export const COUNTDOWN_MS = 5_000;
-export const MATCH_MS = 180_000;
+/** Лимит матча: по времени побеждает бо́льший % здоровья. 90 с (было 180): бой танка с лекарем не тянется бесконечно, дуэль бойцов ~15–20 с. */
+export const MATCH_MS = 90_000;
 /** Одних и тех же соперников нельзя получить больше 3 раз подряд. */
 export const MAX_REPEAT = 5;
 export const SEASON_DAYS = 28;

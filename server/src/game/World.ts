@@ -1,4 +1,5 @@
 /** Игровой мир: вся симуляция на сервере. Комната Colyseus только передаёт сюда сообщения. */
+import { stepApproach, tickQueue } from "./skillQueue";
 import { MAP_SEED, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
 import { armorReduction } from "../../../shared/formulas";
 import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
@@ -13,6 +14,7 @@ import { CLASSES } from "../../../shared/classes";
 import { factionsHostile, inEnemyCapital, OUTLAW, pvpPlace, scramble } from "../../../shared/factions";
 import { MOBS } from "../../../shared/mobs";
 import { MOUNTS, MOUNT_CAST_MS } from "../../../shared/mounts";
+import * as mountDrops from "./mountDrops";
 import {
   Anim, BUFF_BLEED, BUFF_BURN, BUFF_CURSE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STEALTH, BUFF_STUN, BUFF_WARCRY, Dir,
   type ChatLine, type Fx, type FxKind,
@@ -86,6 +88,10 @@ export class World {
   onDamage?: (src: Actor, dst: Actor, v: number) => void;
   onHeal?: (p: Player, v: number) => void;
   onPlayerKilled?: (p: Player, killer?: Actor) => void;
+  /** Рейд (задача 114): смерть моба с def.raid — награды выдаёт рейд; воскрешение героем — проверка и учёт зарядов рейда. */
+  onRaidKill?: (m: Mob, killer?: Actor) => void;
+  reviveCheck?: (by: Player, target: Player) => string | null;
+  onRevived?: (by: Player, target: Player) => void;
   readonly players = new Map<string, Player>();
   readonly mobs = new Map<string, Mob>();
   /** Призванные питомцы по id юнита (pet_<id хозяина>). */
@@ -219,7 +225,7 @@ export class World {
    * Щит, блок и частичное снижение урона неуязвимостью не считаются.
    */
   isImmune(a: Actor): boolean {
-    return this.isPlayer(a) && (tanks.immune(this, a) || rogues.immune(this, a));
+    return this.isPlayer(a) ? tanks.immune(this, a) || rogues.immune(this, a) : a.immune;
   }
   /** Актёр выбыл: мёртв или (герой) уже не в этом мире — проверка для таймеров умений. */
   gone(a: Actor): boolean {
@@ -372,8 +378,8 @@ export class World {
     }
     if (this.isPlayer(src) && !o.noBreak) { rogues.onBreak(this, src); src.stealthUntil = 0; }
     // полная неуязвимость цели — промах: ни урона, ни контроля (щит, блок и частичное снижение — попадание)
-    if (this.isPlayer(dst) && this.isImmune(dst)) {
-      dst.combatAt = this.time;
+    if (this.isImmune(dst)) {
+      if (this.isPlayer(dst)) dst.combatAt = this.time;
       if (this.isPlayer(src)) src.combatAt = this.time;
       this.emit({ t: "dmg", id: dst.id, v: 0, imm: true });
       return MISS;
@@ -415,8 +421,9 @@ export class World {
     const level = this.isPlayer(src) ? src.level : src.level;
     let armor = this.isPlayer(dst) ? dst.derived.armor + (dst.warcryUntil > this.time ? dst.warcryArmor : 0) : dst.stats.armor;
     if (o.kind && o.kind !== "phys") armor *= 0.5;
+    const preArmor = amount;
     amount *= 1 - armorReduction(armor, level);
-    if (!this.isPlayer(dst)) amount *= dst.ai.weak?.dmg?.[o.kind ?? "phys"] ?? 1;
+    if (!this.isPlayer(dst)) amount *= (dst.ai.weak?.dmg?.[o.kind ?? "phys"] ?? 1) * dst.dmgTakenMul;
     // PvP (BALANCE.md «PvP»): устойчивость по уровню цели, бонус заточки оружия атакующего — долей plusShare. Сразу после брони:
     // поглощения ресурсом («Мановая броня»), щиты и лечение от заблокированного считаются в единицах здоровья, а урон героя растёт как L².
     const pvpHit = this.isPlayer(src) && this.isPlayer(dst) && src !== dst;
@@ -455,6 +462,8 @@ export class World {
         return { landed: true, dealt: 0 };
       }
     }
+    // PvP: суммарное снижение (броня, пассивки, стойки, блок, снижения умений) не больше pvp.mitigationCap — танк не неуязвим для бойца
+    if (pvpHit) amount = Math.max(amount, preArmor * pvpK * (1 - BAL.pvp.mitigationCap));
     amount = legendary.absorb(this, dst, amount);
     if (this.isPlayer(dst) && dst.shieldAmt > 0) {
       if (dst.shieldUntil > this.time) {
@@ -585,8 +594,9 @@ export class World {
     m.respawnAt = this.time + respawn;
     m.boss?.onDeath();
     if (m.boss) this.bossKills.set(m.def.id, { by: killer && this.isPlayer(killer) ? killer.name : "неизвестный герой", at: this.time });
-    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); }
-    grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined);
+    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); mountDrops.onKill(this, killer, m); }
+    if (m.def.raid) this.onRaidKill?.(m, killer);
+    else grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined);
     if (m.summoned) this.later(2500, () => this.removeMob(m));
   }
 
@@ -671,7 +681,7 @@ export class World {
     return s * terrainSpeedMul(this.map, p.unit.x, p.unit.y);
   }
 
-  private stepToward(p: Player, gx: number, gy: number, dt: number, stopAt: number): boolean {
+  stepToward(p: Player, gx: number, gy: number, dt: number, stopAt: number): boolean {
     const u = p.unit;
     const gd = Math.hypot(gx - u.x, gy - u.y);
     if (gd <= stopAt + 0.5) return false;
@@ -713,6 +723,7 @@ export class World {
     if (p.dead) return;
     const t = this.time;
     tickEffects(this, p);
+    tickQueue(this, p);
     archers.tickArcher(this, p);
     // эффекты состояния -> флаги для клиентов
     let b = 0;
@@ -794,6 +805,7 @@ export class World {
         u.y = Math.round(n.y * 10) / 10;
         u.dir = World.dirTo(p.input.mx, p.input.my);
         p.moveTo = null;
+        p.pend = null;
         if (!p.chase) p.approach = false;
       } else if (p.moveTo) {
         moving = this.stepToward(p, p.moveTo.x, p.moveTo.y, dt, 2);
@@ -805,6 +817,8 @@ export class World {
         else if (fd <= FOLLOW_NEAR + 1) p.followGo = false;
         if (p.followGo) moving = this.stepToward(p, fol.x, fol.y, dt, FOLLOW_NEAR);
         if (!moving) p.followGo = false;
+      } else if (p.pend) {
+        moving = stepApproach(this, p, dt);
       } else if (p.targetId && foe && p.engaged && p.approach) {
         const range = p.attackRange() + this.radiusOf(target);
         const d2 = this.dist(u, target);

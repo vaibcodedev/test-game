@@ -43,6 +43,8 @@ import { BAL } from "../../shared/balance";
 import { BOSS_SPAWNS, CELL_BLOCK, CELL_WALL, generateMap, T, walkable, Zone, zoneAtPx, type WorldMap } from "../../shared/map";
 import { findPath } from "../../shared/path";
 import { MAP_SEED, PLAYER_RADIUS, TICK_MS } from "../../shared/constants";
+import { allocStats, coreActive, DEF_PASSIVE, DMG_BUFF, hasDmg, HEAL_FIRST, HEAL_SUPPORT, learnSkills, pickGear, type BuildMode, type GearMode } from "../../server/src/arena/botgear";
+import { findSafe, inDanger, trackDanger, type Danger } from "../../server/src/game/danger";
 
 // ======================================================================
 //                         аргументы
@@ -58,7 +60,7 @@ const QUICK = argv.includes("--quick");
 const STABLE = argv.includes("--stable");
 const OUT = arg("out") ?? "tools/balance/report.json";
 const BASE_SEED = Number(arg("seed") ?? 1) || 1;
-const ONLY = new Set((arg("only") ?? "dummy,pve,heal,pvp,pvpmax,boss").split(","));
+const ONLY = new Set((arg("only") ?? "dummy,pve,heal,pvp,pvpmax,pvproles,boss").split(","));
 const LEVELS = (arg("levels") ?? "10,30,60,100").split(",").map(Number);
 const PVP_LEVELS = (arg("pvp-levels") ?? "30,100").split(",").map(Number);
 const PVP_REPS = Number(arg("reps") ?? (QUICK ? 1 : 5));
@@ -168,170 +170,14 @@ function makeWorld(map: WorldMap, mobs: boolean): World {
 // ======================================================================
 const role = (c: ClassId): ClassRole => CLASSES[c].role;
 const ratio = (q: Player) => q.unit.hp / Math.max(1, q.unit.maxHp);
-const hasDmg = (s: SkillDef, r: number) => { const v = s.v(Math.max(1, r)); return (v.dmg ?? 0) > 0 || (v.hit ?? 0) > 0 || (v.tick ?? 0) > 0; };
 /** Защитные умения: только когда своё здоровье ниже порога. */
 const DEFENSIVE: Record<string, number> = { shieldblock: 0.92, dk_bone_armor: 0.92, mg_barrier: 0.75, dk_anti_magic: 0.65, tp_divine: 0.35, as_smoke: 0.5 };
-/** Лечение/поддержка лекаря — в приоритете (по порядку). */
-const HEAL_FIRST = ["holyshield", "cl_aegis", "heal", "bw_transfusion", "bw_sacrifice", "circle", "cl_hymn", "renew", "cl_cleanse", "cl_blessing", "bw_blood_bond"];
 /** Самобафы без урона по площади (кастуются в пределах атаки, даже если у них есть радиус). */
 const SELF_BUFF = new Set(["mg_timewarp", "bw_tide", "bw_blood_circle", "hr_barrage", "hr_beast", "wl_meta", "rv_frenzy", "dk_rune_blade"]);
-/** Активные без поля урона, которые усиливают урон (метки, бафы, открывашки, подрыв эффектов). */
-const DMG_BUFF = new Set(["hr_mark", "wl_hex", "roll", "shadowstep", "stealth", "dr_shadowmeld", "rv_frenzy", "rv_reap", "wl_detonate", "wl_demon", "hr_beast", "mg_timewarp", "dk_rune_blade", "cl_blessing"]);
-/** Лечение и поддержка: для лекарей — «главные» умения наравне с уронными. */
-const HEAL_SUPPORT = new Set([...HEAL_FIRST, "bw_blood_circle", "bw_tide"]);
-/** Защитные и утилитарные пассивки (живучесть, контроль, спасение от смерти) — последними в PvE-билде. */
-const DEF_PASSIVE = new Set([
-  "toughness", "unbending", "laststand", "tp_bulwark", "tp_fortitude", "tp_vanguard", "tp_martyr", "bloodlust",
-  "resurrect", "cl_pure_light", "cl_guardian", "cl_last_gift",
-  "hr_hamstring",
-  "arcane_shield", "mg_manaward", "mg_escape", "mg_expl_barrier",
-  "evasion", "as_escape",
-  "dk_icebound", "dk_iron_chains", "dk_blood_tap", "dk_deaths_embrace",
-  "bw_deep_bonds", "bw_temper", "bw_coagulation", "bw_last_drop",
-  "dr_last_shadow",
-  "wl_oppress", "wl_shroud", "wl_soul_ward", "wl_leech",
-  "rv_anemia", "rv_defiance", "rv_taste",
-]);
-const coreActive = (s: SkillDef, cls: ClassId) => hasDmg(s, s.maxRank) || DMG_BUFF.has(s.id) || (role(cls) === "healer" && HEAL_SUPPORT.has(s.id));
 
 // ======================================================================
 //                         сборка героя
 // ======================================================================
-type BuildMode = "pve" | "pvp";
-
-/** Характеристики: танк — Сила/Выносливость пополам, остальные — 2/3 в главную, 1/3 в Выносливость. */
-function allocStats(cls: ClassId, level: number): Stats {
-  const pts = statPointsAt(level), c = CLASSES[cls];
-  const main = Math.round(pts * (c.role === "tank" ? 0.5 : 2 / 3));
-  const a: Stats = { str: 0, agi: 0, int: 0, vit: 0 };
-  a[c.mainStat] += main;
-  a.vit += pts - main;
-  return a;
-}
-
-/**
- * Умения (требования доучиваются автоматически, внутри яруса — по кругу до максимума):
- *  PvE: 1) уронные активные (поле урона или DMG_BUFF; у лекарей и лечение) 2) прочие пассивки 3) утилитарные/защитные активные 4) защитные пассивки.
- *  PvP: 1) утилитарные/защитные активные 2) уронные активные 3) защитные пассивки 4) прочие пассивки.
- */
-function learnSkills(cls: ClassId, level: number, mode: BuildMode = "pve"): Record<string, number> {
-  const ranks: Record<string, number> = {};
-  let pts = skillPointsAt(level);
-  const add = (s: SkillDef, depth = 0): boolean => {
-    if (pts <= 0 || depth > 6 || (ranks[s.id] || 0) >= s.maxRank || s.reqLevel > level) return false;
-    if (s.req && (ranks[s.req.id] || 0) < s.req.rank) {
-      const r = SKILLS[s.req.id];
-      while ((ranks[r.id] || 0) < s.req.rank) if (!add(r, depth + 1)) return false;
-    }
-    if (pts <= 0) return false;
-    ranks[s.id] = (ranks[s.id] || 0) + 1;
-    pts--;
-    return true;
-  };
-  const tree = classSkills(cls).filter((s) => s.reqLevel <= level);
-  const byLvl = [...tree].sort((a, b) => a.reqLevel - b.reqLevel || (a.kind === b.kind ? 0 : a.kind === "active" ? -1 : 1));
-  const actives = byLvl.filter((s) => s.kind === "active").sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
-  const passives = byLvl.filter((s) => s.kind === "passive");
-  const core = actives.filter((s) => coreActive(s, cls)), util = actives.filter((s) => !coreActive(s, cls));
-  const offP = passives.filter((s) => !DEF_PASSIVE.has(s.id)), defP = passives.filter((s) => DEF_PASSIVE.has(s.id));
-  add(activeSkills(cls)[0]);
-  const round = (list: SkillDef[]) => {
-    for (let ch = true; ch && pts > 0; ) {
-      ch = false;
-      for (const s of list) if (add(s)) ch = true;
-    }
-  };
-  for (const tier of mode === "pvp" ? [util, core, defP, offP] : [core, offP, util, defP]) round(tier);
-  return ranks;
-}
-
-const loose = itemsMod as unknown as Record<string, unknown>;
-type ModelLike = { id: string; name: string; lvl: number };
-/** Категории, которые класс может носить (каталог моделей, если есть, иначе все базы). */
-function categories(cls: ClassId): BaseItem[] {
-  const lc = loose.lootCategories as ((c: ClassId) => BaseItem[]) | undefined;
-  const list = lc ? lc(cls) : Object.values(BASE_ITEMS);
-  return list.filter((b) => b.slot !== "consumable" && (!b.classes || b.classes.includes(cls)));
-}
-/**
- * Предмет уровня: makeItem(база, уровень, Rare) с аффиксом главной характеристики (+Выносливость у бижутерии) и средним броском.
- * Модель каталога (rollModel, если есть) — только имя/вид: характеристики модели те же, что у базы.
- */
-function gearItem(baseId: string, level: number, cls: ClassId, gear: GearMode = "level"): Item {
-  const main = CLASSES[cls].mainStat;
-  const max = gear === "max";
-  // максимальная: эпическая +10, аффиксы — главная характеристика, крит/Выносливость (танк — Выносливость и здоровье)
-  const prefer: ItemStatKey[] = !max ? [main, "vit"] : role(cls) === "tank" ? [main, "vit", "hp", "crit"] : [main, "crit", "vit", "hp"];
-  const it = makeItem(baseId, level, max ? Rarity.Epic : Rarity.Rare, () => 0.5, prefer);
-  if (max) it.plus = MAX_PLUS;
-  it.req = Math.min(it.req, level);
-  const roll = loose.rollModel as ((cat: string, ilvl: number, c?: ClassId, f?: string, r?: () => number) => ModelLike | undefined) | undefined;
-  if (roll) {
-    const m = roll(baseId, level, cls, CLASSES[cls].faction, localRand(`${baseId}|${level}|${cls}`));
-    if (m) { it.model = m.id; it.name = m.name; }
-  }
-  return it;
-}
-
-function power(cls: ClassId, level: number, alloc: Stats, skills: Record<string, number>, equip: Partial<Record<Slot, Item | null>>): number {
-  const d = derive({ cls, level, alloc, skills, equip });
-  const avg = (d.dmgMin + d.dmgMax) / 2, critF = 1 + d.crit * (d.critMult - 1);
-  const r = role(cls);
-  const off = r === "healer" ? avg * d.skillMult : r === "caster" ? avg * critF * d.skillMult : avg * critF * (0.5 / d.attackCd + 0.5 * d.skillMult);
-  const ehp = d.maxHp / (1 - armorReduction(d.armor, level));
-  return r === "tank" ? Math.sqrt(off) * ehp : off * Math.sqrt(ehp);
-}
-
-/** Легендарки для максимальной экипировки: ярус и требование не выше уровня, класс может надеть, нужный слот; +10. */
-function legendsFor(cls: ClassId, level: number, slot: Slot): Item[] {
-  return Object.values(LEGENDARIES)
-    .filter((l) => l.tier <= level && l.req <= level && legendaryFits(l.id, cls) && BASE_ITEMS[l.base]?.slot === slot)
-    .map((l) => ({ ...makeLegendary(l.id), plus: MAX_PLUS }));
-}
-const GEAR_SLOTS: Slot[] = ["helmet", "armor", "boots", "cloak", "ring", "amulet"];
-/**
- * Экипировка: оружие(+вторая рука) и каждый слот брони — лучшая база по оценке power (танк — одноручное + щит).
- * level — редкая уровня; max — эпическая +10 уровня и легендарки +10 (ярус ≤ уровня; у легендарки есть свойство, поэтому
- * при почти равной оценке берётся она — как у полностью прокачанного игрока с админ-выдачей).
- */
-function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Record<string, number>, gear: GearMode = "level"): Record<Slot, Item | null> {
-  const cats = categories(cls);
-  const tank = role(cls) === "tank";
-  const max = gear === "max";
-  const eq: Record<Slot, Item | null> = { weapon: null, offhand: null, helmet: null, armor: null, boots: null, cloak: null, ring: null, amulet: null };
-  const of = (slot: Slot) => cats.filter((b) => b.slot === slot);
-  const cands = (slot: Slot): Item[] => [...of(slot).map((b) => gearItem(b.id, level, cls, gear)), ...(max ? legendsFor(cls, level, slot) : [])];
-  const bias = (it: Item | null) => (it?.legendary ? 1.03 : 1);
-  for (const s of GEAR_SLOTS) { const c = cands(s)[0]; if (c) eq[s] = c; }
-  const pickWeapon = () => {
-    let best = -1, bw: Item | null = null, bo: Item | null = null;
-    const offs = OFFHAND_CLASSES.includes(cls) ? cands("offhand").filter((o) => !tank || o.base === "shield") : [];
-    for (const wi of cands("weapon")) {
-      const wb = BASE_ITEMS[wi.base];
-      if (tank && wb.hands === 2) continue;
-      const ohs: (Item | null)[] = wb.hands === 2 || !offs.length ? [null] : offs;
-      for (const oi of ohs) {
-        const sc = power(cls, level, alloc, skills, { ...eq, weapon: wi, offhand: oi }) * bias(wi) * bias(oi);
-        if (sc > best) { best = sc; bw = wi; bo = oi; }
-      }
-    }
-    eq.weapon = bw;
-    eq.offhand = bo;
-  };
-  pickWeapon();
-  for (const s of GEAR_SLOTS) {
-    let best = -1, bi: Item | null = eq[s];
-    for (const it of cands(s)) {
-      const sc = power(cls, level, alloc, skills, { ...eq, [s]: it }) * bias(it);
-      if (sc > best) { best = sc; bi = it; }
-    }
-    eq[s] = bi;
-  }
-  pickWeapon();
-  return eq;
-}
-
-type GearMode = "level" | "max";
 interface Build { cls: ClassId; level: number; mode: BuildMode; gear: GearMode; save: PlayerSave }
 const buildCache = new Map<string, Build>();
 /**
@@ -439,47 +285,8 @@ interface Agent {
   /** Центр и радиус арены босса: уклоняемся внутрь неё и возвращаемся, если отошли (иначе босс уходит в возврат по поводку). */
   anchor: { x: number; y: number; r: number } | null;
 }
-/** Телеграф (circle | cone | ring) или лужа, at — когда появился (реакция бота — REACT_MS), until — когда сработает/исчезнет. */
-interface Danger { shape: "circle" | "cone" | "ring"; x: number; y: number; r: number; r2?: number; a?: number; w?: number; at: number; until: number }
 /** Реакция игрока на телеграф: зона видна, но уходить начинаем через 0.35 с. */
 const REACT_MS = 350;
-function inDanger(d: Danger, x: number, y: number, m: number): boolean {
-  const dx = x - d.x, dy = y - d.y, dist = Math.hypot(dx, dy);
-  if (d.shape === "circle") return dist <= d.r + PLAYER_RADIUS * 0.5 + m;
-  if (d.shape === "ring") return dist >= d.r - m && dist <= (d.r2 ?? d.r * 2) + m;
-  let da = Math.atan2(dy, dx) - (d.a ?? 0);
-  while (da > Math.PI) da -= Math.PI * 2;
-  while (da < -Math.PI) da += Math.PI * 2;
-  return dist <= d.r + m && Math.abs(da) <= (d.w ?? 1) / 2 + m / Math.max(dist, 30);
-}
-/** Записывает телеграфы мира (w.telegraph) и лужи (w.hazards): список опасных зон на текущий момент. */
-function trackDanger(w: World): () => Danger[] {
-  let list: Danger[] = [];
-  const orig = w.telegraph.bind(w);
-  w.telegraph = (owner, shape, x, y, r, ms, onHit, extra = {}) => {
-    list.push({ shape, x, y, r, r2: extra.r2, a: extra.a, w: extra.w, at: w.time, until: w.time + ms });
-    orig(owner, shape, x, y, r, ms, onHit, extra);
-  };
-  return () => {
-    list = list.filter((d) => d.until >= w.time);
-    return [...list, ...w.hazards.map((h): Danger => ({ shape: "circle", x: h.x, y: h.y, r: h.r, at: -1e9, until: h.until }))];
-  };
-}
-/** Ближайшая безопасная точка (по возможности — в пределах атаки по цели). */
-function findSafe(w: World, p: Player, zones: Danger[], target: Actor | undefined, anchor: Agent["anchor"] = null): { x: number; y: number } | null {
-  let best: { x: number; y: number } | null = null, bestCost = Infinity;
-  const want = target ? p.attackRange() + w.radiusOf(target) : 0;
-  for (const r of [24, 40, 60, 85, 115, 150, 190, 240, 300, 360]) for (let k = 0; k < 16; k++) {
-    const ang = (k / 16) * Math.PI * 2;
-    const x = p.x + Math.cos(ang) * r, y = p.y + Math.sin(ang) * r;
-    if (!walkable(w.map, x, y, PLAYER_RADIUS) || zones.some((z) => inDanger(z, x, y, 10))) continue;
-    let cost = r;
-    if (target) { const dt = Math.hypot(x - target.x, y - target.y); if (dt > want) cost += (dt - want) * 0.6; }
-    if (anchor) cost += Math.max(0, Math.hypot(x - anchor.x, y - anchor.y) - anchor.r * 0.5) * 1.5;
-    if (cost < bestCost) { bestCost = cost; best = { x, y }; }
-  }
-  return best;
-}
 const hurt = (w: World, q: Player) => w.time - q.hurtAt <= HURT_MS;
 const nearHurt = (w: World, a: Agent, r: number) => a.allies().some((q) => !q.dead && w.dist(a.p, q) <= r + PLAYER_RADIUS && (ratio(q) < 0.9 || hurt(w, q)));
 /**
@@ -1148,6 +955,114 @@ function duel(ca: ClassId, cb: ClassId, level: number, rep: number, verbose = fa
   if (verbose) log(`  итог: победитель ${winner === 1 ? ca : winner === 2 ? cb : "ничья"}, ${t} с, первый урон на ${first} с; умения ${ca}: ${JSON.stringify(A.casts)} отказы ${JSON.stringify(A.fails)} мана ${Math.round(pa.unit.mp)}/${pa.unit.maxMp}; ${cb}: ${JSON.stringify(B.casts)} отказы ${JSON.stringify(B.fails)} мана ${Math.round(pb.unit.mp)}/${pb.unit.maxMp}`);
   return { winner, sec: t, fight: first < 0 ? 0 : r1(t - first), timeout: !pa.dead && !pb.dead, hpA: r3(ratio(pa)), hpB: r3(ratio(pb)), dpsA: Math.round(dmgA / t), dpsB: Math.round(dmgB / t) };
 }
+/**
+ * Бой команд на арене (1×1, 2×2): настоящая карта и точки появления, бот лечит свою команду и бьёт ближайшего врага.
+ * limitSec — лимит боя, по времени побеждает команда с бо́льшим средним % здоровья (как ArenaRoom.checkEnd).
+ * Разбор живучести по героям: полученный урон, лечение (входящее), поглощено щитами, промахи/неуязвимость.
+ */
+interface FighterStat { cls: ClassId; team: number; dealt: number; taken: number; healed: number; absorbed: number; misses: number; immune: number; diedAt: number | null }
+function teamFight(teamA: ClassId[], teamB: ClassId[], level: number, rep: number, gear: GearMode, limitSec: number, verbose = false) {
+  const builds = [...teamA, ...teamB].map((c) => build(c, level, "pvp", gear));
+  seedRng("team", teamA.join("+"), teamB.join("+"), level, rep, gear, limitSec);
+  const w = makeWorld(ARENA, false);
+  w.pvpActive = true;
+  const ta = rep % 2 === 0 ? 1 : 2, tb = 3 - ta;
+  const players: Player[] = [];
+  const stats = new Map<Player, FighterStat>();
+  builds.forEach((b, i) => {
+    const inA = i < teamA.length, team = inA ? ta : tb, idx = inA ? i : i - teamA.length;
+    const sp = arenaSpawn(team, idx);
+    const p = spawnPlayer(w, b, sp.x, sp.y, team);
+    players.push(p);
+    stats.set(p, { cls: b.cls, team: inA ? 1 : 2, dealt: 0, taken: 0, healed: 0, absorbed: 0, misses: 0, immune: 0, diedAt: null });
+  });
+  const side = (p: Player) => stats.get(p)!.team;
+  const agents = players.map((p) => {
+    const a = makeAgent(p, { kite: true, allies: () => players.filter((q) => side(q) === side(p)), enemies: () => players.filter((q) => side(q) !== side(p) && !q.dead) });
+    a.next = Math.floor(rng() * 5) * TICK_MS;
+    return a;
+  });
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const oe = w.emit.bind(w);
+  w.emit = (fx) => {
+    const f = fx as { t: string; id?: string; miss?: boolean; imm?: boolean };
+    if (f.t === "dmg" && f.id) { const q = byId.get(f.id); if (q) { if (f.miss) stats.get(q)!.misses++; if (f.imm) stats.get(q)!.immune++; } }
+    oe(fx);
+  };
+  // лечение — по получателю; поглощение щитом — по наложившему щит (World.hitEx зовёт onHeal(shieldBy, ab) вне heal)
+  const oh = w.heal.bind(w);
+  let inHeal = 0;
+  w.heal = (q, v, show = true, by) => { inHeal++; try { const got = oh(q, v, show, by); const s = stats.get(q); if (s) s.healed += got; return got; } finally { inHeal--; } };
+  w.onHeal = (q, v) => { if (inHeal) return; const s = stats.get(q); if (s) s.absorbed += v; };
+  let first = -1;
+  w.onDamage = (src, dst, v) => {
+    if (!w.isPlayer(src) || !w.isPlayer(dst) || src === dst) return;
+    const a = stats.get(src), b = stats.get(dst);
+    if (a) a.dealt += v;
+    if (b) b.taken += v;
+    if (first < 0) first = w.time / 1000;
+    if (verbose) log(`  [${(w.time / 1000).toFixed(2)}] ${src.cls} → ${dst.cls} ${v} (${CTX ?? "auto"})  ${players.map((q) => `${q.cls} ${q.unit.hp}/${q.unit.maxHp}`).join(" | ")}`);
+  };
+  const ticks = (limitSec * 1000) / TICK_MS;
+  const alive = (t: number) => players.some((p) => side(p) === t && !p.dead);
+  for (let i = 0; i < ticks && alive(1) && alive(2); i++) {
+    const order = rng() < 0.5 ? agents : [...agents].reverse();
+    for (const a of order) think(w, a);
+    w.update(TICK_MS);
+    for (const p of players) if (p.dead && stats.get(p)!.diedAt === null) stats.get(p)!.diedAt = r1(w.time / 1000);
+  }
+  const t = w.time / 1000;
+  const hpOf = (team: number) => avg(players.filter((p) => side(p) === team).map((p) => (p.dead ? 0 : ratio(p))));
+  let winner = 0;
+  if (alive(1) !== alive(2)) winner = alive(1) ? 1 : 2;
+  else { const h1 = hpOf(1), h2 = hpOf(2); winner = Math.abs(h1 - h2) < 1e-4 ? 0 : h1 > h2 ? 1 : 2; }
+  const fight = first < 0 ? 0 : r1(t - first);
+  const per = [...stats.values()].map((s) => ({ ...s, dps: Math.round(s.dealt / Math.max(1, fight)), dtps: Math.round(s.taken / Math.max(1, fight)), hps: Math.round(s.healed / Math.max(1, fight)), aps: Math.round(s.absorbed / Math.max(1, fight)) }));
+  if (verbose) log(`  итог: ${winner === 1 ? teamA.join("+") : winner === 2 ? teamB.join("+") : "ничья"}, бой ${fight} с; ${per.map((s) => `${s.cls}: урон ${s.dps}/с, получено ${s.dtps}/с, лечение ${s.hps}/с, щиты ${s.aps}/с, промахов ${s.misses}, неуязв. ${s.immune}, смерть ${s.diedAt ?? "-"}`).join("; ")}`);
+  return { winner, fight, timeout: alive(1) && alive(2), per };
+}
+const DPS_CLS: ClassId[] = ["ranger", "mage", "rogue", "darkranger", "warlock", "reaver"];
+const TANK_CLS: ClassId[] = ["warrior", "deathknight"];
+const HEAL_CLS: ClassId[] = ["healer", "bloodweaver"];
+/** Сводка боёв «боец против X»: победы бойца, время боя (до смерти или лимита), доля таймаутов, разбор живучести второй стороны. */
+function rolePvp(level: number, gear: GearMode) {
+  const reps = Math.max(2, Math.min(PVP_REPS, 4));
+  const agg = (rows: ReturnType<typeof teamFight>[], side: number) => {
+    const wins = rows.filter((r) => r.winner === side).length + rows.filter((r) => r.winner === 0).length / 2;
+    const secs = rows.map((r) => r.fight).sort((a, b) => a - b);
+    const other = rows.flatMap((r) => r.per.filter((s) => s.team !== side));
+    return {
+      n: rows.length, win: r3(wins / Math.max(1, rows.length)), fight: r1(avg(secs)), median: secs[secs.length >> 1] ?? 0, timeouts: rows.filter((r) => r.timeout).length,
+      foe: { dtps: Math.round(avg(other.map((s) => s.dtps))), hps: Math.round(avg(other.map((s) => s.hps))), aps: Math.round(avg(other.map((s) => s.aps))), misses: r1(avg(other.map((s) => s.misses))), immune: r1(avg(other.map((s) => s.immune))) },
+    };
+  };
+  const vs = (others: ClassId[], limit: number) => {
+    const rows: ReturnType<typeof teamFight>[] = [];
+    const byCls: Record<string, ReturnType<typeof agg>> = {};
+    for (const o of others) {
+      const mine: ReturnType<typeof teamFight>[] = [];
+      for (const d of DPS_CLS) for (let r = 0; r < reps; r++) { const x = safe(`pvp ${d}-${o}`, () => teamFight([d], [o], level, r, gear, limit)); if (x) mine.push(x); }
+      byCls[o] = agg(mine, 1);
+      rows.push(...mine);
+    }
+    return { all: agg(rows, 1), byCls };
+  };
+  const tank = vs(TANK_CLS, MATCH_MS / 1000), healer = vs(HEAL_CLS, MATCH_MS / 1000);
+  // танк против лекаря: лимит матча 1×1
+  const th: ReturnType<typeof teamFight>[] = [];
+  for (const t of TANK_CLS) for (const h of HEAL_CLS) for (let r = 0; r < reps; r++) { const x = safe(`pvp ${t}-${h}`, () => teamFight([t], [h], level, r, gear, MATCH_MS / 1000)); if (x) th.push(x); }
+  // 2×2: два бойца одной фракции против танка и лекаря другой
+  const duo: ReturnType<typeof teamFight>[] = [];
+  const fac = (c: ClassId) => CLASSES[c].faction;
+  for (const f of ["solgard", "umbrath"]) {
+    const dps = DPS_CLS.filter((c) => fac(c) === f), tk = TANK_CLS.find((c) => fac(c) !== f)!, hl = HEAL_CLS.find((c) => fac(c) !== f)!;
+    for (let i = 0; i < dps.length; i++) for (let j = i + 1; j < dps.length; j++) for (let r = 0; r < reps; r++) {
+      const x = safe(`pvp2 ${dps[i]}+${dps[j]}`, () => teamFight([dps[i], dps[j]], [tk, hl], level, r, gear, MATCH_MS / 1000));
+      if (x) duo.push(x);
+    }
+  }
+  return { level, gear, reps, dpsVsTank: tank, dpsVsHealer: healer, tankVsHealer: agg(th, 1), duo: agg(duo, 1) };
+}
 function pvp(level: number, gear: GearMode = "level") {
   const cells: Record<string, Record<string, { win: number; draws: number; sec: number; fight: number; timeouts: number; dps: number; errors: number; reps: number[]; margin: number }>> = {};
   for (const a of CLS) {
@@ -1193,7 +1108,7 @@ function pvp(level: number, gear: GearMode = "level") {
 // ======================================================================
 //                 5) боссы: соло и группа из 5
 // ======================================================================
-const BOSS_IDS = Object.values(MOBS).filter((m) => m.boss).map((m) => m.id);
+const BOSS_IDS = Object.values(MOBS).filter((m) => m.boss && !m.raid).map((m) => m.id);
 const BOSS_SEEDS = Math.max(1, Number(arg("boss-seeds") ?? (QUICK ? 1 : 2)));
 const SOLO_LIMIT = Number(arg("solo-limit") ?? 600);
 const GROUP_LIMIT = Number(arg("group-limit") ?? 480);
@@ -1345,6 +1260,13 @@ if (BOSS1) {
   log(JSON.stringify(bossRun(id, Number(l) || MOBS[id].level!, party, mode !== "stand", "dbg", party.length > 1 ? GROUP_LIMIT : SOLO_LIMIT, true)));
   process.exit(0);
 }
+const TEAM1 = arg("team1");
+if (TEAM1) {
+  // разбор боя команд: --team1 rogue+mage,warrior+healer,100[,повтор][,max]
+  const [a, b, l, r, g] = TEAM1.split(",");
+  teamFight(a.split("+") as ClassId[], b.split("+") as ClassId[], Number(l) || 100, Number(r) || 0, g === "max" ? "max" : "level", MATCH_MS / 1000, true);
+  process.exit(0);
+}
 const DUEL = arg("duel");
 if (DUEL) {
   // разбор одной дуэли: --duel warrior,mage,100[,повтор] — тот же бой, что ячейка матрицы (сборка изолирована от потока боя)
@@ -1463,6 +1385,25 @@ if (ONLY.has("pvp") || ONLY.has("pvpmax")) {
   }
   report.pvp = out;
   summary.pvp = out.map((r) => ({ level: r.level, gear: r.gear, fight: r.fight, fightRange: [r.fightMin, r.fightMax], solgardVsUmbrath: r.solgardVsUmbrath, roles: r.roles.map((x) => ({ role: x.role, solgardWin: x.solgardWin, sec: x.sec })), classWin: Object.fromEntries(Object.entries(r.classWin).map(([c, v]) => [c, v.win])), skewed: r.skewed }));
+}
+
+if (ONLY.has("pvproles")) {
+  const out: ReturnType<typeof rolePvp>[] = [];
+  const f = (a: { win: number; fight: number; median: number; timeouts: number; n: number; foe: { dtps: number; hps: number; aps: number } }) =>
+    `побед ${Math.round(a.win * 100)}%, бой ${a.median} с (сред. ${a.fight}), таймаутов ${a.timeouts}/${a.n}; у второй стороны: получено ${a.foe.dtps}/с, лечение ${a.foe.hps}/с, щиты ${a.foe.aps}/с`;
+  for (const g of ["level", "max"] as GearMode[]) {
+    const r = rolePvp(100, g);
+    out.push(r);
+    log(`\n== 4б) PvP 100 ур. по ролям, ${g === "max" ? "макс. экипировка" : "экипировка уровня"} (${r.reps} повт., лимит ${MATCH_MS / 1000} с)`);
+    log(`боец против танка: ${f(r.dpsVsTank.all)}`);
+    for (const [c, a] of Object.entries(r.dpsVsTank.byCls)) log(`   ${name(c as ClassId)} ${f(a)}`);
+    log(`боец против лекаря: ${f(r.dpsVsHealer.all)}`);
+    for (const [c, a] of Object.entries(r.dpsVsHealer.byCls)) log(`   ${name(c as ClassId)} ${f(a)}`);
+    log(`танк против лекаря: ${f(r.tankVsHealer)}`);
+    log(`2×2 (два бойца против танка и лекаря): ${f(r.duo)}`);
+  }
+  report.pvpRoles = out;
+  summary.pvpRoles = out.map((r) => ({ gear: r.gear, dpsVsTank: r.dpsVsTank.all, dpsVsHealer: r.dpsVsHealer.all, tankVsHealer: r.tankVsHealer, duo: r.duo }));
 }
 
 if (ONLY.has("boss")) {

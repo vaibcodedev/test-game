@@ -19,6 +19,7 @@ import { canLearn, classSkills, SKILLS, skillMana, type SkillDef } from "../../.
 import type { Net, UnitState } from "../net";
 import { rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
+import { RaidHud } from "./raid";
 import { TradeUI } from "./trade";
 import { AdminUI } from "./admin";
 import { BestiaryUI } from "./bestiary";
@@ -37,7 +38,7 @@ import { WorldMapView } from "./worldmap";
 import { plusBadge, SmithUI } from "./smith";
 import { BankUI, parseBankDrag } from "./bank";
 import { BagsUI } from "./bags";
-import { MOUNTS, MOUNT_IDS, mountSprite } from "../../../shared/mounts";
+import { MOUNTS, MOUNT_IDS, MOUNT_SOURCES, MOUNT_TIERS, TIER_COLOR, mountSprite } from "../../../shared/mounts";
 import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
@@ -100,6 +101,12 @@ export class Hud {
   private chatLog = el("div", "log");
   private chatInput = el("input");
   private toasts = el("div", "toasts");
+  /** Строка ошибок над панелью (docs/controls.md, раздел 10). */
+  private errLine = el("div", "errline");
+  private itip = el("div", "interact-tip");
+  private errAt = new Map<string, number>();
+  private errHide = 0;
+  private lastCast: { id: string; at: number } | null = null;
   private death = el("div", "death");
   private tip = el("div", "panel tip");
   private wins: Record<string, HTMLElement> = {};
@@ -110,6 +117,7 @@ export class Hud {
   private netBound = false;
   private tradeBound = false;
   readonly arena: ArenaUI;
+  readonly raid: RaidHud;
   readonly trade: TradeUI;
   readonly bestiary: BestiaryUI;
   readonly admin: AdminUI;
@@ -154,7 +162,7 @@ export class Hud {
 
   constructor(readonly root: HTMLElement) {
     this.bar.append(this.hotbar.el, this.barExtras);
-    root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.death, this.tip);
+    root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.errLine, this.itip, this.death, this.tip);
     initWindowDrag(root, () => this.ctx?.net.self?.name ?? "");
     this.stackLeftPanels();
     this.targetBox.hidden = true;
@@ -178,6 +186,7 @@ export class Hud {
     this.buildMenu();
     this.makeWindows();
     this.arena = new ArenaUI(root, (text, kind) => this.toast({ text, kind }));
+    this.raid = new RaidHud(root);
     this.bestiary = new BestiaryUI(root, icon);
     this.admin = new AdminUI(root);
     this.rumor = new RumorUI(root);
@@ -285,6 +294,7 @@ export class Hud {
       this.chatLine({ from: "", text: `Добро пожаловать! Клик по земле — идти, по врагу — атаковать. Умения: ${skillKeys(keybinds)}. Арена — клавиша ${keybinds.label("winArena", 0)}.`, sys: true });
     }
     this.arena.bind(n);
+    this.raid.bind(n);
     if (!this.tradeBound) { this.tradeBound = true; this.trade.bind(n); }
     for (const w of Object.values(this.wins)) w.hidden = true;
     this.deadSince = 0;
@@ -309,7 +319,30 @@ export class Hud {
   }
 
   // ---------- сообщения ----------
+  /** Подсказка взаимодействия над панелью: «[F] Поговорить: Торговка Марфа». */
+  setInteractTip(text: string | null) {
+    const t = text ?? "";
+    if (this.itip.textContent !== t) this.itip.textContent = t;
+  }
+  /** Запомнить последнее нажатое умение: отказ с кодом подсветит его слот. */
+  notePress(skillId: string) { this.lastCast = { id: skillId, at: performance.now() }; }
+  /** Отказ каста: строка ошибок 1,5 с, одинаковая — не чаще 2 раз в секунду, тихий звук, красная вспышка слота. */
+  castError(text: string, skillId?: string) {
+    const now = performance.now();
+    if (skillId) this.hotbar.flashErr(skillId);
+    if (now - (this.errAt.get(text) ?? -1e9) < 500) return;
+    this.errAt.set(text, now);
+    this.errLine.textContent = text;
+    this.errLine.classList.add("on");
+    clearTimeout(this.errHide);
+    this.errHide = window.setTimeout(() => this.errLine.classList.remove("on"), 1500);
+    sfx.play("error");
+  }
   toast(t: ToastMsg) {
+    if (t.code) {
+      const lc = this.lastCast;
+      return this.castError(t.text, lc && performance.now() - lc.at < 800 ? lc.id : undefined);
+    }
     const d = el("div", `toast ${t.kind ?? "info"}`);
     d.innerHTML = this.lootHtml(t.slot ? { ...t, text: `${t.text} — клавиша ${this.hotbar.keyOf(t.slot.bar, t.slot.i)}` } : t);
     this.toasts.append(d);
@@ -338,6 +371,8 @@ export class Hud {
       const c = l.faction === "umbrath" ? factionColor(l.faction) : CLASS_COLOR[l.cls ?? ""] ?? "#ffb070";
       d.innerHTML = `<b style="color:${c}">${esc(l.from)}:</b> ${esc(l.text)}`;
     }
+    if (l.boss) d.innerHTML = `<b style="color:#ff8a3a">${esc(l.from)}:</b> <span style="color:#ff8a3a">${esc(l.text)}</span>`;
+    else if (l.raid && !l.sys) d.innerHTML = `<b style="color:#ffb070">${esc(l.from)}:</b> ${esc(l.text)}`;
     const atBottom = this.chatLog.scrollTop + this.chatLog.clientHeight >= this.chatLog.scrollHeight - 4;
     this.chatLog.append(d);
     while (this.chatLog.children.length > 80) this.chatLog.firstElementChild!.remove();
@@ -495,7 +530,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.arena.close() || this.trade.close() || this.inspect.close();
+    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -649,7 +684,8 @@ export class Hud {
       const mid = s.mount ?? "";
       const md = MOUNTS[mid];
       const mounted = !!(this.ctx.net.unit(s.id)?.mount);
-      const b = el("button", `slot ${md ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${mounted ? "⤓" : "♞"}</span><kbd>${keybinds.label("mount", 0)}</kbd>`);
+      const b = el("button", `slot ${md ? "" : "empty"}`, `${md ? `<img src="${icon(mountSprite(mid))}" alt="" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;position:absolute;left:3px;top:3px;${mounted ? "opacity:.55" : ""}">` : `<span style="font-size:26px;line-height:50px;display:block;text-align:center">♞</span>`}<kbd>${keybinds.label("mount", 0)}</kbd>`);
+      b.style.position = "relative";
       b.onclick = () => this.ctx.toggleMount?.();
       this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">Скорость ×${md.speed} · призыв 2 с, стоя на месте. ${keybinds.label("mount", 0)} — сесть/слезть, ${keybinds.label("mountNext", 0)} — сменить. Не в бою, не на арене.</div>` : `<div class="t">Маунт</div><div class="d">Бурый конь — с 10 уровня</div>`);
       this.barExtras.append(b);
@@ -778,7 +814,7 @@ export class Hud {
       const d = kind === "pet" ? PETS[id] : MOUNTS[id];
       if (!d) continue;
       const r = el("button", `comp-row${id === cur ? " cur" : ""}`);
-      const sub = kind === "pet" ? `ур. ${s.pets![id].level}` : `скорость ×${MOUNTS[id].speed}`;
+      const sub = kind === "pet" ? `ур. ${s.pets![id].level}` : `${MOUNT_TIERS[MOUNTS[id].tier]} · ×${MOUNTS[id].speed}`;
       r.innerHTML = `<img src="${icon(kind === "pet" ? PETS[id].sprite : mountSprite(id))}" alt=""><span class="nm">${esc(d.name)}</span><span class="muted">${sub}${id === cur ? " · выбран" : ""}</span>`;
       r.onclick = () => send(kind === "pet" ? "pet:select" : "mount:select", id);
       this.tipFor(r, () => kind === "pet" ? this.petTip(id, s) : this.mountTip(id));
@@ -798,7 +834,7 @@ export class Hud {
   }
   private mountTip(id: string): string {
     const m = MOUNTS[id];
-    return m ? `<div class="t">${esc(m.name)}</div><div>Скорость ×${m.speed}</div><div class="d">Сесть: X, выбрать следующий: Shift+X</div>` : "";
+    return m ? `<div class="t" style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</div><div>${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}</div><div class="d">${esc(m.desc)}</div><div class="d">${MOUNT_SOURCES[m.source]}. Сесть: X, выбрать следующий: Shift+X</div>` : "";
   }
   private renderInv(s: SelfState) {
     const b = this.body("inv");
@@ -971,11 +1007,11 @@ export class Hud {
         row(`<img src="${icon(def.icon)}" alt="">`, def.name, base === "hp_potion" ? "+45% здоровья" : "+50% маны",
           [1, 5, 20].map((q) => [`×${q}`, p * q, false, () => this.ctx.net.send("buy", { base, qty: q })] as [string, number, boolean, () => void]));
       }
-      const mounts = MOUNT_IDS.filter((id) => MOUNTS[id].price > 0 && !s.mounts?.includes(id));
+      const mounts = MOUNT_IDS.filter((id) => MOUNTS[id].source === "vendor" && MOUNTS[id].price > 0 && !s.mounts?.includes(id) && (!MOUNTS[id].faction || MOUNTS[id].faction === s.faction));
       if (mounts.length) head("Ездовые животные");
       for (const id of mounts) {
         const m = MOUNTS[id];
-        row(sprite(mountSprite(id)), m.name, `Скорость ×${m.speed}, с ${m.level} ур.`, [["Купить ", m.price, s.level < m.level, () => this.ctx.net.send("mount:buy", { id })]]);
+        row(sprite(mountSprite(id)), m.name, `${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}, с ${m.level} ур.`, [["Купить ", m.price, s.level < m.level, () => this.ctx.net.send("mount:buy", { id })]]);
       }
       const pets = PET_IDS.filter((id) => PETS[id].price > 0 && !s.pets?.[id]);
       if (pets.length) head("Питомцы");
@@ -1095,8 +1131,11 @@ export class Hud {
         if (!this.deadSince) {
           this.deadSince = performance.now();
           this.death.hidden = false;
-          this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Вы потеряете 10% золота и очнётесь в ближайшем открытом городе (или в столице своей фракции).</p><button class="btn primary" id="respawn">Возродиться</button></div>`;
-          document.getElementById("respawn")!.onclick = () => this.ctx.net.send("respawn", {});
+          if (this.ctx.net.kind === "raid") this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Ждите воскрешения союзником.</p></div>`;
+          else {
+            this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Вы потеряете 10% золота и очнётесь в ближайшем открытом городе (или в столице своей фракции).</p><button class="btn primary" id="respawn">Возродиться</button></div>`;
+            document.getElementById("respawn")!.onclick = () => this.ctx.net.send("respawn", {});
+          }
         }
         const left = Math.ceil((RESPAWN_DELAY_MS - (performance.now() - this.deadSince)) / 1000);
         const btn = document.getElementById("respawn") as HTMLButtonElement | null;
@@ -1142,6 +1181,7 @@ export class Hud {
       this.hotbar.frame({ mp: me.mp, pos: info.pos, target: info.target && info.target.anim !== Anim.Dead && tu ? { x: tu.x, y: tu.y } : null });
     }
     this.arena.frame(info.units);
+    this.raid.frame(info.units);
     const now = performance.now();
     if (now - this.lastMini > 200) {
       this.lastMini = now;

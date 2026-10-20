@@ -37,6 +37,8 @@ export interface LegendaryDef {
   effect: LegendaryEffect;
   desc: string;
   look: LegendaryLook;
+  /** Откуда берётся: "raid" — только из рейда (трофеи Рыцаря Хаоса, server/src/raid/rewards.ts); общая добыча (rollLegendary) их пропускает. */
+  source?: string;
 }
 export interface LegendEffectSpec { hook: "hit" | "out" | "damaged" | "absorb" | "kill" | "lethal"; text: string; params: Record<string, number[]> }
 export interface LegendTiers {
@@ -77,7 +79,7 @@ export function effectText(e: LegendaryEffect): string {
   return spec.text.replace(/\{(\w+)\}/g, (_, k: string) => (e[k] === undefined ? "?" : fmtParam(k, Number(e[k]))));
 }
 
-type Raw = { name: string; base: string; variant: ClassId; tier: number; ilvl?: number; req?: number; tint: string; stats: ItemStats; lore: string; effect: LegendaryEffect; desc?: string; look: LegendaryLook };
+type Raw = { name: string; base: string; variant: ClassId; tier: number; ilvl?: number; req?: number; tint: string; stats: ItemStats; lore: string; effect: LegendaryEffect; desc?: string; look: LegendaryLook; source?: string };
 export const LEGENDARIES: Record<string, LegendaryDef> = {};
 for (const [id, v] of Object.entries(D)) {
   if (id.startsWith("_")) continue;
@@ -87,6 +89,7 @@ for (const [id, v] of Object.entries(D)) {
     id, name: r.name, base: r.base, variant: r.variant, faction: CLASSES[r.variant]?.faction ?? "solgard",
     tier: TIER_LIST[ti], ti, ilvl: r.ilvl ?? LEGEND_TIERS.ilvl[ti], req: r.req ?? LEGEND_TIERS.req[ti],
     tint: r.tint, stats: r.stats, lore: r.lore, effect, desc: r.desc ?? effectText(effect), look: r.look,
+    ...(r.source ? { source: r.source } : {}),
   };
 }
 
@@ -117,7 +120,7 @@ export function legendaryTierWeights(cls: ClassId, level: number): [number, numb
   const out: [number, number][] = [];
   [...tiers].sort((a, b) => b - a).forEach((t, rank) => {
     const w = dr.weights[Math.min(rank, dr.weights.length - 1)];
-    if (w > 0 && Object.values(LEGENDARIES).some((l) => l.tier === t && legendaryFits(l.id, cls))) out.push([t, w]);
+    if (w > 0 && Object.values(LEGENDARIES).some((l) => l.tier === t && !l.source && legendaryFits(l.id, cls))) out.push([t, w]);
   });
   return out;
 }
@@ -135,7 +138,7 @@ export function rollLegendary(cls: ClassId, level: number, rand: () => number = 
   const tier = weighted(legendaryTierWeights(cls, level), rand);
   if (tier === undefined) return undefined;
   const dr = LEGEND_TIERS.drop, fac = CLASSES[cls]?.faction;
-  const ids = Object.values(LEGENDARIES).filter((l) => l.tier === tier && legendaryFits(l.id, cls))
+  const ids = Object.values(LEGENDARIES).filter((l) => l.tier === tier && !l.source && legendaryFits(l.id, cls))
     .map((l) => [l.id, (l.variant === cls ? dr.variant : 1) * (l.faction === fac ? dr.faction : 1)] as [string, number]);
   return weighted(ids, rand);
 }

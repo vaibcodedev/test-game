@@ -1,8 +1,26 @@
 {
   "castMs": 2000,
   "combatLockMs": 5000,
+  "tiers": { "common": "Обычный", "uncommon": "Необычный", "rare": "Редкий", "epic": "Эпический", "legendary": "Легендарный" },
+  "sources": { "start": "Выдаётся по уровню", "vendor": "Торговец в столице", "boss": "Редкий трофей с боссов", "raid": "Трофей рейда", "arena": "Награда арены" },
   "mounts": {
-    "horse": { "name": "Бурый конь", "speed": 1.6, "level": 10, "price": 0, "grantLevel": 10, "colors": ["#2e1c12", "#4e3020", "#74482e", "#9a6440"], "mane": ["#14100e", "#241a16", "#38281f", "#4c382a"] },
-    "ashwolf": { "name": "Пепельный волк", "speed": 1.6, "level": 15, "price": 800, "grantLevel": 25, "colors": ["#2a2c34", "#464a56", "#6e7380", "#9a9fac"], "mane": ["#4a2a1a", "#7a3a1a", "#b0501c", "#e08030"] }
+    "horse": { "name": "Бурый конь", "desc": "Выносливый конь с кожаным седлом.", "tier": "common", "faction": "", "flying": false, "speed": 1.6, "level": 10, "price": 0, "grantLevel": 10, "source": "start" },
+    "ashwolf": { "name": "Пепельный волк", "desc": "Матёрый волк с тлеющим гребнем.", "tier": "uncommon", "faction": "", "flying": false, "speed": 1.6, "level": 15, "price": 800, "grantLevel": 25, "source": "vendor" },
+    "boar": { "name": "Клыкастый вепрь", "desc": "Тяжёлый кабан, прёт напролом.", "tier": "common", "faction": "", "flying": false, "speed": 1.55, "level": 20, "price": 1500, "grantLevel": 0, "source": "vendor" },
+    "raptor": { "name": "Чешуйчатый раптор", "desc": "Быстрый двуногий ящер из южных болот.", "tier": "uncommon", "faction": "", "flying": false, "speed": 1.65, "level": 30, "price": 2800, "grantLevel": 0, "source": "vendor" },
+    "sand_lizard": { "name": "Песчаный ящер", "desc": "Низкий и юркий, как сухой ветер.", "tier": "uncommon", "faction": "", "flying": false, "speed": 1.65, "level": 35, "price": 3200, "grantLevel": 0, "source": "vendor" },
+    "bear": { "name": "Бурый медведь", "desc": "Огромный медведь, приручённый ценой многих ран.", "tier": "rare", "faction": "", "flying": false, "speed": 1.7, "level": 30, "price": 0, "grantLevel": 0, "source": "boss", "drop": { "minLevel": 25, "chance": 0.04 } },
+    "phoenix": { "name": "Феникс", "desc": "Возрождённый огонь. Парит над землёй.", "tier": "legendary", "faction": "", "flying": true, "speed": 1.9, "level": 60, "price": 0, "grantLevel": 0, "source": "raid", "raid": "chaos_knight", "dropChance": 0.12 },
+    "war_horse": { "name": "Боевой конь Сольгарда", "desc": "Конь в синей попоне с золотым солнцем.", "tier": "uncommon", "faction": "solgard", "flying": false, "speed": 1.65, "level": 20, "price": 1800, "grantLevel": 0, "source": "vendor" },
+    "destrier": { "name": "Латный дестриэ", "desc": "Тяжёлый рыцарский конь в латах.", "tier": "rare", "faction": "solgard", "flying": false, "speed": 1.75, "level": 40, "price": 9000, "grantLevel": 0, "source": "vendor" },
+    "stag": { "name": "Белый олень", "desc": "Золоторогий олень лесов Сольгарда.", "tier": "rare", "faction": "solgard", "flying": false, "speed": 1.75, "level": 35, "price": 0, "grantLevel": 0, "source": "boss", "drop": { "minLevel": 30, "chance": 0.04 } },
+    "lion": { "name": "Лев Сольгарда", "desc": "Царственный зверь с тёмной гривой.", "tier": "epic", "faction": "solgard", "flying": false, "speed": 1.8, "level": 60, "price": 25000, "grantLevel": 0, "source": "vendor" },
+    "griffin": { "name": "Королевский грифон", "desc": "Орлиная голова, львиное тело. Парит над землёй.", "tier": "legendary", "faction": "solgard", "flying": true, "speed": 1.9, "level": 70, "price": 0, "grantLevel": 0, "source": "arena", "arena": { "wins": 100 } },
+    "skel_horse": { "name": "Скелет коня", "desc": "Кости и призрачное пламя гривы.", "tier": "uncommon", "faction": "umbrath", "flying": false, "speed": 1.65, "level": 20, "price": 1800, "grantLevel": 0, "source": "vendor" },
+    "spider": { "name": "Гигантский паук", "desc": "Восемь лап и красные глаза.", "tier": "rare", "faction": "umbrath", "flying": false, "speed": 1.75, "level": 40, "price": 9000, "grantLevel": 0, "source": "vendor" },
+    "spirit_wolf": { "name": "Призрачный волк", "desc": "Дух волка, бегущий по лунному следу.", "tier": "rare", "faction": "umbrath", "flying": false, "speed": 1.75, "level": 35, "price": 0, "grantLevel": 0, "source": "boss", "drop": { "minLevel": 30, "chance": 0.04 } },
+    "nightmare": { "name": "Кошмарный скакун", "desc": "Конь Рыцаря Хаоса. Копыта оставляют огонь.", "tier": "epic", "faction": "", "flying": false, "speed": 1.85, "level": 60, "price": 0, "grantLevel": 0, "source": "raid", "raid": "chaos_knight", "dropChance": 0.2 },
+    "bone_dragon": { "name": "Костяной дракон", "desc": "Остов древнего дракона с рваными крыльями. Парит над землёй.", "tier": "legendary", "faction": "umbrath", "flying": true, "speed": 1.9, "level": 70, "price": 0, "grantLevel": 0, "source": "boss", "drop": { "minLevel": 60, "chance": 0.02 } },
+    "wyvern": { "name": "Виверна Умбрата", "desc": "Крылатая ящерица с ядовитым хвостом. Парит над землёй.", "tier": "epic", "faction": "umbrath", "flying": true, "speed": 1.85, "level": 60, "price": 0, "grantLevel": 0, "source": "arena", "arena": { "wins": 60 } }
   }
 }

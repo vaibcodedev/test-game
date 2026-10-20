@@ -48,6 +48,10 @@ export class Mob {
   summoned = false;
   /** Контроллер босса (фазы и способности). */
   boss: { update(dt: number): void; reset(): void; onDeath(): void } | null = null;
+  /** Полная неуязвимость (рейд-босс до начала боя): удары — промах, контроль не ложится (World.isImmune). */
+  immune = false;
+  /** Множитель получаемого урона (рейд-босс на паузе смены фазы — 0.1). */
+  dmgTakenMul = 1;
 
   constructor(
     readonly id: string,

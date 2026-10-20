@@ -1,6 +1,7 @@
 /** Сетевой слой клиента: комната Colyseus (мир или арена), личное состояние и подписки. */
 import { Client, getStateCallbacks, type Room } from "colyseus.js";
 import type { ArenaInfo, ArenaMode, ArenaResultMsg, HistoryRow, LeaderRow, MatchFoundMsg, PartyState, Reservation } from "../../shared/arena";
+import type { RaidBannerMsg, RaidCastMsg, RaidMusterMsg, RaidResultMsg, RaidReviveMsg, RaidWelcome } from "../../shared/raid";
 import type { RumorMsg } from "../../shared/rumors";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../shared/encounters";
 import type { TradeView } from "../../shared/trade";
@@ -38,6 +39,7 @@ type Events = {
   nodes: { depleted: number[] };
   loot: LootBag[];
   cd: CooldownMsg;
+  queue: { id: string | null; pend?: boolean };
   leave: number;
   /** Сервер завершил выход (задача 29): куда вернуться. */
   logout: LogoutMode;
@@ -51,7 +53,12 @@ type Events = {
   kicked: string;
   /** Переподключиться нельзя (сессия истекла, герой недоступен): назад к входу. */
   lost: string;
-  switch: "world" | "arena";
+  switch: "world" | "arena" | "raid";
+  "raid:muster": RaidMusterMsg;
+  "raid:cast": RaidCastMsg;
+  "raid:banner": RaidBannerMsg;
+  "raid:revive": RaidReviveMsg;
+  "raid:result": RaidResultMsg;
   "arena:info": ArenaInfo;
   "arena:found": MatchFoundMsg;
   "arena:cancelled": { reason: string };
@@ -132,12 +139,17 @@ export class Net {
   id = "";
   seed = 0;
   /** Где сейчас игрок: в мире или на арене. */
-  kind: "world" | "arena" = "world";
+  kind: "world" | "arena" | "raid" = "world";
   arena: ArenaWelcome | null = null;
+  raid: RaidWelcome | null = null;
   self: SelfState | null = null;
   bags: LootBag[] = [];
   arenaInfo: ArenaInfo | null = null;
   party: PartyState | null = null;
+  /** Умение в очереди (золотая рамка) и длительность общего отката, мс. */
+  queued: string | null = null;
+  pending = false;
+  gcdMs = 750;
   cooldowns = new Map<string, number>(); // id -> performance.now() окончания
   /** Идёт переход между комнатами: обрыв старой комнаты — не ошибка. */
   switching = false;
@@ -311,13 +323,19 @@ export class Net {
     room.onMessage("pong", () => (this.pingAt = 0));
     room.onMessage("kicked", (m: { text?: string }) => (this.kickText = m?.text ?? ""));
     const welcome = new Promise<void>((resolve) => {
-      room.onMessage("welcome", (w: { seed?: number; arena?: boolean } & Partial<ArenaWelcome>) => {
-        if (w.arena) {
+      room.onMessage("welcome", (w: { seed?: number; arena?: boolean; raid?: boolean } & Partial<ArenaWelcome>) => {
+        if (w.raid) {
+          this.kind = "raid";
+          this.arena = null;
+          this.raid = w as unknown as RaidWelcome;
+        } else if (w.arena) {
           this.kind = "arena";
+          this.raid = null;
           this.arena = w as ArenaWelcome;
         } else {
           this.kind = "world";
           this.arena = null;
+          this.raid = null;
           this.seed = w.seed ?? this.seed;
         }
         resolve();
@@ -341,8 +359,10 @@ export class Net {
     });
     room.onMessage("cd", (c: CooldownMsg) => {
       this.cooldowns.set(c.id, performance.now() + c.ms);
+      if (c.id === "gcd") this.gcdMs = c.ms;
       this.emit("cd", c);
     });
+    room.onMessage("queue", (m: { id: string | null; pend?: boolean }) => { this.queued = m.id; this.pending = !!m.pend; this.emit("queue", m); });
     room.onMessage("arena:info", (m: ArenaInfo) => {
       this.arenaInfo = m;
       this.emit("arena:info", m);
@@ -351,10 +371,12 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:give:result"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
+    room.onMessage("raid:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
+    room.onMessage("raid:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("logout:wait", (m: { ms: number }) => this.emit("logout:wait", m));
     room.onMessage("logout:cancel", (m: { reason: string }) => {
       this.logoutMode = null;

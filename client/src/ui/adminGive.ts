@@ -17,12 +17,13 @@ import { RESOURCES } from "../../../shared/biomes";
 import type { Net } from "../net";
 import "./admin.css";
 
+import { MOUNTS, MOUNT_SOURCES, MOUNT_TIERS } from "../../../shared/mounts";
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const PAGE = 120;
 
-type Group = "weapon" | "offhand" | "armor" | "cloak" | "jewelry" | "unique" | "legend" | "stuff";
-const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["cloak", "Плащ"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"]];
+type Group = "weapon" | "offhand" | "armor" | "cloak" | "jewelry" | "unique" | "legend" | "stuff" | "mount";
+const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["cloak", "Плащ"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"], ["mount", "Маунты"]];
 const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", armor: "Броня", boots: "Броня", cloak: "Плащ", ring: "Бижутерия", amulet: "Бижутерия" };
 /** Подписи видов предметов (typeName у секиры — «Двуручный топор», а игрок знает «Секира»). */
 const CHIP: Record<string, string> = { sword: "Одноручный меч", greatsword: "Двуручный меч", twinblades: "Парные мечи", dagger: "Кинжалы", axe: "Топор", greataxe: "Секира", mace: "Булава", hammer: "Молот", spear: "Копьё", scythe: "Коса", bow: "Лук", crossbow: "Арбалет", staff: "Посох", scepter: "Жезл", shield: "Щит", orb: "Сфера", tome: "Книга", ring: "Кольцо", amulet: "Амулет" };
@@ -79,6 +80,8 @@ function catalog(): Entry[] {
     const cat = b.id.endsWith("_potion") ? "potion" : b.id.startsWith("food_") ? "food" : MATERIALS[b.id] ? "material" : RESOURCES[b.id] ? "resource" : "resource";
     push({ key: "s:" + b.id, kind: "stuff", id: b.id, name: b.name, group: "stuff", cat, typeLabel: STUFF.find((s) => s[0] === cat)![1], slot: "consumable", hands: "", level: 0, req: 0, allowed: null, rec: [], faction: "", tier: 0, tiers: 0, best: false, hi: false, base: b.id });
   }
+  // маунты: выдаются командой admin:give { mount }; тип записи «stuff» без уровня и снаряжения, вид (cat) — ярус
+  for (const m of Object.values(MOUNTS)) push({ key: "mt:" + m.id, kind: "stuff", id: m.id, name: m.name, group: "mount", cat: m.tier, typeLabel: `${MOUNT_TIERS[m.tier]} · ×${m.speed}${m.flying ? " · летающий" : ""} · ${MOUNT_SOURCES[m.source]}`, slot: "consumable", hands: "", level: 0, req: 0, allowed: null, rec: [], faction: m.faction, tier: 0, tiers: 0, best: false, hi: false, base: "hp_potion" });
   BY_KEY = new Map(out.map((e) => [e.key, e]));
   return (CATALOG = out);
 }
@@ -182,6 +185,7 @@ export class GiveTab {
     if (s) { s.textContent = this.stat.text; s.className = "ag-status" + (this.stat.kind ? " " + this.stat.kind : ""); }
   }
   private iconSrc(e: Entry, rarity: number): { src: string; fb: string } {
+    if (e.group === "mount") return { src: icon("mount_" + e.id), fb: icon("mount_horse") };
     const uid = "adm-" + e.id;
     const real = e.kind === "model" ? iconFor({ base: e.base, stats: {}, uid, rarity, model: e.id }) : e.kind === "unique" ? iconFor({ base: e.base, stats: {}, uid, rarity, unique: e.id }) : e.kind === "legend" ? iconFor({ base: e.base, stats: {}, uid, rarity, legendary: e.id }) : iconFor({ base: e.base, stats: {}, uid, rarity });
     const fb = iconFor({ base: e.base, stats: {}, uid, rarity: Math.min(2, rarity) });
@@ -194,7 +198,7 @@ export class GiveTab {
       const g = previewGear(e.id, this.ilvlOf(e), this.rarityOf(e) as Rarity, s.plus);
       if (g) return g;
     }
-    const it = e.kind === "unique" ? makeUnique(e.id) : e.kind === "legend" ? makeLegendary(e.id) : makeItem(e.id, 1, 0, () => 0.5);
+    const it = e.group === "mount" ? makeItem("hp_potion", 1, 0, () => 0.5) : e.kind === "unique" ? makeUnique(e.id) : e.kind === "legend" ? makeLegendary(e.id) : makeItem(e.id, 1, 0, () => 0.5);
     if (s.plus && e.kind !== "stuff") it.plus = s.plus;
     return { item: it, fixed: [], random: 0, pool: [] };
   }
@@ -319,6 +323,7 @@ export class GiveTab {
     else if (e.kind === "base") Object.assign(msg, { base: e.id, rarity: this.rarityOf(e), ilvl: this.ilvlOf(e), plus: s.plus });
     else if (e.kind === "unique") Object.assign(msg, { unique: e.id, plus: s.plus });
     else if (e.kind === "legend") Object.assign(msg, { legendary: e.id, plus: s.plus });
+    else if (e.group === "mount") Object.assign(msg, { mount: e.id });
     else Object.assign(msg, { base: e.id, qty: s.qty });
     if (equip) msg.equip = true;
     this.status("Отправлено…");
@@ -362,10 +367,10 @@ export class GiveTab {
     const wrap = this.q("#ag-cats-wrap");
     wrap.hidden = s.group === "all";
     if (s.group === "all") return;
-    const order = s.group === "stuff" ? STUFF.map((x) => x[0]) : Object.keys(BASE_ITEMS);
+    const order = s.group === "mount" ? Object.keys(MOUNT_TIERS) : s.group === "stuff" ? STUFF.map((x) => x[0]) : Object.keys(BASE_ITEMS);
     const ids = [...kinds.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    const label = (k: string) => (s.group === "stuff" ? STUFF.find((x) => x[0] === k)![1] : BASE_ITEMS[k] && !BASE_ITEMS[k].armorType && s.group === "armor" ? "Простой" : typeLabel(k));
-    const chipOf = (k: string) => this.chip(label(k), s.cat === k, "cat", k, { n: cc.get(k) ?? 0, title: typeLabel(k) });
+    const label = (k: string) => (s.group === "mount" ? MOUNT_TIERS[k as "common"] : s.group === "stuff" ? STUFF.find((x) => x[0] === k)![1] : BASE_ITEMS[k] && !BASE_ITEMS[k].armorType && s.group === "armor" ? "Простой" : typeLabel(k));
+    const chipOf = (k: string) => this.chip(label(k), s.cat === k, "cat", k, { n: cc.get(k) ?? 0, title: s.group === "mount" ? label(k) : typeLabel(k) });
     if (s.group === "armor") {
       this.q("#ag-cats").innerHTML = (["helmet", "armor", "boots"] as Slot[]).map((sl) => `<div class="ag-row"><span class="ag-rl">${SLOT_NAMES[sl]}</span>${ids.filter((k) => BASE_ITEMS[k].slot === sl).map(chipOf).join("")}</div>`).join("");
     } else this.q("#ag-cats").innerHTML = `<div class="ag-chips">${ids.map(chipOf).join("")}</div>`;

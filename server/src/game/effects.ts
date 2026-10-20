@@ -6,6 +6,7 @@
  * Контроль и дебаффы от героя проверяют w.canAffect (нейтральный город, ушедший из мира герой) и не ложатся от мёртвого источника.
  * Ни контроль, ни дебаффы (из любого источника, и без него) не ложатся на полностью неуязвимого (w.isImmune).
  */
+import { BAL } from "../../../shared/balance";
 import type { Player } from "./Player";
 import type { Actor, World } from "./World";
 
@@ -75,7 +76,9 @@ export function tickEffects(w: World, a: Actor) {
 }
 
 /** Длительность контроля с учётом «Несгибаемого» у героев. */
-export const ccMs = (w: World, a: Actor, ms: number) => (w.isPlayer(a) ? ms * (1 - a.derived.ccReduce) : ms);
+/** Длительность контроля: «Несгибаемый» и пр. режут; от героя по герою — × pvp.ccMult (data/balance.json). */
+export const ccMs = (w: World, a: Actor, ms: number, by?: Actor | null) =>
+  w.isPlayer(a) ? ms * (1 - a.derived.ccReduce) * (by && by !== a && w.isPlayer(by) ? BAL.pvp.ccMult : 1) : ms;
 
 /** Может ли by наложить эффект на a; by = null — эффект без источника (среда, система). На неуязвимого (w.isImmune) — нет. */
 function allowed(w: World, by: Actor | null, a: Actor) {
@@ -84,7 +87,7 @@ function allowed(w: World, by: Actor | null, a: Actor) {
 
 /** Замедление a на pct% на ms (контроль: срок режет «Несгибаемый»). by — кто накладывает. true — замедление действует. */
 export function applySlow(w: World, by: Actor | null, a: Actor, pct: number, ms: number): boolean {
-  return allowed(w, by, a) && put(w, a, "slow", pct, ccMs(w, a, ms));
+  return allowed(w, by, a) && put(w, a, "slow", pct, ccMs(w, a, ms, by));
 }
 
 /** Ослабление: урон a −pct% на ms (с эффектом «weak» на клиенте). true — ослабление действует. */
@@ -101,7 +104,7 @@ export function applyHaste(w: World, p: Player, pct: number, ms: number): boolea
 
 /** Оглушение a на ms (срок только продлевается, «Несгибаемый» режет). */
 export function applyStun(w: World, by: Actor | null, a: Actor, ms: number): boolean {
-  const until = w.time + ccMs(w, a, ms);
+  const until = w.time + ccMs(w, a, ms, by);
   if (!(until > w.time) || !allowed(w, by, a)) return false;
   a.stunUntil = Math.max(a.stunUntil, until);
   return true;
@@ -109,7 +112,7 @@ export function applyStun(w: World, by: Actor | null, a: Actor, ms: number): boo
 
 /** Корни (обездвиживание) a на ms (срок только продлевается, «Несгибаемый» режет). */
 export function applyRoot(w: World, by: Actor | null, a: Actor, ms: number): boolean {
-  const until = w.time + ccMs(w, a, ms);
+  const until = w.time + ccMs(w, a, ms, by);
   if (!(until > w.time) || !allowed(w, by, a)) return false;
   a.rootUntil = Math.max(a.rootUntil, until);
   return true;

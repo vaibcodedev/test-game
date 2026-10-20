@@ -286,12 +286,54 @@ const bag = (boss: boolean): Art => () => {
   return c.outline();
 };
 
+/** Колонна цитадели 64×100: обсидиан с раскалёнными трещинами. */
+const chaosPillar: Art = () => {
+  const c = new PC(64, 100);
+  const R = rng(114);
+  // ствол с лёгким сужением
+  c.poly([[14, 92], [50, 92], [47, 14], [17, 14]], (x) => P.obsidian[x < 26 ? 3 : x > 40 ? 1 : 2]);
+  c.rect(14, 60, 3, 32, P.obsidian[4]);
+  // базa и капитель
+  c.shadedRect(8, 88, 48, 10, P.obsidian);
+  c.shadedRect(10, 4, 44, 12, P.obsidian);
+  for (let y = 24; y < 86; y += 12) c.rect(17, y, 30, 1, P.obsidian[0]);
+  // раскалённые трещины
+  for (let i = 0; i < 5; i++) {
+    let x = 20 + R() * 24, y = 20 + R() * 12;
+    const n = 4 + Math.floor(R() * 4);
+    for (let j = 0; j < n; j++) {
+      const nx = Math.max(18, Math.min(46, x + (R() - 0.5) * 8)), ny = y + 6 + R() * 8;
+      c.line(x, y, nx, ny, P.lava[2], 1);
+      c.set(x, y, P.lava[4]); c.set(nx, ny, P.lava[3]);
+      x = nx; y = ny;
+      if (y > 84) break;
+    }
+  }
+  c.line(32, 90, 30, 80, P.lava[3], 1);
+  c.rect(24, 94, 16, 2, P.lava[2]);
+  return c.outline();
+};
+/** Портал выхода 48×64: тёмная арка с огненным провалом. */
+const raidPortal: Art = () => {
+  const c = new PC(48, 64);
+  c.shadedEllipse(24, 34, 20, 29, P.obsidian, [-0.5, -0.7], false);
+  c.ellipse(24, 36, 14, 23, P.lava[0]);
+  c.ellipse(24, 38, 10, 18, P.lava[1]);
+  c.ellipse(24, 40, 6, 12, P.lava[2]);
+  c.ellipse(24, 42, 3, 6, P.lava[3]);
+  const R = rng(7);
+  for (let i = 0; i < 14; i++) c.set(14 + R() * 20, 14 + R() * 40, P.lava[R() < 0.5 ? 3 : 4]);
+  c.shadedRect(2, 56, 44, 8, P.obsidian);
+  c.rect(6, 58, 36, 1, P.lava[2]);
+  return c.outline();
+};
+
 export const OBJECT_ART: Record<string, Art> = {
   oak, pine, dead_tree: deadTree, bush, rock, big_rock: bigRock,
   house: () => house(P.roofRed), house_blue: () => house(P.roofBlue),
   fountain, stall, lamp, well, barrel, crate, pillar, torch,
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),
-  mushrooms: mushrooms(false), mushrooms_glow: mushrooms(true), lilypad, bones, ember_vent: emberVent, crystal,
+  mushrooms: mushrooms(false), mushrooms_glow: mushrooms(true), lilypad, bones, ember_vent: emberVent, crystal, chaos_pillar: chaosPillar, raid_portal: raidPortal,
   bag: bag(false), bag_boss: bag(true),
   ...TOWN_ART,
   ...CITY_ART,

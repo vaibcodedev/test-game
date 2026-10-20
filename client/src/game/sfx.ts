@@ -1,5 +1,5 @@
 /** Процедурные звуки на WebAudio (без файлов). AudioContext стартует по первому действию игрока. */
-export type SfxName = "hit" | "crit" | "fire" | "frost" | "arrow" | "heal" | "shield" | "poison" | "explosion" | "slam" | "arcane" | "holy" | "shadow" | "step" | "clink" | "call" | "halt" | "bell" | "horn" | "tpgo" | "tparrive" | "tpfizzle";
+export type SfxName = "hit" | "crit" | "fire" | "frost" | "arrow" | "heal" | "shield" | "poison" | "explosion" | "slam" | "arcane" | "holy" | "shadow" | "step" | "clink" | "call" | "halt" | "bell" | "horn" | "tpgo" | "tparrive" | "tpfizzle" | "error" | "queue";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -144,6 +144,8 @@ export function play(name: SfxName, gain = 1) {
       tone("sine", 100, 38, 0.5, v * 1.0); noise(0.5, v * 0.7, 6000, 500, "bandpass");
       [880, 1320, 1760, 2640].forEach((f, i) => { tone("sine", f, f, 0.7, v * (0.5 - i * 0.07), 0.04 + i * 0.07); tone("triangle", f * 2, f * 2, 0.35, v * 0.12, 0.04 + i * 0.07); });
       break;
+    case "error": tone("triangle", 190, 120, 0.09, v * 0.22); break;
+    case "queue": tone("sine", 880, 1175, 0.06, v * 0.12); break;
     case "tpfizzle": noise(0.45, v * 0.9, 3500, 250, "bandpass"); tone("sawtooth", 520, 70, 0.35, v * 0.4); tone("sine", 1600, 300, 0.25, v * 0.3); break;
     case "shadow": tone("sawtooth", 300, 80, 0.2, v * 0.4); noise(0.18, v * 0.5, 1500, 200, "bandpass"); break;
   }

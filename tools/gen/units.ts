@@ -6,7 +6,6 @@
  */
 import { OUTLINE, PC, hex, mix, shade, withA, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
-import { MOUNTS, mountSprite } from "../../shared/mounts";
 
 export type View = "down" | "up" | "side";
 export type Pose = { kind: "walk" | "attack"; i: number };
@@ -684,16 +683,7 @@ function sideOnly(fn: (p: Pose) => PC, frame = 32, squashDeath = true): UnitArt 
   return { frame, squashDeath, draw: (_v, p) => fn(p) };
 }
 
-/** Маунты из data/mounts.json: четвероногое без смерти, рисуется под всадником. */
-const MOUNT_ART: Record<string, UnitArt> = Object.fromEntries(
-  Object.values(MOUNTS).map((m) => [
-    mountSprite(m.id),
-    sideOnly((p) => quadruped({ body: ramp_(...m.colors), mane: ramp_(...m.mane), ears: "point", tail: m.id === "horse" ? "thin" : "bushy", snout: ramp_(...m.colors) }, p)),
-  ]),
-);
-
 export const UNIT_ART: Record<string, UnitArt> = {
-  ...MOUNT_ART,
   /** Питомцы (data/pets.json): волчонок, огонёк, черепашка. */
   pet_wolf: sideOnly((p) => quadruped({ body: ramp_("#5a4a34", "#86704c", "#b09468", "#d8c090"), belly: P.bone, ears: "point", tail: "bushy" }, p)),
   pet_ember: sideOnly((p) => slime(ramp_("#8a2410", "#d0501c", "#f08a2c", "#ffd060"), p, 1, true)),

@@ -52,6 +52,10 @@ export interface PlayerSave {
   look?: number;
   /** Панели умений (shared/hotbar.ts); нет в старых сохранениях — миграция при первом входе. */
   bars?: Bars;
+  /** Рейд (задача 114): когда в последний раз взята добыча босса (id → Date.now()), победы, защита от невезения трофеев. */
+  raid?: { lootAt: Record<string, number>; wins: number; pity: number };
+  /** Вещи, которые не поместились в сумку (рейд, награды): выдаются в мире, когда появится место. */
+  pendingItems?: Item[];
 }
 
 export interface CharRow {
@@ -287,6 +291,20 @@ export class GameDB {
     this.db
       .prepare("UPDATE players SET data = ?, level = ?, updated = ? WHERE name_key = ?")
       .run(JSON.stringify(save), save.level, Date.now(), GameDB.key(name));
+  }
+  /** Несколько сохранений одной транзакцией: все или ни одного (награды рейда сразу после победы). */
+  saveMany(list: { name: string; save: PlayerSave }[]) {
+    if (!list.length) return;
+    const st = this.db.prepare("UPDATE players SET data = ?, level = ?, updated = ? WHERE name_key = ?");
+    const now = Date.now();
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      for (const { name, save } of list) st.run(JSON.stringify(save), save.level, now, GameDB.key(name));
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
   }
 
   top(limit = 10): { name: string; cls: string; level: number }[] {

@@ -11,6 +11,7 @@ import { ArenaStore } from "./arena/store";
 import { services } from "./arena/registry";
 import { GameDB } from "./db";
 import { ArenaRoom } from "./rooms/ArenaRoom";
+import { RaidRoom } from "./rooms/RaidRoom";
 import { homeCity } from "../../shared/cities";
 import { classFaction } from "../../shared/classes";
 import { WorldRoom } from "./rooms/WorldRoom";
@@ -51,6 +52,7 @@ services.db = WorldRoom.db;
 services.arena = new ArenaStore(WorldRoom.db.raw);
 gameServer.define(ROOM_NAME, WorldRoom);
 gameServer.define("arena", ArenaRoom);
+gameServer.define("raid", RaidRoom);
 
 // HOST — только для десктопа (127.0.0.1, без запроса брандмауэра); без переменной слушаем все интерфейсы, как раньше
 await gameServer.listen(PORT, process.env.HOST || undefined);

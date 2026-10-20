@@ -15,7 +15,7 @@ import type { World } from "./World";
 
 type Ability = { every: number; at: number; phases: number[]; run: () => void };
 
-abstract class Boss {
+export abstract class Boss {
   casting = false;
   protected phase = 0;
   protected abilities: Ability[] = [];

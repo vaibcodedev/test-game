@@ -35,7 +35,8 @@
     "FallenBarrens": { "name": "Пустошь Павших", "levels": [55, 70], "mobs": ["jackal", "scorpion", "skeleton_knight"], "style": "Desert" },
     "PlagueMarsh": { "name": "Чумные топи", "levels": [55, 70], "mobs": ["toxic_slime", "drowned", "skeleton_knight"], "style": "Swamp" },
     "StormPeaks": { "name": "Грозовой хребет", "levels": [65, 80], "mobs": ["frost_wolf", "ice_golem"], "style": "Snow" },
-    "AshFoothills": { "name": "Пепельные предгорья", "levels": [18, 26], "mobs": ["skeleton", "imp"], "style": "Ashlands" }
+    "AshFoothills": { "name": "Пепельные предгорья", "levels": [18, 26], "mobs": ["skeleton", "imp"], "style": "Ashlands" },
+    "Citadel": { "name": "Цитадель Хаоса", "levels": [90, 100], "mobs": [], "note": "Рейд: Рогатый Рыцарь Хаоса", "style": "Volcano" }
   },
   "spawnQuota": {
     "_doc": "Сколько точек появления мобов на зону. Проходы: old — старые зоны середины, ring — биомы вокруг неё, lands — земли фракций и края мира.",

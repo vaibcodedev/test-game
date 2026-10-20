@@ -1,5 +1,6 @@
 /** Полная карта мира: масштаб и перетаскивание, подписи с плотностью по масштабу, маркер героя, подсказки, легенда. */
 import { CITIES, cityKnown } from "../../../shared/cities";
+import { RAID, RAID_GATE } from "../../../shared/raid";
 import { factionColor } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
 import { PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
@@ -259,6 +260,16 @@ export class WorldMapView {
       if (c.capital) { g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.strokeRect(x - r, y - r, r * 2, r * 2); }
       label(open || c.capital ? c.name : "???", x, y - r - 5, c.capital ? 17 : 15, c.capital ? col : open ? "#ffe08a" : "#a8a0b0");
       hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : "Неизвестный город", sub: open || c.capital ? (c.capital ? "Столица фракции" : "Город") + " · безопасно" : "Ещё не открыт" });
+    }
+    // Врата Цитадели Хаоса (рейд)
+    if (big && RAID_GATE) {
+      const x = X(RAID_GATE.x / TILE), y = Y(RAID_GATE.y / TILE), r = 7;
+      g.fillStyle = "#120a10";
+      g.beginPath(); g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); g.fill();
+      g.fillStyle = "#ff6a2a";
+      g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
+      label(RAID.map.gate, x, y - r - 6, 15, "#ff9a5a");
+      hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: `Рейд · ${RAID.boss.name} · ${RAID.raid.minLevel}+ ур.` });
     }
     // названия рек
     if (big && s >= 1) for (const r of RIVERS) {

@@ -36,3 +36,4 @@
 - PvP-урон умножается на PVP_DAMAGE_MULT (shared/arena.ts).
 - NPC города стоят со смещением от TOWN; новые места проверять через walkable().
 - Обрыв связи: WorldRoom/ArenaRoom.onLeave без согласия → allowReconnection(RECONNECT_SEC=30), герой стоит в мире, обмен отменён; иначе сохранение и удаление. Вход тем же аккаунтом с другой вкладки вытесняет старую сессию (KICK_CODE).
+- Маунты (задача 118): data/mounts.json (ярус, источник, фракция); виды — tools/gen/mounts*.ts (3D-каркас -> листы 12x6 в assets/mounts, manifest.mounts с посадкой всадника); отрисовка в UnitView; получение — server/src/game/mountDrops.ts (босс, awardMount, raidMountTrophies, arenaMountRewards).

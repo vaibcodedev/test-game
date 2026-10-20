@@ -129,6 +129,16 @@ async function main() {
       const a = find(gets2, (i) => i.unique === "ashbringer");
       assert(a.plus === 2 && a.bound, "уникальный: " + JSON.stringify(a));
     });
+    await check("маунты: выдача из группы «Маунты», повторная — без дубля, несуществующий отклоняется", async () => {
+      const own = () => ((gets2.self as unknown as { mounts?: string[] }).mounts ?? []);
+      adm.send("admin:give", { name: "Получатель2", mount: "griffin" });
+      await gets2.until(() => own().includes("griffin"), 3000, "грифон выдан");
+      adm.send("admin:give", { name: "Получатель2", mount: "griffin" });
+      adm.send("admin:give", { name: "Получатель2", mount: "нет_такого" });
+      await sleep(400);
+      assert(own().filter((m) => m === "griffin").length === 1, "дубль маунта: " + JSON.stringify(own()));
+      assert(!own().includes("нет_такого"), "выдан несуществующий маунт");
+    });
     await check("сумка: стопка не влезает целиком — выдаётся сколько влезло, given совпадает с фактом, ответ честный", async () => {
       const full = await Bot.join("Склад", "secret");
       const cap = full.self!.inventory.length, used = () => bag(full).length;

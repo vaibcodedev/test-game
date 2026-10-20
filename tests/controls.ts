@@ -105,6 +105,109 @@ async function main() {
       assert(ally.me().hp === ally.me().maxHp, "союзник ранен");
       await ally.leave();
     });
+
+    // ---------- шаг 7: GCD, очередь, подход, отмена; шаг 8: коды отказов ----------
+    const watch = (b: Bot) => {
+      const log = { cd: [] as { id: string; ms: number; at: number }[], toast: [] as { text: string; code?: string; at: number }[], queue: [] as { id: string | null; pend: boolean }[] };
+      b.room.onMessage("cd", (c: any) => log.cd.push({ id: c.id, ms: c.ms, at: Date.now() }));
+      b.room.onMessage("toast", (t: any) => log.toast.push({ text: t.text, code: t.code, at: Date.now() }));
+      b.room.onMessage("queue", (m: any) => log.queue.push(m));
+      return log;
+    };
+    const la = watch(a);
+    const countCd = (log: ReturnType<typeof watch>, id: string) => log.cd.filter((c) => c.id === id).length;
+
+    await check("отказы несут code: цель, дальность, перезарядка, не изучено", async () => {
+      const id = await setup();
+      la.toast.length = 0;
+      a.send("skill", { id: "taunt", x: 0, y: 0, target: null, q: 0 });
+      await a.until(() => la.toast.some((t) => t.code === "target"), 2000, "code target");
+      assert(la.toast.find((t) => t.code === "target")!.text.includes("Tab"), "текст «Нет цели» без подсказки");
+      a.send("dbg", { op: "tp", x: spawns[0].x + 400, y: spawns[0].y });
+      await sleep(300);
+      a.send("skill", { id: "taunt", x: spawns[0].x, y: spawns[0].y, target: id, q: 0, ap: false });
+      await a.until(() => la.toast.some((t) => t.code === "range"), 2000, "code range");
+      assert(/Слишком далеко: ещё \d+ кл\./.test(la.toast.find((t) => t.code === "range")!.text), "текст дальности: " + la.toast.map((t) => t.text));
+      a.send("skill", { id: "quake", x: 0, y: 0, q: 0 });
+      await a.until(() => la.toast.some((t) => t.code === "learn"), 2000, "code learn");
+    });
+
+    await check("каст вне дальности подводит героя и кастует (подход)", async () => {
+      const id = await setup();
+      a.send("dbg", { op: "tp", x: spawns[0].x + 420, y: spawns[0].y });
+      await sleep(300);
+      const n0 = countCd(la, "taunt"), d0 = dist(a, id);
+      a.send("skill", { id: "taunt", x: spawns[0].x, y: spawns[0].y, target: id, q: 400, ap: true });
+      await a.until(() => la.queue.some((m) => m.pend), 1000, "подход начат");
+      await a.until(() => countCd(la, "taunt") > n0, 4500, "каст после подхода");
+      assert(dist(a, id) < d0 - 60, "герой не подошёл");
+      assert(dist(a, id) <= 260 + 40, "каст вне дальности: " + dist(a, id));
+    });
+
+    await check("WASD отменяет подход", async () => {
+      await sleep(8500);
+      const id = await setup();
+      a.send("dbg", { op: "tp", x: spawns[0].x + 420, y: spawns[0].y });
+      await sleep(300);
+      const n0 = countCd(la, "taunt");
+      la.queue.length = 0;
+      a.send("skill", { id: "taunt", x: spawns[0].x, y: spawns[0].y, target: id, q: 400, ap: true });
+      await sleep(200);
+      a.send("input", { mx: 1, my: 0 });
+      await sleep(100);
+      a.send("input", { mx: 0, my: 0 });
+      await sleep(2500);
+      assert(countCd(la, "taunt") === n0, "подход не отменился");
+      assert(la.queue.some((m) => !m.pend) , "сервер не сообщил об отмене подхода");
+    });
+
+    const m = await Bot.join("МагУправ", "secret", "mage");
+    m.send("dbg", { op: "level", v: 20 });
+    m.send("dbg", { op: "god" });
+    await sleep(300);
+    m.send("dbg", { op: "tp", x: town.x, y: town.y });
+    m.send("learn", { id: "frostnova" });
+    await sleep(200);
+    m.send("learn", { id: "blink" });
+    await sleep(300);
+    const lm = watch(m);
+    const fb = (q = 0) => m.send("skill", { id: "fireball", x: m.me().x + 120, y: m.me().y, q });
+    const lastCd = (id: string) => lm.cd.filter((c) => c.id === id).slice(-1)[0];
+
+    await check("GCD держит второе умение, offGcd — нет", async () => {
+      assert(m.self!.skills.frostnova && m.self!.skills.blink, "умения не изучены " + JSON.stringify(m.self!.skills) + m.toasts.join("|"));
+      await sleep(2600);
+      lm.cd.length = 0;
+      fb();
+      await a.until(() => countCd(lm, "fireball") > 0, 1500, "огненный шар");
+      assert(countCd(lm, "gcd") > 0, "нет cd gcd");
+      m.send("skill", { id: "frostnova", x: m.me().x, y: m.me().y, q: 0 });
+      await sleep(300);
+      assert(countCd(lm, "frostnova") === 0, "GCD не удержал умение");
+      m.send("skill", { id: "blink", x: m.me().x + 40, y: m.me().y, q: 0 });
+      await a.until(() => countCd(lm, "blink") > 0, 1500, "offGcd-умение прошло");
+    });
+
+    await check("очередь: за 300 мс до готовности исполняется, за 600 мс — нет", async () => {
+      await sleep(2600);
+      lm.cd.length = 0; lm.queue.length = 0;
+      fb();
+      await a.until(() => countCd(lm, "fireball") === 1, 1500, "первый шар");
+      const c0 = lastCd("fireball"), t0 = c0.at;
+      await sleep(Math.max(0, c0.ms - 300 - (Date.now() - t0)));
+      fb(400);
+      await a.until(() => lm.queue.some((q) => q.id === "fireball"), 1000, "умение в очереди");
+      await a.until(() => countCd(lm, "fireball") === 2, 1500, "исполнено из очереди");
+      assert(lastCd("fireball").at - t0 >= c0.ms - 120, "исполнено раньше готовности");
+      // за 600 мс — отбрасывается
+      const c1 = lastCd("fireball");
+      await sleep(Math.max(0, c1.ms - 600 - (Date.now() - c1.at)));
+      fb(400);
+      await sleep(1400);
+      assert(countCd(lm, "fireball") === 2, "нажатие за 600 мс не должно исполняться");
+      // удержание: код cd отдаётся при нажатии на перезарядке вне окна очереди
+    });
+    await m.leave();
   } finally {
     await stopServer();
   }

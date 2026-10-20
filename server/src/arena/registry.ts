@@ -9,3 +9,9 @@ export const inArena = new Set<string>();
 
 /** Длительность боя; в тестах можно сократить переменной ARENA_MATCH_MS. */
 export const matchMs = (def: number) => Number(process.env.ARENA_MATCH_MS) || def;
+
+/** Ключи имён героев в рейде (задача 114): пока они там, войти этим героем в мир нельзя; число идущих рейдов. */
+export const inRaid = new Set<string>();
+export const raids = { running: 0 };
+/** Объявление в чат мира (рейд → WorldRoom). */
+export const worldNews = { system: (_text: string) => {} };

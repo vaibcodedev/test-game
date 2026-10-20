@@ -166,7 +166,8 @@ export type Fx =
   | { t: "proj"; k: string; from: string; tx: number; ty: number; ms: number; to?: string }
   | { t: "aoe"; k: string; x: number; y: number; r: number }
   | { t: "cone"; k: string; x: number; y: number; a: number; r: number; w: number }
-  | { t: "tele"; shape: "circle" | "cone" | "ring"; k: string; x: number; y: number; r: number; r2?: number; a?: number; w?: number; ms: number }
+  /** Телеграф: circle — круг r; ring — кольцо r..r2; cone — конус r, угол a, раствор w (рад); line — линия длиной r по углу a, полуширина w (рейд). */
+  | { t: "tele"; shape: "circle" | "cone" | "ring" | "line"; k: string; x: number; y: number; r: number; r2?: number; a?: number; w?: number; ms: number }
   | { t: "hazard"; id: string; k: string; x: number; y: number; r: number; ms: number }
   | { t: "blink"; id: string; x0: number; y0: number; x1: number; y1: number; k?: string }
   | { t: "chain"; pts: number[]; k?: string }
@@ -174,6 +175,12 @@ export type Fx =
   | { t: "buff"; id: string; k: string; ms: number }
   | { t: "say"; id: string; text: string; /** звук у города: перекличка, окрик у ворот, тревога */ snd?: "call" | "halt" | "alarm" }
   | { t: "spawn"; id: string; k: string }
+  /** Рейд-босс: поза (swing — замах, slam — удар в землю, roar — рёв, idle — стойка) на ms. */
+  | { t: "pose"; id: string; k: "swing" | "slam" | "roar" | "idle"; ms: number }
+  /** Рейд-босс: реплика крупным текстом над головой и строкой в чате. */
+  | { t: "yell"; id: string; text: string }
+  /** Рейд: мощный удар — тряска и вспышка (quake | rift | phase | sun | death | berserk) в точке x, y. */
+  | { t: "shake"; k: string; x: number; y: number }
   /** Телепорт: cast — начало каста у камня (sx,sy), go — уход, arrive — прибытие, cancel — прерван */
   | { t: "tp"; id: string; ph: "cast" | "go" | "arrive" | "cancel"; x: number; y: number; sx?: number; sy?: number; ms?: number };
 
@@ -185,6 +192,10 @@ export interface ChatLine {
   /** Фракция автора; foreign — чужая фракция (текст на «чужом языке»). */
   faction?: FactionId;
   foreign?: boolean;
+  /** Рейд: перекличка ботов и чат рейда (без «чужого языка»). */
+  raid?: boolean;
+  /** Реплика рейд-босса: выделяется цветом босса. */
+  boss?: boolean;
 }
 
 export interface ToastMsg {
@@ -195,6 +206,8 @@ export interface ToastMsg {
   classes?: string[];
   /** Куда автоматически встало изученное умение: клиент дописывает «— клавиша R» по своей схеме. */
   slot?: { bar: number; i: number };
+  /** Причина отказа каста/предмета: звук и красная вспышка слота. */
+  code?: "target" | "range" | "los" | "mana" | "cd" | "learn";
 }
 
 export interface CooldownMsg {

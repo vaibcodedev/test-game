@@ -72,8 +72,10 @@ export enum Zone {
   StormPeaks,
   /** Восточное кольцо середины (вход из земель Умбрата). */
   AshFoothills,
+  /** Цитадель Хаоса: карта рейда (shared/raid.ts), в мире не встречается. */
+  Citadel,
 }
-export const ZONE_COUNT = 26;
+export const ZONE_COUNT = 27;
 /** Зона города (безопасная, мобы не заходят). */
 export const isTownZone = (z: Zone) => z === Zone.Town || z === Zone.OasisCity || z === Zone.SnowCity || z === Zone.SolgardCity || z === Zone.UmbrathCity;
 const CITY_ZONE: Record<string, Zone> = { oasis: Zone.OasisCity, snow_valley: Zone.SnowCity, aurelion: Zone.SolgardCity, morthaim: Zone.UmbrathCity };

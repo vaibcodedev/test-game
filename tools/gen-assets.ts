@@ -9,6 +9,8 @@ import { buildEquipIcons } from "./gen/equip";
 import { buildItemIcon, buildSkillIcon, FX_ART, ITEM_ICONS, OBJECT_ART, SKILL_ICONS } from "./gen/objects";
 import { buildLavaGlow, buildTileset, buildWater } from "./gen/tiles";
 import { buildChaosHalo, buildChaosKnightSheet, KNIGHT_COLS, KNIGHT_FRAME } from "./gen/raidboss";
+import { buildMountIcon, buildMountSheet, saveMountPng, type MountMeta } from "./gen/mounts";
+import { MODELS as MOUNT_MODELS } from "./gen/mounts-all";
 import { buildUnitSheet, UNIT_ART } from "./gen/units";
 
 const OUT = path.resolve("client/public/assets");
@@ -16,6 +18,8 @@ const t0 = Date.now();
 const manifest = {
   /** cols — число столбцов листа, если не 12 (рейд-босс: 24). */
   units: {} as Record<string, { frame: number; cols?: number }>,
+  /** маунты: лист 12x6 кадров, см. tools/gen/mounts.ts */
+  mounts: {} as Record<string, MountMeta>,
   objects: {} as Record<string, { w: number; h: number }>,
   icons: [] as string[],
   fx: [] as string[],
@@ -32,6 +36,13 @@ for (const [id, art] of Object.entries(UNIT_ART)) {
 // рейд-босс «Рогатый Рыцарь Хаоса»: кадр 128, 24 столбца (шаг, удар, смерть, удар в землю, рёв, стойка), см. tools/gen/raidboss.ts
 buildChaosKnightSheet().save(path.join(OUT, "units/chaos_knight.png"));
 manifest.units.chaos_knight = { frame: KNIGHT_FRAME, cols: KNIGHT_COLS };
+for (const id of Object.keys(MOUNT_MODELS)) {
+  const { sheet, meta } = buildMountSheet(id);
+  saveMountPng(sheet, path.join(OUT, `mounts/${id}.png`));
+  saveMountPng(buildMountIcon(sheet, meta.frame), path.join(OUT, `icons/mount_${id}.png`));
+  manifest.mounts[id] = meta;
+  manifest.icons.push(`mount_${id}`);
+}
 for (const [id, art] of Object.entries(OBJECT_ART)) {
   const pc = art();
   pc.save(path.join(OUT, `objects/${id}.png`));
@@ -50,7 +61,7 @@ for (const id of Object.keys(SKILL_ICONS)) {
   manifest.icons.push(id);
 }
 // иконки маунтов и питомцев для магазина: первый кадр их спрайт-листа
-for (const id of Object.keys(UNIT_ART).filter((u) => u.startsWith("mount_") || u.startsWith("pet_"))) {
+for (const id of Object.keys(UNIT_ART).filter((u) => u.startsWith("pet_"))) {
   const sheet = PNG.sync.read(fs.readFileSync(path.join(OUT, `units/${id}.png`)));
   const fr = UNIT_ART[id].frame, ic = new PNG({ width: fr, height: fr });
   PNG.bitblt(sheet, ic, 0, 0, fr, fr, 0, 0);

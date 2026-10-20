@@ -56,3 +56,14 @@ export class ArenaState extends WorldState {
   @type("uint8") countdown = 0;
   @type("uint16") timeLeft = 0;
 }
+
+/** Состояние рейда (shared/raid.ts): этап gather | pull | fight | end, секунд до следующего этапа, id босса, заряды воскрешения, попытка, секунд до берсерка. */
+export class RaidState extends WorldState {
+  @type("string") stage = "gather";
+  @type("uint16") countdown = 0;
+  @type("string") boss = "";
+  @type("uint8") revives = 0;
+  @type("uint8") attempt = 1;
+  @type("uint8") attempts = 1;
+  @type("uint16") berserk = 0;
+}

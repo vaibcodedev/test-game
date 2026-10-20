@@ -10,7 +10,7 @@ import type { Player } from "./Player";
 import { recordSale, sellPrice, sendPrices } from "./market";
 import type { World } from "./World";
 
-const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
+const err = (p: Player, text: string, code?: "cd" | "target") => p.send("toast", { text, kind: "error", ...(code ? { code } : {}) });
 const validIndex = (p: Player, i: unknown): i is number => Number.isInteger(i) && (i as number) >= 0 && (i as number) < p.save.inventory.length;
 
 /** Положить предмет в сумку (зелья складываются в стопки). false — места нет. */
@@ -93,7 +93,7 @@ export function useItem(w: World, p: Player, index: unknown) {
   const dish = foodOf(it.base);
   if (dish) return eat(p, index, dish);
   const now = w.time;
-  if (now < p.potionAt) return err(p, "Зелья ещё действуют");
+  if (now < p.potionAt) return err(p, `Перезарядка: ${(Math.max(0, p.potionAt - now) / 1000).toFixed(1).replace(".", ",")} с`, "cd");
   const u = p.unit;
   if (it.base === "hp_potion") {
     if (u.hp >= u.maxHp) return err(p, "Здоровье уже полное");
@@ -114,7 +114,7 @@ export function useItem(w: World, p: Player, index: unknown) {
 export function useBase(w: World, p: Player, base: unknown, locked: (i: number) => boolean = () => false) {
   if (!usableBase(base) || p.dead) return;
   const i = p.save.inventory.findIndex((it, j) => !!it && it.base === base && !locked(j));
-  if (i < 0) return err(p, base === "hp_potion" ? "Нет зелий здоровья" : base === "mp_potion" ? "Нет зелий маны" : "Нет такого предмета");
+  if (i < 0) return err(p, base === "hp_potion" ? "Нет зелий здоровья — у торговки" : base === "mp_potion" ? "Нет зелий маны — у торговки" : "Нет такого предмета");
   useItem(w, p, i);
 }
 

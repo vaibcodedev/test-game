@@ -73,7 +73,8 @@ export function tickBiomes(w: World, dt: number) {
     st.acc += dt * 1000;
     if (st.acc < 1000) continue;
     st.acc -= 1000;
-    if (z === Zone.Volcano || z === Zone.Ashlands) {
+    // Цитадель Хаоса (рейд) рисуется вулканом, но жара и лавы у края зала нет: там хватает босса
+    if ((z === Zone.Volcano || z === Zone.Ashlands) && zoneAtPx(w.map, u.x, u.y) !== Zone.Citadel) {
       const resist = heatResist(p);
       if (nearLava(w.map, u.x, u.y)) hurt(w, p, ENV.lavaBurnPctPerSec * (resist ? 0.5 : 1), "fire");
       else if (z === Zone.Volcano && !resist) {

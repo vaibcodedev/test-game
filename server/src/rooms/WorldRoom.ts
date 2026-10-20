@@ -17,8 +17,15 @@ import type { InspectReply, JoinOptions } from "../../../shared/protocol";
 import { canLearn, SKILLS } from "../../../shared/skills";
 import { Parties } from "../arena/party";
 import { ArenaQueue, type PendingMatch } from "../arena/queue";
-import { inArena, services } from "../arena/registry";
+import { inArena, inRaid, services, worldNews } from "../arena/registry";
 import { deliverArenaRewards } from "../arena/rewards";
+import { RaidMuster, type MusterEntry } from "../raid/muster";
+import { deliverPending } from "../raid/rewards";
+import { raidBotSave } from "../arena/botgear";
+import type { RaidMember } from "../raid/director";
+import type { RaidOptions } from "./RaidRoom";
+import { heraldNear, RAID, RAID_CFG, RAID_ROLES, type RaidRole } from "../../../shared/raid";
+import { CLASSES, type ClassId } from "../../../shared/classes";
 import { GameDB, type PlayerSave } from "../db";
 import { sendPrices, setMarketDb } from "../game/market";
 import { buyMaterial, upgradeItem } from "../game/smith";
@@ -44,8 +51,16 @@ interface AuthResult {
   save: PlayerSave;
   created: boolean;
   fromArena?: boolean;
+  fromRaid?: boolean;
   accountId?: number;
 }
+/** Классы ботов рейда по ролям (обе фракции). */
+const RAID_BOT_CLASSES: Record<RaidRole, ClassId[]> = {
+  tank: ["warrior", "deathknight"],
+  healer: ["healer", "bloodweaver"],
+  melee: ["rogue", "reaver"],
+  ranged: ["ranger", "mage", "darkranger", "warlock"],
+};
 
 export class WorldRoom extends Room<WorldState> {
   override maxClients = 200;
@@ -55,6 +70,7 @@ export class WorldRoom extends Room<WorldState> {
   queue!: ArenaQueue;
   trade!: TradeManager;
   bank!: BankService;
+  muster!: RaidMuster;
   static db: GameDB;
   /** Единственная комната мира (для HTTP API аккаунтов: карта, кто онлайн). */
   static instance: WorldRoom | null = null;
@@ -70,16 +86,23 @@ export class WorldRoom extends Room<WorldState> {
     this.world = new World(this.state, (type, msg) => this.broadcast(type, msg));
     this.setSimulationInterval((dt) => this.world.update(dt), TICK_MS);
     const find = (key: string) => this.world.findByName(key);
-    this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key));
+    this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key) || inRaid.has(key));
     this.queue = new ArenaQueue(services.arena, find, (m) => void this.startMatch(m), (keys) => keys.forEach((k) => this.sendArenaInfo(k)));
-    this.trade = new TradeManager(() => this.world, () => WorldRoom.db, (p) => p.goingToArena || inArena.has(p.name.toLowerCase()), () => this.world.map.playerSpawn);
+    const away = (p: Player) => p.goingToArena || inArena.has(p.name.toLowerCase()) || inRaid.has(p.name.toLowerCase());
+    this.trade = new TradeManager(() => this.world, () => WorldRoom.db, away, () => this.world.map.playerSpawn);
     this.clock.setInterval(() => this.trade.tick(), 1000);
-    this.bank = new BankService(() => this.world, () => WorldRoom.db, () => this.world.map.playerSpawn, (p) => p.goingToArena || inArena.has(p.name.toLowerCase()), (p, i) => this.trade.locked(p, i));
+    this.bank = new BankService(() => this.world, () => WorldRoom.db, () => this.world.map.playerSpawn, away, (p, i) => this.trade.locked(p, i));
+    // сбор рейда (задача 114): у Вестников Цитадели, один на сервер
+    this.muster = new RaidMuster(find, (list) => void this.startRaid(list), (keys) => keys.forEach((k) => this.sendMuster(k)),
+      (key) => (this.queue.busy(key) ? "Вы в очереди арены" : find(key)?.goingToArena ? "Идёт переход" : null));
+    this.clock.setInterval(() => this.muster.tick(), 1000);
+    worldNews.system = (text) => this.world.system(text);
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
     this.onMessage("ping", (c) => c.send("pong", 0)); // сторож связи клиента
     this.registerMessages(on);
     this.registerArena(on);
+    this.registerRaid(on);
     registerAdmin(this, on);
     registerEncounters(on, () => this.world);
     registerBiomes(on, () => this.world);
@@ -105,6 +128,8 @@ export class WorldRoom extends Room<WorldState> {
     const chars = db.charsOf(sess.accountId).map((c) => GameDB.key(c.name));
     // на аккаунте одновременно играет один герой; герой аккаунта на арене — ждём конца матча
     for (const k of chars) if (inArena.has(k)) throw new ServerError(409, "На аккаунте другой герой сейчас на арене");
+    if (inRaid.has(key)) throw new ServerError(409, "Этот герой сейчас в рейде");
+    for (const k of chars) if (inRaid.has(k)) throw new ServerError(409, "На аккаунте другой герой сейчас в рейде");
     const ban = db.banOf(name);
     if (ban) throw new ServerError(403, `Герой заблокирован ${ban.until > 4e12 ? "навсегда" : "до " + new Date(ban.until).toLocaleString("ru-RU")}${ban.reason ? ": " + ban.reason : ""}`);
     // вход с другой вкладки: старая сессия (этого или другого героя аккаунта) закрывается с сообщением, герой сохраняется
@@ -133,11 +158,12 @@ export class WorldRoom extends Room<WorldState> {
     const p = new Player(id, auth.name, auth.save, (type, msg) => this.sockets.get(id)?.send(type, msg));
     p.admin = WorldRoom.db.isAdmin(p.name);
     p.accountId = auth.accountId ?? WorldRoom.db.ownerOf(p.name) ?? 0;
-    this.world.addPlayer(p, auth.fromArena ? `${p.name} возвращается с арены.` : undefined);
+    this.world.addPlayer(p, auth.fromArena ? `${p.name} возвращается с арены.` : auth.fromRaid ? `${p.name} возвращается из Цитадели Хаоса.` : undefined);
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: auth.created });
     sendNodes(this.world, p);
     if (auth.created) client.send("toast", { text: "Добро пожаловать в Пепельный Предел!", kind: "level" });
     deliverArenaRewards(p);
+    deliverPending(p);
     const key = p.name.toLowerCase();
     client.send("party", this.parties.state(key));
     for (const m of this.parties.members(key) ?? []) if (m.key !== key) this.world.findByName(m.key)?.send("party", this.parties.state(m.key));
@@ -229,7 +255,7 @@ export class WorldRoom extends Room<WorldState> {
       console.error("[world] сохранение при выходе:", e);
     }
     this.sockets.delete(p.id);
-    this.world.removePlayer(p.id, p.goingToArena ? `${p.name} отправляется на арену.` : undefined);
+    this.world.removePlayer(p.id, p.goingToArena ? (inRaid.has(p.name.toLowerCase()) ? `${p.name} отправляется в Цитадель Хаоса.` : `${p.name} отправляется на арену.`) : undefined);
   }
 
   /** Вход тем же аккаунтом с другой вкладки: старая сессия закрывается с сообщением, герой сохраняется. */
@@ -384,6 +410,7 @@ export class WorldRoom extends Room<WorldState> {
       const mode = m.mode as ArenaMode;
       if (!ARENA_MODES.includes(mode)) return;
       if (p.goingToArena) return;
+      if (this.muster.has(key(p))) return p.send("toast", { text: "Вы стоите в сборе рейда", kind: "error" });
       let group = [p];
       const party = this.parties.members(key(p));
       if (mode === "2v2" && party && party.length === TEAM_SIZE["2v2"]) {
@@ -428,6 +455,82 @@ export class WorldRoom extends Room<WorldState> {
     });
   }
 
+  // ---------- рейд (задача 114) ----------
+  sendMuster(key: string) {
+    const p = this.world.findByName(key);
+    p?.send("raid:muster", this.muster.status(p, key));
+  }
+
+  private registerRaid(on: On) {
+    const key = (p: Player) => p.name.toLowerCase();
+    on("raid:info", (p) => this.sendMuster(key(p)));
+    on("raid:join", (p) => {
+      if (!heraldNear(p.x, p.y, RAID.npc.range + 40)) return p.send("toast", { text: "Подойдите к Вестнику Цитадели", kind: "error" });
+      // группа входит целиком
+      let group = [p];
+      const party = this.parties.members(key(p));
+      if (party && party.length > 1) {
+        const mates = party.map((x) => this.world.findByName(x.key));
+        if (mates.some((x) => !x)) return p.send("toast", { text: "Участник группы не в мире", kind: "error" });
+        group = mates as Player[];
+      }
+      const err = this.muster.join(group);
+      if (err) return p.send("toast", { text: err, kind: "error" });
+      for (const g of group) g.send("toast", { text: `Вы встали в рейд на ${RAID.boss.name}${group.length > 1 ? " с группой" : ""}`, kind: "info" });
+    });
+    on("raid:cancel", (p) => this.muster.cancel(key(p)));
+    on("raid:start", (p) => {
+      const err = this.muster.startNow(key(p));
+      if (err) p.send("toast", { text: err, kind: "error" });
+    });
+  }
+
+  /** Сбор окончен: боты добирают роли, герои сохраняются, создаётся инстанс рейда и резервируются места. */
+  private async startRaid(list: MusterEntry[]) {
+    const players = list.map((e) => this.world.findByName(e.key)).filter((p): p is Player => !!p && !p.dead && !p.goingToArena);
+    if (!players.length) return;
+    const members: RaidMember[] = players.map((p) => ({
+      key: p.name.toLowerCase(), name: p.name, cls: p.cls, level: p.level, role: list.find((e) => e.key === p.name.toLowerCase())!.role,
+      save: JSON.parse(JSON.stringify(p.save)) as PlayerSave, from: { x: p.x, y: p.y },
+    }));
+    // боты по недостающим ролям, классы обеих фракций, имена — data/raid.json
+    const need = RaidMuster.fill(members);
+    const taken = new Set(members.map((m) => m.key));
+    const names = RAID.bots.names.filter((n) => !taken.has(n.toLowerCase())).sort(() => Math.random() - 0.5);
+    let ni = 0;
+    for (const role of RAID_ROLES) for (let i = 0; i < need[role]; i++) {
+      const pool = RAID_BOT_CLASSES[role], cls = pool[Math.floor(Math.random() * pool.length)];
+      const name = names[ni++] ?? `${RAID.bots.title} ${ni}`;
+      members.push({ key: name.toLowerCase(), name, cls, level: 100, role, bot: true, save: raidBotSave(cls, 100, RAID.bots.title) });
+    }
+    const hpScale = players.length > RAID_CFG.size ? players.length / RAID_CFG.size : 1;
+    for (const p of players) {
+      inRaid.add(p.name.toLowerCase());
+      p.goingToArena = true;
+      this.world.breakMount(p);
+      this.trade.leave(p);
+      p.input = { mx: 0, my: 0 };
+      p.moveTo = null;
+      WorldRoom.db.save(p.name, p.toSave(this.world.map.playerSpawn));
+    }
+    try {
+      const options: RaidOptions = { members, hpScale };
+      const room = await matchMaker.createRoom("raid", options);
+      for (const p of players) {
+        const res = await matchMaker.reserveSeatFor(room, {}, { name: p.name, save: JSON.parse(JSON.stringify(p.save)) });
+        p.send("raid:go", { reservation: { sessionId: res.sessionId, room: { name: "raid", roomId: room.roomId, processId: room.processId } } });
+      }
+      this.world.system(RAID.chat.start);
+    } catch (e) {
+      console.error("[raid] не удалось создать рейд:", e);
+      for (const p of players) {
+        inRaid.delete(p.name.toLowerCase());
+        p.goingToArena = false;
+        p.send("toast", { text: "Не удалось начать рейд, попробуйте ещё раз", kind: "error" });
+      }
+    }
+  }
+
   private registerMessages(on: On) {
     const w = () => this.world;
     on("respawn", (p) => w().respawn(p));
@@ -452,7 +555,9 @@ export class WorldRoom extends Room<WorldState> {
       if (!nearMerchant(w(), p)) return err("Подойдите к торговке");
       if (p.save.mounts?.includes(def.id)) return err("Маунт уже у вас");
       if (p.level < def.level) return err(`${def.name}: нужен ${def.level} уровень`);
-      if (def.price <= 0 || p.save.gold < def.price) return err("Не хватает золота");
+      if (def.source !== "vendor" || def.price <= 0) return err("Этот маунт не продаётся");
+      if (def.faction && def.faction !== p.faction) return err(`${def.name}: только для другой фракции`);
+      if (p.save.gold < def.price) return err("Не хватает золота");
       p.save.gold -= def.price;
       (p.save.mounts ??= []).push(def.id);
       p.save.mount = def.id;
