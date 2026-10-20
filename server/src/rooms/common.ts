@@ -47,6 +47,7 @@ export function registerCombat(on: On, world: () => World) {
   on<{ x: unknown; y: unknown }>("moveTo", (p, m) => {
     const x = num(m.x, 0, w().map.w * TILE), y = num(m.y, 0, w().map.h * TILE);
     if (x === null || y === null) return;
+    w().stopFollow(p, true);
     p.moveTo = { x, y };
     p.nav.reset();
     if (!p.chase) p.approach = false;
@@ -67,10 +68,23 @@ export function registerCombat(on: On, world: () => World) {
     if (!id) { p.engaged = p.approach = false; return; }
     const a = w().actor(id);
     if (!a || w().isDead(a) || !w().hostile(p, a) || w().stealthed(a)) return;
+    w().stopFollow(p, true);
     p.targetId = a.id;
     p.unit.target = a.id;
     p.engaged = p.approach = true;
     p.moveTo = null;
+  });
+  // follow — держаться за игроком на 40–60 px; id=null — прекратить
+  on<{ id: unknown }>("follow", (p, m) => {
+    const id = typeof m.id === "string" ? m.id : null;
+    if (!id) return w().stopFollow(p, true);
+    const a = w().actor(id);
+    if (!a || a.id === p.id || !w().isPlayer(a) || w().isDead(a) || w().dist(p.unit, a) > 600) return void p.send("toast", { text: "Не удалось следовать", kind: "error" });
+    p.followId = a.id;
+    p.followGo = false;
+    p.moveTo = null;
+    p.engaged = p.approach = false;
+    p.send("toast", { text: `Вы следуете за ${a.name}`, kind: "info" });
   });
   on<{ on: unknown }>("chase", (p, m) => { p.chase = m.on === true; });
   on<{ id: unknown; x: unknown; y: unknown; target: unknown }>("skill", (p, m) => {

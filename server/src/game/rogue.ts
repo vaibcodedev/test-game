@@ -179,10 +179,11 @@ export function castRogue(c: CastCtx): string | null | undefined {
       const hops = Math.round(v.hops), gap = 260, s = st(p);
       s.danceUntil = w.time + hops * gap + 150;
       p.castUntil = Math.max(p.castUntil, s.danceUntil);
+      w.castBar(p, hops * gap + 150, "Танец клинков");
       p.moveTo = null;
       w.emit({ t: "aoe", k: "shadow", x: u.x, y: u.y, r: 50 });
       let last: Actor | undefined, n = 0;
-      const end = () => { s.danceUntil = 0; p.castUntil = Math.min(p.castUntil, w.time); };
+      const end = () => { s.danceUntil = 0; p.castUntil = Math.min(p.castUntil, w.time); w.castBar(p, 0); };
       const hop = () => {
         if (p.dead || p.stunUntil > w.time || n >= hops) return end();
         const list = w.enemiesInCircle(p, u.x, u.y, v.radius);

@@ -14,7 +14,7 @@ export type MoveAction = "moveUp" | "moveDown" | "moveLeft" | "moveRight";
 export type SlotAction = `slot${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`;
 export type ActionId =
   | MoveAction | SlotAction
-  | "targetNext" | "targetPrev" | "attack" | "selectSelf" | "selectParty1" | "selectParty2" | "selectParty3" | "selectParty4" | "potionHp" | "potionMp" | "interact" | "talk" | "mount" | "mountNext" | "pet" | "petNext"
+  | "targetNext" | "targetPrev" | "attack" | "selectSelf" | "selectParty1" | "selectParty2" | "selectParty3" | "selectParty4" | "potionHp" | "potionMp" | "interact" | "talk" | "mount" | "mountNext" | "pet" | "petNext" | "autorun" | "follow"
   | "winChar" | "winInv" | "winSkills" | "winMap" | "winBestiary" | "winArena" | "winAdmin" | "chat" | "escape";
 
 export const GROUPS = { move: "Движение", target: "Цель", bar: "Панель умений", act: "Действия", ui: "Интерфейс" } as const;
@@ -45,6 +45,8 @@ const DEFS: Record<ActionId, Def> = {
   talk: { group: "act", name: "Поговорить с NPC" },
   mount: { group: "act", name: "Маунт: сесть и слезть" },
   mountNext: { group: "act", name: "Маунт: следующий" },
+  autorun: { group: "move", name: "Автобег" },
+  follow: { group: "act", name: "Следовать за целью" },
   pet: { group: "act", name: "Питомец: призвать и отпустить" },
   petNext: { group: "act", name: "Питомец: следующий" },
   winChar: { group: "ui", name: "Герой" },
@@ -79,6 +81,7 @@ const CLASSIC: Layout = {
   slot1: [k("Digit1")], slot2: [k("Digit2")], slot3: [k("Digit3")], slot4: [k("Digit4")], slot5: [k("Digit5")], slot6: [k("Digit6")], slot7: [k("Digit7")], slot8: [k("Digit8")], slot9: [k("Digit9")],
   potionHp: [k("KeyQ")], potionMp: [k("KeyE")],
   interact: [k("Space")], talk: [k("KeyF")],
+  autorun: [k("KeyR"), k("NumLock")], follow: [shift("KeyF")],
   mount: [k("KeyX")], mountNext: [shift("KeyX")], pet: [k("KeyG")], petNext: [shift("KeyG")],
   winChar: [k("KeyC")], winInv: [k("KeyI")], winSkills: [k("KeyK")], winMap: [k("KeyM")], winBestiary: [k("KeyB")], winArena: [k("KeyP")], winAdmin: [k("F10")],
   chat: [k("Enter")], escape: [k("Escape")],
@@ -95,6 +98,7 @@ const ACTION: Layout = {
   // G уже «подобрать, а рядом с NPC — поговорить», отдельная клавиша разговора не нужна
   interact: [k("KeyG")], talk: [],
   pet: [k("KeyZ")], petNext: [shift("KeyZ")],
+  autorun: [k("NumLock"), shift("KeyR")], // R занята умением 4
   attack: [], // T занята умением 9; в «Экшене» атакуют ПКМ
 };
 export const PRESETS: Record<PresetId, { name: string; layout: Layout }> = {
@@ -155,7 +159,7 @@ const KEY_NAMES: Record<string, string> = {
   ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→",
   Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'", Comma: ",", Period: ".", Slash: "/", Backslash: "\\", Backquote: "`",
   NumpadAdd: "Num +", NumpadSubtract: "Num -", NumpadMultiply: "Num *", NumpadDivide: "Num /", NumpadEnter: "Num Enter", NumpadDecimal: "Num .",
-  Mouse3: "СКМ", Mouse4: "Mouse4", Mouse5: "Mouse5",
+  NumLock: "NumLock", Mouse3: "СКМ", Mouse4: "Mouse4", Mouse5: "Mouse5",
 };
 export function keyName(code: string): string {
   if (KEY_NAMES[code]) return KEY_NAMES[code];

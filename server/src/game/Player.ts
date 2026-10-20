@@ -119,6 +119,9 @@ export class Player {
   deadAt = 0;
   dead = false;
   castUntil = 0;
+  /** Следование за игроком (follow): цель и признак «идём» (гистерезис 48/60 px). */
+  followId: string | null = null;
+  followGo = false;
   potionAt = 0;
   poisonUntil = 0;
   /** Разбойник: скрытность до, гарантированный крит до, яды на целях. */

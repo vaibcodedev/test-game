@@ -31,6 +31,7 @@ type Events = {
   chat: ChatLine;
   toast: ToastMsg;
   mountcast: { ms: number; name?: string };
+  cast: { ms: number; name?: string };
   combat: { on: boolean };
   air: { air: number; max: number };
   node: { id: number; up: boolean };
@@ -330,6 +331,8 @@ export class Net {
     room.onMessage("chat", (l: ChatLine) => this.emit("chat", l));
     room.onMessage("toast", (t: ToastMsg) => this.emit("toast", t));
     room.onMessage("combat", (m: { on: boolean }) => this.emit("combat", m));
+    // cast — сервер держит героя на месте (канал, воскрешение, танец): полоса каста и запрет предсказания шагов
+    room.onMessage("cast", (m: { ms: number; name?: string }) => { this.emit("cast", m); this.emit("mountcast", m); });
     room.onMessage("mountcast", (m: { ms: number; name?: string }) => this.emit("mountcast", m));
     for (const t of ["air", "node", "nodes"] as const) room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("loot", (b: LootBag[]) => {

@@ -77,6 +77,8 @@ export interface WorldOptions {
   quiet?: boolean;
 }
 
+const FOLLOW_NEAR = 48, FOLLOW_FAR = 60, FOLLOW_BREAK = 600;
+
 export class World {
   readonly map: WorldMap;
   /** PvP включено: игроки разных команд (team) враждебны. Включает арена на время боя. */
@@ -689,6 +691,23 @@ export class World {
     return moved;
   }
 
+  /** Цель следования; null и «Следование прервано» — движение, дальность > 600 px, цель исчезла. */
+  private followTarget(p: Player): Actor | null {
+    const a = p.followId ? this.actor(p.followId) : undefined;
+    const bad = !a || this.isDead(a) || p.input.mx || p.input.my || this.dist(p.unit, a) > FOLLOW_BREAK;
+    if (bad) { this.stopFollow(p, true); return null; }
+    return a;
+  }
+  stopFollow(p: Player, toast: boolean) {
+    if (!p.followId) return;
+    p.followId = null;
+    p.followGo = false;
+    if (toast) p.send("toast", { text: "Следование прервано", kind: "info" });
+  }
+
+  /** Сообщение клиенту: полоса каста (ms=0 — скрыть). */
+  castBar(p: Player, ms: number, name?: string) { p.send("cast", { ms, name }); }
+
   updatePlayer(p: Player, dt: number) {
     const u = p.unit;
     if (p.dead) return;
@@ -764,6 +783,7 @@ export class World {
     }
     if (!p.targetId || !foe) p.engaged = p.approach = false;
     let moving = false;
+    const fol = p.followId ? this.followTarget(p) : null;
     if (canMove) {
       if (p.input.mx || p.input.my) {
         const len = Math.hypot(p.input.mx, p.input.my);
@@ -778,6 +798,13 @@ export class World {
       } else if (p.moveTo) {
         moving = this.stepToward(p, p.moveTo.x, p.moveTo.y, dt, 2);
         if (!moving) p.moveTo = null;
+      } else if (fol) {
+        // держим 40–60 px: трогаемся дальше 60, встаём ближе 48
+        const fd = this.dist(u, fol);
+        if (fd > FOLLOW_FAR) p.followGo = true;
+        else if (fd <= FOLLOW_NEAR + 1) p.followGo = false;
+        if (p.followGo) moving = this.stepToward(p, fol.x, fol.y, dt, FOLLOW_NEAR);
+        if (!moving) p.followGo = false;
       } else if (p.targetId && foe && p.engaged && p.approach) {
         const range = p.attackRange() + this.radiusOf(target);
         const d2 = this.dist(u, target);

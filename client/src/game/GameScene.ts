@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../../../shared/constants";
+import { Nav } from "../../../shared/path";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
 import { ENV } from "../../../shared/biomes";
 import * as sfx from "./sfx";
@@ -57,6 +58,15 @@ export class GameScene extends Phaser.Scene {
   /** Зажатые клавиши движения (раскладка — keybinds.ts). */
   held = new HeldKeys();
   lastInput = { mx: 0, my: 0, at: 0 };
+  /** Удержание кнопки мыши на земле (>200 мс — движение за курсором), автобег, клик-путь (предсказание), следование. */
+  mouseHold: { right: boolean; since: number } | null = null;
+  autorun: { dx: number; dy: number; since: number } | null = null;
+  clickGoal: { x: number; y: number; at: number } | null = null;
+  clickNav = new Nav();
+  lastDir: { dx: number; dy: number } | null = null;
+  following = false;
+  /** Сервер держит героя (канал, воскрешение, танец) до этого момента: шаги не предсказываем. */
+  castHold = 0;
   targetId: string | null = null;
   bagViews = new Map<string, Phaser.GameObjects.Image>();
   pendingPickup: string | null = null;
@@ -99,6 +109,9 @@ export class GameScene extends Phaser.Scene {
     this.hoverId = null;
     this.zone = -1 as Zone;
     this.lastInput = { mx: 0, my: 0, at: 0 };
+    this.mouseHold = this.autorun = this.clickGoal = this.lastDir = null;
+    this.following = false;
+    this.castHold = 0;
     // shutdown — перезапуск/остановка сцены, destroy — пересоздание игры после ошибки: подписки снимаются в обоих случаях
     const done = () => {
       this.events.off("shutdown", done);
@@ -126,6 +139,7 @@ export class GameScene extends Phaser.Scene {
       net.on("nodes", (m) => { for (const id of m.depleted) { this.depletedNodes.add(id); this.world.setNode(id, false); } }),
     );
     let lastGold = -1;
+    this.cleanup.push(net.on("cast", (m) => { this.castHold = m.ms > 0 ? this.time.now + m.ms : 0; }));
     this.cleanup.push(net.on("self", (s) => { if (lastGold >= 0 && s.gold > lastGold) { const u = this.units.get(net.id); if (u) this.fx.goldPop(u.x, u.y - 40, s.gold - lastGold); } lastGold = s.gold; }));
     this.cleanup.push(net.on("fx", (list) => this.fx.play(list)), net.on("loot", (bags) => this.syncBags(bags)));
 
@@ -337,6 +351,51 @@ export class GameScene extends Phaser.Scene {
     net.send("attack", { id });
   }
 
+  /** Клик-путь: клиент ведёт героя тем же путём (shared/path.ts), не дожидаясь сервера. */
+  startClickPath(x: number, y: number) {
+    this.clickNav.reset();
+    this.clickGoal = { x, y, at: this.time.now };
+  }
+
+  toggleAutorun() {
+    if (!this.me || this.me.dead) return;
+    if (this.autorun) { this.autorun = null; return; }
+    let d = this.me.u.anim === Anim.Walk ? this.lastDir : null;
+    if (!d) {
+      const ap = this.input.activePointer, c = this.cameras.main.getWorldPoint(ap.x, ap.y);
+      const dx = c.x - this.pos.x, dy = c.y - this.pos.y, len = Math.hypot(dx, dy);
+      if (len < 12) return;
+      d = { dx: dx / len, dy: dy / len };
+    }
+    this.autorun = { dx: d.dx, dy: d.dy, since: this.time.now };
+    this.clickGoal = null;
+    this.following = false;
+    this.pendingPickup = null;
+    this.pendingNpc = null;
+  }
+  turnAutorun(deg: number) {
+    if (!this.autorun) return;
+    const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a), { dx, dy } = this.autorun;
+    this.autorun.dx = dx * c - dy * s;
+    this.autorun.dy = dx * s + dy * c;
+    this.autorun.since = this.time.now;
+  }
+
+  /** Shift+F: следовать за выбранным игроком; без игрока в цели — прекратить следование. */
+  followTarget() {
+    const v = this.targetId ? this.units.get(this.targetId) : undefined;
+    if (!v || v.u.kind !== UnitKind.Player || v.id === net.id) {
+      if (this.following) { this.following = false; return net.send("follow", { id: null }); }
+      return this.hud.toast({ text: "Выберите игрока, чтобы следовать", kind: "error" });
+    }
+    this.followUnit(v.id);
+  }
+  followUnit(id: string) {
+    this.autorun = this.clickGoal = null;
+    this.following = true;
+    net.send("follow", { id });
+  }
+
   /** F2–F5: член группы по имени среди видимых игроков. */
   selectParty(n: number) {
     const m = net.party?.members?.filter((x) => x.name !== net.self?.name)[n];
@@ -359,6 +418,8 @@ export class GameScene extends Phaser.Scene {
       talk: () => this.talkNearest(),
       mount: () => this.toggleMount(),
       mountNext: () => this.cycleMount(),
+      autorun: () => this.toggleAutorun(),
+      follow: () => this.followTarget(),
       pet: () => this.togglePet(),
       petNext: () => this.cyclePet(),
       winChar: () => this.hud.toggle("char"),
@@ -381,6 +442,14 @@ export class GameScene extends Phaser.Scene {
       e.preventDefault();
       for (const a of acts) {
         if (isMoveAction(a)) {
+          // автобег: в «Классике» A и D поворачивают на 45°, S останавливает, W ничего не меняет
+          if (this.autorun) {
+            if (keybinds.presetId === "classic" && (a === "moveLeft" || a === "moveRight")) { if (!e.repeat) this.turnAutorun(a === "moveLeft" ? -45 : 45); continue; }
+            if (a === "moveDown") { this.autorun = null; continue; }
+            if (a === "moveUp") continue;
+          }
+          this.autorun = this.clickGoal = null;
+          this.following = false;
           this.held.press(e.code, a);
           this.pendingPickup = null;
           this.pendingNpc = null;
@@ -437,7 +506,7 @@ export class GameScene extends Phaser.Scene {
         for (const [uid, v] of this.units) {
           if (uid === net.id || v.u.kind !== UnitKind.Player || this.isEnemy(v) || v.unseen || v.hitTest(wx, wy) > 20) continue;
           const ev = p.event as MouseEvent;
-          return this.hud.trade.showMenu(uid, v.u.name, ev.clientX, ev.clientY, () => this.hud.inspect.open(uid));
+          return this.hud.trade.showMenu(uid, v.u.name, ev.clientX, ev.clientY, () => this.hud.inspect.open(uid), () => this.followUnit(uid));
         }
       }
       // враг: ЛКМ выбирает (атакует только при опции «ЛКМ атакует»), ПКМ атакует; союзник: выбор
@@ -450,7 +519,11 @@ export class GameScene extends Phaser.Scene {
       this.pendingPickup = null;
       this.pendingNpc = null;
       this.pendingGather = null;
+      this.autorun = null;
+      this.following = false;
       net.send("moveTo", { x: wx, y: wy });
+      this.startClickPath(wx, wy);
+      this.mouseHold = { right, since: this.time.now };
       this.clickMark.setPosition(wx, wy).setVisible(true).setAlpha(1).setScale(0.9);
       this.tweens.add({ targets: this.clickMark, alpha: 0, scale: 0.4, duration: 500 });
     });
@@ -638,20 +711,63 @@ export class GameScene extends Phaser.Scene {
 
     // движение своего героя: предсказание + мягкая сверка с сервером
     const me = this.me;
-    let mx = 0, my = 0;
-    if (me && !me.dead && !this.hud.isTyping()) ({ mx, my } = this.held.axis());
     const now = this.time.now;
-    if (mx !== this.lastInput.mx || my !== this.lastInput.my || ((mx || my) && now - this.lastInput.at > 250)) {
+    let mx = 0, my = 0;
+    const alive = !!me && !me.dead && !this.hud.isTyping();
+    if (alive) ({ mx, my } = this.held.axis());
+    if (alive && this.mouseHold) {
+      // удержание кнопки на земле дольше 200 мс: вектор к курсору, мёртвая зона 12 px
+      const h = this.mouseHold, ap = this.input.activePointer;
+      if (mx || my || !(h.right ? ap.rightButtonDown() : ap.leftButtonDown())) this.mouseHold = null;
+      else if (now - h.since >= 200) {
+        this.clickGoal = null;
+        this.autorun = null;
+        this.pendingPickup = this.pendingNpc = null;
+        const c = this.cameras.main.getWorldPoint(ap.x, ap.y), dx = c.x - this.pos.x, dy = c.y - this.pos.y, len = Math.hypot(dx, dy);
+        if (len >= 12) { mx = dx / len; my = dy / len; }
+      }
+    } else if (!alive) this.mouseHold = null;
+    if (alive && this.autorun && !mx && !my) {
+      if (now - this.autorun.since > 700 && me!.u.anim !== Anim.Walk) this.autorun = null;
+      else { mx = this.autorun.dx; my = this.autorun.dy; }
+    }
+    if (!alive) this.autorun = this.clickGoal = null;
+    const li = this.lastInput;
+    const moving = !!(mx || my), wasMoving = !!(li.mx || li.my);
+    const changed = moving && wasMoving ? Math.hypot(mx - li.mx, my - li.my) > 0.06 && now - li.at > 50 : mx !== li.mx || my !== li.my;
+    if (changed || (moving && now - li.at > 250)) {
       net.send("input", { mx, my });
       this.lastInput = { mx, my, at: now };
     }
     if (me) {
       const u = me.u;
-      const blocked = u.buffs & (BUFF_STUN | BUFF_ROOT) || u.anim === Anim.Dead;
-      if ((mx || my) && !blocked) {
+      // сервер держит героя: оглушение, корни, канал (castHold), заморозка арены до боя
+      const arenaPhase = net.kind === "arena" ? (net.room?.state as { phase?: string } | undefined)?.phase : "fight";
+      const blocked = u.buffs & (BUFF_STUN | BUFF_ROOT) || u.anim === Anim.Dead || now < this.castHold || arenaPhase !== "fight";
+      const g = this.clickGoal;
+      if (g && (blocked || moving || (now - g.at > 600 && u.anim !== Anim.Walk))) this.clickGoal = null;
+      let vx = 0, vy = 0;
+      const sp = PLAYER_SPEED * (MOUNTS[u.mount]?.speed ?? 1) * (u.buffs & BUFF_SLOW ? 0.55 : 1) * terrainSpeedMul(this.map, this.pos.x, this.pos.y) * dt;
+      let step = sp;
+      if (moving && !blocked) {
         const len = Math.hypot(mx, my);
-        const sp = PLAYER_SPEED * (MOUNTS[u.mount]?.speed ?? 1) * (u.buffs & BUFF_SLOW ? 0.55 : 1) * terrainSpeedMul(this.map, this.pos.x, this.pos.y) * dt;
-        const n = moveWithCollision(this.map, this.pos.x, this.pos.y, (mx / len) * sp, (my / len) * sp, PLAYER_RADIUS);
+        vx = mx / len; vy = my / len;
+      } else if (this.clickGoal && !blocked) {
+        const goal = this.clickGoal;
+        if (Math.hypot(goal.x - this.pos.x, goal.y - this.pos.y) <= 2.5) this.clickGoal = null;
+        else {
+          const wp = this.clickNav.next(this.map, this.pos.x, this.pos.y, goal.x, goal.y, PLAYER_RADIUS, now);
+          if (!wp) this.clickGoal = null;
+          else {
+            const dx = wp.x - this.pos.x, dy = wp.y - this.pos.y, d = Math.hypot(dx, dy) || 1;
+            step = Math.min(sp, wp.x === goal.x && wp.y === goal.y ? d - 2 : d);
+            vx = dx / d; vy = dy / d;
+          }
+        }
+      }
+      if ((vx || vy) && step > 0) {
+        this.lastDir = { dx: vx, dy: vy };
+        const n = moveWithCollision(this.map, this.pos.x, this.pos.y, vx * step, vy * step, PLAYER_RADIUS);
         this.pos.x = n.x;
         this.pos.y = n.y;
         const err = Math.hypot(u.x - this.pos.x, u.y - this.pos.y);
