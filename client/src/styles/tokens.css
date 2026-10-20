@@ -2,7 +2,7 @@
    Новые значения — только здесь; цвета для TS/canvas/Phaser — в shared/palette.ts (сверяет tests/style-tokens.ts). */
 :root {
   --bg: #120f16;
-  --panel: rgba(24, 19, 28, 0.94);
+  --panel: rgba(24, 19, 28, 0.97);
   --panel-2: #2a2230;
   --well: #0e0b10;
   --card: #1a141e;

@@ -9,18 +9,63 @@
   flex-direction: column;
   gap: var(--sp-1h);
 }
+/* шапка рамки героя: уровень плашкой слева на две строки, справа ник, под ним класс и фракция */
 .hud-player .row1 {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "lv nm nm" "lv cls fac";
+  align-items: center;
+  column-gap: var(--sp-2);
+  row-gap: var(--sp-0);
+}
+.hud-player .lvl {
+  grid-area: lv;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: var(--well);
+  border: 1px solid var(--line-hi);
+  border-radius: var(--r-2);
+  color: var(--num-gold);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-b);
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--shadow-text);
 }
 .hud-player .nm {
+  grid-area: nm;
+  min-width: 0;
+  overflow: hidden;
   font-size: var(--fs-lg);
+  font-weight: var(--fw-b);
+  line-height: 1.15;
   color: var(--gold);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
-.hud-player .lv {
+.hud-player .cls {
+  grid-area: cls;
+  min-width: 0;
+  overflow: hidden;
   color: var(--dim);
-  font-size: var(--fs);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hud-player .fac-badge {
+  grid-area: fac;
+  justify-self: end;
+  margin-left: 0;
+  line-height: 16px;
+  white-space: nowrap;
+}
+/* «В бою» — поверх верхней рамки: высота рамки и вся левая колонка не прыгают */
+.hud-player .combat-badge {
+  position: absolute;
+  top: -10px;
+  right: var(--sp-3);
+  margin: 0;
 }
 .bar {
   position: relative;
@@ -56,10 +101,16 @@
 .bar.xp > i {
   background: linear-gradient(#e0c8ff, var(--xp));
 }
+/* нижняя строка: опыт, очки, еда слева, золото — у правого края */
 .hud-player .pts {
   display: flex;
-  gap: var(--sp-1h);
   flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.hud-player .pts > .gold-amt {
+  margin-left: auto;
 }
 .pill {
   font-size: var(--fs);

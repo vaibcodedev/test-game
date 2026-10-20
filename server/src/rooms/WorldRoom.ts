@@ -568,9 +568,12 @@ export class WorldRoom extends Room<WorldState> {
       const r = rumorFor(w(), p, m.npc);
       if (r) p.send("rumor", r);
     });
-    on<{ stat: unknown }>("alloc", (p, m) => {
-      if (typeof m.stat !== "string" || !(m.stat in STAT_NAMES)) return;
-      if (!p.allocate(m.stat as StatKey)) p.send("toast", { text: "Нет свободных очков", kind: "error" });
+    on<{ stat: unknown; n: unknown }>("alloc", (p, m) => {
+      // hasOwn, а не in: иначе «constructor» и «toString» из прототипа пишут NaN в сохранение
+      if (typeof m.stat !== "string" || !Object.hasOwn(STAT_NAMES, m.stat)) return;
+      const n = m.n === undefined ? 1 : m.n; // без n — одно очко, как раньше
+      if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 10) return;
+      if (!p.allocate(m.stat as StatKey, n)) p.send("toast", { text: "Нет свободных очков", kind: "error" });
     });
     on<{ id: unknown }>("learn", (p, m) => {
       const def = typeof m.id === "string" ? SKILLS[m.id] : undefined;

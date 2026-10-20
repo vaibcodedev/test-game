@@ -1,70 +1,116 @@
 /* ---------- бестиарий ---------- */
+/* Каркас окна (h2 → .body), ширина .l, список .list.boxed.scroll со строками .row, разделы .sec, плашки .card, чипы .chip, ячейки .cell — kit.css.
+   Здесь — положение окна, мастер-деталь и то, чего в kit.css нет. */
 .win-bestiary {
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  width: min(680px, calc(100vw - 24px));
 }
+/* мастер-деталь: список слева прокручивается сам, запись справа */
 .bst {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: var(--sp-3);
-  min-height: 280px;
+  align-items: start;
 }
 .bst-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  max-height: 360px;
-  overflow: auto;
+  max-height: clamp(180px, calc(100vh - 260px), 460px);
+  scroll-padding-top: 26px; /* строка не прячется под липким заголовком раздела */
 }
-.bst-list .btn {
-  text-align: left;
+.bst-sec {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   padding: var(--sp-1) var(--sp-2);
-  font-size: var(--fs);
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
 }
-.bst-list .btn[aria-pressed="true"] {
-  border-color: var(--gold);
+.bst-grp + .bst-grp > .bst-sec {
+  border-top: 1px solid var(--line);
 }
-.bst-list .btn.locked {
-  color: var(--dim);
+/* босс в списке: ромбик цвета босса перед именем */
+.bst-list .row.boss .row-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 var(--sp-1h) 1px 0;
+  background: var(--boss);
+  transform: rotate(45deg);
+  vertical-align: middle;
 }
 .bst-det {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   min-width: 0;
 }
-.bst-head {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: center;
+.bst-empty {
+  padding: var(--sp-4) var(--sp-2);
+  text-align: center;
 }
+.bst-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+}
+.bst-ic {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+/* спрайт-лист: три ряда квадратных кадров (32, 64 или 128px), первый кадр вписан в квадрат 64px */
 .bst-sprite {
-  image-rendering: pixelated;
+  width: 64px;
+  height: 64px;
   background-repeat: no-repeat;
-  flex: none;
+  background-size: auto 300%;
+  image-rendering: pixelated;
+}
+.bst-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
 }
 .bst-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-1h);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
 }
+.bst-stats > .card {
+  align-items: center;
+  gap: var(--sp-0);
+  text-align: center;
+}
+.bst-k {
+  color: var(--dim);
+  font-size: var(--fs-xs);
+}
+.bst-v {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-b);
+  font-variant-numeric: tabular-nums;
+}
+.bst-zones,
 .bst-loot {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1h);
 }
-.bst-loot img {
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
-  border: 1px solid var(--line);
-  border-radius: var(--r-2);
-  background: var(--card);
+.bst-loot .cell {
+  cursor: default;
 }
 @media (max-width: 560px) {
   .bst {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bst-list {
+    max-height: 220px;
   }
 }

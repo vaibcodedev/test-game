@@ -58,7 +58,8 @@ export interface ClientMessages {
   moveTo: { x: number; y: number };
   target: { id: string | null };
   skill: { id: string; x: number; y: number; target?: string | null };
-  alloc: { stat: StatKey };
+  /** n — сколько очков вложить разом: целое 1…10, без поля — одно (вкладывается не больше, чем есть свободных). */
+  alloc: { stat: StatKey; n?: number };
   learn: { id: string };
   equip: { index: number };
   unequip: { slot: Slot };

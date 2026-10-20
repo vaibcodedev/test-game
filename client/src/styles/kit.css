@@ -34,6 +34,7 @@
 }
 .win > .body > * { flex: none; }
 .win > .win-foot { flex: none; }
+.win-foot > .gold-amt { margin-left: auto; } /* деньги в подвале окна — у правого края */
 
 /* ---------- кнопка .btn (.primary .danger .small .lg .block .icon .fac; «нажата» — aria-pressed) ----------
    Выбранное через aria-pressed/aria-selected; старые классы .on .active .cur выглядят так же, пока окна не переведены. */
@@ -246,7 +247,7 @@ button.row { cursor: pointer; }
 button.row:hover:not(:disabled) { background: var(--panel-2); }
 button.row:active:not(:disabled) { background: var(--btn-active); }
 button.row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
-.row[aria-selected="true"], .row[aria-pressed="true"], .comp-row.cur { background: var(--sel); box-shadow: inset 3px 0 0 var(--gold); }
+.row[aria-selected="true"], .row[aria-pressed="true"] { background: var(--sel); box-shadow: inset 3px 0 0 var(--gold); }
 .row[aria-selected="true"] .row-title, .row[aria-pressed="true"] .row-title { color: var(--gold); }
 .row.current { box-shadow: inset 3px 0 0 var(--ok); }
 .row.locked .row-title, .row:disabled .row-title { color: var(--dim); font-weight: var(--fw); }
@@ -332,7 +333,7 @@ button.card:disabled { opacity: .45; cursor: default; }
 .progress > .bar { grid-column: 1 / -1; }
 
 /* ---------- кнопка цены .btn.price, сумма .gold-amt (перенесена из gmenu.css), столбик .price-stack ---------- */
-.gold-amt { display: inline-flex; align-items: center; gap: .25em; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gold-amt { display: inline-flex; align-items: center; gap: .25em; color: var(--num-gold); white-space: nowrap; font-variant-numeric: tabular-nums; } /* деньги — всегда золотые: --gold в теме Умбрата зелёный */
 img.coin { height: 1em; width: 1em; vertical-align: middle; margin-left: 0.2em; image-rendering: pixelated; }
 .gold-amt > img.coin { width: 1em; height: 1em; margin: 0; } /* (0,2,1) выше .shoprow img: монета в кнопке цены не раздувается; .cook-list/.enc-list .shoprow img по-прежнему перебивают (уйдут с переводом окон) */
 .btn.price { justify-content: space-between; gap: var(--sp-2); min-width: 104px; font-variant-numeric: tabular-nums; }
@@ -354,6 +355,7 @@ img.coin { height: 1em; width: 1em; vertical-align: middle; margin-left: 0.2em; 
 .chip.bad { --c: var(--bad); }
 .chip.warn { --c: var(--warn); }
 .chip.dim { --c: var(--dim); }
+.chip.xp { --c: var(--xp); }
 .chip.boss { --c: var(--boss); }
 .chip.ench { --c: var(--enchant); }
 button.chip { cursor: pointer; }
@@ -379,11 +381,11 @@ button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
 
 /* ---------- ячейка предмета .cell, сетка .cells, ячейка с подписью .tile ----------
    Наведение и нажатие — только у button.cell: статичные ячейки (осмотр, выбор героя) не выглядят кликабельными.
-   Выбор у ячейки — aria-pressed; пунктир .drag у кузнеца пока выглядит как выбранная. */
+   Выбор у ячейки — aria-pressed. */
 .cells { --cols: 6; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--sp-1); }
 .cells.auto { grid-template-columns: repeat(auto-fill, minmax(var(--cell-min, 48px), 1fr)); }
 .cell { --cell: 48px; position: relative; display: block; flex: none; width: var(--cell); aspect-ratio: 1; padding: 0; overflow: hidden; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); cursor: pointer; }
-.cells > .cell, .tile > .cell, .equip > .cell, .grid > .cell, .smith-pick > .cell { width: 100%; } /* старые сетки (.equip .grid .smith-pick) тянут ячейку на всю колонку */
+.cells > .cell, .tile > .cell, .equip > .cell, .grid > .cell { width: 100%; } /* старые сетки (.equip .grid) тянут ячейку на всю колонку */
 .cell.sm { --cell: 32px; }
 .cell.md { --cell: 40px; }
 .cell.lg { --cell: 56px; }
@@ -418,8 +420,8 @@ button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
 button.cell:hover:not(:disabled) { background: var(--panel-2); }
 button.cell:active:not(:disabled) { transform: translateY(1px); }
 .cell:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
-.cell[aria-pressed="true"], .cell[aria-selected="true"], .smith-pick .cell.drag { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: var(--glow-sel); }
-.cell.r3[aria-pressed="true"], .smith-pick .cell.r3.drag { box-shadow: inset 0 0 0 1px var(--well), inset 0 0 0 2px var(--legend), var(--glow-sel); }
+.cell[aria-pressed="true"], .cell[aria-selected="true"] { outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: var(--glow-sel); }
+.cell.r3[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--well), inset 0 0 0 2px var(--legend), var(--glow-sel); }
 .cell[aria-expanded="true"] { outline: 1px solid var(--gold); outline-offset: 1px; }
 .cell.drop { outline: 2px dashed var(--gold); outline-offset: -2px; }
 .cell.changed { outline: 2px solid var(--gold); box-shadow: var(--glow-sel); }
@@ -440,6 +442,9 @@ button.cell:active:not(:disabled) { transform: translateY(1px); }
    Высоту задают модификаторы .lg .xp .sm прямо в height: старый .bar { height } в hud.css их не перебивает. */
 .bar { --h: 14px; position: relative; height: var(--h); background: var(--well); border: 1px solid var(--well); border-radius: var(--r-1); overflow: hidden; }
 .bar > i { position: absolute; inset: 0 auto 0 0; transition: width .15s linear; }
+/* полоса прогресса без своей заливки (задание, запись бестиария): золото, готово — зелёная */
+.progress > .bar > i { background: var(--gold); }
+.progress.done > .bar > i { background: var(--ok); }
 .bar > span { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: var(--fw-b); line-height: 1; text-shadow: var(--shadow-text); font-variant-numeric: tabular-nums; }
 .bar.lg { --h: 18px; height: var(--h); }
 .bar.xp { --h: 8px; height: var(--h); }
@@ -531,8 +536,6 @@ button.uframe.dead:hover { border-color: var(--gold); }
 .note { margin: 0; color: var(--dim); font-size: var(--fs-sm); line-height: 1.45; }
 
 /* ---------- переходные правила: старая разметка под новыми общими стилями. Убирать вместе с переводом окна ---------- */
-.stats .plus { min-height: 0; } /* окно героя: кнопки «+» 22×22 (станут .btn.icon.small) */
-.bst-list .btn { justify-content: flex-start; } /* бестиарий: названия слева (станут button.row) */
 .login-btns .btn.primary, .cs-bar .btn.primary { min-height: 40px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-lg); } /* вход и выбор героя: главная кнопка крупная (станет .btn.lg) */
 .raid-banner.win { width: auto; } /* баннер рейда: класс win — цвет победы, не окно */
 .mbtn, .raid-leave { min-height: 0; } /* меню под мини-картой (height 30px) и компактная «Покинуть рейд»: высота своя, не min-height у .btn (уйдёт с переводом HUD) */

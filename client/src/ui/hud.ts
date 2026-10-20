@@ -1,5 +1,5 @@
 /** Интерфейс поверх игры (DOM): панели, окна, чат, мини-карта, подсказки. */
-import { gold, goldify } from "./gold";
+import { formatNumber, gold, goldify } from "./gold";
 import { initWindowDrag, resetWindowPositions } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
 import { FACTIONS, FOE_COLOR, factionColor } from "../../../shared/factions";
@@ -396,8 +396,9 @@ export class Hud {
       this.root.append(w);
       this.wins[id] = w;
     };
-    mk("char", "win-char", "Герой");
-    mk("inv", "win-inv", "Снаряжение и сумка");
+    mk("char", "win-char xl", "Герой");
+    mk("inv", "win-inv s", "Снаряжение и сумка");
+    this.wins.inv.append(el("div", "win-foot")); // подвал сумки: подсказка и золото, заполняет renderInv
     mk("skills", "win-skills", "Дерево умений");
     mk("shop", "win-shop", "Торговка Марфа");
     mk("settings", "win-settings m", "Настройки");
@@ -692,15 +693,16 @@ export class Hud {
     if (this.lastSelfLevel && s.level > this.lastSelfLevel) this.toast({ text: `Новый уровень: ${s.level}! Очки характеристик и умений ждут (C, K)`, kind: "level" });
     this.lastSelfLevel = s.level;
     const net = this.ctx.net;
-    // панель героя
+    // панель героя: уровень плашкой, ник и под ним класс, фракция; на максимальном уровне полосы опыта нет
     const pts = [s.statPoints ? `<span class="pill" data-open="char">+${s.statPoints} хар.</span>` : "", s.skillPoints ? `<span class="pill" data-open="skills">+${s.skillPoints} ум.</span>` : ""].join("");
+    const xpPct = s.xpNext ? Math.floor((s.xp / s.xpNext) * 100) : 0;
     this.player.innerHTML = `
-      <div class="row1"><span class="nm">${esc(s.name)}</span><span class="lv">${CLASSES[s.cls].name} · ур. ${s.level}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
+      <div class="row1"><span class="lvl" title="Уровень ${s.level}">${s.level}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="cls">${CLASSES[s.cls].name}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
       <div class="combat-badge" ${this.inCombat ? "" : "hidden"}>╳ В бою</div>
       <div class="bar hp"><i id="hp-fill"></i><span id="hp-text"></span></div>
       <div class="bar mp"><i id="mp-fill"></i><span id="mp-text"></span></div>
-      <div class="bar xp" title="Опыт"><i style="width:${s.xpNext ? (s.xp / s.xpNext) * 100 : 100}%"></i></div>
-      <div class="pts"><span class="muted">Опыт ${s.xpNext ? `${s.xp} / ${s.xpNext}` : "максимум"}</span>${gold(s.gold)}${pts}</div><div class="food-buff" hidden></div>`;
+      ${s.xpNext ? `<div class="bar xp" title="Опыт: ${xpPct}%"><i style="width:${xpPct}%"></i></div>` : ""}
+      <div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}<span class="food-buff" hidden></span>${gold(s.gold)}</div>`;
     this.updateFoodLabel();
     this.player.querySelectorAll<HTMLElement>("[data-open]").forEach((p) => (p.onclick = () => this.toggle(p.dataset.open!)));
 
@@ -749,44 +751,82 @@ export class Hud {
     box.onmouseleave = () => (this.tip.hidden = true);
   }
 
+  /** Раздел «Эффекты снаряжения» в окне «Герой» открыт? Окно пересоздаёт разметку при каждом обновлении, поэтому состояние живёт здесь и в localStorage. */
+  private legendOpen = (() => { try { return localStorage.getItem("charLegend:v1") === "1"; } catch { return false; } })();
+  private setLegendOpen(open: boolean) {
+    if (open === this.legendOpen) return; // свежесозданный раздел тоже шлёт toggle, писать в хранилище при каждом обновлении не нужно
+    this.legendOpen = open;
+    try { localStorage.setItem("charLegend:v1", open ? "1" : "0"); } catch {}
+  }
+
   private renderChar(s: SelfState) {
     const b = this.body("char");
     const d = s.derived;
-    b.innerHTML = `<div class="char-cols"><div class="char-main"><p class="muted">Свободно очков: <b class="gold">${s.statPoints}</b> (3 за уровень)</p><div class="stats"></div>
-      <div class="derived">
-        <span>Урон</span><span>${d.dmgMin}–${d.dmgMax}</span>
-        <span>Здоровье</span><span>${d.maxHp}</span>
-        <span>Мана</span><span>${d.maxMp}</span>
-        <span>Броня</span><span>${d.armor}</span>
-        <span>Шанс крита</span><span>${(d.crit * 100).toFixed(1)}%</span>
-        <span>Урон крита</span><span>${Math.round(d.critMult * 100)}%</span>
-        <span>Уклонение</span><span>${(d.dodge * 100).toFixed(1)}%</span>
-        <span>Сила умений</span><span>${Math.round(d.skillMult * 100)}%</span>
-        <span>Атак в секунду</span><span>${(1 / d.attackCd).toFixed(2)}</span>
-        <span>Реген здоровья</span><span>${d.hpRegen.toFixed(1)}/с</span>
-        <span>Реген маны</span><span>${d.mpRegen.toFixed(1)}/с</span>
-        ${d.lifesteal ? `<span>Вампиризм</span><span>${Math.round(d.lifesteal * 100)}%</span>` : ""}
-        <span>Убито врагов</span><span>${s.kills}</span>
-        <span>Повержено боссов</span><span>${Object.values(s.bossKills).reduce((a, c) => a + c, 0)}</span>
-      </div></div><div class="char-side"></div></div>`;
-    const gear = el("div", "gear-block");
-    gear.append(el("h3", "gear-h", "Снаряжение"), gearRows(SLOTS.map((slot) => ({ slot, item: s.equip[slot] })), s.id, {
+    const live = b.querySelector<HTMLDetailsElement>(".gear-legend");
+    if (live) this.setLegendOpen(live.open); // берём из старой разметки: событие toggle приходит с задержкой, обновление могло успеть раньше
+    const group = (title: string, rows: [string, string][]) =>
+      `<div class="sub-grp"><h4 class="sub-h">${title}</h4><dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></div>`;
+    const attack: [string, string][] = [
+      ["Урон", `${d.dmgMin}–${d.dmgMax}`],
+      ["Атак в секунду", (1 / d.attackCd).toFixed(2)],
+      ["Шанс крита", `${(d.crit * 100).toFixed(1)}%`],
+      ["Урон крита", `${Math.round(d.critMult * 100)}%`],
+      ["Сила умений", `${Math.round(d.skillMult * 100)}%`],
+    ];
+    if (d.lifesteal) attack.push(["Вампиризм", `${Math.round(d.lifesteal * 100)}%`]);
+    const survive: [string, string][] = [
+      ["Здоровье", String(d.maxHp)],
+      ["Броня", String(d.armor)],
+      ["Уклонение", `${(d.dodge * 100).toFixed(1)}%`],
+      ["Реген здоровья", `${d.hpRegen.toFixed(1)}/с`],
+      ["Мана", String(d.maxMp)],
+      ["Реген маны", `${d.mpRegen.toFixed(1)}/с`],
+    ];
+    const score: [string, string][] = [
+      ["Убито врагов", s.kills.toLocaleString("ru-RU")],
+      ["Повержено боссов", Object.values(s.bossKills).reduce((a, c) => a + c, 0).toLocaleString("ru-RU")],
+    ];
+    b.innerHTML = `<div class="char-cols">
+      <div class="char-main">
+        <section class="sec">
+          <div class="sec-head"><h3 class="sec-h">Характеристики</h3><span class="chip${s.statPoints > 0 ? "" : " dim"}" title="Свободных очков характеристик">Свободно: ${s.statPoints}</span></div>
+          <div class="stats"></div>
+          <p class="field-hint">3 очка за уровень · наведите на название — что даёт</p>
+        </section>
+        <section class="sec">
+          <h3 class="sec-h">Показатели</h3>
+          ${group("Атака", attack)}${group("Выживание", survive)}${group("Счёт", score)}
+        </section>
+      </div>
+      <div class="char-side"></div></div>`;
+    // у классов без второй руки слота нет ни здесь, ни в сумке
+    const slots = SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls));
+    const gear = el("section", "sec gear-block", `<div class="sec-head"><h3 class="sec-h">Снаряжение</h3></div>`);
+    const total = enchantTotal(slots.map((slot) => s.equip[slot]));
+    if (total) gear.append(el("p", "gear-total", total));
+    gear.append(gearRows(slots.map((slot) => ({ slot, item: s.equip[slot] })), s.id, {
       tip: (elm, it) => this.tipFor(elm, () => this.itemTip(it, this.ctx.net.self!, true, true)),
       hover: (slot) => { if (slot) flashGear(s.id, slot); },
     }));
-    const total = enchantTotal(SLOTS.map((slot) => s.equip[slot]));
-    if (total) gear.append(el("p", "muted gear-total", total));
-    b.querySelector(".char-side")!.append(gear, legendBlock());
+    b.querySelector(".char-side")!.append(gear, legendBlock(this.legendOpen, (open) => this.setLegendOpen(open)));
+    // характеристики: название, значение, «+» (1 очко) и «+10» (сервер вкладывает не больше, чем есть свободных); без свободных очков кнопки выключены
     const grid = b.querySelector(".stats")!;
+    const tenHint = "Вложить 10 очков, если осталось меньше — все";
     for (const k of ["str", "agi", "int", "vit"] as StatKey[]) {
       const main = CLASSES[s.cls].mainStat === k;
-      const name = el("span", "k", `${STAT_NAMES[k]}${main ? ' <span class="gold">★</span>' : ""}`);
+      const name = el("span", "k", `${STAT_NAMES[k]}${main ? ' <span class="c-gold">★</span>' : ""}`);
       this.tipFor(name, () => `<div class="t">${STAT_NAMES[k]}</div><div>${STAT_HINTS[k]}</div>${statTip(k, s)}<div class="d">Вложено: ${s.alloc[k]}</div>`);
-      const plus = el("button", "btn plus", "+");
-      plus.disabled = s.statPoints <= 0;
-      plus.setAttribute("aria-label", `Добавить: ${STAT_NAMES[k]}`);
-      plus.onclick = () => this.ctx.net.send("alloc", { stat: k });
-      grid.append(name, el("span", "v", String(d.stats[k])), plus);
+      const one = el("button", "btn icon small stat-add", "+");
+      one.disabled = s.statPoints <= 0;
+      one.setAttribute("aria-label", `Добавить: ${STAT_NAMES[k]}`);
+      one.onclick = () => this.ctx.net.send("alloc", { stat: k });
+      const ten = el("button", "btn small stat-add10", "+10");
+      ten.disabled = s.statPoints <= 0;
+      ten.setAttribute("aria-label", `Добавить 10: ${STAT_NAMES[k]}`);
+      ten.title = tenHint; // у выключенной кнопки игровая подсказка не появится, а родная — да
+      this.tipFor(ten, () => `<div>${tenHint}</div>`);
+      ten.onclick = () => this.ctx.net.send("alloc", { stat: k, n: 10 });
+      grid.append(name, el("span", "v", String(d.stats[k])), one, ten);
     }
   }
 
@@ -806,14 +846,16 @@ export class Hud {
     return c;
   }
   private petPop: "pet" | "mount" | null = null;
-  /** Слоты «Питомец» и «Маунт» под снаряжением; клик открывает список своих. */
-  private renderCompanions(row: HTMLElement, s: SelfState) {
+  /** Ячейки «Питомец» и «Маунт» (клик открывает список своих) и сам список; он встаёт под сеткой надетого. */
+  private renderCompanions(s: SelfState): { cells: HTMLElement[]; pop: HTMLElement | null } {
     const send = (t: "pet:toggle" | "mount:toggle" | "pet:select" | "mount:select", id?: string) => this.ctx.net.send(t as never, (id ? { id } : {}) as never);
+    const cells: HTMLElement[] = [];
     for (const kind of ["pet", "mount"] as const) {
       const id = kind === "pet" ? s.pet : s.mount;
       const owned = kind === "pet" ? !!id && !!s.pets?.[id] : !!id && !!s.mounts?.includes(id);
       const label = kind === "pet" ? "Питомец" : "Маунт";
-      const c = el("button", `cell comp${this.petPop === kind ? " open" : ""}`);
+      const c = el("button", "cell comp");
+      c.setAttribute("aria-expanded", String(this.petPop === kind));
       const img = owned ? (kind === "pet" ? PETS[id!]?.sprite : mountSprite(id!)) : "";
       if (owned && img) {
         const lv = kind === "pet" ? `<span class="qty">${s.pets![id!].level}</span>` : "";
@@ -823,53 +865,63 @@ export class Hud {
         c.title = label;
         c.innerHTML = `<img class="ghost" src="${icon(kind === "pet" ? "pet_wolf" : "mount_horse")}" alt="${label}">`;
       }
+      const key = keybinds.label(kind, 0); // клавиша — в углу ячейки, как на панели умений; переназначили — подпись сменится
+      if (key) c.append(Object.assign(el("kbd"), { textContent: key }));
       c.onclick = () => { this.tip.hidden = true; this.petPop = this.petPop === kind ? null : kind; this.renderSelf(this.ctx.net.self!); };
-      row.append(c);
+      cells.push(c);
     }
-    row.append(el("span", "muted comp-hint", "Питомец (G) и маунт (X)"));
     const kind = this.petPop;
-    if (!kind) return;
-    const pop = el("div", "panel comp-pop");
+    if (!kind) return { cells, pop: null };
+    const pop = el("div", "comp-pop", `<h4 class="sub-h">${kind === "pet" ? "Питомцы" : "Маунты"}</h4>`);
     const ids = kind === "pet" ? Object.keys(s.pets ?? {}) : (s.mounts ?? []);
     const cur = kind === "pet" ? s.pet : s.mount;
     if (!ids.length) {
-      pop.innerHTML = kind === "pet"
-        ? "<p class=\"muted\">Питомцев пока нет. Волчонка можно получить с 5 уровня, остальных продаёт торговка Марфа.</p>"
-        : "<p class=\"muted\">Маунтов пока нет. Их продаёт торговка Марфа в Эмберхолле.</p>";
+      pop.append(el("p", "note", kind === "pet"
+        ? "Питомцев пока нет. Волчонка можно получить с 5 уровня, остальных продаёт торговка Марфа."
+        : "Маунтов пока нет. Их продаёт торговка Марфа в Эмберхолле."));
+      return { cells, pop };
     }
+    const list = el("div", "list boxed");
     for (const id of ids) {
       const d = kind === "pet" ? PETS[id] : MOUNTS[id];
       if (!d) continue;
-      const r = el("button", `comp-row${id === cur ? " cur" : ""}`);
+      const r = el("button", "row comp-row");
+      r.setAttribute("aria-pressed", String(id === cur));
       const sub = kind === "pet" ? `ур. ${s.pets![id].level}` : `${MOUNT_TIERS[MOUNTS[id].tier]} · ×${MOUNTS[id].speed}`;
-      r.innerHTML = `<img src="${icon(kind === "pet" ? PETS[id].sprite : mountSprite(id))}" alt=""><span class="nm">${esc(d.name)}</span><span class="muted">${sub}${id === cur ? " · выбран" : ""}</span>`;
+      r.innerHTML = `<span class="row-icon"><img src="${icon(kind === "pet" ? PETS[id].sprite : mountSprite(id))}" alt=""></span><span class="row-main"><span class="row-title">${esc(d.name)}</span><span class="row-sub">${sub}${id === cur ? " · выбран" : ""}</span></span>`;
       r.onclick = () => send(kind === "pet" ? "pet:select" : "mount:select", id);
       this.tipFor(r, () => kind === "pet" ? this.petTip(id, s) : this.mountTip(id));
-      pop.append(r);
+      list.append(r);
     }
-    if (ids.length) {
-      const b = el("button", "btn small", kind === "pet" ? "Призвать / отозвать" : "Сесть / слезть");
-      b.onclick = () => send(kind === "pet" ? "pet:toggle" : "mount:toggle");
-      pop.append(b);
-    }
-    row.after(pop);
+    const act = el("button", "btn small", kind === "pet" ? "Призвать / отозвать" : "Сесть / слезть");
+    act.onclick = () => send(kind === "pet" ? "pet:toggle" : "mount:toggle");
+    pop.append(list, act);
+    return { cells, pop };
   }
   private petTip(id: string, s: SelfState): string {
     const d = PETS[id];
     if (!d) return "";
-    return `<div class="t">${esc(d.name)} · ур. ${s.pets?.[id]?.level ?? 1}</div>${d.skills.map((k) => `<div><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}<div class="d">Призвать: G, выбрать следующего: Shift+G</div>`;
+    return `<div class="t">${esc(d.name)} · ур. ${s.pets?.[id]?.level ?? 1}</div>${d.skills.map((k) => `<div><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}<div class="d">Призвать: ${esc(keybinds.label("pet", 0))}, выбрать следующего: ${esc(keybinds.label("petNext", 0))}</div>`;
   }
   private mountTip(id: string): string {
     const m = MOUNTS[id];
-    return m ? `<div class="t" style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</div><div>${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}</div><div class="d">${esc(m.desc)}</div><div class="d">${MOUNT_SOURCES[m.source]}. Сесть: X, выбрать следующий: Shift+X</div>` : "";
+    return m ? `<div class="t" style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</div><div>${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}</div><div class="d">${esc(m.desc)}</div><div class="d">${MOUNT_SOURCES[m.source]}. Сесть: ${esc(keybinds.label("mount", 0))}, выбрать следующий: ${esc(keybinds.label("mountNext", 0))}</div>` : "";
+  }
+  /** Что делает клик по вещи в сумке: обмен › банк › торговка › обычный режим. Плашка режима и обработчик клика берут ответ отсюда. */
+  private invMode(): { id: "trade" | "bank" | "shop" | "use"; note: string } {
+    if (this.trade.isOpen) return { id: "trade", note: "Обмен: клик по вещи — предложить" };
+    if (this.bank.isOpen) return { id: "bank", note: "Банк открыт: клик по вещи — положить в банк" };
+    if (!this.wins.shop.hidden) return { id: "shop", note: "Торговка рядом: клик по вещи — продать" };
+    return { id: "use", note: "" };
   }
   private renderInv(s: SelfState) {
     const b = this.body("inv");
-    const shop = !this.wins.shop.hidden;
-    b.innerHTML = `<div class="equip"></div><div class="equip extra"></div><p class="muted">${this.bank.isOpen ? "Банк открыт: клик по предмету — положить в банк." : shop ? "Торговец рядом: клик по предмету в сумке — продать." : "Клик — надеть или выпить. Перетащите, чтобы переложить."}</p><div class="grid"></div><p class="muted">Золото: <b>${gold(s.gold)}</b></p>`;
-    const eq = b.querySelector(".equip")!;
-    for (const slot of SLOTS) {
-      if (slot === "offhand" && !OFFHAND_CLASSES.includes(s.cls)) continue;
+    const mode = this.invMode();
+    // надето: те же 6 колонок, что у сумки. Четыре вещи и питомец, ещё до четырёх вещей и маунт; питомец и маунт стоят в 6-й колонке (.cell.comp)
+    const eqSec = el("section", "sec", `<h3 class="sec-h">Надето</h3>`);
+    const eq = el("div", "equip");
+    const comp = this.renderCompanions(s);
+    SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls)).forEach((slot, n) => {
       const it = s.equip[slot];
       ghostBase[SLOT_NAMES[slot]] = slot === "weapon" ? CLASSES[s.cls].startWeapon : slot === "offhand" ? offhandGhost(s.cls) : slot;
       const c = this.cell(it, s, "", SLOT_NAMES[slot]);
@@ -878,9 +930,16 @@ export class Hud {
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!, true));
       }
       eq.append(c);
-    }
-    this.renderCompanions(b.querySelector<HTMLElement>(".equip.extra")!, s);
-    const grid = b.querySelector(".grid")!;
+      if (n === 3) eq.append(comp.cells[0]);
+    });
+    eq.append(comp.cells[1]);
+    eqSec.append(eq);
+    if (comp.pop) eqSec.append(comp.pop);
+
+    const used = s.inventory.filter(Boolean).length;
+    const bag = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Сумка</h3><span class="sec-aside" title="Занято ячеек из ${s.inventory.length}">${used} / ${s.inventory.length}</span></div>`);
+    if (mode.note) bag.append(el("p", "note inv-mode", mode.note));
+    const grid = el("div", "grid");
     const locked = this.trade.lockedIndices();
     s.inventory.forEach((it, i) => {
       const c = this.cell(it, s, locked.has(i) ? "locked" : "");
@@ -900,9 +959,10 @@ export class Hud {
       if (it) {
         c.onclick = () => {
           this.tip.hidden = true;
-          if (this.trade.isOpen) { if (!locked.has(i)) this.trade.offer(i); }
-          else if (this.bank.isOpen) this.bank.deposit(i);
-          else if (!this.wins.shop.hidden) this.ctx.net.send("sell", { index: i });
+          const now = this.invMode().id;
+          if (now === "trade") { if (!locked.has(i)) this.trade.offer(i); }
+          else if (now === "bank") this.bank.deposit(i);
+          else if (now === "shop") this.ctx.net.send("sell", { index: i });
           else if (BASE_ITEMS[it.base].slot === "consumable") this.ctx.net.send("use", { index: i });
           else this.ctx.net.send("equip", { index: i });
         };
@@ -910,6 +970,11 @@ export class Hud {
       }
       grid.append(c);
     });
+    bag.append(grid);
+    b.replaceChildren(eqSec, bag);
+    // подвал не прокручивается: подсказка слева, золото справа; в особых режимах, что делает клик, сказано в плашке над сеткой
+    this.wins.inv.querySelector<HTMLElement>(".win-foot")!.innerHTML =
+      `<span class="win-foot-info">${mode.id === "use" ? "Клик — надеть или выпить · перетащите — переложить" : "Перетащите — переложить"}</span>${gold(s.gold)}`;
   }
 
   private renderSkills(s: SelfState) {
@@ -1150,8 +1215,10 @@ export class Hud {
     this.lastPos = info.pos;
     if (me) {
       const hp = document.getElementById("hp-fill"), mp = document.getElementById("mp-fill");
-      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; document.getElementById("hp-text")!.textContent = `${Math.max(0, me.hp)} / ${me.maxHp}`; }
-      if (mp) { mp.style.width = `${(me.mp / Math.max(1, me.maxMp)) * 100}%`; document.getElementById("mp-text")!.textContent = `${me.mp} / ${me.maxMp}`; }
+      // числа с разделителем разрядов, как у золота; текст пишется только при изменении
+      const put = (id: string, t: string) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
+      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
+      if (mp) { mp.style.width = `${(me.mp / Math.max(1, me.maxMp)) * 100}%`; put("mp-text", `${formatNumber(me.mp)} / ${formatNumber(me.maxMp)}`); }
       // смерть
       if (me.anim === Anim.Dead) {
         if (!this.deadSince) {

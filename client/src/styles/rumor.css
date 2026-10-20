@@ -47,14 +47,13 @@
   height: 20px;
   image-rendering: pixelated;
 }
+/* кузнец: каркас, разделы, таблица, строки .row и кнопки цены — kit.css; ширина — .m, прокручивается только .body */
 .win-smith {
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  width: min(480px, calc(100vw - 24px));
   z-index: 4;
   max-height: calc(100vh - 100px);
-  overflow-y: auto;
 }
 .win-bags {
   left: 50%;
@@ -94,33 +93,49 @@
   display: flex;
   justify-content: flex-end;
 }
+/* выбор вещи: «Надето» и «В сумке» — две группы ячеек по 8 в ряд, без вложенной прокрутки */
 .smith-pick {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: var(--sp-1);
-  max-height: 150px;
-  overflow-y: auto;
-  margin-bottom: var(--sp-1h);
-}
-.smith-sec,
-.smith-none {
-  grid-column: 1 / -1;
-  font-size: var(--fs-sm);
-}
-.smith-sec {
-  border-bottom: 1px solid var(--line);
-  margin-top: var(--sp-0);
-}
-.smith-fx {
-  font-size: var(--fs);
-}
-.smith-info {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
-  margin-bottom: var(--sp-2);
+  gap: var(--sp-3);
 }
-.smith-info .warn {
+.smith-pick .cells {
+  --cols: 8;
+}
+/* вещь уже на максимуме (+10): улучшать нечего; значок +N остаётся как был */
+.cell.maxed img {
+  filter: grayscale(0.6) brightness(0.7);
+}
+.smith-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.smith-item .cell {
+  cursor: default;
+}
+.smith-fx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0);
+}
+/* цена и «есть N»: нехватка красным, в том числе сумма золота */
+.smith-info dd .meta {
+  margin-left: var(--sp-1);
+}
+.smith-info .kv > dd.bad .gold-amt {
   color: var(--bad);
+}
+/* подвал: золото слева, «Улучшить» справа */
+.win-smith .win-foot > .smith-go {
+  margin-left: auto;
+}
+/* материалы: строка .row с меткой .shoprow для tests/; flex и картинка 40px из общего .shoprow здесь не нужны (монета в кнопке цены остаётся 1em) */
+.smith-mats .shoprow {
+  display: grid;
+}
+.smith-mats .row-icon img {
+  width: 32px;
+  height: 32px;
 }
 /* значок заточки .cell .plus — в kit.css */

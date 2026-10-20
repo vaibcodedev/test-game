@@ -12,68 +12,42 @@
   gap: var(--sp-2);
   color: var(--dim);
 }
-.gear-h {
-  margin: var(--sp-2) 0 var(--sp-1);
-  font-size: var(--fs-md);
-  color: var(--gold);
-}
-.gear-rows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-.gear-row {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: flex-start;
-  padding: var(--sp-1);
-  border-radius: var(--r-2);
-}
+/* строки снаряжения: .list > .row из kit.css, ячейка .cell.md (40px). Имя цветом редкости в одну строку, под ним слот и эффект на герое — не больше двух строк */
 .gear-row:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--panel-2);
 }
-.gear-row .gr-cell {
-  flex: none;
-  width: 36px;
+.gear-row .cell {
   cursor: default;
 }
-.gear-row .gr-text {
-  flex: 1;
-  min-width: 0;
-  line-height: 1.3;
+.gr-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .gr-fx {
-  color: var(--dim);
-  font-size: var(--fs-sm);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-xs);
 }
-.gr-fx.hidden-fx {
-  color: var(--bad);
-}
-.gear-row.empty {
-  opacity: 0.6;
-}
-.gear-total {
-  margin-top: var(--sp-1h);
+.gr-fx .ench {
   color: var(--enchant);
 }
-.gear-legend {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1h);
+.gr-fx .theme {
+  color: var(--legend);
 }
-.gl-row {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: flex-start;
+.gr-fx .hidden-fx {
+  color: var(--bad);
 }
-.gl-row > div {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.gl-row .muted {
+.gear-total {
+  margin: 0;
+  color: var(--enchant);
   font-size: var(--fs-sm);
+}
+/* «Эффекты снаряжения»: сворачиваемый раздел (.disclosure — kit.css), строки — .row с образцом .sw вместо иконки */
+.gear-legend > summary .meta {
+  margin-left: auto;
 }
 .sw {
   flex: none;

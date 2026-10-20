@@ -49,12 +49,6 @@
 .gm-note {
   text-align: center;
 }
-.win-qlog {
-  left: 50%;
-  top: 80px;
-  transform: translateX(-50%);
-  width: min(440px, calc(100vw - 24px));
-}
 /* окно «Помощь»: ширина .win.m и тело .body — kit.css */
 .win-help {
   left: 50%;

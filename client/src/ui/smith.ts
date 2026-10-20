@@ -2,12 +2,18 @@
 import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
-import { MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, stepFor } from "../../../shared/upgrade";
+import { failLevel, MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, stepFor } from "../../../shared/upgrade";
 import { enchantTier, GEAR_FX, smithNextText, tierText } from "../../../shared/gearFx";
 import type { Net } from "../net";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
+}
 type Sel = { index: number } | { slot: Slot } | null;
 
 /**
@@ -22,22 +28,33 @@ export function plusBadgeN(plus: number): string {
 /** Значок «+N» на ячейке предмета. */
 export const plusBadge = (it: Pick<Item, "plus">) => plusBadgeN(it.plus || 0);
 
-function statLines(it: Item): string {
+/** Характеристики предмета с учётом заточки парами «название — значение»: урон одной строкой, у шанса крита — «%». */
+function statPairs(it: Item): [string, string][] {
   const st = effStats(it);
-  const out: string[] = [];
-  if (st.dmgMin) out.push(`Урон ${st.dmgMin}–${st.dmgMax}`);
-  for (const [k, v] of Object.entries(st)) if (!["dmgMin", "dmgMax"].includes(k)) out.push(`${ITEM_STAT_NAMES[k as ItemStatKey]} ${v}`);
-  return out.join(" · ");
+  const out: [string, string][] = [];
+  if (st.dmgMin) out.push(["Урон", `${st.dmgMin}–${st.dmgMax}`]);
+  for (const [k, v] of Object.entries(st)) {
+    if (k === "dmgMin" || k === "dmgMax") continue;
+    const name = ITEM_STAT_NAMES[k as ItemStatKey];
+    out.push([name.charAt(0).toUpperCase() + name.slice(1), `${v}${k === "crit" ? "%" : ""}`]);
+  }
+  return out;
 }
 
 export class SmithUI {
-  private win = document.createElement("div");
+  private win = el("div", "panel win m win-smith");
+  private body: HTMLElement;
+  private foot: HTMLElement;
   private net!: Net;
   private sel: Sel = null;
 
   constructor(root: HTMLElement) {
-    this.win.className = "panel win win-smith";
     this.win.hidden = true;
+    // каркас строится один раз: h2, .body и подвал остаются на месте, при обновлении меняется только их содержимое
+    this.win.innerHTML = `<h2><span>${esc(SMITH.name)}</span><button class="x" aria-label="Закрыть">×</button></h2><div class="body"></div><div class="win-foot"></div>`;
+    this.body = this.win.querySelector<HTMLElement>(".body")!;
+    this.foot = this.win.querySelector<HTMLElement>(".win-foot")!;
+    this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
     root.append(this.win);
   }
   bind(net: Net) {
@@ -64,77 +81,123 @@ export class SmithUI {
     if (this.win.hidden) return;
     const it = this.selected(s);
     if (!it) this.sel = null;
-    this.win.innerHTML = `<h2><span>${esc(SMITH.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
-      <p class="muted">${esc(SMITH.greeting)}</p>
-      <div class="smith-pick"></div><div class="smith-info"></div>
-      <div class="smith-mats"></div><p class="muted">Золото: <b>${gold(s.gold)}</b></p>`;
-    this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
-    const pick = this.win.querySelector<HTMLElement>(".smith-pick")!;
-    const add = (item: Item | null, sel: Sel, label = "") => {
-      if (!item || BASE_ITEMS[item.base].slot === "consumable") return;
-      const c = document.createElement("button");
-      const chosen = this.sel && JSON.stringify(this.sel) === JSON.stringify(sel);
-      c.className = `cell r${item.rarity}${chosen ? " drag" : ""}`;
-      c.title = `${label ? label + ": " : ""}${itemName(item)}`;
+    const info = this.infoSection(s, it);
+    // содержимое подменяется разом: прокрутка .body не сбрасывается, например после покупки руды
+    this.body.replaceChildren(el("p", "npc-say", esc(SMITH.greeting)), this.pickSection(s), info.sec, this.matsSection(s));
+    this.foot.innerHTML = `<span class="win-foot-info">Золото</span>${gold(s.gold)}`;
+    this.foot.append(info.go);
+  }
+
+  /** «Что улучшить»: надетое и вещи из сумки, по 8 в ряд, без вложенной прокрутки. Выбранная вещь — aria-pressed. */
+  private pickSection(s: SelfState): HTMLElement {
+    const sec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Что улучшить</h3><span class="sec-aside">Клик — выбрать</span></div>`);
+    const cell = (item: Item | null, sel: Sel, label = ""): HTMLElement | null => {
+      if (!item || BASE_ITEMS[item.base].slot === "consumable") return null;
+      const maxed = (item.plus || 0) >= MAX_PLUS;
+      const c = el("button", `cell r${item.rarity}${maxed ? " maxed" : ""}`);
+      c.setAttribute("aria-pressed", String(!!this.sel && JSON.stringify(this.sel) === JSON.stringify(sel)));
+      c.title = `${label ? label + ": " : ""}${itemName(item)}${maxed ? " — улучшено до максимума" : ""}`;
       c.innerHTML = `<img src="${icon(iconFor(item))}" alt="${esc(itemName(item))}">${plusBadge(item)}`;
       c.onclick = () => { this.sel = sel; this.update(this.net.self!); };
-      c.draggable = true;
-      c.ondragstart = (e) => { this.sel = sel; e.dataTransfer!.setData("text/plain", "smith"); };
-      pick.append(c);
+      return c;
     };
-    const note = (cls: string, text: string) => pick.append(Object.assign(document.createElement("div"), { className: cls, textContent: text }));
-    note("smith-sec muted", "Надето");
-    let n = pick.children.length;
-    for (const slot of SLOTS) add(s.equip[slot], { slot }, SLOT_NAMES[slot]);
-    if (pick.children.length === n) note("smith-none muted", "ничего не надето");
-    note("smith-sec muted", "Сумка");
-    n = pick.children.length;
-    s.inventory.forEach((item, index) => add(item, { index }));
-    if (pick.children.length === n) note("smith-none muted", "нет предметов для улучшения");
+    const group = (title: string, all: (HTMLElement | null)[], empty: string) => {
+      const cells = all.filter((c): c is HTMLElement => !!c);
+      const g = el("div", "sub-grp", `<h4 class="sub-h">${title}</h4>`);
+      if (cells.length) {
+        const grid = el("div", "cells");
+        grid.append(...cells);
+        g.append(grid);
+      } else g.append(el("p", "note", empty));
+      return g;
+    };
+    const pick = el("div", "smith-pick");
+    pick.append(
+      group("Надето", SLOTS.map((slot) => cell(s.equip[slot], { slot }, SLOT_NAMES[slot])), "Ничего не надето"),
+      group("В сумке", s.inventory.map((item, index) => cell(item, { index })), "Нет вещей для улучшения"),
+    );
+    sec.append(pick);
+    return sec;
+  }
 
-    const info = this.win.querySelector<HTMLElement>(".smith-info")!;
-    if (!it) info.innerHTML = `<p class="muted">Выберите предмет из сумки или надетый.</p>`;
-    else {
-      const plus = it.plus || 0;
-      const step = stepFor(plus);
-      const next = { ...it, plus: plus + 1 };
-      const have = { ore: this.count(s, "ash_ore"), dust: this.count(s, "star_dust") };
-      const slot = BASE_ITEMS[it.base].slot as Slot;
-      const tier = enchantTier(plus);
-      const nextFx = smithNextText(slot, plus) || (slot === "ring" || slot === "amulet" ? tierText(slot, 0) : GEAR_FX.texts.smithMax);
-      let html = `<div class="t r${it.rarity}">${esc(itemName(it))}</div><div class="muted">Сейчас: ${statLines(it)}</div>
-        <div class="smith-fx muted">Сейчас на герое: ${esc(tier > 0 ? tierText(slot, tier) : "эффекта заточки нет")}</div>
-        <div class="smith-fx">${esc(nextFx)}</div>`;
-      if (!step) html += `<div class="ok">Максимальное улучшение +${MAX_PLUS}</div>`;
-      else {
-        const okMat = have.ore >= step.ore && have.dust >= step.dust && s.gold >= step.gold;
-        html += `<div>Станет +${plus + 1}: ${statLines(next)}</div>
-          <div>Шанс: <b>${step.chance}%</b>${step.chance < 100 ? ` · при неудаче уровень снизится до +${Math.max(0, plus - 1)}` : ""}</div>
-          <div class="${s.gold >= step.gold ? "" : "warn"}">Золото: ${gold(step.gold)}</div>
-          <div class="${have.ore >= step.ore ? "" : "warn"}">Пепельная руда: ${have.ore} / ${step.ore}</div>
-          ${step.dust ? `<div class="${have.dust >= step.dust ? "" : "warn"}">Звёздная пыль: ${have.dust} / ${step.dust}</div>` : ""}
-          <button class="btn smith-go"${okMat ? "" : " disabled"}>Улучшить</button>`;
-      }
-      info.innerHTML = html;
-      const go = info.querySelector<HTMLButtonElement>(".smith-go");
-      if (go) go.onclick = () => this.net.send("smith:upgrade", "slot" in this.sel! ? { slot: (this.sel as { slot: Slot }).slot } : { index: (this.sel as { index: number }).index });
+  /**
+   * «Улучшение»: вещь, сравнение «сейчас → станет», свечение, шанс и цена.
+   * Кнопка «Улучшить» отдаётся в подвал окна: она всегда на виду, пока прокручивают сумку и материалы; на максимуме её нет.
+   */
+  private infoSection(s: SelfState, it: Item | null): { sec: HTMLElement; go: HTMLButtonElement } {
+    const sec = el("section", "sec smith-info", `<h3 class="sec-h">Улучшение</h3>`);
+    const go = el("button", "btn primary smith-go", "Улучшить");
+    go.disabled = true;
+    if (!it) {
+      sec.append(el("p", "note", "Выберите вещь выше — здесь появятся шанс и цена"));
+      go.title = "Сначала выберите вещь";
+      return { sec, go };
     }
+    const plus = it.plus || 0;
+    const step = stepFor(plus);
+    const slot = BASE_ITEMS[it.base].slot as Slot;
+    const tier = enchantTier(plus);
+    sec.append(el("div", "smith-item", `<div class="cell r${it.rarity}"><img src="${icon(iconFor(it))}" alt="">${plusBadge(it)}</div>
+      <div class="row-main"><span class="row-title c-r${it.rarity}">${esc(it.name)}</span><span class="row-sub">${SLOT_NAMES[slot]} · ${plus ? `сейчас +${plus}` : "без улучшений"}</span></div>`));
 
-    const mats = this.win.querySelector<HTMLElement>(".smith-mats")!;
+    // сравнение: выросшее значение зелёным
+    const now = statPairs(it);
+    const next = step ? new Map(statPairs({ ...it, plus: plus + 1 })) : null;
+    const cmp = now.map(([name, v]) => {
+      const n = next?.get(name) ?? v;
+      return `<tr><td class="dim">${esc(name)}</td><td class="num">${v}</td>${next ? `<td class="num${n !== v ? " c-ok" : ""}">${n}</td>` : ""}</tr>`;
+    }).join("");
+    sec.append(el("div", "tbl-wrap", `<table class="tbl"><thead><tr><th class="grow">Характеристика</th><th class="num">Сейчас${plus ? ` +${plus}` : ""}</th>${next ? `<th class="num">Станет +${plus + 1}</th>` : ""}</tr></thead><tbody>${cmp}</tbody></table>`));
+
+    // свечение на герое: что нарисовано сейчас и что появится
+    const nextTxt = smithNextText(slot, plus);
+    const nextFx = nextTxt || (slot === "ring" || slot === "amulet" ? tierText(slot, 0) : GEAR_FX.texts.smithMax);
+    sec.append(el("div", "smith-fx", `<p class="note">Сейчас на герое: ${esc(tier > 0 ? tierText(slot, tier) : "эффекта заточки нет")}</p><p class="note${nextTxt ? " c-ench" : ""}">${esc(nextFx)}</p>`));
+
+    if (!step) {
+      sec.append(el("p", "note c-ok", `Максимальное улучшение +${MAX_PLUS}`));
+      go.hidden = true;
+      return { sec, go };
+    }
+    const have = { ore: this.count(s, "ash_ore"), dust: this.count(s, "star_dust") };
+    const ok = { gold: s.gold >= step.gold, ore: have.ore >= step.ore, dust: have.dust >= step.dust };
+    const lack = (good: boolean) => (good ? "" : ' class="bad"'); // нехватка — красным
+    sec.append(el("dl", "kv", `<dt>Шанс</dt><dd${step.chance >= 100 ? ' class="ok"' : ""}>${step.chance}%</dd>
+      <dt>Золото</dt><dd${lack(ok.gold)}>${gold(step.gold)}</dd>
+      <dt>${esc(MATERIALS.ash_ore.name)}</dt><dd${lack(ok.ore)}>${step.ore}<span class="meta">есть ${have.ore}</span></dd>
+      ${step.dust ? `<dt>${esc(MATERIALS.star_dust.name)}</dt><dd${lack(ok.dust)}>${step.dust}<span class="meta">есть ${have.dust}</span></dd>` : ""}`));
+    if (step.chance < 100) {
+      const to = failLevel(plus);
+      sec.append(el("p", "note c-warn", `При неудаче уровень ${to < plus ? `снизится до +${to}` : "не изменится"}`));
+    }
+    go.textContent = `Улучшить до +${plus + 1}`;
+    go.disabled = !(ok.gold && ok.ore && ok.dust);
+    if (go.disabled) go.title = "Не хватает золота или материалов";
+    go.onclick = () => this.net.send("smith:upgrade", "slot" in this.sel! ? { slot: (this.sel as { slot: Slot }).slot } : { index: (this.sel as { index: number }).index });
+    return { sec, go };
+  }
+
+  /** «Материалы»: по строке на материал — иконка, название и сколько есть, цены столбиком одной ширины. */
+  private matsSection(s: SelfState): HTMLElement {
+    const sec = el("section", "sec", `<h3 class="sec-h">Материалы</h3>`);
+    const list = el("div", "list smith-mats");
     for (const id of MATERIAL_IDS) {
       const m = MATERIALS[id];
-      const row = document.createElement("div");
-      row.className = "shoprow";
-      row.innerHTML = `<img src="${icon(m.icon)}" alt=""><div>${esc(m.name)} <span class="muted">(есть: ${this.count(s, id)})</span></div>`;
+      // shoprow — метка для tests/ (ui-audit-screens.ts кликает последнюю кнопку строки: ×10)
+      const row = el("div", "row shoprow", `<span class="row-icon"><img src="${icon(m.icon)}" alt=""></span>
+        <div class="row-main"><span class="row-title">${esc(m.name)}</span><span class="row-sub">Есть: ${this.count(s, id)}</span></div>`);
+      const prices = el("div", "price-stack");
       for (const q of [1, 10]) {
-        const b = document.createElement("button");
-        b.className = "btn small";
-        b.innerHTML = `×${q} · ${gold(m.price * q)}`;
-        b.disabled = s.gold < m.price * q;
+        const price = m.price * q;
+        const b = el("button", "btn small price", `<span class="price-q">×${q}</span>${gold(price)}`);
+        if (s.gold < price) { b.disabled = true; b.dataset.short = ""; }
         b.onclick = () => this.net.send("smith:buy", { id, qty: q });
-        row.append(b);
+        prices.append(b);
       }
-      mats.append(row);
+      row.append(prices);
+      list.append(row);
     }
+    sec.append(list);
+    return sec;
   }
 }

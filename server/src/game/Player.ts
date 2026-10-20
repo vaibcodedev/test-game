@@ -295,9 +295,11 @@ export class Player {
     return skillPointsAt(this.save.level) - spent; // стартовое умение уже вложено
   }
 
-  allocate(stat: StatKey): boolean {
-    if (this.statPoints() <= 0) return false;
-    this.save.alloc[stat]++;
+  /** Вкладывает n очков в характеристику (не больше свободных) за один пересчёт. false — вкладывать нечего. */
+  allocate(stat: StatKey, n = 1): boolean {
+    const k = Math.min(n, this.statPoints());
+    if (!(k > 0)) return false; // «не больше нуля» ловит и NaN
+    this.save.alloc[stat] += k;
     const oldMax = this.unit.maxHp;
     this.recalc();
     if (stat === "vit") this.unit.hp += this.unit.maxHp - oldMax;

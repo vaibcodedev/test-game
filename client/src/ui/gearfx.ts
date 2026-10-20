@@ -1,7 +1,7 @@
-/** Общие куски окон «Герой» и «Осмотр»: 7 строк снаряжения, итог заточки и легенда эффектов (docs/gear-visuals.md, раздел 3). */
-import { fxText, GEAR_FX } from "../../../shared/gearFx";
-import { effStats, iconFor, itemName, RARITY_COLORS, RARITY_NAMES, SLOT_NAMES, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
-import { hiddenParticles } from "../game/gearHooks";
+/** Общие куски окон «Герой» и «Осмотр»: строки снаряжения, итог заточки и легенда эффектов (docs/gear-visuals.md, раздел 3). */
+import { enchantTier, GEAR_FX, legendText, tierText } from "../../../shared/gearFx";
+import { effStats, iconFor, itemName, SLOT_NAMES, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
+import { hiddenParticles, type HiddenReason } from "../game/gearHooks";
 import { plusBadge } from "./smith";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -18,24 +18,34 @@ export interface GearRowsHost {
   hover?(slot: Slot | null): void;
 }
 
-/** 7 строк: «иконка со значком · Слот: Имя +N (редкость) · эффект на герое». sid — чей это герой (для пометок «частицы скрыты»). */
+/** Эффект детали на герое одной строкой: «Заточка +7: … · Тема: …». Заточка бирюзовая с ступени 1 (+4), тема — цветом легендарки. */
+function fxHtml(slot: Slot, item: Item, reason: HiddenReason | undefined): string {
+  const plus = item.plus || 0, tier = enchantTier(plus);
+  const parts: string[] = [];
+  if (plus > 0) parts.push(`<span${tier >= 1 ? ' class="ench"' : ""}>Заточка +${plus}: ${esc(tierText(slot, tier))}</span>`);
+  const theme = legendText(slot, item.legendary);
+  if (theme) parts.push(`<span class="theme">Тема: ${esc(theme)}</span>`);
+  if (!parts.length) parts.push(esc(GEAR_FX.texts.noEffect));
+  if (reason) parts.push(`<span class="hidden-fx">${esc(GEAR_FX.texts.hidden[reason])}</span>`);
+  return parts.join(" · ");
+}
+
+/** Строки снаряжения (.list > .row): «ячейка 40px · имя цветом редкости · слот и эффект на герое». sid — чей это герой (для пометок «частицы скрыты»). */
 export function gearRows(rows: GearRow[], sid: string, host: GearRowsHost): HTMLElement {
   const box = document.createElement("div");
-  box.className = "gear-rows";
+  box.className = "list gear-rows";
   const hidden = hiddenParticles(sid);
   for (const { slot, item } of rows) {
     const row = document.createElement("div");
-    row.className = "gear-row";
+    row.className = "row gear-row";
     row.dataset.slot = slot;
     if (!item) {
       row.classList.add("empty");
-      row.innerHTML = `<div class="cell gr-cell"></div><div class="gr-text"><b>${SLOT_NAMES[slot]}:</b> <span class="muted">пусто</span></div>`;
+      row.innerHTML = `<div class="cell md gr-cell"></div><div class="row-main"><span class="row-title c-dim">${SLOT_NAMES[slot]}</span><span class="row-sub gr-fx">пусто</span></div>`;
     } else {
-      const reason = hidden[slot];
-      const fx = fxText(slot, item.plus || 0, item.legendary) + (reason ? ` · ${GEAR_FX.texts.hidden[reason]}` : "");
-      row.innerHTML = `<div class="cell r${item.rarity} gr-cell"><img src="${icon(iconFor(item))}" alt="">${plusBadge(item)}</div>
-        <div class="gr-text"><b>${SLOT_NAMES[slot]}:</b> <span style="color:${RARITY_COLORS[item.rarity]}">${esc(itemName(item))}</span> <span class="muted">(${RARITY_NAMES[item.rarity].toLowerCase()})</span>
-        <div class="gr-fx${reason ? " hidden-fx" : ""}">${esc(fx)}</div></div>`;
+      row.innerHTML = `<div class="cell md r${item.rarity} gr-cell"><img src="${icon(iconFor(item))}" alt="">${plusBadge(item)}</div>
+        <div class="row-main"><span class="row-title gr-name c-r${item.rarity}">${esc(itemName(item))}</span>
+        <span class="row-sub gr-fx">${SLOT_NAMES[slot]} · ${fxHtml(slot, item, hidden[slot])}</span></div>`;
       host.tip(row, item);
     }
     row.addEventListener("mouseenter", () => host.hover?.(slot));
@@ -68,22 +78,35 @@ type Swatch = { type: string; color?: string; colors?: string[]; alpha?: number 
 function swatchHtml(sw: Swatch): string {
   const c = esc(sw.color ?? "#fff"), a = sw.alpha ?? 1;
   const style = `--c:${c};--a:${a}`;
+  // row-icon: строка .row с иконкой строит три колонки; размер и рамку задаёт .sw
   switch (sw.type) {
-    case "rim": return `<span class="sw sw-rim">${(sw.colors ?? []).map((x) => `<i style="--c:${esc(x)}"></i>`).join("")}</span>`;
-    case "outline": return `<span class="sw sw-outline" style="${style}"><i></i></span>`;
-    case "halo": return `<span class="sw sw-halo" style="${style}"><i></i></span>`;
-    case "particles": return `<span class="sw sw-particles" style="${style}"><i></i><i></i><i></i></span>`;
-    case "ring": return `<span class="sw sw-ring" style="${style}"><i></i></span>`;
-    case "tint": return `<span class="sw sw-tint" style="${style}"><i></i></span>`;
-    default: return `<span class="sw sw-glow" style="${style}"><i></i></span>`;
+    case "rim": return `<span class="sw row-icon sw-rim">${(sw.colors ?? []).map((x) => `<i style="--c:${esc(x)}"></i>`).join("")}</span>`;
+    case "outline": return `<span class="sw row-icon sw-outline" style="${style}"><i></i></span>`;
+    case "halo": return `<span class="sw row-icon sw-halo" style="${style}"><i></i></span>`;
+    case "particles": return `<span class="sw row-icon sw-particles" style="${style}"><i></i><i></i><i></i></span>`;
+    case "ring": return `<span class="sw row-icon sw-ring" style="${style}"><i></i></span>`;
+    case "tint": return `<span class="sw row-icon sw-tint" style="${style}"><i></i></span>`;
+    default: return `<span class="sw row-icon sw-glow" style="${style}"><i></i></span>`;
   }
 }
 
-/** Блок «Что значит свечение»: по строке на каждый эффект, который бывает на герое. */
-export function legendBlock(): HTMLElement {
-  const box = document.createElement("div");
-  box.className = "gear-legend";
-  box.innerHTML = `<h3 class="gear-h">Что значит свечение</h3>` + GEAR_FX.legend.map((l) =>
-    `<div class="gl-row" data-id="${esc(l.id)}">${swatchHtml(l.swatch as Swatch)}<div><b>${esc(l.title)}</b><span class="muted">${esc(l.text)}</span></div></div>`).join("");
+/** Строки легенды про снаряжение; остальное свечение (круг под ногами, окраска, свет ночью, факел) — отдельной группой. */
+const ON_GEAR = new Set(["rarity", "tier1", "tier2", "tier3", "legend"]);
+
+/**
+ * Раздел «Эффекты снаряжения» (что значит свечение): сворачиваемый, по строке на каждый эффект, который бывает на герое.
+ * Окно «Герой» пересоздаёт разметку при каждом обновлении, поэтому открыт ли раздел, хранит владелец: open и onToggle.
+ */
+export function legendBlock(open: boolean, onToggle: (open: boolean) => void): HTMLElement {
+  const box = document.createElement("details");
+  box.className = "sec disclosure gear-legend";
+  box.open = open;
+  const row = (l: (typeof GEAR_FX.legend)[number]) =>
+    `<div class="row gl-row" data-id="${esc(l.id)}">${swatchHtml(l.swatch as Swatch)}<div class="row-main"><span class="row-title">${esc(l.title)}</span><span class="row-sub">${esc(l.text)}</span></div></div>`;
+  const group = (title: string, ls: typeof GEAR_FX.legend) =>
+    ls.length ? `<div class="sub-grp"><h4 class="sub-h">${title}</h4><div class="list">${ls.map(row).join("")}</div></div>` : "";
+  box.innerHTML = `<summary><h3 class="sec-h">Эффекты снаряжения</h3><span class="meta">Что значит свечение</span></summary>
+    <div class="disclosure-body">${group("Снаряжение", GEAR_FX.legend.filter((l) => ON_GEAR.has(l.id)))}${group("Не от снаряжения", GEAR_FX.legend.filter((l) => !ON_GEAR.has(l.id)))}</div>`;
+  box.addEventListener("toggle", () => onToggle(box.open));
   return box;
 }

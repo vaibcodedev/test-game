@@ -189,6 +189,39 @@ async function main() {
       await sleep(150);
       assert(c.self!.derived.stats.agi === agi + 2, "принят неизвестный стат");
     });
+    await check("alloc с n: пачка очков, остаток, неверные n и стат отклоняются", async () => {
+      // отдельный герой: у Веры очки считает проверка «предел уровня 100»
+      const g = await Bot.join("Пачка", "pass-alloc", "ranger");
+      try {
+        g.send("dbg", { op: "level", v: 9 }); // 8 уровней по 3 очка = 24 свободных
+        await g.until(() => g.self!.level === 9 && g.self!.statPoints === 24, 3000, "24 свободных очка");
+        const st = () => g.self!.derived.stats, free = () => g.self!.statPoints;
+        const { agi, str, vit, int } = st();
+        g.send("alloc", { stat: "agi", n: 10 });
+        await g.until(() => st().agi === agi + 10, 2000, "n = 10 вложило 10 очков");
+        assert(free() === 14, "свободных после «+10»: " + free());
+        // не целое 1…10 и не число — отказ без последствий; «constructor» — унаследованный ключ, не характеристика
+        for (const n of [0, 11, -1, 2.5, "5", null, true, [3], { n: 3 }]) g.send("alloc", { stat: "str", n });
+        g.send("alloc", { stat: "constructor", n: 1 });
+        g.send("alloc", { stat: "toString" });
+        g.send("alloc", { stat: "int" }); // без n — одно очко; сервер обрабатывает по порядку, значит все отказы уже позади
+        await g.until(() => st().int === int + 1, 2000, "без n вложено одно очко");
+        assert(st().str === str && st().agi === agi + 10 && free() === 13, `отказы что-то вложили: str ${st().str - str}, свободных ${free()}`);
+        // 13 свободных: 10 и ещё 3 из запрошенных 10 («больше, чем есть» — вкладывается остаток)
+        g.send("alloc", { stat: "vit", n: 10 });
+        await g.until(() => st().vit === vit + 10, 2000, "vit +10");
+        g.send("alloc", { stat: "vit", n: 10 });
+        await g.until(() => st().vit === vit + 13, 2000, "остаток вложен целиком");
+        assert(free() === 0, "свободных после остатка: " + free());
+        // свободных нет: прежний тост, ничего не меняется
+        g.toasts.length = 0;
+        g.send("alloc", { stat: "vit", n: 10 });
+        await g.until(() => g.toasts.includes("Нет свободных очков"), 2000, "тост без свободных очков");
+        assert(st().vit === vit + 13 && free() === 0, "вложено без свободных очков");
+      } finally {
+        await g.leave();
+      }
+    });
     await check("дерево умений: требования уровня и предка", async () => {
       c.toasts.length = 0;
       c.send("learn", { id: "rain" });

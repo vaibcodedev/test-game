@@ -3,7 +3,7 @@
 export const P = {
   // Интерфейс
   bg:      "#120f16",
-  panel:   "rgba(24,19,28,.94)",
+  panel:   "rgba(24,19,28,.97)",
   line:    "#4d3f4a",
   lineHi:  "#8a6a4a",
   fg:      "#efe6d2",

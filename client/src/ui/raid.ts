@@ -12,6 +12,9 @@ const mmss = (sec: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 const ROLE_ICON: Record<RaidRole, string> = { tank: "🛡", healer: "✚", melee: "⚔", ranged: "➶" };
+/** Значки ролей в окне сбора: пиксельные иконки умений одного размера (рамки и итоги рейда пока на ROLE_ICON). */
+const ROLE_IMG: Record<RaidRole, string> = { tank: "sk_shieldblock", healer: "sk_heal", melee: "sk_cleave", ranged: "sk_volley" };
+const roleImg = (r: RaidRole) => `<img class="role-ic" src="/assets/icons/${ROLE_IMG[r]}.png" alt="" width="16" height="16">`;
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -31,7 +34,8 @@ type FrameUnits = Map<string, { u: UnitState; x: number; y: number; dead: boolea
 export class RaidHud {
   net!: Net;
   private bound = false;
-  private modal = el("div", "raid-modal");
+  // подложка окна сбора — .modal из kit.css; итоги (result) пока на старой разметке .raid-modal
+  private modal = el("div", "modal raid-modal");
   private result = el("div", "raid-modal");
   private top = el("div", "raid-top passthru");
   private frames = el("div", "panel raid-frames");
@@ -128,35 +132,55 @@ export class RaidHud {
     return was;
   }
 
+  /**
+   * Окно сбора: диалог .dialog на подложке .modal (kit.css). Шапка — Вестник, затем реплика, раздел о боссе (лор, требования, откат),
+   * состав по ролям и подвал: слева состояние сбора, справа кнопки. Классы .raid-modal / .raid-dialog и тексты кнопок кликают tests/.
+   */
   private renderMuster() {
     const m = this.muster, net = this.net;
     const lvl = net.self?.level ?? 0;
     const need = RAID_CFG.minLevel;
-    const lockout = m && m.lockoutMs > 0 ? `Откат добычи: <b>${Math.ceil(m.lockoutMs / 3600_000)} ч</b> (бой доступен, добычи не будет)` : "Добыча доступна";
-    let members = "";
+    const low = !!lvl && lvl < need;
+    const lockH = m ? Math.ceil(m.lockoutMs / 3600_000) : 0;
+    let roster = "";
     if (m) {
       const by = new Map<RaidRole, RaidMemberInfo[]>(RAID_ROLES.map((r) => [r, []]));
       for (const x of m.members) by.get(x.role)?.push(x);
-      members = RAID_ROLES.map((r) => {
-        const list = by.get(r)!;
-        return `<div class="raid-role"><b>${ROLE_ICON[r]} ${ROLE_NAMES[r]}</b> <span class="muted">${list.length}${m.need[r] ? ` / ${m.need[r]}` : ""}</span>${list.map((x) => `<div class="raid-mem${x.bot ? " bot" : ""}">${esc(x.name)} <span class="muted">${esc(CLASSES[x.cls]?.name ?? x.cls)} · ${x.level}</span></div>`).join("")}</div>`;
+      roster = RAID_ROLES.map((r) => {
+        const list = by.get(r)!, want = m.need[r];
+        return `<div class="raid-role"><div class="raid-role-h">${roleImg(r)}<span>${ROLE_NAMES[r]}</span><span class="raid-role-c${want && list.length >= want ? " full" : ""}">${list.length}${want ? ` / ${want}` : ""}</span></div>`
+          + list.map((x) => `<div class="row dense raid-mem${x.bot ? " bot" : ""}${x.name === net.self?.name ? " me" : ""}"><span class="row-title">${esc(x.name)}</span><span class="meta">${esc(CLASSES[x.cls]?.name ?? x.cls)} · ${x.level}</span></div>`).join("")
+          + `</div>`;
       }).join("");
     }
     const mine = m?.joined;
     const leader = !!m && !!net.self && m.leader === net.self.name;
-    const why = m?.why || (lvl && lvl < need ? `Нужен уровень ${need}+` : "");
+    const why = m?.why || (low ? `Нужен уровень ${need}+` : "");
     const canJoin = !!m && !m.running && !why;
-    this.modal.innerHTML = `<div class="panel raid-dialog"><h2><span>${esc(RAID.npc.name)}</span><button class="x" data-x aria-label="Закрыть">×</button></h2>
-      <p class="raid-greet">${esc(RAID.npc.greeting)}</p>
-      <p class="muted raid-lore"><b style="color:${RAID.boss.color}">${esc(RAID.boss.name)}.</b> ${esc(shortLore(RAID.boss.lore))}</p>
-      <div class="raid-info"><span>Требуется уровень <b class="${lvl && lvl < need ? "bad" : ""}">${need}+</b></span><span>${lockout}</span>${m ? `<span>Побед: <b>${m.wins}</b></span>` : ""}</div>
-      ${m ? `<div class="raid-members">${members}</div>
-      <div class="raid-info"><span>Ботов будет: <b>${m.bots}</b></span>${m.running ? `<span class="bad">Рейд уже идёт</span>` : m.open ? `<span>Старт через <b data-left>${mmss(m.leftSec)}</b></span>` : `<span class="muted">Сбор не начат</span>`}</div>` : `<p class="muted">Связь с Вестником…</p>`}
-      ${why ? `<p class="bad raid-why">${esc(why)}</p>` : ""}
-      <div class="raid-btns">
-        ${mine ? `<button class="btn" data-cancel>Выйти</button>` : `<button class="btn primary" data-join ${canJoin ? "" : "disabled"}>Встать в рейд</button>`}
+    const block = why || (m?.running ? "Рейд уже идёт" : "");
+    // причина про уровень уже в строке «Уровень»; остальные причины показываем под составом
+    const extra = !low && m?.why ? m.why : "";
+    const status = !m ? "" : m.running ? `<span class="c-bad">Рейд уже идёт</span>` : m.open ? `Старт через <b data-left>${mmss(m.leftSec)}</b>` : "Сбор не начат";
+    const rows = `<dt>Требуется уровень</dt><dd${low ? ` class="bad"` : ""}>${need}+${low ? ` · у вас ${lvl}` : ""}</dd>`
+      + (m ? `<dt>Добыча</dt><dd${lockH ? ` class="warn"` : ""}>${lockH ? `Откат ${lockH} ч` : "Доступна"}</dd><dt>Победы</dt><dd>${m.wins}</dd>` : "");
+    this.modal.innerHTML = `<section class="panel dialog raid-dialog" role="dialog" aria-modal="true" aria-labelledby="raid-title">
+      <div class="dialog-head"><h2 class="dialog-title" id="raid-title">${esc(RAID.npc.name)}</h2><button class="x" data-x aria-label="Закрыть">×</button></div>
+      <div class="dialog-body">
+        <p class="npc-say">${esc(RAID.npc.greeting)}</p>
+        <section class="sec flat">
+          <h3 class="sec-h">Сбор рейда на босса: <span class="c-boss">${esc(RAID.boss.name)}</span></h3>
+          <p class="note raid-lore">${esc(shortLore(RAID.boss.lore))}</p>
+          <dl class="kv">${rows}</dl>
+          ${lockH ? `<p class="note">Пока откат не прошёл, бой доступен, но добычи не будет.</p>` : ""}
+        </section>
+        ${m ? `<section class="sec"><div class="sec-head"><h3 class="sec-h">Состав</h3><span class="sec-aside">Ботов доберут: ${m.bots}</span></div><div class="raid-members list boxed">${roster}</div></section>` : `<p class="note">Связь с Вестником…</p>`}
+        ${extra ? `<p class="note c-bad">${esc(extra)}</p>` : ""}
+      </div>
+      <div class="dialog-foot">
+        <span class="win-foot-info">${status}</span>
+        ${mine ? `<button class="btn" data-cancel>Выйти</button>` : `<button class="btn primary" data-join${canJoin ? "" : ` disabled${block ? ` title="${esc(block)}"` : ""}`}>Встать в рейд</button>`}
         ${mine && leader ? `<button class="btn primary" data-start>Начать сейчас</button>` : ""}
-      </div></div>`;
+      </div></section>`;
     const q = (s: string) => this.modal.querySelector<HTMLButtonElement>(s);
     q("[data-x]")!.onclick = () => (this.modal.hidden = true);
     q("[data-join]") && (q("[data-join]")!.onclick = () => net.send("raid:join", { npc: this.npcId }));

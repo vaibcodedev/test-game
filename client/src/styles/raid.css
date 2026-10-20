@@ -1,17 +1,22 @@
 /* ---------- Рейд (задача 114) ---------- */
-.raid-modal { position: absolute; inset: 0; display: grid; place-items: center; background: var(--overlay); z-index: 5; padding: var(--sp-4); }
-.raid-dialog { padding: var(--sp-4) var(--sp-5); width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
-.raid-dialog h2 { margin: 0; display: flex; justify-content: space-between; align-items: center; color: var(--boss); font-size: var(--fs-lg); }
-.raid-dialog p { margin: 0; }
-.raid-greet { color: var(--boss-soft); }
-.raid-lore { font-size: var(--fs-sm); line-height: 1.35; }
-.raid-info { display: flex; flex-wrap: wrap; gap: var(--sp-1h) var(--sp-4); font-size: var(--fs); }
-.raid-info .bad, .raid-why, .raid-dialog .bad { color: var(--bad); }
-.raid-members { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
-.raid-role { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: var(--r-2); padding: var(--sp-1h) var(--sp-2); font-size: var(--fs-sm); }
-.raid-mem { padding-left: var(--sp-1h); }
-.raid-mem.bot { opacity: 0.7; }
+/* Окно сбора у Вестника — .modal и .dialog из kit.css (.raid-modal / .raid-dialog — метки для tests/): реплика .npc-say, разделы .sec, строки .kv, список .list.boxed, подвал .dialog-foot.
+   Итоги рейда (.raid-res) пока на старой разметке: правила подложки, диалога и .raid-btns сужены :not(); удалить, когда итоги перейдут на .modal / .dialog. */
+.raid-modal:not(.modal) { position: absolute; inset: 0; display: grid; place-items: center; background: var(--overlay); z-index: 5; padding: var(--sp-4); }
+.raid-dialog:not(.dialog) { padding: var(--sp-4) var(--sp-5); width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+.raid-dialog:not(.dialog) h2 { margin: 0; display: flex; justify-content: space-between; align-items: center; color: var(--boss); font-size: var(--fs-lg); }
+.raid-dialog:not(.dialog) p { margin: 0; }
 .raid-btns { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+/* окно сбора: состав по ролям (заголовок роли и строки .row), откат, таймер */
+.raid-dialog .kv > dd.warn { color: var(--warn); }
+.raid-dialog [data-left] { color: var(--fg); font-variant-numeric: tabular-nums; }
+.raid-role + .raid-role { border-top: 1px solid var(--line); }
+.raid-role-h { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-1h); padding: var(--sp-1) var(--sp-2); background: var(--card); font-weight: var(--fw-b); }
+.raid-role-h:not(:last-child) { border-bottom: 1px solid var(--line); }
+.raid-role-c { color: var(--dim); font-weight: var(--fw); font-variant-numeric: tabular-nums; }
+.raid-role-c.full { color: var(--ok); }
+.role-ic { width: 16px; height: 16px; image-rendering: pixelated; }
+.raid-mem.bot { opacity: 0.7; }
+.raid-mem.me .row-title { color: var(--gold); }
 .raid-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .raid-table th { text-align: right; color: var(--dim); font-weight: var(--fw); padding: var(--sp-0) var(--sp-1h); }
 .raid-table td { text-align: right; padding: var(--sp-0) var(--sp-1h); }

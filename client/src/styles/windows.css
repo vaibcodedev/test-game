@@ -5,32 +5,45 @@
   gap: var(--sp-2);
   overflow: auto;
 }
+/* «Герой»: ширина — .xl; окно стоит на 150px от верха, поэтому и высота меньше общей — снизу остаётся тот же зазор 12px, а прокручивается только .body */
 .win-char {
   left: 12px;
   top: 150px;
-  width: min(760px, calc(100vw - 24px));
+  max-height: calc(100vh - 162px);
 }
+/* две колонки: характеристики и показатели слева, снаряжение и эффекты справа; между колонками линия */
 .char-cols {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr);
-  gap: var(--sp-1) var(--sp-4);
-  align-items: start;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--sp-4);
 }
-.char-main {
+.char-main,
+.char-side {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
+  min-width: 0;
 }
-.char-side .gear-h:first-child {
-  margin-top: 0;
+.char-side {
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--line);
 }
-@media (max-width: 800px) {
-  .char-cols { grid-template-columns: minmax(0, 1fr); }
+/* группа внутри раздела: подзаголовок .sub-h и то, к чему он относится (герой, легенда эффектов, кузнец) */
+.sub-grp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
 }
+/* «Снаряжение и сумка»: ширина — .s */
 .win-inv {
   right: 292px;
   top: 12px;
-  width: 340px;
+}
+@media (max-width: 800px) {
+  .char-cols { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .char-side { padding: var(--sp-3) 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .win-inv { right: 12px; }
 }
 .win-skills {
   left: 50%;
@@ -44,40 +57,26 @@
   max-height: calc(100vh - 300px);
   width: min(470px, calc(100vw - 24px));
 }
+/* характеристики героя: название, значение, «+» и «+10» в одной сетке; колонки кнопок одной ширины во всех строках */
 .stats {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto var(--ctl-h-sm) auto;
   gap: var(--sp-1) var(--sp-2);
   align-items: center;
   font-variant-numeric: tabular-nums;
 }
 .stats .k {
-  color: var(--dim);
+  cursor: help;
 }
 .stats .v {
+  min-width: 3ch;
+  font-weight: var(--fw-b);
   text-align: right;
 }
-.stats .plus {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  line-height: 18px;
-}
-.derived {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--sp-0) var(--sp-2);
-  font-size: var(--fs);
-  font-variant-numeric: tabular-nums;
-  border-top: 1px solid var(--line);
-  padding-top: var(--sp-2);
-}
-.derived span:nth-child(odd) {
-  color: var(--dim);
-}
+/* сетки предметов: надето (.equip) и сумка (.grid) — те же 6 колонок, ячейки встают строго друг под другом */
 .equip {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--sp-1);
 }
 .grid {
@@ -85,50 +84,37 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--sp-1);
 }
-.equip.extra {
-  margin-top: var(--sp-2);
-  padding-top: var(--sp-1h);
-  border-top: 1px dashed var(--line);
-  align-items: center;
+/* питомец и маунт — в 6-й колонке (над и под ними, в 5-й, пусто): ряд из четырёх вещей и питомца, ряд из четырёх вещей и маунта */
+.equip > .cell.comp {
+  grid-column: 6;
 }
-.equip.extra .comp-hint {
-  grid-column: span 4;
+.cell.comp > kbd {
+  position: absolute;
+  left: var(--sp-0);
+  top: 0;
+  color: var(--dim);
+  font-family: var(--font);
   font-size: var(--fs-xs);
-  padding-left: var(--sp-1h);
+  font-weight: var(--fw-b);
+  line-height: 1.2;
+  text-shadow: var(--shadow-text), 0 0 3px var(--well);
 }
-.cell.comp.open {
-  outline: 1px solid var(--gold);
-}
+/* список питомцев или маунтов под сеткой надетого; строки — .row, выбранный — aria-pressed */
 .comp-pop {
-  margin: var(--sp-1) 0;
-  padding: var(--sp-1h);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
-}
-.comp-row {
-  display: flex;
-  align-items: center;
   gap: var(--sp-2);
-  background: var(--well);
-  border: 1px solid var(--line);
+}
+.comp-pop > .btn {
+  align-self: flex-end;
+}
+/* плашка режима сумки (обмен, банк, торговка): клик по вещи делает не то, что обычно */
+.inv-mode {
+  padding: var(--sp-1h) var(--sp-2);
+  background: var(--sel);
+  border: 1px solid var(--line-hi);
   border-radius: var(--r-2);
-  padding: var(--sp-1) var(--sp-1h);
-  cursor: pointer;
-  color: inherit;
-  text-align: left;
-  font: inherit;
-}
-.comp-row.cur {
-  border-color: var(--gold);
-}
-.comp-row img {
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
-}
-.comp-row .nm {
-  flex: 1;
+  color: var(--fg);
 }
 .cell {
   aspect-ratio: 1;
@@ -155,17 +141,6 @@
   bottom: 0;
   font-size: var(--fs);
   text-shadow: var(--shadow-text);
-}
-.cell .lbl {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: var(--fs);
-  overflow: hidden;
-  letter-spacing: -0.5px;
-  color: #5a4c58;
-  text-align: center;
 }
 .cell.r1 {
   border-color: var(--rare);
