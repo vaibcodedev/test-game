@@ -115,12 +115,12 @@
   margin-bottom: var(--sp-0);
 }
 .hud-target .bar.hp {
-  height: 7px;
+  height: 13px; /* рамка 1px: внутри 11px — ровно строка текста */
   border-radius: var(--r-1);
 }
 .hud-target .bar.hp > span {
-  font-size: 8px; /* исключение: текст в полосе HP 7px */
-  line-height: 7px;
+  font-size: var(--fs-2xs);
+  line-height: 11px;
 }
 .hud-target.boss {
   border-color: #a04030;
