@@ -584,6 +584,7 @@ export class GameScene extends Phaser.Scene {
     if (v.u.kind !== UnitKind.Player) return true;
     if (v.u.buffs & BUFF_STEALTH) return false;
     if (net.kind === "arena") return v.u.team !== 0 && v.u.team !== net.arena?.team;
+    if (net.kind === "raid") return false; // в рейде все герои — союзники, враг только босс и его приспешники
     const me = net.self;
     return !!me && v.id !== net.id && factionsHostile(this.map, me.faction, this.pos.x, this.pos.y, v.u.faction, v.u.x, v.u.y);
   }

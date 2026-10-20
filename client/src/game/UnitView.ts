@@ -86,11 +86,11 @@ export class UnitView {
     const color = u.kind === UnitKind.Player ? (isSelf ? "#ffe9a8" : "#a8e0ff") : u.kind === UnitKind.Boss ? "#ff8a5a" : u.kind === UnitKind.Pet ? "#8ae88a"
       : u.kind === UnitKind.Guard ? "#ffc861" : u.kind === UnitKind.Citizen ? "#d8cfc0" : "#f0e6d2";
     this.label = scene.add
-      .text(u.x, u.y, this.labelText(), { fontFamily: FONT, fontSize: u.kind === UnitKind.Boss ? "11px" : u.kind === UnitKind.Pet || u.kind === UnitKind.Citizen ? "8px" : "9px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 4, resolution: 4 })
+      .text(u.x, u.y, this.labelText(), { fontFamily: FONT, fontSize: u.kind === UnitKind.Boss ? "9px" : u.kind === UnitKind.Pet || u.kind === UnitKind.Citizen ? "6px" : "7px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 3, resolution: 4 })
       .setOrigin(0.5, 1)
       .setDepth(DEPTH.top - 5);
     this.bar = scene.add.graphics().setDepth(DEPTH.top - 6);
-    this.titleText = scene.add.text(u.x, u.y, "", { fontFamily: FONT, fontSize: "8px", color: "#f0c050", stroke: "#120a10", strokeThickness: 4, resolution: 4 }).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
+    this.titleText = scene.add.text(u.x, u.y, "", { fontFamily: FONT, fontSize: "6px", color: "#f0c050", stroke: "#120a10", strokeThickness: 3, resolution: 4 }).setOrigin(0.5, 1).setDepth(DEPTH.top - 5);
     this.frameGfx = scene.add.graphics().setDepth(DEPTH.top - 7);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (a: Phaser.Animations.Animation) => {
       if (a.key.includes("-attack-")) {
@@ -258,7 +258,8 @@ export class UnitView {
     if (lt !== this.lastLabel) { this.lastLabel = lt; this.label.setText(lt); }
     // на арене: союзники зелёные, враги красные; в мире герои противоположной фракции — в цвете своей фракции
     if (u.kind === UnitKind.Player) {
-      const foe = !this.isSelf && !!u.faction && !!net.self && u.faction !== net.self.faction;
+      // в рейде обе фракции — союзники: никого не красим врагом
+      const foe = !this.isSelf && net.kind !== "raid" && !!u.faction && !!net.self && u.faction !== net.self.faction;
       const color = this.isSelf ? "#ffe9a8" : net.kind === "arena" && u.team ? (u.team === net.arena?.team ? "#9ae07a" : "#ff8a7a") : u.outlaw ? "#ff5a4a" : foe ? FOE_COLOR : u.faction === "umbrath" ? factionColor("umbrath") : "#a8e0ff";
       if (color !== this.lastColor) { this.lastColor = color; this.label.setColor(color); }
     }
@@ -288,7 +289,7 @@ export class UnitView {
     if (u.kind === UnitKind.Guard && showName) this.guardBadge(top);
     this.torch(!this.dead && u.kind === UnitKind.Guard && nightLevel(Date.now()) > 0.35);
     if (u.elite && showName) {
-      const w = this.label.width + 6, h = 11;
+      const w = this.label.width + 6, h = 9;
       const fx = Math.round(this.x - w / 2), fy = Math.round(top - 4 - h + 1);
       this.frameGfx.fillStyle(0x120a10, 0.55).fillRoundedRect(fx, fy, w, h, 3);
       this.frameGfx.lineStyle(1, 0xf0c040, 1).strokeRoundedRect(fx, fy, w, h, 3);
@@ -297,7 +298,7 @@ export class UnitView {
     }
     const rank = u.frame ? rankById(u.frame) : undefined;
     if (rank && showName) {
-      const w = this.label.width + 6, h = 11;
+      const w = this.label.width + 6, h = 9;
       const fx = Math.round(this.x - w / 2), fy = Math.round(top - 4 - h + 1);
       const c = Phaser.Display.Color.HexStringToColor(rank.color).color;
       this.frameGfx.fillStyle(0x120a10, 0.55).fillRoundedRect(fx, fy, w, h, 3);
@@ -348,7 +349,7 @@ export class UnitView {
       this.bar.clear();
       this.bar.fillStyle(u.elite ? 0xf0c040 : 0x0a0608, 0.9).fillRect(bx - 1, by - 1, w + 2, 4);
       if (u.elite) this.bar.fillStyle(0x0a0608, 1).fillRect(bx, by, w, 2);
-      const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena";
+      const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena" && net.kind !== "raid";
       const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
       this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * k), 2);
     }
