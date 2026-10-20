@@ -441,11 +441,11 @@ export function hotkeyRows(kb: Keybinds): [string, string][] {
 
 /**
  * Настройки мыши и управления (localStorage mouse:v1): «ЛКМ атакует», «Преследовать цель», «Режим прицела», «Каст по наведению»,
- * «Автоцель», «Подходить к цели», «Очередь умений, мс» (0–500), «Крупные цели» (эффект на hitTest — шаг 10).
+ * «Автоцель», «Подходить к цели», «Очередь умений, мс» (0–500), «Крупные цели» (hitTest + магнит), «Колесо — масштаб».
  */
 export type AimMode = "preview" | "quick" | "confirm";
-export interface MouseOpts { lmbAttacks: boolean; chase: boolean; aimMode: AimMode; hoverCast: boolean; autoTarget: boolean; approach: boolean; queueMs: number; bigTargets: boolean }
-export const MOUSE_DEFAULTS: MouseOpts = { lmbAttacks: false, chase: false, aimMode: "preview", hoverCast: true, autoTarget: false, approach: true, queueMs: 400, bigTargets: false };
+export interface MouseOpts { lmbAttacks: boolean; chase: boolean; aimMode: AimMode; hoverCast: boolean; autoTarget: boolean; approach: boolean; queueMs: number; bigTargets: boolean; zoomWheel: boolean }
+export const MOUSE_DEFAULTS: MouseOpts = { lmbAttacks: false, chase: false, aimMode: "preview", hoverCast: true, autoTarget: false, approach: true, queueMs: 400, bigTargets: false, zoomWheel: true };
 export function loadMouseOpts(store: Store | null = browserStorage()): MouseOpts {
   let r: Record<string, unknown> = {};
   try { const p = JSON.parse(store?.getItem("mouse:v1") ?? "{}"); if (p && typeof p === "object") r = p; } catch {}
@@ -456,7 +456,7 @@ export function loadMouseOpts(store: Store | null = browserStorage()): MouseOpts
     aimMode: r.aimMode === "quick" || r.aimMode === "confirm" || r.aimMode === "preview" ? r.aimMode : d.aimMode,
     hoverCast: bool("hoverCast"), autoTarget: r.autoTarget === true, approach: bool("approach"),
     queueMs: r.queueMs === undefined || !Number.isFinite(q) ? d.queueMs : Math.min(500, Math.max(0, Math.round(q))),
-    bigTargets: r.bigTargets === true,
+    bigTargets: r.bigTargets === true, zoomWheel: bool("zoomWheel"),
   };
 }
 export const mouseOpts: MouseOpts = loadMouseOpts();

@@ -13,6 +13,7 @@
   legendary (эффекты), admin, bank, Pet (питомцы), rogue (яд, удар в спину), townfolk (стражники и горожане), cities (телепорт, задания).
 - server/src/arena/ — store, queue, party, registry, rewards, bots. server/src/trade/TradeManager.ts — обмен.
 - client/src/main.ts — вход/регистрация, account.ts — HTTP API, ui/charselect.ts — выбор и создание героя; выход (logout:request) — без перезагрузки.
+- Управление: game/keybinds.ts (пресеты, mouseOpts), ui/hotbar.ts (панели), game/aim.ts (прицел), game/castResolve.ts (цель/точка каста), ui/controls.ts (настройки).
 - client/src/net.ts — подключение, сторож ping/pong и переподключение (recover); main.ts — окна «Переподключение…», «Что-то пошло не так», вытеснение; game/ — сцены и отрисовка (UnitView, effects, terrain — куски 32×32 у камеры);
   ui/ — hud (меню, сумка, настройки), arena, trade, bestiary, rumor, cook, smith, bank, admin.
 - tools/ — генерация пиксель-арта (gen/), db (CLI: просмотр, `admin <имя> on|off`).

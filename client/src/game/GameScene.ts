@@ -130,8 +130,20 @@ export class GameScene extends Phaser.Scene {
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
-    const fitZoom = () => cam.setZoom(Math.max(2, Math.min(3, Math.round(Math.min(window.innerWidth / 640, window.innerHeight / 400)))));
+    const fitZoom = () => cam.setZoom(userZoom ?? Math.max(2, Math.min(3, Math.round(Math.min(window.innerWidth / 640, window.innerHeight / 400)))));
+    let userZoom: number | null = null;
+    try { const z = Number(localStorage.getItem("zoom:v1")); if (z >= 2 && z <= 3) userZoom = z; } catch {}
     fitZoom();
+    // колесо / жест щипка (ctrl+wheel) над игровым полем: масштаб 2–3 (опция «Колесо — масштаб»); над окнами интерфейса не работает
+    const onWheel = (e: WheelEvent) => {
+      if (!mouseOpts.zoomWheel || e.target !== this.game.canvas) return;
+      e.preventDefault();
+      userZoom = Math.min(3, Math.max(2, Math.round(((userZoom ?? cam.zoom) - Math.sign(e.deltaY) * 0.25) * 4) / 4));
+      try { localStorage.setItem("zoom:v1", String(userZoom)); } catch {}
+      fitZoom();
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    this.cleanup.push(() => window.removeEventListener("wheel", onWheel));
     this.scale.on("resize", fitZoom);
     this.cleanup.push(() => this.scale.off("resize", fitZoom));
 
@@ -535,7 +547,7 @@ export class GameScene extends Phaser.Scene {
         }
       }
       // враг: ЛКМ выбирает (атакует только при опции «ЛКМ атакует»), ПКМ атакует; союзник: выбор
-      const foe = this.pick(wx, wy);
+      const foe = this.pick(wx, wy, true);
       if (foe) return right || mouseOpts.lmbAttacks ? this.attackTarget(foe) : this.setTarget(foe);
       const friend = this.pickFriend(wx, wy);
       if (friend) return this.setTarget(friend);
@@ -565,11 +577,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Ближайший к курсору живой враг. */
-  pick(wx: number, wy: number): string | null {
+  pick(wx: number, wy: number, magnet = false): string | null {
     let best: string | null = null, bd = Infinity;
     for (const [id, v] of this.units) {
       if (!this.isEnemy(v)) continue;
-      const d = v.hitTest(wx, wy);
+      const d = v.hitTest(wx, wy, magnet);
       if (d < bd) { bd = d; best = id; }
     }
     return best;

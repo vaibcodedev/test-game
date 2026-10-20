@@ -154,6 +154,7 @@ export function buildControls(host: HTMLElement) {
     ["autoTarget", "Автоцель", "Умение без цели выбирает ближайшего врага."],
     ["approach", "Подходить к цели", "Если цель далеко, герой подойдёт и применит умение."],
     ["bigTargets", "Крупные цели", "Увеличенная область клика по существам (удобно на тачпаде)."],
+    ["zoomWheel", "Колесо — масштаб", "Колесо мыши или жест щипка над полем меняет масштаб камеры (2–3)."],
   ];
   const paintOpts = () => {
     opts.innerHTML = `<div class="set-row set-gearfx"><label>Режим прицела</label><div class="set-seg" id="ctl-aim" role="group">${AIM.map(([m, t]) => `<button type="button" class="btn small${mouseOpts.aimMode === m ? " on" : ""}" data-m="${m}" aria-pressed="${mouseOpts.aimMode === m}">${t}</button>`).join("")}</div></div>

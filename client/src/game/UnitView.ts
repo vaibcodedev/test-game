@@ -3,6 +3,7 @@ import Phaser from "phaser";
 import { overlay } from "./overlay";
 import { BUFF_BLEED, BUFF_CURSE, BUFF_STEALTH, BUFF_BURN, BUFF_ENRAGE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, BUFF_WARCRY, Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { net, type UnitState } from "../net";
+import { mouseOpts } from "./keybinds";
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
@@ -364,9 +365,11 @@ export class UnitView {
     this.torchGlow.setVisible(true).setPosition(hx + 1, hy - 3).setDepth(DEPTH.top - 12).setScale(2.2 * fl).setAlpha(0.55 * fl);
   }
 
-  hitTest(wx: number, wy: number): number {
+  /** Расстояние от курсора до юнита или Infinity. «Крупные цели»: радиус 14 → 24 px; magnet — радиус «магнита» (32 px). */
+  hitTest(wx: number, wy: number, magnet = false): number {
     if (this.dead) return Infinity;
-    const r = this.frame > 32 ? 30 : 14;
+    const big = this.frame > 32;
+    const r = Math.max(big ? 30 : mouseOpts.bigTargets ? 24 : 14, magnet && mouseOpts.bigTargets ? 32 : 0);
     const dx = wx - this.x, dy = wy - (this.y - (this.frame > 32 ? 26 : 12));
     const d = Math.hypot(dx, dy);
     return d < r ? d : Infinity;
