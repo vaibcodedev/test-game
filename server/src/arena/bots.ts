@@ -136,6 +136,7 @@ export function botThink(w: World, bot: Player, enemies: Player[]) {
   }
   if (!target) { bot.targetId = null; bot.moveTo = null; return; }
   bot.targetId = target.id;
+  bot.engaged = bot.approach = true;
   bot.unit.target = target.id;
   // дальний бой: держим дистанцию, отходя по проходимому пути
   if (bot.ranged() && best < KEEP_MIN) {

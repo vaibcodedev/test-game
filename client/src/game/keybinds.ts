@@ -14,7 +14,7 @@ export type MoveAction = "moveUp" | "moveDown" | "moveLeft" | "moveRight";
 export type SlotAction = `slot${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`;
 export type ActionId =
   | MoveAction | SlotAction
-  | "targetNext" | "potionHp" | "potionMp" | "interact" | "talk" | "mount" | "mountNext" | "pet" | "petNext"
+  | "targetNext" | "targetPrev" | "attack" | "selectSelf" | "selectParty1" | "selectParty2" | "selectParty3" | "selectParty4" | "potionHp" | "potionMp" | "interact" | "talk" | "mount" | "mountNext" | "pet" | "petNext"
   | "winChar" | "winInv" | "winSkills" | "winMap" | "winBestiary" | "winArena" | "winAdmin" | "chat" | "escape";
 
 export const GROUPS = { move: "Движение", target: "Цель", bar: "Панель умений", act: "Действия", ui: "Интерфейс" } as const;
@@ -31,6 +31,13 @@ const DEFS: Record<ActionId, Def> = {
   moveLeft: { group: "move", name: "Идти влево", hold: true },
   moveRight: { group: "move", name: "Идти вправо", hold: true },
   targetNext: { group: "target", name: "Следующая цель" },
+  targetPrev: { group: "target", name: "Предыдущая цель" },
+  attack: { group: "target", name: "Атаковать цель" },
+  selectSelf: { group: "target", name: "Выбрать себя" },
+  selectParty1: { group: "target", name: "Выбрать члена группы 1" },
+  selectParty2: { group: "target", name: "Выбрать члена группы 2" },
+  selectParty3: { group: "target", name: "Выбрать члена группы 3" },
+  selectParty4: { group: "target", name: "Выбрать члена группы 4" },
   slot1: slot(1), slot2: slot(2), slot3: slot(3), slot4: slot(4), slot5: slot(5), slot6: slot(6), slot7: slot(7), slot8: slot(8), slot9: slot(9),
   potionHp: { group: "bar", name: "Зелье здоровья" },
   potionMp: { group: "bar", name: "Зелье маны" },
@@ -67,7 +74,8 @@ const shift = (code: string): Combo => ({ code, shift: true });
 /** Раздел 3: WASD и стрелки, умения 1–9, зелья Q и E. Это нынешние клавиши игры. */
 const CLASSIC: Layout = {
   moveUp: [k("KeyW"), k("ArrowUp")], moveDown: [k("KeyS"), k("ArrowDown")], moveLeft: [k("KeyA"), k("ArrowLeft")], moveRight: [k("KeyD"), k("ArrowRight")],
-  targetNext: [k("Tab")],
+  targetNext: [k("Tab")], targetPrev: [shift("Tab")], attack: [k("KeyT")],
+  selectSelf: [k("F1")], selectParty1: [k("F2")], selectParty2: [k("F3")], selectParty3: [k("F4")], selectParty4: [k("F5")],
   slot1: [k("Digit1")], slot2: [k("Digit2")], slot3: [k("Digit3")], slot4: [k("Digit4")], slot5: [k("Digit5")], slot6: [k("Digit6")], slot7: [k("Digit7")], slot8: [k("Digit8")], slot9: [k("Digit9")],
   potionHp: [k("KeyQ")], potionMp: [k("KeyE")],
   interact: [k("Space")], talk: [k("KeyF")],
@@ -87,6 +95,7 @@ const ACTION: Layout = {
   // G уже «подобрать, а рядом с NPC — поговорить», отдельная клавиша разговора не нужна
   interact: [k("KeyG")], talk: [],
   pet: [k("KeyZ")], petNext: [shift("KeyZ")],
+  attack: [], // T занята умением 9; в «Экшене» атакуют ПКМ
 };
 export const PRESETS: Record<PresetId, { name: string; layout: Layout }> = {
   classic: { name: "Классика", layout: CLASSIC },
@@ -96,7 +105,7 @@ export const PRESETS: Record<PresetId, { name: string; layout: Layout }> = {
  * Схема новых игроков. Решение пользователя — «Экшен», но он держится на ПКМ-движении и ПКМ-атаке (шаги 2, 3, 10):
  * без них у героя нет WASD, а клик мышью по-прежнему одинаков для обеих кнопок. До шага 10 по умолчанию «Классика» (docs/controls.md).
  */
-export const DEFAULT_PRESET: PresetId = "classic";
+export const DEFAULT_PRESET: PresetId = "action";
 
 // ---------- сочетания ----------
 const norm = (c: Combo): Combo => {
@@ -394,6 +403,9 @@ export function hotkeyRows(kb: Keybinds): [string, string][] {
   add(skillKeys(kb), "умения");
   add([hp, mp].filter(Boolean).join(" / "), hp && mp ? "зелья здоровья и маны" : hp ? "зелье здоровья" : "зелье маны");
   add(first("targetNext"), "следующая цель");
+  add(first("targetPrev"), "предыдущая цель");
+  add(first("attack"), "атаковать цель");
+  add([first("selectSelf"), first("selectParty1") && "F2–F5"].filter(Boolean).join(" / "), "выбрать себя / члена группы");
   add(first("interact"), "подобрать предмет или поговорить");
   add(first("talk"), "поговорить с NPC");
   add([first("mount"), first("mountNext")].filter(Boolean).join(" / "), "ездовое животное");
@@ -404,3 +416,11 @@ export function hotkeyRows(kb: Keybinds): [string, string][] {
   add(first("escape"), "закрыть окно, снять цель, меню");
   return rows;
 }
+
+/** Настройки мыши (localStorage mouse:v1): «ЛКМ атакует» (по умолчанию выкл), «Преследовать цель» (по умолчанию выкл). */
+export interface MouseOpts { lmbAttacks: boolean; chase: boolean }
+export function loadMouseOpts(store: Store | null = browserStorage()): MouseOpts {
+  try { const r = JSON.parse(store?.getItem("mouse:v1") ?? "{}"); return { lmbAttacks: r?.lmbAttacks === true, chase: r?.chase === true }; } catch { return { lmbAttacks: false, chase: false }; }
+}
+export const mouseOpts: MouseOpts = loadMouseOpts();
+export function saveMouseOpts(store: Store | null = browserStorage()) { try { store?.setItem("mouse:v1", JSON.stringify(mouseOpts)); } catch {} }

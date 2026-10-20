@@ -175,6 +175,7 @@ export function castUmbrath(c: CastCtx): string | null {
       w.hit(p, t, { mult: v.dmg / 100, skill: true, kind: "shadow" });
       c.slow(t, v.slow, v.slowDur * 1000);
       p.targetId = t.id;
+      p.engaged = p.approach = true;
       u.target = t.id;
       return null;
     }
@@ -396,6 +397,7 @@ export function castUmbrath(c: CastCtx): string | null {
       u.y = dest.y;
       p.moveTo = null;
       p.targetId = t.id;
+      p.engaged = p.approach = true;
       u.target = t.id;
       face(t);
       w.emit({ t: "aoe", k: "slash", x: t.x, y: t.y, r: v.radius });

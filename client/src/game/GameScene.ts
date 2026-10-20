@@ -23,7 +23,7 @@ import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
 import { FONT, UnitView } from "./UnitView";
-import { HeldKeys, isMoveAction, keybinds, type ActionId, type MoveAction } from "./keybinds";
+import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 
 type NpcKind = "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
@@ -153,6 +153,7 @@ export class GameScene extends Phaser.Scene {
       this.setupEncounters();
     } else this.scenes = null;
 
+    if (mouseOpts.chase) net.send("chase", { on: true });
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
 
     net.watchUnits("players", (id, u) => this.addUnit(id, u), (id) => this.removeUnit(id));
@@ -318,14 +319,29 @@ export class GameScene extends Phaser.Scene {
   setTarget(id: string | null) {
     if (this.targetId) {
       const old = this.units.get(this.targetId);
-      if (old) old.selected = false;
+      if (old) { old.selected = false; old.ring.clearTint(); }
     }
     this.targetId = id;
     if (id) {
       const v = this.units.get(id);
-      if (v) v.selected = true;
+      if (v) { v.selected = true; v.ring.setTint(this.isEnemy(v) ? 0xff4040 : 0x50e060); }
     }
     net.send("target", { id });
+  }
+
+  /** Выбрать врага и начать атаку: подход до дальности и автоатака (сообщение attack). */
+  attackTarget(id: string | null = this.targetId) {
+    const v = id ? this.units.get(id) : undefined;
+    if (!id || !v || v.dead || !this.isEnemy(v)) return this.hud.toast({ text: "Нужна цель: враг", kind: "error" });
+    if (this.targetId !== id) this.setTarget(id);
+    net.send("attack", { id });
+  }
+
+  /** F2–F5: член группы по имени среди видимых игроков. */
+  selectParty(n: number) {
+    const m = net.party?.members?.filter((x) => x.name !== net.self?.name)[n];
+    if (!m) return;
+    for (const [id, v] of this.units) if (v.u.kind === UnitKind.Player && v.u.name === m.name) return this.setTarget(id);
   }
 
   // ---------- ввод ----------
@@ -336,7 +352,9 @@ export class GameScene extends Phaser.Scene {
       slot6: () => this.useSkill(5), slot7: () => this.useSkill(6), slot8: () => this.useSkill(7), slot9: () => this.useSkill(8),
       potionHp: () => this.usePotion("hp_potion"),
       potionMp: () => this.usePotion("mp_potion"),
-      targetNext: () => this.cycleTarget(),
+      targetNext: () => this.cycleTarget(1), targetPrev: () => this.cycleTarget(-1), attack: () => this.attackTarget(),
+      selectSelf: () => this.setTarget(net.id),
+      selectParty1: () => this.selectParty(0), selectParty2: () => this.selectParty(1), selectParty3: () => this.selectParty(2), selectParty4: () => this.selectParty(3),
       interact: () => this.pickupNearest(),
       talk: () => this.talkNearest(),
       mount: () => this.toggleMount(),
@@ -393,9 +411,13 @@ export class GameScene extends Phaser.Scene {
       if (!this.me || this.me.dead) return;
       (document.activeElement as HTMLElement | null)?.blur?.();
       const wx = p.worldX, wy = p.worldY;
+      const right = p.rightButtonDown();
+      const classic = keybinds.presetId === "classic";
+      // в «Экшене» взаимодействуют только ПКМ; в «Классике» обе кнопки
+      const act = right || classic;
       // мешок с добычей
       for (const [bid, img] of this.bagViews) {
-        if (Math.hypot(img.x - wx, img.y - 10 - wy) < 16) {
+        if (act && Math.hypot(img.x - wx, img.y - 10 - wy) < 16) {
           this.pendingPickup = bid;
           if (Math.hypot(img.x - this.pos.x, img.y - this.pos.y) > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y });
           return;
@@ -403,25 +425,28 @@ export class GameScene extends Phaser.Scene {
       }
       // узлы добычи (кактус, кристалл, обсидиан, жемчуг)
       for (const n of this.map.nodes) {
-        if (this.depletedNodes.has(n.id) || Math.hypot(n.x - wx, n.y - 16 - wy) > 24) continue;
+        if (!act || this.depletedNodes.has(n.id) || Math.hypot(n.x - wx, n.y - 16 - wy) > 24) continue;
         this.pendingGather = n.id;
         if (Math.hypot(n.x - this.pos.x, n.y - 14 - this.pos.y) > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 });
         return;
       }
       // NPC
-      for (const n of this.npcs) if (Math.hypot(n.sprite.x - wx, n.sprite.y - 14 - wy) < 18) return this.talk(n);
+      if (act) for (const n of this.npcs) if (Math.hypot(n.sprite.x - wx, n.sprite.y - 14 - wy) < 18) return this.talk(n);
       // правый клик по другому игроку — меню обмена
-      if (p.rightButtonDown() && net.kind === "world") {
+      if (right && net.kind === "world") {
         for (const [uid, v] of this.units) {
-          if (uid === net.id || v.u.kind !== UnitKind.Player || v.unseen || v.hitTest(wx, wy) > 20) continue;
+          if (uid === net.id || v.u.kind !== UnitKind.Player || this.isEnemy(v) || v.unseen || v.hitTest(wx, wy) > 20) continue;
           const ev = p.event as MouseEvent;
           return this.hud.trade.showMenu(uid, v.u.name, ev.clientX, ev.clientY, () => this.hud.inspect.open(uid));
         }
       }
-      const id = this.pick(wx, wy) ?? (net.self && CLASSES[net.self.cls].role === "healer" ? this.pickFriend(wx, wy) : null);
-      if (id && p.rightButtonDown()) return this.setTarget(id);
-      if (id) return this.setTarget(id);
-      this.setTarget(null);
+      // враг: ЛКМ выбирает (атакует только при опции «ЛКМ атакует»), ПКМ атакует; союзник: выбор
+      const foe = this.pick(wx, wy);
+      if (foe) return right || mouseOpts.lmbAttacks ? this.attackTarget(foe) : this.setTarget(foe);
+      const friend = this.pickFriend(wx, wy);
+      if (friend) return this.setTarget(friend);
+      // земля: цель не снимается; ЛКМ ведёт героя только в «Классике»
+      if (!right && !classic) return;
       this.pendingPickup = null;
       this.pendingNpc = null;
       this.pendingGather = null;
@@ -463,13 +488,24 @@ export class GameScene extends Phaser.Scene {
     return best;
   }
 
-  cycleTarget() {
-    const list = [...this.units.entries()]
-      .filter(([, v]) => this.isEnemy(v) && !v.dead && Math.hypot(v.x - this.pos.x, v.y - this.pos.y) < (net.kind === "arena" ? 1400 : 420) && lineClear(this.map, this.pos.x, this.pos.y, v.x, v.y))
-      .sort((a, b) => Math.hypot(a[1].x - this.pos.x, a[1].y - this.pos.y) - Math.hypot(b[1].x - this.pos.x, b[1].y - this.pos.y));
+  private tabList: string[] = [];
+  private tabAt = 0;
+  /** Tab / Shift+Tab: враги в радиусе с прямой видимостью, сначала те, у кого цель — я, затем ближние; список замораживается на 2 с. */
+  cycleTarget(dir = 1) {
+    const now = performance.now();
+    if (now - this.tabAt > 2000 || !this.tabList.length) {
+      const dist = (v: UnitView) => Math.hypot(v.x - this.pos.x, v.y - this.pos.y);
+      const onMe = (v: UnitView) => (v.u as { target?: string }).target === net.id ? 0 : 1;
+      this.tabList = [...this.units.entries()]
+        .filter(([, v]) => this.isEnemy(v) && !v.dead && dist(v) < (net.kind === "arena" ? 1400 : 420) && lineClear(this.map, this.pos.x, this.pos.y, v.x, v.y))
+        .sort((a, b) => onMe(a[1]) - onMe(b[1]) || dist(a[1]) - dist(b[1]))
+        .map(([id]) => id);
+    }
+    this.tabAt = now;
+    const list = this.tabList.filter((id) => { const v = this.units.get(id); return v && !v.dead; });
     if (!list.length) return;
-    const i = list.findIndex(([id]) => id === this.targetId);
-    this.setTarget(list[(i + 1) % list.length][0]);
+    const i = list.indexOf(this.targetId ?? "");
+    this.setTarget(list[i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length]);
   }
 
   toggleMount() {

@@ -37,7 +37,7 @@ async function goHome(bots: Bot[]) {
 async function quickDuel(strong: Bot, weak: Bot) {
   await enterMatch("1v1", [strong, weak], [strong, weak]);
   await waitFight(strong);
-  strong.send("target", { id: unitByName(strong, weak.self!.name) });
+  strong.send("attack", { id: unitByName(strong, weak.self!.name) });
   await strong.until(() => !!strong.result, 8000, "итог боя");
   await weak.until(() => !!weak.result, 2000, "итог у второго");
   await goHome([strong, weak]);
@@ -90,7 +90,7 @@ async function main() {
       assert(A.me().hp === A.me().maxHp && B.me().hp === B.me().maxHp, "здоровье не восстановлено");
     });
     await check("победа убийством, Elo ±16, экран результатов", async () => {
-      A.send("target", { id: unitByName(A, "Ученик") });
+      A.send("attack", { id: unitByName(A, "Ученик") });
       await A.until(() => !!A.result, 8000, "итог");
       const r = A.result;
       assert(r.reason === "kill" && r.winner === 1, "победитель " + JSON.stringify(r));
@@ -180,7 +180,7 @@ async function main() {
       await waitFight(P1);
       await S2.room.leave(true); // отключение во время матча
       await sleep(300);
-      P1.send("target", { id: unitByName(P1, "Одиночка") });
+      P1.send("attack", { id: unitByName(P1, "Одиночка") });
       await P1.until(() => !!P1.result, 8000, "итог 2×2");
       const r = P1.result;
       const get = (n: string) => r.players.find((p: any) => p.name === n);
@@ -196,7 +196,7 @@ async function main() {
       const D2 = await Bot.join("Соперник", "pass", "mage");
       await enterMatch("1v1", [D1, D2], [D1, D2]);
       await waitFight(D1);
-      D1.send("target", { id: unitByName(D1, "Соперник") });
+      D1.send("attack", { id: unitByName(D1, "Соперник") });
       await D1.until(() => D1.room.state.players.get(unitByName(D1, "Соперник")).hp < D1.room.state.players.get(unitByName(D1, "Соперник")).maxHp, 6000, "попадание");
       await D1.until(() => !!D1.result, MATCH_MS + 4000, "конец по времени");
       const me = D1.result.players.find((p: any) => p.name === "Дуэлянт");
@@ -228,7 +228,7 @@ async function main() {
       await L.until(() => !!L.go, 6000, "переход на арену");
       await L.switchTo(L.go.reservation);
       await waitFight(L);
-      L.send("target", { id: unitByName(L, botName) });
+      L.send("attack", { id: unitByName(L, botName) });
       await L.until(() => !!L.result, MATCH_MS + 6000, "итог боя с ботом");
       const r = L.result;
       assert(r.bot === true, "итог без флага бота");

@@ -56,6 +56,10 @@ export class Player {
 
   input = { mx: 0, my: 0 };
   moveTo: { x: number; y: number } | null = null;
+  /** Атака включена (автоатака) и подход к цели; chase — опция «Преследовать цель». */
+  engaged = false;
+  approach = false;
+  chase = false;
   targetId: string | null = null;
   nav = new Nav();
 

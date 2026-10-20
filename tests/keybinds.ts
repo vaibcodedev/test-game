@@ -31,6 +31,9 @@ const noDupes = (kb: Keybinds, what: string) => {
   }
 };
 
+/** Тесты клавиш написаны для «Классики»; схема новых игроков теперь «Экшен» (DEFAULT_PRESET). */
+const classicKb = () => new Keybinds({ getItem: () => JSON.stringify({ v: 1, preset: "classic", custom: {} }), setItem() {} });
+
 test("перечень действий: группы известны, удерживаются только движения, неизменяема только Esc", () => {
   assert.equal(ACTIONS.length, ACTION_IDS.length);
   for (const d of ACTIONS) {
@@ -54,12 +57,12 @@ test("пресеты: все действия описаны, сочетаний
         seen.set(comboKey(c), a);
       }
     }
-    noDupes(new Keybinds(null), id);
+    noDupes(classicKb(), id);
   }
 });
 
-test("по умолчанию — «Классика» (пока нет ПКМ-движения и ПКМ-атаки, шаги 2, 3, 10), и это нынешние клавиши игры", () => {
-  const kb = new Keybinds(null);
+test("«Классика» — это прежние клавиши игры; по умолчанию у новых игроков «Экшен»", () => {
+  const kb = classicKb();
   assert.equal(kb.presetId, "classic");
   const want: [string, ActionId][] = [
     ["KeyW", "moveUp"], ["KeyA", "moveLeft"], ["KeyS", "moveDown"], ["KeyD", "moveRight"],
@@ -74,7 +77,7 @@ test("по умолчанию — «Классика» (пока нет ПКМ-�
 });
 
 test("«Экшен» описывает раздел 11: умения Q W E R A S D F T, зелья 1 и 2, G, X, Z, стрелки; WASD не движение", () => {
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   kb.setPreset("action");
   const slots: [string, ActionId][] = [["KeyQ", "slot1"], ["KeyW", "slot2"], ["KeyE", "slot3"], ["KeyR", "slot4"], ["KeyA", "slot5"], ["KeyS", "slot6"], ["KeyD", "slot7"], ["KeyF", "slot8"], ["KeyT", "slot9"]];
   for (const [code, a] of slots) assert.deepEqual(acts(kb, code), [a], code);
@@ -98,7 +101,7 @@ test("запреты: Ctrl+W/T/N/Tab, F11, F12, Alt+F4 не назначить �
   ];
   for (const c of bad) assert.ok(isForbidden(c), comboKey(c));
   for (const c of [{ code: "KeyW" }, { code: "KeyC", ctrl: true }, { code: "KeyC", alt: true }, { code: "F10" }, { code: "F4" }, { code: "Tab" }, { code: "KeyT", shift: true }] as Combo[]) assert.ok(!isForbidden(c), comboKey(c));
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   const before = JSON.stringify(kb.layout());
   for (const c of bad) assert.deepEqual(kb.rebind("slot1", 0, c), { ok: false, why: "forbidden" }, comboKey(c));
   assert.deepEqual(kb.rebind("slot1", 0, { code: "Escape" }), { ok: false, why: "reserved" });
@@ -113,7 +116,7 @@ test("запреты: Ctrl+W/T/N/Tab, F11, F12, Alt+F4 не назначить �
 });
 
 test("конфликт: сочетание меняется местами с владельцем", () => {
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   assert.deepEqual(kb.rebind("slot1", 0, { code: "Digit2" }), { ok: true, swapped: "slot2" });
   assert.deepEqual(kb.combos("slot1"), [{ code: "Digit2" }]);
   assert.deepEqual(kb.combos("slot2"), [{ code: "Digit1" }]);
@@ -135,7 +138,7 @@ test("конфликт: сочетание меняется местами с в
   // то же сочетание на то же место — ничего не меняет
   assert.deepEqual(kb.rebind("moveUp", 1, { code: "KeyW" }), { ok: true });
   // у владельца не было сочетания на обмен — он остаётся без клавиши
-  const ax = new Keybinds(null);
+  const ax = classicKb();
   ax.setPreset("action");
   assert.deepEqual(ax.rebind("talk", 0, { code: "KeyG" }), { ok: true, swapped: "interact" });
   assert.deepEqual(ax.combos("interact"), []);
@@ -145,7 +148,7 @@ test("конфликт: сочетание меняется местами с в
 });
 
 test("Backspace в окне настроек: clear убирает сочетание, Esc не трогается", () => {
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   kb.clear("moveUp", 0);
   assert.deepEqual(kb.combos("moveUp"), [{ code: "ArrowUp" }]);
   assert.deepEqual(acts(kb, "KeyW"), []);
@@ -158,7 +161,7 @@ test("Backspace в окне настроек: clear убирает сочета�
 test("сохранение: round-trip через keybinds:v1, хранятся только отличия от схемы, размер < 4 КБ", () => {
   const store = new MemStore();
   const kb = new Keybinds(store);
-  assert.equal(store.getItem(STORAGE_KEY), null, "без изменений ничего не пишем");
+  kb.setPreset("classic");
   kb.rebind("slot1", 0, { code: "Digit2" });
   kb.rebind("talk", 1, { code: "Mouse4" });
   kb.rebind("mount", 0, { code: "KeyX", ctrl: true });
@@ -178,7 +181,7 @@ test("сохранение: round-trip через keybinds:v1, хранятся 
   back.setPreset("action");
   const again = new Keybinds(store);
   assert.equal(again.presetId, "action");
-  const fresh = new Keybinds(null);
+  const fresh = classicKb();
   fresh.setPreset("action");
   assert.deepEqual(again.layout(), fresh.layout());
   assert.deepEqual(JSON.parse(store.getItem(STORAGE_KEY)!).custom, {});
@@ -221,11 +224,11 @@ test("сохранение: мусор, чужие схемы и дубли не
   const boom: Store = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("quota"); } };
   const k2 = new Keybinds(boom);
   assert.deepEqual(k2.layout(), def);
-  assert.deepEqual(k2.rebind("slot1", 0, { code: "Digit2" }), { ok: true, swapped: "slot2" });
+  assert.deepEqual(k2.rebind("slot1", 0, { code: "Digit2" }), { ok: true, swapped: "potionMp" });
 });
 
 test("нажатия: Ctrl+C не «Герой», Shift+X — следующий маунт, Shift не мешает ходить, Meta и модификаторы сами по себе молчат", () => {
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   assert.deepEqual(acts(kb, "KeyC"), ["winChar"]);
   assert.deepEqual(acts(kb, "KeyC", { ctrl: true }), []);
   assert.deepEqual(acts(kb, "KeyC", { alt: true }), []);
@@ -236,7 +239,7 @@ test("нажатия: Ctrl+C не «Герой», Shift+X — следующий
   assert.deepEqual(acts(kb, "ArrowLeft", { shift: true }), ["moveLeft"]);
   assert.deepEqual(acts(kb, "Digit1", { shift: true }), [], "Shift+1 — не умение 1");
   assert.deepEqual(acts(kb, "KeyX", { shift: true }), ["mountNext"]);
-  assert.deepEqual(acts(kb, "Tab", { shift: true }), []);
+  assert.deepEqual(acts(kb, "Tab", { shift: true }), ["targetPrev"]);
   for (const code of ["ShiftLeft", "ControlRight", "AltLeft", "MetaLeft", "", "Unidentified", "Keyÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ"]) assert.deepEqual(acts(kb, code), [], code || "(пусто)");
   assert.deepEqual(kb.actionsFor({ code: undefined as unknown as string, shiftKey: false, ctrlKey: false, altKey: false }), []);
   // свои сочетания с Ctrl работают, если назначены
@@ -278,7 +281,7 @@ test("поле ввода: печатают в text/search/number/password, text
 });
 
 test("подписи и справка строятся из раскладки: «1–9», «Q / E», «X / Shift+X», смена схемы меняет текст", () => {
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   assert.equal(skillKeys(kb), "1–9");
   assert.equal(kb.label("moveUp"), "W / ↑");
   assert.equal(kb.label("moveUp", 1), "↑");
@@ -313,7 +316,7 @@ test("подписи и справка строятся из раскладки:
   assert.equal(a.get("Z / Shift+Z"), "питомец");
   assert.ok(![...a.values()].includes("поговорить с NPC"), "строки без клавиши пропускаются");
   // перестановка умений меняет «1–9» на перечисление
-  const kb2 = new Keybinds(null);
+  const kb2 = classicKb();
   kb2.rebind("slot1", 0, { code: "Digit2" });
   assert.equal(skillKeys(kb2), "2 1 3 4 5 6 7 8 9");
   // подписи сочетаний
@@ -329,14 +332,14 @@ test("подписи и справка строятся из раскладки:
 
 test("кнопки мыши: СКМ, Mouse4, Mouse5 назначаются, ЛКМ и ПКМ — указатель игры", () => {
   assert.deepEqual([0, 1, 2, 3, 4, 5].map(mouseCode), [null, "Mouse3", null, "Mouse4", "Mouse5", null]);
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   assert.deepEqual(kb.rebind("slot1", 0, { code: "Mouse4" }), { ok: true });
   assert.deepEqual(kb.combos("slot1"), [{ code: "Mouse4" }]);
   assert.deepEqual(acts(kb, "Digit1"), [], "Digit1 освободилась");
 });
 
 test("подписка на смену: вызывается при изменении, отписка работает", () => {
-  const kb = new Keybinds(null);
+  const kb = classicKb();
   let n = 0;
   const off = kb.onChange(() => n++);
   kb.rebind("slot1", 0, { code: "Digit2" });

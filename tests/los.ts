@@ -48,7 +48,7 @@ async function main() {
       g.room.state.mobs.forEach((m: any, k: string) => { if (m.sprite === "ashlord") bossId = k; });
       assert(bossId, "босс не найден");
       const hp0 = g.room.state.mobs.get(bossId).hp, php0 = g.me().hp;
-      g.send("target", { id: bossId });
+      g.send("attack", { id: bossId });
       for (let i = 0; i < 6; i++) {
         await sleep(100);
         const m = g.room.state.mobs.get(bossId), me = g.me();
@@ -68,7 +68,7 @@ async function main() {
       let bossId = "";
       g.room.state.mobs.forEach((m: any, k: string) => { if (m.sprite === "ashlord") bossId = k; });
       const hp0 = g.room.state.mobs.get(bossId).hp;
-      g.send("target", { id: bossId });
+      g.send("attack", { id: bossId });
       await g.until(() => g.room.state.mobs.get(bossId).hp < hp0, 8000, "урон по боссу");
       await g.leave();
     });

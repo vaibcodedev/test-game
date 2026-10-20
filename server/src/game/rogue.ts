@@ -198,6 +198,7 @@ export function castRogue(c: CastCtx): string | null | undefined {
           u.y = dest.y;
         }
         p.targetId = m.id;
+        p.engaged = p.approach = true;
         u.target = m.id;
         face(m);
         u.aseq = (u.aseq + 1) % 65535;

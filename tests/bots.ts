@@ -30,10 +30,11 @@ async function killNear(b: Bot, mob: string, timeout = 20000) {
     id = mobNear(b, s.x, s.y, 120, mob);
     if (id) { sp = s; break; }
   }
+  b.send("dbg", { op: "god" }); // задача 74: без бессмертия герой гибнет у слизня раньше, чем нанесёт урон
   b.send("dbg", { op: "tp", x: sp.x + 30, y: sp.y });
   await sleep(300);
   assert(id, "моб " + mob + " не найден у точки появления");
-  b.send("target", { id });
+  b.send("attack", { id });
   const t0 = Date.now();
   try {
     await b.until(() => b.room.state.mobs.get(id)?.anim === 4, timeout, "моб убит");
@@ -308,7 +309,7 @@ async function main() {
       let bossId = "";
       g.room.state.mobs.forEach((m: any, k: string) => { if (m.sprite === id) bossId = k; });
       assert(bossId, "босс не найден");
-      g.send("target", { id: bossId });
+      g.send("attack", { id: bossId });
       await g.until(() => g.fx.some((f) => f.t === "tele"), 15000, "телеграф атаки");
       for (const [i, hp] of phases.entries()) {
         g.send("dbg", { op: "mobhp", id: bossId, v: hp });
@@ -319,7 +320,7 @@ async function main() {
       const why = expect(g.fx);
       assert(!why, why!);
       g.send("dbg", { op: "mobhp", id: bossId, v: 0.0001 });
-      await g.until(() => g.room.state.mobs.get(bossId)?.anim === 4, 8000, "босс повержен");
+      await g.until(() => g.room.state.mobs.get(bossId)?.anim === 4, 8000, "босс повержен").catch((e) => { const m = g.room.state.mobs.get(bossId), me = g.me(); throw new Error(`${e.message}: target=${me.target} hp=${me.hp} me(${me.x|0},${me.y|0}) boss(${m.x|0},${m.y|0}) hp=${m.hp}/${m.maxHp}`); });
       await g.until(() => g.bags.some((b) => b.boss), 2000, "мешок босса");
       const bag = g.bags.find((b) => b.boss)!;
       const uniq = bag.items.find((it: any) => it.unique);

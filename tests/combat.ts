@@ -33,6 +33,7 @@ async function main() {
   try {
     let a = await join("Комбат");
     a.send("dbg", { op: "level", v: 10 });
+    a.send("dbg", { op: "god" });
     await sleep(400);
     await check("убийство моба: в бою, через 5 с маунт разрешён", async () => {
       a.send("dbg", { op: "tp", x: slime.x + 30, y: slime.y });
@@ -40,7 +41,7 @@ async function main() {
       let id: string | null = null, bd = 150;
       a.room.state.mobs.forEach((m: any, k: string) => { const d = Math.hypot(m.x - slime.x, m.y - slime.y); if (m.anim !== 4 && m.sprite === "slime" && d < bd) { bd = d; id = k; } });
       assert(id, "слизень не найден");
-      a.send("target", { id });
+      a.send("attack", { id });
       await a.until(() => a.room.state.mobs.get(id!)?.anim === 4, 20000, "моб убит");
       assert(a.combat, "флаг боя не пришёл клиенту");
       assert(!(await tryMount(a)), "маунт призван в бою");

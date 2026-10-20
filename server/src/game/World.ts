@@ -757,10 +757,12 @@ export class World {
     const frozen = p.frozenUntil > t;
     const canMove = !frozen && p.stunUntil <= t && p.rootUntil <= t && p.castUntil <= t;
     const target = p.targetId ? this.actor(p.targetId) : undefined;
-    if (p.targetId && (!target || this.isDead(target) || !this.hostile(p, target) || this.stealthed(target))) {
+    const foe = !!target && this.hostile(p, target);
+    if (p.targetId && (!target || this.isDead(target) || (foe ? this.stealthed(target) : !this.isPlayer(target)) || this.dist(u, target) > 900)) {
       p.targetId = null;
       u.target = "";
     }
+    if (!p.targetId || !foe) p.engaged = p.approach = false;
     let moving = false;
     if (canMove) {
       if (p.input.mx || p.input.my) {
@@ -772,17 +774,18 @@ export class World {
         u.y = Math.round(n.y * 10) / 10;
         u.dir = World.dirTo(p.input.mx, p.input.my);
         p.moveTo = null;
+        if (!p.chase) p.approach = false;
       } else if (p.moveTo) {
         moving = this.stepToward(p, p.moveTo.x, p.moveTo.y, dt, 2);
         if (!moving) p.moveTo = null;
-      } else if (target && !this.isDead(target)) {
+      } else if (p.targetId && foe && p.engaged && p.approach) {
         const range = p.attackRange() + this.radiusOf(target);
         const d2 = this.dist(u, target);
         if (d2 > range || (p.ranged() && !lineClear(this.map, u.x, u.y, target.x, target.y))) moving = this.stepToward(p, target.x, target.y, dt, Math.min(range - 4, d2));
       }
     }
     // автоатака
-    if (target && !this.isDead(target) && !frozen && p.stunUntil <= t && t >= p.attackAt && !(p.input.mx || p.input.my) && !p.moveTo) {
+    if (p.targetId && target && foe && p.engaged && !this.isDead(target) && !frozen && p.stunUntil <= t && t >= p.attackAt && !(p.input.mx || p.input.my) && !p.moveTo) {
       const d2 = this.dist(u, target);
       if (d2 <= p.attackRange() + this.radiusOf(target) && lineClear(this.map, u.x, u.y, target.x, target.y)) this.playerAttack(p, target);
     }

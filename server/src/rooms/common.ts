@@ -49,15 +49,30 @@ export function registerCombat(on: On, world: () => World) {
     if (x === null || y === null) return;
     p.moveTo = { x, y };
     p.nav.reset();
-    p.targetId = null;
+    if (!p.chase) p.approach = false;
   });
+  // target — только выбор (враг или союзник-игрок): без подхода и атаки
   on<{ id: unknown }>("target", (p, m) => {
     const id = typeof m.id === "string" ? m.id : null;
     const a = w().actor(id);
-    p.targetId = a && !w().isDead(a) && w().hostile(p, a) && !w().stealthed(a) ? a.id : null;
-    p.unit.target = p.targetId ?? "";
-    if (p.targetId) p.moveTo = null;
+    const ok = a && !w().isDead(a) && (w().hostile(p, a) ? !w().stealthed(a) : w().isPlayer(a));
+    const next = ok ? a.id : null;
+    if (next !== p.targetId) p.engaged = p.approach = false;
+    p.targetId = next;
+    p.unit.target = next ?? "";
   });
+  // attack — подход до дальности и автоатака; id=null — прекратить атаку (цель остаётся)
+  on<{ id: unknown }>("attack", (p, m) => {
+    const id = typeof m.id === "string" ? m.id : null;
+    if (!id) { p.engaged = p.approach = false; return; }
+    const a = w().actor(id);
+    if (!a || w().isDead(a) || !w().hostile(p, a) || w().stealthed(a)) return;
+    p.targetId = a.id;
+    p.unit.target = a.id;
+    p.engaged = p.approach = true;
+    p.moveTo = null;
+  });
+  on<{ on: unknown }>("chase", (p, m) => { p.chase = m.on === true; });
   on<{ id: unknown; x: unknown; y: unknown; target: unknown }>("skill", (p, m) => {
     if (typeof m.id !== "string") return;
     const x = num(m.x, 0, w().map.w * TILE) ?? p.x, y = num(m.y, 0, w().map.h * TILE) ?? p.y;

@@ -73,6 +73,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
     w.breakMount(p);
     if (id !== "stealth" && id !== "dr_shadowmeld") p.stealthUntil = 0;
     u.mp -= mana;
+    if (liveTarget && def.target === "enemy" && p.targetId === liveTarget.id) p.engaged = p.approach = true;
     onCast(w, p, id, liveTarget);
     mageCast(w, p, id, liveTarget);
     onCastArcher(w, p, id, liveTarget);
@@ -159,6 +160,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       u.y = dest.y;
       p.moveTo = null;
       p.targetId = liveTarget.id;
+      p.engaged = p.approach = true;
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
       w.hit(p, liveTarget, { mult: v.dmg / 100, skill: true, threat: 1 });
       threat(liveTarget, v.threat);
@@ -344,6 +346,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
       u.y = dest.y;
       p.moveTo = null;
       p.targetId = liveTarget.id;
+      p.engaged = p.approach = true;
       u.target = liveTarget.id;
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
       p.critNextUntil = w.time + 8000;

@@ -129,13 +129,13 @@ async function main() {
       umb.send("dbg", { op: "hp", v: 999999 });
       sol.send("dbg", { op: "hp", v: 5000 });
       await sleep(200);
-      sol.send("target", { id: umb.id });
+      sol.send("attack", { id: umb.id });
       await sol.until(() => umb.me().hp < 999999, 5000, "урон по врагу в спорной зоне");
       sol.send("target", { id: null });
       const ally = await Bot.join("Союзник", "secret", "mage");
       ally.send("dbg", { op: "tp", x: p.x + 40, y: p.y });
       await sleep(300);
-      sol.send("target", { id: ally.id });
+      sol.send("attack", { id: ally.id });
       await sleep(300);
       assert(sol.me().target !== ally.id, "свою фракцию можно выбрать целью");
       await ally.leave();
@@ -157,7 +157,7 @@ async function main() {
       umb.send("dbg", { op: "hp", v: 2000 });
       await sleep(100);
       const hp0 = sol.me().hp;
-      umb.send("target", { id: sol.id });
+      umb.send("attack", { id: sol.id });
       await umb.until(() => umb.toasts.some((t) => t.includes("сражаться нельзя")), 4000, "предупреждение");
       assert(sol.me().hp >= hp0, "урон прошёл в нейтральном городе");
       await umb.until(() => umb.me().outlaw === 1, 2000, "метка нарушителя");
