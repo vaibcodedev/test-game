@@ -1420,6 +1420,8 @@ export class Hud {
           this.deadSince = performance.now();
           this.death.hidden = false;
           if (this.ctx.net.kind === "raid") this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Ждите воскрешения союзником.</p></div>`;
+          // на арене возрождения нет (комната арены не принимает respawn): павший ждёт конца боя
+          else if (this.ctx.net.kind === "arena") this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">На арене возрождения нет: бой идёт, пока жив хоть один герой вашей команды. Дождитесь его конца.</p></div>`;
           else {
             this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Вы потеряете 10% золота и очнётесь в ближайшем открытом городе (или в столице своей фракции).</p><button class="btn primary" id="respawn">Возродиться</button></div>`;
             document.getElementById("respawn")!.onclick = () => this.ctx.net.send("respawn", {});
