@@ -1,5 +1,7 @@
 /** Штандарт «Знамя защиты» (tp_banner, задача 127, шаг 4): большое знамя на высоком древке, колышется на ветру, кольцо ауры радиуса баффа и пыль установки.
- *  Две фракции по caster: Сольгард — тёмно-синее полотнище, золотая кайма и золотое солнце; Умбрат — чёрно-фиолетовое полотнище, фиолетовая кайма, зелёное око.
+ *  Символика по data/factions.json. Сольгард («Восходящее солнце над щитом»): полотнище слоновой кости с широкой золотой каймой, золотое восходящее солнце над
+ *  небесно-голубым щитом с золотым ободом, золотые кисти и ленты, навершие — золотой солнечный диск. Умбрат («Чёрная корона с черепом»): чёрно-фиолетовое полотнище,
+ *  фиолетовая кайма, чёрная корона над костяным черепом с зелёными глазами, навершие — зубцы короны.
  *  Холст 48×88, основание древка в точке привязки (0.5, 0.955); 10 кадров цикла, 9 fps. Палитра — tools/gen/palette.ts (P), золото как --gold.
  *  Ветер: полотнище нарисовано плоско (кайма, внутренняя линия, эмблема, фигурный низ — ласточкин хвост), затем каждый кадр искажается: строки сдвигаются
  *  по горизонтали (сильнее к низу), столбцы по вертикали (волна вдоль ширины); светотень складок бежит вместе с волной; ленты и кисти отстают по фазе.
@@ -22,14 +24,18 @@ interface Fac {
   mark: [RGBA, RGBA, RGBA];      // эмблема
   ribA: [RGBA, RGBA]; ribB: [RGBA, RGBA];
   ring: RGBA[];
+  /** Ширина каймы, px; навершие: солнечный диск (Сольгард) или зубцы короны (Умбрат). */
+  trimW: number; finial: "sun" | "crown";
 }
 const FAC: Record<"solgard" | "umbrath", Fac> = {
   solgard: {
-    field: [hex("#16243e"), hex("#24407a"), hex("#3a62a8")],
+    // слоновая кость с тёплыми серо-бежевыми складками, широкая золотая кайма (золото и тёплый белый фракции)
+    field: [hex("#7a6a4c"), hex("#bfae88"), hex("#d6c8a4")],
     trim: [P.gold[1], P.gold[3], P.gold[4]],
     mark: [P.gold[2], P.gold[3], P.gold[4]],
-    ribA: [hex("#24407a"), hex("#3a62a8")], ribB: [hex("#a8a2b0"), hex("#e8e4ee")],
-    ring: [P.gold[0], P.gold[1], P.gold[2], P.gold[3], P.gold[4]],
+    ribA: [P.gold[1], P.gold[3]], ribB: [hex("#2c6ca8"), hex("#7ec8ff")],
+    ring: [P.gold[0], P.gold[1], P.gold[2], P.gold[3], hex("#fff4c8")],
+    trimW: 3, finial: "sun",
   },
   umbrath: {
     field: [hex("#100a1a"), hex("#22163a"), hex("#382858")],
@@ -37,6 +43,7 @@ const FAC: Record<"solgard" | "umbrath", Fac> = {
     mark: [P.magic.green[1], P.magic.green[2], P.magic.green[3]],
     ribA: [hex("#46265e"), hex("#6a3c8a")], ribB: [P.magic.green[1], P.magic.green[2]],
     ring: [hex("#2a1846"), hex("#5a34a0"), hex("#8a5ce0"), hex("#b890ff"), hex("#e0ccff")],
+    trimW: 2, finial: "crown",
   },
 };
 
@@ -46,37 +53,57 @@ function clothTexture(fac: "solgard" | "umbrath") {
   const bottom = (x: number) => CH - 1 - Math.round(11 * (1 - Math.abs((2 * x) / (CW - 1) - 1)));   // граница снизу: V-вырез
   for (let x = 0; x < CW; x++) for (let y = 0; y <= bottom(x); y++) mask[y][x] = true;
   const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < CW && y < CH && mask[y][x];
-  // расстояние до края (манхэттенское по 4 соседям, до 5)
+  // расстояние до края (по 4 соседям, до 5)
   const dist = (x: number, y: number) => { for (let d = 1; d <= 5; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (!inside(x + dx, y + dy)) return d; return 9; };
   for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
     if (!mask[y][x]) continue;
     const d = dist(x, y);
     let c: RGBA = (x + y) % 9 === 0 && d > 5 ? F.field[2] : F.field[1];
-    if (d <= 2 || y < 3) c = d === 1 || y === 0 ? F.trim[1] : F.trim[0];            // кайма: 2 px по краю и 3 px сверху
-    else if (d === 4) c = F.trim[0];                                                 // внутренняя линия
+    if (d <= F.trimW || y < F.trimW + 1) c = d === 1 || y === 0 ? F.trim[1] : d === F.trimW ? F.trim[0] : (x + y) % 4 === 0 ? F.trim[2] : F.trim[1];   // кайма
+    else if (d === F.trimW + 2) c = F.trim[0];                                       // внутренняя линия
     tex.set(x, y, c);
   }
-  // эмблема
-  const ex = CW / 2, ey = 19;
+  // эмблема (крупно, контрастно, без мелочи)
+  const em = new PC(CW, CH), ex = CW / 2;
   if (fac === "solgard") {
-    // солнце: диск с бликом, 12 лучей (длинные и короткие через один)
-    for (let k = 0; k < 12; k++) {
-      const a = (k / 12) * TAU - Math.PI / 2, len = k % 2 === 0 ? 5 : 3, r1 = 6.2, px = -Math.sin(a), py = Math.cos(a);
-      tex.poly([[ex + Math.cos(a) * r1 + px * 1.3, ey + Math.sin(a) * r1 + py * 1.3], [ex + Math.cos(a) * r1 - px * 1.3, ey + Math.sin(a) * r1 - py * 1.3], [ex + Math.cos(a) * (r1 + len), ey + Math.sin(a) * (r1 + len)]], F.mark[k % 2 ? 0 : 1]);
+    // восходящее солнце (полудиск с лучами) над щитом
+    const G = P.gold, sky = [hex("#12365e"), hex("#1f5a96"), hex("#3a86c8"), hex("#7ec8ff")], sy = 17;
+    for (let k = 0; k <= 6; k++) {
+      const a = Math.PI + (k / 6) * Math.PI, len = k % 2 === 0 ? 5 : 3.5, r1 = 6.8, px = -Math.sin(a), py = Math.cos(a);
+      em.poly([[ex + Math.cos(a) * r1 + px * 1.4, sy + Math.sin(a) * r1 + py * 1.4], [ex + Math.cos(a) * r1 - px * 1.4, sy + Math.sin(a) * r1 - py * 1.4], [ex + Math.cos(a) * (r1 + len), sy + Math.sin(a) * (r1 + len)]], k % 2 ? G[2] : G[3]);
     }
-    tex.ellipse(ex, ey, 5.2, 5.2, F.mark[0]); tex.ellipse(ex, ey, 4.2, 4.2, F.mark[1]);
-    tex.ellipse(ex - 1, ey - 1, 2, 2, F.mark[2]);
+    for (let y = sy - 6; y <= sy; y++) for (let x = -6; x <= 6; x++) { const d = Math.hypot(x, y - sy); if (d <= 5.6) put(em, ex + x, y, d < 3.2 ? G[4] : d < 4.6 ? G[3] : G[2]); }
+    for (let x = -8; x <= 8; x++) { put(em, ex + x, sy + 1, G[3]); put(em, ex + x, sy + 2, G[1]); }                 // линия горизонта
+    // щит: небесно-голубой, золотой обод
+    const top = 20, bot = 33, hw = (y: number) => (y < 25 ? 9 : Math.max(0, 9 - (y - 25) * 1.15));
+    for (let y = top; y <= bot; y++) for (let x = -10; x <= 10; x++) {
+      const w = hw(y);
+      if (Math.abs(x) > w + 0.2 || w <= 0) continue;
+      const rim = Math.abs(x) > w - 1.3 || y === top || y === bot || (y > 25 && Math.abs(x) > w - 1.8);
+      put(em, ex + x, y, rim ? (x < 0 ? G[3] : G[2]) : y > bot - 4 ? sky[0] : x < -2 ? sky[2] : x > 3 ? sky[0] : sky[1]);
+    }
+    for (const [dx, dy] of [[0, 25], [0, 26], [-1, 26], [1, 26], [0, 27], [-3, 24], [3, 24]]) put(em, ex + dx, dy, G[3]);   // золотая звезда
+    put(em, ex - 4, top + 2, sky[3]); put(em, ex - 4, top + 3, sky[3]);
   } else {
-    // око: миндалевидный контур, радужка, зрачок, блик и три луча сверху
-    for (let x = -9; x <= 9; x++) {
-      const h = 4.6 * Math.pow(1 - (x / 9.4) ** 2, 0.7);
-      for (let y = -Math.ceil(h); y <= Math.ceil(h); y++) if (Math.abs(y) <= h) put(tex, ex + x, ey + y, Math.abs(y) >= h - 1 ? F.mark[0] : F.field[0]);
-      put(tex, ex + x, ey - Math.round(h) - 1, F.mark[1]); put(tex, ex + x, ey + Math.round(h) + 1, F.mark[0]);
+    // чёрная корона над костяным черепом со светящимися зелёными глазами
+    const lil = [hex("#6a3c8a"), hex("#9a62b8"), hex("#d0b4f0")], bone = P.bone, gr = P.magic.green, dark = hex("#0a0612");
+    for (const cxs of [8.5, 16, 23.5]) {
+      const apex = cxs === 16 ? 3 : 5;
+      em.poly([[cxs - 3.6, 12], [cxs + 3.6, 12], [cxs, apex]], lil[1]); em.line(cxs, apex + 1, cxs - 2.4, 11, lil[2], 1);
+      put(em, cxs, apex, lil[2]); put(em, cxs, apex + 1, lil[2]);
     }
-    tex.ellipse(ex, ey, 3.7, 3.7, F.mark[1]); tex.ellipse(ex, ey, 1.9, 1.9, F.field[0]); put(tex, ex - 1.5, ey - 1.5, F.mark[2]);
-    for (const dx of [-6, 0, 6]) { tex.line(ex + dx, ey - 8, ex + dx * 1.4, ey - 12, F.mark[1], 1); }
-    for (const dx of [-4, 4]) put(tex, ex + dx, ey + 9, F.mark[0]);
+    for (let x = -9; x <= 9; x++) { for (let y = 11; y <= 15; y++) put(em, ex + x, y, dark); put(em, ex + x, 11, lil[2]); put(em, ex + x, 15, lil[1]); }
+    for (const gx of [-6, 0, 6]) { put(em, ex + gx, 12, gr[3]); put(em, ex + gx, 13, gr[3]); put(em, ex + gx, 14, gr[2]); }
+    // череп
+    em.ellipse(ex, 22, 7.6, 6.8, bone[1]); em.ellipse(ex - 0.6, 21.4, 6.9, 6.1, bone[2]); em.ellipse(ex - 2.4, 19.6, 3.2, 2.2, bone[3]);
+    for (let y = 26; y <= 31; y++) for (let x = -4; x <= 4; x++) put(em, ex + x, y, x > 2 ? bone[1] : bone[2]);
+    for (const tx of [-2, 0, 2]) for (let y = 28; y <= 31; y++) put(em, ex + tx, y, dark);
+    for (let x = -4; x <= 4; x++) put(em, ex + x, 27, bone[0]);
+    for (const sx of [-3.4, 3.4]) { em.ellipse(ex + sx, 22, 2.9, 2.7, gr[0]); em.ellipse(ex + sx, 22, 2.1, 2.1, dark); em.ellipse(ex + sx, 22.2, 1.3, 1.3, gr[3]); put(em, ex + sx - 0.5, 21.5, gr[4]); }
+    em.poly([[ex, 24], [ex - 1.6, 26.2], [ex + 1.6, 26.2]], dark);
   }
+  em.outline(fac === "solgard" ? hex("#3a2208") : hex("#05030a"), true);   // тёмный контур эмблемы: читается с одного взгляда
+  tex.blit(em, 0, 0);
   return { tex, mask, bottom };
 }
 
@@ -123,8 +150,17 @@ function bannerFrame(fac: "solgard" | "umbrath", t: number, cloth: ReturnType<ty
   for (let x = 4; x <= W - 5; x++) { put(f, x, 14, wood[3]); put(f, x, 15, wood[2]); put(f, x, 16, wood[1]); put(f, x, 17, wood[0]); }
   for (const ex of [2, W - 4]) { f.ellipse(ex + 1, 15.5, 2.6, 3.4, gold[1]); f.ellipse(ex + 0.6, 14.8, 1.6, 2.2, gold[3]); put(f, ex, 14, gold[4]); }
   for (const rx of [X0 + 3, X0 + 11, X0 + CW - 12, X0 + CW - 4]) { put(f, rx, 18, gold[3]); put(f, rx + 1, 18, gold[2]); put(f, rx, 19, gold[2]); put(f, rx + 1, 19, gold[1]); }
-  f.poly([[CX - 2, 13], [CX + 2, 13], [CX + 1, 6], [CX, 3], [CX - 1, 6]], gold[2]); f.line(CX, 4, CX, 12, gold[4], 1); put(f, CX - 1, 8, gold[3]);
-  f.ellipse(CX, 13.5, 3, 1.6, gold[1]);
+  if (F.finial === "sun") {
+    // золотой солнечный диск с короткими лучами
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU; put(f, CX + Math.cos(a) * 5.4, 7 + Math.sin(a) * 5.4, gold[k % 2 ? 2 : 3]); put(f, CX + Math.cos(a) * 4.4, 7 + Math.sin(a) * 4.4, gold[3]); }
+    f.ellipse(CX, 7, 3.4, 3.4, gold[2]); f.ellipse(CX - 0.4, 6.6, 2.6, 2.6, gold[3]); put(f, CX - 1, 5, gold[4]); put(f, CX, 5, gold[4]);
+    f.ellipse(CX, 13.5, 3, 1.6, gold[1]);
+  } else {
+    // зубцы чёрной короны
+    const lil = [hex("#6a3c8a"), hex("#9a62b8"), hex("#d0b4f0")];
+    for (const dx of [-4, 0, 4]) { f.poly([[CX + dx - 2, 13], [CX + dx + 2, 13], [CX + dx, dx === 0 ? 2 : 5]], lil[1]); put(f, CX + dx, dx === 0 ? 2 : 5, lil[2]); f.line(CX + dx, dx === 0 ? 3 : 6, CX + dx - 1, 12, lil[2], 1); }
+    f.ellipse(CX, 13.5, 5, 1.6, lil[0]); put(f, CX, 12, P.magic.green[3]);
+  }
   f.outline(OUTLINE);
   return f;
 }
