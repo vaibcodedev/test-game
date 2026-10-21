@@ -433,10 +433,10 @@ export class GearLayers {
         const halo = new Set<number>();
         const ex = T.haloExpand ?? 2;
         for (const k of px) { const x = KX(k), y = KY(k); for (let dy = -ex; dy <= ex; dy++) for (let dx = -ex; dx <= ex; dx++) { const q = KEY(x + dx, y + dy); if (!px.has(q) && !ring.has(q)) halo.add(q); } }
-        g.fillStyle(C(HERO_ENCH), T.haloAlpha ?? 0.06);
+        g.fillStyle(C(HERO_ENCH), T.haloAlpha ?? 0.08);
         for (const k of halo) g.fillRect(KX(k), KY(k), 1, 1);
       }
-      const alpha = flashOn ? 1 : tier === 2 ? (T.outlineAlphaMin ?? 0.25) + ((T.outlineAlphaMax ?? 0.4) - (T.outlineAlphaMin ?? 0.25)) * (0.5 + 0.5 * Math.sin((t / (T.pulseMs ?? 1600)) * Math.PI * 2)) : T.outlineAlpha ?? 0.2;
+      const alpha = flashOn ? 1 : tier === 2 ? (T.outlineAlphaMin ?? 0.3) + ((T.outlineAlphaMax ?? 0.45) - (T.outlineAlphaMin ?? 0.3)) * (0.5 + 0.5 * Math.sin((t / (T.pulseMs ?? 1600)) * Math.PI * 2)) : T.outlineAlpha ?? 0.25;
       g.fillStyle(C(flashOn ? this.flash!.color : HERO_ENCH), alpha);
       for (const k of ring) g.fillRect(KX(k), KY(k), 1, 1);
       // +4…+6: раз в 2 с по контуру пробегает точка 2 px (бирюза с белым ядром)

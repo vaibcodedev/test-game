@@ -14,20 +14,20 @@
    },
    {
     "name": "тусклый контур",
-    "outlineAlpha": 0.2,
+    "outlineAlpha": 0.25,
     "dotPeriodMs": 2000,
     "dotSize": 2
    },
    {
     "name": "яркий контур",
-    "outlineAlphaMin": 0.25,
-    "outlineAlphaMax": 0.4,
+    "outlineAlphaMin": 0.3,
+    "outlineAlphaMax": 0.45,
     "pulseMs": 1600
    },
    {
     "name": "контур и ореол",
-    "outlineAlpha": 0.45,
-    "haloAlpha": 0.06,
+    "outlineAlpha": 0.5,
+    "haloAlpha": 0.08,
     "haloExpand": 2,
     "particles": [
      1,
@@ -38,8 +38,8 @@
   "outlinePx": 1,
   "hoverFlashMs": 1000,
   "hoverFlashColor": "#ffffff",
-  "heroColor": "#3d7a70",
-  "heroCore": "#8fc4ba"
+  "heroColor": "#4a9488",
+  "heroCore": "#a3d8ce"
  },
  "limits": {
   "sources": 2,
