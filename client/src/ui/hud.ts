@@ -1016,19 +1016,20 @@ export class Hud {
     if (this.trade.isOpen) return { id: "trade", note: "Обмен: клик по вещи — предложить" };
     if (this.bank.isOpen) return { id: "bank", note: "Банк открыт: клик по вещи — положить в банк" };
     if (!this.wins.shop.hidden) return { id: "shop", note: "Торговка рядом: клик по вещи — продать" };
-    return { id: "use", note: "" };
+    return { id: "use", note: this.inCombat ? "В бою снаряжение не меняется: надеть и снять — после боя" : "" };
   }
   private renderInv(s: SelfState) {
     const b = this.body("inv");
     const mode = this.invMode();
     // надето: те же 6 колонок, что у сумки. Четыре вещи и питомец, ещё до четырёх вещей и маунт; питомец и маунт стоят в 6-й колонке (.cell.comp)
-    const eqSec = el("section", "sec", `<h3 class="sec-h">Надето</h3>`);
+    // в бою снаряжение не меняется (сервер: inventory.ts, IN_COMBAT): чип в шапке раздела и замок на надетых вещах
+    const eqSec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Надето</h3>${this.inCombat ? `<span class="chip bad" title="В бою снаряжение не меняется">В бою</span>` : ""}</div>`);
     const eq = el("div", "equip");
     const comp = this.renderCompanions(s);
     SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls)).forEach((slot, n) => {
       const it = s.equip[slot];
       ghostBase[SLOT_NAMES[slot]] = slot === "weapon" ? CLASSES[s.cls].startWeapon : slot === "offhand" ? offhandGhost(s.cls) : slot;
-      const c = this.cell(it, s, "", SLOT_NAMES[slot]);
+      const c = this.cell(it, s, it && this.inCombat ? "lock" : "", SLOT_NAMES[slot]);
       if (it) {
         c.onclick = () => this.ctx.net.send("unequip", { slot });
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!, true));
@@ -1152,6 +1153,8 @@ export class Hud {
     this.inCombat = on;
     const b = this.player.querySelector<HTMLElement>(".combat-badge");
     if (b) b.hidden = !on;
+    // замки на снаряжении и плашка сумки появляются и пропадают вместе с боем
+    if (!this.wins.inv.hidden && this.ctx?.net.self) this.renderInv(this.ctx.net.self);
   }
 
   private mountCast(ms: number, name?: string) {

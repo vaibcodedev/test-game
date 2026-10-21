@@ -44,10 +44,14 @@ export function addItem(p: Player, it: Item): boolean {
   return true;
 }
 
-export function equip(w: World, p: Player, index: unknown) {
+/** Снаряжение в бою не меняется (как в MMO): надеть, снять и сменить вещь — только вне боя (Player.inCombat); выдача из админки — мимо (force). */
+const IN_COMBAT = "В бою снаряжение не меняется";
+
+export function equip(w: World, p: Player, index: unknown, force = false) {
   if (!validIndex(p, index)) return;
   const it = p.save.inventory[index];
   if (!it) return;
+  if (!force && p.inCombat(w.time)) return err(p, IN_COMBAT);
   const why = canEquip(it, p.cls, p.level);
   if (why) return err(p, why);
   let slot = BASE_ITEMS[it.base].slot as Slot;
@@ -69,13 +73,13 @@ export function equip(w: World, p: Player, index: unknown) {
   const ratio = p.unit.hp / Math.max(1, p.unit.maxHp);
   p.recalc();
   p.unit.hp = Math.max(1, Math.round(p.unit.maxHp * ratio));
-  void w;
 }
 
-export function unequip(p: Player, slot: unknown) {
+export function unequip(w: World, p: Player, slot: unknown) {
   if (typeof slot !== "string" || !SLOTS.includes(slot as Slot)) return;
   const it = p.save.equip[slot as Slot];
   if (!it) return;
+  if (p.inCombat(w.time)) return err(p, IN_COMBAT);
   const i = p.save.inventory.indexOf(null);
   if (i < 0) return err(p, "Сумка полна");
   p.save.inventory[i] = it;

@@ -387,6 +387,8 @@ button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
 /* кольцо LiteUI Fantasy (tools/gen/vendor-liteui.ts): ×2, выходит за ячейку на 1px; цветные рамки редкости и дебафа остаются на border-color; нет картинки — обычная рамка */
 .cell:not(.r1, .r2, .r3, .debuff) { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
 .cell img { display: block; width: 100%; height: 100%; image-rendering: pixelated; font-size: 0; color: transparent; }
+/* вещь, которую сейчас нельзя снять или сменить (в бою): замок в правом нижнем углу, как у неизученного умения на панели; иконка не гаснет — вещь надета */
+.cell.lock::after { content: "🔒"; position: absolute; right: 1px; bottom: 0; font-size: var(--fs-xs); line-height: 1.2; filter: drop-shadow(0 1px 0 #000); pointer-events: none; }
 /* ---------- надписи на иконке: клавиша, количество, заточка, перезарядка, время бафа ----------
    Один вид везде (ячейка .cell, слот панели .slot, значок бафа): Rubik полужирный, цифры tabular-nums, цвет --fg,
    контур --outline-text. Смысловой цвет (заточка --enchant, далеко --bad, пусто --dim) задаёт компонент; положение и кегль — тоже он. */

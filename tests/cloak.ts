@@ -28,16 +28,38 @@ async function main() {
   });
 
   await check("надеть и снять плащ: слот, броня, сумка", () => {
-    const { p } = mk();
+    const { w, p } = mk();
     const cl = makeItem("cloak_str_30", 30, Rarity.Rare); cl.req = 1;
     const a0 = p.derived.armor;
     addItem(p, cl);
-    equip(null as never, p, p.save.inventory.findIndex((i) => i?.uid === cl.uid));
+    equip(w, p, p.save.inventory.findIndex((i) => i?.uid === cl.uid));
     assert(p.save.equip.cloak?.uid === cl.uid, "плащ не надет");
     assert(p.derived.armor > a0, "броня не выросла");
-    unequip(p, "cloak");
+    unequip(w, p, "cloak");
     assert(!p.save.equip.cloak && p.save.inventory.some((i) => i?.uid === cl.uid), "плащ не снят");
     assert(p.derived.armor === a0, "броня не вернулась");
+  });
+
+  await check("в бою снаряжение не меняется: ни надеть, ни снять; после боя — можно", () => {
+    const { w, p } = mk();
+    const toasts: string[] = [];
+    p.send = ((t: string, m: { text?: string }) => { if (t === "toast" && m.text) toasts.push(m.text); }) as typeof p.send;
+    const cl = makeItem("cloak_str_30", 30, Rarity.Rare); cl.req = 1;
+    addItem(p, cl);
+    const at = () => p.save.inventory.findIndex((i) => i?.uid === cl.uid);
+    p.combatAt = w.time;
+    equip(w, p, at());
+    assert(!p.save.equip.cloak && at() >= 0, "надел в бою");
+    assert(toasts.includes("В бою снаряжение не меняется"), "нет ошибки: " + toasts.join("; "));
+    p.combatAt = -1e9;
+    equip(w, p, at());
+    assert(p.save.equip.cloak?.uid === cl.uid, "вне боя не надел");
+    p.combatAt = w.time;
+    unequip(w, p, "cloak");
+    assert(p.save.equip.cloak?.uid === cl.uid, "снял в бою");
+    p.combatAt = -1e9;
+    unequip(w, p, "cloak");
+    assert(!p.save.equip.cloak, "вне боя не снял");
   });
 
   await check("миграция: старое сохранение без слота cloak -> null, gear из 5 кусков", () => {

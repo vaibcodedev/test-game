@@ -121,7 +121,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
       if (why) notWorn = why.charAt(0).toLowerCase() + why.slice(1);
       else if (at < 0) notWorn = "вещь не попала в сумку";
       else {
-        equip(w(), t, at);
+        equip(w(), t, at, true); // выдача админом: и в бою
         worn = Object.values(t.save.equip).includes(first);
         t.selfDirty = true;
         if (!worn) notWorn = slot === "offhand" && isTwoHanded(t.save.equip.weapon?.base) ? "двуручное оружие занимает обе руки" : slot === "weapon" && isTwoHanded(first.base) && t.save.equip.offhand ? "сумка полна: некуда снять вторую руку" : "не удалось надеть";
