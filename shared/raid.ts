@@ -7,6 +7,7 @@ import { CLASSES, type ClassId } from "./classes";
 import { TILE } from "./constants";
 import { CITIES } from "./cities";
 import { CELL_BLOCK, CELL_WALL, T, Zone, type MapObject, type WorldMap } from "./map";
+import * as V from "./decor";
 import type { Item } from "./items";
 
 export type RaidRole = "tank" | "healer" | "melee" | "ranged";
@@ -214,6 +215,21 @@ export function generateRaidMap(): WorldMap {
     const x = H.x + Math.cos(a) * (H.rx - 1.4), y = H.y + Math.sin(a) * (H.ry - 1.4);
     if (Math.abs(x - H.x) < 4 && y > H.y) continue; // не на мосту
     obj(i % 3 ? "bones" : "bone_pile", x, y + 0.6);
+  }
+  // Volcanoe (задача 126): лавовые холмики и валуны стоят в самом кольце лавы (клетки там и так непроходимы, бою не мешают),
+  // черепа и рёбра лежат у края пола; мост на юге свободен
+  const lavaScenery = [...V.LAVA_MOUNDS, ...V.BOULDERS, ...V.LAVA_MOUNDS, ...V.LAVA_BIG];
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2 + 0.2;
+    const x = H.x + Math.cos(a) * (H.rx + M.lava * 0.5 + 0.4), y = H.y + Math.sin(a) * (H.ry + M.lava * 0.5 + 0.4);
+    if (Math.abs(x - H.x) < 5 && y > H.y) continue;
+    obj(V.pick(lavaScenery, hash(i, 7)), x, y + 0.5);
+  }
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + 0.6;
+    const x = H.x + Math.cos(a) * (H.rx - 0.8), y = H.y + Math.sin(a) * (H.ry - 0.8);
+    if (Math.abs(x - H.x) < 4 && y > H.y) continue;
+    obj(V.SKULLS[i % V.SKULLS.length], x, y + 0.6);
   }
   for (const [dx, dy] of [[-4, 2], [4, 2], [-3, -3], [3, -3]]) obj("ember_vent", M.bossHome.x + dx, M.bossHome.y + dy);
   // Преддверие: портал выхода, жаровни у моста

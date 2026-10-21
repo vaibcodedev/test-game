@@ -6,6 +6,7 @@
 import Phaser from "phaser";
 import { TILE } from "../../../shared/constants";
 import { CELL_WALL, GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
+import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
 import { placeText, worldText } from "./worldText";
 
 const COLS = 18;
@@ -144,11 +145,11 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "lilypad" || GROUND_OBJECTS.has(o.kind)) img.setDepth(DEPTH.ground - (GROUND_OBJECTS.has(o.kind) ? 1 : 0));
     else if (o.kind === "flowers" || o.kind === "tallgrass" || o.kind === "bones" || o.kind === "ember_vent") img.setDepth(o.y - 20);
     else img.setDepth(o.y);
-    if (o.kind === "oak" || o.kind === "pine") {
-      // лёгкое покачивание крон
+    if (SWAY_TREES.has(o.kind)) {
+      // лёгкое покачивание крон (деревья Basic из shared/decor.ts)
       const sway = (cellHash(o.x, o.y) - 0.5) * 0.04;
       tween({ targets: img, angle: { from: -1 + sway, to: 1 + sway }, duration: 2400 + cellHash(o.y, o.x) * 1600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-      if (o.kind === "oak") img.setFlipX(cellHash(o.x, o.y) > 0.5);
+      if (FLIP_TREES.has(o.kind)) img.setFlipX(cellHash(o.x, o.y) > 0.5);
     }
     const nid = nodeOf.get(o);
     if (nid !== undefined) {

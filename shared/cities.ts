@@ -57,13 +57,17 @@ export const STYLE = {
   },
   solgard: {
     wall_h: "sol_wall_h", wall_v: "sol_wall_v", tower: "sol_tower", gate: "sol_gate", houses: ["sol_house", "sol_temple"],
-    stalls: ["stall_gold", "stall_blue"], light: "lamp", tree: "oak",
+    stalls: ["stall_gold", "stall_blue"], light: "lamp", tree: "v_basic_oak_small",
     extra: [["sun_banner", -11, -2], ["sun_banner", 10, -2], ["sun_statue", -9, 5], ["sun_banner", 9, -4]] as [string, number, number][],
   },
   umbrath: {
     wall_h: "umb_wall_h", wall_v: "umb_wall_v", tower: "umb_tower", gate: "umb_gate", houses: ["umb_house", "umb_crypt"],
-    stalls: ["stall_purple", "stall_purple"], light: "soul_brazier", tree: "dead_tree",
-    extra: [["crown_banner", -11, -2], ["crown_banner", 10, -2], ["bone_pile", -9, 5], ["dark_obelisk", 9, -4]] as [string, number, number][],
+    stalls: ["stall_purple", "stall_purple"], light: "soul_brazier", tree: "v_graveyard_dead_tree_a",
+    // погост Мортхейма на свободной земле у стен (не на улицах, кольце и площади): надгробия, кресты, плиты, статуи (Graveyard)
+    extra: [["crown_banner", -11, -2], ["crown_banner", 10, -2], ["bone_pile", -9, 5], ["dark_obelisk", 9, -4],
+      ["v_graveyard_cross_a", 8, 2], ["v_graveyard_stone_b", 10, 2], ["v_graveyard_slab_a", 9, 4], ["v_graveyard_statue_a", 11, 3],
+      ["v_graveyard_statue_b", -8, 3], ["v_graveyard_cross_c", -10, 2], ["v_graveyard_slab_b", -9, -3], ["v_graveyard_stele_a", -10, -5],
+      ["v_graveyard_stone_c", 7, -2], ["v_graveyard_cross_b", 11, -4]] as [string, number, number][],
   },
   snow: {
     wall_h: "pal_h", wall_v: "pal_v", tower: "pal_tower", gate: "pal_gate", houses: ["log_house", "log_house_b"],

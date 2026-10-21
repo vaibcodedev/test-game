@@ -26,34 +26,8 @@ function leafClump(c: PC, cx: number, cy: number, r: number, leaf: Ramp, seed: n
   }
 }
 
-const oak: Art = () => {
-  const c = new PC(64, 64);
-  c.poly([[28, 63], [36, 63], [35, 40], [29, 40]], (x) => P.bark[x < 31 ? 3 : x > 33 ? 1 : 2]);
-  c.line(32, 46, 24, 40, P.bark[2], 2);
-  c.line(33, 44, 40, 38, P.bark[1], 2);
-  leafClump(c, 32, 26, 17, P.leaf, 11);
-  return c.outline();
-};
-const pine: Art = () => {
-  const c = new PC(48, 64);
-  c.rect(22, 50, 5, 14, P.bark[2]);
-  c.rect(22, 50, 1, 14, P.bark[3]);
-  for (let i = 0; i < 4; i++) {
-    const top = 2 + i * 11, bot = top + 20, w = 8 + i * 4;
-    c.poly([[24, top], [24 + w, bot], [24 - w, bot]], (x, y) => {
-      const u = (x - (24 - w)) / (2 * w);
-      return P.pine[y > bot - 2 ? 0 : u < 0.35 ? 4 : u < 0.6 ? 3 : u < 0.8 ? 2 : 1];
-    });
-  }
-  return c.outline();
-};
-const deadTree: Art = () => {
-  const c = new PC(48, 64);
-  const d = P.deadwood;
-  c.poly([[20, 63], [28, 63], [26, 30], [22, 30]], (x) => d[x < 23 ? 3 : x > 25 ? 1 : 2]);
-  for (const [x0, y0, x1, y1, w] of [[24, 34, 12, 20, 2], [12, 20, 8, 12, 1], [24, 30, 34, 16, 2], [34, 16, 40, 10, 1], [30, 22, 26, 8, 1.5], [24, 44, 34, 36, 1.5]]) c.line(x0, y0, x1, y1, d[2], w);
-  return c.outline();
-};
+// Деревья oak, pine и dead_tree убраны (задача 126, сторонние паки): в мире их заменяют v_basic_oak*, v_basic_pine, v_volcano_dead_tree*
+// и v_graveyard_dead_tree* из tools/gen/vendor.ts. Пальмы, снежные сосны и кактусы остаются: аналогов в паках нет.
 const bush: Art = () => {
   const c = new PC(32, 32);
   leafClump(c, 16, 22, 8, P.leaf, 21);
@@ -329,7 +303,7 @@ const raidPortal: Art = () => {
 };
 
 export const OBJECT_ART: Record<string, Art> = {
-  oak, pine, dead_tree: deadTree, bush, rock, big_rock: bigRock,
+  bush, rock, big_rock: bigRock,
   house: () => house(P.roofRed), house_blue: () => house(P.roofBlue),
   fountain, stall, lamp, well, barrel, crate, pillar, torch,
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),

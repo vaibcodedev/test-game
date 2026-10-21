@@ -3026,18 +3026,6 @@
   }
  },
  "objects": {
-  "oak": {
-   "w": 64,
-   "h": 64
-  },
-  "pine": {
-   "w": 48,
-   "h": 64
-  },
-  "dead_tree": {
-   "w": 48,
-   "h": 64
-  },
   "bush": {
    "w": 32,
    "h": 32
@@ -3451,6 +3439,414 @@
    "h": 32
   },
   "node_pearl": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_bush": {
+   "w": 64,
+   "h": 32
+  },
+  "v_basic_bush_blue": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_bush_pink": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_bush_red": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_bush_yellow": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_cave_a": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_cave_b": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_cliff_end": {
+   "w": 32,
+   "h": 96
+  },
+  "v_basic_cliff_h": {
+   "w": 96,
+   "h": 96
+  },
+  "v_basic_fence_post": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_fence_post_b": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_fence_row": {
+   "w": 96,
+   "h": 32
+  },
+  "v_basic_fence_row_b": {
+   "w": 96,
+   "h": 32
+  },
+  "v_basic_ladder_earth": {
+   "w": 96,
+   "h": 64
+  },
+  "v_basic_ladder_grass": {
+   "w": 96,
+   "h": 64
+  },
+  "v_basic_ladder_soil": {
+   "w": 96,
+   "h": 64
+  },
+  "v_basic_log": {
+   "w": 64,
+   "h": 32
+  },
+  "v_basic_log_pile": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_log_stand": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_oak": {
+   "w": 96,
+   "h": 96
+  },
+  "v_basic_oak_big": {
+   "w": 96,
+   "h": 128
+  },
+  "v_basic_oak_small": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_palisade_1": {
+   "w": 32,
+   "h": 64
+  },
+  "v_basic_palisade_2": {
+   "w": 32,
+   "h": 64
+  },
+  "v_basic_palisade_5": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_pine": {
+   "w": 64,
+   "h": 96
+  },
+  "v_basic_shrub": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_shrub_white": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_sign_arrow": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_sign_post": {
+   "w": 32,
+   "h": 32
+  },
+  "v_basic_stairs": {
+   "w": 96,
+   "h": 96
+  },
+  "v_basic_stump": {
+   "w": 64,
+   "h": 32
+  },
+  "v_basic_stump_small": {
+   "w": 32,
+   "h": 32
+  },
+  "v_graveyard_coffin_closed": {
+   "w": 64,
+   "h": 32
+  },
+  "v_graveyard_coffin_closed_v": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_coffin_open": {
+   "w": 64,
+   "h": 64
+  },
+  "v_graveyard_coffin_open_v": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_cross_a": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_cross_b": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_cross_c": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_cross_d": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_cross_e": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_dead_stump": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_dead_tree_a": {
+   "w": 64,
+   "h": 96
+  },
+  "v_graveyard_dead_tree_b": {
+   "w": 32,
+   "h": 96
+  },
+  "v_graveyard_dead_tree_vines": {
+   "w": 64,
+   "h": 96
+  },
+  "v_graveyard_fence_base": {
+   "w": 160,
+   "h": 64
+  },
+  "v_graveyard_fence_base_end": {
+   "w": 64,
+   "h": 64
+  },
+  "v_graveyard_fence_long": {
+   "w": 192,
+   "h": 64
+  },
+  "v_graveyard_fence_pole_v": {
+   "w": 32,
+   "h": 160
+  },
+  "v_graveyard_grave_mound": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_grave_mound_h": {
+   "w": 64,
+   "h": 32
+  },
+  "v_graveyard_grave_pit": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_lamp_a": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_lamp_b": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_lamp_c": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_lantern_a": {
+   "w": 32,
+   "h": 32
+  },
+  "v_graveyard_lantern_c": {
+   "w": 32,
+   "h": 32
+  },
+  "v_graveyard_pillar": {
+   "w": 32,
+   "h": 96
+  },
+  "v_graveyard_pillar_broken": {
+   "w": 32,
+   "h": 96
+  },
+  "v_graveyard_pillar_chain": {
+   "w": 32,
+   "h": 96
+  },
+  "v_graveyard_pillar_fence": {
+   "w": 64,
+   "h": 96
+  },
+  "v_graveyard_pillar_low": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_pillar_low_fence": {
+   "w": 64,
+   "h": 64
+  },
+  "v_graveyard_slab_a": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_slab_b": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_slab_c": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_slab_d": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_slab_e": {
+   "w": 32,
+   "h": 32
+  },
+  "v_graveyard_statue_a": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_statue_b": {
+   "w": 64,
+   "h": 64
+  },
+  "v_graveyard_stele_a": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stele_b": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stele_c": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stele_d": {
+   "w": 32,
+   "h": 32
+  },
+  "v_graveyard_stone_a": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stone_b": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stone_c": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stone_d": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_stone_e": {
+   "w": 32,
+   "h": 64
+  },
+  "v_graveyard_sword_grave": {
+   "w": 32,
+   "h": 64
+  },
+  "v_volcano_boulder": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_dead_bush_a": {
+   "w": 64,
+   "h": 64
+  },
+  "v_volcano_dead_bush_b": {
+   "w": 64,
+   "h": 64
+  },
+  "v_volcano_dead_stump": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_dead_tree": {
+   "w": 64,
+   "h": 96
+  },
+  "v_volcano_dead_tree_tall": {
+   "w": 64,
+   "h": 96
+  },
+  "v_volcano_lava_mound_a": {
+   "w": 64,
+   "h": 32
+  },
+  "v_volcano_lava_mound_b": {
+   "w": 64,
+   "h": 32
+  },
+  "v_volcano_lava_mound_big": {
+   "w": 96,
+   "h": 64
+  },
+  "v_volcano_lava_mound_ring": {
+   "w": 96,
+   "h": 32
+  },
+  "v_volcano_lava_mound_s": {
+   "w": 64,
+   "h": 32
+  },
+  "v_volcano_ribs": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_rock_a": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_rock_b": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_rock_c": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_rock_pile": {
+   "w": 32,
+   "h": 64
+  },
+  "v_volcano_signboard": {
+   "w": 64,
+   "h": 64
+  },
+  "v_volcano_sign_a": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_sign_b": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_skull": {
+   "w": 32,
+   "h": 32
+  },
+  "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
   }

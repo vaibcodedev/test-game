@@ -13,6 +13,7 @@ import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { MAP_H, MAP_W, MID, TILE } from "./constants";
 import { CITIES, CITY_HOUSES, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
 import { BUILDINGS, inTownRect, isGate, STALLS, TOWERS, TOWN, TOWN_HALF, townGround, WALL } from "./town";
+import * as D from "./decor";
 
 export { TOWN } from "./town";
 
@@ -154,9 +155,7 @@ export interface WorldMap {
 
 /** Какие объекты непроходимы и сколько клеток занимают (от клетки привязки вправо и вверх). */
 export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefined> = {
-  oak: { w: 1, h: 1 },
-  pine: { w: 1, h: 1 },
-  dead_tree: { w: 1, h: 1 },
+  ...D.VENDOR_FOOTPRINT, // деревья, заборы, обрывы, кладбище из паков (shared/decor.ts); наши oak, pine, dead_tree убраны
   rock: { w: 1, h: 1 },
   big_rock: { w: 2, h: 1 },
   house: { w: 4, h: 3 },
@@ -233,8 +232,8 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   ruin_wall: { w: 2, h: 1 },
   campfire: { w: 1, h: 1 },
 };
-/** Объекты, лежащие на земле (под юнитами): мосты. */
-export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v"]);
+/** Объекты, лежащие на земле (под юнитами): мосты, лестницы, лазы, могилы. */
+export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", ...D.VENDOR_GROUND]);
 
 /** Точка старого мира (координаты середины) → тайлы всего мира. */
 const M = (x: number, y: number): [number, number] => [x + MID.x, y + MID.y];
@@ -647,7 +646,7 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
     ["dummy", 14, 6], ["dummy", 20, 6], ["weapon_rack", 13, 4], ["weapon_rack", 20, 3],
     ["lamp", -10, -7], ["lamp", 10, -7], ["lamp", -10, 7], ["lamp", 10, 7],
     ["lamp", -3, -2], ["lamp", 3, -2], ["lamp", -2, 2], ["lamp", 2, 2],
-    ["oak", -10, 3], ["oak", -7, 6], ["oak", 8, 3], ["oak", 10, 5], ["pine", 7, 7], ["oak", -10, 7],
+    ["v_basic_oak", -10, 3], ["v_basic_oak_small", -7, 6], ["v_basic_oak", 8, 3], ["v_basic_oak_small", 10, 5], [D.PINE, 7, 7], ["v_basic_oak_small", -10, 7],
     ["lamp", -2, -10], ["lamp", 2, -10], ["lamp", -13, -10], ["lamp", 13, -10],
     ["lamp", -2, 10], ["lamp", 2, 10], ["lamp", -13, 10], ["lamp", 13, 10],
     ["well", -9, 6], ["teleport_stone", 5, 3],
@@ -660,8 +659,9 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
     if (cell[y * w + x] & CELL_BLOCK || townGround(dx, dy) !== "grass") continue;
     const garden = (dy >= -16 && dy <= -14) || (dy >= 10 && dy <= 12);
     const roll = r();
-    if (garden && roll < 0.14 && townGround(dx, dy + 1) === "grass") place(roll < 0.1 ? "oak" : "pine", x, y, Math.floor((r() - 0.5) * 8));
-    else if (roll < (garden ? 0.24 : Math.abs(dx) <= 10 && dy >= 2 && dy <= 7 ? 0.07 : 0)) objects.push({ kind: "bush", x: x * TILE + 16, y: y * TILE + 30 });
+    if (garden && roll < 0.14 && townGround(dx, dy + 1) === "grass") place(roll < 0.1 ? D.pick(D.OAKS, hash(x, y, seed + 21)) : D.PINE, x, y, Math.floor((r() - 0.5) * 8));
+    else if (roll < (garden ? 0.24 : Math.abs(dx) <= 10 && dy >= 2 && dy <= 7 ? 0.07 : 0)) objects.push({ kind: D.pick(roll < 0.17 ? D.BUSHES : D.BUSHES_FLOWER, hash(x, y, seed + 22)), x: x * TILE + 16, y: y * TILE + 30 });
+    else if (garden && roll < 0.26) objects.push({ kind: D.pick(D.STUMPS, hash(x, y, seed + 23)), x: x * TILE + 16, y: y * TILE + 30 });
     else if (hash(x, y, seed + 3) < 0.16) objects.push({ kind: "flowers", x: x * TILE + 16, y: y * TILE + 30 });
   }
 }
@@ -715,28 +715,74 @@ function buildPlaces(cell: Uint8Array, w: number, objects: MapObject[], place: P
   for (const p of PLACES) {
     const put = (kind: string, dx: number, dy: number) => { if (fits(kind, p.x + dx, p.y + dy)) place(kind, p.x + dx, p.y + dy); };
     const deco = (kind: string, dx: number, dy: number) => objects.push({ kind, x: (p.x + dx) * TILE + 16, y: (p.y + dy) * TILE + 28 });
+    // кладбище сеткой из надгробий (шаг 2 по x и 3 по y) с могилой на земле перед каждым; (x0, y0) — первое место
+    const graveyard = (x0: number, y0: number, cols: number, rows: number) => {
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+        const dx = x0 + i * 2, dy = y0 + j * 3, hx = p.x + dx, hy = p.y + dy;
+        if (hash(hx, hy, seed + 31) < 0.12) continue; // не все места заняты
+        put(D.pick(D.MARKERS, hash(hx, hy, seed + 32)), dx, dy);
+        if (fits("-", hx, hy + 1) && hash(hx, hy, seed + 33) < 0.75) deco(D.pick(D.GRAVES, hash(hx, hy, seed + 34)), dx, dy + 1);
+      }
+    };
+    // мелкое убранство без блокировки: только на свободных клетках, место по хешу (последовательность r() не трогаем)
+    const scatter = (list: readonly string[], n: number, s: number, rx = 8, ry = 5) => {
+      for (let i = 0; i < n; i++) {
+        const dx = Math.floor(hash(i, p.x, seed + s) * rx * 2) - rx, dy = Math.floor(hash(i, p.y, seed + s + 1) * ry * 2) - ry;
+        if (fits("-", p.x + dx, p.y + dy)) deco(D.pick(list, hash(i, p.x + p.y, seed + s + 2)), dx, dy);
+      }
+    };
+    const putAll = (list: [string, number, number][]) => { for (const [k, dx, dy] of list) put(k, dx, dy); };
     if (p.kind === "village") {
       const umb = p.look === "umb";
       const hs = umb ? ["umb_house", "umb_crypt"] : ["house", "house_blue"];
       const light = umb ? "soul_brazier" : "lamp";
       ([[-7, -2], [-1, -3], [4, -2], [-6, 5], [2, 5]] as const).forEach(([dx, dy], i) => put(hs[i % 2], dx, dy));
-      for (const [k, dx, dy] of [["well", 0, 1], [light, -3, 1], [light, 3, 1], ["hay", -8, 2], ["barrel", 7, 1], ["crate", 8, 1], [umb ? "bone_pile" : "oak", -9, -1], [umb ? "dead_tree" : "oak", 9, 4]] as [string, number, number][]) put(k, dx, dy);
+      putAll([["well", 0, 1], [light, -3, 1], [light, 3, 1], ["hay", -8, 2], ["barrel", 7, 1], ["crate", 8, 1], [umb ? "bone_pile" : "v_basic_oak", -9, -1], [umb ? D.DEAD_GRAVE[0] : "v_basic_oak_small", 9, 4]]);
       for (let i = 0; i < 10; i++) deco(umb ? "bones" : "flowers", Math.floor(r() * 16) - 8, Math.floor(r() * 10) - 4);
+      if (umb) {
+        // погост: ограда с воротами между столбами, ряды надгробий, статуя, мёртвые деревья («Погост Скорби» — большой)
+        const big = p.id === "sorrow_yard";
+        putAll([["v_graveyard_fence_long", -8, 7], ["v_graveyard_fence_long", 3, 7], ["v_graveyard_pillar_chain", -2, 7], ["v_graveyard_pillar_chain", 2, 7],
+          ["v_graveyard_statue_a", -10, 9], ["v_graveyard_statue_b", 10, 10], [D.DEAD_GRAVE[1], -11, 6], [D.DEAD_GRAVE[2], 11, 6]]);
+        graveyard(-8, 9, big ? 9 : 5, big ? 2 : 1);
+        if (big) putAll([["v_graveyard_coffin_open", -3, 15], ["v_graveyard_coffin_closed", 2, 15], ["v_graveyard_lamp_a", -5, 8], ["v_graveyard_lamp_a", 5, 8]]);
+      } else {
+        // палисадник: заборы с проходом посередине, цветущие кусты, пни и брёвна
+        putAll([["v_basic_fence_row", -9, 8], ["v_basic_fence_row", -6, 8], ["v_basic_fence_row", 4, 8], ["v_basic_fence_row", 7, 8], ["v_basic_fence_post", -10, 8], ["v_basic_fence_post", 10, 8], ["v_basic_log_pile", 10, 0]]);
+        scatter(D.BUSHES_FLOWER, 6, 51);
+        scatter(D.STUMPS, 3, 61);
+      }
     } else if (p.kind === "camp") {
       for (const [dx, dy] of [[-4, -2], [2, -2], [-1, 4]] as const) put("tent", dx, dy);
-      for (const [k, dx, dy] of [["campfire", 0, 1], ["crate", -5, 2], ["crate", 4, 2], ["barrel", 5, 1], ["weapon_rack", -3, 2], ["hay", 3, 3]] as [string, number, number][]) put(k, dx, dy);
+      putAll([["campfire", 0, 1], ["crate", -5, 2], ["crate", 4, 2], ["barrel", 5, 1], ["weapon_rack", -3, 2], ["hay", 3, 3]]);
       for (let i = 0; i < 6; i++) deco("bones", Math.floor(r() * 12) - 6, Math.floor(r() * 10) - 5);
+      // частокол и поленница из Basic
+      putAll([["v_basic_palisade_5", -8, -3], ["v_basic_palisade_5", 6, -3], ["v_basic_palisade_2", -9, 3], ["v_basic_palisade_2", 9, 3], ["v_basic_log_pile", -6, 4]]);
+      scatter(D.STUMPS, 4, 71, 6, 5);
     } else if (p.kind === "ruins") {
       for (let i = 0; i < 8; i++) {
         if (hash(i, p.x, seed + 5) < 0.3) continue;
         const a = (i / 8) * Math.PI * 2;
         put("ruin_pillar", Math.round(Math.cos(a) * 5), Math.round(Math.sin(a) * 4));
       }
-      for (const [k, dx, dy] of [["ruin_wall", -3, -5], ["ruin_wall", 2, -5], ["ruin_wall", -7, 1], ["ruin_wall", 5, 2], ["rock", -2, 3], ["big_rock", 3, -2], ["rock", 0, -1]] as [string, number, number][]) put(k, dx, dy);
+      putAll([["ruin_wall", -3, -5], ["ruin_wall", 2, -5], ["ruin_wall", -7, 1], ["ruin_wall", 5, 2], ["rock", -2, 3], ["big_rock", 3, -2], ["rock", 0, -1]]);
       for (let i = 0; i < 8; i++) deco("bones", Math.floor(r() * 12) - 6, Math.floor(r() * 10) - 5);
+      if (p.look === "umb") {
+        // земли Умбрата: склеп из надгробных столбов, гробов и статуи
+        putAll([["v_graveyard_pillar_broken", -6, -2], ["v_graveyard_pillar", 6, -1], ["v_graveyard_statue_b", 0, -3], ["v_graveyard_coffin_open", -5, 3], ["v_graveyard_coffin_closed", 3, 4], ["v_graveyard_pillar_chain", -1, -5], ["v_graveyard_pillar_chain", 1, -5]]);
+        graveyard(-8, 6, 3, 1);
+      } else {
+        // Сольгард и середина: пещера в обрыве, лестница и лаз
+        putAll([["v_basic_cave_a", -1, -5], ["v_basic_cliff_h", -8, -4], ["v_basic_cliff_h", 6, -4], ["v_basic_log_pile", 7, 5]]);
+        deco("v_basic_stairs", -0.5, -3); // лестница от входа в пещеру: по центру под ней, на земле (под юнитами)
+        deco("v_basic_ladder_earth", 5, 3);
+        scatter(D.STUMPS, 3, 91, 7, 5);
+      }
     } else {
-      // место встреч: костёр, скамьи из тюков, шатёр
-      for (const [k, dx, dy] of [["campfire", 0, 0], ["hay", -2, 0], ["hay", 2, 0], ["hay", 0, 2], ["tent", 3, -3], ["lamp", -3, -2], ["barrel", 4, 1]] as [string, number, number][]) put(k, dx, dy);
+      // место встреч: костёр, скамьи из тюков, шатёр; Basic — дубы, пни и брёвна вместо скамей, указатель
+      putAll([["campfire", 0, 0], ["hay", -2, 0], ["hay", 2, 0], ["hay", 0, 2], ["tent", 3, -3], ["lamp", -3, -2], ["barrel", 4, 1], ["v_basic_oak", -7, -2], ["v_basic_oak_small", 7, 3]]);
+      scatter(D.STUMPS, 4, 81, 5, 4);
+      deco("v_basic_sign_post", 5, 2);
     }
   }
 }
@@ -842,6 +888,13 @@ export function generateMap(seed: number): WorldMap {
     place(kind, x, y);
   };
   const deco = (kind: string, x: number, y: number, jit: number, dy = 30) => objects.push({ kind, x: x * TILE + 16 + jit, y: y * TILE + dy });
+  // Деревья, камни и кладбище из паков (shared/decor.ts): вид выбирается хешем клетки, поэтому последовательность r() не сдвигается.
+  const pickV = (list: readonly string[], x: number, y: number, s: number) => D.pick(list, hash(x, y, seed + s));
+  // Свободны ли fw×fh клеток от привязки: без стен, воды и резерва (дороги, города, арены).
+  const freeR = (x: number, y: number, fw = 1, fh = 1) => {
+    for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) if (at(x + i, y - j) & (CELL_BLOCK | CELL_RESERVED)) return false;
+    return true;
+  };
 
   // Природа по зонам (по биому зоны).
   const r = rng(seed + 99);
@@ -861,36 +914,49 @@ export function generateMap(seed: number): WorldMap {
     const t = vtx[y * (w + 1) + x];
     const nearWater = (at(x + 1, y) | at(x - 1, y) | at(x, y + 1) | at(x, y - 1)) & CELL_BLOCK;
     if (st === Zone.Meadow || st === Zone.Frontier) {
-      if (t === T.Forest && roll < 0.16) place(roll < 0.08 ? "pine" : "oak", x, y, jit);
-      else if (roll < 0.022) place("oak", x, y, jit);
-      else if (roll < 0.04) objects.push({ kind: "bush", x: x * TILE + 16 + jit, y: y * TILE + 30 });
+      if (t === T.Forest && roll < 0.16) place(roll < 0.08 ? D.PINE : pickV(D.FOREST_TREES, x, y, 5), x, y, jit);
+      else if (roll < 0.022) place(pickV(D.OAKS, x, y, 6), x, y, jit);
+      else if (roll < 0.04) deco(pickV(roll < 0.033 ? D.BUSHES : D.BUSHES_FLOWER, x, y, 7), x, y, jit);
       else if (roll < 0.05) place("rock", x, y);
+      else if (roll < 0.056) deco(pickV(D.STUMPS, x, y, 8), x, y, jit);
       else if (roll < 0.11 && t === T.Grass) objects.push({ kind: "flowers", x: x * TILE + 16 + jit, y: y * TILE + 30 });
       else if (roll < 0.18 && t === T.Grass) objects.push({ kind: "tallgrass", x: x * TILE + 16 + jit, y: y * TILE + 30 });
       else if (nearWater && roll < 0.3) objects.push({ kind: "reeds", x: x * TILE + 16 + jit, y: y * TILE + 30 });
     } else if (st === Zone.Forest) {
       const dark = z === Zone.MistWood;
-      if (t === T.Forest && roll < 0.2) place(dark ? (roll < 0.15 ? "pine" : "dead_tree") : roll < 0.13 ? "pine" : "oak", x, y, jit);
-      else if (roll < 0.035) place(dark ? "dead_tree" : "oak", x, y, jit);
+      if (t === T.Forest && roll < 0.2) place(dark ? (roll < 0.15 ? D.PINE : pickV(D.DEAD_GRAVE, x, y, 9)) : roll < 0.13 ? D.PINE : pickV(D.FOREST_TREES, x, y, 10), x, y, jit);
+      else if (roll < 0.035) place(dark ? pickV(D.DEAD_GRAVE, x, y, 9) : pickV(D.OAKS, x, y, 11), x, y, jit);
       else if (roll < 0.07) objects.push({ kind: dark ? "mushrooms_glow" : "mushrooms", x: x * TILE + 16 + jit, y: y * TILE + 30 });
       else if (roll < 0.13) objects.push({ kind: "fern", x: x * TILE + 16 + jit, y: y * TILE + 30 });
-      else if (roll < 0.15) objects.push({ kind: dark ? "bones" : "bush", x: x * TILE + 16 + jit, y: y * TILE + 30 });
+      else if (roll < 0.15) objects.push({ kind: dark ? "bones" : pickV(D.BUSHES, x, y, 12), x: x * TILE + 16 + jit, y: y * TILE + 30 });
       else if (roll < 0.16) place("rock", x, y);
+      else if (roll < 0.17) deco(pickV(D.STUMPS, x, y, 13), x, y, jit);
     } else if (st === Zone.Swamp) {
-      const graves = z === Zone.Barrows;
-      if (roll < 0.05) place("dead_tree", x, y, jit);
+      const graves = z === Zone.Barrows, umbSwamp = graves || z === Zone.PlagueMarsh;
+      // кладбищенские пятна крупным шумом: Курганы Мёртвых — густо, Чумные топи — реже
+      const yard = umbSwamp && vnoise(x, y, 9, seed + 301) > (graves ? 0.6 : 0.72);
+      if (yard && roll < 0.09) place(pickV(D.MARKERS, x, y, 14), x, y);
+      else if (yard && roll < 0.14) deco(pickV(D.GRAVES, x, y, 15), x, y, jit, 28);
+      else if (yard && roll < 0.147) place(pickV(D.STATUES, x, y, 16), x, y);
+      else if (yard && roll < 0.154) place(pickV(D.GRAVE_LAMPS, x, y, 17), x, y);
+      else if (yard && roll < 0.162 && freeR(x, y, 2)) place(pickV(D.COFFINS, x, y, 18), x, y);
+      else if (roll < 0.05) place(umbSwamp ? pickV(D.DEAD_GRAVE, x, y, 19) : pickV(D.DEAD_ASH, x, y, 19), x, y, jit);
       else if (nearWater && roll < 0.3) objects.push({ kind: "reeds", x: x * TILE + 16 + jit, y: y * TILE + 30 });
       else if (roll < 0.09) objects.push({ kind: "mushrooms_glow", x: x * TILE + 16 + jit, y: y * TILE + 30 });
       else if (roll < (graves ? 0.13 : 0.1)) objects.push({ kind: "bones", x: x * TILE + 16 + jit, y: y * TILE + 28 });
       else if (graves && roll < 0.137) place("rock", x, y);
       else if (roll < 0.14 && t === T.Grass) objects.push({ kind: "tallgrass", x: x * TILE + 16 + jit, y: y * TILE + 30 });
     } else if (st === Zone.Ashlands) {
-      if (roll < 0.025) place("dead_tree", x, y, jit);
+      if (roll < 0.025) place(pickV(D.DEAD_ASH, x, y, 20), x, y, jit);
       else if (roll < 0.05) place("rock", x, y);
       else if (roll < 0.058 && free(x, y) && free(x + 1, y)) place("big_rock", x, y);
-      else if (roll < 0.075) objects.push({ kind: "bones", x: x * TILE + 16 + jit, y: y * TILE + 28 });
+      else if (roll < 0.075) objects.push({ kind: roll < 0.066 ? "bones" : pickV(D.SKULLS, x, y, 21), x: x * TILE + 16 + jit, y: y * TILE + 28 });
       else if (roll < 0.1) objects.push({ kind: "ember_vent", x: x * TILE + 16 + jit, y: y * TILE + 28 });
       else if (roll < 0.12) objects.push({ kind: "crystal", x: x * TILE + 16 + jit, y: y * TILE + 30 });
+      else if (roll < 0.126 && freeR(x, y, 2)) place(pickV(D.LAVA_MOUNDS, x, y, 22), x, y);
+      else if (roll < 0.136) place(pickV(D.BOULDERS, x, y, 23), x, y);
+      else if (roll < 0.15) deco(pickV(D.DEAD_BUSHES, x, y, 24), x, y, jit);
+      else if (roll < 0.16) deco(pickV(D.SMALL_ROCKS, x, y, 25), x, y, jit, 28);
     } else if (st === Zone.Desert) {
       const pd = Math.hypot(x - OASIS_POND.x, y - OASIS_POND.y);
       if (pd < 9 && pd > 3.5 && roll < 0.2) place("palm", x, y, jit);
@@ -911,10 +977,14 @@ export function generateMap(seed: number): WorldMap {
       if (roll < 0.03) place("obsidian_spire", x, y, jit);
       else if (roll < 0.055) place("basalt", x, y);
       else if (roll < 0.075) deco("ember_vent", x, y, jit, 28);
-      else if (roll < 0.088) place("dead_tree", x, y, jit);
+      else if (roll < 0.088) place(pickV(D.DEAD_ASH, x, y, 26), x, y, jit);
       else if (roll < 0.1) deco("crystal", x, y, jit);
-      else if (roll < 0.108) deco("bones", x, y, jit, 28);
+      else if (roll < 0.108) deco(roll < 0.104 ? "bones" : pickV(D.SKULLS, x, y, 27), x, y, jit, 28);
       else if (roll < 0.1105) placeNode("node_obsidian", x, y);
+      else if (roll < 0.118 && freeR(x, y, 3)) place(pickV(D.LAVA_BIG, x, y, 28), x, y);
+      else if (roll < 0.13 && freeR(x, y, 2)) place(pickV(D.LAVA_MOUNDS, x, y, 29), x, y);
+      else if (roll < 0.14) place(pickV(D.BOULDERS, x, y, 30), x, y);
+      else if (roll < 0.15) deco(pickV(D.DEAD_BUSHES, x, y, 31), x, y, jit);
     } else if (st === Zone.Coast) {
       if (roll < 0.02) place("rock", x, y);
       else if (roll < 0.028 && t !== T.Water) place("palm", x, y, jit);

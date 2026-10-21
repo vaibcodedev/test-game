@@ -63,25 +63,25 @@
     "Чёрная": { "width": 2.2, "path": [[863, 0], [855, 60], [873, 120], [861, 180], [877, 250], [865, 310], [873, 360]] }
   },
   "places": {
-    "_doc": "Деревни (village), лагеря мобов (camp: mob, n), руины (ruins: mob, n), места встреч (meeting). look: sol | umb | mid — стиль домов.",
+    "_doc": "Деревни (village), лагеря мобов (camp: mob, n), руины (ruins: mob, n), места встреч (meeting). look: sol | umb | mid — стиль домов деревни и убранство руин (umb — склеп и погост из Graveyard, иначе пещера и обрыв из Basic).",
     "list": [
       { "id": "clear_dale", "name": "Ясный Дол", "kind": "village", "look": "sol", "x": 150, "y": 216 },
       { "id": "mill_ford", "name": "Мельничный Брод", "kind": "village", "look": "sol", "x": 262, "y": 196 },
       { "id": "goblin_camp", "name": "Гоблинский лагерь", "kind": "camp", "x": 112, "y": 150, "mob": "goblin", "n": 6 },
       { "id": "bandit_lair", "name": "Логово разбойников", "kind": "camp", "x": 300, "y": 142, "mob": "bandit", "n": 6 },
-      { "id": "old_sun_ruins", "name": "Руины Старого Солнца", "kind": "ruins", "x": 318, "y": 232, "mob": "skeleton", "n": 5 },
-      { "id": "gryphon_ruins", "name": "Обитель Грифонов", "kind": "ruins", "x": 150, "y": 48, "mob": "ice_golem", "n": 4 },
+      { "id": "old_sun_ruins", "name": "Руины Старого Солнца", "kind": "ruins", "look": "sol", "x": 318, "y": 232, "mob": "skeleton", "n": 5 },
+      { "id": "gryphon_ruins", "name": "Обитель Грифонов", "kind": "ruins", "look": "sol", "x": 150, "y": 48, "mob": "ice_golem", "n": 4 },
       { "id": "border_cross", "name": "Рубежный перекрёсток", "kind": "meeting", "x": 372, "y": 189 },
       { "id": "sorrow_yard", "name": "Погост Скорби", "kind": "village", "look": "umb", "x": 949, "y": 216 },
       { "id": "black_ford", "name": "Чёрный Брод", "kind": "village", "look": "umb", "x": 837, "y": 196 },
       { "id": "ghoul_camp", "name": "Стоянка трупоедов", "kind": "camp", "x": 987, "y": 150, "mob": "drowned", "n": 6 },
       { "id": "marauder_camp", "name": "Лагерь мародёров", "kind": "camp", "x": 799, "y": 142, "mob": "bandit", "n": 6 },
-      { "id": "white_tower_ruins", "name": "Руины Белой Башни", "kind": "ruins", "x": 781, "y": 232, "mob": "skeleton", "n": 5 },
-      { "id": "bone_altar", "name": "Костяной алтарь", "kind": "ruins", "x": 949, "y": 48, "mob": "skeleton_knight", "n": 4 },
+      { "id": "white_tower_ruins", "name": "Руины Белой Башни", "kind": "ruins", "look": "umb", "x": 781, "y": 232, "mob": "skeleton", "n": 5 },
+      { "id": "bone_altar", "name": "Костяной алтарь", "kind": "ruins", "look": "umb", "x": 949, "y": 48, "mob": "skeleton_knight", "n": 4 },
       { "id": "shadow_cross", "name": "Перекрёсток Теней", "kind": "meeting", "x": 776, "y": 196 },
       { "id": "heather_farm", "name": "Хутор Вересково", "kind": "village", "look": "mid", "x": 548, "y": 206 },
-      { "id": "observatory", "name": "Обломки обсерватории", "kind": "ruins", "x": 600, "y": 14, "mob": "ice_golem", "n": 4 },
-      { "id": "abyss_outpost", "name": "Заброшенная застава", "kind": "ruins", "x": 530, "y": 334, "mob": "lava_hound", "n": 4 },
+      { "id": "observatory", "name": "Обломки обсерватории", "kind": "ruins", "look": "mid", "x": 600, "y": 14, "mob": "ice_golem", "n": 4 },
+      { "id": "abyss_outpost", "name": "Заброшенная застава", "kind": "ruins", "look": "mid", "x": 530, "y": 334, "mob": "lava_hound", "n": 4 },
       { "id": "storm_cross", "name": "Перевал Бурь", "kind": "meeting", "x": 470, "y": 26 }
     ]
   },
