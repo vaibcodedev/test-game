@@ -72,40 +72,7 @@
   justify-self: end;
   white-space: nowrap;
 }
-.bar {
-  position: relative;
-  height: 14px;
-  background: var(--well);
-  border: 1px solid #000;
-  border-radius: var(--r-1);
-  overflow: hidden;
-}
-.bar > i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  transition: width 0.15s linear;
-}
-.bar > span {
-  position: absolute;
-  inset: 0;
-  font-size: var(--fs);
-  line-height: 13px;
-  text-align: center;
-  text-shadow: var(--shadow-text);
-  font-variant-numeric: tabular-nums;
-}
-.bar.hp > i {
-  background: linear-gradient(#ff7a6a, var(--hp) 45%, #8a1c1c);
-}
-.bar.mp > i {
-  background: linear-gradient(#8ab8ff, var(--mp) 45%, #1c3a8a);
-}
-.bar.xp {
-  height: 8px;
-}
-.bar.xp > i {
-  background: linear-gradient(#e0c8ff, var(--xp));
-}
+/* полосы HP, маны и опыта (заливка, пустая часть, цифры, щит поверх HP) — компонент .bar в kit.css; у героя HP — .bar.lg */
 /* строка под полосами: опыт и непотраченные очки (нет ни того, ни другого — строки нет) */
 .hud-player .pts {
   display: flex;
