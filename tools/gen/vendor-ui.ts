@@ -196,15 +196,52 @@ const CURSORS: CursorDef[] = [
   { id: "text", tile: [0, 7], hot: "center", what: "ввод текста" },
   { id: "grabbing", tile: [16, 6], hot: "center", what: "тащить (сжатая рука)" },
 ];
-/** Заливка — наш цвет, штриховка пака (серая) — на ступень темнее, контур — OUTLINE. Размер ×2: 16 → 32 px. */
-function recolorCursor(src: PC, fillC: RGBA, detail: RGBA): PC {
-  const out = new PC(src.w, src.h);
-  for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
-    const c = src.get(x, y)!;
-    if (!c[3]) continue;
-    out.set(x, y, c[0] > 230 ? fillC : c[0] > 100 ? detail : OUTLINE);
+const mixC = (a: RGBA, b: RGBA, t: number): RGBA => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)).concat(255) as RGBA;
+/** Scale2x по меткам пикселей (0 — пусто, 1 — контур, 2 — заливка, 3 — штриховка): диагонали ступенькой в 1 px, а не в 2, как при простом удвоении. */
+function scale2xLabels(l: Uint8Array, w: number, h: number): Uint8Array {
+  const W = w * 2, o = new Uint8Array(W * h * 2), at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : l[y * w + x]);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const p = at(x, y), a = at(x, y - 1), b = at(x + 1, y), c = at(x - 1, y), d = at(x, y + 1);
+    o[2 * y * W + 2 * x] = c === a && c !== d && a !== b ? a : p;
+    o[2 * y * W + 2 * x + 1] = a === b && a !== c && b !== d ? b : p;
+    o[(2 * y + 1) * W + 2 * x] = d === c && d !== b && c !== a ? c : p;
+    o[(2 * y + 1) * W + 2 * x + 1] = b === d && b !== a && d !== c ? d : p;
   }
-  return scaleNN(out, 2);
+  return o;
+}
+/**
+ * Курсор 32 px из клетки пака 16 px (выбор пользователя 2026-10-21: прежние, удвоенные, были толстыми и грубыми). Увеличение — Scale2x.
+ * Контур пака после увеличения шириной 2 px: внешний пиксель снимается (фигура тоньше на пиксель с каждой стороны), внутренний остаётся
+ * контуром в 1 px — не чёрным, а тёмной бронзой: светлее на верхней и левой кромке, темнее на нижней и правой. Заливка — цвет варианта
+ * в 3 тона: блик у верхней и левой кромки, тень у нижней и правой; штриховка пака — тон detail.
+ */
+function recolorCursor(src: PC, fillC: RGBA, detail: RGBA): PC {
+  const sw = src.w, sh = src.h, lab = new Uint8Array(sw * sh);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) { const c = src.get(x, y)!; lab[y * sw + x] = !c[3] ? 0 : c[0] > 230 ? 2 : c[0] > 100 ? 3 : 1; }
+  const w = sw * 2, h = sh * 2, l = scale2xLabels(lab, sw, sh), out = new PC(w, h);
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : l[y * w + x]);
+  const cream = hex(UI.fg), bronze = hex(UI.lineHi);
+  const T = {
+    lineLit: mixC(bronze, OUTLINE, 0.45), lineDark: mixC(bronze, OUTLINE, 0.72), lineIn: mixC(bronze, OUTLINE, 0.6),
+    spec: mixC(fillC, cream, 0.85), light: mixC(fillC, cream, 0.5), base: fillC, shade: mixC(fillC, bronze, 0.55), detail,
+  };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const v = at(x, y);
+    if (!v) continue;
+    const up = at(x, y - 1), left = at(x - 1, y), right = at(x + 1, y), down = at(x, y + 1);
+    if (v === 1) {
+      if (!up || !left || !right || !down) continue; // внешний пиксель двойного контура
+      // внутренний — контур 1 px: смотрит наружу вверх или влево — светлее, вниз или вправо — темнее, линии внутри фигуры — средний тон
+      const outUL = !at(x, y - 2) || !at(x - 2, y), outDR = !at(x, y + 2) || !at(x + 2, y);
+      out.set(x, y, outDR ? T.lineDark : outUL ? T.lineLit : T.lineIn);
+      continue;
+    }
+    if (v === 3) { out.set(x, y, T.detail); continue; }
+    const edge = (q: number) => q <= 1, topLeft = edge(up) || edge(left), botRight = edge(down) || edge(right);
+    const near = edge(at(x - 1, y - 1)) || edge(at(x, y - 2)) || edge(at(x - 2, y));
+    out.set(x, y, topLeft && !botRight ? T.spec : near && !botRight ? T.light : botRight && !topLeft ? T.shade : T.base);
+  }
+  return out;
 }
 function hotspot(c: PC, mode: CursorDef["hot"]): [number, number] {
   if (mode === "center") return [c.w / 2, c.h / 2];

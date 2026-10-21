@@ -7,7 +7,7 @@
 export type CursorKind = "arrow" | "talk" | "take" | "attack" | "wait";
 
 /** Точка нажатия в пикселях картинки (x, y): кончик стрелки, кончик пальца, центр, кончик меча, центр (tools/out/vendor/cursors/cursors.css). */
-const HOTSPOT: Record<CursorKind, [number, number]> = { arrow: [2, 0], talk: [10, 2], take: [16, 16], attack: [0, 0], wait: [16, 16] };
+const HOTSPOT: Record<CursorKind, [number, number]> = { arrow: [3, 1], talk: [10, 3], take: [16, 16], attack: [1, 1], wait: [16, 16] };
 /** Запасной курсор системы, если картинка не загрузилась. */
 const FALLBACK: Record<CursorKind, string> = { arrow: "default", talk: "pointer", take: "grab", attack: "crosshair", wait: "wait" };
 

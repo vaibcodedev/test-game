@@ -119,11 +119,12 @@
   --frame-slice: 12;
   --div-h: 22px;
   --div-cap: 16px;
-  /* курсоры (Kenney Cursor Pixel Pack, CC0, золотые; client/public/ui/cursors): стрелка, рука — кнопки и ссылки, перчатка — перетаскивание окна,
+  /* курсоры (фигуры Kenney Cursor Pixel Pack, CC0, перерисованы генератором tools/gen/vendor-ui.ts: Scale2x, контур 1 px тёмной бронзой,
+     золото в 3 тона; client/public/ui/cursors; точки нажатия — tools/out/vendor/cursors/cursors.css): стрелка, рука — кнопки и ссылки, перчатка — перетаскивание окна,
      сжатая рука — пока тащат карту, прицел — выбор точки, текстовый — поля ввода. Системных курсоров в игре нет: системный — только запасной в токене,
      если картинка не загрузилась. В мире вид курсора по цели ставит setCursor() из game/cursor.ts (меч — враг, рука — NPC, перчатка — добыча) */
-  --cur-arrow: url("/ui/cursors/cursor_arrow.png") 2 0, default;
-  --cur-pointer: url("/ui/cursors/cursor_talk.png") 10 2, pointer;
+  --cur-arrow: url("/ui/cursors/cursor_arrow.png") 3 1, default;
+  --cur-pointer: url("/ui/cursors/cursor_talk.png") 10 3, pointer;
   --cur-grab: url("/ui/cursors/cursor_take.png") 16 16, grab;
   --cur-grabbing: url("/ui/cursors/cursor_grabbing.png") 16 16, grabbing;
   --cur-aim: url("/ui/cursors/cursor_aim.png") 16 16, crosshair;
