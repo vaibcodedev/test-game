@@ -1,12 +1,8 @@
-/** Молот правосудия — варианты на выбор (задача 127, замена hammer-gold/hammer-slam). Планка — пиксельные паки: предметы объёмные
- *  (маска по областям + фаска от света сверху-слева, 4–6 тонов, тёмный контур, блик), свет и вспышки — полосами тонов от янтарной кромки
- *  к белому ядру, без однопиксельных линий и россыпи точек; 11–12 кадров; конец без обрыва (tail — растворение последних мс в клиенте).
- *  A «Небесный молот»: hammer-a — снаряд-сгусток света; hammer-a-hit — молот света встаёт над целью, замахивается и обрушивается
- *    (смаз, вспышка-звезда, осколки, звёзды оглушения), hammer-a-hit-ground — печать и волна под ногами (нижний слой, под юнитами).
- *  B «Брошенный молот»: hammer-b — золотой молот с сапфиром вращается в полёте, огненно-золотой след и дуга-взмах;
- *    hammer-b-hit — удар: вспышка, кольцо, осколки света, молот отскакивает и тает, звёзды оглушения над головой.
- *  C «Размах»: снаряд hammer-a; hammer-c-hit — молот света заносится над целью и бьёт по дуге (серп-смаз), стягивается в искру;
- *    hammer-c-hit-ground — пятно и трещины света по земле, волна.
+/** Молот правосудия (задача 127; из трёх вариантов пользователь выбрал «Небесный молот», остальные убраны). Планка — пиксельные паки:
+ *  предметы объёмные (маска по областям + фаска от света сверху-слева, 4–6 тонов, тёмный контур, блик), свет и вспышки — полосами тонов
+ *  от янтарной кромки к белому ядру, без однопиксельных линий и россыпи точек; 12 кадров; конец без обрыва (tail — растворение в клиенте).
+ *  hammer-a — снаряд-сгусток света; hammer-a-hit — молот света встаёт над целью, замахивается и обрушивается (смаз, вспышка-звезда,
+ *  осколки, звёзды оглушения), луч уходит вверх; hammer-a-hit-ground — печать и волна под ногами (нижний слой, под юнитами).
  *  Запуск отдельно: tsx tools/gen/vfx-hammer3.ts → tools/out/vfx-preview/hammer3.png (раскадровки) и hammer3-hero.png (рядом с целью, ×3). */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,9 +17,6 @@ const G = H("#6e3410", "#a85a14", "#d88a22", "#f2b83a", "#ffe07a", "#fff6c8");
 const WH = hex("#ffffff");
 const LIGHT = [G[1], G[2], G[3], G[4], G[5], WH];
 const OUT = hex("#3a1c0a"), OUT_A = hex("#5c2606");
-const WOOD = H("#2e180c", "#4e2c16", "#74431f", "#9a6230", "#b87c40");
-const LEATHER = H("#2a1210", "#4e2016", "#743222", "#94482c");
-const SAPPHIRE = H("#14286a", "#2a4cb0", "#4a82e8", "#9ccaff", "#e8f6ff");
 const PEARL = H("#c8781a", "#f0c860", "#fff0b8", "#fffbe8", "#ffffff");
 const N4: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
@@ -48,23 +41,6 @@ function shadeMask(mask: string[], mats: Record<string, Mat>, outline: RGBA | nu
   }
   if (outline) f.outline(outline);
   return f;
-}
-/** Поворот маски (ближайший сосед) вокруг (cx, cy) в квадрат size×size; одиночные выступы срезаются, щербины заполняются. */
-function rotMask(mask: string[], ang: number, cx: number, cy: number, size: number): string[] {
-  const h = mask.length, w = mask[0].length, ca = Math.cos(-ang), sa = Math.sin(-ang);
-  const g: string[][] = Array.from({ length: size }, (_, y) => Array.from({ length: size }, (_, x) => {
-    const dx = x + 0.5 - size / 2, dy = y + 0.5 - size / 2;
-    const sx = Math.floor(cx + dx * ca - dy * sa), sy = Math.floor(cy + dx * sa + dy * ca);
-    return sx >= 0 && sy >= 0 && sx < w && sy < h ? mask[sy][sx] : ".";
-  }));
-  const at = (x: number, y: number) => g[y]?.[x] ?? ".";
-  const out = g.map((row) => [...row]);
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const nb = N4.map(([dx, dy]) => at(x + dx, y + dy)).filter((c) => c !== ".");
-    if (at(x, y) !== "." && nb.length <= 1) out[y][x] = ".";
-    else if (at(x, y) === "." && nb.length >= 3) out[y][x] = nb.sort((a, b) => nb.filter((c) => c === b).length - nb.filter((c) => c === a).length)[0];
-  }
-  return out.map((r) => r.join(""));
 }
 /** Свечение вокруг непрозрачного: кольца в 1 пиксель снаружи (ближнее плотнее). */
 function glow(f: PC, rings: RGBA[]): PC {
@@ -122,27 +98,7 @@ const BIG = [
   ".HHHbbHHHHHHHHbbHHH.",
   "..HHbbHHHHHHHHbbHH..",
 ];
-/** Малый боевой молот головой вверх (B, вращается): боёк с поясами и сапфиром, муфта, рукоять с обмоткой, навершие. 12×16 + контур. */
-const SMALL = [
-  ".HHHHHHHHHH.",
-  "HHbHHHHHHbHH",
-  "HHbHHeeHHbHH",
-  "HHbHHeeHHbHH",
-  "HHbHHHHHHbHH",
-  ".HHHHHHHHHH.",
-  "....cccc....",
-  ".....hh.....",
-  ".....gg.....",
-  ".....hh.....",
-  ".....gg.....",
-  ".....hh.....",
-  ".....hh.....",
-  ".....hh.....",
-  "....pppp....",
-  ".....pp.....",
-];
 const MAT_A: Record<string, Mat> = { H: { ramp: G, base: 4 }, b: { ramp: G, base: 2 }, e: { ramp: PEARL, base: 2 }, p: { ramp: G, base: 3 }, h: { ramp: G, base: 3 }, g: { ramp: G, base: 2 }, c: { ramp: G, base: 3 } };
-const MAT_B: Record<string, Mat> = { H: { ramp: G, base: 3 }, b: { ramp: G, base: 1 }, e: { ramp: SAPPHIRE, base: 2 }, p: { ramp: G, base: 3 }, h: { ramp: WOOD, base: 2 }, g: { ramp: LEATHER, base: 1 }, c: { ramp: G, base: 3 } };
 
 /** Молот света (A): объём, тёмно-янтарный контур, блики на бойке, двойное свечение. Пиксель (11, 33) — середина ударной грани. */
 function hammerA(): PC {
@@ -150,12 +106,6 @@ function hammerA(): PC {
   for (const [x, y] of [[6, 23], [7, 23], [8, 23], [5, 24], [17, 23], [18, 23]]) f.set(x, y, WH);           // блик по верхней грани бойка
   for (const [x, y] of [[10, 4], [11, 4]]) f.set(x, y, WH);                                                    // блик на навершии
   return glow(f, [hex("#ffd86a", 150), hex("#ffc040", 60)]);
-}
-/** Кадр вращения малого молота (B): маска повёрнута на ang вокруг центра масс, тени пересчитаны от того же света. */
-function hammerB(ang: number): PC {
-  const m = rotMask(SMALL, ang, 6, 5.5, 22);
-  const f = shadeMask(m, MAT_B, OUT, 1);
-  return f;
 }
 
 // ---------- свет: вспышки, кольца, осколки, звёзды ----------
@@ -327,132 +277,7 @@ function aGround(): Gen {
   return { id: "hammer-a-hit-ground", pack: "gen", role: "aoe", frames, w: W, h: Hh, anchor: [cx / W, (cy - 12) / Hh], fps: 16, blend: "normal", hero: "warrior", ease: { tail: 120 } };
 }
 
-// ---------- B: брошенный молот ----------
-/** Снаряд B: молот вращается (8 положений по 45°, тени от одного света), дуга-взмах за бойком, огненно-золотой след-клин и две искры. Смотрит вправо. */
-function bProj(): Gen {
-  const W = 44, Hh = 28, cx = 30, cy = 14, N = 8;
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, Hh), ang = (t / N) * TAU, L = 19 + (t % 2) * 2;
-    for (let i = 0; i < L; i++) {
-      const q = i / L, w = 3.8 * (1 - q) ** 0.75;
-      for (let dy = -Math.round(w); dy <= Math.round(w); dy++) { const c = lightAt((1 - q) * (1 - (Math.abs(dy) / (w + 0.6)) * 0.5) * 0.9); if (c) f.set(cx - 5 - i, cy + dy, c); }
-    }
-    for (let k = 0; k < 2; k++) { const p = (t / N + k / 2) % 1; shard(f, cx - 12 - p * 18, cy + (k ? 5 : -5) * (1 - p * 0.4), 2, 1 - p * 0.55); }
-    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
-      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, rr = Math.hypot(dx, dy);
-      if (rr < 6 || rr > 10.5) continue;
-      let d = ang - Math.PI / 2 - Math.atan2(dy, dx);
-      d = ((d % TAU) + TAU) % TAU;
-      if (d > 2.0) continue;
-      const c = lightAt((1 - d / 2.0) * (1 - Math.abs(rr - 8.2) / 3) * 1.1);
-      if (c) f.set(x, y, c);
-    }
-    const ham = hammerB(ang);
-    f.blit(ham, cx - Math.floor(ham.w / 2), cy - Math.floor(ham.h / 2));
-    return f;
-  });
-  return { id: "hammer-b", pack: "gen", role: "proj", frames, w: W, h: Hh, anchor: [cx / W, cy / Hh], fps: 16, blend: "normal", hero: "warrior", ease: { fadeIn: 90, scaleIn: 0.6 } };
-}
-/** Удар B: касание (пятно света), вспышка-звезда и кольцо, молот отскакивает назад, светлеет и лопается искрой; осколки дугами;
- *  звёзды оглушения кружат над головой. 12 кадров, якорь — центр тела цели. */
-function bHit(): Gen {
-  const W = 72, Hh = 76, cx = 38, cy = 48, head = cy - 14, N = 12;
-  const r = rng(29), list = Array.from({ length: 6 }, (_, i) => ({ a: -Math.PI / 2 + ((i - 2.5) / 2.5) * 1.35 + (r() - 0.5) * 0.25, v: 2.2 + r() * 1.5 }));
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, Hh);
-    const hp: [number, number, number, number][] = [[cx - 5, cy - 1, 0.35, 0], [cx - 13, cy - 8, -0.45, 0], [cx - 19, cy - 13, -1.2, 0], [cx - 23, cy - 16, -1.9, 1]];
-    if (t === 0) disc(f, cx, cy, 7, 7, 1.05);
-    if (t === 1) burst(f, cx, cy, 9, 24, 9, 8, 0.2, 1.08);
-    if (t === 2) { burst(f, cx, cy, 5, 28, 7, 8, 0.35, 0.92, 0.5); ring(f, cx, cy, 12, 10, 3, 1); }
-    if (t === 3) { ring(f, cx, cy, 17, 14, 2.6, 0.82, 0.15, 0.1, 6); sparkle(f, cx, cy, 9, 0.8, Math.PI / 4); }
-    if (t === 4) ring(f, cx, cy, 20, 17, 2.2, 0.58, 0.45, 0.1, 6);
-    if (t < hp.length) { const [x, y, a, up] = hp[t], ham = hammerB(a), img = up ? lift(ham, up) : ham; f.blit(img, Math.round(x - ham.w / 2), Math.round(y - ham.h / 2)); }
-    if (t === 4) sparkle(f, cx - 25, cy - 17, 8, 1);
-    if (t >= 2 && t <= 6) shards(f, list, cx, cy, t - 1.2, t >= 5 ? 0.8 : 1);
-    if (t >= 3) stunStars(f, cx, head - 5, t, t < 4 ? 0.5 : t < 10 ? 1 : t === 10 ? 0.5 : 0);
-    return f;
-  });
-  return { id: "hammer-b-hit", pack: "gen", role: "hit", frames, w: W, h: Hh, anchor: [cx / W, cy / Hh], fps: 14, blend: "normal", hero: "warrior", ease: { tail: 120 } };
-}
-
-// ---------- C: размах ----------
-/** Большой молот, повёрнутый вокруг навершия (оно — ось размаха): маска поворачивается, тени пересчитываются от того же света. */
-function hammerSwing(ang: number): PC {
-  const S = 72, m = rotMask(BIG, ang, 10, 1.5, S);
-  const f = shadeMask(m, MAT_A, OUT_A, 0);
-  return glow(f, [hex("#ffd86a", 150), hex("#ffc040", 60)]);
-}
-/** Смаз размаха: серп по дуге бойка вокруг оси (радиусы r0..r1) от угла a0 до a1 (углы поворота молота), ярче у бойка, острые концы. */
-function swingSmear(f: PC, px: number, py: number, a0: number, a1: number, r0: number, r1: number, k: number) {
-  const span = a1 - a0;
-  for (let y = Math.floor(py - r1 - 1); y <= py + r1 + 1; y++) for (let x = Math.floor(px - r1 - 1); x <= px + r1 + 1; x++) {
-    const dx = x + 0.5 - px, dy = y + 0.5 - py, rr = Math.hypot(dx, dy);
-    if (rr < r0 || rr > r1) continue;
-    // угол поворота, при котором боёк смотрел бы в эту точку: вектор оси → боёк = (−sin a, cos a)
-    const a = Math.atan2(-dx, dy);
-    let q = -1;
-    for (const a2 of [a, a + TAU, a - TAU]) { const qq = (a2 - a0) / span; if (qq >= 0 && qq <= 1) { q = qq; break; } }
-    if (q < 0) continue;
-    const mid = (r0 + r1) / 2, half = ((r1 - r0) / 2) * Math.min(1, q * 1.6 + 0.1), u = Math.abs(rr - mid) / Math.max(half, 0.5);
-    if (u > 1) continue;
-    const c = lightAt(k * (0.25 + 0.75 * q) * (1 - u * 0.55));
-    if (c) f.set(x, y, c);
-  }
-}
-/** Удар C, верхний слой: молот света проявляется над целью, заносится, описывает дугу (серп-смаз) и бьёт бойком сверху вниз;
- *  белый силуэт и вспышка, осколки, молот бледнеет и стягивается к оси искрой; звёзды оглушения. 12 кадров, якорь — центр тела цели. */
-function cHit(): Gen {
-  const W = 76, Hh = 104, cx = 34, feet = 92, body = feet - 12, head = feet - 26, N = 12;
-  const px = cx + 18, py = head - 19, S2 = 36, AS = 1.2;                 // ось размаха; удар — поворот 69° (боёк слева внизу)
-  const r = rng(41), list = Array.from({ length: 6 }, (_, i) => ({ a: -Math.PI / 2 + ((i - 2.5) / 2.5) * 1.2 + (r() - 0.5) * 0.25, v: 2.3 + r() * 1.4 }));
-  const pose = (f: PC, ang: number, mode: "lift2" | "lift3" | "norm" = "norm", squeeze = 1) => {
-    let img = hammerSwing(ang);
-    if (mode !== "norm") img = lift(img, mode === "lift2" ? 2 : 3);
-    if (squeeze < 1) img = squeezeTo(img, squeeze, S2, S2);
-    f.blit(img, px - S2, py - S2);
-  };
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, Hh);
-    if (t === 0) { pose(f, Math.PI, "lift2"); sparkle(f, px, py, 6, 1); }
-    if (t === 1) { pose(f, Math.PI + 0.3); sparkle(f, px - 6, py - 30, 4, 0.9); }
-    if (t === 2) { swingSmear(f, px, py, Math.PI + 0.3, 2.35, 17, 30, 0.8); pose(f, 2.35); }
-    if (t === 3) { swingSmear(f, px, py, 2.6, AS + 0.15, 16, 31, 1); pose(f, AS + 0.15); }
-    if (t === 4) { pose(f, AS, "lift3"); burst(f, cx, head - 1, 10, 26, 10, 8, Math.PI / 2, 1.08); }
-    if (t === 5) { pose(f, AS); burst(f, cx, head - 1, 6, 30, 8, 8, Math.PI / 2 + 0.2, 0.95, 0.5); shards(f, list, cx, head - 1, 1); }
-    if (t === 6) { pose(f, AS - 0.08, "lift2"); sparkle(f, cx, head - 2, 10, 0.85, Math.PI / 4); shards(f, list, cx, head - 1, 2.2); }
-    if (t === 7) {
-      // молот рассыпается тремя искрами вдоль рукояти: у навершия, посередине, у бойка
-      for (const [k, s] of [[0.15, 6], [0.55, 5], [0.95, 8]] as const) { const a = AS - 0.12, d = 23.5 * k; sparkle(f, px - Math.sin(a) * d, py + Math.cos(a) * d, s, 1); }
-      shards(f, list, cx, head - 1, 3.3, 0.8);
-    }
-    if (t === 8) sparkle(f, px, py, 7, 1);
-    if (t === 9) sparkle(f, px, py, 4, 0.7);
-    if (t >= 6) stunStars(f, cx, head - 7, t, t < 7 ? 0.5 : t < 10 ? 1 : t === 10 ? 0.5 : 0);
-    return f;
-  });
-  return { id: "hammer-c-hit", pack: "gen", role: "hit", frames, w: W, h: Hh, anchor: [cx / W, body / Hh], fps: 16, blend: "normal", hero: "warrior", ease: { tail: 120 } };
-}
-/** Стягивание молота к оси (пиксель ox, oy): масштаб k к оси, ближайший сосед. */
-function squeezeTo(src: PC, k: number, ox: number, oy: number): PC {
-  const out = new PC(src.w, src.h);
-  for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) { const p = src.get(Math.floor(ox + (x + 0.5 - ox) / k), Math.floor(oy + (y + 0.5 - oy) / k)); if (p && p[3]) out.set(x, y, p); }
-  return out;
-}
-/** Удар C, нижний слой: в момент удара — пятно света и шесть трещин-лучей по земле, волна, трещины гаснут. 12 кадров в такт hammer-c-hit. */
-function cGround(): Gen {
-  const W = 84, Hh = 44, cx = 42, cy = 24, N = 12;
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, Hh), q = t - 4;
-    if (q === 0) { disc(f, cx, cy, 14, 6, 1.05); burst(f, cx, cy, 0, 30, 7, 6, 0.3, 1, 0.7, 0.45); }
-    if (q === 1) { disc(f, cx, cy, 9, 4, 0.85); burst(f, cx, cy, 0, 34, 6.5, 6, 0.3, 0.9, 0.7, 0.45); }
-    if (q >= 2 && q <= 4) burst(f, cx, cy, 0, 34, 6, 6, 0.3, [0.72, 0.52, 0.34][q - 2], 0.7, 0.45);
-    if (q >= 1 && q <= 4) { const rr = 15 + (q - 1) * 6.5; ring(f, cx, cy, rr, rr * 0.45, [3.4, 3, 2.6, 2.2][q - 1], [1.05, 0.88, 0.68, 0.5][q - 1], [0, 0.1, 0.3, 0.5][q - 1], 0.13, 6); }
-    return f;
-  });
-  return { id: "hammer-c-hit-ground", pack: "gen", role: "aoe", frames, w: W, h: Hh, anchor: [cx / W, (cy - 12) / Hh], fps: 16, blend: "normal", hero: "warrior", ease: { tail: 120 } };
-}
-
-export function GENERATED_HAMMER3(): Gen[] { return [aProj(), aHit(), aGround(), bProj(), bHit(), cHit(), cGround()]; }
+export function GENERATED_HAMMER3(): Gen[] { return [aProj(), aHit(), aGround()]; }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview");
@@ -462,7 +287,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const hero = readPng(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/public/assets/units/warrior.png"));
   const hf = new PC(32, 32);
   for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) hf.set(x, y, hero.get(x, y)!);
-  const rows = [["hammer-a-hit", "hammer-a-hit-ground"], ["hammer-b-hit", ""], ["hammer-c-hit", "hammer-c-hit-ground"]].map(([id, gid]) => [all.find((g) => g.id === id)!, all.find((g) => g.id === gid)] as const);
+  const rows = [["hammer-a-hit", "hammer-a-hit-ground"]].map(([id, gid]) => [all.find((g) => g.id === id)!, all.find((g) => g.id === gid)] as const);
   const cw = 80, ch = 110, n = 12, pc = new PC(cw * n, ch * rows.length);
   rows.forEach(([g, gr], j) => {
     paintGround(pc, 0, j * ch, cw * n, ch, j % 2 ? "cobble" : "grass");

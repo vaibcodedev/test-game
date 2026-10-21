@@ -17,7 +17,6 @@ import { GENERATED, type Orbit } from "./vfx-gen";
 import { GENERATED2 } from "./vfx-gen2";
 import { GENERATED_HAMMER3 } from "./vfx-hammer3";
 import { GENERATED_BANNER } from "./vfx-banner";
-import { GENERATED_HAMMER } from "./vfx-hammer";
 import { quakeSlam } from "./vfx-quake";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -154,7 +153,7 @@ const VARIANTS: [string, string, string, Partial<Def>?][] = [
 
 /** Все id эффектов, которые умеет собрать конвейер (для проверки data/skill-fx.json без vendor/). */
 export function knownIds(): Set<string> {
-  return new Set([...BASE.map((d) => d.id), ...VARIANTS.map((v) => v[0]), ...GENERATED().map((g) => g.id), ...GENERATED2().map((g) => g.id), ...GENERATED_BANNER().map((g) => g.id), ...GENERATED_HAMMER().map((g) => g.id), ...GENERATED_HAMMER3().map((g) => g.id), "quake-slam", "portal-hold", "portal-hold-shadow", "portal-hold-nature"]);
+  return new Set([...BASE.map((d) => d.id), ...VARIANTS.map((v) => v[0]), ...GENERATED().map((g) => g.id), ...GENERATED2().map((g) => g.id), ...GENERATED_BANNER().map((g) => g.id), ...GENERATED_HAMMER3().map((g) => g.id), "quake-slam", "portal-hold", "portal-hold-shadow", "portal-hold-nature"]);
 }
 
 /** Плавность: появление (fadeIn, мс; масштаб от scaleIn до 1), удержание (цикл кадров loop, hold мс для вызовов без длительности),
@@ -240,7 +239,7 @@ export function buildAll(): Built[] {
     defs.set(id, nd);
     out.push(build(nd));
   }
-  for (const g of [...GENERATED(), ...GENERATED2(), ...GENERATED_BANNER(), ...GENERATED_HAMMER(), ...GENERATED_HAMMER3(), quakeSlam()]) out.push(fitted({ ...g, peak: peakIndex(g.frames) }));
+  for (const g of [...GENERATED(), ...GENERATED2(), ...GENERATED_BANNER(), ...GENERATED_HAMMER3(), quakeSlam()]) out.push(fitted({ ...g, peak: peakIndex(g.frames) }));
   // портал: открытие, удержание (цикл вихря), закрытие (открытие в обратном порядке)
   const byId = new Map(out.map((b) => [b.id, b]));
   for (const [id, openId, loopId] of [["portal-hold", "portal-open", "portal"], ["portal-hold-shadow", "portal-open-shadow", "portal-shadow"], ["portal-hold-nature", "portal-open-nature", "portal-nature"]]) {

@@ -8,7 +8,8 @@
  *   $env:TEST_PORT="2801"; $env:VITE_TEST_PORT="5399"; npx tsx tests/vfx-screens.ts [--only=fireball,meteor] [--phase=cast,hit] [--both] [--field=grass|cobble] [--zoom=3]
  *     [--variants=снаряд:удар,снаряд:удар]
  * По умолчанию умения чередуют поле (чётные — трава, нечётные — брусчатка); --both снимает на обоих (вдвое дольше), --field фиксирует одно.
- * --zoom — масштаб камеры (2 или 3, как колесо в игре). Ауры-орбиты (руны) снимаются серией: вход, оборот, выход.
+ * --zoom — масштаб камеры (2 или 3, как колесо в игре). Ауры-орбиты (руны) снимаются серией: вход, оборот, выход; при нескольких значениях
+ *   (--zoom=2,3) оборот снимается при каждом по очереди, масштаб меняется посреди оборота, как колесом: <умение>-z<N>-sw1..2 — первые кадры после смены.
  * --variants — сравнение листов для умения из --only: каждая пара «снаряд:удар» (id из манифеста, снаряд можно опустить) летит к цели,
  *   удар снимается серией из 5 кадров (<умение>-v<n>-<id удара>-h1..h5).
  * Выход — tools/out/vfx-shots/: <умение>-<фаза>.png (кроп 400×300 вокруг героя и цели, 1 пиксель кадра = 1 пиксель экрана, камера ×2),
@@ -34,7 +35,8 @@ const ONLY = argv("only");
 const PHASES = new Set<string>(argv("phase"));
 const FIELD = argv("field")[0] as "grass" | "cobble" | undefined;
 const BOTH = process.argv.includes("--both");
-const ZOOM = Number(argv("zoom")[0]) || 0;
+const ZOOMS = argv("zoom").map(Number).filter((z) => z > 0);
+const ZOOM = ZOOMS[0] || 0;
 const VARIANTS = argv("variants").map((v) => { const [a, b] = v.includes(":") ? v.split(":") : ["", v]; return { proj: a || undefined, hit: b }; });
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5199;
 const VIEW = { width: 1280, height: 800 };
@@ -291,10 +293,19 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
       await snap(skill, "aura", field, ids, 900);
       await adv(2000);
     } else {
-      await fxArr([{ t: "buff", id: ids.hero, k: "shield", ms: 4000, ...mark }]);
+      if (ORBITS.has(skill) && ZOOMS.length) await run("sc.cameras.main.setZoom(a)", ZOOMS[0]);
+      await fxArr([{ t: "buff", id: ids.hero, k: "shield", ms: ORBITS.has(skill) ? 4000 + 2000 * Math.max(0, ZOOMS.length - 1) : 4000, ...mark }]);
       if (ORBITS.has(skill)) {
-        for (const [i, w] of [80, 120, 200].entries()) await snap(skill, "aura", field, ids, w, `${skill}-in${i + 1}`);
-        for (let i = 0; i < 8; i++) await snap(skill, "aura", field, ids, 175, `${skill}-o${i + 1}`);
+        const zs = ZOOMS.length ? ZOOMS : [0], tag = (z: number) => (zs.length > 1 ? `-z${z}` : "");
+        for (const [i, w] of [80, 120, 200].entries()) await snap(skill, "aura", field, ids, w, `${skill}${tag(zs[0])}-in${i + 1}`);
+        for (const [j, z] of zs.entries()) {
+          // смена масштаба посреди оборота, как колесом: орбита сама берёт лист под новый зум; два кадра сразу после смены
+          if (j > 0) {
+            await run("sc.cameras.main.setZoom(a)", z);
+            for (let i = 0; i < 2; i++) await snap(skill, "aura", field, ids, STEP, `${skill}${tag(z)}-sw${i + 1}`);
+          }
+          for (let i = 0; i < 8; i++) await snap(skill, "aura", field, ids, 175, `${skill}${tag(z)}-o${i + 1}`);
+        }
         await fxArr([{ t: "buff", id: ids.hero, k: "shield", ms: 0, ...mark }]);
         for (const [i, w] of [120, 120, 160].entries()) await snap(skill, "end", field, ids, w, `${skill}-out${i + 1}`);
         await thaw();

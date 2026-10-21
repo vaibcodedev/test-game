@@ -70,6 +70,23 @@
    "twinkle": 3100
   }
  },
+ "aura-runes-frost-x3": {
+  "frameW": 29,
+  "frameH": 32,
+  "frames": 12,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 350,
+   "fadeOut": 350,
+   "scaleIn": 0.6
+  },
+  "scale": 0.3333333333333333
+ },
  "aura-runes-holy": {
   "frameW": 44,
   "frameH": 38,
@@ -976,85 +993,6 @@
   "ease": {
    "tail": 120
   }
- },
- "hammer-b": {
-  "frameW": 44,
-  "frameH": 28,
-  "frames": 8,
-  "fps": 16,
-  "anchor": [
-   0.682,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 90,
-   "scaleIn": 0.6
-  }
- },
- "hammer-b-hit": {
-  "frameW": 72,
-  "frameH": 76,
-  "frames": 12,
-  "fps": 14,
-  "anchor": [
-   0.528,
-   0.632
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 120
-  }
- },
- "hammer-c-hit": {
-  "frameW": 76,
-  "frameH": 104,
-  "frames": 12,
-  "fps": 16,
-  "anchor": [
-   0.447,
-   0.769
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 120
-  }
- },
- "hammer-c-hit-ground": {
-  "frameW": 84,
-  "frameH": 44,
-  "frames": 12,
-  "fps": 16,
-  "anchor": [
-   0.5,
-   0.273
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 120
-  }
- },
- "hammer-gold": {
-  "frameW": 30,
-  "frameH": 26,
-  "frames": 8,
-  "fps": 16,
-  "anchor": [
-   0.633,
-   0.5
-  ],
-  "blend": "normal"
- },
- "hammer-slam": {
-  "frameW": 104,
-  "frameH": 76,
-  "frames": 12,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.684
-  ],
-  "blend": "normal"
  },
  "heal-blood": {
   "frameW": 41,

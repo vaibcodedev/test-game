@@ -17,11 +17,23 @@ export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: n
  *  позиции считаются каждый кадр. Пиксели мира: полуоси rx/ry, oy — центр от ног спрайта; мс: период оборота, покачивания, мерцания, блика;
  *  glow — альфа ореола (мин, макс), back — яркость самой дальней точки орбиты. */
 export interface Orbit { n: number; rx: number; ry: number; oy: number; period: number; bob: number; bobPeriod: number; glow: [number, number]; glowPeriod: number; back: number; twinkle: number }
-/** scale — масштаб спрайта (0.5: арт двойной плотности, пиксель листа = пиксель холста при зуме 2). */
+/** scale — масштаб спрайта: 0.5 — арт двойной плотности (пиксель листа = пиксель холста при зуме 2), 1/3 — тройной (при зуме 3). */
 export interface VfxEntry { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: "normal" | "add"; r?: 1; ease?: Ease; scale?: number; orbit?: Orbit }
 type Slot = "cast" | "proj" | "hit" | "aura";
 const TABLE = skillFx as Record<string, Partial<Record<Slot, string>>>;
 const key = (id: string) => `vfx_${id}`;
+
+/** Лист и целый масштаб для арта нескольких плотностей (d — пикселей листа на пиксель мира) при зуме камеры z: пиксель листа — k пикселей
+ *  холста (ровные пиксели), размер в мире ближе всего к задуманному (d·k = z — точно: зум 2 и 4 — двойной лист, 3 и 6 — тройной);
+ *  при равной ошибке — не крупнее, затем лист плотнее. */
+export function pickDensity(z: number, sheets: { id: string; d: number }[]): { id: string; k: number } {
+  let best = { id: sheets[0].id, k: 1 }, be = Infinity;
+  for (const s of sheets) for (let k = 1; k <= Math.max(1, Math.ceil(z)); k++) {
+    const r = (s.d * k) / z, e = Math.abs(r - 1) + (r > 1 ? 1e-3 : 0) - s.d * 1e-6;
+    if (e < be) { be = e; best = { id: s.id, k }; }
+  }
+  return best;
+}
 
 /** Загрузка листов (BootScene.preload): свободные лежат в vfx/, листы закрытых паков — в vfx/r/ (нет файла — нет эффекта). */
 export function loadVfx(scene: Phaser.Scene, m: Record<string, VfxEntry>) {
@@ -246,11 +258,14 @@ export class Vfx {
   }
   /** Орбита (рунный клинок): n предметов кружат вокруг пояса юнита. Позиции считаются каждый кадр после UnitView.update (событие postupdate):
    *  угол = время × скорость, эллипс rx×ry, покачивание по синусу у каждой руны своё; руна спереди (sin > 0) над героем, сзади — под ним,
-   *  слой меняется у краёв орбиты, яркость плавно падает к дальней точке. Координаты — до пикселя холста (1/zoom пикселя мира), масштаб такой,
-   *  чтобы пиксель листа был целым числом пикселей холста (зум 2 и 4 — ровно 0.5, зум 3 — 2/3). Вход и выход: альфа, масштаб и радиус
-   *  за fadeIn/fadeOut мс (ease-out и ease-in), руны выходят из тела и уходят в него. */
+   *  слой меняется у краёв орбиты, яркость плавно падает к дальней точке. Координаты — до пикселя холста (1/zoom пикселя мира); лист и масштаб —
+   *  pickDensity: пиксель листа — целое число пикселей холста, руна 7×8 пикселей мира (зум 2 и 4 — лист двойной плотности, 3 и 6 — тройной <id>-x3).
+   *  Вход и выход: альфа, масштаб и радиус за fadeIn/fadeOut мс (ease-out и ease-in), руны выходят из тела и уходят в него. */
   private orbit(k: string, id: string, unitId: string, ms: number, kind?: string) {
-    const e = this.catalog[id], o = e.orbit!, base = e.scale ?? 1;
+    const e = this.catalog[id], o = e.orbit!;
+    // листы одного рисунка разной плотности (основной и <id>-x3): выбор по зуму камеры, смена зума колесом — смена листа на лету
+    const sheets = [id, `${id}-x3`].filter((s) => this.has(s)).map((s) => ({ id: s, d: Math.round(1 / (this.catalog[s].scale ?? 1)) }));
+    let cur = id, curZ = -1, pick = { id, k: 1 };
     const runes: { body: Phaser.GameObjects.Sprite; halo?: Phaser.GameObjects.Sprite; glint?: Phaser.GameObjects.Sprite }[] = [];
     for (let i = 0; i < o.n; i++) {
       const body = this.take(id);
@@ -274,7 +289,13 @@ export class Vfx {
       } else vis = 1 - (1 - Math.min(1, (now - t0) / fadeIn)) ** 3;   // ease-out
       if (u && !u.dead) { cx = u.sprite.x; cy = u.sprite.y + (o.oy * u.frame) / 32; dy0 = u.y; }
       const z = this.scene.cameras.main.zoom || 1, px = (v: number) => Math.round(v * z) / z;
-      const sc = (Math.max(1, Math.round(base * z)) / z) * (s0 + (1 - s0) * vis), R = 0.5 + 0.5 * vis;
+      if (z !== curZ) { curZ = z; pick = pickDensity(z, sheets); }
+      if (pick.id !== cur) {
+        // тот же кадр в другом листе: позиции считаются в пикселях мира, размер в мире тот же — переключение без рывка
+        cur = pick.id;
+        runes.forEach((r, i) => { r.body.setTexture(key(cur), i); r.halo?.setTexture(key(cur), o.n + i); r.glint?.setTexture(key(cur), 2 * o.n + i); });
+      }
+      const sc = (pick.k / z) * (s0 + (1 - s0) * vis), R = 0.5 + 0.5 * vis;
       runes.forEach((r, i) => {
         const a = a0 + ((now - t0) / o.period) * Math.PI * 2 + (i * Math.PI * 2) / runes.length, sn = Math.sin(a);
         const bob = Math.sin((now / o.bobPeriod) * Math.PI * 2 + i * 2.3) * o.bob;
@@ -299,7 +320,8 @@ export class Vfx {
     const finish = () => {
       off();
       this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, off);
-      for (const r of runes) for (const s of [r.body, r.halo, r.glint]) if (s) this.release(id, s);
+      // в пул спрайты уходят с основным листом (пул общий по id)
+      for (const r of runes) for (const s of [r.body, r.halo, r.glint]) if (s) { if (cur !== id) s.setTexture(key(id), 0); this.release(id, s); }
     };
     this.scene.events.on(Phaser.Scenes.Events.POST_UPDATE, step);
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
