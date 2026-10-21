@@ -16,7 +16,7 @@ const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5197;
 const OUT = path.resolve("tools/out");
 fs.mkdirSync(OUT, { recursive: true });
 const shot = (page: Page, name: string) => page.screenshot({ path: path.join(OUT, `shot-admin-tp-${name}.png`) });
-const must = (cond: unknown, msg: string): asserts cond => { if (!cond) throw new Error(msg); };
+const must: (cond: unknown, msg: string) => asserts cond = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 function chromePath() {
   const list = [process.env.CHROME_PATH, "C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", "/usr/bin/google-chrome", "/usr/bin/chromium"];
