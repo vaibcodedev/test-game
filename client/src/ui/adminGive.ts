@@ -99,7 +99,7 @@ type StatusKind = "" | "ok" | "warn" | "bad";
 
 /** Названия случайных характеристик для строки «+N случайных аффиксов». */
 const AFFIX_SHORT: Record<string, string> = { str: "сила", agi: "ловкость", int: "интеллект", vit: "выносливость", hp: "здоровье", crit: "крит" };
-const plural = (n: number, one: string, few: string, many: string) => (n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many);
+export const plural = (n: number, one: string, few: string, many: string) => (n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many);
 const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 export class GiveTab {

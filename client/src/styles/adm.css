@@ -18,6 +18,10 @@
 .adm-row > .btn {
   min-height: var(--ctl-h);
 }
+/* ряд малых кнопок раздела (без выравнивания по полям ввода, как у .adm-row) */
+.adm-tools { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-bottom: var(--sp-2); }
+/* список призванных монстров: не выше ~6 строк, дальше прокрутка */
+.adm-summoned { max-height: 264px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .adm-acts {
   display: flex;
   gap: var(--sp-1);

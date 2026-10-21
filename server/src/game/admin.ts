@@ -233,6 +233,19 @@ export function registerAdmin(room: WorldRoom, on: On) {
     log(p, "unban", name);
   });
 
+  /** Живые призванные монстры (admin:spawn любого админа) для вкладки «Мир»: ближние к админу сверху; d — расстояние в тайлах. */
+  const sendSummoned = (p: Player) => p.send("admin:summoned", [...w().mobs.values()]
+    .filter((x) => x.summoned && x.state !== "dead")
+    .map((x) => ({ id: x.id, name: x.def.name, level: x.level, hp: Math.max(0, Math.round(x.unit.hp)), maxHp: x.unit.maxHp, boss: !!x.def.boss, d: Math.round(Math.hypot(x.unit.x - p.unit.x, x.unit.y - p.unit.y) / TILE) }))
+    .sort((a, b) => a.d - b.d));
+  /** Гибель от руки админа: без убийцы и без списка нанёсших урон — добыча и опыт никому; призванный исчезает после анимации (killMob),
+   *  обычный возродится по своему таймеру. */
+  const adminKill = (x: Mob) => {
+    x.damageBy.clear();
+    x.unit.hp = 0;
+    w().killMob(x);
+  };
+
   adm<{ mob: unknown; level: unknown }>("admin:spawn", (p, m) => {
     const def = MOBS[str(m.mob)];
     if (!def) return toast(p, "Нет такого моба", "error");
@@ -243,6 +256,29 @@ export function registerAdmin(room: WorldRoom, on: On) {
     if (def.boss) mob.boss = createBoss(world, mob, 300);
     world.addMob(mob);
     log(p, "spawn", def.id, { level, x: Math.round(p.unit.x), y: Math.round(p.unit.y) });
+    sendSummoned(p);
+  });
+
+  adm("admin:summoned", (p) => sendSummoned(p));
+
+  /** «Убить» призванного (id) или «Убить всех призванных» (all: true). */
+  adm<{ id: unknown; all: unknown }>("admin:despawn", (p, m) => {
+    const all = m.all === true;
+    const list = [...w().mobs.values()].filter((x) => x.summoned && x.state !== "dead" && (all || x.id === m.id));
+    for (const x of list) adminKill(x);
+    if (!list.length) toast(p, all ? "Призванных монстров нет" : "Этот монстр уже погиб", "error");
+    log(p, "despawn", all ? "все" : str(m.id), { n: list.length });
+    sendSummoned(p);
+  });
+
+  /** «Убить цель»: монстр в цели админа — любой, не только призванный. */
+  adm("admin:kill-target", (p) => {
+    const t = w().mobs.get(p.unit.target);
+    if (!t || t.state === "dead") return toast(p, "В цели нет живого монстра", "error");
+    adminKill(t);
+    toast(p, `Убит: ${t.def.name}`, "info");
+    log(p, "kill", t.def.id, { level: t.level, summoned: t.summoned });
+    sendSummoned(p);
   });
 
   adm<{ name: unknown; kind: unknown }>("admin:encounter", (p, m) => {

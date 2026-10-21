@@ -86,6 +86,8 @@ type Events = {
   "admin:players": { name: string; cls: string; level: number; x: number; y: number; admin: boolean }[];
   "admin:logs": { kind: "trades" | "admin"; rows: any[] };
   "admin:banner": { text: string };
+  /** Живые призванные монстры (admin:spawn): ближние к админу сверху, d — расстояние в тайлах (server/src/game/admin.ts). */
+  "admin:summoned": { id: string; name: string; level: number; hp: number; maxHp: number; boss: boolean; d: number }[];
   /** Итог выдачи предмета из админ-панели (server/src/game/admin.ts): ok / warn (выдано, но не всё) / error. */
   "admin:give:result": { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
 };
@@ -376,7 +378,7 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

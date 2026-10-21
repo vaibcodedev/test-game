@@ -2,7 +2,7 @@
 import { ZONES } from "../../../shared/map";
 import { MOBS } from "../../../shared/mobs";
 import type { Net } from "../net";
-import { GiveTab } from "./adminGive";
+import { GiveTab, plural } from "./adminGive";
 import { tabs } from "./kit";
 
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -20,6 +20,8 @@ export class AdminUI {
   private tab = "players";
   private players: { name: string; cls: string; level: number; x: number; y: number }[] = [];
   private logs: { kind: string; rows: any[] } = { kind: "trades", rows: [] };
+  /** Призванные монстры для вкладки «Мир» (admin:summoned): сервер присылает после призыва, убийства и по запросу. */
+  private summoned: { id: string; name: string; level: number; hp: number; maxHp: number; boss: boolean; d: number }[] = [];
   private logKind = "trades";
   private logName = "";
   private target = "";
@@ -44,6 +46,7 @@ export class AdminUI {
     this.net = net;
     net.on("admin:players", (m) => { this.players = m; this.giveTab?.setPlayers(m); if (this.tab === "players") this.render(); });
     net.on("admin:logs", (m) => { this.logs = m; if (this.tab === "logs") this.render(); });
+    net.on("admin:summoned", (m) => { this.summoned = m; if (this.tab === "world" && !this.win.hidden) this.render(); });
     net.on("admin:banner", (m) => {
       const b = this.banner;
       b.querySelector(".adm-banner-t")!.textContent = m.text;
@@ -81,6 +84,7 @@ export class AdminUI {
   private refresh() {
     if (this.tab === "players" || this.tab === "give") this.net.send("admin:players");
     if (this.tab === "logs") this.net.send("admin:logs", { kind: this.logKind, name: this.logName });
+    if (this.tab === "world") this.net.send("admin:summoned");
     this.render();
   }
 
@@ -120,6 +124,7 @@ export class AdminUI {
         <div class="adm-row"><label class="field grow"><span class="field-label">Монстр</span><select id="w-mob" class="input">${opts(Object.keys(MOBS), (i) => MOBS[i].name)}</select></label>
         <label class="field"><span class="field-label">Уровень</span><input id="w-lv" class="input num" type="number" min="1" max="60" value="10"></label>
         <button class="btn" data-act="spawn">Призвать рядом</button></div></section>
+        ${this.summonedSec()}
         <section class="sec"><h3 class="sec-h">Объявление</h3>
         <label class="field"><span class="field-label">Текст</span><span class="input-group"><input id="w-text" class="input" maxlength="140"><button class="btn" data-act="announce">Объявить</button></span></label></section>
         <section class="sec"><div class="sec-head"><h3 class="sec-h">Телепорт</h3><button class="btn small" data-act="tp-map" title="Выбрать точку кликом по карте мира">Карта</button></div>
@@ -138,6 +143,21 @@ export class AdminUI {
       <label class="field grow"><span class="field-label">Фильтр по имени</span><input id="l-name" class="input" value="${esc(this.logName)}"></label>
       <button class="btn" data-act="logs">Показать</button></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  }
+
+  /** Раздел «Призванные монстры»: строка на каждого живого (имя, уровень, здоровье, расстояние) с кнопкой «Убить»; над списком — «Убить цель»
+   *  (любой монстр в цели, обычный возродится) и «Убить всех призванных». Убитый админом не даёт добычи и опыта (server/src/game/admin.ts). */
+  private summonedSec(): string {
+    const list = this.summoned;
+    const rows = list.map((m) => `<div class="row"><div class="row-main">
+        <span class="row-title">${esc(m.name)}<span class="meta">ур. ${m.level}</span>${m.boss ? ' <span class="chip boss">Босс</span>' : ""}</span>
+        <span class="row-sub">HP ${Math.round((m.hp / Math.max(1, m.maxHp)) * 100)}% · ${m.d} ${plural(m.d, "тайл", "тайла", "тайлов")} от вас</span></div>
+        <div class="row-end"><button class="btn small danger" data-act="despawn" data-id="${esc(m.id)}">Убить</button></div></div>`).join("");
+    return `<section class="sec"><div class="sec-head"><h3 class="sec-h">Призванные монстры</h3><span class="sec-aside">${list.length}</span></div>
+        <div class="adm-tools"><button class="btn small" data-act="kill-target" title="Монстр в цели — любой; обычный возродится по таймеру">Убить цель</button>
+        <button class="btn small danger" data-act="despawn-all"${list.length ? "" : " disabled"}>Убить всех призванных</button>
+        <button class="btn small" data-act="summoned">Обновить</button></div>
+        ${list.length ? `<div class="list boxed adm-summoned">${rows}</div>` : `<p class="note">Призванных монстров нет</p>`}</section>`;
   }
 
   /** «Карта»: окно админки прячется, карта мира открывается в режиме выбора точки. Клик по карте — admin:tp { x, y } (сервер ставит на ближайшую
@@ -171,6 +191,10 @@ export class AdminUI {
         case "unban-name": return send("admin:unban", { name: val("adm-who") });
         case "give": this.target = n; this.tab = "give"; return this.refresh();
         case "spawn": return send("admin:spawn", { mob: val("w-mob"), level: nv("w-lv") });
+        case "summoned": return send("admin:summoned");
+        case "despawn": return send("admin:despawn", { id: b.dataset.id ?? "" });
+        case "despawn-all": return send("admin:despawn", { all: true });
+        case "kill-target": return send("admin:kill-target");
         case "announce": return send("admin:announce", { text: val("w-text") });
         case "tp-name": return send("admin:tp", { name: val("w-tp-name") });
         case "tp-xy": return send("admin:tp", { x: nv("w-x"), y: nv("w-y") });
