@@ -24,8 +24,18 @@ body {
   display: block;
   image-rendering: pixelated;
 }
-/* Курсор игры: золотая стрелка (токены курсоров — tokens.css). В мире вид по цели ставит setCursor() из game/cursor.ts, у полей ввода — свой. */
-html, body, #game canvas {
+/* Курсор игры: золотая стрелка (токены курсоров — tokens.css). В мире вид по цели ставит setCursor() из game/cursor.ts. Системных курсоров нет:
+   у полей ввода — золотой текстовый, у выпадающих списков — рука; отключённые поля и кнопки возвращают стрелку (kit.css). */
+html, body, #game canvas, :where(label) {
+  cursor: var(--cur-arrow);
+}
+:where(input:not([type]), input[type="text"], input[type="number"], input[type="password"], input[type="search"], textarea) {
+  cursor: var(--cur-text);
+}
+:where(select, a, button, summary, input[type="button"], input[type="submit"], input[type="reset"], input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], input[type="file"]) {
+  cursor: var(--cur-pointer);
+}
+:where(button:disabled, input:disabled, select:disabled, textarea:disabled) {
   cursor: var(--cur-arrow);
 }
 #ui {

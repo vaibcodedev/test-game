@@ -32,7 +32,7 @@
 }
 /* лавка: ячейка не кнопка, у неё только подсказка по наведению; цена одной ширины во всех строках, как у телепорта */
 .enc-item > .cell {
-  cursor: help;
+  cursor: var(--cur-arrow);
 }
 .win-cook .price-stack {
   width: 144px;
@@ -67,7 +67,7 @@
   gap: var(--sp-2);
 }
 .smith-item .cell {
-  cursor: default;
+  cursor: var(--cur-arrow);
 }
 .smith-fx {
   display: flex;

@@ -59,7 +59,7 @@
   font-variant-numeric: tabular-nums;
 }
 .stats .k {
-  cursor: help;
+  cursor: var(--cur-arrow);
 }
 .stats .v {
   min-width: 3ch;
@@ -115,7 +115,7 @@
   border-radius: var(--r-2);
   background: var(--well);
   position: relative;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
   padding: 0;
   min-width: 0;
   overflow: hidden;

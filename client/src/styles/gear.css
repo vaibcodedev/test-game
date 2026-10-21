@@ -10,7 +10,7 @@
   background: var(--panel-2);
 }
 .gear-row .cell {
-  cursor: default;
+  cursor: var(--cur-arrow);
 }
 .gr-name {
   overflow: hidden;

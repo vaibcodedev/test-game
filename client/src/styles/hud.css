@@ -106,7 +106,7 @@
 }
 .hud-player .auras .cell {
   --cell: 26px;
-  cursor: help;
+  cursor: var(--cur-arrow);
 }
 .hud-player .auras .cell.debuff {
   border-color: var(--bad);

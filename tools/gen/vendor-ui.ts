@@ -192,6 +192,9 @@ const CURSORS: CursorDef[] = [
   { id: "take", tile: [15, 6], hot: "center", what: "взять (перчатка)" },
   { id: "attack", tile: [6, 5], hot: "tl", what: "атаковать (меч)" },
   { id: "wait", tile: [10, 0], hot: "center", what: "ожидание (песочные часы)" },
+  { id: "aim", tile: [15, 2], hot: "center", what: "прицел: выбрать точку (кольцо с засечками)" },
+  { id: "text", tile: [0, 7], hot: "center", what: "ввод текста" },
+  { id: "grabbing", tile: [16, 6], hot: "center", what: "тащить (сжатая рука)" },
 ];
 /** Заливка — наш цвет, штриховка пака (серая) — на ступень темнее, контур — OUTLINE. Размер ×2: 16 → 32 px. */
 function recolorCursor(src: PC, fillC: RGBA, detail: RGBA): PC {

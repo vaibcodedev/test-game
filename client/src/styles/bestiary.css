@@ -104,7 +104,7 @@
   gap: var(--sp-1h);
 }
 .bst-loot .cell {
-  cursor: default;
+  cursor: var(--cur-arrow);
 }
 @media (max-width: 560px) {
   .bst {
