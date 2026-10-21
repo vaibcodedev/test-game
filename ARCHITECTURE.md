@@ -19,6 +19,10 @@
 - tools/ — генерация пиксель-арта (gen/), db (CLI: просмотр, `admin <имя> on|off`).
 - tests/ — bots, arena, trade, admin, bank, reconnect (обрыв, двойной вход), screenshot, reconnect-screens (браузер).
 
+- client/src/styles/ — дизайн-система: tokens.css (все значения `:root`), kit.css (компоненты окна, кнопок, ячеек, полос), fonts.css; правила — docs/STYLE_GUIDE.md. client/src/ui/kit.ts — tabs, seg, openModal, rangeFill.
+- shared/palette.ts — цвета для TS, canvas и Phaser (синхронно с tokens.css, тест tests/style-tokens.ts). client/src/game/worldText.ts — все подписи мира Phaser.
+- Ассеты из паков (Kenney UI и курсоры, объекты Schwarnhild и др.): исходники в vendor/ (локально, git игнорирует), в игру — только через генератор tools/gen/vendor*.ts; картинки UI — client/public/ui.
+
 ## Карта
 - Мир 1100×360 (shared/map.ts, данные — data/world.json: зоны, уровни под designCap/levelCap, квоты мобов, дороги, реки, поселения, указатели). Запад — земли Сольгарда (столица Аурелион), восток — Умбрата (Мортхейм), середина MID (320×240) — старый мир Эмберхолла с кольцом биомов (пустыня, снега, пепельные предгорья, побережье); север/юг середины — Грозовой хребет и Пылающий вулкан. Новые зоны рисуются биомом (ZoneInfo.style, zoneStyle). Подводных локаций нет.
 - Среда: server/src/game/biomes.ts (жар, лава, добыча узлов), параметры и ресурсы — data/biomes.json, shared/biomes.ts. Музыка по зонам — client/src/game/sfx.ts (setAmbience), частицы погоды — GameScene.setupAmbient, арт — tools/gen/biomes.ts.
