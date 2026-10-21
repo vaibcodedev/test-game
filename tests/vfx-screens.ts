@@ -12,6 +12,9 @@
  *   (--zoom=2,3) оборот снимается при каждом по очереди, масштаб меняется посреди оборота, как колесом: <умение>-z<N>-sw1..2 — первые кадры после смены.
  * --variants — сравнение листов для умения из --only: каждая пара «снаряд:удар» (id из манифеста, снаряд можно опустить) летит к цели,
  *   удар снимается серией из 5 кадров (<умение>-v<n>-<id удара>-h1..h5).
+ * --hidden — концы эффектов при скрытой вкладке, вместо снимков умений (класс — по первому умению из --only): знамя, щит, руны, пузырь
+ *   и круг под ногами ставятся на 2.5 с; вкладка «скрывается» (событие hidden, цикл без кадров) на 3 с и возвращается — через 2 кадра
+ *   эффектов нет; без скрытия они видны до конца срока и сняты сразу после выхода. Итог — строки ok/FAIL и кадры hidden-*.png.
  * Выход — tools/out/vfx-shots/: <умение>-<фаза>.png (кроп 400×300 вокруг героя и цели, 1 пиксель кадра = 1 пиксель экрана, камера ×2),
  * sheet.png (все кадры с подписями, вдвое меньше) и manifest.json. Путь к Chrome: CHROME_PATH.
  */
@@ -37,6 +40,7 @@ const FIELD = argv("field")[0] as "grass" | "cobble" | undefined;
 const BOTH = process.argv.includes("--both");
 const ZOOMS = argv("zoom").map(Number).filter((z) => z > 0);
 const ZOOM = ZOOMS[0] || 0;
+const HIDDEN = process.argv.includes("--hidden");
 const VARIANTS = argv("variants").map((v) => { const [a, b] = v.includes(":") ? v.split(":") : ["", v]; return { proj: a || undefined, hit: b }; });
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5199;
 const VIEW = { width: 1280, height: 800 };
@@ -131,8 +135,9 @@ async function enterAs(cls: ClassId) {
   await run(`window.__vt = performance.now(); window.__adv = (ms) => { const g = window.__game, tw = g.scene.getScene('game').tweens; const n = Math.max(1, Math.round(ms / ${STEP})); for (let i = 0; i < n; i++) { const now = Date.now(); tw.startTime += now - tw.prevTime - ${STEP}; tw.prevTime = now - ${STEP}; window.__vt += ${STEP}; g.loop.delta = ${STEP}; g.step(window.__vt, ${STEP}); } };`);
 }
 
-const freeze = () => run("const l = window.__game.loop; if (l.running) l.sleep(); window.__vt = performance.now();");
-const thaw = () => run("const l = window.__game.loop; if (!l.running) l.wake(true);");
+// пока цикл спит, часы концов эффектов (Vfx.clock — настоящее время) тоже идут ручными шагами, иначе знамя и щит кончались бы по часам машины
+const freeze = () => run("const l = window.__game.loop; if (l.running) l.sleep(); window.__vt = performance.now(); if (sc && sc.fx) sc.fx.vfx.clock.now = () => window.__vt;");
+const thaw = () => run("const l = window.__game.loop; if (sc && sc.fx) sc.fx.vfx.clock.now = () => performance.now(); if (!l.running) l.wake(true);");
 const adv = (ms: number) => run("window.__adv(a)", ms);
 
 async function place(field: "grass" | "cobble", bot: Bot): Promise<{ hero: string; target: string }> {
@@ -321,6 +326,76 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
   await thaw();
 }
 
+/** Концы эффектов при скрытой вкладке (баг: знамя, щиты и ауры оставались после возврата во вкладку, пока не поставишь новые). Цикл идёт сам,
+ *  по настоящему времени. Скрытие — как у браузера: событие hidden (Game.onHidden → loop.pause) и ни одного кадра; возврат — кадры снова
+ *  и событие visible (loop.resume → resetDelta, Core.Events.RESUME). Считаются видимые спрайты листов vfx и эллипсы пузыря и круга. */
+async function hiddenCheck(field: "grass" | "cobble", ids: { hero: string; target: string }) {
+  await thaw();
+  // безголовое окно без фокуса: TimeStep.smoothDelta при !inFocus режет шаг до кадра (16.7 мс), а после resetDelta (фокус, возврат во вкладку)
+  // ещё panicMax = 120 кадров; при ~14 кадрах/с безголового браузера часы сцены шли бы вчетверо медленнее настоящих (растворения, пыль знамени
+  // тянулись бы секундами). В обычной вкладке с фокусом при 60 кадрах/с этого нет — её и имитируем
+  await run("const g = window.__game; g.loop.panicMax = 0; g.events.emit('focus');");
+  const pos = await run<{ hx: number; hy: number }>("const u = sc.units.get(a.hero); return { hx: u.x, hy: u.y };", ids);
+  const MS = 2500, mark = { c: ids.hero };
+  const fxList = () => [
+    { t: "hazard", id: "h_hide_banner", k: "holy", x: pos.hx + 45, y: pos.hy, r: 130, ms: MS, s: "tp_banner", ...mark },
+    { t: "buff", id: ids.hero, k: "block", ms: MS, s: "shieldblock", ...mark },
+    { t: "buff", id: ids.target, k: "rune", ms: MS, s: "dk_rune_blade", ...mark },
+    { t: "buff", id: ids.target, k: "shield", ms: MS },
+    { t: "buff", id: ids.hero, k: "bless", ms: MS },
+  ];
+  const start = () => fxArr(fxList());
+  const live = "sc.children.list.filter((o) => o.active && o.visible && o.alpha > 0.02 && ((o.texture && o.texture.key.startsWith('vfx_')) || o.type === 'Ellipse'))";
+  const count = () => run<number>(`return ${live}.length`);
+  const list = () => run<string>(`return ${live}.map((o) => (o.texture && o.texture.key !== '__DEFAULT' ? o.texture.key.slice(4) : o.type) + '@' + o.alpha.toFixed(2)).join(' ')`);
+  const frames2 = () => run("await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));");
+  const shot = async (name: string) => { await freeze(); await snap("hidden", "series", field, ids, STEP, `hidden-${name}`); await thaw(); };
+  const check = (name: string, ok: boolean, info: string) => { console.log(`  ${ok ? "ok  " : "FAIL"} ${name}: ${info}`); if (!ok) failed.push(`hidden:${name}`); };
+  await sleep(2500);                                              // хвосты прошлых эффектов
+  const base = await count();
+  if (base) console.log(`    до начала на сцене: ${await list()}`);
+  // 1) скрыть вкладку дольше срока и вернуть: через 2 кадра эффектов нет
+  await start();
+  await sleep(1200);                                              // короткие (пыль знамени, падение, вход) успели доиграть
+  await shot("1-before");
+  await start();                                                  // заново: снимок шёл на ручных часах
+  await sleep(1200);
+  const on = (await count()) - base;
+  await run("const g = window.__game; g.events.emit('hidden'); g.loop.sleep();");
+  await sleep(3000);
+  await run("const g = window.__game; g.loop.wake(true); g.events.emit('visible');");
+  await frames2();
+  const after = (await count()) - base, left = after > 0 ? await list() : "";
+  check("скрыта 3 с при сроке 2.5 с", on >= 5 && after === 0, `до скрытия ${on} объектов, через 2 кадра после возврата ${after}${left ? ` (${left})` : ""}`);
+  await shot("2-after-return");
+  // 2) без скрытия: концы срабатывают ровно в срок (очередь Vfx.after пустеет — время в странице), потом растворение (≤ 350 мс) и пусто
+  await sleep(1000);
+  const pend = () => run<number>("return sc.fx.vfx.deadlines.size;");
+  const p0 = await pend();
+  // момент, когда очередь концов опустела, ловит слушатель кадра в самой странице (после Vfx.tickDeadlines в том же кадре)
+  await run(`window.__endAt = -1; window.__startAt = performance.now(); sc.fx.play(a.list);
+    const ev = () => { if (window.__endAt < 0 && sc.fx.vfx.deadlines.size <= a.p0) { window.__endAt = performance.now(); sc.events.off('postupdate', ev); } };
+    sc.events.on('postupdate', ev);`, { p0, list: fxList() });
+  const c0 = await run<{ s: number; fps: number; focus: boolean }>("const l = window.__game.loop; return { s: sc.time.now, fps: Math.round(l.actualFps), focus: l.inFocus };");
+  const tq = Date.now();
+  await sleep(MS - 400);
+  const alive = (await count()) - base, pAlive = (await pend()) - p0;
+  let ended = -1, gone = -1, lingering = "";
+  while (Date.now() - tq < MS + 1500) {
+    if (ended < 0) { const e = await run<number>("return window.__endAt < 0 ? -1 : window.__endAt - window.__startAt;"); if (e >= 0) ended = Math.round(e); }
+    if (ended >= 0 && (await count()) - base <= 0) { gone = Date.now() - tq; break; }
+    if (!lingering && Date.now() - tq > MS + 700) lingering = await list();   // что держится дольше срока и растворения
+    await sleep(15);
+  }
+  if (lingering) console.log(`    через ${MS + 700} мс ещё видны: ${lingering}`);
+  const c1 = await run<{ s: number; fps: number }>("const l = window.__game.loop; return { s: sc.time.now, fps: Math.round(l.actualFps) };");
+  const rate = (c1.s - c0.s) / Math.max(1, Date.now() - tq), frame = 1000 / Math.max(5, Math.min(c0.fps, c1.fps));
+  // конец — не раньше срока и не позже срока + кадр (проверка раз в кадр) + опрос; исчезли — после растворения, с запасом на кадры безголового браузера
+  check("без скрытия", alive >= 5 && pAlive >= 5 && ended >= MS && ended <= MS + frame + 20 && gone > 0 && gone <= MS + 350 + 4 * frame + 200,
+    `за 400 мс до конца ${alive} объектов (концов в очереди ${pAlive}), концы сработали через ${ended} мс (срок ${MS}), всё исчезло через ${gone} мс; ` +
+    `кадров/с ${c0.fps}–${c1.fps}, фокус ${c0.focus}, часы сцены ${rate.toFixed(2)} от настоящих`);
+}
+
 /** Бег с щитом: клавиша движения зажата, 4 снимка через 40 мс; смещение спрайта щита от спрайта героя измеряется на каждом шаге. */
 async function runSeries(skill: string, aura: string, field: string, ids: { hero: string; target: string }) {
   const probe = () => run<{ dx: number; dy: number } | null>(`
@@ -413,6 +488,12 @@ async function main() {
         await thaw();
       }
       const placed: Partial<Record<"grass" | "cobble", { hero: string; target: string }>> = {};
+      if (HIDDEN) {
+        const fl = FIELD ?? "grass";
+        placed[fl] = await place(fl, bot!);
+        await hiddenCheck(fl, placed[fl]!);
+        break;
+      }
       for (const skill of skills) {
         const fields: ("grass" | "cobble")[] = FIELD ? [FIELD] : BOTH ? ["grass", "cobble"] : [n % 2 === 0 ? "grass" : "cobble"];
         n++;

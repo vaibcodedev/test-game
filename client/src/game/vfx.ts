@@ -60,7 +60,14 @@ const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff
 const MAX_ACTIVE = 160;
 const FRONT = 0.5; // слой на теле — чуть выше спрайта героя при сортировке по y
 
-interface Running { spr: Phaser.GameObjects.Sprite; stop: () => void }
+/** Конец эффекта с длительностью (Vfx.after): cancel — снять, не вызывая; extend — перенести конец на ms от сейчас
+ *  (перекаст щита, рун, знамени продлевает цикл, а не перезапускает его); false — конец уже наступил или снят. */
+export interface Deadline { cancel(): void; extend(ms: number): boolean }
+/** Конец пришёл позже срока больше чем на столько мс (вкладка была скрыта, кадров не было) — эффект давно истёк: снимать сразу, без растворения. */
+export const LATE_MS = 250;
+
+/** Цикл на ключ (looping): stop(late) — снять; late — на сколько мс конец опоздал (больше LATE_MS — без растворения). */
+interface Running { spr: Phaser.GameObjects.Sprite; stop: (late?: number) => void }
 
 export class Vfx {
   private free = new Map<string, Phaser.GameObjects.Sprite[]>();
@@ -80,8 +87,38 @@ export class Vfx {
   private castAt = new Map<string, number>();
   private catalog: Record<string, VfxEntry>;
 
+  /** Часы концов эффектов — настоящее время, не часы сцены: пока вкладка скрыта, Phaser не даёт кадров, а после возврата (TimeStep.resume →
+   *  resetDelta) часы сцены, delayedCall и твины идут с места остановки — знамя и щит досиживали остаток уже после возврата; при потере фокуса
+   *  smoothDelta ещё и режет шаг до кадра. Тест с ручным временем подменяет now на свои часы. */
+  readonly clock = { now: () => performance.now() };
+  private deadlines = new Set<{ at: number; fn: (late: number) => void }>();
+  /** Истёкшие концы: каждый кадр после update сцены и сразу при возврате во вкладку (Core.Events.RESUME) — до первого кадра. */
+  private tickDeadlines = () => {
+    if (!this.deadlines.size) return;
+    const now = this.clock.now();
+    for (const d of [...this.deadlines]) if (d.at <= now && this.deadlines.delete(d)) d.fn(now - d.at);
+  };
+
   constructor(readonly scene: Phaser.Scene, readonly unit: (id: string) => UnitView | undefined) {
     this.catalog = (scene.cache.json.get("vfxm") as Record<string, VfxEntry> | undefined) ?? {};
+    scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.tickDeadlines);
+    scene.game.events.on(Phaser.Core.Events.RESUME, this.tickDeadlines);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.tickDeadlines);
+      scene.game.events.off(Phaser.Core.Events.RESUME, this.tickDeadlines);
+      this.deadlines.clear();
+    });
+  }
+
+  /** Конец эффекта через ms мс настоящего времени: fn(late) — в первом кадре после срока, после скрытой вкладки — сразу при возврате;
+   *  late — опоздание, мс (больше LATE_MS — снимать без растворения). Для всех концов длиннее ~300 мс вместо scene.time.delayedCall. */
+  after(ms: number, fn: (late: number) => void): Deadline {
+    const d = { at: this.clock.now() + ms, fn };
+    this.deadlines.add(d);
+    return {
+      cancel: () => { this.deadlines.delete(d); },
+      extend: (ms2: number) => { if (!this.deadlines.has(d)) return false; d.at = this.clock.now() + ms2; return true; },
+    };
   }
 
   has(id: string | undefined): id is string {
@@ -179,9 +216,10 @@ export class Vfx {
     this.fadeIn(spr, ez);
     const loop = () => spr.play(key(id) + ":l");
     if (lp[0] > 0) { spr.once(Phaser.Animations.Events.ANIMATION_COMPLETE, loop); spr.play(key(id) + ":i"); } else loop();
-    this.scene.time.delayedCall(Math.max(ms, 200), () => {
+    this.after(Math.max(ms, 200), (late) => {
       if (!spr.active) return;
       spr.removeAllListeners();
+      if (late > LATE_MS) { this.release(id, spr); return; }
       if (lp[1] < e.frames - 1) spr.play(key(id) + ":o");
       this.fadeOut(id, spr, { ...ez, fadeOut: Math.max(ez.fadeOut ?? 0, lp[1] < e.frames - 1 ? (e.frames - 1 - lp[1]) * (1000 / e.fps) : 0) });
     });
@@ -243,13 +281,15 @@ export class Vfx {
     }
     // юнит ушёл из видимости или умер — снимаем (позицию ставит UnitView, здесь только проверка живости)
     const watch = this.scene.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(unitId); if (!q || q.dead) stop(); } });
-    const end = this.scene.time.delayedCall(ms, () => stop());
+    const end = this.after(ms, (late) => stop(late));
     let done = false;
-    const stop = () => {
+    const stop = (late = 0) => {
       if (done) return;
-      done = true; watch.remove(); end.remove(false);
-      this.fadeOut(id, spr, e.ease);
-      if (back) this.fadeOut(`${id}-back`, back, this.catalog[`${id}-back`].ease);
+      done = true; watch.remove(); end.cancel();
+      // истёк, пока вкладка была скрыта, — без растворения
+      const ez = late > LATE_MS ? undefined : e.ease;
+      this.fadeOut(id, spr, ez);
+      if (back) this.fadeOut(`${id}-back`, back, late > LATE_MS ? undefined : this.catalog[`${id}-back`].ease);
       const l = this.looping.get(k); if (l) { const i = l.findIndex((r) => r.spr === spr); if (i >= 0) l.splice(i, 1); if (!l.length) this.looping.delete(k); }
       if (kind) this.forget(kind, k);
     };
@@ -278,8 +318,9 @@ export class Vfx {
     if (!runes.length) return;
     const fadeIn = e.ease?.fadeIn ?? 350, fadeOut = e.ease?.fadeOut ?? 350, s0 = e.ease?.scaleIn ?? 0.6;
     const t0 = this.scene.time.now, a0 = Math.random() * Math.PI * 2;
-    let outAt = -1, visOut = 1, vis = 0, cx = 0, cy = 0, dy0 = 0;
+    let outAt = -1, visOut = 1, vis = 0, cx = 0, cy = 0, dy0 = 0, gone = false;
     const step = () => {
+      if (gone) return;                                         // снят в этом же кадре (конец из tickDeadlines раньше шага)
       const now = this.scene.time.now, u = this.unit(unitId);
       if (outAt < 0 && (!u || u.dead)) stop();
       if (outAt >= 0) {
@@ -310,14 +351,17 @@ export class Vfx {
       });
     };
     const off = () => this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, step);
-    const end = this.scene.time.delayedCall(ms, () => stop());
-    const stop = () => {
+    const end = this.after(ms, (late) => stop(late));
+    const stop = (late = 0) => {
       if (outAt >= 0) return;
-      outAt = this.scene.time.now; visOut = vis; end.remove(false);
+      outAt = this.scene.time.now; visOut = vis; end.cancel();
       const l = this.looping.get(k); if (l) { const j = l.findIndex((q) => q.spr === runes[0].body); if (j >= 0) l.splice(j, 1); if (!l.length) this.looping.delete(k); }
       if (kind) this.forget(kind, k);
+      if (late > LATE_MS) finish();                             // истёк, пока вкладка была скрыта, — без растворения
     };
     const finish = () => {
+      if (gone) return;
+      gone = true;
       off();
       this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, off);
       // в пул спрайты уходят с основным листом (пул общий по id)
@@ -349,7 +393,7 @@ export class Vfx {
         this.fadeIn(ring, this.catalog[ringId].ease);
         ring.play({ key: key(ringId), repeat: -1 });
         let rd = false;
-        list.push({ spr: ring, stop: () => { if (rd) return; rd = true; this.fadeOut(ringId, ring, this.catalog[ringId].ease); } });
+        list.push({ spr: ring, stop: (late = 0) => { if (rd) return; rd = true; this.fadeOut(ringId, ring, late > LATE_MS ? undefined : this.catalog[ringId].ease); } });
       }
     }
     for (const [dx, dy] of pts) {
@@ -368,11 +412,11 @@ export class Vfx {
       // лёгкое покачивание облаков (кроме знамени и колец): на 1–2 пикселя по y, позиция каждый кадр целая
       if (!single && !/^ring-|^summon/.test(id)) this.scene.tweens.add({ targets: spr, y: py - 2, duration: 1300 + Math.random() * 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut", onUpdate: () => spr.setY(Math.round(spr.y)) });
       let done = false;
-      const stop = () => { if (done) return; done = true; this.fadeOut(id, spr, e.ease); };
+      const stop = (late = 0) => { if (done) return; done = true; this.fadeOut(id, spr, late > LATE_MS ? undefined : e.ease); };
       list.push({ spr, stop });
     }
-    const end = this.scene.time.delayedCall(ms, () => { for (const r2 of list) r2.stop(); if (this.looping.get(k) === list) this.looping.delete(k); });
-    list.push({ spr: list[0]?.spr as Phaser.GameObjects.Sprite, stop: () => end.remove(false) });
+    const end = this.after(ms, (late) => { for (const r2 of list) r2.stop(late); if (this.looping.get(k) === list) this.looping.delete(k); });
+    list.push({ spr: list[0]?.spr as Phaser.GameObjects.Sprite, stop: () => end.cancel() });
     this.looping.set(k, list);
   }
 
@@ -395,7 +439,11 @@ export class Vfx {
     const ts = this.scene.add.tileSprite(Math.round(x0), Math.round(y0), len, e.frameH, key(id), 0).setOrigin(0, 0.5).setRotation(Math.atan2(y1 - y0, x1 - x0)).setDepth(DEPTH.top - 38);
     let fr = 0;
     const tick = this.scene.time.addEvent({ delay: 1000 / e.fps, loop: true, callback: () => { fr = (fr + 1) % e.frames; ts.setFrame(fr); } });
-    this.scene.time.delayedCall(ms, () => { tick.remove(); this.scene.tweens.add({ targets: ts, alpha: 0, duration: 160, onComplete: () => ts.destroy() }); });
+    this.after(ms, (late) => {
+      tick.remove();
+      if (late > LATE_MS) ts.destroy();
+      else this.scene.tweens.add({ targets: ts, alpha: 0, duration: 160, onComplete: () => ts.destroy() });
+    });
   }
 
   // ---------- по сообщениям fx (вызывает Effects) ----------

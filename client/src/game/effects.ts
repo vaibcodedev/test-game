@@ -11,7 +11,7 @@ import { RaidBoss } from "./raidBoss";
 import { net } from "../net";
 import { P } from "../../../shared/palette";
 import { CROWD } from "./labelLayout";
-import { Vfx } from "./vfx";
+import { Vfx, LATE_MS } from "./vfx";
 import { shakeCam } from "./camShake";
 
 const MAX_BURST = 36;
@@ -121,10 +121,11 @@ export class Effects {
     const ring = s.add.ellipse(Math.round(u0.x), Math.round(u0.y) - 1, w * k, Math.round(w * k * 0.45), color, 0.16).setStrokeStyle(1, color, 0.9).setDepth(DEPTH.ground + 7);
     // позицию ставит UnitView.update раз за кадр, в тех же целых пикселях, что и героя (таймер раз в 30 мс отставал и прыгал на бегу)
     u0.attach(ring, -1, null);
-    const end = s.time.delayedCall(ms, () => drop());
+    // конец — по настоящему времени (Vfx.after): после скрытой вкладки круг снимается при возврате, а не досиживает остаток
+    const end = this.vfx.after(ms, () => drop());
     const watch = s.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(id); if (!q || q.dead || q !== u0) drop(); } });
     const drop = () => {
-      end.remove(false); watch.remove(); u0.detach(ring); ring.destroy();
+      end.cancel(); watch.remove(); u0.detach(ring); ring.destroy();
       if (this.rings.get(key) === drop) this.rings.delete(key);
     };
     this.rings.set(key, drop);
@@ -425,9 +426,10 @@ export class Effects {
         };
         draw();
         const ev = s.time.addEvent({ delay: 30, loop: true, callback: draw });
-        s.time.delayedCall(f.ms, () => {
+        this.vfx.after(f.ms, (late) => {
           ev.remove();
           g.destroy();
+          if (late > LATE_MS) return;                             // удар был, пока вкладка скрыта: без запоздалой вспышки и звука
           const cx = f.shape === "cone" ? f.x + Math.cos(f.a ?? 0) * f.r * 0.5 : f.x, cy = f.shape === "cone" ? f.y + Math.sin(f.a ?? 0) * f.r * 0.5 : f.y;
           this.flash(cx, cy, color, Math.min(3, f.r / 50));
           this.sound(f.shape === "circle" && f.r < 70 ? "hit" : f.shape === "cone" ? "slam" : "explosion", cx, cy);
@@ -448,11 +450,12 @@ export class Effects {
         pool.setScale(0.2);
         s.tweens.add({ targets: pool, scale: 1, duration: 250 });
         this.hazards.set(f.id, [pool, bub]);
-        s.time.delayedCall(f.ms, () => {
+        this.vfx.after(f.ms, (late) => {
+          this.hazards.delete(f.id);
+          if (late > LATE_MS) { pool.destroy(); bub.destroy(); return; }   // истекла, пока вкладка скрыта, — сразу
           s.tweens.add({ targets: pool, alpha: 0, duration: 400, onComplete: () => pool.destroy() });
           bub.stop();
           s.time.delayedCall(900, () => bub.destroy());
-          this.hazards.delete(f.id);
         });
         break;
       }
@@ -512,7 +515,7 @@ export class Effects {
           this.burst(u.x, u.y - 6, "fx_spark", f.k === "heal" ? 0x7aff7a : 0xffe890, 14, 30, 900, -80, 0.8);
           if (f.k === "renew") {
             const rep = s.time.addEvent({ delay: 450, loop: true, callback: () => { const q = this.unit(f.id); if (q) this.burst(q.x, q.y - 4, "fx_spark", 0x7aff7a, 2, 20, 700, -70, 0.6); } });
-            s.time.delayedCall(f.ms, () => rep.remove());
+            this.vfx.after(f.ms, () => rep.remove());
           }
           break;
         }
@@ -556,10 +559,12 @@ export class Effects {
           u.attach(bub, -10, null, true);
           const watch = s.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(f.id); if (!q || q.dead || q !== u) drop(); } });
           s.tweens.add({ targets: bub, alpha: { from: 0.9, to: 0.5 }, yoyo: true, repeat: -1, duration: 300 });
-          const end = s.time.delayedCall(f.ms, () => { drop(); });
-          const drop = () => {
-            end.remove(false); watch.remove(); s.tweens.killTweensOf(bub);
+          // конец — по настоящему времени (Vfx.after): истёкший, пока вкладка была скрыта, пузырь снимается сразу при возврате
+          const end = this.vfx.after(f.ms, (late) => drop(late));
+          const drop = (late = 0) => {
+            end.cancel(); watch.remove(); s.tweens.killTweensOf(bub);
             if (this.bubbles.get(bk) === drop) this.bubbles.delete(bk);
+            if (late > LATE_MS) { u.detach(bub); bub.destroy(); return; }
             // гаснет, не отставая от героя (отвязывается, когда погас)
             s.tweens.add({ targets: bub, alpha: 0, duration: 200, onComplete: () => { u.detach(bub); bub.destroy(); } });
           };
