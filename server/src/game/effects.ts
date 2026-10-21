@@ -75,6 +75,22 @@ export function tickEffects(w: World, a: Actor) {
   }
 }
 
+/**
+ * Щит-поглотитель героя кончился раньше срока (пробит) или снят: картинки щита убираются сразу, а не по таймеру.
+ * Клиент по buff с ms 0 снимает все циклы умений и пузыри этого вида на герое (effects.ts case "buff"), метка умения не нужна.
+ * Вид `block` делят щиты-поглотители (барьер, саван, костяная броня), «Щитовой блок» и «Последний рубеж»: его снимаем,
+ * только если на герое нет ни блока, ни рубежа, ни другого действующего щита (keepBlock — например, барьер реликвии).
+ */
+export function endShield(w: World, p: Player, keepBlock = false) {
+  w.emit({ t: "buff", id: p.id, k: "shield", ms: 0 }, false);
+  if (!keepBlock && p.blockUntil <= w.time && p.lastStandUntil <= w.time) w.emit({ t: "buff", id: p.id, k: "block", ms: 0 }, false);
+}
+
+/** Сколько мс щиту героя осталось (0 — щита нет): срок для fx buff, чтобы картинка шла ровно столько, сколько щит действует. */
+export function shieldLeft(w: World, p: Player): number {
+  return p.shieldAmt >= 1 && p.shieldUntil > w.time ? Math.round(p.shieldUntil - w.time) : 0;
+}
+
 /** Длительность контроля с учётом «Несгибаемого» у героев. */
 /** Длительность контроля: «Несгибаемый» и пр. режут; от героя по герою — × pvp.ccMult (data/balance.json). */
 export const ccMs = (w: World, a: Actor, ms: number, by?: Actor | null) =>

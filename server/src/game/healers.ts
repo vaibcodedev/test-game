@@ -26,24 +26,27 @@ interface St {
   pending: "guardian" | "drop" | null; pendingBy: Player | null;
   pure: Map<string, number>;
   tideUntil: number; tidePct: number;
+  /** «Кровный круг» на самом Кровотворце: он лечится в круге вместе с союзниками (у них — значок уз). */
+  circleUntil: number; circleAmt: number;
   hymn: number;
 }
 const states = new WeakMap<Player, St>();
 function st(p: Player): St {
   let s = states.get(p);
   if (!s) {
-    s = { dmgUntil: 0, dmgPct: 0, blessUntil: 0, blessReduce: 0, sparkReady: 0, guardReady: 0, dropReady: 0, coagReady: 0, pending: null, pendingBy: null, pure: new Map(), tideUntil: 0, tidePct: 0, hymn: 0 };
+    s = { dmgUntil: 0, dmgPct: 0, blessUntil: 0, blessReduce: 0, sparkReady: 0, guardReady: 0, dropReady: 0, coagReady: 0, pending: null, pendingBy: null, pure: new Map(), tideUntil: 0, tidePct: 0, circleUntil: 0, circleAmt: 0, hymn: 0 };
     states.set(p, s);
   }
   return s;
 }
-// значки в рамке героя (auras.ts): усиление урона, защита благословения, алый прилив
+// значки в рамке героя (auras.ts): усиление урона, защита благословения, алый прилив, кровный круг
 registerAuraHook((a, _now, aura) => {
   const s = states.get(a as Player);
   if (!s) return;
   aura("dmgboost", s.dmgUntil, { v: s.dmgPct });
   aura("bless", s.blessUntil, { v: s.blessReduce });
   aura("tide", s.tideUntil, { v: s.tidePct });
+  aura("blood_circle", s.circleUntil, { v: s.circleAmt });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -87,11 +90,15 @@ function shield(w: World, by: Player, t: Player, amt: number, ms: number, cap = 
   if (by.outlawUntil > w.time || by.intruder) amt *= OUTLAW.healMul;
   // щит из силы лечения в PvP режется как лечение (data/balance.json pvp.heal)
   amt *= pvpHealScale(w, t);
-  const live = t.shieldUntil > w.time;
-  t.shieldAmt = Math.min(t.unit.maxHp * cap, (live ? t.shieldAmt : 0) + Math.round(amt));
+  const live = t.shieldUntil > w.time && t.shieldAmt >= 1, was = live ? t.shieldAmt : 0;
+  // потолок только не даёт щиту расти: больший действующий щит (например, «Святой щит») от него не урезается
+  const next = Math.max(was, Math.min(t.unit.maxHp * cap, was + Math.round(amt)));
+  if (next < 1) return; // поглощать нечего — пузырь не рисуем
+  t.shieldAmt = next;
   t.shieldUntil = Math.max(live ? t.shieldUntil : 0, w.time + ms);
   t.shieldBy = by;
-  w.emit({ t: "buff", id: t.id, k: "shield", ms });
+  // картинка живёт ровно столько, сколько действует щит (при продлении — остаток старого срока, а не новый, более короткий)
+  w.emit({ t: "buff", id: t.id, k: "shield", ms: Math.round(t.shieldUntil - w.time) });
 }
 
 /** Бафф урона: берём сильнейший, срок продлеваем. */
@@ -282,6 +289,9 @@ export function castHealer(c: CastCtx): string | null | undefined {
       const dur = v.dur + bondDur(p), until = w.time + dur * 1000;
       w.emit({ t: "aoe", k: "pact", x: u.x, y: u.y, r: v.radius });
       const amt = (healPower(p) * v.regen) / 100;
+      const sc = st(p);
+      sc.circleUntil = until;
+      sc.circleAmt = Math.round(amt);
       const folks = alliesAround(w, p, u.x, u.y, v.radius);
       for (const a of folks) {
         if (a.player && a.player !== p) { a.player.bondBy = p; a.player.bondUntil = until; a.player.bondShare = v.share; }

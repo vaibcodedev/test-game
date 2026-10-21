@@ -14,6 +14,9 @@ import { GearLayers, parseGear } from "./GearLayers";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { capBand, placeText, worldText } from "./worldText";
 
+/** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
+export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
+
 /** Тёмная подложка рамок и щита — цвет «колодца» из палитры. */
 const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
@@ -30,13 +33,16 @@ export class UnitView {
   /** Титул над именем и рамка ранга арены. */
   titleText: Phaser.GameObjects.Text;
   frameGfx: Phaser.GameObjects.Graphics;
-  /** Спрайты эффектов (щит, аура, каст), привязанные к юниту: ставятся здесь же, после интерполяции, с тем же округлением, что и спрайт героя. dz — смещение глубины от y (null — глубину не трогать). */
-  private attached: { spr: Phaser.GameObjects.Sprite; dy: number; dz: number | null }[] = [];
-  attach(spr: Phaser.GameObjects.Sprite, dy: number, dz: number | null) { this.detach(spr); this.attached.push({ spr, dy, dz }); this.placeAttached(); }
-  detach(spr: Phaser.GameObjects.Sprite) { const i = this.attached.findIndex((a) => a.spr === spr); if (i >= 0) this.attached.splice(i, 1); }
+  /** Эффекты (щит, аура, каст, круг под ногами), привязанные к юниту: ставятся здесь же, после интерполяции, с тем же округлением, что и спрайт героя.
+   *  dy — сдвиг по y, dz — смещение глубины от y (null — глубину не трогать), body — эффект на теле: идёт ровно за спрайтом героя
+   *  (с покачиванием в стойке и посадкой на маунта), иначе — под ногами, в целых пикселях от позиции юнита. Позицию двигают только здесь, раз за кадр:
+   *  таймеры и твины с дробными координатами дают дрожь относительно героя на бегу. */
+  private attached: { obj: Attachable; dy: number; dz: number | null; body: boolean }[] = [];
+  attach(obj: Attachable, dy: number, dz: number | null, body = false) { this.detach(obj); this.attached.push({ obj, dy, dz, body }); this.placeAttached(); }
+  detach(obj: Attachable) { const i = this.attached.findIndex((a) => a.obj === obj); if (i >= 0) this.attached.splice(i, 1); }
   private placeAttached() {
-    const x = Math.round(this.x), y = Math.round(this.y);
-    for (const a of this.attached) { a.spr.setPosition(x, y + a.dy); if (a.dz !== null) a.spr.setDepth(this.y + a.dz); }
+    const gx = Math.round(this.x), gy = Math.round(this.y), bx = this.sprite.x, by = this.sprite.y;
+    for (const a of this.attached) { a.obj.setPosition(a.body ? bx : gx, (a.body ? by : gy) + a.dy); if (a.dz !== null) a.obj.setDepth(this.y + a.dz); }
   }
   mountSpr?: Phaser.GameObjects.Sprite;
   mountFront?: Phaser.GameObjects.Sprite;

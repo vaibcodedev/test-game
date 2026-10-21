@@ -27,6 +27,8 @@ const KIND_COLOR: Record<string, number> = {
   // умения лекарей
   ray: 0xfff6c0, hymn: 0xfff0b0, ward: 0xffe890, cleanse: 0xb8ffff, pact: 0xe0304a, burst: 0xff3050, tide: 0xff2a40,
 };
+/** Виды buff с картинкой, которая держится на герое: для них ms <= 0 всегда «снять» (даже если картинки уже нет), для остальных — разовая вспышка. */
+const REMOVABLE = new Set(["shield", "block", "invuln", "antimagic", "bless", "tide", "rune", "frozen", "warp", "meta"]);
 const PROJ_TEX: Record<string, string> = { arrow: "fx_arrow", arcane: "fx_arcane", fireball: "fx_fireball", fire: "fx_fire", poison: "fx_poison", shadow: "fx_shadow", frost: "fx_frost", aimed: "fx_arrow", holy: "fx_holy", blood: "fx_fire" };
 
 export class Effects {
@@ -117,10 +119,12 @@ export class Effects {
     if (!u0 || u0.dead) return;
     const k = u0.frame > 32 ? 2 : 1;
     const ring = s.add.ellipse(Math.round(u0.x), Math.round(u0.y) - 1, w * k, Math.round(w * k * 0.45), color, 0.16).setStrokeStyle(1, color, 0.9).setDepth(DEPTH.ground + 7);
+    // позицию ставит UnitView.update раз за кадр, в тех же целых пикселях, что и героя (таймер раз в 30 мс отставал и прыгал на бегу)
+    u0.attach(ring, -1, null);
     const end = s.time.delayedCall(ms, () => drop());
-    const follow = s.time.addEvent({ delay: 30, loop: true, callback: () => { const q = this.unit(id); if (!q || q.dead) drop(); else ring.setPosition(Math.round(q.x), Math.round(q.y) - 1); } });
+    const watch = s.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(id); if (!q || q.dead || q !== u0) drop(); } });
     const drop = () => {
-      end.remove(false); follow.remove(); ring.destroy();
+      end.remove(false); watch.remove(); u0.detach(ring); ring.destroy();
       if (this.rings.get(key) === drop) this.rings.delete(key);
     };
     this.rings.set(key, drop);
@@ -491,6 +495,14 @@ export class Effects {
         break;
       }
       case "buff": {
+        // снять эффект (щит пробит, вихрь прерван, баф снят): циклы умений этого вида на герое, пузырь щита и круг под ногами — сразу, не по таймеру.
+        // У остальных видов ms 0 — разовая вспышка (ярость босса при смене фазы): она идёт ниже, как раньше
+        if (f.ms <= 0) {
+          const key = `${f.id}:${f.k}`, ended = this.vfx.endBuff(f), bub = this.bubbles.get(key), ring = this.rings.get(key);
+          bub?.();
+          ring?.();
+          if (ended || bub || ring || REMOVABLE.has(f.k)) break;
+        }
         const u = this.unit(f.id);
         if (!u) return;
         if (this.vfx.buff(f, u)) { this.buffSound(f, u); break; }
@@ -506,14 +518,12 @@ export class Effects {
         }
         if (f.k === "bless" || f.k === "tide") {
           const bl = f.k === "bless";
-          if (f.ms <= 0) { this.groundRing(f.id, f.k, 0, 0, 0); break; }
           this.sound(bl ? "holy" : "shadow", u.x, u.y);
           this.burst(u.x, u.y - 10, "fx_spark", bl ? 0xfff0a0 : 0xe0304a, 18, 70, 800, -70, 0.9);
           this.groundRing(f.id, f.k, bl ? 0xffe890 : 0xff5060, Math.min(f.ms, 20000), 26);
           break;
         }
         if (f.k === "rune" || f.k === "frozen") {
-          if (f.ms <= 0) { this.groundRing(f.id, f.k, 0, 0, 0); break; }
           this.sound("frost", u.x, u.y);
           this.burst(u.x, u.y - 10, "fx_shard", 0xd0e8ff, 16, 60, 700);
           // ледяной почти белый: голубой (тон 194-198) слишком близок к бирюзе заточки (правило 2.6)
@@ -522,7 +532,6 @@ export class Effects {
           break;
         }
         if (f.k === "warp" || f.k === "meta") {
-          if (f.ms <= 0) { this.groundRing(f.id, f.k, 0, 0, 0); break; }
           this.sound(f.k === "warp" ? "arcane" : "shadow", u.x, u.y);
           const col = f.k === "warp" ? 0xb080ff : 0xc040ff;
           this.burst(u.x, u.y - 10, "fx_spark", col, 18, 70, 800, -50, 0.9);
@@ -535,21 +544,24 @@ export class Effects {
           break;
         }
         if (f.k === "block" || f.k === "shield" || f.k === "invuln" || f.k === "antimagic") {
-          // один пузырь на (герой, вид): новый заменяет прежний, ms <= 0 снимает (барьер разбит или истёк)
+          // один пузырь на (герой, вид): новый заменяет прежний (снятие, ms <= 0 — в начале case: барьер разбит или истёк)
           const bk = `${f.id}:${f.k}`;
           this.bubbles.get(bk)?.();
           this.bubbles.delete(bk);
-          if (f.ms <= 0) break;
           this.sound(f.k === "antimagic" ? "arcane" : "shield", u.x, u.y);
           const gold = f.k === "shield" || f.k === "invuln";
           const bub = s.add.ellipse(u.x, u.y - 10, f.k === "invuln" ? 56 : 44, f.k === "invuln" ? 64 : 52, f.k === "antimagic" ? 0xa060ff : gold ? 0xffd84a : 0x6ac0ff, 0.22).setStrokeStyle(2, f.k === "antimagic" ? 0xe0c8ff : gold ? 0xfff0b0 : 0xbfe6ff, 0.9).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.top - 30);
-          const follow = s.time.addEvent({ delay: 30, loop: true, callback: () => { const q = this.unit(f.id); if (q) bub.setPosition(q.x, q.y - 10); } });
+          // пузырь идёт за телом героя: позицию ставит UnitView.update раз за кадр, в тех же целых пикселях, что и спрайт героя
+          // (таймер раз в 30 мс с дробными координатами отставал на несколько пикселей и дёргался относительно героя на бегу)
+          u.attach(bub, -10, null, true);
+          const watch = s.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(f.id); if (!q || q.dead || q !== u) drop(); } });
           s.tweens.add({ targets: bub, alpha: { from: 0.9, to: 0.5 }, yoyo: true, repeat: -1, duration: 300 });
           const end = s.time.delayedCall(f.ms, () => { drop(); });
           const drop = () => {
-            end.remove(false); follow.remove(); s.tweens.killTweensOf(bub);
+            end.remove(false); watch.remove(); s.tweens.killTweensOf(bub);
             if (this.bubbles.get(bk) === drop) this.bubbles.delete(bk);
-            s.tweens.add({ targets: bub, alpha: 0, duration: 200, onComplete: () => bub.destroy() });
+            // гаснет, не отставая от героя (отвязывается, когда погас)
+            s.tweens.add({ targets: bub, alpha: 0, duration: 200, onComplete: () => { u.detach(bub); bub.destroy(); } });
           };
           this.bubbles.set(bk, drop);
           break;

@@ -20,6 +20,7 @@ import type { Net, UnitState } from "../net";
 import { rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
 import { RaidHud } from "./raid";
+import { absorbHtml } from "./absorb";
 import { TradeUI } from "./trade";
 import { AdminUI } from "./admin";
 import { BestiaryUI } from "./bestiary";
@@ -1445,10 +1446,11 @@ export class Hud {
       this.targetBox.classList.toggle("boss", boss);
       const def = Object.values(MOBS).find((m) => m.name === t.name);
       const phase = boss ? `<div class="phase">Фаза ${t.phase + 1} · ур. ${t.level}${def?.uniques ? " · уникальная добыча" : ""}</div>` : "";
-      const sig = `${t.name}|${t.level}|${t.hp}|${t.maxHp}|${t.phase}`;
+      const shield = t.kind === UnitKind.Player ? Math.max(0, t.shield || 0) : 0; // щит-поглотитель шлётся только у героев
+      const sig = `${t.name}|${t.level}|${t.hp}|${t.maxHp}|${t.phase}|${shield}`;
       if (this.targetBox.dataset.sig !== sig) {
         this.targetBox.dataset.sig = sig;
-        this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i><span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
+        this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i>${absorbHtml(t.hp, t.maxHp, shield)}<span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
       }
     } else setHidden(this.targetBox, true);
 

@@ -42,6 +42,8 @@ export class Unit extends Schema {
   @type("string") faction = "";
   /** Игрок: нарушитель мира в нейтральном городе (стража атакует). */
   @type("uint8") outlaw = 0;
+  /** Игрок: остаток щита-поглотителя (целое, 0 — щита нет); для полосы щита поверх здоровья в рамках цели и группы. */
+  @type("int32") shield = 0;
 }
 
 export class WorldState extends Schema {

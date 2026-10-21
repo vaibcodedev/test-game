@@ -106,7 +106,7 @@ export class Vfx {
   private bind(spr: Phaser.GameObjects.Sprite, id: string, u: UnitView, dz?: number) {
     this.unbind(spr);
     this.bound.set(spr, u);
-    u.attach(spr, this.ground(id) ? 0 : -(u.frame > 32 ? 30 : 14), dz ?? (FLAT.test(id) ? null : this.ground(id) ? 0.1 : FRONT));
+    u.attach(spr, this.ground(id) ? 0 : -(u.frame > 32 ? 30 : 14), dz ?? (FLAT.test(id) ? null : this.ground(id) ? 0.1 : FRONT), !this.ground(id));
   }
   private unbind(spr: Phaser.GameObjects.Sprite) {
     const u = this.bound.get(spr);
@@ -179,8 +179,24 @@ export class Vfx {
 
   // ---------- циклы ----------
   private stopKey(k: string) { for (const r of this.looping.get(k) ?? []) r.stop(); this.looping.delete(k); }
-  /** Цикл на юните: плавно появляется, идёт за ним ms миллисекунд и плавно гаснет (ms <= 0 — снять сейчас). Один на ключ. */
-  followUnit(k: string, id: string, unitId: string, ms: number) {
+  /** Циклы, начатые бафами одного вида на юните (`${вид}|${юнит}` → ключи циклов): снять по виду можно, не зная умения-источника. */
+  private byKind = new Map<string, Set<string>>();
+  private remember(kind: string, k: string) { let s = this.byKind.get(kind); if (!s) this.byKind.set(kind, (s = new Set())); s.add(k); }
+  private forget(kind: string, k: string) { const s = this.byKind.get(kind); if (s) { s.delete(k); if (!s.size) this.byKind.delete(kind); } }
+  /** buff с ms <= 0 (щит пробит, вихрь прерван, эффект снят): убрать циклы-ауры. С меткой умения и живым циклом этого умения на юните — только его
+   *  (вид `enrage` делят несколько умений); иначе — все циклы этого вида на юните (пробитый щит приходит без метки умения-источника). true — что-то снято. */
+  endBuff(f: Extract<Fx, { t: "buff" }>): boolean {
+    const exact = f.s ? `${f.s}|${f.id}` : "";
+    if (exact && this.looping.has(exact)) { this.stopKey(exact); return true; }
+    const kind = `${f.k}|${f.id}`, keys = this.byKind.get(kind);
+    if (!keys) return false;
+    let any = false;
+    for (const k of [...keys]) if (this.looping.has(k)) { this.stopKey(k); any = true; }
+    this.byKind.delete(kind);
+    return any;
+  }
+  /** Цикл на юните: плавно появляется, идёт за ним ms миллисекунд и плавно гаснет (ms <= 0 — снять сейчас). Один на ключ. kind — вид бафа (для endBuff). */
+  followUnit(k: string, id: string, unitId: string, ms: number, kind?: string) {
     this.stopKey(k);
     if (ms <= 0 || !this.has(id)) return;
     const u0 = this.unit(unitId);
@@ -210,8 +226,10 @@ export class Vfx {
       this.fadeOut(id, spr, e.ease);
       if (back) this.fadeOut(`${id}-back`, back, this.catalog[`${id}-back`].ease);
       const l = this.looping.get(k); if (l) { const i = l.findIndex((r) => r.spr === spr); if (i >= 0) l.splice(i, 1); if (!l.length) this.looping.delete(k); }
+      if (kind) this.forget(kind, k);
     };
     this.looping.set(k, [{ spr, stop }]);
+    if (kind) this.remember(kind, k);
   }
   /** Цикл в круге на земле: стоящий предмет (знамя) — один спрайт в центре; облака и лужи — несколько спрайтов, разложенных по кругу радиуса умения
    *  (золотой угол, эллипс 0.7), не перекрывающих героев сплошной стеной: полупрозрачные, под юнитами, с лёгким покачиванием. Входят и гаснут плавно. */
@@ -349,9 +367,10 @@ export class Vfx {
   }
   /** Бафф: aura идёт за юнитом пока висит (ms <= 0 — снять); hit — один раз на юните. true — старые круги и пузыри не нужны. */
   buff(f: Extract<Fx, { t: "buff" }>, u: UnitView): boolean {
+    if (f.ms <= 0) return this.endBuff(f);
     const aura = this.slot(f, "aura"), hit = this.slot(f, "hit");
     if (!aura && !hit) return false;
-    if (aura) this.followUnit(`${f.s}|${f.id}`, aura, f.id, f.ms <= 0 ? 0 : Math.min(f.ms, 30000));
+    if (aura) this.followUnit(`${f.s}|${f.id}`, aura, f.id, Math.min(f.ms, 30000), `${f.k}|${f.id}`);
     if (hit && f.ms > 0 && !this.hitRecent(f)) this.atUnit(hit, u);
     return !!aura;
   }

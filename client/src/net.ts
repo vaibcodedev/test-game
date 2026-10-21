@@ -126,6 +126,8 @@ export interface UnitState {
   /** Игрок: фракция и метка нарушителя мира. */
   faction: string;
   outlaw: number;
+  /** Игрок: остаток щита-поглотителя, целое (0 — щита нет): полоса щита поверх здоровья в рамках цели и группы. */
+  shield: number;
 }
 
 export function serverUrl(): string {

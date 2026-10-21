@@ -32,6 +32,8 @@ interface St {
   shards: number; shardUntil: number;
   metaUntil: number; metaPct: number; metaLeech: number;
   shroudReady: number; wardReady: number; wardPending: number; eternalAt: number;
+  /** «Искажение времени» на самом маге: окно и прибавка скорости атаки (для значка эффекта). */
+  warpUntil: number; warpHaste: number;
 }
 const states = new WeakMap<Player, St>();
 function st(p: Player): St {
@@ -40,18 +42,30 @@ function st(p: Player): St {
     s = {
       rhythm: { school: "", n: 0, until: 0 }, shock: new Map(), barrier: null, escapeReady: 0, burns: new Map(),
       hex: new Map(), shards: 0, shardUntil: 0, metaUntil: 0, metaPct: 0, metaLeech: 0, shroudReady: 0, wardReady: 0, wardPending: 0, eternalAt: 0,
+      warpUntil: 0, warpHaste: 0,
     };
     states.set(p, s);
   }
   return s;
 }
-// значки в рамке героя (auras.ts): стихийный ритм, осколки душ, метаморфоза
+// значки в рамке героя (auras.ts): стихийный ритм, осколки душ, метаморфоза, искажение времени
 registerAuraHook((a, _now, aura) => {
   const s = states.get(a as Player);
   if (!s) return;
   if (s.rhythm.n > 0) aura("rhythm", s.rhythm.until, { n: s.rhythm.n });
   if (s.shards > 0) aura("shards", s.shardUntil, { n: s.shards });
   aura("meta", s.metaUntil, { v: s.metaPct });
+  aura("timewarp", s.warpUntil, { v: s.warpHaste });
+});
+/** Кто наложил на героя «шок» (боевой маг) и «Проклятие рока» (чернокнижник): только герои-цели, сами метки — в состоянии наложившего. */
+const shockedBy = new WeakMap<object, Player>(), hexedBy = new WeakMap<object, Player>();
+// значки меток на герое-цели (auras.ts): шок молнии (прибавка урона мага — только с «Проводимостью») и проклятие рока
+registerAuraHook((a, _now, aura) => {
+  const id = (a as Actor).id;
+  const m = shockedBy.get(a), until = m && !m.dead ? states.get(m)?.shock.get(id) : undefined;
+  if (m && until !== undefined && rk(m, "mg_conduction")) aura("shock", until, { v: pv(m, "mg_conduction").shock });
+  const h = hexedBy.get(a), hx = h && !h.dead ? states.get(h)?.hex.get(id) : undefined;
+  if (hx) aura("hex", hx.until, { v: hx.pct });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -78,6 +92,7 @@ function distSeg(px: number, py: number, ax: number, ay: number, bx: number, by:
 /** «Шок» от молнии: цель 5 с получает больше урона от мага (Проводимость). */
 function shock(w: World, p: Player, m: Actor) {
   st(p).shock.set(m.id, w.time + 5000);
+  if (w.isPlayer(m)) shockedBy.set(m, p); // у героя-цели шок виден в списке эффектов
   w.emit({ t: "buff", id: m.id, k: "shock", ms: 500 });
 }
 
@@ -136,7 +151,8 @@ export function castMage(c: CastCtx): string | null | undefined {
       c.ok();
       if (s.barrier) explode(w, p, s.barrier);
       const amt = Math.round(((u.maxHp * v.absorb) / 100) * outlawMul(w, p));
-      p.shieldAmt = Math.min(u.maxHp * 0.6, (p.shieldUntil > w.time ? p.shieldAmt : 0) + amt);
+      const was = p.shieldUntil > w.time && p.shieldAmt >= 1 ? p.shieldAmt : 0;
+      p.shieldAmt = Math.max(was, Math.min(u.maxHp * 0.6, was + amt)); // потолок не урезает больший действующий щит
       p.shieldUntil = w.time + v.dur * 1000;
       p.shieldBy = p;
       const b = { until: p.shieldUntil, absorbed: 0 };
@@ -187,6 +203,8 @@ export function castMage(c: CastCtx): string | null | undefined {
     case "mg_timewarp": {
       c.ok(); castAnim();
       applyHaste(w, p, v.haste, v.dur * 1000);
+      s.warpUntil = w.time + v.dur * 1000;
+      s.warpHaste = v.haste;
       w.emit({ t: "buff", id: p.id, k: "warp", ms: v.dur * 1000 });
       w.emit({ t: "aoe", k: "timewarp", x: u.x, y: u.y, r: v.radius });
       const pulse = () => {
@@ -208,6 +226,7 @@ export function castMage(c: CastCtx): string | null | undefined {
       w.later(ms, () => {
         if (w.isDead(t) || !w.hostile(p, t) || !w.canAffect(p, t)) return;
         s.hex.set(t.id, { until: w.time + v.dur * 1000, pct: v.amp });
+        if (w.isPlayer(t)) hexedBy.set(t, p); // у героя-цели проклятие рока видно в списке эффектов
         applyWeaken(w, p, t, v.weak, v.dur * 1000);
         w.emit({ t: "aoe", k: "hex", x: t.x, y: t.y, r: 46 });
         c.threat(t, 30);
@@ -272,7 +291,7 @@ function explode(w: World, p: Player, b: { until: number; absorbed: number }) {
   const s = st(p);
   if (s.barrier !== b) return;
   s.barrier = null;
-  w.emit({ t: "buff", id: p.id, k: "block", ms: 0 }); // клиент убирает пузырь барьера (ms 0)
+  w.emit({ t: "buff", id: p.id, k: "block", ms: 0 }, false); // клиент убирает пузырь барьера (ms 0); без метки умения: взрыв может случиться посреди чужого удара
   const r = rk(p, "mg_expl_barrier");
   if (!r || b.absorbed < 1 || w.gone(p)) return;
   const m = pv(p, "mg_expl_barrier");
@@ -456,6 +475,7 @@ function ignite(w: World, p: Player, dst: Actor, v: number, crit: boolean) {
   const m = pv(p, "mg_ignite"), s = st(p);
   const add = v * (m.pct / 100) * (crit ? 2 : 1);
   const until = w.time + m.dur * 1000 + 500; // +0,5 с запаса: тик на границе срока не теряется, тиков ровно {dur}
+  if (w.isPlayer(dst)) dst.burnUntil = Math.max(dst.burnUntil, until); // герой-цель горит: значок «Горение» и красный оттенок для всех
   const cur = s.burns.get(dst.id);
   if (cur && cur.until > w.time && cur.left > 0) {
     cur.left += add;
@@ -493,10 +513,11 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number, _o: H
     if (low && w.time >= s.shroudReady) {
       const m = pv(dst, "wl_shroud");
       s.shroudReady = w.time + m.icd * 1000;
-      dst.shieldAmt = (dst.shieldUntil > w.time ? dst.shieldAmt : 0) + Math.round(((dst.unit.maxHp * m.shield) / 100) * outlawMul(w, dst));
-      dst.shieldUntil = w.time + 6000;
+      const live = dst.shieldUntil > w.time && dst.shieldAmt >= 1;
+      dst.shieldAmt = (live ? dst.shieldAmt : 0) + Math.round(((dst.unit.maxHp * m.shield) / 100) * outlawMul(w, dst));
+      dst.shieldUntil = Math.max(live ? dst.shieldUntil : 0, w.time + 6000); // короткий саван не обрывает чужой длинный щит
       dst.shieldBy = dst;
-      w.emit({ t: "buff", id: dst.id, k: "block", ms: 6000 });
+      w.emit({ t: "buff", id: dst.id, k: "block", ms: Math.round(dst.shieldUntil - w.time) });
       w.emit({ t: "aoe", k: "reap", x: dst.x, y: dst.y, r: 60 });
     }
     return;
@@ -519,10 +540,11 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number, _o: H
   dst.unit.y = best.y;
   dst.moveTo = null;
   dst.rootUntil = dst.slowUntil = 0;
-  dst.shieldAmt = (dst.shieldUntil > w.time ? dst.shieldAmt : 0) + Math.round(((dst.unit.maxHp * m.shield) / 100) * outlawMul(w, dst));
-  dst.shieldUntil = w.time + 4000;
+  const live = dst.shieldUntil > w.time && dst.shieldAmt >= 1;
+  dst.shieldAmt = (live ? dst.shieldAmt : 0) + Math.round(((dst.unit.maxHp * m.shield) / 100) * outlawMul(w, dst));
+  dst.shieldUntil = Math.max(live ? dst.shieldUntil : 0, w.time + 4000); // короткий щит скачка не обрывает чужой длинный
   dst.shieldBy = dst;
-  w.emit({ t: "buff", id: dst.id, k: "shield", ms: 4000 });
+  w.emit({ t: "buff", id: dst.id, k: "shield", ms: Math.round(dst.shieldUntil - w.time) });
 }
 
 /** Убийство моба героем: «Осколки душ» и «Эпидемия» чернокнижника. */

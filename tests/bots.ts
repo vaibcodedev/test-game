@@ -272,6 +272,7 @@ async function main() {
       a.send("dbg", { op: "drop", v: false });
     });
     await check("экипировка: надеть, снять, ограничения класса и уровня", async () => {
+      a.send("dbg", { op: "calm" }); // в бою снаряжение не меняется (inventory.ts), а герой только что дрался за добычу
       a.send("dbg", { op: "item", base: "sword", ilvl: 3, rarity: 2 });
       await a.until(() => a.self!.inventory.some((i) => i?.base === "sword" && i.rarity === 2), 2000, "меч в сумке");
       const idx = a.self!.inventory.findIndex((i) => i?.base === "sword" && i.rarity === 2);
@@ -291,6 +292,7 @@ async function main() {
       await a.until(() => a.self!.inventory.some((i) => i?.base === "helmet" && i.ilvl === 25), 2000, "шлем");
       a.send("equip", { index: a.self!.inventory.findIndex((i) => i?.base === "helmet" && i.ilvl === 25) });
       await a.until(() => a.toasts.some((t) => t.startsWith("Нужен 23")), 2000, "отказ по уровню");
+      a.send("dbg", { op: "calm" });
       a.send("equip", { index: a.self!.inventory.findIndex((i) => i?.base === "sword" && i.rarity === 2) });
       await a.until(() => a.self!.equip.weapon?.rarity === 2, 2000, "меч снова надет");
     });

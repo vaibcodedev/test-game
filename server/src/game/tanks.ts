@@ -23,6 +23,10 @@ interface St {
   invulnUntil: number; amUntil: number; amPct: number; amHeal: number;
   bladeUntil: number; bladePct: number; bladeLeech: number;
   lastTemper: number; tapReady: number; embraceReady: number; embracePending: boolean;
+  /** «Пожирание боли»: лечение идёт до tapUntil, tapAmt здоровья в секунду (для значка эффекта). */
+  tapUntil: number; tapAmt: number;
+  /** «Вампирская кровь»: до какого момента идёт уже показанная картинка щита (чтобы не перезапускать её каждым ударом). */
+  vampFxUntil: number;
   log: [number, number][];
   marks: Map<string, Mark>;
 }
@@ -30,18 +34,27 @@ const states = new WeakMap<Player, St>();
 function st(p: Player): St {
   let s = states.get(p);
   if (!s) {
-    s = { hits: 0, wrath: 0, runes: 0, invulnUntil: 0, amUntil: 0, amPct: 0, amHeal: 0, bladeUntil: 0, bladePct: 0, bladeLeech: 0, lastTemper: 0, tapReady: 0, embraceReady: 0, embracePending: false, log: [], marks: new Map() };
+    s = { hits: 0, wrath: 0, runes: 0, invulnUntil: 0, amUntil: 0, amPct: 0, amHeal: 0, bladeUntil: 0, bladePct: 0, bladeLeech: 0, lastTemper: 0, tapReady: 0, embraceReady: 0, embracePending: false, tapUntil: 0, tapAmt: 0, vampFxUntil: 0, log: [], marks: new Map() };
     states.set(p, s);
   }
   return s;
 }
-// значки в рамке героя (auras.ts): неуязвимость, антимагия, рунный клинок
+// значки в рамке героя (auras.ts): неуязвимость, антимагия, рунный клинок, «Пожирание боли»
 registerAuraHook((a, _now, aura) => {
   const s = states.get(a as Player);
   if (!s) return;
   aura("invuln", s.invulnUntil);
   aura("antimagic", s.amUntil, { v: s.amPct });
   aura("runeblade", s.bladeUntil, { v: s.bladePct });
+  aura("blood_tap", s.tapUntil, { v: s.tapAmt });
+});
+/** Кто метит героя «Знаком смерти» (только герои-цели; сами метки — в состоянии рыцаря смерти). */
+const markedBy = new WeakMap<object, Player>();
+// значок метки на герое-цели (auras.ts): «Знак смерти» рыцаря смерти — стаки и прибавка урона по цели
+registerAuraHook((a, _now, aura) => {
+  const d = markedBy.get(a);
+  const mk = d && !d.dead && rk(d, "dk_mortality") ? states.get(d)?.marks.get((a as Actor).id) : undefined;
+  if (d && mk) aura("mortality", mk.until, { n: mk.n, v: mk.n * pv(d, "dk_mortality").perMark });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -259,6 +272,7 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
       const cur = s.marks.get(key);
       const n = Math.min(m.max, (cur && cur.until > w.time ? cur.n : 0) + 1);
       s.marks.set(key, { n, until: w.time + m.dur * 1000 });
+      if (w.isPlayer(target)) markedBy.set(target, p); // у героя-цели метка видна в списке эффектов
       w.emit({ t: "buff", id: target.id, k: "weak", ms: 600 });
     }
     if (id === "dk_death_grip" && target && rk(p, "dk_iron_chains")) {
@@ -279,10 +293,12 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
     const vg = rk(p, "tp_vanguard");
     if (vg && (id === "charge" || id === "tp_shield_bash")) {
       const m = pv(p, "tp_vanguard");
-      p.shieldAmt = Math.min(p.unit.maxHp * 0.5, (p.shieldUntil > w.time ? p.shieldAmt : 0) + Math.round((p.unit.maxHp * m.abs) / 100));
-      p.shieldUntil = w.time + m.dur * 1000;
+      const live = p.shieldUntil > w.time && p.shieldAmt >= 1, was = live ? p.shieldAmt : 0;
+      // потолок не урезает больший действующий щит; срок — позднейший (короткий щит не обрывает чужой длинный)
+      p.shieldAmt = Math.max(was, Math.min(p.unit.maxHp * 0.5, was + Math.round((p.unit.maxHp * m.abs) / 100)));
+      p.shieldUntil = Math.max(live ? p.shieldUntil : 0, w.time + m.dur * 1000);
       p.shieldBy = p;
-      w.emit({ t: "buff", id: p.id, k: "shield", ms: m.dur * 1000 });
+      w.emit({ t: "buff", id: p.id, k: "shield", ms: Math.round(p.shieldUntil - w.time) });
     }
   }
 }
@@ -381,9 +397,11 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number, o: Hi
     s.embracePending = false;
     const m = pv(dst, "dk_deaths_embrace");
     w.heal(dst, Math.round((dst.unit.maxHp * m.hp) / 100));
-    dst.shieldAmt = Math.round(dst.unit.maxHp * 0.15);
-    dst.shieldUntil = w.time + 5000;
+    const live = dst.shieldUntil > w.time && dst.shieldAmt >= 1;
+    dst.shieldAmt = Math.max(live ? dst.shieldAmt : 0, Math.round(dst.unit.maxHp * 0.15)); // больший действующий щит не урезается
+    dst.shieldUntil = Math.max(live ? dst.shieldUntil : 0, w.time + 5000);
     dst.shieldBy = dst;
+    w.emit({ t: "buff", id: dst.id, k: "shield", ms: Math.round(dst.shieldUntil - w.time) }); // щит виден все 5 с, а не только вспышка неуязвимости
     w.emit({ t: "buff", id: dst.id, k: "invuln", ms: 1500 });
     w.emit({ t: "aoe", k: "reap", x: dst.x, y: dst.y, r: 90 });
   }
@@ -423,6 +441,8 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number, o: Hi
     const m = pv(dst, "dk_blood_tap");
     s.tapReady = w.time + m.icd * 1000;
     const total = s.log.reduce((a, e) => a + e[1], 0) * (m.conv / 100);
+    s.tapUntil = w.time + 5000;
+    s.tapAmt = Math.round(total / 5);
     w.emit({ t: "buff", id: dst.id, k: "heal", ms: 5000 });
     for (let i = 1; i <= 5; i++) w.later(i * 1000, () => { if (!dst.dead) w.heal(dst, Math.round(total / 5)); });
   }
@@ -438,9 +458,18 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
     const got = w.heal(src, amt, false);
     const over = amt - got;
     if (over > 0) {
-      src.shieldAmt = Math.min(src.unit.maxHp * 0.2, (src.shieldUntil > w.time ? src.shieldAmt : 0) + over);
-      src.shieldUntil = w.time + 8000;
-      src.shieldBy = src;
+      const live = src.shieldUntil > w.time && src.shieldAmt >= 1, was = live ? src.shieldAmt : 0;
+      const next = Math.max(was, Math.min(src.unit.maxHp * 0.2, was + over)); // потолок 20% не урезает больший щит (например, чужой «Святой щит»)
+      if (next >= 1) {
+        src.shieldAmt = next;
+        src.shieldUntil = Math.max(live ? src.shieldUntil : 0, w.time + 8000);
+        src.shieldBy = src;
+        // картинку рисуем при появлении щита и когда прежняя вот-вот кончится, а щит продлён; каждый удар с излишком её не перезапускает
+        if (!live || s.vampFxUntil - w.time < 4000) {
+          s.vampFxUntil = src.shieldUntil;
+          w.emit({ t: "buff", id: src.id, k: "shield", ms: Math.round(src.shieldUntil - w.time) });
+        }
+      }
     }
   }
   const fury = rk(src, "dk_rune_fury");

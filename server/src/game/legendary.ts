@@ -6,7 +6,7 @@
  */
 import { LEGENDARIES, type LegendaryEffect } from "../../../shared/legendary";
 import type { Actor, HitOpts, World } from "./World";
-import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effects";
+import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken, shieldLeft } from "./effects";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import { registerAuraHook } from "./auras";
@@ -33,6 +33,11 @@ registerAuraHook((a, _now, aura) => {
   if (s.shield >= 1) aura("leg_barrier", s.shieldUntil, { v: s.shield });
   if (s.stacks > 0) aura("leg_frenzy", s.stacksUntil, { n: s.stacks });
 });
+/** Сколько поглотит барьер реликвии сейчас (0 — барьера нет): для снятия картинки щита (World.hitEx, effects.endShield). */
+export function barrierLeft(p: Player, now: number): number {
+  const s = STATE.get(p);
+  return s && s.shield >= 1 && s.shieldUntil > now ? s.shield : 0;
+}
 /** Перезарядка свойства: true — готово (и сразу ставится заново на ms). */
 function ready(w: World, p: Player, key: string, ms: number): boolean {
   const s = st(p);
@@ -130,6 +135,7 @@ export const HANDLERS: Record<string, Handler> = {
     hit(w, src, dst, v, _c, e) {
       if (!roll(e)) return;
       const flat = v * n(e, "pct");
+      if (w.isPlayer(dst)) dst.burnUntil = Math.max(dst.burnUntil, w.time + n(e, "ticks") * 1000 + 500); // герой-цель горит: значок «Горение» и оттенок
       for (let i = 1; i <= n(e, "ticks"); i++) w.later(i * 1000, () => extraHit(w, src, dst, flat, "fire", 0.3), src);
     },
   },
@@ -189,6 +195,12 @@ export const HANDLERS: Record<string, Handler> = {
       if (s.shield <= 0 || s.shieldUntil <= w.time) { s.shield = 0; return amount; }
       const take = Math.min(s.shield, amount);
       s.shield -= take;
+      // барьер пробит раньше срока: пузырь убираем сразу (вид `block` делит и основной щит героя — его пузырь не трогаем)
+      if (s.shield < 0.5) {
+        s.shield = 0;
+        s.shieldUntil = 0;
+        if (shieldLeft(w, dst) <= 0 && dst.blockUntil <= w.time && dst.lastStandUntil <= w.time) w.emit({ t: "buff", id: dst.id, k: "block", ms: 0 }, false);
+      }
       return amount - take;
     },
   },

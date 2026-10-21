@@ -33,7 +33,7 @@ import { tickEncounters } from "./encounters";
 import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
-import { applySlow, tickEffects } from "./effects";
+import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack } from "./auras";
 import type { Player } from "./Player";
 
@@ -123,8 +123,9 @@ export class World {
   /** Умение, которое сейчас применяется (ставит castSkill; таймеры later его запоминают): эффекты получают поля s и c. */
   fxSkill: string | null = null;
   fxCaster: string | null = null;
-  emit(fx: Fx) {
-    if (this.fxSkill && fx.t !== "dmg") { fx.s = this.fxSkill; fx.c = this.fxCaster ?? undefined; }
+  /** tag = false — без пометки умением: снятие эффекта (buff с ms 0) из чужого удара не должно выглядеть как каст того умения, которое бьёт. */
+  emit(fx: Fx, tag = true) {
+    if (tag && this.fxSkill && fx.t !== "dmg") { fx.s = this.fxSkill; fx.c = this.fxCaster ?? undefined; }
     this.fx.push(fx);
   }
   /**
@@ -458,6 +459,7 @@ export class World {
       if (ls && dst.unit.hp < dst.unit.maxHp * 0.3 && this.time >= dst.lastStandReady) {
         const v = SKILLS.laststand.v(ls);
         dst.lastStandUntil = this.time + v.dur * 1000;
+        dst.lastStandPct = v.reduce; // для значка эффекта (auras.ts)
         dst.lastStandReady = this.time + v.icd * 1000;
         this.emit({ t: "buff", id: dst.id, k: "block", ms: v.dur * 1000 });
       }
@@ -490,6 +492,13 @@ export class World {
         if (dst.shieldBy) this.onHeal?.(dst.shieldBy, Math.round(ab));
         healers.onAbsorb(this, dst.shieldBy, dst, ab, src);
         mages.onAbsorb(this, dst, ab);
+        // щит пробит раньше срока: картинка исчезает сразу (buff с ms 0), срок обнуляется — следующий щит не унаследует остаток чужого срока;
+        // значок в рамке героя уходит сам (auras.ts: щит с остатком меньше 1 не показывается)
+        if (dst.shieldAmt < 0.5) {
+          dst.shieldAmt = 0;
+          dst.shieldUntil = 0;
+          endShield(this, dst, legendary.barrierLeft(dst, this.time) > 0);
+        }
         if (amount < 0.5) {
           dst.combatAt = this.time;
           if (this.isPlayer(src)) src.combatAt = this.time;
@@ -621,7 +630,10 @@ export class World {
     this.breakMount(p);
     p.petCast = null;
     p.dead = true;
+    if (p.shieldAmt > 0 || p.shieldUntil > this.time) endShield(this, p, legendary.barrierLeft(p, this.time) > 0);
     p.shieldAmt = 0;
+    p.shieldUntil = 0;
+    p.unit.shield = 0;
     p.bondUntil = p.boneUntil = p.frenzyUntil = p.curseUntil = p.bleedUntil = p.venomUntil = 0;
     p.deadAt = this.time;
     p.unit.anim = Anim.Dead;
@@ -755,6 +767,10 @@ export class World {
     if (p.curseUntil > t) b |= BUFF_CURSE;
     if (p.bleedUntil > t) b |= BUFF_BLEED;
     u.buffs = b;
+    // остаток щита-поглотителя для рамок цели и группы (только у героев, целым): шлётся только при изменении
+    if (p.shieldAmt > 0 && p.shieldUntil <= t) p.shieldAmt = 0; // срок вышел: остаток не висит (по shieldAmt судят и боты арены и рейда)
+    const sh = p.shieldUntil > t ? Math.round(p.shieldAmt) : 0;
+    if (u.shield !== sh) u.shield = sh;
     // чужак во вражеской столице: стража бьёт, пока он там (метка нарушителя видна всем)
     const intruder = this.opts.mobs !== false && p.team === 0 && !p.dead && inEnemyCapital(p.faction, u.x, u.y);
     if (intruder !== p.intruder) {

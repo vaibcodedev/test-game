@@ -6,7 +6,11 @@
  * Откуда берутся эффекты:
  *  - поля героя (FIELDS): срок «...Until» на часах World.time, величина (процент, остаток щита) и стаки — соседние поля;
  *  - состояние классов, спрятанное в модулях (WeakMap): модуль сам объявляет свои эффекты через registerAuraHook;
+ *    метки на герое-цели (охотник, шок, знак смерти, проклятие рока) лежат в состоянии наложившего, а у цели — обратная ссылка
+ *    (WeakMap цель → наложивший): хук цели читает срок и величину у наложившего, поэтому метка и значок никогда не расходятся;
  *  - еда — из сохранения героя (save.food, срок в реальном времени Date.now()).
+ * Щит-поглотитель: поле shieldAmt/shieldUntil (один «котёл» на героя), значок `shield` с остатком; пробит раньше срока — World.hitEx обнуляет
+ * его и шлёт buff с ms 0 (effects.endShield), остаток для рамок цели и группы — Unit.shield. Подробный разбор по умениям — tools/out/auras-audit.md.
  * Служебные сроки (castUntil, gcdUntil, waitUntil, petCdUntil, frozenUntil арены, reviveUntil...) — не эффекты и здесь не перечислены.
  */
 import { FOOD } from "../../../shared/food";
@@ -49,7 +53,7 @@ export const AURA_FIELDS: readonly FieldAura[] = [
   { k: "shield", until: "shieldUntil", v: "shieldAmt", need: true },
   { k: "block", until: "blockUntil", v: "blockPct" },
   { k: "bone", until: "boneUntil", v: "boneChill" },
-  { k: "laststand", until: "lastStandUntil" },
+  { k: "laststand", until: "lastStandUntil", v: "lastStandPct" },
   { k: "renew", until: "renewUntil", v: "renewAmt", by: "renewBy" },
   { k: "bond", until: "bondUntil", v: "bondShare", by: "bondBy" },
   { k: "frenzy", until: "frenzyUntil", v: "frenzyLeech" },

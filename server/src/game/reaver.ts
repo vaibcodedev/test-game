@@ -16,17 +16,20 @@ import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
 
-interface St { furyStacks: number; furyUntil: number; defReady: number; defPending: boolean; massacre: number }
+/** massacre — токен вихря «Кровавой бойни» (оглушение его обрывает), massacreUntil — когда вихрь кончится (для значка эффекта). */
+interface St { furyStacks: number; furyUntil: number; defReady: number; defPending: boolean; massacre: number; massacreUntil: number }
 const states = new WeakMap<Player, St>();
 function st(p: Player): St {
   let s = states.get(p);
-  if (!s) { s = { furyStacks: 0, furyUntil: 0, defReady: 0, defPending: false, massacre: 0 }; states.set(p, s); }
+  if (!s) { s = { furyStacks: 0, furyUntil: 0, defReady: 0, defPending: false, massacre: 0, massacreUntil: 0 }; states.set(p, s); }
   return s;
 }
-// значок в рамке героя (auras.ts): «Разъярённый» со стаками
+// значки в рамке героя (auras.ts): «Разъярённый» со стаками, «Кровавая бойня»
 registerAuraHook((a, _now, aura) => {
   const s = states.get(a as Player);
-  if (s && s.furyStacks > 0) aura("fury", s.furyUntil, { n: s.furyStacks });
+  if (!s) return;
+  if (s.furyStacks > 0) aura("fury", s.furyUntil, { n: s.furyStacks });
+  aura("massacre", s.massacreUntil);
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -137,12 +140,19 @@ export function castReaver(c: CastCtx): string | null | undefined {
       // токен: оглушение обрывает вихрь; смерть и уход героя отсекает владелец таймера (w.later)
       const s = st(p), token = ++s.massacre;
       const ticks = Math.max(1, Math.floor(v.dur * 2));
+      s.massacreUntil = w.time + ticks * 500;
       w.emit({ t: "buff", id: p.id, k: "enrage", ms: v.dur * 1000 });
       w.emit({ t: "aoe", k: "tide", x: u.x, y: u.y, r: v.radius });
       for (let i = 1; i <= ticks; i++)
         w.later(i * 500, () => {
           if (s.massacre !== token) return;
-          if (p.stunUntil > w.time) { s.massacre++; return; }
+          if (p.stunUntil > w.time) {
+            // оглушение прервало вихрь: значок и картинка вихря (метка умения нужна — вид enrage делят и другие умения) уходят сразу
+            s.massacre++;
+            s.massacreUntil = 0;
+            w.emit({ t: "buff", id: p.id, k: "enrage", ms: 0 });
+            return;
+          }
           // самоцена: всегда платится, но не добивает героя (HP не опускается ниже 1)
           const pay = Math.min(Math.round((u.maxHp * v.cost) / 200), u.hp - 1);
           if (pay > 0) { u.hp -= pay; w.emit({ t: "dmg", id: p.id, v: pay, k: "blood" }); }

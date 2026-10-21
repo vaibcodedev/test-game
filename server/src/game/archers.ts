@@ -11,7 +11,7 @@ import { Anim, Dir } from "../../../shared/protocol";
 import { SKILLS, SUMMONS } from "../../../shared/skills";
 import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
-import { addDot, dots, type CastCtx } from "./umbrath";
+import { addDot, dots, endDot, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
@@ -34,6 +34,8 @@ interface St {
   preyReady: number;
   /** Цель, которую только что задел капкан, до какого времени (другие капканы героя её не трогают). */
   trapHit: WeakMap<Actor, number>;
+  /** «Ураганный огонь»: стрельба идёт до этого момента (для значка эффекта). */
+  barrageUntil: number;
 }
 const states = new WeakMap<Player, St>();
 /** Идёт «Взрыв проклятий»: его урон не считается тиком проклятия (не лечит «Усилением проклятий»). */
@@ -41,18 +43,27 @@ let bursting = false;
 function st(p: Player): St {
   let s = states.get(p);
   if (!s) {
-    s = { px: 0, py: 0, since: 0, markId: "", markUntil: 0, markPct: 0, markHop: 0, rollUntil: 0, rollPct: 0, ravenReady: 0, ambushUntil: 0, ambushDst: "", meldUntil: 0, vanishReady: 0, preyReady: 0, trapHit: new WeakMap() };
+    s = { px: 0, py: 0, since: 0, markId: "", markUntil: 0, markPct: 0, markHop: 0, rollUntil: 0, rollPct: 0, ravenReady: 0, ambushUntil: 0, ambushDst: "", meldUntil: 0, vanishReady: 0, preyReady: 0, trapHit: new WeakMap(), barrageUntil: 0 };
     states.set(p, s);
   }
   return s;
 }
-// значки в рамке героя (auras.ts): окна «Ловкого отскока», «Засады» и «Мастера теней» (метка охотника лежит на цели, не на герое)
-registerAuraHook((a, _now, aura) => {
-  const s = states.get(a as Player);
+// значки в рамке героя (auras.ts): окна «Ловкого отскока», «Засады» и «Мастера теней», «Ураганный огонь», «Стойка стрелка» (пока егерь стоит)
+registerAuraHook((a, now, aura) => {
+  const p = a as Player, s = states.get(p);
   if (!s) return;
   aura("trickroll", s.rollUntil, { v: s.rollPct });
   aura("dr_ambush", s.ambushUntil);
   aura("meld", s.meldUntil);
+  aura("barrage", s.barrageUntil);
+  if (p.cls === "ranger" && rk(p, "hr_steady") && now - s.since >= 1000) aura("steady", Infinity, { v: pv(p, "hr_steady").dmg });
+});
+/** Кто метит героя «Меткой охотника» (только герои-цели; сама метка — в состоянии охотника). */
+const huntedBy = new WeakMap<object, Player>();
+// значок метки на герое-цели (auras.ts): охотник бьёт меченого сильнее; метка живёт, пока охотник жив и не перенёс её на другого
+registerAuraHook((a, _now, aura) => {
+  const h = huntedBy.get(a), hs = h && !h.dead ? states.get(h) : undefined;
+  if (hs && hs.markId === (a as Actor).id) aura("hunter_mark", hs.markUntil, { v: hs.markPct });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -152,6 +163,7 @@ function placeTrap(w: World, p: Player, x: number, y: number, trapRank: number) 
 function setMark(w: World, p: Player, t: Actor, pct: number, ms: number, hop: number) {
   const s = st(p);
   s.markId = t.id; s.markUntil = w.time + ms; s.markPct = pct; s.markHop = hop;
+  if (w.isPlayer(t)) huntedBy.set(t, p); // у героя-цели метка видна в списке эффектов
   const id = t.id;
   const pulse = () => {
     if (s.markId !== id || s.markUntil <= w.time || w.isDead(t)) return;
@@ -272,6 +284,7 @@ export function castArcher(c: CastCtx): string | null | undefined {
     }
     case "hr_barrage": {
       c.ok();
+      s.barrageUntil = w.time + 150 + v.shots * v.every * 1000;
       w.emit({ t: "buff", id: p.id, k: "haste", ms: v.shots * v.every * 1000 });
       w.emit({ t: "aoe", k: "phys", x: u.x, y: u.y, r: 44 });
       const pick = (): Actor | undefined => {
@@ -316,8 +329,8 @@ export function castArcher(c: CastCtx): string | null | undefined {
           bursting = true;
           try { w.hit(p, t, { flat: burst, canCrit: false, kind: "shadow", noBreak: true, noProc: true }); } finally { bursting = false; }
         }
-        // проклятие сработало целиком; общий флаг t.curseUntil не трогаем (на цели могут висеть чужие проклятия и пиявка)
-        dots.delete(curseKey(p, t));
+        // проклятие сработало целиком; значок на цели уходит, только если других проклятий на ней нет (чужие и пиявка держат его сами)
+        endDot(p, t, "curse");
       });
       return null;
     }

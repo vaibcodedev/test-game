@@ -5,6 +5,7 @@ import { UnitKind } from "../../../shared/protocol";
 import { phaseName, phaseNo, RAID, RAID_CFG, RAID_PHASES, RAID_ROLES, ROLE_NAMES, type RaidBannerMsg, type RaidMemberInfo, type RaidMusterMsg, type RaidResultMsg, type RaidRole } from "../../../shared/raid";
 import type { Net, UnitState } from "../net";
 import { setHidden } from "./kit";
+import { absorbApply } from "./absorb";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const num = (n: number) => Math.round(n).toLocaleString("ru-RU");
@@ -292,7 +293,7 @@ export class RaidHud {
       this.lastKey = key;
       this.lastRows = list.length;
       this.fRows.classList.toggle("two", list.length > 10);
-      this.fRows.innerHTML = list.map((x) => `<div class="uframe raid-row" data-id="${esc(x.id)}" ${x.dead ? "data-dead" : ""}>${roleImg(x.role, " uframe-role")}<span class="uframe-name">${esc(x.u.name)}</span><span class="uframe-st"></span><div class="bar hp sm"><i></i></div></div>`).join("");
+      this.fRows.innerHTML = list.map((x) => `<div class="uframe raid-row" data-id="${esc(x.id)}" ${x.dead ? "data-dead" : ""}>${roleImg(x.role, " uframe-role")}<span class="uframe-name">${esc(x.u.name)}</span><span class="uframe-st"></span><div class="bar hp sm"><i></i><b class="abs" hidden></b></div></div>`).join("");
     }
     const rows = this.fRows.children;
     for (let i = 0; i < list.length; i++) {
@@ -300,6 +301,7 @@ export class RaidHud {
       if (!row) break;
       const k = Math.max(0, Math.min(1, x.u.hp / Math.max(1, x.u.maxHp)));
       (row.querySelector("i") as HTMLElement).style.width = `${x.dead ? 0 : k * 100}%`;
+      absorbApply(row.querySelector<HTMLElement>(".bar.hp > .abs"), x.u.hp, x.u.maxHp, x.dead ? 0 : x.u.shield || 0); // щит-поглотитель поверх здоровья
       const rv = this.revive.get(x.id) ?? this.revive.get(x.u.name);
       if (rv && rv.until < now) { this.revive.delete(x.id); this.revive.delete(x.u.name); }
       const em = row.querySelector(".uframe-st")!;

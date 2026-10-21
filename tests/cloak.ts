@@ -6,9 +6,9 @@ import { WorldState } from "../server/src/rooms/schema";
 import { addItem, equip, unequip } from "../server/src/game/inventory";
 import { BASE_ITEMS, ITEM_MODELS, SLOTS, makeItem, makeLoot, Rarity, listItemCategories, type Item } from "../shared/items";
 
-const mk = (save = newSave("warrior", { x: 100, y: 100 })) => {
+const mk = (save = newSave("warrior", { x: 100, y: 100 }), send: (t: string, m: { text?: string }) => void = () => {}) => {
   const w = new World(new WorldState(), () => {});
-  const p = new Player("t_cl", "Плащеносец", save, () => {});
+  const p = new Player("t_cl", "Плащеносец", save, send as never);
   w.addPlayer(p);
   return { w, p };
 };
@@ -41,9 +41,8 @@ async function main() {
   });
 
   await check("в бою снаряжение не меняется: ни надеть, ни снять; после боя — можно", () => {
-    const { w, p } = mk();
     const toasts: string[] = [];
-    p.send = ((t: string, m: { text?: string }) => { if (t === "toast" && m.text) toasts.push(m.text); }) as typeof p.send;
+    const { w, p } = mk(undefined, (t, m) => { if (t === "toast" && m.text) toasts.push(m.text); });
     const cl = makeItem("cloak_str_30", 30, Rarity.Rare); cl.req = 1;
     addItem(p, cl);
     const at = () => p.save.inventory.findIndex((i) => i?.uid === cl.uid);

@@ -81,10 +81,34 @@ export function dotsOf(w: World, p: Player, target: Actor): { key: string; dmg: 
   for (const [k, e] of dots) if (k.startsWith(pre) && e.until > w.time) out.push({ key: k.slice(pre.length), dmg: e.dmg, stacks: e.stacks, left: e.until - w.time });
   return out;
 }
+/**
+ * После снятия эффектов (gone — самые поздние сроки снятого: проклятий и кровотечений) флаги значков цели выравниваются по оставшимся:
+ * взрыв проклятий и жатва ран не должны оставлять «Проклятие» и «Кровотечение» в рамке героя-жертвы. Флаг, который держит другой источник
+ * (позднее срока снятого эффекта), не трогаем.
+ */
+function syncDotFlags(target: Actor, gone: { curse: number; bleed: number }) {
+  let curse = 0, bleed = 0, stacks = 0;
+  for (const [k, e] of dots) {
+    const part = k.split("|");
+    if (part[1] !== target.id) continue;
+    if (part[2] === "bleed") { if (e.until > bleed) { bleed = e.until; stacks = e.stacks; } } else curse = Math.max(curse, e.until);
+  }
+  if (gone.curse && target.curseUntil <= gone.curse) target.curseUntil = curse;
+  if (gone.bleed && target.bleedUntil <= gone.bleed) {
+    target.bleedUntil = bleed;
+    if ("bleedStacks" in target) target.bleedStacks = stacks;
+  }
+}
+
 /** Снять периодические эффекты героя с цели (после «Взрыва проклятий»). */
 export function removeDots(p: Player, target: Actor) {
-  const pre = `${p.id}|${target.id}|`;
-  for (const k of [...dots.keys()]) if (k.startsWith(pre)) dots.delete(k);
+  const pre = `${p.id}|${target.id}|`, gone = { curse: 0, bleed: 0 };
+  for (const [k, e] of [...dots]) {
+    if (!k.startsWith(pre)) continue;
+    if (k.endsWith("|bleed")) gone.bleed = Math.max(gone.bleed, e.until); else gone.curse = Math.max(gone.curse, e.until);
+    dots.delete(k);
+  }
+  syncDotFlags(target, gone);
 }
 
 /** Живой эффект героя p на цели (для умений Потрошителя: server/src/game/reaver.ts). */
@@ -92,9 +116,11 @@ export function dotOf(w: World, p: Player, t: Actor, key: "curse" | "bleed" | "a
   const e = dots.get(`${p.id}|${t.id}|${key}`);
   return e && e.until > w.time ? e : undefined;
 }
-/** Оборвать эффект героя p на цели (тик сам остановится). */
+/** Оборвать эффект героя p на цели (тик сам остановится); значок цели уходит, если других таких эффектов на ней нет. */
 export function endDot(p: Player, t: Actor, key: "curse" | "bleed" | "agony" | "plague") {
-  dots.delete(`${p.id}|${t.id}|${key}`);
+  const k = `${p.id}|${t.id}|${key}`, e = dots.get(k);
+  dots.delete(k);
+  if (e) syncDotFlags(t, key === "bleed" ? { curse: 0, bleed: e.until } : { curse: e.until, bleed: 0 });
 }
 
 /** Снять все периодические эффекты героев с цели (очищение). */

@@ -8,6 +8,7 @@ import { UnitKind } from "../../../shared/protocol";
 import type { Net, UnitState } from "../net";
 import { seg, setHidden, tabs, type TabsHandle } from "./kit";
 import { formatNumber } from "./gold";
+import { absorbApply } from "./absorb";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const clsName = (c: string) => CLASSES[c as ClassId]?.name ?? c;
@@ -371,7 +372,7 @@ export class ArenaUI {
       const sig = party.map((m) => `${m.name}|${m.cls}|${m.level}`).join(",");
       if (sig !== this.partySig) {
         this.partySig = sig;
-        this.partyBox.innerHTML = party.map((m) => `<div class="uf pm"><div class="uf-head"><span class="uf-name" title="${esc(m.name)}">${esc(m.name)}</span><span class="chip dim">ур. ${m.level}</span><span class="uf-meta">${clsName(m.cls)}</span></div><div class="bar hp"><i></i><span></span></div><div class="bar mp sm"><i></i></div></div>`).join("");
+        this.partyBox.innerHTML = party.map((m) => `<div class="uf pm"><div class="uf-head"><span class="uf-name" title="${esc(m.name)}">${esc(m.name)}</span><span class="chip dim">ур. ${m.level}</span><span class="uf-meta">${clsName(m.cls)}</span></div><div class="bar hp"><i></i><b class="abs" hidden></b><span></span></div><div class="bar mp sm"><i></i></div></div>`).join("");
       }
       const rows = this.partyBox.children;
       party.forEach((m, i) => {
@@ -383,6 +384,8 @@ export class ArenaUI {
         const txt = u ? `${formatNumber(Math.max(0, u.hp))} / ${formatNumber(u.maxHp)}` : m.online ? "далеко" : "не в сети";
         const hpEl = row.querySelector<HTMLElement>(".bar.hp > i")!, tx = row.querySelector<HTMLElement>(".bar.hp > span")!;
         hpEl.style.width = `${hpK * 100}%`;
+        // щит-поглотитель союзника поверх здоровья (как в рамке героя); нет юнита рядом — нет и щита
+        absorbApply(row.querySelector<HTMLElement>(".bar.hp > .abs"), u?.hp ?? 0, u?.maxHp ?? 1, u && u.hp > 0 ? u.shield || 0 : 0);
         (row.querySelector(".bar.mp > i") as HTMLElement).style.width = `${mpK * 100}%`;
         if (tx.textContent !== txt) tx.textContent = txt;
         row.classList.toggle("far", !u && m.online);
