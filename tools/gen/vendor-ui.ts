@@ -197,6 +197,7 @@ const CURSORS: CursorDef[] = [
   { id: "grabbing", tile: [16, 6], hot: "center", what: "тащить (сжатая рука)" },
 ];
 const mixC = (a: RGBA, b: RGBA, t: number): RGBA => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)).concat(255) as RGBA;
+const withA = (c: RGBA, a: number): RGBA => [c[0], c[1], c[2], a];
 /** Scale2x по меткам пикселей (0 — пусто, 1 — контур, 2 — заливка, 3 — штриховка): диагонали ступенькой в 1 px, а не в 2, как при простом удвоении. */
 function scale2xLabels(l: Uint8Array, w: number, h: number): Uint8Array {
   const W = w * 2, o = new Uint8Array(W * h * 2), at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : l[y * w + x]);
@@ -222,7 +223,8 @@ function recolorCursor(src: PC, fillC: RGBA, detail: RGBA): PC {
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : l[y * w + x]);
   const cream = hex(UI.fg), bronze = hex(UI.lineHi);
   const T = {
-    lineLit: mixC(bronze, OUTLINE, 0.45), lineDark: mixC(bronze, OUTLINE, 0.72), lineIn: mixC(bronze, OUTLINE, 0.6),
+    // внешняя обводка — тёмная бронза в половину прозрачности (выбор пользователя: «тёмной бронзой, но где-то 0.5»); линии внутри фигуры — плотные
+    lineLit: withA(mixC(bronze, OUTLINE, 0.45), 128), lineDark: withA(mixC(bronze, OUTLINE, 0.72), 128), lineIn: mixC(bronze, OUTLINE, 0.6),
     spec: mixC(fillC, cream, 0.85), light: mixC(fillC, cream, 0.5), base: fillC, shade: mixC(fillC, bronze, 0.55), detail,
   };
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
