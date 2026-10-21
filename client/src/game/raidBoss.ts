@@ -6,6 +6,7 @@ import { DEPTH } from "./terrain";
 import type { UnitView } from "./UnitView";
 import { placeText, worldText } from "./worldText";
 import type { Hud } from "../ui/hud";
+import { shakeCam } from "./camShake";
 
 type Pose = "swing" | "slam" | "roar" | "idle";
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
@@ -59,11 +60,12 @@ export class RaidBoss {
         return true;
       }
       case "shake": {
-        if (f.k === "quake") cam.shake(450, 0.012);
-        else if (f.k === "rift") cam.shake(300, 0.008);
-        else if (f.k === "phase") cam.shake(700, 0.008);
-        else if (f.k === "sun") { cam.flash(300, 255, 150, 40); cam.shake(400, 0.01); }
-        else if (f.k === "death") cam.shake(1500, 0.006);
+        // целыми пикселями мира и мало (camShake.ts): 2 — сильные удары босса, 1 — остальное
+        if (f.k === "quake") shakeCam(cam, 400, 2);
+        else if (f.k === "rift") shakeCam(cam, 300, 1);
+        else if (f.k === "phase") shakeCam(cam, 500, 1);
+        else if (f.k === "sun") { cam.flash(300, 255, 150, 40); shakeCam(cam, 400, 2); }
+        else if (f.k === "death") shakeCam(cam, 900, 1);
         else if (f.k === "berserk") cam.flash(400, 255, 30, 20);
         return true;
       }

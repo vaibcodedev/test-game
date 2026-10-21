@@ -4,6 +4,7 @@ import type { Fx } from "../../../shared/protocol";
 import { DEPTH } from "./terrain";
 import type { UnitView } from "./UnitView";
 import * as sfx from "./sfx";
+import { shakeCam } from "./camShake";
 
 type TpFx = Extract<Fx, { t: "tp" }>;
 const ADD = Phaser.BlendModes.ADD;
@@ -233,7 +234,7 @@ export class TeleportFx {
     if (f.id === this.selfId) {
       const cam = s.cameras.main;
       cam.flash(320, 215, 235, 255);
-      cam.shake(280, 0.004);
+      shakeCam(cam, 200, 1);
     }
   }
 

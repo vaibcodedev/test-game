@@ -12,6 +12,7 @@ import { net } from "../net";
 import { P } from "../../../shared/palette";
 import { CROWD } from "./labelLayout";
 import { Vfx } from "./vfx";
+import { shakeCam } from "./camShake";
 
 const MAX_BURST = 36;
 const MAX_POOL = 90;
@@ -68,9 +69,9 @@ export class Effects {
     if (!me) return 1;
     return Math.max(0, 1 - Math.hypot(me.x - x, me.y - y) / range);
   }
+  /** Лёгкий толчок экрана (1 пиксель мира, camShake.ts), если удар рядом с героем; power — прежняя сила, сильные (от 0.006) — чуть дольше. */
   private shake(x: number, y: number, ms: number, power: number) {
-    const k = this.near(x, y, 320);
-    if (k > 0.2) this.scene.cameras.main.shake(ms, power * k);
+    if (this.near(x, y, 320) > 0.2) shakeCam(this.scene.cameras.main, Math.min(ms, power >= 0.006 ? 200 : 140), 1);
   }
   private sound(name: sfx.SfxName, x: number, y: number) {
     sfx.play(name, this.near(x, y, 600));
@@ -283,9 +284,10 @@ export class Effects {
         this.sound(f.k === "quake" ? "slam" : f.k === "heal" ? "heal" : f.k === "fire" ? "explosion" : (SFX_OF[f.k] ?? "hit"), f.x, f.y);
         this.flash(f.x, f.y - 6, KIND_COLOR[f.k] ?? 0xffffff, Math.min(2.5, f.r / 40));
         if (this.vfx.aoe(f)) {
-          // анимация умения вместо колец и частиц; тряска экрана остаётся
-          if (f.k === "quake") this.shake(f.x, f.y, 220, 0.006);
-          else if (f.k === "bash") this.shake(f.x, f.y, 160, 0.005);
+          // анимация умения вместо колец и частиц; тряска экрана — только от своих умений (чужие удары рядом экран не трясут),
+          // у «Сотрясения земли» тряски нет: её анимации хватает (просьба пользователя)
+          if (f.c && f.c !== this.selfId) break;
+          if (f.k === "bash") this.shake(f.x, f.y, 160, 0.005);
           else if (f.k === "burst") this.shake(f.x, f.y, 180, 0.005);
           else if (f.k === "meta") this.shake(f.x, f.y, 260, 0.006);
           break;
@@ -314,7 +316,6 @@ export class Effects {
           s.tweens.add({ targets: r2, scaleX: f.r / 18, scaleY: (f.r / 18) * 0.7, alpha: { from: 1, to: 0 }, duration: 650, delay: 120, ease: "Cubic.easeOut", onComplete: () => r2.destroy() });
         }
         if (f.k === "quake") {
-          this.shake(f.x, f.y, 220, 0.006);
           const g = s.add.graphics().setDepth(DEPTH.ground + 22);
           g.lineStyle(2, 0x2a1a10, 0.9);
           for (let i = 0; i < 9; i++) {
@@ -461,7 +462,7 @@ export class Effects {
           this.sound("hit", f.x1, f.y1);
           for (let i = 0; i <= 8; i++) { const t = i / 8; this.burst(f.x0 + (f.x1 - f.x0) * t, f.y0 + (f.y1 - f.y0) * t - 10, "fx_smoke", 0xd0b890, 2, 20, 500); }
           this.burst(f.x1, f.y1 - 8, "fx_spark", 0xffd070, 14, 70, 350);
-          s.cameras.main.shake(120, 0.004);
+          shakeCam(s.cameras.main, 120, 1);
           break;
         }
         if (f.k === "shadow") {
