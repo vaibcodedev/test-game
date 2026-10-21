@@ -14,7 +14,7 @@
 .raid-role-h:not(:last-child) { border-bottom: 1px solid var(--line); }
 .raid-role-c { color: var(--dim); font-weight: var(--fw); font-variant-numeric: tabular-nums; }
 .raid-role-c.full { color: var(--ok); }
-.role-ic { width: 16px; height: 16px; image-rendering: pixelated; }
+.role-ic { width: 24px; height: 24px; image-rendering: pixelated; }
 .raid-mem.bot { opacity: 0.7; }
 .raid-mem.me .row-title { color: var(--gold); }
 .raid-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }

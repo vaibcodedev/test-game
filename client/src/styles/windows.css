@@ -178,12 +178,12 @@
   z-index: 1;
 }
 .node .slot {
-  width: 56px;
-  height: 56px;
-}
-.node .slot img {
   width: 52px;
   height: 52px;
+}
+.node .slot img {
+  width: 48px; /* иконка умения 24 px × 2 */
+  height: 48px;
 }
 .node .rk {
   font-size: var(--fs);
@@ -284,12 +284,12 @@
     width: min(190px, calc(100vw - 24px));
   }
   .slot {
-    width: 44px;
-    height: 44px;
+    width: 52px;
+    height: 52px;
   }
   .slot img {
-    width: 40px;
-    height: 40px;
+    width: 48px; /* целый масштаб иконки умения 24 px × 2 */
+    height: 48px;
   }
   .hud-chat {
     bottom: 76px;
