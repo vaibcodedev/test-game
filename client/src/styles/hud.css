@@ -19,7 +19,7 @@
 .hud-player .row1 {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "lv nm nm" "lv cls fac";
+  grid-template-areas: "lv nm cb" "lv cls fac";
   align-items: center;
   column-gap: var(--sp-2);
   row-gap: var(--sp-0);
@@ -66,12 +66,11 @@
   line-height: 16px;
   white-space: nowrap;
 }
-/* «В бою» — поверх верхней рамки: высота рамки и вся левая колонка не прыгают */
+/* «В бою» — чип .chip.bad в строке ника, справа (над фракцией): внутри рамки, высота не меняется */
 .hud-player .combat-badge {
-  position: absolute;
-  top: -10px;
-  right: var(--sp-3);
-  margin: 0;
+  grid-area: cb;
+  justify-self: end;
+  white-space: nowrap;
 }
 .bar {
   position: relative;
@@ -107,7 +106,7 @@
 .bar.xp > i {
   background: linear-gradient(#e0c8ff, var(--xp));
 }
-/* нижняя строка: опыт, очки, золото — у правого края */
+/* строка под полосами: опыт и непотраченные очки (нет ни того, ни другого — строки нет) */
 .hud-player .pts {
   display: flex;
   flex-wrap: wrap;
@@ -115,10 +114,24 @@
   gap: var(--sp-1) var(--sp-2);
   font-size: var(--fs-sm);
 }
-.hud-player .pts > .gold-amt {
+/* низ рамки под линией: бафы и дебафы слева, золото справа на той же линии */
+.hud-player .pf-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 26px;
+  padding-top: var(--sp-1h);
+  border-top: 1px solid var(--line);
+}
+.hud-player .pf-foot > .auras {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.hud-player .pf-foot > .gold-amt {
+  flex: none;
   margin-left: auto;
 }
-/* бафы и дебафы (еда — тоже баф): строка значков под всем остальным; нет эффектов — нет строки (hidden), рамка растёт только вместе с ней */
+/* бафы и дебафы (еда — тоже баф): значки слева в низу рамки; нет эффектов — значков нет (hidden) */
 .hud-player .auras {
   display: flex;
   flex-wrap: wrap;

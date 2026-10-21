@@ -744,14 +744,14 @@ export class Hud {
     const pts = [s.statPoints ? `<span class="pill" data-open="char">+${s.statPoints} хар.</span>` : "", s.skillPoints ? `<span class="pill" data-open="skills">+${s.skillPoints} ум.</span>` : ""].join("");
     const xpPct = s.xpNext ? Math.floor((s.xp / s.xpNext) * 100) : 0;
     this.player.innerHTML = `
-      <div class="row1"><span class="lvl" title="Уровень ${s.level}">${s.level}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="cls">${CLASSES[s.cls].name}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
-      <div class="combat-badge" ${this.inCombat ? "" : "hidden"}>╳ В бою</div>
+      <div class="row1"><span class="lvl" title="Уровень ${s.level}">${s.level}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="chip bad combat-badge" ${this.inCombat ? "" : "hidden"}>В бою</span><span class="cls">${CLASSES[s.cls].name}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
       <div class="bar hp"><i id="hp-fill"></i><span id="hp-text"></span></div>
       <div class="bar mp"><i id="mp-fill"></i><span id="mp-text"></span></div>
       ${s.xpNext ? `<div class="bar xp" title="Опыт: ${xpPct}%"><i style="width:${xpPct}%"></i></div>` : ""}
-      <div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}${gold(s.gold)}</div>`;
-    // строка эффектов — один и тот же элемент: значки и подсказки переживают перерисовку рамки
-    this.player.append(this.aurasEl);
+      ${s.xpNext || pts ? `<div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}</div>` : ""}
+      <div class="pf-foot">${gold(s.gold)}</div>`;
+    // низ рамки: бафы и дебафы слева (один и тот же элемент — значки и подсказки переживают перерисовку), золото справа
+    this.player.querySelector(".pf-foot")!.prepend(this.aurasEl);
     this.player.querySelectorAll<HTMLElement>("[data-open]").forEach((p) => (p.onclick = () => this.toggle(p.dataset.open!)));
 
     // панель умений: строится один раз, см. ui/hotbar.ts

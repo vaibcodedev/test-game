@@ -373,18 +373,6 @@ button.chip:disabled { opacity: .45; cursor: var(--cur-arrow); }
 button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
 .badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 var(--sp-1); border-radius: var(--r-pill); background: var(--gold); color: var(--bg); font-size: var(--fs-2xs); font-weight: var(--fw-b); line-height: 1; font-variant-numeric: tabular-nums; }
 .badge.bad { background: var(--bad); }
-/* плашка боя на рамке героя (перенесена из gmenu.css; уйдёт в .chip.bad, когда hud.ts:675 перейдёт на чипы) */
-.combat-badge {
-  display: inline-block;
-  margin: var(--sp-0) 0;
-  padding: 0 var(--sp-2);
-  font-size: var(--fs-sm);
-  letter-spacing: 1px;
-  color: #ffd9c9;
-  background: #5a1f14;
-  border: 1px solid #c4452e;
-  border-radius: var(--r-1);
-}
 
 /* ---------- ячейка предмета .cell, сетка .cells, ячейка с подписью .tile ----------
    Наведение и нажатие — только у button.cell: статичные ячейки (осмотр, выбор героя) не выглядят кликабельными.
