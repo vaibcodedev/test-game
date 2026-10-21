@@ -2,9 +2,9 @@
 import { LEGENDARIES, makeLegendary } from "../../../shared/legendary";
 import { BASE_ITEMS, ITEM_MODELS, canEquip, isTwoHanded, itemName, makeItem, makeUnique, UNIQUES, Rarity, type Item } from "../../../shared/items";
 import { MAX_PLUS } from "../../../shared/upgrade";
-import { MAX_LEVEL } from "../../../shared/constants";
+import { MAX_LEVEL, PLAYER_RADIUS, TILE } from "../../../shared/constants";
 import { xpToNext } from "../../../shared/formulas";
-import { ZONES } from "../../../shared/map";
+import { walkable, ZONES, type WorldMap } from "../../../shared/map";
 import { MOBS } from "../../../shared/mobs";
 import { cleanText, num } from "../rooms/common";
 import type { On } from "../rooms/common";
@@ -20,6 +20,30 @@ import { MOUNTS } from "../../../shared/mounts";
 import { awardMount } from "./mountDrops";
 
 const PERMA = 9e12;
+/** Телепорт по координатам (карта админ-панели, поля x, y): насколько далеко, в тайлах, искать проходимую клетку, если в точку встать нельзя. */
+const TP_SNAP_TILES = 6;
+
+/**
+ * Куда встать при телепорте в точку (x, y), пиксели. Точка проходима — она и есть. Иначе спираль по кольцам тайлов вокруг неё (до TP_SNAP_TILES,
+ * кольцо 0 — собственная клетка): берётся центр ближайшей по прямой проходимой клетки; кольцо дальше найденной точки уже не просматривается.
+ * Нет прохода рядом — null.
+ */
+function nearestWalkable(map: WorldMap, x: number, y: number): { x: number; y: number } | null {
+  if (walkable(map, x, y, PLAYER_RADIUS)) return { x, y };
+  const cx = Math.floor(x / TILE), cy = Math.floor(y / TILE);
+  let best: { x: number; y: number } | null = null, bd = Infinity;
+  for (let ring = 0; ring <= TP_SNAP_TILES; ring++) {
+    if (best && (ring - 0.5) * TILE >= bd) break; // центр любой клетки кольца ring дальше от точки, чем (ring − 0.5) тайла
+    for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue; // только само кольцо
+      const tx = cx + dx, ty = cy + dy;
+      if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) continue;
+      const px = (tx + 0.5) * TILE, py = (ty + 0.5) * TILE, d = Math.hypot(px - x, py - y);
+      if (d < bd && walkable(map, px, py, PLAYER_RADIUS)) { best = { x: px, y: py }; bd = d; }
+    }
+  }
+  return best;
+}
 
 export function registerAdmin(room: WorldRoom, on: On) {
   const db = () => room.db();
@@ -167,8 +191,13 @@ export function registerAdmin(room: WorldRoom, on: On) {
       pos = z.safe ? w().map.playerSpawn : w().map.spawns.find((s) => z.mobs.includes(s.mob)) ?? null;
       what = z.name;
     } else {
+      // по координатам (карта админ-панели, поля x, y): в стену, воду или за край карты не ставим — на ближайшую проходимую клетку
       const x = num(m.x, 0, 1e6), y = num(m.y, 0, 1e6);
-      if (x !== null && y !== null) { pos = { x, y }; what = `${Math.round(x)},${Math.round(y)}`; }
+      if (x !== null && y !== null) {
+        pos = nearestWalkable(w().map, x, y);
+        if (!pos) return toast(p, "Рядом нет прохода", "error");
+        what = `${Math.round(x)},${Math.round(y)}`;
+      }
     }
     if (!pos) return toast(p, "Цель телепорта не найдена", "error");
     p.unit.x = pos.x;

@@ -1,4 +1,5 @@
-/** Полная карта мира: масштаб и перетаскивание, подписи с плотностью по масштабу, маркер героя, подсказки, легенда. */
+/** Полная карта мира: масштаб и перетаскивание, подписи с плотностью по масштабу, маркер героя, подсказки, легенда.
+ *  Режим выбора точки (beginPick, телепорт админа из ui/admin.ts): прицел, подсказка, под курсором тайл и зона; клик без перетаскивания отдаёт точку. */
 import { CITIES, cityKnown } from "../../../shared/cities";
 import { RAID, RAID_GATE } from "../../../shared/raid";
 import { factionColor } from "../../../shared/factions";
@@ -44,6 +45,9 @@ export class WorldMapView {
   private face = Math.PI / 2;
   private prev: { x: number; y: number } | null = null;
   private inited = false;
+  /** Выбор точки: onPick — клик по карте (пиксели мира, центр тайла), onCancel — карта закрыта без выбора. */
+  private pick: { onPick: (x: number, y: number) => void; onCancel: () => void } | null = null;
+  private hint = document.createElement("span");
 
   constructor(private map: WorldMap, private base: () => HTMLCanvasElement | null, private getPos: () => { x: number; y: number }, private getKnown: () => { known?: string[]; faction?: string }, private win: HTMLElement) {
     this.root.className = "wm";
@@ -61,6 +65,10 @@ export class WorldMapView {
     btn("−", "Отдалить", () => this.zoomAt(1 / 1.5, this.W / 2, this.H / 2));
     btn("Сброс", "Показать весь мир", () => this.reset());
     btn("Центрировать на мне", "Перейти к герою", () => this.centerMe());
+    this.hint.className = "chip";
+    this.hint.textContent = "Клик — телепорт сюда · Esc — выход";
+    this.hint.hidden = true;
+    bar.append(this.hint);
     const leg = document.createElement("div");
     leg.className = "wm-legend";
     leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>Город <i style="background:${KIND_COLOR.village}"></i>Деревня <i style="background:${KIND_COLOR.camp}"></i>Лагерь <i style="background:${KIND_COLOR.ruins}"></i>Руины <i class="road"></i>Дорога <i class="river"></i>Река <i style="background:${factionColor("solgard")}"></i>Сольгард <i style="background:${factionColor("umbrath")}"></i>Умбрат`;
@@ -96,7 +104,16 @@ export class WorldMapView {
         this.clamp();
       }
     });
-    cv.addEventListener("pointerup", () => (this.drag = null));
+    cv.addEventListener("pointerup", (e) => {
+      const d = this.drag;
+      this.drag = null;
+      // перетаскивание (сдвиг больше порога) кликом не считается
+      if (this.pick && d && !d.moved && e.button === 0) {
+        const r = cv.getBoundingClientRect();
+        this.commitPick(e.clientX - r.left, e.clientY - r.top);
+      }
+    });
+    cv.addEventListener("pointercancel", () => (this.drag = null));
     cv.addEventListener("pointerleave", () => { this.mouse = null; });
     cv.addEventListener("dblclick", (e) => {
       const r = cv.getBoundingClientRect();
@@ -152,11 +169,41 @@ export class WorldMapView {
     this.prev = null;
     cancelAnimationFrame(this.raf);
     const loop = () => {
-      if (this.win.hidden) return;
+      if (this.win.hidden) { this.endPick(true); return; } // окно закрыли (Esc, ×, клавиша карты): выбор отменён
       this.draw();
       this.raf = requestAnimationFrame(loop);
     };
     loop();
+  }
+
+  /** Включает выбор точки: вызывать после open(). Клик без перетаскивания → onPick(x, y) в пикселях мира (центр тайла), затем карта закрывается;
+   *  закрытие карты без выбора (Esc, ×) → onCancel. Что делать с точкой (телепорт), решает вызывающий. */
+  beginPick(onPick: (x: number, y: number) => void, onCancel: () => void) {
+    this.endPick(true);
+    this.pick = { onPick, onCancel };
+    this.root.classList.add("picking");
+    this.hint.hidden = false;
+  }
+  private endPick(cancel: boolean) {
+    const p = this.pick;
+    if (!p) return;
+    this.pick = null;
+    this.root.classList.remove("picking");
+    this.hint.hidden = true;
+    if (cancel) p.onCancel();
+  }
+  /** Клик по карте в режиме выбора: точка — центр тайла под курсором; за краем мира клик пропускается. */
+  private commitPick(px: number, py: number) {
+    const p = this.pick, t = this.tileAt(px, py);
+    if (!p || !t) return;
+    this.endPick(false);
+    p.onPick((t.x + 0.5) * TILE, (t.y + 0.5) * TILE);
+    this.win.hidden = true;
+  }
+  /** Тайл под точкой холста (пиксели от его левого верхнего угла); null — вне мира. */
+  private tileAt(px: number, py: number): { x: number; y: number } | null {
+    const x = Math.floor(this.cx + (px - this.W / 2) / this.s), y = Math.floor(this.cy + (py - this.H / 2) / this.s);
+    return x < 0 || y < 0 || x >= this.map.w || y >= this.map.h ? null : { x, y };
   }
 
   private resize() {
@@ -326,7 +373,28 @@ export class WorldMapView {
     }
     this.hits = hits;
     this.drawHero(g, X, Y);
+    if (this.pick) this.drawPickMark(g, X, Y);
     this.drawTip();
+  }
+
+  /** Прицел выбора точки: рамка тайла под курсором (не меньше 6 px, чтобы была видна на общем плане) и риски по сторонам; тёмная подложка — для читаемости на любой местности. */
+  private drawPickMark(g: CanvasRenderingContext2D, X: (t: number) => number, Y: (t: number) => number) {
+    const mp = this.mouse, t = mp && !this.drag?.moved ? this.tileAt(mp.x, mp.y) : null;
+    if (!t) return;
+    const x = X(t.x + 0.5), y = Y(t.y + 0.5), h = Math.max(this.s, 6) / 2;
+    g.lineCap = "butt";
+    g.lineJoin = "miter";
+    for (const [w, c] of [[4, P.well], [2, P.gold]] as const) {
+      g.lineWidth = w;
+      g.strokeStyle = c;
+      g.strokeRect(x - h, y - h, h * 2, h * 2);
+      g.beginPath();
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        g.moveTo(x + dx * (h + 3), y + dy * (h + 3));
+        g.lineTo(x + dx * (h + 10), y + dy * (h + 10));
+      }
+      g.stroke();
+    }
   }
 
   private drawHero(g: CanvasRenderingContext2D, X: (t: number) => number, Y: (t: number) => number) {
@@ -387,10 +455,16 @@ export class WorldMapView {
     const mp = this.mouse;
     let h: Hit | null = null;
     if (mp && !this.drag?.moved) {
-      let bd = 1e9;
-      for (const c of this.hits) {
-        const d = Math.hypot(c.x - mp.x, c.y - mp.y);
-        if (d <= c.r + 4 && d < bd) { bd = d; h = c; }
+      if (this.pick) {
+        // выбор точки: под курсором тайл и зона (города и поселения подписаны на самой карте)
+        const t = this.tileAt(mp.x, mp.y);
+        if (t) h = { x: mp.x, y: mp.y, r: 0, title: `Тайл ${t.x}, ${t.y}`, sub: ZONES[this.map.zone[t.y * this.map.w + t.x]]?.name ?? "" };
+      } else {
+        let bd = 1e9;
+        for (const c of this.hits) {
+          const d = Math.hypot(c.x - mp.x, c.y - mp.y);
+          if (d <= c.r + 4 && d < bd) { bd = d; h = c; }
+        }
       }
     }
     if (!h || !mp) { this.tip.hidden = true; return; }

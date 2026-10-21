@@ -1,6 +1,8 @@
 /** Админ-команды: не-админ игнорируется, админ работает. Запуск: npx tsx tests/admin.ts (если порт 2601 занят: TEST_PORT=2731 npx tsx tests/admin.ts) */
 import { DatabaseSync } from "node:sqlite";
+import { MAP_SEED, PLAYER_RADIUS, TILE } from "../shared/constants";
 import { affixCount, BASE_ITEMS, ITEM_MODELS, makeItem, previewGear, type Slot } from "../shared/items";
+import { CELL_BLOCK, CELL_WALL, generateMap, T, walkable, ZONES } from "../shared/map";
 import { assert, Bot, check, dbFile, passedCount, sleep, startServer, stopServer } from "./harness";
 
 type GiveResult = { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
@@ -220,6 +222,83 @@ async function main() {
       const rows = d.prepare("SELECT details FROM admin_log WHERE action = 'give'").all() as { details: string }[];
       d.close();
       assert(rows.some((r) => { const x = JSON.parse(r.details); return x.id === "sword_100" && x.plus === 7 && x.ilvl === 100 && x.rarity === 2; }), "журнал: " + JSON.stringify(rows));
+    });
+    // ---- телепорт по координатам: карта админ-панели шлёт admin:tp { x, y } (центр тайла), сервер ставит на ближайшую проходимую клетку ----
+    const MAP = generateMap(MAP_SEED);
+    const SNAP = 6; // радиус поиска сервера, тайлов
+    type Pt = { x: number; y: number };
+    const center = (t: number) => (t + 0.5) * TILE;
+    const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
+    const pos = (b: Bot): Pt => ({ x: b.me().x, y: b.me().y });
+    const tileOk = (tx: number, ty: number) => tx >= 0 && ty >= 0 && tx < MAP.w && ty < MAP.h && walkable(MAP, center(tx), center(ty), PLAYER_RADIUS);
+    const cellFlag = (tx: number, ty: number, f: number) => (MAP.cell[ty * MAP.w + tx] & f) !== 0;
+    const isWater = (tx: number, ty: number) => [0, 1].every((j) => [0, 1].every((i) => MAP.vtx[(ty + j) * (MAP.w + 1) + tx + i] === T.Water));
+    /** Эталон перебором квадрата радиуса R тайлов: расстояние (px) от точки до центра ближайшей проходимой клетки; Infinity — прохода нет. */
+    const nearest = (p: Pt, R = SNAP) => {
+      const cx = Math.floor(p.x / TILE), cy = Math.floor(p.y / TILE);
+      let best = Infinity;
+      for (let ty = cy - R; ty <= cy + R; ty++) for (let tx = cx - R; tx <= cx + R; tx++) if (tileOk(tx, ty)) best = Math.min(best, dist(p, { x: center(tx), y: center(ty) }));
+      return best;
+    };
+    /** Первая клетка мира (по строкам), подходящая под pred; центр клетки в пикселях. */
+    const scan = (what: string, pred: (tx: number, ty: number) => boolean): Pt => {
+      for (let ty = 0; ty < MAP.h; ty++) for (let tx = 0; tx < MAP.w; tx++) if (pred(tx, ty)) return { x: center(tx), y: center(ty) };
+      throw new Error("в мире нет клетки для теста: " + what);
+    };
+    /** Закрытая клетка, у которой ближайшая проходимая от 2.5 до 5 тайлов: привязка заметна и укладывается в радиус поиска. */
+    const gap = (tx: number, ty: number) => { const d = nearest({ x: center(tx), y: center(ty) }) / TILE; return d >= 2.5 && d <= 5; };
+    const start = pos(adm);
+    const walk = scan("проходимая рядом со стартом", (tx, ty) => { const d = dist({ x: center(tx), y: center(ty) }, start); return d > 8 * TILE && d < 16 * TILE && tileOk(tx, ty); });
+    const water = scan("вода у берега", (tx, ty) => cellFlag(tx, ty, CELL_BLOCK) && !cellFlag(tx, ty, CELL_WALL) && isWater(tx, ty) && gap(tx, ty));
+    const wall = scan("стена", (tx, ty) => cellFlag(tx, ty, CELL_WALL) && gap(tx, ty));
+    const closed = scan("глухой участок", (tx, ty) => tx > SNAP + 2 && ty > SNAP + 2 && tx < MAP.w - SNAP - 2 && ty < MAP.h - SNAP - 2 && cellFlag(tx, ty, CELL_BLOCK) && nearest({ x: center(tx), y: center(ty) }, SNAP + 1) === Infinity);
+    /** Админ шлёт admin:tp { x, y } и ждёт, пока позиция сместится (цели в тесте дальше 8 px друг от друга); возвращает итоговую. */
+    const tpTo = async (p: Pt) => {
+      const from = pos(adm);
+      adm.send("admin:tp", { x: p.x, y: p.y });
+      await adm.until(() => dist(pos(adm), from) > 8, 3000, `телепорт в ${Math.round(p.x)},${Math.round(p.y)}`);
+      await sleep(150);
+      return pos(adm);
+    };
+    await check("ТП по координатам в проходимую клетку: ровно в эту точку", async () => {
+      const at = await tpTo(walk);
+      assert(dist(at, walk) < 1, `цель ${JSON.stringify(walk)}, позиция ${JSON.stringify(at)}`);
+    });
+    await check("ТП в воду и в стену: на ближайшую проходимую клетку не дальше 6 тайлов", async () => {
+      for (const [what, target] of [["вода", water], ["стена", wall]] as const) {
+        assert(!tileOk(Math.floor(target.x / TILE), Math.floor(target.y / TILE)), `${what}: цель проходима, тест ничего не проверяет`);
+        const at = await tpTo(target), want = nearest(target);
+        assert(walkable(MAP, at.x, at.y, PLAYER_RADIUS), `${what}: встал в непроходимое место ${JSON.stringify(at)}`);
+        assert(dist(at, target) >= 2.5 * TILE - 1 && Math.abs(dist(at, target) - want) < 1, `${what}: цель ${JSON.stringify(target)}, встал ${JSON.stringify(at)} (${(dist(at, target) / TILE).toFixed(2)} тайла), ближайшая проходимая — ${(want / TILE).toFixed(2)}`);
+      }
+    });
+    await check("ТП в глухое место и за край карты: отказ «Рядом нет прохода», позиция не меняется", async () => {
+      for (const [what, target] of [["глухой участок", closed], ["за краем карты", { x: (MAP.w + 30) * TILE, y: 5 * TILE }]] as const) {
+        const from = pos(adm), k = adm.toasts.length;
+        adm.send("admin:tp", { x: target.x, y: target.y });
+        const t = await toastsAfter(k);
+        assert(t.includes("Рядом нет прохода"), `${what}: тост «${t}»`);
+        assert(dist(pos(adm), from) < 1, `${what}: позиция изменилась ${JSON.stringify(from)} → ${JSON.stringify(pos(adm))}`);
+      }
+    });
+    await check("не-админ: admin:tp по координатам игнорируется (позиция та же, отказ в журнале)", async () => {
+      const from = pos(user), k = user.toasts.length;
+      user.send("admin:tp", { x: walk.x, y: walk.y });
+      user.send("admin:tp", { name: "Админ1" });
+      await sleep(600);
+      assert(dist(pos(user), from) < 1 && user.toasts.length === k, `позиция ${JSON.stringify(from)} → ${JSON.stringify(pos(user))}, тосты: ${user.toasts.slice(k)}`);
+      const d = new DatabaseSync(dbFile);
+      const rows = d.prepare("SELECT action FROM admin_log WHERE action = 'denied:admin:tp'").all();
+      d.close();
+      assert(rows.length >= 1, "в журнале нет отказа denied:admin:tp");
+    });
+    await check("ТП к игроку и в зону работают как раньше (без привязки к проходимой клетке)", async () => {
+      adm.send("admin:tp", { name: "Простой" });
+      await adm.until(() => dist(pos(adm), pos(user)) < 2, 3000, "ТП к игроку");
+      await tpTo(walk); // отходим от игрока: ТП в зону проверяем с чужого места
+      const safe = ZONES.findIndex((z) => z.safe && z.name !== "Арена");
+      adm.send("admin:tp", { zone: safe });
+      await adm.until(() => dist(pos(adm), MAP.playerSpawn) < 2, 3000, `ТП в зону «${ZONES[safe].name}»`);
     });
   } finally {
     await stopServer();

@@ -236,7 +236,7 @@ export class Hud {
     this.arena = new ArenaUI(root, (text, kind) => this.toast({ text, kind }));
     this.raid = new RaidHud(root);
     this.bestiary = new BestiaryUI(root, icon);
-    this.admin = new AdminUI(root);
+    this.admin = new AdminUI(root, (onPick, onCancel) => this.pickOnMap(onPick, onCancel));
     this.rumor = new RumorUI(root);
     this.enc = new EncounterUI(root, { itemTip: (it, s) => this.itemTip(it, s, false, true), tipFor: (e, h) => this.tipFor(e, h) });
     this.inspect = new InspectUI(root, { itemTip: (it, s) => this.itemTip(it, s, false, true), tipFor: (e, h) => this.tipFor(e, h) });
@@ -469,6 +469,11 @@ export class Hud {
   toggleWorldMap() {
     if (this.wins.worldmap.hidden) this.openWorldMap();
     else this.wins.worldmap.hidden = true;
+  }
+  /** Карта мира в режиме выбора точки (телепорт из админ-панели): клик → onPick(x, y) в пикселях мира и карта закрывается; Esc или × → onCancel. */
+  pickOnMap(onPick: (x: number, y: number) => void, onCancel: () => void) {
+    this.openWorldMap();
+    this.wmView!.beginPick(onPick, onCancel);
   }
   /** Esc: закрыть верхнее окно; иначе снять цель; иначе открыть/закрыть меню. */
   escape(hasTarget: boolean, clearTarget: () => void) {

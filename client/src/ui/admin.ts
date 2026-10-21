@@ -23,8 +23,11 @@ export class AdminUI {
   private bannerTimer = 0;
   /** Вкладка «Выдача» — каталог предметов (adminGive.ts). Создаётся при первом открытии (обычным игрокам не нужна) и хранит состояние при смене вкладок. */
   private giveTab?: GiveTab;
+  /** Идёт выбор точки телепорта на карте мира: окно админки спрятано до клика или Esc. */
+  private picking = false;
 
-  constructor(root: HTMLElement) {
+  /** pickOnMap — карта мира в режиме выбора точки (hud.pickOnMap): клик → onPick(x, y) в пикселях мира, Esc или закрытие карты → onCancel. */
+  constructor(root: HTMLElement, private pickOnMap?: (onPick: (x: number, y: number) => void, onCancel: () => void) => void) {
     this.win.className = "panel win win-admin l";
     this.win.hidden = true;
     this.banner.className = "adm-banner";
@@ -45,6 +48,7 @@ export class AdminUI {
   }
 
   toggle() {
+    if (this.picking) return; // карта выбора точки открыта: выход из неё — Esc
     this.win.hidden = !this.win.hidden;
     if (!this.win.hidden) this.refresh();
   }
@@ -107,7 +111,7 @@ export class AdminUI {
         <button class="btn" data-act="spawn">Призвать рядом</button></div></section>
         <section class="sec"><h3 class="sec-h">Объявление</h3>
         <label class="field"><span class="field-label">Текст</span><span class="input-group"><input id="w-text" class="input" maxlength="140"><button class="btn" data-act="announce">Объявить</button></span></label></section>
-        <section class="sec"><h3 class="sec-h">Телепорт</h3>
+        <section class="sec"><div class="sec-head"><h3 class="sec-h">Телепорт</h3><button class="btn small" data-act="tp-map" title="Выбрать точку кликом по карте мира">Карта</button></div>
         <label class="field"><span class="field-label">К игроку</span><span class="input-group"><input id="w-tp-name" class="input"><button class="btn" data-act="tp-name">Телепорт</button></span></label>
         <div class="adm-row"><label class="field"><span class="field-label">x</span><input id="w-x" class="input num" type="number"></label>
         <label class="field"><span class="field-label">y</span><input id="w-y" class="input num" type="number"></label>
@@ -123,6 +127,18 @@ export class AdminUI {
       <label class="field grow"><span class="field-label">Фильтр по имени</span><input id="l-name" class="input" value="${esc(this.logName)}"></label>
       <button class="btn" data-act="logs">Показать</button></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  }
+
+  /** «Карта»: окно админки прячется, карта мира открывается в режиме выбора точки. Клик по карте — admin:tp { x, y } (сервер ставит на ближайшую
+   *  проходимую клетку), окно остаётся закрытым: админ смотрит на место, куда попал. Esc или закрытие карты — окно возвращается. */
+  private pickTeleport() {
+    if (!this.pickOnMap) return;
+    this.picking = true;
+    this.win.hidden = true;
+    this.pickOnMap(
+      (x, y) => { this.picking = false; this.net.send("admin:tp", { x, y }); },
+      () => { this.picking = false; if (this.net.self?.isAdmin) this.win.hidden = false; },
+    );
   }
 
   private items(json: string): string {
@@ -147,6 +163,7 @@ export class AdminUI {
         case "announce": return send("admin:announce", { text: val("w-text") });
         case "tp-name": return send("admin:tp", { name: val("w-tp-name") });
         case "tp-xy": return send("admin:tp", { x: nv("w-x"), y: nv("w-y") });
+        case "tp-map": return this.pickTeleport();
         case "tp-zone": return send("admin:tp", { zone: nv("w-zone") });
         case "logs": this.logKind = val("l-kind"); this.logName = val("l-name"); return this.refresh();
       }
