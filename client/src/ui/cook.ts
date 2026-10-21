@@ -90,9 +90,9 @@ export class CookUI {
       const now = instant(d);
       const row = el("div", "row dish", `<span class="row-icon"><img src="${icon(d.icon)}" alt=""></span>
         <div class="row-main">
-          <div class="row-title"><span>${esc(d.name)}</span><span class="meta">ур. ${d.req}</span></div>
+          <div class="row-title">${esc(d.name)}</div>
           <div class="dish-fx">${fx}</div>
-          <div class="row-sub">Бафф ${d.minutes} мин.${now ? ` · Сразу: ${now}` : ""}</div>
+          <div class="row-sub">ур. ${d.req} · Бафф ${d.minutes} мин.${now ? ` · Сразу: ${now}` : ""}</div>
         </div>`);
       const prices = el("div", "price-stack");
       const btns = [1, 5].map((q) => {

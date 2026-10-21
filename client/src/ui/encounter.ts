@@ -103,8 +103,8 @@ export class EncounterUI {
       const qty = it.qty && it.qty > 1 ? it.qty : 0;
       const row = el("div", "row enc-item", `<div class="cell md r${it.rarity}"><img src="/assets/icons/${iconFor(it)}.png" alt="">${plusBadge(it)}${qty ? `<span class="qty">${qty}</span>` : ""}</div>
         <div class="row-main">
-          <div class="row-title"><span class="c-r${it.rarity}">${esc(itemName(it))}</span><span class="meta${low ? " c-bad" : ""}"${low ? ` title="Нужен ${it.req} уровень"` : ""}>ур. ${it.req}</span></div>
-          <div class="row-sub">${esc(kind(it))}${qty ? ` · ${qty} шт.` : ""}</div>
+          <div class="row-title"><span class="c-r${it.rarity}">${esc(itemName(it))}</span></div>
+          <div class="row-sub">${esc(kind(it))} · <span${low ? ` class="c-bad" title="Нужен ${it.req} уровень"` : ""}>ур. ${it.req}</span>${qty ? ` · ${qty} шт.` : ""}</div>
         </div>`);
       const cell = row.querySelector<HTMLElement>(".cell")!;
       if (this.host && me) this.host.tipFor(cell, () => this.host!.itemTip(it, this.net.self!));
