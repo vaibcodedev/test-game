@@ -1,4 +1,6 @@
 /* ---------- панель умений (ui/hotbar.ts) ---------- */
+/* кольцо LiteUI (tools/gen/vendor-liteui.ts) вместо тонкой рамки слота; состояния с цветом рамки (нет дальности, перетаскивание) остаются на border-color */
+.hb-slot:not(.oor, .nolos, .drag) { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
 .hb { display: flex; flex-direction: column; gap: var(--sp-1); }
 .hb-row { display: flex; gap: var(--sp-1); align-items: flex-end; }
 .hb-row.r2.empty { display: none; }
@@ -29,15 +31,16 @@
 .hud-chat {
   position: absolute;
   left: 12px;
-  bottom: 12px;
-  width: min(400px, calc(100vw - 24px));
+  /* низ, ширину и высоту лога считает ui/hud.ts (layoutBottom) от размеров панели умений; запасные значения — до первого расчёта */
+  bottom: var(--chat-bottom, 12px);
+  width: var(--chat-w, min(400px, calc(100% - 24px)));
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
   pointer-events: none;
 }
 .hud-chat .log {
-  max-height: 190px;
+  max-height: var(--chat-log-max, 190px);
   overflow-y: auto;
   font-size: var(--fs-chat);
   line-height: 1.35;
@@ -59,18 +62,20 @@
   font-weight: var(--fw-b);
 }
 .hud-chat input {
-  font-size: var(--fs-chat);
   pointer-events: auto;
-  background: rgba(14, 11, 16, 0.85);
+  background: var(--well);
   border: 1px solid var(--line);
   color: var(--fg);
   padding: var(--sp-1h) var(--sp-2);
   border-radius: var(--r-2);
   font: inherit;
-  opacity: 0.55;
+  font-size: var(--fs-chat); /* после font: inherit — размер чата действует и на поле ввода */
+}
+.hud-chat input::placeholder {
+  color: var(--dim);
 }
 .hud-chat input:focus {
-  opacity: 1;
+  border-color: var(--line-hi);
 }
 
 .toasts {

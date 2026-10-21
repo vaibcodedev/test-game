@@ -7,6 +7,7 @@ import { CLASSES, type ClassId } from "../../../shared/classes";
 import { UnitKind } from "../../../shared/protocol";
 import type { Net, UnitState } from "../net";
 import { seg, tabs, type TabsHandle } from "./kit";
+import { formatNumber } from "./gold";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const clsName = (c: string) => CLASSES[c as ClassId]?.name ?? c;
@@ -49,6 +50,7 @@ export class ArenaUI {
   private board = el("div", "panel arena-board");
   private countdown = el("div", "arena-countdown passthru");
   private partyBox = el("div", "panel hud-party");
+  private partySig = "";
   private tab: "rating" | "top" | "history" = "rating";
   private topMode: ArenaMode = "1v1";
   private top: Partial<Record<ArenaMode, LeaderRow[]>> = {};
@@ -365,11 +367,28 @@ export class ArenaUI {
     const party = net.party?.members.filter((m) => m.name !== net.self?.name) ?? [];
     this.partyBox.hidden = net.kind !== "world" || !party.length;
     if (!this.partyBox.hidden) {
-      this.partyBox.innerHTML = party.map((m) => {
-        let hp = -1;
-        for (const v of units.values()) if (v.u.kind === UnitKind.Player && v.u.name === m.name) hp = v.u.hp / Math.max(1, v.u.maxHp);
-        return `<div class="pm"><span>${esc(m.name)} <span class="muted">ур. ${m.level}</span></span>${hp >= 0 ? `<div class="bar hp mini"><i style="width:${hp * 100}%"></i></div>` : `<span class="muted">${m.online ? "далеко" : "не в сети"}</span>`}</div>`;
-      }).join("");
+      // рамки .uf из kit.css: разметка пересобирается только при смене состава, в кадре меняются полосы, числа и классы состояния
+      const sig = party.map((m) => `${m.name}|${m.cls}|${m.level}`).join(",");
+      if (sig !== this.partySig) {
+        this.partySig = sig;
+        this.partyBox.innerHTML = party.map((m) => `<div class="uf pm"><div class="uf-head"><span class="uf-name" title="${esc(m.name)}">${esc(m.name)}</span><span class="chip dim">ур. ${m.level}</span><span class="uf-meta">${clsName(m.cls)}</span></div><div class="bar hp"><i></i><span></span></div><div class="bar mp sm"><i></i></div></div>`).join("");
+      }
+      const rows = this.partyBox.children;
+      party.forEach((m, i) => {
+        const row = rows[i] as HTMLElement | undefined;
+        if (!row) return;
+        let u: UnitState | undefined;
+        for (const v of units.values()) if (v.u.kind === UnitKind.Player && v.u.name === m.name) { u = v.u; break; }
+        const hpK = u ? Math.max(0, u.hp) / Math.max(1, u.maxHp) : 0, mpK = u && u.maxMp > 0 ? Math.max(0, u.mp) / u.maxMp : 0;
+        const txt = u ? `${formatNumber(Math.max(0, u.hp))} / ${formatNumber(u.maxHp)}` : m.online ? "далеко" : "не в сети";
+        const hpEl = row.querySelector<HTMLElement>(".bar.hp > i")!, tx = row.querySelector<HTMLElement>(".bar.hp > span")!;
+        hpEl.style.width = `${hpK * 100}%`;
+        (row.querySelector(".bar.mp > i") as HTMLElement).style.width = `${mpK * 100}%`;
+        if (tx.textContent !== txt) tx.textContent = txt;
+        row.classList.toggle("far", !u && m.online);
+        row.classList.toggle("off", !m.online);
+        row.classList.toggle("dead", !!u && u.hp <= 0);
+      });
     }
     // табло матча
     const inArena = net.kind === "arena" && !!net.arena;

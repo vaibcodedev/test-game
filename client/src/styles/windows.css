@@ -273,8 +273,8 @@
 }
 
 @media (max-width: 800px) {
-  .hud-player {
-    width: 210px;
+  :root {
+    --hud-col: 210px;
   }
   .hud-mini {
     width: 168px;
@@ -290,11 +290,5 @@
   .slot img {
     width: 48px; /* целый масштаб иконки умения 24 px × 2 */
     height: 48px;
-  }
-  .hud-chat {
-    bottom: 76px;
-  }
-  .hud-chat .log {
-    max-height: 110px;
   }
 }

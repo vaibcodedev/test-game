@@ -1,6 +1,6 @@
 /** Интерфейс поверх игры (DOM): панели, окна, чат, мини-карта, подсказки. */
 import { formatNumber, gold, goldify } from "./gold";
-import { initWindowDrag, resetWindowPositions } from "./drag";
+import { initWindowDrag, resetWindowPositions, scaleOf } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
 import { FACTIONS, FOE_COLOR, factionColor } from "../../../shared/factions";
 import * as sfx from "../game/sfx";
@@ -146,10 +146,39 @@ export class Hud {
   /** Ключ эффекта, над значком которого сейчас подсказка (остаток времени в ней обновляется раз в секунду). */
   private auraHover = "";
 
-  /** Панели под рамкой героя (группа, питомец, задания) встают столбиком и не налезают друг на друга,
+  /** Низ левой колонки (рамка героя, группа, рейд, питомец, задания), локальные px корня. */
+  private leftBottom = 0;
+  private bottomVars = new Map<string, string>();
+  private setVar(name: string, v: number) {
+    const s = `${Math.round(v)}px`;
+    if (this.bottomVars.get(name) === s) return;
+    this.bottomVars.set(name, s);
+    this.root.style.setProperty(name, s);
+  }
+  /** Нижняя раскладка от размеров панели умений: чат стоит рядом с ней, если слева хватает места (не уже MIN), иначе над ней;
+   *  лог не выше свободного места между левой колонкой и низом. Все числа — в локальных px корня (учтён zoom интерфейса).
+   *  --bar-top — верх панели умений с рамкой, от него считаются строка ошибок и подсказка действия. */
+  private layoutBottom() {
+    const bw = this.bar.offsetWidth, bh = this.bar.offsetHeight;
+    if (!bw || !bh) return;
+    const EDGE = 12, GAP = 8, FRAME = 8, MIN = 320;
+    const s = scaleOf(this.bar), W = innerWidth / s, H = innerHeight / s;
+    const beside = (W - bw) / 2 - FRAME - EDGE - GAP;
+    const fits = beside >= MIN;
+    const chatW = fits ? Math.min(400, beside) : Math.min(400, W - 2 * EDGE);
+    const barTop = EDGE + bh + FRAME;
+    const chatBottom = fits ? EDGE : barTop + GAP;
+    const logMax = Math.max(64, Math.min(190, H - this.leftBottom - GAP - chatBottom - this.chatInput.offsetHeight - 4));
+    this.setVar("--bar-top", barTop);
+    this.setVar("--chat-w", chatW);
+    this.setVar("--chat-bottom", chatBottom);
+    this.setVar("--chat-log-max", logMax);
+  }
+
+  /** Панели под рамкой героя (группа, рейд, питомец, задания) встают столбиком и не налезают друг на друга,
    *  даже когда рамка растёт (очки, «В бою», строка эффектов) или панель появляется и пропадает. */
   private stackLeftPanels() {
-    const order = [".hud-player", ".hud-party", ".hud-pet", ".hud-quests"];
+    const order = [".hud-player", ".hud-party", ".raid-frames", ".hud-pet", ".hud-quests"];
     const layout = () => {
       let y = 12;
       for (const sel of order) {
@@ -158,6 +187,8 @@ export class Hud {
         if (sel !== ".hud-player" && e.style.top !== `${y}px`) e.style.top = `${y}px`;
         y = (sel === ".hud-player" ? e.offsetTop : y) + e.offsetHeight + 8;
       }
+      this.leftBottom = y;
+      this.layoutBottom();
     };
     const ro = new ResizeObserver(layout);
     const watch = () => order.forEach((sel) => { const e = this.root.querySelector<HTMLElement>(sel); if (e && !(e as any).__stacked) { (e as any).__stacked = true; ro.observe(e); } });
@@ -176,6 +207,9 @@ export class Hud {
     root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.errLine, this.itip, this.death, this.tip);
     initWindowDrag(root, () => this.ctx?.net.self?.name ?? "");
     this.stackLeftPanels();
+    // чат против панели умений: пересчёт при смене размеров панели (ряд Shift, питомец), поля ввода (размер шрифта) и окна
+    const roBottom = new ResizeObserver(() => this.layoutBottom());
+    roBottom.observe(this.bar); roBottom.observe(this.chatInput); roBottom.observe(this.root);
     this.targetBox.hidden = true;
     this.petBox.hidden = true;
     this.death.hidden = true;
@@ -551,6 +585,7 @@ export class Hud {
     (this.root.style as CSSStyleDeclaration & { zoom: string }).zoom = String(this.uiScale / 100);
     this.root.style.setProperty("--fs-chat", this.chatSize + "px");
     this.syncHeadUnit();
+    this.layoutBottom();
     const b = this.settingsBody;
     if (b) { b.querySelector("#set-scale-v")!.textContent = this.uiScale + "%"; b.querySelector("#set-chat-v")!.textContent = this.chatSize + "px"; }
   }

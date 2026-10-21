@@ -174,22 +174,17 @@
     0 0 30px #000;
   pointer-events: none;
 }
-.hud-party {
-  position: absolute;
-  left: 12px;
-  top: 136px;
-  width: 200px;
-  padding: var(--sp-1h) var(--sp-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1h);
-  font-size: var(--fs);
-}
-.hud-party .pm {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
+/* группа в мире: рамки .uf (kit.css), левая колонка — ширина и позиция в hud.css, высота столбика — ui/hud.ts stackLeftPanels */
+.hud-party { position: absolute; padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs); }
+.hud-party .uf { gap: var(--sp-1); padding: var(--sp-1) var(--sp-1h); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); }
+.hud-party .uf-head { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--sp-0); }
+.hud-party .uf-name { font-size: var(--fs); color: var(--fg); }
+.hud-party .uf-meta { font-size: var(--fs-xs); }
+.hud-party .bar.hp { height: 12px; }
+.hud-party .bar.hp > span { font-size: var(--fs-2xs); line-height: 10px; }
+.hud-party .bar.mp { height: 4px; }
+.hud-party .uf.far, .hud-party .uf.off { opacity: .55; }
+.hud-party .uf.dead .uf-name { color: var(--dim); text-decoration: line-through; }
 body:has(.arena-board:not([hidden])) .hud-target {
   top: 92px;
 }

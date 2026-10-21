@@ -10,7 +10,7 @@ function save(id: string, l: number, t: number) { try { const p = load(); p[id] 
 
 function winId(w: HTMLElement): string { return [...w.classList].find((c) => c.startsWith("win-")) || "win"; }
 /** Масштаб CSS zoom корня: экранные пиксели на локальный. */
-function scaleOf(w: HTMLElement): number { const s = w.getBoundingClientRect().width / (w.offsetWidth || 1); return s > 0 && isFinite(s) ? s : 1; }
+export function scaleOf(w: HTMLElement): number { const s = w.getBoundingClientRect().width / (w.offsetWidth || 1); return s > 0 && isFinite(s) ? s : 1; }
 
 function clamp(w: HTMLElement, l: number, t: number): [number, number] {
   const s = scaleOf(w), par = (w.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };

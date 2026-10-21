@@ -14,7 +14,7 @@ const mmss = (sec: number) => {
 const ROLE_ICON: Record<RaidRole, string> = { tank: "🛡", healer: "✚", melee: "⚔", ranged: "➶" };
 /** Значки ролей в окне сбора: пиксельные иконки умений одного размера (рамки и итоги рейда пока на ROLE_ICON). */
 const ROLE_IMG: Record<RaidRole, string> = { tank: "sk_shieldblock", healer: "sk_heal", melee: "sk_cleave", ranged: "sk_volley" };
-const roleImg = (r: RaidRole) => `<img class="role-ic" src="/assets/icons/${ROLE_IMG[r]}.png" alt="" width="16" height="16">`;
+const roleImg = (r: RaidRole, cls = "") => `<img class="role-ic${cls}" src="/assets/icons/${ROLE_IMG[r]}.png" alt="" width="16" height="16">`;
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -49,6 +49,7 @@ export class RaidHud {
   private bannerTimer = 0;
   private lastRows = 0;
   private lastKey = "";
+  private lastInfo = "";
   // ссылки на элементы полосы босса
   private bFill!: HTMLElement;
   private bPhase!: HTMLElement;
@@ -77,10 +78,21 @@ export class RaidHud {
     this.cName = this.top.querySelector("[data-cname]")!;
     this.cTime = this.top.querySelector("[data-ctime]")!;
     this.berserkEl = this.top.querySelector("[data-berserk]")!;
-    this.frames.innerHTML = `<div class="raid-finfo" data-info></div><div class="raid-rows" data-rows></div><button class="btn raid-leave">Покинуть рейд</button>`;
+    this.frames.innerHTML = `<div class="raid-fhead"><b>Рейд</b><span class="raid-finfo" data-info></span><button class="btn small raid-leave">Выйти</button></div><div class="raid-rows" data-rows></div>`;
     this.fRows = this.frames.querySelector("[data-rows]")!;
     this.fInfo = this.frames.querySelector("[data-info]")!;
-    this.frames.querySelector<HTMLButtonElement>(".raid-leave")!.onclick = () => this.net.send("raid:leave", {});
+    // выход — только вторым нажатием в течение 3 секунд
+    const leave = this.frames.querySelector<HTMLButtonElement>(".raid-leave")!;
+    let armed = 0;
+    leave.onclick = () => {
+      if (!armed) {
+        leave.textContent = "Точно выйти?";
+        armed = window.setTimeout(() => { armed = 0; leave.textContent = "Выйти"; }, 3000);
+        return;
+      }
+      clearTimeout(armed); armed = 0; leave.textContent = "Выйти";
+      this.net.send("raid:leave", {});
+    };
     this.fRows.addEventListener("click", (e) => {
       const r = (e.target as HTMLElement).closest<HTMLElement>("[data-dead]");
       if (r?.dataset.id) this.net.send("raid:revive", { id: r.dataset.id });
@@ -261,7 +273,8 @@ export class RaidHud {
     const cd = Math.ceil(st.countdown ?? 0);
     this.count.textContent = (stage === "gather" || stage === "pull") && cd > 0 ? `${stage === "gather" ? "Сбор" : "Бой через"}: ${cd}` : "";
     this.count.hidden = this.count.textContent === "";
-    this.fInfo.innerHTML = `Заряды воскрешения: <b>${st.revives ?? 0}</b>${st.attempts ? `<br>Попытка <b>${st.attempt ?? 1}</b> из ${st.attempts}` : ""}`;
+    const info = `<span class="chip" title="Заряды воскрешения">✚ ${st.revives ?? 0}</span>${st.attempts ? `<span class="chip dim">Попытка ${st.attempt ?? 1}/${st.attempts}</span>` : ""}`;
+    if (info !== this.lastInfo) { this.lastInfo = info; this.fInfo.innerHTML = info; }
     this.frameRows(units, welcome?.members ?? []);
   }
 
@@ -276,7 +289,8 @@ export class RaidHud {
     if (key !== this.lastKey || list.length !== this.lastRows) {
       this.lastKey = key;
       this.lastRows = list.length;
-      this.fRows.innerHTML = list.map((x) => `<div class="raid-row" data-id="${esc(x.id)}" ${x.dead ? "data-dead" : ""}><span class="raid-ri">${ROLE_ICON[x.role]}</span><span class="raid-rn">${esc(x.u.name)}</span><div class="raid-rhp"><i></i></div><em></em></div>`).join("");
+      this.fRows.classList.toggle("two", list.length > 10);
+      this.fRows.innerHTML = list.map((x) => `<div class="uframe raid-row" data-id="${esc(x.id)}" ${x.dead ? "data-dead" : ""}>${roleImg(x.role, " uframe-role")}<span class="uframe-name">${esc(x.u.name)}</span><span class="uframe-st"></span><div class="bar hp sm"><i></i></div></div>`).join("");
     }
     const rows = this.fRows.children;
     for (let i = 0; i < list.length; i++) {
@@ -286,8 +300,8 @@ export class RaidHud {
       (row.querySelector("i") as HTMLElement).style.width = `${x.dead ? 0 : k * 100}%`;
       const rv = this.revive.get(x.id) ?? this.revive.get(x.u.name);
       if (rv && rv.until < now) { this.revive.delete(x.id); this.revive.delete(x.u.name); }
-      const em = row.querySelector("em")!;
-      const txt = x.dead ? (rv && rv.until >= now ? `поднимают… ${rv.by}` : "мёртв") : "";
+      const em = row.querySelector(".uframe-st")!;
+      const txt = x.dead ? (rv && rv.until >= now ? `поднимают… ${rv.by}` : "мёртв") : `${Math.ceil(k * 100)}%`;
       if (em.textContent !== txt) em.textContent = txt;
       row.classList.toggle("dead", x.dead);
       row.classList.toggle("self", x.id === this.net.id);

@@ -3,9 +3,7 @@
    Здесь — положение окон, трекер заданий и то, чего в kit.css нет. */
 .hud-quests {
   position: absolute;
-  left: 12px;
   top: 205px;
-  width: 220px;
   padding: var(--sp-1h) var(--sp-2);
   font-size: var(--fs-sm);
 }

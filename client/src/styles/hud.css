@@ -1,9 +1,15 @@
 /* ---------- HUD ---------- */
+/* Одна ширина левой колонки: рамка героя, группа, рейд, питомец и задания (ui/hud.ts: stackLeftPanels ставит их столбиком) */
+:root { --hud-col: 270px; }
+.hud-party, .hud-pet, .hud-quests, .raid-frames { left: 12px; width: var(--hud-col); }
+/* рамки LiteUI Fantasy (tools/gen/vendor-liteui.ts): плашка героя и панель умений — 9-slice ×2, углы выходят за плашку на 8px;
+   нет картинки в client/public/ui/liteui/ — остаётся обычная рамка .panel */
+.hud-player, .hud-bar { border-image: url("/ui/liteui/panel.png") 18 / 18px / 8px stretch; image-rendering: pixelated; }
 .hud-player {
   position: absolute;
   left: 12px;
   top: 12px;
-  width: 270px;
+  width: var(--hud-col);
   padding: var(--sp-2);
   display: flex;
   flex-direction: column;
@@ -156,9 +162,7 @@
 
 .hud-pet {
   position: absolute;
-  left: 12px;
   top: 150px;
-  width: 200px;
   padding: var(--sp-1h) var(--sp-2);
   display: flex;
   flex-direction: column;
@@ -305,7 +309,7 @@
   transform: translateX(-50%);
   display: flex;
   gap: var(--sp-1h);
-  padding: var(--sp-1h);
+  padding: var(--sp-2);
   align-items: flex-end;
 }
 .slot {
