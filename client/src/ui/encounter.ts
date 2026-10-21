@@ -1,12 +1,19 @@
 /** Окна случайных встреч: диалог путника и лавка бродячего торговца. */
 import { gold as goldHtml } from "./gold";
 import type { EncDialogMsg, EncShopMsg } from "../../../shared/encounters";
-import { iconFor, itemName, RARITY_COLORS, type Item } from "../../../shared/items";
+import { foodOf } from "../../../shared/food";
+import { BASE_ITEMS, iconFor, itemName, itemTypeName, type Item } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
 import { plusBadge } from "./smith";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
+}
 
 /** Подсказки предметов лавки: те же, что в сумке (Hud.itemTip без цены и подсказок по клику). */
 export interface EncounterHost {
@@ -14,13 +21,18 @@ export interface EncounterHost {
   tipFor(elm: HTMLElement, html: () => string): void;
 }
 
+/** Тип вещи в строке лавки: «Двуручный меч», «Еда». */
+const kind = (it: Item) => (BASE_ITEMS[it.base]?.slot === "consumable" ? (foodOf(it.base) ? "Еда" : "Расходуемое") : itemTypeName(it));
+
 export class EncounterUI {
-  private win = document.createElement("div");
+  private win = el("div", "panel win m win-enc");
   private net!: Net;
   private id = "";
+  /** Лавка на экране: золото в подвале и кнопки цен обновляются, когда меняется золото героя. */
+  private shopShown = false;
+  private prices: { btn: HTMLButtonElement; price: number }[] = [];
 
   constructor(root: HTMLElement, private host?: EncounterHost) {
-    this.win.className = "panel win win-enc";
     this.win.hidden = true;
     root.append(this.win);
   }
@@ -32,6 +44,8 @@ export class EncounterUI {
     net.on("enc:gone", (m) => {
       if (m.id === this.id) this.close();
     });
+    // после покупки сервер отвечает лавкой раньше, чем присылает новое золото
+    net.on("self", (s) => this.afford(s.gold));
   }
 
   /** Подойти и заговорить: сервер ответит окном диалога или лавки. */
@@ -45,55 +59,76 @@ export class EncounterUI {
     return was;
   }
 
-  private head(name: string) {
+  /** Меняет содержимое окна, не сбрасывая прокрутку .body; foot — подвал (пустой — окно без подвала). */
+  private frame(name: string, body: string, foot = "") {
     this.win.hidden = false;
-    this.id = this.id || "";
-    return `<h2><span>${esc(name)}</span><button class="x" aria-label="Закрыть">×</button></h2>`;
-  }
-  private wire() {
+    const top = this.win.querySelector(".body")?.scrollTop ?? 0;
+    this.win.innerHTML = `<h2><span>${esc(name)}</span><button class="x" aria-label="Закрыть">×</button></h2><div class="body">${body}</div>${foot ? `<div class="win-foot">${foot}</div>` : ""}`;
+    this.win.querySelector<HTMLElement>(".body")!.scrollTop = top;
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
+    this.win.querySelector<HTMLButtonElement>(".bye")?.addEventListener("click", () => this.close());
   }
 
   private dialog(m: EncDialogMsg) {
     this.id = m.id;
-    this.win.innerHTML = `${this.head(m.name)}<p class="rumor-text">${esc(m.text)}</p><div class="enc-opts"></div>`;
-    const box = this.win.querySelector(".enc-opts")!;
+    this.shopShown = false;
+    this.frame(m.name, `<p class="npc-say">${esc(m.text)}</p>${m.opts.length ? `<div class="npc-opts"></div>` : ""}`, `<div class="actions"><button class="btn bye">Пока</button></div>`);
+    const box = this.win.querySelector(".npc-opts");
     for (const o of m.opts) {
-      const b = document.createElement("button");
-      b.className = "btn small";
-      b.textContent = o.label;
+      const b = el("button", "btn opt", esc(o.label));
       b.onclick = () => this.net.send("enc:act", { id: m.id, opt: o.id });
-      box.append(b);
+      box?.append(b);
     }
-    const bye = document.createElement("button");
-    bye.className = "btn small";
-    bye.textContent = "Пока";
-    bye.onclick = () => this.close();
-    box.append(bye);
-    this.wire();
   }
 
   private shop(m: EncShopMsg) {
     this.id = m.id;
-    const gold = this.net.self?.gold ?? 0;
-    this.win.innerHTML = `${this.head(m.name)}<p class="muted">${esc(m.text)} Лавка закроется через ~${Math.ceil(m.until / 60)} мин.</p><div class="enc-list"></div>`;
-    const list = this.win.querySelector(".enc-list")!;
+    // вещь, купленная из-под курсора, исчезает без mouseleave: подсказку убираем до замены окна
+    this.win.querySelectorAll(".cell").forEach((c) => c.dispatchEvent(new MouseEvent("mouseleave")));
+    const me = this.net.self;
+    const mins = Math.max(1, Math.ceil(m.until / 60));
+    this.shopShown = true;
+    this.prices = [];
+    this.frame(
+      m.name,
+      `<p class="npc-say">${esc(m.text)}</p>${m.stock.length
+        ? `<section class="sec"><div class="sec-head"><h3 class="sec-h">Товары</h3><span class="sec-aside">Наведите на вещь — подсказка</span></div><div class="list boxed"></div></section>`
+        : `<p class="note">Всё раскуплено</p>`}`,
+      `<span class="win-foot-info">Лавка закроется через ~${mins} мин.</span>${goldHtml(me?.gold ?? 0)}`,
+    );
+    const list = this.win.querySelector(".list");
     for (const s of m.stock) {
-      const row = document.createElement("div");
-      row.className = "shoprow";
       const it = s.item;
-      row.innerHTML = `<div class="cell r${it.rarity}"><img src="/assets/icons/${iconFor(it)}.png" alt="">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}</div><div><span style="color:${RARITY_COLORS[it.rarity]}">${esc(itemName(it))}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}</span><br><span class="muted">ур. ${it.req}</span></div>`;
+      const low = !!me && it.req > me.level;
+      const qty = it.qty && it.qty > 1 ? it.qty : 0;
+      const row = el("div", "row enc-item", `<div class="cell md r${it.rarity}"><img src="/assets/icons/${iconFor(it)}.png" alt="">${plusBadge(it)}${qty ? `<span class="qty">${qty}</span>` : ""}</div>
+        <div class="row-main">
+          <div class="row-title"><span class="c-r${it.rarity}">${esc(itemName(it))}</span><span class="meta${low ? " c-bad" : ""}"${low ? ` title="Нужен ${it.req} уровень"` : ""}>ур. ${it.req}</span></div>
+          <div class="row-sub">${esc(kind(it))}${qty ? ` · ${qty} шт.` : ""}</div>
+        </div>`);
       const cell = row.querySelector<HTMLElement>(".cell")!;
-      if (this.host && this.net.self) this.host.tipFor(cell, () => this.host!.itemTip(it, this.net.self!));
-      const btn = document.createElement("button");
-      btn.className = "btn small";
-      btn.innerHTML = `${goldHtml(s.price)}`;
-      btn.disabled = gold < s.price;
+      if (this.host && me) this.host.tipFor(cell, () => this.host!.itemTip(it, this.net.self!));
+      const btn = el("button", "btn small price", `<span class="price-q">Купить</span>${goldHtml(s.price)}`);
       btn.onclick = () => this.net.send("enc:buy", { id: m.id, idx: s.idx });
-      row.append(btn);
-      list.append(row);
+      this.prices.push({ btn, price: s.price });
+      const end = el("div", "row-end");
+      end.append(btn);
+      row.append(end);
+      list?.append(row);
     }
-    if (!m.stock.length) list.innerHTML = `<p class="muted">Всё раскуплено.</p>`;
-    this.wire();
+    this.afford(me?.gold ?? 0);
+  }
+
+  /** Золото героя: подвал лавки и кнопки цен; недоступная цена краснеет и говорит почему. */
+  private afford(have: number) {
+    if (!this.shopShown || this.win.hidden) return;
+    const g = this.win.querySelector(".win-foot > .gold-amt");
+    if (g) g.outerHTML = goldHtml(have);
+    for (const { btn, price } of this.prices) {
+      const short = have < price;
+      btn.disabled = short;
+      btn.toggleAttribute("data-short", short);
+      btn.title = short ? "Не хватает золота" : "";
+    }
   }
 }

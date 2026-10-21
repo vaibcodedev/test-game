@@ -1,6 +1,6 @@
 /** Окно обмена между игроками: запрос, два столбца по 8 слотов, золото, «Готов» → «Обменять». */
 import { gold } from "./gold";
-import { BASE_ITEMS, iconFor, itemName, type Item } from "../../../shared/items";
+import { iconFor, itemName, type Item } from "../../../shared/items";
 import { plusBadge } from "./smith";
 import type { SelfState } from "../../../shared/protocol";
 import { TRADE_SLOTS, type TradeSideView, type TradeView } from "../../../shared/trade";
@@ -8,6 +8,12 @@ import type { Net } from "../net";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
+}
 
 export interface TradeHost {
   itemTip(it: Item, s: SelfState): string;
@@ -17,9 +23,14 @@ export interface TradeHost {
 
 export class TradeUI {
   private net!: Net;
-  private win = document.createElement("div");
-  private ask = document.createElement("div");
-  private menu = document.createElement("div");
+  private win = el("div", "panel win l win-trade");
+  // запрос обмена — диалог .dialog на подложке .modal (kit.css); arena-modal и arena-dialog — метки для tests/
+  private ask = el("div", "modal arena-modal");
+  private menu = el("div", "panel ctx-menu");
+  private title: HTMLElement;
+  private body: HTMLElement;
+  private ready: HTMLButtonElement;
+  private confirm: HTMLButtonElement;
   private state: TradeView | null = null;
   private askTimer = 0;
   private confirmTimer = 0;
@@ -28,12 +39,21 @@ export class TradeUI {
   private confirmAt = 0;
 
   constructor(root: HTMLElement, private host: TradeHost) {
-    this.win.className = "panel win win-trade";
     this.win.hidden = true;
-    this.ask.className = "arena-modal";
     this.ask.hidden = true;
-    this.menu.className = "panel ctx-menu";
     this.menu.hidden = true;
+    this.menu.setAttribute("role", "menu");
+    // каркас строится один раз: заголовок, .body и подвал остаются на месте, при обновлении меняются колонки и кнопки (фокус кнопок не теряется)
+    this.win.innerHTML = `<h2><span></span><button class="x" aria-label="Закрыть">×</button></h2><div class="body"></div>
+      <div class="win-foot"><button class="btn" data-x>Отмена</button><div class="actions"><button class="btn" data-r>Готов</button><button class="btn primary" data-c>Обменять</button></div></div>`;
+    this.title = this.win.querySelector<HTMLElement>("h2 > span")!;
+    this.body = this.win.querySelector<HTMLElement>(".body")!;
+    this.ready = this.win.querySelector<HTMLButtonElement>("[data-r]")!;
+    this.confirm = this.win.querySelector<HTMLButtonElement>("[data-c]")!;
+    this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
+    this.win.querySelector<HTMLButtonElement>("[data-x]")!.onclick = () => this.close();
+    this.ready.onclick = () => this.net.send("trade:ready");
+    this.confirm.onclick = () => this.net.send("trade:confirm");
     root.append(this.win, this.ask, this.menu);
     document.addEventListener("pointerdown", (e) => {
       if (!this.menu.hidden && !this.menu.contains(e.target as Node)) this.menu.hidden = true;
@@ -66,9 +86,10 @@ export class TradeUI {
 
   /** Контекстное меню по правому клику на игроке: «Осмотреть» (если передан onInspect) и «Предложить обмен». */
   showMenu(id: string, name: string, x: number, y: number, onInspect?: () => void, onFollow?: () => void) {
-    this.menu.innerHTML = `<div class="d">${esc(name)}</div>${onInspect ? `<button class="btn small" data-a="inspect">Осмотреть</button>` : ""}<button class="btn small" data-a="trade">Предложить обмен</button>${onFollow ? `<button class="btn small" data-a="follow">Следовать</button>` : ""}`;
-    this.menu.style.left = Math.min(x, innerWidth - 180) + "px";
-    this.menu.style.top = Math.min(y, innerHeight - 110) + "px";
+    const item = (a: string, label: string) => `<button class="btn small opt" role="menuitem" data-a="${a}">${label}</button>`;
+    this.menu.innerHTML = `<div class="row-title ctx-name">${esc(name)}</div>${onInspect ? item("inspect", "Осмотреть") : ""}${item("trade", "Предложить обмен")}${onFollow ? item("follow", "Следовать") : ""}`;
+    this.menu.style.left = Math.min(x, innerWidth - 200) + "px";
+    this.menu.style.top = Math.min(y, innerHeight - 170) + "px";
     this.menu.hidden = false;
     this.menu.querySelector<HTMLButtonElement>("[data-a=trade]")!.onclick = () => {
       this.menu.hidden = true;
@@ -91,8 +112,11 @@ export class TradeUI {
     if (!m) return void (this.ask.hidden = true);
     this.ask.hidden = false;
     const until = performance.now() + m.ms;
-    this.ask.innerHTML = `<div class="panel arena-dialog small" role="alertdialog"><h2>Обмен</h2><p>${esc(m.from)} предлагает обмен.</p><p class="muted" data-left></p>
-      <div class="row-btns"><button class="btn primary" data-a="1">Принять</button><button class="btn" data-a="0">Отклонить</button></div></div>`;
+    // вторичная кнопка слева, главная справа; сколько осталось на ответ — слева в подвале
+    this.ask.innerHTML = `<section class="panel dialog sm arena-dialog" role="alertdialog" aria-labelledby="trade-ask-title">
+      <div class="dialog-head"><h2 class="dialog-title" id="trade-ask-title">Обмен</h2></div>
+      <div class="dialog-body"><p><b>${esc(m.from)}</b> предлагает обмен.</p></div>
+      <div class="dialog-foot"><span class="win-foot-info" data-left></span><button class="btn" data-a="0">Отклонить</button><button class="btn primary" data-a="1">Принять</button></div></section>`;
     const left = this.ask.querySelector<HTMLElement>("[data-left]")!;
     const tick = () => {
       const s = Math.ceil((until - performance.now()) / 1000);
@@ -131,27 +155,30 @@ export class TradeUI {
   /** Сумка перерисовывается, чтобы показать заблокированные предметы. */
   onChange?: () => void;
 
+  /** Колонка стороны: заголовок со статусом, 8 слотов (свои — кнопки: клик убирает вещь, сюда же бросают из сумки), золото. */
   private column(side: TradeSideView, mine: boolean): HTMLElement {
-    const col = document.createElement("div");
-    col.className = "trade-col";
     const k = mine ? "m" : "t";
-    const status = side.confirm ? `<span class="ok">Обменять ✓</span>` : side.ready ? `<span class="ok">Готов ✓</span>` : `<span class="muted">не готов</span>`;
-    col.innerHTML = `<h3>${mine ? "Вы отдаёте" : "Вы получаете"} ${status}</h3><div class="grid trade-grid"></div>
-      <label class="trade-gold ${this.lit(k + "g") ? "changed" : ""}">Золото: ${mine ? `<input type="number" min="0" step="1" value="${side.gold}">` : `<b>${gold(side.gold)}</b>`}</label>`;
-    const grid = col.querySelector(".grid")!;
+    const status = side.confirm ? `<span class="chip ok">Подтверждено ✓</span>` : side.ready ? `<span class="chip ok">Готов ✓</span>` : `<span class="chip dim">Не готов</span>`;
+    const amount = mine
+      ? `<span class="trade-amt"><input class="input num" type="number" min="0" step="1" value="${side.gold}" aria-label="Золото в обмене"><img class="coin" src="${icon("coin")}" alt="золото"></span>`
+      : gold(side.gold);
+    const col = el("section", "sec flat trade-col", `<div class="sec-head"><h3 class="sec-h">${mine ? "Вы отдаёте" : "Вы получаете"}</h3>${status}</div>
+      <div class="cells trade-grid"></div>
+      <${mine ? "label" : "div"} class="trade-gold${this.lit(k + "g") ? " changed" : ""}"><span class="field-label">Золото</span>${amount}</${mine ? "label" : "div"}>`);
+    const grid = col.querySelector(".cells")!;
     for (let i = 0; i < TRADE_SLOTS; i++) {
       const it = side.items[i];
-      const c = document.createElement("button");
-      c.className = `cell ${it ? "r" + it.rarity : ""} ${this.lit(k + i) ? "changed" : ""}`;
+      // кнопка только там, где клик что-то делает: своя занятая ячейка
+      const c = el(mine && it ? "button" : "div", `cell${it ? " r" + it.rarity : " empty"}${this.lit(k + i) ? " changed" : ""}`);
       if (it) c.innerHTML = `<img src="${icon(iconFor(it))}" alt="${esc(itemName(it))}">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}`;
       if (it) this.host.tipFor(c, () => this.host.itemTip(it, this.net.self!) + (mine ? `<div class="d">Клик — убрать из обмена</div>` : ""));
       if (mine) {
         if (it) c.onclick = () => { this.host.hideTip(); this.net.send("trade:remove", { slot: i }); };
-        c.ondragover = (e) => { e.preventDefault(); c.classList.add("drag"); };
-        c.ondragleave = () => c.classList.remove("drag");
+        c.ondragover = (e) => { e.preventDefault(); c.classList.add("drop"); };
+        c.ondragleave = () => c.classList.remove("drop");
         c.ondrop = (e) => {
           e.preventDefault();
-          c.classList.remove("drag");
+          c.classList.remove("drop");
           const from = Number(e.dataTransfer!.getData("text/plain"));
           if (Number.isInteger(from)) this.offer(from, i);
         };
@@ -175,23 +202,23 @@ export class TradeUI {
     const me = v.mine, they = v.theirs;
     const bothReady = me.ready && they.ready;
     const wait = Math.max(0, this.confirmAt - performance.now());
-    const focused = document.activeElement instanceof HTMLInputElement && this.win.contains(document.activeElement) ? document.activeElement.value : null;
-    this.win.innerHTML = `<h2><span>Обмен с ${esc(they.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
-      ${v.gift ? `<div class="trade-gift">Подарок — вы ничего не отдаёте</div>` : ""}
-      <div class="trade-cols"></div>
-      <p class="muted">Перетащите предметы из сумки (или кликните по ним). Любое изменение сбрасывает подтверждения.</p>
-      <div class="row-btns"><button class="btn" data-r ${me.ready ? "disabled" : ""}>Готов</button>
-      <button class="btn" data-c ${!bothReady || me.confirm || wait > 0 ? "disabled" : ""}>Обменять${bothReady && wait > 0 ? ` (${Math.ceil(wait / 1000)})` : ""}</button>
-      <button class="btn" data-x>Отмена</button></div>`;
-    const cols = this.win.querySelector(".trade-cols")!;
-    cols.append(this.column(me, true), this.column(they, false));
-    this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
-    this.win.querySelector<HTMLButtonElement>("[data-x]")!.onclick = () => this.close();
-    this.win.querySelector<HTMLButtonElement>("[data-r]")!.onclick = () => this.net.send("trade:ready");
-    this.win.querySelector<HTMLButtonElement>("[data-c]")!.onclick = () => this.net.send("trade:confirm");
-    if (focused !== null) {
-      const inp = this.win.querySelector<HTMLInputElement>("input")!;
-      inp.value = focused;
+    const typed = document.activeElement instanceof HTMLInputElement && this.body.contains(document.activeElement) ? document.activeElement.value : null;
+    const top = this.body.scrollTop;
+    this.title.textContent = `Обмен с ${they.name}`;
+    this.ready.disabled = me.ready;
+    this.confirm.disabled = !bothReady || me.confirm || wait > 0;
+    this.confirm.textContent = `Обменять${bothReady && wait > 0 ? ` (${Math.ceil(wait / 1000)})` : ""}`;
+    const cols = el("div", "trade-cols");
+    cols.append(this.column(me, true), el("div", "divider v"), this.column(they, false));
+    this.body.replaceChildren(
+      ...(v.gift ? [el("div", "trade-gift", `<span class="chip ok">Подарок</span><span class="note">Вы ничего не отдаёте</span>`)] : []),
+      cols,
+      el("p", "note", "Перетащите предметы из сумки или кликните по ним. Любое изменение сбрасывает подтверждения."),
+    );
+    this.body.scrollTop = top;
+    if (typed !== null) {
+      const inp = this.body.querySelector<HTMLInputElement>("input")!;
+      inp.value = typed;
       inp.focus();
     }
     if (bothReady && wait > 0) this.confirmTimer = window.setTimeout(() => this.render(), Math.min(1000, wait) + 20);

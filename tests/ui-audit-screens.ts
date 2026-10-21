@@ -792,21 +792,23 @@ async function stageNpc() {
   });
   await step("полная сумка", async () => { await dbg({ op: "fill" }); await sleep(700); });
   await item("win-inv-full", "Сумка, заполненная до краёв", ".win-inv", "dbg fill: все пустые ячейки заняты", () => run("hud.toggle('inv')"));
-  await item("win-shop-sell", "Лавка торговки: вкладка «Продать»", ".win-shop", "вкладка «Продать» с полной сумкой и кнопкой «Продать все обычные вещи»", async () => {
+  await item("win-shop-sell", "Лавка торговки: вкладка «Продать»", ".win-shop", "вкладка «Продать» с полной сумкой: обычные вещи выбраны, итог и «Продать выбранное» в подвале", async () => {
     await run("hud.openShop()");
     await sleep(400);
     await page.$$eval(".win-shop .shop-tabs .btn", (b) => (b[1] as HTMLElement).click());
     await sleep(400);
+    await page.evaluate("document.querySelector('.win-shop .sell-quick')?.click()"); // «Выбрать обычные»
+    await sleep(300);
   }, { after: async () => {
-    // освободить сумку: «Продать все обычные вещи без заточки»
-    await page.evaluate("[...document.querySelectorAll('.win-shop .shop-list > .btn')].find((e) => !e.disabled)?.click()").catch(() => {});
+    // освободить сумку: «Продать выбранное» (обычные вещи без заточки выбраны в setup)
+    await page.evaluate("[...document.querySelectorAll('.win-shop .sell-go')].find((e) => !e.disabled)?.click()").catch(() => {});
     await sleep(1500);
   } });
 
   await item("win-shop-sell-tooltip", "Лавка: подсказка вещи на вкладке «Продать»", ".win-shop, .tip", "наведение на вещь в сетке продажи", async () => {
     await run("hud.openShop()");
     await sleep(500);
-    await hover(".win-shop .sell-cell");
+    await hover(".win-shop .sell-grid .tile");
   });
 
   await item("win-bags", "Сумочник: расширение сумки", ".win-bags", "hud.bags.open() у Кожемякина", async () => {
@@ -820,7 +822,7 @@ async function stageNpc() {
     await run("hud.cook.open('cook')");
   });
   await step("еда", async () => {
-    await clickEl(".win-cook .shoprow .btn").catch(() => {});
+    await clickEl(".win-cook .row .btn").catch(() => {});
     await sleep(900);
     const inv = (await self()).inventory as any[];
     const i = inv.findIndex((it) => it && FOOD_IDS.includes(it.base));
@@ -1078,7 +1080,7 @@ async function stageAdmin() {
     await waitSel(".win-enc", 5000);
   });
   await item("win-enc-tooltip", "Лавка встречи: подсказка вещи", ".win-enc, .tip", "наведение на вещь в лавке", async () => {
-    await hover(".win-enc .shoprow .cell");
+    await hover(".win-enc .row .cell");
   }, { keep: true });
   await item("win-enc-dialog", "Встреча: диалог путника", ".win-enc", "hud.enc.dialog() с текстом путника (синтетика: настоящая встреча уже занята лавкой)", async () => {
     await run(`hud.enc.dialog({ id: 'x', name: 'Усталый путник', text: 'Фух... Далеко же я забрёл. Нет ли у вас зелья здоровья? Я отблагодарю.', opts: [{ id: 'potion', label: 'Отдать зелье здоровья' }, { id: 'guard', label: 'Предложить охрану' }] });`);

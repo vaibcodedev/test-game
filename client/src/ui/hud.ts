@@ -32,7 +32,7 @@ import { QuestUI, TeleportUI } from "./cities";
 import { fillHelp, GameMenu } from "./gamemenu";
 import { isTextField, keybinds, skillKeys } from "../game/keybinds";
 import { buildControls, buttonRow, checkRow, offerSchemeOnce, rangeRow, segRow } from "./controls";
-import { rangeFill, seg } from "./kit";
+import { rangeFill, seg, tabs, type TabsHandle } from "./kit";
 import { Hotbar } from "./hotbar";
 import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
@@ -43,6 +43,7 @@ import { MOUNTS, MOUNT_IDS, MOUNT_SOURCES, MOUNT_TIERS, TIER_COLOR, mountSprite 
 import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
+import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
 import { AURAS, auraCompare, auraText, auraTimeLabel, auraTimeWords, foodOfAura } from "../../../shared/auras";
 import { DODGE_CAP, STAT_K } from "../../../shared/formulas";
 import { P } from "../../../shared/palette";
@@ -411,7 +412,8 @@ export class Hud {
     mk("inv", "win-inv s", "Снаряжение и сумка");
     this.wins.inv.append(el("div", "win-foot")); // подвал сумки: подсказка и золото, заполняет renderInv
     mk("skills", "win-skills", "Дерево умений");
-    mk("shop", "win-shop", "Торговка Марфа");
+    mk("shop", "win-shop m", "Торговка Марфа");
+    this.buildShopFrame();
     mk("settings", "win-settings m", "Настройки");
     this.buildSettings(this.wins.settings.querySelector(".body")!);
     mk("help", "win-help m", "Помощь");
@@ -588,6 +590,7 @@ export class Hud {
   openShop() {
     this.ctx.net.send("market:get", {});
     this.wins.shop.hidden = false;
+    this.sellSel.clear();
     if (this.ctx.net.self) this.renderSelf(this.ctx.net.self);
   }
   private body(id: string) {
@@ -1125,75 +1128,152 @@ export class Hud {
     requestAnimationFrame(() => requestAnimationFrame(() => (bar.style.width = "100%")));
   }
 
+  // ---------- торговка ----------
   private shopTab: "buy" | "sell" = "buy";
+  private shopTabsH!: TabsHandle;
+  /** Выбор на вкладке «Продать»: uid вещей. */
+  private sellSel = new Set<string>();
+  /** Снимок того, что нарисовано в окне: пока он не меняется, торговка не перерисовывается (держатся подсказка, наведение и прокрутка). */
+  private shopSig = "";
+
+  /** Каркас окна: заголовок, вкладки, тело и подвал строятся один раз, дальше меняется только содержимое тела и подвала. */
+  private buildShopFrame() {
+    const body = this.body("shop");
+    body.id = "shop-body";
+    body.setAttribute("role", "tabpanel");
+    // shop-tabs — метка для tests/
+    const bar = el("div", "tabs fill shop-tabs", [["buy", "Купить"], ["sell", "Продать"]]
+      .map(([k, t]) => `<button class="btn tab" id="shop-tab-${k}" data-tab="${k}" aria-controls="shop-body"${k === this.shopTab ? ' aria-selected="true"' : ""}>${t}</button>`).join(""));
+    bar.setAttribute("aria-label", "Разделы лавки");
+    body.before(bar);
+    this.wins.shop.append(el("div", "win-foot"));
+    this.shopTabsH = tabs(bar, (key) => {
+      this.shopTab = key as "buy" | "sell";
+      body.scrollTop = 0;
+      if (this.ctx?.net.self) this.renderShop(this.ctx.net.self);
+    });
+  }
+
   private renderShop(s: SelfState) {
-    const b = this.body("shop");
-    b.innerHTML = "";
-    b.classList.add("shop");
-    const tabs = el("div", "shop-tabs");
-    for (const [k, t] of [["buy", "Купить"], ["sell", "Продать"]] as const) {
-      const tb = el("button", `btn${this.shopTab === k ? " on" : ""}`, t);
-      tb.onclick = () => { this.shopTab = k; this.renderShop(s); };
-      tabs.append(tb);
-    }
-    const list = el("div", "shop-list");
-    const foot = el("div", "shop-foot", `<span class="muted">«Зелья свежие, цены честные.»</span><span>Золото: <b>${gold(s.gold)}</b></span>`);
-    b.append(tabs, list, foot);
-    // карточка товара: иконка в ячейке, название, описание, кнопки с ценой
-    let grid: HTMLElement = list;
-    const row = (pic: string, name: string, desc: string, btns: [string, number, boolean, () => void][]) => {
-      const r = el("div", "shop-card", `<div class="sc-top"><span class="sc-icon">${pic}</span><div class="si-text"><b>${name}</b><span class="muted">${desc}</span></div></div>`);
-      const bx = el("div", "si-btns");
-      for (const [label, price, locked, buy] of btns) {
-        const btn = el("button", "btn small", label ? `<span class="q">${label.trim()}</span>${gold(price)}` : gold(price));
-        btn.disabled = locked || s.gold < price;
-        btn.onclick = buy;
-        bx.append(btn);
+    const sell = this.shopTab === "sell";
+    // проданное и убранное из сумки уходит из выбора
+    if (sell) for (const uid of [...this.sellSel]) if (!s.inventory.some((it) => it?.uid === uid)) this.sellSel.delete(uid);
+    const sig = JSON.stringify([this.shopTab, s.gold, s.level, s.cls, s.faction, s.mounts, s.pets && Object.keys(s.pets), sell && [s.inventory, this.prices, [...this.sellSel]]]);
+    if (sig === this.shopSig) return;
+    this.shopSig = sig;
+    if (this.wins.shop.matches(":hover")) this.tip.hidden = true; // вещь под курсором пересобирается, её mouseleave не придёт
+    this.shopTabsH.select(this.shopTab);
+    const foot = this.wins.shop.querySelector<HTMLElement>(".win-foot")!;
+    if (sell) this.shopSell(s, this.body("shop"), foot);
+    else this.shopBuy(s, this.body("shop"), foot);
+  }
+
+  /** «Купить»: зелья, ездовые животные и питомцы строками — иконка, название с подписью, цены столбиком справа. */
+  private shopBuy(s: SelfState, body: HTMLElement, foot: HTMLElement) {
+    type Offer = { q: string; price: number; need?: number; go: () => void };
+    const lv = (need: number) => `<span class="meta${s.level < need ? " c-bad" : ""}">с ${need} ур.</span>`;
+    const row = (pic: string, name: string, sub: string, offers: Offer[], meta = "") => {
+      const r = el("div", "row", `<span class="row-icon"><img src="${icon(pic)}" alt=""></span><div class="row-main"><span class="row-title">${esc(name)}${meta}</span><span class="row-sub">${sub}</span></div>`);
+      const stack = el("div", "price-stack si-btns"); // si-btns — метка для tests/
+      for (const o of offers) {
+        const b = el("button", "btn small price", `<span class="price-q">${o.q}</span>${gold(o.price)}`);
+        if (o.need && s.level < o.need) { b.disabled = true; b.title = `Нужен ${o.need} уровень`; }
+        else if (s.gold < o.price) { b.disabled = true; b.dataset.short = ""; b.title = "Не хватает золота"; }
+        b.onclick = o.go;
+        stack.append(b);
       }
-      r.append(bx);
-      grid.append(r);
+      r.classList.toggle("locked", offers.every((o) => !!o.need && s.level < o.need));
+      r.append(stack);
+      return r;
     };
-    const head = (t: string) => { list.append(el("div", "shop-head", t)); grid = list.appendChild(el("div", "shop-grid")); };
-    const sprite = (key: string) => `<img src="${icon(key)}" alt="">`;
-    if (this.shopTab === "buy") {
-      head("Зелья");
-      for (const base of ["hp_potion", "mp_potion"]) {
-        const def = BASE_ITEMS[base], p = def.price ?? 0;
-        row(`<img src="${icon(def.icon)}" alt="">`, def.name, base === "hp_potion" ? "+45% здоровья" : "+50% маны",
-          [1, 5, 20].map((q) => [`×${q}`, p * q, false, () => this.ctx.net.send("buy", { base, qty: q })] as [string, number, boolean, () => void]));
+    const sec = (title: string, rows: HTMLElement[]) => {
+      const list = el("div", "list boxed");
+      list.append(...rows);
+      const e = el("section", "sec", `<h3 class="sec-h">${title}</h3>`);
+      e.append(list);
+      return e;
+    };
+    const potions = ["hp_potion", "mp_potion"].map((base) => {
+      const d = BASE_ITEMS[base], p = d.price ?? 0;
+      return row(d.icon, d.name, `<span class="c-ok">${base === "hp_potion" ? "+45% здоровья" : "+50% маны"}</span>`,
+        [1, 5, 20].map((q) => ({ q: `×${q}`, price: p * q, go: () => this.ctx.net.send("buy", { base, qty: q }) })));
+    });
+    const mounts = MOUNT_IDS.filter((id) => MOUNTS[id].source === "vendor" && MOUNTS[id].price > 0 && !s.mounts?.includes(id) && (!MOUNTS[id].faction || MOUNTS[id].faction === s.faction)).map((id) => {
+      const m = MOUNTS[id];
+      return row(mountSprite(id), m.name, `${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}`,
+        [{ q: "Купить", price: m.price, need: m.level, go: () => this.ctx.net.send("mount:buy", { id }) }], lv(m.level));
+    });
+    const pets = PET_IDS.filter((id) => PETS[id].price > 0 && !s.pets?.[id]).map((id) => {
+      const d = PETS[id];
+      return row(d.sprite, d.name, esc(d.skills.map((k) => k.name).join(", ")),
+        [{ q: "Купить", price: d.price, need: d.level, go: () => this.ctx.net.send("pet:buy", { id }) }], lv(d.level));
+    });
+    body.replaceChildren(el("p", "npc-say", "«Зелья свежие, цены честные.»"), sec("Зелья", potions),
+      ...(mounts.length ? [sec("Ездовые животные", mounts)] : []), ...(pets.length ? [sec("Питомцы", pets)] : []));
+    foot.innerHTML = `<span class="win-foot-info">Золото</span>${gold(s.gold)}`;
+  }
+
+  /** «Продать»: вещи сумки ячейками, под каждой — цена всей стопки. Клик выбирает вещь, продаёт кнопка в подвале; обычные вещи выбираются разом. */
+  private shopSell(s: SelfState, body: HTMLElement, foot: HTMLElement) {
+    const items = s.inventory.filter((it): it is Item => !!it);
+    const total = (it: Item) => this.sellInfo(it).price * (it.qty ?? 1);
+    const redraw = () => this.renderShop(this.ctx.net.self!);
+    const picked = items.filter((it) => this.sellSel.has(it.uid));
+    if (!items.length) body.replaceChildren(el("p", "note", "Сумка пуста"));
+    else {
+      const sec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Сумка</h3></div>`);
+      // обычные вещи без заточки (расходуемое не в счёт): выбираются и снимаются разом
+      const junk = items.filter((it) => it.rarity === 0 && !it.plus && BASE_ITEMS[it.base].slot !== "consumable" && !isQuestItem(it.base));
+      if (junk.length) {
+        const all = junk.every((it) => this.sellSel.has(it.uid));
+        const quick = el("button", "btn small sell-quick", `Выбрать обычные (${junk.length})`);
+        quick.title = "Обычные вещи без заточки";
+        quick.setAttribute("aria-pressed", String(all));
+        quick.onclick = () => {
+          this.tip.hidden = true;
+          for (const it of junk) if (all) this.sellSel.delete(it.uid); else this.sellSel.add(it.uid);
+          redraw();
+        };
+        sec.querySelector(".sec-head")!.append(quick);
       }
-      const mounts = MOUNT_IDS.filter((id) => MOUNTS[id].source === "vendor" && MOUNTS[id].price > 0 && !s.mounts?.includes(id) && (!MOUNTS[id].faction || MOUNTS[id].faction === s.faction));
-      if (mounts.length) head("Ездовые животные");
-      for (const id of mounts) {
-        const m = MOUNTS[id];
-        row(sprite(mountSprite(id)), m.name, `${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}, с ${m.level} ур.`, [["Купить ", m.price, s.level < m.level, () => this.ctx.net.send("mount:buy", { id })]]);
+      const grid = el("div", "cells auto sell-grid");
+      for (const it of items) {
+        const { low } = this.sellInfo(it);
+        const quest = isQuestItem(it.base);
+        const pic = this.cell(it, s); // та же ячейка, что в сумке: рамка редкости, +N, количество
+        const cap = quest ? `<span class="tile-cap c-dim">—</span>` : `<span class="tile-cap${low ? " low" : ""}">${low ? "▼ " : ""}${gold(total(it))}</span>`;
+        const tile = el("button", "tile", `<span class="${pic.className}">${pic.innerHTML}</span>${cap}`);
+        tile.setAttribute("aria-pressed", String(this.sellSel.has(it.uid)));
+        if (quest) { tile.disabled = true; tile.title = QUEST_ITEM_MSG; }
+        else tile.onclick = () => {
+          this.tip.hidden = true;
+          if (!this.sellSel.delete(it.uid)) this.sellSel.add(it.uid);
+          redraw();
+        };
+        this.tipFor(tile, () => `${this.itemTip(it, this.ctx.net.self!, false, true)}${MATERIALS[it.base] ? "" : `<div class="d">${(it.qty ?? 1) > 1 ? "Цена за штуку" : "Цена"}: ${this.priceHtml(it)}</div>`}${quest ? `<div class="warn">${QUEST_ITEM_MSG}</div>` : ""}`);
+        grid.append(tile);
       }
-      const pets = PET_IDS.filter((id) => PETS[id].price > 0 && !s.pets?.[id]);
-      if (pets.length) head("Питомцы");
-      for (const id of pets) {
-        const d = PETS[id];
-        row(sprite(d.sprite), d.name, `С ${d.level} ур.: ${d.skills.map((k) => k.name).join(", ")}`, [["Купить ", d.price, s.level < d.level, () => this.ctx.net.send("pet:buy", { id })]]);
-      }
-    } else {
-      list.append(el("p", "muted", "Клик по вещи — продать. Цена падает, если такие вещи часто продают."));
-      const grid = el("div", "sell-grid");
-      let any = false;
-      s.inventory.forEach((it, i) => {
-        if (!it) return;
-        any = true;
-        const c = el("button", `sell-cell r${it.rarity}`, `<img src="${icon(iconFor(it))}" alt="">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}<span class="sp">${this.sellInfo(it).price}</span>`);
-        c.onclick = () => this.ctx.net.send("sell", { index: i });
-        this.tipFor(c, () => this.itemTip(it, s));
-        grid.append(c);
-      });
-      list.append(any ? grid : el("p", "muted", "Сумка пуста."));
-      const junk = s.inventory.map((it, i) => [it, i] as const).filter(([it]) => it && it.rarity === 0 && !it.plus && BASE_ITEMS[it.base].slot !== "consumable");
-      const junkSum = junk.reduce((a, [it]) => a + this.sellInfo(it!).price * (it!.qty ?? 1), 0);
-      const sellAll = el("button", "btn", `Продать все обычные вещи без заточки (${junk.length}) · ${gold(junkSum, "~")}`);
-      sellAll.disabled = !junk.length;
-      sellAll.onclick = () => junk.slice().reverse().forEach(([, i]) => this.ctx.net.send("sell", { index: i }));
-      list.append(sellAll);
+      sec.append(grid);
+      body.replaceChildren(el("p", "note", "Выберите вещи и нажмите «Продать выбранное». Продаётся вся стопка; цена падает, если такие вещи часто продают."), sec);
     }
+    // подвал: что выбрано и итог на кнопке
+    const one = picked.length === 1 ? picked[0] : null;
+    const info = el("span", "win-foot-info", !picked.length ? "Ничего не выбрано"
+      : one ? `<span class="c-r${one.rarity}">${esc(itemName(one))}</span>${(one.qty ?? 1) > 1 ? ` ×${one.qty}` : ""}` : `Выбрано: ${picked.length}`);
+    const sum = picked.reduce((a, it) => a + total(it), 0);
+    const go = el("button", "btn primary sell-go", picked.length ? `Продать выбранное ${gold(sum, picked.length > 1 ? "~" : "")}` : "Продать выбранное");
+    go.disabled = !picked.length;
+    go.onclick = () => {
+      this.tip.hidden = true;
+      const inv = this.ctx.net.self?.inventory ?? [];
+      const at = [...this.sellSel].map((uid) => inv.findIndex((x) => x?.uid === uid)).filter((i) => i >= 0);
+      this.sellSel.clear();
+      for (const i of at) this.ctx.net.send("sell", { index: i });
+      redraw();
+    };
+    const act = el("div", "actions");
+    act.append(go);
+    foot.replaceChildren(info, act);
   }
 
   // ---------- мини-карта ----------

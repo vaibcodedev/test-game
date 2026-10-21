@@ -57,7 +57,7 @@
   font-weight: var(--fw-b);
 }
 
-/* диалоги арены: подложка .modal и .dialog — kit.css, arena-modal / arena-dialog — метки для tests/ */
+/* диалоги арены: подложка .modal и .dialog — kit.css, arena-modal / arena-dialog — метки для tests/ (их же носит запрос обмена, trade.ts) */
 .versus {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -109,44 +109,6 @@
 }
 .res-rating b {
   font-weight: var(--fw-b);
-}
-
-/* запрос обмена (trade.ts) пока на старой разметке: подложка .arena-modal и диалог .arena-dialog без .modal / .dialog.
-   Окна арены уже на kit.css, поэтому правила сужены :not(); удалить вместе с .row-btns, когда обмен перейдёт на компоненты */
-.arena-modal:not(.modal) {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: var(--overlay);
-  z-index: 5;
-  padding: var(--sp-4);
-}
-.arena-dialog:not(.dialog) {
-  padding: var(--sp-4);
-  width: min(460px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-.arena-dialog.small:not(.dialog) {
-  width: min(360px, 100%);
-}
-.arena-dialog:not(.dialog) h2 {
-  margin: 0;
-  font-size: 24px;
-  color: var(--gold);
-  text-align: center;
-}
-.arena-dialog:not(.dialog) p {
-  margin: 0;
-  text-align: center;
-}
-.row-btns {
-  display: flex;
-  gap: var(--sp-2);
-  justify-content: center;
-  flex-wrap: wrap;
 }
 
 /* ---------- табло матча, отсчёт, группа в мире ---------- */

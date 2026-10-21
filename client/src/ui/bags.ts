@@ -7,10 +7,19 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 
 export class BagsUI {
   private win = document.createElement("div");
+  private body: HTMLElement;
+  private foot: HTMLElement;
   private net!: Net;
+  /** Размер сумки и золото при прошлой перерисовке: без перемен окно не пересобирается. */
+  private drawn = "";
   constructor(root: HTMLElement, private showInv: () => void) {
-    this.win.className = "panel win win-bags";
+    this.win.className = "panel win s win-bags";
     this.win.hidden = true;
+    // каркас строится один раз: заголовок, тело и подвал остаются на месте, при обновлении меняется только содержимое тела и подвала
+    this.win.innerHTML = `<h2><span>${esc(BAGMAN.name)}</span><button class="x" aria-label="Закрыть">×</button></h2><div class="body"></div><div class="win-foot"></div>`;
+    this.body = this.win.querySelector<HTMLElement>(".body")!;
+    this.foot = this.win.querySelector<HTMLElement>(".win-foot")!;
+    this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
     root.append(this.win);
   }
   bind(net: Net) {
@@ -25,13 +34,18 @@ export class BagsUI {
     const s = this.net?.self;
     if (!s) return;
     const size = s.inventory.length;
+    const key = `${size}|${s.gold}`;
+    if (key === this.drawn) return;
+    this.drawn = key;
     const price = bagPrice(size);
-    this.win.innerHTML = `<h2><span>${esc(BAGMAN.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
-      <p class="muted">${esc(BAGMAN.greeting)}</p>
-      <p>Сейчас в сумке: <b class="gold">${size}</b> ячеек (максимум ${BAG_MAX}).</p>
-      ${price === null ? `<p class="muted">Сумка уже самая большая.</p>` : `<p>Следующее расширение: <b>+${BAG_STEP}</b> ячеек до <b>${size + BAG_STEP}</b> за ${gold(price)}.</p><div class="bank-buy"><button class="btn" ${s.gold < price ? "disabled" : ""}>Расширить за ${gold(price)}</button></div>`}`;
-    this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
-    const b = this.win.querySelector<HTMLButtonElement>(".bank-buy .btn");
+    // bank-buy — метка для tests/
+    const offer = price === null
+      ? `<p class="note">Сумка уже самая большая</p>`
+      : `<div class="list boxed"><div class="row"><div class="row-main"><span class="row-title">+${BAG_STEP} ячеек</span><span class="row-sub">Сумка вырастет до ${size + BAG_STEP} ячеек</span></div>
+          <div class="row-end bank-buy"><button class="btn small price"${s.gold < price ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">Расширить</span>${gold(price)}</button></div></div></div>`;
+    this.body.innerHTML = `<p class="npc-say">${esc(BAGMAN.greeting)}</p><section class="sec"><h3 class="sec-h">Расширение</h3>${offer}</section>`;
+    this.foot.innerHTML = `<span class="win-foot-info">Ячеек: ${size} из ${BAG_MAX}</span><span class="foot-gold"><span class="win-foot-info">Золото</span>${gold(s.gold)}</span>`;
+    const b = this.body.querySelector<HTMLButtonElement>(".bank-buy .btn");
     if (b) b.onclick = () => this.net.send("bag:expand", {});
   }
 }

@@ -1,78 +1,77 @@
-/* обмен */
+/* ---------- обмен ---------- */
+/* Каркас окна (h2 → .body → .win-foot), ширина .l, разделы .sec, сетка ячеек .cells, чипы, поле .input.num, кнопки и линия .divider.v — kit.css.
+   Запрос обмена — диалог .dialog на подложке .modal (kit.css). Здесь — положение окна и то, чего в kit.css нет. */
 .win-trade {
   left: 50%;
   top: 90px;
   transform: translateX(-50%);
-  width: min(560px, calc(100vw - 24px));
   z-index: 4;
 }
+/* две колонки, между ними вертикальная линия */
 .trade-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-3);
-}
-.trade-col h3 {
-  margin: 0 0 var(--sp-1h);
-  font-size: var(--fs-md);
-  color: var(--gold);
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-1h);
-}
-.trade-col .ok {
-  color: var(--ok);
-  font-size: var(--fs);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--sp-4);
 }
 .trade-grid {
-  grid-template-columns: repeat(4, 1fr);
+  --cols: 4;
 }
+/* кнопка — только своя занятая ячейка (клик убирает вещь); чужие вещи и пустые слоты — блоки с подсказкой по наведению */
+.trade-grid > div.cell {
+  cursor: default;
+}
+/* золото стороны: подпись слева, сумма справа; изменённое подсвечено так же, как изменённая ячейка (.cell.changed — kit.css) */
 .trade-gold {
   display: flex;
-  gap: var(--sp-1h);
   align-items: center;
-  margin-top: var(--sp-2);
-  padding: var(--sp-0) var(--sp-1);
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: var(--ctl-h);
+  padding: 0 var(--sp-1);
   border-radius: var(--r-2);
 }
-.trade-gold input {
-  width: 90px;
-  background: var(--well);
-  border: 1px solid var(--line);
-  color: var(--gold);
-  font: inherit;
-  padding: var(--sp-0) var(--sp-1);
-}
-.trade-gift {
-  text-align: center;
-  color: var(--ok);
-  border: 1px dashed var(--ok);
-  border-radius: var(--r-2);
-  padding: var(--sp-1);
-}
-.cell.changed,
 .trade-gold.changed {
   outline: 2px solid var(--gold);
-  box-shadow: 0 0 10px var(--gold);
+  box-shadow: var(--glow-sel);
 }
+.trade-amt {
+  display: inline-flex;
+  align-items: center;
+}
+.trade-gift {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+/* вещь сумки, выложенная в окно обмена (hud.ts, lockedIndices) */
 .cell.locked {
   opacity: 0.4;
   outline: 1px dashed var(--gold);
 }
+/* меню игрока по правому клику: имя и пункты .btn.opt; линия под именем отстоит от кнопок на 8px */
 .ctx-menu {
   position: absolute;
-  padding: var(--sp-1h);
+  z-index: 6;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  z-index: 6;
+  min-width: 176px;
+  padding: var(--sp-2);
 }
-.ctx-menu .d {
-  color: var(--dim);
-  font-size: var(--fs);
-  text-align: center;
+.ctx-name {
+  margin-bottom: var(--sp-1);
+  padding: 0 var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--line);
 }
 @media (max-width: 520px) {
   .trade-cols {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .trade-cols > .divider.v {
+    width: auto;
+    height: 0;
+    align-self: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 }

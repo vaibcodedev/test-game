@@ -1,40 +1,50 @@
-/* ---------- городские слухи ---------- */
+/* ---------- NPC: слухи, повар, случайные встречи ---------- */
+/* Каркас окон (h2 → .body → .win-foot), ширина .s/.m, реплика .npc-say, ответы .npc-opts, разделы, строки .list.boxed > .row, кнопки цены и чипы — kit.css.
+   Здесь — положение окон и то, чего в kit.css нет. */
 .win-rumor {
   left: 50%;
   bottom: 150px;
   top: auto;
   transform: translateX(-50%);
-  width: min(420px, calc(100vw - 24px));
   z-index: 4;
 }
-.rumor-text {
-  margin: var(--sp-2) 0 var(--sp-3);
-  line-height: 1.4;
-  min-height: 3em;
+/* высота реплики не прыгает, когда многоточие сменяется текстом слуха: запас на три строки */
+.win-rumor .npc-say {
+  min-height: calc(3 * 1.45em + 2 * var(--sp-2));
 }
-.rumor-btns {
-  display: flex;
-  gap: var(--sp-2);
-  justify-content: flex-end;
-}
-
-.win-cook {
+.win-cook,
+.win-enc {
   left: 50%;
   top: 90px;
   transform: translateX(-50%);
-  width: min(460px, calc(100vw - 24px));
   z-index: 4;
 }
-.cook-list {
+/* строки блюд (повар) и товаров (лавка встречи): уровень стоит в одной строке с названием и не отрывается от него при переносе */
+.dish .row-title,
+.enc-item .row-title {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-1h);
-  max-height: 50vh;
-  overflow-y: auto;
+  align-items: baseline;
 }
-.cook-list .shoprow img {
-  width: 32px;
-  height: 32px;
+/* блюдо: иконка, текст и цены прижаты к верху строки; баффы — чипами отдельной строкой */
+.dish {
+  align-items: start;
+  padding-block: var(--sp-2);
+}
+.dish-fx {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin: var(--sp-0) 0;
+}
+/* лавка: ячейка не кнопка, у неё только подсказка по наведению; цена одной ширины во всех строках, как у телепорта */
+.enc-item > .cell {
+  cursor: help;
+}
+.win-cook .price-stack {
+  width: 144px;
+}
+.enc-item .btn.price {
+  width: 140px;
 }
 /* кузнец: каркас, разделы, таблица, строки .row и кнопки цены — kit.css; ширина — .m, прокручивается только .body */
 .win-smith {
@@ -43,44 +53,6 @@
   transform: translateX(-50%);
   z-index: 4;
   max-height: calc(100vh - 100px);
-}
-.win-bags {
-  left: 50%;
-  top: 90px;
-  transform: translateX(-50%);
-  width: min(380px, calc(100vw - 24px));
-  z-index: 4;
-}
-.win-bank {
-  left: 50%;
-  top: 70px;
-  transform: translateX(-50%);
-  width: min(420px, calc(100vw - 24px));
-  z-index: 4;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
-}
-.bank-tabs {
-  display: flex;
-  gap: var(--sp-1);
-  flex-wrap: wrap;
-}
-.bank-tabs .btn.active {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-.bank-gold {
-  display: flex;
-  gap: var(--sp-1h);
-  align-items: center;
-  flex-wrap: wrap;
-}
-.bank-gold input {
-  width: 90px;
-}
-.bank-buy {
-  display: flex;
-  justify-content: flex-end;
 }
 /* выбор вещи: «Надето» и «В сумке» — две группы ячеек по 8 в ряд, без вложенной прокрутки */
 .smith-pick {
