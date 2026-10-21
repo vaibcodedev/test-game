@@ -93,23 +93,6 @@ function auraRunes(id: string, ramp: string): Gen {
   return mk(id, "aura", frames, W, H, [0.5, 0.5], 10, "deathknight");
 }
 
-/** Знамя на земле: древко с камнями у основания и колышущееся полотнище. 6 кадров цикла. */
-function banner(id: string, ramp: string): Gen {
-  const W = 30, H = 46, N = 6, R = RAMPS[ramp], wood = hex("#6a4228"), woodL = hex("#94613a"), stone = hex("#58525e");
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, H);
-    for (let y = 3; y < 44; y++) { put(f, 7, y, wood); put(f, 8, y, woodL); }
-    put(f, 7, 2, R[5]); put(f, 8, 2, R[5]); put(f, 7, 1, R[4]); put(f, 8, 1, R[4]);
-    for (let x = 0; x < 16; x++) {
-      const wave = Math.round(Math.sin((x / 16) * 5 - (t / N) * TAU) * 1.5 * (x / 16)), len = 14 - Math.floor(x / 5);
-      for (let y = 0; y < len; y++) put(f, 9 + x, 4 + y + wave, y === 0 ? R[4] : y > len - 3 ? R[1] : (x + y) % 5 === 0 ? R[3] : R[2]);
-    }
-    f.ellipse(8, 44, 6, 2, stone); f.ellipse(8, 43.5, 4, 1, hex("#746e7a"));
-    return f;
-  });
-  return mk(id, "aura", frames, W, H, [0.27, 0.95], 8, "warrior");
-}
-
 /** Капкан: раскрытые челюсти с зубьями захлопываются, искры. 7 кадров, один проход. */
 function trap(id: string): Gen {
   const W = 36, H = 28, N = 7, D = hex("#23262f"), M = hex("#5d667c"), L = hex("#a9b4c8"), Wh = hex("#f2f6ff"), rust = hex("#8a5a3a");
@@ -236,7 +219,6 @@ export function GENERATED2(): Gen[] {
     auraBubble("bubble-steel", "steel"), auraBubble("bubble-arcane", "arcane"), auraBubble("bubble-holy", "holy"), auraBubble("bubble-bone", "bone"), auraBubble("bubble-shadow", "shadow"),
     auraRing("ring-blood", "blood"), auraRing("ring-holy", "holy"), auraRing("ring-frost", "frost"), auraRing("ring-shadow", "shadow"), auraRing("ring-arcane", "arcane"),
     auraRage("aura-rage"), flameLoop("flame-loop"), auraRunes("aura-runes-frost", "frost"), auraRunes("aura-runes-holy", "holy"),
-    banner("banner-holy", "holy"), banner("banner-blood", "blood"),
     trap("trap-snap"), raven("raven-fly"), arrowVolley("arrow-volley"),
     axeSpin("axe-spin"), axeSpin("axe-spin-blood", "blood"),
     shackle("shackle-steel"), shackle("shackle-shadow", "shadow"), bloodPool("blood-pool"),

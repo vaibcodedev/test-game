@@ -8,6 +8,7 @@
   "bone": { "name": "Броня из костей", "desc": "Тот, кто бьёт вас вплотную, замедлен на {v}%.", "kind": "buff", "icon": "sk_dk_bone_armor" },
   "antimagic": { "name": "Антимагический панцирь", "desc": "Урон не от оружия (магия, яд, тень) снижен на {v}%.", "kind": "buff", "icon": "sk_dk_anti_magic" },
   "laststand": { "name": "Последний рубеж", "desc": "Получаемый урон снижен.", "kind": "buff", "icon": "sk_laststand" },
+  "tp_banner": { "name": "Знамя защиты", "desc": "Вы в круге знамени храмовника: получаемый урон снижен на {v}%.", "kind": "buff", "icon": "sk_tp_banner" },
   "bless": { "name": "Благословение", "desc": "Получаемый урон снижен на {v}%.", "kind": "buff", "icon": "sk_cl_blessing" },
   "dmgboost": { "name": "Прилив сил", "desc": "Наносимый урон +{v}%.", "kind": "buff", "icon": "sk_bw_gift" },
   "renew": { "name": "Обновление", "desc": "Исцеление со временем: {v} здоровья каждую секунду.", "kind": "buff", "icon": "sk_renew" },

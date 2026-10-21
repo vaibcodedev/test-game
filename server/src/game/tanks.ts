@@ -50,8 +50,22 @@ const weaponAvg = (p: Player) => ((p.derived.dmgMin + p.derived.dmgMax) / 2) * p
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
 
 // ---------- знамёна «Знамени защиты» ----------
-interface Banner { owner: Player; x: number; y: number; r: number; until: number; reduce: number }
+interface Banner { owner: Player; x: number; y: number; r: number; until: number; reduce: number; w: World }
 const banners = new WeakMap<World, Banner[]>();
+/** Все стоящие знамёна (для значка в рамке героя: хук аур получает только героя, без World). Истёкшие вычищаются в хуке. */
+const liveBanners = new Set<Banner>();
+// значок «Знамя защиты» в рамке героя (auras.ts): герой в круге живого знамени своего или союзника — величина = снижение урона
+registerAuraHook((a, now, aura) => {
+  const p = a as Player;
+  let best: Banner | null = null;
+  for (const b of liveBanners) {
+    if (b.until <= b.w.time || b.owner.dead) { liveBanners.delete(b); continue; }
+    if (b.w.players.get(p.id) !== p || Math.hypot(p.x - b.x, p.y - b.y) > b.r) continue;
+    if (b.owner !== p && b.w.hostile(b.owner, p)) continue;
+    if (!best || b.reduce > best.reduce) best = b;
+  }
+  if (best) aura("tp_banner", now + (best.until - best.w.time), { v: best.reduce });
+});
 
 function setCd(p: Player, w: World, id: string, readyIn: number) {
   p.cds.set(id, w.time + readyIn);
@@ -144,7 +158,10 @@ export function castTank(c: CastCtx): string | null | undefined {
       c.ok();
       const list = banners.get(w) ?? [];
       banners.set(w, list.filter((b) => b.until > w.time && b.owner !== p));
-      banners.get(w)!.push({ owner: p, x: bx, y: by, r: v.radius, until: w.time + v.dur * 1000, reduce: v.reduce });
+      const nb: Banner = { owner: p, x: bx, y: by, r: v.radius, until: w.time + v.dur * 1000, reduce: v.reduce, w };
+      banners.get(w)!.push(nb);
+      for (const b of liveBanners) if (b.owner === p) liveBanners.delete(b); // одно знамя на храмовника
+      liveBanners.add(nb);
       w.emit({ t: "hazard", id: w.uid("h"), k: "holy", x: bx, y: by, r: v.radius, ms: v.dur * 1000 });
       w.emit({ t: "aoe", k: "banner", x: bx, y: by, r: v.radius });
       return null;

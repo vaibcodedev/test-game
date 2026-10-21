@@ -145,6 +145,86 @@
    "scaleIn": 0.7
   }
  },
+ "banner-ring-solgard": {
+  "frameW": 264,
+  "frameH": 186,
+  "frames": 8,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "alpha": 0.9,
+   "fadeIn": 400,
+   "fadeOut": 300
+  }
+ },
+ "banner-ring-umbrath": {
+  "frameW": 264,
+  "frameH": 186,
+  "frames": 8,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "alpha": 0.9,
+   "fadeIn": 400,
+   "fadeOut": 300
+  }
+ },
+ "banner-solgard": {
+  "frameW": 48,
+  "frameH": 88,
+  "frames": 10,
+  "fps": 9,
+  "anchor": [
+   0.5,
+   0.955
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeOut": 300,
+   "drop": 72,
+   "dust": "dust-puff"
+  }
+ },
+ "banner-umbrath": {
+  "frameW": 48,
+  "frameH": 88,
+  "frames": 10,
+  "fps": 9,
+  "anchor": [
+   0.5,
+   0.955
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeOut": 300,
+   "drop": 72,
+   "dust": "dust-puff"
+  }
+ },
+ "banner-zone-holy": {
+  "frameW": 264,
+  "frameH": 206,
+  "frames": 6,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.602
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 260,
+   "fadeOut": 320,
+   "scaleIn": 0.8
+  }
+ },
  "blade-blood": {
   "frameW": 33,
   "frameH": 40,
@@ -252,19 +332,20 @@
   "blend": "normal"
  },
  "blood-pool": {
-  "frameW": 66,
-  "frameH": 42,
+  "frameW": 52,
+  "frameH": 33,
   "frames": 8,
   "fps": 8,
   "anchor": [
    0.5,
-   0.5
+   0.515
   ],
   "blend": "normal",
   "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260,
-   "scaleIn": 0.7
+   "alpha": 0.55,
+   "fadeIn": 400,
+   "fadeOut": 500,
+   "scaleIn": 0.85
   }
  },
  "blood-splash": {
@@ -509,6 +590,17 @@
   "blend": "normal",
   "r": 1
  },
+ "dust-puff": {
+  "frameW": 44,
+  "frameH": 18,
+  "frames": 6,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.78
+  ],
+  "blend": "normal"
+ },
  "earth-spike": {
   "frameW": 62,
   "frameH": 33,
@@ -710,54 +802,75 @@
   }
  },
  "fog-loop": {
-  "frameW": 56,
-  "frameH": 66,
+  "frameW": 37,
+  "frameH": 44,
   "frames": 5,
   "fps": 6,
   "anchor": [
-   0.5,
+   0.514,
    0.5
   ],
   "blend": "normal",
   "r": 1,
   "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260,
-   "scaleIn": 0.7
+   "alpha": 0.6,
+   "fadeIn": 500,
+   "fadeOut": 600,
+   "scaleIn": 0.85
   }
  },
  "fog-poison": {
-  "frameW": 56,
-  "frameH": 66,
+  "frameW": 37,
+  "frameH": 44,
   "frames": 5,
   "fps": 6,
   "anchor": [
-   0.5,
+   0.514,
    0.5
   ],
   "blend": "normal",
   "r": 1,
   "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260,
-   "scaleIn": 0.7
+   "alpha": 0.6,
+   "fadeIn": 500,
+   "fadeOut": 600,
+   "scaleIn": 0.85
   }
  },
  "fog-shadow": {
-  "frameW": 56,
-  "frameH": 66,
+  "frameW": 37,
+  "frameH": 44,
   "frames": 5,
   "fps": 6,
   "anchor": [
-   0.5,
+   0.514,
    0.5
   ],
   "blend": "normal",
   "r": 1,
   "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260,
-   "scaleIn": 0.7
+   "alpha": 0.6,
+   "fadeIn": 500,
+   "fadeOut": 600,
+   "scaleIn": 0.85
+  }
+ },
+ "fog-smoke": {
+  "frameW": 37,
+  "frameH": 44,
+  "frames": 5,
+  "fps": 6,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1,
+  "ease": {
+   "alpha": 0.6,
+   "fadeIn": 500,
+   "fadeOut": 600,
+   "scaleIn": 0.85
   }
  },
  "frost-ball": {
@@ -1426,28 +1539,38 @@
   "blend": "normal"
  },
  "puff-poison": {
-  "frameW": 56,
-  "frameH": 66,
+  "frameW": 37,
+  "frameH": 44,
   "frames": 11,
   "fps": 12,
   "anchor": [
-   0.5,
+   0.514,
    0.5
   ],
   "blend": "normal",
-  "r": 1
+  "r": 1,
+  "ease": {
+   "alpha": 0.65,
+   "fadeIn": 120,
+   "fadeOut": 300
+  }
  },
  "puff-poison@2": {
-  "frameW": 112,
-  "frameH": 132,
+  "frameW": 74,
+  "frameH": 88,
   "frames": 11,
   "fps": 12,
   "anchor": [
-   0.5,
+   0.514,
    0.5
   ],
   "blend": "normal",
-  "r": 1
+  "r": 1,
+  "ease": {
+   "alpha": 0.65,
+   "fadeIn": 120,
+   "fadeOut": 300
+  }
  },
  "puff-shadow": {
   "frameW": 37,
@@ -1459,7 +1582,46 @@
    0.5
   ],
   "blend": "normal",
-  "r": 1
+  "r": 1,
+  "ease": {
+   "alpha": 0.65,
+   "fadeIn": 120,
+   "fadeOut": 300
+  }
+ },
+ "puff-smoke": {
+  "frameW": 37,
+  "frameH": 44,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1,
+  "ease": {
+   "alpha": 0.65,
+   "fadeIn": 120,
+   "fadeOut": 300
+  }
+ },
+ "puff-smoke@2": {
+  "frameW": 74,
+  "frameH": 88,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1,
+  "ease": {
+   "alpha": 0.65,
+   "fadeIn": 120,
+   "fadeOut": 300
+  }
  },
  "raven-fly": {
   "frameW": 22,
@@ -1798,7 +1960,12 @@
    0.5
   ],
   "blend": "normal",
-  "r": 1
+  "r": 1,
+  "ease": {
+   "alpha": 0.65,
+   "fadeIn": 120,
+   "fadeOut": 300
+  }
  },
  "smoke-puff@2": {
   "frameW": 112,

@@ -11,7 +11,7 @@ import { DEPTH } from "./terrain";
 
 /** Плавность листа (tools/gen/vfx.ts): fadeIn/fadeOut — мс появления и выхода (альфа и масштаб от scaleIn до 1, ease-out); loop — кадры, которые
  *  повторяются, пока эффект держится; кадры после loop[1] — финал (закрытие портала, таяние круга); hold — удержание, мс, если длительность не задана. */
-export interface Ease { fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number }
+export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number }
 export interface VfxEntry { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: "normal" | "add"; r?: 1; ease?: Ease }
 type Slot = "cast" | "proj" | "hit" | "aura";
 const TABLE = skillFx as Record<string, Partial<Record<Slot, string>>>;
@@ -38,7 +38,7 @@ export function makeVfxAnims(scene: Phaser.Scene, m: Record<string, VfxEntry>) {
 }
 
 /** Плоские эффекты на земле (кольца, круги, лужи): рисуются под героями. */
-const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle)/;
+const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff-|smoke-puff|banner-ring)/;
 const MAX_ACTIVE = 160;
 const FRONT = 0.5; // слой на теле — чуть выше спрайта героя при сортировке по y
 
@@ -69,7 +69,7 @@ export class Vfx {
   // ---------- спрайты ----------
   private ground(id: string) { return FLAT.test(id) || this.catalog[id].anchor[1] >= 0.85; }
   private depthOf(id: string, y: number): number {
-    if (FLAT.test(id)) return DEPTH.ground + 8;
+    if (FLAT.test(id)) return DEPTH.ground + (/^(fog-|puff-|smoke-puff|blood-pool)/.test(id) ? 9 : 8);
     if (this.catalog[id].anchor[1] >= 0.85) return y;          // стоит на земле (шипы, торнадо, знамя): сортировка по y вместе с героями
     return DEPTH.top - 36;                                      // вспышки и ауры на теле: поверх героя
   }
@@ -106,9 +106,10 @@ export class Vfx {
   }
   /** Появление: прозрачность 0→1 и масштаб scaleIn→1 за fadeIn мс, ease-out (кадр после твина — ровно масштаб 1). */
   private fadeIn(spr: Phaser.GameObjects.Sprite, e: Ease | undefined) {
-    if (!e?.fadeIn) return;
+    const a = e?.alpha ?? 1;
+    if (!e?.fadeIn) { spr.setAlpha(a); return; }
     spr.setAlpha(0).setScale(e.scaleIn ?? 1);
-    this.scene.tweens.add({ targets: spr, alpha: 1, scale: 1, duration: e.fadeIn, ease: "Cubic.easeOut" });
+    this.scene.tweens.add({ targets: spr, alpha: a, scale: 1, duration: e.fadeIn, ease: "Cubic.easeOut" });
   }
   /** Выход: прозрачность 1→0 (и масштаб обратно к scaleIn) за fadeOut мс, затем спрайт возвращается в пул. */
   private fadeOut(id: string, spr: Phaser.GameObjects.Sprite, e: Ease | undefined, then?: () => void) {
@@ -195,20 +196,44 @@ export class Vfx {
     };
     this.looping.set(k, [{ spr, stop }]);
   }
-  /** Цикл в круге на земле: один спрайт для малого листа, сетка спрайтов для большого (чтобы закрыть радиус); входит и гаснет плавно. */
+  /** Цикл в круге на земле: стоящий предмет (знамя) — один спрайт в центре; облака и лужи — несколько спрайтов, разложенных по кругу радиуса умения
+   *  (золотой угол, эллипс 0.7), не перекрывающих героев сплошной стеной: полупрозрачные, под юнитами, с лёгким покачиванием. Входят и гаснут плавно. */
   zone(k: string, id: string, x: number, y: number, r: number, ms: number) {
     this.stopKey(k);
     if (ms <= 0 || !this.has(id)) return;
     const e = this.catalog[id];
-    const step = Math.max(24, e.frameW * 0.6), pts: [number, number][] = [[0, 0]];
-    if (r > e.frameW * 0.55) for (let gy = -r; gy <= r; gy += step * 0.7) for (let gx = -r; gx <= r; gx += step) if ((gx * gx) / (r * r) + (gy * gy) / (r * r * 0.5) <= 1 && (gx || gy)) pts.push([gx, gy * 0.7]);
+    const single = (e.anchor[1] >= 0.85 && !FLAT.test(id)) || r < e.frameW * 0.6;
+    const n = single ? 1 : Math.min(11, Math.max(4, Math.round((r * r) / (e.frameW * e.frameW * 0.8))));
+    const pts: [number, number][] = [];
+    for (let i = 0; i < n; i++) { const ang = i * 2.39996, d = single ? 0 : Math.sqrt((i + 0.5) / n) * r * 0.85; pts.push([Math.cos(ang) * d, Math.sin(ang) * d * 0.7]); }
     const list: Running[] = [];
-    for (const [dx, dy] of pts.slice(0, 14)) {
+    // кольцо ауры радиуса под штандартом: лист banner-ring-<фракция> того же имени
+    const ringId = id.replace(/^banner-/, "banner-ring-");
+    if (e.ease?.drop && this.has(ringId)) {
+      const ring = this.take(ringId);
+      if (ring) {
+        ring.setPosition(Math.round(x), Math.round(y)).setDepth(this.depthOf(ringId, Math.round(y)));
+        this.fadeIn(ring, this.catalog[ringId].ease);
+        ring.play({ key: key(ringId), repeat: -1 });
+        let rd = false;
+        list.push({ spr: ring, stop: () => { if (rd) return; rd = true; this.fadeOut(ringId, ring, this.catalog[ringId].ease); } });
+      }
+    }
+    for (const [dx, dy] of pts) {
       const spr = this.take(id);
       if (!spr) break;
-      spr.setPosition(Math.round(x + dx), Math.round(this.groundY(id, y + dy))).setDepth(this.depthOf(id, Math.round(y + dy)));
+      const px = Math.round(x + dx), py = Math.round(this.groundY(id, y + dy));
+      spr.setPosition(px, py).setDepth(this.depthOf(id, Math.round(y + dy)));
       this.fadeIn(spr, e.ease);
+      if (e.ease?.drop) {
+        // установка: штандарт падает сверху и пружинит (Bounce), у основания вздымается пыль
+        spr.setY(py - e.ease.drop);
+        this.scene.tweens.add({ targets: spr, y: py, duration: 380, ease: "Bounce.easeOut" });
+        if (e.ease.dust) this.scene.time.delayedCall(170, () => this.play(e.ease!.dust!, px, py));
+      }
       spr.play({ key: key(id) + (e.ease?.loop ? ":l" : ""), repeat: -1, startFrame: Math.floor(Math.random() * (e.ease?.loop ? 1 : e.frames)) });
+      // лёгкое покачивание облаков (кроме знамени и колец): на 1–2 пикселя по y, позиция каждый кадр целая
+      if (!single && !/^ring-|^summon/.test(id)) this.scene.tweens.add({ targets: spr, y: py - 2, duration: 1300 + Math.random() * 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut", onUpdate: () => spr.setY(Math.round(spr.y)) });
       let done = false;
       const stop = () => { if (done) return; done = true; this.fadeOut(id, spr, e.ease); };
       list.push({ spr, stop });
@@ -288,8 +313,13 @@ export class Vfx {
   }
   /** Зона на земле (hazard — лужа, огонь, туман; tele — круг): aura умения циклом на ms. true — старый рисунок не нужен. */
   zoneFx(f: Extract<Fx, { t: "hazard" | "tele" }>, id: string): boolean {
-    const aura = this.slot(f, "aura");
+    let aura = this.slot(f, "aura");
     if (!aura || (f.t === "tele" && f.shape !== "circle")) return false;
+    // штандарт: полотнище по фракции кастера (Сольгард или Умбрат)
+    if (/^banner-(solgard|umbrath)$/.test(aura)) {
+      const fac = this.unit(f.c ?? "")?.u.faction === "umbrath" ? "umbrath" : "solgard";
+      if (this.has(`banner-${fac}`)) aura = `banner-${fac}`;
+    }
     this.zone(`${f.s}|${id}`, aura, f.x, f.y, f.r, Math.min(f.ms, 30000));
     return true;
   }

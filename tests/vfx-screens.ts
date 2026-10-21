@@ -24,7 +24,7 @@ import { PC } from "../tools/gen/canvas";
 import { BG, BEIGE, drawText, fill, readPng } from "../tools/gen/vendor-lib";
 import { peakIndex, sliceSheet } from "../tools/gen/vfx-lib";
 
-type Phase = "cast" | "proj" | "hit" | "aura" | "end" | "series" | "run";
+type Phase = "cast" | "proj" | "hit" | "aura" | "end" | "series" | "run" | "banner";
 const argv = (k: string) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3).split(",").filter(Boolean) ?? [];
 const ONLY = argv("only");
 const PHASES = new Set<string>(argv("phase"));
@@ -188,6 +188,26 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
   const self = def.target === "self" || def.target === "point";
   await freeze();
   await adv(1800); // дать доиграть следам прошлого умения
+  if (skill === "tp_banner") {
+    // штандарт: для каждой фракции кастера — установка (3 кадра падения и удара) и 6 кадров ветра
+    for (const fac of ["solgard", "umbrath"]) {
+      await thaw();
+      await dbg({ op: "gear", slots: {}, faction: fac });
+      await sleep(1000);
+      await freeze();
+      await adv(1200);
+      const haz = (ms: number) => ({ t: "hazard", id: `h_banner_${fac}`, k: "holy", x: pos.hx + 45, y: pos.hy, r: 130, ms, ...mark });
+      await fxArr([haz(6000)]);
+      for (const [i, w] of [90, 130, 200].entries()) await snap(skill, "banner", field, ids, w, `${skill}-${fac}-i${i + 1}`);
+      await adv(500);
+      for (let i = 0; i < 6; i++) await snap(skill, "banner", field, ids, 110, `${skill}-${fac}-w${i + 1}`);
+      await fxArr([haz(0)]);
+      await snap(skill, "banner", field, ids, 150, `${skill}-${fac}-end`);
+      await adv(900);
+    }
+    await thaw();
+    return;
+  }
   if (BLINKS.has(skill)) {
     // герой остаётся, портал открывается у него и в точке перехода справа
     await fxArr([{ t: "blink", id: ids.hero, x0: pos.hx, y0: pos.hy, x1: pos.hx + 90, y1: pos.hy - 20, k: "arcane", ...mark }]);

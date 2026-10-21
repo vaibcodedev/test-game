@@ -15,6 +15,7 @@ import {
 } from "./vfx-lib";
 import { GENERATED } from "./vfx-gen";
 import { GENERATED2 } from "./vfx-gen2";
+import { GENERATED_BANNER } from "./vfx-banner";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const OUT = path.join(ROOT, "tools/out/vfx");
@@ -63,7 +64,7 @@ const BASE: Def[] = [
   // ---- Pixel Magic Effects (Foozle, CC0), кадры 64×64; снаряд и удар лежат в одном файле — режем на два эффекта ----
   { id: "fire-ball", pack: "foozle-magic", role: "proj", load: fz("Fire_Ball"), from: 0, to: 4, anchor: [0.6, 0.5], fps: 14, blend: "normal", ramp: "fire" },
   { id: "fire-ball-hit", pack: "foozle-magic", role: "hit", load: fz("Fire_Ball"), from: 5, to: 9, anchor: [0.6, 0.5], fps: 14, blend: "normal", ramp: "fire" },
-  { id: "explosion", pack: "foozle-magic", role: "hit", load: fz("Explosion"), anchor: [0.5, 0.5], fps: 16, blend: "normal", ramp: "fire" },
+  { id: "explosion", pack: "foozle-magic", role: "hit", load: fz("Explosion"), anchor: [0.5, 0.5], fps: 16, blend: "normal" },
   { id: "water-ball", pack: "foozle-magic", role: "proj", load: fz("Water"), from: 0, to: 4, anchor: [0.6, 0.5], fps: 12, blend: "normal" },
   { id: "water-splash", pack: "foozle-magic", role: "hit", load: fz("Water"), from: 5, to: 9, anchor: [1, 0.5], fps: 14, blend: "normal" },
   { id: "wind-slash", pack: "foozle-magic", role: "proj", load: fz("Wind"), from: 0, to: 4, anchor: [0.6, 0.5], fps: 14, blend: "normal" },
@@ -142,20 +143,20 @@ const VARIANTS: [string, string, string, Partial<Def>?][] = [
   // шаг 2
   ["blade-blood", "blade-steel", "blood", { gamma: 2.3 }], ["blade-poison", "blade-steel", "poison", { gamma: 2 }], ["blade-shadow", "blade-steel", "shadow", { gamma: 2 }],
   ["expl-large-blood", "expl-large", "blood", { gamma: 1.5 }], ["expl-large-shadow", "expl-large", "shadow", { gamma: 1.5 }],
-  ["puff-shadow", "smoke-puff", "shadow", { gamma: 2.2 }], ["puff-poison", "smoke-puff", "poison", { gamma: 1.7 }],
-  ["fog-shadow", "fog-loop", "shadow", { gamma: 2.2 }], ["fog-poison", "fog-loop", "poison", { gamma: 1.7 }],
+  ["puff-shadow", "smoke-puff", "veil", { gamma: 1.1 }], ["puff-poison", "smoke-puff", "bog", { gamma: 1.1 }], ["puff-smoke", "smoke-puff", "smoke", { gamma: 1.2 }],
+  ["fog-shadow", "fog-loop", "veil", { gamma: 1.1 }], ["fog-poison", "fog-loop", "bog", { gamma: 1.1 }], ["fog-smoke", "fog-loop", "smoke", { gamma: 1.2 }],
   ["ice-crystal-bone", "ice-crystal", "bone"],
   ["holy-nova-s", "holy-nova", "holy"], ["nova-shadow-s", "holy-nova", "shadow"], ["portal-nature", "portal", "nature"],
 ];
 
 /** Все id эффектов, которые умеет собрать конвейер (для проверки data/skill-fx.json без vendor/). */
 export function knownIds(): Set<string> {
-  return new Set([...BASE.map((d) => d.id), ...VARIANTS.map((v) => v[0]), ...GENERATED().map((g) => g.id), ...GENERATED2().map((g) => g.id), "portal-hold", "portal-hold-shadow", "portal-hold-nature"]);
+  return new Set([...BASE.map((d) => d.id), ...VARIANTS.map((v) => v[0]), ...GENERATED().map((g) => g.id), ...GENERATED2().map((g) => g.id), ...GENERATED_BANNER().map((g) => g.id), "portal-hold", "portal-hold-shadow", "portal-hold-nature"]);
 }
 
 /** Плавность: появление (fadeIn, мс; масштаб от scaleIn до 1), удержание (цикл кадров loop, hold мс для вызовов без длительности),
  *  выход (fadeOut). Кадры после loop[1] — финал, он играется при выходе. */
-export interface Ease { fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number }
+export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number }
 
 export interface Built { ease?: Ease; id: string; pack: string; role: Role; frames: PC[]; w: number; h: number; anchor: [number, number]; fps: number; blend: Blend; hero?: string; peak: number }
 
@@ -172,7 +173,7 @@ export const FIT: Record<string, number> = {
   "holy-smite": 36, "holy-heal": 44, "heal-blood": 44, "heal-nature": 44, "poison-skull": 40, "poison-slash": 40,
   "blade-steel": 40, "blade-dark": 40, "blade-ice": 40, "blade-fire": 40, "blade-blood": 40, "blade-poison": 40, "blade-shadow": 40,
   "blood-splash": 32, "blood-splash-b": 32, "axe-blood-hit": 24, "geyser-blood": 44, "dark-wraith": 48, "dark-tentacles": 56,
-  "shackle-steel": 40, "shackle-shadow": 40, "puff-shadow": 44,
+  "shackle-steel": 40, "shackle-shadow": 40, "puff-shadow": 44, "puff-poison": 44, "puff-smoke": 44, "fog-loop": 44, "fog-shadow": 44, "fog-poison": 44, "fog-smoke": 44, "blood-pool": 52,
   "bubble-steel": 44, "bubble-arcane": 44, "bubble-holy": 44, "bubble-bone": 44, "bubble-shadow": 44,
   "banner-holy": 40, "banner-blood": 40, "ring-blood": 44, "ring-holy": 44, "ring-frost": 44, "ring-shadow": 44, "ring-arcane": 44,
   "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36, "aura-rage": 44, "aura-runes-frost": 44, "aura-runes-holy": 44,
@@ -193,7 +194,14 @@ const fitted = (b: Built): Built => (FIT[b.id] ? rescale(b, FIT[b.id]) : b);
 /** Плавность по виду эффекта: ауры и щиты входят и выходят, круги призыва держатся и тают, портал открывается, держится и закрывается. */
 function easeOf(id: string): Ease | undefined {
   if (/^summon-circle/.test(id)) return { fadeIn: 200, fadeOut: 320, scaleIn: 0.8, loop: [4, 6], hold: 1400 };
-  if (/^(bubble-|ring-|aura-|banner-|fog-|flame-|blood-pool|tornado|holy-heal|heal-)/.test(id)) return { fadeIn: 220, fadeOut: 260, scaleIn: 0.7 };
+  // облака и лужи: полупрозрачные, входят и гаснут плавно (герои видны сквозь них)
+  if (/^(fog-)/.test(id)) return { alpha: 0.6, fadeIn: 500, fadeOut: 600, scaleIn: 0.85 };
+  if (/^(puff-|smoke-puff)/.test(id)) return { alpha: 0.65, fadeIn: 120, fadeOut: 300 };
+  if (/^blood-pool/.test(id)) return { alpha: 0.55, fadeIn: 400, fadeOut: 500, scaleIn: 0.85 };
+  // штандарт: падает сверху с пружинящим ударом и пылью (drop, px), гаснет за 300 мс; кольцо ауры мягко входит
+  if (/^banner-(solgard|umbrath)$/.test(id)) return { fadeOut: 300, drop: 72, dust: "dust-puff" };
+  if (/^banner-ring/.test(id)) return { alpha: 0.9, fadeIn: 400, fadeOut: 300 };
+  if (/^(bubble-|ring-|aura-|banner-|flame-|tornado|holy-heal|heal-)/.test(id)) return { fadeIn: 220, fadeOut: 260, scaleIn: 0.7 };
   return undefined;
 }
 
@@ -222,7 +230,7 @@ export function buildAll(): Built[] {
     defs.set(id, nd);
     out.push(build(nd));
   }
-  for (const g of [...GENERATED(), ...GENERATED2()]) out.push(fitted({ ...g, peak: peakIndex(g.frames) }));
+  for (const g of [...GENERATED(), ...GENERATED2(), ...GENERATED_BANNER()]) out.push(fitted({ ...g, peak: peakIndex(g.frames) }));
   // портал: открытие, удержание (цикл вихря), закрытие (открытие в обратном порядке)
   const byId = new Map(out.map((b) => [b.id, b]));
   for (const [id, openId, loopId] of [["portal-hold", "portal-open", "portal"], ["portal-hold-shadow", "portal-open-shadow", "portal-shadow"], ["portal-hold-nature", "portal-open-nature", "portal-nature"]]) {
@@ -328,6 +336,23 @@ export function writeGameVfx(assetsRoot: string) {
   console.log(`vfx: ${Object.keys(sorted).length} листов в ${dir}`);
 }
 
+/** Лист штандарта ×3: все кадры цикла обеих фракций рядом с героем (Сольгард на траве, Умбрат на брусчатке). */
+function bannerSheet(all: Built[]): PC | null {
+  const rows = (["solgard", "umbrath"] as const).map((f) => all.find((b) => b.id === `banner-${f}`)).filter((b): b is Built => !!b);
+  if (!rows.length) return null;
+  const b0 = rows[0], cell = b0.w + 2, rowH = b0.h + 14, W = 48 + b0.frames.length * cell + 6;
+  const pc = new PC(W, rowH * rows.length);
+  rows.forEach((b, j) => {
+    paintGround(pc, 0, j * rowH, W, rowH, j === 0 ? "grass" : "cobble");
+    const feet = j * rowH + rowH - 8;
+    pc.blit(hero("warrior"), 8, feet - 30);
+    b.frames.forEach((f, i) => pc.blit(f, 48 + i * cell, feet - Math.round(b.anchor[1] * b.h)));
+  });
+  const big = scaleNN(pc, 3);
+  rows.forEach((b, j) => drawText(big, `${b.id} ${b.frames.length}f ${b.fps}fps ${b.w}x${b.h}`, 6, j * rowH * 3 + 5, BEIGE, 1));
+  return big;
+}
+
 export function writeAll() {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
@@ -345,6 +370,7 @@ export function writeAll() {
     stackV(items.map((b) => storyboard(b.frames, b.w, b.h, b.anchor, `${b.id}  ${b.frames.length}f ${b.fps}fps ${b.w}x${b.h} ${b.blend} ${b.role}`, 2, b.peak))).save(path.join(PREVIEW, `${p}.png`));
     compareSheet(items).save(path.join(PREVIEW, `compare-${p}.png`));
   }
+  bannerSheet(all)?.save(path.join(PREVIEW, "banner.png"));
   console.log(`эффектов: ${all.length}; паки: ${packs.join(", ")}`);
 }
 

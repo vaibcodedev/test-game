@@ -22,8 +22,7 @@
   "hit": "holy-fury"
  },
  "tp_banner": {
-  "cast": "holy-nova@2",
-  "aura": "banner-holy"
+  "aura": "banner-solgard"
  },
  "tp_divine": {
   "cast": "holy-nova-s",
@@ -246,8 +245,8 @@
   "hit": "hit-fire"
  },
  "as_smoke": {
-  "cast": "smoke-puff@2",
-  "aura": "fog-loop"
+  "cast": "puff-smoke@2",
+  "aura": "fog-smoke"
  },
  "as_dance": {
   "cast": "portal-hold-shadow",
