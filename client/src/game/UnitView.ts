@@ -21,6 +21,9 @@ export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(
 const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
+/** Вспышка от удара: белая копия кадра поверх тела с этой прозрачностью гаснет за FLASH_MS и повторяется не чаще FLASH_GAP —
+ *  рисунок виден сквозь неё, и под градом ударов в рейде босс не белеет целиком. */
+const FLASH_MS = 90, FLASH_GAP = 250, FLASH_ALPHA = 0.5;
 
 export class UnitView {
   sprite: Phaser.GameObjects.Sprite;
@@ -72,6 +75,7 @@ export class UnitView {
   private lastLabel = "";
   private attacking = false;
   private flashUntil = 0;
+  private flashSpr?: Phaser.GameObjects.Sprite;
   dead = false;
   selected = false;
   /** В нейтральном городе чужая фракция показывает цвет фракции, а не красный. */
@@ -164,7 +168,8 @@ export class UnitView {
   }
 
   flash() {
-    this.flashUntil = this.scene.time.now + 60;
+    const now = this.scene.time.now;
+    if (now - (this.flashUntil - FLASH_MS) >= FLASH_GAP) this.flashUntil = now + FLASH_MS;
   }
 
   private showDead(instant: boolean) {
@@ -373,10 +378,17 @@ export class UnitView {
     }
     if (rank && showName) this.nameFrame(left, frameTop, frameBot, Phaser.Display.Color.HexStringToColor(rank.color).color);
 
-    // цвет: вспышка от удара и эффекты
+    // вспышка от удара: белая копия кадра поверх тела, гаснет за FLASH_MS
+    const fl = this.flashUntil - this.scene.time.now, sp = this.sprite;
+    if (fl > 0 && !this.dead) {
+      const f = (this.flashSpr ??= this.scene.add.sprite(0, 0, sp.texture.key).setTintFill(0xffffff));
+      f.setTexture(sp.texture.key, sp.frame.name).setOrigin(sp.originX, sp.originY).setFlipX(sp.flipX).setScale(sp.scaleX, sp.scaleY)
+        .setPosition(sp.x, sp.y).setDepth(sp.depth + 0.01).setAlpha(sp.alpha * FLASH_ALPHA * (fl / FLASH_MS)).setVisible(sp.visible);
+    } else this.flashSpr?.setVisible(false);
+
+    // цвет: эффекты
     const b = u.buffs;
-    if (this.scene.time.now < this.flashUntil) { this.sprite.setTintFill(0xffffff); }
-    else if (b & BUFF_STUN) this.sprite.setTint(0xfff0a0);
+    if (b & BUFF_STUN) this.sprite.setTint(0xfff0a0);
     else if (b & BUFF_SLOW || b & BUFF_ROOT) this.sprite.setTint(0x9ac8ff);
     else if (b & BUFF_POISON) this.sprite.setTint(0xb0ff90);
     else if (b & BUFF_BURN) this.sprite.setTint(0xffb080);
@@ -513,6 +525,7 @@ export class UnitView {
     this.ring.destroy();
     this.aura?.destroy();
     this.stun?.destroy();
+    this.flashSpr?.destroy();
     this.titleText.destroy();
     this.frameGfx.destroy();
     this.torchGfx?.destroy();
