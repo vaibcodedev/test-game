@@ -157,7 +157,7 @@ export class Hotbar {
       else if ("i" in ref) inner = `<img src="${icon(BASE_ITEMS[ref.i].icon)}" alt="" draggable="false">`;
       else inner = `<span class="act">${ACTION_INFO[ref.a].glyph}</span>`;
     }
-    root.innerHTML = `${inner}<kbd>${esc(label)}</kbd>${ref ? `<i class="cd" style="transform:scaleY(0)"></i><span class="cdt"></span>${"s" in ref ? `<i class="gcd"></i>` : ""}` : ""}${ref && "i" in ref ? `<span class="qty"></span>` : ""}`;
+    root.innerHTML = `${inner}${ref && "s" in ref ? `<i class="tint"></i>` : ""}<kbd>${esc(label)}</kbd>${ref ? `<i class="cd" style="transform:scaleY(0)"></i><span class="cdt"></span>${"s" in ref ? `<i class="gcd"></i>` : ""}` : ""}${ref && "i" in ref ? `<span class="qty"></span>` : ""}`;
     const cell: Cell = {
       root, kbd: root.querySelector("kbd")!, cd: root.querySelector(".cd"), cdt: root.querySelector(".cdt"), gcd: root.querySelector(".gcd"), qty: root.querySelector(".qty"),
       ref, label, cls: "", cdv: "", cdtv: "", gcdv: "", qtyv: "",

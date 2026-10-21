@@ -1,6 +1,6 @@
 /* ---------- панель умений (ui/hotbar.ts) ---------- */
-/* кольцо LiteUI (tools/gen/vendor-liteui.ts) вместо тонкой рамки слота; состояния с цветом рамки (нет дальности, перетаскивание) остаются на border-color */
-.hb-slot:not(.oor, .nolos, .drag) { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
+/* кольцо LiteUI (tools/gen/vendor-liteui.ts) вместо тонкой рамки слота; перетаскивание остаётся на border-color */
+.hb-slot:not(.drag) { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
 .hb { display: flex; flex-direction: column; gap: var(--sp-1); }
 .hb-row { display: flex; gap: var(--sp-1); align-items: flex-end; }
 .hb-row.r2.empty { display: none; }
@@ -12,14 +12,13 @@
 .hb-slot .act { display: block; font-size: 26px; line-height: 50px; text-align: center; }
 .hb-slot.unlearned img, .hb-slot.none img { filter: grayscale(1) brightness(0.4); }
 .hb-slot.unlearned::after { content: "🔒"; position: absolute; right: 3px; bottom: 2px; font-size: var(--fs); }
-/* состояния умения (как в WoW): иконка не темнеет — тёмная иконка читается как «такая картинка».
-   Нет цели — иконка обычная, серая только буква клавиши (нажатие покажет «Нет цели» в строке ошибок);
-   не хватает маны — иконка синяя; цель дальше дальности или за препятствием — иконка, рамка и буква красные (важнее маны) */
-.hb-slot.notarget kbd { color: var(--dim); }
-.hb-slot.nomana img { filter: grayscale(0.5) sepia(1) hue-rotate(175deg) saturate(2.4) brightness(0.95); }
-.hb-slot.oor img, .hb-slot.nolos img { filter: grayscale(0.4) sepia(1) hue-rotate(-38deg) saturate(3.5) brightness(0.95); }
+/* состояния умения — как в WoW (решение пользователя): нет цели — кнопка обычная (нажатие покажет «Нет цели» в строке ошибок);
+   цель дальше дальности или за препятствием — красная только буква клавиши; не хватает маны — иконка синяя: умножение
+   на (0.5, 0.5, 1) слоем .tint между иконкой и буквой, как SetVertexColor в WoW. Перезарядка — как в ESO: иконка серая под шторкой */
+.hb-slot .tint { display: none; position: absolute; inset: 1px; border-radius: var(--r-2); mix-blend-mode: multiply; pointer-events: none; }
+.hb-slot.nomana .tint { display: block; background: rgb(128, 128, 255); }
 .hb-slot.oor kbd, .hb-slot.nolos kbd { color: var(--bad); }
-.hb-slot.oor, .hb-slot.nolos { border-color: var(--bad-line); }
+.hb-slot.oncd img { filter: grayscale(1); }
 .hb-slot.press { animation: hb-press 0.18s ease-out; }
 .hb-slot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @keyframes hb-press { from { box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.85); } to { box-shadow: none; } }
