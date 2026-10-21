@@ -10,7 +10,7 @@
   "hit": "expl-dust"
  },
  "quake": {
-  "hit": "earth-spike@2"
+  "hit": "quake-slam"
  },
  "tp_shield_bash": {
   "hit": "hit-fire"
@@ -19,7 +19,8 @@
   "cast": "holy-nova@2"
  },
  "tp_hammer": {
-  "hit": "holy-fury"
+  "proj": "hammer-gold",
+  "hit": "hammer-slam"
  },
  "tp_banner": {
   "aura": "banner-solgard"

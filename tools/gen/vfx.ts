@@ -10,12 +10,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  PC, RAMPS, loadDir, sliceSheet, readPng, cropToAnchor, pickIdx, peakIndex, trimBlank, downscaleMode, tidy, toRow, gradientMap, storyboard, stackV, scaleNN, fill, drawText,
+  PC, RAMPS, loadDir, sliceSheet, readPng, cropToAnchor, pickIdx, peakIndex, trimBlank, downscaleMode, tidy, unionBox, toRow, gradientMap, storyboard, stackV, scaleNN, fill, drawText,
   paintGround, BG, BEIGE, GOLD, type RGBA,
 } from "./vfx-lib";
 import { GENERATED } from "./vfx-gen";
 import { GENERATED2 } from "./vfx-gen2";
+import { GENERATED_HAMMER3 } from "./vfx-hammer3";
 import { GENERATED_BANNER } from "./vfx-banner";
+import { GENERATED_HAMMER } from "./vfx-hammer";
+import { quakeSlam } from "./vfx-quake";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const OUT = path.join(ROOT, "tools/out/vfx");
@@ -151,7 +154,7 @@ const VARIANTS: [string, string, string, Partial<Def>?][] = [
 
 /** Все id эффектов, которые умеет собрать конвейер (для проверки data/skill-fx.json без vendor/). */
 export function knownIds(): Set<string> {
-  return new Set([...BASE.map((d) => d.id), ...VARIANTS.map((v) => v[0]), ...GENERATED().map((g) => g.id), ...GENERATED2().map((g) => g.id), ...GENERATED_BANNER().map((g) => g.id), "portal-hold", "portal-hold-shadow", "portal-hold-nature"]);
+  return new Set([...BASE.map((d) => d.id), ...VARIANTS.map((v) => v[0]), ...GENERATED().map((g) => g.id), ...GENERATED2().map((g) => g.id), ...GENERATED_BANNER().map((g) => g.id), ...GENERATED_HAMMER().map((g) => g.id), ...GENERATED_HAMMER3().map((g) => g.id), "quake-slam", "portal-hold", "portal-hold-shadow", "portal-hold-nature"]);
 }
 
 /** Плавность: появление (fadeIn, мс; масштаб от scaleIn до 1), удержание (цикл кадров loop, hold мс для вызовов без длительности),
@@ -176,7 +179,7 @@ export const FIT: Record<string, number> = {
   "shackle-steel": 40, "shackle-shadow": 40, "puff-shadow": 44, "puff-poison": 44, "puff-smoke": 44, "fog-loop": 44, "fog-shadow": 44, "fog-poison": 44, "fog-smoke": 44, "blood-pool": 52,
   "bubble-steel": 44, "bubble-arcane": 44, "bubble-holy": 44, "bubble-bone": 44, "bubble-shadow": 44,
   "banner-holy": 40, "banner-blood": 40, "ring-blood": 44, "ring-holy": 44, "ring-frost": 44, "ring-shadow": 44, "ring-arcane": 44,
-  "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36, "aura-rage": 44, "aura-runes-frost": 44, "aura-runes-holy": 44,
+  "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36, "aura-rage": 44, "aura-runes-holy": 44, "aura-runes-frost": 56, "aura-runes-frost-back": 56,
   "holy-fury": 56, "holy-nova-s": 56, "nova-shadow-s": 72, "summon-circle-nature": 64, "portal-hold": 36, "portal-hold-shadow": 36, "portal-hold-nature": 36,
 };
 
@@ -213,7 +216,13 @@ function build(d: Def): Built {
   let fps = d.fps;
   if (d.thin && d.thin < src.length) { const n = src.length; src = pickIdx(n, d.thin).map((i) => src[i]); fps = Math.max(4, Math.round((fps * d.thin) / n)); }
   if (d.ramp) src = gradientMap(src, RAMPS[d.ramp], d.gamma ?? 1);
-  const norm = cropToAnchor(src, Math.round(d.anchor[0] * fw), Math.round(d.anchor[1] * fh), fw, fh);
+  let ax = Math.round(d.anchor[0] * fw), ay = Math.round(d.anchor[1] * fh);
+  if (/^(holy-nova|nova-|fog-|puff-|smoke-puff)/.test(d.id)) {
+    // кольцо нарисовано в кадре не по центру (SDS HolyNova: центр ≈ 0.7 высоты): якорь — центр самого широкого кадра, чтобы кольцо встало ровно под ноги
+    const box = unionBox([src[peakIndex(src)]]);
+    if (box) { ax = Math.round((box[0] + box[2]) / 2); ay = Math.round((box[1] + box[3]) / 2); }
+  }
+  const norm = cropToAnchor(src, ax, ay, fw, fh);
   return fitted({ id: d.id, pack: d.pack, role: d.role, frames: norm.frames, w: norm.w, h: norm.h, anchor: norm.anchor, fps, blend: d.blend, hero: d.hero, peak: Math.min(d.peak ?? peakIndex(norm.frames), norm.frames.length - 1) });
 }
 
@@ -230,7 +239,7 @@ export function buildAll(): Built[] {
     defs.set(id, nd);
     out.push(build(nd));
   }
-  for (const g of [...GENERATED(), ...GENERATED2(), ...GENERATED_BANNER()]) out.push(fitted({ ...g, peak: peakIndex(g.frames) }));
+  for (const g of [...GENERATED(), ...GENERATED2(), ...GENERATED_BANNER(), ...GENERATED_HAMMER(), ...GENERATED_HAMMER3(), quakeSlam()]) out.push(fitted({ ...g, peak: peakIndex(g.frames) }));
   // портал: открытие, удержание (цикл вихря), закрытие (открытие в обратном порядке)
   const byId = new Map(out.map((b) => [b.id, b]));
   for (const [id, openId, loopId] of [["portal-hold", "portal-open", "portal"], ["portal-hold-shadow", "portal-open-shadow", "portal-shadow"], ["portal-hold-nature", "portal-open-nature", "portal-nature"]]) {

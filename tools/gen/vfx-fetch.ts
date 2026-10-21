@@ -50,6 +50,8 @@ PACKS.push(
   { id: "pimen-ice", page: "https://pimen.itch.io/ice-spell-effect-01", file: ".", author: "pimen", title: "Ice Effect 01", license: PIMEN_LIC },
   { id: "pimen-acid", page: "https://pimen.itch.io/acid-spell-effect", file: ".", author: "pimen", title: "Acid VFX 01–02", license: PIMEN_LIC },
   { id: "pimen-smoke", page: "https://pimen.itch.io/smoke-vfx-1", file: ".", author: "pimen", title: "Smoke Effect 01", license: PIMEN_LIC },
+  { id: "pimen-earth1", page: "https://pimen.itch.io/earth-spell-effect-01", file: ".", author: "pimen", title: "Earth Effect 01", license: PIMEN_LIC },
+  { id: "pimen-earth2", page: "https://pimen.itch.io/earth-spell-effect-2", file: ".", author: "pimen", title: "Earth Effect 02", license: PIMEN_LIC },
   { id: "pimen-battle", page: "https://pimen.itch.io/pixel-battle-effects", file: ".", many: true, author: "pimen", title: "Pixel Battle Effects", license: "Creative Commons Attribution 4.0 (CC BY 4.0): можно использовать и менять, в том числе в коммерческих проектах, с указанием автора — pimen (https://pimen.itch.io). См. CREDITS.md." },
   { id: "ninja", page: "https://pixel-boy.itch.io/ninja-adventure-asset-pack", file: "^Ninja Adventure - Asset", author: "Pixel-boy (Ninja Adventure)", title: "Ninja Adventure Asset Pack", license: "CC0 1.0 (общественное достояние): использовать, менять и раздавать можно без ограничений, указывать автора не обязательно." },
   { id: "impactforge", page: "https://impactforce-fx.itch.io/impactforge-fx-slash-effect-pack", file: ".", author: "ImpactForge FX", title: "ImpactForge FX Slash Effect Pack (Pack 3 Slash)", license: "Бесплатный пак (itch.io, цена $0). Использовать в проектах можно; перепродавать и раздавать сами файлы нельзя. vendor/ и листы из него вне git." },

@@ -35,6 +35,8 @@ const VIEW = { width: 1280, height: 800 };
 const OUT = path.resolve("tools/out/vfx-shots");
 const PASS = "secret";
 const CROP = { w: 400, h: 300 };
+/** Текущий размер кропа: большие площадные эффекты (сотрясение, радиус 130) снимаются шире. */
+let crop = { ...CROP };
 /** Шаг ручного времени, мс: меньше — точнее пик, но дольше (каждый шаг — отрисовка кадра на программном GL). */
 const STEP = 40;
 
@@ -157,7 +159,7 @@ async function snap(skill: string, phase: Phase | string, field: string, ids: { 
     const k = cv.width / g.scale.width;
     return { url: cv.toDataURL('image/png'), cx: (((u.x + t.x) / 2) - cam.worldView.x) * cam.zoom * k, cy: (((u.y + t.y) / 2 - 12) - cam.worldView.y) * cam.zoom * k, w: cv.width, h: cv.height };`, { ...ids, wait });
   const src = PNG.sync.read(Buffer.from(c.url.split(",")[1], "base64"));
-  const w = Math.min(CROP.w, src.width), h = Math.min(CROP.h, src.height);
+  const w = Math.min(crop.w, src.width), h = Math.min(crop.h, src.height);
   const x0 = Math.max(0, Math.min(src.width - w, Math.round(c.cx - w / 2))), y0 = Math.max(0, Math.min(src.height - h, Math.round(c.cy - h / 2)));
   const out = new PNG({ width: w, height: h });
   PNG.bitblt(src, out, x0, y0, w, h, 0, 0);
@@ -205,6 +207,16 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
       await snap(skill, "banner", field, ids, 150, `${skill}-${fac}-end`);
       await adv(900);
     }
+    await thaw();
+    return;
+  }
+  if (skill === "quake") {
+    // сотрясение: самоцель, круг вокруг кастера; 4 кадра по ходу удара (вспышка, волна, шипы, оседание)
+    crop = { w: 760, h: 540 };
+    await fxArr([{ t: "aoe", k: "quake", x: pos.hx, y: pos.hy, r: 130, ...mark }]);
+    for (const [i, w] of [200, 280, 360, 520].entries()) await snap(skill, "series", field, ids, w, `${skill}-s${i + 1}`);
+    crop = { ...CROP };
+    await adv(1500);
     await thaw();
     return;
   }

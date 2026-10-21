@@ -38,7 +38,7 @@ export function makeVfxAnims(scene: Phaser.Scene, m: Record<string, VfxEntry>) {
 }
 
 /** Плоские эффекты на земле (кольца, круги, лужи): рисуются под героями. */
-const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff-|smoke-puff|banner-ring)/;
+const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff-|smoke-puff|banner-ring|quake-)/;
 const MAX_ACTIVE = 160;
 const FRONT = 0.5; // слой на теле — чуть выше спрайта героя при сортировке по y
 
@@ -95,10 +95,10 @@ export class Vfx {
     if (list.length < 12) { list.push(spr); this.free.set(id, list); } else spr.destroy();
   }
   /** Привязка к юниту: позицию ставит UnitView.update (после интерполяции, то же округление, что у спрайта героя), своих твинов позиции нет. */
-  private bind(spr: Phaser.GameObjects.Sprite, id: string, u: UnitView) {
+  private bind(spr: Phaser.GameObjects.Sprite, id: string, u: UnitView, dz?: number) {
     this.unbind(spr);
     this.bound.set(spr, u);
-    u.attach(spr, this.ground(id) ? 0 : -(u.frame > 32 ? 30 : 14), FLAT.test(id) ? null : this.ground(id) ? 0.1 : FRONT);
+    u.attach(spr, this.ground(id) ? 0 : -(u.frame > 32 ? 30 : 14), dz ?? (FLAT.test(id) ? null : this.ground(id) ? 0.1 : FRONT));
   }
   private unbind(spr: Phaser.GameObjects.Sprite) {
     const u = this.bound.get(spr);
@@ -184,6 +184,14 @@ export class Vfx {
     this.bind(spr, id, u0);
     this.fadeIn(spr, e.ease);
     spr.play({ key: key(id) + (e.ease?.loop ? ":l" : ""), repeat: -1 });
+    // задний слой ауры (лист <id>-back, например орбита рун): под героем, та же орбита и кадры
+    const backId = `${id}-back`, back = this.has(backId) ? this.take(backId) : undefined;
+    if (back) {
+      back.setPosition(Math.round(u0.x), Math.round(u0.y)).setDepth(this.depthOf(backId, Math.round(u0.y)));
+      this.bind(back, backId, u0, -0.5);
+      this.fadeIn(back, this.catalog[backId].ease);
+      back.play({ key: key(backId), repeat: -1 });
+    }
     // юнит ушёл из видимости или умер — снимаем (позицию ставит UnitView, здесь только проверка живости)
     const watch = this.scene.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(unitId); if (!q || q.dead) stop(); } });
     const end = this.scene.time.delayedCall(ms, () => stop());
@@ -192,6 +200,7 @@ export class Vfx {
       if (done) return;
       done = true; watch.remove(); end.remove(false);
       this.fadeOut(id, spr, e.ease);
+      if (back) this.fadeOut(`${id}-back`, back, this.catalog[`${id}-back`].ease);
       const l = this.looping.get(k); if (l) { const i = l.findIndex((r) => r.spr === spr); if (i >= 0) l.splice(i, 1); if (!l.length) this.looping.delete(k); }
     };
     this.looping.set(k, [{ spr, stop }]);

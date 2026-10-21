@@ -4,7 +4,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PC, rng, hex, type RGBA } from "./canvas";
-import { RAMPS, gradientMap, storyboard, stackV } from "./vfx-lib";
+import { RAMPS, gradientMap, storyboard, stackV, readPng, paintGround, scaleNN, fill, BG } from "./vfx-lib";
 import { erode, type Gen } from "./vfx-gen";
 
 const put = (f: PC, x: number, y: number, c: RGBA) => f.set(Math.round(x), Math.round(y), c);
@@ -59,6 +59,76 @@ function auraRage(id: string): Gen {
     return f;
   });
   return mk(id, "aura", frames, W, H, [0.5, 0.85], 12, "reaver");
+}
+
+/** Рунный клинок рыцаря смерти: 4 маленькие каменно-ледяные плитки с вырезанной руной кружат вокруг героя на уровне пояса.
+ *  Плитка рисуется с двойной плотностью 14×16 (толстый тёмный контур, 5 тонов, светлая верхняя грань, вырезанный глиф со светлой нижней кромкой,
+ *  искра), лист 112×76 уменьшается FIT вдвое до 56×38 (плитка ≈ 7×8 пикселей мира). Два листа с одной орбитой: aura-runes-frost — руны перед героем,
+ *  aura-runes-frost-back — сзади (темнее, под героем). 12 кадров цикла. */
+const RUNE_W = 14, RUNE_H = 16;
+// форма плитки: [левая, правая] колонка по строкам (0..15)
+const RUNE_SHAPES: [number, number][][] = [
+  // арка с острой макушкой
+  [[5, 8], [4, 9], [3, 10], [2, 11], [2, 11], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [2, 11], [2, 11], [2, 11], [3, 10]],
+  // кристалл, острый с двух концов
+  [[6, 7], [5, 8], [4, 9], [3, 10], [2, 11], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [2, 11], [3, 10], [3, 10], [4, 9], [5, 8], [6, 7]],
+  // плита со срезанными углами
+  [[3, 10], [2, 11], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [2, 11], [3, 10]],
+  // осколок со сколом сверху справа
+  [[3, 7], [2, 9], [2, 10], [1, 11], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [1, 12], [2, 12], [2, 11], [2, 11], [3, 10], [3, 10], [4, 9]],
+];
+const GLYPHS: string[][] = [
+  ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],            // трезубец
+  ["#.#.#", "#.#.#", "#####", "..#..", "..#..", "..#..", "..#.."],            // вилы
+  [".###.", "#....", "#....", ".###.", "....#", "....#", "###.."],            // змейка
+  ["..#..", ".#.#.", "#...#", ".#.#.", "..#..", "..#..", "..#.."],            // ромб на стержне
+];
+function runeSprite(shape: [number, number][], glyph: string[], pal: { o: RGBA; t: RGBA[]; rim: RGBA; groove: RGBA; lit: RGBA; spark: RGBA; glow: RGBA }, spark: number): PC {
+  const P = 2, S = new PC(RUNE_W + P * 2, RUNE_H + P * 2);
+  const inside = (x: number, y: number) => y >= 0 && y < RUNE_H && x >= shape[y][0] && x <= shape[y][1];
+  const depth = (x: number, y: number) => { let d = 9; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!inside(x + dx, y + dy)) d = Math.min(d, Math.abs(dx) + Math.abs(dy)); return d; };
+  // 1 пиксель мягкого свечения снаружи
+  for (let y = -1; y <= RUNE_H; y++) for (let x = -1; x <= RUNE_W; x++) if (!inside(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => inside(x + dx, y + dy))) S.set(x + P, y + P, pal.glow);
+  for (let y = 0; y < RUNE_H; y++) for (let x = 0; x < RUNE_W; x++) {
+    if (!inside(x, y)) continue;
+    const d = depth(x, y);
+    let c: RGBA;
+    if (d === 1) c = pal.o;                                              // контур
+    else {
+      const tone = y <= 3 ? 0 : (x + y * 0.6 < 9 ? 1 : x + y * 0.6 < 13 ? 2 : 3);
+      c = pal.t[Math.min(4, tone + (d === 2 && (!inside(x, y - 2) || !inside(x - 2, y)) ? 0 : 0))];
+      if (d === 2 && (!inside(x, y - 1 - 1) || !inside(x - 2, y))) c = pal.rim;       // светлая кромка сверху и слева
+      if (d === 2 && (!inside(x + 2, y) || !inside(x, y + 2))) c = pal.t[4];            // тень справа и снизу
+    }
+    S.set(x + P, y + P, c);
+  }
+  // вырезанная руна: тёмная канавка и светлая кромка снизу-справа
+  const gx = Math.floor((RUNE_W - 5) / 2), gy = 4;
+  const on = (x: number, y: number) => glyph[y - gy]?.[x - gx] === "#";
+  for (let y = gy; y < gy + 7; y++) for (let x = gx; x < gx + 5; x++) if (on(x, y)) S.set(x + P, y + P, pal.groove);
+  for (let y = gy; y < gy + 8; y++) for (let x = gx; x < gx + 6; x++) if (!on(x, y) && (on(x - 1, y) || on(x, y - 1)) && inside(x, y)) S.set(x + P, y + P, pal.lit);
+  // искра: белая точка на верхней гранях с «крестиком» в пике мерцания
+  if (spark > 0) { S.set(4 + P, 2 + P, pal.spark); if (spark > 1) { S.set(3 + P, 2 + P, pal.lit); S.set(5 + P, 2 + P, pal.lit); S.set(4 + P, 1 + P, pal.lit); S.set(4 + P, 3 + P, pal.lit); } }
+  return S;
+}
+export function runeOrbit(): Gen[] {
+  const W = 112, H = 76, cx = W / 2, cy = 44, rx = 42, ry = 18, N = 12;
+  const front = Array.from({ length: N }, () => new PC(W, H)), back = Array.from({ length: N }, () => new PC(W, H));
+  const T = (a: string[]) => a.map((c) => hex(c));
+  const pf = { o: hex("#0a1626"), t: T(["#dff6ff", "#8fd0ea", "#5a9cc8", "#3a6aa0", "#243e6c"]), rim: hex("#f2fcff"), groove: hex("#0e2a4a"), lit: hex("#a4e8fa"), spark: hex("#ffffff"), glow: hex("#6ad0f0", 90) };
+  const pb = { o: hex("#060e18"), t: T(["#8fb8cc", "#5a90ae", "#3a6a8e", "#274c70", "#183050"]), rim: hex("#b0d8e8"), groove: hex("#081a30"), lit: hex("#5aa8c4"), spark: hex("#d8f4ff"), glow: hex("#2e7a98", 70) };
+  for (let t = 0; t < N; t++) {
+    const items = RUNE_SHAPES.map((_, k) => { const a = (t / N) * TAU + (k * TAU) / 4; return { k, a, x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry }; }).sort((p, q) => p.y - q.y);
+    for (const it of items) {
+      const isFront = Math.sin(it.a) > 0, ph = (t + it.k * 3) % N, spark = ph === 0 ? 2 : ph === 1 || ph === 11 ? 1 : 0;
+      const img = runeSprite(RUNE_SHAPES[it.k], GLYPHS[it.k], isFront ? pf : pb, isFront ? spark : 0);
+      // лёгкое покачивание плитки по орбите
+      const bob = Math.round(Math.sin((t / N) * TAU * 2 + it.k) * 1);
+      (isFront ? front : back)[t].blit(img, Math.round(it.x - img.w / 2), Math.round(it.y - img.h / 2) + bob);
+    }
+  }
+  const mkl = (id: string, frames: PC[]): Gen => ({ id, pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, cy / H], fps: 10, blend: "normal", hero: "deathknight" });
+  return [mkl("aura-runes-frost", front), mkl("aura-runes-frost-back", back)];
 }
 
 /** Цикл пламени (стена огня, ожог): широкое основание, языки тянутся вверх и гаснут. 8 кадров цикла. */
@@ -218,7 +288,7 @@ export function GENERATED2(): Gen[] {
   return [
     auraBubble("bubble-steel", "steel"), auraBubble("bubble-arcane", "arcane"), auraBubble("bubble-holy", "holy"), auraBubble("bubble-bone", "bone"), auraBubble("bubble-shadow", "shadow"),
     auraRing("ring-blood", "blood"), auraRing("ring-holy", "holy"), auraRing("ring-frost", "frost"), auraRing("ring-shadow", "shadow"), auraRing("ring-arcane", "arcane"),
-    auraRage("aura-rage"), flameLoop("flame-loop"), auraRunes("aura-runes-frost", "frost"), auraRunes("aura-runes-holy", "holy"),
+    auraRage("aura-rage"), flameLoop("flame-loop"), ...runeOrbit(), auraRunes("aura-runes-holy", "holy"),
     trap("trap-snap"), raven("raven-fly"), arrowVolley("arrow-volley"),
     axeSpin("axe-spin"), axeSpin("axe-spin-blood", "blood"),
     shackle("shackle-steel"), shackle("shackle-shadow", "shadow"), bloodPool("blood-pool"),
@@ -229,4 +299,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview/gen2-raw.png");
   stackV(GENERATED2().map((g) => storyboard(g.frames, g.w, g.h, g.anchor, `${g.id} ${g.frames.length}f`, 3))).save(out);
   console.log(out);
+  // рыцарь смерти с рунной орбитой: сзади руны под героем, спереди над ним (кадры 1, 4, 7, 10 цикла, ×3)
+  const [fr, bk] = runeOrbit(), hero = readPng(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/public/assets/units/deathknight.png"));
+  const hf = new PC(32, 32);
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) hf.set(x, y, hero.get(x, y)!);
+  const cellW = 64, cell = 56, pc = new PC(cellW * 4, cell * 2);
+  paintGround(pc, 0, 0, cellW * 4, cell, "grass"); paintGround(pc, 0, cell, cellW * 4, cell, "cobble");
+  for (let row = 0; row < 2; row++) [0, 3, 6, 9].forEach((t, i) => {
+    const ox = i * cellW + 16, oy = row * cell + 14;               // левый верхний угол героя
+    pc.blit(bk.frames[t], ox + 16 - 28, oy + 16 - 22); pc.blit(hf, ox, oy); pc.blit(fr.frames[t], ox + 16 - 28, oy + 16 - 22);
+  });
+  scaleNN(pc, 3).save(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview/dk-runes.png"));
+  void fill; void BG;
 }
