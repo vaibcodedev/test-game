@@ -1285,5 +1285,7 @@ export class GearLayers {
   }
 
   setDepth(d: number) { this.back.setDepth(d - 0.1); this.front.setDepth(d + 0.5); }
+  /** Прозрачность всего снаряжения (скрытность: как у спрайта героя). */
+  setAlpha(a: number) { this.back.setAlpha(a); this.front.setAlpha(a); }
   destroy() { this.unflash(); ACTIVE.delete(this); if (this.sid) setHiddenParticles(this.sid, null); this.back.destroy(); this.front.destroy(); }
 }

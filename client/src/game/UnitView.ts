@@ -391,11 +391,13 @@ export class UnitView {
       placeText(this.stun.setVisible(true), this.x + Math.sin(this.scene.time.now / 120) * 3, top - 14, 0.5, 0.5);
     } else this.stun?.setVisible(false);
 
-    const gearOn = u.kind === UnitKind.Player && !this.dead && !(b & BUFF_STEALTH) && this.frame === 32;
+    // снаряжение в скрытности видят те же, кто видит героя (сам, союзники по команде), так же полупрозрачно; для остальных его нет, как и героя
+    const gearOn = u.kind === UnitKind.Player && !this.dead && !(stealthy && this.unseen) && this.frame === 32;
     if (gearOn) {
       if (!this.layers) { this.layers = new GearLayers(this.scene); for (let k = 0; k < this.id.length; k++) this.seed = (this.seed * 31 + this.id.charCodeAt(k)) % 97; }
       const row = rowOf(u.dir), fr = Number(this.sprite.frame.name) || 0;
       this.layers.setDepth(this.y);
+      this.layers.setAlpha(stealthy ? this.sprite.alpha : 1);
       this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf });
     } else this.layers?.hide();
 
