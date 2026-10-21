@@ -155,12 +155,8 @@
   position: absolute;
   inset: auto 0 0;
   text-align: center;
-  color: var(--fg);
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-b);
   line-height: 1.2;
-  text-shadow: var(--shadow-text), 0 0 3px var(--well);
-  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 .pill {
@@ -342,28 +338,23 @@
   image-rendering: pixelated;
   display: block;
 }
+/* клавиша, количество и цифры перезарядки — надписи на иконке (kit.css): здесь только место и кегль */
 .slot kbd {
   position: absolute;
   left: 3px;
   top: 1px;
-  font-family: var(--font);
   font-size: var(--fs);
-  color: #fff;
-  text-shadow:
-    0 1px 0 #000,
-    0 0 3px #000;
 }
 .slot .qty {
   position: absolute;
   right: 3px;
   bottom: 1px;
   font-size: var(--fs);
-  text-shadow: var(--shadow-text);
 }
 .slot .cd {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--shade-cd);
   transform-origin: bottom;
   border-radius: var(--r-2);
 }
@@ -373,7 +364,6 @@
   display: grid;
   place-items: center;
   font-size: var(--fs-md);
-  text-shadow: var(--shadow-text);
 }
 .slot.locked img {
   filter: grayscale(1) brightness(0.4);

@@ -18,7 +18,7 @@
 .hb-slot .tint { display: none; position: absolute; inset: 1px; border-radius: var(--r-2); mix-blend-mode: multiply; pointer-events: none; }
 .hb-slot.nomana .tint { display: block; background: rgb(128, 128, 255); }
 .hb-slot.oor kbd, .hb-slot.nolos kbd { color: var(--bad); }
-.hb-slot.oncd img { filter: grayscale(1); }
+.hb-slot.oncd img { filter: grayscale(1) brightness(0.6); } /* серая и темнее: цифра перезарядки поверх не сливается */
 .hb-slot.press { animation: hb-press 0.18s ease-out; }
 .hb-slot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @keyframes hb-press { from { box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.85); } to { box-shadow: none; } }
