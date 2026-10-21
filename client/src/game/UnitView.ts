@@ -3,7 +3,7 @@ import Phaser from "phaser";
 import { overlay } from "./overlay";
 import { BUFF_BLEED, BUFF_CURSE, BUFF_STEALTH, BUFF_BURN, BUFF_ENRAGE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, BUFF_WARCRY, Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { net, type UnitState } from "../net";
-import { mouseOpts } from "./keybinds";
+import { bodyDist } from "./castResolve";
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
@@ -19,6 +19,9 @@ export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(
 
 /** Тёмная подложка рамок и щита — цвет «колодца» из палитры. */
 const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
+/** Кольцо под ногами у выбранного и у наведённого: враг — красное (P.foe), союзник — зелёное (P.ally). */
+export const RING_FOE = Phaser.Display.Color.HexStringToColor(P.foe).color;
+export const RING_ALLY = Phaser.Display.Color.HexStringToColor(P.ally).color;
 const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
 /** Вспышка от удара: белая копия кадра поверх тела с этой прозрачностью гаснет за FLASH_MS и повторяется не чаще FLASH_GAP —
@@ -80,7 +83,9 @@ export class UnitView {
   selected = false;
   /** В нейтральном городе чужая фракция показывает цвет фракции, а не красный. */
   inNeutralZone = false;
+  /** Под курсором (GameScene.updateHover каждый кадр): кольцо под ногами, ник и полоска видны. hoverFoe — враг (красное кольцо) или союзник (зелёное). */
   hovered = false;
+  hoverFoe = true;
   /** Разводка подписей (labelLayout): целевой и текущий сдвиг блока имя+титул+полоска, показывать ли ник в толпе, базовая точка блока. */
   tgtX = 0;
   tgtY = 0;
@@ -96,9 +101,12 @@ export class UnitView {
   private band: { base: number; cap: number };
   /** Сколько пикселей блок подписи (титул, рамка, ник) поднимается над topY: считается в update от фактических размеров текста. */
   private blockUp = 14;
+  /** Ник виден только из-за наведения (при выключенных «Имена»): разводка его не считает — он рисуется поверх соседей, и блок не уезжает от касания курсором. */
+  private nameHover = false;
   /** Ширина блока подписи для проверки перекрытий. */
   blockW(): number {
-    return Math.max(this.label.visible ? this.label.width : 0, this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20);
+    const own = !this.nameHover;
+    return Math.max(own && this.label.visible ? this.label.width : 0, own && this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20);
   }
   /** Высота блока подписи для проверки перекрытий: от верхнего края титула (или ника) до низа полоски здоровья. */
   blockH(): number {
@@ -123,7 +131,8 @@ export class UnitView {
     const big = this.frame > 32;
     if (this.frame >= 96) this.nameRise = 0.9 * this.frame;
     this.shadow = scene.add.image(u.x, u.y, "fx_shadow_blob").setScale(big ? 2.2 : 1, big ? 2 : 1).setDepth(DEPTH.ground + 5);
-    this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 6).setScale(big ? 2 : 1);
+    // кольцо выбора и наведения лежит над кругами бафов и щитов (DEPTH.ground + 7): те почти того же размера и цвета и скрыли бы его
+    this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 7.5).setScale(big ? 2 : 1);
     this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, 30 / 32);
     if (u.kind === UnitKind.Pet) {
       this.sprite.setScale(0.8);
@@ -308,7 +317,12 @@ export class UnitView {
     this.shadowMounted = mounted;
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
-    this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible(this.selected && !this.dead);
+    // под курсором (вместо тинта спрайта): кольцо под ногами вдвое бледнее выбранного, красное у врага и зелёное у союзника; ник и полоска видны ниже
+    const hov = this.hovered && !this.dead && !this.unseen;
+    this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible((this.selected || hov) && !this.dead);
+    if (this.selected) this.ring.setAlpha(0.7);
+    // setTintFill, а не setTint: текстура кольца золотая (255, 208, 64), умножение дало бы оранжево-красное и оливковое вместо цветов палитры
+    else if (hov) this.ring.setAlpha(0.35).setTintFill(this.hoverFoe ? RING_FOE : RING_ALLY);
     if (this.attached.length) this.placeAttached();
     let top = this.nameRise !== undefined ? this.y - this.nameRise + 4 : this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
     // плавный переход к назначенному разводкой сдвигу
@@ -354,6 +368,9 @@ export class UnitView {
       if (!this.dead) { this.sprite.setAlpha(1); this.shadow.setAlpha(1); this.label.setVisible(true); }
     }
     if (!(this.isSelf ? overlay.selfNames : overlay.names) || (!this.isSelf && !this.nameOk)) this.label.setVisible(false);
+    // под курсором ник виден всегда, даже при выключенных «Имена»; на блок разводки (blockW, blockH) такой ник не влияет
+    this.nameHover = hov && !this.label.visible;
+    if (hov) this.label.setVisible(true);
     const showName = !this.dead && this.label.visible;
     const rank = u.frame ? rankById(u.frame) : undefined;
     // Рамка (элита, ранг арены) — вокруг самого ника, а не вокруг его блока: блок несимметричен (сверху запас под акценты, снизу под хвосты
@@ -368,7 +385,8 @@ export class UnitView {
     const titleY = framed ? frameTop - 1 : nameY - lh + 1;
     this.titleText.setVisible(titleOn).setPosition(lx - Math.round(this.titleText.width / 2), titleY);
     // высота блока подписи для разводки (labelLayout): от верхнего края титула, рамки или ника до низа полоски
-    this.blockUp = Math.round(top - Math.min(framed ? frameTop : nameY - lh, titleOn ? titleY - Math.round(this.titleText.height) : Infinity));
+    const lay = !this.nameHover;
+    this.blockUp = Math.round(top - Math.min(framed && lay ? frameTop : nameY - lh, titleOn && lay ? titleY - Math.round(this.titleText.height) : Infinity));
     this.frameGfx.clear();
     if (u.kind === UnitKind.Guard && showName) this.guardBadge(left, (baseY + nameY - lh + this.band.cap) / 2);
     this.torch(!this.dead && u.kind === UnitKind.Guard && nightLevel(Date.now()) > 0.35);
@@ -395,7 +413,6 @@ export class UnitView {
     else if (b & BUFF_BLEED) this.sprite.setTint(0xff8a8a);
     else if (b & BUFF_CURSE) this.sprite.setTint(0xc8a0ff);
     else if (b & BUFF_ENRAGE) this.sprite.setTint(0xff8a7a);
-    else if (this.hovered && u.kind !== UnitKind.Player && !this.npc) this.sprite.setTint(0xffe0c0);
     else if (u.look) this.sprite.setTint(u.look);
     else this.sprite.clearTint();
 
@@ -419,9 +436,9 @@ export class UnitView {
       this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf });
     } else this.layers?.hide();
 
-    // полоска здоровья: у мобов только раненых или выбранных (боссы — всегда), тонкая, 2 px
-    const mobHidden = (u.kind === UnitKind.Mob || u.kind === UnitKind.Pet) && u.hp >= u.maxHp && !this.selected;
-    const showBar = (this.isSelf ? overlay.selfBars : overlay.bars) && !this.dead && !this.npc && !mobHidden && (u.kind !== UnitKind.Player || u.hp < u.maxHp || this.isSelf);
+    // полоска здоровья: у мобов только раненых или выбранных (боссы — всегда), тонкая, 2 px; под курсором — у любого существа, даже при выключенных «Полоски»
+    const mobHidden = (u.kind === UnitKind.Mob || u.kind === UnitKind.Pet) && u.hp >= u.maxHp && !this.selected && !hov;
+    const showBar = ((this.isSelf ? overlay.selfBars : overlay.bars) || hov) && !this.dead && !this.npc && !mobHidden && (u.kind !== UnitKind.Player || u.hp < u.maxHp || this.isSelf || hov);
     if (!showBar) this.bar.clear();
     else {
       this.lastHp = u.hp;
@@ -505,14 +522,10 @@ export class UnitView {
     this.torchGlow.setVisible(true).setPosition(hx + 1, hy - 3).setDepth(DEPTH.top - 12).setScale(2.2 * fl).setAlpha(0.55 * fl);
   }
 
-  /** Расстояние от курсора до юнита или Infinity. «Крупные цели»: радиус 14 → 24 px; magnet — радиус «магнита» (32 px). */
-  hitTest(wx: number, wy: number, magnet = false): number {
-    if (this.dead) return Infinity;
-    const big = this.frame > 32;
-    const r = Math.max(big ? 30 : mouseOpts.bigTargets ? 24 : 14, magnet && mouseOpts.bigTargets ? 32 : 0);
-    const dx = wx - this.x, dy = wy - (this.y - (this.frame > 32 || this.mounted ? 28 : 12));
-    const d = Math.hypot(dx, dy);
-    return d < r ? d : Infinity;
+  /** Расстояние от курсора до центра тела юнита или Infinity (мёртвый — всегда мимо). Зона — круг по телу (castResolve.bodyDist) с запасом reach
+   *  в пикселях мира: допуск клика или магнит (castResolve.pickReach: пиксели экрана / масштаб CSS, «Крупные цели» ×2). Без запаса — ровно по телу. */
+  hitTest(wx: number, wy: number, reach = 0): number {
+    return this.dead ? Infinity : bodyDist(this.x, this.y, this.frame > 32, this.mounted, wx, wy, reach);
   }
 
   destroy() {

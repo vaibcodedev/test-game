@@ -25,12 +25,12 @@ import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
-import { UnitView } from "./UnitView";
+import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { placeText, syncTextRes, worldText } from "./worldText";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
-import { resolveCast, type CastUnit } from "./castResolve";
+import { pickOrder, pickReach, resolveCast, type CastUnit, type PickCtx, type PickOut, type PickSource } from "./castResolve";
 import { loading } from "../ui/loading";
 
 type NpcKind = "raid" | "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
@@ -124,6 +124,23 @@ export class GameScene extends Phaser.Scene {
   zone: Zone = Zone.Town;
   clickMark!: Phaser.GameObjects.Image;
   hoverId: string | null = null;
+  /** Масштаб в пикселях CSS на пиксель мира (cssZoom): допуск клика и магнит заданы в пикселях экрана. */
+  private css = 2;
+  /** Курсор мыши в мире, результаты выбора (подсветка, курсор, клик) и источник для pickOrder — постоянные объекты: наведение считается каждый кадр без аллокаций. */
+  private mouse = new Phaser.Math.Vector2();
+  private mouseSeen = false;
+  private cursorKind: CursorKind = "arrow";
+  private pickCtx: PickCtx = { aim: false, right: false, action: true, world: true, css: 2, bigTargets: false };
+  private hoverPick: PickOut = { kind: "ground", id: null, ref: null };
+  private cursorPick: PickOut = { kind: "ground", id: null, ref: null };
+  private clickPick: PickOut = { kind: "ground", id: null, ref: null };
+  private pickSrc: PickSource = {
+    foe: (reach) => this.foeAt(this.mouse.x, this.mouse.y, reach, "open"),
+    townFoe: (reach) => this.foeAt(this.mouse.x, this.mouse.y, reach, "town"),
+    item: (out) => this.itemAt(this.mouse.x, this.mouse.y, out),
+    menu: (reach) => this.menuAt(this.mouse.x, this.mouse.y, reach),
+    friend: (reach, own) => this.friendAt(this.mouse.x, this.mouse.y, reach, own),
+  };
   ambient: Record<string, Phaser.GameObjects.Particles.ParticleEmitter> = {};
   /** Текущий цвет дымки зоны (плавно идёт к цвету зоны и ночи). */
   private hazeRGB: [number, number, number] | null = null;
@@ -176,7 +193,7 @@ export class GameScene extends Phaser.Scene {
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
     /** Масштаб в пикселях CSS на пиксель мира: выбранный колесом или по размеру окна (2–3). Камера получает целый масштаб холста (fitCanvas). */
     const cssZoom = () => userZoom ?? Math.max(2, Math.min(3, Math.round(Math.min(window.innerWidth / 640, window.innerHeight / 400))));
-    const fitZoom = () => cam.setZoom(fitCanvas(this.game, cssZoom()));
+    const fitZoom = () => { this.css = cssZoom(); cam.setZoom(fitCanvas(this.game, this.css)); };
     let userZoom: number | null = null;
     try { const z = Number(localStorage.getItem("zoom:v1")); if (z >= 2 && z <= 3) userZoom = z; } catch {}
     // размер холста ведёт fitCanvas, а не Phaser: в режиме RESIZE он при каждом изменении окна возвращал бы холст к размеру в пикселях CSS
@@ -414,7 +431,8 @@ export class GameScene extends Phaser.Scene {
     this.targetId = id;
     if (id) {
       const v = this.units.get(id);
-      if (v) { v.selected = true; v.ring.setTint(this.isEnemy(v) ? 0xff3030 : 0x9ae07a); }
+      // setTintFill, а не setTint: текстура кольца золотая, и умножение дало бы оранжево-красное и оливковое вместо цветов палитры
+      if (v) { v.selected = true; v.ring.setTintFill(this.isEnemy(v) ? RING_FOE : RING_ALLY); }
     }
     net.send("target", { id });
   }
@@ -548,7 +566,7 @@ export class GameScene extends Phaser.Scene {
     };
     const onBlur = () => { this.held.clear(); this.cancelAim(); this.stopHold(); };
     this.cleanup.push(() => this.stopHold());
-    const onMouseMove = (e: MouseEvent) => { this.overUi = e.target !== this.game.canvas; };
+    const onMouseMove = (e: MouseEvent) => { this.overUi = e.target !== this.game.canvas; this.mouseSeen = true; };
     // наведение на слот панели с умением: кольцо дальности
     const onOver = (e: MouseEvent) => {
       const el = (e.target as HTMLElement | null)?.closest?.(".hb-slot") as HTMLElement | null;
@@ -568,62 +586,60 @@ export class GameScene extends Phaser.Scene {
     });
 
     preloadCursors();
-    this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
-      const id = this.pick(p.worldX, p.worldY);
-      if (id !== this.hoverId) {
-        if (this.hoverId) { const v = this.units.get(this.hoverId); if (v) v.hovered = false; }
-        this.hoverId = id;
-        if (id) { const v = this.units.get(id); if (v) v.hovered = true; }
-      }
-      setCursor(this.cursorAt(p.worldX, p.worldY, id));
-    });
+    // подсветка и курсор мира считаются каждый кадр (updateHover), а не по движению мыши
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (!this.me || this.me.dead) return;
       (document.activeElement as HTMLElement | null)?.blur?.();
       const wx = p.worldX, wy = p.worldY;
       const right = p.rightButtonDown();
-      // прицел: ПКМ отменяет, ЛКМ в режиме «С подтверждением» кастует; при зажатой клавише клики не двигают героя
-      if (this.aimState) {
-        const st = this.aimState;
-        if (right) this.cancelAim();
-        else if (!st.hold) { this.aimState = null; this.castNow(SKILLS[st.id], (p.event as MouseEvent).altKey); }
-        return;
-      }
-      const classic = keybinds.presetId === "classic";
-      // в «Экшене» взаимодействуют только ПКМ; в «Классике» обе кнопки
-      const act = right || classic;
-      // мешок с добычей
-      for (const [bid, img] of this.bagViews) {
-        if (act && Math.hypot(img.x - wx, img.y - 10 - wy) < 16) {
-          this.pendingPickup = bid;
+      this.mouse.set(wx, wy);
+      // один порядок с подсветкой и курсором (castResolve.pickOrder): прицел → враг → мешок, узел, NPC → меню союзника → союзник → враг магнитом → земля;
+      // в «Экшене» мешки, узлы и NPC берёт только ПКМ, в «Классике» обе кнопки
+      const hit = this.pickAt(right, this.clickPick);
+      switch (hit.kind) {
+        case "aim": {
+          // прицел: ПКМ отменяет, ЛКМ в режиме «С подтверждением» кастует; при зажатой клавише клики не двигают героя
+          const st = this.aimState!;
+          if (right) this.cancelAim();
+          else if (!st.hold) { this.aimState = null; this.castNow(SKILLS[st.id], (p.event as MouseEvent).altKey); }
+          return;
+        }
+        case "foe":
+          // враг: ЛКМ выбирает (атакует только при опции «ЛКМ атакует»), ПКМ атакует
+          return right || mouseOpts.lmbAttacks ? this.attackTarget(hit.id) : this.setTarget(hit.id);
+        case "magnet":
+          // промах ЛКМ в радиусе магнита: только выбор, даже при «ЛКМ атакует» — в пачке магнит может взять не того, а атака начала бы бой с чужим мобом
+          return this.setTarget(hit.id);
+        case "bag": {
+          // мешок с добычей
+          const img = this.bagViews.get(hit.id!);
+          if (!img) return;
+          this.pendingPickup = hit.id;
           if (Math.hypot(img.x - this.pos.x, img.y - this.pos.y) > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y });
           return;
         }
-      }
-      // узлы добычи (кактус, кристалл, обсидиан, жемчуг)
-      for (const n of this.map.nodes) {
-        if (!act || this.depletedNodes.has(n.id) || Math.hypot(n.x - wx, n.y - 16 - wy) > 24) continue;
-        this.pendingGather = n.id;
-        if (Math.hypot(n.x - this.pos.x, n.y - 14 - this.pos.y) > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 });
-        return;
-      }
-      // NPC
-      if (act) for (const n of this.npcs) if (Math.hypot(n.sprite.x - wx, n.sprite.y - 14 - wy) < 18) return this.talk(n);
-      // правый клик по другому игроку — меню обмена
-      if (right && net.kind === "world") {
-        for (const [uid, v] of this.units) {
-          if (uid === net.id || v.u.kind !== UnitKind.Player || this.isEnemy(v) || v.unseen || v.hitTest(wx, wy) > 20) continue;
-          const ev = p.event as MouseEvent;
+        case "node": {
+          // узлы добычи (кактус, кристалл, обсидиан, жемчуг)
+          const n = hit.ref as WorldMap["nodes"][number];
+          this.pendingGather = n.id;
+          if (Math.hypot(n.x - this.pos.x, n.y - 14 - this.pos.y) > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 });
+          return;
+        }
+        case "npc":
+          return this.talk(hit.ref as Npc);
+        case "menu": {
+          // правый клик по другому игроку — меню обмена
+          const v = this.units.get(hit.id!), ev = p.event as MouseEvent;
+          if (!v) return;
+          const uid = v.id;
           return this.hud.trade.showMenu(uid, v.u.name, ev.clientX, ev.clientY, () => this.hud.inspect.open(uid), () => this.followUnit(uid));
         }
+        case "friend":
+          // союзник: выбор
+          return this.setTarget(hit.id);
       }
-      // враг: ЛКМ выбирает (атакует только при опции «ЛКМ атакует»), ПКМ атакует; союзник: выбор
-      const foe = this.pick(wx, wy, true);
-      if (foe) return right || mouseOpts.lmbAttacks ? this.attackTarget(foe) : this.setTarget(foe);
-      const friend = this.pickFriend(wx, wy);
-      if (friend) return this.setTarget(friend);
       // земля: цель не снимается; ЛКМ ведёт героя только в «Классике»
-      if (!right && !classic) return;
+      if (!right && keybinds.presetId !== "classic") return;
       this.pendingPickup = null;
       this.pendingNpc = null;
       this.pendingGather = null;
@@ -637,13 +653,46 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Курсор над миром — те же зоны попадания, что у клика: враг — меч, NPC — рука, мешок и узел добычи — перчатка, иначе стрелка. */
-  private cursorAt(wx: number, wy: number, foe: string | null): CursorKind {
-    if (foe) return "attack";
-    for (const n of this.npcs) if (Math.hypot(n.sprite.x - wx, n.sprite.y - 14 - wy) < 18) return "talk";
-    for (const img of this.bagViews.values()) if (Math.hypot(img.x - wx, img.y - 10 - wy) < 16) return "take";
-    for (const n of this.map.nodes) if (!this.depletedNodes.has(n.id) && Math.hypot(n.x - wx, n.y - 16 - wy) <= 24) return "take";
-    return "arrow";
+  /** Курсор над миром — что сделает ПКМ: враг (в допуске, без магнита) — меч, NPC — рука, мешок и узел добычи — перчатка, иначе стрелка. */
+  private cursorAt(hit: PickOut): CursorKind {
+    return hit.kind === "foe" ? "attack" : hit.kind === "npc" ? "talk" : hit.kind === "bag" || hit.kind === "node" ? "take" : "arrow";
+  }
+
+  /** Что под курсором (this.mouse) для кнопки: один порядок для клика, подсветки и курсора (castResolve.pickOrder). */
+  private pickAt(right: boolean, out: PickOut): PickOut {
+    const c = this.pickCtx;
+    c.aim = !!this.aimState;
+    c.right = right;
+    c.action = keybinds.presetId !== "classic";
+    c.world = net.kind === "world";
+    c.css = this.css;
+    c.bigTargets = mouseOpts.bigTargets;
+    return pickOrder(c, this.pickSrc, out);
+  }
+
+  /** Каждый кадр по activePointer (камера и мобы едут, а мышь стоит): подсветка — кого выберет ЛКМ (с магнитом), курсор — что сделает ПКМ.
+   *  Мышь вне холста (вышла из окна — activePointer хранит последнюю точку у края) и над интерфейсом — без подсветки. Себя не подсвечиваем:
+   *  свои ник и полоска включаются настройками «Свои имена» и «Свои полоски», а не наведением.
+   *  Без аллокаций: курсор в мире — один Vector2, результаты — постоянные объекты. */
+  private updateHover() {
+    let hov: string | null = null, foe = true, cur: CursorKind = "arrow";
+    const me = this.me;
+    if (this.mouseSeen && !this.overUi && this.input.manager.isOver && me && !me.dead) {
+      const ap = this.input.activePointer;
+      this.cameras.main.getWorldPoint(ap.x, ap.y, this.mouse);
+      const l = this.pickAt(false, this.hoverPick);
+      if (l.kind === "foe" || l.kind === "magnet") hov = l.id;
+      else if (l.kind === "friend" && l.id !== net.id) { hov = l.id; foe = false; }
+      cur = this.cursorAt(this.pickAt(true, this.cursorPick));
+    }
+    if (hov !== this.hoverId) {
+      const old = this.hoverId ? this.units.get(this.hoverId) : undefined;
+      if (old) old.hovered = false;
+      this.hoverId = hov;
+    }
+    const v = hov ? this.units.get(hov) : undefined;
+    if (v) { v.hovered = true; v.hoverFoe = foe; }
+    if (cur !== this.cursorKind) { this.cursorKind = cur; setCursor(cur); }
   }
 
   /** Враг ли юнит: мобы всегда; игроки — на арене из другой команды, в мире — противоположная фракция в спорной зоне или нейтральном городе (как World.hostile). */
@@ -657,26 +706,73 @@ export class GameScene extends Phaser.Scene {
     return !!me && v.id !== net.id && factionsHostile(this.map, me.faction, this.pos.x, this.pos.y, v.u.faction, v.u.x, v.u.y);
   }
 
-  /** Ближайший к курсору живой враг. */
-  pick(wx: number, wy: number, magnet = false): string | null {
+  /** Герой чужой фракции в нейтральном городе: клиент считает его врагом (isEnemy), но бой там запрещён — удар клеймит нарушителем и зовёт стражу (World.townSafe). */
+  private townFoe(v: UnitView): boolean {
+    return v.u.kind === UnitKind.Player && net.kind === "world" && pvpPlace(this.map, this.pos.x, this.pos.y) === "neutral";
+  }
+
+  /** Ближайший к точке мира живой враг: тело юнита с запасом reach (пиксели мира). set: open — те, кого здесь можно бить (мобы, боссы, герои в спорной зоне и на арене),
+   *  town — герои чужой фракции в нейтральном городе, any — все (каст по наведению). Без аллокаций — вызывается каждый кадр. */
+  private foeAt(wx: number, wy: number, reach: number, set: "open" | "town" | "any" = "any"): string | null {
     let best: string | null = null, bd = Infinity;
-    for (const [id, v] of this.units) {
-      if (!this.isEnemy(v)) continue;
-      const d = v.hitTest(wx, wy, magnet);
-      if (d < bd) { bd = d; best = id; }
+    for (const v of this.units.values()) {
+      const d = v.hitTest(wx, wy, reach);
+      if (d < bd && this.isEnemy(v) && (set === "any" || this.townFoe(v) === (set === "town"))) { bd = d; best = v.id; }
     }
     return best;
   }
 
-  /** Союзник под курсором (для лекаря): игроки, включая себя и павших, и питомцы. */
-  pickFriend(wx: number, wy: number): string | null {
-    let best: string | null = null, bd = 22;
-    for (const [id, v] of this.units) {
-      if (this.isEnemy(v) || (v.u.kind !== UnitKind.Player && v.u.kind !== UnitKind.Pet)) continue;
-      const d = v.hitTest(wx, wy);
-      if (d < bd) { bd = d; best = id; }
+  /** Союзник-игрок, которому ПКМ откроет меню обмена: не я, не враг, не скрытый. */
+  private menuAt(wx: number, wy: number, reach: number): string | null {
+    let best: string | null = null, bd = Infinity;
+    for (const v of this.units.values()) {
+      const d = v.hitTest(wx, wy, reach);
+      if (d < bd && v.u.kind === UnitKind.Player && v.id !== net.id && !v.unseen && !this.isEnemy(v)) { bd = d; best = v.id; }
     }
     return best;
+  }
+
+  /** Мой герой и мои питомцы. */
+  private mine(v: UnitView): boolean {
+    return v.id === net.id || (v.u.kind === UnitKind.Pet && v.u.ownerId === net.id);
+  }
+
+  /** Союзник для выбора и лекаря: игроки, включая себя, и питомцы; скрытый игрок не виден и не выбирается.
+   *  Мой герой и мои питомцы берутся с запасом own (в кликах — 0: допуск вокруг героя в центре экрана съел бы клик-шаг), остальные — с запасом reach. */
+  private friendAt(wx: number, wy: number, reach: number, own = reach): string | null {
+    let best: string | null = null, bd = Infinity;
+    for (const v of this.units.values()) {
+      const d = v.hitTest(wx, wy, this.mine(v) ? own : reach);
+      if (d < bd && (v.u.kind === UnitKind.Player || v.u.kind === UnitKind.Pet) && !v.unseen && !this.isEnemy(v)) { bd = d; best = v.id; }
+    }
+    return best;
+  }
+
+  /** Мешок с добычей, узел добычи или NPC под точкой мира — в таком порядке; нашлось — кладёт в out kind, id и ref. */
+  private itemAt(wx: number, wy: number, out: PickOut): boolean {
+    for (const [id, img] of this.bagViews) {
+      const dx = img.x - wx, dy = img.y - 10 - wy;
+      if (dx * dx + dy * dy < 16 * 16) { out.kind = "bag"; out.id = id; return true; }
+    }
+    for (const n of this.map.nodes) {
+      const dx = n.x - wx, dy = n.y - 16 - wy;
+      if (dx * dx + dy * dy <= 24 * 24 && !this.depletedNodes.has(n.id)) { out.kind = "node"; out.ref = n; return true; }
+    }
+    for (const n of this.npcs) {
+      const dx = n.sprite.x - wx, dy = n.sprite.y - 14 - wy;
+      if (dx * dx + dy * dy < 18 * 18) { out.kind = "npc"; out.ref = n; return true; }
+    }
+    return false;
+  }
+
+  /** Ближайший к курсору живой враг: допуск клика, а с magnet — радиус магнита. */
+  pick(wx: number, wy: number, magnet = false): string | null {
+    return this.foeAt(wx, wy, pickReach(this.css, magnet, mouseOpts.bigTargets));
+  }
+
+  /** Союзник под курсором (для лекаря): игроки, включая себя, и питомцы; допуск клика. */
+  pickFriend(wx: number, wy: number): string | null {
+    return this.friendAt(wx, wy, pickReach(this.css, false, mouseOpts.bigTargets));
   }
 
   private tabList: string[] = [];
@@ -928,6 +1024,7 @@ export class GameScene extends Phaser.Scene {
       syncTextRes(zoom);
     }
     this.updateAim();
+    this.updateHover();
     this.world.update(this.cameras.main);
     // экран загрузки уходит, когда свой герой на месте и куски мира вокруг него построены (камера встаёт на героя кадром раньше)
     if (this.me && this.readyFrames < 3 && ++this.readyFrames === 3) loading.done();

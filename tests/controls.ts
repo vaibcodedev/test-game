@@ -2,6 +2,7 @@
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 import { generateMap } from "../shared/map";
 import { MAP_SEED } from "../shared/constants";
+import { bodyDist, pickOrder, type PickCtx, type PickKind, type PickSource } from "../client/src/game/castResolve";
 
 const MAP = generateMap(MAP_SEED);
 const town = MAP.playerSpawn;
@@ -208,6 +209,73 @@ async function main() {
       // удержание: код cd отдаётся при нажатии на перезарядке вне окна очереди
     });
     await m.leave();
+
+    // ---------- задача 134, шаг 1: допуск, магнит и порядок выбора мышью — от живых координат моба с сервера ----------
+    // В конце файла: слизень после прежних проверок гонится за героем-богом, и лишняя проверка перед шагом 7 сдвигала бы их по времени (подход считает дальность от точки появления)
+    await check("выбор мышью: допуск 12 px, магнит ЛКМ 40 px, порядок (мешок под мобом, NPC рядом, союзник на мобе); ЛКМ только выбирает", async () => {
+      const id = await setup();
+      const ally = await Bot.join("Союзник3", "secret", "mage");
+      try {
+        // союзник стоит у героя, вдали от слизня: иначе слизень уйдёт за ним, а следующим проверкам нужен на месте
+        ally.send("dbg", { op: "god" });
+        ally.send("dbg", { op: "tp", x: a.me().x + 40, y: a.me().y });
+        await sleep(300);
+        const m = mob(a, id);
+        const mx: number = m.x, my: number = m.y, cy = my - 12; // снимок живого моба; центр тела — на 12 px выше ног
+        // клик: масштаб CSS 2 (допуск 6 и магнит 20 px мира), «Экшен», мир; юниты — снимок (враг — живой моб, союзник — в геометрии на 60 px правее него, id настоящий)
+        type U = { id: string; x: number; y: number; foe: boolean; mine?: boolean };
+        const foe: U = { id, x: mx, y: my, foe: true }, tank: U = { id: ally.id, x: mx + 60, y: my, foe: false };
+        const click = (units: U[], items: { kind: "bag" | "npc"; x: number; y: number; r: number }[], wx: number, wy: number, o: Partial<PickCtx> = {}): [PickKind, string | null] => {
+          // mine — мой герой: он берётся без допуска (own), остальные — с допуском
+          const nearest = (list: U[], reach: number, own = reach) => { let b: string | null = null, bd = Infinity; for (const u of list) { const d = bodyDist(u.x, u.y, false, false, wx, wy, u.mine ? own : reach); if (d < bd) { bd = d; b = u.id; } } return b; };
+          const src: PickSource = {
+            foe: (r) => nearest(units.filter((u) => u.foe), r),
+            townFoe: () => null,
+            item: (out) => { const it = items.find((i) => Math.hypot(i.x - wx, i.y - wy) < i.r); if (!it) return false; out.kind = it.kind; return true; },
+            menu: (r) => nearest(units.filter((u) => !u.foe && !u.mine), r),
+            friend: (r, own) => nearest(units.filter((u) => !u.foe), r, own),
+          };
+          const res = pickOrder({ aim: false, right: false, action: true, world: true, css: 2, bigTargets: false, ...o }, src, { kind: "ground", id: null, ref: null });
+          return [res.kind, res.id];
+        };
+        const is = (r: [PickKind, string | null], kind: PickKind, rid: string | null, what: string) => assert(r[0] === kind && r[1] === rid, `${what}: ${r[0]} ${r[1]}`);
+        // допуск: клик в 19 px от центра тела (зона 14 + допуск 6) — враг; ЛКМ только выбирает — герой стоит, моб цел
+        const p0 = { x: a.me().x, y: a.me().y }, hp0 = m.hp;
+        let r = click([foe], [], mx + 19, cy);
+        is(r, "foe", id, "ЛКМ в допуске");
+        is(click([foe], [], mx + 21, cy, { right: true }), "ground", null, "ПКМ вне допуска: магнита нет");
+        a.send("target", { id: r[1] });
+        await a.until(() => a.me().target === id, 1500, "ЛКМ выбрал моба");
+        await sleep(500);
+        assert(Math.hypot(a.me().x - p0.x, a.me().y - p0.y) < 5, "ЛКМ повёл героя");
+        assert(mob(a, id).hp >= hp0, "ЛКМ атаковал");
+        // магнит: в 30 px — только ЛКМ «Экшена»; ПКМ и «Классика» — земля; дальше 34 px — земля у всех
+        a.send("target", { id: null });
+        await a.until(() => a.me().target !== id, 1500, "цель снята");
+        is(click([foe], [], mx + 30, cy, { right: true }), "ground", null, "ПКМ в 30 px");
+        is(click([foe], [], mx + 30, cy, { action: false }), "ground", null, "«Классика» в 30 px");
+        is(click([foe], [], mx + 35, cy), "ground", null, "ЛКМ дальше магнита");
+        r = click([foe], [], mx + 30, cy);
+        is(r, "magnet", id, "ЛКМ «Экшена» в 30 px");
+        a.send("target", { id: r[1] });
+        await a.until(() => a.me().target === id, 1500, "магнит выбрал моба");
+        // порядок: мешок под мобом и NPC рядом с врагом, союзник на мобе
+        is(click([foe], [{ kind: "bag", x: mx, y: my - 10, r: 16 }], mx, cy, { right: true }), "foe", id, "мешок под мобом");
+        is(click([foe], [{ kind: "npc", x: mx + 25, y: cy, r: 18 }], mx + 25, cy, { right: true }), "npc", null, "NPC рядом с врагом");
+        is(click([foe, { ...tank, x: mx }], [], mx, cy, { right: true }), "foe", id, "союзник на мобе: враг важнее меню");
+        is(click([foe, tank], [], tank.x, cy, { right: true }), "menu", ally.id, "ПКМ по союзнику: меню обмена");
+        r = click([foe, tank], [], tank.x, cy);
+        is(r, "friend", ally.id, "ЛКМ по союзнику: выбор");
+        a.send("target", { id: r[1] });
+        await a.until(() => a.me().target === ally.id, 1500, "ЛКМ выбрал союзника");
+        // свой герой — только по телу (камера держит его в центре экрана): клик в 17 px от центра тела (тело 14, допуск 6) — шаг, а не выбор себя
+        const hero = a.me(), self: U = { id: a.id, x: hero.x, y: hero.y, foe: false, mine: true };
+        is(click([self], [], hero.x + 17, hero.y - 12, { right: true }), "ground", null, "ПКМ в 17 px от героя: шаг");
+        is(click([self], [], hero.x + 10, hero.y - 12, { right: true }), "friend", a.id, "ПКМ по телу героя: выбор себя");
+      } finally {
+        await ally.leave();
+      }
+    });
   } finally {
     await stopServer();
   }
