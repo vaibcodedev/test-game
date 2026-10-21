@@ -244,8 +244,8 @@ export function frameIcon(plate: PC): PC {
 }
 
 // ---------- стихии: одна палитра на весь набор иконок умений (задача 127) ----------
-export type Element = "lightning" | "fire" | "frost" | "poison" | "nature" | "blood" | "shadow" | "arcane" | "holy" | "phys" | "death";
-export const ELEMENTS: Element[] = ["lightning", "fire", "frost", "poison", "nature", "blood", "shadow", "arcane", "holy", "phys", "death"];
+export type Element = "lightning" | "fire" | "frost" | "poison" | "nature" | "blood" | "shadow" | "arcane" | "holy" | "phys" | "death" | "paladin";
+export const ELEMENTS: Element[] = ["lightning", "fire", "frost", "poison", "nature", "blood", "shadow", "arcane", "holy", "phys", "death", "paladin"];
 /** Ряды стихий: 2 ступени свечения (первые два тона), 3–4 тона знака, светлое ядро. Плашка и рамка — нейтральные, в darkenIcon. */
 export const ELEMENT_RAMPS: Record<Element, RGBA[]> = {
   lightning: R("#241f4a", "#38358a", "#4c66d6", "#78a0ff", "#a8c4ff", "#d8e2ff", "#f6f4ff"), // электрический сине-голубой с фиолетовым отливом
@@ -258,6 +258,7 @@ export const ELEMENT_RAMPS: Record<Element, RGBA[]> = {
   arcane: R("#34123c", "#74286e", "#b04aa0", "#e078c4", "#f6a6e0", "#ffd0f2", "#fff0fa"), // пурпурно-розовый, сиреневый
   holy: R("#42300e", "#80601a", "#c89a38", "#eec458", "#ffe08a", "#fff0b8", "#ffffff"), // золото с белым ядром
   phys: R("#2a2630", "#5a4434", "#80899a", "#aab4c2", "#d2d9e4", "#eef2f8", "#ffffff"), // холодная сталь, бронзовый тон в тенях
+  paladin: R("#3a2810", "#6e4e18", "#b8903a", "#a8b2c4", "#d0d8e6", "#eef0f4", "#ffffff"), // храмовник: светлая сталь с золотой кромкой, тёплое золотое свечение
   death: R("#122a26", "#245048", "#3f8274", "#6cb4a2", "#a0d8c6", "#d0f4e8", "#f2fffa"), // мертвенно-зелёный с голубизной (рыцарь смерти)
 };
 

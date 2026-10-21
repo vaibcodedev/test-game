@@ -58,7 +58,7 @@ const NEW_PLATE: [number, number, number] = [19, 15, 23];
 /** Рамка-фаска: приглушённая бронза сверху-слева, серо-сливовая снизу-справа (не ярче --line-hi #8a6a4a). */
 const NEW_FRAME = { light: [134, 112, 92], mid: [104, 88, 74], dark: [66, 56, 66] } as const;
 const OLD_PLATE = [0x1f, 0x24, 0x4b];
-export function darkenIcon(src: PC): PC {
+export function darkenIcon(src: PC, warm = false): PC {
   const out = new PC(src.w, src.h);
   const isFrame = (x: number, y: number) => src.w === 24 && (x === 1 || x === 22 || y === 1 || y === 22) && x >= 1 && x <= 22 && y >= 1 && y <= 22;
   for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
@@ -69,7 +69,7 @@ export function darkenIcon(src: PC): PC {
       const l = c[0] + c[1] + c[2];
       n = l > 600 ? [...NEW_FRAME.light] : l > 450 ? [...NEW_FRAME.mid] : [...NEW_FRAME.dark];
       if (x === 22 && y === 1 || x === 1 && y === 22) n = [...NEW_FRAME.mid];
-    } else if (c[0] === OLD_PLATE[0] && c[1] === OLD_PLATE[1] && c[2] === OLD_PLATE[2]) n = [...NEW_PLATE];
+    } else if (c[0] === OLD_PLATE[0] && c[1] === OLD_PLATE[1] && c[2] === OLD_PLATE[2]) n = warm ? [26, 18, 17] : [...NEW_PLATE];
     else {
       const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
       const s = 0.66 + 0.3 * Math.pow(L / 255, 1.4);
@@ -100,4 +100,4 @@ function exposure(src: PC): PC {
   for (let y = 2; y < 22; y++) for (let x = 2; x < 22; x++) { const c = src.get(x, y)!; if (c[0] === 0x1f && c[1] === 0x24 && c[2] === 0x4b) continue; out.set(x, y, [Math.min(255, Math.round(c[0] * k)), Math.min(255, Math.round(c[1] * k)), Math.min(255, Math.round(c[2] * k)), 255]); }
   return out;
 }
-export function buildSkillIcon(id: string): PC { return darkenIcon(exposure(buildSkillIconRaw(id))); }
+export function buildSkillIcon(id: string): PC { return darkenIcon(exposure(buildSkillIconRaw(id)), (SKILL_ICON_TABLE[id] as { theme?: string }).theme === "paladin"); }
