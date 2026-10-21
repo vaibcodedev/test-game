@@ -3,53 +3,25 @@
   left: 50%;
   top: 60px;
   transform: translateX(-50%);
-  width: min(720px, calc(100vw - 24px));
 }
-.adm-tabs {
-  display: flex;
-  gap: var(--sp-1h);
-  flex-wrap: wrap;
-}
+/* ряд полей и кнопки: поля с подписями выравниваются по низу, кнопка стоит на линии полей */
 .adm-row {
   display: flex;
-  gap: var(--sp-1h);
   flex-wrap: wrap;
-  align-items: center;
-  margin: var(--sp-1) 0;
+  align-items: flex-end;
+  gap: var(--sp-2);
 }
-.adm-row input,
-.adm-row select {
-  background: var(--card);
-  color: var(--fg);
-  border: 1px solid var(--line-hi);
-  border-radius: var(--r-2);
-  padding: var(--sp-1) var(--sp-1h);
+.adm-row > .field.grow {
+  flex: 1 1 160px;
   min-width: 0;
-  font: inherit;
 }
-.adm-row input {
-  width: 110px;
+.adm-row > .btn {
+  min-height: var(--ctl-h);
 }
-.adm-row input.wide {
-  flex: 1;
-  width: auto;
-  min-width: 140px;
-}
-.adm-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-sm);
-}
-.adm-table td,
-.adm-table th {
-  padding: var(--sp-1) var(--sp-1h);
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: top;
-}
-.adm-scroll {
-  max-height: 340px;
-  overflow: auto;
+.adm-acts {
+  display: flex;
+  gap: var(--sp-1);
+  justify-content: flex-end;
 }
 .adm-banner {
   position: absolute;

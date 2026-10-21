@@ -550,7 +550,6 @@ button.uframe.dead:hover { border-color: var(--gold); }
 .note { margin: 0; color: var(--dim); font-size: var(--fs-sm); line-height: 1.45; }
 
 /* ---------- переходные правила: старая разметка под новыми общими стилями. Убирать вместе с переводом окна ---------- */
-.login-btns .btn.primary, .cs-bar .btn.primary { min-height: 40px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-lg); } /* вход и выбор героя: главная кнопка крупная (станет .btn.lg) */
 .raid-banner.win { width: auto; } /* баннер рейда: класс win — цвет победы, не окно */
 .mbtn, .raid-leave { min-height: 0; } /* меню под мини-картой (height 30px) и компактная «Покинуть рейд»: высота своя, не min-height у .btn (уйдёт с переводом HUD) */
 

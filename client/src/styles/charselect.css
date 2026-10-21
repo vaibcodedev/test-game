@@ -41,30 +41,13 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-2);
 }
-.cs-slot {
-  display: flex;
-  flex-direction: column;
+/* карточка героя: .card и button.card из kit.css дают фон, рамку, наведение и выбор (aria-pressed); здесь только раскладка */
+button.cs-slot {
   align-items: center;
   gap: var(--sp-1);
   padding: var(--sp-3) var(--sp-2) var(--sp-2);
   min-height: 236px;
-  background: linear-gradient(#2a2130, var(--card));
-  border: 1px solid var(--line);
-  border-radius: var(--r-3);
-  cursor: var(--cur-pointer);
   text-align: center;
-}
-.cs-slot:hover {
-  border-color: var(--line-hi);
-}
-.cs-slot:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-}
-.cs-slot[aria-pressed="true"] {
-  border-color: var(--gold);
-  background: var(--sel);
-  box-shadow: var(--glow-sel);
 }
 .cs-slot .cs-hero {
   width: 96px;
@@ -78,7 +61,7 @@
   color: var(--gold);
 }
 .cs-slot .meta {
-  color: var(--dim);
+  white-space: normal;
 }
 .cs-slot .zone {
   font-size: var(--fs-sm);
@@ -87,7 +70,7 @@
   justify-content: center;
   color: var(--dim);
   border-style: dashed;
-  background: rgba(14, 11, 16, 0.6);
+  background: var(--well);
 }
 .cs-slot.empty .plus {
   font-size: 40px;
@@ -106,7 +89,6 @@
   flex-wrap: wrap;
 }
 .cs-eq .cell {
-  width: 32px;
   cursor: var(--cur-arrow);
 }
 .cs-eq .cell .plus {
@@ -132,6 +114,9 @@
 .cs-bar .btn.primary {
   min-width: 180px;
 }
+.cs-del .field {
+  text-align: left;
+}
 .cs-sp {
   flex: 1;
 }
@@ -154,7 +139,7 @@
   place-items: center;
   border: 1px solid var(--line);
   border-radius: var(--r-3);
-  background: radial-gradient(ellipse at 50% 80%, #3a2e2a 0%, var(--well) 70%);
+  background: radial-gradient(ellipse at 50% 80%, var(--panel-2) 0%, var(--well) 70%);
 }
 .cs-stage .cs-hero {
   width: 192px;
@@ -172,34 +157,12 @@
   gap: var(--sp-3);
   min-width: 0;
 }
-.cs-label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  color: var(--dim);
-}
-.charsel input,
-.cs-del input {
-  background: var(--well);
-  border: 1px solid var(--line);
-  color: var(--fg);
-  padding: var(--sp-2);
-  border-radius: var(--r-2);
-  font: inherit;
-  font-size: var(--fs-md);
-}
-.cs-del label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
 .cs-looks {
   border: 0;
   padding: 0;
   margin: 0;
 }
 .cs-looks legend {
-  color: var(--dim);
   margin-bottom: var(--sp-1);
 }
 .looks {

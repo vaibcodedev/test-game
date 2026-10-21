@@ -3,14 +3,7 @@
   left: 50%;
   top: 80px;
   transform: translateX(-50%);
-  width: min(430px, calc(100vw - 24px));
   z-index: 4;
-}
-.insp-head {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  color: var(--dim);
 }
 /* строки снаряжения: .list > .row из kit.css, ячейка .cell.md (40px). Имя цветом редкости в одну строку, под ним слот и эффект на герое — не больше двух строк */
 .gear-row:hover {

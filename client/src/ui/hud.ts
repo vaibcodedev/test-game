@@ -445,7 +445,7 @@ export class Hud {
     mk("char", "win-char xl", "Герой");
     mk("inv", "win-inv s", "Снаряжение и сумка");
     this.wins.inv.append(el("div", "win-foot")); // подвал сумки: подсказка и золото, заполняет renderInv
-    mk("skills", "win-skills", "Дерево умений");
+    mk("skills", "win-skills l", "Дерево умений");
     mk("shop", "win-shop m", "Торговка Марфа");
     this.buildShopFrame();
     mk("settings", "win-settings m", "Настройки");
@@ -1081,7 +1081,9 @@ export class Hud {
 
   private renderSkills(s: SelfState) {
     const b = this.body("skills");
-    b.innerHTML = `<p class="muted">Свободно очков умений: <b class="gold">${s.skillPoints}</b> (1 за уровень, после 30-го — 1 за 2 уровня). Активные — квадратные, пассивные — круглые.</p><div class="tree"></div>`;
+    b.innerHTML = `<section class="sec flat"><div class="sec-head"><h3 class="sec-h">Умения класса</h3><span class="chip${s.skillPoints > 0 ? "" : " dim"}" title="Свободных очков умений">Свободно: ${s.skillPoints}</span></div>
+      <p class="field-hint">1 очко за уровень, после 30-го — 1 за 2 уровня · активные умения квадратные, пассивные круглые</p>
+      <div class="tree"></div></section>`;
     const tree = b.querySelector<HTMLElement>(".tree")!;
     const defs = classSkills(s.cls);
     const rows = Math.max(...defs.map((d) => d.tree[0])) + 1;
@@ -1096,10 +1098,11 @@ export class Hud {
       n.style.gridRow = String(def.tree[0] + 1);
       n.style.gridColumn = String(def.tree[1] + 1);
       const btn = el("button", `slot ${r ? "" : "locked"}`, `<img src="${icon(def.icon)}" alt="">`);
+      btn.setAttribute("aria-pressed", String(r > 0)); // изучено — общее «нажато» kit
       btn.onclick = () => this.ctx.net.send("learn", { id: def.id });
       if (def.kind === "active" && r) { btn.draggable = true; btn.ondragstart = (e) => e.dataTransfer!.setData("text/plain", `skill:${def.id}`); }
       this.tipFor(btn, () => this.skillTip(def, this.ctx.net.self!));
-      n.append(btn, el("span", "nm", def.name), el("span", "rk", `${r}/${def.maxRank} · ур.${def.reqLevel}`));
+      n.append(btn, el("span", "nm", def.name), el("span", "rk", `<span class="chip${r ? " ok" : can ? "" : " dim"}">${r}/${def.maxRank}</span><span class="meta">ур. ${def.reqLevel}</span>`));
       tree.append(n);
       nodes.set(def.id, n);
     }
@@ -1117,11 +1120,9 @@ export class Hud {
         line.setAttribute("y1", String(a.top + a.height / 2 - tr.top));
         line.setAttribute("x2", String(c.left + c.width / 2 - tr.left));
         line.setAttribute("y2", String(c.top + c.height / 2 - tr.top));
-        // золотая — оба умения изучены; пунктир — следующее уже доступно; тёмная — закрыто
+        // золотая — оба умения изучены; пунктир — следующее уже доступно; тёмная — закрыто (цвета в windows.css)
         const learned = (s.skills[def.id] || 0) > 0;
-        line.setAttribute("stroke", learned && ok ? P.gold : ok ? "#8a7350" : "#4d3f4a");
-        line.setAttribute("stroke-width", "3");
-        if (ok && !learned) line.setAttribute("stroke-dasharray", "6 5");
+        line.setAttribute("class", learned && ok ? "on" : ok ? "next" : "off");
         svg.append(line);
       }
       tree.prepend(svg);

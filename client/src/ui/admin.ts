@@ -3,6 +3,7 @@ import { ZONES } from "../../../shared/map";
 import { MOBS } from "../../../shared/mobs";
 import type { Net } from "../net";
 import { GiveTab } from "./adminGive";
+import { tabs } from "./kit";
 
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU");
@@ -24,7 +25,7 @@ export class AdminUI {
   private giveTab?: GiveTab;
 
   constructor(root: HTMLElement) {
-    this.win.className = "panel win win-admin";
+    this.win.className = "panel win win-admin l";
     this.win.hidden = true;
     this.banner.className = "adm-banner";
     this.banner.hidden = true;
@@ -69,44 +70,59 @@ export class AdminUI {
   }
 
   private render() {
-    const tabs = TABS.map(([id, n]) => `<button class="btn small" data-tab="${id}" aria-pressed="${id === this.tab}">${n}</button>`).join("");
-    this.win.classList.toggle("adm-wide", this.tab === "give");
-    this.win.innerHTML = `<h2><span>Админ-панель</span><button class="x" aria-label="Закрыть">×</button></h2><div class="adm-tabs">${tabs}</div><div class="adm-body">${this.tab === "give" ? "" : this.body()}</div>`;
-    if (this.tab === "give") { const g = this.give(); this.win.querySelector(".adm-body")!.append(g.el); g.activate(this.target); this.target = ""; /* явный выбор получателя действует один раз */ }
+    const tabBtns = TABS.map(([id, n]) => `<button class="tab" id="adm-tab-${id}" data-tab="${id}" aria-controls="adm-body"${id === this.tab ? ' aria-selected="true"' : ""}>${n}</button>`).join("");
+    const wide = this.tab === "give";
+    this.win.classList.toggle("adm-wide", wide);
+    this.win.classList.toggle("l", !wide);
+    this.win.classList.toggle("xl", wide);
+    this.win.innerHTML = `<h2><span>Админ-панель</span><button class="x" aria-label="Закрыть">×</button></h2><div class="tabs">${tabBtns}</div><div class="body" id="adm-body" role="tabpanel">${wide ? "" : this.body()}</div>`;
+    if (wide) { const g = this.give(); this.win.querySelector(".body")!.append(g.el); g.activate(this.target); this.target = ""; /* явный выбор получателя действует один раз */ }
     // окно сдвигали и оно стало шире: пусть модуль перетаскивания заново вернёт его в экран
     if (this.win.dataset.moved) requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => (this.win.hidden = true);
-    this.win.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((b) => (b.onclick = () => { this.tab = b.dataset.tab!; this.refresh(); }));
+    tabs(this.win.querySelector<HTMLElement>(".tabs")!, (key) => { this.tab = key; this.refresh(); });
     this.wire();
   }
 
   private body(): string {
     if (this.tab === "players") {
-      const rows = this.players.map((p) => `<tr><td>${esc(p.name)}</td><td>${esc(p.cls)} ${p.level}</td><td>${p.x},${p.y}</td><td>
+      const rows = this.players.map((p) => `<tr><td class="grow">${esc(p.name)}</td><td class="nowrap">${esc(p.cls)} ${p.level}</td><td class="nowrap dim">${p.x}, ${p.y}</td><td class="nowrap"><div class="adm-acts">
         <button class="btn small" data-act="tp" data-n="${esc(p.name)}">ТП</button>
         <button class="btn small" data-act="kick" data-n="${esc(p.name)}">Кик</button>
-        <button class="btn small" data-act="ban" data-n="${esc(p.name)}">Бан</button>
+        <button class="btn small danger" data-act="ban" data-n="${esc(p.name)}">Бан</button>
         <button class="btn small" data-act="unban" data-n="${esc(p.name)}">Разбан</button>
-        <button class="btn small" data-act="give" data-n="${esc(p.name)}">Выдать</button></td></tr>`).join("");
-      return `<div class="adm-row"><button class="btn small" data-act="reload">Обновить</button><input id="adm-ban-h" type="number" min="0" placeholder="Бан, часов (0 = навсегда)" style="width:200px"><input id="adm-ban-r" class="wide" placeholder="Причина бана"></div>
-        <div class="adm-row"><input id="adm-who" class="wide" placeholder="Имя героя (для разбана офлайн)"><button class="btn small" data-act="unban-name">Разбан</button></div>
-        <div class="adm-scroll"><table class="adm-table"><tr><th>Имя</th><th>Класс/ур.</th><th>x,y</th><th></th></tr>${rows}</table></div>`;
+        <button class="btn small primary" data-act="give" data-n="${esc(p.name)}">Выдать</button></div></td></tr>`).join("");
+      return `<section class="sec flat"><div class="sec-head"><h3 class="sec-h">Бан</h3><button class="btn small" data-act="reload">Обновить</button></div>
+        <div class="adm-row"><label class="field"><span class="field-label">Срок, часов (0 — навсегда)</span><input id="adm-ban-h" class="input num" type="number" min="0"></label>
+        <label class="field grow"><span class="field-label">Причина</span><input id="adm-ban-r" class="input"></label></div>
+        <label class="field"><span class="field-label">Имя героя (для разбана офлайн)</span><span class="input-group"><input id="adm-who" class="input"><button class="btn" data-act="unban-name">Разбан</button></span></label></section>
+        <section class="sec"><div class="sec-head"><h3 class="sec-h">Игроки онлайн</h3><span class="sec-aside">${this.players.length}</span></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Имя</th><th>Класс и уровень</th><th>Позиция</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
     }
     if (this.tab === "world") {
       const zones = ZONES.map((z, i) => (z.name === "Арена" ? "" : `<option value="${i}">${esc(z.name)}</option>`)).join("");
-      return `<div class="adm-row"><select id="w-mob">${opts(Object.keys(MOBS), (i) => MOBS[i].name)}</select><input id="w-lv" type="number" min="1" max="60" value="10" style="width:70px"><button class="btn small" data-act="spawn">Призвать рядом</button></div>
-        <div class="adm-row"><input id="w-text" class="wide" maxlength="140" placeholder="Текст объявления"><button class="btn small" data-act="announce">Объявить</button></div>
-        <div class="adm-row"><input id="w-tp-name" placeholder="ТП к игроку"><button class="btn small" data-act="tp-name">Телепорт</button></div>
-        <div class="adm-row"><input id="w-x" type="number" placeholder="x" style="width:80px"><input id="w-y" type="number" placeholder="y" style="width:80px"><button class="btn small" data-act="tp-xy">ТП на x,y</button>
-        <select id="w-zone">${zones}</select><button class="btn small" data-act="tp-zone">ТП в зону</button></div>`;
+      return `<section class="sec flat"><h3 class="sec-h">Призыв монстра</h3>
+        <div class="adm-row"><label class="field grow"><span class="field-label">Монстр</span><select id="w-mob" class="input">${opts(Object.keys(MOBS), (i) => MOBS[i].name)}</select></label>
+        <label class="field"><span class="field-label">Уровень</span><input id="w-lv" class="input num" type="number" min="1" max="60" value="10"></label>
+        <button class="btn" data-act="spawn">Призвать рядом</button></div></section>
+        <section class="sec"><h3 class="sec-h">Объявление</h3>
+        <label class="field"><span class="field-label">Текст</span><span class="input-group"><input id="w-text" class="input" maxlength="140"><button class="btn" data-act="announce">Объявить</button></span></label></section>
+        <section class="sec"><h3 class="sec-h">Телепорт</h3>
+        <label class="field"><span class="field-label">К игроку</span><span class="input-group"><input id="w-tp-name" class="input"><button class="btn" data-act="tp-name">Телепорт</button></span></label>
+        <div class="adm-row"><label class="field"><span class="field-label">x</span><input id="w-x" class="input num" type="number"></label>
+        <label class="field"><span class="field-label">y</span><input id="w-y" class="input num" type="number"></label>
+        <button class="btn" data-act="tp-xy">ТП на x, y</button></div>
+        <div class="adm-row"><label class="field grow"><span class="field-label">Зона</span><select id="w-zone" class="input">${zones}</select></label><button class="btn" data-act="tp-zone">ТП в зону</button></div></section>`;
     }
     const L = this.logs;
     const rows = L.rows.map((r) => L.kind === "trades"
-      ? `<tr><td>${date(r.at)}</td><td>${esc(r.a)} ⇄ ${esc(r.b)}</td><td>${esc(this.items(r.a_items))} +${r.a_gold} з</td><td>${esc(this.items(r.b_items))} +${r.b_gold} з</td></tr>`
-      : `<tr><td>${date(r.at)}</td><td>${esc(r.admin)}</td><td>${esc(r.action)}</td><td>${esc(r.target)} ${esc(r.details)}</td></tr>`).join("");
-    const head = L.kind === "trades" ? "<th>Время</th><th>Участники</th><th>A отдал</th><th>B отдал</th>" : "<th>Время</th><th>Админ</th><th>Действие</th><th>Цель/детали</th>";
-    return `<div class="adm-row"><select id="l-kind"><option value="trades"${this.logKind === "trades" ? " selected" : ""}>Сделки</option><option value="admin"${this.logKind === "admin" ? " selected" : ""}>Журнал админов</option></select><input id="l-name" class="wide" placeholder="Фильтр по имени" value="${esc(this.logName)}"><button class="btn small" data-act="logs">Показать</button></div>
-      <div class="adm-scroll"><table class="adm-table"><tr>${head}</tr>${rows}</table></div>`;
+      ? `<tr><td class="nowrap">${date(r.at)}</td><td>${esc(r.a)} ⇄ ${esc(r.b)}</td><td>${esc(this.items(r.a_items))} +${r.a_gold} з</td><td>${esc(this.items(r.b_items))} +${r.b_gold} з</td></tr>`
+      : `<tr><td class="nowrap">${date(r.at)}</td><td>${esc(r.admin)}</td><td>${esc(r.action)}</td><td>${esc(r.target)} ${esc(r.details)}</td></tr>`).join("");
+    const head = L.kind === "trades" ? "<th>Время</th><th>Участники</th><th>A отдал</th><th>B отдал</th>" : "<th>Время</th><th>Админ</th><th>Действие</th><th>Цель и детали</th>";
+    return `<section class="sec flat"><div class="adm-row"><label class="field"><span class="field-label">Журнал</span><select id="l-kind" class="input"><option value="trades"${this.logKind === "trades" ? " selected" : ""}>Сделки</option><option value="admin"${this.logKind === "admin" ? " selected" : ""}>Журнал админов</option></select></label>
+      <label class="field grow"><span class="field-label">Фильтр по имени</span><input id="l-name" class="input" value="${esc(this.logName)}"></label>
+      <button class="btn" data-act="logs">Показать</button></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
   }
 
   private items(json: string): string {

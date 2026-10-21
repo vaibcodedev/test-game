@@ -124,26 +124,26 @@ export class CharSelect {
     const p = this.panel("cs-list", `<div class="cs-head"><h1>Выбор героя</h1><span class="muted">Аккаунт <b class="gold">${esc(v.login)}</b> · героев ${v.chars.length}/${MAX_CHARS}</span></div>
       <div class="cs-grid" role="listbox" aria-label="Герои аккаунта"></div>
       <p class="error" role="alert">${esc(msg)}</p>
-      <div class="cs-bar"><button class="btn primary" data-a="play">Играть</button><button class="btn" data-a="new">Создать</button><button class="btn" data-a="del">Удалить</button><span class="cs-sp"></span><button class="btn" data-a="out" title="Esc">← Назад: выйти из аккаунта</button></div>`);
+      <div class="cs-bar"><button class="btn primary lg" data-a="play">Играть</button><button class="btn lg" data-a="new">Создать</button><button class="btn lg danger" data-a="del">Удалить</button><span class="cs-sp"></span><button class="btn lg" data-a="out" title="Esc">← Выйти из аккаунта</button></div>`);
     const grid = p.querySelector<HTMLElement>(".cs-grid")!;
     for (let i = 0; i < MAX_CHARS; i++) {
       const c = v.chars[i];
       const b = document.createElement("button");
       b.type = "button";
       if (!c) {
-        b.className = "cs-slot empty";
+        b.className = "card cs-slot empty";
         b.innerHTML = `<span class="plus">+</span><span>Создать героя</span>`;
         b.onclick = () => this.renderCreate();
         grid.append(b);
         continue;
       }
-      b.className = "cs-slot";
+      b.className = "card cs-slot";
       b.setAttribute("role", "option");
       b.setAttribute("aria-pressed", String(c.name === this.sel));
       b.dataset.name = c.name;
       const cv = heroCanvas(96, c.cls, c.look);
-      const eq = c.equip.map((e) => `<span class="cell r${e.rarity}" title="${esc(SLOT_NAMES[e.slot] + ": " + e.name)}"><img src="/assets/icons/${esc(e.icon)}.png" alt="">${plusBadgeN(e.plus)}</span>`).join("");
-      b.innerHTML = `<div class="cs-eq">${eq || `<span class="muted">без снаряжения</span>`}</div>
+      const eq = c.equip.map((e) => `<span class="cell sm r${e.rarity}" title="${esc(SLOT_NAMES[e.slot] + ": " + e.name)}"><img src="/assets/icons/${esc(e.icon)}.png" alt="">${plusBadgeN(e.plus)}</span>`).join("");
+      b.innerHTML = `<div class="cs-eq">${eq || `<span class="meta">Без снаряжения</span>`}</div>
         <span class="nm">${esc(c.name)}</span><span class="meta">${esc(CLASSES[c.cls]?.name ?? c.cls)} · ${c.level} ур.</span><span class="meta fac" style="color:${factionColor(c.faction)}">${esc(FACTIONS[c.faction]?.name ?? "")}</span>
         <span class="meta zone">${esc(c.zone)}</span>${c.banned ? `<span class="cs-banned">${esc(c.banned)}</span>` : ""}`;
       b.prepend(cv);
@@ -192,7 +192,7 @@ export class CharSelect {
     back.className = "gmenu-back";
     back.innerHTML = `<form class="panel gmenu cs-del"><h2>Удалить героя?</h2>
       <p class="muted" style="text-align:center"><b class="gold">${esc(c.name)}</b>, ${esc(CLASSES[c.cls]?.name ?? c.cls)} ${c.level} ур. Удаление необратимо: пропадут вещи, золото и рейтинг арены.</p>
-      <label class="muted">Введите имя героя для подтверждения <input name="confirm" autocomplete="off" maxlength="16"></label>
+      <label class="field"><span class="field-label">Введите имя героя для подтверждения</span><input class="input" name="confirm" autocomplete="off" maxlength="16"></label>
       <p class="error" role="alert"></p>
       <button class="btn gm-item danger" type="submit" disabled>Удалить навсегда</button><button class="btn gm-item" type="button" data-a="no">Отмена</button></form>`;
     const f = back.querySelector("form")!;
@@ -227,12 +227,12 @@ export class CharSelect {
       <form class="cs-form" autocomplete="off">
         <div class="cs-preview"><div class="cs-stage"></div><b class="nm"></b><p class="muted desc"></p></div>
         <div class="cs-fields">
-          <label class="cs-label">Имя героя <input name="name" minlength="3" maxlength="16" required placeholder="3–16 букв или цифр"></label>
-          <fieldset class="cs-factions"><legend>Фракция</legend><div class="factions"></div><p class="muted fdesc"></p></fieldset>
-          <fieldset class="classes"><legend>Класс</legend></fieldset>
-          <fieldset class="cs-looks"><legend>Внешность</legend><div class="looks"></div></fieldset>
+          <label class="field"><span class="field-label">Имя героя</span><input class="input lg" name="name" minlength="3" maxlength="16" required placeholder="3–16 букв или цифр"></label>
+          <fieldset class="cs-factions"><legend class="sub-h">Фракция</legend><div class="factions"></div><p class="muted fdesc"></p></fieldset>
+          <fieldset class="classes"><legend class="sub-h">Класс</legend></fieldset>
+          <fieldset class="cs-looks"><legend class="sub-h">Внешность</legend><div class="looks"></div></fieldset>
           <p class="error" role="alert">${esc(msg)}</p>
-          <div class="cs-bar"><button class="btn primary" type="submit">Создать героя</button><button class="btn" type="button" data-a="back" title="Esc">← Назад</button></div>
+          <div class="cs-bar"><button class="btn primary lg" type="submit">Создать героя</button><button class="btn lg" type="button" data-a="back" title="Esc">← Назад</button></div>
         </div>
       </form>`);
     const stage = p.querySelector<HTMLElement>(".cs-stage")!;
@@ -272,7 +272,7 @@ export class CharSelect {
       b.type = "button";
       b.className = "btn fac";
       b.dataset.faction = fid;
-      b.style.color = f.color;
+      b.style.setProperty("--c", f.color); // цвет фракции берёт kit через --c
       b.setAttribute("aria-pressed", String(fid === faction));
       b.innerHTML = `<b>${esc(f.name)}</b><small>${esc(f.race)}</small>`;
       b.title = f.full;

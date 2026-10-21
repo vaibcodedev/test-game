@@ -49,7 +49,6 @@
   left: 50%;
   top: 80px;
   transform: translateX(-50%);
-  width: min(560px, calc(100vw - 24px));
 }
 /* характеристики героя: название, значение, «+» и «+10» в одной сетке; колонки кнопок одной ширины во всех строках */
 .stats {
@@ -163,11 +162,13 @@
   margin: 0;
   line-height: 1.4;
 }
+/* дерево умений: ровная сетка узлов, связи — SVG под узлами; цвета линий и состояний узла — токены */
 .tree {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-4) var(--sp-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-5) var(--sp-2);
+  padding: var(--sp-2) 0;
 }
 .node {
   display: flex;
@@ -176,28 +177,47 @@
   gap: var(--sp-1);
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 .node .slot {
   width: 52px;
   height: 52px;
+  border-color: var(--line);
 }
 .node .slot img {
   width: 48px; /* иконка умения 24 px × 2 */
   height: 48px;
 }
-.node .rk {
-  font-size: var(--fs);
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
+.node .slot:hover {
+  border-color: var(--line-hi);
+  background: var(--panel-2);
 }
-.node .nm {
-  font-size: var(--fs);
-  text-align: center;
-  line-height: 1.15;
+.node .slot:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
+/* изучено (aria-pressed) и можно изучить (.can) — золотая рамка; закрыто — приглушённая иконка (.locked из hud.css) */
+.node .slot[aria-pressed="true"],
 .node.can .slot {
   border-color: var(--gold);
+}
+.node .slot[aria-pressed="true"] {
   box-shadow: var(--glow-sel);
+}
+.node.can .slot {
+  background: var(--sel);
+}
+.node .rk {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.node .nm {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-b);
+  text-align: center;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 .node.passive .slot {
   border-radius: 50%;
@@ -213,6 +233,18 @@
   height: 100%;
   z-index: 0;
   pointer-events: none;
+}
+.tree line {
+  stroke: var(--line);
+  stroke-width: 2;
+  shape-rendering: crispEdges;
+}
+.tree line.next {
+  stroke: var(--line-hi);
+  stroke-dasharray: 6 5;
+}
+.tree line.on {
+  stroke: var(--gold);
 }
 
 .tip {

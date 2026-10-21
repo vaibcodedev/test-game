@@ -19,7 +19,7 @@ export class InspectUI {
   private net!: Net;
 
   constructor(root: HTMLElement, private host: InspectHost) {
-    this.win.className = "panel win win-inspect";
+    this.win.className = "panel win win-inspect m";
     this.win.hidden = true;
     root.append(this.win);
   }
@@ -44,10 +44,15 @@ export class InspectUI {
     const cls = CLASSES[m.cls]?.name ?? m.cls;
     this.win.hidden = false;
     this.win.innerHTML = `<h2><span>Осмотр: ${esc(m.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
-      <div class="insp-head"><span>${esc(cls)} · ур. ${m.lvl}</span><span style="color:${factionColor(m.fac)}">${esc(FACTIONS[m.fac]?.name ?? "")}</span></div>
-      <div class="insp-body"></div>`;
+      <div class="body">
+        <section class="sec flat">
+          <div class="sec-head"><h3 class="sec-h">Герой</h3><span class="chip dim">Уровень ${m.lvl}</span></div>
+          <dl class="kv"><dt>Класс</dt><dd>${esc(cls)}</dd><dt>Фракция</dt><dd style="color:${factionColor(m.fac)}">${esc(FACTIONS[m.fac]?.name ?? "—")}</dd></dl>
+        </section>
+        <section class="sec gear-block"><div class="sec-head"><h3 class="sec-h">Снаряжение</h3></div></section>
+      </div>`;
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => void this.close();
-    const body = this.win.querySelector<HTMLElement>(".insp-body")!;
+    const body = this.win.querySelector<HTMLElement>(".gear-block")!;
     body.append(gearRows(m.equip.map((e) => ({ slot: e.slot, item: e.item })), m.sid, {
       tip: (elm, it) => this.host.tipFor(elm, () => this.host.itemTip(it, this.net.self!)),
     }));
