@@ -203,6 +203,16 @@ export function openModal(content: string | HTMLElement, opts: ModalOpts = {}): 
   return { back, dialog, close: () => close("api") };
 }
 
+// ---------- видимость ----------
+
+/**
+ * Показать или скрыть узел, не трогая атрибут без нужды. Запись hidden того же значения Chrome считает изменением атрибута
+ * и пересчитывает стили: из кадровых frame() HUD (цель, питомец, группа, арена, рейд) это был пересчёт на каждом кадре.
+ */
+export function setHidden(e: HTMLElement, hide: boolean) {
+  if (e.hidden !== hide) e.hidden = hide;
+}
+
 // ---------- ползунок ----------
 
 const filled = new WeakSet<HTMLInputElement>();

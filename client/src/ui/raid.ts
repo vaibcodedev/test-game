@@ -4,6 +4,7 @@ import { CLASSES } from "../../../shared/classes";
 import { UnitKind } from "../../../shared/protocol";
 import { phaseName, phaseNo, RAID, RAID_CFG, RAID_PHASES, RAID_ROLES, ROLE_NAMES, type RaidBannerMsg, type RaidMemberInfo, type RaidMusterMsg, type RaidResultMsg, type RaidRole } from "../../../shared/raid";
 import type { Net, UnitState } from "../net";
+import { setHidden } from "./kit";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const num = (n: number) => Math.round(n).toLocaleString("ru-RU");
@@ -237,8 +238,9 @@ export class RaidHud {
       if (left && this.muster) left.textContent = mmss(this.muster.leftSec - (now - this.musterAt) / 1000);
     }
     const inRaid = net.kind === "raid";
-    this.top.hidden = this.frames.hidden = !inRaid;
-    this.count.hidden = !inRaid || this.count.textContent === "";
+    setHidden(this.top, !inRaid);
+    setHidden(this.frames, !inRaid);
+    setHidden(this.count, !inRaid || this.count.textContent === "");
     if (!inRaid) return;
     const st = (net.room?.state ?? {}) as RaidState;
     const welcome = net.raid;
@@ -255,24 +257,24 @@ export class RaidHud {
     this.top.classList.toggle("dim", !b);
     // каст босса
     if (this.cast && now < this.cast.until) {
-      this.cBox.hidden = false;
+      setHidden(this.cBox, false);
       this.cName.textContent = this.cast.name;
       this.cFill.style.width = `${((now - this.cast.from) / (this.cast.until - this.cast.from)) * 100}%`;
       this.cTime.textContent = ((this.cast.until - now) / 1000).toFixed(1);
     } else {
-      this.cBox.hidden = true;
+      setHidden(this.cBox, true);
       this.cast = null;
     }
     // берсерк
     const stage = st.stage ?? "";
     const bs = st.berserk ?? 0;
-    this.berserkEl.hidden = stage !== "fight";
+    setHidden(this.berserkEl, stage !== "fight");
     this.berserkEl.classList.toggle("hot", bs > 0 && bs <= 30 || bs <= 0);
     this.berserkEl.textContent = bs > 0 ? `Ярость через ${mmss(bs)}` : "ЯРОСТЬ";
     // отсчёт
     const cd = Math.ceil(st.countdown ?? 0);
     this.count.textContent = (stage === "gather" || stage === "pull") && cd > 0 ? `${stage === "gather" ? "Сбор" : "Бой через"}: ${cd}` : "";
-    this.count.hidden = this.count.textContent === "";
+    setHidden(this.count, this.count.textContent === "");
     const info = `<span class="chip" title="Заряды воскрешения">✚ ${st.revives ?? 0}</span>${st.attempts ? `<span class="chip dim">Попытка ${st.attempt ?? 1}/${st.attempts}</span>` : ""}`;
     if (info !== this.lastInfo) { this.lastInfo = info; this.fInfo.innerHTML = info; }
     this.frameRows(units, welcome?.members ?? []);

@@ -6,8 +6,7 @@
 import Phaser from "phaser";
 import { TILE } from "../../../shared/constants";
 import { CELL_WALL, GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
-/** Шрифт надписей (как у юнитов; без импорта из UnitView, чтобы не было цикла). */
-const FONT = '"Rubik", "Trebuchet MS", sans-serif';
+import { placeText, worldText } from "./worldText";
 
 const COLS = 18;
 export const DEPTH = { water: -1000, terrain: -900, walls: -800, overlay: -700, ground: -600, top: 1e6 };
@@ -32,11 +31,26 @@ export interface WorldView {
   update(cam: Phaser.Cameras.Scene2D.Camera): void;
 }
 
+/** Ячейка куска CELL×CELL тайлов для отсечения: её объекты в списке отрисовки, только пока ячейка в кадре. */
+interface Cell {
+  objs: Phaser.GameObjects.GameObject[];
+  /** Твины объектов ячейки (покачивание, мерцание огней): на паузе вне кадра. */
+  tweens: Phaser.Tweens.Tween[];
+  /** Рамка всего, что рисуют объекты ячейки (здания и кроны торчат за её край), в пикселях мира. */
+  box: { x0: number; y0: number; x1: number; y1: number };
+  shown: boolean;
+}
+
 interface Chunk {
   tm: Phaser.Tilemaps.Tilemap;
   objs: Phaser.GameObjects.GameObject[];
   nodes: number[];
+  tweens: Phaser.Tweens.Tween[];
+  cells: Cell[];
 }
+
+/** Размер ячейки отсечения в тайлах (кусок — 4×4 ячейки): кадр задевает 6–12 ячеек вместо 1–4 целых кусков. */
+const CELL = 8;
 
 /** Крупный бесшовный шум для разбивки повторяемости тайлов (рисуется поверх земли). */
 function macroNoise(scene: Phaser.Scene) {
@@ -111,10 +125,13 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     buckets[cy * NX + cx].push(o);
   }
 
+  /** Куда складывать твины создаваемых объектов (покачивание деревьев, мерцание огней, свечение узлов): createChunk подставляет список ячейки, чтобы ставить их на паузу вне кадра. */
+  let chunkTweens: Phaser.Tweens.Tween[] = [];
+  const tween = (cfg: Phaser.Types.Tweens.TweenBuilderConfig) => { chunkTweens.push(scene.tweens.add(cfg)); };
   const glow = (objs: Phaser.GameObjects.GameObject[], x: number, y: number, color: number, scale: number, alpha: number, flicker = false) => {
     const g = scene.add.image(x, y, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(color).setScale(scale).setAlpha(alpha).setDepth(DEPTH.top - 10);
     objs.push(g);
-    if (flicker) scene.tweens.add({ targets: g, alpha: { from: alpha * 0.7, to: alpha * 1.1 }, scale: { from: scale * 0.92, to: scale * 1.05 }, duration: 160 + Math.random() * 220, yoyo: true, repeat: -1 });
+    if (flicker) tween({ targets: g, alpha: { from: alpha * 0.7, to: alpha * 1.1 }, scale: { from: scale * 0.92, to: scale * 1.05 }, duration: 160 + Math.random() * 220, yoyo: true, repeat: -1 });
   };
   // узлы добычи: картинка и свечение прячутся, пока ресурс исчерпан
   const nodeOf = new Map<MapObject, number>(m.nodes.map((n) => [m.objects[n.id], n.id]));
@@ -130,20 +147,20 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "oak" || o.kind === "pine") {
       // лёгкое покачивание крон
       const sway = (cellHash(o.x, o.y) - 0.5) * 0.04;
-      scene.tweens.add({ targets: img, angle: { from: -1 + sway, to: 1 + sway }, duration: 2400 + cellHash(o.y, o.x) * 1600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      tween({ targets: img, angle: { from: -1 + sway, to: 1 + sway }, duration: 2400 + cellHash(o.y, o.x) * 1600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       if (o.kind === "oak") img.setFlipX(cellHash(o.x, o.y) > 0.5);
     }
     const nid = nodeOf.get(o);
     if (nid !== undefined) {
       const mine: Phaser.GameObjects.GameObject[] = [img];
       glow(mine, o.x, o.y - 14, NODE_GLOW[o.kind] ?? 0xffffff, 1.1, 0.4);
-      scene.tweens.add({ targets: mine[1], alpha: { from: 0.2, to: 0.5 }, duration: 900 + (nid % 7) * 90, yoyo: true, repeat: -1 });
+      tween({ targets: mine[1], alpha: { from: 0.2, to: 0.5 }, duration: 900 + (nid % 7) * 90, yoyo: true, repeat: -1 });
       objs.push(mine[1]);
       nodeObjs.set(nid, mine);
       if (depleted.has(nid)) for (const g of mine) (g as Phaser.GameObjects.Image).setVisible(false);
     }
     // указатель: надпись с направлениями над столбом
-    if (o.label) objs.push(scene.add.text(o.x, o.y - 50, o.label, { fontFamily: FONT, fontSize: "8px", color: "#ffe8b0", stroke: "#1a0e08", strokeThickness: 3, resolution: 3, align: "center", wordWrap: { width: 190 } }).setOrigin(0.5, 1).setDepth(o.y + 1));
+    if (o.label) objs.push(placeText(worldText(scene, 0, 0, o.label, "plain", { fontSize: "8px", color: "#ffe8b0", stroke: "#1a0e08", strokeThickness: 3, align: "center", wordWrap: { width: 190 } }).setDepth(o.y + 1), o.x, o.y - 50, 0.5, 1));
     if (o.kind === "soul_brazier") glow(objs, o.x, o.y - 26, 0xb46aff, 2.6, 0.6, true);
     if (o.kind === "campfire") glow(objs, o.x, o.y - 12, 0xff9a3a, 2.4, 0.6, true);
     if (o.kind === "dark_obelisk") glow(objs, o.x, o.y - 50, 0x9a4aff, 1.8, 0.45, true);
@@ -194,15 +211,50 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       layer.putTilesAt(data, 0, 0);
       layer.setDepth(t === 0 ? DEPTH.walls : DEPTH.terrain + t);
     }
-    const objs: Phaser.GameObjects.GameObject[] = [];
-    for (const o of buckets[cy * NX + cx]) makeObject(o, objs);
-    return { tm, objs, nodes: buckets[cy * NX + cx].map((o) => nodeOf.get(o)).filter((v): v is number => v !== undefined) };
+    // объекты раскладываются по ячейкам отсечения по опорной точке; рамка ячейки — по фактическим рамкам её объектов
+    const objs: Phaser.GameObjects.GameObject[] = [], tweens: Phaser.Tweens.Tween[] = [];
+    const cellPx = CELL * TILE, NC = CHUNK / CELL;
+    const cells: Cell[] = [];
+    for (const o of buckets[cy * NX + cx]) {
+      const ci = Math.max(0, Math.min(NC - 1, Math.floor((o.x - x0 * TILE) / cellPx)));
+      const cj = Math.max(0, Math.min(NC - 1, Math.floor((o.y - 1 - y0 * TILE) / cellPx)));
+      const cell = (cells[cj * NC + ci] ??= { objs: [], tweens: [], box: { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }, shown: true });
+      const from = cell.objs.length;
+      chunkTweens = cell.tweens;
+      makeObject(o, cell.objs);
+      for (let i = from; i < cell.objs.length; i++) {
+        // запас 8 px — покачивание крон (±1°) и мерцание огней (масштаб до 1.05)
+        const b = (cell.objs[i] as Phaser.GameObjects.Image).getBounds(), x = cell.box;
+        x.x0 = Math.min(x.x0, b.x - 8); x.y0 = Math.min(x.y0, b.y - 8);
+        x.x1 = Math.max(x.x1, b.right + 8); x.y1 = Math.max(x.y1, b.bottom + 8);
+      }
+    }
+    chunkTweens = [];
+    const list = cells.filter((c): c is Cell => !!c);
+    for (const c of list) { objs.push(...c.objs); tweens.push(...c.tweens); }
+    return { tm, objs, nodes: buckets[cy * NX + cx].map((o) => nodeOf.get(o)).filter((v): v is number => v !== undefined), tweens, cells: list };
   };
   const dropChunk = (c: Chunk) => {
     for (const id of c.nodes) nodeObjs.delete(id);
-    scene.tweens.killTweensOf(c.objs);
+    // твины куска уничтожаются напрямую: killTweensOf перебирал бы все твины сцены на каждый объект
+    for (const t of c.tweens) t.destroy();
     for (const o of c.objs) o.destroy();
     c.tm.destroy();
+  };
+  /**
+   * Ячейка вне кадра убирается из списка отрисовки, её твины — на паузу. Загружено до 16 кусков вокруг камеры (запас в полкуска
+   * и гистерезис), а в кадре — малая их часть: без отсечения Phaser каждый кадр сортировал по глубине, обходил и отправлял в GPU
+   * ~2,5 тыс. объектов (деревья, дома, огни) и обновлял ~1 тыс. твинов покачивания, почти все — за краем экрана.
+   */
+  const showCell = (c: Cell, on: boolean) => {
+    if (c.shown === on) return;
+    c.shown = on;
+    for (const o of c.objs) if (on) o.addToDisplayList(); else o.removeFromDisplayList();
+    for (const t of c.tweens) if (on) t.resume(); else t.pause();
+  };
+  /** Отсечение всех ячеек куска по кадру [x0, x1) × [y0, y1). */
+  const cull = (c: Chunk, x0: number, y0: number, x1: number, y1: number) => {
+    for (const e of c.cells) showCell(e, e.box.x0 < x1 && e.box.x1 > x0 && e.box.y0 < y1 && e.box.y1 > y0);
   };
   scene.events.once("shutdown", () => {
     for (const c of chunks.values()) dropChunk(c);
@@ -210,28 +262,50 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   });
 
   let last = "";
+  /** Куски, которые пора создать: ближние к центру кадра первыми. */
+  let want: number[] = [];
+  const span = CHUNK * TILE;
+  /** Запас вокруг кадра для отсечения, пиксели мира: worldView отстаёт на кадр, а камера за кадр сдвигается на несколько пикселей. */
+  const PAD = 48;
   const update = (cam: Phaser.Cameras.Scene2D.Camera) => {
     const v = cam.worldView;
     follow(v);
-    const span = CHUNK * TILE;
+    const vx0 = v.x - PAD, vy0 = v.y - PAD, vx1 = v.right + PAD, vy1 = v.bottom + PAD;
+    for (const c of chunks.values()) cull(c, vx0, vy0, vx1, vy1);
     // запас в полкуска (снизу больше: высокие здания торчат вверх от опорной точки)
     const ax = Math.max(0, Math.floor((v.x - span / 2) / span)), bx = Math.min(NX - 1, Math.floor((v.right + span / 2) / span));
     const ay = Math.max(0, Math.floor((v.y - span / 2) / span)), by = Math.min(NY - 1, Math.floor((v.bottom + span / 2 + 200) / span));
     const key = `${ax},${bx},${ay},${by}`;
-    if (key === last) return;
-    last = key;
-    for (const [id, c] of chunks) {
-      const cx = id % NX, cy = Math.floor(id / NX);
-      // выгрузка с гистерезисом в один кусок, чтобы не мигало на границе
-      if (cx < ax - 1 || cx > bx + 1 || cy < ay - 1 || cy > by + 1) {
-        dropChunk(c);
-        chunks.delete(id);
+    if (key !== last) {
+      last = key;
+      for (const [id, c] of chunks) {
+        const cx = id % NX, cy = Math.floor(id / NX);
+        // выгрузка с гистерезисом в один кусок, чтобы не мигало на границе
+        if (cx < ax - 1 || cx > bx + 1 || cy < ay - 1 || cy > by + 1) {
+          dropChunk(c);
+          chunks.delete(id);
+        }
       }
+      want = [];
+      for (let cy = ay; cy <= by; cy++) for (let cx = ax; cx <= bx; cx++) if (!chunks.has(cy * NX + cx)) want.push(cy * NX + cx);
+      const mx = (v.x + v.right) / 2, my = (v.y + v.bottom) / 2;
+      const d = (id: number) => Math.hypot(((id % NX) + 0.5) * span - mx, (Math.floor(id / NX) + 0.5) * span - my);
+      want.sort((a, b) => d(a) - d(b));
     }
-    for (let cy = ay; cy <= by; cy++) for (let cx = ax; cx <= bx; cx++) {
-      const id = cy * NX + cx;
-      if (!chunks.has(id)) chunks.set(id, createChunk(cx, cy));
-    }
+    if (!want.length) return;
+    // Кусок, который уже задевает кадр (с объектами, торчащими вверх и в стороны), создаётся сразу, иначе на экране дыра;
+    // запасные — по одному за кадр: кусок леса — это до ~200 деревьев с твинами и 3–5 слоёв тайлов, и пачка из 2–3 кусков
+    // при переходе границы давала update в 20–25 мс (кадр 33 мс) раз в ~7 с бега.
+    let spare = 1;
+    want = want.filter((id) => {
+      const cx = id % NX, cy = Math.floor(id / NX);
+      const near = cx * span - 128 < vx1 && (cx + 1) * span + 128 > vx0 && cy * span - 256 < vy1 && (cy + 1) * span + 16 > vy0;
+      if (!near && spare-- <= 0) return true;
+      const c = createChunk(cx, cy);
+      chunks.set(id, c);
+      cull(c, vx0, vy0, vx1, vy1);
+      return false;
+    });
   };
 
   // затемнение в данже (над миром, под огнями и интерфейсом)

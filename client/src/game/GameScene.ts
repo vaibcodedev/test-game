@@ -52,6 +52,36 @@ const GLOOM = new Set<Zone>([Zone.UmbrathCity, Zone.Barrows, Zone.MistWood, Zone
 /** Юниты дальше этого (px) не создаются на клиенте (мобы и NPC; герои — всегда). */
 const UNIT_NEAR = 1500, UNIT_FAR = 1900;
 
+/**
+ * Холст и целый масштаб камеры для масштаба z (пикселей CSS на пиксель мира). Возвращает масштаб камеры.
+ * Пиксель-арт ровный, только если пиксель мира — целое число пикселей холста, а холст выходит на экран 1:1, в целое число раз
+ * или уменьшается сглаженно. Раньше холст был в пикселях CSS и браузер растягивал его до экрана с image-rendering: pixelated:
+ * при масштабе экрана 1,25 удваивался каждый 4-й столбец и строка, при масштабе колесом 2,25–2,75 тексели были по 2 и 3 пикселя.
+ * Сетка «толстых» столбцов стоит на экране, мир едет сквозь неё — при беге по экрану бегут полосы.
+ * Теперь камера с целым масштабом n ≈ z·dpr (с запасом вверх: ⌈z·dpr⌉, если холст выходит не больше чем в 1,34 раза крупнее экрана),
+ * холст в n/z раз больше окна в пикселях CSS, и браузер выводит его 1:1 или масштабирует сглаженно. Размер мира на экране прежний —
+ * z пикселей CSS на пиксель мира. При целых z и dpr (масштаб 2 или 3 на обычном экране) холст, как и раньше, в пикселях CSS:
+ * браузер растягивает его в целое число раз без сглаживания.
+ */
+function fitCanvas(game: Phaser.Game, z: number): number {
+  const dpr = window.devicePixelRatio || 1;
+  const d = z * dpr, up = Math.ceil(d - 1e-3);
+  const n = Number.isInteger(z) && Number.isInteger(dpr) ? z : up / d <= 1.34 ? up : Math.max(1, Math.floor(d + 1e-3));
+  const k = n / z; // пикселей холста на пиксель CSS
+  const w = window.innerWidth, h = window.innerHeight; // #game — на всё окно
+  const sm = game.scale;
+  const bw = Math.round(w * k), bh = Math.round(h * k);
+  if (sm.width !== bw || sm.height !== bh) sm.resize(bw, bh);
+  const st = game.canvas.style;
+  st.width = `${w}px`;
+  st.height = `${h}px`;
+  // 1:1 и целое увеличение — без сглаживания (чёткие пиксели); дробное — только сглаженно, иначе вернутся повторы столбцов
+  const s = dpr / k;
+  st.imageRendering = Math.abs(s - Math.round(s)) < 1e-3 ? "pixelated" : "auto";
+  sm.refresh(); // рамка холста для пересчёта координат мыши
+  return n;
+}
+
 export class GameScene extends Phaser.Scene {
   map!: WorldMap;
   world!: WorldView;
@@ -140,9 +170,13 @@ export class GameScene extends Phaser.Scene {
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
-    const fitZoom = () => cam.setZoom(userZoom ?? Math.max(2, Math.min(3, Math.round(Math.min(window.innerWidth / 640, window.innerHeight / 400)))));
+    /** Масштаб в пикселях CSS на пиксель мира: выбранный колесом или по размеру окна (2–3). Камера получает целый масштаб холста (fitCanvas). */
+    const cssZoom = () => userZoom ?? Math.max(2, Math.min(3, Math.round(Math.min(window.innerWidth / 640, window.innerHeight / 400))));
+    const fitZoom = () => cam.setZoom(fitCanvas(this.game, cssZoom()));
     let userZoom: number | null = null;
     try { const z = Number(localStorage.getItem("zoom:v1")); if (z >= 2 && z <= 3) userZoom = z; } catch {}
+    // размер холста ведёт fitCanvas, а не Phaser: в режиме RESIZE он при каждом изменении окна возвращал бы холст к размеру в пикселях CSS
+    this.scale.scaleMode = Phaser.Scale.NONE;
     fitZoom();
     // тексты мира (таблички) созданы в buildWorld ещё при zoom 1 — перерисовываем; новые создаются сразу с этим разрешением, дальше смену масштаба ловит update
     this.textZoom = cam.zoom;
@@ -151,14 +185,19 @@ export class GameScene extends Phaser.Scene {
     const onWheel = (e: WheelEvent) => {
       if (!mouseOpts.zoomWheel || e.target !== this.game.canvas) return;
       e.preventDefault();
-      userZoom = Math.min(3, Math.max(2, Math.round(((userZoom ?? cam.zoom) - Math.sign(e.deltaY) * 0.25) * 4) / 4));
+      userZoom = Math.min(3, Math.max(2, Math.round((cssZoom() - Math.sign(e.deltaY) * 0.25) * 4) / 4));
       try { localStorage.setItem("zoom:v1", String(userZoom)); } catch {}
       fitZoom();
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     this.cleanup.push(() => window.removeEventListener("wheel", onWheel));
-    this.scale.on("resize", fitZoom);
-    this.cleanup.push(() => this.scale.off("resize", fitZoom));
+    // окно и масштаб экрана (перенос на другой монитор, масштаб браузера): не событие Phaser resize — его шлёт и сам fitCanvas
+    window.addEventListener("resize", fitZoom);
+    let dprQuery: MediaQueryList | null = null;
+    const onDpr = () => { fitZoom(); watchDpr(); };
+    const watchDpr = () => { dprQuery?.removeEventListener("change", onDpr); dprQuery = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`); dprQuery.addEventListener("change", onDpr); };
+    watchDpr();
+    this.cleanup.push(() => { window.removeEventListener("resize", fitZoom); dprQuery?.removeEventListener("change", onDpr); });
 
     this.fx = new Effects(this, (id) => this.units.get(id), net.id, (id, text) => this.say(id, text));
     this.cleanup.push(

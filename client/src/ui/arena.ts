@@ -6,7 +6,7 @@ import {
 import { CLASSES, type ClassId } from "../../../shared/classes";
 import { UnitKind } from "../../../shared/protocol";
 import type { Net, UnitState } from "../net";
-import { seg, tabs, type TabsHandle } from "./kit";
+import { seg, setHidden, tabs, type TabsHandle } from "./kit";
 import { formatNumber } from "./gold";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -365,7 +365,7 @@ export class ArenaUI {
     }
     // группа (в мире): напарник и его здоровье
     const party = net.party?.members.filter((m) => m.name !== net.self?.name) ?? [];
-    this.partyBox.hidden = net.kind !== "world" || !party.length;
+    setHidden(this.partyBox, net.kind !== "world" || !party.length);
     if (!this.partyBox.hidden) {
       // рамки .uf из kit.css: разметка пересобирается только при смене состава, в кадре меняются полосы, числа и классы состояния
       const sig = party.map((m) => `${m.name}|${m.cls}|${m.level}`).join(",");
@@ -392,9 +392,9 @@ export class ArenaUI {
     }
     // табло матча
     const inArena = net.kind === "arena" && !!net.arena;
-    this.board.hidden = !inArena;
+    setHidden(this.board, !inArena);
     if (!inArena) {
-      this.countdown.hidden = true;
+      setHidden(this.countdown, true);
       return;
     }
     const st = net.room.state as { phase: string; countdown: number; timeLeft: number };
@@ -415,7 +415,7 @@ export class ArenaUI {
       this.countdown.hidden = false;
       this.countdown.textContent = "В бой!";
       setTimeout(() => (this.countdown.hidden = true), 900);
-    } else if (st.phase !== "fight") this.countdown.hidden = st.phase !== "waiting";
+    } else if (st.phase !== "fight") setHidden(this.countdown, st.phase !== "waiting");
     if (st.phase === "waiting") this.countdown.textContent = "…";
     this.lastPhase = st.phase;
   }

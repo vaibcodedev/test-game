@@ -32,7 +32,7 @@ import { QuestUI, TeleportUI } from "./cities";
 import { fillHelp, GameMenu } from "./gamemenu";
 import { isTextField, keybinds, skillKeys } from "../game/keybinds";
 import { buildControls, buttonRow, checkRow, offerSchemeOnce, rangeRow, segRow } from "./controls";
-import { rangeFill, seg, tabs, type TabsHandle } from "./kit";
+import { rangeFill, seg, setHidden, tabs, type TabsHandle } from "./kit";
 import { Hotbar } from "./hotbar";
 import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
@@ -194,8 +194,10 @@ export class Hud {
     const watch = () => order.forEach((sel) => { const e = this.root.querySelector<HTMLElement>(sel); if (e && !(e as any).__stacked) { (e as any).__stacked = true; ro.observe(e); } });
     // новые панели добавляются прямо в корень; появление и скрытие — через атрибут hidden
     new MutationObserver(() => { watch(); layout(); }).observe(this.root, { childList: true });
-    const vis = new MutationObserver(layout);
-    const watchVis = () => order.forEach((sel) => { const e = this.root.querySelector<HTMLElement>(sel); if (e && !(e as any).__vis) { (e as any).__vis = true; vis.observe(e, { attributes: true, attributeFilter: ["hidden", "class"] }); } });
+    // Запись того же значения (hidden = true у питомца, группы и рейда каждый кадр в frame()) тоже даёт запись наблюдателю:
+    // без этой проверки раскладка с принудительным пересчётом вёрстки (offsetHeight, layoutBottom) шла на каждом кадре.
+    const vis = new MutationObserver((recs) => { if (recs.some((r) => r.oldValue !== (r.target as Element).getAttribute(r.attributeName!))) layout(); });
+    const watchVis = () => order.forEach((sel) => { const e = this.root.querySelector<HTMLElement>(sel); if (e && !(e as any).__vis) { (e as any).__vis = true; vis.observe(e, { attributes: true, attributeFilter: ["hidden", "class"], attributeOldValue: true }); } });
     new MutationObserver(watchVis).observe(this.root, { childList: true });
     watchVis();
     watch();
@@ -1385,7 +1387,8 @@ export class Hud {
     const zi = zoneAtPx(m, info.pos.x, info.pos.y);
     const z = ZONES[zi];
     const sub = this.ctx.net.kind === "arena" ? "PvP" : z.safe ? "безопасно" : z.note ? "дикие края" : `ур. ${z.levels[0]}–${z.levels[1]}`;
-    document.getElementById("mini-zone")!.innerHTML = `${esc(z.name)} <small>${sub}</small>`;
+    const zl = document.getElementById("mini-zone")!, zh = `${esc(z.name)} <small>${sub}</small>`;
+    if (zl.dataset.html !== zh) { zl.dataset.html = zh; zl.innerHTML = zh; } // раз в 200 мс: без сравнения — перевёрстка подписи каждый раз
   }
 
   // ---------- каждый кадр ----------
@@ -1426,7 +1429,7 @@ export class Hud {
     const inRaid = this.ctx.net.kind === "raid";
     this.targetBox.classList.toggle("in-raid", inRaid);
     if (t && t.anim !== Anim.Dead && !(inRaid && t.kind === UnitKind.Boss)) { // в рейде у босса своя полоса сверху
-      this.targetBox.hidden = false;
+      setHidden(this.targetBox, false);
       const boss = t.kind === UnitKind.Boss;
       this.targetBox.classList.toggle("boss", boss);
       const def = Object.values(MOBS).find((m) => m.name === t.name);
@@ -1436,19 +1439,19 @@ export class Hud {
         this.targetBox.dataset.sig = sig;
         this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i><span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
       }
-    } else this.targetBox.hidden = true;
+    } else setHidden(this.targetBox, true);
 
     // рамка питомца под рамкой героя
     const sid = this.ctx.net.self?.id;
     const pu = sid ? this.ctx.net.unit(petUnitId(sid)) : undefined;
     if (pu) {
-      this.petBox.hidden = false;
+      setHidden(this.petBox, false);
       const sig = `${pu.name}|${pu.level}|${pu.hp}|${pu.maxHp}`;
       if (this.petBox.dataset.sig !== sig) {
         this.petBox.dataset.sig = sig;
         this.petBox.innerHTML = `<div class="row1"><span class="nm">${esc(pu.name)}</span><span class="lv">ур. ${pu.level}</span></div><div class="bar hp"><i style="width:${(pu.hp / Math.max(1, pu.maxHp)) * 100}%"></i><span>${pu.hp} / ${pu.maxHp}</span></div>`;
       }
-    } else this.petBox.hidden = true;
+    } else setHidden(this.petBox, true);
 
     // панель умений: перезарядки, мана, дальность, видимость, цель
     if (me) {
