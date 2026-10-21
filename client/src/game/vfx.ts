@@ -52,6 +52,14 @@ export class Vfx {
   private bound = new Map<Phaser.GameObjects.Sprite, UnitView>();
   /** Когда последний раз прилетал снаряд умения (чтобы взрыв aoe не дублировал попадание снаряда). */
   private projSeen = new Map<string, number>();
+  /** Когда умение (умение|кастер) сыграло или сыграет своё попадание: снаряд — в момент прилёта, круг и цепь — сразу.
+   *  Бафф или дебафф того же умения рядом по времени (провокация от «Молота правосудия», оглушение от «Удара щитом»)
+   *  попадание второй раз не играет — иначе одна анимация удара шла дважды. */
+  private hitAt = new Map<string, number>();
+  private markHit(f: Fx, at = this.scene.time.now) { if (f.s) this.hitAt.set(`${f.s}|${f.c ?? ""}`, at); }
+  private hitRecent(f: Fx) { return !!f.s && Math.abs(this.scene.time.now - (this.hitAt.get(`${f.s}|${f.c ?? ""}`) ?? -1e9)) < 900; }
+  /** Когда умение (умение|кастер) последний раз играло cast: отложенные fx того же умения (w.later) приходят отдельным пакетом. */
+  private castAt = new Map<string, number>();
   private catalog: Record<string, VfxEntry>;
 
   constructor(readonly scene: Phaser.Scene, readonly unit: (id: string) => UnitView | undefined) {
@@ -282,6 +290,10 @@ export class Vfx {
       seen.add(k);
       const id = TABLE[f.s]?.cast;
       if (!this.has(id) || list.some((g) => g.t === "blink" && g.s === f.s && g.c === f.c)) continue;
+      // отложенные fx того же каста (удар после полёта, повтор урона) — без второго cast
+      const now = this.scene.time.now;
+      if (now - (this.castAt.get(k) ?? -1e9) < 900) continue;
+      this.castAt.set(k, now);
       const caster = this.unit(f.c);
       if (!caster || caster.dead) continue;
       // точка прицела умения: из его же fx (круг, снаряд, рывок)
@@ -303,6 +315,7 @@ export class Vfx {
     if (f.s) this.projSeen.set(f.s, this.scene.time.now);
     const id = this.slot(f, "proj");
     if (!id) return false;
+    if (hit) this.markHit(f, this.scene.time.now + f.ms);
     this.projectile(id, sx, sy, tx, ty, f.ms, () => { if (hit) this.atBody(hit, tx, ty); arrive(); });
     return true;
   }
@@ -310,6 +323,7 @@ export class Vfx {
   projHit(f: Extract<Fx, { t: "proj" }>, tx: number, ty: number): boolean {
     const hit = this.slot(f, "hit");
     if (!hit) return false;
+    this.markHit(f);
     this.atBody(hit, tx, ty);
     return true;
   }
@@ -317,6 +331,7 @@ export class Vfx {
   aoe(f: Extract<Fx, { t: "aoe" }>): boolean {
     const hit = this.slot(f, "hit");
     if (!hit || (f.s && this.scene.time.now - (this.projSeen.get(f.s) ?? -1e9) < 1500)) return !!hit;
+    this.markHit(f);
     this.atGround(hit, f.x, f.y);
     return true;
   }
@@ -337,12 +352,13 @@ export class Vfx {
     const aura = this.slot(f, "aura"), hit = this.slot(f, "hit");
     if (!aura && !hit) return false;
     if (aura) this.followUnit(`${f.s}|${f.id}`, aura, f.id, f.ms <= 0 ? 0 : Math.min(f.ms, 30000));
-    if (hit && f.ms > 0) this.atUnit(hit, u);
+    if (hit && f.ms > 0 && !this.hitRecent(f)) this.atUnit(hit, u);
     return !!aura;
   }
   /** Цепь: hit на каждом звене кроме первого; proj-цепь — спрайтовая линия по звеньям. true — старая линия не нужна. */
   chain(f: Extract<Fx, { t: "chain" }>): boolean {
     const hit = this.slot(f, "hit"), pid = this.slot(f, "proj");
+    if (hit) this.markHit(f);
     for (let i = 2; hit && i < f.pts.length; i += 2) this.atBody(hit, f.pts[i], f.pts[i + 1]);
     if (!pid) return false;
     for (let i = 0; i + 3 < f.pts.length; i += 2) this.line(pid, f.pts[i], f.pts[i + 1], f.pts[i + 2], f.pts[i + 3], 600);
