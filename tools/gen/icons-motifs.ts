@@ -7,7 +7,7 @@
  *  - эффект композиции (искры, полосы, дуга) — второстепенный, включается полем fx.
  *  Каждый пиксель — цвет из 44 цветов frosty (RAMPS), без полупрозрачности. */
 import { PC, hash01, pnoise, type RGBA } from "./canvas";
-import { ELEMENT_RAMPS as RAMPS, frameIcon, sdPoly, sdSeg, sdDisc, taper, type SD, type Element as Theme } from "./icons-frosty";
+import { ELEMENT_RAMPS as RAMPS, frameIcon, sdPoly, sdSeg, sdDisc, sdArc, taper, type SD, type Element as Theme } from "./icons-frosty";
 import { shapeOf } from "./icons-svg";
 
 export type Fx = "sparks" | "streaks" | "arc" | "rays" | "drops" | "shards" | "none";
@@ -26,6 +26,8 @@ export interface IconEntry {
   modAt?: "tr" | "tl" | "br" | "bl";
   /** Потолок яркости тела (0…1): у «кровавых» умений тона остаются красными, без оранжевого и жёлтого. */
   cap?: number;
+  /** Размер знака-уточнения, px (по умолчанию 8.5). */
+  modSize?: number;
   /** Утолщение силуэта, px (по умолчанию 0.7). */
   bold?: number;
   size?: number; rot?: number; flipX?: boolean; cx?: number; cy?: number; fx?: Fx; seed?: number;
@@ -48,34 +50,39 @@ function builtin(name: string, x: number, y: number, s: number): SD {
   return (px, py) => Math.min(...ds.map((d) => d(px, py)));
 }
 
-/** Рисует одно тело (знак) в сетку g: подкладка, свечение ступенями с пылью, тона по глубине и свету с рваным переходом, блики.
- *  glow=false — для знаков-уточнений (без ореола). */
-function paintBody(g: (RGBA | null)[], sdAt: (x: number, y: number) => number, theme: Theme, seed: number, glow: boolean, cap = 1) {
+/** Рисует одно тело (знак) в сетку g приёмами frosty:
+ *  - край рваный: границу сдвигает шум на пиксель (зубцы, сколы), а не гладкая кривая;
+ *  - тона по глубине (край тёмный, к ядру светлее, свет сверху-слева) с шахматным переходом между тонами;
+ *  - диагональные полосы тоном ниже по телу (у части знаков), блики почти белым, свечение ступенями с пылью.
+ *  glow=false — знак-уточнение без ореола. */
+function paintBody(g: (RGBA | null)[], sdSmooth: (x: number, y: number) => number, theme: Theme, seed: number, glow: boolean, cap = 1, stripes = false) {
   const R = RAMPS[theme], N = R.length;
-  const at = (f: number): RGBA => R[Math.max(0, Math.min(N - 1, Math.round(Math.min(f, cap) * (N - 1))))];
+  const rough = (x: number, y: number) => sdSmooth(x, y) + (hash01(x, y, seed + 21) - 0.5) * 0.25 + (pnoise(x, y, 3, 60, seed + 31) - 0.5) * 0.9;
+  const BAY = [[0, 0.5], [0.75, 0.25]];
   if (glow) for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) {
-    const d = sdAt(x, y);
+    const d = rough(x, y);
     if (d <= 1.1 || d > 5) continue;
     const n = pnoise(x, y, 2, 40, seed + 5) * 0.7 + hash01(x, y, seed) * 0.3;
     if (d <= 3.4) { const p = 1 - (d - 1.1) / 2.3; if (n < p * 0.72) g[y * 20 + x] = d < 2.1 ? R[1] : R[0]; }
-    else if (hash01(x, y, seed + 9) < 0.07) g[y * 20 + x] = hash01(x, y, seed + 11) < 0.5 ? R[1] : R[0]; // пыль за ореолом
+    else if (hash01(x, y, seed + 9) < 0.035) g[y * 20 + x] = hash01(x, y, seed + 11) < 0.5 ? R[1] : R[0]; // пыль за ореолом
   }
   const hl: [number, number][] = [];
   for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) {
-    const d = sdAt(x, y);
+    const d = rough(x, y);
     if (d > 0 && d <= 1.1) { g[y * 20 + x] = R[0]; continue; }
     if (d > 0) continue;
-    const gx = sdAt(x + 1, y) - sdAt(x - 1, y), gy = sdAt(x, y + 1) - sdAt(x, y - 1), gl = Math.hypot(gx, gy) || 1;
+    const gx = sdSmooth(x + 1, y) - sdSmooth(x - 1, y), gy = sdSmooth(x, y + 1) - sdSmooth(x, y - 1), gl = Math.hypot(gx, gy) || 1;
     const facing = (gx * -0.6 + gy * -0.8) / gl; // 1 — кромка смотрит на свет
-    const depth = -d;
-    // яркость растёт от края к ядру, свет сверху-слева, рваный переход между тонами
+    const depth = Math.max(0, -sdSmooth(x, y) + (hash01(x, y, seed + 22) - 0.5) * 0.5);
     let f = 0.3 + Math.min(depth, 3.2) * 0.2 + facing * (depth < 1.5 ? 0.16 : 0.05);
-    f += (hash01(x, y, seed + 3) - 0.5) * (depth < 1.2 ? 0.04 : 0.06);
-    g[y * 20 + x] = at(Math.min(0.98, f));
+    f = Math.min(cap, f);
+    let v = f * (N - 1) + (pnoise(x, y, 2, 40, seed + 41) - 0.5) * 0.9 + (BAY[y & 1][x & 1] - 0.4) * 0.12; // шахматный переход между тонами
+    if (stripes && depth > 1.2 && ((x - y + 60) % 5 === 0)) v -= 1; // диагональные полосы
+    g[y * 20 + x] = R[Math.max(0, Math.min(N - 2, Math.round(v)))];
     if (depth >= 1.1 && depth < 3 && facing > 0.2) hl.push([x, y]);
   }
-  hl.sort((a, b) => a[0] + a[1] - (b[0] + b[1]));
-  hl.slice(0, 5).forEach(([x, y], i) => { g[y * 20 + x] = i % 2 === 0 ? R[N - 1] : R[Math.max(0, N - 2)]; });
+  hl.sort((a, b2) => a[0] + a[1] - (b2[0] + b2[1]));
+  hl.slice(0, 3).forEach(([x, y], i) => { g[y * 20 + x] = i % 2 === 0 ? R[N - 1] : R[Math.max(0, N - 2)]; });
 }
 
 /** Свои силуэты там, где у game-icons нет подходящего знака (поле shape: custom/<имя>). */
@@ -84,6 +91,7 @@ function customShape(name: string, cx: number, cy: number, size: number, rot = 0
   // точки сцены → в систему мотива (поворот вокруг центра, зеркало)
   const back = (x: number, y: number): [number, number] => { const dx = (x - cx) * fl, dy = y - cy; return [10 + (dx * ca - dy * sa) / k, 10 + (dx * sa + dy * ca) / k]; };
   const P = (pts: [number, number][]) => sdPoly(pts);
+  const capsules = (pts: [number, number][], r: number): SD => { const s = pts.slice(0, -1).map((p, i) => sdSeg(p[0], p[1], pts[i + 1][0], pts[i + 1][1])); return (x, y) => Math.min(...s.map((f) => f(x, y))) - r; };
   let parts: SD[];
   if (name === "fireball") parts = [sdDisc(12, 9.5, 6.6), P(taper(11, 10.5, 0.5, 19.5, 6, 0.6)), P(taper(8.5, 5.5, 5.5, 1, 3.2, 0.4))];
   else if (name === "dash") parts = [P(taper(1, 19, 15, 5, 1.5, 6.5)), P(taper(1, 12, 8, 5, 1, 3.4)), P(taper(8, 19.5, 15, 12.5, 1, 3.4)), P([[19.5, 0.5], [19.5, 10.5], [9.5, 0.5]])];
@@ -91,6 +99,16 @@ function customShape(name: string, cx: number, cy: number, size: number, rot = 0
   else if (name === "arrow") parts = [P(taper(10, 19.5, 10, 4, 1.8, 1.8)), P([[10, 0.5], [14.2, 7], [5.8, 7]]), P([[10, 19.5], [13.4, 20], [10, 14.5]]), P([[10, 19.5], [6.6, 20], [10, 14.5]])];
   else if (name === "arrowfan") { const A = (a: number) => { const ca2 = Math.cos((a * Math.PI) / 180), sa2 = Math.sin((a * Math.PI) / 180); const R2 = (pts: [number, number][]) => pts.map(([x, y]) => [10 + (x - 10) * ca2 - (y - 19) * sa2, 19 + (x - 10) * sa2 + (y - 19) * ca2] as [number, number]); return [P(R2(taper(10, 19, 10, 3.5, 1.6, 1.6))), P(R2([[10, 0], [13.4, 6], [6.6, 6]]))]; }; parts = [...A(-30), ...A(0), ...A(30)]; }
   else if (name === "crossring") parts = [(x, y) => Math.abs(Math.hypot(x - 10, y - 10) - 8.4) - 1.1, P([[8, 3.5], [12, 3.5], [12, 8], [16.5, 8], [16.5, 12], [12, 12], [12, 16.5], [8, 16.5], [8, 12], [3.5, 12], [3.5, 8], [8, 8]])];
+  else if (name === "flock") { const bird = (x: number, y: number, s: number) => P([[x - 3 * s, y - 1 * s], [x, y + 0.6 * s], [x + 3 * s, y - 1 * s], [x + 3 * s, y + 0.3 * s], [x, y + 2.4 * s], [x - 3 * s, y + 0.3 * s]]); parts = [bird(7, 5.5, 1.4), bird(14.5, 9, 1.2), bird(6.5, 13.5, 1.1), bird(13, 17, 1)]; }
+  else if (name === "jaws") parts = [P([[2, 3], [18, 3], [18, 6], [2, 6]]), ...[0, 1, 2, 3, 4].map((i) => P([[3 + i * 3.4, 6], [5.6 + i * 3.4, 6], [4.3 + i * 3.4, 12.5]])), P([[3, 15], [17, 15], [17, 18], [3, 18]]), ...[0, 1, 2].map((i) => P([[4.5 + i * 4.2, 15], [7 + i * 4.2, 15], [5.7 + i * 4.2, 10.5]]))];
+  else if (name === "bounce") parts = [capsules([[1.5, 18], [8, 10], [12, 16], [17, 6.5]], 1.2), P([[19.5, 1.5], [13.2, 4.2], [18.5, 9.2]])];
+  else if (name === "crack") parts = [capsules([[0, 13], [5, 9.5], [9, 14.5], [14, 9], [20, 12.5]], 1.2), capsules([[9, 14.5], [8, 19.5]], 0.8), P([[3, 5], [6, 3], [8.5, 6], [5, 7.5]]), P([[11, 4], [14, 1.5], [16.5, 5], [12, 6.5]]), P([[15, 16.5], [18, 14.5], [19.5, 19], [15.5, 19]])];
+  else if (name === "roll") parts = [sdArc(10, 10, 6.5, 0.3, 4.9, 2.6), sdDisc(10, 10, 3), P([[14.6, 4.2], [11.76, 0.65], [10.64, 6.55]])];
+  else if (name === "domeorb") parts = [sdArc(10, 12, 8, Math.PI, Math.PI * 2, 2.4), sdDisc(10, 12.5, 4.2)];
+  else if (name === "wisp") {
+    const body = [sdDisc(10, 13.5, 5.2), P(taper(10, 13, 11, 0.5, 7, 0.4)), P(taper(7, 10.5, 3.5, 5.5, 2.8, 0.4))], eyes = [sdDisc(8, 13, 1.2), sdDisc(12, 13, 1.2), sdDisc(10, 16.2, 1.2)];
+    return { sd: (x, y) => { const [u, v] = back(x, y); const b2 = Math.min(...body.map((p) => p(u, v))), e2 = Math.min(...eyes.map((p) => p(u, v))); return Math.max(b2, -e2) * k; } };
+  }
   else throw new Error(`нет своего силуэта ${name}`);
   return { sd: (x, y) => { const [u, v] = back(x, y); return Math.min(...parts.map((p) => p(u, v))) * k; } };
 }
@@ -102,27 +120,33 @@ export function renderEntry(e: IconEntry): PC {
   const diag = DIAG.test(e.shape);
   const hasMod = !!e.mod;
   const rot = e.rot ?? (diag ? [-40, 35, -30, 45, 30][h % 5] : 0);
-  const size = e.size ?? (diag ? (hasMod ? 15 : 18) : hasMod ? 14 : 16);
+  const size = e.size ?? (diag ? (hasMod ? 16 : 19) : hasMod ? 14 : 16);
   const at = e.modAt ?? "tr";
   const mx = at.endsWith("r") ? 15 : 5, my = at.startsWith("t") ? 5 : 15;
-  const cx = e.cx ?? (hasMod ? (at.endsWith("r") ? 8.3 : 11.7) : 10), cy = e.cy ?? (hasMod ? (at.startsWith("t") ? 11.7 : 8.3) : 10);
+  const jx = (((h >> 3) % 7) - 3) * 0.7, jy = (((h >> 5) % 7) - 3) * 0.7; // смещение от центра: часть знака уходит за край плашки
+  const cx = e.cx ?? (hasMod ? (at.endsWith("r") ? 8.3 : 11.7) : 10) + jx * (hasMod ? 0.3 : 0.55), cy = e.cy ?? (hasMod ? (at.startsWith("t") ? 11.7 : 8.3) : 10) + jy * (hasMod ? 0.3 : 0.55);
   const sh = e.shape.startsWith("custom/") ? customShape(e.shape.slice(7), cx, cy, size, rot, e.flipX) : shapeOf(e.shape, { cx, cy, size, rot, flipX: e.flipX ?? (!diag && ((h >> 7) & 1) === 1 && !hasMod) });
   const g: (RGBA | null)[] = new Array(400).fill(null);
   const put = (x: number, y: number, c: RGBA) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < 20 && y < 20) g[y * 20 + x] = c; };
   // пятна фона темы
-  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) if (pnoise(x, y, 4, 40, h) > 0.8) g[y * 20 + x] = R[0];
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) { const n1 = pnoise(x, y, 4, 40, h); if (n1 > 0.78) g[y * 20 + x] = n1 > 0.9 ? R[1] : R[0]; }
+  // разводы: короткие диагональные мазки тёмным тоном темы
+  for (let k = 0; k < 3; k++) { const x0 = Math.floor(hash01(k, h, 41) * 20), y0 = Math.floor(hash01(k, h, 43) * 20), L = 3 + Math.floor(hash01(k, h, 47) * 4); for (let t = 0; t < L; t++) put(x0 + t, y0 - t, R[0]); }
   const bold = e.bold ?? 0.35; // утолщение тонких силуэтов: при 20 px линии game-icons рвутся
   const sdMain = (x: number, y: number) => sh.sd(x + 0.5, y + 0.5) - bold;
-  const fx = e.fx ?? (((h >> 8) % 3) === 0 ? "streaks" : "sparks");
+  const fx = e.fx ?? "sparks";
   const rnd = (k: number) => hash01(k, h, 17);
   const fxPx = (x: number, y: number, c: RGBA) => { if (sdMain(Math.round(x), Math.round(y)) > 1.3) put(x, y, c); };
   if (fx === "sparks") {
-    for (let k = 0; k < 9; k++) fxPx(1 + rnd(k) * 18, 1 + rnd(k + 50) * 18, k % 3 === 0 ? T(1) : k % 3 === 1 ? T(0.72) : T(0.5));
+    for (let k = 0; k < 6; k++) fxPx(1 + rnd(k) * 18, 1 + rnd(k + 50) * 18, k % 3 === 0 ? T(1) : k % 3 === 1 ? T(0.72) : T(0.5));
     { const px = 2 + Math.floor(rnd(70) * 16), py = 2 + Math.floor(rnd(71) * 16); for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) fxPx(px + dx, py + dy, dx || dy ? T(0.55) : T(1)); }
   }
   if (fx === "streaks") for (const o of [-5, 5]) for (let t = -13; t < 0; t++) if ((t + o * 2 + 40) % 5 < 3) fxPx(cx + (t + o) * 0.707, cy + (-t + o) * 0.707, T(0.55));
   if (fx === "arc") for (let a = 3.3; a < 5.7; a += 0.07) if (Math.round(a * 14) % 5 < 4) fxPx(cx + Math.cos(a) * 8.6, cy + Math.sin(a) * 8.6, T(0.6));
-  paintBody(g, sdMain, e.theme, h, true, e.cap);
+  // полосы движения за знаком (диагональ вниз-влево) и осколки рядом: у frosty почти в каждой иконке
+  for (const o of [-5.5, 4.5]) for (let t = -14; t < -3; t++) if ((t * 3 + o * 7 + 60) % 8 < 3) fxPx(cx + (t + o) * 0.707, cy + (-t + o) * 0.707, hash01(t, o * 3, h) < 0.25 ? T(0.8) : T(0.42));
+  for (let k = 0; k < 1; k++) { const sx = 2 + rnd(k + 90) * 16, sy = 2 + rnd(k + 91) * 16, dir = rnd(k + 92) < 0.5 ? 1 : -1; for (let t = 0; t < 3; t++) fxPx(sx + t * dir, sy + t, t === 0 ? T(0.9) : T(0.5)); }
+  paintBody(g, sdMain, e.theme, h, true, e.cap, ((h >> 10) & 1) === 1);
   // блик-росчерк: две диагональные белые линии внутри тела у освещённой кромки (как у frosty)
   {
     const W = RAMPS[e.theme][N - 1], W2 = RAMPS[e.theme][Math.max(0, N - 2)];
@@ -134,8 +158,8 @@ export function renderEntry(e: IconEntry): PC {
     const mt = e.modTheme ?? e.theme;
     let sdm: SD;
     if (BUILTIN_MODS.has(e.mod!)) sdm = builtin(e.mod!, mx, my, e.mod === "drops" ? 4.2 : 3.6);
-    else { const ms = shapeOf(e.mod!, { cx: mx, cy: my, size: 8.5 }); sdm = (x, y) => ms.sd(x, y); }
-    paintBody(g, (x, y) => sdm(x + 0.5, y + 0.5), mt, h + 3, false, e.cap);
+    else { const ms = shapeOf(e.mod!, { cx: mx, cy: my, size: e.modSize ?? 8.5 }); sdm = (x, y) => ms.sd(x, y); }
+    paintBody(g, (x, y) => sdm(x + 0.5, y + 0.5), mt, h + 3, false, e.cap, false);
   }
   const plate = new PC(20, 20);
   for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) { const c = g[y * 20 + x]; if (c) plate.set(x, y, c); }
