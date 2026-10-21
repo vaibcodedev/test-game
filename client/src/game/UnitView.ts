@@ -103,6 +103,8 @@ export class UnitView {
   private blockUp = 14;
   /** Ник виден только из-за наведения (при выключенных «Имена»): разводка его не считает — он рисуется поверх соседей, и блок не уезжает от касания курсором. */
   private nameHover = false;
+  /** Зазор под полоску здоровья между ником и головой (4 px): при выключенных «Полоски» ник опускается на её место, под курсором (полоска видна) плавно поднимается обратно. −1 — ещё не считался. */
+  private barGap = -1;
   /** Ширина блока подписи для проверки перекрытий. */
   blockW(): number {
     const own = !this.nameHover;
@@ -339,7 +341,10 @@ export class UnitView {
     // Вся геометрия подписи — в целых пикселях мира и от фактической высоты блока ника (метрики шрифта + обводка), а не от констант.
     // Левый край считается сам (origin 0,1): при origin 0.5 и нечётной ширине он падал бы на дробный пиксель, текст мылился и дрожал при ходьбе.
     const lh = Math.round(this.label.height);
-    const nameY = Math.round(top - 4);
+    const barsOn = this.isSelf ? overlay.selfBars : overlay.bars;
+    const gapTo = barsOn || (hov && !this.npc) ? 4 : 0;
+    this.barGap = this.barGap < 0 ? gapTo : this.barGap + (gapTo - this.barGap) * sk;
+    const nameY = Math.round(top - this.barGap);
     const left = lx - Math.round(this.label.width / 2);
     this.label.setPosition(left, nameY);
     // на арене: союзники зелёные, враги красные; в нейтральном городе враг — цвет своей фракции, в PvP-зоне — красный
@@ -357,7 +362,6 @@ export class UnitView {
       this.unseen = !seen;
       this.sprite.setAlpha(a);
       this.shadow.setAlpha(a);
-      this.label.setVisible(seen);
       this.mountSpr?.setVisible(seen && !!u.mount);
       this.mountFront?.setVisible(seen && !!u.mount);
       this.ring.setVisible(false);
@@ -365,12 +369,13 @@ export class UnitView {
     } else if (this.wasStealth) {
       this.wasStealth = false;
       this.unseen = false;
-      if (!this.dead) { this.sprite.setAlpha(1); this.shadow.setAlpha(1); this.label.setVisible(true); }
+      if (!this.dead) { this.sprite.setAlpha(1); this.shadow.setAlpha(1); }
     }
-    if (!(this.isSelf ? overlay.selfNames : overlay.names) || (!this.isSelf && !this.nameOk)) this.label.setVisible(false);
+    // ник считается заново каждый кадр (а не прячется один раз): после выключения и включения «Имена» он возвращается сам;
     // под курсором ник виден всегда, даже при выключенных «Имена»; на блок разводки (blockW, blockH) такой ник не влияет
-    this.nameHover = hov && !this.label.visible;
-    if (hov) this.label.setVisible(true);
+    const nameOn = !this.dead && !this.unseen && (this.isSelf ? overlay.selfNames : overlay.names) && (this.isSelf || this.nameOk);
+    this.nameHover = hov && !nameOn;
+    this.label.setVisible(nameOn || hov);
     const showName = !this.dead && this.label.visible;
     const rank = u.frame ? rankById(u.frame) : undefined;
     // Рамка (элита, ранг арены) — вокруг самого ника, а не вокруг его блока: блок несимметричен (сверху запас под акценты, снизу под хвосты
@@ -384,9 +389,10 @@ export class UnitView {
     const titleOn = showName && !!u.title;
     const titleY = framed ? frameTop - 1 : nameY - lh + 1;
     this.titleText.setVisible(titleOn).setPosition(lx - Math.round(this.titleText.width / 2), titleY);
-    // высота блока подписи для разводки (labelLayout): от верхнего края титула, рамки или ника до низа полоски
+    // высота блока подписи для разводки (labelLayout): от верхнего края титула, рамки или ника до низа полоски;
+    // зазор под полоску — по настройке, без подъёма под курсором: наведение не двигает соседей
     const lay = !this.nameHover;
-    this.blockUp = Math.round(top - Math.min(framed && lay ? frameTop : nameY - lh, titleOn && lay ? titleY - Math.round(this.titleText.height) : Infinity));
+    this.blockUp = Math.round(top - Math.min(framed && lay ? frameTop : nameY - lh, titleOn && lay ? titleY - Math.round(this.titleText.height) : Infinity) - this.barGap + (barsOn ? 4 : 0));
     this.frameGfx.clear();
     if (u.kind === UnitKind.Guard && showName) this.guardBadge(left, (baseY + nameY - lh + this.band.cap) / 2);
     this.torch(!this.dead && u.kind === UnitKind.Guard && nightLevel(Date.now()) > 0.35);
