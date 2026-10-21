@@ -163,6 +163,9 @@ export class UnitView {
 
   private showDead(instant: boolean) {
     this.dead = true;
+    // смерть посреди удара: анимация смерти перебивает удар, его ANIMATION_COMPLETE не придёт — иначе после возрождения
+    // флаг удара так и висит, бег и стойка не включаются, и моб ездит в позе трупа
+    this.attacking = false;
     const row = rowOf(this.u.dir);
     const key = `${this.sid}-death-${row}`;
     if (instant || !this.scene.anims.exists(key)) this.sprite.setFrame(row * 12 + 11);
@@ -203,8 +206,13 @@ export class UnitView {
     if (u.anim === Anim.Dead && !this.dead) this.showDead(false);
     else if (u.anim !== Anim.Dead && this.dead) {
       this.dead = false;
+      this.attacking = false;
       this.x = u.x;
       this.y = u.y;
+      // снять затухание трупа (если возродился раньше, чем оно доиграло) и кадр смерти: стойку или бег поставит код ниже
+      this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
+      this.sprite.stop();
+      this.sprite.setFrame(rowOf(u.dir) * 12);
       this.sprite.setAlpha(0);
       this.shadow.setAlpha(1);
       this.label.setVisible(true);
