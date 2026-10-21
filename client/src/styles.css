@@ -7,6 +7,7 @@
 @import "./styles/base.css";
 @import "./styles/kit.css";
 @import "./styles/login.css";
+@import "./styles/loading.css";
 @import "./styles/hud.css";
 @import "./styles/hotbar.css";
 @import "./styles/windows.css";

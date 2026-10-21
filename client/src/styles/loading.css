@@ -1,0 +1,98 @@
+/* ---------- экран загрузки (ui/loading.ts) ----------
+   Слой между меню Esc (9000) и системными окнами (20000): закрывает HUD, пока мир строится, ошибки связи видны поверх.
+   Лого — шрифт заголовков (кегль по правилу round(nearest, …, var(--hu))), золото бренда (--logo-*, одно для обеих фракций);
+   фон, полоса, искры и совет — в акценте фракции (--gold). */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 15000;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--gold) 16%, var(--bg)) 0%, var(--bg) 58%, var(--well) 100%);
+  transition: opacity 0.4s ease-in;
+}
+.loading[hidden] { display: none; }
+.loading.out { opacity: 0; pointer-events: none; }
+.ld-box {
+  position: relative;
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: center;
+}
+.ld-logo { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.ld-kicker { color: var(--dim); font-size: var(--fs-xs); font-weight: var(--fw-b); letter-spacing: 0.4em; }
+.ld-title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--fw);
+  font-size: round(nearest, var(--fs-head-logo), var(--hu));
+  line-height: 1.05;
+  word-spacing: var(--head-ws);
+  text-wrap: balance;
+  /* золото полосами, как у пиксельного металла: светлый верх, основной тон, тёмный низ */
+  background: linear-gradient(var(--logo-hi) 0 42%, var(--logo) 42% 74%, color-mix(in srgb, var(--logo) 55%, var(--logo-shade)) 74%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 calc(var(--hu) * 0.3) 0 var(--logo-shade)) drop-shadow(0 0 14px color-mix(in srgb, var(--logo) 35%, transparent));
+}
+/* разделитель окна (Kenney B) с крюками на обоих концах */
+.ld-rule { display: flex; width: min(420px, 86%); height: var(--div-h); }
+.ld-rule::before,
+.ld-rule::after {
+  content: "";
+  flex: 1;
+  background: url("/ui/divider-b-cap.png") right bottom / var(--div-cap) var(--div-h) no-repeat, url("/ui/divider-b-line.png") left bottom / calc(100% - var(--div-cap)) var(--div-h) no-repeat;
+  image-rendering: pixelated;
+}
+.ld-rule::before { transform: scaleX(-1); }
+.ld-sub { margin: 0; color: var(--fg); font-size: var(--fs-md); font-weight: var(--fw-b); }
+.ld-progress { width: min(420px, 100%); }
+.ld-progress .bar { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
+.ld-progress .bar > i {
+  background: linear-gradient(color-mix(in srgb, var(--gold) 55%, #fff), var(--gold) 60%, color-mix(in srgb, var(--gold) 55%, var(--logo-shade)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.25), 1px 0 0 rgba(0, 0, 0, 0.6);
+  transition: width 0.25s ease-out;
+}
+.ld-stage { margin: 0; min-height: 1.4em; color: var(--dim); font-size: var(--fs-sm); }
+.ld-tip {
+  margin: var(--sp-2) 0 0;
+  max-width: 460px;
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  text-wrap: balance;
+  background: color-mix(in srgb, var(--panel) 75%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+.ld-tip-h { display: block; margin-bottom: var(--sp-0); color: var(--gold); font-size: var(--fs-xs); font-weight: var(--fw-b); letter-spacing: 0.08em; }
+/* искры: поднимаются от низа экрана и гаснут; место, задержка, скорость и размер — из переменных у каждой */
+.ld-embers { position: absolute; inset: 0; pointer-events: none; }
+.ld-embers i {
+  position: absolute;
+  left: var(--x);
+  bottom: -8px;
+  width: 3px;
+  height: 3px;
+  background: color-mix(in srgb, var(--gold) 55%, #fff);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--gold) 70%, transparent);
+  opacity: 0;
+  animation: ld-ember var(--t) linear var(--d) infinite;
+}
+@keyframes ld-ember {
+  0% { opacity: 0; transform: translate(0, 0) scale(var(--s)); }
+  12% { opacity: 0.9; }
+  70% { opacity: 0.55; }
+  100% { opacity: 0; transform: translate(calc(var(--s) * 48px), -72vh) scale(calc(var(--s) * 0.4)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-embers { display: none; }
+  .loading { transition: none; }
+}

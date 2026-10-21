@@ -31,6 +31,7 @@ import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
 import { resolveCast, type CastUnit } from "./castResolve";
+import { loading } from "../ui/loading";
 
 type NpcKind = "raid" | "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
@@ -89,6 +90,8 @@ export class GameScene extends Phaser.Scene {
   fx!: Effects;
   units = new Map<string, UnitView>();
   me: UnitView | null = null;
+  /** Кадров с момента, как свой герой на месте (экран загрузки уходит на третьем). */
+  private readyFrames = 0;
   /** Предсказанная позиция своего героя. */
   pos = { x: 0, y: 0 };
   /** Зажатые клавиши движения (раскладка — keybinds.ts). */
@@ -139,6 +142,7 @@ export class GameScene extends Phaser.Scene {
     this.units = new Map();
     this.farUnits = new Map(); // иначе дальние юниты прошлой комнаты (мир) всплывают в рейде/на арене
     this.me = null;
+    this.readyFrames = 0;
     this.targetId = null;
     this.bagViews = new Map();
     this.pendingPickup = null;
@@ -392,6 +396,7 @@ export class GameScene extends Phaser.Scene {
       this.me = v;
       this.pos = { x: u.x, y: u.y };
       this.cameras.main.startFollow(v.sprite, true, 0.15, 0.15, 0, 12);
+      this.cameras.main.centerOn(u.x, u.y - 12); // сразу на героя: под уходящим экраном загрузки камера не едет от края мира
     }
   }
   removeUnit(id: string) {
@@ -924,6 +929,8 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateAim();
     this.world.update(this.cameras.main);
+    // экран загрузки уходит, когда свой герой на месте и куски мира вокруг него построены (камера встаёт на героя кадром раньше)
+    if (this.me && this.readyFrames < 3 && ++this.readyFrames === 3) loading.done();
     this.world.drift.x += dt * 6;
     this.world.drift.y += dt * 3;
 

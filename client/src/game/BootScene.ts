@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
+import { loading } from "../ui/loading";
 
 export interface Manifest {
   units: Record<string, { frame: number; cols?: number }>;
@@ -16,10 +17,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    const { width, height } = this.scale;
-    const bar = this.add.rectangle(width / 2 - 150, height / 2, 0, 10, 0xf0c050).setOrigin(0, 0.5);
-    this.add.rectangle(width / 2, height / 2, 304, 14).setStrokeStyle(1, 0x8a6a4a);
-    this.load.on("progress", (p: number) => (bar.width = 300 * p));
+    // прогресс — на экране загрузки (ui/loading.ts): ассеты — до 85%, дальше шрифты и постройка мира
+    this.load.on("progress", (p: number) => loading.progress(p * 0.85, "Загрузка графики…"));
     this.load.json("manifest", "/assets/manifest.json");
     this.load.once("filecomplete-json-manifest", () => {
       const m = this.cache.json.get("manifest") as Manifest;
@@ -65,6 +64,7 @@ export class BootScene extends Phaser.Scene {
     // все шрифты, которыми рисуют Phaser и canvas карты мира: иначе в текстуры подписей запечётся запасной шрифт.
     // Rubik из @fontsource порезан по unicode-range: без образца текста load() берёт пробел и грузит только латиницу,
     // а ники и титулы — кириллица, поэтому просим и латиницу, и кириллицу
+    loading.progress(0.88, "Загрузка шрифтов…");
     const sample = "AaЯя";
     Promise.all([document.fonts.load('400 14px "Rubik"', sample), document.fonts.load('600 14px "Rubik"', sample), document.fonts.load('20px "Ark Pixel 10"')]).finally(() => this.scene.start("game"));
   }

@@ -47,19 +47,20 @@ async function main() {
     const cl = makeItem("cloak_str_30", 30, Rarity.Rare); cl.req = 1;
     addItem(p, cl);
     const at = () => p.save.inventory.findIndex((i) => i?.uid === cl.uid);
+    const worn = () => p.save.equip.cloak?.uid; // функция: assert сужает тип поля, а состояние меняют вызовы
     p.combatAt = w.time;
     equip(w, p, at());
-    assert(!p.save.equip.cloak && at() >= 0, "надел в бою");
+    assert(!worn() && at() >= 0, "надел в бою");
     assert(toasts.includes("В бою снаряжение не меняется"), "нет ошибки: " + toasts.join("; "));
     p.combatAt = -1e9;
     equip(w, p, at());
-    assert(p.save.equip.cloak?.uid === cl.uid, "вне боя не надел");
+    assert(worn() === cl.uid, "вне боя не надел");
     p.combatAt = w.time;
     unequip(w, p, "cloak");
-    assert(p.save.equip.cloak?.uid === cl.uid, "снял в бою");
+    assert(worn() === cl.uid, "снял в бою");
     p.combatAt = -1e9;
     unequip(w, p, "cloak");
-    assert(!p.save.equip.cloak, "вне боя не снял");
+    assert(!worn(), "вне боя не снял");
   });
 
   await check("миграция: старое сохранение без слота cloak -> null, gear из 5 кусков", () => {

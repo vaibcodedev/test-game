@@ -8,6 +8,7 @@ import { GameScene } from "./game/GameScene";
 import { net } from "./net";
 import { CharSelect } from "./ui/charselect";
 import { Hud } from "./ui/hud";
+import { loading } from "./ui/loading";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -126,9 +127,12 @@ let lastChar = "";
 let broken = false;
 
 function enterWorld() {
+  // экран загрузки (ui/loading.ts) закрывает HUD до готовности мира; уходит сам из GameScene
+  loading.show(lastChar ? `Вход в мир · ${lastChar}` : "", "Подключение к миру…");
   $("ui").hidden = false;
   if (!hud) hud = new Hud($("ui"));
   if (game && !broken) {
+    loading.progress(0.9, "Строим мир…");
     game.scene.start("game");
     return;
   }
@@ -166,6 +170,7 @@ function destroyGame() {
 
 /** Убрать мир с экрана: сцена, HUD, окна. Ничто здесь не должно помешать выходу. */
 function hideWorld() {
+  loading.hide();
   try { game?.scene.stop("game"); } catch { broken = true; }
   try { hud?.reset(); } catch {}
   $("ui").hidden = true;
@@ -195,6 +200,8 @@ net.on("switch", () => {
   reconnectBox.hide();
   $("ui").hidden = false;
   if (!game || broken) return enterWorld();
+  loading.show("", "Строим мир…");
+  loading.progress(0.9);
   try {
     const sc = game.scene.getScene("game");
     if (sc && (sc.sys.isActive() || sc.sys.isPaused())) sc.scene.restart();
