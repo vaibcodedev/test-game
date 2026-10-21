@@ -151,7 +151,7 @@
   "tp_shield_bash": {"src":"gen","motif":"silhouette","theme":"phys","shape":"delapouite/shield-bash","author":"Delapouite","mod":"delapouite/knocked-out-stars","modTheme":"holy","modAuthor":"Delapouite"},
   "tp_hammer": {"src":"gen","motif":"silhouette","theme":"holy","shape":"delapouite/thor-hammer","author":"Delapouite"},
   "tp_fortitude": {"src":"gen","motif":"silhouette","theme":"phys","shape":"delapouite/heart-shield","author":"Delapouite"},
-  "tp_banner": {"src":"gen","motif":"silhouette","theme":"phys","shape":"delapouite/knight-banner","author":"Delapouite"},
+  "tp_banner": {"src":"gen","motif":"silhouette","theme":"holy","shape":"custom/banner","cx":10,"cy":10,"size":18,"rot":0,"flipX":false},
   "tp_retribution": {"src":"gen","motif":"silhouette","theme":"holy","shape":"lorc/sun","author":"Lorc"},
   "tp_martyr": {"src":"gen","motif":"silhouette","theme":"holy","shape":"lorc/winged-shield","author":"Lorc"},
   "tp_avenger": {"src":"gen","motif":"silhouette","theme":"holy","shape":"lorc/broadsword","author":"Lorc"},

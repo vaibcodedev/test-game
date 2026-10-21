@@ -99,6 +99,7 @@ function customShape(name: string, cx: number, cy: number, size: number, rot = 0
   else if (name === "arrow") parts = [P(taper(10, 19.5, 10, 4, 1.8, 1.8)), P([[10, 0.5], [14.2, 7], [5.8, 7]]), P([[10, 19.5], [13.4, 20], [10, 14.5]]), P([[10, 19.5], [6.6, 20], [10, 14.5]])];
   else if (name === "arrowfan") { const A = (a: number) => { const ca2 = Math.cos((a * Math.PI) / 180), sa2 = Math.sin((a * Math.PI) / 180); const R2 = (pts: [number, number][]) => pts.map(([x, y]) => [10 + (x - 10) * ca2 - (y - 19) * sa2, 19 + (x - 10) * sa2 + (y - 19) * ca2] as [number, number]); return [P(R2(taper(10, 19, 10, 3.5, 1.6, 1.6))), P(R2([[10, 0], [13.4, 6], [6.6, 6]]))]; }; parts = [...A(-30), ...A(0), ...A(30)]; }
   else if (name === "crossring") parts = [(x, y) => Math.abs(Math.hypot(x - 10, y - 10) - 8.4) - 1.1, P([[8, 3.5], [12, 3.5], [12, 8], [16.5, 8], [16.5, 12], [12, 12], [12, 16.5], [8, 16.5], [8, 12], [3.5, 12], [3.5, 8], [8, 8]])];
+  else if (name === "banner") parts = [capsules([[3.5, 0.5], [3.5, 19.5]], 0.8), sdDisc(3.5, 1, 1.5), P([[4.5, 2.5], [17.5, 2.5], [17.5, 19.5], [11, 14.2], [4.5, 19.5]])];
   else if (name === "flock") { const bird = (x: number, y: number, s: number) => P([[x - 3 * s, y - 1 * s], [x, y + 0.6 * s], [x + 3 * s, y - 1 * s], [x + 3 * s, y + 0.3 * s], [x, y + 2.4 * s], [x - 3 * s, y + 0.3 * s]]); parts = [bird(7, 5.5, 1.4), bird(14.5, 9, 1.2), bird(6.5, 13.5, 1.1), bird(13, 17, 1)]; }
   else if (name === "jaws") parts = [P([[2, 3], [18, 3], [18, 6], [2, 6]]), ...[0, 1, 2, 3, 4].map((i) => P([[3 + i * 3.4, 6], [5.6 + i * 3.4, 6], [4.3 + i * 3.4, 12.5]])), P([[3, 15], [17, 15], [17, 18], [3, 18]]), ...[0, 1, 2].map((i) => P([[4.5 + i * 4.2, 15], [7 + i * 4.2, 15], [5.7 + i * 4.2, 10.5]]))];
   else if (name === "bounce") parts = [capsules([[1.5, 18], [8, 10], [12, 16], [17, 6.5]], 1.2), P([[19.5, 1.5], [13.2, 4.2], [18.5, 9.2]])];
@@ -111,6 +112,19 @@ function customShape(name: string, cx: number, cy: number, size: number, rot = 0
   }
   else throw new Error(`нет своего силуэта ${name}`);
   return { sd: (x, y) => { const [u, v] = back(x, y); return Math.min(...parts.map((p) => p(u, v))) * k; } };
+}
+
+/** Эмблема Сольгарда на знамени: золотое восходящее солнце над небесно-голубым щитом (data/factions.json). Пиксели в координатах плашки. */
+function emblemSolgard(g: (RGBA | null)[], theme: Theme) {
+  const H = RAMPS[theme], B = RAMPS.frost, put = (x: number, y: number, c: RGBA) => { if (x >= 0 && y >= 0 && x < 20 && y < 20) g[y * 20 + x] = c; };
+  const sun = H[H.length - 1], ray = H[H.length - 3];
+  // щит (небесно-голубой, светлая кромка слева-сверху, тёмная справа-снизу)
+  const rows: [number, number, number][] = [[8, 8, 12], [9, 8, 12], [10, 8, 12], [11, 9, 11], [12, 9, 11], [13, 10, 10]];
+  for (const [y, x0, x1] of rows) for (let x = x0; x <= x1; x++) put(x, y, x === x0 || y === 8 ? B[4] : x === x1 ? B[2] : B[3]);
+  put(10, 10, B[5]); put(10, 9, B[5]); put(9, 10, B[5]); put(11, 10, B[5]); // крест на щите
+  // солнце: диск на верхней кромке щита и лучи
+  for (const [x, y] of [[9, 7], [10, 7], [11, 7], [10, 6]]) put(x, y, sun);
+  for (const [x, y] of [[7, 7], [13, 7], [8, 5], [12, 5], [10, 4], [7, 5], [13, 5]]) put(x, y, ray);
 }
 
 export function renderEntry(e: IconEntry): PC {
@@ -161,6 +175,7 @@ export function renderEntry(e: IconEntry): PC {
     else { const ms = shapeOf(e.mod!, { cx: mx, cy: my, size: e.modSize ?? 8.5 }); sdm = (x, y) => ms.sd(x, y); }
     paintBody(g, (x, y) => sdm(x + 0.5, y + 0.5), mt, h + 3, false, e.cap, false);
   }
+  if (e.shape === "custom/banner") emblemSolgard(g, e.theme);
   const plate = new PC(20, 20);
   for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) { const c = g[y * 20 + x]; if (c) plate.set(x, y, c); }
   return frameIcon(plate);
