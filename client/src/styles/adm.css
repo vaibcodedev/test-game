@@ -23,21 +23,71 @@
   gap: var(--sp-1);
   justify-content: flex-end;
 }
+/* объявление администрации (admin:banner) — из компонентов кита: панель с рамкой окон (Kenney B), заголовок «Объявление» как у окна
+   (шрифт заголовков, золото), под ним разделитель с крюками на обоих концах (как на экране загрузки), текст — шрифт интерфейса.
+   Появляется, чуть опускаясь (ease-out), и тает (ease-in, 400 мс — BANNER_OUT_MS в ui/admin.ts). */
 .adm-banner {
   position: absolute;
   top: 120px;
   left: 50%;
-  transform: translateX(-50%);
-  max-width: 80vw;
-  font-size: 34px;
-  text-align: center;
-  color: var(--gold);
-  text-shadow:
-    0 3px 0 #000,
-    0 0 14px #000;
-  background: rgba(0, 0, 0, 0.55);
-  padding: var(--sp-2) var(--sp-5);
-  border-radius: var(--r-3);
-  pointer-events: none;
   z-index: 50;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 2 * var(--sp-4)));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  text-align: center;
+  border-radius: 0;
+  border-image: url("/ui/frame-b.png") var(--frame-slice) / var(--frame-w) stretch;
+  image-rendering: pixelated;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+}
+.adm-banner[hidden] { display: none; }
+.adm-banner.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition-duration: 0.3s;
+  transition-timing-function: ease-out;
+}
+.adm-banner-k {
+  font-family: var(--font-head);
+  font-size: round(nearest, var(--fs-head-win), var(--hu));
+  font-weight: var(--fw);
+  word-spacing: var(--head-ws);
+  line-height: 1.2;
+  color: var(--gold);
+  text-shadow: var(--shadow-head);
+}
+.adm-banner-rule {
+  display: flex;
+  align-self: stretch;
+  min-width: 240px;
+  height: var(--div-h);
+  margin-bottom: var(--sp-1h);
+}
+.adm-banner-rule::before,
+.adm-banner-rule::after {
+  content: "";
+  flex: 1;
+  background: url("/ui/divider-b-cap.png") right bottom / var(--div-cap) var(--div-h) no-repeat, url("/ui/divider-b-line.png") left bottom / calc(100% - var(--div-cap)) var(--div-h) no-repeat;
+  image-rendering: pixelated;
+}
+.adm-banner-rule::before { transform: scaleX(-1); }
+.adm-banner-t {
+  margin: 0;
+  color: var(--fg);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-b);
+  line-height: 1.4;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  text-shadow: var(--shadow-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .adm-banner, .adm-banner.show { transition: none; transform: translate(-50%, 0); }
 }

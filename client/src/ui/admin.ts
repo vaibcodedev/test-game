@@ -9,6 +9,9 @@ const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;"
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU");
 const opts = (ids: string[], name: (id: string) => string) => ids.map((id) => `<option value="${esc(id)}">${esc(name(id))} (${esc(id)})</option>`).join("");
 const TABS: [string, string][] = [["players", "Игроки"], ["give", "Выдача"], ["world", "Мир"], ["logs", "Логи"]];
+/** Объявление держится столько, чтобы успеть прочесть: 5 с и ещё 60 мс на знак, не дольше 12 с; уход — 400 мс (styles/adm.css). */
+const bannerMs = (text: string) => Math.min(12000, 5000 + text.length * 60);
+const BANNER_OUT_MS = 400;
 
 export class AdminUI {
   private win = document.createElement("div");
@@ -30,8 +33,10 @@ export class AdminUI {
   constructor(root: HTMLElement, private pickOnMap?: (onPick: (x: number, y: number) => void, onCancel: () => void) => void) {
     this.win.className = "panel win win-admin l";
     this.win.hidden = true;
-    this.banner.className = "adm-banner";
+    this.banner.className = "panel adm-banner";
     this.banner.hidden = true;
+    this.banner.setAttribute("role", "status");
+    this.banner.innerHTML = `<span class="adm-banner-k">Объявление</span><span class="adm-banner-rule" aria-hidden="true"></span><p class="adm-banner-t"></p>`;
     root.append(this.win, this.banner);
   }
 
@@ -40,10 +45,16 @@ export class AdminUI {
     net.on("admin:players", (m) => { this.players = m; this.giveTab?.setPlayers(m); if (this.tab === "players") this.render(); });
     net.on("admin:logs", (m) => { this.logs = m; if (this.tab === "logs") this.render(); });
     net.on("admin:banner", (m) => {
-      this.banner.textContent = m.text;
-      this.banner.hidden = false;
+      const b = this.banner;
+      b.querySelector(".adm-banner-t")!.textContent = m.text;
       clearTimeout(this.bannerTimer);
-      this.bannerTimer = window.setTimeout(() => (this.banner.hidden = true), 7000);
+      // показать: снять hidden, кадр спустя — класс show (переход прозрачности и сдвига); убрать: снять show, после ухода — hidden
+      b.hidden = false;
+      requestAnimationFrame(() => b.classList.add("show"));
+      this.bannerTimer = window.setTimeout(() => {
+        b.classList.remove("show");
+        this.bannerTimer = window.setTimeout(() => (b.hidden = true), BANNER_OUT_MS);
+      }, bannerMs(m.text));
     });
   }
 
