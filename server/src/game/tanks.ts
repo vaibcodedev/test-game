@@ -164,6 +164,8 @@ export function castTank(c: CastCtx): string | null | undefined {
       liveBanners.add(nb);
       w.emit({ t: "hazard", id: w.uid("h"), k: "holy", x: bx, y: by, r: v.radius, ms: v.dur * 1000 });
       w.emit({ t: "aoe", k: "banner", x: bx, y: by, r: v.radius });
+      // удар древка о землю (в такт пыли установки на клиенте): свет по врагам рядом с основанием
+      w.later(170, () => { for (const e of w.enemiesInCircle(p, bx, by, v.impact)) w.hit(p, e, { mult: v.dmg / 100, skill: true, kind: "holy", threat: 1 }); });
       return null;
     }
     case "tp_divine": {

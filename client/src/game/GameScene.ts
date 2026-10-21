@@ -92,6 +92,8 @@ export class GameScene extends Phaser.Scene {
   clickMark!: Phaser.GameObjects.Image;
   hoverId: string | null = null;
   ambient: Record<string, Phaser.GameObjects.Particles.ParticleEmitter> = {};
+  /** Текущий цвет дымки зоны (плавно идёт к цвету зоны и ночи). */
+  private hazeRGB: [number, number, number] | null = null;
   dust!: Phaser.GameObjects.Particles.ParticleEmitter;
   selfLight!: Phaser.GameObjects.Image;
   dustAt = new Map<string, number>();
@@ -277,7 +279,7 @@ export class GameScene extends Phaser.Scene {
     const area = () => new Phaser.Geom.Rectangle(0, 0, 700, 420);
     const mk = (key: string, tex: string, cfg: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig) => {
       const e = this.add.particles(0, 0, tex, { emitZone: { type: "random", source: area() } as any, emitting: false, ...cfg });
-      e.setDepth(DEPTH.top - 15);
+      e.setDepth(DEPTH.top - 15).setAlpha(0);
       this.ambient[key] = e;
     };
     mk("leaves", "fx_leaf", { frequency: 260, lifespan: 6000, speedX: { min: -14, max: 14 }, speedY: { min: 10, max: 22 }, rotate: { start: 0, end: 360 }, alpha: { start: 0.9, end: 0 }, tint: [0x8ac850, 0xd09a34, 0x6aa040] });
@@ -293,7 +295,7 @@ export class GameScene extends Phaser.Scene {
     this.selfLight = this.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xffc88a).setScale(5.5).setAlpha(0).setDepth(DEPTH.top - 10);
   }
 
-  private updateAmbient(zone: Zone) {
+  private updateAmbient(zone: Zone, dt: number) {
     const z = zoneStyle(zone);
     const cam = this.cameras.main;
     const v = cam.worldView;
@@ -305,8 +307,10 @@ export class GameScene extends Phaser.Scene {
     for (const [k, e] of Object.entries(this.ambient)) {
       e.setPosition(v.x - 40, v.y - (k === "leaves" ? 60 : 0));
       (e.emitZones[0] as any)?.source?.setSize?.(v.width + 80, v.height + 40);
+      // смена зоны: погода не обрывается, а проявляется и тает за ~1,5 с (прозрачность всего эмиттера); растаявшая — останавливается
+      e.setAlpha(e.alpha + ((want[k] ? 1 : 0) - e.alpha) * Math.min(1, dt * 1.5));
       if (want[k] && !e.emitting) e.start();
-      else if (!want[k] && e.emitting) e.stop();
+      else if (!want[k] && e.emitting && e.alpha < 0.02) e.stop(true);
     }
     this.selfLight.setPosition(this.pos.x, this.pos.y - 12).setAlpha(this.world.dark.alpha * 0.55);
     // пыль из-под ног идущих
@@ -1038,7 +1042,10 @@ export class GameScene extends Phaser.Scene {
     const target = Math.max(tint.dark, night * 0.5);
     const dark = this.world.dark;
     const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
-    dark.setFillStyle(Phaser.Display.Color.GetColor(nc.r, nc.g, nc.b), 1);
+    // цвет дымки зоны (снежная синева, пустынный жар) меняется так же плавно, как её плотность, а не скачком на границе
+    const k = Math.min(1, dt * 2), c0 = (this.hazeRGB ??= [nc.r, nc.g, nc.b]);
+    c0[0] += (nc.r - c0[0]) * k; c0[1] += (nc.g - c0[1]) * k; c0[2] += (nc.b - c0[2]) * k;
+    dark.setFillStyle(Phaser.Display.Color.GetColor(Math.round(c0[0]), Math.round(c0[1]), Math.round(c0[2])), 1);
     sfx.setAmbience(AMBIENCE[z] ?? AMBIENCE[zs] ?? null);
     dark.setSize(cam.width / cam.zoom + 4, cam.height / cam.zoom + 4).setPosition(-2, -2);
     dark.setAlpha(dark.alpha + (target - dark.alpha) * Math.min(1, dt * 2));
@@ -1047,7 +1054,7 @@ export class GameScene extends Phaser.Scene {
     dark.x = (cam.width - cam.width / cam.zoom) / 2 - 2;
     dark.y = (cam.height - cam.height / cam.zoom) / 2 - 2;
 
-    this.updateAmbient(z);
+    this.updateAmbient(z, dt);
     this.hud.frame({
       me: me?.u ?? null,
       target: this.targetId ? (this.units.get(this.targetId)?.u ?? null) : null,
