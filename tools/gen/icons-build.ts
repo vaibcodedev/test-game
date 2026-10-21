@@ -88,4 +88,16 @@ export function darkenIcon(src: PC): PC {
   }
   return out;
 }
-export function buildSkillIcon(id: string): PC { return darkenIcon(buildSkillIconRaw(id)); }
+/** Автоэкспозиция: у тусклых оригиналов (мазки тени, дуги) поднимаем яркость знака, чтобы он читался на тёмной плашке. */
+function exposure(src: PC): PC {
+  const ls: number[] = [];
+  for (let y = 2; y < 22; y++) for (let x = 2; x < 22; x++) { const c = src.get(x, y)!; if (c[0] === 0x1f && c[1] === 0x24 && c[2] === 0x4b) continue; ls.push(0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]); }
+  ls.sort((a, c) => a - c);
+  const p = ls[Math.floor(ls.length * 0.92)] ?? 255;
+  const k = p >= 175 ? 1 : Math.min(2.3, 175 / Math.max(60, p));
+  if (k <= 1.02) return src;
+  const out = src.clone();
+  for (let y = 2; y < 22; y++) for (let x = 2; x < 22; x++) { const c = src.get(x, y)!; if (c[0] === 0x1f && c[1] === 0x24 && c[2] === 0x4b) continue; out.set(x, y, [Math.min(255, Math.round(c[0] * k)), Math.min(255, Math.round(c[1] * k)), Math.min(255, Math.round(c[2] * k)), 255]); }
+  return out;
+}
+export function buildSkillIcon(id: string): PC { return darkenIcon(exposure(buildSkillIconRaw(id))); }
