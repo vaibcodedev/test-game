@@ -1,0 +1,105 @@
+{
+ "_doc": "Иконки еды, зелий и материалов (задача 127, шаг 1, на утверждение): 7Soul1 «496 pixel art icons for medieval/fantasy RPG», CC0. Файл: vendor/7soul1/src/<file>.png; подгонка под нашу графику — tools/gen/icons-items.ts. reserve — отобрано про запас (свитков и самоцветов как предметов в игре пока нет).",
+ "food_bread": {
+  "src": "7soul1",
+  "file": "I_C_Bread"
+ },
+ "food_porridge": {
+  "src": "7soul1",
+  "file": "I_C_Nut"
+ },
+ "food_fish_soup": {
+  "src": "7soul1",
+  "file": "I_C_RawFish"
+ },
+ "food_pie": {
+  "src": "7soul1",
+  "file": "I_C_Pie"
+ },
+ "food_borsch": {
+  "src": "7soul1",
+  "file": "I_C_Radish"
+ },
+ "food_roast": {
+  "src": "7soul1",
+  "file": "I_C_Meat"
+ },
+ "food_trout": {
+  "src": "7soul1",
+  "file": "I_C_Fish"
+ },
+ "food_feast": {
+  "src": "7soul1",
+  "file": "I_C_Pineapple"
+ },
+ "food_heat_stew": {
+  "src": "7soul1",
+  "file": "I_C_RedPepper"
+ },
+ "potion_red": {
+  "src": "7soul1",
+  "file": "P_Red05"
+ },
+ "potion_blue": {
+  "src": "7soul1",
+  "file": "P_Blue05"
+ },
+ "res_cactus_juice": {
+  "src": "7soul1",
+  "file": "P_Green05"
+ },
+ "res_ice_crystal": {
+  "src": "7soul1",
+  "file": "I_Crystal01"
+ },
+ "res_obsidian": {
+  "src": "7soul1",
+  "file": "I_Coal"
+ },
+ "res_pearl": {
+  "src": "7soul1",
+  "file": "I_Opal"
+ },
+ "mat_ash_ore": {
+  "src": "7soul1",
+  "file": "I_Rock04"
+ },
+ "mat_star_dust": {
+  "src": "7soul1",
+  "file": "I_Diamond"
+ },
+ "reserve": [
+  {
+   "src": "7soul1",
+   "file": "I_Scroll"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Scroll02"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Map"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Ruby"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Sapphire"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Agate"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Amethist"
+  },
+  {
+   "src": "7soul1",
+   "file": "I_Jade"
+  }
+ ]
+}
