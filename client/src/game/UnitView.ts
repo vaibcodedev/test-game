@@ -30,6 +30,14 @@ export class UnitView {
   /** Титул над именем и рамка ранга арены. */
   titleText: Phaser.GameObjects.Text;
   frameGfx: Phaser.GameObjects.Graphics;
+  /** Спрайты эффектов (щит, аура, каст), привязанные к юниту: ставятся здесь же, после интерполяции, с тем же округлением, что и спрайт героя. dz — смещение глубины от y (null — глубину не трогать). */
+  private attached: { spr: Phaser.GameObjects.Sprite; dy: number; dz: number | null }[] = [];
+  attach(spr: Phaser.GameObjects.Sprite, dy: number, dz: number | null) { this.detach(spr); this.attached.push({ spr, dy, dz }); this.placeAttached(); }
+  detach(spr: Phaser.GameObjects.Sprite) { const i = this.attached.findIndex((a) => a.spr === spr); if (i >= 0) this.attached.splice(i, 1); }
+  private placeAttached() {
+    const x = Math.round(this.x), y = Math.round(this.y);
+    for (const a of this.attached) { a.spr.setPosition(x, y + a.dy); if (a.dz !== null) a.spr.setDepth(this.y + a.dz); }
+  }
   mountSpr?: Phaser.GameObjects.Sprite;
   mountFront?: Phaser.GameObjects.Sprite;
   private mounted = false;
@@ -282,6 +290,7 @@ export class UnitView {
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
     this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible(this.selected && !this.dead);
+    if (this.attached.length) this.placeAttached();
     let top = this.nameRise !== undefined ? this.y - this.nameRise + 4 : this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
     // плавный переход к назначенному разводкой сдвигу
     const sk = Math.min(1, dt * 9);

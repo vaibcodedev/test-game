@@ -1,0 +1,2023 @@
+{
+ "arrow-volley": {
+  "frameW": 56,
+  "frameH": 52,
+  "frames": 10,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.7
+  ],
+  "blend": "normal"
+ },
+ "arrow-volley@2": {
+  "frameW": 112,
+  "frameH": 104,
+  "frames": 10,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.7
+  ],
+  "blend": "normal"
+ },
+ "aura-rage": {
+  "frameW": 34,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.841
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "aura-runes-frost": {
+  "frameW": 44,
+  "frameH": 38,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "aura-runes-holy": {
+  "frameW": 44,
+  "frameH": 38,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "axe-blood": {
+  "frameW": 50,
+  "frameH": 16,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "axe-blood-hit": {
+  "frameW": 9,
+  "frameH": 24,
+  "frames": 4,
+  "fps": 14,
+  "anchor": [
+   1,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "axe-spin": {
+  "frameW": 16,
+  "frameH": 16,
+  "frames": 4,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "axe-spin-blood": {
+  "frameW": 16,
+  "frameH": 16,
+  "frames": 4,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "banner-blood": {
+  "frameW": 26,
+  "frameH": 40,
+  "frames": 6,
+  "fps": 8,
+  "anchor": [
+   0.269,
+   0.95
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "banner-holy": {
+  "frameW": 26,
+  "frameH": 40,
+  "frames": 6,
+  "fps": 8,
+  "anchor": [
+   0.269,
+   0.95
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "blade-blood": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blade-dark": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blade-fire": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blade-ice": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blade-poison": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blade-shadow": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blade-steel": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 9,
+  "fps": 22,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "blood-ball": {
+  "frameW": 26,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "blood-ball-hit": {
+  "frameW": 30,
+  "frameH": 20,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "blood-pool": {
+  "frameW": 66,
+  "frameH": 42,
+  "frames": 8,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "blood-splash": {
+  "frameW": 32,
+  "frameH": 27,
+  "frames": 8,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.593
+  ],
+  "blend": "normal"
+ },
+ "blood-splash-b": {
+  "frameW": 32,
+  "frameH": 27,
+  "frames": 8,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.593
+  ],
+  "blend": "normal"
+ },
+ "bolt-hit": {
+  "frameW": 32,
+  "frameH": 32,
+  "frames": 5,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "bolt-proj": {
+  "frameW": 24,
+  "frameH": 17,
+  "frames": 5,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.529
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "bolt-splash": {
+  "frameW": 48,
+  "frameH": 42,
+  "frames": 11,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.976
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "bolt-strike": {
+  "frameW": 49,
+  "frameH": 56,
+  "frames": 12,
+  "fps": 16,
+  "anchor": [
+   0.51,
+   0.964
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "bone-spikes": {
+  "frameW": 62,
+  "frameH": 33,
+  "frames": 9,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.939
+  ],
+  "blend": "normal"
+ },
+ "bone-spikes@2": {
+  "frameW": 124,
+  "frameH": 66,
+  "frames": 9,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.939
+  ],
+  "blend": "normal"
+ },
+ "bubble-arcane": {
+  "frameW": 39,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.513,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "bubble-bone": {
+  "frameW": 39,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.513,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "bubble-holy": {
+  "frameW": 39,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.513,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "bubble-shadow": {
+  "frameW": 39,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.513,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "bubble-steel": {
+  "frameW": 39,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.513,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "chain-shadow": {
+  "frameW": 16,
+  "frameH": 8,
+  "frames": 6,
+  "fps": 12,
+  "anchor": [
+   0,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "chain-steel": {
+  "frameW": 16,
+  "frameH": 8,
+  "frames": 6,
+  "fps": 12,
+  "anchor": [
+   0,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "dark-bolt": {
+  "frameW": 24,
+  "frameH": 10,
+  "frames": 10,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "dark-bolt-hit": {
+  "frameW": 30,
+  "frameH": 20,
+  "frames": 6,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "dark-tentacles": {
+  "frameW": 56,
+  "frameH": 45,
+  "frames": 12,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.933
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "dark-wraith": {
+  "frameW": 20,
+  "frameH": 48,
+  "frames": 11,
+  "fps": 7,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "earth-spike": {
+  "frameW": 62,
+  "frameH": 33,
+  "frames": 9,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.939
+  ],
+  "blend": "normal"
+ },
+ "earth-spike@2": {
+  "frameW": 124,
+  "frameH": 66,
+  "frames": 9,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.939
+  ],
+  "blend": "normal"
+ },
+ "expl-blue": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 12,
+  "fps": 16,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-column": {
+  "frameW": 50,
+  "frameH": 82,
+  "frames": 12,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.988
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-dust": {
+  "frameW": 40,
+  "frameH": 28,
+  "frames": 11,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-large": {
+  "frameW": 56,
+  "frameH": 58,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-large-blood": {
+  "frameW": 56,
+  "frameH": 58,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-large-blood@2": {
+  "frameW": 112,
+  "frameH": 116,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-large-shadow": {
+  "frameW": 42,
+  "frameH": 44,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "expl-large@2": {
+  "frameW": 112,
+  "frameH": 116,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "explosion": {
+  "frameW": 35,
+  "frameH": 40,
+  "frames": 7,
+  "fps": 16,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "explosion-blood": {
+  "frameW": 35,
+  "frameH": 40,
+  "frames": 7,
+  "fps": 16,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "explosion-poison": {
+  "frameW": 35,
+  "frameH": 40,
+  "frames": 7,
+  "fps": 16,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "explosion-shadow": {
+  "frameW": 35,
+  "frameH": 40,
+  "frames": 7,
+  "fps": 16,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "fire-ball": {
+  "frameW": 26,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "fire-ball-hit": {
+  "frameW": 30,
+  "frameH": 20,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "flame-loop": {
+  "frameW": 28,
+  "frameH": 36,
+  "frames": 8,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.889
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "fog-loop": {
+  "frameW": 56,
+  "frameH": 66,
+  "frames": 5,
+  "fps": 6,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1,
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "fog-poison": {
+  "frameW": 56,
+  "frameH": 66,
+  "frames": 5,
+  "fps": 6,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1,
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "fog-shadow": {
+  "frameW": 56,
+  "frameH": 66,
+  "frames": 5,
+  "fps": 6,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1,
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "frost-ball": {
+  "frameW": 52,
+  "frameH": 22,
+  "frames": 5,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "frost-splash": {
+  "frameW": 25,
+  "frameH": 52,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   1,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "geyser": {
+  "frameW": 32,
+  "frameH": 64,
+  "frames": 8,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.953
+  ],
+  "blend": "normal"
+ },
+ "geyser-blood": {
+  "frameW": 22,
+  "frameH": 44,
+  "frames": 8,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.955
+  ],
+  "blend": "normal"
+ },
+ "heal-blood": {
+  "frameW": 41,
+  "frameH": 44,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.512,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1,
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "heal-nature": {
+  "frameW": 41,
+  "frameH": 44,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.512,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1,
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "hit-blood": {
+  "frameW": 32,
+  "frameH": 31,
+  "frames": 6,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.516
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "hit-fire": {
+  "frameW": 32,
+  "frameH": 31,
+  "frames": 6,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.516
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "hit-frost": {
+  "frameW": 32,
+  "frameH": 31,
+  "frames": 6,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.516
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "hit-holy": {
+  "frameW": 32,
+  "frameH": 31,
+  "frames": 6,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.516
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "hit-poison": {
+  "frameW": 32,
+  "frameH": 31,
+  "frames": 6,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.516
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "hit-shadow": {
+  "frameW": 32,
+  "frameH": 31,
+  "frames": 6,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.516
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "holy-fury": {
+  "frameW": 26,
+  "frameH": 56,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "holy-heal": {
+  "frameW": 41,
+  "frameH": 44,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.512,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1,
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "holy-nova": {
+  "frameW": 94,
+  "frameH": 54,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "holy-nova-s": {
+  "frameW": 56,
+  "frameH": 32,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "holy-nova@2": {
+  "frameW": 188,
+  "frameH": 108,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "holy-shield": {
+  "frameW": 62,
+  "frameH": 62,
+  "frames": 11,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "holy-slash-a": {
+  "frameW": 54,
+  "frameH": 56,
+  "frames": 5,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "holy-slash-b": {
+  "frameW": 62,
+  "frameH": 30,
+  "frames": 4,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "holy-slash-c": {
+  "frameW": 62,
+  "frameH": 56,
+  "frames": 7,
+  "fps": 18,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "holy-smite": {
+  "frameW": 36,
+  "frameH": 36,
+  "frames": 11,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "holy-sword": {
+  "frameW": 56,
+  "frameH": 126,
+  "frames": 13,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.905
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "ice-bolt": {
+  "frameW": 24,
+  "frameH": 8,
+  "frames": 10,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "ice-bolt-hit": {
+  "frameW": 32,
+  "frameH": 22,
+  "frames": 7,
+  "fps": 16,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "ice-crystal": {
+  "frameW": 28,
+  "frameH": 27,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.889
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "ice-crystal-bone": {
+  "frameW": 28,
+  "frameH": 27,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.889
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "ice-spikes": {
+  "frameW": 62,
+  "frameH": 33,
+  "frames": 9,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.939
+  ],
+  "blend": "normal"
+ },
+ "knife-spin": {
+  "frameW": 14,
+  "frameH": 14,
+  "frames": 2,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "lava-spear": {
+  "frameW": 20,
+  "frameH": 64,
+  "frames": 12,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.969
+  ],
+  "blend": "normal"
+ },
+ "levelup": {
+  "frameW": 128,
+  "frameH": 116,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.888
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "nova-arcane": {
+  "frameW": 94,
+  "frameH": 54,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-arcane@2": {
+  "frameW": 188,
+  "frameH": 108,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-blood": {
+  "frameW": 94,
+  "frameH": 54,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-blood@2": {
+  "frameW": 188,
+  "frameH": 108,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-frost": {
+  "frameW": 94,
+  "frameH": 54,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-frost@2": {
+  "frameW": 188,
+  "frameH": 108,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-shadow": {
+  "frameW": 94,
+  "frameH": 54,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-shadow-s": {
+  "frameW": 72,
+  "frameH": 41,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.512
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "nova-shadow@2": {
+  "frameW": 188,
+  "frameH": 108,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "add",
+  "r": 1
+ },
+ "poison-ball": {
+  "frameW": 16,
+  "frameH": 15,
+  "frames": 4,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.533
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "poison-ball-hit": {
+  "frameW": 26,
+  "frameH": 24,
+  "frames": 8,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "poison-skull": {
+  "frameW": 33,
+  "frameH": 40,
+  "frames": 15,
+  "fps": 12,
+  "anchor": [
+   0.515,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "poison-slash": {
+  "frameW": 35,
+  "frameH": 40,
+  "frames": 15,
+  "fps": 18,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "portal": {
+  "frameW": 42,
+  "frameH": 42,
+  "frames": 5,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "portal-hold": {
+  "frameW": 36,
+  "frameH": 36,
+  "frames": 13,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 240,
+   "scaleIn": 0.6,
+   "loop": [
+    4,
+    8
+   ],
+   "hold": 900
+  }
+ },
+ "portal-hold-nature": {
+  "frameW": 36,
+  "frameH": 36,
+  "frames": 13,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 240,
+   "scaleIn": 0.6,
+   "loop": [
+    4,
+    8
+   ],
+   "hold": 900
+  }
+ },
+ "portal-hold-shadow": {
+  "frameW": 36,
+  "frameH": 36,
+  "frames": 13,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 240,
+   "scaleIn": 0.6,
+   "loop": [
+    4,
+    8
+   ],
+   "hold": 900
+  }
+ },
+ "portal-nature": {
+  "frameW": 42,
+  "frameH": 42,
+  "frames": 5,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "portal-open": {
+  "frameW": 40,
+  "frameH": 40,
+  "frames": 4,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "portal-open-nature": {
+  "frameW": 40,
+  "frameH": 40,
+  "frames": 4,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "portal-open-shadow": {
+  "frameW": 40,
+  "frameH": 40,
+  "frames": 4,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "portal-shadow": {
+  "frameW": 42,
+  "frameH": 42,
+  "frames": 5,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "puff-poison": {
+  "frameW": 56,
+  "frameH": 66,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "puff-poison@2": {
+  "frameW": 112,
+  "frameH": 132,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "puff-shadow": {
+  "frameW": 37,
+  "frameH": 44,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.514,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "raven-fly": {
+  "frameW": 22,
+  "frameH": 18,
+  "frames": 4,
+  "fps": 14,
+  "anchor": [
+   0.545,
+   0.556
+  ],
+  "blend": "normal"
+ },
+ "ring-arcane": {
+  "frameW": 44,
+  "frameH": 24,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "ring-blood": {
+  "frameW": 44,
+  "frameH": 24,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "ring-frost": {
+  "frameW": 44,
+  "frameH": 24,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "ring-holy": {
+  "frameW": 44,
+  "frameH": 24,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "ring-shadow": {
+  "frameW": 44,
+  "frameH": 24,
+  "frames": 8,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "rocks": {
+  "frameW": 58,
+  "frameH": 28,
+  "frames": 6,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "rocks-hit": {
+  "frameW": 27,
+  "frameH": 62,
+  "frames": 4,
+  "fps": 14,
+  "anchor": [
+   1,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "shackle-shadow": {
+  "frameW": 40,
+  "frameH": 26,
+  "frames": 10,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.538
+  ],
+  "blend": "normal"
+ },
+ "shackle-steel": {
+  "frameW": 40,
+  "frameH": 26,
+  "frames": 10,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.538
+  ],
+  "blend": "normal"
+ },
+ "shield-arcane": {
+  "frameW": 62,
+  "frameH": 62,
+  "frames": 11,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "shield-bone": {
+  "frameW": 62,
+  "frameH": 62,
+  "frames": 11,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "shield-steel": {
+  "frameW": 62,
+  "frameH": 62,
+  "frames": 11,
+  "fps": 11,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "slash-blood": {
+  "frameW": 62,
+  "frameH": 30,
+  "frames": 4,
+  "fps": 20,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "slash-shadow": {
+  "frameW": 62,
+  "frameH": 56,
+  "frames": 7,
+  "fps": 18,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-h-blood": {
+  "frameW": 30,
+  "frameH": 26,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-h-fire": {
+  "frameW": 30,
+  "frameH": 26,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-h-frost": {
+  "frameW": 30,
+  "frameH": 26,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-h-poison": {
+  "frameW": 30,
+  "frameH": 26,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-h-shadow": {
+  "frameW": 30,
+  "frameH": 26,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-h-steel": {
+  "frameW": 30,
+  "frameH": 26,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-v-blood": {
+  "frameW": 32,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-v-fire": {
+  "frameW": 32,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-v-frost": {
+  "frameW": 32,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-v-poison": {
+  "frameW": 32,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smear-v-steel": {
+  "frameW": 32,
+  "frameH": 12,
+  "frames": 5,
+  "fps": 24,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smoke-puff": {
+  "frameW": 56,
+  "frameH": 66,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "smoke-puff@2": {
+  "frameW": 112,
+  "frameH": 132,
+  "frames": 11,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "summon-circle-fire": {
+  "frameW": 84,
+  "frameH": 60,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 200,
+   "fadeOut": 320,
+   "scaleIn": 0.8,
+   "loop": [
+    4,
+    6
+   ],
+   "hold": 1400
+  }
+ },
+ "summon-circle-holy": {
+  "frameW": 84,
+  "frameH": 60,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 200,
+   "fadeOut": 320,
+   "scaleIn": 0.8,
+   "loop": [
+    4,
+    6
+   ],
+   "hold": 1400
+  }
+ },
+ "summon-circle-nature": {
+  "frameW": 64,
+  "frameH": 46,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 200,
+   "fadeOut": 320,
+   "scaleIn": 0.8,
+   "loop": [
+    4,
+    6
+   ],
+   "hold": 1400
+  }
+ },
+ "summon-circle-shadow": {
+  "frameW": 84,
+  "frameH": 60,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 200,
+   "fadeOut": 320,
+   "scaleIn": 0.8,
+   "loop": [
+    4,
+    6
+   ],
+   "hold": 1400
+  }
+ },
+ "summon-circle-shadow@2": {
+  "frameW": 168,
+  "frameH": 120,
+  "frames": 10,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 200,
+   "fadeOut": 320,
+   "scaleIn": 0.8,
+   "loop": [
+    4,
+    6
+   ],
+   "hold": 1400
+  }
+ },
+ "tornado": {
+  "frameW": 48,
+  "frameH": 55,
+  "frames": 9,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.945
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "tornado-blood": {
+  "frameW": 42,
+  "frameH": 48,
+  "frames": 9,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.938
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "tornado-shadow": {
+  "frameW": 42,
+  "frameH": 48,
+  "frames": 9,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.938
+  ],
+  "blend": "normal",
+  "ease": {
+   "fadeIn": 220,
+   "fadeOut": 260,
+   "scaleIn": 0.7
+  }
+ },
+ "trap-snap": {
+  "frameW": 36,
+  "frameH": 28,
+  "frames": 7,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.6
+  ],
+  "blend": "normal"
+ },
+ "water-ball": {
+  "frameW": 52,
+  "frameH": 22,
+  "frames": 5,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "water-splash": {
+  "frameW": 25,
+  "frameH": 52,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   1,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "wind-hit": {
+  "frameW": 13,
+  "frameH": 36,
+  "frames": 4,
+  "fps": 14,
+  "anchor": [
+   1,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "wind-slash": {
+  "frameW": 50,
+  "frameH": 16,
+  "frames": 5,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ }
+}

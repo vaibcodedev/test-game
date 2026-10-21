@@ -174,7 +174,10 @@ export interface LootBag {
 
 export type FxKind = "phys" | "fire" | "frost" | "poison" | "arcane" | "shadow" | "nature" | "holy" | "blood";
 
-export type Fx =
+/** s — id умения, из-за которого возник эффект, c — id кастера (ставит сервер в World.emit; по ним клиент берёт анимации из data/skill-fx.json). */
+export type Fx = FxBody & { s?: string; c?: string };
+
+type FxBody =
   | { t: "dmg"; id: string; v: number; crit?: boolean; k?: FxKind; heal?: boolean; miss?: boolean; abs?: boolean; imm?: boolean }
   | { t: "proj"; k: string; from: string; tx: number; ty: number; ms: number; to?: string }
   | { t: "aoe"; k: string; x: number; y: number; r: number }

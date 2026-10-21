@@ -38,7 +38,14 @@ export function reachable(w: World, x0: number, y0: number, x1: number, y1: numb
   return best;
 }
 
+/** Применение умения; все fx внутри (и в отложенных вызовах) помечаются id умения и кастера. */
 export function castSkill(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null): string | null {
+  const ps = w.fxSkill, pc = w.fxCaster;
+  w.fxSkill = id; w.fxCaster = p.id;
+  try { return castSkillInner(w, p, id, ax, ay, targetId); } finally { w.fxSkill = ps; w.fxCaster = pc; }
+}
+
+function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null): string | null {
   const def = SKILLS[id];
   if (!def || def.kind !== "active" || def.cls !== p.cls) return "Неизвестное умение";
   const rank = p.save.skills[id] || 0;

@@ -1,0 +1,308 @@
+{
+ "taunt": {
+  "cast": "holy-nova-s"
+ },
+ "shieldblock": {
+  "aura": "bubble-steel"
+ },
+ "charge": {
+  "cast": "smear-h-steel",
+  "hit": "expl-dust"
+ },
+ "quake": {
+  "hit": "earth-spike@2"
+ },
+ "tp_shield_bash": {
+  "hit": "hit-fire"
+ },
+ "tp_glare": {
+  "cast": "holy-nova@2"
+ },
+ "tp_hammer": {
+  "hit": "holy-fury"
+ },
+ "tp_banner": {
+  "cast": "holy-nova@2",
+  "aura": "banner-holy"
+ },
+ "tp_divine": {
+  "cast": "holy-nova-s",
+  "aura": "bubble-holy"
+ },
+ "fireball": {
+  "proj": "fire-ball",
+  "hit": "explosion"
+ },
+ "frostnova": {
+  "cast": "nova-frost@2"
+ },
+ "blink": {
+  "cast": "portal-hold",
+  "hit": "portal-hold"
+ },
+ "meteor": {
+  "proj": "fire-ball",
+  "hit": "expl-large@2"
+ },
+ "mg_bolt": {
+  "hit": "bolt-hit"
+ },
+ "mg_barrier": {
+  "aura": "bubble-arcane"
+ },
+ "mg_firewall": {
+  "aura": "flame-loop"
+ },
+ "mg_storm": {
+  "hit": "bolt-strike"
+ },
+ "mg_timewarp": {
+  "cast": "nova-arcane@2"
+ },
+ "wl_hex": {
+  "hit": "dark-wraith"
+ },
+ "wl_siphon": {
+  "proj": "dark-bolt",
+  "hit": "dark-bolt-hit"
+ },
+ "wl_demon": {
+  "cast": "summon-circle-shadow",
+  "hit": "portal-hold-shadow"
+ },
+ "wl_detonate": {
+  "hit": "expl-large-shadow"
+ },
+ "wl_meta": {
+  "cast": "nova-shadow-s",
+  "aura": "dark-wraith"
+ },
+ "wl_agony": {
+  "proj": "dark-bolt",
+  "hit": "dark-bolt-hit"
+ },
+ "wl_drain_mana": {
+  "proj": "dark-bolt",
+  "hit": "hit-shadow"
+ },
+ "wl_skeletons": {
+  "cast": "summon-circle-shadow@2",
+  "hit": "bone-spikes@2"
+ },
+ "wl_doom": {
+  "cast": "puff-poison@2",
+  "aura": "fog-poison"
+ },
+ "bw_blood_bolt": {
+  "proj": "blood-ball",
+  "hit": "blood-ball-hit"
+ },
+ "bw_blood_bond": {
+  "hit": "heal-blood"
+ },
+ "bw_sacrifice": {
+  "cast": "hit-blood",
+  "hit": "heal-blood"
+ },
+ "bw_crimson_pool": {
+  "hit": "geyser-blood",
+  "aura": "blood-pool"
+ },
+ "bw_leech": {
+  "hit": "blood-splash"
+ },
+ "bw_blood_burst": {
+  "hit": "expl-large-blood@2"
+ },
+ "bw_transfusion": {
+  "hit": "heal-blood"
+ },
+ "bw_blood_circle": {
+  "cast": "nova-blood@2",
+  "aura": "ring-blood"
+ },
+ "bw_tide": {
+  "cast": "nova-blood@2",
+  "aura": "ring-blood"
+ },
+ "rv_lacerate": {
+  "cast": "blade-blood",
+  "hit": "blood-splash"
+ },
+ "rv_leap": {
+  "cast": "blade-blood",
+  "hit": "blood-splash"
+ },
+ "rv_carve": {
+  "cast": "tornado-blood"
+ },
+ "rv_frenzy": {
+  "cast": "hit-blood",
+  "aura": "aura-rage"
+ },
+ "rv_hamstring": {
+  "cast": "blade-blood",
+  "hit": "hit-blood"
+ },
+ "rv_reap": {
+  "cast": "nova-blood@2"
+ },
+ "rv_gore": {
+  "cast": "blade-blood",
+  "hit": "blood-splash"
+ },
+ "rv_throw": {
+  "proj": "axe-spin-blood",
+  "hit": "axe-blood-hit"
+ },
+ "rv_massacre": {
+  "aura": "tornado-blood"
+ },
+ "dk_rune_strike": {
+  "cast": "blade-ice",
+  "hit": "hit-frost"
+ },
+ "dk_death_grip": {
+  "proj": "chain-steel",
+  "hit": "shackle-steel"
+ },
+ "dk_bone_armor": {
+  "aura": "bubble-bone"
+ },
+ "dk_blood_drain": {
+  "cast": "nova-shadow@2"
+ },
+ "dk_icy_touch": {
+  "proj": "ice-bolt",
+  "hit": "ice-bolt-hit"
+ },
+ "dk_soul_reap": {
+  "cast": "blade-dark",
+  "hit": "hit-shadow"
+ },
+ "dk_rune_blade": {
+  "aura": "aura-runes-frost"
+ },
+ "dk_chain_storm": {
+  "cast": "nova-shadow@2",
+  "hit": "shackle-shadow"
+ },
+ "dk_anti_magic": {
+  "aura": "bubble-arcane"
+ },
+ "heal": {
+  "hit": "holy-heal"
+ },
+ "circle": {
+  "cast": "holy-nova@2",
+  "hit": "holy-heal"
+ },
+ "renew": {
+  "aura": "holy-heal"
+ },
+ "holyshield": {
+  "aura": "bubble-holy"
+ },
+ "cl_radiance": {
+  "hit": "holy-fury"
+ },
+ "cl_blessing": {
+  "hit": "holy-smite",
+  "aura": "aura-runes-holy"
+ },
+ "cl_cleanse": {
+  "hit": "holy-heal"
+ },
+ "cl_aegis": {
+  "cast": "holy-nova@2"
+ },
+ "cl_hymn": {
+  "cast": "holy-nova@2",
+  "hit": "holy-heal"
+ },
+ "backstab": {
+  "cast": "blade-steel",
+  "hit": "hit-fire"
+ },
+ "venom": {
+  "cast": "poison-slash",
+  "hit": "poison-skull"
+ },
+ "shadowstep": {
+  "cast": "portal-hold-shadow",
+  "hit": "portal-hold-shadow"
+ },
+ "stealth": {
+  "cast": "puff-shadow"
+ },
+ "as_dose": {
+  "hit": "poison-skull"
+ },
+ "as_fan": {
+  "proj": "knife-spin"
+ },
+ "as_cheap": {
+  "cast": "blade-steel",
+  "hit": "hit-fire"
+ },
+ "as_smoke": {
+  "cast": "smoke-puff@2",
+  "aura": "fog-loop"
+ },
+ "as_dance": {
+  "cast": "portal-hold-shadow",
+  "hit": "blade-shadow"
+ },
+ "aimed": {
+  "hit": "hit-fire"
+ },
+ "volley": {
+  "hit": "hit-fire"
+ },
+ "rain": {
+  "hit": "arrow-volley@2"
+ },
+ "hr_trap": {
+  "cast": "trap-snap"
+ },
+ "hr_mark": {
+  "hit": "holy-smite"
+ },
+ "hr_pierce": {
+  "hit": "hit-fire"
+ },
+ "hr_beast": {
+  "cast": "summon-circle-nature",
+  "hit": "portal-hold-nature"
+ },
+ "dr_cursed_arrow": {
+  "hit": "dark-bolt-hit"
+ },
+ "dr_weakening": {
+  "hit": "hit-shadow"
+ },
+ "dr_raven": {
+  "proj": "raven-fly",
+  "hit": "dark-bolt-hit"
+ },
+ "dr_shadowmeld": {
+  "cast": "puff-shadow"
+ },
+ "dr_detonate": {
+  "hit": "expl-large-shadow"
+ },
+ "dr_hexswarm": {
+  "proj": "dark-bolt",
+  "hit": "dark-bolt-hit"
+ },
+ "dr_snare": {
+  "hit": "dark-tentacles"
+ },
+ "dr_veil": {
+  "cast": "nova-shadow@2",
+  "aura": "fog-shadow"
+ },
+ "dr_ravens": {
+  "hit": "dark-bolt-hit"
+ }
+}

@@ -11,6 +11,7 @@ import { RaidBoss } from "./raidBoss";
 import { net } from "../net";
 import { P } from "../../../shared/palette";
 import { CROWD } from "./labelLayout";
+import { Vfx } from "./vfx";
 
 const MAX_BURST = 36;
 const MAX_POOL = 90;
@@ -40,12 +41,16 @@ export class Effects {
     readonly onSay: (id: string, text: string) => void,
   ) {
     this.tp = new TeleportFx(scene, unit, selfId, (x, y) => this.near(x, y, 600));
+    this.vfx = new Vfx(scene, unit);
     if (net.kind === "raid") this.raid = new RaidBoss(scene, unit);
   }
   private raid?: RaidBoss;
   private tp: TeleportFx;
+  /** Анимации умений из листов (data/skill-fx.json); где листа нет — прежние частицы. */
+  private vfx: Vfx;
 
   play(list: Fx[]) {
+    try { this.vfx.batch(list); } catch (e) { console.warn("vfx", e); }
     for (const f of list) {
       try {
         this.one(f);
@@ -189,6 +194,14 @@ export class Effects {
     });
   }
 
+  /** Звук бафа, когда его картинку рисует анимация умения (частицы с их звуком пропущены). */
+  private buffSound(f: Extract<Fx, { t: "buff" }>, u: UnitView) {
+    if (f.ms <= 0) return;
+    const k = f.k;
+    const name: sfx.SfxName = k === "heal" || k === "renew" ? "heal" : k === "bless" ? "holy" : k === "tide" || k === "meta" ? "shadow" : k === "rune" || k === "frozen" ? "frost" : k === "warp" || k === "antimagic" ? "arcane" : "shield";
+    this.sound(name, u.x, u.y);
+  }
+
   private one(f: Fx) {
     const s = this.scene;
     switch (f.t) {
@@ -226,6 +239,8 @@ export class Effects {
         const to = f.to ? this.unit(f.to) : undefined;
         const tx = to ? to.x : f.tx, ty = to ? to.y - (to.frame > 32 ? 26 : 12) : f.ty - 12;
         this.sound(f.k === "arrow" || f.k === "aimed" ? "arrow" : (SFX_OF[f.k === "fireball" ? "fire" : f.k] ?? "arcane"), sx, sy);
+        // свой спрайт снаряда умения (proj в data/skill-fx.json): прежний снаряд с частицами не нужен
+        if (this.vfx.proj(f, sx, sy, tx, ty, () => { if (f.k === "fireball") this.sound("explosion", tx, ty); })) break;
         const img = s.add.image(sx, sy, tex).setDepth(DEPTH.top - 40).setRotation(Math.atan2(ty - sy, tx - sx));
         if (f.k === "blood") img.setTint(0xe0304a);
         if (f.k === "fireball" || f.k === "fire") img.setScale(f.k === "fireball" ? 1.3 : 1);
@@ -238,6 +253,7 @@ export class Effects {
             img.destroy();
             trail.stop();
             s.time.delayedCall(300, () => trail.destroy());
+            if (this.vfx.projHit(f, tx, ty)) { if (f.k === "fireball") this.sound("explosion", tx, ty); return; }
             this.flash(tx, ty, trailColor, f.k === "fireball" ? 1 : 0.6);
             if (f.k !== "arrow") this.burst(tx, ty, "fx_spark", trailColor, 10, 70, 380);
             if (f.k === "fireball") { this.sound("explosion", tx, ty); this.burst(tx, ty, "fx_ember", trailColor, 12, 90, 500, 40); }
@@ -246,6 +262,7 @@ export class Effects {
         break;
       }
       case "chain": {
+        if (this.vfx.chain(f)) break;
         const g = s.add.graphics().setDepth(DEPTH.top - 38).setBlendMode(Phaser.BlendModes.ADD);
         const col = f.k ? (KIND_COLOR[f.k as keyof typeof KIND_COLOR] ?? 0xffe070) : 0xffe070;
         for (let pass = 0; pass < 2; pass++) {
@@ -265,6 +282,14 @@ export class Effects {
       case "aoe": {
         this.sound(f.k === "quake" ? "slam" : f.k === "heal" ? "heal" : f.k === "fire" ? "explosion" : (SFX_OF[f.k] ?? "hit"), f.x, f.y);
         this.flash(f.x, f.y - 6, KIND_COLOR[f.k] ?? 0xffffff, Math.min(2.5, f.r / 40));
+        if (this.vfx.aoe(f)) {
+          // анимация умения вместо колец и частиц; тряска экрана остаётся
+          if (f.k === "quake") this.shake(f.x, f.y, 220, 0.006);
+          else if (f.k === "bash") this.shake(f.x, f.y, 160, 0.005);
+          else if (f.k === "burst") this.shake(f.x, f.y, 180, 0.005);
+          else if (f.k === "meta") this.shake(f.x, f.y, 260, 0.006);
+          break;
+        }
         const col = f.k === "taunt" ? 0xffa040 : f.k === "quake" ? 0xc09060 : (KIND_COLOR[f.k] ?? 0xffffff);
         const ring = s.add.image(f.x, f.y, "fx_ring").setTint(col).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 20).setScale(0.2, 0.14);
         s.tweens.add({ targets: ring, scaleX: f.r / 30, scaleY: (f.r / 30) * 0.7, alpha: { from: 1, to: 0 }, duration: 450, ease: "Cubic.easeOut", onComplete: () => ring.destroy() });
@@ -365,6 +390,7 @@ export class Effects {
         break;
       }
       case "tele": {
+        if (this.vfx.zoneFx(f, `${f.x}|${f.y}`)) break;
         const g = s.add.graphics().setDepth(DEPTH.ground + 10);
         const color = f.k === "poison" ? 0x7aff3a : f.k === "nature" ? 0xa0ff50 : f.k === "frost" ? 0x6ac0ff : 0xff3a1a;
         const t0 = s.time.now;
@@ -408,6 +434,7 @@ export class Effects {
         break;
       }
       case "hazard": {
+        if (this.vfx.zoneFx(f, f.id)) break;
         const color = f.k === "poison" ? 0x6adf2a : f.k === "fire" ? 0xff6a1a : f.k === "holy" ? 0xffd870 : 0x8a5aff;
         const pool = s.add.ellipse(f.x, f.y, f.r * 2, f.r * 1.5, color, 0.28).setDepth(DEPTH.ground + 8).setStrokeStyle(1.5, color, 0.8);
         const bub = s.add.particles(f.x, f.y, f.k === "poison" ? "fx_bubble" : "fx_ember", {
@@ -425,6 +452,7 @@ export class Effects {
         break;
       }
       case "blink": {
+        if (this.vfx.blink(f) && f.k !== "charge") break; // рывок Рывка оставляет полосу и дым частицами
         if (f.k === "charge") {
           const tr = s.add.graphics().setDepth(DEPTH.top - 40).setBlendMode(Phaser.BlendModes.ADD);
           tr.lineStyle(8, 0xffd070, 0.5).lineBetween(f.x0, f.y0 - 10, f.x1, f.y1 - 10);
@@ -454,6 +482,7 @@ export class Effects {
       case "lvl": {
         const u = this.unit(f.id);
         if (!u) return;
+        if (this.vfx.has("levelup")) { this.vfx.atUnit("levelup", u); this.number(u.x, u.y - 44, `Уровень ${f.level}!`, P.numGold, true); break; }
         const col = s.add.image(u.x, u.y - 30, "fx_glow").setTint(0xffd84a).setBlendMode(Phaser.BlendModes.ADD).setScale(1, 4).setDepth(DEPTH.top - 30).setAlpha(0.9);
         s.tweens.add({ targets: col, scaleX: 0.2, alpha: 0, duration: 1100, onComplete: () => col.destroy() });
         this.burst(u.x, u.y - 10, "fx_spark", 0xffd84a, 30, 90, 900, -60);
@@ -463,6 +492,7 @@ export class Effects {
       case "buff": {
         const u = this.unit(f.id);
         if (!u) return;
+        if (this.vfx.buff(f, u)) { this.buffSound(f, u); break; }
         const color = f.k === "warcry" ? 0xff6a3a : f.k === "haste" ? 0xc0f050 : f.k === "enrage" ? 0xff2a1a : 0xffffff;
         if (f.k === "heal" || f.k === "renew") {
           this.sound("heal", u.x, u.y);

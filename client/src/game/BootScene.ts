@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
 
 export interface Manifest {
   units: Record<string, { frame: number; cols?: number }>;
@@ -30,11 +31,15 @@ export class BootScene extends Phaser.Scene {
       for (const [id, u] of Object.entries(m.mounts ?? {})) this.load.spritesheet(`m_${id}`, `/assets/mounts/${id}.png`, { frameWidth: u.frame, frameHeight: u.frame });
       for (const id of Object.keys(m.objects)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`);
       for (const id of m.fx) this.load.image(`fx_${id}`, `/assets/fx/${id}.png`);
+      // анимации умений (задача 127): каталог листов, затем сами листы
+      this.load.json("vfxm", "/assets/vfx/manifest.json");
+      this.load.once("filecomplete-json-vfxm", () => loadVfx(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>));
     });
   }
 
   create() {
     const m = this.cache.json.get("manifest") as Manifest;
+    makeVfxAnims(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>);
     for (const id of Object.keys(m.units)) {
       const cols = m.units[id].cols ?? 12;
       for (let row = 0; row < 3; row++) {

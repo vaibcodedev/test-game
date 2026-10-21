@@ -120,7 +120,11 @@ export class World {
   }
 
   // ---------- инфраструктура ----------
+  /** Умение, которое сейчас применяется (ставит castSkill; таймеры later его запоминают): эффекты получают поля s и c. */
+  fxSkill: string | null = null;
+  fxCaster: string | null = null;
   emit(fx: Fx) {
+    if (this.fxSkill && fx.t !== "dmg") { fx.s = this.fxSkill; fx.c = this.fxCaster ?? undefined; }
     this.fx.push(fx);
   }
   /**
@@ -128,6 +132,11 @@ export class World {
    * погиб (даже если уже возродился) или ушёл из этого мира. Без owner вызывается всегда (уборка, конец эффекта).
    */
   later(ms: number, fn: () => void, owner?: Actor) {
+    const s = this.fxSkill, c = this.fxCaster;
+    if (s) {
+      const inner = fn;
+      fn = () => { const ps = this.fxSkill, pc = this.fxCaster; this.fxSkill = s; this.fxCaster = c; try { inner(); } finally { this.fxSkill = ps; this.fxCaster = pc; } };
+    }
     this.timers.push({ at: this.time + ms, fn, owner, life: owner ? owner.deadAt : 0 });
   }
   chat(line: ChatLine) {

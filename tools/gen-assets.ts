@@ -11,7 +11,11 @@ import { buildLavaGlow, buildTileset, buildWater } from "./gen/tiles";
 import { buildChaosHalo, buildChaosKnightSheet, KNIGHT_COLS, KNIGHT_FRAME } from "./gen/raidboss";
 import { buildMountIcon, buildMountSheet, saveMountPng, type MountMeta } from "./gen/mounts";
 import { MODELS as MOUNT_MODELS } from "./gen/mounts-all";
+import { PC } from "./gen/canvas";
+import { newSkillIcon } from "./gen/icons-build";
+import { newItemIcon } from "./gen/icons-items";
 import { buildUnitSheet, UNIT_ART } from "./gen/units";
+import { writeGameVfx } from "./gen/vfx";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
@@ -53,11 +57,17 @@ for (const [id, pc] of Object.entries(buildEquipIcons())) {
   manifest.icons.push(id);
 }
 for (const id of ITEM_ICONS.filter((i) => i.startsWith("potion") || i.startsWith("food_") || i.startsWith("mat_") || i.startsWith("res_") || i === "gold" || i === "coin")) {
-  buildItemIcon(id).save(path.join(OUT, `icons/${id}.png`));
+  // еда, зелья, ресурсы: иконки 7Soul1 (data/item-icons.json); без vendor/ готовые файлы остаются, старая генерация — только для не вошедших в таблицу
+  const file = path.join(OUT, `icons/${id}.png`), fresh = newItemIcon(id, file);
+  if (fresh instanceof PC) fresh.save(file);
+  else if (fresh === null) buildItemIcon(id).save(file);
   manifest.icons.push(id);
 }
+// иконки умений: новые из data/skill-icons.json (frosty + генератор), старая генерация — только для не вошедших в таблицу или если нет vendor/ и файла
 for (const id of Object.keys(SKILL_ICONS)) {
-  buildSkillIcon(id).save(path.join(OUT, `icons/${id}.png`));
+  const file = path.join(OUT, `icons/${id}.png`), fresh = newSkillIcon(id, file);
+  if (fresh instanceof PC) fresh.save(file);
+  else if (fresh === null) buildSkillIcon(id).save(file);
   manifest.icons.push(id);
 }
 // иконки маунтов и питомцев для магазина: первый кадр их спрайт-листа
@@ -75,6 +85,9 @@ for (const [id, art] of Object.entries(FX_ART)) {
 // ореол за спиной рейд-босса (160×160, рисуется под боссом режимом ADD)
 buildChaosHalo().save(path.join(OUT, "fx/chaos_halo.png"));
 manifest.fx.push("chaos_halo");
+
+// анимации умений (задача 127): листы из паков в vendor/ (необязательны) и сгенерированные; каталог — assets/vfx/manifest.json
+writeGameVfx(OUT);
 
 // Ручные PNG (не из генератора) тоже попадают в манифест: можно просто положить файл в папку.
 const pngSize = (f: string) => {
