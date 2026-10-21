@@ -12,8 +12,12 @@
 .hb-slot .act { display: block; font-size: 26px; line-height: 50px; text-align: center; }
 .hb-slot.unlearned img, .hb-slot.none img { filter: grayscale(1) brightness(0.4); }
 .hb-slot.unlearned::after { content: "🔒"; position: absolute; right: 3px; bottom: 2px; font-size: var(--fs); }
-.hb-slot.nomana img { filter: saturate(0.3) brightness(0.6) sepia(1) hue-rotate(180deg); }
-.hb-slot.notarget img { opacity: 0.5; }
+/* состояния умения (как в WoW): иконка не темнеет — тёмная иконка читается как «такая картинка».
+   Нет цели — иконка обычная, серая только буква клавиши (нажатие покажет «Нет цели» в строке ошибок);
+   не хватает маны — иконка синяя; цель дальше дальности или за препятствием — иконка, рамка и буква красные (важнее маны) */
+.hb-slot.notarget kbd { color: var(--dim); }
+.hb-slot.nomana img { filter: grayscale(0.5) sepia(1) hue-rotate(175deg) saturate(2.4) brightness(0.95); }
+.hb-slot.oor img, .hb-slot.nolos img { filter: grayscale(0.4) sepia(1) hue-rotate(-38deg) saturate(3.5) brightness(0.95); }
 .hb-slot.oor kbd, .hb-slot.nolos kbd { color: var(--bad); }
 .hb-slot.oor, .hb-slot.nolos { border-color: var(--bad-line); }
 .hb-slot.press { animation: hb-press 0.18s ease-out; }

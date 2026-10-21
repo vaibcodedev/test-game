@@ -378,9 +378,6 @@
 .slot.locked img {
   filter: grayscale(1) brightness(0.4);
 }
-.slot.nomana img {
-  filter: saturate(0.3) brightness(0.6) sepia(1) hue-rotate(180deg);
-}
 .slot.empty {
   opacity: 0.35;
 }

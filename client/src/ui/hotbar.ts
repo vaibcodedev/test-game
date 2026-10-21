@@ -214,7 +214,16 @@ export class Hotbar {
   private tip(ref: NonNullable<Slot>, bar: number, i: number): string {
     const s = this.self;
     const key = keybinds.barLabel(bar, i);
-    if ("s" in ref) return s ? this.ctx.skillTip(SKILLS[ref.s], s) : "";
+    if ("s" in ref) {
+      if (!s) return "";
+      // почему умение сейчас не нажать — та же причина, что у красной или синей иконки слота
+      const st = this.cells[bar][i].cls.split(" ");
+      const why = st.includes("oor") ? "Цель дальше дальности умения — подойдите ближе"
+        : st.includes("nolos") ? "Цель за препятствием — нет прямой видимости"
+        : st.includes("nomana") ? "Не хватает маны"
+        : st.includes("notarget") ? "Нужна цель: Tab или клик по врагу" : "";
+      return this.ctx.skillTip(SKILLS[ref.s], s) + (why ? `<div class="warn">${why}</div>` : "");
+    }
     if ("i" in ref) {
       const q = this.qtyFor.qty.get(ref.i) ?? 0;
       return `<div class="t">${esc(BASE_ITEMS[ref.i].name)}</div><div class="d">${q} шт.${key ? ` · клавиша ${esc(key)}` : ""}</div>`;
