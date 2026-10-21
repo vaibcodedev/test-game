@@ -10,9 +10,15 @@ import type { UnitView } from "./UnitView";
 import { DEPTH } from "./terrain";
 
 /** Плавность листа (tools/gen/vfx.ts): fadeIn/fadeOut — мс появления и выхода (альфа и масштаб от scaleIn до 1, ease-out); loop — кадры, которые
- *  повторяются, пока эффект держится; кадры после loop[1] — финал (закрытие портала, таяние круга); hold — удержание, мс, если длительность не задана. */
-export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number }
-export interface VfxEntry { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: "normal" | "add"; r?: 1; ease?: Ease }
+ *  повторяются, пока эффект держится; кадры после loop[1] — финал (закрытие портала, таяние круга); hold — удержание, мс, если длительность не задана;
+ *  tail — у разового эффекта: последние tail мс он растворяется (ease-in), чтобы не обрываться на последнем кадре. */
+export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number; tail?: number }
+/** Орбита ауры (рунный клинок, tools/gen/vfx-gen2.ts): лист — сами предметы (кадры 0..n-1), ореолы (n..2n-1, add) и блики (2n..3n-1);
+ *  позиции считаются каждый кадр. Пиксели мира: полуоси rx/ry, oy — центр от ног спрайта; мс: период оборота, покачивания, мерцания, блика;
+ *  glow — альфа ореола (мин, макс), back — яркость самой дальней точки орбиты. */
+export interface Orbit { n: number; rx: number; ry: number; oy: number; period: number; bob: number; bobPeriod: number; glow: [number, number]; glowPeriod: number; back: number; twinkle: number }
+/** scale — масштаб спрайта (0.5: арт двойной плотности, пиксель листа = пиксель холста при зуме 2). */
+export interface VfxEntry { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: "normal" | "add"; r?: 1; ease?: Ease; scale?: number; orbit?: Orbit }
 type Slot = "cast" | "proj" | "hit" | "aura";
 const TABLE = skillFx as Record<string, Partial<Record<Slot, string>>>;
 const key = (id: string) => `vfx_${id}`;
@@ -37,8 +43,8 @@ export function makeVfxAnims(scene: Phaser.Scene, m: Record<string, VfxEntry>) {
   }
 }
 
-/** Плоские эффекты на земле (кольца, круги, лужи): рисуются под героями. */
-const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff-|smoke-puff|banner-ring|quake-)/;
+/** Плоские эффекты на земле (кольца, круги, лужи, нижние слои ударов <id>-ground): рисуются под героями. */
+const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff-|smoke-puff|banner-ring|quake-)|-ground$/;
 const MAX_ACTIVE = 160;
 const FRONT = 0.5; // слой на теле — чуть выше спрайта героя при сортировке по y
 
@@ -87,7 +93,7 @@ export class Vfx {
     let spr = this.free.get(id)?.pop();
     if (!spr) spr = this.scene.add.sprite(0, 0, key(id));
     this.scene.tweens.killTweensOf(spr);
-    spr.setActive(true).setVisible(true).setOrigin(e.anchor[0], e.anchor[1]).setRotation(0).setFlipX(false).setAlpha(1).setScale(1);
+    spr.setActive(true).setVisible(true).setOrigin(e.anchor[0], e.anchor[1]).setRotation(0).setFlipX(false).setAlpha(1).setScale(e.scale ?? 1).clearTint();
     spr.setBlendMode(e.blend === "add" ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
     this.active++;
     return spr;
@@ -112,12 +118,12 @@ export class Vfx {
     const u = this.bound.get(spr);
     if (u) { u.detach(spr); this.bound.delete(spr); }
   }
-  /** Появление: прозрачность 0→1 и масштаб scaleIn→1 за fadeIn мс, ease-out (кадр после твина — ровно масштаб 1). */
+  /** Появление: прозрачность 0→1 и масштаб scaleIn→1 за fadeIn мс, ease-out (кадр после твина — ровно масштаб листа, его ставит take). */
   private fadeIn(spr: Phaser.GameObjects.Sprite, e: Ease | undefined) {
-    const a = e?.alpha ?? 1;
+    const a = e?.alpha ?? 1, s = spr.scaleX;
     if (!e?.fadeIn) { spr.setAlpha(a); return; }
-    spr.setAlpha(0).setScale(e.scaleIn ?? 1);
-    this.scene.tweens.add({ targets: spr, alpha: a, scale: 1, duration: e.fadeIn, ease: "Cubic.easeOut" });
+    spr.setAlpha(0).setScale(s * (e.scaleIn ?? 1));
+    this.scene.tweens.add({ targets: spr, alpha: a, scale: s, duration: e.fadeIn, ease: "Cubic.easeOut" });
   }
   /** Выход: прозрачность 1→0 (и масштаб обратно к scaleIn) за fadeOut мс, затем спрайт возвращается в пул. */
   private fadeOut(id: string, spr: Phaser.GameObjects.Sprite, e: Ease | undefined, then?: () => void) {
@@ -125,7 +131,8 @@ export class Vfx {
     const done = () => { this.release(id, spr); then?.(); };
     if (!d) { done(); return; }
     this.scene.tweens.killTweensOf(spr);
-    this.scene.tweens.add({ targets: spr, alpha: 0, scale: e?.scaleIn ? 0.5 + e.scaleIn / 2 : 1, duration: d, ease: "Cubic.easeIn", onComplete: done });
+    const s = this.catalog[id]?.scale ?? 1;
+    this.scene.tweens.add({ targets: spr, alpha: 0, scale: s * (e?.scaleIn ? 0.5 + e.scaleIn / 2 : 1), duration: d, ease: "Cubic.easeIn", onComplete: done });
   }
 
   /** Один проход анимации в точке (x, y — куда встанет якорь листа). rot — поворот, flip — зеркало по x, unit — привязать к юниту. */
@@ -140,8 +147,13 @@ export class Vfx {
     if (o.rot) spr.setRotation(o.rot);
     if (o.flip) spr.setFlipX(true);
     this.fadeIn(spr, e.ease);
+    // tail: последние мс разового эффекта — растворение к последнему кадру, без обрыва (твин с задержкой снимет release, если спрайт уйдёт раньше)
+    const tail = e.ease?.tail;
+    if (tail) this.scene.tweens.add({ targets: spr, alpha: 0, delay: Math.max(0, (e.frames * 1000) / e.fps - tail), duration: tail, ease: "Quad.easeIn" });
     spr.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => { this.release(id, spr); o.onDone?.(); });
     spr.play(key(id));
+    // нижний слой удара (лист <id>-ground: печать и волна по земле) — под юнитами, в той же точке и в такт верхнему
+    if (this.has(`${id}-ground`)) this.play(`${id}-ground`, x, y, { flip: o.flip });
     return spr;
   }
   /** Эффект с удержанием (портал, круг призыва): вход (кадры до loop), цикл на ms миллисекунд, выход (кадры после loop) вместе с растворением. */
@@ -201,6 +213,7 @@ export class Vfx {
     if (ms <= 0 || !this.has(id)) return;
     const u0 = this.unit(unitId);
     if (!u0 || u0.dead) return;
+    if (this.catalog[id].orbit) { this.orbit(k, id, unitId, ms, kind); return; }
     const spr = this.take(id);
     if (!spr) return;
     const e = this.catalog[id];
@@ -229,6 +242,69 @@ export class Vfx {
       if (kind) this.forget(kind, k);
     };
     this.looping.set(k, [{ spr, stop }]);
+    if (kind) this.remember(kind, k);
+  }
+  /** Орбита (рунный клинок): n предметов кружат вокруг пояса юнита. Позиции считаются каждый кадр после UnitView.update (событие postupdate):
+   *  угол = время × скорость, эллипс rx×ry, покачивание по синусу у каждой руны своё; руна спереди (sin > 0) над героем, сзади — под ним,
+   *  слой меняется у краёв орбиты, яркость плавно падает к дальней точке. Координаты — до пикселя холста (1/zoom пикселя мира), масштаб такой,
+   *  чтобы пиксель листа был целым числом пикселей холста (зум 2 и 4 — ровно 0.5, зум 3 — 2/3). Вход и выход: альфа, масштаб и радиус
+   *  за fadeIn/fadeOut мс (ease-out и ease-in), руны выходят из тела и уходят в него. */
+  private orbit(k: string, id: string, unitId: string, ms: number, kind?: string) {
+    const e = this.catalog[id], o = e.orbit!, base = e.scale ?? 1;
+    const runes: { body: Phaser.GameObjects.Sprite; halo?: Phaser.GameObjects.Sprite; glint?: Phaser.GameObjects.Sprite }[] = [];
+    for (let i = 0; i < o.n; i++) {
+      const body = this.take(id);
+      if (!body) break;
+      body.setFrame(i);
+      const halo = this.take(id)?.setFrame(o.n + i).setBlendMode(Phaser.BlendModes.ADD);
+      const glint = this.take(id)?.setFrame(2 * o.n + i);
+      runes.push({ body, halo, glint });
+    }
+    if (!runes.length) return;
+    const fadeIn = e.ease?.fadeIn ?? 350, fadeOut = e.ease?.fadeOut ?? 350, s0 = e.ease?.scaleIn ?? 0.6;
+    const t0 = this.scene.time.now, a0 = Math.random() * Math.PI * 2;
+    let outAt = -1, visOut = 1, vis = 0, cx = 0, cy = 0, dy0 = 0;
+    const step = () => {
+      const now = this.scene.time.now, u = this.unit(unitId);
+      if (outAt < 0 && (!u || u.dead)) stop();
+      if (outAt >= 0) {
+        const q = Math.min(1, (now - outAt) / fadeOut);
+        if (q >= 1) { finish(); return; }
+        vis = visOut * (1 - q * q * q);                       // ease-in
+      } else vis = 1 - (1 - Math.min(1, (now - t0) / fadeIn)) ** 3;   // ease-out
+      if (u && !u.dead) { cx = u.sprite.x; cy = u.sprite.y + (o.oy * u.frame) / 32; dy0 = u.y; }
+      const z = this.scene.cameras.main.zoom || 1, px = (v: number) => Math.round(v * z) / z;
+      const sc = (Math.max(1, Math.round(base * z)) / z) * (s0 + (1 - s0) * vis), R = 0.5 + 0.5 * vis;
+      runes.forEach((r, i) => {
+        const a = a0 + ((now - t0) / o.period) * Math.PI * 2 + (i * Math.PI * 2) / runes.length, sn = Math.sin(a);
+        const bob = Math.sin((now / o.bobPeriod) * Math.PI * 2 + i * 2.3) * o.bob;
+        // глубина: спереди — над доспехом (GearLayers.front +0.5) и передом маунта (+0.4), сзади — под плащом (-0.1) и задом маунта (-0.5)
+        const x = px(cx + Math.cos(a) * o.rx * R), y = px(cy + sn * o.ry * R + bob), d = dy0 + (sn >= 0 ? 0.6 : -0.6);
+        const f = 1 - ((1 - o.back) * (1 - sn)) / 2, c = (v: number) => Math.round(Math.min(1, v) * 255);
+        r.body.setPosition(x, y).setScale(sc).setDepth(d).setAlpha(vis).setTint((c(f * 0.92) << 16) | (c(f * 0.97) << 8) | c(f));
+        const g = o.glow[0] + (o.glow[1] - o.glow[0]) * (0.5 + 0.5 * Math.sin((now / o.glowPeriod) * Math.PI * 2 + i * 1.7));
+        r.halo?.setPosition(x, y).setScale(sc).setDepth(d + 0.01).setAlpha(vis * g * (0.45 + (0.55 * (sn + 1)) / 2));
+        const tw = Math.max(0, Math.sin((now / o.twinkle) * Math.PI * 2 + i * 2.6)) ** 12;
+        r.glint?.setPosition(x, y).setScale(sc).setDepth(d + 0.02).setAlpha(vis * tw * Math.max(0, sn * 0.6 + 0.4));
+      });
+    };
+    const off = () => this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, step);
+    const end = this.scene.time.delayedCall(ms, () => stop());
+    const stop = () => {
+      if (outAt >= 0) return;
+      outAt = this.scene.time.now; visOut = vis; end.remove(false);
+      const l = this.looping.get(k); if (l) { const j = l.findIndex((q) => q.spr === runes[0].body); if (j >= 0) l.splice(j, 1); if (!l.length) this.looping.delete(k); }
+      if (kind) this.forget(kind, k);
+    };
+    const finish = () => {
+      off();
+      this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, off);
+      for (const r of runes) for (const s of [r.body, r.halo, r.glint]) if (s) this.release(id, s);
+    };
+    this.scene.events.on(Phaser.Scenes.Events.POST_UPDATE, step);
+    this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    step();
+    this.looping.set(k, [{ spr: runes[0].body, stop }]);
     if (kind) this.remember(kind, k);
   }
   /** Цикл в круге на земле: стоящий предмет (знамя) — один спрайт в центре; облака и лужи — несколько спрайтов, разложенных по кругу радиуса умения
@@ -283,9 +359,12 @@ export class Vfx {
   projectile(id: string, sx: number, sy: number, tx: number, ty: number, ms: number, onArrive: () => void) {
     const spr = this.take(id);
     if (!spr) { onArrive(); return; }
-    spr.setPosition(Math.round(sx), Math.round(sy)).setDepth(DEPTH.top - 40).setRotation(Math.atan2(ty - sy, tx - sx));
+    // позиция — до пикселя холста (1/zoom пикселя мира): при зуме 3 шаг в целый пиксель мира — это рывки по 3 пикселя экрана
+    const z = this.scene.cameras.main.zoom || 1, px = (v: number) => Math.round(v * z) / z;
+    spr.setPosition(px(sx), px(sy)).setDepth(DEPTH.top - 40).setRotation(Math.atan2(ty - sy, tx - sx));
+    this.fadeIn(spr, this.catalog[id].ease);
     spr.play({ key: key(id), repeat: -1 });
-    this.scene.tweens.add({ targets: spr, x: tx, y: ty, duration: Math.max(60, ms), ease: "Linear", onUpdate: () => spr.setPosition(Math.round(spr.x), Math.round(spr.y)), onComplete: () => { this.release(id, spr); onArrive(); } });
+    this.scene.tweens.add({ targets: spr, x: tx, y: ty, duration: Math.max(60, ms), ease: "Linear", onUpdate: () => spr.setPosition(px(spr.x), px(spr.y)), onComplete: () => { this.release(id, spr); onArrive(); } });
   }
   /** Бесшовная цепь между двумя точками (лист 24×12: тянется вдоль линии), держится ms. */
   line(id: string, x0: number, y0: number, x1: number, y1: number, ms: number) {

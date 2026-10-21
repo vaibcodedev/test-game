@@ -7,7 +7,19 @@ import { fileURLToPath } from "node:url";
 import { PC, rng, type RGBA } from "./canvas";
 import { RAMPS, gradientMap, storyboard, stackV, hex } from "./vfx-lib";
 
-export interface Gen { id: string; pack: string; role: "proj" | "hit" | "cast" | "aura" | "aoe" | "slash"; frames: PC[]; w: number; h: number; anchor: [number, number]; fps: number; blend: "normal" | "add"; hero?: string }
+/** Орбита ауры (рунный клинок): позиции считает клиент каждый кадр (client/src/game/vfx.ts), лист — только сами предметы.
+ *  Кадры листа: 0..n-1 — предметы, n..2n-1 — ореол (мерцает альфой по синусу, смешивание add), 2n..3n-1 — блик (короткая вспышка).
+ *  Размеры — пиксели мира: полуоси rx/ry, oy — центр орбиты от ног (минус — выше); времена — мс; back — яркость самой дальней точки (0..1). */
+export interface Orbit { n: number; rx: number; ry: number; oy: number; period: number; bob: number; bobPeriod: number; glow: [number, number]; glowPeriod: number; back: number; twinkle: number }
+
+export interface Gen {
+  id: string; pack: string; role: "proj" | "hit" | "cast" | "aura" | "aoe" | "slash"; frames: PC[]; w: number; h: number; anchor: [number, number]; fps: number; blend: "normal" | "add"; hero?: string;
+  /** Масштаб спрайта в игре: 0.5 — арт двойной плотности (1 пиксель листа = 1 пиксель холста при зуме 2). */
+  scale?: number;
+  orbit?: Orbit;
+  /** Плавность (как Ease в vfx.ts): fadeIn/scaleIn — появление; tail — у разового эффекта растворение последних мс, без обрыва. */
+  ease?: { fadeIn?: number; fadeOut?: number; scaleIn?: number; alpha?: number; tail?: number };
+}
 
 const gray = (v: number): RGBA => [v, v, v, 255];
 /** Стираем пиксели «рассыпанием»: чем больше level (0..1), тем больше пикселей исчезает (детерминированно по позиции). */

@@ -13,7 +13,7 @@ import {
   PC, RAMPS, loadDir, sliceSheet, readPng, cropToAnchor, pickIdx, peakIndex, trimBlank, downscaleMode, tidy, unionBox, toRow, gradientMap, storyboard, stackV, scaleNN, fill, drawText,
   paintGround, BG, BEIGE, GOLD, type RGBA,
 } from "./vfx-lib";
-import { GENERATED } from "./vfx-gen";
+import { GENERATED, type Orbit } from "./vfx-gen";
 import { GENERATED2 } from "./vfx-gen2";
 import { GENERATED_HAMMER3 } from "./vfx-hammer3";
 import { GENERATED_BANNER } from "./vfx-banner";
@@ -159,9 +159,9 @@ export function knownIds(): Set<string> {
 
 /** Плавность: появление (fadeIn, мс; масштаб от scaleIn до 1), удержание (цикл кадров loop, hold мс для вызовов без длительности),
  *  выход (fadeOut). Кадры после loop[1] — финал, он играется при выходе. */
-export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number }
+export interface Ease { drop?: number; dust?: string; alpha?: number; fadeIn?: number; fadeOut?: number; scaleIn?: number; loop?: [number, number]; hold?: number; tail?: number }
 
-export interface Built { ease?: Ease; id: string; pack: string; role: Role; frames: PC[]; w: number; h: number; anchor: [number, number]; fps: number; blend: Blend; hero?: string; peak: number }
+export interface Built { ease?: Ease; id: string; pack: string; role: Role; frames: PC[]; w: number; h: number; anchor: [number, number]; fps: number; blend: Blend; hero?: string; peak: number; scale?: number; orbit?: Orbit }
 
 /** Целевой размер эффекта относительно героя (32×32, фигура ~26–28 px): длинная сторона кадра, px. Снаряды 14–26 (голова не больше половины героя),
  *  попадания 24–44, ауры и щиты 36–48, небесные удары 56 (1,5–2 роста героя). Лист уменьшается заранее при сборке: по блокам преобладающего цвета и
@@ -179,7 +179,7 @@ export const FIT: Record<string, number> = {
   "shackle-steel": 40, "shackle-shadow": 40, "puff-shadow": 44, "puff-poison": 44, "puff-smoke": 44, "fog-loop": 44, "fog-shadow": 44, "fog-poison": 44, "fog-smoke": 44, "blood-pool": 52,
   "bubble-steel": 44, "bubble-arcane": 44, "bubble-holy": 44, "bubble-bone": 44, "bubble-shadow": 44,
   "banner-holy": 40, "banner-blood": 40, "ring-blood": 44, "ring-holy": 44, "ring-frost": 44, "ring-shadow": 44, "ring-arcane": 44,
-  "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36, "aura-rage": 44, "aura-runes-holy": 44, "aura-runes-frost": 56, "aura-runes-frost-back": 56,
+  "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36, "aura-rage": 44, "aura-runes-holy": 44,
   "holy-fury": 56, "holy-nova-s": 56, "nova-shadow-s": 72, "summon-circle-nature": 64, "portal-hold": 36, "portal-hold-shadow": 36, "portal-hold-nature": 36,
 };
 
@@ -192,7 +192,8 @@ function rescale(b: Built, target: number): Built {
   return { ...b, frames, w: w2, h: h2, anchor: [Math.round(b.anchor[0] * w2) / w2, Math.round(b.anchor[1] * h2) / h2] };
 }
 const scale2 = (b: Built): Built => ({ ...b, id: `${b.id}@2`, frames: b.frames.map((f) => scaleNN(f, 2)), w: b.w * 2, h: b.h * 2 });
-const fitted = (b: Built): Built => (FIT[b.id] ? rescale(b, FIT[b.id]) : b);
+// арт двойной плотности (scale < 1) не уменьшается: его детали и есть смысл листа
+const fitted = (b: Built): Built => (FIT[b.id] && !b.scale ? rescale(b, FIT[b.id]) : b);
 
 /** Плавность по виду эффекта: ауры и щиты входят и выходят, круги призыва держатся и тают, портал открывается, держится и закрывается. */
 function easeOf(id: string): Ease | undefined {
@@ -323,7 +324,7 @@ function compareSheet(items: Built[]): PC {
 /** Паки с лицензией «файлы раздавать нельзя» (Sentient, pimen, ImpactForge): их листы кладутся в vfx/r/, каталог в .gitignore. */
 const isRestricted = (pack: string) => /^(sds-|pimen-|impactforge)/.test(pack);
 
-export interface GameEntry { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: Blend; r?: 1; ease?: Ease }
+export interface GameEntry { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: Blend; r?: 1; ease?: Ease; scale?: number; orbit?: Orbit }
 
 /** Листы и манифест для игры: client/public/assets/vfx/ (+ r/ для закрытых паков). Вызывается из tools/gen-assets.ts.
  *  Без vendor/ эффекты пака пропускаются, а уже собранные листы остаются в манифесте, пока файлы на диске (чистый клон соберёт только свободные). */
@@ -338,7 +339,7 @@ export function writeGameVfx(assetsRoot: string) {
   for (const b of buildAll()) {
     const r = isRestricted(b.pack);
     toRow(b.frames, b.w, b.h).save(path.join(dir, r ? "r" : "", `${b.id}.png`));
-    out[b.id] = { frameW: b.w, frameH: b.h, frames: b.frames.length, fps: b.fps, anchor: [Math.round(b.anchor[0] * 1000) / 1000, Math.round(b.anchor[1] * 1000) / 1000], blend: b.blend, ...(r ? { r: 1 as const } : {}), ...(b.ease ? { ease: b.ease } : {}) };
+    out[b.id] = { frameW: b.w, frameH: b.h, frames: b.frames.length, fps: b.fps, anchor: [Math.round(b.anchor[0] * 1000) / 1000, Math.round(b.anchor[1] * 1000) / 1000], blend: b.blend, ...(r ? { r: 1 as const } : {}), ...(b.ease ? { ease: b.ease } : {}), ...(b.scale ? { scale: b.scale } : {}), ...(b.orbit ? { orbit: b.orbit } : {}) };
   }
   const sorted = Object.fromEntries(Object.entries(out).sort(([a], [b]) => (a < b ? -1 : 1)));
   fs.writeFileSync(mf, JSON.stringify(sorted, null, 1) + "\n");
@@ -367,17 +368,19 @@ export function writeAll() {
   fs.mkdirSync(OUT, { recursive: true });
   fs.mkdirSync(PREVIEW, { recursive: true });
   const all = buildAll();
-  const manifest: Record<string, { frameW: number; frameH: number; frames: number; fps: number; anchor: [number, number]; blend: Blend; ease?: Ease }> = {};
+  const manifest: Record<string, GameEntry> = {};
   for (const b of all) {
     toRow(b.frames, b.w, b.h).save(path.join(OUT, `${b.id}.png`));
-    manifest[b.id] = { frameW: b.w, frameH: b.h, frames: b.frames.length, fps: b.fps, anchor: [Math.round(b.anchor[0] * 1000) / 1000, Math.round(b.anchor[1] * 1000) / 1000], blend: b.blend, ...(b.ease ? { ease: b.ease } : {}) };
+    manifest[b.id] = { frameW: b.w, frameH: b.h, frames: b.frames.length, fps: b.fps, anchor: [Math.round(b.anchor[0] * 1000) / 1000, Math.round(b.anchor[1] * 1000) / 1000], blend: b.blend, ...(b.ease ? { ease: b.ease } : {}), ...(b.scale ? { scale: b.scale } : {}), ...(b.orbit ? { orbit: b.orbit } : {}) };
   }
   fs.writeFileSync(path.join(OUT, "vfx-manifest.json"), JSON.stringify(manifest, null, 1) + "\n");
   const packs = [...new Set(all.map((b) => b.pack))];
   for (const p of packs) {
     const items = all.filter((b) => b.pack === p);
     stackV(items.map((b) => storyboard(b.frames, b.w, b.h, b.anchor, `${b.id}  ${b.frames.length}f ${b.fps}fps ${b.w}x${b.h} ${b.blend} ${b.role}`, 2, b.peak))).save(path.join(PREVIEW, `${p}.png`));
-    compareSheet(items).save(path.join(PREVIEW, `compare-${p}.png`));
+    // арт двойной плотности (руны) рядом с героем 1:1 не показать: у него своё превью (vfx-gen2.ts, dk-runes.png)
+    const flat = items.filter((b) => !b.scale);
+    if (flat.length) compareSheet(flat).save(path.join(PREVIEW, `compare-${p}.png`));
   }
   bannerSheet(all)?.save(path.join(PREVIEW, "banner.png"));
   console.log(`эффектов: ${all.length}; паки: ${packs.join(", ")}`);

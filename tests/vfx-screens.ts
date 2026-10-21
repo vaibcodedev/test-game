@@ -5,8 +5,12 @@
  * Время идёт вручную: цикл Phaser усыплён, сцену двигаем шагами game.step по 40 мс, поэтому пик кадра не зависит от загрузки машины.
  *
  * Запуск (порты свободные, TEST_PORT / VITE_TEST_PORT):
- *   $env:TEST_PORT="2801"; $env:VITE_TEST_PORT="5399"; npx tsx tests/vfx-screens.ts [--only=fireball,meteor] [--phase=cast,hit] [--both] [--field=grass|cobble]
+ *   $env:TEST_PORT="2801"; $env:VITE_TEST_PORT="5399"; npx tsx tests/vfx-screens.ts [--only=fireball,meteor] [--phase=cast,hit] [--both] [--field=grass|cobble] [--zoom=3]
+ *     [--variants=снаряд:удар,снаряд:удар]
  * По умолчанию умения чередуют поле (чётные — трава, нечётные — брусчатка); --both снимает на обоих (вдвое дольше), --field фиксирует одно.
+ * --zoom — масштаб камеры (2 или 3, как колесо в игре). Ауры-орбиты (руны) снимаются серией: вход, оборот, выход.
+ * --variants — сравнение листов для умения из --only: каждая пара «снаряд:удар» (id из манифеста, снаряд можно опустить) летит к цели,
+ *   удар снимается серией из 5 кадров (<умение>-v<n>-<id удара>-h1..h5).
  * Выход — tools/out/vfx-shots/: <умение>-<фаза>.png (кроп 400×300 вокруг героя и цели, 1 пиксель кадра = 1 пиксель экрана, камера ×2),
  * sheet.png (все кадры с подписями, вдвое меньше) и manifest.json. Путь к Chrome: CHROME_PATH.
  */
@@ -30,6 +34,8 @@ const ONLY = argv("only");
 const PHASES = new Set<string>(argv("phase"));
 const FIELD = argv("field")[0] as "grass" | "cobble" | undefined;
 const BOTH = process.argv.includes("--both");
+const ZOOM = Number(argv("zoom")[0]) || 0;
+const VARIANTS = argv("variants").map((v) => { const [a, b] = v.includes(":") ? v.split(":") : ["", v]; return { proj: a || undefined, hit: b }; });
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5199;
 const VIEW = { width: 1280, height: 800 };
 const OUT = path.resolve("tools/out/vfx-shots");
@@ -108,7 +114,7 @@ async function enterAs(cls: ClassId) {
   const name = `vfx_${cls}`;
   const token = await ensureChar(name, PASS, name, cls, 0);
   await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-  await page.evaluate((t) => sessionStorage.setItem("emberfall-token", t), token);
+  await page.evaluate((t, z) => { sessionStorage.setItem("emberfall-token", t); if (z) localStorage.setItem("zoom:v1", String(z)); else localStorage.removeItem("zoom:v1"); }, token, ZOOM);
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 20000 });
   await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
@@ -118,8 +124,9 @@ async function enterAs(cls: ClassId) {
   await waitFn("window.__game && window.__game.scene.isActive('game')", 20000);
   await waitFn("window.__net && window.__net.self && window.__net.online", 15000);
   await sleep(1200);
-  // ручное время: шаг сцены на ms миллисекунд маленькими шагами (цикл Phaser при этом спит)
-  await run(`window.__vt = performance.now(); window.__adv = (ms) => { const g = window.__game; const n = Math.max(1, Math.round(ms / ${STEP})); for (let i = 0; i < n; i++) { window.__vt += ${STEP}; g.loop.delta = ${STEP}; g.step(window.__vt, ${STEP}); } };`);
+  // ручное время: шаг сцены на ms миллисекунд маленькими шагами (цикл Phaser при этом спит); часы твинов (Date.now в TweenManager.getDelta)
+  // сдвигаются так, что твины тоже идут ровно на шаг: иначе растворения и полёты идут по реальному времени и снимок ловит не тот момент
+  await run(`window.__vt = performance.now(); window.__adv = (ms) => { const g = window.__game, tw = g.scene.getScene('game').tweens; const n = Math.max(1, Math.round(ms / ${STEP})); for (let i = 0; i < n; i++) { const now = Date.now(); tw.startTime += now - tw.prevTime - ${STEP}; tw.prevTime = now - ${STEP}; window.__vt += ${STEP}; g.loop.delta = ${STEP}; g.step(window.__vt, ${STEP}); } };`);
 }
 
 const freeze = () => run("const l = window.__game.loop; if (l.running) l.sleep(); window.__vt = performance.now();");
@@ -177,6 +184,10 @@ const BLINKS = new Set(["blink", "shadowstep"]);
 const SERIES_T = [150, 270, 380, 400, 350, 450];
 /** Умения со щитом на герое: серия кадров бега с щитом, смещение щита относительно героя обязано быть одним и тем же. */
 const RUN_SHIELD = new Set(["shieldblock", "mg_barrier"]);
+/** Ауры-орбиты (позиции считает клиент каждый кадр): вход 3 кадра, оборот 8 кадров через 1/16 периода, выход 3 кадра. */
+const ORBITS = new Set(["dk_rune_blade"]);
+/** Удар после снаряда: серия из 5 кадров (замах, падение, удар, разлёт, затухание), мс от прилёта (кадр листа при 14 fps — 71 мс). */
+const HIT_SERIES = [160, 240, 320, 400, 560];
 const follow: Record<string, { dx: number; dy: number }[] | null> = {};
 
 /** Все фазы одного умения: каждая — запуск синтетического fx, ручное время до пика, снимок. */
@@ -230,6 +241,23 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
     await thaw();
     return;
   }
+  if (VARIANTS.length) {
+    for (const [n, v] of VARIANTS.entries()) {
+      const tag = `${skill}-v${n + 1}-${v.hit}`;
+      if (v.proj) {
+        // полёт — твин (его часы идут шагами __adv): ждём середину пути и попадание по состоянию
+        await run("window.__arrived = false; sc.fx.vfx.projectile(a.p, a.hx, a.hy - 12, a.tx, a.ty - 12, 700, () => { window.__arrived = true; sc.fx.vfx.atBody(a.h, a.tx, a.ty - 12); });", { p: v.proj, h: v.hit, ...pos });
+        await run(`let i = 0; while (i++ < 300) { const o = sc.children.list.find((q) => q.active && q.texture && q.texture.key === a.tex); if (!o || o.x >= a.mx) break; window.__adv(${STEP}); }`, { tex: `vfx_${v.proj}`, mx: (pos.hx + pos.tx) / 2 });
+        await snap(skill, "proj", field, ids, 0, `${tag}-p`);
+        await run(`let i = 0; while (!window.__arrived && i++ < 400) window.__adv(${STEP});`);
+      } else await run("sc.fx.vfx.atBody(a.h, a.tx, a.ty - 12)", { h: v.hit, ...pos });
+      let prev = 0;
+      for (const [i, t] of HIT_SERIES.entries()) { await snap(skill, "hit", field, ids, t - prev, `${tag}-h${i + 1}`); prev = t; }
+      await adv(1600);
+    }
+    await thaw();
+    return;
+  }
   // cast
   if (slots.cast) {
     await fxArr([{ t: "pose", id: ids.hero, k: "idle", ms: 1, ...mark }, ...(def.target === "point" ? [{ t: "tele", shape: "ring", k: "phys", x: tp.x, y: tp.y, r: 20, ms: 100, ...mark }] : [])]);
@@ -264,6 +292,14 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
       await adv(2000);
     } else {
       await fxArr([{ t: "buff", id: ids.hero, k: "shield", ms: 4000, ...mark }]);
+      if (ORBITS.has(skill)) {
+        for (const [i, w] of [80, 120, 200].entries()) await snap(skill, "aura", field, ids, w, `${skill}-in${i + 1}`);
+        for (let i = 0; i < 8; i++) await snap(skill, "aura", field, ids, 175, `${skill}-o${i + 1}`);
+        await fxArr([{ t: "buff", id: ids.hero, k: "shield", ms: 0, ...mark }]);
+        for (const [i, w] of [120, 120, 160].entries()) await snap(skill, "end", field, ids, w, `${skill}-out${i + 1}`);
+        await thaw();
+        return;
+      }
       await snap(skill, "aura", field, ids, 900);
       if (RUN_SHIELD.has(skill)) await runSeries(skill, slots.aura, field, ids);
       await fxArr([{ t: "buff", id: ids.hero, k: "shield", ms: 0, ...mark }]);
@@ -344,6 +380,9 @@ async function main() {
   try {
     page = await browser.newPage();
     await page.evaluateOnNewDocument(() => { (window as any).__name = (t: unknown) => t; });
+    // всегда день: часы страницы сдвинуты к середине светлой части цикла (shared/daynight, 20 мин), иначе снимки зависят от времени суток;
+    // сдвиг постоянный — дельты времени (твины) не меняются
+    await page.evaluateOnNewDocument(() => { const C = 20 * 60 * 1000, real = Date.now.bind(Date), p = (real() % C) / C, off = ((1.3 - p) % 1) * C; Date.now = () => real() + off; });
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
     bot = await Bot.join("Спутница", PASS, "mage");

@@ -19,8 +19,8 @@
   "cast": "holy-nova@2"
  },
  "tp_hammer": {
-  "proj": "hammer-gold",
-  "hit": "hammer-slam"
+  "proj": "hammer-a",
+  "hit": "hammer-a-hit"
  },
  "tp_banner": {
   "aura": "banner-solgard"

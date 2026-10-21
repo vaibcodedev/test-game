@@ -61,11 +61,11 @@ function auraRage(id: string): Gen {
   return mk(id, "aura", frames, W, H, [0.5, 0.85], 12, "reaver");
 }
 
-/** Рунный клинок рыцаря смерти: 4 маленькие каменно-ледяные плитки с вырезанной руной кружат вокруг героя на уровне пояса.
- *  Плитка рисуется с двойной плотностью 14×16 (толстый тёмный контур, 5 тонов, светлая верхняя грань, вырезанный глиф со светлой нижней кромкой,
- *  искра), лист 112×76 уменьшается FIT вдвое до 56×38 (плитка ≈ 7×8 пикселей мира). Два листа с одной орбитой: aura-runes-frost — руны перед героем,
- *  aura-runes-frost-back — сзади (темнее, под героем). 12 кадров цикла. */
-const RUNE_W = 14, RUNE_H = 16;
+/** Рунный клинок рыцаря смерти: 4 каменно-ледяные плитки с вырезанной руной кружат вокруг героя на уровне пояса.
+ *  Плитка двойной плотности 14×16 (в игре масштаб 0.5 — 7×8 пикселей мира): толстый тёмный контур, 5 тонов, светлая верхняя грань,
+ *  вырезанный глиф со светлой кромкой. Орбиту клиент считает каждый кадр (orbit в манифесте: угол = время × скорость, у краёв руна меняет слой),
+ *  поэтому лист — только сами руны: кадры 0–3 руны, 4–7 ореол и свет глифа (альфа по синусу, add), 8–11 блик на верхней грани (короткая вспышка). */
+const RUNE_W = 14, RUNE_H = 16, RUNE_PAD = 3;
 // форма плитки: [левая, правая] колонка по строкам (0..15)
 const RUNE_SHAPES: [number, number][][] = [
   // арка с острой макушкой
@@ -83,51 +83,107 @@ const GLYPHS: string[][] = [
   [".###.", "#....", "#....", ".###.", "....#", "....#", "###.."],            // змейка
   ["..#..", ".#.#.", "#...#", ".#.#.", "..#..", "..#..", "..#.."],            // ромб на стержне
 ];
-function runeSprite(shape: [number, number][], glyph: string[], pal: { o: RGBA; t: RGBA[]; rim: RGBA; groove: RGBA; lit: RGBA; spark: RGBA; glow: RGBA }, spark: number): PC {
-  const P = 2, S = new PC(RUNE_W + P * 2, RUNE_H + P * 2);
-  const inside = (x: number, y: number) => y >= 0 && y < RUNE_H && x >= shape[y][0] && x <= shape[y][1];
+const GX = Math.floor((RUNE_W - 5) / 2), GY = 4;
+const runeIn = (shape: [number, number][], x: number, y: number) => y >= 0 && y < RUNE_H && x >= shape[y][0] && x <= shape[y][1];
+const glyphOn = (glyph: string[], x: number, y: number) => glyph[y - GY]?.[x - GX] === "#";
+
+/** Сама плитка (без свечения): контур, тона по глубине от края, светлая кромка сверху-слева, тень справа-снизу, вырезанный глиф. */
+export function runeBody(shape: [number, number][], glyph: string[], pal: { o: RGBA; t: RGBA[]; rim: RGBA; groove: RGBA; lit: RGBA }): PC {
+  const P = RUNE_PAD, S = new PC(RUNE_W + P * 2, RUNE_H + P * 2);
+  const inside = (x: number, y: number) => runeIn(shape, x, y);
   const depth = (x: number, y: number) => { let d = 9; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!inside(x + dx, y + dy)) d = Math.min(d, Math.abs(dx) + Math.abs(dy)); return d; };
-  // 1 пиксель мягкого свечения снаружи
-  for (let y = -1; y <= RUNE_H; y++) for (let x = -1; x <= RUNE_W; x++) if (!inside(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => inside(x + dx, y + dy))) S.set(x + P, y + P, pal.glow);
   for (let y = 0; y < RUNE_H; y++) for (let x = 0; x < RUNE_W; x++) {
     if (!inside(x, y)) continue;
     const d = depth(x, y);
     let c: RGBA;
-    if (d === 1) c = pal.o;                                              // контур
+    if (d === 1) c = pal.o;                                                            // контур
     else {
-      const tone = y <= 3 ? 0 : (x + y * 0.6 < 9 ? 1 : x + y * 0.6 < 13 ? 2 : 3);
-      c = pal.t[Math.min(4, tone + (d === 2 && (!inside(x, y - 2) || !inside(x - 2, y)) ? 0 : 0))];
-      if (d === 2 && (!inside(x, y - 1 - 1) || !inside(x - 2, y))) c = pal.rim;       // светлая кромка сверху и слева
-      if (d === 2 && (!inside(x + 2, y) || !inside(x, y + 2))) c = pal.t[4];            // тень справа и снизу
+      c = pal.t[y <= 3 ? 0 : x + y * 0.6 < 9 ? 1 : x + y * 0.6 < 13 ? 2 : 3];
+      if (d === 2 && (!inside(x, y - 2) || !inside(x - 2, y))) c = pal.rim;            // светлая кромка сверху и слева
+      if (d === 2 && (!inside(x + 2, y) || !inside(x, y + 2))) c = pal.t[4];           // тень справа и снизу
     }
     S.set(x + P, y + P, c);
   }
   // вырезанная руна: тёмная канавка и светлая кромка снизу-справа
-  const gx = Math.floor((RUNE_W - 5) / 2), gy = 4;
-  const on = (x: number, y: number) => glyph[y - gy]?.[x - gx] === "#";
-  for (let y = gy; y < gy + 7; y++) for (let x = gx; x < gx + 5; x++) if (on(x, y)) S.set(x + P, y + P, pal.groove);
-  for (let y = gy; y < gy + 8; y++) for (let x = gx; x < gx + 6; x++) if (!on(x, y) && (on(x - 1, y) || on(x, y - 1)) && inside(x, y)) S.set(x + P, y + P, pal.lit);
-  // искра: белая точка на верхней гранях с «крестиком» в пике мерцания
-  if (spark > 0) { S.set(4 + P, 2 + P, pal.spark); if (spark > 1) { S.set(3 + P, 2 + P, pal.lit); S.set(5 + P, 2 + P, pal.lit); S.set(4 + P, 1 + P, pal.lit); S.set(4 + P, 3 + P, pal.lit); } }
+  for (let y = GY; y < GY + 7; y++) for (let x = GX; x < GX + 5; x++) if (glyphOn(glyph, x, y)) S.set(x + P, y + P, pal.groove);
+  for (let y = GY; y < GY + 8; y++) for (let x = GX; x < GX + 6; x++) if (!glyphOn(glyph, x, y) && (glyphOn(glyph, x - 1, y) || glyphOn(glyph, x, y - 1)) && inside(x, y)) S.set(x + P, y + P, pal.lit);
   return S;
 }
-export function runeOrbit(): Gen[] {
-  const W = 112, H = 76, cx = W / 2, cy = 44, rx = 42, ry = 18, N = 12;
-  const front = Array.from({ length: N }, () => new PC(W, H)), back = Array.from({ length: N }, () => new PC(W, H));
-  const T = (a: string[]) => a.map((c) => hex(c));
-  const pf = { o: hex("#0a1626"), t: T(["#dff6ff", "#8fd0ea", "#5a9cc8", "#3a6aa0", "#243e6c"]), rim: hex("#f2fcff"), groove: hex("#0e2a4a"), lit: hex("#a4e8fa"), spark: hex("#ffffff"), glow: hex("#6ad0f0", 90) };
-  const pb = { o: hex("#060e18"), t: T(["#8fb8cc", "#5a90ae", "#3a6a8e", "#274c70", "#183050"]), rim: hex("#b0d8e8"), groove: hex("#081a30"), lit: hex("#5aa8c4"), spark: hex("#d8f4ff"), glow: hex("#2e7a98", 70) };
-  for (let t = 0; t < N; t++) {
-    const items = RUNE_SHAPES.map((_, k) => { const a = (t / N) * TAU + (k * TAU) / 4; return { k, a, x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry }; }).sort((p, q) => p.y - q.y);
-    for (const it of items) {
-      const isFront = Math.sin(it.a) > 0, ph = (t + it.k * 3) % N, spark = ph === 0 ? 2 : ph === 1 || ph === 11 ? 1 : 0;
-      const img = runeSprite(RUNE_SHAPES[it.k], GLYPHS[it.k], isFront ? pf : pb, isFront ? spark : 0);
-      // лёгкое покачивание плитки по орбите
-      const bob = Math.round(Math.sin((t / N) * TAU * 2 + it.k) * 1);
-      (isFront ? front : back)[t].blit(img, Math.round(it.x - img.w / 2), Math.round(it.y - img.h / 2) + bob);
+
+/** Ореол плитки и свет глифа (кадр рисуется поверх руны в режиме add): два кольца вокруг контура (ближнее ярче), канавка глифа светится. */
+export function runeHalo(shape: [number, number][], glyph: string[]): PC {
+  const P = RUNE_PAD, S = new PC(RUNE_W + P * 2, RUNE_H + P * 2);
+  const ring = (x: number, y: number) => { let d = 9; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (runeIn(shape, x + dx, y + dy)) d = Math.min(d, Math.max(Math.abs(dx), Math.abs(dy)) + (dx && dy ? 0.5 : 0)); return d; };
+  for (let y = -P; y < RUNE_H + P; y++) for (let x = -P; x < RUNE_W + P; x++) {
+    if (runeIn(shape, x, y)) { if (glyphOn(glyph, x, y)) S.set(x + P, y + P, hex("#5ad2f4")); continue; }
+    const d = ring(x, y);
+    if (d <= 1) S.set(x + P, y + P, hex("#4aa8d8", 150));
+    else if (d <= 2) S.set(x + P, y + P, hex("#2a6c9c", 80));
+  }
+  return S;
+}
+
+/** Блик: четырёхлучевая искра на верхней левой грани плитки (центр белый, лучи по 2 пикселя). */
+export function runeGlint(shape: [number, number][]): PC {
+  const P = RUNE_PAD, S = new PC(RUNE_W + P * 2, RUNE_H + P * 2);
+  const y = 3, x = shape[y][0] + 2;
+  const hi = hex("#ffffff"), mid = hex("#c8f4ff"), lo = hex("#7fd4f4", 200);
+  S.set(x + P, y + P, hi);
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { S.set(x + dx + P, y + dy + P, mid); S.set(x + dx * 2 + P, y + dy * 2 + P, lo); }
+  return S;
+}
+
+const RUNE_PAL = { o: hex("#0a1626"), t: ["#dff6ff", "#8fd0ea", "#5a9cc8", "#3a6aa0", "#243e6c"].map((c) => hex(c)), rim: hex("#f2fcff"), groove: hex("#0e2a4a"), lit: hex("#a4e8fa") };
+
+/** Лист рун рыцаря смерти для клиента: 12 кадров 20×22 (руны, ореолы, блики), масштаб 0.5, орбита в пикселях мира. */
+export function runeSet(): Gen {
+  const W = RUNE_W + RUNE_PAD * 2, H = RUNE_H + RUNE_PAD * 2;
+  const frames = [...RUNE_SHAPES.map((s, k) => runeBody(s, GLYPHS[k], RUNE_PAL)), ...RUNE_SHAPES.map((s, k) => runeHalo(s, GLYPHS[k])), ...RUNE_SHAPES.map((s) => runeGlint(s))];
+  return {
+    id: "aura-runes-frost", pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, 0.5], fps: 1, blend: "normal", hero: "deathknight", scale: 0.5,
+    // орбита чуть шире плеч, центр на поясе (8 px над ногами), оборот за 2.8 с; покачивание ±1 px, ореол дышит, блик — раз в 3 с на каждой руне
+    orbit: { n: 4, rx: 12, ry: 4, oy: -8, period: 2800, bob: 1, bobPeriod: 1900, glow: [0.3, 0.85], glowPeriod: 1500, back: 0.6, twinkle: 3100 },
+    ease: { fadeIn: 350, fadeOut: 350, scaleIn: 0.6 },
+  };
+}
+
+/** Кадр орбиты для превью — та же формула, что в клиенте (vfx.ts, Vfx.orbit): холст двойной плотности, позиции до пикселя холста. */
+export function orbitPreview(g: Gen, t: number, canvas: PC, cx2: number, cy2: number, front: boolean) {
+  const o = g.orbit!, n = o.n;
+  const items = Array.from({ length: n }, (_, i) => {
+    const a = (t / o.period) * TAU + (i * TAU) / n, sn = Math.sin(a);
+    const bob = Math.sin((t / o.bobPeriod) * TAU + i * 2.3) * o.bob;
+    return { i, sn, x: Math.round(Math.cos(a) * o.rx * 2), y: Math.round((sn * o.ry + o.oy + bob) * 2) };
+  }).filter((r) => (r.sn >= 0) === front).sort((p, q) => p.sn - q.sn);
+  for (const r of items) {
+    const k = 1 - ((1 - o.back) * (1 - r.sn)) / 2;
+    const body = g.frames[r.i].clone().map((c) => [Math.round(c[0] * k * 0.92), Math.round(c[1] * k * 0.97), Math.round(c[2] * k), c[3]]);
+    const x0 = cx2 + r.x - g.w / 2, y0 = cy2 + r.y - g.h / 2;
+    canvas.blit(body, x0, y0);
+    const glow = o.glow[0] + (o.glow[1] - o.glow[0]) * (0.5 + 0.5 * Math.sin((t / o.glowPeriod) * TAU + r.i * 1.7)), ga = glow * (0.45 + (0.55 * (r.sn + 1)) / 2);
+    const halo = g.frames[n + r.i];
+    for (let y = 0; y < halo.h; y++) for (let x = 0; x < halo.w; x++) {
+      const c = halo.get(x, y)!;
+      if (!c[3]) continue;
+      const d = canvas.get(x0 + x, y0 + y);
+      if (!d) continue;
+      const a = (c[3] / 255) * ga;
+      // add поверх непрозрачного; на пустом холсте (лист для aura-fx) — тот же цвет с альфой
+      if (d[3]) canvas.set(x0 + x, y0 + y, [Math.min(255, d[0] + c[0] * a), Math.min(255, d[1] + c[1] * a), Math.min(255, d[2] + c[2] * a), 255]);
+      else canvas.set(x0 + x, y0 + y, [c[0], c[1], c[2], Math.round(255 * a)]);
     }
   }
-  const mkl = (id: string, frames: PC[]): Gen => ({ id, pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, cy / H], fps: 10, blend: "normal", hero: "deathknight" });
+}
+
+/** Орбита, запечённая в два листа (передний и задний слой, 12 кадров на оборот, двойная плотность) — для превью tools/gen/aura-fx.ts.
+ *  В игре орбиту считает клиент (runeSet + orbit); якорь листа — центр кадра героя (ряд 16), центр орбиты — на поясе ниже него. */
+export function runeOrbit(): Gen[] {
+  const g = runeSet(), o = g.orbit!, N = 12, W = Math.ceil(o.rx * 4 + g.w + 4), H = Math.ceil(o.ry * 4 + g.h + 8), cx = Math.round(W / 2), cy = Math.round(H / 2);
+  const front = Array.from({ length: N }, () => new PC(W, H)), back = Array.from({ length: N }, () => new PC(W, H));
+  for (let t = 0; t < N; t++) { orbitPreview(g, (t * o.period) / N, back[t], cx, cy - o.oy * 2, false); orbitPreview(g, (t * o.period) / N, front[t], cx, cy - o.oy * 2, true); }
+  // ноги героя (ряд 30) — на cy - oy·2 в двойной плотности, центр кадра героя (ряд 16) на 28 пикселей выше
+  const ay = (cy - o.oy * 2 - 28) / H;
+  const mkl = (id: string, frames: PC[]): Gen => ({ id, pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, ay], fps: 10, blend: "normal", hero: "deathknight" });
   return [mkl("aura-runes-frost", front), mkl("aura-runes-frost-back", back)];
 }
 
@@ -288,7 +344,7 @@ export function GENERATED2(): Gen[] {
   return [
     auraBubble("bubble-steel", "steel"), auraBubble("bubble-arcane", "arcane"), auraBubble("bubble-holy", "holy"), auraBubble("bubble-bone", "bone"), auraBubble("bubble-shadow", "shadow"),
     auraRing("ring-blood", "blood"), auraRing("ring-holy", "holy"), auraRing("ring-frost", "frost"), auraRing("ring-shadow", "shadow"), auraRing("ring-arcane", "arcane"),
-    auraRage("aura-rage"), flameLoop("flame-loop"), ...runeOrbit(), auraRunes("aura-runes-holy", "holy"),
+    auraRage("aura-rage"), flameLoop("flame-loop"), runeSet(), auraRunes("aura-runes-holy", "holy"),
     trap("trap-snap"), raven("raven-fly"), arrowVolley("arrow-volley"),
     axeSpin("axe-spin"), axeSpin("axe-spin-blood", "blood"),
     shackle("shackle-steel"), shackle("shackle-shadow", "shadow"), bloodPool("blood-pool"),
@@ -299,16 +355,20 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview/gen2-raw.png");
   stackV(GENERATED2().map((g) => storyboard(g.frames, g.w, g.h, g.anchor, `${g.id} ${g.frames.length}f`, 3))).save(out);
   console.log(out);
-  // рыцарь смерти с рунной орбитой: сзади руны под героем, спереди над ним (кадры 1, 4, 7, 10 цикла, ×3)
-  const [fr, bk] = runeOrbit(), hero = readPng(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/public/assets/units/deathknight.png"));
+  // рыцарь смерти с рунной орбитой по формуле клиента: холст двойной плотности (герой ×2, руны 1:1), 8 моментов через 1/16 оборота, трава и брусчатка, ×2
+  const g = runeSet(), hero = readPng(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/public/assets/units/deathknight.png"));
   const hf = new PC(32, 32);
   for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) hf.set(x, y, hero.get(x, y)!);
-  const cellW = 64, cell = 56, pc = new PC(cellW * 4, cell * 2);
-  paintGround(pc, 0, 0, cellW * 4, cell, "grass"); paintGround(pc, 0, cell, cellW * 4, cell, "cobble");
-  for (let row = 0; row < 2; row++) [0, 3, 6, 9].forEach((t, i) => {
-    const ox = i * cellW + 16, oy = row * cell + 14;               // левый верхний угол героя
-    pc.blit(bk.frames[t], ox + 16 - 28, oy + 16 - 22); pc.blit(hf, ox, oy); pc.blit(fr.frames[t], ox + 16 - 28, oy + 16 - 22);
-  });
-  scaleNN(pc, 3).save(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview/dk-runes.png"));
+  const h2 = scaleNN(hf, 2), cellW = 44, cell = 44, N = 8, pc = new PC(cellW * N * 2, cell * 2 * 2);
+  const ground = new PC(cellW * N, cell * 2);
+  paintGround(ground, 0, 0, cellW * N, cell, "grass"); paintGround(ground, 0, cell, cellW * N, cell, "cobble");
+  pc.blit(scaleNN(ground, 2), 0, 0);
+  for (let row = 0; row < 2; row++) for (let i = 0; i < N; i++) {
+    const t = (i * g.orbit!.period) / 16, fx = (i * cellW + 22) * 2, fy = (row * cell + 36) * 2;   // ноги героя (ряд 30 спрайта) в двойной плотности
+    orbitPreview(g, t, pc, fx, fy, false);
+    pc.blit(h2, fx - 32, fy - 60);
+    orbitPreview(g, t, pc, fx, fy, true);
+  }
+  scaleNN(pc, 2).save(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview/dk-runes.png"));
   void fill; void BG;
 }
