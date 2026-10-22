@@ -52,8 +52,8 @@ const snap = (page: Page, id: string) => page.evaluate(`(() => { const s = ${sce
   return { id: v.id, x: v.x, y: v.y, hx: s.pos.x, hy: s.pos.y, hover: s.hoverId, cursor: s.cursorKind, css: s.css, d: Math.hypot(c.x - v.x, c.y - (v.y - 12)),
     ring: { vis: v.ring.visible, alpha: v.ring.alpha, tint: v.ring.tintTopLeft, fill: v.ring.tintFill, depth: v.ring.depth }, label: v.label.visible, bar: v.bar.commandBuffer.length, tinted: v.sprite.isTinted,
     canvasCursor: s.game.canvas.style.cursor, ui: s.overUi }; })()`) as Promise<Snap>;
-/** Живой слизень рядом с героем (id). */
-const slimeId = (page: Page) => page.evaluate(`(() => { const s = ${scene}; let b = null, bd = 1e9; for (const v of s.units.values()) { if (v.u.sprite !== 'slime' || v.dead) continue; const d = Math.hypot(v.x - s.pos.x, v.y - s.pos.y); if (d < bd) { bd = d; b = v.id; } } return b; })()`) as Promise<string | null>;
+/** Живой слизень рядом с героем, не дальше 400 px (id). */
+const slimeId = (page: Page) => page.evaluate(`(() => { const s = ${scene}; let b = null, bd = 400; for (const v of s.units.values()) { if (v.u.sprite !== 'slime' || v.dead) continue; const d = Math.hypot(v.x - s.pos.x, v.y - s.pos.y); if (d < bd) { bd = d; b = v.id; } } return b; })()`) as Promise<string | null>;
 /** Ждём, пока слизень стоит (сдвиг за 400 мс меньше 1 px). */
 async function still(page: Page, id: string) {
   for (let i = 0; i < 40; i++) {
@@ -73,6 +73,12 @@ async function run(browser: Browser, zoom: number, errors: string[]) {
   await page.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 10 }); n.send("dbg", { op: "god" }); });
   const tp = (x: number, y: number) => page.evaluate(([px, py]) => (window as any).__net.send("dbg", { op: "tp", x: px, y: py }), [x, y]);
   await tp(sp.x + 150, sp.y - 70);
+  // герой входит у столицы своей фракции, а рядом с ней тоже бродят слизни: пока телепорт не дошёл до клиента, в units ещё они — ждём героя на месте
+  for (let i = 0; i < 40; i++) {
+    const p = await page.evaluate(`(() => { const s = ${scene}; return [s.pos.x, s.pos.y]; })()`) as number[];
+    if (Math.hypot(p[0] - sp.x - 150, p[1] - sp.y + 70) < 64) break;
+    await sleep(300);
+  }
   let id: string | null = null;
   for (let i = 0; i < 40 && !id; i++) { await sleep(300); id = await slimeId(page); }
   must(id, "слизень не появился рядом с героем");
@@ -152,8 +158,12 @@ async function run(browser: Browser, zoom: number, errors: string[]) {
   s = await snap(page, id!);
   must(s.hover === null && s.cursor === "arrow" && !s.ring.vis, "мышь вышла из окна, а подсветка и меч остались: " + JSON.stringify(s));
   await canvasEvent("mouseover");
-  await sleep(160);
-  s = await snap(page, id!);
+  // наведение пересчитывается в update(): под нагрузкой кадр приходит не за 160 мс — ждём, пока подсветка придёт к тому, что даёт расстояние (до 2 с)
+  for (let t = 0; t < 2000; t += 100) {
+    await sleep(100);
+    s = await snap(page, id!);
+    if ((s.hover === id) === (s.d < R + mag) && s.ring.vis === (s.hover === id)) break;
+  }
   // слизень бродит: ждём то, что даёт его живое расстояние до неподвижной мыши (у границ зон — пропуск)
   if ([R + tol, R + mag].some((e) => Math.abs(s.d - e) < 1.5)) console.log(`  skip [зум ${zoom}] возврат мыши: слизень у границы зоны (d=${s.d.toFixed(1)})`);
   else must((s.hover === id) === (s.d < R + mag) && s.ring.vis === (s.hover === id) && s.cursor === (s.d < R + tol ? "attack" : "arrow"), `мышь вернулась, а подсветка и меч не вернулись (d=${s.d.toFixed(1)}): ` + JSON.stringify(s));

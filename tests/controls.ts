@@ -1,12 +1,17 @@
 /** Цель ≠ атака (задача 115, шаг 2): TEST_PORT=2661 npx tsx tests/controls.ts */
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 import { generateMap } from "../shared/map";
+import { homeCity } from "../shared/cities";
 import { MAP_SEED } from "../shared/constants";
 import { bodyDist, pickOrder, type PickCtx, type PickKind, type PickSource } from "../client/src/game/castResolve";
 
 const MAP = generateMap(MAP_SEED);
 const town = MAP.playerSpawn;
-const spawns = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y));
+// слизень — у столицы героя (воин — Сольгард, Аурелион): ближайший к Эмберхоллу теперь у вражеской столицы, где героя бьёт стража (задача 132)
+const home = homeCity("solgard").spawn;
+const spawns = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
+/** Точка появления слизня, которого нашёл setup(): позиции проверок считаются от неё (убитый слизень возрождается не сразу, живой — на соседней точке). */
+let cur: { x: number; y: number } = spawns[0];
 
 /** Живой слизень у ближайшей точки появления, на которой он есть. */
 function slimeNear(b: Bot): { id: string; x: number; y: number } | null {
@@ -29,10 +34,15 @@ async function main() {
     await sleep(400);
     /** Встать в 160 px от слизня и вернуть его id. */
     async function setup(): Promise<string> {
-      a.send("dbg", { op: "tp", x: spawns[0].x + 30, y: spawns[0].y });
-      await sleep(500);
-      const s = slimeNear(a);
+      // слизней на карте немного и они далеко друг от друга (задача 132): обходим точки, пока не найдётся живой
+      let s: { id: string; x: number; y: number } | null = null;
+      for (const sp of spawns) {
+        a.send("dbg", { op: "tp", x: sp.x + 30, y: sp.y });
+        await sleep(500);
+        if ((s = slimeNear(a))) break;
+      }
       assert(s, "слизень не найден");
+      cur = s;
       a.send("target", { id: null });
       a.send("attack", { id: null });
       a.send("chase", { on: false });
@@ -64,7 +74,7 @@ async function main() {
       const id = await setup();
       a.send("attack", { id });
       await sleep(300);
-      a.send("moveTo", { x: spawns[0].x + 330, y: spawns[0].y + 160 });
+      a.send("moveTo", { x: cur.x + 330, y: cur.y + 160 });
       await sleep(2500);
       assert(a.me().target === id, "moveTo снял цель");
       const p1 = { x: a.me().x, y: a.me().y };
@@ -87,7 +97,7 @@ async function main() {
       a.send("chase", { on: true });
       a.send("attack", { id });
       await sleep(200);
-      a.send("moveTo", { x: spawns[0].x + 330, y: spawns[0].y + 160 });
+      a.send("moveTo", { x: cur.x + 330, y: cur.y + 160 });
       await sleep(600);
       await a.until(() => mob(a, id).anim === 4 || dist(a, id) < 60, 8000, "возврат к цели");
       assert(a.me().target === id, "цель потеряна");
@@ -124,9 +134,9 @@ async function main() {
       a.send("skill", { id: "taunt", x: 0, y: 0, target: null, q: 0 });
       await a.until(() => la.toast.some((t) => t.code === "target"), 2000, "code target");
       assert(la.toast.find((t) => t.code === "target")!.text.includes("Tab"), "текст «Нет цели» без подсказки");
-      a.send("dbg", { op: "tp", x: spawns[0].x + 400, y: spawns[0].y });
+      a.send("dbg", { op: "tp", x: cur.x + 400, y: cur.y });
       await sleep(300);
-      a.send("skill", { id: "taunt", x: spawns[0].x, y: spawns[0].y, target: id, q: 0, ap: false });
+      a.send("skill", { id: "taunt", x: cur.x, y: cur.y, target: id, q: 0, ap: false });
       await a.until(() => la.toast.some((t) => t.code === "range"), 2000, "code range");
       assert(/Слишком далеко: ещё \d+ кл\./.test(la.toast.find((t) => t.code === "range")!.text), "текст дальности: " + la.toast.map((t) => t.text));
       a.send("skill", { id: "quake", x: 0, y: 0, q: 0 });
@@ -135,10 +145,10 @@ async function main() {
 
     await check("каст вне дальности подводит героя и кастует (подход)", async () => {
       const id = await setup();
-      a.send("dbg", { op: "tp", x: spawns[0].x + 420, y: spawns[0].y });
+      a.send("dbg", { op: "tp", x: cur.x + 420, y: cur.y });
       await sleep(300);
       const n0 = countCd(la, "taunt"), d0 = dist(a, id);
-      a.send("skill", { id: "taunt", x: spawns[0].x, y: spawns[0].y, target: id, q: 400, ap: true });
+      a.send("skill", { id: "taunt", x: cur.x, y: cur.y, target: id, q: 400, ap: true });
       await a.until(() => la.queue.some((m) => m.pend), 1000, "подход начат");
       await a.until(() => countCd(la, "taunt") > n0, 4500, "каст после подхода");
       assert(dist(a, id) < d0 - 60, "герой не подошёл");
@@ -148,11 +158,11 @@ async function main() {
     await check("WASD отменяет подход", async () => {
       await sleep(8500);
       const id = await setup();
-      a.send("dbg", { op: "tp", x: spawns[0].x + 420, y: spawns[0].y });
+      a.send("dbg", { op: "tp", x: cur.x + 420, y: cur.y });
       await sleep(300);
       const n0 = countCd(la, "taunt");
       la.queue.length = 0;
-      a.send("skill", { id: "taunt", x: spawns[0].x, y: spawns[0].y, target: id, q: 400, ap: true });
+      a.send("skill", { id: "taunt", x: cur.x, y: cur.y, target: id, q: 400, ap: true });
       await sleep(200);
       a.send("input", { mx: 1, my: 0 });
       await sleep(100);

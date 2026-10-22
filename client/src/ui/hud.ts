@@ -10,7 +10,7 @@ import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../
 import { MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
-import { isTownZone, T, Zone, ZONES, zoneAtPx, type WorldMap } from "../../../shared/map";
+import { isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
 import { CITIES, CITY_WALL } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
 import { MOBS } from "../../../shared/mobs";
@@ -1396,7 +1396,10 @@ export class Hud {
     const zi = zoneAtPx(m, info.pos.x, info.pos.y);
     const z = ZONES[zi];
     const sub = this.ctx.net.kind === "arena" ? "PvP" : z.safe ? "безопасно" : z.note ? "дикие края" : `ур. ${z.levels[0]}–${z.levels[1]}`;
-    const zl = document.getElementById("mini-zone")!, zh = `${esc(z.name)} <small>${sub}</small>`;
+    // кольцо 40–80 — «Небезопасная зона», Поля вечных битв 80–100 — прямо «Опасная зона» (задача 132, решение 1): вторая строка цветом токена
+    const danger = this.ctx.net.kind === "arena" ? null : zoneDanger(zi);
+    const dline = danger ? `<br><small style="color:var(--${z.danger === "deadly" ? "bad" : "warn"})">${danger}</small>` : "";
+    const zl = document.getElementById("mini-zone")!, zh = `${esc(z.name)} <small>${sub}</small>${dline}`;
     if (zl.dataset.html !== zh) { zl.dataset.html = zh; zl.innerHTML = zh; } // раз в 200 мс: без сравнения — перевёрстка подписи каждый раз
   }
 

@@ -4,18 +4,22 @@
  * Внутри только целочисленный хэш и арифметика (никаких Math.sin/pow), чтобы
  * результат был побитово одинаковым в браузере и в Node.
  *
- * Мир (тайлы, MAP_W×MAP_H): запад — земли Сольгарда со столицей Аурелион, восток — земли Умбрата со столицей Мортхейм,
- * середина (MID, 320×240) — старый мир Эмберхолла с кольцом биомов; север и юг середины — высокоуровневые спорные зоны.
- * Зоны, уровни, дороги, реки, деревни, лагеря, руины и указатели — в /data/world.json.
+ * Мир (тайлы, MAP_W×MAP_H; задача 132, схема tools/map-plan.ts, вариант А): запад — безопасные земли Сольгарда со столицей Аурелион
+ * (четыре зоны по 10 уровней, 1–40), восток — их зеркало: земли Умбрата со столицей Мортхейм; граница земель — река (вход по трём мостам),
+ * вдоль реки земли обнесены стеной с воротами у мостов. Между реками (MID) — кольцо 40–80 (четыре пояса вокруг Полей) и «Поля вечных
+ * битв» 80–100 (CORE) с Эмберхоллом на оси симметрии вверху и данжем внизу. Уровень растёт к центру.
+ * Восток — зеркало запада (непрерывная x → MAP_W − x): шум границ зон считается по сложенной x, реки, дороги, стены и места заданы парами.
+ * Зоны, уровни, раскладка, реки, дороги, стены, деревни, лагеря, руины и указатели — в /data/world.json.
  */
 import world from "../data/world.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
-import { MAP_H, MAP_W, MID, TILE } from "./constants";
+import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
 import { CITIES, CITY_HOUSES, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
 import { BUILDINGS, inTownRect, isGate, STALLS, TOWERS, TOWN, TOWN_HALF, townGround, WALL } from "./town";
 import * as D from "./decor";
 
 export { TOWN } from "./town";
+export { CORE } from "./constants";
 
 /** Типы поверхности в порядке отрисовки: следующий рисуется краем поверх предыдущего. */
 export enum T {
@@ -75,8 +79,10 @@ export enum Zone {
   AshFoothills,
   /** Цитадель Хаоса: карта рейда (shared/raid.ts), в мире не встречается. */
   Citadel,
+  /** Поля вечных битв (80–100 ур.): центр карты между фортами, вокруг Эмберхолла и данжа (задача 132). */
+  Fields,
 }
-export const ZONE_COUNT = 27;
+export const ZONE_COUNT = 28;
 /** Зона города (безопасная, мобы не заходят). */
 export const isTownZone = (z: Zone) => z === Zone.Town || z === Zone.OasisCity || z === Zone.SnowCity || z === Zone.SolgardCity || z === Zone.UmbrathCity;
 const CITY_ZONE: Record<string, Zone> = { oasis: Zone.OasisCity, snow_valley: Zone.SnowCity, aurelion: Zone.SolgardCity, morthaim: Zone.UmbrathCity };
@@ -88,26 +94,37 @@ export interface ZoneInfo {
   mobs: string[];
   /** Подпись под названием зоны вместо уровней. */
   note?: string;
+  /** Опасность зоны для подписи в интерфейсе: unsafe — кольцо 40–80, deadly — Поля вечных битв 80–100 (zoneDanger). */
+  danger?: "unsafe" | "deadly";
+  /** Зоны без места в мире (в enum остались ради порядка номеров): в бестиарии и списках админки их нет. */
+  unused?: boolean;
   /** Каким биомом рисуется зона (поверхность, декор, эффекты, окружение). */
   style: Zone;
 }
 /** Пересчёт уровней: зоны заданы под designCap, реальный кап — levelCap (data/world.json). */
 const LEVEL_SCALE = world.levels.levelCap / world.levels.designCap;
 export const scaleLevel = (n: number) => (n <= 0 ? 0 : Math.max(1, Math.round(n * LEVEL_SCALE)));
-type RawZone = { name: string; levels: number[]; mobs: string[]; safe?: boolean; note?: string; style?: string };
+type RawZone = { name: string; levels: number[]; mobs: string[]; safe?: boolean; note?: string; style?: string; danger?: string; unused?: boolean };
 const RAW_ZONES = world.zones as Record<string, RawZone>;
 export const ZONES: ZoneInfo[] = Array.from({ length: ZONE_COUNT }, (_, z) => {
   const r = RAW_ZONES[Zone[z]];
   if (!r) throw new Error(`data/world.json: нет зоны ${Zone[z]}`);
   const style = r.style ? (Zone[r.style as keyof typeof Zone] as Zone) : (z as Zone);
-  return { name: r.name, levels: [scaleLevel(r.levels[0]), scaleLevel(r.levels[1])], safe: !!r.safe, mobs: r.mobs, note: r.note, style };
+  const danger = r.danger === "unsafe" || r.danger === "deadly" ? r.danger : undefined;
+  return { name: r.name, levels: [scaleLevel(r.levels[0]), scaleLevel(r.levels[1])], safe: !!r.safe, mobs: r.mobs, note: r.note, danger, unused: r.unused || undefined, style };
 });
+/** Подпись опасности зоны (решение 1, задача 132): кольцо 40–80 — «Небезопасная зона», Поля вечных битв 80–100 — прямо «Опасная зона». */
+export const DANGER_LABEL = { unsafe: "Небезопасная зона", deadly: "Опасная зона" } as const;
+export const zoneDanger = (z: Zone): string | null => {
+  const d = ZONES[z]?.danger;
+  return d ? DANGER_LABEL[d] : null;
+};
 /** Базовый биом зоны (новые зоны рисуются как старые: Золотые нивы — как холмы и т. п.). */
 export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 4;
+export const MAP_VERSION = 5;
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -235,64 +252,120 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
 /** Объекты, лежащие на земле (под юнитами): мосты, лестницы, лазы, могилы. */
 export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", ...D.VENDOR_GROUND]);
 
-/** Точка старого мира (координаты середины) → тайлы всего мира. */
-const M = (x: number, y: number): [number, number] => [x + MID.x, y + MID.y];
-/** Сдвиг данжа относительно прежней карты 180×140 (данж нарисован вручную и не масштабируется). */
-const DG = { x: 82 + MID.x, y: 50 + MID.y };
-const DUNGEON = { x0: 120 + DG.x, y0: 52 + DG.y, x1: 176 + DG.x, y1: 90 + DG.y };
-const DUNGEON_ROOMS = ([
-  [122, 66, 133, 77], // прихожая
-  [120, 70, 124, 73], // ворота
+// ---------- раскладка мира (data/world.json: layout, rivers, roads, walls; задача 132) ----------
+type Line = [number, number][];
+const isLine = (v: unknown): v is Line => Array.isArray(v);
+const LAYOUT = world.layout;
+const AXIS = MAP_AXIS;
+/** Сложенная x (западная половина): шум и границы зон считаются по ней, поэтому восток — точное зеркало запада (x → MAP_W − x). */
+const foldX = (x: number) => (x > AXIS ? MAP_W - x : x);
+const RIVERS = Object.entries(world.rivers)
+  .filter(([k]) => k !== "_doc")
+  .map(([name, r]) => ({ name, ...(r as unknown as { width: number; path: Line }) }));
+/** Ось x ломаной на высоте y (ломаная идёт сверху вниз). */
+function pathX(path: Line, y: number): number {
+  for (let i = 0; i < path.length - 1; i++) {
+    const [x0, y0] = path[i], [x1, y1] = path[i + 1];
+    if (y >= y0 && y <= y1) return y1 === y0 ? x0 : x0 + ((x1 - x0) * (y - y0)) / (y1 - y0);
+  }
+  return path[y < path[0][1] ? 0 : path.length - 1][0];
+}
+/** Полустроки карты: y = k/2, k = 0…2·MAP_H. Генератор спрашивает ось реки и стены миллионы раз и почти всегда на целой или половинной y. */
+const HALF_ROWS = 2 * MAP_H + 1;
+/** Ось ломаной на каждой полустроке (те же значения, что даёт pathX, только посчитанные один раз при загрузке). */
+function pathTable(path: Line): Float64Array {
+  const t = new Float64Array(HALF_ROWS);
+  for (let k = 0; k < HALF_ROWS; k++) t[k] = pathX(path, k / 2);
+  return t;
+}
+/** Ось ломаной на высоте y: из таблицы на полустроке, иначе по ломаной (тесты и инструменты спрашивают любую y). */
+function tableX(tab: Float64Array, path: Line, y: number): number {
+  const k = y * 2;
+  return k >= 0 && k < HALF_ROWS && Number.isInteger(k) ? tab[k] : pathX(path, y);
+}
+/** Западная река (Светлая) — граница безопасных земель Сольгарда; восточная — её зеркало. */
+const RIVER_W = RIVERS.find((r) => r.path[0][0] < AXIS)!;
+const RIVER_TAB = pathTable(RIVER_W.path);
+/** Ось западной реки на высоте y (тайлы). */
+export const riverX = (y: number) => tableX(RIVER_TAB, RIVER_W.path, y);
+/** Эллиптическое расстояние от столицы (в долях оболочки: 1 — у реки на уровне столицы) и от центра Полей (1 — край Полей). */
+// sqrt (а не hypot): корень точен по IEEE, а hypot в разных движках может отличаться в последнем бите — карта у клиента и сервера должна совпадать
+const ell = (dx: number, dy: number, a: number, b: number) => { const u = dx / a, v = dy / b; return Math.sqrt(u * u + v * v); };
+const uOf = (x: number, y: number) => ell(x - LAYOUT.capital[0], y - LAYOUT.capital[1], LAYOUT.shell.a, LAYOUT.shell.b);
+const vOf = (x: number, y: number) => ell(x - LAYOUT.fields.cx, y - LAYOUT.fields.cy, LAYOUT.fields.rx, LAYOUT.fields.ry);
+const zoneList = (names: string[]) => names.map((n) => {
+  const z = zoneByName(n);
+  if (z === undefined) throw new Error(`data/world.json layout: нет зоны ${n}`);
+  return z;
+});
+/** Четыре зоны безопасных земель (от столицы к реке) и четыре пояса кольца (от реки к Полям) — по стороне. */
+const LAND_ZONES = { west: zoneList(LAYOUT.lands.west), east: zoneList(LAYOUT.lands.east) };
+const RING_ZONES = { west: zoneList(LAYOUT.ring.west), east: zoneList(LAYOUT.ring.east) };
+const LAND_INDEX = new Map<Zone, number>([...LAND_ZONES.west, ...LAND_ZONES.east].map((z, i) => [z, i % 4]));
+const RING_INDEX = new Map<Zone, number>([...RING_ZONES.west, ...RING_ZONES.east].map((z, i) => [z, i % 4]));
+/** Границы оболочек земель по u (начало — кромка безмобной полосы вокруг столицы, где уровень 1; три границы; 1 — река) и поясов кольца по v (1 — край Полей … последняя — внешний край 40–50). */
+const U_EDGES = [LAYOUT.shell.start, ...LAYOUT.shell.u, 1];
+const V_EDGES = LAYOUT.fields.belts;
+const NOISE = LAYOUT.noise;
+const VOLCANO_Y = LAYOUT.volcanoY;
+
+/** Данж нарисован вручную (карта 180×140) и не масштабируется; центр его прямоугольника ставится в layout.dungeon. */
+const DG = { x: LAYOUT.dungeon.cx - 148, y: LAYOUT.dungeon.cy - 71 };
+/** Прямоугольник данжа (тайлы) и его залы [x0, y0, x1, y1) — для проверок связности. */
+export const DUNGEON = { x0: 120 + DG.x, y0: 52 + DG.y, x1: 176 + DG.x, y1: 90 + DG.y };
+export const DUNGEON_ROOMS = ([
+  [146, 52, 150, 56], // вход с севера, из центра Полей (на оси симметрии)
+  [122, 66, 133, 77], // прихожая (боковая комната)
   [133, 70, 141, 73],
+  [141, 70, 143, 73], // соединяет коридор прихожей с проходом между залами (раньше обрывался)
   [140, 56, 151, 68], // северный зал
   [140, 75, 151, 87], // южный зал
   [143, 68, 148, 76],
+  [148, 70, 151, 73], // соединяет проход между залами с коридором к залу босса (раньше обрывался)
   [151, 70, 157, 73],
   [156, 59, 175, 84], // зал босса
 ] as const).map(([x0, y0, x1, y1]) => [x0 + DG.x, y0 + DG.y, x1 + DG.x, y1 + DG.y] as [number, number, number, number]);
 const LAVA_POOLS: [number, number, number][] = ([
-  [145.5, 61.5, 2.6],
+  [143.5, 62.5, 2.6],
   [146, 81.5, 2.4],
   [127.5, 74.5, 1.6],
   [160.5, 63.5, 1.8],
   [160.5, 79.5, 1.8],
 ] as const).map(([x, y, r]) => [x + DG.x, y + DG.y, r] as [number, number, number]);
 /**
- * Освоенная часть середины (холмы, лес, топи, пустошь). Вокруг неё — кольцо биомов: запад — пустыня (вход из земель Сольгарда),
- * север — снега, восток — пепельные предгорья (вход из земель Умбрата), юг — побережье.
+ * Глубина залов данжа от входа с севера (шаги по клеткам залов, 4 соседа): уровень мобов растёт от входа к залу босса, а не от прежних западных ворот.
+ * depth — по клеткам прямоугольника DUNGEON (−1 — не зал), boss — глубина клетки Повелителя Пепла.
  */
-export const CORE = { x0: 52 + MID.x, y0: 36 + MID.y, x1: 268 + MID.x, y1: 204 + MID.y };
-const MID_X1 = MID.x + MID.w, MID_Y1 = MID.y + MID.h;
-/** Масштаб освоенной части относительно прежней карты (границы зон, уровни мобов). */
-const S = 1.2;
-const sx = (x: number) => CORE.x0 + x * S, sy = (y: number) => CORE.y0 + y * S;
-const HUB = { x: 136 + MID.x, y: 121 + MID.y };
-type Line = [number, number][];
-const isLine = (v: unknown): v is Line => Array.isArray(v);
-const ROADS: Line[] = [
-  [[TOWN.x + TOWN_HALF.x, TOWN.y + 0.5], [HUB.x, HUB.y], M(170, 121), [DUNGEON.x0, 121.5 + MID.y]],
-  [[HUB.x, HUB.y], M(143, 98), M(167, 77), M(201, 65), M(222, 60)],
-  [[HUB.x, HUB.y], M(144, 146), M(172, 168), M(201, 179), M(222, 181)],
-  [[TOWN.x - TOWN_HALF.x, TOWN.y + 0.5], M(40, 122), M(3, 120)],
-  [[TOWN.x + 0.5, TOWN.y - TOWN_HALF.y], M(88, 70), M(92, 3)],
-  [[TOWN.x + 0.5, TOWN.y + TOWN_HALF.y + 1], M(88, 175), M(91, 237)],
-  // дороги в биомы кольца: пустыня (оазис), снега (долина), восток (две ветки), побережье
-  [M(40, 122), M(34, 132), M(30, 139)],
-  [M(89, 40), M(104, 34), M(112, 31)],
-  [M(201, 65), M(238, 40), M(276, 50), M(306, 64)],
-  [M(201, 179), M(240, 204), M(280, 196), M(306, 184)],
-  [M(172, 168), M(169, 200), M(171, 224)],
-  // земли фракций, северный и южный края (data/world.json)
-  ...Object.values(world.roads).filter(isLine),
-];
-const RIVERS = Object.entries(world.rivers)
-  .filter(([k]) => k !== "_doc")
-  .map(([name, r]) => ({ name, ...(r as unknown as { width: number; path: Line }) }));
-const LANDS = world.lands;
+const DUNGEON_DEPTH = (() => {
+  const dw = DUNGEON.x1 - DUNGEON.x0, dh = DUNGEON.y1 - DUNGEON.y0;
+  const depth = new Int16Array(dw * dh).fill(-1);
+  const q: number[] = [];
+  const [ex0, ey0, ex1] = DUNGEON_ROOMS[0]; // вход: верхняя строка первого зала
+  for (let x = ex0; x < ex1; x++) {
+    depth[(ey0 - DUNGEON.y0) * dw + x - DUNGEON.x0] = 0;
+    q.push(x, ey0);
+  }
+  for (let h = 0; h < q.length; h += 2) {
+    const x = q[h], y = q[h + 1], d = depth[(y - DUNGEON.y0) * dw + x - DUNGEON.x0];
+    for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + ox, ny = y + oy;
+      if (nx < DUNGEON.x0 || ny < DUNGEON.y0 || nx >= DUNGEON.x1 || ny >= DUNGEON.y1 || !inRooms(nx, ny)) continue;
+      const i = (ny - DUNGEON.y0) * dw + nx - DUNGEON.x0;
+      if (depth[i] >= 0) continue;
+      depth[i] = d + 1;
+      q.push(nx, ny);
+    }
+  }
+  return { depth, dw, boss: Math.max(1, depth[(71 + DG.y - DUNGEON.y0) * dw + 168 + DG.x - DUNGEON.x0]) };
+})();
+const MID_Y1 = MID.y + MID.h;
+const ROADS: Line[] = Object.values(world.roads).filter(isLine);
 
-/** Ровные площадки вокруг городов (центр в тайлах, r — радиус свободной зоны): без воды, лавы и мобов. */
-export const CITY_SITES = CITIES.filter((c) => c.style).map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, r: c.capital ? 16 : 14 }));
-const SOL = CITIES.find((c) => c.capital === "solgard")!, UMB = CITIES.find((c) => c.capital === "umbrath")!;
+/**
+ * Ровные площадки вокруг городов (центр в тайлах, r — радиус свободной зоны): без воды, лавы и мобов. Центр — центр клетки города (+0,5),
+ * поэтому зеркальные города (клетка i ↔ MAP_W − 1 − i) дают зеркальные круги.
+ */
+export const CITY_SITES = CITIES.filter((c) => c.style).map((c) => ({ id: c.id, name: c.name, x: c.x + 0.5, y: c.y + 0.5, r: c.capital ? 16 : 14 }));
 /** Расстояние до ближайшей площадки в долях её радиуса (меньше 1 — внутри). */
 function siteDist(x: number, y: number): number {
   let best = 1e18;
@@ -302,11 +375,16 @@ function siteDist(x: number, y: number): number {
   }
   return Math.sqrt(best);
 }
-/** Пруд оазиса (центр в тайлах). */
-const OASIS_POND = { x: 9 + MID.x, y: CITIES[1].y };
+/** Пруд оазиса в кольце 40–50 (центр в тайлах, западный; восточный — его зеркало). */
+const OASIS_POND = { x: LAYOUT.oasisPond[0], y: LAYOUT.oasisPond[1] };
+/** Расстояние от точки (непрерывные тайлы) до центра ближайшего из двух прудов: x складывается по оси, поэтому восточный пруд — зеркало западного. */
+const pondDist = (x: number, y: number) => {
+  const dx = foldX(x) - OASIS_POND.x, dy = y - OASIS_POND.y;
+  return Math.sqrt(dx * dx + dy * dy); // sqrt, а не hypot: корень точен по IEEE, карта у клиента и сервера должна совпадать побитно
+};
+/** Боссы (пары мест кольца и Полей, мировой босс на оси — layout.bossSlots; пока три прежних босса); пиксели. */
 export const BOSS_SPAWNS: BossSpawn[] = [
-  { id: "ent", x: (234 + MID.x) * TILE, y: (60 + MID.y) * TILE, arena: 10 * TILE },
-  { id: "witch", x: (234 + MID.x) * TILE, y: (181 + MID.y) * TILE, arena: 10 * TILE },
+  ...LAYOUT.bosses.map((b) => ({ id: b.id, x: b.x * TILE, y: b.y * TILE, arena: b.arena * TILE })),
   { id: "ashlord", x: (168 + DG.x) * TILE, y: (71.5 + DG.y) * TILE, arena: 12 * TILE },
 ];
 
@@ -323,18 +401,28 @@ export interface Place {
 }
 export const PLACES: Place[] = world.places.list as Place[];
 const PLACE_R = 8;
-/** Клетки рядом с поселениями (маска по тайлам, считается один раз). */
-const PLACE_MASK = (() => {
-  const m = new Uint8Array(MAP_W * MAP_H);
-  for (const p of PLACES) for (let y = p.y - PLACE_R; y <= p.y + PLACE_R; y++) for (let x = p.x - PLACE_R; x <= p.x + PLACE_R; x++) {
-    if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
-    if ((x + 0.5 - p.x) ** 2 + (y + 0.5 - p.y) ** 2 < PLACE_R * PLACE_R) m[y * MAP_W + x] = 1;
+/** Центры мест — центры их клеток (+0,5): зеркальные места (клетка i ↔ MAP_W − 1 − i) дают зеркальные круги и для вершин поверхности, и для центров клеток. */
+const PLACE_CENTERS = PLACES.map((p) => ({ x: p.x + 0.5, y: p.y + 0.5 }));
+/** Корзины 16×16 тайлов: 1 — корзину задевает круг какого-нибудь места (остальные проверки пропускаются сразу). */
+const PB = 16, PBX = Math.ceil(MAP_W / PB), PBY = Math.ceil(MAP_H / PB);
+const PLACE_BUCKET = (() => {
+  const f = new Uint8Array(PBX * PBY);
+  for (const c of PLACE_CENTERS) {
+    for (let by = Math.max(0, Math.floor((c.y - PLACE_R) / PB)); by <= Math.min(PBY - 1, Math.floor((c.y + PLACE_R) / PB)); by++) {
+      for (let bx = Math.max(0, Math.floor((c.x - PLACE_R) / PB)); bx <= Math.min(PBX - 1, Math.floor((c.x + PLACE_R) / PB)); bx++) f[by * PBX + bx] = 1;
+    }
   }
-  return m;
+  return f;
 })();
+/** Рядом ли точка (непрерывные тайлы) с поселением: внутри круга радиуса PLACE_R вокруг его центра. */
 const placeNear = (x: number, y: number) => {
-  const tx = Math.floor(x), ty = Math.floor(y);
-  return tx >= 0 && ty >= 0 && tx < MAP_W && ty < MAP_H && PLACE_MASK[ty * MAP_W + tx] === 1;
+  const bx = Math.floor(x / PB), by = Math.floor(y / PB);
+  if (bx < 0 || by < 0 || bx >= PBX || by >= PBY || !PLACE_BUCKET[by * PBX + bx]) return false;
+  for (const c of PLACE_CENTERS) {
+    const dx = x - c.x, dy = y - c.y;
+    if (dx * dx + dy * dy < PLACE_R * PLACE_R) return true;
+  }
+  return false;
 };
 
 /** Расстояние в тайлах от точки (в тайлах) до прямоугольника города (0 внутри). */
@@ -441,27 +529,21 @@ function bossNear(x: number, y: number, extra: number): BossSpawn | null {
   return null;
 }
 
-/** Кольцо биомов середины: запад — пустыня, север — снега, восток — пепельные предгорья, юг — побережье. */
-function frontierZone(x: number, y: number, seed: number): Zone {
-  const n = (fbm(x, y, seed + 29) - 0.5) * 0.4;
-  const l = (CORE.x0 - x) / 52 + n, r = (x - CORE.x1) / 52 - n, t = (CORE.y0 - y) / 36, b = (y - CORE.y1) / 36;
-  const m = Math.max(l, r, t, b);
-  if (m === b) return Math.abs(x - 170 - MID.x + n * 30) < 62 ? Zone.Coast : x < 170 + MID.x ? Zone.Desert : Zone.AshFoothills;
-  if (m === l) return Zone.Desert;
-  if (m === t) return Zone.Snow;
-  return Zone.AshFoothills;
+/**
+ * Кольцо 40–80: четыре пояса вокруг Полей вечных битв (v — расстояние от центра Полей в долях их эллипса). У реки пояс 40–50, у Полей 70–80;
+ * зоны поясов — по стороне (запад — пустыни и утёсы, восток — пепел и топи). mx, my — координаты с шумом границы.
+ */
+function frontierZone(mx: number, my: number, west: boolean): Zone {
+  const v = vOf(mx, my);
+  const belt = v < V_EDGES[1] ? 3 : v < V_EDGES[2] ? 2 : v < V_EDGES[3] ? 1 : 0;
+  return (west ? RING_ZONES.west : RING_ZONES.east)[belt];
 }
 
-/** Земли фракций и края середины. mx, my — координаты с шумом границы. */
-function landsZone(x: number, y: number, mx: number, my: number, nb: number): Zone {
-  if (mx >= MID.x && mx < MID_X1) return my < MID.y ? Zone.StormPeaks : Zone.Volcano;
-  const west = mx < MID.x;
-  if (y < LANDS.bandTop + nb * 30) return west ? Zone.GryphonCliffs : Zone.BoneRidge;
-  if (y > LANDS.bandBottom + nb * 30) return west ? Zone.FallenBarrens : Zone.PlagueMarsh;
-  const cap = west ? SOL : UMB;
-  const e = ((x - cap.x) / LANDS.starterRx) ** 2 + ((y - cap.y) / LANDS.starterRy) ** 2;
-  if (e < 1 + nb * 0.5) return west ? Zone.SunFields : Zone.Barrows;
-  return west ? Zone.KingsWood : Zone.MistWood;
+/** Безопасные земли фракции (с реки до края карты): четыре оболочки вокруг столицы по 10 уровней. mx, my — координаты с шумом границы. */
+function landsZone(mx: number, my: number, west: boolean): Zone {
+  const u = uOf(mx, my);
+  const i = u < U_EDGES[1] ? 0 : u < U_EDGES[2] ? 1 : u < U_EDGES[3] ? 2 : 3;
+  return (west ? LAND_ZONES.west : LAND_ZONES.east)[i];
 }
 
 export function zoneAt(x: number, y: number, seed: number): Zone {
@@ -469,18 +551,18 @@ export function zoneAt(x: number, y: number, seed: number): Zone {
   const fx = Math.floor(x), fy = Math.floor(y);
   if (inTownRect(fx - TOWN.x, fy - TOWN.y)) return Zone.Town;
   for (const c of CITIES) if (c.style && inCityRect(fx - c.x, fy - c.y)) return CITY_ZONE[c.id];
-  // границы земель извилистые: крупный шум (масштаб ×3) плюс мелкий
-  const nb = (fbm(x / 3, y / 3, seed + 71) - 0.5) * 1.6 + (fbm(x, y, seed + 73) - 0.5) * 0.5;
-  const mx = x + nb * 30, my = y + nb * 18;
-  if (mx < MID.x || mx >= MID_X1 || my < MID.y || my >= MID_Y1) return landsZone(x, y, mx, my, nb);
-  const e = (fbm(x, y, seed + 17) - 0.5) * 16;
-  if (x < CORE.x0 + e || x > CORE.x1 - e || y < CORE.y0 + e || y > CORE.y1 - e) return frontierZone(x, y, seed);
-  const w = (fbm(x, y, seed + 5) - 0.5) * 30 * S;
-  if (x + w > sx(98) && y + w * 0.5 > sy(44) && y + w * 0.5 < sy(97)) return Zone.Ashlands;
-  if (x > sx(54) + w * 0.5 && y + w < sy(44)) return Zone.Forest;
-  if (x > sx(54) + w * 0.5 && y + w > sy(97)) return Zone.Swamp;
-  return Zone.Meadow;
+  // границы зон извилистые: крупный шум (масштаб ×3) плюс мелкий; считается по сложенной x, поэтому восток — зеркало запада
+  const west = x < AXIS, xm = foldX(x);
+  const nb = (fbm(xm / 3, y / 3, seed + 71) - 0.5) * 1.6 + (fbm(xm, y, seed + 73) - 0.5) * 0.5;
+  const mx = xm + nb * NOISE.x, my = y + nb * NOISE.y;
+  // река — граница безопасных земель: без шума
+  if (xm < riverX(y)) return landsZone(mx, my, west);
+  if (vOf(mx, my) < 1) return my > VOLCANO_Y ? Zone.Volcano : Zone.Fields;
+  return frontierZone(mx, my, west);
 }
+
+/** Мобы не появляются ближе стольких тайлов к берегу реки: там стена, ворота и посты у мостов. */
+const RIVER_MOB_GAP = 12;
 
 /** Земля у берега реки по биому. */
 function bankOf(st: Zone): T {
@@ -498,10 +580,14 @@ const CITY_GROUND: Record<CityStyle, [T, T, T]> = {
 };
 
 function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): T {
-  const n = fbm(x, y, seed);
+  // шум по сложенной x: восток — зеркало запада (расстояния до реки, дорог и площадок и так симметричны)
+  const fx = foldX(x);
+  const n = fbm(fx, y, seed);
   const st = zoneStyle(z);
   const edge = Math.min(x, y, MAP_W - x, MAP_H - y) + (n - 0.5) * 8;
-  if (z !== Zone.Dungeon && edge < 2.6) return T.Water;
+  // река проверяется раньше края карты: она идёт до воды края, поэтому у края карты брода нет (мосты кладутся поверх там, где реку пересекает дорога)
+  const rv = riverEdge(x, y) + (n - 0.5) * 0.8;
+  if (z !== Zone.Dungeon && (rv < 0 || edge < 2.6)) return T.Water;
   if (z !== Zone.Dungeon && edge < 4.6) return st === Zone.Snow ? T.Ice : st === Zone.Volcano ? T.Obsidian : T.Sand;
   if (z === Zone.Dungeon) {
     for (const [lx, ly, r] of LAVA_POOLS) {
@@ -529,54 +615,64 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
     const [road, path, plain] = CITY_GROUND[city.style!];
     return gs.includes("road") ? road : gs.includes("path") ? path : plain;
   }
-  // реки (мосты кладутся поверх там, где их пересекает дорога)
-  const rv = riverEdge(x, y) + (n - 0.5) * 0.8;
-  if (rv < 0) return T.Water;
   if (rv < 1.3) return bankOf(st);
   const road = roadDist(x, y);
   const roadW = 1.25 + (n - 0.5) * 0.8;
   const arena = bossNear(x, y, 0);
-  // у городских площадок и поселений — без воды и лавы
-  const far = siteDist(x, y) < 1.15 || placeNear(x, y) ? 0 : road;
+  const pd = pondDist(x, y);
+  // у городских площадок, поселений, стены вдоль реки (стена не должна уходить в озеро), арен боссов (подойти к ним можно) и прудов оазисов — без воды и лавы
+  const far = siteDist(x, y) < 1.15 || placeNear(x, y) || wallNear(x, y) || bossNear(x, y, 7) || pd < 7 ? 0 : road;
+  // арена босса: ровная земля по биому (без воды, лавы и непроходимого), чтобы схватка не упиралась в препятствия; лес и топь делают это сами
+  if (arena && st !== Zone.Forest && st !== Zone.Swamp) {
+    if (road < roadW) return T.Dirt;
+    return st === Zone.Snow ? T.Snow : st === Zone.Desert ? T.Dune : st === Zone.Ashlands || st === Zone.Volcano ? T.Ash : T.Grass;
+  }
+  // Поля вечных битв: вытоптанная земля и выжженные пятна среди травы, без воды и лавы
+  if (z === Zone.Fields) {
+    if (road < roadW) return T.Dirt;
+    const p = fbm(fx, y, seed + 90);
+    if (p > 0.62) return T.Ash;
+    if (p < 0.42) return T.Dirt;
+    return T.Grass;
+  }
+  // пруд оазиса — по одному на сторону (запад: Пустыня Миражей, восток: Пепельная пустошь): вода и песок у берега; дорога и площадки главнее
+  if (pd < 4.2 && road >= roadW && siteDist(x, y) >= 1.1) return pd < 2.4 + (n - 0.5) * 2 ? T.Water : T.Sand;
   switch (st) {
     case Zone.Frontier:
     case Zone.Meadow: {
       if (road < roadW) return T.Dirt;
-      const p = fbm(x, y, seed + 40);
+      const p = fbm(fx, y, seed + 40);
       if (far > 4 && p < 0.22) return T.Water;
       if (far > 3 && p < 0.26) return T.Sand;
-      if (fbm(x, y, seed + 60) > 0.74) return T.Forest;
+      if (fbm(fx, y, seed + 60) > 0.74) return T.Forest;
       return T.Grass;
     }
     case Zone.Forest: {
       if (road < roadW) return T.Dirt;
       if (arena) return T.Grass;
-      const p = fbm(x, y, seed + 60);
+      const p = fbm(fx, y, seed + 60);
       if (p < 0.3) return T.Grass;
-      if (far > 4 && fbm(x, y, seed + 40) < 0.17) return T.Water;
+      if (far > 4 && fbm(fx, y, seed + 40) < 0.17) return T.Water;
       return T.Forest;
     }
     case Zone.Swamp: {
       if (road < roadW) return T.Dirt;
-      const p = fbm(x, y, seed + 40);
+      const p = fbm(fx, y, seed + 40);
       if (arena) return p > 0.6 ? T.Grass : T.Bog;
-      // курганы суше обычных топей: стартовая зона
-      if (far > 3 && p < (z === Zone.Barrows ? 0.25 : 0.41)) return T.Water;
+      // курганы суше обычных топей: стартовая зона; топи земель и кольца — не слишком мокрые, чтобы пути от столиц оставались равными (задача 132)
+      if (far > 3 && p < (z === Zone.Barrows ? 0.25 : z === Zone.PlagueMarsh ? 0.3 : 0.34)) return T.Water;
       if (p > 0.72) return T.Grass;
       return T.Bog;
     }
     case Zone.Ashlands: {
       if (road < roadW) return T.Dirt;
-      if (far > 3 && fbm(x, y, seed + 80) < 0.17) return T.Lava;
+      if (far > 3 && fbm(fx, y, seed + 80) < 0.17) return T.Lava;
       return T.Ash;
     }
     case Zone.Desert: {
       if (road < roadW) return T.Dirt;
       if (siteDist(x, y) < 1.1) return T.Dune;
-      const pd = Math.hypot(x - OASIS_POND.x, y - OASIS_POND.y);
-      if (pd < 2.4 + (n - 0.5) * 2) return T.Water;
-      if (pd < 4.2) return T.Sand;
-      const p = fbm(x, y, seed + 41);
+      const p = fbm(fx, y, seed + 41);
       if (p > 0.68) return T.Sand;
       if (p < 0.18 && road > 3) return T.Dirt;
       return T.Dune;
@@ -584,20 +680,20 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
     case Zone.Snow: {
       if (road < roadW) return T.Dirt;
       if (siteDist(x, y) < 1.1) return T.Snow;
-      const p = fbm(x, y, seed + 43);
+      const p = fbm(fx, y, seed + 43);
       if (far > 4 && p < 0.15) return T.Water;
       if (p < 0.25) return T.Ice;
       return T.Snow;
     }
     case Zone.Volcano: {
       if (road < roadW) return T.Dirt;
-      if (far > 3 && fbm(x, y, seed + 82) < 0.2) return T.Lava;
-      if (fbm(x, y, seed + 83) > 0.6) return T.Obsidian;
+      if (far > 3 && fbm(fx, y, seed + 82) < 0.2) return T.Lava;
+      if (fbm(fx, y, seed + 83) > 0.6) return T.Obsidian;
       return T.Ash;
     }
     case Zone.Coast: {
       if (road < roadW) return T.Dirt;
-      const p = fbm(x, y, seed + 47);
+      const p = fbm(fx, y, seed + 47);
       // южный залив: мелководье, дорога идёт по насыпи
       if (far > 2 && y > MID_Y1 - 10 + (n - 0.5) * 8) return T.Water;
       if (far > 3 && p < 0.2) return T.Water;
@@ -806,28 +902,61 @@ function buildBridges(cell: Uint8Array, w: number, objects: MapObject[]) {
   }
 }
 
-/** Доля 0..1 «глубины» точки в зоне: от неё уровень моба внутри диапазона зоны. */
-function levelK(z: Zone, x: number, y: number, dt: number): number {
-  const L = LANDS;
-  switch (z) {
-    case Zone.Meadow: return (dt - 11) / 58;
-    case Zone.Dungeon: return (x - DUNGEON.x0) / (156 - 120);
-    case Zone.Desert: return (x - MID.x) / (CORE.x0 - MID.x);
-    case Zone.AshFoothills: return (MID_X1 - x) / (MID_X1 - CORE.x1);
-    case Zone.Snow: return (CORE.y0 - y) / (CORE.y0 - MID.y);
-    case Zone.Coast: return (y - CORE.y1) / (MID_Y1 - CORE.y1);
-    case Zone.Volcano: return (y - MID_Y1) / (MAP_H - MID_Y1);
-    case Zone.StormPeaks: return (MID.y - y) / MID.y;
-    case Zone.SunFields: return Math.sqrt(((x - SOL.x) / L.starterRx) ** 2 + ((y - SOL.y) / L.starterRy) ** 2);
-    case Zone.Barrows: return Math.sqrt(((x - UMB.x) / L.starterRx) ** 2 + ((y - UMB.y) / L.starterRy) ** 2);
-    case Zone.KingsWood: return (x - SOL.x - L.starterRx) / (MID.x - SOL.x - L.starterRx);
-    case Zone.MistWood: return (UMB.x - L.starterRx - x) / (UMB.x - L.starterRx - MID_X1);
-    case Zone.GryphonCliffs:
-    case Zone.BoneRidge: return (L.bandTop - y) / L.bandTop;
-    case Zone.FallenBarrens:
-    case Zone.PlagueMarsh: return (y - L.bandBottom) / (MAP_H - L.bandBottom);
+/** Стены вдоль рек (решение 7, задача 132): безопасные земли со стороны реки обнесены стеной, ворота — проёмы у мостов, места башен — world.json walls. */
+const WALLS = world.walls;
+const WALL_TAB = pathTable(WALLS.line as Line);
+/** Колонка стены (клетка x западной половины) на строке y: ломаная walls.line. */
+const wallCol = (y: number) => Math.floor(tableX(WALL_TAB, WALLS.line as Line, y + 0.5));
+/** Точка (непрерывные тайлы) у стены вдоль реки (до 4,5 тайла от оси стены, любая сторона)? */
+const wallNear = (x: number, y: number) => Math.abs(foldX(x) - tableX(WALL_TAB, WALLS.line as Line, y)) < 4.5;
+/**
+ * Непроходимая стена вдоль каждой реки со стороны своих земель (вид пока городских стен Сольгарда и Умбрата, арт — шаг 9). Колонка стены идёт
+ * по ломаной walls.line; на уступах достраивается горизонтальная клетка, чтобы стена была связной. Проёмы ворот (walls.gates) — у мостов, у каждого
+ * по краям башни (walls.towers: якорь — левая нижняя клетка 2×2, колонки wallCol−1…wallCol). Восток — зеркало запада (клетка i ↔ w − 1 − i).
+ */
+function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn) {
+  const inGate = (y: number) => WALLS.gates.some((g) => Math.abs(y - g.y) <= g.half);
+  for (const east of [false, true]) {
+    const X = (c: number) => (east ? w - 1 - c : c);
+    const wallKind = east ? "umb_wall_v" : "sol_wall_v", towerKind = east ? "umb_tower" : "sol_tower";
+    const towerCells = new Set<number>();
+    for (const t of WALLS.towers) {
+      const c = wallCol(t.y), ax = east ? w - 1 - c : c - 1;
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) towerCells.add((t.y - j) * w + ax + i);
+      place(towerKind, ax, t.y);
+    }
+    for (let y = 0; y < h; y++) {
+      if (inGate(y)) continue;
+      const a = wallCol(y), b = wallCol(Math.min(h - 1, y + 1));
+      for (let c = Math.min(a, b); c <= Math.max(a, b); c++) {
+        const x = X(c), i = y * w + x;
+        if (towerCells.has(i) || cell[i] & CELL_BLOCK) continue;
+        place(wallKind, x, y);
+      }
+    }
   }
-  return Math.min(1, Math.max(0, (x - sx(54)) / (110 * S)));
+}
+
+/**
+ * Доля 0..1 «глубины» точки в зоне: от неё уровень моба внутри диапазона зоны. Уровень растёт к центру (задача 132):
+ * в землях фракции — от столицы к реке (по оболочке u), в кольце — от реки к Полям (по поясу v), в Полях — к их центру.
+ */
+function levelK(z: Zone, x: number, y: number): number {
+  if (z === Zone.Dungeon) {
+    // данж: от входа с севера к залу босса (путь по залам), уровень у зала босса — верх диапазона
+    const d = DUNGEON_DEPTH.depth[(Math.floor(y) - DUNGEON.y0) * DUNGEON_DEPTH.dw + Math.floor(x) - DUNGEON.x0];
+    return d < 0 ? 0.5 : d / DUNGEON_DEPTH.boss;
+  }
+  const xm = foldX(x);
+  const li = LAND_INDEX.get(z);
+  if (li !== undefined) return (uOf(xm, y) - U_EDGES[li]) / (U_EDGES[li + 1] - U_EDGES[li]);
+  const ri = RING_INDEX.get(z);
+  if (ri !== undefined) {
+    const hi = V_EDGES[4 - ri], lo = V_EDGES[3 - ri];
+    return (hi - vOf(xm, y)) / (hi - lo);
+  }
+  if (z === Zone.Fields || z === Zone.Volcano) return 1 - vOf(xm, y);
+  return 0.5;
 }
 
 export function generateMap(seed: number): WorldMap {
@@ -835,6 +964,8 @@ export function generateMap(seed: number): WorldMap {
   const vtx = new Uint8Array((w + 1) * (h + 1));
   const cell = new Uint8Array(w * h);
   const zone = new Uint8Array(w * h);
+  /** Клетки, где центр — вода (не лава, не стена и не постройка): камыш растёт только у настоящего берега. */
+  const wet = new Uint8Array(w * h);
   for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) vtx[y * (w + 1) + x] = terrainAt(x, y, seed);
 
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -843,7 +974,9 @@ export function generateMap(seed: number): WorldMap {
     const z = zoneAt(cx, cy, seed);
     zone[i] = z;
     let f = 0;
-    if (BLOCKING.has(terrainAt(cx, cy, seed, z))) f |= CELL_BLOCK;
+    const tc = terrainAt(cx, cy, seed, z);
+    if (tc === T.Water) wet[i] = 1;
+    if (BLOCKING.has(tc)) f |= CELL_BLOCK;
     if (z === Zone.Dungeon && !inRooms(x, y)) f |= CELL_BLOCK | CELL_WALL;
     if (isTownZone(z) || roadDist(cx, cy) < 2.2 || siteDist(cx, cy) < 1.15 || bossNear(cx, cy, 1) || townDist(cx, cy) < 3 || placeNear(cx, cy)) f |= CELL_RESERVED;
     cell[i] = f;
@@ -865,6 +998,7 @@ export function generateMap(seed: number): WorldMap {
   buildTown(seed, w, cell, objects, place);
   for (const c of CITIES) if (c.style) buildCity(c, cell, w, objects, place, seed);
   buildBridges(cell, w, objects);
+  buildRiverWalls(cell, w, h, place);
   buildPlaces(cell, w, objects, place, seed);
   // указатели у перекрёстков: ближайшая свободная клетка у обочины
   for (const s of world.signs.list) {
@@ -912,8 +1046,17 @@ export function generateMap(seed: number): WorldMap {
       continue;
     }
     const t = vtx[y * (w + 1) + x];
-    const nearWater = (at(x + 1, y) | at(x - 1, y) | at(x, y + 1) | at(x, y - 1)) & CELL_BLOCK;
-    if (st === Zone.Meadow || st === Zone.Frontier) {
+    // камыш — у воды (а не у любой непроходимой клетки: стена вдоль реки и деревья водой не считаются)
+    const nearWater = (x + 1 < w && wet[i + 1]) || wet[i - 1] || (y + 1 < h && wet[i + w]) || wet[i - w];
+    // пруд оазиса (пара, запад и восток): жемчуг у берега, пальмы вокруг — на любой стороне, по складывающейся x
+    const pdc = pondDist(x + 0.5, y + 0.5);
+    if (z !== Zone.Fields && pdc < 9) {
+      if (pdc > 3 && pdc < 6.5 && roll < 0.06) { placeNode("node_pearl", x, y); continue; }
+      if (pdc > 3.5 && roll < 0.2) { place("palm", x, y, jit); continue; }
+    }
+    if (z === Zone.Fields) {
+      // Поля вечных битв: декор ставится отдельным проходом ниже — зеркально относительно оси
+    } else if (st === Zone.Meadow || st === Zone.Frontier) {
       if (t === T.Forest && roll < 0.16) place(roll < 0.08 ? D.PINE : pickV(D.FOREST_TREES, x, y, 5), x, y, jit);
       else if (roll < 0.022) place(pickV(D.OAKS, x, y, 6), x, y, jit);
       else if (roll < 0.04) deco(pickV(roll < 0.033 ? D.BUSHES : D.BUSHES_FLOWER, x, y, 7), x, y, jit);
@@ -957,10 +1100,9 @@ export function generateMap(seed: number): WorldMap {
       else if (roll < 0.136) place(pickV(D.BOULDERS, x, y, 23), x, y);
       else if (roll < 0.15) deco(pickV(D.DEAD_BUSHES, x, y, 24), x, y, jit);
       else if (roll < 0.16) deco(pickV(D.SMALL_ROCKS, x, y, 25), x, y, jit, 28);
+      else if (z === Zone.Ashlands && roll < 0.1625) placeNode("node_cactus", x, y); // пара Пустыни Миражей (кольцо 40–50): у Умбрата свой кактус
     } else if (st === Zone.Desert) {
-      const pd = Math.hypot(x - OASIS_POND.x, y - OASIS_POND.y);
-      if (pd < 9 && pd > 3.5 && roll < 0.2) place("palm", x, y, jit);
-      else if (roll < 0.03) place("cactus", x, y, jit);
+      if (roll < 0.03) place("cactus", x, y, jit);
       else if (roll < 0.06) deco("cactus_small", x, y, jit);
       else if (roll < 0.075) place("sandstone", x, y);
       else if (roll < 0.1) deco("dry_bush", x, y, jit);
@@ -974,13 +1116,13 @@ export function generateMap(seed: number): WorldMap {
       else if (roll < 0.147) deco("bones", x, y, jit, 28);
       else if (roll < 0.1495) placeNode("node_ice", x, y);
     } else if (st === Zone.Volcano) {
-      if (roll < 0.03) place("obsidian_spire", x, y, jit);
+      if (hash(x, y, seed + 75) < 0.006) placeNode("node_obsidian", x, y); // обсидиан: вулкан теперь мал, узлов вдвое-вчетверо гуще прежнего
+      else if (roll < 0.03) place("obsidian_spire", x, y, jit);
       else if (roll < 0.055) place("basalt", x, y);
       else if (roll < 0.075) deco("ember_vent", x, y, jit, 28);
       else if (roll < 0.088) place(pickV(D.DEAD_ASH, x, y, 26), x, y, jit);
       else if (roll < 0.1) deco("crystal", x, y, jit);
       else if (roll < 0.108) deco(roll < 0.104 ? "bones" : pickV(D.SKULLS, x, y, 27), x, y, jit, 28);
-      else if (roll < 0.1105) placeNode("node_obsidian", x, y);
       else if (roll < 0.118 && freeR(x, y, 3)) place(pickV(D.LAVA_BIG, x, y, 28), x, y);
       else if (roll < 0.13 && freeR(x, y, 2)) place(pickV(D.LAVA_MOUNDS, x, y, 29), x, y);
       else if (roll < 0.14) place(pickV(D.BOULDERS, x, y, 30), x, y);
@@ -997,6 +1139,28 @@ export function generateMap(seed: number): WorldMap {
       else if (roll < 0.018 && !bossNear(x, y, 2)) place("crate", x, y);
     }
   }
+  // Поля вечных битв (шаг 10 дорисует тела, караваны и штандарты): мёртвые деревья, камни, кости и черепа редко, поле остаётся открытым.
+  // Западная половина решается по хэшу своей клетки, восточная — её точное зеркало (клетка i ↔ w − 1 − i, смещение спрайта по x наоборот,
+  // у двухклеточного камня привязка зеркальная): проходимость Полей симметрична, пути от столиц не зависят от случайности декора.
+  const okF = (x: number, y: number) => zone[y * w + x] === Zone.Fields && !(cell[y * w + x] & (CELL_BLOCK | CELL_RESERVED));
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w / 2; x++) {
+    const xe = w - 1 - x;
+    if (!okF(x, y) || !okF(xe, y)) continue;
+    const roll = hash(x, y, seed + 410), jit = Math.floor((hash(x, y, seed + 411) - 0.5) * 10);
+    /** Обе копии: на западной клетке со смещением jit и на зеркальной со смещением −jit. */
+    const both = (fn: (px: number, j: number) => void) => { fn(x, jit); fn(xe, -jit); };
+    const flat = (kind: string, dy: number) => both((px, j) => objects.push({ kind, x: px * TILE + 16 + j, y: y * TILE + dy }));
+    if (roll < 0.01) { const k = pickV(D.DEAD_ASH, x, y, 32); both((px, j) => place(k, px, y, j)); }
+    else if (roll < 0.02) both((px) => place("rock", px, y));
+    else if (roll < 0.03) flat(roll < 0.025 ? "bones" : pickV(D.SKULLS, x, y, 33), 28);
+    else if (roll < 0.04) { const k = pickV(D.DEAD_BUSHES, x, y, 34); both((px, j) => deco(k, px, y, j)); }
+    else if (roll < 0.047) { const k = pickV(D.SMALL_ROCKS, x, y, 35); both((px, j) => deco(k, px, y, j, 28)); }
+    else if (roll < 0.052) {
+      // двухклеточный камень: западная копия занимает x и x+1, зеркальная — w−2−x и w−1−x (привязка — левая клетка)
+      if (x + 1 < w / 2 && okF(x + 1, y) && okF(xe - 1, y)) { place("big_rock", x, y); place("big_rock", xe - 1, y); }
+    } else if (roll < 0.075) flat("ember_vent", 28);
+    else if (roll < 0.14 && vtx[y * (w + 1) + x] === T.Grass && vtx[y * (w + 1) + xe] === T.Grass) flat("tallgrass", 30);
+  }
   // Данж: колонны, факелы на стенах.
   for (const [px, py] of [[142, 58], [149, 58], [142, 66], [149, 66], [142, 77], [149, 77], [142, 85], [149, 85], [159, 62], [172, 62], [159, 81], [172, 81]])
     place("pillar", px + DG.x, py + DG.y);
@@ -1004,20 +1168,21 @@ export function generateMap(seed: number): WorldMap {
     const wall = at(x, y) & CELL_WALL, below = at(x, y + 1) & CELL_WALL;
     if (wall && !below && hash(x, y, seed + 9) < 0.22) objects.push({ kind: "torch", x: x * TILE + 16, y: y * TILE + 26 });
   }
-  objects.push({ kind: "torch", x: DUNGEON.x0 * TILE + 16, y: (69 + DG.y) * TILE + 26 }, { kind: "torch", x: DUNGEON.x0 * TILE + 16, y: (74 + DG.y) * TILE - 6 });
+  // факелы по бокам входа с севера (старые, у западных ворот, убраны вместе с ними)
+  objects.push({ kind: "torch", x: (145 + DG.x) * TILE + 16, y: (54 + DG.y) * TILE + 26 }, { kind: "torch", x: (150 + DG.x) * TILE + 16, y: (54 + DG.y) * TILE + 26 });
 
-  // Точки появления мобов: три прохода (старые зоны середины, кольцо биомов, земли фракций и края мира).
+  // Точки появления мобов: три прохода (земли фракций, кольцо 40–80 между реками, Поля вечных битв с вулканом и данжем).
   const spawns: SpawnPoint[] = [];
   const taken: { x: number; y: number }[] = [];
   const levelAt = (z: Zone, x: number, y: number, jitter: number) => {
     const [lo, hi] = ZONES[z].levels;
-    const k = Math.min(1, Math.max(0, levelK(z, x, y, townDist(x + 0.5, y + 0.5))));
+    const k = Math.min(1, Math.max(0, levelK(z, x + 0.5, y + 0.5)));
     return { k, level: Math.max(lo, Math.min(hi, Math.round(lo + (hi - lo) * k + jitter))) };
   };
   const passes: { quota: Record<string, number>; box: [number, number, number, number] }[] = [
-    { quota: world.spawnQuota.old, box: [MID.x, MID.y, MID.w, MID.h] },
-    { quota: world.spawnQuota.ring, box: [MID.x, MID.y, MID.w, MID.h] },
     { quota: world.spawnQuota.lands, box: [0, 0, w, h] },
+    { quota: world.spawnQuota.ring, box: [MID.x, MID.y, MID.w, MID.h] },
+    { quota: world.spawnQuota.fields, box: [CORE.x0, CORE.y0, CORE.x1 - CORE.x0, CORE.y1 - CORE.y0] },
   ];
   passes.forEach((pass, pi) => {
     const quota: Record<number, number> = {};
@@ -1035,8 +1200,8 @@ export function generateMap(seed: number): WorldMap {
       if (!quota[z] || cell[i] & CELL_BLOCK) continue;
       if (z !== Zone.Dungeon && cell[i] & CELL_RESERVED && rs() < 0.8) continue;
       if (bossNear(x, y, 4)) continue;
-      // вокруг стен — полоса без мобов (стражи и так их не пустят)
-      if (townDist(x + 0.5, y + 0.5) < 11 || siteDist(x + 0.5, y + 0.5) < 1.6 || placeNear(x + 0.5, y + 0.5)) continue;
+      // вокруг стен — полоса без мобов (стражи и так их не пустят); у реки с мостами и стеной (берег, ворота) мобов тоже нет
+      if (townDist(x + 0.5, y + 0.5) < 11 || siteDist(x + 0.5, y + 0.5) < 1.6 || placeNear(x + 0.5, y + 0.5) || riverEdge(x + 0.5, y + 0.5) < RIVER_MOB_GAP) continue;
       if (taken.some((p) => (p.x - x) ** 2 + (p.y - y) ** 2 < 16)) continue;
       const mobs = ZONES[z].mobs;
       const { k, level } = levelAt(z, x, y, (rs() - 0.5) * 2);

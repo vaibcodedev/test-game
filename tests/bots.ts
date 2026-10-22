@@ -147,7 +147,8 @@ async function main() {
       await a.until(() => a.toasts.includes("Не изучено — откройте K"), 2000, "отказ");
     });
     await check("маг: огненный шар летит снарядом", async () => {
-      const sp = spawnOf("slime");
+      // не точка, у которой слизня только что убили: с задачи 132 в стартовой зоне слизни 1-го уровня, и это она же (вторая по близости — рядом)
+      const sp = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[1];
       b.send("dbg", { op: "tp", x: sp.x + 120, y: sp.y });
       await sleep(300);
       const id = mobNear(b, sp.x, sp.y, 300);
@@ -157,7 +158,8 @@ async function main() {
       await b.until(() => b.fx.some((f) => f.t === "proj" && f.k === "fireball"), 2000, "снаряд");
     });
     await check("смерть и возрождение в городе", async () => {
-      a.send("dbg", { op: "hurt", v: 99999 });
+      // «бог» (hp 999999) после слизня 1-го уровня остаётся — уровень не поднимали, пересчёта здоровья не было: бьём заведомо сильнее
+      a.send("dbg", { op: "hurt", v: 9999999 });
       await a.until(() => a.me().anim === 4, 2000, "смерть");
       a.send("respawn");
       await sleep(300);

@@ -1,6 +1,7 @@
 /** Сетевые проверки городов: открытие телепорта, каст и отмена, бой, цена, возрождение, задания. */
+import { DatabaseSync } from "node:sqlite";
 import { CITIES, teleportPrice } from "../shared/cities";
-import { Bot, assert, check, passedCount, sleep, startServer, stopServer } from "./harness";
+import { Bot, assert, check, dbFile, ensureChar, passedCount, sleep, startServer, stopServer } from "./harness";
 
 const [ember, oasis, snow] = CITIES;
 const home = CITIES.find((c) => c.capital === "solgard")!, enemy = CITIES.find((c) => c.capital === "umbrath")!;
@@ -124,6 +125,41 @@ async function main() {
       const before = b.self!.gold;
       b.send("buy", { base: "hp_potion", qty: 1 });
       await b.until(() => b.self!.gold < before, 1500, "покупка");
+    });
+    await check("сохранение другой версии карты: герой входит в столицу, открытые телепорты сброшены до своей", async () => {
+      // «Старожил» дошёл до Эмберхолла и Оазиса; версию карты в его сохранении подменяют на прежнюю (до перестройки мира, задача 132)
+      const token = await ensureChar("Старожил", "secret", "Старожил", "warrior");
+      const v = await Bot.enter(token, "Старожил");
+      v.send("dbg", { op: "tp", x: ember.spawn.x, y: ember.spawn.y });
+      await v.until(() => (v.self!.cities ?? []).includes("ember"), 2000, "Эмберхолл открыт");
+      v.send("dbg", { op: "tp", x: oasis.spawn.x, y: oasis.spawn.y });
+      await v.until(() => (v.self!.cities ?? []).includes("oasis"), 2000, "оазис открыт");
+      await v.leave();
+      const d = new DatabaseSync(dbFile);
+      try {
+        let data = "";
+        for (let i = 0; i < 40 && !data.includes('"oasis"'); i++) {
+          data = (d.prepare("SELECT data FROM players WHERE name_key = 'старожил'").get() as { data: string } | undefined)?.data ?? "";
+          if (!data.includes('"oasis"')) await sleep(100);
+        }
+        assert(data.includes('"oasis"'), "в сохранении нет открытого оазиса");
+        const save = JSON.parse(data);
+        save.mapVer = 4;
+        save.x = ember.spawn.x;
+        save.y = ember.spawn.y;
+        d.prepare("UPDATE players SET data = ? WHERE name_key = 'старожил'").run(JSON.stringify(save));
+      } finally {
+        d.close();
+      }
+      const w = await Bot.enter(token, "Старожил");
+      try {
+        assert(at(w, home.spawn) < 80, "вошёл не в столицу");
+        await w.until(() => (w.self!.cities ?? []).length > 0, 1500, "список городов");
+        assert((w.self!.cities ?? []).join() === home.id, `открытые телепорты не сброшены: ${(w.self!.cities ?? []).join()}`);
+        await w.until(() => w.toasts.some((t) => t.includes("Мир перестроен")), 1500, "сообщение о сбросе телепортов");
+      } finally {
+        await w.leave();
+      }
     });
     await b.leave();
   } finally {

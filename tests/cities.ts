@@ -81,9 +81,9 @@ const bridges = m.objects.filter((o) => o.kind.startsWith("bridge")), signs = m.
 if (bridges.length < 4) fail("мостов меньше 4: " + bridges.length);
 for (const b of bridges) check("мост", { x: b.x, y: b.y - 40 });
 if (signs.length < 6) fail("указателей меньше 6: " + signs.length);
-// слабые мобы у столиц: стартовые зоны 1–10
+// слабые мобы у столиц: стартовые зоны 1–10 (задача 132: оболочка 1–10 — эллипс 49×70 тайлов вокруг столицы, поэтому проверяем 36 тайлов)
 for (const c of [sol, umb]) {
-  const near = m.spawns.filter((sp) => Math.hypot(sp.x - c.spawn.x, sp.y - c.spawn.y) < 60 * TILE);
+  const near = m.spawns.filter((sp) => Math.hypot(sp.x - c.spawn.x, sp.y - c.spawn.y) < 36 * TILE);
   if (!near.length || Math.max(...near.map((sp) => sp.level)) > 10) fail(`${c.id}: у столицы нет слабых мобов`);
 }
 console.log(bad ? `ПРОБЛЕМ: ${bad}` : "города: ок");

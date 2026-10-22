@@ -187,8 +187,10 @@ export function registerAdmin(room: WorldRoom, on: On) {
       const t = online(target);
       if (t) { pos = { x: t.unit.x, y: t.unit.y }; what = t.name; }
     } else if (typeof m.zone === "number" && ZONES[m.zone] && ZONES[m.zone].name !== "Арена") {
-      const z = ZONES[m.zone];
-      pos = z.safe ? w().map.playerSpawn : w().map.spawns.find((s) => z.mobs.includes(s.mob)) ?? null;
+      const z = ZONES[m.zone], map = w().map;
+      // точка с мобом, которая лежит в самой выбранной зоне (а не любая с мобом из её списка: те же мобы живут и в других зонах)
+      const inZone = (s: { x: number; y: number }) => map.zone[Math.floor(s.y / TILE) * map.w + Math.floor(s.x / TILE)] === m.zone;
+      pos = z.safe ? map.playerSpawn : map.spawns.find((s) => z.mobs.includes(s.mob) && inZone(s)) ?? null;
       what = z.name;
     } else {
       // по координатам (карта админ-панели, поля x, y): в стену, воду или за край карты не ставим — на ближайшую проходимую клетку

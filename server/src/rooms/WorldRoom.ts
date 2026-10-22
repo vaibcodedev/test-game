@@ -145,12 +145,17 @@ export class WorldRoom extends Room<WorldState> {
   override onJoin(client: Client, _options: JoinOptions, auth: AuthResult) {
     // позиция из сохранения другой версии карты или в стене/воде — в столицу своей фракции
     const s = auth.save, map = this.world.map;
-    if (s.mapVer !== MAP_VERSION || !walkable(map, s.x, s.y, PLAYER_RADIUS)) {
-      const home = homeCity(s.faction ?? classFaction(s.cls));
+    const home = homeCity(s.faction ?? classFaction(s.cls));
+    const oldMap = s.mapVer !== MAP_VERSION;
+    if (oldMap || !walkable(map, s.x, s.y, PLAYER_RADIUS)) {
       const sp = home.capital ? home.spawn : map.playerSpawn;
       s.x = sp.x;
       s.y = sp.y;
     }
+    // с новой раскладкой (задача 132) Эмберхолл, Оазис и Снежная долина переехали: прежние открытые телепорты ведут не туда, где герой был, и дали бы
+    // обойти поход к новым местам — остаётся своя столица, остальные города открываются заново пешком
+    const reopen = oldMap && (s.cities ?? []).some((id) => id !== home.id);
+    if (oldMap) s.cities = [home.id];
     s.mapVer = MAP_VERSION;
     const id = client.sessionId;
     this.sockets.set(id, client);
@@ -162,6 +167,7 @@ export class WorldRoom extends Room<WorldState> {
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: auth.created });
     sendNodes(this.world, p);
     if (auth.created) client.send("toast", { text: "Добро пожаловать в Пепельный Предел!", kind: "level" });
+    if (reopen) client.send("toast", { text: "Мир перестроен: камни телепорта других городов закрыты — откройте их заново, дойдя пешком", kind: "info" });
     deliverArenaRewards(p);
     deliverPending(p);
     const key = p.name.toLowerCase();

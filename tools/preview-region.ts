@@ -1,18 +1,30 @@
 /**
  * Отладка: рендер участка карты тайлами (dual grid) и объектами в tools/out/region.png.
- * Аргументы: x y w h (в тайлах) или «town» — весь Эмберхолл.
+ * Аргументы: x y w h (в тайлах), «town» — весь Эмберхолл, «bridge N|M|S [east]» — ворота, мост и кусок стены вдоль реки (запад или восток);
+ * в конце можно добавить «--out файл.png». Переменная MARKS="x,y;x,y" ставит метки (пиксели мира).
  */
 import { PNG } from "pngjs";
 import fs from "node:fs";
-import { MAP_SEED } from "../shared/constants";
-import { CELL_WALL, generateMap, T, TOWN } from "../shared/map";
+import path from "node:path";
+import world from "../data/world.json";
+import { MAP_SEED, MAP_W } from "../shared/constants";
+import { CELL_WALL, generateMap, riverX, T, TOWN } from "../shared/map";
 import { TOWN_HALF } from "../shared/town";
 import { PC } from "./gen/canvas";
 
 const args = process.argv.slice(2);
-const [x0, y0, w, h] = args[0] === "town"
-  ? [TOWN.x - TOWN_HALF.x - 3, TOWN.y - TOWN_HALF.y - 4, TOWN_HALF.x * 2 + 7, TOWN_HALF.y * 2 + 8]
-  : args.length === 4 ? args.map(Number) : [20, 56, 30, 22];
+const oi = args.indexOf("--out");
+const OUT = oi >= 0 ? args.splice(oi, 2)[1] : "tools/out/region.png";
+let region: number[];
+if (args[0] === "town") region = [TOWN.x - TOWN_HALF.x - 3, TOWN.y - TOWN_HALF.y - 4, TOWN_HALF.x * 2 + 7, TOWN_HALF.y * 2 + 8];
+else if (args[0] === "bridge") {
+  const b = world.bridges.find((q) => q.id === args[1]) ?? world.bridges[1];
+  const east = args[2] === "east";
+  // от стены (6,5 тайла западнее реки) с запасом до дальнего берега: 34×22 тайла вокруг моста, восток — зеркально
+  const wx = Math.floor(riverX(b.y)) - 18;
+  region = [east ? MAP_W - (wx + 34) : wx, Math.floor(b.y) - 11, 34, 22];
+} else region = args.length === 4 ? args.map(Number) : [20, 56, 30, 22];
+const [x0, y0, w, h] = region;
 const m = generateMap(MAP_SEED);
 const read = (f: string) => {
   const png = PNG.sync.read(fs.readFileSync(f));
@@ -70,6 +82,6 @@ for (const mk of (process.env.MARKS ?? "").split(";").filter(Boolean)) {
 }
 const png = new PNG({ width: out.w, height: out.h });
 Buffer.from(out.data.buffer).copy(png.data);
-fs.mkdirSync("tools/out", { recursive: true });
-fs.writeFileSync("tools/out/region.png", PNG.sync.write(png));
-console.log("tools/out/region.png", out.w, out.h);
+fs.mkdirSync(path.dirname(OUT), { recursive: true });
+fs.writeFileSync(OUT, PNG.sync.write(png));
+console.log(OUT, out.w, out.h);

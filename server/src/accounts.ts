@@ -7,6 +7,7 @@ import express from "express";
 import { randomBytes } from "node:crypto";
 import { MAX_CHARS, normLook, type AccountView, type CharSummary } from "../../shared/accounts";
 import { CLASSES, isClassId, type ClassId } from "../../shared/classes";
+import { homeCity } from "../../shared/cities";
 import { FACTIONS, isFactionId } from "../../shared/factions";
 import { NAME_RE } from "../../shared/constants";
 import { iconFor, itemName, SLOTS } from "../../shared/items";
@@ -76,7 +77,9 @@ function summary(row: CharRow, map: WorldMap | null): CharSummary {
   let save: Partial<PlayerSave> = {};
   try { save = JSON.parse(row.data); } catch {}
   const onMap = map && save.mapVer === MAP_VERSION && typeof save.x === "number" && typeof save.y === "number";
-  const zone = onMap ? ZONES[zoneAtPx(map, save.x!, save.y!)]?.name ?? "" : ZONES[0].name;
+  // сохранение другой версии карты: герой войдёт в столицу своей фракции (WorldRoom.onJoin), её и показываем
+  const home = homeCity(row.faction ?? CLASSES[row.cls]?.faction);
+  const zone = onMap ? ZONES[zoneAtPx(map, save.x!, save.y!)]?.name ?? "" : map ? ZONES[zoneAtPx(map, home.spawn.x, home.spawn.y)]?.name ?? home.name : home.name;
   const equip: CharSummary["equip"] = [];
   for (const slot of SLOTS) {
     const it = save.equip?.[slot];

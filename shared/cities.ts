@@ -8,7 +8,7 @@
  *   улицы: проспект |dx|≤1, поперечная |dy|≤1, кольцо вдоль стен dx = ±12 / dy = ±9; площадь |dx|≤6, |dy|≤4.
  */
 import data from "../data/cities.json";
-import { MAP_W, MID, TILE } from "./constants";
+import { FORTS, MAP_W, TILE } from "./constants";
 import { TOWN, TOWN_HALF } from "./town";
 
 export type CityStyle = "desert" | "snow" | "solgard" | "umbrath";
@@ -169,8 +169,9 @@ export const CITIES: City[] = [
     arrive: tileCenter(EMBER_STONE.x, EMBER_STONE.y + 1),
     spawn: tileCenter(TOWN.x, TOWN.y + 3),
   },
-  small("oasis", "desert", 30 + MID.x, 152 + MID.y),
-  small("snow_valley", "snow", 112 + MID.x, 18 + MID.y),
+  // будущие форты фракций на краях Полей вечных битв (задача 132, шаг 4): пока прежние города, на местах фортов схемы (зеркально)
+  small("oasis", "desert", FORTS.west.x, FORTS.west.y),
+  small("snow_valley", "snow", FORTS.east.x, FORTS.east.y),
   // столицы на противоположных краях мира
   small("aurelion", "solgard", 56, 180),
   small("morthaim", "umbrath", MAP_W - 57, 180),

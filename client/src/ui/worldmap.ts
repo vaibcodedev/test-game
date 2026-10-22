@@ -4,7 +4,7 @@ import { CITIES, cityKnown } from "../../../shared/cities";
 import { RAID, RAID_GATE } from "../../../shared/raid";
 import { factionColor } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
-import { PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
+import { DANGER_LABEL, PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
 import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 
@@ -24,7 +24,7 @@ const RIVERS = Object.entries(world.rivers as unknown as Record<string, { width:
 const SIGNS = (world.signs.list as { x: number; y: number; text: string }[]);
 const GRID = 24;
 
-interface Label { x: number; y: number; text: string }
+interface Label { x: number; y: number; text: string; /** Опасность зоны: кольцо 40–80 — «Небезопасная зона», Поля 80–100 — «Опасная зона». */ danger?: "unsafe" | "deadly" }
 interface Hit { x: number; y: number; r: number; title: string; sub: string }
 
 export class WorldMapView {
@@ -138,6 +138,8 @@ export class WorldMapView {
       zone[by * gw + bx] = best;
     }
     const seen = new Uint8Array(gw * gh);
+    // узкие высокие пояса (кольцо 40–80 вокруг Полей) подписываются позже, лесенкой по высоте: на общем плане их названия шире самих поясов
+    const belts: { comp: number[]; cx: number; z: number }[] = [];
     for (let i = 0; i < gw * gh; i++) {
       if (seen[i] || zone[i] < 0) continue;
       const z = zone[i], st = [i], comp: number[] = [];
@@ -156,11 +158,20 @@ export class WorldMapView {
       let mx = 0, my = 0;
       for (const c of comp) { mx += c % gw; my += (c / gw) | 0; }
       mx /= comp.length; my /= comp.length;
+      const span = Math.max(...comp.map((c) => (c / gw) | 0)) - Math.min(...comp.map((c) => (c / gw) | 0)) + 1;
+      if (span >= 8 && comp.length / span <= 2.6) { belts.push({ comp, cx: mx, z }); continue; } // в среднем не шире 2–3 блоков на строку
       let bc = comp[0], bd = 1e9;
       for (const c of comp) { const d = Math.hypot((c % gw) - mx, ((c / gw) | 0) - my); if (d < bd) { bd = d; bc = c; } }
       const zi = ZONES[z];
-      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: zi.name });
+      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: zi.name, danger: zi.danger });
     }
+    belts.sort((a, b) => a.cx - b.cx);
+    belts.forEach((b, k) => {
+      const target = Math.round((gh - 1) * (0.14 + 0.24 * (k % 4)));
+      let bc = b.comp[0], bd = 1e9;
+      for (const c of b.comp) { const d = Math.abs(((c / gw) | 0) - target) * 3 + Math.abs((c % gw) - b.cx); if (d < bd) { bd = d; bc = c; } }
+      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: ZONES[b.z].name, danger: ZONES[b.z].danger });
+    });
   }
 
   open() {
@@ -199,6 +210,12 @@ export class WorldMapView {
     this.endPick(false);
     p.onPick((t.x + 0.5) * TILE, (t.y + 0.5) * TILE);
     this.win.hidden = true;
+  }
+  /** Подсказка зоны тайла: название и опасность («Небезопасная зона» — кольцо 40–80, «Опасная зона» — Поля вечных битв). */
+  private tileZoneText(x: number, y: number): string {
+    const zi = ZONES[this.map.zone[y * this.map.w + x]];
+    if (!zi) return "";
+    return zi.danger ? `${zi.name} · ${DANGER_LABEL[zi.danger]}` : zi.name;
   }
   /** Тайл под точкой холста (пиксели от его левого верхнего угла); null — вне мира. */
   private tileAt(px: number, py: number): { x: number; y: number } | null {
@@ -346,7 +363,7 @@ export class WorldMapView {
         const x = X(p.x), y = Y(p.y);
         if (x < -20 || y < -20 || x > this.W + 20 || y > this.H + 20) continue;
         const zi = ZONES[m.zone[Math.min(m.h - 1, p.y) * m.w + Math.min(m.w - 1, p.x)]];
-        const sub = `${KIND_NAME[p.kind]}${zi ? ` · ${zi.safe ? "безопасно" : zi.note ? "дикие края" : `ур. ${zi.levels[0]}–${zi.levels[1]}`}` : ""}`;
+        const sub = `${KIND_NAME[p.kind]}${zi ? ` · ${zi.safe ? "безопасно" : zi.note ? "дикие края" : `ур. ${zi.levels[0]}–${zi.levels[1]}${zi.danger ? ` · ${DANGER_LABEL[zi.danger].toLowerCase()}` : ""}`}` : ""}`;
         const sz = p.kind === "village" ? 4 : 3;
         g.fillStyle = "#120a10";
         g.fillRect(x - sz - 1, y - sz - 1, sz * 2 + 2, sz * 2 + 2);
@@ -368,7 +385,12 @@ export class WorldMapView {
       const za = s < 3 ? 0.75 : s < 6 ? 0.5 : 0.28;
       g.globalAlpha = za;
       const hz = head(s < 3 ? 15 : 18, dpr);
-      for (const z of this.zoneLabels) label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws);
+      for (const z of this.zoneLabels) {
+        // вторая строка — опасность зоны цветом токена (кольцо 40–80 — янтарная, Поля 80–100 — красная)
+        if (label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws) && z.danger) {
+          label(DANGER_LABEL[z.danger], X(z.x), Y(z.y) + hz.size * 0.9, z.danger === "deadly" ? P.bad : P.numGold, `600 ${s < 3 ? 12 : 13}px ${TEXT}`, s < 3 ? 12 : 13);
+        }
+      }
       g.globalAlpha = 1;
     }
     this.hits = hits;
@@ -458,7 +480,7 @@ export class WorldMapView {
       if (this.pick) {
         // выбор точки: под курсором тайл и зона (города и поселения подписаны на самой карте)
         const t = this.tileAt(mp.x, mp.y);
-        if (t) h = { x: mp.x, y: mp.y, r: 0, title: `Тайл ${t.x}, ${t.y}`, sub: ZONES[this.map.zone[t.y * this.map.w + t.x]]?.name ?? "" };
+        if (t) h = { x: mp.x, y: mp.y, r: 0, title: `Тайл ${t.x}, ${t.y}`, sub: this.tileZoneText(t.x, t.y) };
       } else {
         let bd = 1e9;
         for (const c of this.hits) {

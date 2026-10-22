@@ -16,10 +16,10 @@ export interface BestiaryText {
 }
 export const BESTIARY: Record<string, BestiaryText> = data as Record<string, BestiaryText>;
 
-/** Зоны обитания и диапазон уровней моба. */
+/** Зоны обитания и диапазон уровней моба (зоны без места в мире — unused — не считаются). */
 export function mobHabitat(mobId: string): { zones: string[]; levels: [number, number] | null } {
   const def = MOBS[mobId];
-  const zs = ZONES.filter((z) => z.mobs.includes(mobId));
+  const zs = ZONES.filter((z) => !z.unused && z.mobs.includes(mobId));
   const zones = BESTIARY[mobId]?.habitat ?? zs.map((z) => z.name);
   if (def?.level) return { zones, levels: [def.level, def.level] };
   if (!zs.length) return { zones, levels: null };

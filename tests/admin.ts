@@ -2,7 +2,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { MAP_SEED, PLAYER_RADIUS, TILE } from "../shared/constants";
 import { affixCount, BASE_ITEMS, ITEM_MODELS, makeItem, previewGear, type Slot } from "../shared/items";
-import { CELL_BLOCK, CELL_WALL, generateMap, T, walkable, ZONES } from "../shared/map";
+import { CELL_BLOCK, CELL_WALL, generateMap, T, walkable, ZONES, zoneAtPx } from "../shared/map";
 import { assert, Bot, check, dbFile, passedCount, sleep, startServer, stopServer } from "./harness";
 
 type GiveResult = { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
@@ -299,6 +299,12 @@ async function main() {
       const safe = ZONES.findIndex((z) => z.safe && z.name !== "Арена");
       adm.send("admin:tp", { zone: safe });
       await adm.until(() => dist(pos(adm), MAP.playerSpawn) < 2, 3000, `ТП в зону «${ZONES[safe].name}»`);
+      // зоны с общими мобами (Поля, вулкан, данж, кольцо) ведут в саму выбранную зону, а не в первую точку с таким мобом
+      for (const name of ["Поля вечных битв", "Пылающий вулкан", "Пепельные чертоги", "Пустошь Павших"]) {
+        const zi = ZONES.findIndex((z) => z.name === name);
+        adm.send("admin:tp", { zone: zi });
+        await adm.until(() => zoneAtPx(MAP, pos(adm).x, pos(adm).y) === zi, 3000, `ТП в зону «${name}»`);
+      }
     });
     // ---- призванные монстры: список, «Убить», «Убить всех призванных», «Убить цель» (вкладка «Мир») ----
     type Summoned = { id: string; name: string; level: number; hp: number; maxHp: number; boss: boolean; d: number };
@@ -313,6 +319,8 @@ async function main() {
       await adm.until(() => lists.length > k, 3000, "список после призыва");
       const fresh = last().find((x) => !before.has(x.id));
       assert(fresh, "в списке нет нового монстра: " + JSON.stringify(last()));
+      // список приходит сразу, состояние мира — со следующим патчем (до 50 мс): ждём моба в состоянии, а не надеемся на порядок пакетов
+      await adm.until(() => alive(fresh.id), 2000, "призванный монстр в состоянии мира");
       return fresh;
     };
     await check("призыв: монстр в списке призванных (имя, уровень, здоровье)", async () => {

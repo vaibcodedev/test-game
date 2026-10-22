@@ -119,7 +119,7 @@ export class AdminUI {
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Имя</th><th>Класс и уровень</th><th>Позиция</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
     }
     if (this.tab === "world") {
-      const zones = ZONES.map((z, i) => (z.name === "Арена" ? "" : `<option value="${i}">${esc(z.name)}</option>`)).join("");
+      const zones = ZONES.map((z, i) => (z.name === "Арена" || z.unused ? "" : `<option value="${i}">${esc(z.name)}</option>`)).join("");
       return `<section class="sec flat"><h3 class="sec-h">Призыв монстра</h3>
         <div class="adm-row"><label class="field grow"><span class="field-label">Монстр</span><select id="w-mob" class="input">${opts(Object.keys(MOBS), (i) => MOBS[i].name)}</select></label>
         <label class="field"><span class="field-label">Уровень</span><input id="w-lv" class="input num" type="number" min="1" max="60" value="10"></label>

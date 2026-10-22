@@ -3,7 +3,9 @@
  * Запуск: npx tsx tools/map-plan.ts [was] [A] [B]   (Chrome: переменная CHROME_PATH или стандартные пути)
  * Вывод: tools/out/map-plan/1-bylo.png, 2-stalo-A-ember-vverhu.png, 3-stalo-B-ember-vnizu.png
  *
- * «Было» строится из generateMap (как tools/preview-map.ts) с подписями зон и уровней; пути — по проходимым клеткам настоящей карты.
+ * «Было» строится из generateMap (как tools/preview-map.ts) с подписями зон и уровней; пути — по проходимым клеткам настоящей карты. Это работает только
+ * на карте до шага 2 (в data/world.json нет раздела layout): шаг 2 заменил карту, поэтому «Было» больше не пересобирается — картинка 1-bylo.png
+ * сохранена с шага 1 (коммит c9dea8d), а команда was печатает об этом и пропускается.
  * «Стало» — модель схемы ниже в тайлах (1100×360). Запад задан руками, восток — зеркало: x → 1100 − x в непрерывных координатах
  * (тайл i ↔ 1099 − i). Пути считаются по сетке проходимости схемы: река, край карты и стены непроходимы, открыты мосты и ворота,
  * броды у краёв закрыты (река идёт до воды края). Ход — 16 направлений, один тайл = 32 px, скорость героя 150 px/с.
@@ -16,12 +18,16 @@ import puppeteer from "puppeteer-core";
 import world from "../data/world.json";
 import { BOSS_SPAWNS, CELL_BLOCK, CELL_WALL, TOWN, ZONES, ZONE_COUNT, Zone, generateMap } from "../shared/map";
 import { cityById } from "../shared/cities";
-import { MAP_H, MAP_SEED, MAP_W, MID, PLAYER_SPEED, TILE } from "../shared/constants";
+import { MAP_H, MAP_SEED, MAP_W, PLAYER_SPEED, TILE } from "../shared/constants";
 
 type P = [number, number];
 type Fac = "sol" | "umb" | "emb";
 const W = MAP_W, H = MAP_H, AXIS = W / 2;
 const OUT = "tools/out/map-plan";
+/** Середина между реками на карте «до» (шаг 1): 320×240 вокруг прежнего Эмберхолла; теперь MID в shared/constants.ts — 676×360. */
+const OLD_MID = { x: 400, y: 60, w: 320, h: 240 };
+/** Карта уже перестроена шагом 2 (раздел layout в data/world.json): «Было» из generateMap больше не получить. */
+const WORLD_REWORKED = !!(world as { layout?: unknown }).layout;
 /** Тайлов в секунду при скорости героя. */
 const TPS = PLAYER_SPEED / TILE;
 
@@ -319,8 +325,8 @@ function buildWas() {
   };
   let svg = defs() + `<image href="data:image/png;base64,${b64}" x="0" y="0" width="${w}" height="${h}" style="image-rendering:pixelated"/>`;
   // старый мир Эмберхолла и ось симметрии
-  svg += `<rect x="${MID.x}" y="${MID.y}" width="${MID.w}" height="${MID.h}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width=".7" stroke-dasharray="4 3"/>`;
-  svg += `<text class="t s5" x="${MID.x + 2}" y="${MID.y - 3}" style="text-anchor:start">старая середина MID 320×240</text>`;
+  svg += `<rect x="${OLD_MID.x}" y="${OLD_MID.y}" width="${OLD_MID.w}" height="${OLD_MID.h}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width=".7" stroke-dasharray="4 3"/>`;
+  svg += `<text class="t s5" x="${OLD_MID.x + 2}" y="${OLD_MID.y - 3}" style="text-anchor:start">старая середина MID ${OLD_MID.w}×${OLD_MID.h}</text>`;
   svg += `<line x1="${AXIS}" y1="0" x2="${AXIS}" y2="${h}" stroke="#ffd23f" stroke-width=".7" stroke-dasharray="6 4"/>`;
   svg += `<text class="t s5 y" x="${AXIS + 3}" y="9" style="text-anchor:start">ось симметрии карты (x = 550)</text>`;
   // подписи зон
@@ -774,6 +780,28 @@ function planSvg(d: PlanData, riverGap: number): string {
     o += `<rect x="${r1(cx - 5.5)}" y="${b.y - 1.9}" width="11" height="3.8" fill="#b58d58" stroke="#2b1c0e" stroke-width=".6"/>`;
     for (let k = -4; k <= 4; k += 2) o += `<line x1="${r1(cx + k)}" y1="${b.y - 1.9}" x2="${r1(cx + k)}" y2="${b.y + 1.9}" stroke="#2b1c0e" stroke-width=".35"/>`;
   }
+  // стены вдоль рек со стороны своих земель (решение 7, шаг 2): ось стены и ворота у мостов — из data/world.json, башни через равные промежутки
+  {
+    const WL = world.walls.line as P[], gates = world.walls.gates;
+    const lineX = (y: number) => {
+      for (let i = 0; i < WL.length - 1; i++) if (y >= WL[i][1] && y <= WL[i + 1][1]) return WL[i][0] + ((WL[i + 1][0] - WL[i][0]) * (y - WL[i][1])) / (WL[i + 1][1] - WL[i][1]);
+      return WL[WL.length - 1][0];
+    };
+    const inGate = (y: number) => gates.some((q) => y >= q.y - q.half && y < q.y + q.half + 1);
+    for (const mir of [false, true]) {
+      let run: P[] = [];
+      const flush = () => {
+        if (run.length > 1) { const a = mir ? mirrorPts(run) : run; o += line(a, "#2b1c0e", 2.6) + line(a, "#cdbb94", 1.5); }
+        run = [];
+      };
+      for (let y = 0; y <= H; y++) { if (inGate(y)) flush(); else run.push([lineX(y + 0.5), y]); }
+      flush();
+      for (const t of world.walls.towers) {
+        const c = Math.floor(lineX(t.y + 0.5)), x = mir ? W - c - 1 : c - 1;
+        o += `<rect x="${x}" y="${t.y - 1}" width="2" height="2" fill="${mir ? "#b58bd8" : "#f0d27a"}" stroke="#2b1c0e" stroke-width=".4"/>`;
+      }
+    }
+  }
   // дороги
   for (const mir of [false, true]) for (const r of g.roads) o += road(mir ? mirrorPts(r.pts) : r.pts);
   // патрули на дорогах своих земель и маршруты отрядов на Полях
@@ -1010,6 +1038,7 @@ function planLegend(c: { ok: number; bad: number }): string {
   items.push(li(ico(`<rect x="-9" y="-3.5" width="18" height="7" fill="${FIELD_FILL}"/><rect x="-9" y="-3.5" width="18" height="7" fill="url(#hatch)"/>`, 40), "<b>Поля вечных битв 80–100</b>: подпись «Опасная зона»"));
   items.push(li(ico(`<line x1="-9" y1="0" x2="9" y2="0" stroke="#1b4a85" stroke-width="5"/><line x1="-9" y1="0" x2="9" y2="0" stroke="#3d84cc" stroke-width="4"/><circle cx="0" cy="0" r="2.7" fill="#8a1f1f" stroke="#fff" stroke-width=".5"/>`, 40), "Река непроходима и идёт до воды края карты: броды закрыты (красный знак)"));
   items.push(li(ico(`<rect x="-6" y="-1.9" width="11" height="3.8" fill="#b58d58" stroke="#2b1c0e" stroke-width=".6"/>`, 40), "Мост — единственный вход на безопасные земли (по три на реку: север, главный, юг)"));
+  items.push(li(ico(line([[-9, 0], [-3, 0]], "#2b1c0e", 2.6) + line([[-9, 0], [-3, 0]], "#cdbb94", 1.5) + line([[3, 0], [9, 0]], "#2b1c0e", 2.6) + line([[3, 0], [9, 0]], "#cdbb94", 1.5) + `<rect x="-9" y="-1.6" width="3.2" height="3.2" fill="#f0d27a" stroke="#2b1c0e" stroke-width=".5"/>`, 40), "Стена вдоль реки со стороны своих земель: непроходима, проёмы ворот (пять клеток) только у мостов, через ≈24 тайла башни с лучниками"));
   items.push(li(ico(post(0, 0, "sol"), 40), "Пост на мосту: стража, два штандарта и оберег (зелёный ромб) — раскрывает невидимок; обереги и у ворот поселений и фортов"));
   items.push(li(ico(`<rect x="-7" y="-5.5" width="14" height="11" fill="#2c2a33" stroke="${FC.sol}" stroke-width="1.4"/>`, 40), "Столица (стены 28×22, ворота север и юг): банк, заточка и сумки теперь и здесь"));
   items.push(li(ico(settlement(0, 0, "sol"), 40, "-12 -9 24 18"), "Поселение в каждой большой зоне (4 на фракцию): торговец, повар, стража, зона без мобов; у Сольгарда лагерь за частоколом, у Умбрата деревня в руинах"));
@@ -1081,7 +1110,8 @@ async function main() {
   const want = new Set(process.argv.slice(2).length ? process.argv.slice(2) : ["was", "A", "B"]);
   const pages: { file: string; html: string }[] = [];
   const log: string[] = [];
-  if (want.has("was")) {
+  if (want.has("was") && WORLD_REWORKED) log.push("было: не пересобирается — карта уже перестроена шагом 2 (раздел layout в data/world.json); картинка tools/out/map-plan/1-bylo.png сохранена с шага 1 (коммит c9dea8d)");
+  else if (want.has("was")) {
     const w = buildWas();
     pages.push({ file: "1-bylo.png", html: htmlPage("Было: нынешняя карта «Поля вечных битв» (задача 132, шаг 1)", "Как в tools/preview-map.ts (4 px на тайл → 2 px), с подписями зон и уровней. Голубая и оранжевая линии — кратчайшие пути от столиц до Эмберхолла.", w.svg, wasLegendAndTable(w)) });
     log.push(`было: Аурелион→Эмберхолл ${Math.round(w.pA)}, Мортхейм→Эмберхолл ${Math.round(w.pM)} (Δ ${fmtPct(diffPct(w.pA, w.pM))}), между реками ${w.gap}`);

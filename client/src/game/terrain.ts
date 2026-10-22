@@ -322,16 +322,19 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
 
 /** Затемнение и цвет подложки зоны (над миром, под интерфейсом). */
 export function zoneTint(zone: Zone): { dark: number; color: number } {
-  // земли Умбрата: пурпурный сумрак
+  // земли Умбрата (столица и четыре зоны 1–40 востока: Курганы, Мглистый бор, Пепельные предгорья, Гнилые топи): пурпурный сумрак;
+  // Чумные топи и Костяной хребет теперь в кольце 40–80 и тонируются биомом (топь, пепел), как их западные пары
   switch (zone) {
     case Zone.UmbrathCity: return { dark: 0.22, color: 0x1a0828 };
     case Zone.Barrows: return { dark: 0.2, color: 0x140a20 };
     case Zone.MistWood: return { dark: 0.16, color: 0x10141a };
-    case Zone.PlagueMarsh: return { dark: 0.22, color: 0x0c1408 };
-    case Zone.BoneRidge: return { dark: 0.2, color: 0x140a18 };
+    case Zone.AshFoothills: return { dark: 0.18, color: 0x140a1c };
+    case Zone.Swamp: return { dark: 0.2, color: 0x100c1c };
     case Zone.SolgardCity:
     case Zone.SunFields: return { dark: 0, color: 0x2a1a06 };
     case Zone.StormPeaks: return { dark: 0.18, color: 0x0a1a3a };
+    // Поля вечных битв (80–100): багровый сумрак поля боя
+    case Zone.Fields: return { dark: 0.2, color: 0x1c0a12 };
   }
   const z = zoneStyle(zone);
   switch (z) {
