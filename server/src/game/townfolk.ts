@@ -1,10 +1,11 @@
 /**
- * Жители Эмберхолла на сервере: стражники (посты у ворот и патрули по улицам) и горожане.
+ * Жители Эмберхолла, городов и поселений (задача 132, шаг 3) на сервере: стражники (посты у ворот и патрули по улицам) и горожане.
  * Синхронизируются юнитами в state.mobs (kind Guard/Citizen), позиция пишется в схему не чаще SYNC_MS —
  * клиент плавно доводит. Стражники неуязвимы, добивают мобов у стен и стреляют в нарушителей мира (бой фракций в нейтральном городе).
  */
 import data from "../../../data/townfolk.json";
 import { CITIES, CITY_CITIZEN_COUNT, CITY_CITIZEN_SPOTS, CITY_GATE_GUARDS, CITY_PATROLS } from "../../../shared/cities";
+import { SETTLEMENTS } from "../../../shared/settlements";
 import { TILE } from "../../../shared/constants";
 import { moveWithCollision } from "../../../shared/map";
 import { Nav } from "../../../shared/path";
@@ -20,7 +21,7 @@ const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (d
 const SYNC_MS = 200;
 const R = 8;
 const G = data.guard, C = data.citizen;
-/** Город со своей стражей: Эмберхолл и малые города (центр в тайлах, полуразмеры зоны, посты и маршруты). */
+/** Город со своей стражей: Эмберхолл, малые города, столицы и поселения (центр в тайлах, полуразмеры зоны, посты и маршруты). */
 interface Site {
   x: number;
   y: number;
@@ -39,6 +40,11 @@ const SITES: Site[] = [
   ...CITIES.filter((c) => c.style).map((c): Site => ({
     x: c.x, y: c.y, half: c.half, sideX: null, gateGuards: CITY_GATE_GUARDS, patrols: CITY_PATROLS, spots: CITY_CITIZEN_SPOTS, count: CITY_CITIZEN_COUNT,
     guard: { ...G, ...c.guard! }, people: c.people!,
+  })),
+  // поселения безопасных земель: двое у ворот (у боковых ворот смотрят наружу), патруль по улицам, двое жителей; стража бьёт мобов у ограды
+  ...SETTLEMENTS.map((s): Site => ({
+    x: s.x, y: s.y, half: { x: s.ring.w, y: Math.max(s.ring.n, s.ring.s) }, sideX: s.gate === "e" || s.gate === "w" ? s.ring.w - 1 : null,
+    gateGuards: s.posts, patrols: [s.patrol], spots: s.spots, count: s.people.length, guard: { ...G, ...s.guard }, people: s.people,
   })),
 ];
 /** Расстояние в тайлах от точки (тайлы) до прямоугольника города (0 внутри). */
@@ -122,9 +128,14 @@ export class Townfolk {
     return f;
   }
 
+  /** Моб жив и ещё в мире: encounters/bosses убирают мобов без dead (removeMob) — такие перестают быть целью. */
+  private alive(m: Mob) {
+    return !m.dead && this.w.mobs.get(m.id) === m;
+  }
+
   /** Моб угрожает городу: живой, не босс и в пределах GUARD_RANGE_TILES от стен. */
   private threat(m: Mob, site: Site) {
-    return !m.dead && !m.def.boss && siteDist(site, m.x / TILE, m.y / TILE) <= GUARD_RANGE_TILES;
+    return this.alive(m) && !m.def.boss && siteDist(site, m.x / TILE, m.y / TILE) <= GUARD_RANGE_TILES;
   }
 
   update(dt: number) {
@@ -253,7 +264,7 @@ export class Townfolk {
     const t = this.w.time;
     let moving = false;
     const m = f.foe;
-    if (m && !m.dead) {
+    if (m && this.alive(m)) {
       const reach = G.attackRange + m.def.radius;
       const d = Math.hypot(m.x - f.x, m.y - f.y);
       if (d > reach) moving = this.step(f, m.x, m.y, G.chaseSpeed, dt, reach - 8);
@@ -263,7 +274,7 @@ export class Townfolk {
         f.unit.dir = f.dir;
         f.unit.aseq = (f.unit.aseq + 1) % 65535;
         this.w.later(160, () => {
-          if (m.dead) return;
+          if (!this.alive(m)) return;
           const v = Math.max(G.minHit, Math.round(m.unit.maxHp * G.hitPct));
           this.w.emit({ t: "dmg", id: m.id, v, k: "phys" });
           this.w.applyDamage(m, v);

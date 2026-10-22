@@ -122,16 +122,29 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
   return out;
 }
 
-/** Навигация юнита: прямо, если видно, иначе по пути A* (пересчёт при смещении цели или раз в 0,8 с). */
+/** Пауза после неудачного поиска (цель недостижима или уже стоим у ближайшей к ней клетки), мс. */
+export const NAV_FAIL_MS = 1000;
+/** Цель, сместившаяся от неудачной дальше этого (px), снимает паузу — новый приказ или цель ушла. */
+export const NAV_FAIL_SHIFT = 48;
+
+/**
+ * Навигация юнита: прямо, если видно, иначе по пути A* (пересчёт при смещении цели или раз в 0,8 с).
+ * Неудачный поиск запоминается: до NAV_FAIL_MS A* не повторяется (иначе недостижимая цель — полный A* каждый такт).
+ */
 export class Nav {
   path: { x: number; y: number }[] = [];
   goal: { x: number; y: number } | null = null;
   at = -1e9;
+  /** Неудача: до какого времени не искать и к какой цели искали. */
+  failUntil = -1e9;
+  failGoal: { x: number; y: number } | null = null;
 
   reset() {
     this.path = [];
     this.goal = null;
     this.at = -1e9;
+    this.failUntil = -1e9;
+    this.failGoal = null;
   }
 
   next(m: WorldMap, x: number, y: number, gx: number, gy: number, r: number, now: number): { x: number; y: number } | null {
@@ -139,13 +152,20 @@ export class Nav {
       this.path = [];
       return { x: gx, y: gy };
     }
+    const failing = now < this.failUntil && !!this.failGoal && Math.hypot(this.failGoal.x - gx, this.failGoal.y - gy) <= NAV_FAIL_SHIFT;
     const moved = !this.goal || Math.hypot(this.goal.x - gx, this.goal.y - gy) > 4;
-    if (moved || !this.path.length || now - this.at > 800) {
+    let fresh = false;
+    if (!failing && (moved || !this.path.length || now - this.at > 800)) {
       this.goal = { x: gx, y: gy };
       this.at = now;
       this.path = findPath(m, x, y, gx, gy, r) ?? [];
+      fresh = true;
     }
     while (this.path.length && Math.hypot(this.path[0].x - x, this.path[0].y - y) < 6) this.path.shift();
+    if (fresh && !this.path.length) {
+      this.failUntil = now + NAV_FAIL_MS;
+      this.failGoal = { x: gx, y: gy };
+    }
     // срезаем путь, если следующая точка уже видна
     while (this.path.length > 1 && segmentWalkable(m, x, y, this.path[1].x, this.path[1].y, r)) this.path.shift();
     return this.path[0] ?? null;
