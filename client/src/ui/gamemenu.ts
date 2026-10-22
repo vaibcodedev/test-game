@@ -1,6 +1,7 @@
-/** Игровое меню по Esc, окно помощи и большая карта мира. */
+/** Игровое меню по Esc, окно помощи и большая карта мира; окно «Авторы» из меню — ui/credits.ts. */
 import type { LogoutMode, Net } from "../net";
 import { hotkeySections, keybinds, mouseOpts, type ActionId, type HelpKey } from "../game/keybinds";
+import { CreditsUI } from "./credits";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 /** Подпись клавиши действия. */
@@ -51,12 +52,15 @@ export class GameMenu {
   private back = document.createElement("div");
   /** Ожидание выхода (отсчёт в бою): снять подписки и таймер. */
   private waiting: (() => void) | null = null;
+  /** Окно «Авторы»: обычное .win в том же корне, что и меню; Esc закрывает его общим Hud.closeTop. */
+  private credits: CreditsUI;
 
   constructor(root: HTMLElement, private a: MenuActions) {
     this.back.className = "gmenu-back";
     this.back.hidden = true;
     this.back.addEventListener("pointerdown", (e) => { if (e.target === this.back) this.close(); });
     root.append(this.back);
+    this.credits = new CreditsUI(root);
   }
   get isOpen() { return !this.back.hidden; }
   toggle() { this.isOpen ? this.close() : this.open(); }
@@ -86,6 +90,7 @@ export class GameMenu {
       ["Друзья и гильдия", "", null],
       ["Карта", key("winMap"), () => a.openMap()],
       ["Настройки", "", () => a.toggle("settings")],
+      ["Авторы", "", () => this.credits.toggle()],
       ["Помощь", "", () => a.openHelp()],
       ["Переподключиться", "", () => void window.dispatchEvent(new CustomEvent("emberfall:reconnect"))],
       ["Сменить персонажа", "", a.net().kind === "arena" ? null : () => this.confirmLogout("char")],
@@ -93,7 +98,7 @@ export class GameMenu {
     ];
     if (a.isAdmin()) items.splice(7, 0, ["Админ-панель", key("winAdmin"), () => a.toggle("admin")]);
     const p = document.createElement("div");
-    p.className = "panel gmenu";
+    p.className = "panel gmenu gm-main";
     p.innerHTML = `<h2>Пепельный Предел</h2>`;
     for (const [text, key, fn] of items) {
       const b = document.createElement("button");

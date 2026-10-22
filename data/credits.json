@@ -1,0 +1,207 @@
+{
+  "title": "Авторы",
+  "intro": "Тайлы, персонажи, мобы, боссы, иконки, эффекты и большинство объектов нарисованы для этой игры. Часть объектов мира, деталей интерфейса, иконок и анимаций умений взята из бесплатных паков и перекрашена под палитру игры. Спасибо их авторам.",
+  "sections": [
+    {
+      "title": "Графика и паки",
+      "items": [
+        {
+          "name": "Basic Tileset and Asset Pack 32x32 Pixels, Volcanoe Tileset and Asset Pack 32x32 Pixels",
+          "by": "Автор: Schwarnhild",
+          "url": "https://schwarnhild.itch.io",
+          "what": "Деревья, кусты, пни, брёвна, заборы, обрывы, пещеры, лестницы, мёртвые деревья и кусты, валуны, лавовые холмики, кости",
+          "license": "Лицензия автора"
+        },
+        {
+          "name": "Graveyard Set (Free)",
+          "by": "Автор: 0_mem0ry",
+          "url": "https://0-mem0ry.itch.io/graveyard-set-free",
+          "what": "Надгробия, кресты, ограды, статуи, фонари, гробы",
+          "license": "Лицензия автора"
+        },
+        {
+          "name": "Fantasy UI Borders, Cursor Pixel Pack",
+          "by": "Автор: Kenney",
+          "url": "https://kenney.nl",
+          "what": "Рамка окон, разделитель заголовка и курсоры",
+          "license": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+        },
+        {
+          "name": "LiteUI Fantasy",
+          "by": "Автор: cathean",
+          "url": "https://cathean.itch.io/liteui-fantasy",
+          "what": "Тонкие рамки ячеек, слотов и полос здоровья и маны, плашка героя и рамка панели умений",
+          "license": "Лицензия автора"
+        }
+      ]
+    },
+    {
+      "title": "Шрифты",
+      "items": [
+        {
+          "name": "Ark Pixel 10px Proportional",
+          "by": "Автор: TakWolf",
+          "url": "https://ark-pixel-font.takwolf.com",
+          "what": "Заголовки и карта мира",
+          "license": "OFL 1.1",
+          "licenseUrl": "https://openfontlicense.org/"
+        },
+        {
+          "name": "Rubik",
+          "url": "https://fontsource.org/fonts/rubik",
+          "what": "Основной текст; подключён пакетом @fontsource/rubik",
+          "license": "OFL 1.1",
+          "licenseUrl": "https://openfontlicense.org/"
+        }
+      ]
+    },
+    {
+      "title": "Иконки умений и предметов",
+      "items": [
+        {
+          "name": "RPG Ability Icons Collection",
+          "by": "Автор: frosty_rabbid",
+          "url": "https://frosty-rabbid.itch.io/rpg-ability-icons",
+          "what": "Иконки умений; недостающие рисует генератор игры в том же стиле, затемнено под игру",
+          "license": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+        },
+        {
+          "name": "game-icons.net",
+          "by": "Авторы: Caro Asercion, DarkZaitzev, Delapouite, Lorc, Skoll, Various Artists, sbed",
+          "url": "https://game-icons.net",
+          "what": "Формы-силуэты, по которым генератор игры рисует иконки",
+          "license": "CC BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+          "authors": [
+            { "name": "Caro Asercion", "icons": ["deer-head"] },
+            { "name": "DarkZaitzev", "icons": ["ninja-head", "whirlpool-shuriken"] },
+            { "name": "Delapouite", "icons": ["angry-eyes", "archer", "cross-shield", "crosshair", "devil-mask", "eye-target", "floating-ghost", "frozen-body", "healing-shield", "heart-beats", "heart-shield", "heart-stake", "knight-banner", "knocked-out-stars", "musical-notes", "rock-golem", "shattered-heart", "shield-bash", "soul-vessel", "sparkles", "templar-shield", "temporary-shield", "thor-hammer", "tomahawk"] },
+            { "name": "Lorc", "icons": ["angel-wings", "ankh", "anvil", "archery-target", "assassin-pocket", "barbed-arrow", "biohazard", "bloody-sword", "boot-prints", "bowman", "broadsword", "cauldron", "chained-heart", "chalice-drops", "claw-slashes", "concentration-orb", "crenulated-shield", "crossed-axes", "crossed-chains", "crossed-slashes", "crow-dive", "crowned-skull", "crystal-ball", "crystal-cluster", "dragon-head", "dread-skull", "drop", "droplets", "evil-book", "explosion-rays", "eye-shield", "fanged-skull", "fire-ring", "fist", "fluffy-cloud", "ghost", "goo-explosion", "hand", "heart-bottle", "heart-drop", "heavy-arrow", "hunting-horn", "knife-thrust", "linked-rings", "magic-portal", "mailed-fist", "mantrap", "moon", "ninja-mask", "paw-heart", "poison-bottle", "poison-gas", "potion-ball", "pretty-fangs", "raven", "ribcage", "rolling-energy", "sacrificial-dagger", "scythe", "shadow-follower", "shield-bounces", "shield-echoes", "skull-crack", "snowflake-2", "spiky-explosion", "sun", "sunrise", "sword-clash", "syringe", "tattered-banner", "thrown-daggers", "triorb", "triple-claws", "vulture", "winged-shield", "wolf-head", "wolf-trap"] },
+            { "name": "Skoll", "icons": ["fangs", "sound-waves"] },
+            { "name": "Various Artists", "icons": ["infinity"] },
+            { "name": "sbed", "icons": ["health-increase", "poison-cloud", "water-drop"] }
+          ]
+        },
+        {
+          "name": "496 pixel art icons for medieval/fantasy RPG",
+          "by": "Автор: Henrique Lazarini (7Soul1)",
+          "url": "https://opengameart.org/content/496-pixel-art-icons-for-medievalfantasy-rpg",
+          "what": "Еда, зелья и ресурсы (17 иконок)",
+          "license": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+        }
+      ]
+    },
+    {
+      "title": "Анимации умений",
+      "text": "Листы собирает генератор игры: разрезка, перекраска под стихии, масштаб 1:1. Остальное рисует код игры: круги призыва, цепи, кандалы, ауры, щиты, знамя, капкан, ворон, дождь стрел, топор, лужа и брызги крови, пламя.",
+      "items": [
+        {
+          "name": "Pixel Magic Effects",
+          "by": "Автор: Foozle (рисовал lordfitoi)",
+          "url": "https://foozlecc.itch.io/pixel-magic-sprite-effects",
+          "what": "Огненный шар, взрыв, водяной шар, ветер, камни, портал, копьё, шипы, гейзер, торнадо",
+          "license": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+        },
+        {
+          "name": "Ninja Adventure Asset Pack",
+          "by": "Автор: Pixel-boy",
+          "url": "https://pixel-boy.itch.io/ninja-adventure-asset-pack",
+          "what": "Метательная звезда",
+          "license": "CC0",
+          "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+        },
+        {
+          "name": "Pixel Holy Effects Pack 01, Pixel VFX 3 Poison Attacks, Pixel Explosion Effects Pack 01, Pixel VFX Level Up Effect, Pixel VFX Dark Spells",
+          "by": "Автор: Sentient Dream Studio",
+          "url": "https://sentient-dream-studio.itch.io",
+          "what": "Эффекты умений, перекрашены под стихии игры",
+          "note": "Автор просит указывать «Pixel art effects by Sentient Dream Studio» при показе в соцсетях.",
+          "license": "Лицензия автора"
+        },
+        {
+          "name": "Dark VFX 01–02, Smear VFX 01, Hit Effect 01, Thunder Effect 01 и 02, Ice Effect 01, Smoke Effect 01",
+          "by": "Автор: pimen",
+          "url": "https://pimen.itch.io",
+          "what": "Эффекты умений, перекрашены под стихии игры",
+          "license": "Лицензия автора"
+        },
+        {
+          "name": "Slash Effect Pack",
+          "by": "Автор: ImpactForge FX",
+          "url": "https://impactforce-fx.itch.io/impactforge-fx-slash-effect-pack",
+          "what": "Эффекты рубящих ударов",
+          "license": "Лицензия автора"
+        }
+      ],
+      "foot": "Скачаны, но в игре не используются: Free Magic Summons (SrZolda, CC BY 4.0), Pixel Battle Effects (pimen, CC BY 4.0), Acid VFX 01–02 и Earth Effect 01–02 (pimen)."
+    },
+    {
+      "title": "Библиотеки",
+      "items": [
+        {
+          "name": "Phaser 3",
+          "url": "https://phaser.io",
+          "what": "Движок клиента",
+          "license": "MIT"
+        },
+        {
+          "name": "Colyseus",
+          "url": "https://colyseus.io",
+          "what": "Сервер и синхронизация состояния (@colyseus/core, @colyseus/schema, @colyseus/ws-transport, colyseus.js)",
+          "license": "MIT"
+        },
+        {
+          "name": "Express",
+          "url": "https://expressjs.com",
+          "what": "HTTP-сервер",
+          "license": "MIT"
+        },
+        {
+          "name": "Vite",
+          "url": "https://vite.dev",
+          "what": "Сборка и dev-сервер клиента",
+          "license": "MIT"
+        },
+        {
+          "name": "tsx",
+          "url": "https://tsx.is",
+          "what": "Запуск TypeScript",
+          "license": "MIT"
+        },
+        {
+          "name": "TypeScript",
+          "url": "https://www.typescriptlang.org",
+          "what": "Проверка TypeScript",
+          "license": "Apache-2.0"
+        },
+        {
+          "name": "pngjs",
+          "url": "https://github.com/pngjs/pngjs",
+          "what": "Запись PNG в генераторе ассетов",
+          "license": "MIT"
+        },
+        {
+          "name": "concurrently",
+          "url": "https://github.com/open-cli-tools/concurrently",
+          "what": "Запуск сервера и клиента одной командой",
+          "license": "MIT"
+        },
+        {
+          "name": "puppeteer-core",
+          "url": "https://pptr.dev",
+          "what": "Скриншоты клиента в тестах",
+          "license": "Apache-2.0"
+        },
+        {
+          "name": "node:sqlite",
+          "what": "Хранение прогресса; встроен в Node.js",
+          "license": "MIT"
+        }
+      ]
+    }
+  ]
+}

@@ -181,7 +181,7 @@
  },
  "banner-ring-solgard": {
   "frameW": 264,
-  "frameH": 186,
+  "frameH": 264,
   "frames": 12,
   "fps": 12,
   "anchor": [
@@ -197,7 +197,7 @@
  },
  "banner-ring-umbrath": {
   "frameW": 264,
-  "frameH": 186,
+  "frameH": 264,
   "frames": 12,
   "fps": 12,
   "anchor": [

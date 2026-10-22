@@ -1,6 +1,6 @@
 /* ---------- экран загрузки (ui/loading.ts) ----------
    Слой между меню Esc (9000) и системными окнами (20000): закрывает HUD, пока мир строится, ошибки связи видны поверх.
-   Лого — шрифт заголовков (кегль по правилу round(nearest, …, var(--hu))), золото бренда (--logo-*, одно для обеих фракций);
+   Лого — эмблема (ui/logo-emblem.png) над названием шрифтом заголовков (кегль по правилу round(nearest, …, var(--hu))), золото бренда (--logo-*, одно для обеих фракций);
    фон, полоса, искры и совет — в акценте фракции (--gold). */
 .loading {
   position: fixed;
@@ -15,9 +15,11 @@
 }
 .loading[hidden] { display: none; }
 .loading.out { opacity: 0; pointer-events: none; }
+/* ширина 580: название при 100% занимает 510px, а при масштабе экрана 75–125% кегль округляется вверх до 62–67px и оно растёт до 530–570px —
+   в блок 520px оно не влезало и переносилось; теперь при любом реальном масштабе стоит в одну строку (в узком окне всё равно переносится) */
 .ld-box {
   position: relative;
-  width: min(520px, 100%);
+  width: min(580px, 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -25,17 +27,37 @@
   text-align: center;
 }
 .ld-logo { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+/* эмблема: пиксель-арт 105×118, показывается целым множителем --k (×2; на высоких экранах ×3, на низких ×1, на совсем низких её нет).
+   Шаг — один пиксель картинки в пикселях экрана: --hu = 10 пикселей экрана в CSS-px, значит ширина картинки в пикселях экрана = 10.5 × --hu.
+   Ближайшее целое число шагов к --k × 105px: при масштабе экрана 125% или 150% пиксель картинки всё равно ложится на целое число пикселей экрана. */
+.ld-emblem {
+  --k: 2;
+  display: block;
+  width: round(nearest, calc(var(--k) * 105px), calc(var(--hu) * 10.5));
+  height: auto;
+  aspect-ratio: 105 / 118;
+  margin-bottom: var(--sp-2);
+  image-rendering: pixelated;
+  user-select: none;
+}
+@media (min-height: 900px) and (min-width: 420px) { .ld-emblem { --k: 3; } }
+@media (max-height: 640px) { .ld-emblem { --k: 1; } }
+@media (max-height: 480px) { .ld-emblem { display: none; } }
 .ld-kicker { color: var(--dim); font-size: var(--fs-xs); font-weight: var(--fw-b); letter-spacing: 0.4em; }
 .ld-title {
+  --lh: 1.05;
   margin: 0;
   font-family: var(--font-head);
   font-weight: var(--fw);
   font-size: round(nearest, var(--fs-head-logo), var(--hu));
-  line-height: 1.05;
+  line-height: var(--lh);
   word-spacing: var(--head-ws);
   text-wrap: balance;
-  /* золото полосами, как у пиксельного металла: светлый верх, основной тон, тёмный низ */
+  /* золото полосами, как у пиксельного металла: светлый верх, основной тон, тёмный низ; полосы повторяются на каждой строке
+     (в узком окне название переносится — вторая строка не темнеет целиком) */
   background: linear-gradient(var(--logo-hi) 0 42%, var(--logo) 42% 74%, color-mix(in srgb, var(--logo) 55%, var(--logo-shade)) 74%);
+  background-size: 100% calc(var(--lh) * 1em);
+  background-repeat: repeat-y;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

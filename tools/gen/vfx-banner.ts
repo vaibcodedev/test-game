@@ -1,8 +1,8 @@
 /** Штандарт «Знамя защиты» (tp_banner, задача 127, шаг 4; задача 130 — утверждённый герб и ветер штандартов мира): большое знамя
  *  на высоком древке, колышется на ветру, кольцо ауры радиуса баффа и пыль установки.
  *  Символика по data/factions.json и утверждённым гербам (tools/gen/heraldry.ts, малая эмблема 24 px, рисунок не меняется).
- *  Сольгард: полотнище слоновой кости с широкой золотой каймой; герб «Восход над Оплотом» — щит лежит на нашитом медальоне лазури:
- *  стена с воротами на слоновой кости иначе сливалась с тканью того же тона. Дерево и золото: древко, перекладина, золотые набалдашники,
+ *  Сольгард: полотнище белого шёлка (решение пользователя, вариант Б — как у штандартов своих земель) с широкой золотой каймой; герб
+ *  «Восход над Оплотом» лежит прямо на шёлке, без медальона. Дерево и золото: древко, перекладина, золотые набалдашники,
  *  кольца, бандажи и кисти, ленты золотая и лазурная, навершие — солнечный диск.
  *  Умбрат: чёрно-фиолетовое полотнище, пурпурная кайма, герб «Корона над гробом». Фурнитура — как на карточке герба (heraldry.ts, bannerCard)
  *  и у штандарта своих земель: древко и перекладина чернёного пурпура, набалдашники, кольца и бандажи — серебро, кисти сиреневые
@@ -19,7 +19,7 @@ import { PC, OUTLINE, rng, hex, type RGBA } from "./canvas";
 import { P } from "./palette";
 import { storyboard, stackV } from "./vfx-lib";
 import type { Gen } from "./vfx-gen";
-import { factionEmblem, azureMedallion, SOLGARD_SHIELD_TOP } from "./heraldry";
+import { factionEmblem } from "./heraldry";
 import { WIND_FRAMES as N, WIND_FPS as FPS, WIND_HOME, windPlan, windCloth, planShifts, toneFn, layer, stamp, type Wind, type ToneFn, type ClothOut } from "./standards";
 
 type Col = RGBA;
@@ -35,8 +35,7 @@ const put = (f: PC, x: number, y: number, c: Col) => f.set(Math.round(x), Math.r
 const G = P.gold;                                                                           // #6a4210 #a8681c #e0a630 #ffd864 #fff2b0
 const GLOW = hex("#fff4c8");
 const AZ = [hex("#12365e"), hex("#1f5a96"), hex("#3a86c8"), hex("#7ec8ff")];               // лазурь герба
-/** Слоновая кость: тень (контур ворот герба), полутень (кость гербов Умбрата), тон, свет (стена герба), блик. */
-const IV = [hex("#7a6a4c"), hex("#8f8468"), hex("#bfae88"), hex("#d6c8a4"), hex("#ece4cc")];
+const WH = P.cloth.white;                                                                   // белый шёлк: #7a7480 #aaa4ae #d6d0d8 #f6f2f8
 const UK = [hex("#0a0612"), hex("#100a1a"), hex("#22163a"), hex("#382858")];               // чернь Умбрата
 const UP = [hex("#2a1846"), hex("#46265e"), hex("#6a3c8a"), hex("#9a62b8"), hex("#d0b4f0"), hex("#f4f0ff")];   // пурпур → сирень → жемчуг
 const UG = [hex("#3fcf45"), hex("#7aff6a"), hex("#dcffd0")];                                 // ядовитая зелень
@@ -67,10 +66,10 @@ const WIND: Wind = { ...WIND_HOME, lean: 0.5, sway: 1.8, lag: 6, slant: 0.3, emb
 
 const KITS: Record<Fac, Kit> = {
   solgard: {
-    // кайма: золото 3 px с пунктиром шитья, просвет, внутренняя линия; поле — слоновая кость (как на утверждённой карточке)
-    cloth: (x, y, d) => (d <= 3 || y < 4 ? (d === 1 || y === 0 ? G[3] : d === 3 ? G[1] : (x + y) % 4 === 0 ? G[4] : G[3]) : d === 5 ? G[1] : IV[2]),
+    // кайма: золото 3 px с пунктиром шитья, просвет, внутренняя линия; поле — белый шёлк (складки — по его рампе)
+    cloth: (x, y, d) => (d <= 3 || y < 4 ? (d === 1 || y === 0 ? G[3] : d === 3 ? G[1] : (x + y) % 4 === 0 ? G[4] : G[3]) : d === 5 ? G[1] : WH[2]),
     lineD: 5,
-    tone: toneFn([IV, [G[0], G[1], G[2], G[3], G[4]]], [SOUT, OUTLINE]),
+    tone: toneFn([WH, [G[0], G[1], G[2], G[3], G[4]]], [SOUT, OUTLINE]),
     wind: { ...WIND, fieldD: 6 },
     pole: [WOOD[3], WOOD[2], WOOD[1]], band: [G[3], G[2], G[1]], bar: [WOOD[3], WOOD[2], WOOD[1], WOOD[0]], knob: [G[1], G[2], G[3], G[4]],
     metalOut: SOUT,
@@ -92,14 +91,6 @@ const KITS: Record<Fac, Kit> = {
   },
 };
 
-/** Вариант Б для Сольгарда (на выбор пользователю, в игру не идёт): поле — белый шёлк, как у штандартов своих земель; герб без медальона. */
-const WH = P.cloth.white;                                                                   // #7a7480 #aaa4ae #d6d0d8 #f6f2f8
-const SILK_KIT: Kit = {
-  ...KITS.solgard,
-  cloth: (x, y, d) => (d <= 3 || y < 4 ? KITS.solgard.cloth(x, y, d) : d === 5 ? G[1] : WH[2]),
-  tone: toneFn([WH, [G[0], G[1], G[2], G[3], G[4]]], [SOUT, OUTLINE]),
-};
-
 // ---------------------------------------------------------------- полотнище
 /** Граница снизу: ласточкин хвост (V-вырез 11 строк). */
 const bottom = (x: number) => CH - 1 - Math.round(11 * (1 - Math.abs((2 * x) / (CW - 1) - 1)));
@@ -112,10 +103,7 @@ function clothOf(fac: Fac, k: Kit): Cloth {
   const tex = new PC(CW, CH);
   for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (inCloth(x, y)) tex.set(x, y, k.cloth(x, y, rayD(x, y)));
   const em = factionEmblem(fac, "s24"), ex = Math.floor((CW - em.w) / 2);
-  if (fac === "umbrath" || k === SILK_KIT) return { tex, emb: { pc: em, x: ex, y: EMBLEM_Y }, lineD: k.lineD };
-  // нашитый медальон лазури под щитом (heraldry.ts): не ближе 1 px поля к внутренней линии каймы — в широкой части щита он уже
-  const med = azureMedallion(em, SOLGARD_SHIELD_TOP.s24, (i, j) => rayD(ex - 2 + i, EMBLEM_Y - 2 + j) >= k.lineD + 2);
-  return { tex, emb: { pc: med, x: ex - 2, y: EMBLEM_Y - 2 }, lineD: k.lineD };
+  return { tex, emb: { pc: em, x: ex, y: EMBLEM_Y }, lineD: k.lineD };
 }
 
 // ---------------------------------------------------------------- кадр
@@ -195,9 +183,9 @@ function windShift(cloth: Cloth, k: Kit, t: number, v: number) {
   return windPlan(cloth.tex, k.wind).sx[((t % N) + N) % N][v];
 }
 
-/** Проверка кадра (до контура): герб с медальоном целиком (missing — пикселей герба нет на ткани), не наезжает на кайму и внутреннюю линию
+/** Проверка кадра (до контура): герб целиком (missing — пикселей герба нет на ткани), не наезжает на кайму и внутреннюю линию
  *  (over) и сколько его пикселей касается их (touch — допустимо: рябь кромки или строка, сдвинутая на 1 px против середины герба,
- *  на кадр-другой закрывает просвет поля между медальоном и внутренней линией). */
+ *  на кадр-другой закрывает просвет поля между гербом и внутренней линией). */
 function check(cloth: Cloth, co: ClothOut) {
   const { tex, emb, lineD } = cloth, line = new Set<number>();
   for (let v = 0; v < CH; v++) for (let u = 0; u < CW; u++) if (tex.alpha(u, v) && rayD(u, v) <= lineD) { const X = co.at(u, v); if (X >= 0) line.add(v * 1000 + X); }
@@ -224,25 +212,76 @@ function banner(fac: Fac, k: Kit = KITS[fac]): Gen {
   return { id: `banner-${fac}`, pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, BASE_Y / H], fps: FPS, blend: "normal", hero: "warrior" };
 }
 
-/** Кольцо ауры под знаменем: эллипс 0.7 радиуса баффа (D — диаметр, 2r умения, 130 → 260). Цикл 12 кадров, 12 к/с:
- *  ровное тройное кольцо (свет снаружи, тень внутри), по наружной линии медленно идут четыре блика (четверть оборота за цикл),
- *  засечки ползут по кругу на шаг за цикл (около 2 px за кадр) одним цветом — шов цикла чистый, внутри мерцают искры. */
-function bannerRing(fac: Fac, D = 260): Gen {
-  const R = KITS[fac].ring, rx = D / 2, ry = Math.round(rx * 0.7), w = D + 4, h = ry * 2 + 4, cx = w / 2, cy = h / 2, r = rng(77);
-  const dots = Array.from({ length: 90 }, () => ({ a: r() * TAU, d: Math.sqrt(r()), ph: r() }));
-  const steps = Math.round(rx * 7), TICKS = 28, SHEEN = 4;
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(w, h), ph = t / N;
-    for (let i = 0; i < steps; i++) {
-      const a = (i / steps) * TAU, c = Math.cos(a), s = Math.sin(a);
-      const sheen = ((((a / TAU) * SHEEN - ph) % 1) + 1) % 1 < 0.22;                 // блик: доля 0.22 каждой четверти, ползёт на четверть за цикл
-      put(f, cx + c * rx, cy + s * ry, R[sheen ? 3 : 2]); put(f, cx + c * (rx - 1.5), cy + s * (ry - 1), R[1]); put(f, cx + c * (rx - 3.5), cy + s * (ry - 2.5), R[0]);
+/** Линии кольца в листе S×S с центром на стыке пикселей (C, C): пиксель в круге радиуса r, если его центр не дальше r.
+ *  edge(r) — пиксели круга r с соседом (по 4 сторонам) снаружи: замкнутая лесенка в 1 px без двойных пикселей, её внешний край — ровно r.
+ *  inner(e) — следующий слой внутрь от линии e (ещё 1 px, прилегает к ней везде, не рвётся и не сливается). */
+function ringLines(S: number, C: number) {
+  const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const inDisc = (x: number, y: number, r: number) => x >= 0 && y >= 0 && x < S && y < S && (x + 0.5 - C) ** 2 + (y + 0.5 - C) ** 2 <= r * r;
+  const edge = (r: number) => {
+    const out: number[] = [];
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (inDisc(x, y, r) && N4.some(([dx, dy]) => !inDisc(x + dx, y + dy, r))) out.push(y * S + x);
+    return out;
+  };
+  const inner = (e: number[], r: number) => {
+    const taken = new Set(e), out: number[] = [];
+    for (const i of e) for (const [dx, dy] of N4) {
+      const x = (i % S) + dx, y = Math.floor(i / S) + dy, j = y * S + x;
+      if (inDisc(x, y, r) && !taken.has(j)) { taken.add(j); out.push(j); }
     }
-    for (let q = 0; q < TICKS; q++) { const a = ((q + ph) / TICKS) * TAU; for (let z = 0; z < 4; z++) put(f, cx + Math.cos(a) * (rx - 5 - z * 0.7), cy + Math.sin(a) * (ry - 3.5 - z * 0.5), z === 0 ? R[4] : R[3]); }
-    for (const d of dots) if ((d.ph + ph) % 1 < 0.34) put(f, cx + Math.cos(d.a) * d.d * (rx - 8), cy + Math.sin(d.a) * d.d * (ry - 6), R[2]);
+    return out;
+  };
+  return { edge, inner };
+}
+
+/** Кольцо ауры под знаменем — ровный круг радиуса баффа R0 (130, data/skills.json): сервер меряет ауру кругом (Math.hypot), превью умения —
+ *  тоже круг. Лист (2·R0 + 4)², якорь — центр листа на стыке пикселей (клиент ставит лист в точку знамени без масштаба): внешний край
+ *  наружной линии — ровно граница ауры. Линии — чистые лесенки в 1 px (ringLines). Цикл 12 кадров, 12 к/с: тройное кольцо — свет снаружи
+ *  (наружная линия и прилегающая к ней вторая), просвет и тёмная линия (край круга R0 − 3.2: при нём она нигде не касается второй даже
+ *  углом); по наружной линии идут четыре блика с ярким ядром (четверть оборота за цикл), засечки (3 px по лучу, просвет до тёмной линии —
+ *  1 px, без касаний углом) ползут по кругу на шаг за цикл (около 2 px за кадр) — шов цикла чистый; внутри мерцают
+ *  искры — штрихи 1×2 (не одиночные пиксели), каждая вспыхивает и гаснет за 4 кадра. */
+function bannerRing(fac: Fac, R0 = 130): Gen {
+  const R = KITS[fac].ring, S = 2 * R0 + 4, C = S / 2, r = rng(77);
+  const { edge, inner } = ringLines(S, C);
+  const ang = (i: number) => { const a = Math.atan2(Math.floor(i / S) + 0.5 - C, (i % S) + 0.5 - C); return a < 0 ? a + TAU : a; };
+  const withAng = (list: number[]) => list.map((i) => ({ i, a: ang(i) }));
+  const outer = edge(R0), second = inner(outer, R0), dark = edge(R0 - 3.2);
+  const lines = [{ px: withAng(outer), k: 0 }, { px: withAng(second), k: 1 }, { px: withAng(dark), k: 2 }];
+  // засечка: 3 пикселя по лучу шагом в целый пиксель по большей оси (прямая лесенка без пропусков); начинается с первого пикселя луча,
+  //  который не касается тёмной линии даже углом (просвет 1 px)
+  const darkSet = new Set(dark), DR = R0 - 3.2;
+  const nearDark = (x: number, y: number) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (darkSet.has((y + dy) * S + x + dx)) return true; return false; };
+  const tick = (a: number) => {
+    const c = Math.cos(a), s = Math.sin(a), step = 1 / Math.max(Math.abs(c), Math.abs(s)), out: number[] = [];
+    for (let rho = DR; out.length < 3; rho -= step) {
+      const x = Math.floor(C + c * rho), y = Math.floor(C + s * rho);
+      if (out.length || ((x + 0.5 - C) ** 2 + (y + 0.5 - C) ** 2 <= DR * DR && !nearDark(x, y))) out.push(y * S + x);
+    }
+    return out;
+  };
+  const dots = Array.from({ length: 90 }, () => ({ a: r() * TAU, d: Math.sqrt(r()), s: Math.floor(r() * N) }));
+  const TICKS = 28, SHEEN = 4;
+  const frames = Array.from({ length: N }, (_, t) => {
+    const f = new PC(S, S), ph = t / N, at = (i: number, c: Col) => f.set(i % S, Math.floor(i / S), c);
+    // тройное кольцо: блик — доля 0.22 каждой четверти (ядро 0.07–0.15 светлее), ползёт на четверть за цикл; под бликом светлеет и вторая линия
+    for (const { px, k } of lines) for (const p of px) {
+      const u = ((((p.a / TAU) * SHEEN - ph) % 1) + 1) % 1, sheen = u < 0.22, core = u >= 0.07 && u < 0.15;
+      at(p.i, k === 0 ? R[core ? 4 : sheen ? 3 : 2] : k === 1 ? R[sheen ? 2 : 1] : R[0]);
+    }
+    // засечки: верхний пиксель (к кольцу) — самый светлый; сдвиг луча на 0.002 рад — без ничьих между соседними пикселями на осях
+    for (let q = 0; q < TICKS; q++) tick(((q + ph) / TICKS) * TAU + 0.002).forEach((i, z) => at(i, z === 0 ? R[4] : R[3]));
+    // искры: штрих 1×2 (верх светлее), жизнь 4 кадра — вспышка, пик, спад, угасание
+    for (const d of dots) {
+      const life = (t - d.s + N) % N;
+      if (life > 3) continue;
+      const x = Math.floor(C + Math.cos(d.a) * d.d * (R0 - 12)), y = Math.floor(C + Math.sin(d.a) * d.d * (R0 - 12));
+      const [top, bot] = [[R[2], R[1]], [R[4], R[3]], [R[3], R[2]], [R[2], R[1]]][life];
+      f.set(x, y, top); f.set(x, y + 1, bot);
+    }
     return f;
   });
-  return { id: `banner-ring-${fac}`, pack: "gen", role: "aoe", frames, w, h, anchor: [0.5, 0.5], fps: FPS, blend: "normal", hero: "warrior" };
+  return { id: `banner-ring-${fac}`, pack: "gen", role: "aoe", frames, w: S, h: S, anchor: [0.5, 0.5], fps: FPS, blend: "normal", hero: "warrior" };
 }
 
 /** Пыль у основания при установке: два облачка расходятся и тают. 6 кадров, один проход. */
@@ -262,10 +301,6 @@ function dustPuff(): Gen {
 
 export function GENERATED_BANNER(): Gen[] {
   return [banner("solgard"), banner("umbrath"), bannerRing("solgard"), bannerRing("umbrath"), dustPuff()];
-}
-/** Вариант Б Сольгарда (белый шёлк, без медальона) — только для превью и выбора. */
-export function BANNER_SILK(): Gen {
-  return { ...banner("solgard", SILK_KIT), id: "banner-solgard-silk" };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

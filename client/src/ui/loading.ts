@@ -1,5 +1,5 @@
 /**
- * Экран загрузки при входе в мир и переходе мир ⇄ арена: лого, полоса прогресса с этапом, совет из data/loading-tips.json.
+ * Экран загрузки при входе в мир и переходе мир ⇄ арена: лого (эмблема и название), полоса прогресса с этапом, совет из data/loading-tips.json.
  * Закрывает пустой HUD, пока грузятся ассеты (BootScene) и строится мир (GameScene: свой герой на месте), затем тает.
  * Слой — между меню Esc (9000) и системными окнами (20000): ошибки связи видны поверх (styles/loading.css).
  */
@@ -10,6 +10,10 @@ const FADE_MS = 400;
 /** Мир так и не сообщил о готовности (сбой сцены) — экран всё равно уходит. */
 const SAFETY_MS = 30000;
 const EMBERS = 28;
+/** Эмблема игры (пиксель-арт 105×118); размер задаёт styles/loading.css целым множителем пикселя экрана. */
+const EMBLEM = "/ui/logo-emblem.png";
+// картинка грузится, пока игрок на экране входа: к первому показу экрана загрузки она уже в кеше и не «выпрыгивает»
+new Image().src = EMBLEM;
 
 let root: HTMLElement | null = null;
 let fill: HTMLElement, pct: HTMLElement, stageEl: HTMLElement, tipEl: HTMLElement, subEl: HTMLElement;
@@ -27,13 +31,16 @@ function build(): HTMLElement {
     `<i style="--x:${(Math.random() * 100).toFixed(1)}%;--d:${(-Math.random() * 9).toFixed(2)}s;--t:${(6 + Math.random() * 6).toFixed(2)}s;--s:${(0.6 + Math.random() * 0.8).toFixed(2)}"></i>`).join("");
   r.innerHTML = `<div class="ld-embers" aria-hidden="true">${embers}</div>
     <div class="ld-box">
-      <div class="ld-logo"><span class="ld-kicker">MMORPG</span><h1 class="ld-title">Пепельный Предел</h1><div class="ld-rule" aria-hidden="true"></div></div>
+      <div class="ld-logo"><img class="ld-emblem" src="${EMBLEM}" width="105" height="118" alt="" draggable="false"><span class="ld-kicker">MMORPG</span><h1 class="ld-title">Пепельный Предел</h1><div class="ld-rule" aria-hidden="true"></div></div>
       <p class="ld-sub"></p>
       <div class="progress ld-progress"><div class="bar lg"><i></i><span></span></div></div>
       <p class="ld-stage"></p>
       <p class="ld-tip"><span class="ld-tip-h">Совет</span><span class="ld-tip-t"></span></p>
     </div>`;
   document.body.append(r);
+  // нет файла — экран остаётся прежним (название без эмблемы), без значка битой картинки и пустого места
+  const emblem = r.querySelector<HTMLImageElement>(".ld-emblem")!;
+  emblem.addEventListener("error", () => emblem.remove(), { once: true });
   fill = r.querySelector<HTMLElement>(".ld-progress .bar > i")!;
   pct = r.querySelector<HTMLElement>(".ld-progress .bar > span")!;
   stageEl = r.querySelector<HTMLElement>(".ld-stage")!;

@@ -3,7 +3,7 @@
  *  малые эмблемы берутся готовыми (s20 — штандарт своих земель, s16 — повреждённые), королевские знамёна несут полный герб без ленты.
  *  Состав: штандарт своих земель (70 и 68 px — 2,4 роста героя 29 px); спорные земли — порванный в стрелах, обгоревший, сломанный
  *  в грязи с телом павшего (слои: земля под героями и стоящий обломок); основание захвата (тумба и мачта — отдельные слои) и два
- *  королевских знамени, которые едут по мачте; эмблема игры «Пепельный Предел» — 3 варианта на выбор.
+ *  королевских знамени, которые едут по мачте; эмблема игры «Пепельный Предел» — 3 варианта и итог (вариант 2 с короной перед городом в печати, logoFinal).
  *  Планка: объём, 3–5 тонов на материал, контур 1 px, свет сверху слева, без одиночных пикселей; пиксель листа — пиксель мира.
  *  Ветер: полотнище рисуется плоско, затем в кадре строки сдвигаются целыми пикселями (снос и качание, к низу сильнее, с запаздыванием),
  *  складки — полосы светотени по тонам своего материала, бегут ровно на 1 px за кадр (длина волны = числу кадров), кромки рябят.
@@ -13,7 +13,8 @@
  *  (как у «Знамени защиты») и сдвигается в том же кадре, что строка на его середине; там снос и качание < 0.5 px — герб стоит,
  *  складки его затеняют. Мелкие узоры на ткани (бахрома, пунктиры) — с шагом не меньше 3 px: при сдвиге на 1 px не мигают.
  *  Цикл 12 кадров, 12 кадров/с. Модель ветра общая со «Знаменем защиты» (tools/gen/vfx-banner.ts).
- *  Запуск: npx tsx tools/gen/standards.ts → tools/out/standards/ (листы, sheets.json, preview.png, logo.png). */
+ *  Запуск: npx tsx tools/gen/standards.ts → tools/out/standards/ (листы, sheets.json, preview.png, logo.png, итог эмблемы logo-final*.png)
+ *  и эмблема экрана загрузки client/public/ui/logo-emblem.png; с --logo — только эмблема. */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1310,7 +1311,7 @@ function captureBase(): Anim {
   return { id: "capture-base", title: "ОСНОВАНИЕ ЗАХВАТА", frames: [full, plinth, mast], w: BASE_W, h: BASE_H, anchor: [0.5, BASE_GY / BASE_H], fps: 0, fac: "solgard" };
 }
 
-export { homeSolgard, homeUmbrath, torn, burned, fallen, royalSolgard, royalUmbrath, captureBase, readPng, crop, scaleNN, paintGround, logoSheet, LOGOS };
+export { homeSolgard, homeUmbrath, torn, burned, fallen, royalSolgard, royalUmbrath, captureBase, readPng, crop, scaleNN, paintGround, logoSheet, LOGOS, logoFinal, label };
 /** Модель ветра — общая со «Знаменем защиты» (tools/gen/vfx-banner.ts). */
 export { N as WIND_FRAMES, FPS as WIND_FPS, windPlan, windCloth, planShifts, toneFn, clothTex, distMap, stamp, layer, despeckle, WIND_HOME, type Wind, type Emb, type ToneFn, type ClothOut };
 
@@ -1345,7 +1346,7 @@ function label(pc: PC, s: string, x: number, y: number, col: Col, k = 2): number
   return cx - x;
 }
 
-// ---------------------------------------------------------------- эмблема игры «Пепельный Предел» (лого экрана загрузки), 3 варианта
+// ---------------------------------------------------------------- эмблема игры «Пепельный Предел» (лого экрана загрузки), 3 варианта и итог
 //  Тот же стиль, что у гербов и штандартов: контур 1 px, 3–5 тонов на материал, свет сверху слева, палитра P. Надпись — свой
 //  крупный шрифт (заглавные 12 px, штрих 2 px, засечки 1 px): заливка градиентом по строкам, скос (верх-лево светлее, низ-право темнее),
 //  контур и тень вниз-вправо.
@@ -1540,42 +1541,64 @@ function logoCrown(): PC {
   return pc;
 }
 
-/** Вариант 2 «Два знамени»: скрещённые штандарты Сольгарда и Умбрата (полотнища с утверждёнными гербами колышутся) за круглым
- *  щитом-печатью, в которой горит пепельный огонь. */
-function logoBanners(): PC {
-  const W = 160, H = 140, pc = new PC(W, H);
+/** Навершие-череп Умбрата для итоговой эмблемы (масштаб 1.25): 9×10, глазницы скошены к носу, зубы через пиксель. */
+const SKULL9 = [
+  "..LLLLM..",
+  ".LLLLLMM.",
+  "LLLLLLMMD",
+  "LKKLLKKMD",
+  "LKKKLKKKD",
+  "LLKLMLKMD",
+  ".LMMKMMD.",
+  ".MDMDMDD.",
+  "..MDMDD..",
+  "...DDD...",
+];
+/** Скрещённые штандарты Сольгарда и Умбрата за печатью (вариант 2 и итог): древки, навершия, полотнища с утверждёнными гербами на ветру.
+ *  K — масштаб композиции: 1 — вариант 2 (полотнища 28×36, гербы s20), 1.25 — итог (полотнища 36 и 35 × 45, гербы s24: доля герба на ткани
+ *  та же, ширина под чётный и нечётный герб — по центру; череп 9×10); брус, петли и кайма — те же пиксели. */
+function bannerPair(pc: PC, K = 1) {
+  const big = K > 1.1, size = big ? "s24" : "s20";
   const poles: { fac: Fac; a: [number, number]; b: [number, number] }[] = [
-    { fac: "solgard", a: [100, 97], b: [50, 12] },
-    { fac: "umbrath", a: [60, 97], b: [110, 12] },
+    { fac: "solgard", a: [100 * K, 97 * K], b: [50 * K, 12 * K] },
+    { fac: "umbrath", a: [60 * K, 97 * K], b: [110 * K, 12 * K] },
   ];
   for (const { fac, a, b } of poles) {
     const k = KIT[fac], sol = fac === "solgard";
     const at = (y: number) => a[0] + ((b[0] - a[0]) * (a[1] - y)) / (a[1] - b[1]);
     layer(pc, (l) => {
-      capsule(l, a[0], a[1], b[0], b[1] + 5, 1.6, sol ? [WOOD[0], WOOD[1], WOOD[2], WOOD[3]] : [BONE[0], BONE[1], BONE[2], BONE[3]]);
+      capsule(l, a[0], a[1], b[0], b[1] + 5 * K, 1.6 * K, sol ? [WOOD[0], WOOD[1], WOOD[2], WOOD[3]] : [BONE[0], BONE[1], BONE[2], BONE[3]]);
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
-      capsule(l, a[0] - ux * 1, a[1] - uy * 1, a[0] + ux * 4, a[1] + uy * 4, 1.9, sol ? [STEEL[0], STEEL[1], STEEL[2], STEEL[3]] : [IRON[0], IRON[1], IRON[2], IRON[3]]);   // подток
+      capsule(l, a[0] - ux * K, a[1] - uy * K, a[0] + ux * 4 * K, a[1] + uy * 4 * K, 1.9 * K, sol ? [STEEL[0], STEEL[1], STEEL[2], STEEL[3]] : [IRON[0], IRON[1], IRON[2], IRON[3]]);   // подток
       if (sol) {                                                                          // наконечник копья по оси древка: ромб, левая грань светлая
-        const tip: [number, number] = [b[0] + ux * 4, b[1] + uy * 4], base: [number, number] = [b[0] - ux * 7, b[1] - uy * 7], mid: [number, number] = [b[0] - ux * 2, b[1] - uy * 2];
-        l.poly([base, [mid[0] - uy * 3.4, mid[1] + ux * 3.4], tip, [mid[0] + uy * 3.4, mid[1] - ux * 3.4]], (x, y) => ((x + 0.5 - base[0]) * -uy + (y + 0.5 - base[1]) * ux > 0 ? STEEL[3] : STEEL[1]));
-        capsule(l, b[0] - ux * 7, b[1] - uy * 7, b[0] - ux * 8.5, b[1] - uy * 8.5, 1.9, [G[1], G[2], G[3], G[4]]);
-      } else stamp(l, b[0] - 3, b[1] - 5, ["..LLL..", ".LLLMM.", "LLLLMMD", "LKKLKKD", "LKKMKKD", ".MMKMD.", ".DMDMD.", "..DDD.."], { L: BONE[3], M: BONE[2], D: BONE[1], K: UK[0] });
+        const tip: [number, number] = [b[0] + ux * 4 * K, b[1] + uy * 4 * K], base: [number, number] = [b[0] - ux * 7 * K, b[1] - uy * 7 * K], mid: [number, number] = [b[0] - ux * 2 * K, b[1] - uy * 2 * K], hw = 3.4 * K;
+        l.poly([base, [mid[0] - uy * hw, mid[1] + ux * hw], tip, [mid[0] + uy * hw, mid[1] - ux * hw]], (x, y) => ((x + 0.5 - base[0]) * -uy + (y + 0.5 - base[1]) * ux > 0 ? STEEL[3] : STEEL[1]));
+        capsule(l, b[0] - ux * 7 * K, b[1] - uy * 7 * K, b[0] - ux * 8.5 * K, b[1] - uy * 8.5 * K, 1.9 * K, [G[1], G[2], G[3], G[4]]);
+      } else if (big) stamp(l, Math.round(b[0]) - 4, Math.round(b[1]) - 6, SKULL9, { L: BONE[3], M: BONE[2], D: BONE[1], K: UK[0] });
+      else stamp(l, b[0] - 3, b[1] - 5, ["..LLL..", ".LLLMM.", "LLLLMMD", "LKKLKKD", "LKKMKKD", ".MMKMD.", ".DMDMD.", "..DDD.."], { L: BONE[3], M: BONE[2], D: BONE[1], K: UK[0] });
     });
     // полотнище на перекладине: кадр ветра штандарта своих земель, ветер наружу
-    const CW = 28, CH = 36, bar = 24, X0 = Math.round(at(bar)) - CW / 2;
-    const inside = sol ? (x: number, y: number) => y <= 29 || Math.abs(x + 0.5 - CW / 2) <= CW / 2 - 2 * (y - 29) : (x: number, y: number) => x >= (y <= 25 ? 0 : Math.ceil((y - 25) / 2)) && x <= CW - 1 - (y <= 25 ? 0 : Math.ceil((y - 25) / 2));
+    const CW = Math.round(28 * K) + (big && sol ? 1 : 0), CH = Math.round(36 * K), bar = Math.round(24 * K), X0 = Math.round(at(bar)) - Math.floor(CW / 2);
+    const P = Math.round(29 * K), Q = Math.round(25 * K);
+    const inside = sol ? (x: number, y: number) => y <= P || Math.abs(x + 0.5 - CW / 2) <= CW / 2 - 2 * (y - P) : (x: number, y: number) => x >= (y <= Q ? 0 : Math.ceil((y - Q) / 2)) && x <= CW - 1 - (y <= Q ? 0 : Math.ceil((y - Q) / 2));
     const tex = clothTex(CW, CH, inside, (_x, _y, d) => k.cloth(d));
-    const em = factionEmblem(fac, "s20"), ex = Math.floor((CW - em.w) / 2), dd = distMap(CW, CH, inside);
-    // у Сольгарда щит на нашитом медальоне лазури (как у «Знамени защиты»): стена с воротами иначе сливается с белым полем
-    const emb: Emb = sol ? { pc: azureMedallion(em, SOLGARD_SHIELD_TOP.s20, (i, j) => (dd[(2 + j) * CW + ex - 2 + i] ?? 0) >= 5), x: ex - 2, y: 2 } : { pc: em, x: ex, y: 4 };
-    const co = windCloth(tex, emb, sol ? 2 : 8, { ...WIND_HOME, lean: sol ? -1.3 : 1.3, sway: 0.8, lag: 2.2, embFlat: sol }, k.tone);
+    const em = factionEmblem(fac, size), ex = Math.floor((CW - em.w) / 2), dd = distMap(CW, CH, inside), my = big ? 3 : 2;
+    // у Сольгарда щит на нашитом медальоне лазури (как у штандарта своих земель): стена с воротами иначе сливается с белым полем
+    const emb: Emb = sol ? { pc: azureMedallion(em, SOLGARD_SHIELD_TOP[size], (i, j) => (dd[(my + j) * CW + ex - 2 + i] ?? 0) >= 5), x: ex - 2, y: my } : { pc: em, x: ex, y: big ? 5 : 4 };
+    const co = windCloth(tex, emb, sol ? 2 : 8, { ...WIND_HOME, lean: (sol ? -1.3 : 1.3) * K, sway: 0.8 * K, lag: 2.2, embFlat: sol }, k.tone);
     co.L.outline(OUTLINE);
     pc.blit(co.L, X0 - co.M, bar + 3);
     layer(pc, (l) => {
       k.bar(l, X0 - 2, X0 + CW + 1, bar);
-      for (const u of [2, CW / 2 - 1, CW - 4]) k.tie(l, X0 + u, 2, bar - 1, bar + 3);
+      for (const u of [2, Math.floor(CW / 2) - 1, CW - 4]) k.tie(l, X0 + u, 2, bar - 1, bar + 3);
     });
   }
+}
+/** Вариант 2 «Два знамени»: скрещённые штандарты Сольгарда и Умбрата (полотнища с утверждёнными гербами колышутся) за круглым
+ *  щитом-печатью, в которой горит пепельный огонь. */
+function logoBanners(): PC {
+  const W = 160, H = 140, pc = new PC(W, H);
+  bannerPair(pc);
   // щит-печать с пепельным огнём на перекрестье древков
   layer(pc, (l) => sealDisc(l, 80, 76, 21, 5));
   layer(pc, (l) => flame(l, 80, 88, 21, 7.5), c("#3a0c08"));
@@ -1650,6 +1673,136 @@ function logoSword(): PC {
   sparks(pc, [[cx - 10, 72, 2], [cx + 9, 63, 1], [cx - 14, 55, 0], [cx + 13, 77, 0], [cx + 16, 46, 0], [cx - 8, 44, 1], [cx + 22, 60, -1], [cx - 24, 68, -1], [cx - 19, 40, -1], [cx + 6, 38, 0]]);
   title2(pc, 104, TITLE_GOLD, TITLE_ASH);
   return pc;
+}
+
+/** Сцена печати итоговой эмблемы: расколотая корона перед городом, нарисованная под круг сцены радиуса rho = 22 (в варианте 1 круг 38 —
+ *  тут не уменьшение, а свой рисунок: детали не мельче 2 px). Корона стоит внизу, на огне у земли: обруч и зубцы закрывают нижнюю часть
+ *  зданий, как в варианте 1. Небо — полосы по строкам от ночи наверху к зареву между башнями. Город — шесть крупных зданий шириной
+ *  6–8 px из пепельного камня (P.ash: основа, свет сверху и слева, тень справа, контур 1 px у каждого): две башни с зубцами 2×2 через
+ *  2 px и один шпиль, по краям башни пониже, посередине два дома с плоскими крышами; без одиночных пиков. Огонь — в трёх окнах 2×3 и
+ *  узкой полосой у земли. Корона: обруч 6 строк (ободки с бусинами через 3 px, камни 3×3), пять зубцов-шипов (свет слева, ребро с
+ *  бликом, тень справа, у обруча на тон темнее); трещина по оси, половины разведены на 1 px: левая — золото Сольгарда с сапфиром и
+ *  шарами на зубцах, правая — чёрное железо Умбрата с зелёным камнем и сиреневыми остриями; из трещины бьёт жар, над короной —
+ *  искры и хлопья пепла. crownTop — строка верха обруча (v считается от центра печати вниз). */
+function crownScene(pc: PC, cx: number, cy: number, rho: number, crownTop: number) {
+  const inScene = (x: number, y: number) => (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= rho * rho;
+  const SIL = c("#0c080c");
+  // ----- небо: полосы по строкам (v — строка от центра печати), ярче всего за низкими крышами
+  const BANDS: [number, Col][] = [[-17, c("#151018")], [-14, c("#261418")], [-12, c("#4c1a0e")], [-10, c("#6a1e0e")], [-7, FIRE[0]], [-5, FIRE[1]]];
+  const sky = (v: number) => (BANDS.find(([lim]) => v <= lim) ?? [0, FIRE[2]])[1];
+  for (let y = cy - rho; y <= cy + rho; y++) for (let x = cx - rho; x <= cx + rho; x++) if (inScene(x, y)) pc.set(x, y, sky(y - cy));
+  // ----- город слева направо: [левая колонка u, ширина, верх v, крыша, тон камня]; верх — верх зубцов, между зубцами крыша на 2 px ниже,
+  //  шпиль — пирамида на 3 строки; здания стоят на земле v = GROUND, свет сверху и слева, тень справа, контур 1 px
+  const GROUND = 13;
+  const ASH = [c("#1e1a1c"), ...P.ash, c("#8c8078")];                                                  // рампа камня: от тени до кромки
+  type Roof = "cren" | "crenR" | "flat" | "spire";
+  const CITY: [number, number, number, Roof, number][] = [
+    [-21, 7, -7, "cren", 3],
+    [-14, 6, -12, "cren", 4],
+    [-8, 8, -4, "flat", 2],
+    [0, 8, -4, "flat", 2],
+    [8, 6, -12, "spire", 4],
+    [14, 7, -7, "crenR", 3],
+  ];
+  for (const [u0, w, top, roof, tone] of CITY) {
+    const cols: number[] = [];
+    for (let i = 0; i < w; i++) {
+      const d = Math.abs(i - (w - 1) / 2);
+      cols.push(roof === "cren" ? top + (i % 4 < 2 ? 0 : 2) : roof === "crenR" ? top + ((w - 1 - i) % 4 < 2 ? 0 : 2) : roof === "spire" ? top + Math.floor(d) : top);
+    }
+    const has = (i: number, v: number) => i >= 0 && i < w && v >= cols[i] && v <= GROUND;
+    layer(pc, (l) => {
+      for (let i = 0; i < w; i++) for (let v = cols[i]; v <= GROUND; v++) {
+        if (!inScene(cx + u0 + i, cy + v)) continue;
+        l.set(cx + u0 + i, cy + v, !has(i, v - 1) ? ASH[tone + 2] : !has(i - 1, v) ? ASH[tone + 1] : !has(i + 1, v) ? ASH[tone - 1] : ASH[tone]);
+      }
+    }, SIL);
+  }
+  // окна 2×3: тлеющие в левой башне, шпиле и левой крайней башне, под ними и в правой крайней — тёмные щели
+  for (const [u, v] of [[-12, -3], [10, -2], [17, -3]] as [number, number][]) for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) pc.set(cx + u + i, cy + v + j, SIL);
+  for (const [u, v] of [[-12, -8], [10, -7], [-19, -3]] as [number, number][]) {
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) pc.set(cx + u + i, cy + v + j, j === 2 ? FIRE[1] : FIRE[2]);
+  }
+  // узкая полоса огня у земли (две яркие строки и отсвет), под ней чёрная земля
+  const EMBER = [FIRE[3], FIRE[2], FIRE[0], c("#4c1a0e")];
+  for (let u = -rho; u <= rho; u++) for (let v = GROUND; v <= rho; v++) if (inScene(cx + u, cy + v)) pc.set(cx + u, cy + v, EMBER[v - GROUND] ?? SIL);
+  // ----- корона: обруч v BT…BT+5, зубцы над ним; трещина cu(v) по оси
+  const BT = crownTop, BB = BT + 5, DV = BT + 7;                                      // DV — сдвиг короны вниз от исходного положения (обруч v −7…−2)
+  /** Зубцы: ось tu и полуширины строк от острия до обруча (острие — 1 px, у обруча 5 и 7 px). */
+  const OUTER = [0, 0, 1, 1, 2], MID = [0, 0, 1, 1, 1, 2, 2], CENTER = [0, 0, 1, 1, 2, 2, 2, 3, 3];
+  const teeth = [{ tu: -13, hw: OUTER }, { tu: -7, hw: MID }, { tu: 0, hw: CENTER }, { tu: 7, hw: MID }, { tu: 13, hw: OUTER }].map((t) => ({ ...t, tv: BT - t.hw.length }));
+  const CRACK = [0, 0, 1, 1, 0, -1, -1, 0, 0, 1, 1, 0, -1, -1, 0, 0, 1, 1];
+  const crack = (v: number) => CRACK[(v - DV + 17 + CRACK.length) % CRACK.length];
+  /** Индекс тона (0 — тень … 4 — блик) пикселя короны (u, v) до раскола или −1. */
+  const toneAt = (u: number, v: number): number => {
+    if (v >= BT && v <= BB) {
+      if (Math.abs(u) > 15) return -1;
+      const r = v - BT, bead = (u + 64) % 3 === 0;
+      return r === 0 ? (bead ? 2 : 4) : r === 1 ? 3 : r <= 3 ? 2 : r === 4 ? (bead ? 1 : 3) : 0;
+    }
+    for (const t of teeth) {
+      if (v < t.tv || v >= BT) continue;
+      const hw = t.hw[v - t.tv], o = u - t.tu;
+      if (Math.abs(o) > hw) continue;
+      let k = o < 0 ? 3 : o === 0 ? 4 : o === hw ? 1 : 2;
+      if (v === BT - 1 && k > 1) k--;                                                   // у обруча зубец в тени ободка
+      return k;
+    }
+    return -1;
+  };
+  const half = (side: -1 | 1) => (l: PC) => {
+    const ramp = side < 0 ? [G[0], G[1], G[2], G[3], G[4]] : [UK[1], IRON[1], IRON[2], IRON[3], IRON[4]];
+    for (let v = BT - CENTER.length; v <= BB; v++) for (let u = -15; u <= 15; u++) {
+      const cu = crack(v);
+      if (side < 0 ? u > cu - 2 : u < cu + 1) continue;
+      const k = toneAt(u, v);
+      if (k >= 0) l.set(cx + u + side, cy + v, ramp[k]);
+    }
+    if (side < 0) {
+      stamp(l, cx - 10, cy + BT + 1, ["hA.", "Aad", ".d."], { h: c("#d8f0ff"), A: AZ[3], a: AZ[2], d: AZ[1] });
+      for (const t of teeth.filter((q) => q.tu < 0)) stamp(l, cx + t.tu - 2, cy + t.tv - 2, [".Y.", "YGg", ".g."], { Y: G[4], G: G[3], g: G[2], h: G[1] });
+    } else {
+      stamp(l, cx + 8, cy + BT + 1, ["ab.", "bcd", ".d."], { a: UG[2], b: UG[1], c: UG[0], d: c("#1e5a1a") });
+      for (const t of teeth.filter((q) => q.tu > 0)) stamp(l, cx + t.tu + 1, cy + t.tv - 3, ["s", "L", "p"], { s: UP[4], L: UP[3], p: UP[2] });
+    }
+  };
+  layer(pc, half(-1), SOUT);
+  layer(pc, half(1), UOUT);
+  // ----- жар из трещины: ядро 2 px (к острию тусклее), под обручем — отсвет
+  {
+    const l = new PC(pc.w, pc.h);
+    for (let v = BT - CENTER.length + 1; v <= BB; v++) {
+      const x = cx + crack(v);
+      l.set(x - 1, cy + v, v - DV > -12 ? FIRE[3] : FIRE[2]); l.set(x, cy + v, v - DV > -13 ? FIRE[4] : FIRE[3]);
+    }
+    sparks(l, [[cx + 2, cy - 11, 2], [cx - 4, cy - 9, 1], [cx + 5, cy - 7, 0], [cx - 1, cy - 13, 0]]);
+    for (let y = 0; y < l.h; y++) for (let x = 0; x < l.w; x++) if (l.alpha(x, y) && !inScene(x, y)) l.clear(x, y);
+    pc.blit(l, 0, 0);
+  }
+}
+
+/** Итоговая эмблема (решение пользователя): вариант 2 «Два знамени», в печати вместо огня — расколотая корона из варианта 1 на фоне
+ *  города, нарисованного под круг заново (crownScene). Чтобы корона и город читались, композиция целиком перерисована в 1.25 раза
+ *  крупнее (полотнища 36 и 35 × 45 с гербами s24 — пропорции варианта 2), печать R 30 (по пропорции 26 — на 4 px больше: в сцену 44 px
+ *  помещаются корона 33 px и город с башнями; размер эмблемы остаётся 105×118). withTitle = false — эмблема для игры без надписи,
+ *  обрезанная по рисунку. */
+const FINAL_K = 1.25;
+function logoFinal(withTitle = true): PC {
+  const W = 200, H = 175, cx = 100, cy = 95, R = 30, ring = 6, pc = new PC(W, H);
+  bannerPair(pc, FINAL_K);
+  layer(pc, (l) => sealDisc(l, cx, cy, R, ring));
+  crownScene(pc, cx, cy, R - ring - 2, 6);
+  // искры над печатью между знамёнами (как у огня варианта 2)
+  sparks(pc, [[cx - 6, cy - 33, 0], [cx + 6, cy - 38, 1], [cx - 1, cy - 42, 2], [cx - 11, cy - 30, -1], [cx + 12, cy - 31, -1]]);
+  if (!withTitle) return trimAlpha(pc);
+  title2(pc, 129, TITLE_ASH, TITLE_GOLD);
+  return pc;
+}
+/** Обрезка по непрозрачным пикселям. */
+function trimAlpha(src: PC): PC {
+  let x0 = src.w, y0 = src.h, x1 = -1, y1 = -1;
+  for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) if (src.alpha(x, y)) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  return x1 < 0 ? src : crop(src, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
 }
 
 const LOGOS: Logo[] = [
@@ -1780,8 +1933,44 @@ export function STANDARDS() {
   return { home, torns, burns, falls, royal, base };
 }
 
+
+/** Эмблема игры: лист вариантов (logo.png, ×3) и каждый вариант ×1; итог (решение пользователя) — превью с надписью ×3 (logo-final.png),
+ *  исходник ×1 (logo-final-x1.png), сравнение «вариант 1 | вариант 2 | итог» ×3 (logo-final-compare.png), «вариант 1 | итог» ×2 (logo-final-vs-1-x2.png) и эмблема без надписи для экрана
+ *  загрузки — client/public/ui/logo-emblem.png: прозрачный фон, пиксель картинки = 1 px, только непрозрачные и пустые пиксели (показывать
+ *  целым множителем, image-rendering: pixelated). */
+function writeLogos() {
+  logoSheet().save(path.join(OUT, "logo.png"));
+  for (const l of LOGOS) l.draw().save(path.join(OUT, `${l.id}.png`));                  // каждый вариант ×1 — исходник для экрана загрузки
+  const fin = logoFinal(true), emblem = logoFinal(false), k = 3, pad = 16;
+  fin.save(path.join(OUT, "logo-final-x1.png"));
+  const prev = new PC(fin.w * k + pad * 2, fin.h * k + pad * 2);
+  fill(prev, BGC);
+  prev.blit(scaleNN(fin, k), pad, pad);
+  prev.save(path.join(OUT, "logo-final.png"));
+  /** Сравнение: рисунки ×z рядом, над каждым подпись. */
+  const compare = (list: { t: string; pc: PC }[], z: number, file: string) => {
+    const top = pad + 30, maxH = Math.max(...list.map((p) => p.pc.h));
+    const cmp = new PC(list.reduce((w, p) => w + p.pc.w * z + pad, pad), top + maxH * z + pad);
+    fill(cmp, BGC);
+    let x = pad;
+    for (const p of list) {
+      label(cmp, p.t, x, pad, INK, 2);
+      cmp.blit(scaleNN(p.pc, z), x, top);
+      x += p.pc.w * z + pad;
+    }
+    cmp.save(path.join(OUT, file));
+  };
+  const parts = [{ t: "1. РАСКОЛОТАЯ КОРОНА", pc: logoCrown() }, { t: "2. ДВА ЗНАМЕНИ", pc: logoBanners() }, { t: "ИТОГ: ДВА ЗНАМЕНИ, КОРОНА НА ФОНЕ ГОРОДОВ", pc: fin }];
+  compare(parts, k, "logo-final-compare.png");
+  compare([parts[0], parts[2]], 2, "logo-final-vs-1-x2.png");                          // «вариант 1 | итог» ×2 — как на экране загрузки при ×2
+  for (let i = 3; i < emblem.data.length; i += 4) if (emblem.data[i] && emblem.data[i] < 255) throw new Error("logo-emblem: полупрозрачный пиксель");
+  emblem.save(path.join(ROOT, "client/public/ui/logo-emblem.png"));
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   fs.mkdirSync(OUT, { recursive: true });
+  // --logo — только эмблема игры (варианты, итог и эмблема для экрана загрузки), без листов штандартов
+  if (process.argv.includes("--logo")) { writeLogos(); console.log(OUT); process.exit(0); }
   for (const f of ["_debug.png", "_debug_capture.png"]) fs.rmSync(path.join(OUT, f), { force: true });   // черновые листы прошлого прогона
   const { home, torns, burns, falls, royal, base } = STANDARDS();
   const meta: Record<string, object> = {};
@@ -1836,7 +2025,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       [at(royal[0], 0, MAST_LOW[1]), at(royal[0], 4, mid), at(royal[1], 8, mid), at(royal[1], 2, MAST_TOP[1])]));
   }
   stackRows(rows).save(path.join(OUT, "preview.png"));
-  logoSheet().save(path.join(OUT, "logo.png"));
-  for (const l of LOGOS) l.draw().save(path.join(OUT, `${l.id}.png`));                  // каждый вариант ×1 — исходник для экрана загрузки
+  writeLogos();
   console.log(OUT);
 }

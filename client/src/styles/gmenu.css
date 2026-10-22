@@ -30,6 +30,12 @@
   padding-bottom: var(--sp-2);
   border-bottom: 1px solid var(--line);
 }
+/* главное меню на низком окне: 16–17 пунктов (с «Авторы», у админа ещё «Админ-панель») не помещались бы с зазором 6px — пункты ближе, прокрутки нет до 1280×800 */
+@media (max-height: 840px) {
+  .gm-main {
+    gap: var(--sp-1);
+  }
+}
 .gm-item {
   display: flex;
   justify-content: space-between;

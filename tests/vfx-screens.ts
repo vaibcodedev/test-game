@@ -15,7 +15,8 @@
  * --hidden — концы эффектов при скрытой вкладке, вместо снимков умений (класс — по первому умению из --only): знамя, щит, руны, пузырь
  *   и круг под ногами ставятся на 2.5 с; вкладка «скрывается» (событие hidden, цикл без кадров) на 3 с и возвращается — через 2 кадра
  *   эффектов нет; без скрытия они видны до конца срока и сняты сразу после выхода. Итог — строки ok/FAIL и кадры hidden-*.png.
- * Выход — tools/out/vfx-shots/: <умение>-<фаза>.png (кроп 400×300 вокруг героя и цели, 1 пиксель кадра = 1 пиксель экрана, камера ×2),
+ * Выход — tools/out/vfx-shots/: <умение>-<фаза>.png (кроп 400×300 вокруг героя и цели, 1 пиксель кадра = 1 пиксель экрана, камера ×2;
+ *   знамя tp_banner — кроп по центру кольца ауры целиком, до размера окна),
  * sheet.png (все кадры с подписями, вдвое меньше) и manifest.json. Путь к Chrome: CHROME_PATH.
  */
 import fs from "node:fs";
@@ -49,6 +50,9 @@ const PASS = "secret";
 const CROP = { w: 400, h: 300 };
 /** Текущий размер кропа: большие площадные эффекты (сотрясение, радиус 130) снимаются шире. */
 let crop = { ...CROP };
+/** Центр кадра в мире (камера и кроп); null — середина между героем и целью. Знамя снимается по центру своего кольца: при зуме 3
+ *  кольцо радиуса 130 (792 px экрана) иначе не влезает в окно 800 px по высоте. */
+let focus: { x: number; y: number } | null = null;
 /** Шаг ручного времени, мс: меньше — точнее пик, но дольше (каждый шаг — отрисовка кадра на программном GL). */
 const STEP = 40;
 
@@ -168,10 +172,11 @@ async function snap(skill: string, phase: Phase | string, field: string, ids: { 
   if (PHASES.size && !PHASES.has(String(phase).replace(/\d+$/, "")) && !PHASES.has(String(phase))) { if (wait) await adv(wait); return; }
   const c = await run<{ url: string; cx: number; cy: number; w: number; h: number }>(`
     const u = sc.units.get(a.hero), t = sc.units.get(a.target) || u, cam = sc.cameras.main, g = window.__game, cv = g.canvas;
-    cam.stopFollow(); cam.centerOn((u.x + t.x) / 2, (u.y + t.y) / 2 - 12);
+    const fx = a.focus ? a.focus.x : (u.x + t.x) / 2, fy = a.focus ? a.focus.y : (u.y + t.y) / 2 - 12;
+    cam.stopFollow(); cam.centerOn(fx, fy);
     window.__adv(a.wait || ${STEP});
     const k = cv.width / g.scale.width;
-    return { url: cv.toDataURL('image/png'), cx: (((u.x + t.x) / 2) - cam.worldView.x) * cam.zoom * k, cy: (((u.y + t.y) / 2 - 12) - cam.worldView.y) * cam.zoom * k, w: cv.width, h: cv.height };`, { ...ids, wait });
+    return { url: cv.toDataURL('image/png'), cx: (fx - cam.worldView.x) * cam.zoom * k, cy: (fy - cam.worldView.y) * cam.zoom * k, w: cv.width, h: cv.height };`, { ...ids, wait, focus });
   const src = PNG.sync.read(Buffer.from(c.url.split(",")[1], "base64"));
   const w = Math.min(crop.w, src.width), h = Math.min(crop.h, src.height);
   const x0 = Math.max(0, Math.min(src.width - w, Math.round(c.cx - w / 2))), y0 = Math.max(0, Math.min(src.height - h, Math.round(c.cy - h / 2)));
@@ -209,21 +214,30 @@ async function shootSkill(skill: string, field: "grass" | "cobble", ids: { hero:
   await freeze();
   await adv(1800); // дать доиграть следам прошлого умения
   if (skill === "tp_banner") {
-    // штандарт: для каждой фракции кастера — установка (3 кадра падения и удара) и 6 кадров ветра
-    for (const fac of ["solgard", "umbrath"]) {
-      await thaw();
-      await dbg({ op: "gear", slots: {}, faction: fac });
-      await sleep(1000);
-      await freeze();
-      await adv(1200);
-      const haz = (ms: number) => ({ t: "hazard", id: `h_banner_${fac}`, k: "holy", x: pos.hx + 45, y: pos.hy, r: 130, ms, ...mark });
-      await fxArr([haz(6000)]);
-      for (const [i, w] of [90, 130, 200].entries()) await snap(skill, "banner", field, ids, w, `${skill}-${fac}-i${i + 1}`);
-      await adv(500);
-      for (let i = 0; i < 6; i++) await snap(skill, "banner", field, ids, 110, `${skill}-${fac}-w${i + 1}`);
-      await fxArr([haz(0)]);
-      await snap(skill, "banner", field, ids, 150, `${skill}-${fac}-end`);
-      await adv(900);
+    // штандарт: для каждой фракции кастера — установка (3 кадра падения и удара) и 6 кадров ветра; кадр — по центру знамени и кольца ауры
+    //  целиком (радиус 130 и поля 12 px мира при зуме камеры, не больше окна)
+    const z = ZOOM || 2;
+    focus = { x: pos.hx + 45, y: pos.hy };
+    crop = { w: Math.min(VIEW.width, (2 * 130 + 24) * z), h: Math.min(VIEW.height, (2 * 130 + 24) * z) };
+    try {
+      for (const fac of ["solgard", "umbrath"]) {
+        await thaw();
+        await dbg({ op: "gear", slots: {}, faction: fac });
+        await sleep(1000);
+        await freeze();
+        await adv(1200);
+        const haz = (ms: number) => ({ t: "hazard", id: `h_banner_${fac}`, k: "holy", x: pos.hx + 45, y: pos.hy, r: 130, ms, ...mark });
+        await fxArr([haz(6000)]);
+        for (const [i, w] of [90, 130, 200].entries()) await snap(skill, "banner", field, ids, w, `${skill}-${fac}-i${i + 1}`);
+        await adv(500);
+        for (let i = 0; i < 6; i++) await snap(skill, "banner", field, ids, 110, `${skill}-${fac}-w${i + 1}`);
+        await fxArr([haz(0)]);
+        await snap(skill, "banner", field, ids, 150, `${skill}-${fac}-end`);
+        await adv(900);
+      }
+    } finally {
+      focus = null;
+      crop = { ...CROP };
     }
     await thaw();
     return;
@@ -431,10 +445,12 @@ function buildSheet() {
   shots.forEach((s, i) => {
     const img = readPng(path.join(OUT, s.file));
     const x0 = 2 + (i % cols) * (cw + 2), y0 = 2 + Math.floor(i / cols) * (ch + lab + 2);
+    // кадр крупнее 400×300 (сотрясение, знамя с кольцом) — в лист идёт его середина
+    const ox = Math.max(0, Math.floor((img.w - CROP.w) / 2)), oy = Math.max(0, Math.floor((img.h - CROP.h) / 2));
     // уменьшение вдвое усреднением 2×2
     for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
       let r = 0, g = 0, b = 0;
-      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const p = img.get(x * 2 + dx, y * 2 + dy) ?? [0, 0, 0, 255]; r += p[0]; g += p[1]; b += p[2]; }
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const p = img.get(ox + x * 2 + dx, oy + y * 2 + dy) ?? [0, 0, 0, 255]; r += p[0]; g += p[1]; b += p[2]; }
       sheet.set(x0 + x, y0 + lab + y, [Math.round(r / 4), Math.round(g / 4), Math.round(b / 4), 255]);
     }
     drawText(sheet, `${s.skill} ${s.phase}${s.field === "cobble" ? " C" : ""}`.slice(0, 48), x0 + 1, y0 + 2, BEIGE);
