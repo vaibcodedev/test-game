@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { PC, hex, pnoise, OUTLINE, type RGBA } from "./canvas";
 import { P } from "./palette";
-import { ARMS, factionEmblem, azureMedallion, SOLGARD_SHIELD_TOP } from "./heraldry";
+import { ARMS, factionEmblem } from "./heraldry";
 
 type Col = RGBA;
 type Fac = "solgard" | "umbrath";
@@ -194,14 +194,20 @@ interface Wind {
   /** Рябь кромок: волна бежит вниз по боковым кромкам (длина rip строк, ровно 1 строка за кадр при rip = N), кромка уходит внутрь на 1 px
    *  во впадине (порог ripT). Пиксель вынимается из ровного поля у каймы — кайма и её внутренняя линия остаются целыми. 0 — без ряби. */
   rip: number; ripT: number;
+  /** Рябь только на внешних ripOuter px кромки (1 — во впадине уходит крайний пиксель каймы): тонкая внутренняя линия и просвет
+   *  каймы не дёргаются относительно ткани. Не задано — вынимается пиксель ровного поля, кайма сдвигается внутрь целиком. */
+  ripOuter?: number;
   /** С какого расстояния до края начинается ровное поле (рябь вынимает пиксели только из него): кайма и шитьё целы. */
   fieldD: number;
   /** Жёсткая кайма: пиксели ближе stiff к краю (густое шитьё) темнеют только в глубине складки, как герб; 0 — нет. */
   stiff?: number;
   /** Тень от перекладины: сколько верхних строк на тон темнее. */
   topShade: number;
-  /** Герб без светотени складок — один тон на весь рисунок (у «Знамени защиты» герб — нашивка на медальоне). */
+  /** Герб без светотени складок — один тон на весь рисунок (у «Знамени защиты» и в эмблеме игры герб Сольгарда лежит прямо на шёлке). */
   embFlat?: boolean;
+  /** Смена сдвига строки держится не меньше 2 кадров (holdShifts): иначе на быстром качании (2 px за 2 кадра) тонкие линии каймы
+   *  проходят пиксель за кадр и мигают «через кадр». Размах и цикл качания те же. */
+  hold?: boolean;
 }
 const WIND_HOME: Wind = { lean: 0.4, sway: 1.6, lag: 7, lambda: N, slant: 0.18, f0: 0.04, f1: 0.42, lightT: 0.62, darkT: 0.3, deepT: 2, embT: 0.75, rip: N, ripT: 0.35, fieldD: 4, topShade: 1 };
 interface Emb { pc: PC; x: number; y: number }
@@ -221,7 +227,7 @@ function smoothRuns(a: number[]) {
 }
 /** План ветра на весь цикл: сдвиги строк sx[t][v] и рябь кромок eL/eR[t][v] (1 — у кромки вынут пиксель поля, кромка ушла внутрь).
  *  Сдвиг строки и сама кромка (сдвиг ± вынутый пиксель) меняются не больше чем на 1 px за кадр, включая шов цикла: если рябь
- *  совпала со шагом строки в ту же сторону, она ждёт кадр. */
+ *  совпала со шагом строки в ту же сторону, она ждёт кадр. С Wind.hold смена сдвига строки держится не меньше 2 кадров. */
 interface WindPlan { sx: number[][]; eL: number[][]; eR: number[][] }
 /** Без рывков: значение, державшееся один кадр и вернувшееся (0,1,0), снимается; после — снова без одиночных строк в кадре. */
 function noReturns(arrs: number[][][], H: number) {
@@ -278,6 +284,7 @@ function windPlan(tex: PC, w: Wind): WindPlan {
   }
   noReturns([sx, eL, eR], H);
   stepLimit(sx, H);
+  if (w.hold) holdShifts(sx, H);
   for (const [e, sgn, edge] of [[eL, 1, first], [eR, -1, last]] as [number[][], number, number[]][]) for (let v = 0; v < H; v++) {
     if (!canCut[v] || !straight(edge, v)) continue;
     const at = (t: number) => sx[(t + N) % N][v] + sgn * e[(t + N) % N][v];
@@ -299,6 +306,48 @@ function windPlan(tex: PC, w: Wind): WindPlan {
   cache.set(w, plan);
   return plan;
 }
+/** Цикл значений без рывков: шаг ≤ 1 (и на шве цикла), каждое значение держится не меньше 2 кадров. */
+function heldTwo(a: number[]) {
+  const n = a.length;
+  if (a.every((q) => q === a[0])) return true;
+  for (let t = 0; t < n; t++) {
+    const p = a[(t + n - 1) % n], q = a[t], r = a[(t + 1) % n];
+    if (Math.abs(r - q) > 1 || (p !== q && q !== r)) return false;
+  }
+  return true;
+}
+/** Wind.hold: строка, где сдвиг держится один кадр (2 px за 2 кадра), заменяется ближайшей последовательностью с удержанием ≥ 2 кадров —
+ *  каждый кадр отличается от плана не больше чем на 1 px, размах строки тот же, изменённых кадров меньше всего; при равенстве — ближе
+ *  к строке выше (волна по-прежнему бежит вниз), перепад между соседними строками ≤ 1 px. */
+function holdShifts(sx: number[][], H: number) {
+  for (let v = 0; v < H; v++) {
+    const old = sx.map((r) => r[v]);
+    if (heldTwo(old)) continue;
+    const up = v > 0 ? sx.map((r) => r[v - 1]) : null, lo = Math.min(...old), hi = Math.max(...old);
+    let best: number[] | null = null, bestCost = Infinity;
+    const cur: number[] = [];
+    const walk = (t: number, cost: number) => {
+      if (cost >= bestCost) return;
+      if (t === N) {
+        if (!heldTwo(cur)) return;
+        let c = cost + (Math.min(...cur) !== lo || Math.max(...cur) !== hi ? 50 : 0);
+        if (up) for (let i = 0; i < N; i++) { const g = Math.abs(cur[i] - up[i]); c += g > 1 ? 1000 : g * 0.01; }
+        if (c < bestCost) { bestCost = c; best = [...cur]; }
+        return;
+      }
+      for (const dv of [0, -1, 1]) {
+        const q = old[t] + dv;
+        if (t > 0 && Math.abs(q - cur[t - 1]) > 1) continue;
+        if (t >= 2 && q !== cur[t - 1] && cur[t - 1] !== cur[t - 2]) continue;      // прежнее значение держалось бы один кадр
+        cur.push(q);
+        walk(t + 1, cost + (dv ? 10 : 0));
+        cur.pop();
+      }
+    };
+    walk(0, 0);
+    if (best) for (let t = 0; t < N; t++) sx[t][v] = best[t];
+  }
+}
 /** Кадр t полотнища с ветром. Слой шире текстуры на M с каждой стороны и на 3 строки ниже; текстура (0, 0) → слой (M, 0). */
 function windCloth(tex: PC, emb: Emb | null, t: number, w: Wind, tone: ToneFn, M = 8): ClothOut {
   const ph = (TAU * t) / N, H = tex.h, TW = tex.w;
@@ -318,11 +367,17 @@ function windCloth(tex: PC, emb: Emb | null, t: number, w: Wind, tone: ToneFn, M
     const us: number[] = [];
     for (let u = 0; u < TW; u++) if (tex.alpha(u, v)) us.push(u);
     if (!us.length) continue;
-    // вынуть по пикселю ровного поля у левой и правой каймы (d ≥ 4, сосед тоже поле)
-    const inner = (k: number) => d[v * TW + us[k]] >= w.fieldD && d[v * TW + us[k + 1]] >= w.fieldD && us[k + 1] === us[k] + 1;
     let cutL = -1, cutR = -1;
-    if (eL[v] && straight(first, v)) for (let k = 0; k < us.length - 1; k++) if (inner(k)) { cutL = k; break; }
-    if (eR[v] && straight(last, v)) for (let k = us.length - 2; k >= 0; k--) if (inner(k) && k !== cutL) { cutR = k + 1; break; }
+    if (w.ripOuter) {
+      // рябь только у края: вынимается пиксель на расстоянии ripOuter от кромки, внешние сдвигаются внутрь — линия и просвет каймы стоят
+      if (eL[v] && straight(first, v)) cutL = w.ripOuter - 1;
+      if (eR[v] && straight(last, v)) cutR = us.length - w.ripOuter;
+    } else {
+      // вынуть по пикселю ровного поля у левой и правой каймы (d ≥ 4, сосед тоже поле)
+      const inner = (k: number) => d[v * TW + us[k]] >= w.fieldD && d[v * TW + us[k + 1]] >= w.fieldD && us[k + 1] === us[k] + 1;
+      if (eL[v] && straight(first, v)) for (let k = 0; k < us.length - 1; k++) if (inner(k)) { cutL = k; break; }
+      if (eR[v] && straight(last, v)) for (let k = us.length - 2; k >= 0; k--) if (inner(k) && k !== cutL) { cutR = k + 1; break; }
+    }
     for (let k = 0; k < us.length; k++) {
       if (k === cutL || k === cutR) continue;
       const shiftIn = cutL >= 0 && k < cutL ? 1 : cutR >= 0 && k > cutR ? -1 : 0;
@@ -1554,7 +1609,8 @@ const SKULL9 = [
   "..MDMDD..",
   "...DDD...",
 ];
-/** Скрещённые штандарты Сольгарда и Умбрата за печатью (вариант 2 и итог): древки, навершия, полотнища с утверждёнными гербами на ветру.
+/** Скрещённые штандарты Сольгарда и Умбрата за печатью (вариант 2 и итог): древки, навершия, полотнища с утверждёнными гербами на ветру;
+ *  у Сольгарда белый шёлк, герб лежит прямо на нём, без медальона.
  *  K — масштаб композиции: 1 — вариант 2 (полотнища 28×36, гербы s20), 1.25 — итог (полотнища 36 и 35 × 45, гербы s24: доля герба на ткани
  *  та же, ширина под чётный и нечётный герб — по центру; череп 9×10); брус, петли и кайма — те же пиксели. */
 function bannerPair(pc: PC, K = 1) {
@@ -1582,9 +1638,10 @@ function bannerPair(pc: PC, K = 1) {
     const P = Math.round(29 * K), Q = Math.round(25 * K);
     const inside = sol ? (x: number, y: number) => y <= P || Math.abs(x + 0.5 - CW / 2) <= CW / 2 - 2 * (y - P) : (x: number, y: number) => x >= (y <= Q ? 0 : Math.ceil((y - Q) / 2)) && x <= CW - 1 - (y <= Q ? 0 : Math.ceil((y - Q) / 2));
     const tex = clothTex(CW, CH, inside, (_x, _y, d) => k.cloth(d));
-    const em = factionEmblem(fac, size), ex = Math.floor((CW - em.w) / 2), dd = distMap(CW, CH, inside), my = big ? 3 : 2;
-    // у Сольгарда щит на нашитом медальоне лазури (как у штандарта своих земель): стена с воротами иначе сливается с белым полем
-    const emb: Emb = sol ? { pc: azureMedallion(em, SOLGARD_SHIELD_TOP[size], (i, j) => (dd[(my + j) * CW + ex - 2 + i] ?? 0) >= 5), x: ex - 2, y: my } : { pc: em, x: ex, y: big ? 5 : 4 };
+    const em = factionEmblem(fac, size), ex = Math.floor((CW - em.w) / 2);
+    // герб у обеих фракций прямо на ткани; у Сольгарда — на белом шёлке без медальона (решение пользователя, вариант Б — как у штандарта
+    //  своих земель и «Знамени защиты»), на прежнем месте
+    const emb: Emb = { pc: em, x: ex, y: big ? 5 : 4 };
     const co = windCloth(tex, emb, sol ? 2 : 8, { ...WIND_HOME, lean: (sol ? -1.3 : 1.3) * K, sway: 0.8 * K, lag: 2.2, embFlat: sol }, k.tone);
     co.L.outline(OUTLINE);
     pc.blit(co.L, X0 - co.M, bar + 3);
