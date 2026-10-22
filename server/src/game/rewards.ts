@@ -6,6 +6,7 @@ import { BASE_ITEMS, makeItem, makeLoot, makeUnique, rollRarity, Rarity, UNIQUES
 import { LEGEND_TIERS, makeLegendary, rollLegendary } from "../../../shared/legendary";
 import { ELITE } from "../../../shared/elites";
 import { MATERIALS } from "../../../shared/upgrade";
+import { BAL } from "../../../shared/balance";
 import type { LootBag } from "../../../shared/protocol";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
@@ -84,10 +85,11 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
       for (let i = 0; i < 2; i++) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random, 0.45)));
       items.push({ ...makeItem("hp_potion", 1, 0), qty: 3 });
     } else {
-      const chance = p.forceDrop ? 1 : 0.3;
+      // шансы — data/balance.json loot (уменьшены по просьбе пользователя)
+      const chance = p.forceDrop ? 1 : BAL.loot.item;
       if (Math.random() < chance) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
-      if (Math.random() < (p.forceDrop ? 0 : 0.08)) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
-      if (Math.random() < 0.1) items.push({ ...makeItem(Math.random() < 0.6 ? "hp_potion" : "mp_potion", 1, 0), qty: 1 });
+      if (Math.random() < (p.forceDrop ? 0 : BAL.loot.extra)) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
+      if (Math.random() < BAL.loot.potion) items.push({ ...makeItem(Math.random() < 0.6 ? "hp_potion" : "mp_potion", 1, 0), qty: 1 });
     }
     // материалы кузнеца
     const mat = (id: string, qty: number) => items.push({ ...makeItem(id, 1, 0), qty });

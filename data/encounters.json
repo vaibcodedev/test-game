@@ -1,5 +1,5 @@
 {
-  "intervalSec": [120, 240],
+  "intervalSec": [600, 1200],
   "lifetimeSec": 180,
   "spawnDist": [110, 200],
   "kinds": {

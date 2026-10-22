@@ -1,8 +1,8 @@
 {
   "smith": { "name": "Кузнец Гром", "sprite": "merchant", "tint": "0xb0a090", "color": "#ffa860", "greeting": "«Принеси руду и золото — выкую из твоей железки легенду. До +5 не подведу, дальше как повезёт. Но не бойся: предмет не сгорит, лишь потеряет уровень.»" },
   "materials": {
-    "ash_ore":   { "name": "Пепельная руда", "price": 40,  "shape": "ore",  "dropPct": 14 },
-    "star_dust": { "name": "Звёздная пыль",  "price": 160, "shape": "dust", "dropPct": 3 }
+    "ash_ore":   { "name": "Пепельная руда", "price": 40,  "shape": "ore",  "dropPct": 5 },
+    "star_dust": { "name": "Звёздная пыль",  "price": 160, "shape": "dust", "dropPct": 1 }
   },
   "levels": [
     { "gold": 50,   "ore": 2,  "dust": 0, "chance": 100 },
