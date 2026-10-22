@@ -1209,10 +1209,38 @@ const SMALL: Record<string, { s24: string[]; s20: string[]; s16: string[] }> = {
 /** Готовые сетки со своим контуром (рисунок принят, не переделывался): «Меч Зари» 20 и 16 px. */
 const PRE_OUTLINED = new Set(["solgard-3:s20", "solgard-3:s16"]);
 /** Малая эмблема (на прозрачном фоне). */
-function small(id: string, size: "s24" | "s20" | "s16"): PC {
+export function small(id: string, size: "s24" | "s20" | "s16"): PC {
   const rows = SMALL[id][size];
   if (PRE_OUTLINED.has(`${id}:${size}`)) return grid(rows, LS);
   return id.startsWith("solgard") ? gridOut(rows, LS, S.out) : gridOut(rows, LU, U.out);
+}
+/** Утверждённые гербы фракций (задача 130): Сольгард — «Восход над Оплотом», Умбрат — «Корона над гробом». */
+export const APPROVED_ARMS = { solgard: "solgard-1", umbrath: "umbrath-1" } as const;
+/** Малая эмблема утверждённого герба фракции со своим контуром: s24 — полотнище знамени 32×46 («Знамя защиты»), s20 — стяги, s16 — мелкие штандарты. */
+export function factionEmblem(fac: keyof typeof APPROVED_ARMS, size: "s24" | "s20" | "s16" = "s24"): PC {
+  return small(APPROVED_ARMS[fac], size);
+}
+/** Первая строка щита (с контуром) в малой эмблеме «Восхода над Оплотом»: выше — солнце. */
+export const SOLGARD_SHIELD_TOP = { s24: 8, s20: 7, s16: 7 } as const;
+/** Нашитый медальон лазури под щитом малой эмблемы Сольгарда (задача 130: на ткани слоновой кости и на белом стяге стена с воротами
+ *  сливалась с полем): силуэт щита — строки эмблемы от shieldTop — расширен на 2 px там, где room(i, j) (координаты медальона: эмблема
+ *  в нём со сдвигом 2 px); край — тёмная лазурь (к свету — на тон светлее), внутри AZ[1] (к свету AZ[2]). Рисунок герба не меняется:
+ *  медальон лежит под эмблемой. Возвращает слой на 2 px шире эмблемы с каждой стороны, эмблема уже положена. */
+export function azureMedallion(em: PC, shieldTop: number, room: (i: number, j: number) => boolean = () => true): PC {
+  const R = 2, w = em.w + 2 * R, h = em.h + 2 * R;
+  const shield = (i: number, j: number) => j - R >= shieldTop && em.alpha(i - R, j - R) > 0;
+  const grow = (m: (i: number, j: number) => boolean) => (i: number, j: number) => m(i, j) || m(i - 1, j) || m(i + 1, j) || m(i, j - 1) || m(i, j + 1);
+  const r2 = grow(grow(shield));
+  const on = (i: number, j: number) => i >= 0 && j >= 0 && i < w && j < h && j - R >= shieldTop && r2(i, j) && !shield(i, j) && room(i, j);
+  const out = new PC(w, h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    if (!on(i, j)) continue;
+    const edge = ![[1, 0], [-1, 0], [0, 1], [0, -1]].every(([a, b]) => on(i + a, j + b) || shield(i + a, j + b));
+    const lit = (!on(i - 1, j) && !shield(i - 1, j)) || (!on(i, j - 1) && !shield(i, j - 1));
+    out.set(i, j, edge ? (lit ? S.azSh : S.azDk) : lit ? S.az : S.azSh);
+  }
+  out.blit(em, R, R);
+  return out;
 }
 
 // ---------------------------------------------------------------- полотнища знамени 32×46 (плоская текстура, как у «Знамени защиты»)

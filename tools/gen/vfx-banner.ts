@@ -1,189 +1,248 @@
-/** Штандарт «Знамя защиты» (tp_banner, задача 127, шаг 4): большое знамя на высоком древке, колышется на ветру, кольцо ауры радиуса баффа и пыль установки.
- *  Символика по data/factions.json. Сольгард («Восходящее солнце над щитом»): полотнище слоновой кости с широкой золотой каймой, золотое восходящее солнце над
- *  небесно-голубым щитом с золотым ободом, золотые кисти и ленты, навершие — золотой солнечный диск. Умбрат («Чёрная корона с черепом»): чёрно-фиолетовое полотнище,
- *  фиолетовая кайма, чёрная корона над костяным черепом с зелёными глазами, навершие — зубцы короны.
- *  Холст 48×88, основание древка в точке привязки (0.5, 0.955); 10 кадров цикла, 9 fps. Палитра — tools/gen/palette.ts (P), золото как --gold.
- *  Ветер: полотнище нарисовано плоско (кайма, внутренняя линия, эмблема, фигурный низ — ласточкин хвост), затем каждый кадр искажается: строки сдвигаются
- *  по горизонтали (сильнее к низу), столбцы по вертикали (волна вдоль ширины); светотень складок бежит вместе с волной; ленты и кисти отстают по фазе.
+/** Штандарт «Знамя защиты» (tp_banner, задача 127, шаг 4; задача 130 — утверждённый герб и ветер штандартов мира): большое знамя
+ *  на высоком древке, колышется на ветру, кольцо ауры радиуса баффа и пыль установки.
+ *  Символика по data/factions.json и утверждённым гербам (tools/gen/heraldry.ts, малая эмблема 24 px, рисунок не меняется).
+ *  Сольгард: полотнище слоновой кости с широкой золотой каймой; герб «Восход над Оплотом» — щит лежит на нашитом медальоне лазури:
+ *  стена с воротами на слоновой кости иначе сливалась с тканью того же тона. Дерево и золото: древко, перекладина, золотые набалдашники,
+ *  кольца, бандажи и кисти, ленты золотая и лазурная, навершие — солнечный диск.
+ *  Умбрат: чёрно-фиолетовое полотнище, пурпурная кайма, герб «Корона над гробом». Фурнитура — как на карточке герба (heraldry.ts, bannerCard)
+ *  и у штандарта своих земель: древко и перекладина чернёного пурпура, набалдашники, кольца и бандажи — серебро, кисти сиреневые
+ *  с зелёной искрой, ленты пурпурная и ядовито-зелёная, навершие — зубцы сиреневой короны.
+ *  Холст 48×88, основание древка в точке привязки (0.5, 0.955). Ветер — модель штандартов мира (tools/gen/standards.ts): цикл 12 кадров,
+ *  12 к/с; полотнище нарисовано плоско, в кадре строки сдвигаются целыми пикселями по плану на весь цикл (шаг ≤ 1 px за кадр, без
+ *  возвратов через кадр, волна бежит от перекладины вниз), складки — сдвиг тона по рампе своего материала (цвета не выходят из палитры),
+ *  кромки рябят. Герб — целиком и одним тоном (складки на него не ложатся), сдвигается вместе со строкой на своей середине.
+ *  Ленты и кисти — по тем же правилам, с запаздыванием; кисть висит на углу полотнища, сдвинутом ветром в этом же кадре.
  *  Запуск отдельно: tsx tools/gen/vfx-banner.ts — tools/out/vfx-preview/banner-raw.png. */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PC, OUTLINE, rng, shade, hex, type RGBA } from "./canvas";
+import { PC, OUTLINE, rng, hex, type RGBA } from "./canvas";
 import { P } from "./palette";
 import { storyboard, stackV } from "./vfx-lib";
 import type { Gen } from "./vfx-gen";
+import { factionEmblem, azureMedallion, SOLGARD_SHIELD_TOP } from "./heraldry";
+import { WIND_FRAMES as N, WIND_FPS as FPS, WIND_HOME, windPlan, windCloth, planShifts, toneFn, layer, stamp, type Wind, type ToneFn, type ClothOut } from "./standards";
 
+type Col = RGBA;
+type Fac = "solgard" | "umbrath";
 const TAU = Math.PI * 2;
-const W = 48, H = 88, CX = 24, BASE_Y = 84, N = 10;
-const CW = 32, CH = 46, X0 = CX - CW / 2, Y0 = 19; // полотнище: размер плоской текстуры и положение под перекладиной
-const put = (f: PC, x: number, y: number, c: RGBA) => f.set(Math.round(x), Math.round(y), c);
+const W = 48, H = 88, CX = 24, BASE_Y = 84;
+const CW = 32, CH = 46, X0 = CX - CW / 2, Y0 = 19;   // полотнище: размер плоской текстуры и положение под перекладиной
+/** Верх герба на полотнище: под каймой и внутренней линией. */
+const EMBLEM_Y = 5;
+const put = (f: PC, x: number, y: number, c: Col) => f.set(Math.round(x), Math.round(y), c);
 
-interface Fac {
-  field: [RGBA, RGBA, RGBA];     // полотнище: тень, тон, свет
-  trim: [RGBA, RGBA, RGBA];      // кайма
-  mark: [RGBA, RGBA, RGBA];      // эмблема
-  ribA: [RGBA, RGBA]; ribB: [RGBA, RGBA];
-  ring: RGBA[];
-  /** Ширина каймы, px; навершие: солнечный диск (Сольгард) или зубцы короны (Умбрат). */
-  trimW: number; finial: "sun" | "crown";
+// ---------------------------------------------------------------- палитра (tools/gen/palette.ts и цвета утверждённых гербов)
+const G = P.gold;                                                                           // #6a4210 #a8681c #e0a630 #ffd864 #fff2b0
+const GLOW = hex("#fff4c8");
+const AZ = [hex("#12365e"), hex("#1f5a96"), hex("#3a86c8"), hex("#7ec8ff")];               // лазурь герба
+/** Слоновая кость: тень (контур ворот герба), полутень (кость гербов Умбрата), тон, свет (стена герба), блик. */
+const IV = [hex("#7a6a4c"), hex("#8f8468"), hex("#bfae88"), hex("#d6c8a4"), hex("#ece4cc")];
+const UK = [hex("#0a0612"), hex("#100a1a"), hex("#22163a"), hex("#382858")];               // чернь Умбрата
+const UP = [hex("#2a1846"), hex("#46265e"), hex("#6a3c8a"), hex("#9a62b8"), hex("#d0b4f0"), hex("#f4f0ff")];   // пурпур → сирень → жемчуг
+const UG = [hex("#3fcf45"), hex("#7aff6a"), hex("#dcffd0")];                                 // ядовитая зелень
+const SIL = [hex("#2c2838"), hex("#545066"), hex("#8a87a0"), hex("#c4c2d4")];               // серебро
+const SOUT = hex("#3a2208"), UOUT = hex("#05030a");                                       // контур золота и черни
+const WOOD = P.wood, STONE = P.stone, VG = P.magic.green, VP = P.magic.purple;
+
+/** Набор фракции: полотнище (цвет по «лучевому» расстоянию до края d, 1 — край), ветер и тона складок, фурнитура, ленты, кисти, кольцо ауры. */
+interface Kit {
+  cloth: (x: number, y: number, d: number) => Col;
+  /** Кайма, просвет и внутренняя линия — d ≤ lineD; медальон и герб держат от внутренней линии ≥ 1 px поля. */
+  lineD: number;
+  tone: ToneFn; wind: Wind;
+  /** Древко (свет, тон, тень), бандажи и кольца (свет, тон, тень), перекладина — 4 строки сверху вниз, набалдашник — рампа тёмный → светлый. */
+  pole: [Col, Col, Col]; band: [Col, Col, Col]; bar: [Col, Col, Col, Col]; knob: Col[];
+  /** Контур металла (кольца, кисти, набалдашники). */
+  metalOut: Col;
+  /** Ленты (свет, тон, тень): левая и правая. */
+  ribA: [Col, Col, Col]; ribB: [Col, Col, Col];
+  /** Кисть: Y — блик, G — свет, g — тон, h — тень, e — искра в узле; шнур. */
+  tassel: Record<string, Col>; cord: Col;
+  /** Кольцо ауры: тёмный → светлый. */
+  ring: Col[];
 }
-const FAC: Record<"solgard" | "umbrath", Fac> = {
+/** Ветер «Знамени защиты»: полотнище 46 строк. Снос мал, качание к низу до ~2 px, запаздывание ~1 цикла на высоту — волна бежит вниз,
+ *  за кадр сдвигается малая часть строк (без общего толчка). Складки круче (наклон 0.3): на мелкой лесенке меньше миганий. Герб — один тон. */
+const WIND: Wind = { ...WIND_HOME, lean: 0.5, sway: 1.8, lag: 6, slant: 0.3, embFlat: true };
+
+const KITS: Record<Fac, Kit> = {
   solgard: {
-    // слоновая кость с тёплыми серо-бежевыми складками, широкая золотая кайма (золото и тёплый белый фракции)
-    field: [hex("#7a6a4c"), hex("#bfae88"), hex("#d6c8a4")],
-    trim: [P.gold[1], P.gold[3], P.gold[4]],
-    mark: [P.gold[2], P.gold[3], P.gold[4]],
-    ribA: [P.gold[1], P.gold[3]], ribB: [hex("#2c6ca8"), hex("#7ec8ff")],
-    ring: [P.gold[0], P.gold[1], P.gold[2], P.gold[3], hex("#fff4c8")],
-    trimW: 3, finial: "sun",
+    // кайма: золото 3 px с пунктиром шитья, просвет, внутренняя линия; поле — слоновая кость (как на утверждённой карточке)
+    cloth: (x, y, d) => (d <= 3 || y < 4 ? (d === 1 || y === 0 ? G[3] : d === 3 ? G[1] : (x + y) % 4 === 0 ? G[4] : G[3]) : d === 5 ? G[1] : IV[2]),
+    lineD: 5,
+    tone: toneFn([IV, [G[0], G[1], G[2], G[3], G[4]]], [SOUT, OUTLINE]),
+    wind: { ...WIND, fieldD: 6 },
+    pole: [WOOD[3], WOOD[2], WOOD[1]], band: [G[3], G[2], G[1]], bar: [WOOD[3], WOOD[2], WOOD[1], WOOD[0]], knob: [G[1], G[2], G[3], G[4]],
+    metalOut: SOUT,
+    ribA: [G[3], G[2], G[1]], ribB: [AZ[3], AZ[2], AZ[1]],
+    tassel: { Y: G[4], G: G[3], g: G[2], h: G[1], e: G[4] }, cord: G[2],
+    ring: [G[0], G[1], G[2], G[3], GLOW],
   },
   umbrath: {
-    field: [hex("#100a1a"), hex("#22163a"), hex("#382858")],
-    trim: [P.cloth.purple[2], P.cloth.purple[3], hex("#d0b4f0")],
-    mark: [P.magic.green[1], P.magic.green[2], P.magic.green[3]],
-    ribA: [hex("#46265e"), hex("#6a3c8a")], ribB: [P.magic.green[1], P.magic.green[2]],
-    ring: [hex("#2a1846"), hex("#5a34a0"), hex("#8a5ce0"), hex("#b890ff"), hex("#e0ccff")],
-    trimW: 2, finial: "crown",
+    // кайма: пурпур 2 px с сиреневым пунктиром, просвет, внутренняя линия; поле — чернь
+    cloth: (x, y, d) => (d <= 2 || y < 3 ? (d === 1 || y === 0 ? UP[3] : d === 2 ? UP[2] : (x + y) % 4 === 0 ? UP[4] : UP[3]) : d === 4 ? UP[2] : UK[2]),
+    lineD: 4,
+    tone: toneFn([UK, UP], [UOUT, OUTLINE, ...UG]),
+    wind: { ...WIND, fieldD: 5 },
+    pole: [UP[2], UP[1], UK[1]], band: [SIL[3], SIL[2], SIL[1]], bar: [UP[2], UP[1], UP[0], UK[1]], knob: [SIL[0], SIL[1], SIL[2], SIL[3]],
+    metalOut: UOUT,
+    ribA: [UP[4], UP[3], UP[2]], ribB: [VG[2], VG[1], VG[0]],
+    tassel: { Y: UP[4], G: UP[3], g: UP[2], h: UP[1], e: UG[1] }, cord: UP[3],
+    ring: [UP[0], VP[1], VP[2], VP[3], UP[5]],
   },
 };
 
-/** Плоская текстура полотнища: фигурный низ (ласточкин хвост), кайма, внутренняя линия, эмблема. Возвращает цвета и маску. */
-function clothTexture(fac: "solgard" | "umbrath") {
-  const F = FAC[fac], tex = new PC(CW, CH), mask: boolean[][] = Array.from({ length: CH }, () => Array(CW).fill(false));
-  const bottom = (x: number) => CH - 1 - Math.round(11 * (1 - Math.abs((2 * x) / (CW - 1) - 1)));   // граница снизу: V-вырез
-  for (let x = 0; x < CW; x++) for (let y = 0; y <= bottom(x); y++) mask[y][x] = true;
-  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < CW && y < CH && mask[y][x];
-  // расстояние до края (по 4 соседям, до 5)
-  const dist = (x: number, y: number) => { for (let d = 1; d <= 5; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (!inside(x + dx, y + dy)) return d; return 9; };
-  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-    if (!mask[y][x]) continue;
-    const d = dist(x, y);
-    let c: RGBA = (x + y) % 9 === 0 && d > 5 ? F.field[2] : F.field[1];
-    if (d <= F.trimW || y < F.trimW + 1) c = d === 1 || y === 0 ? F.trim[1] : d === F.trimW ? F.trim[0] : (x + y) % 4 === 0 ? F.trim[2] : F.trim[1];   // кайма
-    else if (d === F.trimW + 2) c = F.trim[0];                                       // внутренняя линия
-    tex.set(x, y, c);
-  }
-  // эмблема (крупно, контрастно, без мелочи)
-  const em = new PC(CW, CH), ex = CW / 2;
-  if (fac === "solgard") {
-    // восходящее солнце (полудиск с лучами) над щитом
-    const G = P.gold, sky = [hex("#12365e"), hex("#1f5a96"), hex("#3a86c8"), hex("#7ec8ff")], sy = 17;
-    for (let k = 0; k <= 6; k++) {
-      const a = Math.PI + (k / 6) * Math.PI, len = k % 2 === 0 ? 5 : 3.5, r1 = 6.8, px = -Math.sin(a), py = Math.cos(a);
-      em.poly([[ex + Math.cos(a) * r1 + px * 1.4, sy + Math.sin(a) * r1 + py * 1.4], [ex + Math.cos(a) * r1 - px * 1.4, sy + Math.sin(a) * r1 - py * 1.4], [ex + Math.cos(a) * (r1 + len), sy + Math.sin(a) * (r1 + len)]], k % 2 ? G[2] : G[3]);
-    }
-    for (let y = sy - 6; y <= sy; y++) for (let x = -6; x <= 6; x++) { const d = Math.hypot(x, y - sy); if (d <= 5.6) put(em, ex + x, y, d < 3.2 ? G[4] : d < 4.6 ? G[3] : G[2]); }
-    for (let x = -8; x <= 8; x++) { put(em, ex + x, sy + 1, G[3]); put(em, ex + x, sy + 2, G[1]); }                 // линия горизонта
-    // щит: небесно-голубой, золотой обод
-    const top = 20, bot = 33, hw = (y: number) => (y < 25 ? 9 : Math.max(0, 9 - (y - 25) * 1.15));
-    for (let y = top; y <= bot; y++) for (let x = -10; x <= 10; x++) {
-      const w = hw(y);
-      if (Math.abs(x) > w + 0.2 || w <= 0) continue;
-      const rim = Math.abs(x) > w - 1.3 || y === top || y === bot || (y > 25 && Math.abs(x) > w - 1.8);
-      put(em, ex + x, y, rim ? (x < 0 ? G[3] : G[2]) : y > bot - 4 ? sky[0] : x < -2 ? sky[2] : x > 3 ? sky[0] : sky[1]);
-    }
-    for (const [dx, dy] of [[0, 25], [0, 26], [-1, 26], [1, 26], [0, 27], [-3, 24], [3, 24]]) put(em, ex + dx, dy, G[3]);   // золотая звезда
-    put(em, ex - 4, top + 2, sky[3]); put(em, ex - 4, top + 3, sky[3]);
-  } else {
-    // чёрная корона над костяным черепом со светящимися зелёными глазами
-    const lil = [hex("#6a3c8a"), hex("#9a62b8"), hex("#d0b4f0")], bone = P.bone, gr = P.magic.green, dark = hex("#0a0612");
-    for (const cxs of [8.5, 16, 23.5]) {
-      const apex = cxs === 16 ? 3 : 5;
-      em.poly([[cxs - 3.6, 12], [cxs + 3.6, 12], [cxs, apex]], lil[1]); em.line(cxs, apex + 1, cxs - 2.4, 11, lil[2], 1);
-      put(em, cxs, apex, lil[2]); put(em, cxs, apex + 1, lil[2]);
-    }
-    for (let x = -9; x <= 9; x++) { for (let y = 11; y <= 15; y++) put(em, ex + x, y, dark); put(em, ex + x, 11, lil[2]); put(em, ex + x, 15, lil[1]); }
-    for (const gx of [-6, 0, 6]) { put(em, ex + gx, 12, gr[3]); put(em, ex + gx, 13, gr[3]); put(em, ex + gx, 14, gr[2]); }
-    // череп
-    em.ellipse(ex, 22, 7.6, 6.8, bone[1]); em.ellipse(ex - 0.6, 21.4, 6.9, 6.1, bone[2]); em.ellipse(ex - 2.4, 19.6, 3.2, 2.2, bone[3]);
-    for (let y = 26; y <= 31; y++) for (let x = -4; x <= 4; x++) put(em, ex + x, y, x > 2 ? bone[1] : bone[2]);
-    for (const tx of [-2, 0, 2]) for (let y = 28; y <= 31; y++) put(em, ex + tx, y, dark);
-    for (let x = -4; x <= 4; x++) put(em, ex + x, 27, bone[0]);
-    for (const sx of [-3.4, 3.4]) { em.ellipse(ex + sx, 22, 2.9, 2.7, gr[0]); em.ellipse(ex + sx, 22, 2.1, 2.1, dark); em.ellipse(ex + sx, 22.2, 1.3, 1.3, gr[3]); put(em, ex + sx - 0.5, 21.5, gr[4]); }
-    em.poly([[ex, 24], [ex - 1.6, 26.2], [ex + 1.6, 26.2]], dark);
-  }
-  em.outline(fac === "solgard" ? hex("#3a2208") : hex("#05030a"), true);   // тёмный контур эмблемы: читается с одного взгляда
-  tex.blit(em, 0, 0);
-  return { tex, mask, bottom };
+/** Вариант Б для Сольгарда (на выбор пользователю, в игру не идёт): поле — белый шёлк, как у штандартов своих земель; герб без медальона. */
+const WH = P.cloth.white;                                                                   // #7a7480 #aaa4ae #d6d0d8 #f6f2f8
+const SILK_KIT: Kit = {
+  ...KITS.solgard,
+  cloth: (x, y, d) => (d <= 3 || y < 4 ? KITS.solgard.cloth(x, y, d) : d === 5 ? G[1] : WH[2]),
+  tone: toneFn([WH, [G[0], G[1], G[2], G[3], G[4]]], [SOUT, OUTLINE]),
+};
+
+// ---------------------------------------------------------------- полотнище
+/** Граница снизу: ласточкин хвост (V-вырез 11 строк). */
+const bottom = (x: number) => CH - 1 - Math.round(11 * (1 - Math.abs((2 * x) / (CW - 1) - 1)));
+const inCloth = (x: number, y: number) => x >= 0 && y >= 0 && x < CW && y < CH && y <= bottom(x);
+/** «Лучевое» расстояние до края по 4 направлениям (до 9): кайма и внутренняя линия ложатся вдоль среза выреза ровной лесенкой. */
+const rayD = (x: number, y: number) => { for (let d = 1; d <= 8; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (!inCloth(x + dx, y + dy)) return d; return 9; };
+
+interface Cloth { tex: PC; emb: { pc: PC; x: number; y: number }; lineD: number }
+function clothOf(fac: Fac, k: Kit): Cloth {
+  const tex = new PC(CW, CH);
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (inCloth(x, y)) tex.set(x, y, k.cloth(x, y, rayD(x, y)));
+  const em = factionEmblem(fac, "s24"), ex = Math.floor((CW - em.w) / 2);
+  if (fac === "umbrath" || k === SILK_KIT) return { tex, emb: { pc: em, x: ex, y: EMBLEM_Y }, lineD: k.lineD };
+  // нашитый медальон лазури под щитом (heraldry.ts): не ближе 1 px поля к внутренней линии каймы — в широкой части щита он уже
+  const med = azureMedallion(em, SOLGARD_SHIELD_TOP.s24, (i, j) => rayD(ex - 2 + i, EMBLEM_Y - 2 + j) >= k.lineD + 2);
+  return { tex, emb: { pc: med, x: ex - 2, y: EMBLEM_Y - 2 }, lineD: k.lineD };
 }
 
-/** Один кадр знамени (t — кадр цикла). */
-function bannerFrame(fac: "solgard" | "umbrath", t: number, cloth: ReturnType<typeof clothTexture>): PC {
-  const F = FAC[fac], f = new PC(W, H), phi = (t / N) * TAU;
-  const wood = P.wood, stone = P.stone, gold = P.gold;
-  // ----- древко и каменное основание
-  for (let y = 18; y <= BASE_Y - 4; y++) { put(f, CX - 1, y, wood[1]); put(f, CX, y, wood[2]); put(f, CX + 1, y, wood[3]); }
-  for (const y of [70, 76]) for (let x = -1; x <= 1; x++) put(f, CX + x, y, x === 1 ? gold[3] : gold[1]);
-  f.ellipse(CX, BASE_Y, 11, 3.4, hex("#10101a"));                                    // тень на земле
-  for (let y = BASE_Y - 7; y <= BASE_Y; y++) { const half = 4 + Math.round((y - (BASE_Y - 7)) * 0.55); for (let x = -half; x <= half; x++) put(f, CX + x, y, x < -half + 2 ? stone[1] : x > half - 2 ? stone[4] : y === BASE_Y - 7 ? stone[4] : stone[3]); }
-  for (let x = -5; x <= 5; x++) put(f, CX + x, BASE_Y, stone[0]);
-  // ----- ленты под полотнищем (отстают по фазе)
-  for (const [i, side] of [[0, -1], [1, 1]] as const) {
-    const c = i ? F.ribB : F.ribA, x0 = CX + (side < 0 ? -5 : 2);
-    for (let y = 50; y <= 75; y++) {
-      const k = (y - 50) / 25, dx = Math.round(2.2 * k * k * Math.sin(phi - 1.1 - k * 2.4 - i * 0.7)), end = 75 - (y > 72 ? Math.abs(1 - (x0 % 2)) : 0);
-      for (let x = 0; x < 3; x++) if (y <= end - Math.round(Math.abs(x - 1) * 1.5)) put(f, x0 + x + dx, y, x === 2 ? c[1] : c[0]);
+// ---------------------------------------------------------------- кадр
+/** Кисть на углу полотнища: шнур 1 px от угла (сдвинутого ветром в этом кадре) к узлу, кисть 3×4 (узел с бликом и искрой, перехват,
+ *  юбка), свет сверху слева. Узел и юбка отстают от угла на кадр — качание с запаздыванием, не больше 1 px за кадр. */
+const TASSEL = ["YeG", "hhh", "Ggh", "Ggh"];
+function tassel(l: PC, k: Kit, ax: number, ay: number, kx: number) {
+  // шнур: от угла (ax, ay) вниз 3 строки к узлу над kx; |kx − ax| ≤ 1 — ступенька не больше 1 px, линия непрерывна
+  for (let j = 0; j < 3; j++) l.set(j < 2 ? ax : kx, ay + j, k.cord);
+  stamp(l, kx - 1, ay + 3, TASSEL, k.tassel);
+}
+
+/** Ленты под полотнищем (слева и справа от древка): 3 px, свет слева; качаются с запаздыванием вниз по ленте, шаг ≤ 1 px за кадр;
+ *  конец заострён (крайние столбцы на 2 строки короче). */
+const RIB_Y = 50, RIB_LEN = 26;
+const ribPlans = [0, 1].map((i) => planShifts(RIB_LEN, (t, v) => { const q = v / (RIB_LEN - 1); return 1.8 * q * q * Math.sin((TAU * t) / N - 1.1 - q * 2.4 - i * 0.7); }));
+function ribbons(l: PC, k: Kit, t: number) {
+  for (const i of [0, 1]) {
+    const c = i ? k.ribB : k.ribA, x0 = CX + (i ? 3 : -6), plan = ribPlans[i][t];
+    for (let v = 0; v < RIB_LEN; v++) for (let x = 0; x < 3; x++) {
+      if (x !== 1 && v >= RIB_LEN - 2) continue;
+      l.set(x0 + x + plan[v], RIB_Y + v, c[x]);
     }
   }
-  // ----- полотнище с ветром
-  const L = new PC(W, H);
-  for (let Y = Y0; Y < Y0 + CH + 6; Y++) for (let X = X0 - 6; X < X0 + CW + 6; X++) {
-    const v = Math.max(0, Math.min(1.15, (Y - Y0) / CH));
-    const dxs = 3.4 * Math.pow(v, 1.3) * Math.sin(phi - v * 3.2 + 0.4);                       // строки уходят вбок сильнее к низу
-    const u = (X - X0 - dxs) / CW;
-    const dyc = 3.2 * v * Math.sin(phi - u * 7.0);                                           // волна вдоль ширины (низ колышется)
-    const sx = Math.floor(X - X0 - dxs), sy = Math.floor(Y - Y0 - dyc);
-    if (sx < 0 || sy < 0 || sx >= CW || sy >= CH || !cloth.mask[sy][sx]) continue;
-    const c = cloth.tex.get(sx, sy)!;
-    const fold = Math.sin(phi - u * 8.5 + v * 1.2);                                          // светотень складок бежит вместе с волной
-    L.set(X, Y, fold < -0.45 ? shade(c, 0.72) : fold > 0.5 ? shade(c, 1.16) : c);
-  }
-  L.outline(OUTLINE);
-  f.blit(L, 0, 0);
-  // ----- кисти на нижних углах (золотые шнурки, отстают)
-  for (const [i, bx] of [[0, X0 + 1], [1, X0 + CW - 2]] as const) {
-    const by = Y0 + cloth.bottom(i ? CW - 1 : 0) + 2;
-    for (let k = 0; k < 5; k++) put(f, bx + Math.round(0.8 * Math.sin(phi - 1.8 - k * 0.5 + i)), by + k, k % 2 ? gold[2] : gold[3]);
-    for (let s = -1; s <= 1; s++) for (let k = 0; k < 4; k++) put(f, bx + s + Math.round(1.2 * Math.sin(phi - 2.2 - k * 0.4 + i + s)), by + 5 + k, gold[k < 2 ? 3 : 1]);
-  }
-  // ----- перекладина с золотыми набалдашниками, кольца и навершие
-  for (let x = 4; x <= W - 5; x++) { put(f, x, 14, wood[3]); put(f, x, 15, wood[2]); put(f, x, 16, wood[1]); put(f, x, 17, wood[0]); }
-  for (const ex of [2, W - 4]) { f.ellipse(ex + 1, 15.5, 2.6, 3.4, gold[1]); f.ellipse(ex + 0.6, 14.8, 1.6, 2.2, gold[3]); put(f, ex, 14, gold[4]); }
-  for (const rx of [X0 + 3, X0 + 11, X0 + CW - 12, X0 + CW - 4]) { put(f, rx, 18, gold[3]); put(f, rx + 1, 18, gold[2]); put(f, rx, 19, gold[2]); put(f, rx + 1, 19, gold[1]); }
-  if (F.finial === "sun") {
-    // золотой солнечный диск с короткими лучами
-    for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU; put(f, CX + Math.cos(a) * 5.4, 7 + Math.sin(a) * 5.4, gold[k % 2 ? 2 : 3]); put(f, CX + Math.cos(a) * 4.4, 7 + Math.sin(a) * 4.4, gold[3]); }
-    f.ellipse(CX, 7, 3.4, 3.4, gold[2]); f.ellipse(CX - 0.4, 6.6, 2.6, 2.6, gold[3]); put(f, CX - 1, 5, gold[4]); put(f, CX, 5, gold[4]);
-    f.ellipse(CX, 13.5, 3, 1.6, gold[1]);
-  } else {
-    // зубцы чёрной короны
-    const lil = [hex("#6a3c8a"), hex("#9a62b8"), hex("#d0b4f0")];
-    for (const dx of [-4, 0, 4]) { f.poly([[CX + dx - 2, 13], [CX + dx + 2, 13], [CX + dx, dx === 0 ? 2 : 5]], lil[1]); put(f, CX + dx, dx === 0 ? 2 : 5, lil[2]); f.line(CX + dx, dx === 0 ? 3 : 6, CX + dx - 1, 12, lil[2], 1); }
-    f.ellipse(CX, 13.5, 5, 1.6, lil[0]); put(f, CX, 12, P.magic.green[3]);
-  }
-  f.outline(OUTLINE);
-  return f;
 }
 
-function banner(fac: "solgard" | "umbrath"): Gen {
-  const cloth = clothTexture(fac);
-  const frames = Array.from({ length: N }, (_, t) => bannerFrame(fac, t, cloth));
-  return { id: `banner-${fac}`, pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, BASE_Y / H], fps: 9, blend: "normal", hero: "warrior" };
+function bannerFrame(fac: Fac, k: Kit, t: number, cloth: Cloth): { f: PC; chk: ReturnType<typeof check> } {
+  const f = new PC(W, H);
+  // ----- тень на земле, каменное основание (свет сверху слева), древко с бандажами
+  f.ellipse(CX, BASE_Y, 11, 3.4, hex("#10101a"));
+  layer(f, (l) => {
+    for (let y = 18; y <= BASE_Y - 4; y++) { l.set(CX - 1, y, k.pole[0]); l.set(CX, y, k.pole[1]); l.set(CX + 1, y, k.pole[2]); }
+    for (const y of [70, 76]) for (let x = -1; x <= 1; x++) l.set(CX + x, y, k.band[x + 1]);
+    for (let y = BASE_Y - 7; y <= BASE_Y; y++) {
+      const half = 4 + Math.round((y - (BASE_Y - 7)) * 0.55);
+      for (let x = -half; x <= half; x++) l.set(CX + x, y, y === BASE_Y - 7 ? STONE[4] : y === BASE_Y ? STONE[0] : x < -half + 2 ? STONE[3] : x > half - 2 ? STONE[1] : STONE[2]);
+    }
+  });
+  // ----- ленты (за полотнищем)
+  layer(f, (l) => ribbons(l, k, t));
+  // ----- полотнище с ветром: строки по плану, складки по рампам, герб целиком одним тоном
+  const co = windCloth(cloth.tex, cloth.emb, t, k.wind, k.tone);
+  const chk = check(cloth, co);
+  co.L.outline(OUTLINE);
+  f.blit(co.L, X0 - co.M, Y0);
+  // ----- кисти на нижних углах (кончики хвостов): угол — по сдвигу последней строки в этом кадре, узел отстаёт на кадр
+  layer(f, (l) => {
+    const last = CH - 1, sxAt = (q: number) => windShift(cloth, k, q, last);
+    for (const u of [0, CW - 1]) tassel(l, k, X0 + u + sxAt(t), Y0 + CH, X0 + u + sxAt(t - 1));
+  }, k.metalOut);
+  // ----- перекладина с набалдашниками, кольца
+  layer(f, (l) => {
+    for (let x = 4; x <= W - 5; x++) for (let r = 0; r < 4; r++) l.set(x, 14 + r, k.bar[r]);
+    for (const kx of [3, W - 4]) l.shadedEllipse(kx + 0.5, 15.5, 2.6, 3.2, k.knob);
+    for (const rx of [X0 + 3, X0 + 11, X0 + CW - 12, X0 + CW - 4]) for (let y = 17; y <= 19; y++) { l.set(rx, y, k.band[0]); l.set(rx + 1, y, k.band[2]); }
+  }, k.metalOut);
+  // ----- навершие
+  layer(f, (l) => {
+    if (fac === "solgard") {
+      // золотой солнечный диск с короткими лучами на стержне
+      for (let q = 0; q < 8; q++) { const a = (q / 8) * TAU; put(l, CX + Math.cos(a) * 5.4, 7 + Math.sin(a) * 5.4, G[q % 2 ? 2 : 3]); put(l, CX + Math.cos(a) * 4.4, 7 + Math.sin(a) * 4.4, G[3]); }
+      l.ellipse(CX, 7, 3.4, 3.4, G[2]); l.ellipse(CX - 0.4, 6.6, 2.6, 2.6, G[3]); put(l, CX - 1, 5, G[4]); put(l, CX, 5, G[4]);
+      for (let y = 11; y <= 13; y++) { l.set(CX - 1, y, G[3]); l.set(CX, y, G[2]); }
+    } else {
+      // зубцы сиреневой короны с зелёным камнем
+      for (const dx of [-4, 0, 4]) {
+        l.poly([[CX + dx - 2, 13], [CX + dx + 2, 13], [CX + dx, dx === 0 ? 2 : 5]], UP[3]);
+        put(l, CX + dx, dx === 0 ? 2 : 5, UP[4]); l.line(CX + dx, dx === 0 ? 3 : 6, CX + dx - 1, 12, UP[4], 1);
+      }
+      l.ellipse(CX, 13.5, 5, 1.6, UP[2]); put(l, CX, 12, VG[3]);
+    }
+  }, fac === "solgard" ? SOUT : UOUT);
+  return { f, chk };
+}
+/** Сдвиг строки v полотнища в кадре t (по плану ветра; кадр берётся по кругу). */
+function windShift(cloth: Cloth, k: Kit, t: number, v: number) {
+  return windPlan(cloth.tex, k.wind).sx[((t % N) + N) % N][v];
 }
 
-/** Кольцо ауры под знаменем: эллипс 0.7, мягкое мерцание, ползущие засечки; D — диаметр (2r умения, 130 → 260). 8 кадров цикла. */
-function bannerRing(fac: "solgard" | "umbrath", D = 260): Gen {
-  const R = FAC[fac].ring, rx = D / 2, ry = Math.round(rx * 0.7), w = D + 4, h = ry * 2 + 4, cx = w / 2, cy = h / 2, n = 8, r = rng(77);
+/** Проверка кадра (до контура): герб с медальоном целиком (missing — пикселей герба нет на ткани), не наезжает на кайму и внутреннюю линию
+ *  (over) и сколько его пикселей касается их (touch — допустимо: рябь кромки или строка, сдвинутая на 1 px против середины герба,
+ *  на кадр-другой закрывает просвет поля между медальоном и внутренней линией). */
+function check(cloth: Cloth, co: ClothOut) {
+  const { tex, emb, lineD } = cloth, line = new Set<number>();
+  for (let v = 0; v < CH; v++) for (let u = 0; u < CW; u++) if (tex.alpha(u, v) && rayD(u, v) <= lineD) { const X = co.at(u, v); if (X >= 0) line.add(v * 1000 + X); }
+  let over = 0, touch = 0, missing = 0;
+  for (let j = 0; j < emb.pc.h; j++) for (let i = 0; i < emb.pc.w; i++) {
+    if (!emb.pc.alpha(i, j)) continue;
+    const X = co.M + emb.x + i + co.edx, Y = emb.y + j;
+    if (!co.L.alpha(X, Y)) missing++;
+    if (line.has(Y * 1000 + X)) over++;
+    else if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => line.has((Y + b) * 1000 + X + a))) touch++;
+  }
+  return { over, touch, missing };
+}
+
+function banner(fac: Fac, k: Kit = KITS[fac]): Gen {
+  const cloth = clothOf(fac, k);
+  const frames: PC[] = [];
+  for (let t = 0; t < N; t++) {
+    const { f, chk } = bannerFrame(fac, k, t, cloth);
+    if (chk.over || chk.missing) console.warn(`banner-${fac}: кадр ${t + 1} — герб наезжает на кайму (${chk.over} px) или неполон (${chk.missing} px)`);
+    if (process.env.BANNER_DEBUG) console.log(`banner-${fac} ${t + 1}: касание ${chk.touch} px`);
+    frames.push(f);
+  }
+  return { id: `banner-${fac}`, pack: "gen", role: "aura", frames, w: W, h: H, anchor: [0.5, BASE_Y / H], fps: FPS, blend: "normal", hero: "warrior" };
+}
+
+/** Кольцо ауры под знаменем: эллипс 0.7 радиуса баффа (D — диаметр, 2r умения, 130 → 260). Цикл 12 кадров, 12 к/с:
+ *  ровное тройное кольцо (свет снаружи, тень внутри), по наружной линии медленно идут четыре блика (четверть оборота за цикл),
+ *  засечки ползут по кругу на шаг за цикл (около 2 px за кадр) одним цветом — шов цикла чистый, внутри мерцают искры. */
+function bannerRing(fac: Fac, D = 260): Gen {
+  const R = KITS[fac].ring, rx = D / 2, ry = Math.round(rx * 0.7), w = D + 4, h = ry * 2 + 4, cx = w / 2, cy = h / 2, r = rng(77);
   const dots = Array.from({ length: 90 }, () => ({ a: r() * TAU, d: Math.sqrt(r()), ph: r() }));
-  const frames = Array.from({ length: n }, (_, t) => {
-    const f = new PC(w, h), glow = 0.5 + 0.5 * Math.sin((t / n) * TAU);
-    const steps = Math.round(rx * 7);
-    for (let i = 0; i < steps; i++) { const a = (i / steps) * TAU, c = Math.cos(a), s = Math.sin(a); put(f, cx + c * rx, cy + s * ry, R[glow > 0.5 ? 3 : 2]); put(f, cx + c * (rx - 1.5), cy + s * (ry - 1), R[1]); put(f, cx + c * (rx - 3.5), cy + s * (ry - 2.5), R[0]); }
-    for (let k = 0; k < 28; k++) { const a = ((k + t / n) / 28) * TAU; for (let q = 0; q < 4; q++) put(f, cx + Math.cos(a) * (rx - 5 - q * 0.7), cy + Math.sin(a) * (ry - 3.5 - q * 0.5), k % 2 ? R[3] : R[4]); }
-    for (const d of dots) { const on = ((d.ph + t / n) % 1) < 0.35; if (on) put(f, cx + Math.cos(d.a) * d.d * (rx - 8), cy + Math.sin(d.a) * d.d * (ry - 6), R[2]); }
+  const steps = Math.round(rx * 7), TICKS = 28, SHEEN = 4;
+  const frames = Array.from({ length: N }, (_, t) => {
+    const f = new PC(w, h), ph = t / N;
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * TAU, c = Math.cos(a), s = Math.sin(a);
+      const sheen = ((((a / TAU) * SHEEN - ph) % 1) + 1) % 1 < 0.22;                 // блик: доля 0.22 каждой четверти, ползёт на четверть за цикл
+      put(f, cx + c * rx, cy + s * ry, R[sheen ? 3 : 2]); put(f, cx + c * (rx - 1.5), cy + s * (ry - 1), R[1]); put(f, cx + c * (rx - 3.5), cy + s * (ry - 2.5), R[0]);
+    }
+    for (let q = 0; q < TICKS; q++) { const a = ((q + ph) / TICKS) * TAU; for (let z = 0; z < 4; z++) put(f, cx + Math.cos(a) * (rx - 5 - z * 0.7), cy + Math.sin(a) * (ry - 3.5 - z * 0.5), z === 0 ? R[4] : R[3]); }
+    for (const d of dots) if ((d.ph + ph) % 1 < 0.34) put(f, cx + Math.cos(d.a) * d.d * (rx - 8), cy + Math.sin(d.a) * d.d * (ry - 6), R[2]);
     return f;
   });
-  return { id: `banner-ring-${fac}`, pack: "gen", role: "aoe", frames, w, h, anchor: [0.5, 0.5], fps: 8, blend: "normal", hero: "warrior" };
+  return { id: `banner-ring-${fac}`, pack: "gen", role: "aoe", frames, w, h, anchor: [0.5, 0.5], fps: FPS, blend: "normal", hero: "warrior" };
 }
 
 /** Пыль у основания при установке: два облачка расходятся и тают. 6 кадров, один проход. */
@@ -204,9 +263,13 @@ function dustPuff(): Gen {
 export function GENERATED_BANNER(): Gen[] {
   return [banner("solgard"), banner("umbrath"), bannerRing("solgard"), bannerRing("umbrath"), dustPuff()];
 }
+/** Вариант Б Сольгарда (белый шёлк, без медальона) — только для превью и выбора. */
+export function BANNER_SILK(): Gen {
+  return { ...banner("solgard", SILK_KIT), id: "banner-solgard-silk" };
+}
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../out/vfx-preview/banner-raw.png");
-  stackV(GENERATED_BANNER().filter((g) => g.id.startsWith("banner-s") || g.id.startsWith("banner-u") || g.id === "dust-puff").map((g) => storyboard(g.frames, g.w, g.h, g.anchor, `${g.id} ${g.frames.length}f`, 3))).save(out);
+  stackV(GENERATED_BANNER().filter((g) => g.id.startsWith("banner-s") || g.id.startsWith("banner-u") || g.id === "dust-puff").map((g) => storyboard(g.frames, g.w, g.h, g.anchor, `${g.id} ${g.frames.length}f ${g.fps}fps`, 3))).save(out);
   console.log(out);
 }
