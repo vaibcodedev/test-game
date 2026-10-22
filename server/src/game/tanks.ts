@@ -165,9 +165,8 @@ export function castTank(c: CastCtx): string | null | undefined {
       return null;
     }
     case "tp_banner": {
-      const d = Math.min(range, Math.hypot(c.ax - u.x, c.ay - u.y));
-      const bx = u.x + Math.cos(c.aim) * d, by = u.y + Math.sin(c.aim) * d;
-      if (!lineClear(w.map, u.x, u.y, bx, by)) return "Нет прямой видимости";
+      // точка ground уже прижата к дальности (с допуском) и проверена на прямую видимость в castSkill (placeSkill, shared/skillShape.ts) — как есть
+      const bx = c.ax, by = c.ay;
       c.ok();
       const list = banners.get(w) ?? [];
       banners.set(w, list.filter((b) => b.until > w.time && b.owner !== p));

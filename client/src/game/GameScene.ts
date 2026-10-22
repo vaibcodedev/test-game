@@ -30,7 +30,8 @@ import { placeText, syncTextRes, worldText } from "./worldText";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
-import { pickOrder, pickReach, resolveCast, type CastUnit, type PickCtx, type PickOut, type PickSource } from "./castResolve";
+import { castAim, pickOrder, pickReach, resolveCast, type CastPlan, type CastUnit, type PickCtx, type PickOut, type PickSource } from "./castResolve";
+import { HIT_EDGE } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 
 type NpcKind = "raid" | "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
@@ -911,16 +912,27 @@ export class GameScene extends Phaser.Scene {
       if (own > 0) fail(`Перезарядка: ${(own / 1000).toFixed(1).replace(".", ",")} с`);
       return;
     }
+    // куда ляжет — та же функция, которой решает сервер: его отказ (видимость, луч до стены, рывок в упор) — сразу, без RTT;
+    // в запросе — прижатая точка, угол линии и стены, вектор рывка и до точки линии (сервер применит их от своей позиции)
+    const { g, msg } = this.aimOf(def, plan);
+    if (g.err) return fail(g.err);
     this.hud.notePress(def.id);
-    net.send("skill", { id: def.id, x: plan.x, y: plan.y, target: plan.target, q: mouseOpts.queueMs, ap: mouseOpts.approach });
+    net.send("skill", { id: def.id, ...msg, target: plan.target, q: mouseOpts.queueMs, ap: mouseOpts.approach });
+  }
+
+  /** Геометрия умения по плану (shared/skillShape.ts через castAim): от предсказанной позиции, ранг и пассивки героя (неизученное — 1 ранг).
+   *  Цель плана — для самонаведения шара (точка плана — её ноги); радиус цели клиенту неизвестен — как у героя. */
+  private aimOf(def: SkillDef, plan: { x: number; y: number; target: string | null }) {
+    const ranks = net.self?.skills;
+    return castAim(this.map, def, ranks?.[def.id] || 1, ranks, this.pos, plan, plan.target ? { x: plan.x, y: plan.y, r: HIT_EDGE } : undefined);
   }
 
   /** Каждый кадр: превью по состоянию прицела или наведению на слот. */
   private updateAim() {
     const def = SKILLS[this.aimState?.id ?? this.aimHover ?? ""];
     if (!def || !this.me || this.me.dead) return this.aim.clear();
-    const plan = resolveCast(this.castInput(def, false));
-    this.aim.draw(def, this.pos, plan, !this.aimState || def.aim === "unit");
+    const plan: CastPlan = resolveCast(this.castInput(def, false));
+    this.aim.draw(def, this.pos, plan, plan.ok ? this.aimOf(def, plan).g : null, !this.aimState || def.aim === "unit");
   }
 
   pickupNearest() { this.interactNearest(); }

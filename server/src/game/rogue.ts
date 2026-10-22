@@ -3,10 +3,10 @@
  * (data/skills_rogues.json). Потрошитель (reaver) — server/src/game/reaver.ts; World.hit вызывает хуки только отсюда (outgoing, incoming, ...),
  * а они передают управление reaver.ts для своего класса. Состояние героя — в WeakMap (в сохранения не попадает).
  */
-import { PLAYER_RADIUS } from "../../../shared/constants";
-import { lineClear, walkable } from "../../../shared/map";
+import { lineClear } from "../../../shared/map";
 import { Dir } from "../../../shared/protocol";
 import { SKILLS } from "../../../shared/skills";
+import { behindSpot as behindAt } from "../../../shared/skillShape";
 import type { Player } from "./Player";
 import * as rv from "./reaver";
 import type { CastCtx } from "./umbrath";
@@ -46,16 +46,10 @@ export function isBehind(p: Player, t: Actor): boolean {
   return (fx * dx + fy * dy) / d < -0.2;
 }
 
-/** Точка за спиной цели, куда можно встать и видеть цель; null — нет места. */
+/** Точка за спиной цели, куда можно встать и видеть цель; null — нет места. Общая с превью и «Теневым шагом» (shared/skillShape.ts). */
 function behindSpot(w: World, t: Actor): { x: number; y: number } | null {
   const [fx, fy] = facing(t);
-  const off = w.radiusOf(t) + PLAYER_RADIUS + 2;
-  const base = Math.atan2(-fy, -fx);
-  for (const da of [0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, Math.PI]) {
-    const x = t.x + Math.cos(base + da) * off, y = t.y + Math.sin(base + da) * off;
-    if (walkable(w.map, x, y, PLAYER_RADIUS) && lineClear(w.map, x, y, t.x, t.y)) return { x, y };
-  }
-  return null;
+  return behindAt(w.map, t.x, t.y, fx, fy, w.radiusOf(t));
 }
 
 /** Накладывает/усиливает яд на цель: до 3 стаков (+«Концентрация яда»), 8 с, тик раз в секунду. */

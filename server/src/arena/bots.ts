@@ -7,7 +7,7 @@ import { CLASSES, type ClassId, type FactionId } from "../../../shared/classes";
 import { FACTIONS } from "../../../shared/factions";
 import { BASE_ITEMS, canEquip, lootCategories, makeItem, OFFHAND_CLASSES, Rarity, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import { LEGEND_TIERS, LEGENDARIES } from "../../../shared/legendary";
-import { walkable } from "../../../shared/map";
+import { lineClear, walkable } from "../../../shared/map";
 import { findPath } from "../../../shared/path";
 import { SKILLS, activeSkills, classSkills, skillMana } from "../../../shared/skills";
 import { PLAYER_RADIUS } from "../../../shared/constants";
@@ -119,10 +119,14 @@ function healerThink(w: World, bot: Player) {
   };
   const low = [...mates].sort((a, b) => ratio(a) - ratio(b))[0];
   if (!low) return;
-  if (hurt.length >= 2 && can("circle")) { castSkill(w, bot, "circle", low.x, low.y, low.id); return; }
-  if (ratio(low) < 0.55 && can("holyshield") && low.shieldUntil <= w.time) { castSkill(w, bot, "holyshield", low.x, low.y, low.id); return; }
-  if (ratio(low) < 0.75 && can("heal")) { castSkill(w, bot, "heal", low.x, low.y, low.id); return; }
-  if (ratio(low) < 0.9 && can("renew")) castSkill(w, bot, "renew", low.x, low.y, low.id);
+  // каст удался (null) — на этом такте всё; отказ сервера — пробуем следующее умение, а не стоим
+  const cast = (id: string, t: Player) => castSkill(w, bot, id, t.x, t.y, t.id) === null;
+  // «Круг света» — только в прямой видимости (решение 3, shared/skillShape.ts): центр — самый раненый из видимых
+  const seen = hurt.filter((x) => x === bot || lineClear(w.map, bot.x, bot.y, x.x, x.y)).sort((a, b) => ratio(a) - ratio(b));
+  if (seen.length >= 2 && can("circle") && cast("circle", seen[0])) return;
+  if (ratio(low) < 0.55 && can("holyshield") && low.shieldUntil <= w.time && cast("holyshield", low)) return;
+  if (ratio(low) < 0.75 && can("heal") && cast("heal", low)) return;
+  if (ratio(low) < 0.9 && can("renew")) cast("renew", low);
 }
 
 /** Один шаг решения бота (вызывается несколько раз в секунду). */

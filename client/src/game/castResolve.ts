@@ -2,10 +2,13 @@
  * Выбор адресата каста (задача 115, шаг 6; docs/controls.md, раздел 6). Чистые функции, без Phaser и DOM.
  * Порядок для unit: юнит под курсором подходящего типа (цель не меняется) -> выбранная цель -> ally на себя (Alt — всегда) ->
  * enemy: ближайший враг в дальности при «Автоцели», иначе ошибка. Точка — курсор, зажатый дальностью. Направление — на курсор;
- * курсор над интерфейсом — на цель, иначе вперёд.
+ * курсор над интерфейсом — на цель, иначе вперёд. Курсор на враге (каст по наведению) — точка и направление по его ногам (задача 133).
+ * castAim — где ляжет умение и что слать серверу: общая геометрия shared/skillShape.ts от предсказанной позиции героя (превью = сервер).
  * Внизу — выбор цели мышью (задача 134, шаг 1; разделы 4, 11, 12): допуск клика, магнит ЛКМ и один порядок (pickOrder) для клика, подсветки и курсора.
  */
-import type { SkillAim, SkillTarget } from "../../../shared/skills";
+import type { WorldMap } from "../../../shared/map";
+import { aimExtras, placeSkill, type Placed } from "../../../shared/skillShape";
+import type { SkillAim, SkillDef, SkillTarget } from "../../../shared/skills";
 
 export interface CastUnit { id: string; x: number; y: number; enemy: boolean; friend: boolean; dead?: boolean }
 export interface CastSkill { aim: SkillAim; target?: SkillTarget; range?: number }
@@ -25,6 +28,7 @@ export interface CastIn {
   hoverCast: boolean;
   autoTarget: boolean;
 }
+/** far — сервер откажет «Слишком далеко» (только умения на цель); точку ground и направление сервер прижимает к дальности сам — у них far нет. */
 export type CastPlan =
   | { ok: true; x: number; y: number; target: string | null; far: boolean }
   | { ok: false; err: string };
@@ -66,8 +70,10 @@ export function resolveCast(c: CastIn): CastPlan {
       return { ok: true, x: t.x, y: t.y, target: t.id, far: range > 0 && dist(t, self) > range + 8 };
     }
     case "ground": {
-      const p = clampToRange(self, c.cursor, range);
-      return { ok: true, x: p.x, y: p.y, target: null, far: p.far };
+      // курсор на враге — точка по его ногам (сервер мерит круги от ног); дальше дальности — прижать: сервер прижимает так же и кастует
+      const at = hoverFoe(c) ?? c.cursor;
+      const p = clampToRange(self, at, range);
+      return { ok: true, x: p.x, y: p.y, target: null, far: false };
     }
     case "dash": {
       return { ok: true, x: c.cursor.x, y: c.cursor.y, target: null, far: false };
@@ -75,13 +81,36 @@ export function resolveCast(c: CastIn): CastPlan {
     case "dir": {
       const len = range > 0 ? range : 300;
       if (c.overUi) {
-        if (sel && !sel.dead) return { ok: true, x: sel.x, y: sel.y, target: sel.enemy ? sel.id : null, far: dist(sel, self) > len + 8 };
+        if (sel && !sel.dead) return { ok: true, x: sel.x, y: sel.y, target: sel.enemy ? sel.id : null, far: false };
         return { ok: true, x: self.x + c.facing.x * len, y: self.y + c.facing.y * len, target: null, far: false };
       }
-      const hv = c.hoverCast && c.hover && c.hover.enemy && !c.hover.dead ? c.hover : null;
-      return { ok: true, x: c.cursor.x, y: c.cursor.y, target: hv?.id ?? null, far: dist(c.cursor, self) > len };
+      // курсор на враге — по его ногам (огненный шар наводится на него); дальше дальности снаряд летит до дальности — отказа нет
+      const hv = hoverFoe(c);
+      return { ok: true, x: hv ? hv.x : c.cursor.x, y: hv ? hv.y : c.cursor.y, target: hv?.id ?? null, far: false };
     }
   }
+}
+
+/** Живой враг под курсором при касте по наведению (курсор не над интерфейсом). */
+function hoverFoe(c: CastIn): CastUnit | null {
+  return c.hoverCast && !c.overUi && c.hover && c.hover.enemy && !c.hover.dead ? c.hover : null;
+}
+
+/** Сообщение «skill» кроме id, цели и опций: точка, угол (линии, стена огня) и вектор рывка (shared/skillShape.ts aimExtras). */
+export interface AimMsg { x: number; y: number; a?: number; dx?: number; dy?: number }
+
+/**
+ * Где ляжет умение по плану (превью) и что слать серверу: placeSkill от предсказанной позиции героя from без допуска — та же функция,
+ * которой сервер решает каст (с допуском GROUND_TOL от своей позиции). g.err — отказ сервера (видимость, луч, рывок), заранее.
+ * Точка ground — уже прижатая; у линии — угол и вектор до её точки, у рывка — вектор от героя (из очереди сервер применит их от своей позиции).
+ * unit — цель плана (ноги и радиус): самонаведение огненного шара, как у сервера (у него — живая цель запроса).
+ */
+export function castAim(map: WorldMap, def: SkillDef, rank: number, ranks: Readonly<Record<string, number>> | undefined, from: { x: number; y: number }, plan: { x: number; y: number },
+  unit?: { x: number; y: number; r: number }): { g: Placed; msg: AimMsg } {
+  const g = placeSkill(map, def, rank, ranks, from, { x: plan.x, y: plan.y, unit });
+  const ex = aimExtras(def, g, from);
+  const at = g.shape === "circle" || g.shape === "line" ? { x: g.x, y: g.y } : g.shape === "dash" ? { x: g.tx, y: g.ty } : { x: plan.x, y: plan.y };
+  return { g, msg: { ...at, ...ex } };
 }
 
 // ---------- Выбор цели мышью (задача 134, шаг 1; docs/controls.md, разделы 4, 11, 12) ----------

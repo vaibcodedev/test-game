@@ -9,6 +9,7 @@ import { lineClear, walkable } from "../../../shared/map";
 import { petUnitId, type PetDef } from "../../../shared/pets";
 import { Anim, Dir } from "../../../shared/protocol";
 import { SKILLS, SUMMONS } from "../../../shared/skills";
+import { NO_LOS, RAY_MIN, rayLen, skillDims } from "../../../shared/skillShape";
 import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { addDot, dots, endDot, type CastCtx } from "./umbrath";
@@ -107,8 +108,8 @@ function applyCurse(w: World, p: Player, t: Actor, dmg: number, durS: number) {
 interface Trap { x: number; y: number; r: number; dmg: number; root: number; until: number; refund: number; alive: boolean; owner: Player }
 const traps = new WeakMap<World, Trap[]>();
 
-/** Радиус срабатывания нового капкана героя. */
-const trapRadius = (p: Player, rank: number) => SKILLS.hr_trap.v(Math.max(1, rank)).radius + (rk(p, "hr_trapper") ? pv(p, "hr_trapper").radius : 0);
+/** Радиус срабатывания нового капкана героя: ранг капкана + «Ловец» (plus в data/skills_aim.json) — тот же, что у превью (shared/skillShape.ts). */
+const trapRadius = (p: Player, rank: number) => skillDims(SKILLS.hr_trap, rank, p.save.skills).radius;
 /** В точке уже стоит капкан героя или он пересёкся бы с новым (капканы друг на друге не копятся). */
 function trapCrowded(w: World, p: Player, x: number, y: number, rank: number) {
   const r = trapRadius(p, rank);
@@ -123,7 +124,7 @@ function placeTrap(w: World, p: Player, x: number, y: number, trapRank: number) 
   traps.set(w, all);
   const mine = all.filter((t) => t.owner === p);
   while (mine.length >= v.cap + (tm ? tm.cap : 0)) mine.shift()!.alive = false;
-  const trap: Trap = { x, y, r: v.radius + (tm ? tm.radius : 0), dmg: v.dmg, root: v.root, until: w.time + v.dur * 1000, refund: tm ? tm.refund : 0, alive: true, owner: p };
+  const trap: Trap = { x, y, r: trapRadius(p, trapRank), dmg: v.dmg, root: v.root, until: w.time + v.dur * 1000, refund: tm ? tm.refund : 0, alive: true, owner: p };
   all.push(trap);
   w.emit({ t: "aoe", k: "phys", x, y, r: 26 });
   const s = st(p);
@@ -213,17 +214,14 @@ export function castArcher(c: CastCtx): string | null | undefined {
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };
-  const pointAt = () => {
-    const d = Math.min(range, Math.hypot(c.ax - u.x, c.ay - u.y));
-    return { x: u.x + Math.cos(c.aim) * d, y: u.y + Math.sin(c.aim) * d };
-  };
+  // точка ground уже прижата к дальности (с допуском) и проверена на прямую видимость в castSkill (placeSkill, shared/skillShape.ts)
+  const pointAt = () => ({ x: c.ax, y: c.ay });
 
   switch (c.id) {
     // ---------- Егерь ----------
     case "hr_trap": {
       const pt = pointAt();
       if (w.inTown(pt.x, pt.y)) return "В городе ловушки ставить нельзя";
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       if (!walkable(w.map, pt.x, pt.y, 6)) return "Сюда ловушку не поставить";
       if (trapCrowded(w, p, pt.x, pt.y, c.rank)) return "Слишком близко к другому капкану";
       c.ok();
@@ -242,13 +240,9 @@ export function castArcher(c: CastCtx): string | null | undefined {
       return null;
     }
     case "hr_pierce": {
-      // луч до первой стены
-      let len = 0;
-      for (let d = 10; d <= range; d += 10) {
-        if (!lineClear(w.map, u.x, u.y, u.x + Math.cos(c.aim) * d, u.y + Math.sin(c.aim) * d)) break;
-        len = d;
-      }
-      if (len < 30) return "Нет прямой видимости";
+      // луч до первой стены по углу прицела с клиента — та же функция, что у превью (placeSkill уже отказал, если луч короче RAY_MIN)
+      const len = rayLen(w.map, u.x, u.y, c.aim, range);
+      if (len < RAY_MIN) return NO_LOS;
       c.ok();
       const cx = Math.cos(c.aim), cy = Math.sin(c.aim);
       const ex = u.x + cx * len, ey = u.y + cy * len;
@@ -260,7 +254,8 @@ export function castArcher(c: CastCtx): string | null | undefined {
         if (w.stealthed(m)) continue;
         const dx = m.x - u.x, dy = m.y - u.y;
         const along = dx * cx + dy * cy, perp = Math.abs(dx * cy - dy * cx);
-        if (along < 0 || along > len + w.radiusOf(m) || perp > w.radiusOf(m) + v.width) continue;
+        // v.width — полная ширина коридора (как у «Метнуть топор»)
+        if (along < 0 || along > len + w.radiusOf(m) || perp > w.radiusOf(m) + v.width / 2) continue;
         hits.push({ m, along });
       }
       for (const h of hits) {
@@ -336,7 +331,6 @@ export function castArcher(c: CastCtx): string | null | undefined {
     }
     case "dr_hexswarm": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       const list = w.enemiesInCircle(p, pt.x, pt.y, v.radius)
         .filter((m) => !w.stealthed(m) && w.dist(u, m) <= range + v.radius && lineClear(w.map, u.x, u.y, m.x, m.y))
         .sort((a, b) => Math.hypot(a.x - pt.x, a.y - pt.y) - Math.hypot(b.x - pt.x, b.y - pt.y))
@@ -371,7 +365,6 @@ export function castArcher(c: CastCtx): string | null | undefined {
     }
     case "dr_veil": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok();
       u.anim = Anim.Cast;
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });

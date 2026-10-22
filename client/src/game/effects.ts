@@ -298,8 +298,9 @@ export class Effects {
           break;
         }
         const col = f.k === "taunt" ? 0xffa040 : f.k === "quake" ? 0xc09060 : (KIND_COLOR[f.k] ?? 0xffffff);
-        const ring = s.add.image(f.x, f.y, "fx_ring").setTint(col).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 20).setScale(0.2, 0.14);
-        s.tweens.add({ targets: ring, scaleX: f.r / 30, scaleY: (f.r / 30) * 0.7, alpha: { from: 1, to: 0 }, duration: 450, ease: "Cubic.easeOut", onComplete: () => ring.destroy() });
+        // кольцо — круг радиуса удара, без сплющивания: сервер мерит Math.hypot (задача 133)
+        const ring = s.add.image(f.x, f.y, "fx_ring").setTint(col).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 20).setScale(0.2);
+        s.tweens.add({ targets: ring, scaleX: f.r / 30, scaleY: f.r / 30, alpha: { from: 1, to: 0 }, duration: 450, ease: "Cubic.easeOut", onComplete: () => ring.destroy() });
         const tex = f.k === "shadow" ? "fx_smoke" : f.k === "frost" || f.k === "rune" ? "fx_shard" : f.k === "chains" || f.k === "reap" ? "fx_smoke" : f.k === "fire" ? "fx_ember" : f.k === "poison" ? "fx_bubble" : f.k === "nature" ? "fx_leaf" : "fx_spark";
         this.burst(f.x, f.y - 6, tex, col, Math.min(40, 10 + f.r / 5), f.r * 1.4, 520);
         if (f.k === "slash") {
@@ -312,13 +313,13 @@ export class Effects {
           this.burst(f.x, f.y - 8, "fx_spark", 0xe0d0ff, 8, 40, 300);
         }
         if (f.k === "heal") {
-          const r3 = s.add.image(f.x, f.y, "fx_ring").setTint(0xffe890).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1, 0.07);
-          s.tweens.add({ targets: r3, scaleX: f.r / 26, scaleY: (f.r / 26) * 0.7, alpha: { from: 1, to: 0 }, duration: 650, ease: "Cubic.easeOut", onComplete: () => r3.destroy() });
+          const r3 = s.add.image(f.x, f.y, "fx_ring").setTint(0xffe890).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1);
+          s.tweens.add({ targets: r3, scaleX: f.r / 26, scaleY: f.r / 26, alpha: { from: 1, to: 0 }, duration: 650, ease: "Cubic.easeOut", onComplete: () => r3.destroy() });
           this.burst(f.x, f.y - 4, "fx_spark", 0xfff0b0, Math.min(30, 8 + f.r / 6), f.r * 0.5, 900, -70, 0.9);
         }
         if (f.k === "taunt") {
-          const r2 = s.add.image(f.x, f.y, "fx_ring").setTint(0xffe0a0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1, 0.07);
-          s.tweens.add({ targets: r2, scaleX: f.r / 18, scaleY: (f.r / 18) * 0.7, alpha: { from: 1, to: 0 }, duration: 650, delay: 120, ease: "Cubic.easeOut", onComplete: () => r2.destroy() });
+          const r2 = s.add.image(f.x, f.y, "fx_ring").setTint(0xffe0a0).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1);
+          s.tweens.add({ targets: r2, scaleX: f.r / 18, scaleY: f.r / 18, alpha: { from: 1, to: 0 }, duration: 650, delay: 120, ease: "Cubic.easeOut", onComplete: () => r2.destroy() });
         }
         if (f.k === "quake") {
           const g = s.add.graphics().setDepth(DEPTH.ground + 22);
@@ -326,7 +327,7 @@ export class Effects {
           for (let i = 0; i < 9; i++) {
             const a = (i / 9) * Math.PI * 2 + Math.random() * 0.3;
             let x = f.x, y = f.y; g.beginPath(); g.moveTo(x, y);
-            for (let j = 1; j <= 4; j++) { const d = (f.r * j) / 4; x = f.x + Math.cos(a + (Math.random() - 0.5) * 0.3) * d; y = f.y + Math.sin(a + (Math.random() - 0.5) * 0.3) * d * 0.7; g.lineTo(x, y); }
+            for (let j = 1; j <= 4; j++) { const d = (f.r * j) / 4; x = f.x + Math.cos(a + (Math.random() - 0.5) * 0.3) * d; y = f.y + Math.sin(a + (Math.random() - 0.5) * 0.3) * d; g.lineTo(x, y); }
             g.strokePath();
           }
           this.burst(f.x, f.y - 4, "fx_smoke", 0x806040, 14, f.r * 0.8, 800, -10, 1.4);
@@ -346,8 +347,8 @@ export class Effects {
         if (f.k === "hymn" || f.k === "ward" || f.k === "cleanse") {
           // золотые лучи вверх и расходящееся кольцо
           for (let i = 0; i < 3; i++) {
-            const r4 = s.add.image(f.x, f.y, "fx_ring").setTint(KIND_COLOR[f.k]).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1, 0.07);
-            s.tweens.add({ targets: r4, scaleX: f.r / 26, scaleY: (f.r / 26) * 0.7, alpha: { from: 0.9, to: 0 }, duration: 700, delay: i * 140, ease: "Cubic.easeOut", onComplete: () => r4.destroy() });
+            const r4 = s.add.image(f.x, f.y, "fx_ring").setTint(KIND_COLOR[f.k]).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1);
+            s.tweens.add({ targets: r4, scaleX: f.r / 26, scaleY: f.r / 26, alpha: { from: 0.9, to: 0 }, duration: 700, delay: i * 140, ease: "Cubic.easeOut", onComplete: () => r4.destroy() });
           }
           const beam = s.add.image(f.x, f.y - 14, "fx_glow").setTint(KIND_COLOR[f.k]).setBlendMode(Phaser.BlendModes.ADD).setScale(f.k === "ward" ? 2.2 : 1.2, 5).setDepth(DEPTH.top - 30).setAlpha(0.7);
           s.tweens.add({ targets: beam, scaleX: 0.2, alpha: 0, duration: 800, onComplete: () => beam.destroy() });
@@ -358,14 +359,14 @@ export class Effects {
           this.burst(f.x, f.y - 4, "fx_ember", 0xc01830, Math.min(34, 10 + f.r / 4), f.r * 1.2, 700, 40, 1.1);
           if (f.k === "burst") { this.shake(f.x, f.y, 180, 0.005); this.burst(f.x, f.y - 6, "fx_smoke", 0x701020, 12, f.r, 800, -10, 1.3); }
           const g3 = s.add.graphics().setDepth(DEPTH.ground + 22).setBlendMode(Phaser.BlendModes.ADD);
-          g3.lineStyle(2, 0xff5060, 0.85).strokeEllipse(f.x, f.y, f.r * 1.4, f.r * 0.9);
+          g3.lineStyle(2, 0xff5060, 0.85).strokeCircle(f.x, f.y, f.r * 0.7);
           s.tweens.add({ targets: g3, alpha: 0, duration: 600, onComplete: () => g3.destroy() });
         }
-        if (f.k === "chains" || f.k === "reap") for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; this.burst(f.x + Math.cos(a) * f.r * 0.7, f.y + Math.sin(a) * f.r * 0.5, "fx_smoke", KIND_COLOR[f.k], 3, 30, 600, -20); }
+        if (f.k === "chains" || f.k === "reap") for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; this.burst(f.x + Math.cos(a) * f.r * 0.7, f.y + Math.sin(a) * f.r * 0.7, "fx_smoke", KIND_COLOR[f.k], 3, 30, 600, -20); }
         if (f.k === "rune") {
           const g2 = s.add.graphics().setDepth(DEPTH.ground + 23).setBlendMode(Phaser.BlendModes.ADD);
-          g2.lineStyle(2, 0x9ae8ff, 0.9).strokeEllipse(f.x, f.y, f.r * 1.6, f.r * 1.1);
-          for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; g2.lineBetween(f.x + Math.cos(a) * f.r * 0.8, f.y + Math.sin(a) * f.r * 0.55, f.x + Math.cos(a + 0.5) * f.r * 0.5, f.y + Math.sin(a + 0.5) * f.r * 0.35); }
+          g2.lineStyle(2, 0x9ae8ff, 0.9).strokeCircle(f.x, f.y, f.r * 0.8);
+          for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; g2.lineBetween(f.x + Math.cos(a) * f.r * 0.8, f.y + Math.sin(a) * f.r * 0.8, f.x + Math.cos(a + 0.5) * f.r * 0.5, f.y + Math.sin(a + 0.5) * f.r * 0.5); }
           s.tweens.add({ targets: g2, alpha: 0, duration: 700, onComplete: () => g2.destroy() });
         }
         // умения магов (задача 43)
@@ -376,8 +377,8 @@ export class Effects {
         }
         if (f.k === "timewarp" || f.k === "hex" || f.k === "meta") {
           for (let i = 0; i < (f.k === "timewarp" ? 4 : 3); i++) {
-            const rr = s.add.image(f.x, f.y, "fx_ring").setTint(KIND_COLOR[f.k]).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1, 0.07);
-            s.tweens.add({ targets: rr, scaleX: f.r / 26, scaleY: (f.r / 26) * 0.7, alpha: { from: 0.9, to: 0 }, duration: 700, delay: i * 130, ease: "Cubic.easeOut", onComplete: () => rr.destroy() });
+            const rr = s.add.image(f.x, f.y, "fx_ring").setTint(KIND_COLOR[f.k]).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.ground + 21).setScale(0.1);
+            s.tweens.add({ targets: rr, scaleX: f.r / 26, scaleY: f.r / 26, alpha: { from: 0.9, to: 0 }, duration: 700, delay: i * 130, ease: "Cubic.easeOut", onComplete: () => rr.destroy() });
           }
           if (f.k === "meta") { this.shake(f.x, f.y, 260, 0.006); this.burst(f.x, f.y - 6, "fx_smoke", 0x6020a0, 16, f.r, 900, -20, 1.4); }
         }
@@ -443,9 +444,10 @@ export class Effects {
       case "hazard": {
         if (this.vfx.zoneFx(f, f.id)) break;
         const color = f.k === "poison" ? 0x6adf2a : f.k === "fire" ? 0xff6a1a : f.k === "holy" ? 0xffd870 : 0x8a5aff;
-        const pool = s.add.ellipse(f.x, f.y, f.r * 2, f.r * 1.5, color, 0.28).setDepth(DEPTH.ground + 8).setStrokeStyle(1.5, color, 0.8);
+        // лужа — круг радиуса зоны, без сплющивания: сервер мерит Math.hypot (задача 133)
+        const pool = s.add.ellipse(f.x, f.y, f.r * 2, f.r * 2, color, 0.28).setDepth(DEPTH.ground + 8).setStrokeStyle(1.5, color, 0.8);
         const bub = s.add.particles(f.x, f.y, f.k === "poison" ? "fx_bubble" : "fx_ember", {
-          x: { min: -f.r * 0.8, max: f.r * 0.8 }, y: { min: -f.r * 0.5, max: f.r * 0.5 }, lifespan: 900, speedY: { min: -20, max: -8 }, scale: { start: 1, end: 0.2 }, alpha: { start: 0.9, end: 0 }, frequency: 90, tint: color,
+          x: { min: -f.r * 0.7, max: f.r * 0.7 }, y: { min: -f.r * 0.7, max: f.r * 0.7 }, lifespan: 900, speedY: { min: -20, max: -8 }, scale: { start: 1, end: 0.2 }, alpha: { start: 0.9, end: 0 }, frequency: 90, tint: color,
         }).setDepth(DEPTH.ground + 9);
         pool.setScale(0.2);
         s.tweens.add({ targets: pool, scale: 1, duration: 250 });

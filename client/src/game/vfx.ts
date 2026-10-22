@@ -374,7 +374,8 @@ export class Vfx {
     if (kind) this.remember(kind, k);
   }
   /** Цикл в круге на земле: стоящий предмет (знамя) — один спрайт в центре; облака и лужи — несколько спрайтов, разложенных по кругу радиуса умения
-   *  (золотой угол, эллипс 0.7), не перекрывающих героев сплошной стеной: полупрозрачные, под юнитами, с лёгким покачиванием. Входят и гаснут плавно. */
+   *  (золотой угол; круг, а не эллипс — сервер мерит Math.hypot, задача 133), не перекрывающих героев сплошной стеной: полупрозрачные, под юнитами,
+   *  с лёгким покачиванием. Входят и гаснут плавно. */
   zone(k: string, id: string, x: number, y: number, r: number, ms: number) {
     this.stopKey(k);
     if (ms <= 0 || !this.has(id)) return;
@@ -382,7 +383,7 @@ export class Vfx {
     const single = (e.anchor[1] >= 0.85 && !FLAT.test(id)) || r < e.frameW * 0.6;
     const n = single ? 1 : Math.min(11, Math.max(4, Math.round((r * r) / (e.frameW * e.frameW * 0.8))));
     const pts: [number, number][] = [];
-    for (let i = 0; i < n; i++) { const ang = i * 2.39996, d = single ? 0 : Math.sqrt((i + 0.5) / n) * r * 0.85; pts.push([Math.cos(ang) * d, Math.sin(ang) * d * 0.7]); }
+    for (let i = 0; i < n; i++) { const ang = i * 2.39996, d = single ? 0 : Math.sqrt((i + 0.5) / n) * r * 0.85; pts.push([Math.cos(ang) * d, Math.sin(ang) * d]); }
     const list: Running[] = [];
     // кольцо ауры радиуса под штандартом: лист banner-ring-<фракция> того же имени
     const ringId = id.replace(/^banner-/, "banner-ring-");

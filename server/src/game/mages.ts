@@ -113,10 +113,9 @@ export function castMage(c: CastCtx): string | null | undefined {
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = World.dirTo(a.x - u.x, a.y - u.y); };
-  const pointAt = () => {
-    const d = Math.min(range, Math.hypot(c.ax - u.x, c.ay - u.y));
-    return { x: u.x + Math.cos(c.aim) * d, y: u.y + Math.sin(c.aim) * d };
-  };
+  // точка ground уже прижата к дальности (с допуском) и проверена на прямую видимость в castSkill (placeSkill, shared/skillShape.ts);
+  // у стены огня угол c.aim — с клиента (turn), поэтому точку не пересчитываем по углу от героя
+  const pointAt = () => ({ x: c.ax, y: c.ay });
   const castAnim = () => { u.anim = Anim.Cast; w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; }); };
 
   switch (c.id) {
@@ -164,7 +163,6 @@ export function castMage(c: CastCtx): string | null | undefined {
     }
     case "mg_firewall": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok(); castAnim();
       const nx = -Math.sin(c.aim), ny = Math.cos(c.aim), half = v.len / 2;
       const ax = pt.x - nx * half, ay = pt.y - ny * half, bx = pt.x + nx * half, by = pt.y + ny * half;
@@ -184,7 +182,6 @@ export function castMage(c: CastCtx): string | null | undefined {
     }
     case "mg_storm": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok(); castAnim();
       const ms = v.strikes * 500;
       w.emit({ t: "tele", shape: "circle", k: "frost", x: pt.x, y: pt.y, r: v.radius, ms });
@@ -250,7 +247,6 @@ export function castMage(c: CastCtx): string | null | undefined {
     case "wl_demon": {
       const pt = pointAt();
       if (w.opts.mobs === false || p.team !== 0) return "На арене призыв недоступен";
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok(); castAnim();
       w.emit({ t: "aoe", k: "shadow", x: pt.x, y: pt.y, r: 56 });
       summonDemon(w, p, pt, v.dur * 1000, v.power / 100);

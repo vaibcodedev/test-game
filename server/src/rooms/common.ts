@@ -90,11 +90,13 @@ export function registerCombat(on: On, world: () => World) {
     p.send("toast", { text: `Вы следуете за ${a.name}`, kind: "info" });
   });
   on<{ on: unknown }>("chase", (p, m) => { p.chase = m.on === true; });
-  on<{ id: unknown; x: unknown; y: unknown; target: unknown; q: unknown; ap: unknown }>("skill", (p, m) => {
+  on<{ id: unknown; x: unknown; y: unknown; target: unknown; q: unknown; ap: unknown; a: unknown; dx: unknown; dy: unknown }>("skill", (p, m) => {
     if (typeof m.id !== "string") return;
     const x = num(m.x, 0, w().map.w * TILE) ?? p.x, y = num(m.y, 0, w().map.h * TILE) ?? p.y;
+    // a — угол прицела (линии, стена огня), dx, dy — вектор рывка или до точки линии: сервер применяет их от своей позиции (задача 133, shared/skillShape.ts)
+    const a = num(m.a, -8, 8) ?? undefined, dx = num(m.dx, -4000, 4000) ?? undefined, dy = num(m.dy, -4000, 4000) ?? undefined;
     // q — окно очереди из настроек клиента (0–500 мс), ap — опция «Подходить к цели»
-    requestSkill(w(), p, { id: m.id, x, y, target: typeof m.target === "string" ? m.target : null, ap: m.ap === true, until: 0 }, num(m.q, 0, 500) ?? 400);
+    requestSkill(w(), p, { id: m.id, x, y, target: typeof m.target === "string" ? m.target : null, ap: m.ap === true, until: 0, a, dx, dy }, num(m.q, 0, 500) ?? 400);
   });
   // Esc: очередь, подход, канал (дальше клиент снимает окно, цель, меню)
   on("cancel", (p) => { cancelAll(w(), p); });

@@ -8,6 +8,7 @@ import { BAR_COUNT, BAR_SLOTS, usableBase, type Slot } from "../../../shared/hot
 import { lineClear, type WorldMap } from "../../../shared/map";
 import type { SelfState } from "../../../shared/protocol";
 import { skillMana, SKILLS, type SkillDef } from "../../../shared/skills";
+import { aimSpec } from "../../../shared/skillShape";
 import { keybinds } from "../game/keybinds";
 import { mountSprite } from "../../../shared/mounts";
 import type { Net } from "../net";
@@ -273,7 +274,8 @@ export class Hotbar {
             if (f.mp < skillMana(d, rank, s.level)) cls.push("nomana");
             if (d.target === "enemy" && !f.target) cls.push("notarget");
             else if (f.target && d.target !== "self") {
-              if (d.range && Math.hypot(f.target.x - f.pos.x, f.target.y - f.pos.y) > d.range + 8) cls.push("oor");
+              // «далеко» — только где сервер откажет: точку и направление (oor: clamp) он прижимает к дальности и кастует
+              if (d.range && aimSpec(d).oor !== "clamp" && Math.hypot(f.target.x - f.pos.x, f.target.y - f.pos.y) > d.range + 8) cls.push("oor");
               else if (d.target === "enemy" && !lineClear(this.ctx.map, f.pos.x, f.pos.y, f.target.x, f.target.y)) cls.push("nolos");
             }
           }

@@ -57,7 +57,10 @@ export interface ClientMessages {
   input: { mx: number; my: number };
   moveTo: { x: number; y: number };
   target: { id: string | null };
-  skill: { id: string; x: number; y: number; target?: string | null };
+  /** Каст умения (задачи 115, 133; shared/skillShape.ts): x, y — точка (у ground — прижата к дальности от предсказанной позиции, сервер берёт её с допуском GROUND_TOL);
+   *  a — угол прицела (линии и стена огня), dx, dy — вектор от героя (рывка или до точки линии): сервер применяет их от своей позиции в момент исполнения (и из очереди).
+   *  q — окно очереди (мс), ap — опция «Подходить к цели». */
+  skill: { id: string; x: number; y: number; target?: string | null; a?: number; dx?: number; dy?: number; q?: number; ap?: boolean };
   /** n — сколько очков вложить разом: целое 1…10, без поля — одно (вкладывается не больше, чем есть свободных). */
   alloc: { stat: StatKey; n?: number };
   learn: { id: string };

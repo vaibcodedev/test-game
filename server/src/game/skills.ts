@@ -1,8 +1,9 @@
 /** Серверная логика умений. Все проверки (ранг, мана, перезарядка, дальность, стены) — здесь. */
 import { PLAYER_RADIUS } from "../../../shared/constants";
-import { lineClear, walkable } from "../../../shared/map";
+import { lineClear } from "../../../shared/map";
 import { Anim } from "../../../shared/protocol";
 import { SKILLS, skillMana } from "../../../shared/skills";
+import { behindSpot, GROUND_TOL, placeSkill, reachable as reachOn } from "../../../shared/skillShape";
 import { BAL, healPowerMult } from "../../../shared/balance";
 import { CLASSES } from "../../../shared/classes";
 import { castUmbrath } from "./umbrath";
@@ -23,29 +24,22 @@ const angDiff = (a: number, b: number) => {
   return Math.abs(d);
 };
 
-/** Дальше всего достижимая точка по прямой (без стен и препятствий). */
+/** Дальше всего достижимая точка по прямой (вода, деревья и стены останавливают) — общая с превью: shared/skillShape.ts. */
 export function reachable(w: World, x0: number, y0: number, x1: number, y1: number, maxDist: number) {
-  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1;
-  const L = Math.min(maxDist, d);
-  let best = { x: x0, y: y0 };
-  for (let s = 8; s <= L; s += 8) {
-    const x = x0 + (dx / d) * s, y = y0 + (dy / d) * s;
-    if (!walkable(w.map, x, y, PLAYER_RADIUS) || !lineClear(w.map, x0, y0, x, y)) break;
-    best = { x, y };
-  }
-  const ex = x0 + (dx / d) * L, ey = y0 + (dy / d) * L;
-  if (walkable(w.map, ex, ey, PLAYER_RADIUS) && lineClear(w.map, x0, y0, ex, ey) && Math.hypot(ex - best.x, ey - best.y) < 9) best = { x: ex, y: ey };
-  return best;
+  return reachOn(w.map, x0, y0, x1, y1, maxDist);
 }
+
+/** Угол прицела и вектор рывка с клиента (сообщение «skill», очередь): сервер применяет их от своей позиции героя. */
+export interface AimExtra { a?: number; dx?: number; dy?: number }
 
 /** Применение умения; все fx внутри (и в отложенных вызовах) помечаются id умения и кастера. */
-export function castSkill(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null): string | null {
+export function castSkill(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null, extra?: AimExtra): string | null {
   const ps = w.fxSkill, pc = w.fxCaster;
   w.fxSkill = id; w.fxCaster = p.id;
-  try { return castSkillInner(w, p, id, ax, ay, targetId); } finally { w.fxSkill = ps; w.fxCaster = pc; }
+  try { return castSkillInner(w, p, id, ax, ay, targetId, extra); } finally { w.fxSkill = ps; w.fxCaster = pc; }
 }
 
-function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null): string | null {
+function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null, extra?: AimExtra): string | null {
   const def = SKILLS[id];
   if (!def || def.kind !== "active" || def.cls !== p.cls) return "Неизвестное умение";
   const rank = p.save.skills[id] || 0;
@@ -58,10 +52,21 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
   if (!def.offGcd && w.time < p.gcdUntil) return null; // общий откат (data/balance.json gcd): молча, как перезарядка
   const mana = skillMana(def, rank, p.level);
   if (p.unit.mp < mana) return "Недостаточно маны";
-  const v = def.v(rank);
   const u = p.unit;
+  // точка прицела по умолчанию — перед героем
+  if (!Number.isFinite(ax) || !Number.isFinite(ay)) { ax = u.x; ay = u.y + 1; }
   const target = targetId ? w.actor(targetId) : undefined;
   const liveTarget = target && !w.isDead(target) && w.hostile(p, target) && !w.stealthed(target) ? target : undefined;
+  // куда ляжет (shared/skillShape.ts, те же функции, что у превью): точка ground с допуском, угол и вектор с клиента от своей позиции,
+  // видимость (los), луч до стены, рывок до препятствия по рангу; снаряд с самонаведением (home) — по живой цели в дальности + радиус.
+  // Отказ — до модулей классов: они берут готовую точку ax, ay и угол aim и не пересчитывают их
+  const unit = liveTarget ? { x: liveTarget.x, y: liveTarget.y, r: w.radiusOf(liveTarget) } : undefined;
+  const g = placeSkill(w.map, def, rank, p.save.skills, u, { x: ax, y: ay, a: extra?.a, dx: extra?.dx, dy: extra?.dy, unit }, GROUND_TOL);
+  if (g.err) return g.err;
+  const shaped = g.shape === "circle" || g.shape === "line" || g.shape === "dash";
+  if (shaped) { ax = g.x; ay = g.y; }
+  const aim = shaped ? g.a : Math.atan2(ay - u.y, ax - u.x);
+  const v = def.v(rank);
   const wasStealthed = p.stealthUntil > w.time;
   const isBoss = (a: Actor) => !w.isPlayer(a) && !!a.def.boss;
   const threat = (a: Actor, v: number) => { if (!w.isPlayer(a)) a.addThreat(p.id, v); };
@@ -71,10 +76,6 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
   const slow = (a: Actor, pct: number, ms: number) => applySlow(w, p, a, pct, ms);
   const root = (a: Actor, ms: number) => applyRoot(w, p, a, ms);
   const weaken = (a: Actor, pct: number, ms: number) => applyWeaken(w, p, a, pct, ms);
-
-  // точка прицела по умолчанию — перед героем
-  if (!Number.isFinite(ax) || !Number.isFinite(ay)) { ax = u.x; ay = u.y + 1; }
-  const aim = Math.atan2(ay - u.y, ax - u.x);
 
   const ok = () => {
     w.breakMount(p);
@@ -191,11 +192,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
     case "fireball": {
       let tx: number, ty: number, aimTarget: Actor | undefined;
       if (liveTarget && w.dist(u, liveTarget) <= range + w.radiusOf(liveTarget)) { aimTarget = liveTarget; tx = liveTarget.x; ty = liveTarget.y; }
-      else {
-        const d = Math.min(range, Math.hypot(ax - u.x, ay - u.y) || range);
-        tx = u.x + Math.cos(aim) * d; ty = u.y + Math.sin(aim) * d;
-      }
-      if (!lineClear(w.map, u.x, u.y, tx, ty)) return "Нет прямой видимости";
+      else { tx = ax; ty = ay; } // по углу прицела на длину вектора с клиента, не дальше дальности (placeSkill, форма line)
+      // прямую видимость до цели (самонаведение, home) или до точки уже проверил placeSkill — та же точка
       ok();
       const ms = (Math.hypot(tx - u.x, ty - u.y) / 420) * 1000;
       w.emit({ t: "proj", k: "fireball", from: p.id, to: aimTarget?.id, tx, ty, ms });
@@ -219,8 +217,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "blink": {
-      const dest = reachable(w, u.x, u.y, ax, ay, v.dist);
-      if (Math.hypot(dest.x - u.x, dest.y - u.y) < 16) return "Туда не переместиться";
+      // конец — reachable на длину по рангу (placeSkill, форма dash); сдвиг меньше DASH_MIN — отказ «Туда не переместиться» там же
+      const dest = { x: ax, y: ay };
       ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y });
       u.x = dest.x;
@@ -231,8 +229,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "meteor": {
-      const d = Math.min(range, Math.hypot(ax - u.x, ay - u.y));
-      const tx = u.x + Math.cos(aim) * d, ty = u.y + Math.sin(aim) * d;
+      // точка с допуском и прямой видимостью (решение пользователя 3) — placeSkill
+      const tx = ax, ty = ay;
       ok();
       u.anim = Anim.Cast;
       w.emit({ t: "tele", shape: "circle", k: "frost", x: tx, y: ty, r: v.radius, ms: v.delay * 1000 });
@@ -281,8 +279,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "roll": {
-      const dest = reachable(w, u.x, u.y, ax, ay, v.dist);
-      if (Math.hypot(dest.x - u.x, dest.y - u.y) < 16) return "Некуда отскочить";
+      // конец — reachable на длину рывка (placeSkill, форма dash); сдвиг меньше DASH_MIN — отказ «Некуда отскочить» там же
+      const dest = { x: ax, y: ay };
       ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y });
       u.x = dest.x;
@@ -294,8 +292,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "rain": {
-      const d = Math.min(range, Math.hypot(ax - u.x, ay - u.y));
-      const tx = u.x + Math.cos(aim) * d, ty = u.y + Math.sin(aim) * d;
+      // точка с допуском и прямой видимостью (решение пользователя 3) — placeSkill
+      const tx = ax, ty = ay;
       ok();
       for (let i = 0; i < v.ticks; i++)
         w.later(250 + i * 500, () => {
@@ -339,13 +337,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
       if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
       const [fx, fy] = facing(liveTarget);
-      const off = w.radiusOf(liveTarget) + PLAYER_RADIUS + 2;
-      const base = Math.atan2(-fy, -fx);
-      let dest: { x: number; y: number } | null = null;
-      for (const da of [0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, Math.PI]) {
-        const x = liveTarget.x + Math.cos(base + da) * off, y = liveTarget.y + Math.sin(base + da) * off;
-        if (walkable(w.map, x, y, PLAYER_RADIUS) && lineClear(w.map, x, y, liveTarget.x, liveTarget.y)) { dest = { x, y }; break; }
-      }
+      // место за спиной — общая функция с превью (shared/skillShape.ts)
+      const dest = behindSpot(w.map, liveTarget.x, liveTarget.y, fx, fy, w.radiusOf(liveTarget));
       if (!dest) return "Нет места за спиной цели";
       ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y, k: "shadow" });
@@ -412,8 +405,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "circle": {
-      const d = Math.min(range, Math.hypot(ax - u.x, ay - u.y));
-      const cx = u.x + Math.cos(aim) * d, cy = u.y + Math.sin(aim) * d;
+      // точка с допуском и прямой видимостью (решение пользователя 3) — placeSkill
+      const cx = ax, cy = ay;
       ok();
       w.emit({ t: "aoe", k: "heal", x: cx, y: cy, r: v.radius });
       const amt = healPower(p) * v.heal / 100;

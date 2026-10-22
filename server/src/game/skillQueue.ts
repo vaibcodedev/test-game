@@ -7,7 +7,9 @@ import { castSkill } from "./skills";
 import type { World } from "./World";
 
 export type ErrCode = "target" | "range" | "los" | "mana" | "cd" | "learn";
-export interface SkillReq { id: string; x: number; y: number; target: string | null; ap: boolean; until: number }
+/** Запрос умения: x, y — точка (ground — с допуском GROUND_TOL); a — угол прицела (линии, стена огня), dx, dy — вектор рывка или до точки линии: из очереди они
+ *  применяются от позиции героя в момент исполнения, а не к старой абсолютной точке (задача 133, shared/skillShape.ts). */
+export interface SkillReq { id: string; x: number; y: number; target: string | null; ap: boolean; until: number; a?: number; dx?: number; dy?: number }
 
 const APPROACH_MS = 4000;
 
@@ -54,7 +56,7 @@ function setQueue(p: Player, q: SkillReq | null) {
 
 /** Выполнить умение сейчас; вне дальности с включённым подходом — запомнить на 4 с. */
 function execute(w: World, p: Player, r: SkillReq) {
-  const err = castSkill(w, p, r.id, r.x, r.y, r.target);
+  const err = castSkill(w, p, r.id, r.x, r.y, r.target, r);
   if (!err) return;
   const tg = r.target ? w.actor(r.target) : undefined;
   if (r.ap && errCode(err) === "range" && tg && !w.isDead(tg)) {

@@ -165,10 +165,8 @@ export function castUmbrath(c: CastCtx): string | null {
     return null;
   };
   const face = (a: Actor) => { u.dir = World.dirTo(a.x - u.x, a.y - u.y); };
-  const pointAt = () => {
-    const d = Math.min(range, Math.hypot(c.ax - u.x, c.ay - u.y));
-    return { x: u.x + Math.cos(c.aim) * d, y: u.y + Math.sin(c.aim) * d };
-  };
+  // точка ground уже прижата к дальности (с допуском) и проверена на прямую видимость в castSkill (placeSkill, shared/skillShape.ts) — как есть
+  const pointAt = () => ({ x: c.ax, y: c.ay });
 
   switch (c.id) {
     // ---------- Рыцарь смерти ----------
@@ -296,7 +294,6 @@ export function castUmbrath(c: CastCtx): string | null {
     }
     case "bw_crimson_pool": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok();
       u.anim = Anim.Cast;
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });
@@ -380,7 +377,6 @@ export function castUmbrath(c: CastCtx): string | null {
     }
     case "wl_skeletons": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok();
       u.anim = Anim.Cast;
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });

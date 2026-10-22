@@ -1,7 +1,9 @@
-/** Выбор адресата каста и поля прицела умений (задача 115, шаг 6); выбор цели мышью: допуск, магнит, порядок (задача 134, шаг 1). Запуск: npx tsx tests/cast-resolve.ts */
+/** Выбор адресата каста и поля прицела умений (задача 115, шаг 6; задача 133, шаг 1 — точка по ногам врага, «далеко» только у умений на цель, размеры по рангу);
+ *  выбор цели мышью: допуск, магнит, порядок (задача 134, шаг 1). Геометрия превью против сервера — tests/skill-shape.ts. Запуск: npx tsx tests/cast-resolve.ts */
 import assert from "node:assert/strict";
 import { bodyDist, clampToRange, pickOrder, pickReach, PICK_MAGNET, PICK_TOL, resolveCast, type CastIn, type CastUnit, type PickCtx, type PickKind, type PickOut, type PickSource } from "../client/src/game/castResolve";
 import { activeSkills } from "../shared/skills";
+import { aimSpec, shapeSize } from "../shared/skillShape";
 import { CLASSES } from "../shared/classes";
 
 const u = (id: string, x: number, y: number, enemy: boolean, extra: Partial<CastUnit> = {}): CastUnit => ({ id, x, y, enemy, friend: !enemy, ...extra });
@@ -36,21 +38,32 @@ assert.equal(ok(resolveCast({ ...en, selected: u("w", 250, 0, true) })).far, tru
 const sf = ok(resolveCast(base({ skill: { aim: "self", target: "self", range: 0 }, selected: foe })));
 assert.deepEqual([sf.x, sf.y, sf.target], [0, 0, "f"]);
 
-// точка: курсор, зажатый дальностью
+// точка: курсор, зажатый дальностью; «далеко» нет — сервер прижимает точку так же и кастует (красное превью — только его отказ)
 const g = ok(resolveCast(base({ skill: { aim: "ground", target: "point", range: 340 }, cursor: { x: 1000, y: 0 } })));
-assert.deepEqual([g.x, g.y, g.far, g.target], [340, 0, true, null]);
+assert.deepEqual([g.x, g.y, g.far, g.target], [340, 0, false, null]);
 const g2 = ok(resolveCast(base({ skill: { aim: "ground", target: "point", range: 340 }, cursor: { x: 0, y: 120 } })));
 assert.deepEqual([g2.x, g2.y, g2.far], [0, 120, false]);
 assert.deepEqual(clampToRange({ x: 10, y: 10 }, { x: 10, y: 410 }, 100), { x: 10, y: 110, far: true });
 assert.equal(clampToRange({ x: 0, y: 0 }, { x: 5000, y: 0 }, 0).far, false, "дальность 0 — без зажима");
+// курсор на враге (каст по наведению) — точка по его ногам, а не в курсоре над ним; без наведения, над интерфейсом и на мёртвом — курсор
+const gh = base({ skill: { aim: "ground", target: "point", range: 340 }, cursor: { x: 60, y: 8 }, hover: u("h", 60, 20, true) });
+assert.deepEqual([ok(resolveCast(gh)).x, ok(resolveCast(gh)).y, ok(resolveCast(gh)).target], [60, 20, null], "ground: по ногам врага");
+assert.deepEqual([ok(resolveCast({ ...gh, hoverCast: false })).x, ok(resolveCast({ ...gh, hoverCast: false })).y], [60, 8], "без каста по наведению — курсор");
+assert.deepEqual([ok(resolveCast({ ...gh, hover: u("h", 60, 20, true, { dead: true }) })).y], [8], "мёртвый — курсор");
+assert.deepEqual([ok(resolveCast({ ...gh, hover: u("a", 60, 20, false) })).y], [8], "союзник — курсор");
+assert.deepEqual([ok(resolveCast({ ...gh, hover: u("h", 900, 20, true) })).x, ok(resolveCast({ ...gh, hover: u("h", 900, 20, true) })).far], [340 * (900 / Math.hypot(900, 20)), false], "враг за дальностью — его ноги, прижатые к дальности");
 
-// направление: курсор; над интерфейсом — цель, иначе вперёд
+// направление: курсор; над интерфейсом — цель, иначе вперёд; «далеко» нет — снаряд летит до дальности
 const dir = base({ skill: { aim: "dir", target: "point", range: 340 }, cursor: { x: -200, y: 0 } });
 assert.deepEqual([ok(resolveCast(dir)).x, ok(resolveCast(dir)).y], [-200, 0]);
+assert.equal(ok(resolveCast({ ...dir, cursor: { x: -900, y: 0 } })).far, false, "курсор дальше дальности — не «далеко»");
 const ui = ok(resolveCast({ ...dir, overUi: true, selected: u("t", 0, -80, true) }));
 assert.deepEqual([ui.x, ui.y, ui.target], [0, -80, "t"]);
+assert.equal(ok(resolveCast({ ...dir, overUi: true, selected: u("t", 0, -800, true) })).far, false, "цель за дальностью над интерфейсом — не «далеко»");
 const fw = ok(resolveCast({ ...dir, overUi: true, facing: { x: 1, y: 0 } }));
 assert.deepEqual([fw.x, fw.y, fw.target], [340, 0, null]);
+const dh = ok(resolveCast({ ...dir, cursor: { x: -60, y: 8 }, hover: u("h", -60, 20, true) }));
+assert.deepEqual([dh.x, dh.y, dh.target], [-60, 20, "h"], "dir: курсор на враге — по его ногам, снаряд наводится на него");
 
 // рывок: к курсору
 const dash = ok(resolveCast(base({ skill: { aim: "dash", target: "point", range: 0 }, cursor: { x: 7, y: 9 } })));
@@ -68,8 +81,10 @@ for (const cls of Object.keys(CLASSES) as (keyof typeof CLASSES)[]) for (const s
   if (s.aim === "ground") assert.ok((s.range ?? 0) > 0, `${s.id}: у точечного умения нужна дальность`);
 }
 const by = (id: string) => activeSkills("mage").find((s) => s.id === id)!;
-assert.equal(by("meteor").aim, "ground"); assert.equal(by("meteor").area, 110);
-assert.equal(by("fireball").aim, "dir"); assert.equal(by("blink").aim, "dash"); assert.equal(by("blink").area, 200); assert.ok(by("blink").offGcd);
+// размер формы — по рангу (shared/skillShape.ts), а не с 1 ранга: мерцание на 5 ранге длиннее на 80 px
+assert.equal(by("meteor").aim, "ground"); assert.equal(shapeSize(by("meteor"), 1), 110); assert.equal(aimSpec(by("meteor")).shape, "circle");
+assert.equal(by("fireball").aim, "dir"); assert.equal(by("blink").aim, "dash"); assert.ok(by("blink").offGcd);
+assert.equal(shapeSize(by("blink"), 1), 200); assert.equal(shapeSize(by("blink"), 5), 280);
 
 // ---------- выбор цели мышью (задача 134, шаг 1) ----------
 // запас к зоне тела в пикселях мира: допуск 12 и магнит 40 px экрана делятся на масштаб CSS; «Крупные цели» — оба вдвое

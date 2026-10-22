@@ -127,10 +127,8 @@ export function castHealer(c: CastCtx): string | null | undefined {
   const range = def.range ?? 0;
   const t = c.liveTarget as Actor;
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };
-  const pointAt = () => {
-    const d = Math.min(range, Math.hypot(c.ax - u.x, c.ay - u.y));
-    return { x: u.x + Math.cos(c.aim) * d, y: u.y + Math.sin(c.aim) * d };
-  };
+  // точка ground уже прижата к дальности (с допуском) и проверена на прямую видимость в castSkill (placeSkill, shared/skillShape.ts) — как есть
+  const pointAt = () => ({ x: c.ax, y: c.ay });
   const seeAlly = (a: Ally): string | null => {
     if (a.player?.dead) return "Цель мертва";
     if (a.id !== p.id) {
@@ -191,7 +189,6 @@ export function castHealer(c: CastCtx): string | null | undefined {
     }
     case "cl_aegis": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok(); castAnim();
       w.emit({ t: "aoe", k: "ward", x: pt.x, y: pt.y, r: v.radius });
       const amt = (healPower(p) * v.absorb) / 100;
@@ -245,7 +242,6 @@ export function castHealer(c: CastCtx): string | null | undefined {
     }
     case "bw_blood_burst": {
       const pt = pointAt();
-      if (!lineClear(w.map, u.x, u.y, pt.x, pt.y)) return "Нет прямой видимости";
       c.ok(); castAnim();
       w.emit({ t: "tele", shape: "circle", k: "fire", x: pt.x, y: pt.y, r: v.radius, ms: 600 });
       w.later(600, () => {
