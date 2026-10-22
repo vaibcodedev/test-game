@@ -148,7 +148,7 @@ export function mobStats(def: MobDef, level: number): MobStats {
     dmg: (BAL.mob.dmg[0] + level * BAL.mob.dmg[1]) * def.dmg,
     armor: Math.round(level * 2.5 * def.armor),
     xp: Math.round(mobXpBase(level) * def.xp),
-    gold: [Math.round(level * def.xp), Math.round(level * 3 * def.xp) + 2],
+    gold: [Math.round(level * (def.gold ?? def.xp)), Math.round(level * 3 * (def.gold ?? def.xp)) + 2],
   };
 }
 

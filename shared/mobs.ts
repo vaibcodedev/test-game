@@ -25,6 +25,8 @@ export interface MobDef {
   dmg: number;
   armor: number;
   xp: number;
+  /** Множитель золота, если он не равен xp (боссам опыт подняли под BALANCE.md, золото — прежнее). */
+  gold?: number;
   speed: number;
   aggro: number;
   range: number;
@@ -68,17 +70,17 @@ export const MOBS: Record<string, MobDef> = {
   sapling: { id: "sapling", name: "Саженец", sprite: "sapling", size: 1, hp: 0.45, dmg: 0.7, armor: 0.5, xp: 0.25, speed: 75, aggro: 400, range: 34, attackCd: 1.3, radius: 10, color: "#6fae4a" },
 
   ent: {
-    id: "ent", name: "Древний Энт", sprite: "ent", size: 2, boss: true, level: 14, respawn: 120, hp: 16, dmg: 1.5, armor: 1.5, xp: 25,
+    id: "ent", name: "Древний Энт", sprite: "ent", size: 2, boss: true, level: 14, respawn: 120, hp: 16, dmg: 1.5, armor: 1.5, xp: 57, gold: 25,
     speed: 48, aggro: 250, range: 70, attackCd: 2.2, radius: 26, color: "#4f7a32",
     uniques: ["heartwood_staff", "rootbreaker", "whisperwind", "bark_helm"],
   },
   witch: {
-    id: "witch", name: "Болотная Ведьма", sprite: "witch", size: 2, boss: true, level: 22, respawn: 150, hp: 18, dmg: 1.4, armor: 1.2, xp: 28,
+    id: "witch", name: "Болотная Ведьма", sprite: "witch", size: 2, boss: true, level: 22, respawn: 150, hp: 18, dmg: 1.4, armor: 1.2, xp: 64, gold: 28,
     speed: 70, aggro: 290, range: 240, attackCd: 1.7, projectile: "poison", radius: 22, color: "#7a4e9a",
     uniques: ["hexed_ring", "bog_mantle", "witch_eye", "swamp_treads"],
   },
   ashlord: {
-    id: "ashlord", name: "Повелитель Пепла", sprite: "ashlord", size: 2, boss: true, level: 30, respawn: 180, hp: 22, dmg: 1.6, armor: 1.8, xp: 35,
+    id: "ashlord", name: "Повелитель Пепла", sprite: "ashlord", size: 2, boss: true, level: 30, respawn: 180, hp: 22, dmg: 1.6, armor: 1.8, xp: 190, gold: 35,
     speed: 72, aggro: 330, range: 80, attackCd: 2.0, radius: 26, color: "#d0482a",
     uniques: ["ashbringer", "cinder_staff", "phoenix_bow", "ashen_crown"],
   },
