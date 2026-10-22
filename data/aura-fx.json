@@ -1,0 +1,3675 @@
+{
+ "_doc": "Обозначения бафов и дебафов на юните (задача 129, дизайн на утверждение). Ключ — k из data/auras.json (block@mage — тот же ключ block у мага; zone_* — эффект на юните внутри зоны умения). source — умение-источник. kind: ring — круг под ногами, shield — купол или щит, overlay — значок или частицы, orbit — предметы кружат вокруг. slot — в какой лимит входит (ring, dome, overlay). Каждый эффект — один или несколько слоёв (layers): лист кадров подряд, плотность (scale 0.5 — двойная, рядом лист -x3 со scale 1/3 для зума 3), привязка (at, anchor, offset), глубина (z), покачивание (bob) и орбита (orbit) считаются в коде каждый кадр с шагом в пиксель холста. Рисует tools/gen/aura-fx.ts, листы — tools/out/aura-fx/, превью — tools/out/aura-preview/. В игру пока не подключено (шаг 2). ref — эталон из пака, с которым сравнивалось обозначение (tools/out/aura-preview/compare.png, compare/<ключ>.png). variant у слоя — вариант по фракции (рисуется слой фракции знамени).",
+ "_classes": {
+  "warrior": "храмовник: золото света, солнце, лазурь щита",
+  "healer": "лекарь: мягкий белый свет, золото, крест",
+  "mage": "маг: тайные сферы, руны, пурпур и лазурь",
+  "ranger": "следопыт: природа, листья, стрелы",
+  "rogue": "разбойник: тень, дым, сталь",
+  "deathknight": "рыцарь смерти: мертвенно-голубые руны, кость, иней",
+  "bloodweaver": "кровоплёт: кровь, сферы, капли, жилы",
+  "darkranger": "тёмный следопыт: сиреневые перья, луны",
+  "warlock": "чернокнижник: скверна, фиолетовый дым и зелёный огонь, черепа",
+  "reaver": "потрошитель: рваный багрянец, клинки, ярость"
+ },
+ "_rules": {
+  "slots": "На юнит одновременно: не больше одного круга (slot ring), одного купола (slot dome) и двух оверлеев (slot overlay: значки, частицы и орбиты вместе). Побеждает больший priority.",
+  "beads": "Остальные эффекты-круги не рисуются кругом, а становятся «бусинами» — камнями 5×5 цвета темы на кромке главного круга (до 4 штук, спереди, по порядку приоритета, мерцают по очереди).",
+  "crowd": "В толпе (больше 6 героев в кадре): у чужих героев только один круг (прозрачность 0,6), бусины и купол инвулна или блока; оверлеи и орбиты — только у себя, у выбранной цели и стан, скрытность, вне закона. У врагов — только дебафы stun, root, outlaw.",
+  "zones": "Умения-зоны рисуют круг на земле один раз (aura умения в skill-fx), а на каждом юните внутри — свой оверлей из раздела zones; он считается в лимит двух оверлеев. Знамя: у храмовника, поставившего знамя, — кольцо tp_banner (эмблема его фракции на кромке), у остальных в круге — zone_banner_<фракция знамени>; одно обозначение на юнит.",
+  "timewarp": "mg_timewarp: сам маг — timewarp (циферблат под ногами, слот круга); враги в поле искажения — zone_time (песочные часы над подписью); замедление slow от того же источника у них не рисуется — его показывают часы.",
+  "firewall": "mg_firewall: юнит в поле огненной стены — zone_fire (огонь у ног); горение burn от «Воспламенения» у него не рисуется, пока он в поле (два огня на одном юните — каша), вышел из поля и горит — burn.",
+  "icons": "Значки над подписью (главный слой at: head): один — по центру; два — в ряд по центру с зазором 2 px между видимыми краями, старший приоритет слева; точки стаков — под своим значком, в ряду из двух — только набранные (без пустых гнёзд); если стаки есть хотя бы у одного из двух, оба поднимаются на 3 px (ряд ровный). Ширина значка — видимые пиксели его листа (по всем кадрам), орбита над подписью (оглушение) занимает 2·rx + предмет.",
+  "depth": "Глубины по слоям (z): ground — круг на земле под героем и тенью (DEPTH.ground + 7); under — за героем (y − 0.5); over — над героем (y + 0.5); top — значки над подписью: низ значка на 1 px выше верха блока подписи (ник, титул, рамка — UnitView.blockUp), если подпись скрыта — на 2 px выше головы; глубина как у ника (DEPTH.top − 4). Орбиты: предмет на заднем полукруге — under, на переднем — over (у орбиты на земле — оба ground). Значки над головой — не выше 16 px (рисунок двойной плотности).",
+  "attach": "Точки at (пиксели мира от позиции юнита x, y — ряд 30 спрайта, ноги): feet — (x, y − 1), как кольцо выбора; body — (x, y − 13); hand — (x + 10, y − 11), при взгляде влево — зеркально; head — над подписью (см. depth). Все слои ставятся UnitView.attach, как ауры умений: позиция — в целых пикселях после bob героя и посадки на маунта.",
+  "density": "scale 0.5 — лист двойной плотности: на зуме 2 и 4 пиксель листа — целое число пикселей холста; на зуме 3 клиент берёт лист -x3 (scale 1/3) того же размера в мире. Орбиты и bob — в пикселях мира, клиент округляет до пикселя холста.",
+  "orbit": "orbit: n предметов (stacks: true — по числу стаков, не больше n), центр — точка at + (0, oy), эллипс rx × ry, период period мс (минус — по часовой), покачивание bob px с периодом bobPeriod (фазы разнесены), задний полукруг — альфа backAlpha (приглушение альфой, без затемнения). Кадры предмета: face shimmer — kinds блоков по F кадров, предмет i берёт блок i mod kinds и свою фазу мерцания; lr — первая половина листа — летит вправо, вторая — влево; angle — dirs кадров по углу на орбите (кадр k — угол k·360°/dirs, 0 — справа, 90° — спереди; предмет повёрнут по ходу полёта в 3D, на краях — в ракурсе). Руны рыцаря смерти (runeblade) — как в игре: кадры 0–3 руны, 4–7 ореолы (add), 8–11 блики; анимация — в коде (Vfx.orbit).",
+  "ease": "ease: появление — альфа 0 → 1 за fadeIn мс (easing out) и масштаб от scaleIn до 1; снятие — альфа 1 → 0 за fadeOut мс. Пиксельные слои масштабируются только при появлении.",
+  "replaces": "Обозначение заменяет цикл aura умения на герое (Vfx.buff → followUnit): пока у юнита есть обозначение этого ключа, цикл из data/skill-fx.json на нём не запускается. Зональные циклы (banner-*, flame-loop, fog-*, blood-pool) остаются на земле — они рисуют саму зону. Пары ключ ← умение: aura: invuln ← tp_divine: bubble-holy; block ← shieldblock: bubble-steel; shield ← holyshield: bubble-holy; bless ← cl_blessing: aura-runes-holy; renew ← renew: holy-heal; block@mage ← mg_barrier: bubble-arcane; bone ← dk_bone_armor: bubble-bone; antimagic ← dk_anti_magic: bubble-arcane; runeblade ← dk_rune_blade: aura-runes-frost; tide ← bw_tide: ring-blood; blood_circle ← bw_blood_circle: ring-blood; meta ← wl_meta: dark-wraith; frenzy ← rv_frenzy: aura-rage; massacre ← rv_massacre: tornado-blood.",
+  "priority": "100 Божественный щит, 95 оглушение, 90 скрытность, 85 танец теней, 80 метаморфоза, 70 костяная броня и вне закона, 60 барьер реликвии и корни, 55–40 круги, орбиты и значки классов (последний рубеж 50, прилив сил 42), ниже — значки.",
+  "only": "only: moving — слой рисуется только в движении (пыль маунта), при движении влево зеркалится; стоит — не рисуется.",
+  "stacks": "pips: под значком — точки стаков (2×2 мира с контуром, до pips штук), рисует клиент; у орбит со stacks число предметов = стакам."
+ },
+ "buffs": {
+  "invuln": {
+   "name": "Божественный щит",
+   "source": "tp_divine",
+   "class": "warrior",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "body",
+   "theme": "holy",
+   "look": "золотой купол: обод 3 px в 4 тона, верх на y − 33 (под ником), мягкое свечение внутри, непрозрачные лучи по бокам и снизу",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "лучи-клинья дышат волной и поворачиваются на шаг за цикл, по ободу бегут два блика; у вершины лучей нет"
+   },
+   "size": [
+    56,
+    52
+   ],
+   "priority": 100,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-invuln",
+     "frame": [
+      56,
+      52
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 180,
+    "fadeOut": 320,
+    "scaleIn": 0.8
+   },
+   "replaces": "bubble-holy",
+   "ref": "vendor/vfx-sds-holy/src/HolyNova/Spritesheet/HolyNova_spritesheet.png"
+  },
+  "block": {
+   "name": "Щитовой блок",
+   "source": "shieldblock",
+   "class": "warrior",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "body",
+   "theme": "paladin",
+   "look": "геральдический щит 14×18 у левой руки: лазурное поле, золотой обод, рельефный крест",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "щит покачивается (в коде), по золотому ободу ползёт свет, мягкий блик раз в цикл"
+   },
+   "size": [
+    16,
+    20
+   ],
+   "priority": 68,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-block",
+     "sheetX3": "aura-block-x3",
+     "frame": [
+      32,
+      40
+     ],
+     "frameX3": [
+      48,
+      60
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "offset": [
+      -14,
+      1
+     ],
+     "z": "over",
+     "bob": {
+      "amp": 1,
+      "period": 1700
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "bubble-steel",
+   "ref": "vendor/7soul1/src/E_Gold01.png"
+  },
+  "laststand": {
+   "name": "Последний рубеж",
+   "source": "laststand",
+   "class": "warrior",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "paladin",
+   "look": "значок над подписью (не круг): золотой геральдический щит с тёмно-багровым полем и рубиновым сердцем",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "удар сердца «тук-тук» (easing): сердце набухает и вспыхивает, за щитом раскрывается сияние в 4 ступени, по ободу обходит блик"
+   },
+   "size": [
+    14,
+    15
+   ],
+   "priority": 50,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-laststand",
+     "sheetX3": "aura-laststand-x3",
+     "frame": [
+      28,
+      30
+     ],
+     "frameX3": [
+      42,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/E_Gold01.png"
+  },
+  "tp_banner": {
+   "name": "Знамя защиты",
+   "source": "tp_banner",
+   "class": "warrior",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "holy",
+   "look": "кольцо из флажков: шесть вымпелов слоновой кости на золотых древках по эллипсу, витой золотой шнур 2 px, эмблема фракции на передней кромке",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "вымпелы полощутся по ветру (фазы разнесены), по витому шнуру бегут два блика, эмблема фракции светится"
+   },
+   "size": [
+    62,
+    38
+   ],
+   "priority": 45,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-tp_banner",
+     "frame": [
+      62,
+      38
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.631578947368421
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-tp_banner-emblem-solgard",
+     "sheetX3": "aura-tp_banner-emblem-solgard-x3",
+     "frame": [
+      32,
+      32
+     ],
+     "frameX3": [
+      48,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "offset": [
+      0,
+      10.5
+     ],
+     "z": "ground",
+     "variant": "solgard"
+    },
+    {
+     "sheet": "aura-tp_banner-emblem-umbrath",
+     "sheetX3": "aura-tp_banner-emblem-umbrath-x3",
+     "frame": [
+      32,
+      32
+     ],
+     "frameX3": [
+      48,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "offset": [
+      0,
+      10.5
+     ],
+     "z": "ground",
+     "variant": "umbrath"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "note": "у храмовника, поставившего знамя; у остальных в круге — zone_banner_<фракция>",
+   "ref": "vendor/vfx-sds-holy/src/HolyNova/Spritesheet/HolyNova_spritesheet.png"
+  },
+  "shield": {
+   "name": "Щит",
+   "source": "holyshield",
+   "class": "healer",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "body",
+   "theme": "holy",
+   "look": "прозрачный купол с бело-золотым ободом (верх на y − 33), крест 7×7 — на нижнем ободе спереди, далеко от подписи",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "блик бежит по ободу, крест на нижнем ободе дышит в 4 ступени, искры 2×2 вспыхивают и гаснут"
+   },
+   "size": [
+    44,
+    48
+   ],
+   "priority": 66,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-shield",
+     "frame": [
+      44,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.4583333333333333
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "bubble-holy",
+   "ref": "vendor/vfx-sds-holy/src/HolyShield/Spritesheet/HolyShield_spritesheet.png"
+  },
+  "bless": {
+   "name": "Благословение",
+   "source": "cl_blessing",
+   "class": "healer",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "holy",
+   "look": "орбита золотых четырёхлучевых искр",
+   "anim": {
+    "frames": 8,
+    "fps": 12,
+    "motion": "четыре золотые звезды-искры кружат над плечами (орбита в коде), мерцают"
+   },
+   "size": [
+    12,
+    12
+   ],
+   "priority": 35,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-bless",
+     "sheetX3": "aura-bless-x3",
+     "frame": [
+      24,
+      24
+     ],
+     "frameX3": [
+      36,
+      36
+     ],
+     "frames": 8,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 4,
+      "kinds": 1,
+      "rx": 13,
+      "ry": 4.5,
+      "oy": -5,
+      "period": 3800,
+      "bob": 0.6,
+      "bobPeriod": 1700,
+      "backAlpha": 0.7,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "aura-runes-holy",
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Spark/SpriteSheet.png"
+  },
+  "renew": {
+   "name": "Обновление",
+   "source": "renew",
+   "class": "healer",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "nature",
+   "look": "зелёно-белые кресты 7×7 со светлым ядром",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "кресты поднимаются по краям силуэта и гаснут (easing)"
+   },
+   "size": [
+    34,
+    36
+   ],
+   "priority": 30,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-renew",
+     "sheetX3": "aura-renew-x3",
+     "frame": [
+      68,
+      72
+     ],
+     "frameX3": [
+      102,
+      108
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "holy-heal",
+   "ref": "vendor/vfx-sds-holy/src/Heal/Spritesheet/Heal_spritesheet.png"
+  },
+  "rhythm": {
+   "name": "Стихийный ритм",
+   "source": "mg_rhythm",
+   "class": "mage",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "arcane",
+   "look": "огонь, лёд и арканум: сферы 6×6 с бликом",
+   "anim": {
+    "frames": 8,
+    "fps": 12,
+    "motion": "сферы по числу зарядов кружат (орбита в коде), внутри переливается стихия"
+   },
+   "size": [
+    9,
+    9
+   ],
+   "priority": 40,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-rhythm",
+     "sheetX3": "aura-rhythm-x3",
+     "frame": [
+      18,
+      18
+     ],
+     "frameX3": [
+      27,
+      27
+     ],
+     "frames": 24,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 3,
+      "stacks": true,
+      "kinds": 3,
+      "rx": 14,
+      "ry": 5,
+      "oy": 1,
+      "period": 2900,
+      "bob": 0.5,
+      "bobPeriod": 1500,
+      "backAlpha": 0.7,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-foozle-magic/src/Foozle_2DE0001_Pixel_Magic_Effects/Water/001.png"
+  },
+  "block@mage": {
+   "name": "Чародейский барьер",
+   "source": "mg_barrier",
+   "class": "mage",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "body",
+   "theme": "arcane",
+   "look": "купол с ободом 2 px (верх на y − 33); у края — светлые рёбра сот в 2 тона (лазурь и пурпур) без заливки; молния — ломаная 2 px с белым ядром, голубым ореолом и двумя ветками",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "по рёбрам сот бежит волна яркости; трижды за цикл в новом месте обода бьёт молния и гаснет за 3 кадра"
+   },
+   "size": [
+    44,
+    44
+   ],
+   "priority": 67,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-block_mage",
+     "frame": [
+      44,
+      44
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "bubble-arcane",
+   "ref": "vendor/vfx-pimen-thunder1/src/Thunder Effect 01/Thunder Hit/Thunder hit wo blur.png"
+  },
+  "timewarp": {
+   "name": "Искажение времени",
+   "source": "mg_timewarp",
+   "class": "mage",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "arcane",
+   "look": "тайный циферблат под ногами",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "свет перескакивает по 12 засечкам циферблата (тик), две дуги идут навстречу"
+   },
+   "size": [
+    52,
+    28
+   ],
+   "priority": 41,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-timewarp",
+     "frame": [
+      52,
+      28
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "note": "баф самого мага; враги в поле искажения получают zone_time",
+   "ref": "vendor/7soul1/src/I_Clock.png"
+  },
+  "dance": {
+   "name": "Танец теней",
+   "source": "as_dance",
+   "class": "rogue",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "shadow",
+   "look": "стальные сюрикены с фиолетовым сердечником",
+   "anim": {
+    "frames": 8,
+    "fps": 15,
+    "motion": "четыре сюрикена вращаются (8 кадров на четверть оборота, 15 к/с) и быстро кружат (орбита в коде)"
+   },
+   "size": [
+    9,
+    9
+   ],
+   "priority": 85,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-dance",
+     "sheetX3": "aura-dance-x3",
+     "frame": [
+      18,
+      18
+     ],
+     "frameX3": [
+      27,
+      27
+     ],
+     "frames": 8,
+     "fps": 15,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 4,
+      "kinds": 1,
+      "rx": 15,
+      "ry": 5,
+      "oy": 0,
+      "period": -1500,
+      "bob": 0.4,
+      "bobPeriod": 1100,
+      "backAlpha": 0.7,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Spark/SpriteSheet.png"
+  },
+  "as_ambush": {
+   "name": "Засада",
+   "source": "as_ambush",
+   "class": "rogue",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "скрещённые кинжалы",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "алая искра в перекрестье набирает яркость в 6 ступеней и гаснет"
+   },
+   "size": [
+    16,
+    14
+   ],
+   "priority": 25,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-as_ambush",
+     "sheetX3": "aura-as_ambush-x3",
+     "frame": [
+      32,
+      28
+     ],
+     "frameX3": [
+      48,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/S_Dagger02.png"
+  },
+  "stealth": {
+   "name": "Скрытность",
+   "source": "stealth",
+   "class": "rogue",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "shadow",
+   "look": "клубы 6–8 px: непрозрачное ядро в 3 тона (тёмно-сизый, сизый, блик) и тёмная кромка 1 px; без альфы, читаются на герое с альфой 0,4",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "три клуба дыма рождаются у краёв силуэта, растут, поднимаются и растворяются сжатием и дизером за 3 кадра"
+   },
+   "size": [
+    40,
+    44
+   ],
+   "priority": 90,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-stealth",
+     "frame": [
+      40,
+      44
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-smoke/src/Smoke Effect 01/Smoke VFX 2.png"
+  },
+  "critnext": {
+   "name": "Гарантированный крит",
+   "source": "shadowstep",
+   "class": "rogue",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "hand",
+   "theme": "shadow",
+   "look": "алая звезда 10 px с ореолом у руки",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "восьмилучевая звезда поворачивается (12 кадров на 45°), ореол дышит"
+   },
+   "size": [
+    14,
+    14
+   ],
+   "priority": 24,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-critnext",
+     "sheetX3": "aura-critnext-x3",
+     "frame": [
+      28,
+      28
+     ],
+     "frameX3": [
+      42,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "hand",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Circle/SpriteSheetSpark.png"
+  },
+  "trickroll": {
+   "name": "Ловкий отскок",
+   "source": "hr_trickroll",
+   "class": "ranger",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "nature",
+   "look": "светлое кольцо 2 px с контуром, листья 6 px в 3 тона",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "шесть листьев скользят по кольцу (в коде) и покачиваются"
+   },
+   "size": [
+    52,
+    28
+   ],
+   "priority": 30,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-trickroll",
+     "frame": [
+      52,
+      28
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-trickroll-leaves",
+     "sheetX3": "aura-trickroll-leaves-x3",
+     "frame": [
+      18,
+      14
+     ],
+     "frameX3": [
+      27,
+      21
+     ],
+     "frames": 16,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground",
+     "orbit": {
+      "n": 6,
+      "kinds": 2,
+      "rx": 23.5,
+      "ry": 10.7,
+      "oy": 0,
+      "period": 6400,
+      "bob": 0,
+      "bobPeriod": 1000,
+      "backAlpha": 1,
+      "face": "shimmer",
+      "ground": true
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Elemental/Plant/SpriteSheet.png"
+  },
+  "steady": {
+   "name": "Стойка стрелка",
+   "source": "hr_steady",
+   "class": "ranger",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "nature",
+   "look": "кольцо-прицел из коры и листвы",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "четыре засечки прицела сходятся к герою и расходятся (easing)"
+   },
+   "size": [
+    52,
+    32
+   ],
+   "priority": 31,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-steady",
+     "frame": [
+      52,
+      32
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Circle/SpriteSheetSpark.png"
+  },
+  "barrage": {
+   "name": "Ураганный огонь",
+   "source": "hr_barrage",
+   "class": "ranger",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "nature",
+   "look": "стрелы с зелёным оперением",
+   "anim": {
+    "frames": 16,
+    "fps": 12,
+    "motion": "три стрелы носятся вокруг (орбита в коде), кадр — по направлению полёта"
+   },
+   "size": [
+    16,
+    16
+   ],
+   "priority": 43,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-barrage",
+     "sheetX3": "aura-barrage-x3",
+     "frame": [
+      32,
+      32
+     ],
+     "frameX3": [
+      48,
+      48
+     ],
+     "frames": 16,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 3,
+      "kinds": 1,
+      "rx": 16,
+      "ry": 5.5,
+      "oy": -1,
+      "period": 1500,
+      "bob": 0.3,
+      "bobPeriod": 1000,
+      "backAlpha": 0.7,
+      "face": "angle",
+      "dirs": 16
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Elemental/Plant/SpriteSheet.png"
+  },
+  "bone": {
+   "name": "Броня из костей",
+   "source": "dk_bone_armor",
+   "class": "deathknight",
+   "kind": "orbit",
+   "slot": "dome",
+   "at": "body",
+   "theme": "death",
+   "look": "костяные щитки-наплечники 7×9 в 5 тонов: гребень с канавкой, иней по верхнему краю, тень снизу справа",
+   "anim": {
+    "frames": 8,
+    "fps": 12,
+    "motion": "три щитка медленно кружат у пояса (орбита в коде, rx 17), по гребню стекает морозный блик"
+   },
+   "size": [
+    9,
+    11
+   ],
+   "priority": 70,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-bone",
+     "sheetX3": "aura-bone-x3",
+     "frame": [
+      18,
+      22
+     ],
+     "frameX3": [
+      27,
+      33
+     ],
+     "frames": 8,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 3,
+      "kinds": 1,
+      "rx": 17,
+      "ry": 4.5,
+      "oy": -1,
+      "period": 5000,
+      "bob": 0.6,
+      "bobPeriod": 2300,
+      "backAlpha": 1,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "bubble-bone",
+   "ref": "vendor/7soul1/src/E_Bones02.png"
+  },
+  "antimagic": {
+   "name": "Антимагический панцирь",
+   "source": "dk_anti_magic",
+   "class": "deathknight",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "body",
+   "theme": "death",
+   "look": "ледяная сфера со сплошным ободом (верх на y − 33), на ободе — пять рун-плиток 5×6 (руна 3×4 в 3 тона, контур); героя ничто не режет",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "свет обходит руны по очереди: руна разгорается в 4 ступени, вокруг вспыхивает ореол; по ободу бежит блик"
+   },
+   "size": [
+    44,
+    44
+   ],
+   "priority": 69,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-antimagic",
+     "frame": [
+      44,
+      44
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "bubble-arcane",
+   "ref": "vendor/vfx-srzolda/blue_idle_Sheet.png"
+  },
+  "runeblade": {
+   "name": "Рунный клинок",
+   "source": "dk_rune_blade",
+   "class": "deathknight",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "death",
+   "look": "светящиеся руны с белым ядром",
+   "anim": {
+    "frames": 3,
+    "fps": 12,
+    "motion": "четыре руны кружат, мерцают (уже в игре)"
+   },
+   "size": [
+    10,
+    11
+   ],
+   "priority": 55,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-runes-frost",
+     "sheetX3": "aura-runes-frost-x3",
+     "frame": [
+      20,
+      22
+     ],
+     "frameX3": [
+      29,
+      32
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "over",
+     "orbit": {
+      "n": 4,
+      "kinds": 4,
+      "rx": 12,
+      "ry": 4,
+      "oy": -8,
+      "period": 2800,
+      "bob": 1,
+      "bobPeriod": 1900,
+      "backAlpha": 0.6,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 350,
+    "fadeOut": 350,
+    "scaleIn": 0.6
+   },
+   "replaces": "aura-runes-frost",
+   "ref": "vendor/7soul1/src/I_Crystal01.png"
+  },
+  "blood_tap": {
+   "name": "Пожирание боли",
+   "source": "dk_blood_tap",
+   "class": "deathknight",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "death",
+   "look": "крупные капли крови 4×5 в 4 тона с бликом и контуром, мертвенно-голубая искра у груди",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "три капли по спирали втягиваются к груди (хвост 2 px укорачивается, капля сжимается), у груди вспыхивает голубая искра 5×5"
+   },
+   "size": [
+    40,
+    36
+   ],
+   "priority": 34,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-blood_tap",
+     "sheetX3": "aura-blood_tap-x3",
+     "frame": [
+      80,
+      72
+     ],
+     "frameX3": [
+      120,
+      108
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-dark/src/Dark VFX 1/Dark VFX 1 (40x32).png"
+  },
+  "dmgboost": {
+   "name": "Прилив сил",
+   "source": "bw_gift",
+   "class": "bloodweaver",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "blood",
+   "look": "значок над подписью (не круг): три багровых шеврона-стрелы вверх в 3–4 тона с фаской и контуром",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "сила поднимается снизу вверх: шевроны по очереди разгораются в 4 ступени и остывают, у верхнего на пике — искра"
+   },
+   "size": [
+    12,
+    15
+   ],
+   "priority": 42,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-dmgboost",
+     "sheetX3": "aura-dmgboost-x3",
+     "frame": [
+      24,
+      30
+     ],
+     "frameX3": [
+      36,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/S_Buff14.png"
+  },
+  "bond": {
+   "name": "Кровавые узы",
+   "source": "bw_blood_bond",
+   "class": "bloodweaver",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "blood",
+   "look": "сердце, обвитое цепью из пяти звеньев",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "сердце бьётся (удар и затухание), блик бежит по звеньям"
+   },
+   "size": [
+    16,
+    15
+   ],
+   "priority": 28,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-bond",
+     "sheetX3": "aura-bond-x3",
+     "frame": [
+      32,
+      30
+     ],
+     "frameX3": [
+      48,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/S_Holy01.png"
+  },
+  "tide": {
+   "name": "Алый прилив",
+   "source": "bw_tide",
+   "class": "bloodweaver",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "blood",
+   "look": "сферы крови 7 px в 4 тона с бликом",
+   "anim": {
+    "frames": 8,
+    "fps": 12,
+    "motion": "три сферы крови кружат (орбита в коде), с каждой срывается и гаснет капля"
+   },
+   "size": [
+    9,
+    15
+   ],
+   "priority": 38,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-tide",
+     "sheetX3": "aura-tide-x3",
+     "frame": [
+      18,
+      30
+     ],
+     "frameX3": [
+      27,
+      45
+     ],
+     "frames": 8,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.3
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 3,
+      "kinds": 1,
+      "rx": 13,
+      "ry": 4.5,
+      "oy": 2,
+      "period": 3300,
+      "bob": 0.5,
+      "bobPeriod": 1600,
+      "backAlpha": 0.7,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "ring-blood",
+   "ref": "vendor/vfx-foozle-magic/src/Foozle_2DE0001_Pixel_Magic_Effects/Water/001.png"
+  },
+  "blood_circle": {
+   "name": "Кровный круг",
+   "source": "bw_blood_circle",
+   "class": "bloodweaver",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "blood",
+   "look": "лужа тёмной крови под ногами: по краю жила 2 px с шестью узлами-каплями, внутри — тёмная кровь с глянцем",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "по жиле раз за цикл обходит волна пульса: жила светлеет, узлы-капли набухают и опадают (easing), глянец скользит"
+   },
+   "size": [
+    52,
+    28
+   ],
+   "priority": 39,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-blood_circle",
+     "frame": [
+      52,
+      28
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "ring-blood",
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Circle/SpriteSheetOrange.png"
+  },
+  "dr_ambush": {
+   "name": "Засада (тёмный следопыт)",
+   "source": "dr_ambush",
+   "class": "darkranger",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "стрела по диагонали с фиолетовым оперением, 14 px",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "фиолетовый свет пробегает по стреле, перо светится"
+   },
+   "size": [
+    16,
+    14
+   ],
+   "priority": 24,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-dr_ambush",
+     "sheetX3": "aura-dr_ambush-x3",
+     "frame": [
+      32,
+      28
+     ],
+     "frameX3": [
+      48,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/I_Feather01.png"
+  },
+  "meld": {
+   "name": "Мастер теней",
+   "source": "dr_shadow_mastery",
+   "class": "darkranger",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "shadow",
+   "look": "сиреневое кольцо 2 px с контуром, полумесяцы в 3 тона",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "три полумесяца скользят по кольцу (в коде), два пера на кромке"
+   },
+   "size": [
+    52,
+    32
+   ],
+   "priority": 44,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-meld",
+     "frame": [
+      52,
+      32
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.4375
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-meld-moons",
+     "sheetX3": "aura-meld-moons-x3",
+     "frame": [
+      16,
+      16
+     ],
+     "frameX3": [
+      24,
+      24
+     ],
+     "frames": 8,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground",
+     "orbit": {
+      "n": 3,
+      "kinds": 1,
+      "rx": 22,
+      "ry": 10,
+      "oy": 0,
+      "period": -5200,
+      "bob": 0,
+      "bobPeriod": 1000,
+      "backAlpha": 1,
+      "face": "shimmer",
+      "ground": true
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-srzolda/purple_idle_Sheet.png"
+  },
+  "meta": {
+   "name": "Метаморфоза",
+   "source": "wl_meta",
+   "class": "warlock",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "feet",
+   "theme": "shadow",
+   "look": "фиолетовые языки-дымки по краям силуэта (4 тона), зелёное ядро у ног; рогов нет — ничего не выходит за голову",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "дымные языки поднимаются по краям силуэта и отрывают клочки; ядро скверны у земли пульсирует в 5 ступеней, из него поднимаются искры"
+   },
+   "size": [
+    44,
+    46
+   ],
+   "priority": 80,
+   "layer": "за героем (y − 0.5); над героем (y + 0.5); на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-meta",
+     "frame": [
+      44,
+      46
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.8695652173913043
+     ],
+     "at": "feet",
+     "z": "under"
+    },
+    {
+     "sheet": "aura-meta-front",
+     "frame": [
+      44,
+      46
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.8695652173913043
+     ],
+     "at": "feet",
+     "z": "over"
+    },
+    {
+     "sheet": "aura-meta-core",
+     "frame": [
+      30,
+      14
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5714285714285714
+     ],
+     "at": "feet",
+     "z": "ground"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "dark-wraith",
+   "ref": "vendor/vfx-pimen-dark/src/Dark VFX 2/Dark VFX 2 (48x64).png"
+  },
+  "shards": {
+   "name": "Осколки душ",
+   "source": "wl_shards",
+   "class": "warlock",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "shadow",
+   "look": "черепа в 4 тона с зелёным огнём",
+   "anim": {
+    "frames": 8,
+    "fps": 12,
+    "motion": "черепа по числу осколков кружат (орбита в коде), за каждым — хвост зелёного пламени"
+   },
+   "size": [
+    14,
+    10
+   ],
+   "priority": 36,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-shards",
+     "sheetX3": "aura-shards-x3",
+     "frame": [
+      28,
+      20
+     ],
+     "frameX3": [
+      42,
+      30
+     ],
+     "frames": 16,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over",
+     "orbit": {
+      "n": 3,
+      "stacks": true,
+      "kinds": 1,
+      "rx": 15,
+      "ry": 5,
+      "oy": -3,
+      "period": 3100,
+      "bob": 0.7,
+      "bobPeriod": 1900,
+      "backAlpha": 0.62,
+      "face": "lr"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-dark/src/Dark VFX 1/Dark VFX 1 (40x32).png"
+  },
+  "frenzy": {
+   "name": "Кровавое безумие",
+   "source": "rv_frenzy",
+   "class": "reaver",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "blood",
+   "look": "багровое рваное кольцо, стальные клинки-зубцы на передней кромке",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "пульс яркости в 5 ступеней (нарастание 3 кадра, спад 9, easing), зубья стоят на месте, брызги 2×2 разлетаются и гаснут дизером"
+   },
+   "size": [
+    52,
+    32
+   ],
+   "priority": 48,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-frenzy",
+     "frame": [
+      52,
+      32
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.4375
+     ],
+     "at": "feet",
+     "z": "ground"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "aura-rage",
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Aura/SpriteSheet.png"
+  },
+  "massacre": {
+   "name": "Кровавая бойня",
+   "source": "rv_massacre",
+   "class": "reaver",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "blood",
+   "look": "вихрь клинков",
+   "anim": {
+    "frames": 12,
+    "fps": 15,
+    "motion": "две дуги-взмаха клинков носятся вокруг ног (15° за кадр): задние под героем, передние перед ним"
+   },
+   "size": [
+    54,
+    32
+   ],
+   "priority": 49,
+   "layer": "за героем (y − 0.5); над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-massacre",
+     "frame": [
+      54,
+      32
+     ],
+     "frames": 12,
+     "fps": 15,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.53125
+     ],
+     "at": "feet",
+     "offset": [
+      0,
+      -3
+     ],
+     "z": "under"
+    },
+    {
+     "sheet": "aura-massacre-front",
+     "frame": [
+      54,
+      32
+     ],
+     "frames": 12,
+     "fps": 15,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.53125
+     ],
+     "at": "feet",
+     "offset": [
+      0,
+      -3
+     ],
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "replaces": "tornado-blood",
+   "ref": "vendor/vfx-pimen-smear/src/Smear VFX 01/Smear 01 Horizontal 1.png"
+  },
+  "fury": {
+   "name": "Разъярённый",
+   "source": "rv_fury_stack",
+   "class": "reaver",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "blood",
+   "look": "пламенные когти",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "три огненных когтя наливаются жаром и остывают (6 ступеней), стаки — точками"
+   },
+   "size": [
+    15,
+    14
+   ],
+   "priority": 33,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-fury",
+     "sheetX3": "aura-fury-x3",
+     "frame": [
+      30,
+      28
+     ],
+     "frameX3": [
+      45,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "pips": 5,
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Attack/ClawDouble/SpriteSheet.png"
+  }
+ },
+ "common": {
+  "leg_barrier": {
+   "name": "Барьер реликвии",
+   "source": "легендарная вещь",
+   "class": "common",
+   "kind": "shield",
+   "slot": "dome",
+   "at": "body",
+   "theme": "holy",
+   "look": "гранёный кристалл-шестигранник (верх на y − 33): грани с объёмом — верхние светлее, нижние темнее (4 тона), рёбра между гранями, середина прозрачна",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "блик 3×3 бежит по внешнему ребру с затухающим хвостом, раз в цикл на верхнем левом углу вспыхивает искра"
+   },
+   "size": [
+    44,
+    44
+   ],
+   "priority": 60,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-leg_barrier",
+     "frame": [
+      44,
+      44
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/I_Crystal01.png"
+  },
+  "leg_frenzy": {
+   "name": "Исступление",
+   "source": "легендарная вещь",
+   "class": "common",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "hand",
+   "theme": "fire",
+   "look": "огненное колесо 15 px у руки",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "три языка пламени бегут по кругу (10° за кадр)"
+   },
+   "size": [
+    16,
+    16
+   ],
+   "priority": 26,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-leg_frenzy",
+     "sheetX3": "aura-leg_frenzy-x3",
+     "frame": [
+      32,
+      32
+     ],
+     "frameX3": [
+      48,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "hand",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "pips": 5,
+   "ref": "vendor/vfx-foozle-magic/src/Foozle_2DE0001_Pixel_Magic_Effects/Fire_Ball/003.png"
+  },
+  "haste": {
+   "name": "Ускорение",
+   "source": "общее",
+   "class": "common",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "phys",
+   "look": "крылышки у пяток: по 4 сужающихся пера внахлёст в 3 тона с голубым ободом, золотая застёжка",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "веер крылышек раскрывается и складывается (взмах, easing), штрихи скорости 2 px уносятся назад и укорачиваются"
+   },
+   "size": [
+    36,
+    14
+   ],
+   "priority": 20,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-haste",
+     "sheetX3": "aura-haste-x3",
+     "frame": [
+      72,
+      28
+     ],
+     "frameX3": [
+      108,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "feet",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-sds-levelup/src/Level Up Effect/Spritesheet/Level Up Effect Spritesheet.png"
+  },
+  "warcry": {
+   "name": "Вой питомца",
+   "source": "питомец",
+   "class": "common",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "fire",
+   "look": "лапа зверя и дуги звука",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "дуги звука расходятся в обе стороны и гаснут"
+   },
+   "size": [
+    22,
+    12
+   ],
+   "priority": 18,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-warcry",
+     "sheetX3": "aura-warcry-x3",
+     "frame": [
+      44,
+      24
+     ],
+     "frameX3": [
+      66,
+      36
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/I_RabbitPaw.png"
+  },
+  "food": {
+   "name": "Еда",
+   "source": "еда",
+   "class": "common",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "hand",
+   "theme": "fire",
+   "look": "миска у руки, пар",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "клубы пара поднимаются и тают"
+   },
+   "size": [
+    12,
+    16
+   ],
+   "priority": 5,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-food",
+     "sheetX3": "aura-food-x3",
+     "frame": [
+      24,
+      32
+     ],
+     "frameX3": [
+      36,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "hand",
+     "offset": [
+      0,
+      3
+     ],
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-smoke/src/Smoke Effect 01/Smoke VFX3.png"
+  },
+  "potion": {
+   "name": "Зелье",
+   "source": "зелье",
+   "class": "common",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "frost",
+   "look": "склянка 10×14",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "склянка покачивается (в коде), внутри поднимаются пузырьки, по стеклу скользит блик"
+   },
+   "size": [
+    10,
+    14
+   ],
+   "priority": 5,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-potion",
+     "sheetX3": "aura-potion-x3",
+     "frame": [
+      20,
+      28
+     ],
+     "frameX3": [
+      30,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top",
+     "bob": {
+      "amp": 1,
+      "period": 1800
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-foozle-magic/src/Foozle_2DE0001_Pixel_Magic_Effects/Water/001.png"
+  },
+  "mount": {
+   "name": "Маунт и питомец",
+   "source": "маунт",
+   "class": "common",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "phys",
+   "look": "пыльная дуга за копытами",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "клубы пыли вылетают из-под копыт назад и гаснут; стоит — не рисуется"
+   },
+   "size": [
+    48,
+    18
+   ],
+   "priority": 3,
+   "layer": "за героем (y − 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-mount",
+     "frame": [
+      48,
+      18
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.62,
+      0.8
+     ],
+     "at": "feet",
+     "z": "under"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "only": "moving",
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Smoke/SmokeCircular/SpriteSheet.png"
+  }
+ },
+ "debuffs": {
+  "stun": {
+   "name": "Оглушение",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "orbit",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "holy",
+   "look": "жёлтые звёзды в 3 тона с бликом",
+   "anim": {
+    "frames": 8,
+    "fps": 12,
+    "motion": "три звезды кружат над подписью (орбита в коде), мерцают"
+   },
+   "size": [
+    8,
+    8
+   ],
+   "priority": 95,
+   "layer": "орбита: задний полукруг за героем (y − 0.5), передний над ним (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-stun",
+     "sheetX3": "aura-stun-x3",
+     "frame": [
+      16,
+      16
+     ],
+     "frameX3": [
+      24,
+      24
+     ],
+     "frames": 8,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "head",
+     "z": "top",
+     "orbit": {
+      "n": 3,
+      "kinds": 1,
+      "rx": 9,
+      "ry": 2.6,
+      "oy": -4,
+      "period": 1300,
+      "bob": 0.3,
+      "bobPeriod": 900,
+      "backAlpha": 0.7,
+      "face": "shimmer"
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 120,
+    "fadeOut": 200,
+    "scaleIn": 0.7
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Spark/SpriteSheet.png"
+  },
+  "root": {
+   "name": "Корни",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "nature",
+   "look": "толстые корни из земли обвивают сапоги спереди",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "петли у сапог сжимаются по синусу в 3 ступени и подрагивают, боковые корни качаются, шипы мерцают, комья земли осыпаются; кадры не повторяются"
+   },
+   "size": [
+    52,
+    30
+   ],
+   "priority": 60,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7); над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-root",
+     "frame": [
+      52,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.6
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-root-wrap",
+     "frame": [
+      52,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.6
+     ],
+     "at": "feet",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-foozle-magic/src/Foozle_2DE0001_Pixel_Magic_Effects/Earth_Spike/005.png"
+  },
+  "slow": {
+   "name": "Замедление",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "ring",
+   "slot": "ring",
+   "at": "feet",
+   "theme": "frost",
+   "look": "кольцо инея 2 px и ледяные кристаллы на передней кромке",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "блик скользит по кристаллам и кольцу инея"
+   },
+   "size": [
+    52,
+    30
+   ],
+   "priority": 58,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7)",
+   "layers": [
+    {
+     "sheet": "aura-slow",
+     "frame": [
+      52,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5333333333333333
+     ],
+     "at": "feet",
+     "z": "ground"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-ice/src/Ice Effect 01/Ice VFX 2/Ice VFX 2 Active.png"
+  },
+  "weak": {
+   "name": "Ослабление",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "сломанный меч 14 px",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "трещина сломанного меча тлеет фиолетовым, обломок чуть опускается"
+   },
+   "size": [
+    12,
+    16
+   ],
+   "priority": 40,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-weak",
+     "sheetX3": "aura-weak-x3",
+     "frame": [
+      24,
+      32
+     ],
+     "frameX3": [
+      36,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/S_Sword01.png"
+  },
+  "poison": {
+   "name": "Яд",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "poison",
+   "look": "зелёные пузыри у ног и по бокам",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "полупрозрачные пузыри поднимаются по краям силуэта и лопаются"
+   },
+   "size": [
+    32,
+    34
+   ],
+   "priority": 35,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-poison",
+     "sheetX3": "aura-poison-x3",
+     "frame": [
+      64,
+      68
+     ],
+     "frameX3": [
+      96,
+      102
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-sds-poison/src/Poison Spells minipack/Spritesheets/PoisonMagicEffect_spritesheet.png"
+  },
+  "venom": {
+   "name": "Ядовитый клинок",
+   "source": "дебаф (разбойник)",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "poison",
+   "look": "два изогнутых змеиных клыка в 3 тона с контуром, загнуты внутрь, острые; зелёная капля яда",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "капля яда по очереди набухает на кончике то одного, то другого клыка, срывается между ними и гаснет сжатием; стаки — точками"
+   },
+   "size": [
+    14,
+    15
+   ],
+   "priority": 36,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-venom",
+     "sheetX3": "aura-venom-x3",
+     "frame": [
+      28,
+      30
+     ],
+     "frameX3": [
+      42,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "pips": 5,
+   "ref": "vendor/7soul1/src/I_Fang.png"
+  },
+  "bleed": {
+   "name": "Кровотечение",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "blood",
+   "look": "капли крови 3×4 с бликом",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "капли срываются с краёв силуэта, падают и разбиваются у ног"
+   },
+   "size": [
+    30,
+    34
+   ],
+   "priority": 37,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-bleed",
+     "sheetX3": "aura-bleed-x3",
+     "frame": [
+      60,
+      68
+     ],
+     "frameX3": [
+      90,
+      102
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-foozle-magic/src/Foozle_2DE0001_Pixel_Magic_Effects/Water/001.png"
+  },
+  "burn": {
+   "name": "Горение",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "fire",
+   "look": "четыре языка-капли по краям силуэта: ядро → жёлтый → оранжевый → красный",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "языки пламени колышутся и поднимаются, угольки гаснут"
+   },
+   "size": [
+    36,
+    36
+   ],
+   "priority": 38,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-burn",
+     "frame": [
+      36,
+      36
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Particle/Fire.png"
+  },
+  "curse": {
+   "name": "Проклятие",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "фиолетовая печать с пентаграммой",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "печать медленно поворачивается (6° за кадр), сердцевина дышит"
+   },
+   "size": [
+    15,
+    15
+   ],
+   "priority": 39,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-curse",
+     "sheetX3": "aura-curse-x3",
+     "frame": [
+      30,
+      30
+     ],
+     "frameX3": [
+      45,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-srzolda/purple_idle_Sheet.png"
+  },
+  "hex": {
+   "name": "Проклятие рока",
+   "source": "wl_hex (дебаф)",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "фиолетовый знак рока с огнём скверны",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "зелёное пламя скверны колышется в перевёрнутом треугольнике"
+   },
+   "size": [
+    14,
+    14
+   ],
+   "priority": 41,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-hex",
+     "sheetX3": "aura-hex-x3",
+     "frame": [
+      28,
+      28
+     ],
+     "frameX3": [
+      42,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-dark/src/Dark VFX 2/Dark VFX 2 (48x64).png"
+  },
+  "hunter_mark": {
+   "name": "Метка охотника",
+   "source": "hr_mark (дебаф)",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "nature",
+   "look": "янтарный прицел с четырьмя засечками",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "прицел сжимается к цели и разжимается (easing), яркость в 5 ступеней"
+   },
+   "size": [
+    14,
+    14
+   ],
+   "priority": 42,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-hunter_mark",
+     "sheetX3": "aura-hunter_mark-x3",
+     "frame": [
+      28,
+      28
+     ],
+     "frameX3": [
+      42,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Circle/SpriteSheetSpark.png"
+  },
+  "shock": {
+   "name": "Шок",
+   "source": "mg_conduction (дебаф)",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "arcane",
+   "look": "голубая молния с белым ядром",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "молния вспыхивает, по ней бегут искры"
+   },
+   "size": [
+    12,
+    15
+   ],
+   "priority": 41,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-shock",
+     "sheetX3": "aura-shock-x3",
+     "frame": [
+      24,
+      30
+     ],
+     "frameX3": [
+      36,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-thunder1/src/Thunder Effect 01/Thunder Hit/Thunder hit wo blur.png"
+  },
+  "mortality": {
+   "name": "Знак смерти",
+   "source": "dk_mortality (дебаф)",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "death",
+   "look": "рунная плитка рыцаря смерти с черепом",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "череп на руне светится, свет дышит; метки — точками"
+   },
+   "size": [
+    12,
+    14
+   ],
+   "priority": 43,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-mortality",
+     "sheetX3": "aura-mortality-x3",
+     "frame": [
+      24,
+      28
+     ],
+     "frameX3": [
+      36,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "pips": 5,
+   "ref": "vendor/7soul1/src/E_Bones03.png"
+  },
+  "outlaw": {
+   "name": "Вне закона",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "blood",
+   "look": "алая печать с перечёркнутым щитом",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "печать наливается красным в 6 ступеней и остывает"
+   },
+   "size": [
+    15,
+    15
+   ],
+   "priority": 70,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-outlaw",
+     "sheetX3": "aura-outlaw-x3",
+     "frame": [
+      30,
+      30
+     ],
+     "frameX3": [
+      45,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Circle/SpriteSheetOrange.png"
+  },
+  "intruder": {
+   "name": "Чужак в столице",
+   "source": "дебаф",
+   "class": "debuff",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "fire",
+   "look": "янтарное око",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "око смотрит влево-вправо (easing) и моргает"
+   },
+   "size": [
+    16,
+    10
+   ],
+   "priority": 69,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-intruder",
+     "sheetX3": "aura-intruder-x3",
+     "frame": [
+      32,
+      20
+     ],
+     "frameX3": [
+      48,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/I_Eye.png"
+  }
+ },
+ "zones": {
+  "zone_banner_solgard": {
+   "name": "Знамя защиты (в круге, Сольгард)",
+   "source": "tp_banner",
+   "class": "warrior",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "holy",
+   "look": "герб «Восход над Оплотом» (малая эмблема)",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "эмблема покачивается (в коде), за ней дышит свет, вверх поднимаются искры"
+   },
+   "size": [
+    16,
+    16
+   ],
+   "priority": 46,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-zone_banner_solgard",
+     "sheetX3": "aura-zone_banner_solgard-x3",
+     "frame": [
+      32,
+      32
+     ],
+     "frameX3": [
+      48,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top",
+     "bob": {
+      "amp": 1,
+      "period": 2000
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-sds-holy/src/HolyNova/Spritesheet/HolyNova_spritesheet.png"
+  },
+  "zone_banner_umbrath": {
+   "name": "Знамя защиты (в круге, Умбрат)",
+   "source": "tp_banner",
+   "class": "warrior",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "герб «Корона над гробом» (малая эмблема)",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "эмблема покачивается (в коде), за ней дышит фиолетовый свет"
+   },
+   "size": [
+    16,
+    16
+   ],
+   "priority": 46,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-zone_banner_umbrath",
+     "sheetX3": "aura-zone_banner_umbrath-x3",
+     "frame": [
+      32,
+      32
+     ],
+     "frameX3": [
+      48,
+      48
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top",
+     "bob": {
+      "amp": 1,
+      "period": 2000
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-pimen-dark/src/Dark VFX 2/Dark VFX 2 (48x64).png"
+  },
+  "zone_circle": {
+   "name": "Круг света",
+   "source": "circle",
+   "class": "healer",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "holy",
+   "look": "узкие лучи 2–3 px в 4 тона по краям силуэта (за героем), к верху сужаются и гаснут дизером; пятно света; пылинки 2×2",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "лучи дышат по высоте, по каждому вверх бежит светлая волна, пятно на земле дышит в 5 ступеней, пылинки опускаются"
+   },
+   "size": [
+    44,
+    40
+   ],
+   "priority": 32,
+   "layer": "за героем (y − 0.5); на земле: под героем и его тенью (DEPTH.ground + 7); над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-zone_circle",
+     "frame": [
+      44,
+      40
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.9
+     ],
+     "at": "feet",
+     "z": "under"
+    },
+    {
+     "sheet": "aura-zone_circle-pool",
+     "frame": [
+      32,
+      12
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-zone_circle-motes",
+     "frame": [
+      44,
+      40
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.9
+     ],
+     "at": "feet",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-sds-holy/src/HeavensFury/Spritesheet/HeavensFury_spritesheet.png"
+  },
+  "zone_hymn": {
+   "name": "Гимн исцеления",
+   "source": "cl_hymn",
+   "class": "healer",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "body",
+   "theme": "holy",
+   "look": "ноты в 3 тона с контуром",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "золотые ноты поднимаются по краям силуэта, покачиваются и гаснут"
+   },
+   "size": [
+    34,
+    34
+   ],
+   "priority": 31,
+   "layer": "над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-zone_hymn",
+     "sheetX3": "aura-zone_hymn-x3",
+     "frame": [
+      68,
+      68
+     ],
+     "frameX3": [
+      102,
+      102
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "body",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Spark/SpriteSheet.png"
+  },
+  "zone_aegis": {
+   "name": "Покров веры",
+   "source": "cl_aegis",
+   "class": "healer",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "holy",
+   "look": "золотой нимб с крыльями над подписью",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "крылья взмахивают (easing), свет обходит нимб"
+   },
+   "size": [
+    18,
+    10
+   ],
+   "priority": 34,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-zone_aegis",
+     "sheetX3": "aura-zone_aegis-x3",
+     "frame": [
+      36,
+      20
+     ],
+     "frameX3": [
+      54,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-sds-holy/src/HolyShield/Spritesheet/HolyShield_spritesheet.png"
+  },
+  "zone_pool": {
+   "name": "Багровая купель",
+   "source": "bw_crimson_pool",
+   "class": "bloodweaver",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "blood",
+   "look": "золотой кубок с кровью",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "кубок покачивается (в коде), в него поднимаются капли, кровь колышется"
+   },
+   "size": [
+    12,
+    15
+   ],
+   "priority": 29,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-zone_pool",
+     "sheetX3": "aura-zone_pool-x3",
+     "frame": [
+      24,
+      30
+     ],
+     "frameX3": [
+      36,
+      45
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top",
+     "bob": {
+      "amp": 1,
+      "period": 1900
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/7soul1/src/P_Red01.png"
+  },
+  "zone_doom": {
+   "name": "Чумной туман",
+   "source": "wl_doom",
+   "class": "warlock",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "poison",
+   "look": "лужа миазмов (3 тона, тёмно-фиолетовый контур), за героем по бокам — два языка скверны, перед ним — споры 2×2; без альфы",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "край лужи колышется, пузыри всплывают и лопаются, два языка скверны колышутся и роняют клочок, споры поднимаются"
+   },
+   "size": [
+    48,
+    22
+   ],
+   "priority": 27,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7); за героем (y − 0.5); над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-zone_doom",
+     "frame": [
+      48,
+      22
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.5
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-zone_doom-tongues",
+     "frame": [
+      48,
+      34
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.8823529411764706
+     ],
+     "at": "feet",
+     "z": "under"
+    },
+    {
+     "sheet": "aura-zone_doom-spores",
+     "frame": [
+      48,
+      34
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.8823529411764706
+     ],
+     "at": "feet",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-sds-poison/src/Poison Spells minipack/Spritesheets/PoisonMagicEffect_spritesheet.png"
+  },
+  "zone_veil": {
+   "name": "Пелена тьмы",
+   "source": "dr_veil",
+   "class": "darkranger",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "shadow",
+   "look": "полумесяц и звёзды ночи",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "три звезды мерцают по очереди (6 ступеней), полумесяц дышит"
+   },
+   "size": [
+    16,
+    12
+   ],
+   "priority": 27,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-zone_veil",
+     "sheetX3": "aura-zone_veil-x3",
+     "frame": [
+      32,
+      24
+     ],
+     "frameX3": [
+      48,
+      36
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Magic/Spark/SpriteSheet.png"
+  },
+  "zone_smoke": {
+   "name": "Дымовая завеса",
+   "source": "as_smoke",
+   "class": "rogue",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "shadow",
+   "look": "плотные клубы дыма в 3 тона с тёмной кромкой 1 px стелются у ног, без альфы",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "семь клубов обходят ноги, доли каждого перекатываются и дышат; дважды за цикл отрывается клочок и растворяется дизером"
+   },
+   "size": [
+    54,
+    30
+   ],
+   "priority": 26,
+   "layer": "за героем (y − 0.5); над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-zone_smoke",
+     "frame": [
+      54,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.6666666666666666
+     ],
+     "at": "feet",
+     "z": "under"
+    },
+    {
+     "sheet": "aura-zone_smoke-front",
+     "frame": [
+      54,
+      30
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.6666666666666666
+     ],
+     "at": "feet",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Smoke/Smoke/SpriteSheet.png"
+  },
+  "zone_fire": {
+   "name": "Огненная стена",
+   "source": "mg_firewall",
+   "class": "mage",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "feet",
+   "theme": "fire",
+   "look": "горящая кромка на земле под юнитом",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "огненная кромка тлеет и вспыхивает на земле, искры летят вверх"
+   },
+   "size": [
+    46,
+    22
+   ],
+   "priority": 26,
+   "layer": "на земле: под героем и его тенью (DEPTH.ground + 7); над героем (y + 0.5)",
+   "layers": [
+    {
+     "sheet": "aura-zone_fire",
+     "frame": [
+      46,
+      22
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.6363636363636364
+     ],
+     "at": "feet",
+     "z": "ground"
+    },
+    {
+     "sheet": "aura-zone_fire-sparks",
+     "frame": [
+      46,
+      34
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 1,
+     "anchor": [
+      0.5,
+      0.8823529411764706
+     ],
+     "at": "feet",
+     "z": "over"
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "ref": "vendor/vfx-ninja/src/Ninja Adventure - Asset Pack/FX/Elemental/Flam/SpriteSheet.png"
+  },
+  "zone_time": {
+   "name": "Искажение времени (в поле)",
+   "source": "mg_timewarp",
+   "class": "mage",
+   "kind": "overlay",
+   "slot": "overlay",
+   "at": "head",
+   "theme": "arcane",
+   "look": "песочные часы",
+   "anim": {
+    "frames": 12,
+    "fps": 12,
+    "motion": "песок пересыпается, часы покачиваются"
+   },
+   "size": [
+    10,
+    14
+   ],
+   "priority": 25,
+   "layer": "над подписью: низ значка на 1 px выше блока ника и полоски (как ник, DEPTH.top − 4)",
+   "layers": [
+    {
+     "sheet": "aura-zone_time",
+     "sheetX3": "aura-zone_time-x3",
+     "frame": [
+      20,
+      28
+     ],
+     "frameX3": [
+      30,
+      42
+     ],
+     "frames": 12,
+     "fps": 12,
+     "scale": 0.5,
+     "scaleX3": 0.3333333333333333,
+     "anchor": [
+      0.5,
+      1
+     ],
+     "at": "head",
+     "z": "top",
+     "bob": {
+      "amp": 1,
+      "period": 2100
+     }
+    }
+   ],
+   "ease": {
+    "fadeIn": 220,
+    "fadeOut": 280,
+    "scaleIn": 0.85
+   },
+   "note": "на врагах в поле искажения (замедлены); сам маг — timewarp",
+   "ref": "vendor/7soul1/src/I_Clock.png"
+  }
+ }
+}
