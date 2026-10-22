@@ -88,6 +88,9 @@ async function enter(name: string) {
 
 async function scenario() {
   const meId = await run<string>("return net.id");
+  // обозначения бафов на юнитах (задача 129) теперь сами рисуют щиты и круги по состоянию юнита, а Vfx.buff для этих видов ничего не рисует;
+  // этот тест проверяет прежний путь событий buff (запасной, пока нет каталога aura-fx), поэтому обозначения здесь выключены
+  await run("if (window.__afx) window.__afx.ready = false;");
 
   // A. пузырь без спрайта умения (щит пассивки): идёт за телом героя и снимается сразу
   await play([{ t: "buff", id: meId, k: "shield", ms: 6000 }]);

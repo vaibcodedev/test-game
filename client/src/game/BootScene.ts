@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
+import { initAuraFx, loadAuraFx } from "./auraFx";
 import { loading } from "../ui/loading";
 
 export interface Manifest {
@@ -33,12 +34,16 @@ export class BootScene extends Phaser.Scene {
       // анимации умений (задача 127): каталог листов, затем сами листы
       this.load.json("vfxm", "/assets/vfx/manifest.json");
       this.load.once("filecomplete-json-vfxm", () => loadVfx(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>));
+      // обозначения бафов и дебафов на юнитах (задача 129): каталог, затем листы; нет каталога — всё остаётся по-старому
+      this.load.json("aurafx", "/assets/aura-fx/manifest.json");
+      this.load.once("filecomplete-json-aurafx", () => loadAuraFx(this, this.cache.json.get("aurafx")));
     });
   }
 
   create() {
     const m = this.cache.json.get("manifest") as Manifest;
     makeVfxAnims(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>);
+    initAuraFx(this);
     for (const id of Object.keys(m.units)) {
       const cols = m.units[id].cols ?? 12;
       for (let row = 0; row < 3; row++) {

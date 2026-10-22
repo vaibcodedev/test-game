@@ -1,0 +1,25 @@
+{
+  "_doc": "Правила, по которым сервер собирает набор обозначений юнита (Unit.fx; server/src/game/auraFx.ts, задача 129 шаг 2). Ключи обозначений — из data/aura-fx.json. Эффект героя из списка auraList (data/auras.json) получает обозначение с тем же ключом: общее для всех — еда food_<блюдо> → food, знамя tp_banner → по знамени, которое накрывает героя (banner: сервер запоминает круг знамени по его fx aoe с меткой умения skill и видом k, пока оно стоит): у храмовника в круге собственного знамени — кольцо tp_banner, у остальных в круге — zone_banner_<фракция храмовника, чьё это знамя>, зелье potion — пока идёт откат зелья (1,5 с после глотка). Исключения по классу — byClass. flashes — вспышки buff по виду события: пока длится сам buff (ms события), у героя стоит обозначение (короткая неуязвимость «Стража» и «Объятий смерти» не пишет срок в auraList, но видна как купол invuln). Зона-эффект (zones) стоит на каждом, кого умение задело: сервер узнаёт зону по fx с меткой умения (skill) нужного вида (ev: hazard, tele с кругом, aoe) и нужным k (пассивка, сработавшая во время умения, шлёт свои события с той же меткой — по k и по длительности круга от 1 с они отсеиваются) и ставит обозначение на юнитов в круге. who: foes — враги кастера (мобы и враждебные герои), allies — союзники-герои (sameFaction — только своей фракции, los — только те, до кого от кастера есть прямая видимость, как у самого умения). ms: число — столько мс; ev — столько, сколько длится сам fx (hazard, tele); shield — пока у героя действует щит, выданный этим кастером (срок — по самому щиту). snap: true — круг разовый (лечение, гимн, покров): кого он задел в миг события, у того обозначение и держится ms; без snap — стоит, пока юнит в круге. fields — зона, привязанная к эффекту кастера: пока у него действует aura, вокруг него (радиус — из умения skill) у врагов стоит обозначение. hide: обозначение, которое прячет другие на том же юните (огненная стена — горение, поле искажения времени — замедление).",
+  "byClass": {
+    "shield": { "mage": "block@mage" }
+  },
+  "banner": { "owner": "tp_banner", "others": "zone_banner_{faction}", "fallbackFaction": "solgard", "skill": "tp_banner", "ev": "aoe", "k": "banner" },
+  "flashes": { "invuln": "invuln" },
+  "zones": [
+    { "fx": "zone_fire", "skill": "mg_firewall", "ev": "hazard", "k": "fire", "who": "foes", "ms": "ev" },
+    { "fx": "zone_smoke", "skill": "as_smoke", "ev": "hazard", "k": "shadow", "who": "foes", "ms": "ev" },
+    { "fx": "zone_veil", "skill": "dr_veil", "ev": "hazard", "k": "shadow", "who": "foes", "ms": "ev" },
+    { "fx": "zone_doom", "skill": "wl_doom", "ev": "hazard", "k": "poison", "who": "foes", "ms": "ev" },
+    { "fx": "zone_pool", "skill": "bw_crimson_pool", "ev": "tele", "k": "fire", "who": "allies", "sameFaction": true, "ms": "ev" },
+    { "fx": "zone_circle", "skill": "circle", "ev": "aoe", "k": "heal", "who": "allies", "ms": 2400, "snap": true },
+    { "fx": "zone_hymn", "skill": "cl_hymn", "ev": "aoe", "k": "hymn", "who": "allies", "sameFaction": true, "los": true, "ms": 1300, "snap": true },
+    { "fx": "zone_aegis", "skill": "cl_aegis", "ev": "aoe", "k": "ward", "who": "allies", "sameFaction": true, "los": true, "ms": "shield", "snap": true }
+  ],
+  "fields": [
+    { "fx": "zone_time", "aura": "timewarp", "skill": "mg_timewarp", "who": "foes" }
+  ],
+  "hide": {
+    "zone_fire": ["burn"],
+    "zone_time": ["slow"]
+  }
+}

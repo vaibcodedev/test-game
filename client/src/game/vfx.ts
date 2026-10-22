@@ -8,6 +8,7 @@ import { SKILLS } from "../../../shared/skills";
 import skillFx from "../../../data/skill-fx.json";
 import type { UnitView } from "./UnitView";
 import { DEPTH } from "./terrain";
+import { afx } from "./auraFx";
 
 /** Плавность листа (tools/gen/vfx.ts): fadeIn/fadeOut — мс появления и выхода (альфа и масштаб от scaleIn до 1, ease-out); loop — кадры, которые
  *  повторяются, пока эффект держится; кадры после loop[1] — финал (закрытие портала, таяние круга); hold — удержание, мс, если длительность не задана;
@@ -519,10 +520,13 @@ export class Vfx {
   buff(f: Extract<Fx, { t: "buff" }>, u: UnitView): boolean {
     if (f.ms <= 0) return this.endBuff(f);
     const aura = this.slot(f, "aura"), hit = this.slot(f, "hit");
-    if (!aura && !hit) return false;
-    if (aura) this.followUnit(`${f.s}|${f.id}`, aura, f.id, Math.min(f.ms, 30000), `${f.k}|${f.id}`);
+    // постоянную картинку многих бафов теперь рисует обозначение на юните по Unit.fx (game/auraFx.ts): цикл aura из таблицы, старые пузыри
+    // и круги под ногами для них не нужны (вспышка hit остаётся)
+    const own = afx.covers(f.k);
+    if (!aura && !hit) return own;
+    if (aura && !afx.replaces(aura)) this.followUnit(`${f.s}|${f.id}`, aura, f.id, Math.min(f.ms, 30000), `${f.k}|${f.id}`);
     if (hit && f.ms > 0 && !this.hitRecent(f)) this.atUnit(hit, u);
-    return !!aura;
+    return !!aura || own;
   }
   /** Цепь: hit на каждом звене кроме первого; proj-цепь — спрайтовая линия по звеньям. true — старая линия не нужна. */
   chain(f: Extract<Fx, { t: "chain" }>): boolean {

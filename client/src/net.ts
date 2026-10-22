@@ -130,6 +130,8 @@ export interface UnitState {
   outlaw: number;
   /** Игрок: остаток щита-поглотителя, целое (0 — щита нет): полоса щита поверх здоровья в рамках цели и группы. */
   shield: number;
+  /** Обозначения бафов и дебафов на юните (shared/auraFx.ts): строка по символу на эффект; рисует UnitAuras (game/auraFx.ts). */
+  fx: string;
 }
 
 export function serverUrl(): string {

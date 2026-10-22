@@ -12,6 +12,8 @@
  * Щит-поглотитель: поле shieldAmt/shieldUntil (один «котёл» на героя), значок `shield` с остатком; пробит раньше срока — World.hitEx обнуляет
  * его и шлёт buff с ms 0 (effects.endShield), остаток для рамок цели и группы — Unit.shield. Подробный разбор по умениям — tools/out/auras-audit.md.
  * Служебные сроки (castUntil, gcdUntil, waitUntil, petCdUntil, frozenUntil арены, reviveUntil...) — не эффекты и здесь не перечислены.
+ * Тот же список (плюс зоны умений и эффекты мобов) виден на юните всем игрокам комнаты: набор ключей обозначений кладёт в Unit.fx auraFx.ts (задача 129);
+ * поле уходит вместе с x, y и hp (фильтра по расстоянию в проекте нет), но только при смене набора, а рисует его клиент лишь для юнитов в кадре.
  */
 import { FOOD } from "../../../shared/food";
 import { auraCompare, foodAuraKey } from "../../../shared/auras";

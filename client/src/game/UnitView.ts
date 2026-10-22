@@ -13,6 +13,7 @@ import { P } from "../../../shared/palette";
 import { GearLayers, parseGear } from "./GearLayers";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { capBand, placeText, worldText } from "./worldText";
+import { UnitAuras, afx, countHero } from "./auraFx";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
 export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
@@ -53,6 +54,10 @@ export class UnitView {
   mountSpr?: Phaser.GameObjects.Sprite;
   mountFront?: Phaser.GameObjects.Sprite;
   private mounted = false;
+  /** Верховой на земном маунте: в движении за копытами пыль (обозначение mount, game/auraFx.ts). Ставит update. */
+  mountDust = false;
+  /** Обозначения бафов и дебафов на юните (задача 129): создаётся, когда у юнита появляется набор ключей Unit.fx. */
+  private afxView?: UnitAuras;
   private shadowMounted = false;
   private dustAt = 0;
   /** Факел стражника ночью: пламя и мерцающее свечение. */
@@ -105,14 +110,15 @@ export class UnitView {
   private nameHover = false;
   /** Зазор под полоску здоровья между ником и головой (4 px): при выключенных «Полоски» ник опускается на её место, под курсором (полоска видна) плавно поднимается обратно. −1 — ещё не считался. */
   private barGap = -1;
-  /** Ширина блока подписи для проверки перекрытий. */
+  /** Ширина блока подписи для проверки перекрытий (с рядом значков над ней: обозначения, game/auraFx.ts). */
   blockW(): number {
     const own = !this.nameHover;
-    return Math.max(own && this.label.visible ? this.label.width : 0, own && this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20);
+    return Math.max(own && this.label.visible ? this.label.width : 0, own && this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20, this.afxView?.rowW ?? 0);
   }
-  /** Высота блока подписи для проверки перекрытий: от верхнего края титула (или ника) до низа полоски здоровья. */
+  /** Высота блока подписи для проверки перекрытий: от верхнего края титула (или ника) до низа полоски здоровья, плюс ряд значков над подписью (если есть):
+   *  без этого ник соседа, поднятый разводкой, оказывался бы под значками. */
   blockH(): number {
-    return this.blockUp + 3;
+    return this.blockUp + 3 + (this.afxView?.rowH ?? 0);
   }
   /** Городской NPC (стражник, горожанин): не цель, без полоски здоровья. */
   readonly npc: boolean;
@@ -268,6 +274,7 @@ export class UnitView {
     const mmeta = u.mount ? (this.scene.cache.json.get("manifest")?.mounts?.[u.mount] as MountMeta | undefined) : undefined;
     const mounted = !!mmeta && !this.dead && this.scene.textures.exists(`m_${u.mount}`);
     this.mounted = mounted;
+    this.mountDust = mounted && !mmeta?.fly;
     const big0 = this.frame > 32;
     let lift = 0, riderDx = 0, riderDy = 0, hover = 0;
     if (mounted && mmeta) {
@@ -303,7 +310,7 @@ export class UnitView {
       const sw = (mmeta.frame / 32) * 0.62 * (mmeta.fly ? 0.8 : 1), sh = mmeta.frame / 32 * 0.32;
       this.shadow.setScale(sw, sh).setAlpha(mmeta.fly ? 0.6 : 1);
       this.ring.setScale(sw * 0.8, sh * 0.9);
-      if (moving && !mmeta.fly && this.scene.time.now > this.dustAt) {
+      if (moving && !mmeta.fly && !afx.ready && this.scene.time.now > this.dustAt) {
         this.dustAt = this.scene.time.now + 110;
         const vx = u.dir === Dir.Right ? -1 : u.dir === Dir.Left ? 1 : 0, vy = u.dir === Dir.Down ? -1 : u.dir === Dir.Up ? 1 : 0;
         for (let k = 0; k < 2; k++) {
@@ -426,8 +433,9 @@ export class UnitView {
     const auraOn = !!u.elite && !this.dead;
     if (auraOn && !this.aura) this.aura = this.scene.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.35).setTint(0xf0c040);
     if (this.aura) this.aura.setVisible(auraOn).setPosition(this.x, this.y - 12).setDepth(this.y - 1).setScale(this.frame > 32 ? 2.2 : 1.1);
-    this.buffRings(this.dead ? 0 : b & (BUFF_WARCRY | BUFF_HASTE | BUFF_ENRAGE));
-    if (b & BUFF_STUN && !this.dead) {
+    // круги боевого клича и ускорения заменили обозначения (warcry, haste; game/auraFx.ts), ярость босса — прежний круг
+    this.buffRings(this.dead ? 0 : b & (afx.ready ? BUFF_ENRAGE : BUFF_WARCRY | BUFF_HASTE | BUFF_ENRAGE));
+    if (b & BUFF_STUN && !this.dead && !afx.ready) {
       this.stun ??= worldText(this.scene, 0, 0, "✦ ✦", "name", { fontSize: "8px", fontStyle: "", color: "#fff070" }).setDepth(DEPTH.top - 4);
       placeText(this.stun.setVisible(true), this.x + Math.sin(this.scene.time.now / 120) * 3, top - 14, 0.5, 0.5);
     } else this.stun?.setVisible(false);
@@ -457,6 +465,17 @@ export class UnitView {
       const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena" && net.kind !== "raid";
       const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
       this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * k), 2);
+    }
+
+    // обозначения бафов и дебафов (задача 129): набор ключей приходит с сервера в u.fx, рисует UnitAuras; значки — над подписью, по её середине.
+    // Низ значков — на 1 px выше верха того, что подписано на самом деле (ник, титул, рамка — с подъёмом ника под курсором), без подписи — на 2 px выше полоски.
+    // Всё считается от целых координат подписи (а не от дробного top): зазор до ника не дрожит, пока герой идёт.
+    if (afx.ready && !this.npc) {
+      countHero(this);
+      if (u.fx || this.afxView || (u.mount && this.mountDust)) {
+        const shown = Math.min(showName ? nameY - lh : Infinity, framed ? frameTop : Infinity, titleOn ? titleY - Math.round(this.titleText.height) : Infinity);
+        (this.afxView ??= new UnitAuras(this)).update(lx, (shown < Infinity ? shown : Math.round(top - 2) - 1) - 1);
+      }
     }
   }
 
@@ -551,5 +570,6 @@ export class UnitView {
     this.torchGlow?.destroy();
     this.buffGfx?.destroy();
     this.layers?.destroy();
+    this.afxView?.destroy();
   }
 }

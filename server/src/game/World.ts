@@ -35,6 +35,7 @@ import { Townfolk } from "./townfolk";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
 import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack } from "./auras";
+import * as auraFx from "./auraFx";
 import type { Player } from "./Player";
 
 export type Broadcast = (type: string, msg: unknown) => void;
@@ -330,6 +331,7 @@ export class World {
   }
 
   private flush() {
+    auraFx.tick(this, this.fx);
     if (this.fx.length) {
       this.broadcast("fx", this.fx);
       this.fx = [];
@@ -346,11 +348,14 @@ export class World {
         p.aurasSig = au.sig;
         p.send("auras", au.list);
       }
+      // обозначения бафов и дебафов на юните (Unit.fx, задача 129): набор ключей из того же списка эффектов; поле уходит всей комнате, как x, y и hp, но только при смене набора
+      auraFx.playerFx(this, p, au.list);
       if (p.bagsDirty) {
         p.bagsDirty = false;
         p.send("loot", [...p.bags.values()]);
       }
     }
+    auraFx.mobFx(this);
   }
 
   // ---------- общие расчёты ----------

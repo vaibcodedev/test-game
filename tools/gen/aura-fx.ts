@@ -1,6 +1,8 @@
-/** Обозначения бафов и дебафов на юнитах (задача 129, шаг 1: дизайн и превью, в игру ничего не кладётся).
- *  Запуск: tsx tools/gen/aura-fx.ts [--only=key1,key2] (с --only — только превью этих ключей в tools/out/aura-preview/dev/).
+/** Обозначения бафов и дебафов на юнитах (задача 129: шаг 1 — дизайн и превью, шаг 2 — подключение в игру).
+ *  Запуск: tsx tools/gen/aura-fx.ts [--only=key1,key2] (с --only — только превью этих ключей в tools/out/aura-preview/dev/);
+ *  tsx tools/gen/aura-fx.ts --game — только то, что нужно игре (таблица и листы с каталогом в client/public/assets/aura-fx/), без превью.
  *  Пишет: data/aura-fx.json (таблица), tools/out/aura-fx/aura-<ключ>[-слой][-x3].png (листы: кадры подряд),
+ *  client/public/assets/aura-fx/ (те же листы и manifest.json — каталог для клиента: порядок ключей = индексы в Unit.fx, слои, слоты, пояса),
  *  tools/out/aura-preview/{all,all-z3,classes,common,debuffs,zones,stack,compare}.png, classes/<класс>.png, compare/<ключ>.png, audit.md
  *  (пары, похожесть силуэтов, замеры анимации). compare.png — «наш | эталон» для доработанных по замечаниям и 10 характерных.
  *  Рисунки — aura-art-a.ts (круги, предметы орбит), aura-art-b.ts (купола, щиты, значки, частицы на теле), aura-art-c.ts (зоны), основа — aura-lib.ts.
@@ -19,6 +21,8 @@ import * as C from "./aura-art-c";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const OUT = path.join(ROOT, "tools/out/aura-preview"), SHEETS = path.join(ROOT, "tools/out/aura-fx");
+/** Листы и каталог для игры: отдельная папка (npm run assets пересобирает assets/vfx целиком, а эта папка — только этим генератором). */
+const GAME = path.join(ROOT, "client/public/assets/aura-fx");
 
 type Group = "buff" | "debuff" | "common" | "zone";
 type Kind = "ring" | "shield" | "overlay" | "orbit";
@@ -468,24 +472,25 @@ function writeTable(list: Spec[]) {
   const pick = (g: Group) => Object.fromEntries(list.filter((s) => s.group === g).map((s) => [s.key, entry(s)]));
   const replaced = list.filter((s) => s.replaces).map((s) => `${s.key} ← ${s.src}: ${s.replaces}`);
   const table = {
-    _doc: "Обозначения бафов и дебафов на юните (задача 129, дизайн на утверждение). Ключ — k из data/auras.json (block@mage — тот же ключ block у мага; zone_* — эффект на юните внутри зоны умения). source — умение-источник. kind: ring — круг под ногами, shield — купол или щит, overlay — значок или частицы, orbit — предметы кружат вокруг. slot — в какой лимит входит (ring, dome, overlay). Каждый эффект — один или несколько слоёв (layers): лист кадров подряд, плотность (scale 0.5 — двойная, рядом лист -x3 со scale 1/3 для зума 3), привязка (at, anchor, offset), глубина (z), покачивание (bob) и орбита (orbit) считаются в коде каждый кадр с шагом в пиксель холста. Рисует tools/gen/aura-fx.ts, листы — tools/out/aura-fx/, превью — tools/out/aura-preview/. В игру пока не подключено (шаг 2). ref — эталон из пака, с которым сравнивалось обозначение (tools/out/aura-preview/compare.png, compare/<ключ>.png). variant у слоя — вариант по фракции (рисуется слой фракции знамени).",
+    _doc: "Обозначения бафов и дебафов на юните (задача 129; утверждены, подключены в игру — шаг 2). Ключ — k из data/auras.json (block@mage — тот же ключ block у мага; zone_* — эффект на юните внутри зоны умения). source — умение-источник. kind: ring — круг под ногами, shield — купол или щит, overlay — значок или частицы, orbit — предметы кружат вокруг. slot — в какой лимит входит (ring, dome, overlay). Каждый эффект — один или несколько слоёв (layers): лист кадров подряд, плотность (scale 0.5 — двойная, рядом лист -x3 со scale 1/3 для зума 3), привязка (at, anchor, offset), глубина (z), покачивание (bob) и орбита (orbit) считаются в коде каждый кадр с шагом в пиксель холста. Рисует tools/gen/aura-fx.ts, листы — tools/out/aura-fx/ и (для игры) client/public/assets/aura-fx/ вместе с manifest.json, превью — tools/out/aura-preview/. Порядок ключей в таблице (buffs, common, debuffs, zones) — индексы в Unit.fx; какие ключи у юнита, решает сервер (server/src/game/auraFx.ts, правила — data/aura-fx-rules.json), рисует клиент (client/src/game/auraFx.ts). ref — эталон из пака, с которым сравнивалось обозначение (tools/out/aura-preview/compare.png, compare/<ключ>.png). variant у слоя — вариант по фракции (рисуется слой фракции знамени).",
     _classes: CLASS_STYLE,
     _rules: {
       slots: "На юнит одновременно: не больше одного круга (slot ring), одного купола (slot dome) и двух оверлеев (slot overlay: значки, частицы и орбиты вместе). Побеждает больший priority.",
       beads: "Остальные эффекты-круги не рисуются кругом, а становятся «бусинами» — камнями 5×5 цвета темы на кромке главного круга (до 4 штук, спереди, по порядку приоритета, мерцают по очереди).",
-      crowd: "В толпе (больше 6 героев в кадре): у чужих героев только один круг (прозрачность 0,6), бусины и купол инвулна или блока; оверлеи и орбиты — только у себя, у выбранной цели и стан, скрытность, вне закона. У врагов — только дебафы stun, root, outlaw.",
+      crowd: "В толпе (больше 6 героев в кадре): у чужих героев только один круг (прозрачность 0,6), бусины и купол инвулна или блока; оверлеи и орбиты — только у себя, у выбранной цели и стан, скрытность, вне закона. У врагов — только дебафы stun, root, outlaw. Режим включается сразу, а выключается, когда героев не больше 5 и он продержался 1,5 с: на границе порога обозначения не мигают.",
       zones: "Умения-зоны рисуют круг на земле один раз (aura умения в skill-fx), а на каждом юните внутри — свой оверлей из раздела zones; он считается в лимит двух оверлеев. Знамя: у храмовника, поставившего знамя, — кольцо tp_banner (эмблема его фракции на кромке), у остальных в круге — zone_banner_<фракция знамени>; одно обозначение на юнит.",
       timewarp: "mg_timewarp: сам маг — timewarp (циферблат под ногами, слот круга); враги в поле искажения — zone_time (песочные часы над подписью); замедление slow от того же источника у них не рисуется — его показывают часы.",
       firewall: "mg_firewall: юнит в поле огненной стены — zone_fire (огонь у ног); горение burn от «Воспламенения» у него не рисуется, пока он в поле (два огня на одном юните — каша), вышел из поля и горит — burn.",
-      icons: "Значки над подписью (главный слой at: head): один — по центру; два — в ряд по центру с зазором 2 px между видимыми краями, старший приоритет слева; точки стаков — под своим значком, в ряду из двух — только набранные (без пустых гнёзд); если стаки есть хотя бы у одного из двух, оба поднимаются на 3 px (ряд ровный). Ширина значка — видимые пиксели его листа (по всем кадрам), орбита над подписью (оглушение) занимает 2·rx + предмет.",
-      depth: "Глубины по слоям (z): ground — круг на земле под героем и тенью (DEPTH.ground + 7); under — за героем (y − 0.5); over — над героем (y + 0.5); top — значки над подписью: низ значка на 1 px выше верха блока подписи (ник, титул, рамка — UnitView.blockUp), если подпись скрыта — на 2 px выше головы; глубина как у ника (DEPTH.top − 4). Орбиты: предмет на заднем полукруге — under, на переднем — over (у орбиты на земле — оба ground). Значки над головой — не выше 16 px (рисунок двойной плотности).",
+      icons: "Значки над подписью (главный слой at: head): один — по центру; два — в ряд по центру с зазором 2 px между видимыми краями, старший приоритет слева; точки стаков — под своим значком, в ряду из двух — только набранные (без пустых гнёзд); если стаки есть хотя бы у одного из двух, оба поднимаются на 3 px (ряд ровный). Ширина значка — видимые пиксели его листа (по всем кадрам), орбита над подписью (оглушение) занимает 2·rx + предмет. Ряд значков (его ширина и высота с зазором 1 px) входит в блок подписи для разводки: ник соседа, поднятый разводкой, не ложится под значки.",
+      depth: "Глубины по слоям (z): ground — круг на земле под героем и тенью (DEPTH.ground + 7); under — за героем (y − 0.5); over — над героем (y + 0.5); top — значки над подписью: низ значка на 1 px выше верха видимой подписи (ник, титул, рамка — от целых координат подписи в UnitView, поэтому зазор не дрожит при дробной высоте героя и при подъёме ника под курсором), если подпись скрыта — на 2 px выше полоски; глубина как у ника (DEPTH.top − 4). Орбиты: предмет на заднем полукруге — under, на переднем — over (у орбиты на земле — оба ground). Значки над головой — не выше 16 px (рисунок двойной плотности).",
       attach: "Точки at (пиксели мира от позиции юнита x, y — ряд 30 спрайта, ноги): feet — (x, y − 1), как кольцо выбора; body — (x, y − 13); hand — (x + 10, y − 11), при взгляде влево — зеркально; head — над подписью (см. depth). Все слои ставятся UnitView.attach, как ауры умений: позиция — в целых пикселях после bob героя и посадки на маунта.",
       density: "scale 0.5 — лист двойной плотности: на зуме 2 и 4 пиксель листа — целое число пикселей холста; на зуме 3 клиент берёт лист -x3 (scale 1/3) того же размера в мире. Орбиты и bob — в пикселях мира, клиент округляет до пикселя холста.",
       orbit: "orbit: n предметов (stacks: true — по числу стаков, не больше n), центр — точка at + (0, oy), эллипс rx × ry, период period мс (минус — по часовой), покачивание bob px с периодом bobPeriod (фазы разнесены), задний полукруг — альфа backAlpha (приглушение альфой, без затемнения). Кадры предмета: face shimmer — kinds блоков по F кадров, предмет i берёт блок i mod kinds и свою фазу мерцания; lr — первая половина листа — летит вправо, вторая — влево; angle — dirs кадров по углу на орбите (кадр k — угол k·360°/dirs, 0 — справа, 90° — спереди; предмет повёрнут по ходу полёта в 3D, на краях — в ракурсе). Руны рыцаря смерти (runeblade) — как в игре: кадры 0–3 руны, 4–7 ореолы (add), 8–11 блики; анимация — в коде (Vfx.orbit).",
-      ease: "ease: появление — альфа 0 → 1 за fadeIn мс (easing out) и масштаб от scaleIn до 1; снятие — альфа 1 → 0 за fadeOut мс. Пиксельные слои масштабируются только при появлении.",
+      ease: "ease: появление — альфа 0 → 1 за fadeIn мс (easing out) и масштаб от scaleIn до 1; снятие — альфа 1 → 0 за fadeOut мс. Пиксельные слои масштабируются только при появлении. Уходящее обозначение (снятое или вытесненное правилами) доигрывает затухание в прежнем виде — кругом, бусиной или значком на прежнем месте; при смене роли (круг, бусина, купол) прежний вид гаснет, пока новый проявляется; сдвиг ряда значков, подъём на стаках, прозрачность круга толпы и число предметов орбиты по стакам идут твином ~150 мс; у мёртвого юнита обозначения гаснут вместе с телом.",
       replaces: "Обозначение заменяет цикл aura умения на герое (Vfx.buff → followUnit): пока у юнита есть обозначение этого ключа, цикл из data/skill-fx.json на нём не запускается. Зональные циклы (banner-*, flame-loop, fog-*, blood-pool) остаются на земле — они рисуют саму зону. Пары ключ ← умение: aura: " + replaced.join("; ") + ".",
       priority: "100 Божественный щит, 95 оглушение, 90 скрытность, 85 танец теней, 80 метаморфоза, 70 костяная броня и вне закона, 60 барьер реликвии и корни, 55–40 круги, орбиты и значки классов (последний рубеж 50, прилив сил 42), ниже — значки.",
-      only: "only: moving — слой рисуется только в движении (пыль маунта), при движении влево зеркалится; стоит — не рисуется.",
+      only: "only: moving — слой рисуется только в движении (пыль маунта), при движении влево зеркалится, вверх и вниз — по центру и со сдвигом назад от взгляда; с началом движения проявляется, с остановкой гаснет (~0,3 с); стоит — не рисуется.",
+      game: "Передача и отрисовка (шаг 2): сервер для каждого юнита (герои и мобы) раз в такт собирает набор ключей из эффектов героя (auraList), зон умений и состояния мобов и кладёт его в Unit.fx — строкой по символу на эффект: код = 32 + индекс ключа + 128 × стаки (до 7); строка меняется только при смене набора. Зона-эффект стоит на каждом юните в круге: умения-зоны сервер узнаёт по fx с меткой умения (hazard, aoe, tele), знамя — по эффекту tp_banner на герое: сервер запоминает круг каждого стоящего знамени (aoe с меткой умения) и берёт то, что накрывает героя (кольцо — у храмовника в круге собственного знамени, у остальных эмблема фракции храмовника, чьё это знамя). Клиент (UnitView → UnitAuras) рисует набор по правилам slots, beads, crowd, icons, firewall, timewarp; скрытый (unseen) юнит — без обозначений сразу, у мёртвого они плавно гаснут вместе с телом. Руны рыцаря смерти (runeblade) рисует прежний цикл Vfx.orbit (legacy в manifest.json).",
       stacks: "pips: под значком — точки стаков (2×2 мира с контуром, до pips штук), рисует клиент; у орбит со stacks число предметов = стакам.",
     },
     buffs: pick("buff"), common: pick("common"), debuffs: pick("debuff"), zones: pick("zone"),
@@ -579,20 +584,69 @@ function writeAudit(list: Spec[]) {
 }
 
 // ====================================================================== листы
-function writeSheets(list: Spec[]) {
-  for (const f of fs.readdirSync(SHEETS)) if (/^aura-.*\.png$/.test(f)) fs.unlinkSync(path.join(SHEETS, f));
+function writeSheets(list: Spec[], dir = SHEETS) {
+  fs.mkdirSync(dir, { recursive: true });
+  for (const f of fs.readdirSync(dir)) if (/^aura-.*\.png$/.test(f)) fs.unlinkSync(path.join(dir, f));
   for (const s of list) {
     if (s.key === "runeblade") continue;  // руны уже в игре: client/public/assets/vfx/aura-runes-frost*.png
     s.art.layers.forEach((L, i) => {
       const name = sheetName(s, L, i), row = (fr: PC[], w: number, h: number) => { const sh = new PC(w * fr.length, h); fr.forEach((f, k) => sh.blit(f, k * w, 0)); return sh; };
-      row(L.frames, L.w, L.h).save(path.join(SHEETS, `${name}.png`));
-      if (L.hi) row(L.hi, L.hw!, L.hh!).save(path.join(SHEETS, `${name}-x3.png`));
+      row(L.frames, L.w, L.h).save(path.join(dir, `${name}.png`));
+      if (L.hi) row(L.hi, L.hw!, L.hh!).save(path.join(dir, `${name}-x3.png`));
     });
   }
 }
 
-export function writeAll(only?: Set<string>) {
+/** Порядок ключей = индексы в Unit.fx (server/src/game/auraFx.ts, client/src/game/auraFx.ts): как в data/aura-fx.json — баффы, общие, дебаффы, зоны. */
+const GROUPS: Group[] = ["buff", "common", "debuff", "zone"];
+export const fxKeys = (list: Spec[]) => GROUPS.flatMap((g) => list.filter((s) => s.group === g).map((s) => s.key));
+const hex2 = (c: RGBA) => `#${[c[0], c[1], c[2]].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+
+/** Каталог для клиента (client/public/assets/aura-fx/manifest.json): всё, что нужно рисовать, без текстов таблицы.
+ *  keys — порядок индексов; sheets — имя листа → [ширина кадра, высота кадра, кадров] (загрузка в BootScene);
+ *  fx[ключ] — слот и приоритет (лимиты на юните), слои (как layers в таблице), плавность, точки стаков (pips), бусина (цвета рампы темы),
+ *  box — видимая ширина значка над подписью и сдвиг его середины (раскладка в ряд); legacy — рисует старый цикл (руны ДК, Vfx.orbit);
+ *  replaces — циклы aura умений (data/skill-fx.json), вместо которых теперь рисуется это обозначение. */
+function writeGame(list: Spec[]) {
+  writeSheets(list, GAME);
+  const sheets: Record<string, [number, number, number]> = {};
+  const fx: Record<string, unknown> = {};
+  const replaces = new Set<string>();
+  for (const s of list) {
+    const legacy = s.key === "runeblade";
+    const layers = legacy ? [] : s.art.layers.map((L, i) => {
+      const e = layerEntry(s, L, i);
+      sheets[e.sheet] = [L.w, L.h, L.frames.length];
+      if (e.sheetX3) sheets[e.sheetX3] = [L.hw!, L.hh!, L.frames.length];
+      return e;
+    });
+    const L0 = mainLayer(s), r = RP[s.theme] ?? RP.steel;
+    const box = s.slot === "overlay" && L0.at === "head" ? headBox(s) : undefined;
+    if (s.replaces && !legacy) replaces.add(s.replaces);
+    fx[s.key] = {
+      g: s.group, slot: s.slot, kind: s.kind, prio: s.prio, theme: s.theme, bead: [r[2], r[3], r[4], r[5]].map(hex2), ease: s.art.ease,
+      ...(s.art.only ? { only: s.art.only } : {}), ...(s.art.pips ? { pips: { max: s.art.pips.max, color: [s.art.pips.color[0], s.art.pips.color[1], s.art.pips.color[2]] } } : {}),
+      ...(box ? { box: { w: Math.round(box.w * 10) / 10, off: Math.round(box.off * 10) / 10 } } : {}), ...(legacy ? { legacy: true } : {}), layers,
+    };
+  }
+  const manifest = {
+    _doc: "Каталог обозначений бафов и дебафов для клиента (пишет tools/gen/aura-fx.ts, смысл полей — в его описании writeGame и в _rules таблицы data/aura-fx.json). Не править руками.",
+    keys: fxKeys(list), replaces: [...replaces], sheets, fx,
+  };
+  fs.writeFileSync(path.join(GAME, "manifest.json"), JSON.stringify(manifest) + "\n");
+}
+
+export function writeAll(only?: Set<string>, gameOnly = false) {
+  // в игру пишутся таблица и каталог целиком, а листы старых обозначений стираются: по части ключей это сломало бы индексы Unit.fx и стёрло бы остальные листы
+  if (gameOnly && only) throw new Error("--game нельзя сочетать с --only: в игру пишутся все обозначения сразу (превью отдельных ключей — --only без --game)");
   const list = specs(only);
+  if (gameOnly) {
+    // только то, что нужно игре: таблица и каталог с листами (без превью, сравнений и аудита)
+    writeTable(list);
+    writeGame(list);
+    console.log(`в игру: ${list.length} обозначений → ${GAME}`);
+    return;
+  }
   if (only) {
     const dev = path.join(OUT, "dev"); fs.mkdirSync(dev, { recursive: true });
     stackV(list.map(comparePair), 6).save(path.join(dev, "compare.png"));
@@ -609,6 +663,7 @@ export function writeAll(only?: Set<string>) {
   }
   fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(path.join(OUT, "classes"), { recursive: true }); fs.mkdirSync(SHEETS, { recursive: true }); fs.mkdirSync(path.join(OUT, "compare"), { recursive: true });
   writeSheets(list);
+  writeGame(list);
   const order = ["warrior", "healer", "mage", "rogue", "ranger", "deathknight", "bloodweaver", "darkranger", "warlock", "reaver"];
   const parts: PC[] = [];
   for (const c of order) { const sh = rowsSheet(CLASS_EN[c] ?? c, list.filter((s) => s.cls === c && s.group === "buff")); sh.save(path.join(OUT, "classes", `${c}.png`)); parts.push(sh); }
@@ -637,6 +692,8 @@ export function writeAll(only?: Set<string>) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const o = process.argv.find((a) => a.startsWith("--only="));
-  writeAll(o ? new Set(o.slice(7).split(",")) : undefined);
+  const game = process.argv.includes("--game");
+  if (o && game) { console.error("--game нельзя сочетать с --only: в игру пишутся все обозначения сразу (превью отдельных ключей — --only без --game)"); process.exit(1); }
+  writeAll(o ? new Set(o.slice(7).split(",")) : undefined, game);
 }
 void EASE;
