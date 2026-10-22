@@ -3,7 +3,7 @@
  * и серверный каст (castSkill в мире) дают одну точку, форму и размер, список задетых и решение (каст или отказ). Все прицельные умения (ground, dir, dash)
  * и рывки к цели (Рывок, «Прыжок с разрезом», «Теневой шаг», «Хватка смерти»), ранги 1 и 5 (на 5 — с пассивками из plus, mul и chains), случайные точки
  * у стен подземелий и у воды. Обе стороны зовут одну функцию (placeSkill), поэтому превью сверяется ещё и с независимым эталоном — формулами HEAD и решениями
- * шага 2: прижим точки, точка шара, луч до стены у стрелы и топора, «Сияние» до препятствия (как в HEAD), рывок до препятствия на длину по рангу, рывок к цели,
+ * шага 2: прижим точки, точка шара, луч до стены у стрелы, топора и «Сияния» (вода и деревья не режут), рывок до препятствия на длину по рангу, рывок к цели,
  * место за спиной, притягивание.
  * Задетые — по форме: круг, стена огня (капсула поперёк прицела), брызги шара, полоса, веер (ближний враг в коридоре каждой стрелы), конус, нова, рой (n ближних),
  * капкан (один из попавших — первый вошедший), шторм (случайные из попавших), лечение и щиты союзникам (герои той же фракции), всплеск прыжка, «Железные цепи».
@@ -207,9 +207,9 @@ function refRay(x0: number, y0: number, a: number, range: number): number {
   }
   return len;
 }
-/** Лучи шага 2: минимальная длина и отказ (стрела — 30 и «Нет прямой видимости», топор — 24 и «Путь прегражден»). «Сияние» — как в HEAD: до препятствия
- *  по reachable (вода, деревья, стены), без отказа — пока пользователь не решил, режут ли его вода и деревья. */
-const RAYS: Record<string, [number, string | null]> = { hr_pierce: [30, NO_LOS], rv_throw: [24, "Путь прегражден"] };
+/** Лучи шага 2: минимальная длина и отказ (стрела — 30 и «Нет прямой видимости», топор — 24 и «Путь прегражден»). «Сияние» — решение пользователя:
+ *  тоже до первой стены (вода и деревья не режут), без минимума и отказа. */
+const RAYS: Record<string, [number, string | null]> = { hr_pierce: [30, NO_LOS], rv_throw: [24, "Путь прегражден"], cl_radiance: [0, null] };
 /** Куда ляжет умение по курсору (без наведения): ground — курсор, прижатый к дальности; шар — по направлению на курсор на расстоянии до него,
  *  не дальше дальности; лучи — до стены, короче минимума — отказ; веер и конус — на всю дальность; рывок — до препятствия на v(ранг).dist, короче 16 — отказ.
  *  Видимость — решение пользователя 3: у ground и шара точка вне прямой видимости — отказ. Правила модулей (капкан, рой) — не здесь. */
@@ -224,7 +224,6 @@ function refPlace(def: SkillDef, rank: number, from: { x: number; y: number }, c
   }
   const full = range > 0 ? range : 300;
   if (RAYS[def.id]) { const len = refRay(from.x, from.y, a, full), [min, e] = RAYS[def.id]; return { ...at(len), err: len < min ? e : null }; }
-  if (def.id === "cl_radiance") return { ...refReach(from.x, from.y, from.x + Math.cos(a) * full, from.y + Math.sin(a) * full, full), err: null };
   if (def.id === "volley" || def.id === "as_fan") return { ...at(full), err: null };
   const q = at(Math.min(full, dist || full));
   return { ...q, err: def.id === "fireball" && !seen(q) ? NO_LOS : null };
@@ -279,7 +278,7 @@ for (const cls of Object.keys(CLASSES) as (keyof typeof CLASSES)[]) for (const s
 assert.deepEqual(["charge", "rv_leap", "shadowstep", "dk_death_grip"].map((i) => aimSpec(SKILLS[i]).shape), ["leap", "leap", "behind", "pull"]);
 assert.deepEqual(["frostnova", "quake", "tp_glare", "mg_timewarp", "cl_hymn", "bw_blood_circle"].map((i) => aimSpec(SKILLS[i]).shape), Array(6).fill("nova"));
 assert.equal(aimSpec(SKILLS.blink).stuck, STUCK.blink); assert.equal(aimSpec(SKILLS.roll).stuck, STUCK.roll);
-assert.ok(aimSpec(SKILLS.mg_firewall).turn && aimSpec(SKILLS.hr_pierce).ray && aimSpec(SKILLS.rv_throw).ray && aimSpec(SKILLS.cl_radiance).reach && !aimSpec(SKILLS.cl_radiance).ray);
+assert.ok(aimSpec(SKILLS.mg_firewall).turn && aimSpec(SKILLS.hr_pierce).ray && aimSpec(SKILLS.rv_throw).ray && aimSpec(SKILLS.cl_radiance).ray);
 // союзники — по отбору модулей: «Круг света» — любые не враждебные; alliesAround — своей фракции; «Эгида» и купель — только герои
 assert.deepEqual(["circle", "cl_aegis", "cl_hymn", "bw_blood_circle", "cl_radiance", "bw_crimson_pool"].map((i) => [aimSpec(SKILLS[i]).kin, aimSpec(SKILLS[i]).heroes]),
   [[false, false], [true, true], [true, false], [true, false], [true, false], [true, true]], "kin и heroes");
@@ -614,6 +613,43 @@ for (const [id, half, along] of [["hr_pierce", 14, 120], ["rv_throw", 20, 100], 
   w.removePlayer(p.id);
 }
 console.log("ok линии: края коридоров «Пронзающей стрелы», «Метнуть топор» и «Сияния»");
+{
+  // решение пользователя: луч «Сияния» останавливают только стены — над водой и деревьями (непроходимо, но видно) он идёт дальше, у стены обрывается;
+  // превью = сервер (конец луча в fx chain), = эталон refRay
+  const R = SKILLS.cl_radiance, full = R.range && R.range > 0 ? R.range : 300;
+  /** Направление из s: луч проходит над непроходимой не-стеной (вода, дерево) на расстоянии over и обрывается у стены (короче полной дальности). */
+  const find = (s: { x: number; y: number }) => {
+    for (let k = 0; k < 64; k++) {
+      const a = (k / 64) * Math.PI * 2, len = refRay(s.x, s.y, a, full);
+      if (len + 10 > full || len < 60) continue;
+      let over = 0;
+      for (let d = 16; d < len - 8 && !over; d += 8) {
+        const x = s.x + Math.cos(a) * d, y = s.y + Math.sin(a) * d;
+        if (!walkable(map, x, y, 8) && !(map.cell[Math.floor(y / TILE) * map.w + Math.floor(x / TILE)] & CELL_WALL)) over = d;
+      }
+      if (over) return { s, a, len, over };
+    }
+    return null;
+  };
+  const K = search(find);
+  assert.ok(K, "нет места: луч над водой или деревьями до стены");
+  const p = hero(R, 1, K.s, false);
+  caster = p;
+  const { g, msg } = preview(R, 1, p.save.skills, K.s, { x: K.s.x + Math.cos(K.a) * 400, y: K.s.y + Math.sin(K.a) * 400 });
+  assert.ok(!g.err && near(g.len, K.len) && g.len > K.over && g.len < full, `превью «Сияния»: ${g.len.toFixed(1)} px, эталон ${K.len}, над препятствием на ${K.over}`);
+  const ex = K.s.x + Math.cos(K.a) * (K.len + 10), ey = K.s.y + Math.sin(K.a) * (K.len + 10);
+  assert.ok(!lineClear(map, K.s.x, K.s.y, ex, ey), "за концом луча — стена");
+  const rq = refReach(K.s.x, K.s.y, K.s.x + Math.cos(K.a) * full, K.s.y + Math.sin(K.a) * full, full);
+  assert.ok(Math.hypot(rq.x - K.s.x, rq.y - K.s.y) < g.len - 8, "рывок (reachable) остановился бы раньше — у воды или деревьев");
+  log.length = 0;
+  assert.equal(castSkill(w, p, "cl_radiance", msg.x, msg.y, null, msg), null, "«Сияние» над водой и деревьями — без отказа");
+  const ch = mine("cl_radiance").find((f) => f.t === "chain") as Extract<Fx, { t: "chain" }> | undefined;
+  assert.ok(ch && near(ch.pts[2], g.x) && near(ch.pts[3], g.y - 12), `сервер: конец луча (${ch?.pts[2]}, ${ch?.pts[3]}) ≠ превью (${g.x}, ${g.y - 12})`);
+  run(600);
+  caster = null;
+  w.removePlayer(p.id);
+}
+console.log("ok «Сияние»: над водой и деревьями луч идёт, у стены обрывается, превью = сервер");
 
 // ---------- 5. решение пользователя 3: площадные — только в прямой видимости ----------
 function wallPair(): { p: { x: number; y: number }; q: { x: number; y: number } } {

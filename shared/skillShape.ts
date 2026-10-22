@@ -48,10 +48,8 @@ export interface AimSpec {
   plus: Record<string, string>;
   /** Множители пассивок в процентах: { radius: "rv_sweep" } — radius × (1 + v(ранг пассивки).radius / 100) («Широкий замах»). */
   mul: Record<string, string>;
-  /** Луч до первой стены: полоса обрывается у стены. */
+  /** Луч до первой стены (rayLen): полоса обрывается у стены, вода и деревья её не режут (стрела, топор, «Сияние»). */
   ray: boolean;
-  /** Полоса до препятствия, как рывок (reachable: вода, деревья, стены): «Сияние» — как в HEAD, пока пользователь не решил, режут ли его вода и деревья. */
-  reach: boolean;
   /** Луч короче — отказ minErr. */
   min: number;
   minErr: string;
@@ -101,7 +99,7 @@ export const NO_TARGETS = "В области нет целей";
 
 type RawAim = Partial<{
   aim: SkillAim; shape: ShapeKind; los: boolean; losErr: string; oor: OutOfRange; r: number | string; inner: number | string; hitInner: boolean; w: number | string; cap: boolean;
-  plus: Record<string, string>; mul: Record<string, string>; ray: boolean; reach: boolean; min: number; minErr: string; turn: boolean; home: boolean; stuck: string;
+  plus: Record<string, string>; mul: Record<string, string>; ray: boolean; min: number; minErr: string; turn: boolean; home: boolean; stuck: string;
   n: number | string; arc: number | string; summon: boolean; trap: boolean; who: Who; pick: Pick; seen: boolean; kin: boolean; heroes: boolean; chains: string;
 }>;
 const RAW = aimData as unknown as Record<string, RawAim>;
@@ -118,7 +116,7 @@ export function aimSpec(def: SkillDef): AimSpec {
     aim, shape, los: o.los ?? (aim === "ground" || aim === "unit"), losErr: o.losErr ?? NO_LOS, oor: o.oor ?? (aim === "unit" ? "walk" : "clamp"),
     size: o.r ?? (shape === "dash" ? "dist" : shape === "circle" || shape === "nova" ? "radius" : 0),
     inner: o.inner ?? 0, hitInner: o.hitInner === true, width: o.w ?? 0, cap: o.cap === true,
-    plus: o.plus ?? {}, mul: o.mul ?? {}, ray: o.ray === true, reach: o.reach === true, min: o.min ?? 0, minErr: o.minErr ?? NO_LOS,
+    plus: o.plus ?? {}, mul: o.mul ?? {}, ray: o.ray === true, min: o.min ?? 0, minErr: o.minErr ?? NO_LOS,
     turn: o.turn === true, home: o.home === true, stuck: o.stuck ?? "Туда не переместиться",
     n: o.n ?? 0, arc: o.arc ?? 0, summon: o.summon === true, trap: o.trap === true,
     who: o.who ?? "foe", pick: o.pick ?? "all", seen: o.seen === true, kin: o.kin === true, heroes: o.heroes === true, chains: o.chains ?? "",
@@ -311,7 +309,7 @@ const fin = (n: unknown): n is number => typeof n === "number" && Number.isFinit
  * circle, wall: точка, прижатая к дальности (+ tol), без прямой видимости — отказ (los); угол — на точку, у turn — с клиента (стена поперёк прицела); призыв — summonSpot.
  * bolt: угол req.a (иначе на точку); точка — по углу на длину вектора req.dx, dy (иначе до точки запроса), не дальше дальности: та же точка относительно героя,
  * что у превью. У home с живой целью req.unit в дальности + радиус — точка и видимость по цели.
- * band: луч по углу до первой стены (ray) или до препятствия, как рывок (reach), короче min — отказ minErr. fan, cone: угол и дальность. dash: цель — герой + вектор (иначе точка), reachable
+ * band: луч по углу до первой стены (ray: rayLen, вода и деревья не режут), короче min — отказ minErr. fan, cone: угол и дальность. dash: цель — герой + вектор (иначе точка), reachable
  * на длину рывка по рангу; сдвиг меньше DASH_MIN — отказ. nova — круг у героя.
  * leap, behind, pull, unit: цель req.unit; дальше дальности + радиус — без отказа (подход, модуль ответит «Цель слишком далеко»); иначе без видимости — losErr
  * (если los), рывок через воду, дерево или стену — «Путь прегражден», за спиной нет места — отказ; pull — куда притянет (босса не тянет).
@@ -359,11 +357,8 @@ export function placeSkill(map: WorldMap, def: SkillDef, rank: number, ranks: Re
     }
     case "band": {
       g.a = fin(req.a) ? req.a : angTo(req.x, req.y, down);
-      if (s.reach) {
-        // до препятствия, как рывок (вода, деревья, стены): «Сияние» в HEAD — reachable на дальность по углу прицела; модуль берёт эту точку как есть
-        const q = reachable(map, from.x, from.y, from.x + Math.cos(g.a) * full, from.y + Math.sin(g.a) * full, full);
-        g.x = q.x; g.y = q.y; g.len = Math.hypot(q.x - from.x, q.y - from.y);
-      } else at(s.ray ? rayLen(map, from.x, from.y, g.a, full) : full);
+      // стрела, топор и «Сияние» — до первой стены (rayLen); вода и деревья луч не режут; модули берут эту точку как есть
+      at(s.ray ? rayLen(map, from.x, from.y, g.a, full) : full);
       if (g.len < s.min) g.err = s.minErr;
       return g;
     }

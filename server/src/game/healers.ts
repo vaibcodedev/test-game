@@ -142,8 +142,8 @@ export function castHealer(c: CastCtx): string | null | undefined {
   switch (c.id) {
     // ---------- Клирик ----------
     case "cl_radiance": {
-      // конец луча посчитал placeSkill (общий с превью): до препятствия, как в HEAD (reachable — вода, деревья и стены), пока пользователь
-      // не решил, режут ли «Сияние» вода и деревья (docs/aim-and-pick.md, шаг 2); точка — как есть, модуль её не пересчитывает
+      // конец луча посчитал placeSkill (общий с превью): до первой стены (rayLen), как стрела и топор — вода и деревья луч не режут
+      // (решение пользователя, docs/aim-and-pick.md); точка — как есть, модуль её не пересчитывает
       const e = { x: c.ax, y: c.ay };
       c.ok(); castAnim();
       u.dir = dirTo(e.x - u.x, e.y - u.y);
