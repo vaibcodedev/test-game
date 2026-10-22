@@ -9,7 +9,7 @@ import { lineClear, walkable } from "../../../shared/map";
 import { petUnitId, type PetDef } from "../../../shared/pets";
 import { Anim, Dir } from "../../../shared/protocol";
 import { SKILLS, SUMMONS } from "../../../shared/skills";
-import { NO_LOS, RAY_MIN, rayLen, skillDims } from "../../../shared/skillShape";
+import { NO_LOS, RAY_MIN, rayLen, trapErr, trapRadius as trapRadiusOf } from "../../../shared/skillShape";
 import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { addDot, dots, endDot, type CastCtx } from "./umbrath";
@@ -109,11 +109,13 @@ interface Trap { x: number; y: number; r: number; dmg: number; root: number; unt
 const traps = new WeakMap<World, Trap[]>();
 
 /** Радиус срабатывания нового капкана героя: ранг капкана + «Ловец» (plus в data/skills_aim.json) — тот же, что у превью (shared/skillShape.ts). */
-const trapRadius = (p: Player, rank: number) => skillDims(SKILLS.hr_trap, rank, p.save.skills).radius;
+const trapRadius = (p: Player, rank: number) => trapRadiusOf(rank, p.save.skills);
+/** Живые капканы героя (их видит и превью: клиент следит за своими по fx). */
+const liveTraps = (w: World, p: Player) => (traps.get(w) ?? []).filter((t) => t.owner === p && t.alive && t.until > w.time);
 /** В точке уже стоит капкан героя или он пересёкся бы с новым (капканы друг на друге не копятся). */
 function trapCrowded(w: World, p: Player, x: number, y: number, rank: number) {
   const r = trapRadius(p, rank);
-  return (traps.get(w) ?? []).some((t) => t.owner === p && t.alive && t.until > w.time && Math.hypot(t.x - x, t.y - y) < r + t.r);
+  return liveTraps(w, p).some((t) => Math.hypot(t.x - x, t.y - y) < r + t.r);
 }
 
 function placeTrap(w: World, p: Player, x: number, y: number, trapRank: number) {
@@ -220,10 +222,10 @@ export function castArcher(c: CastCtx): string | null | undefined {
   switch (c.id) {
     // ---------- Егерь ----------
     case "hr_trap": {
+      // город, проходимость, соседний капкан — общие правила с превью (shared/skillShape.ts trapErr)
       const pt = pointAt();
-      if (w.inTown(pt.x, pt.y)) return "В городе ловушки ставить нельзя";
-      if (!walkable(w.map, pt.x, pt.y, 6)) return "Сюда ловушку не поставить";
-      if (trapCrowded(w, p, pt.x, pt.y, c.rank)) return "Слишком близко к другому капкану";
+      const err = trapErr(w.map, pt.x, pt.y, trapRadius(p, c.rank), liveTraps(w, p));
+      if (err) return err;
       c.ok();
       u.anim = Anim.Cast;
       w.later(300, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });

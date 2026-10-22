@@ -3,14 +3,97 @@
  * Порядок для unit: юнит под курсором подходящего типа (цель не меняется) -> выбранная цель -> ally на себя (Alt — всегда) ->
  * enemy: ближайший враг в дальности при «Автоцели», иначе ошибка. Точка — курсор, зажатый дальностью. Направление — на курсор;
  * курсор над интерфейсом — на цель, иначе вперёд. Курсор на враге (каст по наведению) — точка и направление по его ногам (задача 133).
- * castAim — где ляжет умение и что слать серверу: общая геометрия shared/skillShape.ts от предсказанной позиции героя (превью = сервер).
+ * castAim — где ляжет умение и что слать серверу: общая геометрия shared/skillShape.ts от предсказанной позиции героя (превью = сервер), с правилами
+ * модулей, которые зависят от мира (капканы, цели роя — ruleErr). «Далеко» у умений на цель — как у сервера: дальше дальности + радиус цели (unitRadius).
+ * hitUnitsOf — кого превью меряет формой: враги и союзники по правилам сервера (питомцы — по хозяину), без скрытых и павших.
  * Внизу — выбор цели мышью (задача 134, шаг 1; разделы 4, 11, 12): допуск клика, магнит ЛКМ и один порядок (pickOrder) для клика, подсветки и курсора.
  */
+import { PLAYER_RADIUS } from "../../../shared/constants";
 import type { WorldMap } from "../../../shared/map";
-import { aimExtras, placeSkill, type Placed } from "../../../shared/skillShape";
-import type { SkillAim, SkillDef, SkillTarget } from "../../../shared/skills";
+import { MOBS } from "../../../shared/mobs";
+import type { Fx } from "../../../shared/protocol";
+import { aimExtras, facingOf, placeSkill, ruleErr, shapeHits, type AimUnit, type AimWorld, type HitUnit, type Placed } from "../../../shared/skillShape";
+import { SKILLS, type SkillAim, type SkillDef, type SkillTarget } from "../../../shared/skills";
 
-export interface CastUnit { id: string; x: number; y: number; enemy: boolean; friend: boolean; dead?: boolean }
+/** Юнит для выбора адресата: r — радиус, как у сервера (World.radiusOf: герой и питомец — PLAYER_RADIUS, моб — свой); dir — взгляд (за спину);
+ *  boss — босс (его не притягивают). */
+export interface CastUnit { id: string; x: number; y: number; enemy: boolean; friend: boolean; dead?: boolean; r?: number; dir?: number; boss?: boolean }
+
+/** Радиус юнита, как World.radiusOf на сервере: моб и босс — радиус из MOBS (по спрайту и имени, у элиты имя с приставкой), остальные — PLAYER_RADIUS. */
+export function unitRadius(u: { kind: number; sprite: string; name: string }): number {
+  if (u.kind !== 1 && u.kind !== 2) return PLAYER_RADIUS;
+  let byName = MOB_R.get(`${u.sprite}|${u.name}`);
+  if (byName === undefined) {
+    for (const m of Object.values(MOBS)) if (m.sprite === u.sprite && u.name.endsWith(" " + m.name)) { byName = m.radius; break; }
+    if (byName === undefined) for (const m of Object.values(MOBS)) if (m.sprite === u.sprite) byName = Math.max(byName ?? 0, m.radius);
+    byName ??= PLAYER_RADIUS;
+    MOB_R.set(`${u.sprite}|${u.name}`, byName);
+  }
+  return byName;
+}
+const MOB_R = new Map<string, number>(Object.values(MOBS).map((m) => [`${m.sprite}|${m.name}`, m.radius]));
+
+/** Выбранная цель для панели умений: hud.ts передаёт в hotbar.frame только её место — радиус и сторону сцена кладёт сюда каждый кадр (GameScene.update). */
+export const selTarget: { r: number; friend: boolean; enemy: boolean } = { r: PLAYER_RADIUS, friend: false, enemy: false };
+
+/** Запас к сроку лужи капкана: сервер повторяет её раз в 7,5 с сроком 8 с — запоздавший повтор не должен «гасить» живой капкан. */
+export const TRAP_GRACE = 1500;
+/**
+ * Свои живые капканы для превью (правило модуля «Слишком близко к другому капкану»): клиент видит их по fx сервера — лужа hazard «holy» от капкана
+ * (hr_trap или «Ловкий отскок» при перекате, roll) ставит его, удар aoe «phys» r 52 в его точке снимает; срок — v.dur капкана, сверх предела
+ * (cap + «Ловец») уходят старые, как на сервере. Молча сервер гасит капканы, когда герой погиб или ушёл (archers.ts, w.gone): поэтому капкан жив,
+ * пока сервер повторяет его лужу (раз в 7,5 с, срок лужи ms + TRAP_GRACE), а гибель своего героя очищает список (clear). Первым увиденный повтор
+ * (после входа в сцену) не продлевает капкан дальше последней лужи больше чем на её срок.
+ */
+export class TrapWatch {
+  list: { x: number; y: number; r: number; until: number; seen: number }[] = [];
+  note(fx: readonly Fx[], me: string, now: number, ranks: Readonly<Record<string, number>> | undefined) {
+    for (const f of fx) {
+      if (f.c !== me || (f.s !== "hr_trap" && f.s !== "roll")) continue;
+      if (f.t === "hazard" && f.k === "holy") {
+        const seen = now + (f.ms || 8000) + TRAP_GRACE, old = this.list.find((t) => t.x === f.x && t.y === f.y);
+        if (old) { old.seen = Math.max(old.seen, seen); continue; }
+        const v = SKILLS.hr_trap.v(Math.max(1, ranks?.hr_trap ?? 1)), tr = ranks?.hr_trapper ?? 0;
+        this.list.push({ x: f.x, y: f.y, r: f.r, until: now + v.dur * 1000, seen });
+        const cap = v.cap + (tr > 0 ? SKILLS.hr_trapper.v(tr).cap : 0);
+        while (this.list.length > cap) this.list.shift();
+      } else if (f.t === "aoe" && f.k === "phys" && f.r === 52) this.list = this.list.filter((t) => t.x !== f.x || t.y !== f.y);
+    }
+  }
+  live(now: number): readonly { x: number; y: number; r: number }[] {
+    if (this.list.some((t) => t.until <= now || t.seen <= now)) this.list = this.list.filter((t) => t.until > now && t.seen > now);
+    return this.list;
+  }
+  /** Свой герой погиб: сервер погасил все его капканы (без fx). */
+  clear() { if (this.list.length) this.list = []; }
+}
+
+/**
+ * Юнит сцены для «кого заденет» (GameScene.hitUnits): hero — герой, pet — питомец (owner — id хозяина); foe — его задевают площадные
+ * (враг и не под запретом нейтрального города, World.canAffect); hostile — враждебен мне, как World.hostile (без скидки на скрытность, в отличие
+ * от isEnemy); kin — герой моей фракции; unseen — скрыт от меня.
+ */
+export interface HitView { id: string; x: number; y: number; r: number; dead: boolean; unseen: boolean; hero: boolean; pet: boolean; boss: boolean; foe: boolean; hostile: boolean; kin: boolean; owner: string }
+/**
+ * Кого превью меряет формой — как сервер: враги — те, кого задевают площадные (мобы, враждебные герои вне нейтрального города); союзники —
+ * не враждебные герои (kin — своей фракции, для alliesAround) и питомцы по хозяину (свой — союзник своей фракции; хозяина не видно — неизвестно,
+ * не метим). Скрытые (unseen) и павшие не попадают никуда: метка выдала бы невидимку, а сервер скрытого врага не лечит.
+ */
+export function hitUnitsOf(list: readonly HitView[], me: string): HitUnit[] {
+  const owners = new Map<string, HitView>();
+  for (const v of list) if (v.hero) owners.set(v.id, v);
+  const out: HitUnit[] = [];
+  for (const v of list) {
+    if (v.dead || v.unseen || v.id === me) continue;
+    if (v.pet) {
+      const o = v.owner === me ? null : owners.get(v.owner);
+      if (v.owner !== me && (!o || o.hostile)) continue;
+      out.push({ id: v.id, x: v.x, y: v.y, r: v.r, ally: true, kin: v.owner === me || !!o?.kin, pet: true });
+    } else if (v.hero && !v.hostile) out.push({ id: v.id, x: v.x, y: v.y, r: v.r, ally: true, kin: v.kin });
+    else if (v.foe) out.push({ id: v.id, x: v.x, y: v.y, r: v.r, boss: v.boss });
+  }
+  return out;
+}
 export interface CastSkill { aim: SkillAim; target?: SkillTarget; range?: number }
 export interface CastIn {
   skill: CastSkill;
@@ -63,11 +146,13 @@ export function resolveCast(c: CastIn): CastPlan {
       else if (sel && fitsTarget(sel, s.target)) t = sel;
       else if (s.target === "ally") t = { id: self.id, x: self.x, y: self.y, enemy: false, friend: true };
       else if (c.autoTarget) {
-        let bd = range + 8;
-        for (const u of c.units) if (fitsTarget(u, "enemy") && dist(u, self) <= bd) { bd = dist(u, self); t = u; }
+        // ближайший враг в дальности + его радиус (как сервер)
+        let bd = Infinity;
+        for (const u of c.units) { const d = dist(u, self); if (fitsTarget(u, "enemy") && d <= range + (u.r ?? PLAYER_RADIUS) && d < bd) { bd = d; t = u; } }
       }
       if (!t) return { ok: false, err: "Нет цели" };
-      return { ok: true, x: t.x, y: t.y, target: t.id, far: range > 0 && dist(t, self) > range + 8 };
+      // «далеко» — как у сервера: дальше дальности + радиус цели (у боссов до 44); на себя — никогда
+      return { ok: true, x: t.x, y: t.y, target: t.id, far: range > 0 && t.id !== self.id && dist(t, self) > range + (t.r ?? PLAYER_RADIUS) };
     }
     case "ground": {
       // курсор на враге — точка по его ногам (сервер мерит круги от ног); дальше дальности — прижать: сервер прижимает так же и кастует
@@ -101,16 +186,29 @@ export interface AimMsg { x: number; y: number; a?: number; dx?: number; dy?: nu
 
 /**
  * Где ляжет умение по плану (превью) и что слать серверу: placeSkill от предсказанной позиции героя from без допуска — та же функция,
- * которой сервер решает каст (с допуском GROUND_TOL от своей позиции). g.err — отказ сервера (видимость, луч, рывок), заранее.
- * Точка ground — уже прижатая; у линии — угол и вектор до её точки, у рывка — вектор от героя (из очереди сервер применит их от своей позиции).
- * unit — цель плана (ноги и радиус): самонаведение огненного шара, как у сервера (у него — живая цель запроса).
+ * которой сервер решает каст (с допуском GROUND_TOL от своей позиции). g.err — отказ сервера (видимость, луч, рывок, путь к цели), заранее;
+ * с миром wd — и отказы модулей (капкан: город, вода, соседний капкан; рой без целей — ruleErr).
+ * Точка ground — уже прижатая; у линий — угол и вектор до их точки, у рывка — вектор от героя (из очереди сервер применит их от своей позиции).
+ * unit — цель плана (ноги, радиус, взгляд, босс): самонаведение огненного шара и умения на цель, как у сервера (у него — живая цель запроса).
+ * hits — кого заденет из wd.units (shapeHits; один раз: и для отказа роя, и для меток превью); юнитов нет или отказ — пусто.
  */
 export function castAim(map: WorldMap, def: SkillDef, rank: number, ranks: Readonly<Record<string, number>> | undefined, from: { x: number; y: number }, plan: { x: number; y: number },
-  unit?: { x: number; y: number; r: number }): { g: Placed; msg: AimMsg } {
+  unit?: AimUnit, wd?: AimWorld): { g: Placed; msg: AimMsg; hits: string[] } {
   const g = placeSkill(map, def, rank, ranks, from, { x: plan.x, y: plan.y, unit });
+  let hits = !g.err && wd?.units?.length ? shapeHits(map, g, wd.units) : [];
+  if (!g.err && wd) g.err = ruleErr(map, def, g, wd, hits);
+  if (g.err) hits = [];
   const ex = aimExtras(def, g, from);
-  const at = g.shape === "circle" || g.shape === "line" ? { x: g.x, y: g.y } : g.shape === "dash" ? { x: g.tx, y: g.ty } : { x: plan.x, y: plan.y };
-  return { g, msg: { ...at, ...ex } };
+  const pt = g.shape === "circle" || g.shape === "wall" || g.shape === "bolt" || g.shape === "band" || g.shape === "fan" || g.shape === "cone";
+  const at = pt ? { x: g.x, y: g.y } : g.shape === "dash" ? { x: g.tx, y: g.ty } : { x: plan.x, y: plan.y };
+  return { g, msg: { ...at, ...ex }, hits };
+}
+
+/** Цель запроса для castAim из юнита плана: ноги, радиус (unitRadius), взгляд и босс. */
+export function aimUnit(u: CastUnit | null | undefined): AimUnit | undefined {
+  if (!u) return undefined;
+  const [fx, fy] = facingOf(u.dir ?? 0);
+  return { id: u.id, x: u.x, y: u.y, r: u.r ?? PLAYER_RADIUS, fx, fy, boss: !!u.boss };
 }
 
 // ---------- Выбор цели мышью (задача 134, шаг 1; docs/controls.md, разделы 4, 11, 12) ----------

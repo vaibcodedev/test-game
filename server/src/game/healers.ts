@@ -13,7 +13,8 @@ import { lineClear } from "../../../shared/map";
 import { Anim, Dir } from "../../../shared/protocol";
 import { SKILLS } from "../../../shared/skills";
 import type { Player } from "./Player";
-import { applyHeal, healPower, reachable, resolveAlly, type Ally } from "./skills";
+import { segDist } from "../../../shared/skillShape";
+import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { clearDots, mostWounded, type CastCtx } from "./umbrath";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
@@ -55,13 +56,6 @@ const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (d
 const hpOf = (a: Ally) => (a.player ? a.player.unit : a.pet!.unit);
 const frac = (a: Ally) => { const u = hpOf(a); return u.hp / Math.max(1, u.maxHp); };
 const isHealer = (p: Player) => p.cls === "healer" || p.cls === "bloodweaver";
-
-/** Расстояние от точки до отрезка. */
-function segDist(px: number, py: number, x0: number, y0: number, x1: number, y1: number): number {
-  const dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy || 1;
-  const t = Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / l2));
-  return Math.hypot(px - (x0 + dx * t), py - (y0 + dy * t));
-}
 
 /** Союзники (герои и питомцы) в круге; los — только те, до кого от лекаря есть прямая видимость. */
 function alliesAround(w: World, p: Player, x: number, y: number, r: number, los = true): Ally[] {
@@ -148,7 +142,9 @@ export function castHealer(c: CastCtx): string | null | undefined {
   switch (c.id) {
     // ---------- Клирик ----------
     case "cl_radiance": {
-      const e = reachable(w, u.x, u.y, u.x + Math.cos(c.aim) * range, u.y + Math.sin(c.aim) * range, range);
+      // конец луча посчитал placeSkill (общий с превью): до препятствия, как в HEAD (reachable — вода, деревья и стены), пока пользователь
+      // не решил, режут ли «Сияние» вода и деревья (docs/aim-and-pick.md, шаг 2); точка — как есть, модуль её не пересчитывает
+      const e = { x: c.ax, y: c.ay };
       c.ok(); castAnim();
       u.dir = dirTo(e.x - u.x, e.y - u.y);
       const mx = (u.x + e.x) / 2, my = (u.y + e.y) / 2, half = Math.hypot(e.x - u.x, e.y - u.y) / 2 + 70;

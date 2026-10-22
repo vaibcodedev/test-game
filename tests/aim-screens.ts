@@ -2,7 +2,10 @@
  * Браузерная проверка прицела (задача 115, шаг 6): лекарь лечит союзника под курсором, не меняя цель;
  * метеор с превью ложится в курсор, зажатый дальностью; Esc отменяет прицел.
  * AIM_SHOTS=<фаза> (задача 133): ещё снимки превью на зуме 2 и 3 в tools/out/aim133/<фаза> — тихий берег (метеор, шар, стена огня, мерцание в воду)
- * и стены подземелья (метеор, мерцание и шар за стену).
+ * и стены подземелья (метеор, мерцание и шар за стену). Фазы s2… (шаг 2) — по сцене на каждую форму: стена огня, шар в моба, полоса до стены,
+ * веер, конус, мерцание к воде, знамя, призыв на воду, капкан на воду, нова вокруг себя, Рывок к мобу и через воду, «Теневой шаг», «Хватка»
+ * с «Железными цепями», рой на пачку, «Эгида» на союзника, «Сияние» (маг, егерь, ассасин, тёмный следопыт, храмовник, рыцарь смерти,
+ * чернокнижник, клирик). Курсор каждого снимка проверяется: над интерфейсом — падение (превью тогда не по курсору).
  * Запуск: TEST_PORT=2799 VITE_TEST_PORT=5199 npx tsx tests/aim-screens.ts
  */
 import fs from "node:fs";
@@ -11,6 +14,7 @@ import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { createServer } from "vite";
 import { MAP_SEED, TILE } from "../shared/constants";
 import { CELL_WALL, generateMap, isTownZone, lineClear, T, walkable, zoneAtPx, type WorldMap } from "../shared/map";
+import { SKILLS } from "../shared/skills";
 import { ensureChar, PORT, sleep, startServer, stopServer } from "./harness";
 
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5199;
@@ -64,6 +68,47 @@ function wallScene(m: WorldMap) {
   if (!best) throw new Error("нет стены");
   return best;
 }
+/** Моб для шара с целью: спавн слизня (агро 120) вне города, других мобов в 300 px нет; герой в 170 px к западу на открытом месте и видит спавн. */
+function mobScene(m: WorldMap) {
+  for (const s of m.spawns) {
+    if (s.mob !== "slime") continue;
+    const x = Math.round(s.x - 170), y = Math.round(s.y);
+    if (isTownZone(zoneAtPx(m, x, y)) || isTownZone(zoneAtPx(m, s.x, s.y)) || !walkable(m, x, y, 14) || !openAround(m, x, y, 30) || !lineClear(m, x, y, s.x, s.y)) continue;
+    if (mobsNear(m, s.x, s.y, 300) > 1 || Math.min(...m.bosses.map((b) => Math.hypot(b.x - x, b.y - y))) < 600) continue;
+    return { x, y, mx: s.x, my: s.y };
+  }
+  throw new Error("нет одинокого слизня");
+}
+/** Пачка для роя (круг 130): 3 и больше спавнов в 140 px от первого (спавны стоят не ближе 90 px друг к другу; вне города, босс дальше 600 px);
+ *  герой в 150–190 px от их середины (8 сторон) на открытом месте, середина видна от героя и над полем на обоих зумах. */
+function packScene(m: WorldMap) {
+  for (const s of m.spawns) {
+    if (isTownZone(zoneAtPx(m, s.x, s.y))) continue;
+    const near = m.spawns.filter((q) => Math.hypot(q.x - s.x, q.y - s.y) < 140);
+    if (near.length < 3) continue;
+    const cx = Math.round(near.reduce((a, q) => a + q.x, 0) / near.length), cy = Math.round(near.reduce((a, q) => a + q.y, 0) / near.length);
+    if (Math.min(...m.bosses.map((b) => Math.hypot(b.x - cx, b.y - cy))) < 600) continue;
+    for (let k = 0; k < 8; k++) for (const d of [150, 170, 190]) {
+      const a = (k / 8) * Math.PI * 2, x = Math.round(cx - Math.cos(a) * d), y = Math.round(cy - Math.sin(a) * d);
+      if (isTownZone(zoneAtPx(m, x, y)) || !walkable(m, x, y, 14) || !openAround(m, x, y, 20) || !lineClear(m, x, y, cx, cy) || !onField(cx - x, cy - y)) continue;
+      return { x, y, cx, cy };
+    }
+  }
+  throw new Error("нет пачки мобов");
+}
+/** Суша за водой у тихого берега W на линии героя (видна, над полем на обоих зумах): там встанет герой-враг для Рывка через воду; нет — null. */
+function acrossWater(m: WorldMap, W: { x: number; y: number }) {
+  for (let d = 120; d <= 240; d += 4) if (walkable(m, W.x + d, W.y, 12) && lineClear(m, W.x, W.y, W.x + d, W.y) && onField(d, -10)) return { x: W.x + d, y: W.y };
+  return null;
+}
+/** Союзник у тихого берега: суша рядом с W, видна от героя и над полем на обоих зумах — для «Эгиды» и «Сияния». */
+function allySpot(m: WorldMap, W: { x: number; y: number }) {
+  for (const [dx, dy] of [[60, 50], [40, 70], [-60, 60], [80, -50], [-70, -40]]) {
+    const x = W.x + dx, y = W.y + dy;
+    if (walkable(m, x, y, 12) && lineClear(m, W.x, W.y, x, y) && onField(dx, dy) && onField(dx, dy - 10)) return { x, y };
+  }
+  throw new Error("нет места для союзника у берега");
+}
 
 function chromePath() {
   const list = [process.env.CHROME_PATH, "C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", "/usr/bin/google-chrome", "/usr/bin/chromium"];
@@ -78,6 +123,11 @@ const scene = "(window.__game.scene.getScene('game'))";
 async function enter(browser: Browser, name: string): Promise<Page> {
   const ctx = await (browser as any).createBrowserContext();
   const page: Page = await ctx.newPage();
+  // ошибка страницы — с героем и местом (герой, камера, масштаб): иначе видно только падение ожидания телепорта
+  page.on("pageerror", (e) => {
+    page.evaluate(`(() => { const s = window.__game?.scene?.getScene("game"), c = s?.cameras?.main; return s && c ? { pos: s.pos, view: [c.worldView.x, c.worldView.y, c.worldView.width, c.worldView.height], zoom: c.zoom } : null; })()`)
+      .then((where) => console.log(`  ошибка страницы у ${name}: ${String(e).slice(0, 160)} — ${JSON.stringify(where)}`)).catch(() => {});
+  });
   await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#login-name", { visible: true, timeout: 10000 });
   await page.type("#login-name", name);
@@ -86,7 +136,8 @@ async function enter(browser: Browser, name: string): Promise<Page> {
   await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 15000 }).catch(async (e) => { console.log((await page.evaluate(() => document.body.innerText)).slice(0, 400)); throw e; });
   await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
   await page.click('.cs-list [data-a="play"]');
-  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self, { timeout: 90000 });
+  // вход в мир под нагрузкой (параллельные прогоны других задач) бывает дольше полутора минут
+  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self, { timeout: 180000 });
   await sleep(800);
   await page.evaluate(() => {
     const w = window as any, net = w.__net, orig = net.send.bind(net);
@@ -116,13 +167,21 @@ async function setZoom(page: Page, z: number) {
   }
   throw new Error("масштаб не сменился на " + z);
 }
+/** Курсор над интерфейсом — превью строится не по курсору (по взгляду или цели): такой снимок показывал бы не тот прицел. */
+async function mustOverField(page: Page, name: string) {
+  const st = await state(page);
+  if (st.ui) throw new Error(`снимок ${name}: курсор над интерфейсом — превью не по курсору; возьмите точку над полем (onField)`);
+}
 /** Снимок превью: курсор в точку мира (corner — в угол поля), клавиша умения зажата, снимок, Esc снимает прицел без каста. */
 async function shot(page: Page, skill: string, at: { x: number; y: number } | "corner", name: string) {
+  if (await page.evaluate(`!!${scene}.me?.dead`)) throw new Error(`герой погиб до снимка ${name}`);
+  await page.evaluate(() => (window as any).__net.send("dbg", { op: "god" }));
   const key = await keyFor(page, skill);
   // угол — правый нижний над полем (не над панелью и чатом): на зуме 2 дальше дальности метеора
   const c = at === "corner" ? { x: 1272, y: 704 } : await toClient(page, at.x, at.y);
   await page.mouse.move(c.x, c.y, { steps: 3 });
   await sleep(250);
+  await mustOverField(page, name);
   await page.keyboard.down(key as any);
   await sleep(300);
   await page.screenshot({ path: path.join(SHOT_DIR, name + ".png") as `${string}.png` });
@@ -179,11 +238,169 @@ async function shots(page: Page) {
   await setZoom(page, 2);
 }
 
+/** Изучить умения с требованиями дерева (ранги), в порядке зависимостей; ждём, пока изучены все. */
+async function learnAll(page: Page, ids: string[]) {
+  const need = new Map<string, number>();
+  const add = (id: string, rank: number) => { const d = SKILLS[id]; if (d.req) add(d.req.id, d.req.rank); need.set(id, Math.max(need.get(id) ?? 0, rank)); };
+  for (const id of ids) add(id, 1);
+  const have = (await page.evaluate(() => ({ ...(window as any).__net.self.skills }))) as Record<string, number>;
+  for (const [id, r] of need) for (let i = have[id] ?? 0; i < r; i++) await page.evaluate((s) => (window as any).__net.send("learn", { id: s }), id);
+  await page.waitForFunction((list: [string, number][]) => list.every(([id, r]) => ((window as any).__net.self.skills[id] || 0) >= r), { timeout: 8000 }, [...need]);
+}
+/** Умения — на первую панель (свободные ячейки, иначе с конца, не трогая нужные). */
+async function onBar(page: Page, ids: string[]) {
+  for (const id of ids) {
+    const bar = (await page.evaluate(() => (window as any).__net.self.bars[0])) as ({ s?: string } | null)[];
+    if (bar.some((r) => r && r.s === id)) continue;
+    let i = bar.findIndex((r) => !r);
+    if (i < 0) for (let k = bar.length - 1; k >= 0; k--) if (!ids.includes(bar[k]?.s ?? "")) { i = k; break; }
+    await page.evaluate(([n, s]) => (window as any).__net.send("bars:set", { bar: 0, i: n, ref: { s } }), [i, id] as [number, string]);
+    await page.waitForFunction((s) => (window as any).__net.self.bars[0].some((r: any) => r && r.s === s), { timeout: 5000 }, id);
+  }
+}
+/** Телепорт и ожидание: предсказание и спрайт на месте, камера (lerp 0,15, округление до пикселя) 4 опроса подряд стоит рядом с героем.
+ *  Бессмертие — и до телепорта: изучение умений пересчитывает здоровье, а у берега бывает засада разбойников (новая карта, задача 132). */
+async function tpWait(page: Page, p: { x: number; y: number }) {
+  if (await page.evaluate(`!!${scene}.me?.dead`)) throw new Error("герой погиб до снимка — снимки были бы не те");
+  await page.evaluate(() => (window as any).__net.send("dbg", { op: "god" }));
+  await page.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [p.x, p.y]);
+  await page.waitForFunction(([x, y]) => {
+    const w = window as any, s = w.__game.scene.getScene("game"), c = s.cameras.main, me = s.me;
+    if (!me || Math.hypot(s.pos.x - x, s.pos.y - y) >= 2 || Math.hypot(me.x - x, me.y - y) >= 2) { w.__camN = 0; return false; }
+    const k = `${c.midPoint.x.toFixed(1)},${c.midPoint.y.toFixed(1)}`;
+    w.__camN = k === w.__camK ? (w.__camN || 0) + 1 : 0;
+    w.__camK = k;
+    return w.__camN >= 4 && Math.abs(c.midPoint.x - me.x) < 24 && Math.abs(c.midPoint.y - me.y) < 24;
+  }, { timeout: 30000, polling: 100 }, [p.x, p.y]);
+  await page.evaluate(() => (window as any).__net.send("dbg", { op: "god" }));
+  await sleep(400);
+}
+/** Курсор на юните (find — его ноги в мире; ищется заново: моб может сдвинуться), клавиша зажата, снимок. По телу — на 10 px выше ног. */
+async function shotAt(page: Page, skill: string, find: () => Promise<{ x: number; y: number } | null>, name: string, what: string, dy = -10) {
+  if (await page.evaluate(`!!${scene}.me?.dead`)) throw new Error(`герой погиб до снимка ${name}`);
+  await page.evaluate(() => (window as any).__net.send("dbg", { op: "god" }));
+  const key = await keyFor(page, skill);
+  let u = await find();
+  for (let i = 0; i < 40 && !u; i++) { await sleep(150); u = await find(); }
+  if (!u) throw new Error(`${what} не виден`);
+  let c = await toClient(page, u.x, u.y + dy);
+  await page.mouse.move(c.x, c.y, { steps: 3 });
+  await page.keyboard.down(key as any);
+  await sleep(250);
+  u = (await find()) ?? u;
+  c = await toClient(page, u.x, u.y + dy);
+  await page.mouse.move(c.x, c.y);
+  await sleep(80);
+  await mustOverField(page, name);
+  await page.screenshot({ path: path.join(SHOT_DIR, name + ".png") as `${string}.png` });
+  await page.keyboard.press("Escape");
+  await page.keyboard.up(key as any);
+  await sleep(200);
+}
+/** Ближайший к точке живой моб (в 260 px). */
+const mobNear = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}; let b = null, bd = 260; for (const v of s.units.values()) { if (v.u.kind !== 1 || v.dead) continue;
+  const d = Math.hypot(v.x - ${x}, v.y - ${y}); if (d < bd) { bd = d; b = { x: v.x, y: v.y }; } } return b; })()`) as Promise<{ x: number; y: number } | null>;
+/** Середина живых мобов в 220 px от точки (пачка для роя), если их хотя бы 2. */
+const packNear = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}; let n = 0, sx = 0, sy = 0; for (const v of s.units.values()) { if (v.u.kind !== 1 || v.dead) continue;
+  if (Math.hypot(v.x - ${x}, v.y - ${y}) < 220) { n++; sx += v.x; sy += v.y; } } return n >= 2 ? { x: sx / n, y: sy / n } : null; })()`) as Promise<{ x: number; y: number } | null>;
+/** Герой по имени (ноги). */
+const heroNamed = (page: Page, name: string) => page.evaluate(`(() => { const s = ${scene}; for (const v of s.units.values()) if (v.u.kind === 0 && !v.dead && v.u.name === ${JSON.stringify(name)}) return { x: v.x, y: v.y }; return null; })()`) as Promise<{ x: number; y: number } | null>;
+/** Шар (и умения на цель) в моба: курсор каждый раз заново на теле ближайшего к спавну моба (слизень может сдвинуться), клавиша зажата, снимок. */
+const shotMob = (page: Page, skill: string, M: { mx: number; my: number }, name: string) => shotAt(page, skill, () => mobNear(page, M.mx, M.my), name, "моб у спавна");
+/**
+ * Снимки шага 2 задачи 133 (AIM_SHOTS=s2before до правок, s2 — после): по сцене на каждую новую форму, зум 2 и 3. Тихий берег W (вода в 70 px справа),
+ * стены подземелья D, одинокий слизень M, пачка мобов P. Маг — стена огня, шар в моба, мерцание к воде, нова вокруг себя; егерь — луч до стены, веер,
+ * капкан на воду; ассасин — конус, «Теневой шаг»; храмовник — знамя, Рывок к слизню и через воду (во врага-героя за водой); чернокнижник — скелеты
+ * на воду; тёмный следопыт — рой на пачку (метки n целей); рыцарь смерти — «Хватка» с «Железными цепями»; клирик — «Эгида» на союзника (метка)
+ * и «Сияние». Курсор каждого снимка — над полем (иначе превью не по курсору — снимок падает).
+ */
+async function shots2(browser: Browser, mage: Page, errors: string[]) {
+  fs.mkdirSync(SHOT_DIR, { recursive: true });
+  const W = waterScene(MAP), D = wallScene(MAP), M = mobScene(MAP), P = packScene(MAP), X = acrossWater(MAP, W), A = allySpot(MAP, W);
+  // мерцание к воде — с суши в 60–100 px от берега: путь, место у кромки и тусклый остаток до курсора над водой
+  const S = [100, 90, 80, 70, 60].map((d) => ({ x: W.x - d, y: W.y })).find((p) => walkable(MAP, p.x, p.y, 14) && lineClear(MAP, p.x, p.y, W.x + 190, W.y)) ?? W;
+  console.log(`  снимки шага 2: берег (${W.x}, ${W.y}), мерцание с (${S.x}, ${S.y}), стена (${D.x}, ${D.y}) → (${D.qx}, ${D.qy}), слизень (${M.mx}, ${M.my}), ` +
+    `пачка (${P.cx}, ${P.cy}), за водой ${X ? `(${X.x}, ${X.y})` : "— нет"}, союзник (${A.x}, ${A.y})`);
+  type Scene = (page: Page, z: number) => Promise<void>;
+  /** Герой-враг за водой для Рывка (тёмный следопыт): его страница живёт до конца сцен храмовника (release) — дольше держать её незачем. */
+  let foePage: Page | null = null;
+  const heroes: { page?: Page; name: string; cls: string; skills: string[]; bar?: string[]; keep?: boolean; release?: boolean; scenes: Scene[] }[] = [
+    { page: mage, name: "Метеор", cls: "mage", skills: ["fireball", "mg_firewall", "frostnova", "blink"], scenes: [
+      async (p, z) => { await tpWait(p, W); await shot(p, "mg_firewall", { x: W.x + 140, y: W.y + 30 }, `wall-z${z}`); },
+      async (p, z) => { await shot(p, "blink", { x: W.x + 190, y: W.y }, `dash-water-z${z}`); },
+      async (p, z) => { await shot(p, "frostnova", { x: W.x + 90, y: W.y + 60 }, `self-aoe-z${z}`); },
+      async (p, z) => { await tpWait(p, S); await shot(p, "blink", { x: S.x + 190, y: S.y }, `dash-shore-z${z}`); },
+      async (p, z) => { await tpWait(p, M); await shotMob(p, "fireball", M, `bolt-target-z${z}`); },
+    ] },
+    { name: "Стрелок", cls: "ranger", skills: ["volley", "hr_pierce", "hr_trap"], scenes: [
+      // точка — ниже линии героя: (W.x + 150, W.y − 40) на зуме 3 ложилась под мини-карту (курсор над интерфейсом — веер по взгляду, а не на курсор)
+      async (p, z) => { await tpWait(p, W); await shot(p, "volley", { x: W.x + 150, y: W.y + 40 }, `fan-z${z}`); },
+      async (p, z) => { await shot(p, "hr_trap", { x: W.x + 92, y: W.y }, `trap-water-z${z}`); },
+      async (p, z) => { await tpWait(p, D); await shot(p, "hr_pierce", { x: D.qx, y: D.qy }, `band-wall-z${z}`); },
+    ] },
+    { name: "Тень", cls: "rogue", skills: ["as_fan", "shadowstep"], scenes: [
+      async (p, z) => { await tpWait(p, W); await shot(p, "as_fan", { x: W.x + 120, y: W.y + 20 }, `cone-z${z}`); },
+      async (p, z) => { await tpWait(p, M); await shotMob(p, "shadowstep", M, `behind-z${z}`); },
+    ] },
+    { name: "Порча", cls: "darkranger", skills: ["dr_hexswarm"], keep: true, scenes: [
+      async (p, z) => { await tpWait(p, P); await shotAt(p, "dr_hexswarm", () => packNear(p, P.cx, P.cy), `swarm-z${z}`, "пачка мобов", 0); },
+    ] },
+    { name: "Знаменосец", cls: "warrior", skills: ["tp_banner", "charge"], release: true, scenes: [
+      async (p, z) => { await tpWait(p, W); await shot(p, "tp_banner", { x: W.x + 40, y: W.y - 50 }, `banner-z${z}`); },
+      async (p, z) => { await tpWait(p, M); await shotMob(p, "charge", M, `leap-z${z}`); },
+      async (p, z) => {
+        if (!X || !foePage) return;
+        await tpWait(foePage, X);
+        await tpWait(p, W);
+        await shotAt(p, "charge", () => heroNamed(p, "Порча"), `leap-water-z${z}`, "враг за водой");
+      },
+    ] },
+    { name: "Жнец", cls: "deathknight", skills: ["dk_death_grip", "dk_iron_chains"], bar: ["dk_death_grip"], scenes: [
+      async (p, z) => { await tpWait(p, M); await shotMob(p, "dk_death_grip", M, `pull-z${z}`); },
+    ] },
+    { name: "Призыватель", cls: "warlock", skills: ["wl_skeletons"], scenes: [
+      async (p, z) => { await tpWait(p, W); await shot(p, "wl_skeletons", { x: W.x + 110, y: W.y }, `summon-water-z${z}`); },
+    ] },
+    { name: "Клирик", cls: "healer", skills: ["cl_aegis", "cl_radiance"], scenes: [
+      async (p, z) => { await tpWait(mage, A); await tpWait(p, W); await shotAt(p, "cl_aegis", () => heroNamed(p, "Метеор"), `aegis-z${z}`, "союзник", 0); },
+      async (p, z) => { await shotAt(p, "cl_radiance", () => heroNamed(p, "Метеор"), `radiance-z${z}`, "союзник", 0); },
+    ] },
+  ];
+  // AIM_HEROES=Имя,Имя — только эти герои (переснять часть сцен); маг (главная страница) открыт всегда
+  const only = (process.env.AIM_HEROES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  for (const h of heroes) {
+    if (only.length && !only.includes(h.name)) continue;
+    const own = !h.page;
+    const page = h.page ?? (await enter(browser, h.name));
+    if (own) {
+      page.on("pageerror", (e) => errors.push(String(e)));
+      await page.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 99 }); n.send("dbg", { op: "god" }); });
+      await sleep(500);
+    }
+    await learnAll(page, h.skills);
+    await onBar(page, h.bar ?? h.skills);
+    for (const z of [2, 3]) {
+      await setZoom(page, z);
+      for (const sc of h.scenes) await sc(page, z);
+    }
+    await setZoom(page, 2);
+    console.log(`  ok   снимки шага 2: ${h.name} (${h.cls}) — ${SHOT_DIR}`);
+    if (h.keep) foePage = page;
+    else if (own) await page.browserContext().close();
+    if (h.release && foePage) { await foePage.browserContext().close(); foePage = null; }
+  }
+  if (foePage) await foePage.browserContext().close();
+}
+
 async function main() {
   process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
   await startServer(true);
   await ensureChar("Целитель", "secret", "Целитель", "healer");
   await ensureChar("Метеор", "secret", "Метеор", "mage");
+  if (SHOTS.startsWith("s2")) {
+    const extra = [["Стрелок", "ranger"], ["Тень", "rogue"], ["Порча", "darkranger"], ["Знаменосец", "warrior"], ["Жнец", "deathknight"], ["Призыватель", "warlock"], ["Клирик", "healer"]];
+    for (const [n, c] of extra) await ensureChar(n, "secret", n, c);
+  }
   const vite = await createServer({ configFile: path.resolve("vite.config.ts"), server: { port: VITE_PORT, strictPort: true, hmr: false, watch: { ignored: ["**/*"] } }, logLevel: "error" });
   await vite.listen();
   const browser = await puppeteer.launch({ executablePath: chromePath(), headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--window-size=1280,800", "--no-sandbox", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"], defaultViewport: { width: 1280, height: 800 } });
@@ -202,7 +419,11 @@ async function main() {
     for (const id of ["frostnova", "blink", "meteor"]) { await mage.evaluate((i) => (window as any).__net.send("learn", { id: i }), id); await sleep(250); }
     await mage.waitForFunction(() => (window as any).__net.self.skills.meteor && (window as any).__net.self.bars[0].some((r: any) => r && r.s === "meteor"), { timeout: 5000 });
     // снимки превью (задача 133) — до проверок: их отказ не должен оставить фазу без снимков
-    if (SHOTS) { await shots(mage); await mage.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y - 70]); await sleep(1500); }
+    if (SHOTS) {
+      if (SHOTS.startsWith("s2")) await shots2(browser, mage, errors); else await shots(mage);
+      await mage.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y - 70]);
+      await sleep(1500);
+    }
 
     // ---- лекарь: союзник под курсором, цель не меняется ----
     await sleep(2500);

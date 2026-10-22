@@ -8,8 +8,8 @@ import { CLASSES } from "../../../shared/classes";
 import { lineClear } from "../../../shared/map";
 import { SKILLS } from "../../../shared/skills";
 import { Dir } from "../../../shared/protocol";
+import { rayLen } from "../../../shared/skillShape";
 import type { Player } from "./Player";
-import { reachable } from "./skills";
 import { bleed, dotOf, endDot, type CastCtx } from "./umbrath";
 import { applyHaste } from "./effects";
 import { registerAuraHook } from "./auras";
@@ -114,10 +114,12 @@ export function castReaver(c: CastCtx): string | null | undefined {
       return null;
     }
     case "rv_throw": {
+      // луч до первой стены по углу прицела, как у «Пронзающей стрелы» (вода и деревья топор не держат) — общая с превью rayLen;
+      // короче 24 — отказ (placeSkill уже отказал: поля min и minErr в data/skills_aim.json)
       const dx = Math.cos(c.aim), dy = Math.sin(c.aim);
-      const end = reachable(w, u.x, u.y, u.x + dx * range, u.y + dy * range, range);
-      const len = Math.hypot(end.x - u.x, end.y - u.y);
+      const len = rayLen(w.map, u.x, u.y, c.aim, range);
       if (len < 24) return "Путь прегражден";
+      const end = { x: u.x + dx * len, y: u.y + dy * len };
       c.ok();
       u.dir = dirTo(dx, dy);
       const speed = 720;

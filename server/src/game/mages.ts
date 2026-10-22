@@ -7,10 +7,11 @@
  * Любая область и цель проверяются по линии видимости.
  */
 import { OUTLAW } from "../../../shared/factions";
-import { lineClear, walkable } from "../../../shared/map";
+import { lineClear } from "../../../shared/map";
 import { petUnitId, type PetDef } from "../../../shared/pets";
 import { Anim } from "../../../shared/protocol";
 import { SKILLS, SUMMONS } from "../../../shared/skills";
+import { segDist, summonSpot, wallEnds, wallMark } from "../../../shared/skillShape";
 import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { reachable } from "./skills";
@@ -83,11 +84,6 @@ function setCd(p: Player, w: World, id: string, readyIn: number) {
 /** Враги в круге, до которых от центра есть прямая видимость. */
 function foes(w: World, p: Player, x: number, y: number, r: number): Actor[] {
   return w.enemiesInCircle(p, x, y, r).filter((m) => lineClear(w.map, x, y, m.x, m.y));
-}
-function distSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
-  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1;
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2));
-  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
 }
 /** «Шок» от молнии: цель 5 с получает больше урона от мага (Проводимость). */
 function shock(w: World, p: Player, m: Actor) {
@@ -164,17 +160,17 @@ export function castMage(c: CastCtx): string | null | undefined {
     case "mg_firewall": {
       const pt = pointAt();
       c.ok(); castAnim();
-      const nx = -Math.sin(c.aim), ny = Math.cos(c.aim), half = v.len / 2;
-      const ax = pt.x - nx * half, ay = pt.y - ny * half, bx = pt.x + nx * half, by = pt.y + ny * half;
+      // отрезок v.len поперёк угла прицела с клиента (turn), капсула ±26 + радиус цели; концы и метки огня — общие с превью (shared/skillShape.ts)
+      const half = v.len / 2, { ax, ay, bx, by } = wallEnds(pt.x, pt.y, c.aim, v.len);
       for (let i = 0; i < 5; i++) {
-        const k = (i / 4 - 0.5) * v.len;
-        w.emit({ t: "hazard", id: w.uid("h"), k: "fire", x: pt.x + nx * k, y: pt.y + ny * k, r: 28, ms: v.dur * 1000 });
+        const q = wallMark(pt.x, pt.y, c.aim, v.len, i);
+        w.emit({ t: "hazard", id: w.uid("h"), k: "fire", x: q.x, y: q.y, r: 28, ms: v.dur * 1000 });
       }
       w.emit({ t: "aoe", k: "fire", x: pt.x, y: pt.y, r: 60 });
       for (let i = 1; i <= v.dur; i++)
         w.later(i * 1000, () => {
           for (const m of w.enemiesInCircle(p, pt.x, pt.y, half + 30)) {
-            if (distSeg(m.x, m.y, ax, ay, bx, by) > 26 + w.radiusOf(m) || !lineClear(w.map, pt.x, pt.y, m.x, m.y)) continue;
+            if (segDist(m.x, m.y, ax, ay, bx, by) > 26 + w.radiusOf(m) || !lineClear(w.map, pt.x, pt.y, m.x, m.y)) continue;
             w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "fire" });
           }
         }, p);
@@ -304,7 +300,9 @@ function summonDemon(w: World, p: Player, at: { x: number; y: number }, ms: numb
   const k = power * (1 + (rk(p, "wl_demonology") ? pv(p, "wl_demonology").pct : 0) / 100);
   const def: PetDef = { ...base, id: "wl_demon", price: 0, level: 0, hp: base.hp * k, dmg: base.dmg * k, skills: [], temp: true };
   const pet = new Pet(def, p, p.level);
-  if (walkable(w.map, at.x, at.y, 8)) { pet.unit.x = at.x; pet.unit.y = at.y; }
+  // на воде или дереве — ближайшая проходимая точка на линии к герою (общая с превью: summonSpot)
+  const q = summonSpot(w.map, at.x, at.y, p.x, p.y);
+  pet.unit.x = q.x; pet.unit.y = q.y;
   w.pets.set(pet.id, pet);
   w.state.mobs.set(pet.id, pet.unit);
   w.emit({ t: "spawn", id: pet.id, k: "smoke" });

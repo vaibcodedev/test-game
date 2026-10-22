@@ -1,10 +1,17 @@
-/** Выбор адресата каста и поля прицела умений (задача 115, шаг 6; задача 133, шаг 1 — точка по ногам врага, «далеко» только у умений на цель, размеры по рангу);
+/** Выбор адресата каста и поля прицела умений (задача 115, шаг 6; задача 133, шаг 1 — точка по ногам врага, «далеко» только у умений на цель, размеры по рангу;
+ *  шаг 2 — «далеко» = дальность + радиус цели, радиус юнита как у сервера, свои капканы по fx для превью капкана);
  *  выбор цели мышью: допуск, магнит, порядок (задача 134, шаг 1). Геометрия превью против сервера — tests/skill-shape.ts. Запуск: npx tsx tests/cast-resolve.ts */
 import assert from "node:assert/strict";
-import { bodyDist, clampToRange, pickOrder, pickReach, PICK_MAGNET, PICK_TOL, resolveCast, type CastIn, type CastUnit, type PickCtx, type PickKind, type PickOut, type PickSource } from "../client/src/game/castResolve";
-import { activeSkills } from "../shared/skills";
-import { aimSpec, shapeSize } from "../shared/skillShape";
+import {
+  bodyDist, clampToRange, hitUnitsOf, pickOrder, pickReach, PICK_MAGNET, PICK_TOL, resolveCast, TRAP_GRACE, TrapWatch, unitRadius,
+  type CastIn, type CastUnit, type HitView, type PickCtx, type PickKind, type PickOut, type PickSource,
+} from "../client/src/game/castResolve";
+import { activeSkills, SKILLS } from "../shared/skills";
+import { aimSpec, shapeSize, type HitUnit } from "../shared/skillShape";
 import { CLASSES } from "../shared/classes";
+import { PLAYER_RADIUS } from "../shared/constants";
+import { MOBS } from "../shared/mobs";
+import type { Fx } from "../shared/protocol";
 
 const u = (id: string, x: number, y: number, enemy: boolean, extra: Partial<CastUnit> = {}): CastUnit => ({ id, x, y, enemy, friend: !enemy, ...extra });
 const base = (over: Partial<CastIn>): CastIn => ({
@@ -33,6 +40,63 @@ assert.deepEqual(resolveCast({ ...en, units: [far, near, dead] }), { ok: false, 
 assert.equal(ok(resolveCast({ ...en, autoTarget: true, units: [far, near, dead, u("m", 90, 0, true)] })).target, "n");
 assert.deepEqual(resolveCast({ ...en, autoTarget: true, units: [far] }), { ok: false, err: "Нет цели" });
 assert.equal(ok(resolveCast({ ...en, selected: u("w", 250, 0, true) })).far, true, "цель вне дальности помечена");
+// «далеко» — как у сервера: дальше дальности + радиус цели (у боссов до 44; задача 133, шаг 2); без радиуса — как у героя (10)
+assert.equal(ok(resolveCast({ ...en, selected: u("b", 243, 0, true, { r: 44 }) })).far, false, "босс r 44 в 243 px при дальности 200 — не далеко");
+assert.equal(ok(resolveCast({ ...en, selected: u("b", 245, 0, true, { r: 44 }) })).far, true);
+assert.equal(ok(resolveCast({ ...en, selected: u("w", 209, 0, true) })).far, false);
+assert.equal(ok(resolveCast({ ...en, selected: u("w", 211, 0, true) })).far, true);
+assert.equal(ok(resolveCast({ ...en, autoTarget: true, units: [u("z", 205, 0, true), u("b", 230, 0, true, { r: 44 })] })).target, "z", "автоцель: ближайший в дальности + радиус");
+assert.equal(ok(resolveCast({ ...en, autoTarget: true, units: [u("z", 215, 0, true), u("b", 230, 0, true, { r: 44 })] })).target, "b", "автоцель: босс в дальности + свой радиус");
+assert.equal(ok(resolveCast(base({ selected: u("a3", 340, 0, false, { r: 10 }) }))).far, true, "союзник: дальность + радиус героя");
+assert.equal(ok(resolveCast(base({ selected: u("a3", 309, 0, false, { r: 10 }) }))).far, false);
+// радиус юнита — как World.radiusOf: моб и босс — из MOBS по спрайту и имени (элита — с приставкой), остальные — PLAYER_RADIUS
+assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem.sprite, name: MOBS.golem.name }), MOBS.golem.radius);
+assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem.sprite, name: `Свирепый ${MOBS.golem.name}` }), MOBS.golem.radius, "элита");
+assert.equal(unitRadius({ kind: 2, sprite: MOBS.chaos_knight.sprite, name: MOBS.chaos_knight.name }), 44, "рейд-босс");
+assert.equal(unitRadius({ kind: 0, sprite: "warrior", name: "Герой" }), PLAYER_RADIUS);
+assert.equal(unitRadius({ kind: 3, sprite: "wolf", name: "Волк" }), PLAYER_RADIUS, "питомец — как герой");
+// свои капканы по fx сервера (превью отказа «Слишком близко к другому капкану»): лужа «holy» ставит, удар r 52 снимает, сверх предела уходят старые
+const tw = new TrapWatch(), trapFx = (x: number, c = "me", s = "hr_trap"): Fx => ({ t: "hazard", id: `h${x}`, k: "holy", x, y: 0, r: 38, ms: 8000, s, c });
+tw.note([trapFx(10), trapFx(10), trapFx(90, "other"), trapFx(200, "me", "tp_banner")], "me", 0, { hr_trap: 1 });
+assert.deepEqual(tw.live(0).map((t) => t.x), [10], "свой капкан один раз; чужой и не капкан — мимо");
+tw.note([trapFx(100, "me", "roll"), trapFx(300)], "me", 1000, { hr_trap: 1 });
+assert.deepEqual(tw.live(1000).map((t) => t.x), [100, 300], "предел 2 на 1 ранге: старый ушёл; «Ловкий отскок» тоже ставит капкан");
+tw.note([{ t: "aoe", k: "phys", x: 100, y: 0, r: 52, s: "roll", c: "me" }], "me", 2000, { hr_trap: 1 });
+assert.deepEqual(tw.live(2000).map((t) => t.x), [300], "сработавший снят");
+// капкан жив, пока сервер повторяет его лужу (раз в 7,5 с, срок 8 с): с гибелью героя сервер гасит капканы молча — повторов нет, капкан уходит сам
+for (let t = 7500; t < SKILLS.hr_trap.v(1).dur * 1000; t += 7500) tw.note([trapFx(300)], "me", 1000 + t, { hr_trap: 1 });
+assert.deepEqual(tw.live(1000 + SKILLS.hr_trap.v(1).dur * 1000 - 1).length, 1, "повторы лужи держат капкан до конца срока");
+assert.deepEqual(tw.live(1000 + SKILLS.hr_trap.v(1).dur * 1000).length, 0, "истёк срок");
+const tw2 = new TrapWatch();
+tw2.note([trapFx(10)], "me", 0, { hr_trap: 1 });
+tw2.note([trapFx(10)], "me", 7500, { hr_trap: 1 });
+assert.equal(tw2.live(7500 + 8000 + TRAP_GRACE - 1).length, 1, "повтор продлил капкан на срок лужи");
+assert.equal(tw2.live(7500 + 8000 + TRAP_GRACE).length, 0, "повторов нет (герой погиб или ушёл) — капкан ушёл через срок лужи и запас");
+// первым увиденный повтор (после входа в сцену) держит капкан не дольше своей лужи, а не весь срок капкана
+const tw3 = new TrapWatch();
+tw3.note([trapFx(10)], "me", 30000, { hr_trap: 1 });
+assert.equal(tw3.live(30000 + 8000 + TRAP_GRACE).length, 0);
+// гибель своего героя (GameScene.updateAim: me.dead) — список пуст сразу
+tw3.note([trapFx(20)], "me", 40000, { hr_trap: 1 });
+tw3.clear();
+assert.equal(tw3.live(40000).length, 0, "гибель героя гасит его капканы");
+
+// «кого заденет» по данным сцены (GameScene.hitUnits → hitUnitsOf), как у сервера: скрытые и павшие — никуда (метка выдала бы невидимку);
+// питомец — по хозяину (свой — союзник своей фракции, хозяин-враг или не виден — не метим); герой чужой фракции без вражды (мирный город) — союзник,
+// но не своей фракции (alliesAround его не берёт); враг в нейтральном городе (foe false: canAffect) — ни враг, ни союзник
+const hv = (id: string, x: number, o: Partial<HitView>): HitView =>
+  ({ id, x, y: 0, r: 10, dead: false, unseen: false, hero: false, pet: false, boss: false, foe: false, hostile: false, kin: false, owner: "", ...o });
+const sceneUnits = [
+  hv("me", 0, { hero: true, kin: true }), hv("ally", 20, { hero: true, kin: true }), hv("peace", 30, { hero: true }),
+  hv("spy", 40, { hero: true, hostile: true, unseen: true }), hv("foeHero", 50, { hero: true, hostile: true, foe: true }), hv("guest", 60, { hero: true, hostile: true }),
+  hv("allyDead", 65, { hero: true, kin: true, dead: true }), hv("allyHidden", 66, { hero: true, kin: true, unseen: true }),
+  hv("myPet", 70, { pet: true, owner: "me" }), hv("allyPet", 80, { pet: true, owner: "ally" }), hv("peacePet", 90, { pet: true, owner: "peace" }),
+  hv("spyPet", 100, { pet: true, owner: "spy" }), hv("foePet", 105, { pet: true, owner: "foeHero" }), hv("lostPet", 110, { pet: true, owner: "nobody" }),
+  hv("mob", 120, { foe: true, r: 16 }), hv("boss", 125, { foe: true, boss: true, r: 44 }), hv("deadMob", 130, { foe: true, dead: true }), hv("guard", 140, {}),
+];
+const tag = (u: HitUnit) => `${u.id}${u.ally ? (u.kin ? "+" : "~") : "!"}${u.pet ? "p" : ""}${u.boss ? "b" : ""}`;
+assert.deepEqual(hitUnitsOf(sceneUnits, "me").map(tag), ["ally+", "peace~", "foeHero!", "myPet+p", "allyPet+p", "peacePet~p", "mob!", "boss!b"],
+  "союзники и враги — как у сервера: без скрытых, павших, питомцев врага и незнакомых хозяев, без чужака в нейтральном городе");
 
 // self
 const sf = ok(resolveCast(base({ skill: { aim: "self", target: "self", range: 0 }, selected: foe })));

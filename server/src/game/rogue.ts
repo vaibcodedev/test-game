@@ -6,7 +6,7 @@
 import { lineClear } from "../../../shared/map";
 import { Dir } from "../../../shared/protocol";
 import { SKILLS } from "../../../shared/skills";
-import { behindSpot as behindAt } from "../../../shared/skillShape";
+import { behindSpot as behindAt, facingOf } from "../../../shared/skillShape";
 import type { Player } from "./Player";
 import * as rv from "./reaver";
 import type { CastCtx } from "./umbrath";
@@ -14,7 +14,6 @@ import { applyHaste, applyWeaken } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 
-const FACE: Record<number, [number, number]> = { [Dir.Down]: [0, 1], [Dir.Up]: [0, -1], [Dir.Left]: [-1, 0], [Dir.Right]: [1, 0] };
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -34,9 +33,9 @@ registerAuraHook((a, _now, aura) => {
   aura("dance", s.danceUntil);
 });
 
-/** Единичный вектор взгляда цели. */
+/** Единичный вектор взгляда цели (общий с превью «Теневого шага»: facingOf). */
 export function facing(a: Actor): [number, number] {
-  return FACE[a.unit.dir] ?? [0, 1];
+  return facingOf(a.unit.dir);
 }
 
 /** Атакующий находится в задней полусфере цели. */

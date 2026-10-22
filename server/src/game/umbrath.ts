@@ -5,14 +5,15 @@
  * Потрошитель — кровотечения, прыжки и ярость от ран (World.hit).
  */
 import { PLAYER_RADIUS } from "../../../shared/constants";
-import { lineClear, walkable } from "../../../shared/map";
+import { lineClear } from "../../../shared/map";
 import { petUnitId, type PetDef } from "../../../shared/pets";
 import { SKILLS, SUMMONS, type SkillDef } from "../../../shared/skills";
+import { leapDest, pullDest, summonSpot } from "../../../shared/skillShape";
 import { Anim, type FxKind } from "../../../shared/protocol";
 import { bondDur, onSacrifice, poolBonus, sacrificeCost } from "./healers";
 import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
-import { applyHeal, healPower, reachable, resolveAlly, type Ally } from "./skills";
+import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { bleedMods } from "./reaver";
 import { dotMult } from "./mages";
 import { applyHaste } from "./effects";
@@ -184,8 +185,8 @@ export function castUmbrath(c: CastCtx): string | null {
       c.ok(); face(t);
       w.emit({ t: "chain", pts: [u.x, u.y - 12, t.x, t.y - 12], k: "shadow" });
       if (!c.isBoss(t)) {
-        const stop = w.radiusOf(t) + PLAYER_RADIUS + 6;
-        const dest = reachable(w, t.x, t.y, u.x, u.y, Math.max(0, w.dist(u, t) - stop));
+        // к герою до его радиуса (общая с превью: pullDest)
+        const dest = pullDest(w.map, { x: t.x, y: t.y, r: w.radiusOf(t) }, u);
         w.emit({ t: "blink", id: t.id, x0: t.x, y0: t.y, x1: dest.x, y1: dest.y, k: "charge" });
         t.unit.x = dest.x;
         t.unit.y = dest.y;
@@ -412,9 +413,9 @@ export function castUmbrath(c: CastCtx): string | null {
     }
     case "rv_leap": {
       const e = needTarget(); if (e) return e;
-      const d = w.dist(u, t);
-      const stop = w.radiusOf(t) + PLAYER_RADIUS + 4;
-      const dest = reachable(w, u.x, u.y, t.x, t.y, Math.max(0, d - stop));
+      // до цели по прямой (общая с превью: leapDest); вода или дерево на пути — отказ «Путь прегражден» (уже в placeSkill)
+      const dest = leapDest(w.map, u, { x: t.x, y: t.y, r: w.radiusOf(t) });
+      if (dest.blocked) return "Путь прегражден";
       c.ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y, k: "charge" });
       u.x = dest.x;
@@ -469,7 +470,9 @@ function summonSkeleton(w: World, p: Player, at: { x: number; y: number }, ms: n
   dismissPet(w, p);
   const def: PetDef = { ...s, id: "wl_skeleton", price: 0, level: 0, skills: [], temp: true };
   const pet = new Pet(def, p, p.level);
-  if (walkable(w.map, at.x, at.y, 8)) { pet.unit.x = at.x; pet.unit.y = at.y; }
+  // на воде или дереве — ближайшая проходимая точка на линии к герою (общая с превью: summonSpot)
+  const q = summonSpot(w.map, at.x, at.y, p.x, p.y);
+  pet.unit.x = q.x; pet.unit.y = q.y;
   w.pets.set(pet.id, pet);
   w.state.mobs.set(pet.id, pet.unit);
   w.emit({ t: "spawn", id: pet.id, k: "smoke" });

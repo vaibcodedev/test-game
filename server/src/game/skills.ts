@@ -3,7 +3,7 @@ import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";
 import { Anim } from "../../../shared/protocol";
 import { SKILLS, skillMana } from "../../../shared/skills";
-import { behindSpot, GROUND_TOL, placeSkill, reachable as reachOn } from "../../../shared/skillShape";
+import { behindSpot, facingOf, GROUND_TOL, leapDest, placeSkill, reachable as reachOn } from "../../../shared/skillShape";
 import { BAL, healPowerMult } from "../../../shared/balance";
 import { CLASSES } from "../../../shared/classes";
 import { castUmbrath } from "./umbrath";
@@ -58,12 +58,16 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
   const target = targetId ? w.actor(targetId) : undefined;
   const liveTarget = target && !w.isDead(target) && w.hostile(p, target) && !w.stealthed(target) ? target : undefined;
   // куда ляжет (shared/skillShape.ts, те же функции, что у превью): точка ground с допуском, угол и вектор с клиента от своей позиции,
-  // видимость (los), луч до стены, рывок до препятствия по рангу; снаряд с самонаведением (home) — по живой цели в дальности + радиус.
+  // видимость (los), луч до стены, рывок до препятствия по рангу; снаряд с самонаведением (home) — по живой цели в дальности + радиус;
+  // умения на цель — видимость цели, рывок к ней через воду или дерево, место за спиной (дальность — модулям: подход «Подходить к цели»).
   // Отказ — до модулей классов: они берут готовую точку ax, ay и угол aim и не пересчитывают их
-  const unit = liveTarget ? { x: liveTarget.x, y: liveTarget.y, r: w.radiusOf(liveTarget) } : undefined;
+  const face = liveTarget ? facingOf(liveTarget.unit.dir) : [0, 1];
+  const unit = liveTarget
+    ? { id: liveTarget.id, x: liveTarget.x, y: liveTarget.y, r: w.radiusOf(liveTarget), fx: face[0], fy: face[1], boss: !w.isPlayer(liveTarget) && !!liveTarget.def.boss }
+    : undefined;
   const g = placeSkill(w.map, def, rank, p.save.skills, u, { x: ax, y: ay, a: extra?.a, dx: extra?.dx, dy: extra?.dy, unit }, GROUND_TOL);
   if (g.err) return g.err;
-  const shaped = g.shape === "circle" || g.shape === "line" || g.shape === "dash";
+  const shaped = g.shape === "circle" || g.shape === "wall" || g.shape === "bolt" || g.shape === "band" || g.shape === "fan" || g.shape === "cone" || g.shape === "dash";
   if (shaped) { ax = g.x; ay = g.y; }
   const aim = shaped ? g.a : Math.atan2(ay - u.y, ax - u.x);
   const v = def.v(rank);
@@ -160,8 +164,9 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       const d = w.dist(u, liveTarget);
       if (d > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
       if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Путь прегражден";
-      const stop = w.radiusOf(liveTarget) + PLAYER_RADIUS + 4;
-      const dest = reachable(w, u.x, u.y, liveTarget.x, liveTarget.y, Math.max(0, d - stop));
+      // до цели по прямой (общая с превью: leapDest); вода или дерево на пути — отказ «Путь прегражден» уже в placeSkill
+      const dest = leapDest(w.map, u, { x: liveTarget.x, y: liveTarget.y, r: w.radiusOf(liveTarget) });
+      if (dest.blocked) return "Путь прегражден";
       ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y, k: "charge" });
       u.x = dest.x;

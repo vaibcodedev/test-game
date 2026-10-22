@@ -30,8 +30,8 @@ import { placeText, syncTextRes, worldText } from "./worldText";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
-import { castAim, pickOrder, pickReach, resolveCast, type CastPlan, type CastUnit, type PickCtx, type PickOut, type PickSource } from "./castResolve";
-import { HIT_EDGE } from "../../../shared/skillShape";
+import { aimUnit, castAim, hitUnitsOf, pickOrder, pickReach, resolveCast, selTarget, TrapWatch, unitRadius, type CastPlan, type CastUnit, type HitView, type PickCtx, type PickOut, type PickSource } from "./castResolve";
+import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 
 type NpcKind = "raid" | "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
@@ -231,6 +231,9 @@ export class GameScene extends Phaser.Scene {
     this.cleanup.push(net.on("cast", (m) => { this.castHold = m.ms > 0 ? this.time.now + m.ms : 0; }));
     this.cleanup.push(net.on("self", (s) => { if (lastGold >= 0 && s.gold > lastGold) { const u = this.units.get(net.id); if (u) this.fx.goldPop(u.x, u.y - 40, s.gold - lastGold); } lastGold = s.gold; }));
     this.cleanup.push(net.on("fx", (list) => this.fx.play(list)), net.on("loot", (bags) => this.syncBags(bags)));
+    // свои капканы — для превью капкана (отказ «Слишком близко к другому капкану»)
+    this.traps = new TrapWatch();
+    this.cleanup.push(net.on("fx", (list) => this.traps.note(list, net.id, performance.now(), net.self?.skills)));
 
     // NPC — декоративные, проверки дальности делает сервер
     if (net.kind === "world") {
@@ -871,11 +874,15 @@ export class GameScene extends Phaser.Scene {
 
   cancelAim() { this.aimState = null; this.aim?.clear(); }
 
+  /** Юнит для выбора адресата и прицела: радиус — как у сервера (unitRadius), взгляд — за спину («Теневой шаг»), босс — его не притягивают. */
   private castUnit(id: string | null): CastUnit | null {
     const v = id ? this.units.get(id) : undefined;
     if (!v) return null;
     const enemy = this.isEnemy(v);
-    return { id: v.id, x: v.x, y: v.y, enemy, friend: !enemy && (v.u.kind === UnitKind.Player || v.u.kind === UnitKind.Pet), dead: v.dead };
+    return {
+      id: v.id, x: v.x, y: v.y, enemy, friend: !enemy && (v.u.kind === UnitKind.Player || v.u.kind === UnitKind.Pet), dead: v.dead,
+      r: unitRadius(v.u), dir: v.u.dir, boss: v.u.kind === UnitKind.Boss,
+    };
   }
 
   /** Вход для resolveCast: курсор (последнее положение над картой), юнит под ним, цель, «вперёд». */
@@ -903,7 +910,8 @@ export class GameScene extends Phaser.Scene {
     const self = net.self, mp = this.me.u.mp, need = self ? skillMana(def, self.skills[def.id] || 1, self.level) : 0;
     if (mp < need) return fail(`Не хватает маны: ${Math.floor(mp)} из ${need}`);
     if (def.aim === "unit" && def.range && plan.far && !mouseOpts.approach) {
-      const over = Math.hypot(plan.x - this.pos.x, plan.y - this.pos.y) - def.range;
+      // как у сервера: дальше дальности + радиус цели
+      const over = Math.hypot(plan.x - this.pos.x, plan.y - this.pos.y) - def.range - (this.castUnit(plan.target)?.r ?? PLAYER_RADIUS);
       return fail(`Слишком далеко: ещё ${Math.max(1, Math.ceil(over / TILE))} кл.`);
     }
     const now = performance.now(), cds = net.cooldowns;
@@ -912,27 +920,70 @@ export class GameScene extends Phaser.Scene {
       if (own > 0) fail(`Перезарядка: ${(own / 1000).toFixed(1).replace(".", ",")} с`);
       return;
     }
-    // куда ляжет — та же функция, которой решает сервер: его отказ (видимость, луч до стены, рывок в упор) — сразу, без RTT;
-    // в запросе — прижатая точка, угол линии и стены, вектор рывка и до точки линии (сервер применит их от своей позиции)
-    const { g, msg } = this.aimOf(def, plan);
-    if (g.err) return fail(g.err);
+    // куда ляжет — та же функция, которой решает сервер: его отказ (видимость, луч до стены, рывок в упор) — сразу, без RTT, но только если каст
+    // исполнится сейчас: из очереди (готовность в пределах queueMs) сервер сам проверит видимость, путь и правила в момент исполнения, а наш расчёт
+    // от нынешних мест к тому времени устареет (цель выйдет из-за колонны, пачка добежит в круг). В запросе — прижатая точка, угол линии и стены,
+    // вектор рывка и до точки линии (сервер применит их от своей позиции)
+    const { g, msg } = this.aimOf(def, plan, aimSpec(def).pick === "near" ? this.hitUnits() : undefined);
+    if (g.err && own <= 0 && gcd <= 0) return fail(g.err);
     this.hud.notePress(def.id);
     net.send("skill", { id: def.id, ...msg, target: plan.target, q: mouseOpts.queueMs, ap: mouseOpts.approach });
   }
 
   /** Геометрия умения по плану (shared/skillShape.ts через castAim): от предсказанной позиции, ранг и пассивки героя (неизученное — 1 ранг).
-   *  Цель плана — для самонаведения шара (точка плана — её ноги); радиус цели клиенту неизвестен — как у героя. */
-  private aimOf(def: SkillDef, plan: { x: number; y: number; target: string | null }) {
+   *  Цель плана (ноги, радиус как у сервера, взгляд, босс) — для самонаведения шара и умений на цель; мир — свои капканы и, если нужны, юниты
+   *  (цели роя, метки «кого заденет» — hitUnits; список строит вызывающий, только когда он нужен). */
+  private aimOf(def: SkillDef, plan: { x: number; y: number; target: string | null }, units?: readonly HitUnit[]) {
     const ranks = net.self?.skills;
-    return castAim(this.map, def, ranks?.[def.id] || 1, ranks, this.pos, plan, plan.target ? { x: plan.x, y: plan.y, r: HIT_EDGE } : undefined);
+    const t = plan.target ? this.castUnit(plan.target) : null;
+    return castAim(this.map, def, ranks?.[def.id] || 1, ranks, this.pos, plan, aimUnit(t), { traps: this.traps.live(performance.now()), units });
+  }
+  /** Свои живые капканы (по fx сервера) — превью знает отказ «Слишком близко к другому капкану». */
+  private traps = new TrapWatch();
+  /** Юниты для «кого заденет» — по правилам сервера (castResolve.hitUnitsOf): враги, которых задевают площадные, союзники и питомцы по хозяину;
+   *  скрытых и павших нет (метка выдала бы невидимку). Радиус — как у сервера. */
+  private hitUnits(): HitUnit[] {
+    const me = net.self, list: HitView[] = [];
+    for (const v of this.units.values()) {
+      const k = v.u.kind, hero = k === UnitKind.Player, pet = k === UnitKind.Pet;
+      list.push({
+        id: v.id, x: v.x, y: v.y, r: unitRadius(v.u), dead: v.dead, unseen: v.unseen, hero, pet, boss: k === UnitKind.Boss,
+        foe: !pet && this.isEnemy(v) && (!hero || this.affectable(v)), hostile: hero && this.hostileHero(v), kin: hero && !!me && v.u.faction === me.faction, owner: v.u.ownerId,
+      });
+    }
+    return hitUnitsOf(list, net.id);
+  }
+  /** Враждебен ли мне герой — как World.hostile: без скидки на скрытность (в отличие от isEnemy) — для союзников и питомцев в «кого заденет». */
+  private hostileHero(v: UnitView): boolean {
+    if (v.id === net.id) return false;
+    if (net.kind === "arena") return v.u.team !== 0 && v.u.team !== net.arena?.team;
+    if (net.kind === "raid") return false;
+    const me = net.self;
+    return !!me && factionsHostile(this.map, me.faction, this.pos.x, this.pos.y, v.u.faction, v.u.x, v.u.y);
+  }
+  /** Задевают ли героя площадные — как World.canAffect: в нейтральном городе бой героев запрещён, кроме отпора нарушителю. */
+  private affectable(v: UnitView): boolean {
+    return !this.townFoe(v) || (!!v.u.outlaw && !this.me?.u.outlaw);
   }
 
-  /** Каждый кадр: превью по состоянию прицела или наведению на слот. */
+  /** Каждый кадр: превью по состоянию прицела или наведению на слот; метки — кого заденет у роя, щитов и лечения союзникам и цель самонаведения
+   *  (только вместе с формой: при наведении на слот площадного круга нет — и меток нет; у новы — всегда). Юниты — только когда нужны.
+   *  Заодно радиус и сторона выбранной цели — для панели умений (selTarget: «далеко» и «нет видимости» как у сервера). */
   private updateAim() {
+    // свой герой погиб — сервер молча погасил его капканы
+    if (this.me?.dead) this.traps.clear();
+    const sel = this.castUnit(this.targetId);
+    selTarget.r = sel?.r ?? PLAYER_RADIUS; selTarget.friend = !!sel?.friend; selTarget.enemy = !!sel?.enemy;
     const def = SKILLS[this.aimState?.id ?? this.aimHover ?? ""];
     if (!def || !this.me || this.me.dead) return this.aim.clear();
     const plan: CastPlan = resolveCast(this.castInput(def, false));
-    this.aim.draw(def, this.pos, plan, plan.ok ? this.aimOf(def, plan).g : null, !this.aimState || def.aim === "unit");
+    const sp = aimSpec(def), rangeOnly = !this.aimState || def.aim === "unit", shown = !rangeOnly || sp.shape === "nova";
+    const units = plan.ok && shown && (sp.pick === "near" || sp.who === "ally") ? this.hitUnits() : undefined;
+    const r = plan.ok ? this.aimOf(def, plan, units) : null, g = r?.g ?? null;
+    const marks: { x: number; y: number; r: number }[] = [];
+    if (r && units && r.hits.length) { const hit = new Set(r.hits); for (const u of units) if (hit.has(u.id)) marks.push({ x: u.x, y: u.y, r: u.r }); }
+    if (g?.home && plan.ok && plan.target && shown) { const t = this.castUnit(plan.target); if (t) marks.push({ x: t.x, y: t.y, r: t.r ?? PLAYER_RADIUS }); }
+    this.aim.draw(def, this.pos, plan, g, rangeOnly, marks);
   }
 
   pickupNearest() { this.interactNearest(); }

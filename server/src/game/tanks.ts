@@ -5,12 +5,11 @@
  * onBlock, beforeLethal, afterDamaged, afterDealt, onKill; onCast вызывается из castSkill при успешном применении.
  * Состояние героя — в WeakMap (в сохранения не попадает).
  */
-import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";
 import { Anim, Dir } from "../../../shared/protocol";
 import { SKILLS } from "../../../shared/skills";
+import { pullDest } from "../../../shared/skillShape";
 import type { Player } from "./Player";
-import { reachable } from "./skills";
 import type { CastCtx } from "./umbrath";
 import { applyRoot, applySlow } from "./effects";
 import { registerAuraHook } from "./auras";
@@ -85,11 +84,9 @@ function setCd(p: Player, w: World, id: string, readyIn: number) {
   p.send("cd", { id, ms: readyIn });
 }
 
-/** Притянуть врага вплотную к герою. */
+/** Притянуть врага вплотную к герою (общая с превью «Хватки смерти»: pullDest). */
 function pull(w: World, p: Player, m: Actor) {
-  const u = p.unit;
-  const stop = w.radiusOf(m) + PLAYER_RADIUS + 6;
-  const dest = reachable(w, m.x, m.y, u.x, u.y, Math.max(0, w.dist(u, m) - stop));
+  const dest = pullDest(w.map, { x: m.x, y: m.y, r: w.radiusOf(m) }, p.unit);
   w.emit({ t: "blink", id: m.id, x0: m.x, y0: m.y, x1: dest.x, y1: dest.y, k: "charge" });
   m.unit.x = dest.x;
   m.unit.y = dest.y;

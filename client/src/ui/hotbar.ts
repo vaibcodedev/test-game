@@ -9,6 +9,7 @@ import { lineClear, type WorldMap } from "../../../shared/map";
 import type { SelfState } from "../../../shared/protocol";
 import { skillMana, SKILLS, type SkillDef } from "../../../shared/skills";
 import { aimSpec } from "../../../shared/skillShape";
+import { selTarget } from "../game/castResolve";
 import { keybinds } from "../game/keybinds";
 import { mountSprite } from "../../../shared/mounts";
 import type { Net } from "../net";
@@ -274,9 +275,12 @@ export class Hotbar {
             if (f.mp < skillMana(d, rank, s.level)) cls.push("nomana");
             if (d.target === "enemy" && !f.target) cls.push("notarget");
             else if (f.target && d.target !== "self") {
-              // «далеко» — только где сервер откажет: точку и направление (oor: clamp) он прижимает к дальности и кастует
-              if (d.range && aimSpec(d).oor !== "clamp" && Math.hypot(f.target.x - f.pos.x, f.target.y - f.pos.y) > d.range + 8) cls.push("oor");
-              else if (d.target === "enemy" && !lineClear(this.ctx.map, f.pos.x, f.pos.y, f.target.x, f.target.y)) cls.push("nolos");
+              // только где сервер откажет: «далеко» — дальше дальности + радиус цели (точку и направление, oor: clamp, он прижимает сам);
+              // «нет видимости» — у умений, которым она нужна (флаг los: «Ворон» и лечение — без неё). Цель — враг у вражеских умений,
+              // союзник у союзных (иначе союзное уйдёт на себя); радиус и сторону цели кладёт сцена (selTarget)
+              const sp = aimSpec(d), fits = d.target === "enemy" ? selTarget.enemy : d.target === "ally" ? selTarget.friend : true;
+              if (fits && d.range && sp.oor !== "clamp" && Math.hypot(f.target.x - f.pos.x, f.target.y - f.pos.y) > d.range + selTarget.r) cls.push("oor");
+              else if (fits && d.aim === "unit" && sp.los && !lineClear(this.ctx.map, f.pos.x, f.pos.y, f.target.x, f.target.y)) cls.push("nolos");
             }
           }
         } else if ("i" in ref) {
