@@ -49,6 +49,7 @@
         },
         {
           "name": "Rubik",
+          "by": "Авторы: Hubert & Fischer (The Rubik Project Authors)",
           "url": "https://fontsource.org/fonts/rubik",
           "what": "Основной текст; подключён пакетом @fontsource/rubik",
           "license": "OFL 1.1",
@@ -195,6 +196,24 @@
           "url": "https://pptr.dev",
           "what": "Скриншоты клиента в тестах",
           "license": "Apache-2.0"
+        },
+        {
+          "name": "Electron",
+          "url": "https://www.electronjs.org",
+          "what": "Десктоп-приложение и лаунчер",
+          "license": "MIT"
+        },
+        {
+          "name": "electron-builder",
+          "url": "https://www.electron.build",
+          "what": "Установщик для Windows",
+          "license": "MIT"
+        },
+        {
+          "name": "esbuild",
+          "url": "https://esbuild.github.io",
+          "what": "Сборка десктоп-приложения",
+          "license": "MIT"
         },
         {
           "name": "node:sqlite",

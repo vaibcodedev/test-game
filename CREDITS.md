@@ -20,7 +20,7 @@
 Оба шрифта собираются вместе с клиентом и лаунчером, интернет для них не нужен.
 
 - **Ark Pixel 10px Proportional** (заголовки, карта мира), автор TakWolf, [ark-pixel-font.takwolf.com](https://ark-pixel-font.takwolf.com). Лицензия SIL Open Font License 1.1, текст лицензии — `client/src/fonts/OFL-ark-pixel.txt`. Файл `client/src/fonts/ark-pixel-10px.woff2` — latin-сборка (латиница и кириллица).
-- **Rubik** (основной текст), подключён через пакет [`@fontsource/rubik`](https://fontsource.org/fonts/rubik). Лицензия SIL Open Font License 1.1.
+- **Rubik** (основной текст), авторы Hubert & Fischer (The Rubik Project Authors), подключён через пакет [`@fontsource/rubik`](https://fontsource.org/fonts/rubik). Лицензия SIL Open Font License 1.1.
 
 ## Звук
 
@@ -38,6 +38,9 @@
 | [pngjs](https://github.com/pngjs/pngjs) | запись PNG в генераторе ассетов | MIT |
 | [concurrently](https://github.com/open-cli-tools/concurrently) | запуск сервера и клиента одной командой | MIT |
 | [puppeteer-core](https://pptr.dev) | скриншоты клиента в тестах | Apache-2.0 |
+| [Electron](https://www.electronjs.org) | десктоп-приложение и лаунчер | MIT |
+| [electron-builder](https://www.electron.build) | установщик для Windows | MIT |
+| [esbuild](https://esbuild.github.io) | сборка десктоп-приложения | MIT |
 | `node:sqlite` | хранение прогресса | встроен в Node.js (MIT) |
 
 ## Иконки умений и предметов (задача 127)

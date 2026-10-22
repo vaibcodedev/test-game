@@ -246,7 +246,7 @@ async function worldPhase(browser: Browser) {
   });
   must(info.title === "Авторы", "заголовок окна: " + info.title);
   must(info.secs.length === 5, "разделов не 5: " + info.secs.join(" | "));
-  for (const need of ["CC BY 3.0", "CC BY 4.0", "Pixel art effects by Sentient Dream Studio", "Caro Asercion", "DarkZaitzev", "Delapouite", "Lorc", "Skoll", "sbed", "Various Artists", "Schwarnhild", "0_mem0ry", "Kenney", "cathean", "TakWolf", "Rubik", "frosty_rabbid", "Henrique Lazarini", "Foozle", "Pixel-boy", "pimen", "ImpactForge", "SrZolda", "Phaser", "Colyseus", "puppeteer-core", "node:sqlite"]) must(info.text.includes(need), `в окне нет «${need}»`);
+  for (const need of ["CC BY 3.0", "CC BY 4.0", "Pixel art effects by Sentient Dream Studio", "Caro Asercion", "DarkZaitzev", "Delapouite", "Lorc", "Skoll", "sbed", "Various Artists", "Schwarnhild", "0_mem0ry", "Kenney", "cathean", "TakWolf", "Rubik", "frosty_rabbid", "Henrique Lazarini", "Foozle", "Pixel-boy", "pimen", "ImpactForge", "SrZolda", "Phaser", "Colyseus", "puppeteer-core", "Electron", "node:sqlite"]) must(info.text.includes(need), `в окне нет «${need}»`);
   must(info.badLinks.length === 0, "ссылки без target=_blank, noopener или https: " + info.badLinks.join("; "));
   must(info.rect.x >= 0 && info.rect.y >= 0 && info.rect.x + info.rect.w <= 1280 && info.rect.y + info.rect.h <= 800, "окно выходит за экран: " + JSON.stringify(info.rect));
   must(info.scroll && !info.hscroll, `прокрутка: вертикальная ${info.scroll}, горизонтальная ${info.hscroll}`);
@@ -325,6 +325,15 @@ async function worldPhase(browser: Browser) {
   await page.screenshot({ path: path.join(OUT, "credits-narrow.png") });
   await page.keyboard.press("Escape");
   await waitGone(page, ".win-credits");
+
+  // 10. выход из мира (Hud.reset: смена героя, выход, обрыв связи) при открытом окне — окно закрывается, иначе после входа героем оно уже открыто
+  await page.keyboard.press("Escape");
+  await waitVisible(page, ".gmenu-back .gm-item");
+  await clickItem(page, "Авторы");
+  await waitVisible(page, ".win-credits");
+  await page.evaluate(`${hud}.reset()`);
+  must(!(await visible(page, ".win-credits")), "Hud.reset() (выход из мира) не закрыл окно «Авторы»");
+  ok("выход из мира закрывает окно «Авторы»");
   await page.close();
 }
 

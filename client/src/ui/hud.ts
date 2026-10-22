@@ -295,7 +295,7 @@ export class Hud {
 
   /** Выход из мира (смена героя): закрыть окна и очистить чат прошлого героя. */
   reset() {
-    this.gameMenu.close();
+    this.gameMenu.reset();
     this.bank.close();
     this.inspect.close();
     for (const w of Object.values(this.wins)) w.hidden = true;

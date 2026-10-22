@@ -64,6 +64,8 @@ export class GameMenu {
   }
   get isOpen() { return !this.back.hidden; }
   toggle() { this.isOpen ? this.close() : this.open(); }
+  /** Выход из мира: меню и окно «Авторы» (его нет в Hud.wins) закрыты, иначе после входа героем оно уже открыто. */
+  reset() { this.close(); this.credits.close(); }
   close(): boolean {
     const was = this.isOpen;
     if (this.waiting) {
