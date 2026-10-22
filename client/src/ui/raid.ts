@@ -162,7 +162,7 @@ export class RaidHud {
       for (const x of m.members) by.get(x.role)?.push(x);
       roster = RAID_ROLES.map((r) => {
         const list = by.get(r)!, want = m.need[r];
-        return `<div class="raid-role"><div class="raid-role-h">${roleImg(r)}<span>${ROLE_NAMES[r]}</span><span class="raid-role-c${want && list.length >= want ? " full" : ""}">${list.length}${want ? ` / ${want}` : ""}</span></div>`
+        return `<div class="raid-role"><div class="raid-role-h">${roleImg(r)}<span class="raid-role-name">${ROLE_NAMES[r]}</span><span class="raid-role-c${want && list.length >= want ? " full" : ""}">${list.length}${want ? ` / ${want}` : ""}</span></div>`
           + list.map((x) => `<div class="row dense raid-mem${x.bot ? " bot" : ""}${x.name === net.self?.name ? " me" : ""}"><span class="row-title">${esc(x.name)}</span><span class="meta">${esc(CLASSES[x.cls]?.name ?? x.cls)} · ${x.level}</span></div>`).join("")
           + `</div>`;
       }).join("");

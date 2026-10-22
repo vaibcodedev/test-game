@@ -12,6 +12,7 @@
 .raid-role + .raid-role { border-top: 1px solid var(--line); }
 .raid-role-h { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-1h); padding: var(--sp-1) var(--sp-2); background: var(--card); font-weight: var(--fw-b); }
 .raid-role-h:not(:last-child) { border-bottom: 1px solid var(--line); }
+.raid-role-name { margin-left: var(--sp-1h); }
 .raid-role-c { color: var(--dim); font-weight: var(--fw); font-variant-numeric: tabular-nums; }
 .raid-role-c.full { color: var(--ok); }
 .role-ic { width: 24px; height: 24px; image-rendering: pixelated; }
