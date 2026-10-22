@@ -115,7 +115,8 @@
 .wm-view { position: relative; width: 100%; height: clamp(260px, calc(100vh - 220px), 800px); background: var(--well); border-radius: var(--r-1); overflow: hidden; }
 .wm-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: var(--cur-grab); touch-action: none; }
 .wm-view canvas:active { cursor: var(--cur-grabbing); }
-.wm.picking .wm-view canvas, .wm.picking .wm-view canvas:active { cursor: var(--cur-aim); } /* выбор точки (телепорт админа): золотой прицел */
+.wm.picking .wm-view canvas { cursor: none; } /* выбор точки (телепорт админа): курсор — золотая рамка на тайле, её рисует карта (worldmap.ts, drawPickMark); второй курсор поверх не нужен */
+.wm.picking .wm-view canvas:active { cursor: var(--cur-grabbing); } /* пока тащат карту, рамки нет — видна сжатая рука */
 .wm-tip { position: absolute; pointer-events: none; background: rgba(20,14,24,0.96); border: 1px solid var(--line-hi); border-radius: var(--r-2); padding: var(--sp-1h) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-0); max-width: 280px; z-index: 2; }
 .wm-tip b { color: var(--gold); font-weight: var(--fw-b); font-size: var(--fs-md); }
 .wm-tip span { font-size: var(--fs); color: var(--fg); }

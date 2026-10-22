@@ -232,9 +232,11 @@ function recolorCursor(src: PC, fillC: RGBA, detail: RGBA): PC {
     if (!v) continue;
     const up = at(x, y - 1), left = at(x - 1, y), right = at(x + 1, y), down = at(x, y + 1);
     if (v === 1) {
-      if (!up || !left || !right || !down) continue; // внешний пиксель двойного контура
-      // внутренний — контур 1 px: смотрит наружу вверх или влево — светлее, вниз или вправо — темнее, линии внутри фигуры — средний тон
-      const outUL = !at(x, y - 2) || !at(x - 2, y), outDR = !at(x, y + 2) || !at(x + 2, y);
+      // контур пака — 2 px, после Scale2x 4 px; оставляем 1 px — только пиксели, что касаются фигуры (просьба пользователя: обводка всё равно жирная)
+      if (!(up >= 2 || left >= 2 || right >= 2 || down >= 2)) continue;
+      // наружная сторона — та, где за полосой контура пусто: смотрит вверх или влево — светлее, вниз или вправо — темнее; линии внутри фигуры — средний тон, плотные
+      const ext = (dx: number, dy: number) => { for (let k = 1; k <= 4; k++) { const q = at(x + dx * k, y + dy * k); if (!q) return true; if (q !== 1) return false; } return false; };
+      const outUL = ext(0, -1) || ext(-1, 0), outDR = ext(0, 1) || ext(1, 0);
       out.set(x, y, outDR ? T.lineDark : outUL ? T.lineLit : T.lineIn);
       continue;
     }

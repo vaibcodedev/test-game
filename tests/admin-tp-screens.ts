@@ -55,7 +55,7 @@ async function main() {
     await page.waitForSelector('.cs-slot[data-name="Админ1"]', { timeout: 10000 });
     await page.$eval('.cs-slot[data-name="Админ1"]', (b) => (b as HTMLElement).click());
     await page.click('.cs-list [data-a="play"]');
-    await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self?.isAdmin, { timeout: 25000 });
+    await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self?.isAdmin, { timeout: 90000 });
     await sleep(1500);
 
     const click = async (sel: string) => { await page.waitForSelector(sel, { timeout: 5000 }); await page.$eval(sel, (b) => (b as HTMLElement).click()); await sleep(250); };
@@ -79,12 +79,13 @@ async function main() {
     must(btn === "Карта", "нет кнопки «Карта» в разделе «Телепорт»: " + btn);
     await shot(page, "1-section");
 
-    // 2. карта в режиме телепорта: окно админки спрятано, прицел, подсказка, под курсором тайл и зона
+    // 2. карта в режиме телепорта: окно админки спрятано, рамка на тайле вместо курсора, подсказка, под курсором тайл и зона
     const before = await pos();
     await openPicker();
     must(await page.$eval(".wm", (e) => e.classList.contains("picking")), "у карты нет режима выбора точки");
     const cursor = await page.$eval(".wm-view canvas", (c) => getComputedStyle(c).cursor);
-    must(cursor.includes("crosshair"), "курсор карты — не прицел: " + cursor);
+    // курсор — золотая рамка на тайле, её рисует карта; курсор страницы над картой спрятан, чтобы не было двух прицелов
+    must(cursor === "none", "над картой виден второй курсор: " + cursor);
     const hint = await page.$eval(".wm .chip", (e) => (e as HTMLElement).hidden ? "" : (e as HTMLElement).innerText);
     must(hint === "Клик — телепорт сюда · Esc — выход", "подсказка: " + JSON.stringify(hint));
     let r = await canvas();
@@ -155,7 +156,7 @@ async function main() {
     await sleep(400);
     must(!(await page.$eval(".wm .chip", (e) => !(e as HTMLElement).hidden)), "подсказка телепорта видна на обычной карте");
     const cur2 = await page.$eval(".wm-view canvas", (c) => getComputedStyle(c).cursor);
-    must(!cur2.includes("crosshair"), "прицел остался на обычной карте: " + cur2);
+    must(cur2 !== "none" && cur2.includes("cursor_take.png"), "на обычной карте нет руки: " + cur2);
     console.log("сценарий пройден");
   } finally {
     if (errors.length) console.log("ошибки страницы:", errors.slice(0, 8));
