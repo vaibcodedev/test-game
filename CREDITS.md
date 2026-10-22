@@ -7,8 +7,9 @@
 - **Basic Tileset and Asset Pack 32x32 Pixels** и **Volcanoe Tileset and Asset Pack 32x32 Pixels**, автор Schwarnhild ([schwarnhild.itch.io](https://schwarnhild.itch.io)): деревья, кусты, пни, брёвна, заборы, обрывы, пещеры, лестницы, мёртвые деревья и кусты, валуны, лавовые холмики, кости. Можно использовать и править, нельзя раздавать файлы (в том числе изменённые).
 - **Graveyard Set (Free)**, автор 0_mem0ry ([0-mem0ry.itch.io](https://0-mem0ry.itch.io/graveyard-set-free)): надгробия, кресты, ограды, статуи, фонари, гробы. Можно использовать и править, нельзя раздавать файлы, нельзя использовать для ИИ.
 - **Fantasy UI Borders** и **Cursor Pixel Pack**, автор Kenney ([kenney.nl](https://kenney.nl)), лицензия CC0: рамка окон, разделитель заголовка и курсоры.
+- **LiteUI Fantasy**, автор cathean ([cathean.itch.io/liteui-fantasy](https://cathean.itch.io/liteui-fantasy)), «назовите свою цену»: тонкие рамки ячеек, слотов и полос здоровья и маны, плашка героя и рамка панели умений (нарезка и перекраска — `tools/gen/vendor-liteui.ts`). Раздача файлов в условиях не оговорена.
 
-Исходные архивы (`vendor/`) и перекрашенные объекты (`client/public/assets/objects/v_*.png`) в публичный репозиторий не попадают: лицензии Schwarnhild и 0_mem0ry запрещают раздачу файлов.
+Исходные архивы паков (`vendor/`) в репозиторий не попадают. Готовое из них — перекрашенные объекты (`client/public/assets/objects/v_*.png`), листы эффектов (`client/public/assets/vfx/r/`) и нарезка LiteUI (`client/public/ui/liteui/`) — коммитится: репозиторий приватный с 2026-10-21. Лицензии Schwarnhild, 0_mem0ry, Sentient Dream Studio и pimen запрещают раздачу файлов, поэтому публичным репозиторий делать нельзя, пока они в истории.
 
 Изображения рисует код генератора в `tools/gen/` (`canvas.ts`, `palette.ts`, `tiles.ts`, `units.ts`, `objects.ts`). Команда `npm run assets` пересоздаёт их в `client/public/assets/`. Палитра собрана вручную в `tools/gen/palette.ts`.
 
@@ -56,8 +57,8 @@
 
 - **Pixel Magic Effects**, Foozle (рисовал lordfitoi), CC0, [foozlecc.itch.io/pixel-magic-sprite-effects](https://foozlecc.itch.io/pixel-magic-sprite-effects): огненный шар, взрыв, водяной шар, ветер, камни, портал, копьё, шипы, гейзер, торнадо.
 - **Ninja Adventure Asset Pack**, Pixel-boy, CC0, [pixel-boy.itch.io/ninja-adventure-asset-pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack): метательная звезда.
-- Бесплатные паки, файлы раздавать нельзя (перекрашенные листы лежат в `client/public/assets/vfx/r/`, каталог в `.gitignore`):
+- Бесплатные паки, файлы раздавать нельзя (перекрашенные листы лежат в `client/public/assets/vfx/r/`, только в приватном репозитории):
   - **Sentient Dream Studio** ([sentient-dream-studio.itch.io](https://sentient-dream-studio.itch.io)): Pixel Holy Effects Pack 01, Pixel VFX 3 Poison Attacks, Pixel Explosion Effects Pack 01, Pixel VFX Level Up Effect, Pixel VFX Dark Spells. Автор просит указывать «Pixel art effects by Sentient Dream Studio» при показе в соцсетях.
   - **pimen** ([pimen.itch.io](https://pimen.itch.io)): Dark VFX 01–02, Smear VFX 01, Hit Effect 01, Thunder Effect 01 и 02, Ice Effect 01, Smoke Effect 01.
   - **ImpactForge FX**: Slash Effect Pack ([impactforce-fx.itch.io](https://impactforce-fx.itch.io/impactforge-fx-slash-effect-pack)).
-- Скачаны, но не используются (форма не вписывается в масштаб героя 32×32 или не нужна): Free Magic Summons (SrZolda, CC BY 4.0, кадры 512–816 px), Pixel Battle Effects (pimen, CC BY 4.0), Acid VFX 01–02 (pimen). Круги призыва, цепи, кандалы, ауры, щиты, знамя, капкан, ворон, дождь стрел, топор, лужа и брызги крови, пламя рисует код `tools/gen/vfx-gen.ts` и `vfx-gen2.ts`.
+- Скачаны, но не используются (форма не вписывается в масштаб героя 32×32 или не нужна): Free Magic Summons (SrZolda, CC BY 4.0, кадры 512–816 px), Pixel Battle Effects (pimen, CC BY 4.0), Acid VFX 01–02 и Earth Effect 01–02 (pimen). Круги призыва, цепи, кандалы, ауры, щиты, знамя, капкан, ворон, дождь стрел, топор, лужа и брызги крови, пламя рисует код `tools/gen/vfx-gen.ts` и `vfx-gen2.ts`.
