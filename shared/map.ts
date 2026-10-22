@@ -9,13 +9,14 @@
  * вдоль реки земли обнесены стеной с воротами у мостов. Между реками (MID) — кольцо 40–80 (четыре пояса вокруг Полей) и «Поля вечных
  * битв» 80–100 (CORE) с Эмберхоллом на оси симметрии вверху и данжем внизу. Уровень растёт к центру.
  * Восток — зеркало запада (непрерывная x → MAP_W − x): шум границ зон считается по сложенной x, реки, дороги, стены и места заданы парами.
- * Зоны, уровни, раскладка, реки, дороги, стены, деревни, лагеря, руины и указатели — в /data/world.json.
+ * Зоны, уровни, раскладка, реки, дороги, стены, поселения (shared/settlements.ts), лагеря, руины и указатели — в /data/world.json.
  */
 import world from "../data/world.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
-import { CITIES, CITY_HOUSES, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
+import { CAPITAL_DECOR, CITIES, CITY_HOUSES, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
 import { BUILDINGS, inTownRect, isGate, STALLS, TOWERS, TOWN, TOWN_HALF, townGround, WALL } from "./town";
+import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
 
 export { TOWN } from "./town";
@@ -98,20 +99,23 @@ export interface ZoneInfo {
   danger?: "unsafe" | "deadly";
   /** Зоны без места в мире (в enum остались ради порядка номеров): в бестиарии и списках админки их нет. */
   unused?: boolean;
+  /** Безопасные земли фракции (земли 1–40 и её столица; центр между реками — без земли): factionLandAt в shared/factions.ts. */
+  land?: "solgard" | "umbrath";
   /** Каким биомом рисуется зона (поверхность, декор, эффекты, окружение). */
   style: Zone;
 }
 /** Пересчёт уровней: зоны заданы под designCap, реальный кап — levelCap (data/world.json). */
 const LEVEL_SCALE = world.levels.levelCap / world.levels.designCap;
 export const scaleLevel = (n: number) => (n <= 0 ? 0 : Math.max(1, Math.round(n * LEVEL_SCALE)));
-type RawZone = { name: string; levels: number[]; mobs: string[]; safe?: boolean; note?: string; style?: string; danger?: string; unused?: boolean };
+type RawZone = { name: string; levels: number[]; mobs: string[]; safe?: boolean; note?: string; style?: string; danger?: string; unused?: boolean; land?: string };
 const RAW_ZONES = world.zones as Record<string, RawZone>;
 export const ZONES: ZoneInfo[] = Array.from({ length: ZONE_COUNT }, (_, z) => {
   const r = RAW_ZONES[Zone[z]];
   if (!r) throw new Error(`data/world.json: нет зоны ${Zone[z]}`);
   const style = r.style ? (Zone[r.style as keyof typeof Zone] as Zone) : (z as Zone);
   const danger = r.danger === "unsafe" || r.danger === "deadly" ? r.danger : undefined;
-  return { name: r.name, levels: [scaleLevel(r.levels[0]), scaleLevel(r.levels[1])], safe: !!r.safe, mobs: r.mobs, note: r.note, danger, unused: r.unused || undefined, style };
+  const land = r.land === "solgard" || r.land === "umbrath" ? r.land : undefined;
+  return { name: r.name, levels: [scaleLevel(r.levels[0]), scaleLevel(r.levels[1])], safe: !!r.safe, mobs: r.mobs, note: r.note, danger, unused: r.unused || undefined, land, style };
 });
 /** Подпись опасности зоны (решение 1, задача 132): кольцо 40–80 — «Небезопасная зона», Поля вечных битв 80–100 — прямо «Опасная зона». */
 export const DANGER_LABEL = { unsafe: "Небезопасная зона", deadly: "Опасная зона" } as const;
@@ -166,7 +170,7 @@ export interface WorldMap {
   /** Нейтральная точка появления (Эмберхолл): старые сохранения, арена. Герои фракций появляются в своих столицах (homeCity). */
   playerSpawn: { x: number; y: number };
   merchant: { x: number; y: number };
-  /** Все торговцы (Марфа и торговцы городов): сюда ходят продавать и покупать. */
+  /** Все торговцы (Марфа, торговцы городов и поселений): сюда ходят продавать и покупать. */
   merchants: { x: number; y: number }[];
 }
 
@@ -388,39 +392,46 @@ export const BOSS_SPAWNS: BossSpawn[] = [
   { id: "ashlord", x: (168 + DG.x) * TILE, y: (71.5 + DG.y) * TILE, arena: 12 * TILE },
 ];
 
-/** Деревни, лагеря, руины и места встреч (тайлы). */
+/** Поселения (shared/settlements.ts), лагеря мобов, руины и места встреч (тайлы). */
 export interface Place {
   id: string;
   name: string;
-  kind: "village" | "camp" | "ruins" | "meeting";
+  kind: "settlement" | "camp" | "ruins" | "meeting";
   look?: "sol" | "umb" | "mid";
+  /** Поселение: план (хутор или лагерь), сторона ворот, ограда, двор за оградой (погост или сад) — разбирает shared/settlements.ts. */
+  plan?: "hamlet" | "camp";
+  gate?: "n" | "s" | "e" | "w";
+  ring?: { w: number; n: number; s: number };
+  yard?: boolean;
   x: number;
   y: number;
   mob?: string;
   n?: number;
 }
 export const PLACES: Place[] = world.places.list as Place[];
+/** Круг места без мобов, природного декора и воды (тайлы): у поселения шире — ограда с запасом (SETTLE_R). */
 const PLACE_R = 8;
+const placeRadius = (p: Place) => (p.kind === "settlement" ? SETTLE_R : PLACE_R);
 /** Центры мест — центры их клеток (+0,5): зеркальные места (клетка i ↔ MAP_W − 1 − i) дают зеркальные круги и для вершин поверхности, и для центров клеток. */
-const PLACE_CENTERS = PLACES.map((p) => ({ x: p.x + 0.5, y: p.y + 0.5 }));
+const PLACE_CENTERS = PLACES.map((p) => ({ x: p.x + 0.5, y: p.y + 0.5, r: placeRadius(p) }));
 /** Корзины 16×16 тайлов: 1 — корзину задевает круг какого-нибудь места (остальные проверки пропускаются сразу). */
 const PB = 16, PBX = Math.ceil(MAP_W / PB), PBY = Math.ceil(MAP_H / PB);
 const PLACE_BUCKET = (() => {
   const f = new Uint8Array(PBX * PBY);
   for (const c of PLACE_CENTERS) {
-    for (let by = Math.max(0, Math.floor((c.y - PLACE_R) / PB)); by <= Math.min(PBY - 1, Math.floor((c.y + PLACE_R) / PB)); by++) {
-      for (let bx = Math.max(0, Math.floor((c.x - PLACE_R) / PB)); bx <= Math.min(PBX - 1, Math.floor((c.x + PLACE_R) / PB)); bx++) f[by * PBX + bx] = 1;
+    for (let by = Math.max(0, Math.floor((c.y - c.r) / PB)); by <= Math.min(PBY - 1, Math.floor((c.y + c.r) / PB)); by++) {
+      for (let bx = Math.max(0, Math.floor((c.x - c.r) / PB)); bx <= Math.min(PBX - 1, Math.floor((c.x + c.r) / PB)); bx++) f[by * PBX + bx] = 1;
     }
   }
   return f;
 })();
-/** Рядом ли точка (непрерывные тайлы) с поселением: внутри круга радиуса PLACE_R вокруг его центра. */
+/** Рядом ли точка (непрерывные тайлы) с местом: внутри круга его радиуса (placeRadius) вокруг центра. */
 const placeNear = (x: number, y: number) => {
   const bx = Math.floor(x / PB), by = Math.floor(y / PB);
   if (bx < 0 || by < 0 || bx >= PBX || by >= PBY || !PLACE_BUCKET[by * PBX + bx]) return false;
   for (const c of PLACE_CENTERS) {
     const dx = x - c.x, dy = y - c.y;
-    if (dx * dx + dy * dy < PLACE_R * PLACE_R) return true;
+    if (dx * dx + dy * dy < c.r * c.r) return true;
   }
   return false;
 };
@@ -616,6 +627,10 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
     return gs.includes("road") ? road : gs.includes("path") ? path : plain;
   }
   if (rv < 1.3) return bankOf(st);
+  // поселение (shared/settlements.ts): утоптанные улицы крестом и проём ворот; двор хутора и лагеря Сольгарда — трава без лесной подстилки
+  const sg = settleGround(x, y);
+  if (sg === "path") return T.Dirt;
+  if (sg === "yard" && x < AXIS) return T.Grass;
   const road = roadDist(x, y);
   const roadW = 1.25 + (n - 0.5) * 0.8;
   const arena = bossNear(x, y, 0);
@@ -659,8 +674,9 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
       if (road < roadW) return T.Dirt;
       const p = fbm(fx, y, seed + 40);
       if (arena) return p > 0.6 ? T.Grass : T.Bog;
-      // курганы суше обычных топей: стартовая зона; топи земель и кольца — не слишком мокрые, чтобы пути от столиц оставались равными (задача 132)
-      if (far > 3 && p < (z === Zone.Barrows ? 0.25 : z === Zone.PlagueMarsh ? 0.3 : 0.34)) return T.Water;
+      // курганы — стартовая зона: вода как пруды их пары, Золотых нив (тот же шум, порог и отступ от дорог), поэтому пути от обеих столиц
+      // к поселениям 1–10 и мимо них равны; топи земель и кольца — не слишком мокрые, чтобы пути от столиц оставались равными (задача 132)
+      if (z === Zone.Barrows ? far > 4 && p < 0.22 : far > 3 && p < (z === Zone.PlagueMarsh ? 0.3 : 0.34)) return T.Water;
       if (p > 0.72) return T.Grass;
       return T.Bog;
     }
@@ -783,6 +799,8 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
   CITY_HOUSES.forEach(([dx, dy], i) => place(St.houses[i % 2], X(dx), Y(dy)));
   CITY_STALLS.forEach(([dx, dy], i) => place(St.stalls[i], X(dx), Y(dy)));
   for (const [k, dx, dy] of cityDecor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
+  // у столиц — наковальня кузнеца (банкир, кузнец и сумочник стоят у домов северного ряда, cities.ts)
+  if (c.capital) for (const [k, dx, dy] of CAPITAL_DECOR) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   place("teleport_stone", c.stoneTile.x, c.stoneTile.y);
   // кустики на открытой земле у стен (в Мортхейме — кости и туманные огоньки)
   const bush: Record<CityStyle, string> = { desert: "dry_bush", snow: "snow_bush", solgard: "flowers", umbrath: "bones" };
@@ -796,19 +814,33 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
   }
 }
 
-/** Деревни, лагеря, руины и места встреч: постройки из готовых объектов (только на свободных клетках). */
+/** Поселения, лагеря, руины и места встреч: постройки из готовых объектов (только на свободных клетках). */
 function buildPlaces(cell: Uint8Array, w: number, objects: MapObject[], place: PlaceFn, seed: number) {
-  const fits = (kind: string, x: number, y: number) => {
+  const inMap = (x: number, y: number) => x >= 1 && y >= 1 && x < MAP_W - 1 && y < MAP_H - 1;
+  /** След объекта свободен; road — ещё и не у дороги (лагеря и руины не заходят на дороги, ограда поселения — заходит). */
+  const fitsAt = (kind: string, x: number, y: number, road: boolean) => {
     const f = OBJECT_FOOTPRINT[kind] ?? { w: 1, h: 1 };
     for (let j = 0; j < f.h; j++) for (let i = 0; i < f.w; i++) {
       const xx = x + i, yy = y - j;
-      if (xx < 1 || yy < 1 || xx >= MAP_W - 1 || yy >= MAP_H - 1 || cell[yy * w + xx] & CELL_BLOCK) return false;
-      if (roadDist(xx + 0.5, yy + 0.5) < 1.6) return false;
+      if (!inMap(xx, yy) || cell[yy * w + xx] & CELL_BLOCK) return false;
+      if (road && roadDist(xx + 0.5, yy + 0.5) < 1.6) return false;
     }
     return true;
   };
+  const fits = (kind: string, x: number, y: number) => fitsAt(kind, x, y, true);
+  // поселения (shared/settlements.ts): ограда замкнута и у дорог — проём оставлен только под ворота
+  for (const s of SETTLEMENTS) {
+    buildSettlement(s, {
+      put: (kind, x, y) => (fitsAt(kind, x, y, false) ? (place(kind, x, y), true) : false),
+      deco: (kind, x, y, dy = 30) => { objects.push({ kind, x: x * TILE + 16, y: y * TILE + dy }); },
+      free: (x, y) => inMap(x, y) && !(cell[y * w + x] & CELL_BLOCK),
+      width: (kind) => OBJECT_FOOTPRINT[kind]?.w ?? 1,
+      hash,
+    }, seed);
+  }
   const r = rng(seed + 313);
   for (const p of PLACES) {
+    if (p.kind === "settlement") continue;
     const put = (kind: string, dx: number, dy: number) => { if (fits(kind, p.x + dx, p.y + dy)) place(kind, p.x + dx, p.y + dy); };
     const deco = (kind: string, dx: number, dy: number) => objects.push({ kind, x: (p.x + dx) * TILE + 16, y: (p.y + dy) * TILE + 28 });
     // кладбище сеткой из надгробий (шаг 2 по x и 3 по y) с могилой на земле перед каждым; (x0, y0) — первое место
@@ -828,27 +860,7 @@ function buildPlaces(cell: Uint8Array, w: number, objects: MapObject[], place: P
       }
     };
     const putAll = (list: [string, number, number][]) => { for (const [k, dx, dy] of list) put(k, dx, dy); };
-    if (p.kind === "village") {
-      const umb = p.look === "umb";
-      const hs = umb ? ["umb_house", "umb_crypt"] : ["house", "house_blue"];
-      const light = umb ? "soul_brazier" : "lamp";
-      ([[-7, -2], [-1, -3], [4, -2], [-6, 5], [2, 5]] as const).forEach(([dx, dy], i) => put(hs[i % 2], dx, dy));
-      putAll([["well", 0, 1], [light, -3, 1], [light, 3, 1], ["hay", -8, 2], ["barrel", 7, 1], ["crate", 8, 1], [umb ? "bone_pile" : "v_basic_oak", -9, -1], [umb ? D.DEAD_GRAVE[0] : "v_basic_oak_small", 9, 4]]);
-      for (let i = 0; i < 10; i++) deco(umb ? "bones" : "flowers", Math.floor(r() * 16) - 8, Math.floor(r() * 10) - 4);
-      if (umb) {
-        // погост: ограда с воротами между столбами, ряды надгробий, статуя, мёртвые деревья («Погост Скорби» — большой)
-        const big = p.id === "sorrow_yard";
-        putAll([["v_graveyard_fence_long", -8, 7], ["v_graveyard_fence_long", 3, 7], ["v_graveyard_pillar_chain", -2, 7], ["v_graveyard_pillar_chain", 2, 7],
-          ["v_graveyard_statue_a", -10, 9], ["v_graveyard_statue_b", 10, 10], [D.DEAD_GRAVE[1], -11, 6], [D.DEAD_GRAVE[2], 11, 6]]);
-        graveyard(-8, 9, big ? 9 : 5, big ? 2 : 1);
-        if (big) putAll([["v_graveyard_coffin_open", -3, 15], ["v_graveyard_coffin_closed", 2, 15], ["v_graveyard_lamp_a", -5, 8], ["v_graveyard_lamp_a", 5, 8]]);
-      } else {
-        // палисадник: заборы с проходом посередине, цветущие кусты, пни и брёвна
-        putAll([["v_basic_fence_row", -9, 8], ["v_basic_fence_row", -6, 8], ["v_basic_fence_row", 4, 8], ["v_basic_fence_row", 7, 8], ["v_basic_fence_post", -10, 8], ["v_basic_fence_post", 10, 8], ["v_basic_log_pile", 10, 0]]);
-        scatter(D.BUSHES_FLOWER, 6, 51);
-        scatter(D.STUMPS, 3, 61);
-      }
-    } else if (p.kind === "camp") {
+    if (p.kind === "camp") {
       for (const [dx, dy] of [[-4, -2], [2, -2], [-1, 4]] as const) put("tent", dx, dy);
       putAll([["campfire", 0, 1], ["crate", -5, 2], ["crate", 4, 2], ["barrel", 5, 1], ["weapon_rack", -3, 2], ["hay", 3, 3]]);
       for (let i = 0; i < 6; i++) deco("bones", Math.floor(r() * 12) - 6, Math.floor(r() * 10) - 5);
@@ -1200,8 +1212,10 @@ export function generateMap(seed: number): WorldMap {
       if (!quota[z] || cell[i] & CELL_BLOCK) continue;
       if (z !== Zone.Dungeon && cell[i] & CELL_RESERVED && rs() < 0.8) continue;
       if (bossNear(x, y, 4)) continue;
-      // вокруг стен — полоса без мобов (стражи и так их не пустят); у реки с мостами и стеной (берег, ворота) мобов тоже нет
+      // вокруг стен — полоса без мобов (стражи и так их не пустят); у реки с мостами и стеной (берег, ворота) мобов тоже нет;
+      // у поселений — дальше досягаемости их стражи, иначе она била бы мобов прямо у точек появления
       if (townDist(x + 0.5, y + 0.5) < 11 || siteDist(x + 0.5, y + 0.5) < 1.6 || placeNear(x + 0.5, y + 0.5) || riverEdge(x + 0.5, y + 0.5) < RIVER_MOB_GAP) continue;
+      if (settleDist(x + 0.5, y + 0.5) < SETTLE_MOB_GAP) continue;
       if (taken.some((p) => (p.x - x) ** 2 + (p.y - y) ** 2 < 16)) continue;
       const mobs = ZONES[z].mobs;
       const { k, level } = levelAt(z, x, y, (rs() - 0.5) * 2);
@@ -1237,11 +1251,15 @@ export function generateMap(seed: number): WorldMap {
     bosses: BOSS_SPAWNS,
     nodes,
     playerSpawn: { x: TOWN.x * TILE + 16, y: (TOWN.y + 3) * TILE + 16 },
-    // торговка Марфа — за прилавком на рынке (прилавок STALLS[2])
-    merchant: { x: (TOWN.x + 5) * TILE, y: (TOWN.y - 5) * TILE + 8 },
-    merchants: [{ x: (TOWN.x + 5) * TILE, y: (TOWN.y - 5) * TILE + 8 }, ...CITIES.filter((c) => c.merchant).map((c) => c.merchant!)],
+    merchant: { ...MARKET_MERCHANT },
+    merchants: MERCHANT_SPOTS.map((p) => ({ ...p })),
   };
 }
+
+/** Торговка Марфа — за прилавком на рынке Эмберхолла (прилавок STALLS[2]). */
+export const MARKET_MERCHANT = { x: (TOWN.x + 5) * TILE, y: (TOWN.y - 5) * TILE + 8 };
+/** Все торговцы: Марфа, торговцы городов и поселений (сюда ходят продавать и покупать; сервер проверяет дальность по этому списку). */
+const MERCHANT_SPOTS = [MARKET_MERCHANT, ...CITIES.filter((c) => c.merchant).map((c) => c.merchant!), ...SETTLEMENTS.map((s) => s.merchant)].map((n) => ({ x: n.x, y: n.y }));
 
 // ---------- запросы к карте ----------
 export function cellAt(m: WorldMap, px: number, py: number): number {

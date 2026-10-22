@@ -3,6 +3,7 @@ import data from "../data/food.json";
 import { TILE } from "./constants";
 import { CITIES } from "./cities";
 import { TOWN } from "./map";
+import { SETTLEMENTS } from "./settlements";
 import type { ItemStats } from "./items";
 
 export interface Dish {
@@ -39,8 +40,9 @@ export const COOK = {
   x: (TOWN.x - 8) * TILE,
   y: (TOWN.y - 5) * TILE + 8,
 };
-/** Все повара: Борщан в Эмберхолле и повара малых городов (сюда ходят покупать еду). */
+/** Все повара: Борщан в Эмберхолле, повара городов и поселений (сюда ходят покупать еду; сервер проверяет дальность по этому списку). */
 export const COOKS: { id: string; name: string; sprite: string; tint: number; color: string; greeting: string; x: number; y: number }[] = [
   COOK,
   ...CITIES.filter((c) => c.cook).map((c) => ({ ...c.cook!, greeting: c.cook!.greeting ?? "" })),
+  ...SETTLEMENTS.map((s) => ({ ...s.cook, greeting: s.cook.greeting ?? "" })),
 ];

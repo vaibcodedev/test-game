@@ -17,6 +17,7 @@ export const P = {
   xp:      "#b08aff",
   ok:      "#7ad05a",
   bad:     "#ff6a5a",
+  warn:    "#ffb35a",   // предупреждение (CSS --warn): «Небезопасная зона» на карте мира и миникарте
   badLine: "#8a2a2a",
   common:  "#e8e2d0",
   rare:    "#5fa8ff",

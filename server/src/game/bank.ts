@@ -1,7 +1,7 @@
 /** Банк Голдмунда: перенос предметов и золота между сумкой и банком.
  *  Каждая операция: проверки → изменение в памяти → сохранение игрока одной транзакцией SQLite (при ошибке — откат памяти). */
 import { MERCHANT_RANGE } from "../../../shared/constants";
-import { BANK_GOLD_MAX, BANK_STEP, BANK_TAB_SIZE, BANK_TABS, BANKER, bankPrice, newBank, SHARED_SIZE, SHARED_TAB, type BankSave, type BankView } from "../../../shared/bank";
+import { BANK_GOLD_MAX, BANK_STEP, BANK_TAB_SIZE, BANK_TABS, BANKERS, bankPrice, newBank, SHARED_SIZE, SHARED_TAB, type BankSave, type BankView } from "../../../shared/bank";
 import { BASE_ITEMS, type Item } from "../../../shared/items";
 import type { GameDB } from "../db";
 import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
@@ -55,7 +55,8 @@ export class BankService {
   private why(p: Player): string | null {
     if (p.dead) return "Мёртвым банк не нужен";
     if (p.team !== 0 || this.busy(p)) return "Банк недоступен на арене и в очереди на неё";
-    if (this.world().dist(p, BANKER) > MERCHANT_RANGE) return "Банкир далеко";
+    // банкиры — в Эмберхолле и в обеих столицах (решение 2 задачи 132)
+    if (!BANKERS.some((b) => this.world().dist(p, b) <= MERCHANT_RANGE)) return "Банкир далеко";
     return null;
   }
 

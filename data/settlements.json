@@ -1,0 +1,75 @@
+{
+  "_doc": "Поселения безопасных земель (задача 132, шаг 3; shared/settlements.ts, server/src/game/townfolk.ts). Место, вид, ворота и ограда — data/world.json → places (kind settlement), штандарты — data/world.json → banners (settle-gate, settle-wall). Здесь только жители и NPC, по id места: стража (имя, спрайт, реплики), горожане, торговец и повар.",
+  "clear_dale": {
+    "guard": { "name": "Ополченец Ясного Дола", "sprite": "guard", "lines": ["Дол под защитой Солнца!", "Прочь от частокола!", "Опять кабаны полезли…", "Новобранец, держись за стражей!"] },
+    "people": [
+      { "name": "Пастушка Агния", "sprite": "citizen1" },
+      { "name": "Бортник Тимофей", "sprite": "citizen2" }
+    ],
+    "merchant": { "id": "clear_dale_merchant", "name": "Лавочница Дарина", "sprite": "merchant", "tint": "0xfff0c8", "color": "#ffe0a0" },
+    "cook": { "id": "clear_dale_cook", "name": "Стряпуха Василиса", "sprite": "merchant", "tint": "0xffd8b0", "color": "#ffc890", "greeting": "«Щи с пылу с жару да пирог с капустой! Сытому и гоблин не страшен.»" }
+  },
+  "mill_ford": {
+    "guard": { "name": "Страж брода", "sprite": "guard", "lines": ["Брод под защитой!", "Волков к броду не пустим!", "За Сольгард!", "Пауков в пуще развелось — гляди в оба."] },
+    "people": [
+      { "name": "Мельник Прохор", "sprite": "citizen2" },
+      { "name": "Прачка Улита", "sprite": "citizen3" }
+    ],
+    "merchant": { "id": "mill_ford_merchant", "name": "Торговец Савелий", "sprite": "merchant", "tint": "0xf0e0b0", "color": "#f0d890" },
+    "cook": { "id": "mill_ford_cook", "name": "Пекарь Фрол", "sprite": "merchant", "tint": "0xffe8c8", "color": "#ffd8a0", "greeting": "«Хлеб из нашей муки — лучший в Сольгарде! Бери ковригу в дорогу: пуща длинная.»" }
+  },
+  "hunters_camp": {
+    "guard": { "name": "Егерь-дозорный", "sprite": "guard", "lines": ["Стой! Лагерь егерей!", "Зверь у ограды!", "Стрелу на тетиву!", "Холмы не спят — и мы не спим."] },
+    "people": [
+      { "name": "Свежевальщик Ждан", "sprite": "citizen2" },
+      { "name": "Следопытка Ярина", "sprite": "citizen1" }
+    ],
+    "merchant": { "id": "hunters_camp_merchant", "name": "Скорняк Остап", "sprite": "merchant", "tint": "0xe8d0a0", "color": "#e0c080" },
+    "cook": { "id": "hunters_camp_cook", "name": "Кашевар Демид", "sprite": "merchant", "tint": "0xffd0a0", "color": "#ffb878", "greeting": "«Дичь на вертеле да каша с салом. Егерю без сытного ужина и лук не натянуть.»" }
+  },
+  "svetlaya_post": {
+    "guard": { "name": "Страж заставы", "sprite": "guard", "lines": ["Застава на Светлой стоит!", "К оружию!", "За рекой — нежить. Не зевай!", "Ни шагу к частоколу!"] },
+    "people": [
+      { "name": "Оружейник Будимир", "sprite": "citizen2" },
+      { "name": "Лекарка Злата", "sprite": "citizen3" }
+    ],
+    "merchant": { "id": "svetlaya_post_merchant", "name": "Интендант Ратибор", "sprite": "merchant", "tint": "0xfff0b0", "color": "#ffe27a" },
+    "cook": { "id": "svetlaya_post_cook", "name": "Повар Мирон", "sprite": "merchant", "tint": "0xffe0c0", "color": "#ffd0a0", "greeting": "«Похлёбка густая, хлеб чёрный — заставская еда. Ешь, пока за рекой тихо.»" }
+  },
+  "sorrow_yard": {
+    "guard": { "name": "Страж погоста", "sprite": "skeleton_knight", "lines": ["Не тревожь покой мёртвых!", "Погост под рукой Короны.", "Живым сюда рано…", "Ещё шаг — и ляжешь рядом."] },
+    "people": [
+      { "name": "Гробовщик Скрог", "sprite": "citizen2" },
+      { "name": "Плакальщица Ильва", "sprite": "citizen3" }
+    ],
+    "merchant": { "id": "sorrow_yard_merchant", "name": "Старьёвщица Грета", "sprite": "merchant", "tint": "0xc8a0ff", "color": "#c890ff" },
+    "cook": { "id": "sorrow_yard_cook", "name": "Варщик Бран", "sprite": "merchant", "tint": "0xa0d8a0", "color": "#a0f090", "greeting": "«Отвар из могильного мха бодрит даже мёртвых. Пей, восставший: до Мортхейма путь неблизкий.»" }
+  },
+  "black_ford": {
+    "guard": { "name": "Костяной дозорный", "sprite": "skeleton_knight", "lines": ["Брод принадлежит Короне!", "Пауки из бора — назад!", "Тёплый? Проваливай.", "Корона видит тебя."] },
+    "people": [
+      { "name": "Паромщик Хорст", "sprite": "citizen2" },
+      { "name": "Травница Мирта", "sprite": "citizen1" }
+    ],
+    "merchant": { "id": "black_ford_merchant", "name": "Меняла Ульрих", "sprite": "merchant", "tint": "0xd0b0ff", "color": "#d8b8ff" },
+    "cook": { "id": "black_ford_cook", "name": "Кухарка Агата", "sprite": "merchant", "tint": "0xb0e0a0", "color": "#b0f0a0", "greeting": "«Рыба из Чёрного брода, вяленая и солёная. Не свежая — так и ты, дружок, давно не свеж.»" }
+  },
+  "white_tower": {
+    "guard": { "name": "Страж руин", "sprite": "skeleton_knight", "lines": ["Башня пала — Корона стоит!", "Прочь от развалин!", "Пепел помнит всё.", "Ещё один бродяга…"] },
+    "people": [
+      { "name": "Камнетёс Ордо", "sprite": "citizen2" },
+      { "name": "Слепая Вела", "sprite": "citizen4" }
+    ],
+    "merchant": { "id": "white_tower_merchant", "name": "Мародёр Кассиан", "sprite": "merchant", "tint": "0xc0a8e8", "color": "#c8a8f0" },
+    "cook": { "id": "white_tower_cook", "name": "Похлёбщица Нора", "sprite": "merchant", "tint": "0xa8e0b0", "color": "#a8f0a0", "greeting": "«Похлёбка из пепельных корешков. Горько? Зато кости крепнут.»" }
+  },
+  "black_post": {
+    "guard": { "name": "Страж Чёрной заставы", "sprite": "skeleton_knight", "lines": ["Застава на Чёрной не спит!", "К оружию, мертвецы!", "За рекой — живые. Готовь клинки.", "Корона вечна!"] },
+    "people": [
+      { "name": "Оружейник Варг", "sprite": "citizen2" },
+      { "name": "Костоправ Илай", "sprite": "citizen4" }
+    ],
+    "merchant": { "id": "black_post_merchant", "name": "Квартирмейстер Мортен", "sprite": "merchant", "tint": "0xc8a0ff", "color": "#c890ff" },
+    "cook": { "id": "black_post_cook", "name": "Кашевар Гнилозуб", "sprite": "merchant", "tint": "0xa0d8a0", "color": "#a0f090", "greeting": "«Каша на костном бульоне — паёк заставы. Бери миску — и на стену.»" }
+  }
+}

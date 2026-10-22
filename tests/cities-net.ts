@@ -1,11 +1,56 @@
-/** Сетевые проверки городов: открытие телепорта, каст и отмена, бой, цена, возрождение, задания. */
+/** Сетевые проверки городов: открытие телепорта, каст и отмена, бой, цена, возрождение, задания; банк, заточка и сумки в обеих столицах, торговля в поселении. */
 import { DatabaseSync } from "node:sqlite";
-import { CITIES, teleportPrice } from "../shared/cities";
+import { BAGMEN, BAG_STEP } from "../shared/bags";
+import { BANKERS } from "../shared/bank";
+import { CITIES, cityAtTile, teleportPrice } from "../shared/cities";
+import { CLASS_IDS, classFaction } from "../shared/classes";
+import { MERCHANT_RANGE, TILE } from "../shared/constants";
+import { SETTLEMENTS } from "../shared/settlements";
+import { SMITHS } from "../shared/upgrade";
 import { Bot, assert, check, dbFile, ensureChar, passedCount, sleep, startServer, stopServer } from "./harness";
 
 const [ember, oasis, snow] = CITIES;
 const home = CITIES.find((c) => c.capital === "solgard")!, enemy = CITIES.find((c) => c.capital === "umbrath")!;
 const at = (b: Bot, c: { x: number; y: number }) => Math.hypot(b.me().x - c.x, b.me().y - c.y);
+
+/** Банкир, кузнец и сумочник столицы cap: банк открывается, руда покупается, сумка расширяется; с площади столицы — отказ у всех троих. */
+async function capitalServices(b: Bot, cap: (typeof CITIES)[number]) {
+  const inCap = <T extends { x: number; y: number }>(list: T[]) => list.find((n) => cityAtTile(Math.floor(n.x / TILE), Math.floor(n.y / TILE))?.id === cap.id)!;
+  const banker = inCap(BANKERS), smith = inCap(SMITHS), bagman = inCap(BAGMEN);
+  assert(!!banker && !!smith && !!bagman, `в ${cap.name} нет банкира, кузнеца или сумочника`);
+  let bank: unknown = null;
+  b.room.onMessage("bank", (m) => (bank = m));
+  b.send("dbg", { op: "gold", v: 20000 });
+  b.send("dbg", { op: "tp", x: banker.x, y: banker.y + 30 });
+  await sleep(200);
+  b.send("bank:open", {});
+  await b.until(() => !!bank, 2000, `окно банка у ${banker.name}`);
+  b.send("dbg", { op: "tp", x: smith.x, y: smith.y + 30 });
+  await sleep(200);
+  const g0 = b.self!.gold;
+  b.send("smith:buy", { id: "ash_ore", qty: 1 });
+  await b.until(() => b.self!.gold < g0 && b.self!.inventory.some((it) => it?.base === "ash_ore"), 2000, `руда у ${smith.name}`);
+  b.send("dbg", { op: "tp", x: bagman.x, y: bagman.y + 30 });
+  await sleep(200);
+  const size = b.self!.inventory.length;
+  b.send("bag:expand", {});
+  await b.until(() => b.self!.inventory.length === size + BAG_STEP, 2000, `сумка расширена у ${bagman.name}`);
+  // посреди площади столицы до них дальше MERCHANT_RANGE: сервер отказывает у каждого
+  b.send("dbg", { op: "tp", x: cap.spawn.x, y: cap.spawn.y + 200 });
+  await sleep(200);
+  for (const n of [banker, smith, bagman]) assert(Math.hypot(n.x - cap.spawn.x, n.y - cap.spawn.y - 200) > MERCHANT_RANGE, `${n.name} у самой площади — отказ не проверить`);
+  b.toasts.length = 0;
+  bank = null;
+  b.send("bank:open", {});
+  await b.until(() => b.toasts.some((t) => t.includes("Банкир далеко")), 2000, "отказ банка издалека");
+  assert(!bank, "банк открылся издалека");
+  b.send("smith:buy", { id: "ash_ore", qty: 1 });
+  await b.until(() => b.toasts.some((t) => t.includes("Кузнец далеко")), 2000, "отказ кузнеца издалека");
+  const size2 = b.self!.inventory.length;
+  b.send("bag:expand", {});
+  await b.until(() => b.toasts.some((t) => t.includes("Сумочник далеко")), 2000, "отказ сумочника издалека");
+  assert(b.self!.inventory.length === size2, "сумка расширена издалека");
+}
 
 async function main() {
   await startServer(true);
@@ -116,6 +161,30 @@ async function main() {
       b.send("quest:accept", { id: "oasis_cactus" });
       await sleep(300);
       assert(b.self!.quests!.active.oasis_cactus === undefined, "принято издалека");
+    });
+    await check("банк, заточка и сумки — и в своей столице (решение 2 задачи 132), вдали — отказ", () => capitalServices(b, home));
+    await check("банк, заточка и сумки — и во второй столице (герой Умбрата)", async () => {
+      const cls = CLASS_IDS.find((c) => classFaction(c) === "umbrath")!;
+      const u = await Bot.join("Мортец", "secret", cls);
+      try {
+        u.send("dbg", { op: "god" });
+        await capitalServices(u, enemy);
+      } finally {
+        await u.leave();
+      }
+    });
+    await check("поселение своих земель: торговец и повар продают", async () => {
+      const s = SETTLEMENTS.find((q) => q.faction === home.capital)!;
+      b.send("dbg", { op: "tp", x: s.merchant.x, y: s.merchant.y + 30 });
+      await sleep(200);
+      let before = b.self!.gold;
+      b.send("buy", { base: "hp_potion", qty: 1 });
+      await b.until(() => b.self!.gold < before, 1500, `покупка у ${s.merchant.name}`);
+      b.send("dbg", { op: "tp", x: s.cook.x, y: s.cook.y + 30 });
+      await sleep(200);
+      before = b.self!.gold;
+      b.send("cook:buy", { id: "bread", qty: 1 });
+      await b.until(() => b.self!.gold < before && b.self!.inventory.some((it) => it?.base === "food_bread"), 1500, `хлеб у ${s.cook.name}`);
     });
     await check("торговля у торговца оазиса", async () => {
       b.send("dbg", { op: "gold", v: 100 });

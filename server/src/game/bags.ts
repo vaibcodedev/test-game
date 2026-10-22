@@ -1,5 +1,5 @@
-/** Расширение сумки у Сумочника: проверки, золото и размер меняются вместе, сохранение — транзакцией. */
-import { BAGMAN, BAG_STEP, bagPrice } from "../../../shared/bags";
+/** Расширение сумки у сумочника (Эмберхолл или столица): проверки, золото и размер меняются вместе, сохранение — транзакцией. */
+import { BAGMEN, BAG_STEP, bagPrice } from "../../../shared/bags";
 import { MERCHANT_RANGE } from "../../../shared/constants";
 import type { GameDB } from "../db";
 import type { Player } from "./Player";
@@ -9,7 +9,7 @@ export function expandBag(w: World, db: GameDB, spawn: { x: number; y: number },
   const err = (text: string) => p.send("toast", { text, kind: "error" });
   if (p.dead) return err("Мёртвым сумка не нужна");
   if (p.team !== 0 || busy) return err("Недоступно на арене и в очереди на неё");
-  if (w.dist(p, BAGMAN) > MERCHANT_RANGE) return err("Сумочник далеко");
+  if (!BAGMEN.some((b) => w.dist(p, b) <= MERCHANT_RANGE)) return err("Сумочник далеко");
   const size = p.save.inventory.length;
   const price = bagPrice(size);
   if (price === null) return err("Сумка уже максимального размера");

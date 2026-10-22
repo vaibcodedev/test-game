@@ -2,25 +2,21 @@ import { layoutLabels } from "./labelLayout";
 import Phaser from "phaser";
 import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../../../shared/constants";
 import { Nav } from "../../../shared/path";
-import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
+import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneDanger, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
 import { ENV, RESOURCES } from "../../../shared/biomes";
 import * as sfx from "./sfx";
 import { nightLevel } from "../../../shared/daynight";
 import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
 import { SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
-import { RUMOR_NPCS } from "../../../shared/rumors";
-import { COOK } from "../../../shared/food";
 import { CITIES } from "../../../shared/cities";
-import { SMITH } from "../../../shared/upgrade";
-import { BANKER } from "../../../shared/bank";
-import { BAGMAN } from "../../../shared/bags";
-import { ARENA_NPC, generateArenaMap, MODE_NAMES } from "../../../shared/arena";
+import { WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
+import { generateArenaMap, MODE_NAMES } from "../../../shared/arena";
 import { MOUNTS } from "../../../shared/mounts";
-import { generateRaidMap, RAID, RAID_HERALDS } from "../../../shared/raid";
+import { generateRaidMap } from "../../../shared/raid";
 import { net, type UnitState } from "../net";
 import { PETS } from "../../../shared/pets";
 import { CLASSES } from "../../../shared/classes";
-import { factionsHostile, pvpPlace } from "../../../shared/factions";
+import { factionsHostile, landLabel, pvpPlace, zoneLand } from "../../../shared/factions";
 import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
@@ -34,7 +30,7 @@ import { aimUnit, castAim, hitUnitsOf, pickOrder, pickReach, resolveCast, selTar
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 
-type NpcKind = "raid" | "shop" | "arena" | "rumor" | "cook" | "smith" | "bank" | "bags" | "enc" | "quest" | "stone";
+type NpcKind = WorldNpcKind | "enc" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
@@ -47,7 +43,7 @@ const ZONE_COLOR: Partial<Record<Zone, string>> = {
   [Zone.OasisCity]: "#f0c070", [Zone.SnowCity]: "#bfe4ff", [Zone.Desert]: "#f0c070", [Zone.Snow]: "#bfe4ff", [Zone.Volcano]: "#ff8a4a", [Zone.Coast]: "#7ad0ff", [Zone.Swamp]: "#a8d890", [Zone.Forest]: "#a8e080",
   [Zone.SolgardCity]: "#ffe27a", [Zone.SunFields]: "#ffe8a0", [Zone.KingsWood]: "#c8f0a0", [Zone.GryphonCliffs]: "#d8ecff", [Zone.FallenBarrens]: "#f0d090",
   [Zone.UmbrathCity]: "#c890ff", [Zone.Barrows]: "#b8a0e0", [Zone.MistWood]: "#a8c0b0", [Zone.BoneRidge]: "#d8d0c0", [Zone.PlagueMarsh]: "#a0e070",
-  [Zone.StormPeaks]: "#a8d0ff", [Zone.AshFoothills]: "#e0a080",
+  [Zone.StormPeaks]: "#a8d0ff", [Zone.AshFoothills]: "#e0a080", [Zone.Fields]: "#ff6a5a",
 };
 /** Зоны Умбрата: туман и пурпурная дымка. */
 const GLOOM = new Set<Zone>([Zone.UmbrathCity, Zone.Barrows, Zone.MistWood, Zone.PlagueMarsh, Zone.BoneRidge]);
@@ -235,23 +231,10 @@ export class GameScene extends Phaser.Scene {
     this.traps = new TrapWatch();
     this.cleanup.push(net.on("fx", (list) => this.traps.note(list, net.id, performance.now(), net.self?.skills)));
 
-    // NPC — декоративные, проверки дальности делает сервер
+    // NPC — декоративные, проверки дальности делает сервер; расстановка — из данных (shared/npcs.ts: Эмберхолл, города, столицы, поселения)
     if (net.kind === "world") {
-      this.addNpc("shop", "merchant", this.map.merchant, "Торговка Марфа", "#ffd27a");
-      this.addNpc("arena", "arenamaster", ARENA_NPC, "Распорядитель арены", "#ff9a7a");
-      this.addNpc("cook", COOK.sprite, COOK, COOK.name, COOK.color, COOK.tint, COOK.id);
-      this.addNpc("smith", SMITH.sprite, SMITH, SMITH.name, SMITH.color, SMITH.tint, SMITH.id);
-      this.addNpc("bank", BANKER.sprite, BANKER, BANKER.name, BANKER.color, BANKER.tint, BANKER.id);
-      this.addNpc("bags", BAGMAN.sprite, BAGMAN, BAGMAN.name, BAGMAN.color, BAGMAN.tint, BAGMAN.id);
-      for (const r of RUMOR_NPCS) this.addNpc("rumor", r.sprite, r, r.name, r.color, r.tint, r.id);
-      for (const h of RAID_HERALDS) this.addNpc("raid", RAID.npc.sprite, h, h.name, RAID.npc.color, Number(RAID.npc.tint), h.id);
+      for (const n of WORLD_NPCS) this.addNpc(n.kind, n.sprite, n, n.name, n.color, n.tint, n.id);
       for (const c of CITIES) {
-        if (c.style) {
-          const m = c.merchant!, k = c.cook!, q = c.quest!;
-          this.addNpc("shop", m.sprite, m, m.name, m.color, m.tint, m.id);
-          this.addNpc("cook", k.sprite, k, k.name, k.color, k.tint, k.id);
-          this.addNpc("quest", q.sprite, q, q.name, q.color, q.tint, q.id);
-        }
         // камень телепорта нарисован картой; здесь только невидимая точка нажатия
         const st = this.add.sprite(c.stone.x, c.stone.y - 14, "u_merchant", 0).setVisible(false);
         this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: "Камень телепорта" });
@@ -1037,11 +1020,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
   private openNpc(n: Npc) {
-    if (n.kind === "shop") this.hud.openShop();
+    if (n.kind === "shop") this.hud.openShop(n.name);
     else if (n.kind === "cook") this.hud.cook.open(n.id);
-    else if (n.kind === "smith") this.hud.smith.open();
-    else if (n.kind === "bank") this.hud.bank.open();
-    else if (n.kind === "bags") this.hud.bags.open();
+    else if (n.kind === "smith") this.hud.smith.open(n.id);
+    else if (n.kind === "bank") this.hud.bank.open(n.id);
+    else if (n.kind === "bags") this.hud.bags.open(n.id);
     else if (n.kind === "quest") this.hud.quest.open(n.id!);
     else if (n.kind === "stone") this.hud.tp.open(this.pos);
     else if (n.kind === "rumor") this.hud.rumor.open(n.id!, n.name!);
@@ -1233,7 +1216,10 @@ export class GameScene extends Phaser.Scene {
       else {
         // фракции: спорная зона (PvP с противоположной фракцией) и нейтральный город (бой запрещён)
         const place = net.kind === "world" ? pvpPlace(this.map, this.pos.x, this.pos.y) : "peace";
-        const base = ZONES[z].note ?? (ZONES[z].safe ? "Безопасная зона" : `Уровни ${ZONES[z].levels[0]}–${ZONES[z].levels[1]}`);
+        // опасность (кольцо 40–80 — «Небезопасная зона», Поля — «Опасная зона») или земли фракции, затем уровни — как на карте мира и миникарте
+        const lv = `Уровни ${ZONES[z].levels[0]}–${ZONES[z].levels[1]}`, land = zoneLand(z);
+        const tag = zoneDanger(z) ?? (land ? landLabel(land) : null);
+        const base = ZONES[z].note ?? (ZONES[z].safe ? "Безопасная зона" : tag ? `${tag} · ${lv.toLowerCase()}` : lv);
         const cap = z === Zone.SolgardCity ? "solgard" : z === Zone.UmbrathCity ? "umbrath" : null;
         const sub = cap ? (net.self?.faction === cap ? "Столица вашей фракции" : "Вражеская столица: стража атакует чужаков")
           : place === "pvp" ? `${base} · спорная зона: PvP фракций` : place === "neutral" ? "Нейтральный город: бой фракций запрещён" : base;

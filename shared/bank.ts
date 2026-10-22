@@ -1,5 +1,6 @@
-/** Банк: вкладки с ячейками, покупка места; цены и банкир Голдмунд — из /data/bank.json. */
+/** Банк: вкладки с ячейками, покупка места; цены и банкир Голдмунд — из /data/bank.json, банкиры столиц — из /data/cities.json. */
 import data from "../data/bank.json";
+import { CITIES, type CityNpc } from "./cities";
 import { TILE } from "./constants";
 import type { Item } from "./items";
 import { TOWN } from "./map";
@@ -46,3 +47,5 @@ export const BANKER = {
   x: (TOWN.x - 17) * TILE,
   y: (TOWN.y + 7) * TILE + 16,
 };
+/** Все банкиры: Голдмунд в Эмберхолле и банкиры обеих столиц (решение 2 задачи 132). Сервер пускает в банк у любого из них. */
+export const BANKERS: CityNpc[] = [BANKER, ...CITIES.filter((c) => c.banker).map((c) => c.banker!)];

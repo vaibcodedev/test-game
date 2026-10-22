@@ -2,7 +2,7 @@
 import { formatNumber, gold, goldify } from "./gold";
 import { initWindowDrag, resetWindowPositions, scaleOf } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
-import { FACTIONS, FOE_COLOR, factionColor } from "../../../shared/factions";
+import { FACTIONS, FOE_COLOR, factionColor, landLabel, zoneLand } from "../../../shared/factions";
 import * as sfx from "../game/sfx";
 import { gearFxMode, overlay, setGearFxMode, setOverlay, type GearFxMode } from "../game/overlay";
 import { flashGear } from "../game/gearHooks";
@@ -630,8 +630,11 @@ export class Hud {
     const { price, low } = this.sellInfo(it);
     return `${gold(price)}${low ? ` <span class="warn">▼ спрос низкий</span>` : ""}`;
   }
-  openShop() {
+  /** Окно торговли; name — у кого (торговцы городов и поселений), по умолчанию Марфа. */
+  openShop(name = "Торговка Марфа") {
     this.ctx.net.send("market:get", {});
+    const title = this.wins.shop.querySelector("h2 > span");
+    if (title && title.textContent !== name) title.textContent = name;
     this.wins.shop.hidden = false;
     this.sellSel.clear();
     if (this.ctx.net.self) this.renderSelf(this.ctx.net.self);
@@ -1396,9 +1399,12 @@ export class Hud {
     const zi = zoneAtPx(m, info.pos.x, info.pos.y);
     const z = ZONES[zi];
     const sub = this.ctx.net.kind === "arena" ? "PvP" : z.safe ? "безопасно" : z.note ? "дикие края" : `ур. ${z.levels[0]}–${z.levels[1]}`;
-    // кольцо 40–80 — «Небезопасная зона», Поля вечных битв 80–100 — прямо «Опасная зона» (задача 132, решение 1): вторая строка цветом токена
+    // вторая строка, как на карте мира: кольцо 40–80 — «Небезопасная зона», Поля вечных битв 80–100 — прямо «Опасная зона» (задача 132, решение 1) цветом токена;
+    // безопасные земли 1–40 — «Земли Сольгарда / Умбрата» цветом фракции (в столице не пишется — её название и так говорит)
     const danger = this.ctx.net.kind === "arena" ? null : zoneDanger(zi);
-    const dline = danger ? `<br><small style="color:var(--${z.danger === "deadly" ? "bad" : "warn"})">${danger}</small>` : "";
+    const land = this.ctx.net.kind === "arena" || z.safe ? null : zoneLand(zi);
+    const dline = danger ? `<br><small style="color:var(--${z.danger === "deadly" ? "bad" : "warn"})">${danger}</small>`
+      : land ? `<br><small style="color:${factionColor(land)}">${landLabel(land)}</small>` : "";
     const zl = document.getElementById("mini-zone")!, zh = `${esc(z.name)} <small>${sub}</small>${dline}`;
     if (zl.dataset.html !== zh) { zl.dataset.html = zh; zl.innerHTML = zh; } // раз в 200 мс: без сравнения — перевёрстка подписи каждый раз
   }

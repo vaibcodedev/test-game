@@ -3,7 +3,7 @@ import data from "../data/factions.json";
 import { CLASSES, classFaction, type ClassId, type FactionId } from "./classes";
 import { cityAtTile, isEnemyCapital } from "./cities";
 import { TILE } from "./constants";
-import { isTownZone, Zone, zoneAtPx, type WorldMap } from "./map";
+import { isTownZone, Zone, ZONES, zoneAtPx, type WorldMap } from "./map";
 
 export type { FactionId } from "./classes";
 
@@ -11,6 +11,8 @@ export interface FactionDef {
   id: FactionId;
   name: string;
   full: string;
+  /** Подпись безопасных земель фракции: «Земли Сольгарда» (HUD, карта мира). */
+  lands: string;
   race: string;
   symbol: string;
   desc: string;
@@ -56,6 +58,13 @@ export function factionsHostile(m: WorldMap, fa: string, ax: number, ay: number,
   const a = pvpPlace(m, ax, ay);
   return a !== "peace" && a === pvpPlace(m, bx, by);
 }
+
+/** Чьи безопасные земли — зона (поле land у зон в data/world.json): земли 1–40 и столица фракции; центр между реками и города центра — ничьи. */
+export const zoneLand = (z: Zone): FactionId | null => ZONES[z]?.land ?? null;
+/** Чьи безопасные земли в точке (пиксели): «Земли Сольгарда» к западу от реки Светлой, «Земли Умбрата» к востоку от Чёрной, между реками — null. */
+export const factionLandAt = (m: WorldMap, px: number, py: number): FactionId | null => zoneLand(zoneAtPx(m, px, py));
+/** Подпись земель фракции для HUD и карты мира: «Земли Сольгарда», «Земли Умбрата». */
+export const landLabel = (f: FactionId) => FACTIONS[f].lands;
 
 /** Герой в чужой столице (клетка в пикселях): стража считает его нарушителем. */
 export function inEnemyCapital(faction: string, px: number, py: number): boolean {

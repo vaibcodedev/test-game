@@ -97,6 +97,12 @@ const MERCHANT_AT: [number, number] = [-5, -2];
 const COOK_AT: [number, number] = [5, -2];
 const QUEST_AT: [number, number] = [-9, 2];
 export const CITY_RUMOR_AT: [number, number] = [8, 2];
+/** Банкир, сумочник и кузнец столиц (решение 2 задачи 132: банк, заточка и сумки — и в столицах): перед домами северного ряда, у кузнеца — наковальня. */
+const BANKER_AT: [number, number] = [-9, -5];
+const BAGMAN_AT: [number, number] = [-4, -5];
+const SMITH_AT: [number, number] = [10, -5];
+/** Убранство только столиц: [вид, dx, dy]. */
+export const CAPITAL_DECOR: [string, number, number][] = [["anvil", 11, -5]];
 
 export interface CityNpc {
   id: string;
@@ -129,6 +135,10 @@ export interface City {
   merchant?: CityNpc;
   cook?: CityNpc;
   quest?: CityNpc;
+  /** Только у столиц: банкир, кузнец (заточка) и сумочник. */
+  banker?: CityNpc;
+  smith?: CityNpc;
+  bagman?: CityNpc;
   guard?: { name: string; sprite: string; lines: string[] };
   people?: { name: string; sprite: string }[];
 }
@@ -141,7 +151,7 @@ const npcTile = (c: { x: number; y: number }, at: [number, number], n: RawNpc): 
 
 type CityId = Exclude<keyof typeof data, "_doc">;
 function small(id: CityId, style: CityStyle, x: number, y: number): City {
-  const d = data[id] as (typeof data)[CityId] & { capital?: string };
+  const d = data[id] as (typeof data)[CityId] & { capital?: string; banker?: RawNpc; smith?: RawNpc; bagman?: RawNpc };
   const c = { x, y };
   const st = { x: x + STONE_AT[0], y: y + STONE_AT[1] };
   return {
@@ -154,6 +164,9 @@ function small(id: CityId, style: CityStyle, x: number, y: number): City {
     merchant: npcStall(c, MERCHANT_AT, d.merchant),
     cook: npcStall(c, COOK_AT, d.cook),
     quest: npcTile(c, QUEST_AT, d.quest),
+    banker: d.banker && npcTile(c, BANKER_AT, d.banker),
+    smith: d.smith && npcTile(c, SMITH_AT, d.smith),
+    bagman: d.bagman && npcTile(c, BAGMAN_AT, d.bagman),
     guard: d.guard,
     people: d.people,
     capital: d.capital,

@@ -2,6 +2,7 @@
  * Раскладка карты без сервера (задача 132, шаг 2). Запуск: npx tsx tests/map-layout.ts
  * Проверяет по настоящей сгенерированной карте:
  *  1. данные: реки, дороги, места (все парами, без исключений), штандарты и стены — зеркальные пары; зоны идут к центру (уровни), подписи опасности;
+ *     безопасные земли фракций (factionLandAt: до реки — своя фракция, между реками — ничьи); поселения шага 3 — по 4 на фракцию, у каждого 6 штандартов;
  *  2. зеркальность: уровни зон, поверхность и проходимость Полей совпадают с зеркальной клеткой (x → 1099 − x), шум границ тоже;
  *  3. равные пути (все места, врата рейда, Эмберхолл, форты, боссы) и рост уровней от обеих столиц (±3 %), 16 направлений по проходимым клеткам,
  *     как на схеме tools/map-plan.ts; порядок зон по оболочкам и поясам, рост уровней мобов внутри зоны;
@@ -14,7 +15,9 @@ import bestiary from "../data/bestiary.json";
 import world from "../data/world.json";
 import { CITIES, cityById } from "../shared/cities";
 import { MAP_SEED, PLAYER_SPEED, TILE } from "../shared/constants";
+import { factionLandAt, landLabel } from "../shared/factions";
 import { BOSS_SPAWNS, CELL_BLOCK, CELL_RESERVED, DUNGEON, DUNGEON_ROOMS, PLACES, ZONES, ZONE_COUNT, Zone, generateMap, isTownZone, riverX, zoneAtPx, zoneDanger } from "../shared/map";
+import { SETTLEMENTS } from "../shared/settlements";
 import { RAID_GATE } from "../shared/raid";
 import { TOWN } from "../shared/town";
 
@@ -90,9 +93,34 @@ check(ZONES[Zone.Fields].name === "Поля вечных битв" && ZONES[Zone
   // центр места не в воде и не в лаве (мелкое убранство вроде костра может стоять на самой клетке)
   const wet = (x: number, y: number) => [m.vtx[y * (W + 1) + x], m.vtx[y * (W + 1) + x + 1], m.vtx[(y + 1) * (W + 1) + x], m.vtx[(y + 1) * (W + 1) + x + 1]].some((t) => t === 0 || t === 1);
   check(PLACES.every((p) => !wet(Math.round(p.x), Math.round(p.y))), "место в воде или лаве: " + PLACES.filter((p) => wet(Math.round(p.x), Math.round(p.y))).map((p) => p.id).join(","));
-  const bn = world.banners.list;
-  check(bn.length === 36, `штандартов у ворот и мостов 36, сейчас ${bn.length}`);
+  // штандарты: у ворот стен и мостов — 36; у каждого поселения (шаг 3) — шесть своей фракции: два у ворот и четыре по углам ограды; все — зеркальными парами
+  const bn = world.banners.list as { id: string; bridge?: string; place?: string; role: string; faction: string; x: number; y: number }[];
+  const atBridge = bn.filter((q) => q.bridge), atSettle = bn.filter((q) => q.place);
+  check(atBridge.length === 36, `штандартов у ворот и мостов 36, сейчас ${atBridge.length}`);
+  check(atBridge.length + atSettle.length === bn.length, "штандарт ни у моста, ни у поселения");
   for (const b of bn.filter((q) => q.faction === "solgard")) check(bn.some((q) => q.faction === "umbrath" && q.bridge === b.bridge && q.role === b.role && Math.abs(q.x - (W - b.x)) < 1e-6 && q.y === b.y), `штандарт ${b.id}: нет зеркальной пары`);
+  check(SETTLEMENTS.length === 8 && SETTLEMENTS.filter((s) => s.x < AXIS).every((s) => s.faction === "solgard") && SETTLEMENTS.filter((s) => s.x > AXIS).every((s) => s.faction === "umbrath"),
+    `поселений 8 (по 4 на фракцию, на своих землях), сейчас ${SETTLEMENTS.length}`);
+  for (const s of SETTLEMENTS) {
+    const own = atSettle.filter((q) => q.place === s.id);
+    check(own.length === 6 && own.every((q) => q.faction === s.faction), `${s.name}: штандартов своей фракции ${own.filter((q) => q.faction === s.faction).length} из 6`);
+    check(own.filter((q) => q.role === "settle-gate").length === 2 && own.filter((q) => q.role === "settle-wall").length === 4, `${s.name}: штандарты не у ворот (2) и по углам ограды (4)`);
+  }
+}
+{
+  // безопасные земли фракций (поле land у зон, factionLandAt): к западу от реки Светлой — Сольгард, к востоку от Чёрной — Умбрат (с их столицами), между реками — ничьи
+  let wrong = 0, sol = 0, umb = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const fx = (x >= AXIS ? mir(x) : x) + 0.5, want = fx < riverX(y + 0.5) ? (x < AXIS ? "solgard" : "umbrath") : null;
+    const got = factionLandAt(m, x * TILE + 16, y * TILE + 16);
+    if (got !== want) wrong++;
+    if (got === "solgard") sol++; else if (got === "umbrath") umb++;
+  }
+  check(wrong === 0 && sol > 50000 && sol === umb, `земли фракций: не там в ${wrong} клетках (Сольгард ${sol}, Умбрат ${umb})`);
+  check(landLabel("solgard") === "Земли Сольгарда" && landLabel("umbrath") === "Земли Умбрата", "подписи земель");
+  const aur = cityById("aurelion")!, mor = cityById("morthaim")!, emb = cityById("ember")!;
+  check(factionLandAt(m, aur.spawn.x, aur.spawn.y) === "solgard" && factionLandAt(m, mor.spawn.x, mor.spawn.y) === "umbrath" && factionLandAt(m, emb.spawn.x, emb.spawn.y) === null, "столицы — на своих землях, Эмберхолл — ничей");
+  console.log(`   земли фракций: Сольгард ${sol} клеток, Умбрат ${umb}, ошибок ${wrong}`);
 }
 
 // ---------- 2. зеркальность зон и поверхности ----------

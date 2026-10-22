@@ -1,5 +1,7 @@
 {
-  "_doc": "Стражники и горожане Эмберхолла (server/src/game/townfolk.ts). Маршруты и посты — в shared/town.ts. Скорости в px/с, время в мс, урон стражника — доля макс. здоровья моба за удар.",
+  "_doc": "Стражники и горожане Эмберхолла (server/src/game/townfolk.ts). Маршруты и посты — в shared/town.ts. Скорости в px/с, время в мс, урон стражника — доля макс. здоровья моба за удар. merchant и arena — торговка на рынке и распорядитель арены (shared/npcs.ts: клиент расставляет NPC по данным).",
+  "merchant": { "id": "marfa", "name": "Торговка Марфа", "sprite": "merchant", "color": "#ffd27a" },
+  "arena": { "id": "arena", "name": "Распорядитель арены", "sprite": "arenamaster", "color": "#ff9a7a" },
   "guard": {
     "name": "Стражник",
     "sprite": "guard",

@@ -1,5 +1,5 @@
 {
-  "_doc": "Малые города (shared/cities.ts, server/src/game/townfolk.ts). Раскладка в shared/cities.ts; здесь только жители и NPC.",
+  "_doc": "Малые города (shared/cities.ts, server/src/game/townfolk.ts). Раскладка в shared/cities.ts; здесь только жители и NPC. У столиц ещё банкир, кузнец и сумочник (banker, smith, bagman — решение 2 задачи 132: банк, заточка и сумки и в столицах, не только в Эмберхолле).",
   "oasis": {
     "name": "Оазис Миражей",
     "guard": { "name": "Страж оазиса", "sprite": "guard_desert", "lines": ["Назад, песчаная тварь!", "Оазис под защитой!", "Ни шагу к колодцу!", "Шакалы, опять вы…"] },
@@ -39,7 +39,10 @@
     ],
     "merchant": { "id": "aurelion_merchant", "name": "Казначей Лукиан", "sprite": "merchant", "tint": "0xfff0b0", "color": "#ffe27a" },
     "cook": { "id": "aurelion_cook", "name": "Пекарь Бенедикт", "sprite": "merchant", "tint": "0xffe8c8", "color": "#ffd8a0", "greeting": "«Солнечный хлеб и медовые лепёшки! Свет светом, а голодным в бой не ходят.»" },
-    "quest": { "id": "aurelion_captain", "name": "Капитан Ровена", "sprite": "warrior", "tint": "0xfff0c0", "color": "#ffe8a0", "greeting": "«Новобранец? Отлично. Нивы кишат тварями — докажи, что достоин знамени Солнца.»" }
+    "quest": { "id": "aurelion_captain", "name": "Капитан Ровена", "sprite": "warrior", "tint": "0xfff0c0", "color": "#ffe8a0", "greeting": "«Новобранец? Отлично. Нивы кишат тварями — докажи, что достоин знамени Солнца.»" },
+    "banker": { "id": "aurelion_banker", "name": "Банкир Северин", "sprite": "merchant", "tint": "0xfff0b0", "color": "#ffe27a", "greeting": "«Казна Аурелиона надёжнее любых стен. Оставь у нас золото и вещи — сберегу до последней монеты.»" },
+    "smith": { "id": "aurelion_smith", "name": "Кузнец Добрыня", "sprite": "merchant", "tint": "0xd8c0a0", "color": "#ffa860", "greeting": "«Сталь Сольгарда закалена светом. Неси руду и золото — выкую на славу. До +5 ручаюсь, дальше как Солнце рассудит, но вещь не сгорит: лишь потеряет уровень.»" },
+    "bagman": { "id": "aurelion_bagman", "name": "Шорник Гаврила", "sprite": "merchant", "tint": "0xd0a070", "color": "#e0a870", "greeting": "«Ремни крепкие, кожа выделанная — сумка станет просторнее. Новобранцу без запаса никак.»" }
   },
   "morthaim": {
     "name": "Мортхейм",
@@ -54,6 +57,9 @@
     ],
     "merchant": { "id": "morthaim_merchant", "name": "Скупщик Вальдер", "sprite": "merchant", "tint": "0xc8a0ff", "color": "#c890ff" },
     "cook": { "id": "morthaim_cook", "name": "Варщица Ирма", "sprite": "merchant", "tint": "0xa0d8a0", "color": "#a0f090", "greeting": "«Мёртвым еда не нужна? Чепуха. Похлёбка из болотных грибов держит кости вместе.»" },
-    "quest": { "id": "morthaim_warden", "name": "Смотритель Кроу", "sprite": "darkranger", "tint": "0xd0b0ff", "color": "#d8b8ff", "greeting": "«Восставший, Корона ждёт службы. Курганы полны тех, кто не желает подчиняться.»" }
+    "quest": { "id": "morthaim_warden", "name": "Смотритель Кроу", "sprite": "darkranger", "tint": "0xd0b0ff", "color": "#d8b8ff", "greeting": "«Восставший, Корона ждёт службы. Курганы полны тех, кто не желает подчиняться.»" },
+    "banker": { "id": "morthaim_banker", "name": "Хранитель склепа Ортвин", "sprite": "merchant", "tint": "0xc8a0ff", "color": "#c890ff", "greeting": "«Склепы Мортхейма хранят всё — и кости, и золото. Оставь своё здесь: мёртвые не воруют.»" },
+    "smith": { "id": "morthaim_smith", "name": "Кузнец Гримвальд", "sprite": "merchant", "tint": "0xb8a8c8", "color": "#ffa860", "greeting": "«Чёрная сталь любит холод. Принеси руду и золото — выкую оружие, достойное Короны. До +5 без осечек, дальше — судьба, но вещь уцелеет: лишь потеряет уровень.»" },
+    "bagman": { "id": "morthaim_bagman", "name": "Кожевник Згар", "sprite": "merchant", "tint": "0xb89070", "color": "#e0a870", "greeting": "«Кожа — она и после смерти кожа. Сошью сумку попросторнее, восставший, недорого.»" }
   }
 }

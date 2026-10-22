@@ -2,7 +2,7 @@
 import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
-import { failLevel, MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, stepFor } from "../../../shared/upgrade";
+import { failLevel, MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, SMITHS, stepFor } from "../../../shared/upgrade";
 import { enchantTier, GEAR_FX, smithNextText, tierText } from "../../../shared/gearFx";
 import type { Net } from "../net";
 
@@ -47,6 +47,8 @@ export class SmithUI {
   private foot: HTMLElement;
   private net!: Net;
   private sel: Sel = null;
+  /** Кузнец, у которого открыто окно (Эмберхолл или столица). */
+  private who: { id: string; name: string; greeting?: string } = SMITH;
 
   constructor(root: HTMLElement) {
     this.win.hidden = true;
@@ -60,7 +62,9 @@ export class SmithUI {
   bind(net: Net) {
     this.net = net;
   }
-  open() {
+  open(id?: string) {
+    this.who = SMITHS.find((s) => s.id === id) ?? SMITH;
+    this.win.querySelector("h2 > span")!.textContent = this.who.name;
     this.win.hidden = false;
     if (this.net.self) this.update(this.net.self);
   }
@@ -83,7 +87,7 @@ export class SmithUI {
     if (!it) this.sel = null;
     const info = this.infoSection(s, it);
     // содержимое подменяется разом: прокрутка .body не сбрасывается, например после покупки руды
-    this.body.replaceChildren(el("p", "npc-say", esc(SMITH.greeting)), this.pickSection(s), info.sec, this.matsSection(s));
+    this.body.replaceChildren(el("p", "npc-say", esc(this.who.greeting ?? "")), this.pickSection(s), info.sec, this.matsSection(s));
     this.foot.innerHTML = `<span class="win-foot-info">Золото</span>${gold(s.gold)}`;
     this.foot.append(info.go);
   }

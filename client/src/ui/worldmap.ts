@@ -2,7 +2,7 @@
  *  Режим выбора точки (beginPick, телепорт админа из ui/admin.ts): прицел, подсказка, под курсором тайл и зона; клик без перетаскивания отдаёт точку. */
 import { CITIES, cityKnown } from "../../../shared/cities";
 import { RAID, RAID_GATE } from "../../../shared/raid";
-import { factionColor } from "../../../shared/factions";
+import { factionColor, landLabel, type FactionId } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
 import { DANGER_LABEL, PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
 import world from "../../../data/world.json";
@@ -17,14 +17,21 @@ const head = (px: number, dpr: number) => {
   return { font: `${(k * 10) / dpr}px ${HEAD}`, size: (k * 10) / dpr, ws: `${(-2 * k) / dpr}px` };
 };
 const CITY = "#ffe08a";
-const KIND_NAME: Record<string, string> = { village: "Деревня", camp: "Лагерь", ruins: "Руины", meeting: "Место встречи" };
-const KIND_COLOR: Record<string, string> = { village: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
+const KIND_NAME: Record<string, string> = { settlement: "Поселение", camp: "Лагерь", ruins: "Руины", meeting: "Место встречи" };
+const KIND_COLOR: Record<string, string> = { settlement: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
 const ROADS = Object.entries(world.roads as unknown as Record<string, unknown>).filter(([k]) => k !== "_doc").map(([, v]) => v as [number, number][]);
 const RIVERS = Object.entries(world.rivers as unknown as Record<string, { width: number; path: [number, number][] }>).filter(([k]) => k !== "_doc").map(([name, r]) => ({ name, ...r }));
 const SIGNS = (world.signs.list as { x: number; y: number; text: string }[]);
 const GRID = 24;
 
-interface Label { x: number; y: number; text: string; /** Опасность зоны: кольцо 40–80 — «Небезопасная зона», Поля 80–100 — «Опасная зона». */ danger?: "unsafe" | "deadly" }
+interface Label {
+  x: number; y: number; text: string;
+  /** Опасность зоны: кольцо 40–80 — «Небезопасная зона», Поля 80–100 — «Опасная зона». */ danger?: "unsafe" | "deadly";
+  /** Безопасные земли фракции 1–40: «Земли Сольгарда / Умбрата». */ land?: FactionId;
+}
+/** Подпись зоны второй строкой и её цвет: опасность цветом токена (кольцо — янтарный, Поля — красный) или земли фракции её цветом; как на миникарте. */
+const zoneTag = (z: { danger?: "unsafe" | "deadly"; land?: FactionId }): { text: string; color: string } | null =>
+  z.danger ? { text: DANGER_LABEL[z.danger], color: z.danger === "deadly" ? P.bad : P.warn } : z.land ? { text: landLabel(z.land), color: factionColor(z.land) } : null;
 interface Hit { x: number; y: number; r: number; title: string; sub: string }
 
 export class WorldMapView {
@@ -37,6 +44,8 @@ export class WorldMapView {
   private fit = 1;
   private W = 0; private H = 0;
   private zoneLabels: Label[] = [];
+  /** Подписи «Земли Сольгарда / Умбрата» — по одной на сторону, в центре подписей её зон: рисуются раньше поселений и зон, поэтому видны при любом масштабе. */
+  private landLabels: { x: number; y: number; land: FactionId }[] = [];
   private bridges: { x: number; y: number }[] = [];
   private hits: Hit[] = [];
   private mouse: { x: number; y: number } | null = null;
@@ -71,7 +80,7 @@ export class WorldMapView {
     bar.append(this.hint);
     const leg = document.createElement("div");
     leg.className = "wm-legend";
-    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>Город <i style="background:${KIND_COLOR.village}"></i>Деревня <i style="background:${KIND_COLOR.camp}"></i>Лагерь <i style="background:${KIND_COLOR.ruins}"></i>Руины <i class="road"></i>Дорога <i class="river"></i>Река <i style="background:${factionColor("solgard")}"></i>Сольгард <i style="background:${factionColor("umbrath")}"></i>Умбрат`;
+    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>Город <i style="background:${KIND_COLOR.settlement}"></i>Поселение <i style="background:${KIND_COLOR.camp}"></i>Лагерь <i style="background:${KIND_COLOR.ruins}"></i>Руины <i class="road"></i>Дорога <i class="river"></i>Река <i style="background:${factionColor("solgard")}"></i>Сольгард <i style="background:${factionColor("umbrath")}"></i>Умбрат`;
     bar.append(leg);
     this.wrap.className = "wm-view";
     this.tip.className = "wm-tip";
@@ -163,15 +172,22 @@ export class WorldMapView {
       let bc = comp[0], bd = 1e9;
       for (const c of comp) { const d = Math.hypot((c % gw) - mx, ((c / gw) | 0) - my); if (d < bd) { bd = d; bc = c; } }
       const zi = ZONES[z];
-      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: zi.name, danger: zi.danger });
+      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: zi.name, danger: zi.danger, land: zi.land });
     }
     belts.sort((a, b) => a.cx - b.cx);
     belts.forEach((b, k) => {
       const target = Math.round((gh - 1) * (0.14 + 0.24 * (k % 4)));
       let bc = b.comp[0], bd = 1e9;
       for (const c of b.comp) { const d = Math.abs(((c / gw) | 0) - target) * 3 + Math.abs((c % gw) - b.cx); if (d < bd) { bd = d; bc = c; } }
-      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: ZONES[b.z].name, danger: ZONES[b.z].danger });
+      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: ZONES[b.z].name, danger: ZONES[b.z].danger, land: ZONES[b.z].land });
     });
+    const lands = new Map<FactionId, { x: number; y: number; n: number }>();
+    for (const z of this.zoneLabels) if (z.land) {
+      const a = lands.get(z.land) ?? { x: 0, y: 0, n: 0 };
+      a.x += z.x; a.y += z.y; a.n++;
+      lands.set(z.land, a);
+    }
+    for (const [land, a] of lands) this.landLabels.push({ x: a.x / a.n, y: a.y / a.n, land });
   }
 
   open() {
@@ -211,11 +227,12 @@ export class WorldMapView {
     p.onPick((t.x + 0.5) * TILE, (t.y + 0.5) * TILE);
     this.win.hidden = true;
   }
-  /** Подсказка зоны тайла: название и опасность («Небезопасная зона» — кольцо 40–80, «Опасная зона» — Поля вечных битв). */
+  /** Подсказка зоны тайла: название и опасность («Небезопасная зона» — кольцо 40–80, «Опасная зона» — Поля вечных битв) или земли фракции. */
   private tileZoneText(x: number, y: number): string {
     const zi = ZONES[this.map.zone[y * this.map.w + x]];
     if (!zi) return "";
-    return zi.danger ? `${zi.name} · ${DANGER_LABEL[zi.danger]}` : zi.name;
+    const tag = zi.safe ? null : zoneTag(zi);
+    return tag ? `${zi.name} · ${tag.text}` : zi.name;
   }
   /** Тайл под точкой холста (пиксели от его левого верхнего угла); null — вне мира. */
   private tileAt(px: number, py: number): { x: number; y: number } | null {
@@ -349,6 +366,13 @@ export class WorldMapView {
       label(RAID.map.gate, x, y - r - 6, P.boss, hf.font, hf.size, hf.ws);
       hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: `Рейд · ${RAID.boss.name} · ${RAID.raid.minLevel}+ ур.` });
     }
+    // земли фракций (приоритет после городов): одна подпись на сторону цветом фракции
+    if (big) {
+      const hl = head(s < 3 ? 16 : 19, dpr);
+      g.globalAlpha = s < 3 ? 0.9 : s < 6 ? 0.6 : 0.35;
+      for (const l of this.landLabels) label(landLabel(l.land).toUpperCase(), X(l.x), Y(l.y), factionColor(l.land), hl.font, hl.size, hl.ws);
+      g.globalAlpha = 1;
+    }
     // названия рек
     if (big && s >= 1) for (const r of RIVERS) {
       const mid = r.path[Math.floor(r.path.length / 2)];
@@ -356,21 +380,23 @@ export class WorldMapView {
     }
     // поселения по приоритету и масштабу
     if (big) {
-      const minS: Record<string, number> = { village: 0.9, meeting: 1.8, camp: 2.6, ruins: 2.2 };
-      const order = ["village", "meeting", "ruins", "camp"];
+      const minS: Record<string, number> = { settlement: 0.9, meeting: 1.8, camp: 2.6, ruins: 2.2 };
+      const order = ["settlement", "meeting", "ruins", "camp"];
       for (const kind of order) for (const p of PLACES) {
         if (p.kind !== kind) continue;
         const x = X(p.x), y = Y(p.y);
         if (x < -20 || y < -20 || x > this.W + 20 || y > this.H + 20) continue;
         const zi = ZONES[m.zone[Math.min(m.h - 1, p.y) * m.w + Math.min(m.w - 1, p.x)]];
-        const sub = `${KIND_NAME[p.kind]}${zi ? ` · ${zi.safe ? "безопасно" : zi.note ? "дикие края" : `ур. ${zi.levels[0]}–${zi.levels[1]}${zi.danger ? ` · ${DANGER_LABEL[zi.danger].toLowerCase()}` : ""}`}` : ""}`;
-        const sz = p.kind === "village" ? 4 : 3;
+        const tag = zi && !zi.safe ? zoneTag(zi) : null;
+        // опасность — строчными (часть фразы), земли фракции — как имя собственное
+        const sub = `${KIND_NAME[p.kind]}${zi ? ` · ${zi.safe ? "безопасно" : zi.note ? "дикие края" : `ур. ${zi.levels[0]}–${zi.levels[1]}${tag ? ` · ${zi.danger ? tag.text.toLowerCase() : tag.text}` : ""}`}` : ""}`;
+        const sz = p.kind === "settlement" ? 4 : 3;
         g.fillStyle = "#120a10";
         g.fillRect(x - sz - 1, y - sz - 1, sz * 2 + 2, sz * 2 + 2);
         g.fillStyle = KIND_COLOR[p.kind];
-        if (p.kind === "village") g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
+        if (p.kind === "settlement") g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
         else { g.beginPath(); g.moveTo(x, y - sz - 1); g.lineTo(x + sz + 1, y + sz); g.lineTo(x - sz - 1, y + sz); g.closePath(); g.fill(); }
-        const fs = p.kind === "village" ? 13 : 11;
+        const fs = p.kind === "settlement" ? 13 : 11;
         if (s >= minS[p.kind]) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], `500 ${fs}px ${TEXT}`, fs);
         hits.push({ x, y, r: sz + 5, title: p.name, sub });
       }
@@ -386,9 +412,10 @@ export class WorldMapView {
       g.globalAlpha = za;
       const hz = head(s < 3 ? 15 : 18, dpr);
       for (const z of this.zoneLabels) {
-        // вторая строка — опасность зоны цветом токена (кольцо 40–80 — янтарная, Поля 80–100 — красная)
-        if (label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws) && z.danger) {
-          label(DANGER_LABEL[z.danger], X(z.x), Y(z.y) + hz.size * 0.9, z.danger === "deadly" ? P.bad : P.numGold, `600 ${s < 3 ? 12 : 13}px ${TEXT}`, s < 3 ? 12 : 13);
+        // вторая строка — опасность зоны цветом токена (кольцо 40–80 — янтарная, Поля 80–100 — красная) или «Земли Сольгарда / Умбрата» цветом фракции
+        const tag = zoneTag(z);
+        if (label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws) && tag) {
+          label(tag.text, X(z.x), Y(z.y) + hz.size * 0.9, tag.color, `600 ${s < 3 ? 12 : 13}px ${TEXT}`, s < 3 ? 12 : 13);
         }
       }
       g.globalAlpha = 1;

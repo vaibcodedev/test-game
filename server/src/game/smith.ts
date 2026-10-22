@@ -1,12 +1,14 @@
-/** Кузнец Гром: покупка материалов и улучшение предметов +1…+10. Всё проверяется на сервере. */
+/** Кузнецы (Гром в Эмберхолле и кузнецы столиц): покупка материалов и улучшение предметов +1…+10. Всё проверяется на сервере. */
 import { MERCHANT_RANGE } from "../../../shared/constants";
 import { BASE_ITEMS, itemName, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
-import { failLevel, MATERIALS, MAX_PLUS, SMITH, stepFor } from "../../../shared/upgrade";
+import { failLevel, MATERIALS, MAX_PLUS, SMITHS, stepFor } from "../../../shared/upgrade";
 import { addItem } from "./inventory";
 import type { Player } from "./Player";
 import type { World } from "./World";
 
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
+/** Рядом ли кузнец: Эмберхолл или любая из столиц (решение 2 задачи 132). */
+const smithNear = (w: World, p: Player) => SMITHS.some((s) => w.dist(p, s) <= MERCHANT_RANGE);
 const count = (p: Player, base: string) => p.save.inventory.reduce((n, it) => n + (it && it.base === base ? it.qty ?? 1 : 0), 0);
 function take(p: Player, base: string, n: number) {
   const inv = p.save.inventory;
@@ -23,7 +25,7 @@ function take(p: Player, base: string, n: number) {
 export function buyMaterial(w: World, p: Player, id: unknown, qtyRaw: unknown) {
   const m = typeof id === "string" ? MATERIALS[id] : undefined;
   if (!m) return;
-  if (w.dist(p, SMITH) > MERCHANT_RANGE) return err(p, "Кузнец далеко");
+  if (!smithNear(w, p)) return err(p, "Кузнец далеко");
   const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.min(99, qtyRaw as number)) : 1;
   const price = m.price * qty;
   if (p.save.gold < price) return err(p, "Не хватает золота");
@@ -40,7 +42,7 @@ export function buyMaterial(w: World, p: Player, id: unknown, qtyRaw: unknown) {
 export function upgradeItem(w: World, p: Player, index: unknown, slot: unknown, locked: (i: unknown) => boolean) {
   if (p.dead) return;
   if (p.team !== 0) return err(p, "На арене улучшать нельзя");
-  if (w.dist(p, SMITH) > MERCHANT_RANGE) return err(p, "Кузнец далеко");
+  if (!smithNear(w, p)) return err(p, "Кузнец далеко");
   let it: Item | null | undefined;
   if (slot !== undefined && slot !== null) {
     if (typeof slot !== "string" || !SLOTS.includes(slot as Slot)) return;

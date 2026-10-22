@@ -1,6 +1,6 @@
 /** Сумочник Кожемякин: расширение сумки за золото. Всё проверяет сервер. */
 import { gold } from "./gold";
-import { BAGMAN, BAG_MAX, BAG_STEP, bagPrice } from "../../../shared/bags";
+import { BAGMAN, BAGMEN, BAG_MAX, BAG_STEP, bagPrice } from "../../../shared/bags";
 import type { Net } from "../net";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -12,6 +12,8 @@ export class BagsUI {
   private net!: Net;
   /** Размер сумки и золото при прошлой перерисовке: без перемен окно не пересобирается. */
   private drawn = "";
+  /** Сумочник, у которого открыто окно (Эмберхолл или столица). */
+  private who: { id: string; name: string; greeting?: string } = BAGMAN;
   constructor(root: HTMLElement, private showInv: () => void) {
     this.win.className = "panel win s win-bags";
     this.win.hidden = true;
@@ -27,14 +29,20 @@ export class BagsUI {
     net.on("switch", () => this.close());
   }
   get isOpen() { return !this.win.hidden; }
-  open() { this.win.hidden = false; this.showInv(); this.update(); }
+  open(id?: string) {
+    this.who = BAGMEN.find((b) => b.id === id) ?? BAGMAN;
+    this.win.querySelector("h2 > span")!.textContent = this.who.name;
+    this.win.hidden = false;
+    this.showInv();
+    this.update();
+  }
   close(): boolean { const was = !this.win.hidden; this.win.hidden = true; return was; }
   update() {
     if (this.win.hidden) return;
     const s = this.net?.self;
     if (!s) return;
     const size = s.inventory.length;
-    const key = `${size}|${s.gold}`;
+    const key = `${this.who.id}|${size}|${s.gold}`;
     if (key === this.drawn) return;
     this.drawn = key;
     const price = bagPrice(size);
@@ -43,7 +51,7 @@ export class BagsUI {
       ? `<p class="note">Сумка уже самая большая</p>`
       : `<div class="list boxed"><div class="row"><div class="row-main"><span class="row-title">+${BAG_STEP} ячеек</span><span class="row-sub">Сумка вырастет до ${size + BAG_STEP} ячеек</span></div>
           <div class="row-end bank-buy"><button class="btn small price"${s.gold < price ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">Расширить</span>${gold(price)}</button></div></div></div>`;
-    this.body.innerHTML = `<p class="npc-say">${esc(BAGMAN.greeting)}</p><section class="sec"><h3 class="sec-h">Расширение</h3>${offer}</section>`;
+    this.body.innerHTML = `<p class="npc-say">${esc(this.who.greeting ?? "")}</p><section class="sec"><h3 class="sec-h">Расширение</h3>${offer}</section>`;
     this.foot.innerHTML = `<span class="win-foot-info">Ячеек: ${size} из ${BAG_MAX}</span><span class="foot-gold"><span class="win-foot-info">Золото</span>${gold(s.gold)}</span>`;
     const b = this.body.querySelector<HTMLButtonElement>(".bank-buy .btn");
     if (b) b.onclick = () => this.net.send("bag:expand", {});

@@ -1,5 +1,6 @@
-/** Улучшение предметов +1…+10: таблицы из /data/upgrade.json и кузнец Гром в городе. */
+/** Улучшение предметов +1…+10: таблицы из /data/upgrade.json, кузнец Гром в Эмберхолле и кузнецы столиц (/data/cities.json). */
 import data from "../data/upgrade.json";
+import { CITIES, type CityNpc } from "./cities";
 import { TILE } from "./constants";
 import { TOWN } from "./map";
 
@@ -33,3 +34,5 @@ export const SMITH = {
   x: (TOWN.x + 18) * TILE + 16,
   y: (TOWN.y - 2) * TILE + 16,
 };
+/** Все кузнецы: Гром в Эмберхолле и кузнецы обеих столиц (решение 2 задачи 132). Сервер точит и продаёт материалы у любого из них. */
+export const SMITHS: CityNpc[] = [SMITH, ...CITIES.filter((c) => c.smith).map((c) => c.smith!)];
