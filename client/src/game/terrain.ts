@@ -5,20 +5,12 @@
  */
 import Phaser from "phaser";
 import { TILE } from "../../../shared/constants";
-import { CELL_WALL, GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
+import { GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
 import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
+import { CHUNK, cellHash, chunkRect, chunkRows, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
 
-const COLS = 18;
 export const DEPTH = { water: -1000, terrain: -900, walls: -800, overlay: -700, ground: -600, top: 1e6 };
-/** Размер куска мира в тайлах. */
-const CHUNK = 32;
-
-function cellHash(x: number, y: number) {
-  let h = Math.imul(x, 73856093) ^ Math.imul(y, 19349663);
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
 
 export interface WorldView {
   water: Phaser.GameObjects.TileSprite;
@@ -84,26 +76,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const water = scene.add.tileSprite(0, 0, 16, 16, "water").setOrigin(0).setDepth(DEPTH.water);
   const drift = { x: 0, y: 0 };
 
-  // индексы тайлов всех слоёв считаются один раз (слой 0 — стены данжа, 1..Floor — поверхности)
-  const V = (x: number, y: number) => m.vtx[y * (m.w + 1) + x];
-  const layers: (Int16Array | null)[] = new Array(TERRAIN_COUNT).fill(null);
-  for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
-    const c = [V(x, y), V(x + 1, y), V(x + 1, y + 1), V(x, y + 1)];
-    const low = Math.min(...c);
-    for (let t = 1; t < TERRAIN_COUNT; t++) {
-      if (!c.includes(t)) continue;
-      let col: number;
-      if (t === low) {
-        const h = cellHash(x + t * 7, y);
-        col = h < 0.55 ? 14 : 15 + Math.floor(((h - 0.55) / 0.45) * 3);
-      } else col = ((c[0] >= t ? 1 : 0) | (c[1] >= t ? 2 : 0) | (c[2] >= t ? 4 : 0) | (c[3] >= t ? 8 : 0)) - 1;
-      (layers[t] ??= new Int16Array(m.w * m.h).fill(-1))[y * m.w + x] = t * COLS + col;
-    }
-    if (m.cell[y * m.w + x] & CELL_WALL) {
-      const below = y + 1 < m.h && m.cell[(y + 1) * m.w + x] & CELL_WALL;
-      (layers[0] ??= new Int16Array(m.w * m.h).fill(-1))[y * m.w + x] = TERRAIN_COUNT * COLS + (below ? (x + y) % 2 : 2 + Math.floor(cellHash(x, y) * 4));
-    }
-  }
+  // индексы тайлов всех слоёв считаются один раз (слой 0 — стены данжа, 1..TERRAIN_COUNT−1 — поверхности; terrainTiles.ts, офлайн — tests/terrain-tiles.ts)
+  const layers = terrainLayers(m);
 
   macroNoise(scene);
   const macro = scene.add.tileSprite(0, 0, 16, 16, "macro").setOrigin(0).setDepth(DEPTH.overlay).setAlpha(0.6);
@@ -189,25 +163,14 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
 
   const chunks = new Map<number, Chunk>();
   const createChunk = (cx: number, cy: number): Chunk => {
-    const x0 = cx * CHUNK, y0 = cy * CHUNK;
-    const cw = Math.min(CHUNK, m.w - x0), ch = Math.min(CHUNK, m.h - y0);
+    const { x0, y0, cw, ch } = chunkRect(m, cx, cy);
     const tm = scene.make.tilemap({ width: cw, height: ch, tileWidth: TILE, tileHeight: TILE });
     const ts = tm.addTilesetImage("terrain", "terrain", TILE, TILE, 0, 0, 0)!;
     for (let t = 0; t < TERRAIN_COUNT; t++) {
       const src = layers[t];
       if (!src) continue;
-      let any = false;
-      const data: number[][] = [];
-      for (let j = 0; j < ch; j++) {
-        const row = new Array<number>(cw);
-        for (let i = 0; i < cw; i++) {
-          const v = src[(y0 + j) * m.w + x0 + i];
-          row[i] = v;
-          if (v >= 0) any = true;
-        }
-        data.push(row);
-      }
-      if (!any) continue;
+      const data = chunkRows(m, src, x0, y0, cw, ch);
+      if (!data) continue;
       const layer = tm.createBlankLayer(`t${t}`, ts, x0 * TILE, y0 * TILE, cw, ch)!;
       layer.putTilesAt(data, 0, 0);
       layer.setDepth(t === 0 ? DEPTH.walls : DEPTH.terrain + t);
@@ -294,6 +257,9 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       want.sort((a, b) => d(a) - d(b));
     }
     if (!want.length) return;
+    // Набора тайлов terrain ещё нет (сцену мира запустили раньше конца загрузки BootScene): куски ждут его. Без набора addTilesetImage
+    // даёт null, и Phaser PutTileAt падал на tiles[index] = undefined у точки появления (баг задачи 132; main.ts такой старт больше не делает).
+    if (!scene.textures.exists("terrain")) return;
     // Кусок, который уже задевает кадр (с объектами, торчащими вверх и в стороны), создаётся сразу, иначе на экране дыра;
     // запасные — по одному за кадр: кусок леса — это до ~200 деревьев с твинами и 3–5 слоёв тайлов, и пачка из 2–3 кусков
     // при переходе границы давала update в 20–25 мс (кадр 33 мс) раз в ~7 с бега.

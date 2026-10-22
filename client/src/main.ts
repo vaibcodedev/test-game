@@ -126,12 +126,23 @@ let lastChar = "";
 /** Игра сломалась (исключение в цикле Phaser): при следующем входе пересоздаём её целиком. */
 let broken = false;
 
+/**
+ * Ассеты ещё грузятся (BootScene не дошла до запуска мира): сцену мира запустит она сама, по текущей комнате. Старт раньше строил куски
+ * мира без набора тайлов terrain, и Phaser PutTileAt падал на tiles[index] = undefined у точки появления (баг задачи 132: связь рвалась
+ * посреди загрузки на входе новым героем, переподключение присылало «switch»).
+ */
+function booting(g: Phaser.Game) {
+  const boot = g.scene.getScene("boot");
+  return !boot || boot.sys.settings.status < Phaser.Scenes.SHUTDOWN;
+}
+
 function enterWorld() {
   // экран загрузки (ui/loading.ts) закрывает HUD до готовности мира; уходит сам из GameScene
   loading.show(lastChar ? `Вход в мир · ${lastChar}` : "", "Подключение к миру…");
   $("ui").hidden = false;
   if (!hud) hud = new Hud($("ui"));
   if (game && !broken) {
+    if (booting(game)) return;
     loading.progress(0.9, "Строим мир…");
     game.scene.start("game");
     return;
@@ -200,6 +211,7 @@ net.on("switch", () => {
   reconnectBox.hide();
   $("ui").hidden = false;
   if (!game || broken) return enterWorld();
+  if (booting(game)) return; // мир по новой комнате запустит BootScene, когда догрузит ассеты
   loading.show("", "Строим мир…");
   loading.progress(0.9);
   try {
