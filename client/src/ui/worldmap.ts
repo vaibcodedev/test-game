@@ -4,9 +4,10 @@ import { CITIES, cityKnown } from "../../../shared/cities";
 import { RAID, RAID_GATE } from "../../../shared/raid";
 import { factionColor, landLabel, type FactionId } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
-import { DANGER_LABEL, PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
+import { DANGER_LABEL, PLACES, ZONES, type WorldMap } from "../../../shared/map";
 import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
+import { buildZoneLabels, type Label } from "./worldmap-labels";
 
 const HEAD = `"Ark Pixel 10", "Rubik", system-ui, sans-serif`;
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
@@ -22,13 +23,7 @@ const KIND_COLOR: Record<string, string> = { settlement: "#e8d8a8", camp: "#e070
 const ROADS = Object.entries(world.roads as unknown as Record<string, unknown>).filter(([k]) => k !== "_doc").map(([, v]) => v as [number, number][]);
 const RIVERS = Object.entries(world.rivers as unknown as Record<string, { width: number; path: [number, number][] }>).filter(([k]) => k !== "_doc").map(([name, r]) => ({ name, ...r }));
 const SIGNS = (world.signs.list as { x: number; y: number; text: string }[]);
-const GRID = 24;
 
-interface Label {
-  x: number; y: number; text: string;
-  /** Опасность зоны: кольцо 40–80 — «Небезопасная зона», Поля 80–100 — «Опасная зона». */ danger?: "unsafe" | "deadly";
-  /** Безопасные земли фракции 1–40: «Земли Сольгарда / Умбрата». */ land?: FactionId;
-}
 /** Подпись зоны второй строкой и её цвет: опасность цветом токена (кольцо — янтарный, Поля — красный) или земли фракции её цветом; как на миникарте. */
 const zoneTag = (z: { danger?: "unsafe" | "deadly"; land?: FactionId }): { text: string; color: string } | null =>
   z.danger ? { text: DANGER_LABEL[z.danger], color: z.danger === "deadly" ? P.bad : P.warn } : z.land ? { text: landLabel(z.land), color: factionColor(z.land) } : null;
@@ -46,6 +41,8 @@ export class WorldMapView {
   private zoneLabels: Label[] = [];
   /** Подписи «Земли Сольгарда / Умбрата» — по одной на сторону, в центре подписей её зон: рисуются раньше поселений и зон, поэтому видны при любом масштабе. */
   private landLabels: { x: number; y: number; land: FactionId }[] = [];
+  /** Зеркальные пары мест (x → w − 1 − x, тот же y и вид). */
+  private placePair = new Map<(typeof PLACES)[number], (typeof PLACES)[number]>();
   private bridges: { x: number; y: number }[] = [];
   private hits: Hit[] = [];
   private mouse: { x: number; y: number } | null = null;
@@ -87,7 +84,10 @@ export class WorldMapView {
     this.tip.hidden = true;
     this.wrap.append(this.cv, this.tip);
     this.root.append(bar, this.wrap);
-    this.buildZoneLabels();
+    for (const p of PLACES) { const q = PLACES.find((o) => o !== p && o.kind === p.kind && o.y === p.y && o.x === map.w - 1 - p.x); if (q) this.placePair.set(p, q); }
+    const lb = buildZoneLabels(map);
+    this.zoneLabels = lb.zoneLabels;
+    this.landLabels = lb.landLabels;
     for (const o of map.objects) if (o.kind === "bridge_h" || o.kind === "bridge_v") this.bridges.push({ x: o.x / TILE, y: o.y / TILE });
 
     new ResizeObserver(() => this.resize()).observe(this.wrap);
@@ -128,66 +128,6 @@ export class WorldMapView {
       const r = cv.getBoundingClientRect();
       this.zoomAt(2, e.clientX - r.left, e.clientY - r.top);
     });
-  }
-
-  /** Зоны: блоки GRID×GRID по большинству, связные куски получают подпись. */
-  private buildZoneLabels() {
-    const m = this.map;
-    if (m.w <= 200) return;
-    const gw = Math.ceil(m.w / GRID), gh = Math.ceil(m.h / GRID);
-    const zone = new Int16Array(gw * gh).fill(-1);
-    for (let by = 0; by < gh; by++) for (let bx = 0; bx < gw; bx++) {
-      const cnt = new Map<number, number>();
-      for (let y = by * GRID; y < Math.min(m.h, (by + 1) * GRID); y += 3) for (let x = bx * GRID; x < Math.min(m.w, (bx + 1) * GRID); x += 3) {
-        const z = m.zone[y * m.w + x];
-        cnt.set(z, (cnt.get(z) ?? 0) + 1);
-      }
-      let best = -1, bn = 0;
-      for (const [z, n] of cnt) if (n > bn) { best = z; bn = n; }
-      zone[by * gw + bx] = best;
-    }
-    const seen = new Uint8Array(gw * gh);
-    // узкие высокие пояса (кольцо 40–80 вокруг Полей) подписываются позже, лесенкой по высоте: на общем плане их названия шире самих поясов
-    const belts: { comp: number[]; cx: number; z: number }[] = [];
-    for (let i = 0; i < gw * gh; i++) {
-      if (seen[i] || zone[i] < 0) continue;
-      const z = zone[i], st = [i], comp: number[] = [];
-      seen[i] = 1;
-      while (st.length) {
-        const c = st.pop()!;
-        comp.push(c);
-        const x = c % gw, y = (c / gw) | 0;
-        for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
-          if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
-          const j = ny * gw + nx;
-          if (!seen[j] && zone[j] === z) { seen[j] = 1; st.push(j); }
-        }
-      }
-      if (comp.length < 4 || isTownZone(z) || z === 6) continue;
-      let mx = 0, my = 0;
-      for (const c of comp) { mx += c % gw; my += (c / gw) | 0; }
-      mx /= comp.length; my /= comp.length;
-      const span = Math.max(...comp.map((c) => (c / gw) | 0)) - Math.min(...comp.map((c) => (c / gw) | 0)) + 1;
-      if (span >= 8 && comp.length / span <= 2.6) { belts.push({ comp, cx: mx, z }); continue; } // в среднем не шире 2–3 блоков на строку
-      let bc = comp[0], bd = 1e9;
-      for (const c of comp) { const d = Math.hypot((c % gw) - mx, ((c / gw) | 0) - my); if (d < bd) { bd = d; bc = c; } }
-      const zi = ZONES[z];
-      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: zi.name, danger: zi.danger, land: zi.land });
-    }
-    belts.sort((a, b) => a.cx - b.cx);
-    belts.forEach((b, k) => {
-      const target = Math.round((gh - 1) * (0.14 + 0.24 * (k % 4)));
-      let bc = b.comp[0], bd = 1e9;
-      for (const c of b.comp) { const d = Math.abs(((c / gw) | 0) - target) * 3 + Math.abs((c % gw) - b.cx); if (d < bd) { bd = d; bc = c; } }
-      this.zoneLabels.push({ x: ((bc % gw) + 0.5) * GRID, y: (((bc / gw) | 0) + 0.5) * GRID, text: ZONES[b.z].name, danger: ZONES[b.z].danger, land: ZONES[b.z].land });
-    });
-    const lands = new Map<FactionId, { x: number; y: number; n: number }>();
-    for (const z of this.zoneLabels) if (z.land) {
-      const a = lands.get(z.land) ?? { x: 0, y: 0, n: 0 };
-      a.x += z.x; a.y += z.y; a.n++;
-      lands.set(z.land, a);
-    }
-    for (const [land, a] of lands) this.landLabels.push({ x: a.x / a.n, y: a.y / a.n, land });
   }
 
   open() {
@@ -319,15 +259,18 @@ export class WorldMapView {
 
     const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
     const hits: Hit[] = [];
-    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16, ws = "0px"): boolean => {
+    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16, ws = "0px", dry = false, inMap = false): boolean => {
       g.font = font;
       g.wordSpacing = ws;
       const w = Math.ceil(g.measureText(text).width);
       // начало подписи — в целых пикселях экрана (не CSS), иначе пиксельный шрифт размывается
-      const lx = Math.round((x - w / 2) * dpr) / dpr, ly = Math.round(y * dpr) / dpr;
+      // подпись зоны не выходит за край карты
+      const x0 = inMap ? Math.min(Math.max(x - w / 2, X(0) + 3), X(m.w) - w - 3) : x - w / 2;
+      const lx = Math.round(x0 * dpr) / dpr, ly = Math.round(y * dpr) / dpr;
       const r = { x0: lx - 2, y0: ly - size, x1: lx + w + 2, y1: ly + 2 };
       if (r.x1 < 0 || r.x0 > this.W || r.y1 < 0 || r.y0 > this.H) return false;
       if (placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) return false;
+      if (dry) return true;
       placed.push(r);
       g.lineWidth = 4;
       g.strokeStyle = "rgba(14,10,16,0.92)";
@@ -370,7 +313,10 @@ export class WorldMapView {
     if (big) {
       const hl = head(s < 3 ? 16 : 19, dpr);
       g.globalAlpha = s < 3 ? 0.9 : s < 6 ? 0.6 : 0.35;
-      for (const l of this.landLabels) label(landLabel(l.land).toUpperCase(), X(l.x), Y(l.y), factionColor(l.land), hl.font, hl.size, hl.ws);
+      const lf = (l: { x: number; y: number; land: FactionId }, dry = false) => label(landLabel(l.land).toUpperCase(), X(l.x), Y(l.y), factionColor(l.land), hl.font, hl.size, hl.ws, dry);
+      // обе стороны парой: подпись одной стороны не рисуется без зеркальной
+      if (this.landLabels.length === 2) { if (lf(this.landLabels[0], true) && lf(this.landLabels[1], true)) for (const l of this.landLabels) lf(l); }
+      else for (const l of this.landLabels) lf(l);
       g.globalAlpha = 1;
     }
     // названия рек
@@ -382,6 +328,8 @@ export class WorldMapView {
     if (big) {
       const minS: Record<string, number> = { settlement: 0.9, meeting: 1.8, camp: 2.6, ruins: 2.2 };
       const order = ["settlement", "meeting", "ruins", "camp"];
+      const shown = new Map<(typeof PLACES)[number], boolean>();
+      const placePair = this.placePair;
       for (const kind of order) for (const p of PLACES) {
         if (p.kind !== kind) continue;
         const x = X(p.x), y = Y(p.y);
@@ -397,7 +345,17 @@ export class WorldMapView {
         if (p.kind === "settlement") g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
         else { g.beginPath(); g.moveTo(x, y - sz - 1); g.lineTo(x + sz + 1, y + sz); g.lineTo(x - sz - 1, y + sz); g.closePath(); g.fill(); }
         const fs = p.kind === "settlement" ? 13 : 11;
-        if (s >= minS[p.kind]) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], `500 ${fs}px ${TEXT}`, fs);
+        if (s >= minS[p.kind]) {
+          // зеркальная пара поселений подписывается вместе: если одно название не влезло, не рисуется и второе
+          const q = placePair.get(p);
+          let show = shown.get(p);
+          if (show === undefined) {
+            const dry = (a: typeof p) => label(a.name, X(a.x), Y(a.y) - sz - 5, KIND_COLOR[a.kind], `500 ${fs}px ${TEXT}`, fs, "0px", true);
+            show = dry(p) && (!q || dry(q));
+            shown.set(p, show); if (q) shown.set(q, show);
+          }
+          if (show) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], `500 ${fs}px ${TEXT}`, fs);
+        }
         hits.push({ x, y, r: sz + 5, title: p.name, sub });
       }
       // указатели
@@ -411,11 +369,17 @@ export class WorldMapView {
       const za = s < 3 ? 0.75 : s < 6 ? 0.5 : 0.28;
       g.globalAlpha = za;
       const hz = head(s < 3 ? 15 : 18, dpr);
+      const zshown = new Map<Label, boolean>();
       for (const z of this.zoneLabels) {
+        const pz = z.pair === undefined ? undefined : this.zoneLabels[z.pair];
+        const zdry = (a: Label) => label(a.text.toUpperCase(), X(a.x), Y(a.y), "#ffffff", hz.font, hz.size, hz.ws, true, true);
+        let ok = zshown.get(z);
+        if (ok === undefined) { ok = zdry(z) && (!pz || zdry(pz)); zshown.set(z, ok); if (pz) zshown.set(pz, ok); }
+        if (!ok) continue;
         // вторая строка — опасность зоны цветом токена (кольцо 40–80 — янтарная, Поля 80–100 — красная) или «Земли Сольгарда / Умбрата» цветом фракции
         const tag = zoneTag(z);
-        if (label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws) && tag) {
-          label(tag.text, X(z.x), Y(z.y) + hz.size * 0.9, tag.color, `600 ${s < 3 ? 12 : 13}px ${TEXT}`, s < 3 ? 12 : 13);
+        if (label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws, false, true) && tag) {
+          label(tag.text, X(z.x), Y(z.y) + hz.size * 0.9, tag.color, `600 ${s < 3 ? 12 : 13}px ${TEXT}`, s < 3 ? 12 : 13, "0px", false, true);
         }
       }
       g.globalAlpha = 1;
