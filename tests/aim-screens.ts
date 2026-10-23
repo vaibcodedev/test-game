@@ -22,7 +22,7 @@ const MAP = generateMap(MAP_SEED);
 const town = MAP.playerSpawn;
 const sp = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[0];
 const SHOTS = process.env.AIM_SHOTS ?? "";
-const SHOT_DIR = path.resolve("tools/out/aim133", SHOTS || "_");
+const SHOT_DIR = process.env.AIM_OUT ? path.resolve(process.env.AIM_OUT) : path.resolve("tools/out/aim133", SHOTS || "_");
 
 const mobsNear = (m: WorldMap, x: number, y: number, r: number) => m.spawns.reduce((n, s) => n + (Math.hypot(s.x - x, s.y - y) < r ? 1 : 0), 0);
 const openAround = (m: WorldMap, x: number, y: number, r: number) => [0, 1, 2, 3, 4, 5, 6, 7].every((k) => walkable(m, x + Math.cos(k) * r, y + Math.sin(k) * r, 10));
@@ -118,6 +118,17 @@ function chromePath() {
 }
 const sent = (page: Page, type: string) => page.evaluate((t) => ((window as any).__sent as [string, any][]).filter((m) => m[0] === t).map((m) => m[1]), type);
 const clear = (page: Page) => page.evaluate(() => { (window as any).__sent.length = 0; });
+/** Опрос условия раз в 50 мс до таймаута (вместо фиксированной паузы: под нагрузкой клиент и сервер отвечают позже). */
+async function waitCond(fn: () => Promise<boolean>, ms: number, what: string) {
+  const t0 = Date.now();
+  while (!(await fn())) {
+    if (Date.now() - t0 > ms) throw new Error("таймаут: " + what);
+    await sleep(50);
+  }
+}
+const aimId = (page: Page) => page.evaluate(`(() => { const s = (window.__game.scene.getScene('game')); return s.aimState ? s.aimState.id : null; })()`) as Promise<string | null>;
+const atPos = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = (window.__game.scene.getScene('game')); return !!s.me && Math.hypot(s.pos.x - ${x}, s.pos.y - ${y}) < 2 && Math.hypot(s.me.x - ${x}, s.me.y - ${y}) < 2; })()`) as Promise<boolean>;
+const skillsSent = async (page: Page) => (await sent(page, "skill")).length;
 const scene = "(window.__game.scene.getScene('game'))";
 
 async function enter(browser: Browser, name: string): Promise<Page> {
@@ -163,7 +174,7 @@ async function setZoom(page: Page, z: number) {
     const css = (await page.evaluate(`${scene}.css`)) as number;
     if (Math.abs(css - z) < 1e-9) return;
     await page.evaluate((dy) => { const c = (window as any).__game.canvas as HTMLCanvasElement; c.dispatchEvent(new WheelEvent("wheel", { deltaY: dy, bubbles: true, cancelable: true })); }, css < z ? -100 : 100);
-    await sleep(120);
+    await waitCond(async () => Math.abs(((await page.evaluate(`${scene}.css`)) as number) - css) > 1e-9, 1000, "смена масштаба").catch(() => {});
   }
   throw new Error("масштаб не сменился на " + z);
 }
@@ -183,11 +194,12 @@ async function shot(page: Page, skill: string, at: { x: number; y: number } | "c
   await sleep(250);
   await mustOverField(page, name);
   await page.keyboard.down(key as any);
-  await sleep(300);
+  // снимок — когда прицел уже на поле (мягко: без прицела снимок всё равно делается, как раньше)
+  await waitCond(async () => (await aimId(page)) === skill, 2000, "прицел " + skill).catch(() => {});
   await page.screenshot({ path: path.join(SHOT_DIR, name + ".png") as `${string}.png` });
   await page.keyboard.press("Escape");
   await page.keyboard.up(key as any);
-  await sleep(200);
+  await waitCond(async () => (await aimId(page)) === null, 1000, "снятие прицела").catch(() => {});
 }
 /** Снимки превью (AIM_SHOTS): маг учит «Огненную стену» (шар до 3 ранга), берег и стены подземелья на зуме 2 и 3. */
 async function shots(page: Page) {
@@ -286,16 +298,16 @@ async function shotAt(page: Page, skill: string, find: () => Promise<{ x: number
   let c = await toClient(page, u.x, u.y + dy);
   await page.mouse.move(c.x, c.y, { steps: 3 });
   await page.keyboard.down(key as any);
-  await sleep(250);
+  await waitCond(async () => (await aimId(page)) === skill, 2000, "прицел " + skill).catch(() => {});
   u = (await find()) ?? u;
   c = await toClient(page, u.x, u.y + dy);
   await page.mouse.move(c.x, c.y);
-  await sleep(80);
+  await waitCond(async () => (await aimId(page)) === skill, 1000, "прицел после сдвига курсора").catch(() => {});
   await mustOverField(page, name);
   await page.screenshot({ path: path.join(SHOT_DIR, name + ".png") as `${string}.png` });
   await page.keyboard.press("Escape");
   await page.keyboard.up(key as any);
-  await sleep(200);
+  await waitCond(async () => (await aimId(page)) === null, 1000, "снятие прицела").catch(() => {});
 }
 /** Ближайший к точке живой моб (в 260 px). */
 const mobNear = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}; let b = null, bd = 260; for (const v of s.units.values()) { if (v.u.kind !== 1 || v.dead) continue;
@@ -379,6 +391,8 @@ async function shots2(browser: Browser, mage: Page, errors: string[]) {
     }
     await learnAll(page, h.skills);
     await onBar(page, h.bar ?? h.skills);
+    // AIM_LOOK=A|B|C — вариант вида превью; AIM_NIGHT=1 — клиентские часы сдвинуты в ночь (сервер не затронут)
+    await page.evaluate(`(() => { window.__aimLook = ${JSON.stringify(process.env.AIM_LOOK ?? "")}; if (${process.env.AIM_NIGHT ? 1 : 0}) { const D = 20 * 60 * 1000, n = Date.now.bind(Date); Date.now = () => Math.floor(n() / D) * D + 0.8 * D; } })()`);
     for (const z of [2, 3]) {
       await setZoom(page, z);
       for (const sc of h.scenes) await sc(page, z);
@@ -414,23 +428,22 @@ async function main() {
     await mage.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 99 }); n.send("dbg", { op: "god" }); });
     await healer.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 10 }); n.send("dbg", { op: "god" }); });
     await healer.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y]);
-    await mage.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y - 70]);
-    await sleep(1500);
+    await waitCond(async () => (await atPos(healer, sp.x + 150, sp.y)) && (await atPos(mage, sp.x + 150, sp.y - 70)), 15000, "телепорт лекаря и мага").catch(() => {});
     for (const id of ["frostnova", "blink", "meteor"]) { await mage.evaluate((i) => (window as any).__net.send("learn", { id: i }), id); await sleep(250); }
     await mage.waitForFunction(() => (window as any).__net.self.skills.meteor && (window as any).__net.self.bars[0].some((r: any) => r && r.s === "meteor"), { timeout: 5000 });
     // снимки превью (задача 133) — до проверок: их отказ не должен оставить фазу без снимков
     if (SHOTS) {
       if (SHOTS.startsWith("s2")) await shots2(browser, mage, errors); else await shots(mage);
       await mage.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y - 70]);
-      await sleep(1500);
+      await waitCond(() => atPos(mage, sp.x + 150, sp.y - 70), 15000, "возврат мага").catch(() => {});
     }
 
     // ---- лекарь: союзник под курсором, цель не меняется ----
-    await sleep(2500);
     await healer.keyboard.press("Tab");
-    await sleep(500);
+    await waitCond(async () => !!(await state(healer)).target, 5000, "Tab выбрал врага").catch(() => {});
     const before = await state(healer);
     must(before.target, "Tab не выбрал врага");
+    await waitCond(async () => !!(await healer.evaluate(`(() => { const s = ${scene}; for (const [id, v] of s.units) if (id !== window.__net.id && v.u.name === "Метеор") return true; return false; })()`)), 5000, "союзник виден лекарю").catch(() => {});
     const ally = (await healer.evaluate(`(() => { const s = ${scene}; for (const [id, v] of s.units) if (id !== window.__net.id && v.u.name === "Метеор") return { id, x: v.x, y: v.y }; return null; })()`)) as { id: string; x: number; y: number } | null;
     must(ally, "союзник не виден лекарю");
     const sc = await toClient(healer, ally!.x, ally!.y - 14);
@@ -439,18 +452,18 @@ async function main() {
     const heal = await keyFor(healer, "heal");
     await clear(healer);
     await healer.keyboard.down(heal as any);
-    await sleep(150);
+    await waitCond(async () => (await aimId(healer)) === "heal", 2000, "прицел лечения").catch(() => {});
     must((await state(healer)).aim === "heal", "с превью: при зажатой клавише нет прицела");
     must(!(await sent(healer, "skill")).length, "каст ушёл до отпускания клавиши");
     await healer.keyboard.up(heal as any);
-    await sleep(300);
+    await waitCond(async () => (await skillsSent(healer)) >= 1, 2000, "каст лечения").catch(() => {});
     const casts = await sent(healer, "skill");
     must(casts.length === 1 && casts[0].id === "heal" && casts[0].target === ally!.id, "лечение не ушло в союзника под курсором: " + JSON.stringify(casts) + " ally=" + JSON.stringify(ally) + " sc=" + JSON.stringify(sc) + " st=" + JSON.stringify(await state(healer)) + " dbg=" + JSON.stringify(await healer.evaluate((p: any) => { const sc_id = p.id; const s = (window as any).__game.scene.getScene("game"); const e = document.elementFromPoint(p.x, p.y) as HTMLElement; const ap = s.input.activePointer; return { el: e?.tagName + "." + e?.className, overUi: s.overUi, px: ap.x, py: ap.y, al: (() => { const v = s.units.get(sc_id); return v && { en: s.isEnemy(v), k: v.u.kind, f: v.u.faction, mf: (window as any).__net.self.faction, ht: v.hitTest(s.cameras.main.getWorldPoint(ap.x, ap.y).x, s.cameras.main.getWorldPoint(ap.x, ap.y).y), vx: v.x, vy: v.y }; })(), pf: s.pickFriend(s.cameras.main.getWorldPoint(ap.x, ap.y).x, s.cameras.main.getWorldPoint(ap.x, ap.y).y) }; }, { ...sc, id: ally!.id })) + " self=" + (await healer.evaluate(() => (window as any).__net.id)));
     must((await state(healer)).target === before.target, "цель сменилась");
     ok("лекарь: лечение ушло в союзника под курсором, выбранная цель не изменилась");
 
     // ---- маг: метеор с превью ложится в курсор, зажатый дальностью ----
-    await sleep(3000);
+    await waitCond(() => atPos(mage, sp.x + 150, sp.y - 70), 5000, "маг на месте").catch(() => {});
     const me = await state(mage);
     const far = await toClient(mage, me.x, me.y); far.x = 8; far.y = 8;
     await mage.mouse.move(far.x, far.y, { steps: 4 });
@@ -458,10 +471,10 @@ async function main() {
     const met = await keyFor(mage, "meteor");
     await clear(mage);
     await mage.keyboard.down(met as any);
-    await sleep(200);
+    await waitCond(async () => (await aimId(mage)) === "meteor", 2000, "прицел метеора").catch(() => {});
     must((await state(mage)).aim === "meteor", "метеор: нет прицела при зажатой клавише");
     await mage.keyboard.up(met as any);
-    await sleep(300);
+    await waitCond(async () => (await skillsSent(mage)) >= 1, 2000, "каст метеора").catch(() => {});
     const m = (await sent(mage, "skill"))[0];
     must(m && m.id === "meteor", "метеор не отправлен: " + JSON.stringify(m));
     const d = Math.hypot(m.x - me.x, m.y - me.y);
@@ -477,9 +490,9 @@ async function main() {
     await mage.evaluate(() => { const c = (window as any).__net.cooldowns as Map<string, number>; c.delete("meteor"); c.delete("gcd"); });
     await clear(mage);
     await mage.keyboard.down(met as any);
-    await sleep(150);
+    await waitCond(async () => (await aimId(mage)) === "meteor", 2000, "прицел метеора (ближе)").catch(() => {});
     await mage.keyboard.up(met as any);
-    await sleep(300);
+    await waitCond(async () => (await skillsSent(mage)) >= 1, 2000, "каст метеора (ближе)").catch(() => {});
     const m2 = (await sent(mage, "skill"))[0];
     must(m2 && Math.hypot(m2.x - (me.x + 150), m2.y - (me.y + 40)) < 4, "ближняя точка не совпала с курсором: " + JSON.stringify(m2));
     ok("метеор ближе дальности ложится ровно в курсор");
@@ -487,10 +500,10 @@ async function main() {
     // ---- Esc отменяет прицел ----
     await clear(mage);
     await mage.keyboard.down(met as any);
-    await sleep(150);
+    await waitCond(async () => (await aimId(mage)) === "meteor", 2000, "прицел перед Esc").catch(() => {});
     must((await state(mage)).aim === "meteor", "нет прицела перед Esc");
     await mage.keyboard.press("Escape");
-    await sleep(100);
+    await waitCond(async () => (await aimId(mage)) === null, 2000, "Esc снимает прицел").catch(() => {});
     must((await state(mage)).aim === null, "Esc не снял прицел");
     await mage.keyboard.up(met as any);
     await sleep(300);
