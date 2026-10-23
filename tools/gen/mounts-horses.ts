@@ -9,7 +9,7 @@ const hx = (c: string): RGBA => ramp(c)[0];
 
 interface HorseLook {
   body: Ramp; mane: Ramp; belly?: Ramp; eye?: RGBA; blaze?: boolean; sock?: Ramp;
-  chanfron?: Ramp; plume?: Ramp; ears?: boolean; heavy?: boolean; skullHead?: boolean;
+  eyeSize?: number; chanfron?: Ramp; plume?: Ramp; ears?: boolean; heavy?: boolean; skullHead?: boolean;
 }
 
 function horseHead(r: Rig, c: Ctx, L: HorseLook, sc = 1) {
@@ -26,7 +26,7 @@ function horseHead(r: Rig, c: Ctx, L: HorseLook, sc = 1) {
     r.dot(V(0, m[1] - 4, m[2] + 3.6), 1.3, P.gold[3], { front, views: VIEW_DOWN | VIEW_SIDE, bias: 3 });
   }
   if (L.ears !== false) r.pair((s) => r.cap(V(s * 2.3 * sc, N[1] + 0.2, N[2] + 3 * sc), V(s * 2.5 * sc, N[1] + 1.6, N[2] + 7 * sc), 1.4 * sc, 0.6 * sc, L.body, { wa: 1.1 * sc, wb: 0.5, front, tone: s < 0 ? -1 : 0 }));
-  eyes(r, V(0, b[1] - 1.5 * sc, b[2] + 1.6 * sc), 3.0 * sc, L.eye ?? hx("#0a0608"), 0.9);
+  eyes(r, V(0, b[1] - 1.5 * sc, b[2] + 1.6 * sc), 3.0 * sc, L.eye ?? hx("#0a0608"), L.eyeSize ?? 0.9);
   r.pair((s) => r.dot(V(s * 1.1, m[1] + 2.3 * sc, m[2] + 0.3), 0.6, hx("#0a0608"), { views: VIEW_DOWN, front, bias: 3 }));
   if (L.plume) flow(r, V(0, N[1] + 0.5, N[2] + 5 * sc), V(0, -0.35, 0.8), 5, 2.4, 1.8, 0.7, L.plume, c, 1.2, 0.3, { front: VIEW_DOWN });
   // грива вдоль гребня шеи и чёлка
@@ -173,16 +173,20 @@ export const SKEL_HORSE = (ph: number, run: boolean): Built =>
   }, ph, run);
 
 const NIGHT = ramp("#0e0814", "#221830", "#3c2e50", "#5a4a72", "#7a6a96");
+const NIGHT_HEAD = ramp("#05030a", "#0e0814", "#1c1228", "#34264a", "#52406c");
 const HELLFIRE = ramp("#5a0c08", "#a81c0c", "#e8541a", "#ffa030", "#ffee90");
 export const NIGHTMARE = (ph: number, run: boolean): Built =>
   quad(horseQ({ body: NIGHT, mane: HELLFIRE, eye: hx("#ffd040"), heavy: true, ears: true, chanfron: undefined }, {
     legR: [2.9, 2.0], stride: 8, lift: 6,
     hoof: ramp("#5a0c08", "#c23a12", "#f08a2c", "#ffe07a"),
     head: (r, c) => {
-      horseHead(r, c, { body: NIGHT, mane: ramp("#1a0a10", "#2a1018", "#44202a", "#5c2c38"), eye: hx("#ffe060") }, 1.3);
+      horseHead(r, c, { body: NIGHT_HEAD, mane: ramp("#1a0a10", "#2a1018", "#44202a", "#5c2c38"), eye: hx("#ffe060"), eyeSize: 0.5 }, 1.3);
       // рога и горящая грива
-      r.pair((s) => r.chain([V(s * 2.2, c.N[1] + 0.6, c.N[2] + 3.4), V(s * 3.6, c.N[1] - 1.2, c.N[2] + 7), V(s * 3.2, c.N[1] - 3.4, c.N[2] + 10.5)], 1.3, 0.4, ramp("#120c12", "#2a2028", "#4c4048", "#7a6e76"), { front: VIEW_DOWN }));
-      r.pair((s) => r.dot(V(s * 3.4, c.N[1] + 6.5, c.N[2] - 1.4), 1.5, HELLFIRE[4], { views: s > 0 ? VIEW_SIDE | VIEW_DOWN : VIEW_DOWN, front: VIEW_DOWN, bias: 5 }));
+      r.pair((s) => r.chain([V(s * 2.2, c.N[1] + 0.6, c.N[2] + 3.4), V(s * 3.6, c.N[1] - 1.2, c.N[2] + 7), V(s * 3.2, c.N[1] - 3.4, c.N[2] + 10.5)], 1.3, 0.4, ramp("#4a4038", "#8a7e70", "#c8bca6", "#f2e8d0"), { front: VIEW_DOWN, bias: 2 }));
+      // язык пламени на лбу между рогами и горящие ноздри: в виде спереди голова отделяется от корпуса
+      for (let i = -1; i <= 1; i++) flame(r, V(i * 1.6, c.N[1] + 4.6, c.N[2] + 2.4), 6 - Math.abs(i) * 1.6, 1.3, c.tt, i + 20, HELLFIRE, { front: VIEW_DOWN, lean: V(0, -0.2, 0.9) });
+      r.pair((s) => r.dot(V(s * 1.3, c.N[1] + 16.2, c.N[2] - 7.6), 0.9, HELLFIRE[3], { views: VIEW_DOWN, front: VIEW_DOWN, bias: 5 }));
+      r.pair((s) => r.dot(V(s * 2.9, c.N[1] + 6.5, c.N[2] - 1.4), 0.85, HELLFIRE[4], { views: s > 0 ? VIEW_SIDE | VIEW_DOWN : VIEW_DOWN, front: VIEW_DOWN, bias: 5 }));
       const nb = V(0, c.S[1] + 3, c.S[2] + 4);
       for (let i = 0; i < 8; i++) { const t = i / 7; flame(r, V(0, lerp(c.N[1] - 1, nb[1], t), lerp(c.N[2] + 2.5, nb[2] + 3, t)), 8 + (i % 3) * 1.6, 2, c.tt, i, HELLFIRE, { lean: V(0, -0.7, 0.7) }); }
     },

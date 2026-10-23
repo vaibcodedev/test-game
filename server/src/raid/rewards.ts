@@ -10,6 +10,7 @@ import { RAID, RAID_BOSS, RAID_CFG } from "../../../shared/raid";
 import type { LootBag } from "../../../shared/protocol";
 import type { PlayerSave } from "../db";
 import { addItem } from "../game/inventory";
+import { raidMountTrophies } from "../game/mountDrops";
 import type { Player } from "../game/Player";
 import { gainXp } from "../game/rewards";
 import type { World } from "../game/World";
@@ -119,6 +120,7 @@ export function grantRaidRewards(d: RaidDirector, now = Date.now()): Map<string,
         got = true;
         w.system(RAID.chat.trophy.replace("{name}", p.name).replace("{item}", l.name));
       }
+      raidMountTrophies(p, RAID_BOSS.id);
       rs.pity = got ? 0 : Math.min(ch.pityMax, rs.pity + ch.pityStep);
       dropBag(w, p, boss.x, boss.y, items, rand);
       p.send("toast", { text: `${RAID_BOSS.name} повержен! Заберите добычу у тела.`, kind: "loot" });

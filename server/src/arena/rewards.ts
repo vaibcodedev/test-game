@@ -3,6 +3,7 @@ import { MODE_NAMES, rankById, RANKS, type ArenaMode } from "../../../shared/are
 import { makeUnique } from "../../../shared/items";
 import { addItem } from "../game/inventory";
 import type { Player } from "../game/Player";
+import { arenaMountRewards } from "../game/mountDrops";
 import { services } from "./registry";
 
 /** Выдаёт все ожидающие награды игроку в мире. Медальон ждёт, пока в сумке не появится место. */
@@ -26,6 +27,9 @@ export function deliverArenaRewards(p: Player) {
       continue;
     }
     store.markDelivered(r.id);
+    // маунты арены: число побед за сезон по всем режимам
+    const key = p.name.toLowerCase();
+    arenaMountRewards(p, (Object.keys(MODE_NAMES) as ArenaMode[]).reduce((n, m) => n + store.rating(key, m, r.season).wins, 0));
     p.send("toast", { text: `Награда за сезон ${r.season} (${MODE_NAMES[r.mode as ArenaMode]}, ${rank.name}): титул, рамка и медальон`, kind: "loot" });
   }
   p.applyCosmetics();

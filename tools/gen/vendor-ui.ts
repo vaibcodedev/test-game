@@ -422,7 +422,7 @@ export function buildVendorUi() {
   // это уже «×2» к сетке пака) и @2x; разделитель — растягиваемая линия и украшение справа. Размеры — токены --frame-w, --frame-slice, --div-h, --div-cap.
   const fb = frames[11], db = dividers[0];
   fs.mkdirSync(GAME_UI, { recursive: true });
-  for (const f of fs.readdirSync(GAME_UI)) if (f.endsWith(".png")) fs.unlinkSync(path.join(GAME_UI, f));
+  for (const f of fs.readdirSync(GAME_UI)) if (/^(frame|divider)-.*\.png$/.test(f)) fs.unlinkSync(path.join(GAME_UI, f));
   writePng(fb.line, path.join(GAME_UI, "frame-b.png"));
   writePng(scaleNN(fb.line, 2), path.join(GAME_UI, "frame-b@2x.png"));
   writePng(lineOf(db.plain, db.cap), path.join(GAME_UI, "divider-b-line.png"));
