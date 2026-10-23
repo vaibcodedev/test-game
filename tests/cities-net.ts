@@ -5,12 +5,16 @@ import { BANKERS } from "../shared/bank";
 import { CITIES, cityAtTile, teleportPrice } from "../shared/cities";
 import { CLASS_IDS, classFaction } from "../shared/classes";
 import { MERCHANT_RANGE, TILE } from "../shared/constants";
+import { QUEST_GIVERS } from "../shared/quests";
 import { SETTLEMENTS } from "../shared/settlements";
 import { SMITHS } from "../shared/upgrade";
 import { Bot, assert, check, dbFile, ensureChar, passedCount, sleep, startServer, stopServer } from "./harness";
 
-const [ember, oasis, snow] = CITIES;
-const home = CITIES.find((c) => c.capital === "solgard")!, enemy = CITIES.find((c) => c.capital === "umbrath")!;
+const ember = CITIES[0];
+const home = CITIES.find((c) => c.capital === "solgard" && !c.fort)!, enemy = CITIES.find((c) => c.capital === "umbrath" && !c.fort)!;
+/** Свой форт героя Сольгарда (бывший Оазис). */
+const fort = CITIES.find((c) => c.id === "fort_solgard")!;
+const giver = QUEST_GIVERS.find((g) => g.id === "mill_ford_warden")!;
 const at = (b: Bot, c: { x: number; y: number }) => Math.hypot(b.me().x - c.x, b.me().y - c.y);
 
 /** Банкир, кузнец и сумочник столицы cap: банк открывается, руда покупается, сумка расширяется; с площади столицы — отказ у всех троих. */
@@ -57,10 +61,20 @@ async function main() {
   try {
     const b = await Bot.join("Путник", "secret", "warrior");
     b.send("dbg", { op: "god" });
-    await check("новый герой в своей столице и знает её; оазис и Эмберхолл не открыты", async () => {
+    await check("новый герой в своей столице и знает её; свой форт и Эмберхолл не открыты", async () => {
       assert(at(b, home.spawn) < 80, "появился не в Аурелионе");
       await b.until(() => (b.self!.cities ?? []).includes(home.id), 2000, "столица открыта");
-      assert(!(b.self!.cities ?? []).includes("oasis") && !(b.self!.cities ?? []).includes("ember"), "открыто раньше времени");
+      assert(!(b.self!.cities ?? []).includes(fort.id) && !(b.self!.cities ?? []).includes("ember"), "открыто раньше времени");
+    });
+    await check("камень Эмберхолла закрыт, пока герой не дошёл сам", async () => {
+      b.send("dbg", { op: "gold", v: 1000 });
+      b.send("dbg", { op: "tp", x: home.stone.x, y: home.stone.y + 20 });
+      await sleep(200);
+      b.toasts.length = 0;
+      b.send("tp:go", { id: "ember" });
+      await b.until(() => b.toasts.some((t) => t.includes("не открыт")), 2000, "отказ: телепорт не открыт");
+      await sleep(300);
+      assert(at(b, home.spawn) < 400, "телепортировало в неоткрытый Эмберхолл");
     });
     await check("вражеская столица: телепорт не открывается, стража бьёт чужака", async () => {
       b.send("dbg", { op: "tp", x: enemy.spawn.x, y: enemy.spawn.y });
@@ -70,21 +84,21 @@ async function main() {
       b.send("dbg", { op: "tp", x: ember.spawn.x, y: ember.spawn.y });
       await b.until(() => (b.self!.cities ?? []).includes("ember"), 2000, "Эмберхолл открыт визитом");
     });
-    await check("вход в зону города открывает телепорт", async () => {
-      b.send("dbg", { op: "tp", x: oasis.spawn.x, y: oasis.spawn.y });
-      await b.until(() => (b.self!.cities ?? []).includes("oasis"), 2000, "оазис открыт");
-      assert(b.toasts.some((t) => t.includes("Открыт телепорт: Оазис Миражей")), "нет сообщения");
+    await check("вход в зону своего форта открывает телепорт", async () => {
+      b.send("dbg", { op: "tp", x: fort.spawn.x, y: fort.spawn.y });
+      await b.until(() => (b.self!.cities ?? []).includes(fort.id), 2000, "форт открыт");
+      assert(b.toasts.some((t) => t.includes(`Открыт телепорт: ${fort.name}`)), "нет сообщения");
     });
     await check("телепорт без камня и в неоткрытый город отклоняется", async () => {
       b.send("dbg", { op: "gold", v: 1000 });
       b.send("tp:go", { id: "ember" });
       await sleep(3600);
       assert(at(b, ember.spawn) > 500, "телепортировало без камня");
-      b.send("dbg", { op: "tp", x: oasis.arrive.x, y: oasis.arrive.y });
+      b.send("dbg", { op: "tp", x: fort.arrive.x, y: fort.arrive.y });
       await sleep(200);
-      b.send("tp:go", { id: "snow_valley" });
+      b.send("tp:go", { id: "fort_umbrath" });
       await sleep(3600);
-      assert(at(b, oasis.arrive) < 40, "ушёл в неоткрытый город");
+      assert(at(b, fort.arrive) < 40, "ушёл в чужой форт");
     });
     await check("движение отменяет каст", async () => {
       b.send("tp:go", { id: "ember" });
@@ -96,7 +110,7 @@ async function main() {
       assert(at(b, ember.arrive) > 500, "телепорт сработал вопреки движению");
     });
     await check("в бою телепорт запрещён", async () => {
-      b.send("dbg", { op: "tp", x: oasis.arrive.x, y: oasis.arrive.y });
+      b.send("dbg", { op: "tp", x: fort.arrive.x, y: fort.arrive.y });
       await sleep(200);
       b.send("dbg", { op: "fight" });
       await sleep(200);
@@ -114,53 +128,65 @@ async function main() {
       await sleep(1500);
       assert(at(b, ember.arrive) > 500, "телепорт мгновенный");
       await b.until(() => at(b, ember.arrive) < 40, 3500, "прибытие в Эмберхолл");
-      await b.until(() => b.self!.gold === gold - teleportPrice(oasis, ember), 1500, "списание золота");
+      await b.until(() => b.self!.gold === gold - teleportPrice(fort, ember), 1500, "списание золота");
     });
     await check("недостаточно золота — отказ", async () => {
       b.send("dbg", { op: "gold", v: -b.self!.gold });
       await sleep(200);
-      b.send("tp:go", { id: "oasis" });
+      b.send("tp:go", { id: fort.id });
       await sleep(3500);
       assert(at(b, ember.arrive) < 40, "ушёл без золота");
     });
     await check("возрождение в ближайшем открытом городе", async () => {
-      b.send("dbg", { op: "tp", x: snow.spawn.x, y: snow.spawn.y });
-      await b.until(() => (b.self!.cities ?? []).includes("snow_valley"), 2000, "долина открыта");
-      b.send("dbg", { op: "tp", x: snow.spawn.x + 400, y: snow.spawn.y + 600 });
+      b.send("dbg", { op: "tp", x: fort.spawn.x, y: fort.spawn.y });
+      await b.until(() => (b.self!.cities ?? []).includes(fort.id), 2000, "форт открыт");
+      b.send("dbg", { op: "tp", x: fort.spawn.x + 400, y: fort.spawn.y + 600 });
       await sleep(200);
       b.send("dbg", { op: "hurt", v: 9999999 });
       await b.until(() => b.me().anim === 4, 2000, "смерть");
       await sleep(4200);
       b.send("respawn");
       await b.until(() => b.me().anim !== 4, 2000, "возрождение");
-      assert(at(b, snow.spawn) < 40, "возродился не в долине");
+      assert(at(b, fort.spawn) < 40, "возродился не в своём форте");
     });
     await check("задания: принять, выполнить, сдать", async () => {
-      const g = oasis.quest!;
+      const g = giver;
       b.send("dbg", { op: "level", v: 20 });
       b.send("dbg", { op: "tp", x: g.x, y: g.y + 30 });
       await sleep(200);
-      b.send("quest:accept", { id: "oasis_jackals" });
-      await b.until(() => b.self!.quests?.active.oasis_jackals === 0, 1500, "принято");
-      b.send("quest:turn", { id: "oasis_jackals" });
+      b.send("quest:accept", { id: "mill_wolves" });
+      await b.until(() => b.self!.quests?.active.mill_wolves === 0, 1500, "принято");
+      b.send("quest:turn", { id: "mill_wolves" });
       await sleep(300);
-      assert(b.self!.quests!.active.oasis_jackals === 0, "сдано без выполнения");
-      b.send("dbg", { op: "qp", kind: "kill", target: "jackal", n: 8 });
-      await b.until(() => b.self!.quests?.active.oasis_jackals === 8, 1500, "прогресс");
+      assert(b.self!.quests!.active.mill_wolves === 0, "сдано без выполнения");
+      b.send("dbg", { op: "qp", kind: "kill", target: "wolf", n: 8 });
+      await b.until(() => b.self!.quests?.active.mill_wolves === 8, 1500, "прогресс");
       const gold = b.self!.gold;
-      b.send("quest:turn", { id: "oasis_jackals" });
-      await b.until(() => (b.self!.quests?.done ?? []).includes("oasis_jackals"), 1500, "сдано");
+      b.send("quest:turn", { id: "mill_wolves" });
+      await b.until(() => (b.self!.quests?.done ?? []).includes("mill_wolves"), 1500, "сдано");
       assert(b.self!.gold === gold + 220, "награда золотом");
-      b.send("quest:accept", { id: "oasis_jackals" });
+      b.send("quest:accept", { id: "mill_wolves" });
       await sleep(300);
-      assert(b.self!.quests!.active.oasis_jackals === undefined, "повторное принятие");
+      assert(b.self!.quests!.active.mill_wolves === undefined, "повторное принятие");
     });
     await check("заказчик далеко — задание не принять", async () => {
       b.send("dbg", { op: "tp", x: ember.spawn.x, y: ember.spawn.y });
       await sleep(200);
-      b.send("quest:accept", { id: "oasis_cactus" });
+      b.send("quest:accept", { id: "mill_spiders" });
       await sleep(300);
-      assert(b.self!.quests!.active.oasis_cactus === undefined, "принято издалека");
+      assert(b.self!.quests!.active.mill_spiders === undefined, "принято издалека");
+    });
+    await check("в Эмберхолле нельзя драться: атака и атакующие умения отклоняются, бафы можно", async () => {
+      b.send("dbg", { op: "tp", x: ember.spawn.x, y: ember.spawn.y });
+      await sleep(300);
+      b.toasts.length = 0;
+      b.send("skill", { id: "taunt", x: b.me().x, y: b.me().y + 40, target: null });
+      await b.until(() => b.toasts.some((t) => t.includes("нельзя драться")), 2000, "отказ атакующего умения");
+      b.toasts.length = 0;
+      b.send("skill", { id: "shieldblock", x: b.me().x, y: b.me().y + 40, target: null });
+      await sleep(500);
+      assert(!b.toasts.some((t) => t.includes("нельзя драться")), "баф отклонён");
+      b.send("attack", { id: b.me().id });
     });
     await check("банк, заточка и сумки — и в своей столице (решение 2 задачи 132), вдали — отказ", () => capitalServices(b, home));
     await check("банк, заточка и сумки — и во второй столице (герой Умбрата)", async () => {
@@ -186,9 +212,9 @@ async function main() {
       b.send("cook:buy", { id: "bread", qty: 1 });
       await b.until(() => b.self!.gold < before && b.self!.inventory.some((it) => it?.base === "food_bread"), 1500, `хлеб у ${s.cook.name}`);
     });
-    await check("торговля у торговца оазиса", async () => {
+    await check("торговля у торговца форта", async () => {
       b.send("dbg", { op: "gold", v: 100 });
-      const m = oasis.merchant!;
+      const m = fort.merchant!;
       b.send("dbg", { op: "tp", x: m.x, y: m.y + 40 });
       await sleep(200);
       const before = b.self!.gold;
@@ -196,22 +222,22 @@ async function main() {
       await b.until(() => b.self!.gold < before, 1500, "покупка");
     });
     await check("сохранение другой версии карты: герой входит в столицу, открытые телепорты сброшены до своей", async () => {
-      // «Старожил» дошёл до Эмберхолла и Оазиса; версию карты в его сохранении подменяют на прежнюю (до перестройки мира, задача 132)
+      // «Старожил» дошёл до Эмберхолла и форта; версию карты в его сохранении подменяют на прежнюю (до перестройки мира, задача 132)
       const token = await ensureChar("Старожил", "secret", "Старожил", "warrior");
       const v = await Bot.enter(token, "Старожил");
       v.send("dbg", { op: "tp", x: ember.spawn.x, y: ember.spawn.y });
       await v.until(() => (v.self!.cities ?? []).includes("ember"), 2000, "Эмберхолл открыт");
-      v.send("dbg", { op: "tp", x: oasis.spawn.x, y: oasis.spawn.y });
-      await v.until(() => (v.self!.cities ?? []).includes("oasis"), 2000, "оазис открыт");
+      v.send("dbg", { op: "tp", x: fort.spawn.x, y: fort.spawn.y });
+      await v.until(() => (v.self!.cities ?? []).includes(fort.id), 2000, "форт открыт");
       await v.leave();
       const d = new DatabaseSync(dbFile);
       try {
         let data = "";
-        for (let i = 0; i < 40 && !data.includes('"oasis"'); i++) {
+        for (let i = 0; i < 40 && !data.includes('"fort_solgard"'); i++) {
           data = (d.prepare("SELECT data FROM players WHERE name_key = 'старожил'").get() as { data: string } | undefined)?.data ?? "";
-          if (!data.includes('"oasis"')) await sleep(100);
+          if (!data.includes('"fort_solgard"')) await sleep(100);
         }
-        assert(data.includes('"oasis"'), "в сохранении нет открытого оазиса");
+        assert(data.includes('"fort_solgard"'), "в сохранении нет открытого форта");
         const save = JSON.parse(data);
         save.mapVer = 4;
         save.x = ember.spawn.x;

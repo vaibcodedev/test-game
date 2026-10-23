@@ -186,7 +186,7 @@ function pathInfo(res: Paths, target: number, step = 100): PathInfo {
 const COLORS = ["#3b6fb6", "#e0562b", "#d9c48a", "#4b5a3a", "#5c5150", "#9b7a52", "#6aa84f", "#3d6e3a", "#a29a8c", "#57525c", "#e6eef2", "#a8d4e6", "#2c2a35", "#e0c27a", "#2f5d8f"];
 const hex = (c: string) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 const CITY_SHORT: Partial<Record<Zone, string>> = {
-  [Zone.Town]: "Эмберхолл", [Zone.OasisCity]: "Оазис", [Zone.SnowCity]: "Снежная долина", [Zone.SolgardCity]: "Аурелион", [Zone.UmbrathCity]: "Мортхейм",
+  [Zone.Town]: "Эмберхолл", [Zone.FortSolgard]: "Рассветный форт", [Zone.FortUmbrath]: "Форт Чёрной Вахты", [Zone.SolgardCity]: "Аурелион", [Zone.UmbrathCity]: "Мортхейм",
 };
 
 /** Точка зоны, наиболее удалённая от её границы («полюс недоступности»), на крупной сетке 4×4 тайла. */
@@ -269,8 +269,8 @@ function buildWas() {
     rows.push(row(`${nm(a)} | ${nm(b)}`, lv(a) === lv(b) ? lv(a) : `${lv(a)} | ${lv(b)}`, ta, mirrorCell(ta), true));
   }
   rows.push("Центр: одна цель для обеих столиц");
-  const spawnOf: Partial<Record<Zone, string>> = { [Zone.Town]: "ember", [Zone.OasisCity]: "oasis", [Zone.SnowCity]: "snow_valley" };
-  for (const z of [Zone.Town, Zone.Meadow, Zone.Forest, Zone.Swamp, Zone.Ashlands, Zone.Dungeon, Zone.Snow, Zone.Coast, Zone.StormPeaks, Zone.Volcano, Zone.OasisCity, Zone.SnowCity]) {
+  const spawnOf: Partial<Record<Zone, string>> = { [Zone.Town]: "ember", [Zone.FortSolgard]: "fort_solgard", [Zone.FortUmbrath]: "fort_umbrath" };
+  for (const z of [Zone.Town, Zone.Meadow, Zone.Forest, Zone.Swamp, Zone.Ashlands, Zone.Dungeon, Zone.Snow, Zone.Coast, Zone.StormPeaks, Zone.Volcano, Zone.FortSolgard, Zone.FortUmbrath]) {
     const cid = spawnOf[z];
     const city = cid ? cityById(cid) : undefined;
     const t = city ? cellOf(city.spawn.x, city.spawn.y) : target(z);
@@ -330,7 +330,7 @@ function buildWas() {
   svg += `<line x1="${AXIS}" y1="0" x2="${AXIS}" y2="${h}" stroke="#ffd23f" stroke-width=".7" stroke-dasharray="6 4"/>`;
   svg += `<text class="t s5 y" x="${AXIS + 3}" y="9" style="text-anchor:start">ось симметрии карты (x = 550)</text>`;
   // подписи зон
-  const CITY_DY: Partial<Record<Zone, number>> = { [Zone.Town]: -25, [Zone.OasisCity]: -16, [Zone.SnowCity]: -16, [Zone.SolgardCity]: -16, [Zone.UmbrathCity]: -16 };
+  const CITY_DY: Partial<Record<Zone, number>> = { [Zone.Town]: -25, [Zone.FortSolgard]: -16, [Zone.FortUmbrath]: -16, [Zone.SolgardCity]: -16, [Zone.UmbrathCity]: -16 };
   for (const [z, p] of poles) {
     if (z === Zone.Arena || z === Zone.Frontier || z === Zone.Citadel) continue;
     const city = CITY_SHORT[z as Zone];

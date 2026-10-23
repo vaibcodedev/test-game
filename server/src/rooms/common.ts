@@ -2,6 +2,7 @@
 import type { Client, Room } from "@colyseus/core";
 import { CHAT_MAX_LEN, TILE } from "../../../shared/constants";
 import type { Player } from "../game/Player";
+import { NO_FIGHT_MSG } from "../../../shared/cities";
 import { cancelAll, requestSkill } from "../game/skillQueue";
 import type { World } from "../game/World";
 import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
@@ -70,6 +71,7 @@ export function registerCombat(on: On, world: () => World) {
     if (!id) { p.engaged = p.approach = false; return; }
     const a = w().actor(id);
     if (!a || w().isDead(a) || !w().hostile(p, a) || w().stealthed(a)) return;
+    if (w().noFight(p)) return void p.send("toast", { text: NO_FIGHT_MSG, kind: "error" });
     w().stopFollow(p, true);
     p.targetId = a.id;
     p.unit.target = a.id;

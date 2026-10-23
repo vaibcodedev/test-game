@@ -14,8 +14,8 @@
 import world from "../data/world.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
-import { CAPITAL_DECOR, CITIES, CITY_HOUSES, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
-import { BUILDINGS, inTownRect, isGate, STALLS, TOWERS, TOWN, TOWN_HALF, townGround, WALL } from "./town";
+import { CAPITAL_DECOR, CITIES, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
+import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, TOWERS, TOWN, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
 
@@ -59,9 +59,9 @@ export enum Zone {
   Volcano,
   /** Солёное побережье (бывшая подводная бухта; подводных локаций нет). */
   Coast,
-  /** Малые города (shared/cities.ts). */
-  OasisCity,
-  SnowCity,
+  /** Форты фракций на краях Полей вечных битв (shared/cities.ts, задача 132, шаг 4; бывшие Оазис Миражей и Снежная долина). */
+  FortSolgard,
+  FortUmbrath,
   /** Столицы фракций. */
   SolgardCity,
   UmbrathCity,
@@ -85,8 +85,8 @@ export enum Zone {
 }
 export const ZONE_COUNT = 28;
 /** Зона города (безопасная, мобы не заходят). */
-export const isTownZone = (z: Zone) => z === Zone.Town || z === Zone.OasisCity || z === Zone.SnowCity || z === Zone.SolgardCity || z === Zone.UmbrathCity;
-const CITY_ZONE: Record<string, Zone> = { oasis: Zone.OasisCity, snow_valley: Zone.SnowCity, aurelion: Zone.SolgardCity, morthaim: Zone.UmbrathCity };
+export const isTownZone = (z: Zone) => z === Zone.Town || z === Zone.FortSolgard || z === Zone.FortUmbrath || z === Zone.SolgardCity || z === Zone.UmbrathCity;
+const CITY_ZONE: Record<string, Zone> = { fort_solgard: Zone.FortSolgard, fort_umbrath: Zone.FortUmbrath, aurelion: Zone.SolgardCity, morthaim: Zone.UmbrathCity };
 const CITY_OF_ZONE = new Map<Zone, City>(CITIES.filter((c) => CITY_ZONE[c.id] !== undefined).map((c) => [CITY_ZONE[c.id], c]));
 export interface ZoneInfo {
   name: string;
@@ -379,11 +379,11 @@ function siteDist(x: number, y: number): number {
   }
   return Math.sqrt(best);
 }
-/** Пруд оазиса в кольце 40–50 (центр в тайлах, западный; восточный — его зеркало). */
-const OASIS_POND = { x: LAYOUT.oasisPond[0], y: LAYOUT.oasisPond[1] };
+/** Пруд оазисов в кольце 40–50 (данные: layout.oasisPond; от городов не зависит) (центр в тайлах, западный; восточный — его зеркало). */
+const RING_POND = { x: LAYOUT.oasisPond[0], y: LAYOUT.oasisPond[1] };
 /** Расстояние от точки (непрерывные тайлы) до центра ближайшего из двух прудов: x складывается по оси, поэтому восточный пруд — зеркало западного. */
 const pondDist = (x: number, y: number) => {
-  const dx = foldX(x) - OASIS_POND.x, dy = y - OASIS_POND.y;
+  const dx = foldX(x) - RING_POND.x, dy = y - RING_POND.y;
   return Math.sqrt(dx * dx + dy * dy); // sqrt, а не hypot: корень точен по IEEE, карта у клиента и сервера должна совпадать побитно
 };
 /** Боссы (пары мест кольца и Полей, мировой босс на оси — layout.bossSlots; пока три прежних босса); пиксели. */
@@ -438,8 +438,8 @@ const placeNear = (x: number, y: number) => {
 
 /** Расстояние в тайлах от точки (в тайлах) до прямоугольника города (0 внутри). */
 export function townDist(x: number, y: number): number {
-  const ex = Math.max(0, Math.abs(x - (TOWN.x + 0.5)) - TOWN_HALF.x - 0.5);
-  const ey = Math.max(0, Math.abs(y - (TOWN.y + 0.5)) - TOWN_HALF.y - 0.5);
+  const ex = Math.max(0, Math.abs(x - (TOWN.x + 0.5)) - BELT_HALF.x - 0.5);
+  const ey = Math.max(0, Math.abs(y - (TOWN.y + 0.5)) - BELT_HALF.y - 0.5);
   return Math.sqrt(ex * ex + ey * ey);
 }
 
@@ -584,8 +584,6 @@ function bankOf(st: Zone): T {
 }
 /** Покрытие улиц, тропинок и пустырей в городах со стилем. */
 const CITY_GROUND: Record<CityStyle, [T, T, T]> = {
-  desert: [T.Cobble, T.Sand, T.Dune],
-  snow: [T.Cobble, T.Dirt, T.Snow],
   solgard: [T.Cobble, T.Sand, T.Grass],
   umbrath: [T.Floor, T.Ash, T.Bog],
 };
@@ -622,7 +620,6 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
   if (city) {
     const vx = Math.round(x) - city.x, vy = Math.round(y) - city.y;
     const gs = [[-1, -1], [0, -1], [-1, 0], [0, 0]].map(([ox, oy]) => cityGround(city.style!, vx + ox, vy + oy));
-    if (gs.every((g) => g === "pool")) return T.Water;
     const [road, path, plain] = CITY_GROUND[city.style!];
     return gs.includes("road") ? road : gs.includes("path") ? path : plain;
   }
@@ -743,6 +740,11 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
   for (let dx = -WALL.x; dx <= WALL.x; dx++) for (const dy of [-WALL.y, WALL.y]) if (wallOk(dx, dy)) place("wall_h", X(dx), Y(dy));
   for (let dy = -WALL.y + 1; dy < WALL.y; dy++) for (const dx of [-WALL.x, WALL.x]) if (wallOk(dx, dy)) place("wall_v", X(dx), Y(dy));
   for (const dy of [-WALL.y, WALL.y]) objects.push({ kind: "gate_arch", x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 2 });
+  // частокол вокруг безопасной полосы: у дорог проём (дорога идёт к воротам через полосу)
+  for (let dy = -BELT_HALF.y; dy <= BELT_HALF.y; dy++) for (let dx = -BELT_HALF.x; dx <= BELT_HALF.x; dx++) {
+    if (!isBeltFence(dx, dy) || roadDist(X(dx) + 0.5, Y(dy) + 0.5) < 1.6) continue;
+    if (fits("pal_h", X(dx), Y(dy))) place(Math.abs(dy) === BELT_HALF.y ? "pal_h" : "pal_v", X(dx), Y(dy));
+  }
   // здания (двери проходимы — в них можно «зайти»)
   for (const b of BUILDINGS) {
     place(b.kind, X(b.x), Y(b.y));
@@ -778,7 +780,7 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
   }
 }
 
-/** Город со стилем (малый или столица): стены, башни, ворота, дома, прилавки, убранство, камень телепорта. */
+/** Город со стилем (столица или форт): стены, башни, ворота, дома, прилавки, убранство, камень телепорта. */
 function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], place: PlaceFn, seed: number) {
   const style = c.style as CityStyle, St = STYLE[style];
   const X = (dx: number) => c.x + dx, Y = (dy: number) => c.y + dy;
@@ -796,14 +798,14 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
     for (let j = 0; j < f.h; j++) for (let i = 0; i < f.w; i++) if (cell[(y - j) * w + x + i] & CELL_BLOCK) return false;
     return true;
   };
-  CITY_HOUSES.forEach(([dx, dy], i) => place(St.houses[i % 2], X(dx), Y(dy)));
+  (c.fort ? FORT_HOUSES : CITY_HOUSES).forEach(([dx, dy], i) => place(St.houses[i % 2], X(dx), Y(dy)));
   CITY_STALLS.forEach(([dx, dy], i) => place(St.stalls[i], X(dx), Y(dy)));
-  for (const [k, dx, dy] of cityDecor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
+  for (const [k, dx, dy] of c.fort ? fortDecor(style) : cityDecor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   // у столиц — наковальня кузнеца (банкир, кузнец и сумочник стоят у домов северного ряда, cities.ts)
-  if (c.capital) for (const [k, dx, dy] of CAPITAL_DECOR) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
+  if (c.capital && !c.fort) for (const [k, dx, dy] of CAPITAL_DECOR) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   place("teleport_stone", c.stoneTile.x, c.stoneTile.y);
   // кустики на открытой земле у стен (в Мортхейме — кости и туманные огоньки)
-  const bush: Record<CityStyle, string> = { desert: "dry_bush", snow: "snow_bush", solgard: "flowers", umbrath: "bones" };
+  const bush: Record<CityStyle, string> = { solgard: "flowers", umbrath: "bones" };
   const r = rng(seed + 11 + c.x);
   for (let dy = -CITY_WALL.y + 1; dy < CITY_WALL.y; dy++) for (let dx = -CITY_WALL.x + 1; dx < CITY_WALL.x; dx++) {
     const x = X(dx), y = Y(dy);

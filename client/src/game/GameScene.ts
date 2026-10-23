@@ -35,18 +35,18 @@ type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
 const AMBIENCE: Partial<Record<Zone, string>> = {
-  [Zone.Town]: "town", [Zone.OasisCity]: "desert", [Zone.SnowCity]: "snow", [Zone.Meadow]: "meadow", [Zone.Forest]: "forest", [Zone.Swamp]: "swamp", [Zone.Ashlands]: "ash", [Zone.Dungeon]: "dungeon", [Zone.Arena]: "ash",
+  [Zone.Town]: "town", [Zone.FortSolgard]: "town", [Zone.FortUmbrath]: "dungeon", [Zone.Meadow]: "meadow", [Zone.Forest]: "forest", [Zone.Swamp]: "swamp", [Zone.Ashlands]: "ash", [Zone.Dungeon]: "dungeon", [Zone.Arena]: "ash",
   [Zone.Desert]: "desert", [Zone.Snow]: "snow", [Zone.Volcano]: "volcano", [Zone.Coast]: "water", [Zone.Frontier]: "meadow",
   [Zone.SolgardCity]: "town", [Zone.UmbrathCity]: "dungeon",
 };
 const ZONE_COLOR: Partial<Record<Zone, string>> = {
-  [Zone.OasisCity]: "#f0c070", [Zone.SnowCity]: "#bfe4ff", [Zone.Desert]: "#f0c070", [Zone.Snow]: "#bfe4ff", [Zone.Volcano]: "#ff8a4a", [Zone.Coast]: "#7ad0ff", [Zone.Swamp]: "#a8d890", [Zone.Forest]: "#a8e080",
+  [Zone.FortSolgard]: "#ffe27a", [Zone.FortUmbrath]: "#c890ff", [Zone.Desert]: "#f0c070", [Zone.Snow]: "#bfe4ff", [Zone.Volcano]: "#ff8a4a", [Zone.Coast]: "#7ad0ff", [Zone.Swamp]: "#a8d890", [Zone.Forest]: "#a8e080",
   [Zone.SolgardCity]: "#ffe27a", [Zone.SunFields]: "#ffe8a0", [Zone.KingsWood]: "#c8f0a0", [Zone.GryphonCliffs]: "#d8ecff", [Zone.FallenBarrens]: "#f0d090",
   [Zone.UmbrathCity]: "#c890ff", [Zone.Barrows]: "#b8a0e0", [Zone.MistWood]: "#a8c0b0", [Zone.BoneRidge]: "#d8d0c0", [Zone.PlagueMarsh]: "#a0e070",
   [Zone.StormPeaks]: "#a8d0ff", [Zone.AshFoothills]: "#e0a080", [Zone.Fields]: "#ff6a5a",
 };
 /** Зоны Умбрата: туман и пурпурная дымка. */
-const GLOOM = new Set<Zone>([Zone.UmbrathCity, Zone.Barrows, Zone.MistWood, Zone.PlagueMarsh, Zone.BoneRidge]);
+const GLOOM = new Set<Zone>([Zone.UmbrathCity, Zone.FortUmbrath, Zone.Barrows, Zone.MistWood, Zone.PlagueMarsh, Zone.BoneRidge]);
 /** Юниты дальше этого (px) не создаются на клиенте (мобы и NPC; герои — всегда). */
 const UNIT_NEAR = 1500, UNIT_FAR = 1900;
 
@@ -349,7 +349,7 @@ export class GameScene extends Phaser.Scene {
     const want: Record<string, boolean> = {
       leaves: z === Zone.Forest && zone !== Zone.MistWood, fireflies: z === Zone.Swamp, fog: z === Zone.Swamp || GLOOM.has(zone),
       embers: z === Zone.Ashlands || z === Zone.Dungeon || z === Zone.Arena || z === Zone.Volcano, ash: z === Zone.Volcano,
-      pollen: (z === Zone.Meadow || z === Zone.Town) && zone !== Zone.UmbrathCity, snow: z === Zone.Snow || z === Zone.SnowCity, sand: z === Zone.Desert || z === Zone.OasisCity,
+      pollen: (z === Zone.Meadow || z === Zone.Town) && zone !== Zone.UmbrathCity && zone !== Zone.FortUmbrath, snow: z === Zone.Snow, sand: z === Zone.Desert,
     };
     for (const [k, e] of Object.entries(this.ambient)) {
       e.setPosition(v.x - 40, v.y - (k === "leaves" ? 60 : 0));

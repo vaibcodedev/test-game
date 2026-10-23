@@ -11,6 +11,7 @@ import { nearestCity } from "../../../shared/cities";
 import { ELITE } from "../../../shared/elites";
 import { SKILLS } from "../../../shared/skills";
 import { CLASSES } from "../../../shared/classes";
+import { inEmberWalls } from "../../../shared/cities";
 import { factionsHostile, inEnemyCapital, OUTLAW, pvpPlace, scramble } from "../../../shared/factions";
 import { MOBS } from "../../../shared/mobs";
 import { MOUNTS, MOUNT_CAST_MS } from "../../../shared/mounts";
@@ -198,6 +199,10 @@ export class World {
     if (this.pvpActive || this.opts.mobs === false) return this.pvpActive && a.team !== 0 && b.team !== 0 && a.team !== b.team;
     if (a.team !== 0 || b.team !== 0) return false;
     return factionsHostile(this.map, a.faction, a.x, a.y, b.faction, b.x, b.y);
+  }
+  /** Внутри стен Эмберхолла (в мире): атаки и атакующие умения героя запрещены, бафы и лечение можно. */
+  noFight(p: Actor) {
+    return this.opts.mobs !== false && this.isPlayer(p) && inEmberWalls(p.x, p.y);
   }
   /** Нейтральный город: бой между фракциями запрещён (только в мире). */
   inNeutral(x: number, y: number) {
@@ -864,7 +869,7 @@ export class World {
       }
     }
     // автоатака
-    if (p.targetId && target && foe && p.engaged && !this.isDead(target) && !frozen && p.stunUntil <= t && t >= p.attackAt && !(p.input.mx || p.input.my) && !p.moveTo) {
+    if (p.targetId && target && foe && p.engaged && !this.isDead(target) && !frozen && p.stunUntil <= t && t >= p.attackAt && !this.noFight(p) && !(p.input.mx || p.input.my) && !p.moveTo) {
       const d2 = this.dist(u, target);
       if (d2 <= p.attackRange() + this.radiusOf(target) && lineClear(this.map, u.x, u.y, target.x, target.y)) this.playerAttack(p, target);
     }

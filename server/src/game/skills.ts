@@ -2,7 +2,8 @@
 import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";
 import { Anim } from "../../../shared/protocol";
-import { SKILLS, skillMana } from "../../../shared/skills";
+import { SKILLS, isAttackSkill, skillMana } from "../../../shared/skills";
+import { NO_FIGHT_MSG } from "../../../shared/cities";
 import { behindSpot, facingOf, GROUND_TOL, leapDest, placeSkill, reachable as reachOn } from "../../../shared/skillShape";
 import { BAL, healPowerMult } from "../../../shared/balance";
 import { CLASSES } from "../../../shared/classes";
@@ -42,6 +43,7 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
 function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null, extra?: AimExtra): string | null {
   const def = SKILLS[id];
   if (!def || def.kind !== "active" || def.cls !== p.cls) return "Неизвестное умение";
+  if (w.noFight(p) && isAttackSkill(def)) return NO_FIGHT_MSG;
   const rank = p.save.skills[id] || 0;
   if (!rank) return "Умение не изучено";
   if (p.dead) return "Вы мертвы";

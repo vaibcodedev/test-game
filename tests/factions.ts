@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { api, assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 import { MAP_SEED, TILE } from "../shared/constants";
 import { generateMap, lineClear, walkable, Zone } from "../shared/map";
+import { CITIES } from "../shared/cities";
 import { FACTIONS, pvpPlace } from "../shared/factions";
 import { CLASSES, CLASS_IDS } from "../shared/classes";
 import { activeSkills, classSkills } from "../shared/skills";
@@ -149,7 +150,7 @@ async function main() {
       await umb.until(() => (sol.me().buffs & 1024) !== 0, 3000, "кровотечение");
     });
 
-    await check("нейтральный город: удар не проходит, нарушителя бьёт стража", async () => {
+    await check("Эмберхолл: драться нельзя — атака и атакующие умения отклоняются, урон не проходит, меток нарушителя нет", async () => {
       const sp = MAP.playerSpawn;
       sol.send("dbg", { op: "tp", x: sp.x, y: sp.y });
       umb.send("dbg", { op: "tp", x: sp.x + 30, y: sp.y });
@@ -157,11 +158,44 @@ async function main() {
       umb.send("dbg", { op: "hp", v: 2000 });
       await sleep(100);
       const hp0 = sol.me().hp;
+      umb.toasts.length = 0;
       umb.send("attack", { id: sol.id });
-      await umb.until(() => umb.toasts.some((t) => t.includes("сражаться нельзя")), 4000, "предупреждение");
-      assert(sol.me().hp >= hp0, "урон прошёл в нейтральном городе");
-      await umb.until(() => umb.me().outlaw === 1, 2000, "метка нарушителя");
-      await umb.until(() => umb.me().hp < 2000, 4000, "стража не бьёт нарушителя");
+      await umb.until(() => umb.toasts.some((t) => t.includes("нельзя драться")), 3000, "отказ атаки в Эмберхолле");
+      await sleep(1500);
+      umb.toasts.length = 0;
+      umb.send("skill", { id: "rv_throw", x: sol.me().x, y: sol.me().y, target: sol.id });
+      await umb.until(() => umb.toasts.some((t) => t.includes("нельзя драться")), 3000, "отказ атакующего умения в Эмберхолле");
+      await sleep(500);
+      assert(sol.me().hp >= hp0, "урон прошёл в Эмберхолле");
+      assert(umb.me().outlaw !== 1, "нарушитель отмечен: атака должна быть отклонена до удара");
+    });
+
+    await check("форт врага — как чужая столица: стража бьёт, телепорт закрыт; свой форт — телепорт работает", async () => {
+      const fu = CITIES.find((c) => c.id === "fort_umbrath")!, home = CITIES.find((c) => c.capital === "umbrath" && !c.fort)!;
+      // герой Сольгарда в форте Умбрата: метка чужака, удары стражи, телепорт не открыт и камень не подчиняется
+      sol.send("dbg", { op: "hp", v: 100000 });
+      await sleep(300);
+      sol.send("dbg", { op: "tp", x: fu.spawn.x, y: fu.spawn.y });
+      await sol.until(() => sol.me().outlaw === 1, 3000, "метка чужака в форте врага");
+      const hpMax = sol.me().hp;
+      await sol.until(() => sol.me().hp < hpMax, 5000, "стража форта не бьёт врага");
+      await sleep(4500);
+      sol.send("respawn"); // стража форта сильна: герой мог пасть — возрождение в своей столице, дальше с неуязвимостью
+      await sleep(500);
+      sol.send("dbg", { op: "god" });
+      assert(!(sol.self!.cities ?? []).includes(fu.id), "открыт телепорт вражеского форта");
+      sol.send("dbg", { op: "tp", x: fu.stone.x, y: fu.stone.y + 20 });
+      await sleep(200);
+      sol.toasts.length = 0;
+      sol.send("tp:go", { id: home.id });
+      await sol.until(() => sol.toasts.some((t) => t.includes("Камень врага")), 2000, "камень врага закрыт: " + sol.toasts.join("|") + " hp " + sol.me().hp + " анимация " + sol.me().anim);
+      // герой Умбрата в своём форте: форт открывается, телепорт к столице работает
+      umb.send("dbg", { op: "gold", v: 1000 });
+      umb.send("dbg", { op: "tp", x: fu.stone.x, y: fu.stone.y + 20 });
+      await umb.until(() => (umb.self!.cities ?? []).includes(fu.id), 3000, "свой форт открыт");
+      await sleep(9000);
+      umb.send("tp:go", { id: home.id });
+      await umb.until(() => Math.hypot(umb.me().x - home.arrive.x, umb.me().y - home.arrive.y) < 40, 6000, "телепорт из своего форта");
     });
 
     await sol.leave();

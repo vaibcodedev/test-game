@@ -309,9 +309,7 @@ export function zoneTint(zone: Zone): { dark: number; color: number } {
     case Zone.Ashlands: return { dark: 0.16, color: 0x0a0614 };
     case Zone.Forest: return { dark: 0.08, color: 0x0a1008 };
     case Zone.Arena: return { dark: 0.28, color: 0x0a0614 };
-    case Zone.OasisCity:
     case Zone.Desert: return { dark: 0.1, color: 0xd88a30 };
-    case Zone.SnowCity:
     case Zone.Snow: return { dark: 0.12, color: 0x9ac8ff };
     case Zone.Volcano: return { dark: 0.22, color: 0x2a0806 };
     default: return { dark: 0, color: 0x0a0614 };

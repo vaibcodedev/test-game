@@ -43,6 +43,14 @@ export interface SkillDef {
   aim?: SkillAim;
 }
 
+/** Атакующее умение (в Эмберхолле нельзя, решение 11): на врага или с уроном по области; умения на союзника, бафы и лечение — нет. */
+export const isAttackSkill = (def: SkillDef): boolean => {
+  if (def.kind !== "active" || def.target === "ally") return false;
+  if (def.target === "enemy") return true;
+  const v = def.v(1);
+  return "dmg" in v || "burst" in v;
+};
+
 const pct = (n: number) => `${Math.round(n)}%`;
 
 /** Цена умения в мане для героя уровня level: число из описания × manaMult (data/balance.json mana; маги и лекари). */

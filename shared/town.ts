@@ -18,6 +18,18 @@ export const TOWN = { x: MAP_AXIS, y: 60 };
 export const WALL = { x: 24, y: 19 };
 /** Полуразмеры зоны города вместе с башнями: безопасная зона, мобы сюда не заходят. */
 export const TOWN_HALF = { x: 25, y: 20 };
+/**
+ * Безопасная полоса вокруг стен (задача 132, шаг 4, решение 2): столько тайлов от башен до частокола из заострённых брёвен. Внутри — зона города:
+ * без мобов и без боя фракций; частокол замкнут, проёмы только у осей (ворота) и у дорог.
+ */
+export const TOWN_BELT = 7;
+export const BELT_HALF = { x: TOWN_HALF.x + TOWN_BELT, y: TOWN_HALF.y + TOWN_BELT };
+/** Клетка частокола вокруг полосы (смещения от TOWN) без проёмов у осей. */
+export const isBeltFence = (dx: number, dy: number) => {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ax > BELT_HALF.x || ay > BELT_HALF.y || (ax !== BELT_HALF.x && ay !== BELT_HALF.y)) return false;
+  return ay === BELT_HALF.y ? ax > 2 : ay > 2;
+};
 /** Стражи защищают окрестности: столько тайлов от стен. */
 export const GUARD_RANGE_TILES = 6;
 
@@ -57,7 +69,9 @@ const YARDS: [number, number, number, number][] = [
 ];
 
 export const inWalls = (dx: number, dy: number) => Math.abs(dx) < WALL.x && Math.abs(dy) < WALL.y;
-export const inTownRect = (dx: number, dy: number) => Math.abs(dx) <= TOWN_HALF.x && Math.abs(dy) <= TOWN_HALF.y;
+export const inTownRect = (dx: number, dy: number) => Math.abs(dx) <= BELT_HALF.x && Math.abs(dy) <= BELT_HALF.y;
+/** Внутри стен и башен (без полосы): здесь нельзя драться и применять атакующие умения (решение 11). */
+export const inTownWalls = (dx: number, dy: number) => Math.abs(dx) <= TOWN_HALF.x && Math.abs(dy) <= TOWN_HALF.y;
 const inR = (dx: number, dy: number, r: [number, number, number, number]) => dx >= r[0] && dx <= r[2] && dy >= r[1] && dy <= r[3];
 
 /** Покрытие клетки города. */

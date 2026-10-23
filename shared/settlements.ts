@@ -42,6 +42,8 @@ export interface Settlement {
   yard: boolean;
   merchant: SettleNpc;
   cook: SettleNpc;
+  /** Заказчик заданий (data/settlements.json → quest; задания бывших Оазиса и Снежной долины, задача 132, шаг 4): есть не у каждого поселения. */
+  quest?: SettleNpc;
   /** Место под камень перемещения (BACKLOG 48): клетка, точка у основания и где появится прибывший — как у городов. */
   stoneTile: { x: number; y: number };
   stone: { x: number; y: number };
@@ -67,6 +69,7 @@ const RING = { w: 8, n: 6, s: 6 };
 const MERCHANT_AT: Cell = [-4, 3];
 const COOK_AT: Cell = [5, 3];
 const STONE_AT: Cell = [-3, 4];
+const QUEST_AT: Cell = [2, 3];
 const PATROL: Cell[] = [[-6.5, -0.5], [6.5, -0.5], [6.5, 1.5], [-6.5, 1.5]];
 const SPOTS: Cell[] = [[-5, 0], [5, 0], [0, -3], [0, 3], [-3, -1], [3, 1]];
 
@@ -113,7 +116,7 @@ const flipSide = (g: GateSide): GateSide => (g === "e" ? "w" : g === "w" ? "e" :
 const tileCenter = (tx: number, ty: number) => ({ x: tx * TILE + 16, y: ty * TILE + 16 });
 
 function make(p: RawPlace): Settlement {
-  const d = (data as unknown as Record<string, { guard: Settlement["guard"]; people: Settlement["people"]; merchant: RawNpc; cook: RawNpc }>)[p.id];
+  const d = (data as unknown as Record<string, { guard: Settlement["guard"]; people: Settlement["people"]; merchant: RawNpc; cook: RawNpc; quest?: RawNpc }>)[p.id];
   if (!d) throw new Error(`data/settlements.json: нет жителей поселения ${p.id}`);
   const look: SettleLook = p.look === "umb" ? "umb" : "sol";
   const mirror = p.x > MAP_AXIS;
@@ -134,6 +137,7 @@ function make(p: RawPlace): Settlement {
     x: p.x, y: p.y, mirror, ring, gate, yard: !!p.yard,
     merchant: npc(d.merchant, MERCHANT_AT),
     cook: npc(d.cook, COOK_AT),
+    quest: d.quest && { ...d.quest, tint: Number(d.quest.tint), ...tileCenter(p.x + cx(QUEST_AT[0]), p.y + QUEST_AT[1]) },
     stoneTile: st,
     stone: { x: st.x * TILE + 16, y: (st.y + 1) * TILE - 2 },
     arrive: tileCenter(st.x, st.y + 1),

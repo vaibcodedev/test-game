@@ -16,6 +16,8 @@
    цель дальше дальности или за препятствием — красная только буква клавиши; не хватает маны — иконка синяя: умножение
    на (0.5, 0.5, 1) слоем .tint между иконкой и буквой, как SetVertexColor в WoW. Перезарядка — как в ESO: иконка серая под шторкой */
 .hb-slot .tint { display: none; position: absolute; inset: 1px; border-radius: var(--r-2); mix-blend-mode: multiply; pointer-events: none; }
+.hb-slot.nofight .tint { display: block; background: rgb(90, 90, 90); }
+.hb-slot.nofight { filter: grayscale(0.85); }
 .hb-slot.nomana .tint { display: block; background: rgb(128, 128, 255); }
 .hb-slot.oor kbd, .hb-slot.nolos kbd { color: var(--bad); }
 .hb-slot.oncd img { filter: grayscale(1) brightness(0.6); } /* серая и темнее: цифра перезарядки поверх не сливается */

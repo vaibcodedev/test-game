@@ -250,8 +250,8 @@ export function generateRaidMap(): WorldMap {
 
 // ---------------------------------------------------------------- сбор в мире
 export interface RaidHerald { id: string; name: string; place: string; x: number; y: number }
-/** «Вестник Цитадели» в пяти городах (смещение от центра, тайлы) и у Врат в вулкане. */
-const HERALD_AT: Record<string, [number, number]> = { ember: [-6, 4], oasis: [9, -1], snow_valley: [9, -1], aurelion: [9, -1], morthaim: [9, -1] };
+/** «Вестник Цитадели» в Эмберхолле, столицах и фортах (смещение от центра, тайлы) и у Врат в вулкане. */
+const HERALD_AT: Record<string, [number, number]> = { ember: [-6, 4], fort_solgard: [9, -1], fort_umbrath: [9, -1], aurelion: [9, -1], morthaim: [9, -1] };
 export const RAID_GATE = M.gateAt ? px({ x: M.gateAt.x + 0.5, y: M.gateAt.y + 0.5 }) : null;
 export const RAID_HERALDS: RaidHerald[] = [
   ...CITIES.filter((c) => HERALD_AT[c.id]).map((c) => ({

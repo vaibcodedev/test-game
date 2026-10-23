@@ -128,7 +128,7 @@ console.log("2. зеркальность");
 {
   let diff = 0, vdiff = 0, vcount = 0, bdiff = 0, bcount = 0, rdiff = 0, rcount = 0;
   const bdiffAt: string[] = [];
-  const nearEmber = (x: number, y: number) => Math.abs(x - AXIS) <= 28 && Math.abs(y - TOWN.y) <= 23;
+  const nearEmber = (x: number, y: number) => Math.abs(x - AXIS) <= 34 && Math.abs(y - TOWN.y) <= 29;
   // постройки мест (деревни, лагеря, руины) и указатели у перекрёстков у каждой стороны свои: у них проходимость не зеркалится
   const nearPlace = (x: number, y: number) => PLACES.some((p) => Math.abs(x - p.x) <= 14 && Math.abs(y - p.y) <= 14);
   const nearSign = (x: number, y: number) => world.signs.list.some((q) => Math.abs(x - q.x) <= 6 && Math.abs(y - q.y) <= 6);
@@ -141,7 +141,7 @@ console.log("2. зеркальность");
     const la = ZONES[za].levels, lb = ZONES[zb].levels;
     if (la[0] !== lb[0] || la[1] !== lb[1] || isTownZone(za) !== isTownZone(zb)) diff++;
     // резерв (дороги, площадки городов и фортов, круги мест, арены, города): без декора и мобов — зеркален везде, кроме Эмберхолла и данжа
-    if (!nearDungeon(x, y) && !(Math.abs(x - AXIS) <= 32 && Math.abs(y - TOWN.y) <= 28)) { // у Эмберхолла резерв шире стен на 3 тайла, а центр города смещён на полтайла
+    if (!nearDungeon(x, y) && !(Math.abs(x - AXIS) <= 36 && Math.abs(y - TOWN.y) <= 33)) { // у Эмберхолла резерв шире стен на 3 тайла (с полосой и частоколом — на 10), а центр города смещён на полтайла
       rcount++;
       if (((m.cell[y * W + x] ^ m.cell[y * W + mir(x)]) & CELL_RESERVED) !== 0) rdiff++;
     }
@@ -280,7 +280,7 @@ const targets: Tgt[] = [
   ...bridges.map((b) => ({ name: `${b.name}: ворота (внутри)`, a: [Math.floor(riverX(b.y) - 6.5) - 4, Math.floor(b.y)] as [number, number] })),
   ...bridges.map((b) => ({ name: `${b.name}: дальний берег`, a: [b.cx + 6, Math.floor(b.y)] as [number, number] })),
   ...PLACES.filter((p) => p.x < AXIS).map((p) => ({ name: `${p.name}`, a: [p.x, p.y] as [number, number] })),
-  { name: "Форт запада | форт востока", a: [Math.floor(cityById("oasis")!.spawn.x / TILE), Math.floor(cityById("oasis")!.spawn.y / TILE)], b: [Math.floor(cityById("snow_valley")!.spawn.x / TILE), Math.floor(cityById("snow_valley")!.spawn.y / TILE)] },
+  { name: "Форт запада | форт востока", a: [Math.floor(cityById("fort_solgard")!.spawn.x / TILE), Math.floor(cityById("fort_solgard")!.spawn.y / TILE)], b: [Math.floor(cityById("fort_umbrath")!.spawn.x / TILE), Math.floor(cityById("fort_umbrath")!.spawn.y / TILE)] },
   { name: "Ворота Эмберхолла (запад | восток)", a: emb.w, b: emb.e },
   { name: "Центр Полей (549 | 550)", a: [549, 180] },
   { name: "Вход в данж (549 | 550)", a: [549, DUNGEON.y0 - 4] },
@@ -448,7 +448,7 @@ console.log("5. связность");
 {
   const reach = (c: number) => isFinite(rA.dist[c]) && isFinite(rM.dist[c]);
   const pts: [string, number, number][] = [];
-  for (const id of ["aurelion", "morthaim", "oasis", "snow_valley", "ember"]) { const c = cityById(id)!; pts.push([`${id} spawn`, c.spawn.x, c.spawn.y], [`${id} arrive`, c.arrive.x, c.arrive.y]); }
+  for (const id of ["aurelion", "morthaim", "fort_solgard", "fort_umbrath", "ember"]) { const c = cityById(id)!; pts.push([`${id} spawn`, c.spawn.x, c.spawn.y], [`${id} arrive`, c.arrive.x, c.arrive.y]); }
   for (const b of BOSS_SPAWNS) pts.push([`босс ${b.id}`, b.x, b.y + TILE / 2]);
   for (const o of bridgeObjs) pts.push([`мост ${Math.round(o.x / TILE)},${Math.round(o.y / TILE)}`, o.x, o.y - 40]);
   for (const [n, x, y] of pts) {
@@ -550,7 +550,7 @@ console.log("6. стены вдоль рек");
   const towers = world.walls.towers.map((t) => t.y);
   const solT = m.objects.filter((o) => o.kind === "sol_tower").length, umbT = m.objects.filter((o) => o.kind === "umb_tower").length;
   check(solT === umbT, `башен Сольгарда ${solT}, Умбрата ${umbT} — должно быть поровну`);
-  check(solT === towers.length + 8 && umbT === towers.length + 8, `башен вдоль реки ${solT - 8} вместо ${towers.length} (плюс 8 у столицы)`);
+  check(solT === towers.length + 16 && umbT === towers.length + 16, `башен вдоль реки ${solT - 16} вместо ${towers.length} (плюс 8 у столицы и 8 у форта)`);
   // «через равные промежутки»: между соседними башнями не у ворот ~23,6 тайла
   const free = towers.filter((y) => !world.walls.gates.some((g) => Math.abs(y - g.y) <= 5));
   const gaps = free.slice(1).map((y, i) => y - free[i]).filter((g) => g < 40);
@@ -591,7 +591,7 @@ console.log("7. мобы и места");
   }
   // Эмберхолл на оси: смещение не больше тайла; города на местах схемы
   check(Math.abs(TOWN.x + 0.5 - AXIS) <= 1 && TOWN.y === 60, `Эмберхолл не на оси: ${TOWN.x},${TOWN.y}`);
-  const fw = cityById("oasis")!, fe = cityById("snow_valley")!;
+  const fw = cityById("fort_solgard")!, fe = cityById("fort_umbrath")!;
   check(fw.x === mir(fe.x) && fw.y === fe.y, "форты запада и востока не зеркальны");
   const a = cityById("aurelion")!, o = cityById("morthaim")!;
   check(a.x === mir(o.x) && a.y === o.y, "столицы не зеркальны");

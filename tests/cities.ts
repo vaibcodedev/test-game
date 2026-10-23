@@ -6,7 +6,7 @@
  */
 import { BAGMEN } from "../shared/bags";
 import { BANKERS } from "../shared/bank";
-import { CITIES, CITY_CITIZEN_SPOTS, CITY_GATE_GUARDS, CITY_PATROLS, CITY_GATES, cityAtTile, teleportPrice, nearestCity } from "../shared/cities";
+import { CITIES, CITY_CITIZEN_SPOTS, CITY_GATE_GUARDS, CITY_PATROLS, CITY_GATES, cityAtTile, teleportPrice, nearestCity, homeCity, isEnemyCapital, inEmberWalls } from "../shared/cities";
 import { MAP_SEED, MERCHANT_RANGE, TILE } from "../shared/constants";
 import { factionLandAt } from "../shared/factions";
 import { COOKS } from "../shared/food";
@@ -14,7 +14,8 @@ import { generateMap, isTownZone, roadDist, walkable, zoneAtPx, ZONES, Zone } fr
 import { WORLD_NPCS } from "../shared/npcs";
 import { segmentWalkable } from "../shared/path";
 import { gateCells, insideRing, SETTLEMENTS, settleDist } from "../shared/settlements";
-import { CITIZEN_SPOTS, GATE_GUARDS, GUARD_RANGE_TILES, PATROLS, TOWN } from "../shared/town";
+import { BELT_HALF, CITIZEN_SPOTS, GATE_GUARDS, GUARD_RANGE_TILES, PATROLS, TOWN } from "../shared/town";
+import { SKILLS, isAttackSkill } from "../shared/skills";
 import { QUEST_GIVERS, QUESTS } from "../shared/quests";
 import { SMITHS } from "../shared/upgrade";
 
@@ -67,7 +68,7 @@ for (const c of CITIES) {
   for (const r of CITY_PATROLS) for (const [dx, dy] of r) check(`${c.id} патруль ${dx},${dy}`, pt(c.x, c.y, dx, dy));
   for (const [dx, dy] of CITY_CITIZEN_SPOTS) check(`${c.id} горожане ${dx},${dy}`, tile(c.x, c.y, dx, dy));
   // стоять у торговца/повара/заказчика/камня: рядом с точкой NPC есть проходимая клетка
-  for (const n of [c.merchant!, c.cook!, c.quest!]) if (!near(n)) fail(`${c.id} ${n.id}: не подойти`);
+  for (const n of [c.merchant!, c.cook!, c.quest].filter((q) => q)) if (!near(n!)) fail(`${c.id} ${n!.id}: не подойти`);
 }
 /** Рядом с точкой NPC (до 2 клеток) есть проходимая клетка, достижимая из Эмберхолла. */
 function near(n: { x: number; y: number }) {
@@ -187,10 +188,16 @@ void CITIZEN_SPOTS; void PATROLS;
 for (const g of QUEST_GIVERS) if (!Object.values(QUESTS).some((q) => q.giver === g.id)) fail(`нет заданий у ${g.id}`);
 const [e, o, s] = CITIES;
 console.log("цены:", teleportPrice(e, o), teleportPrice(e, s), teleportPrice(o, s));
-if (nearestCity(["snow_valley"], s.spawn.x, s.spawn.y).id !== "snow_valley") fail("ближайший открытый город");
+// форты: свой открывается после первого визита (возрождение там), чужой закрыт, как чужая столица; без фракции форты закрыты
+if (nearestCity(["fort_umbrath"], s.spawn.x, s.spawn.y, "umbrath").id !== "fort_umbrath") fail("ближайший открытый город: свой форт после визита");
+if (nearestCity([], s.spawn.x, s.spawn.y, "umbrath").id === "fort_umbrath") fail("свой форт открыт без визита");
+if (nearestCity(["fort_umbrath"], s.spawn.x, s.spawn.y, "solgard").id === "fort_umbrath") fail("возрождение во вражеском форте");
+if (!isEnemyCapital(s, "solgard") || isEnemyCapital(s, "umbrath") || !s.fort || !o.fort) fail("форт: враг/свой");
+if (homeCity("solgard").fort || homeCity("umbrath").fort) fail("стартовый город — форт");
+if (homeCity("umbrath").id !== "morthaim") fail("стартовый город Умбрата");
 if (nearestCity([], s.spawn.x, s.spawn.y).id !== "ember") fail("по умолчанию Эмберхолл");
 // столицы: своя открыта всегда, чужая — никогда
-const sol = CITIES.find((c) => c.capital === "solgard")!, umb = CITIES.find((c) => c.capital === "umbrath")!;
+const sol = CITIES.find((c) => c.capital === "solgard" && !c.fort)!, umb = CITIES.find((c) => c.capital === "umbrath" && !c.fort)!;
 if (!sol || !umb || sol.x > umb.x) fail("столицы на западе и востоке");
 if (nearestCity([], s.spawn.x, s.spawn.y, "umbrath").id !== umb.id) fail("Умбрат: по умолчанию Мортхейм");
 if (nearestCity([umb.id], umb.spawn.x, umb.spawn.y, "solgard").id === umb.id) fail("возрождение во вражеской столице");
@@ -208,6 +215,18 @@ if (signs.length < 6) fail("указателей меньше 6: " + signs.lengt
 for (const c of [sol, umb]) {
   const near = m.spawns.filter((sp) => Math.hypot(sp.x - c.spawn.x, sp.y - c.spawn.y) < 36 * TILE);
   if (!near.length || Math.max(...near.map((sp) => sp.level)) > 10) fail(`${c.id}: у столицы нет слабых мобов`);
+}
+// Эмберхолл: безопасная полоса за частоколом (решение 2) без мобов, частокол замкнут (проёмы — оси и дороги), бой внутри стен запрещён (решение 11)
+{
+  const pal = m.objects.filter((o) => (o.kind === "pal_h" || o.kind === "pal_v") && Math.abs(o.x / TILE - TOWN.x) <= BELT_HALF.x + 1 && Math.abs(o.y / TILE - TOWN.y) <= BELT_HALF.y + 1).length;
+  const sides = 2 * (2 * BELT_HALF.x + 1) + 2 * (2 * BELT_HALF.y - 1);
+  if (pal < sides - 40 || pal > sides) fail(`частокол Эмберхолла: ${pal} брёвен из ${sides} клеток периметра`);
+  const mobsIn = m.spawns.filter((sp) => Math.abs(Math.floor(sp.x / TILE) - TOWN.x) <= BELT_HALF.x && Math.abs(Math.floor(sp.y / TILE) - TOWN.y) <= BELT_HALF.y).length;
+  if (mobsIn) fail(`мобы в полосе Эмберхолла: ${mobsIn}`);
+  if (cityAtTile(TOWN.x + BELT_HALF.x, TOWN.y)?.id !== "ember" || cityAtTile(TOWN.x + BELT_HALF.x + 1, TOWN.y)) fail("граница полосы Эмберхолла");
+  if (!inEmberWalls((TOWN.x + 20) * TILE, TOWN.y * TILE) || inEmberWalls((TOWN.x + 28) * TILE, TOWN.y * TILE)) fail("inEmberWalls: стены и полоса");
+  if (!isAttackSkill(SKILLS.fireball) || !isAttackSkill(SKILLS.taunt) || isAttackSkill(SKILLS.heal) || isAttackSkill(SKILLS.holyshield) || isAttackSkill(SKILLS.roll)) fail("isAttackSkill");
+  console.log(`Эмберхолл: частокол ${pal} брёвен, мобов в полосе ${mobsIn}`);
 }
 console.log(bad ? `ПРОБЛЕМ: ${bad}` : "города: ок");
 process.exit(bad ? 1 : 0);

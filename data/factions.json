@@ -23,7 +23,7 @@
     }
   },
   "pvpZones": ["Ashlands", "Dungeon", "Volcano", "StormPeaks"],
-  "neutralCities": ["ember", "oasis", "snow_valley"],
+  "neutralCities": ["ember"],
   "outlaw": {
     "_doc": "Нарушитель в нейтральном городе: стража бьёт его каждые hitMs на pctMaxHp от макс. здоровья, каждый следующий удар сильнее на escalate (до escalateMax ударов подряд), а лечение нарушителя умножается на healMul; пока не истечёт ms.",
     "ms": 20000,

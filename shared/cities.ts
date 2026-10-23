@@ -1,7 +1,8 @@
 /**
- * Города: Эмберхолл (shared/town.ts, нейтральный центр мира), малые нейтральные — Оазис Миражей (пустыня) и Снежная долина (снега),
- * и столицы фракций на краях мира — Аурелион (Сольгард, запад) и Мортхейм (Умбрат, восток).
- * Малые города и столицы строятся по одной раскладке (стены 27×21, две ворота — север и юг), стиль задаёт арт и покрытие.
+ * Города: Эмберхолл (shared/town.ts, единственный нейтральный город, центр мира), столицы фракций на краях мира — Аурелион (Сольгард, запад)
+ * и Мортхейм (Умбрат, восток) и форты фракций на краях Полей вечных битв (задача 132, шаг 4): стены 27×21 и две ворота (север и юг) те же,
+ * но внутри плац, кузня и двор осадных машин (места под сценки шага 12), штандарты на стенах и воротах. Свой форт — камень, возрождение, торговец, повар;
+ * чужой — как чужая столица (стража бьёт, телепорт закрыт). Стиль задаёт арт и покрытие.
  * Файл не зависит от map.ts: карта, сервер (стражи, телепорт, задания) и клиент берут разметку отсюда.
  *
  *   смещения (dx, dy) — от центра города; стены dx = ±14, dy = ±11; башни 2×2 снаружи;
@@ -9,13 +10,13 @@
  */
 import data from "../data/cities.json";
 import { FORTS, MAP_W, TILE } from "./constants";
-import { TOWN, TOWN_HALF } from "./town";
+import { BELT_HALF, TOWN, inTownWalls } from "./town";
 
-export type CityStyle = "desert" | "snow" | "solgard" | "umbrath";
+export type CityStyle = "solgard" | "umbrath";
 export const CITY_WALL = { x: 14, y: 11 };
 /** Полуразмеры зоны города вместе с башнями. */
 export const CITY_HALF = { x: 15, y: 12 };
-export type CityGround = "road" | "plain" | "path" | "pool";
+export type CityGround = "road" | "plain" | "path";
 
 export const inCityRect = (dx: number, dy: number) => Math.abs(dx) <= CITY_HALF.x && Math.abs(dy) <= CITY_HALF.y;
 const inCityWalls = (dx: number, dy: number) => Math.abs(dx) < CITY_WALL.x && Math.abs(dy) < CITY_WALL.y;
@@ -23,11 +24,10 @@ const inCityWalls = (dx: number, dy: number) => Math.abs(dx) < CITY_WALL.x && Ma
 export const isCityGate = (dx: number, dy: number) => Math.abs(dx) <= 1 && Math.abs(dy) === CITY_WALL.y;
 
 /** Покрытие клетки малого города. */
-export function cityGround(style: CityStyle, dx: number, dy: number): CityGround {
+export function cityGround(_style: CityStyle, dx: number, dy: number): CityGround {
   const ax = Math.abs(dx), ay = Math.abs(dy);
   if (ax <= 1 && ay >= CITY_WALL.y) return "road";
   if (!inCityWalls(dx, dy)) return "plain";
-  if (style === "desert" && dx >= -3 && dx <= 2 && dy >= -2 && dy <= 1) return "pool";
   if (ax <= 1) return "road";
   if (ax === 12 || ay === 9) return "path";
   if (ay <= 1 || (ax <= 6 && ay <= 4)) return "road";
@@ -50,11 +50,6 @@ const COMMON: [string, number, number][] = [
   ["~tree", -10, 3], ["~tree", 10, 4], ["~tree", -8, 5], ["~tree", 6, 5],
 ];
 export const STYLE = {
-  desert: {
-    wall_h: "sand_wall_h", wall_v: "sand_wall_v", tower: "sand_tower", gate: "sand_gate", houses: ["sand_house", "sand_house_b"],
-    stalls: ["stall_sand", "stall_green"], light: "lamp", tree: "palm",
-    extra: [["tent", -11, -2], ["tent", 9, -2], ["palm", -9, 4], ["palm", 9, -4]] as [string, number, number][],
-  },
   solgard: {
     wall_h: "sol_wall_h", wall_v: "sol_wall_v", tower: "sol_tower", gate: "sol_gate", houses: ["sol_house", "sol_temple"],
     stalls: ["stall_gold", "stall_blue"], light: "lamp", tree: "v_basic_oak_small",
@@ -69,16 +64,45 @@ export const STYLE = {
       ["v_graveyard_statue_b", -8, 3], ["v_graveyard_cross_c", -10, 2], ["v_graveyard_slab_b", -9, -3], ["v_graveyard_stele_a", -10, -5],
       ["v_graveyard_stone_c", 7, -2], ["v_graveyard_cross_b", 11, -4]] as [string, number, number][],
   },
-  snow: {
-    wall_h: "pal_h", wall_v: "pal_v", tower: "pal_tower", gate: "pal_gate", houses: ["log_house", "log_house_b"],
-    stalls: ["stall_blue", "stall_blue"], light: "brazier", tree: "snow_pine",
-    extra: [["hay", -10, -2], ["hay", 10, -2], ["snow_rock", -9, 4], ["snow_pine", 9, -4]] as [string, number, number][],
-  },
 } as const;
 export function cityDecor(style: CityStyle): [string, number, number][] {
   const s = STYLE[style];
   const out: [string, number, number][] = COMMON.map(([k, x, y]) => [k === "~light" ? s.light : k === "~tree" ? s.tree : k, x, y]);
   return [...out, ...s.extra.map((e) => [...e] as [string, number, number])];
+}
+
+/**
+ * Форт (задача 132, шаг 4): казармы в северном ряду и два склада у южных углов вместо двух рядов домов; плац — площадь |dx|≤6, |dy|≤4 с чучелами и стойками;
+ * кузня — у восточной стены (наковальня, жаровни, стойки); двор осадных машин — у южных ворот (ящики, бочки, тюки и стойки по обе стороны от прохода |dx|≤3).
+ * Новых ассетов нет: всё из имеющихся объектов (шаг 9 заменит двор настоящими машинами). Проходы |dx|≤1, кольцо и маршруты стражи свободны.
+ * Штандарты фракции — на стенах (через 5 клеток) и по обе стороны ворот: [dx, dy].
+ */
+export const FORT_HOUSES: [number, number][] = [[-11, -6], [-6, -6], [3, -6], [8, -6], [-11, 8], [8, 8]];
+const FORT_BANNERS: [number, number][] = [
+  [-3, -10], [3, -10], [-3, 10], [3, 10], [-13, -10], [13, -10], [-13, 10], [13, 10],
+  [-8, -10], [8, -10], [-8, 10], [8, 10], [-13, 0], [13, 0], [-13, -5], [13, -5], [-13, 5], [13, 5],
+];
+const FORT_PLAZA: [string, number, number][] = [
+  ["dummy", -5, -1], ["dummy", -3, -1], ["weapon_rack", 5, -1], ["weapon_rack", 4, -1], ["dummy", 5, 1], ["dummy", -5, 1],
+];
+const FORT_FORGE: [string, number, number][] = [
+  ["anvil", 9, -3], ["~light", 10, -3], ["barrel", 11, -3], ["weapon_rack", 9, 5], ["crate", 10, 5], ["~light", 11, 4],
+];
+const FORT_SIEGE: [string, number, number][] = [
+  ["crate", -4, 6], ["crate", -3, 6], ["barrel", -5, 6], ["barrel", -4, 7], ["hay", -3, 7], ["weapon_rack", -5, 7],
+  ["crate", 4, 6], ["crate", 5, 6], ["barrel", 6, 6], ["barrel", 5, 7], ["hay", 4, 7], ["weapon_rack", 6, 7],
+];
+/** Убранство форта: общее без садов и погоста, плац, кузня, двор осадных машин и штандарты своей фракции. */
+export function fortDecor(style: CityStyle): [string, number, number][] {
+  const s = STYLE[style];
+  const banner = style === "solgard" ? "sun_banner" : "crown_banner";
+  const light = (k: string) => (k === "~light" ? s.light : k);
+  const common = COMMON.filter(([k]) => k !== "~tree").map(([k, x, y]) => [light(k), x, y] as [string, number, number]);
+  return [
+    ...common,
+    ...[...FORT_PLAZA, ...FORT_FORGE, ...FORT_SIEGE].map(([k, x, y]) => [light(k), x, y] as [string, number, number]),
+    ...FORT_BANNERS.map(([x, y]) => [banner, x, y] as [string, number, number]),
+  ];
 }
 
 /** Стражники: неподвижные у ворот и патрули (точки маршрута в тайлах, центр клетки = +0.5). */
@@ -118,10 +142,12 @@ export interface CityNpc {
 export interface City {
   id: string;
   name: string;
-  /** Стиль малого города; у Эмберхолла нет. */
+  /** Стиль города; у Эмберхолла нет. */
   style?: CityStyle;
-  /** Столица фракции: здесь появляются и возрождаются её герои; врагам вход под ударами стражи. */
+  /** Столица или форт фракции: своим — возрождение (форт — после первого визита) и телепорт; врагам вход под ударами стражи, телепорт закрыт. */
   capital?: string;
+  /** Форт на краю Полей вечных битв (задача 132, шаг 4): плац, кузня, двор осадных машин; героям фракции не стартовый город. */
+  fort?: boolean;
   /** Центр в тайлах и полуразмеры зоны. */
   x: number;
   y: number;
@@ -134,6 +160,7 @@ export interface City {
   spawn: { x: number; y: number };
   merchant?: CityNpc;
   cook?: CityNpc;
+  /** Заказчик: только у Эмберхолла нет и у фортов нет; задания — у поселений земель (shared/settlements.ts). */
   quest?: CityNpc;
   /** Только у столиц: банкир, кузнец (заточка) и сумочник. */
   banker?: CityNpc;
@@ -150,8 +177,8 @@ const npcStall = (c: { x: number; y: number }, at: [number, number], n: RawNpc):
 const npcTile = (c: { x: number; y: number }, at: [number, number], n: RawNpc): CityNpc => ({ ...n, tint: Number(n.tint), ...tileCenter(c.x + at[0], c.y + at[1]) });
 
 type CityId = Exclude<keyof typeof data, "_doc">;
-function small(id: CityId, style: CityStyle, x: number, y: number): City {
-  const d = data[id] as (typeof data)[CityId] & { capital?: string; banker?: RawNpc; smith?: RawNpc; bagman?: RawNpc };
+function small(id: CityId, style: CityStyle, x: number, y: number, fort = false): City {
+  const d = data[id] as (typeof data)[CityId] & { capital?: string; quest?: RawNpc; banker?: RawNpc; smith?: RawNpc; bagman?: RawNpc };
   const c = { x, y };
   const st = { x: x + STONE_AT[0], y: y + STONE_AT[1] };
   return {
@@ -163,43 +190,47 @@ function small(id: CityId, style: CityStyle, x: number, y: number): City {
     spawn: d.capital ? tileCenter(x, y) : tileCenter(x, y + 4),
     merchant: npcStall(c, MERCHANT_AT, d.merchant),
     cook: npcStall(c, COOK_AT, d.cook),
-    quest: npcTile(c, QUEST_AT, d.quest),
+    quest: d.quest && npcTile(c, QUEST_AT, d.quest),
     banker: d.banker && npcTile(c, BANKER_AT, d.banker),
     smith: d.smith && npcTile(c, SMITH_AT, d.smith),
     bagman: d.bagman && npcTile(c, BAGMAN_AT, d.bagman),
     guard: d.guard,
     people: d.people,
     capital: d.capital,
+    fort: fort || undefined,
   };
 }
 
 const EMBER_STONE = { x: TOWN.x + 5, y: TOWN.y + 3 };
 export const CITIES: City[] = [
   {
-    id: "ember", name: "Эмберхолл", x: TOWN.x, y: TOWN.y, half: TOWN_HALF,
+    id: "ember", name: "Эмберхолл", x: TOWN.x, y: TOWN.y, half: BELT_HALF,
     stoneTile: EMBER_STONE,
     stone: { x: EMBER_STONE.x * TILE + 16, y: (EMBER_STONE.y + 1) * TILE - 2 },
     arrive: tileCenter(EMBER_STONE.x, EMBER_STONE.y + 1),
     spawn: tileCenter(TOWN.x, TOWN.y + 3),
   },
-  // будущие форты фракций на краях Полей вечных битв (задача 132, шаг 4): пока прежние города, на местах фортов схемы (зеркально)
-  small("oasis", "desert", FORTS.west.x, FORTS.west.y),
-  small("snow_valley", "snow", FORTS.east.x, FORTS.east.y),
+  // форты фракций на краях Полей вечных битв (задача 132, шаг 4), зеркально
+  small("fort_solgard", "solgard", FORTS.west.x, FORTS.west.y, true),
+  small("fort_umbrath", "umbrath", FORTS.east.x, FORTS.east.y, true),
   // столицы на противоположных краях мира
   small("aurelion", "solgard", 56, 180),
   small("morthaim", "umbrath", MAP_W - 57, 180),
 ];
 export const cityById = (id: string) => CITIES.find((c) => c.id === id);
 /** Столица фракции (место появления и возрождения её героев); без фракции — Эмберхолл. */
-export const homeCity = (faction: string | undefined): City => CITIES.find((c) => c.capital && c.capital === faction) ?? CITIES[0];
-/** Чужая столица: телепорт не открывается, возрождения там нет. */
+export const homeCity = (faction: string | undefined): City => CITIES.find((c) => c.capital && !c.fort && c.capital === faction) ?? CITIES[0];
+/** Чужая столица или чужой форт: телепорт не открывается, возрождения там нет. */
 export const isEnemyCapital = (c: City, faction: string | undefined) => !!c.capital && c.capital !== faction;
-/** Открыт ли город для героя: своя столица — всегда, остальные — после первого визита пешком. */
+/** Открыт ли город для героя: своя столица — всегда, остальные (в том числе свой форт и Эмберхолл) — после первого визита пешком. */
 export function cityKnown(c: City, found: readonly string[] | undefined, faction: string | undefined): boolean {
   if (isEnemyCapital(c, faction)) return false;
   if (!faction) return c.id === "ember" || !!found?.includes(c.id);
   return homeCity(faction).id === c.id || !!found?.includes(c.id);
 }
+/** Внутри стен Эмберхолла (пиксели): здесь нельзя драться и применять атакующие умения, бафы и лечение можно (решение 11, задача 132). */
+export const inEmberWalls = (px: number, py: number) => inTownWalls(Math.floor(px / TILE) - TOWN.x, Math.floor(py / TILE) - TOWN.y);
+export const NO_FIGHT_MSG = "В Эмберхолле нельзя драться: атакующие умения здесь не действуют";
 /** Город, в чьей зоне лежит клетка (тайлы), или null. */
 export function cityAtTile(x: number, y: number): City | null {
   for (const c of CITIES) if (Math.abs(x - c.x) <= c.half.x && Math.abs(y - c.y) <= c.half.y) return c;

@@ -7,7 +7,8 @@ import { BASE_ITEMS } from "../../../shared/items";
 import { BAR_COUNT, BAR_SLOTS, usableBase, type Slot } from "../../../shared/hotbar";
 import { lineClear, type WorldMap } from "../../../shared/map";
 import type { SelfState } from "../../../shared/protocol";
-import { skillMana, SKILLS, type SkillDef } from "../../../shared/skills";
+import { inEmberWalls, NO_FIGHT_MSG } from "../../../shared/cities";
+import { isAttackSkill, skillMana, SKILLS, type SkillDef } from "../../../shared/skills";
 import { aimSpec } from "../../../shared/skillShape";
 import { selTarget } from "../game/castResolve";
 import { keybinds } from "../game/keybinds";
@@ -220,7 +221,8 @@ export class Hotbar {
       if (!s) return "";
       // почему умение сейчас не нажать — та же причина, что у красной или синей иконки слота
       const st = this.cells[bar][i].cls.split(" ");
-      const why = st.includes("oor") ? "Цель дальше дальности умения — подойдите ближе"
+      const why = st.includes("nofight") ? NO_FIGHT_MSG
+        : st.includes("oor") ? "Цель дальше дальности умения — подойдите ближе"
         : st.includes("nolos") ? "Цель за препятствием — нет прямой видимости"
         : st.includes("nomana") ? "Не хватает маны"
         : st.includes("notarget") ? "Нужна цель: Tab или клик по врагу" : "";
@@ -273,6 +275,7 @@ export class Hotbar {
           else {
             if (this.ctx.net.queued === d.id) cls.push("queued");
             if (f.mp < skillMana(d, rank, s.level)) cls.push("nomana");
+            if (isAttackSkill(d) && inEmberWalls(f.pos.x, f.pos.y)) cls.push("nofight");
             if (d.target === "enemy" && !f.target) cls.push("notarget");
             else if (f.target && d.target !== "self") {
               // только где сервер откажет: «далеко» — дальше дальности + радиус цели (точку и направление, oor: clamp, он прижимает сам);

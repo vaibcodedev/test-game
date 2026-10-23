@@ -3,7 +3,7 @@ import { formatNumber, gold } from "./gold";
 import { CITIES, TELEPORT_CAST_MS, cityKnown, isEnemyCapital, stoneNear, teleportPrice, type City, type CityNpc } from "../../../shared/cities";
 import { FACTIONS, type FactionId } from "../../../shared/factions";
 import type { SelfState } from "../../../shared/protocol";
-import { QUESTS, QUEST_GIVERS, QUEST_MAX_ACTIVE, questsOf, type QuestDef, type QuestSave } from "../../../shared/quests";
+import { QUESTS, QUEST_GIVERS, giverPlace, QUEST_MAX_ACTIVE, questsOf, type QuestDef, type QuestSave } from "../../../shared/quests";
 import { RESOURCES } from "../../../shared/biomes";
 import { MOBS } from "../../../shared/mobs";
 import type { Net } from "../net";
@@ -91,7 +91,7 @@ export class QuestUI {
       .map(({ d, n }) => {
         const ready = n >= d.n;
         const giver = QUEST_GIVERS.find((g) => g.id === d.giver)?.name;
-        const city = CITIES.find((c) => c.quest?.id === d.giver)?.name;
+        const city = giverPlace(d.giver);
         return `<div class="quest-row card compact${ready ? " is-ready" : ""}">${head(d, ready ? `<span class="chip ok">Можно сдать</span>` : "")}${goal(d, n)}`
           + `${giver ? `<p class="note">Сдать: ${esc(giver)}${city ? ` · ${esc(city)}` : ""}</p>` : ""}</div>`;
       }).join("");
@@ -162,7 +162,7 @@ export class QuestUI {
 }
 
 /** Подпись города под названием. */
-const kind = (c: City) => (c.capital ? `Столица: ${FACTIONS[c.capital as FactionId]?.name ?? c.capital}` : "Нейтральный город");
+const kind = (c: City) => (c.fort ? `Форт: ${FACTIONS[c.capital as FactionId]?.name ?? c.capital}` : c.capital ? `Столица: ${FACTIONS[c.capital as FactionId]?.name ?? c.capital}` : "Нейтральный город");
 
 export class TeleportUI {
   private win = document.createElement("div");
