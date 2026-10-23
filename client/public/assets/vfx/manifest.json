@@ -259,6 +259,233 @@
    "scaleIn": 0.8
   }
  },
+ "bf-ballista-n": {
+  "frameW": 91,
+  "frameH": 80,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.92
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-ballista-s": {
+  "frameW": 91,
+  "frameH": 81,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.92
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-ballista-w": {
+  "frameW": 81,
+  "frameH": 94,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.92
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-catapult-n": {
+  "frameW": 57,
+  "frameH": 84,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.92
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-catapult-s": {
+  "frameW": 57,
+  "frameH": 78,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.92
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-catapult-w": {
+  "frameW": 93,
+  "frameH": 83,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.92
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-dummy-0": {
+  "frameW": 32,
+  "frameH": 27,
+  "frames": 4,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-dummy-1": {
+  "frameW": 32,
+  "frameH": 28,
+  "frames": 5,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-dummy-2": {
+  "frameW": 29,
+  "frameH": 25,
+  "frames": 8,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-fire-l": {
+  "frameW": 40,
+  "frameH": 38,
+  "frames": 16,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-fire-m": {
+  "frameW": 24,
+  "frameH": 35,
+  "frames": 16,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-fire-s": {
+  "frameW": 25,
+  "frameH": 24,
+  "frames": 16,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-fire-t": {
+  "frameW": 29,
+  "frameH": 52,
+  "frames": 16,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-flame-torch": {
+  "frameW": 26,
+  "frameH": 42,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-forge-cone": {
+  "frameW": 98,
+  "frameH": 146,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-forge-small": {
+  "frameW": 66,
+  "frameH": 130,
+  "frames": 12,
+  "fps": 8,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-gate-stone": {
+  "frameW": 82,
+  "frameH": 62,
+  "frames": 14,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-smoke": {
+  "frameW": 38,
+  "frameH": 110,
+  "frames": 16,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal",
+  "r": 1
+ },
+ "bf-trebuchet": {
+  "frameW": 160,
+  "frameH": 120,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.375,
+   0.95
+  ],
+  "blend": "normal"
+ },
  "blade-blood": {
   "frameW": 33,
   "frameH": 40,

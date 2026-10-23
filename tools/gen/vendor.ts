@@ -28,7 +28,7 @@ import { P } from "./palette";
 import { ROOT, OUT_DIR, PREVIEW_DIR, BG, BEIGE, GOLD, readPng, writePng, crop, opaqueBox, trim, scaleNN, downscaleMode, tidy, fill, luma, hsv, paintGround, chipText, drawText, textWidth } from "./vendor-lib";
 import { buildVendorUi } from "./vendor-ui";
 
-type Pack = "basic" | "volcano" | "graveyard";
+type Pack = "basic" | "volcano" | "graveyard" | "fortkit" | "bridges" | "undead" | "deco" | "smith";
 type Rect = [number, number, number, number];
 interface Px { r: number; g: number; b: number; h: number; s: number; v: number; y: number }
 /** Условие по цвету пикселя и его положению (x, y) в вырезке. */
@@ -73,7 +73,15 @@ const SHEETS: Record<string, string> = {
   "basic.ladder_soil": `${BASIC}/sprites/ladder-soil.png`,
   "volcano.assets": "vendor/volcano/src/volcanoe_tileset_and_assets/volcanoe_assets.png",
   "graveyard.set": "vendor/graveyard/src/Graveyard/Graveyard_Set.png",
+  // шаг 9 задачи 132: форты, мосты, поле после битвы, лагерь, кузня (выбор пользователя 2026-10-22, лицензии — CREDITS.md)
+  "fort.tiles": "vendor/craftpix-fortress-kit/src/Tileset/Tiled_Map.png",
+  "bridges.set": "vendor/craftpix-bridges/src/PNG_n_Tiled/Bridges.png",
+  "undead.obj": "vendor/craftpix-undead/src/PNG/Objects.png",
+  "deco.set": "vendor/lpc-village-deco/src/decoration_medieval/decorations-medieval.png",
+  "smith.set": "vendor/lpc-blacksmith/src/lpc-blacksmith/blacksmith-smelter.png",
 };
+/** Листы LPC Village Decorations: зелёный (129,161,0) — фон-заливка пустых клеток, убирается при чтении. */
+const KEYED = new Set(["deco.set"]);
 
 // ---------- рампы и оттенки ----------
 const LEAF = rd("leaf", P.leaf), PINE = rd("pine", P.pine), BARK = rd("bark", P.bark), WOOD = rd("wood", P.wood), DIRT = rd("dirt", P.dirt);
@@ -218,6 +226,63 @@ add("graveyard", "grave_pit", G, [259, 308, 26, 55], [{ r: DIRT }]);
 add("graveyard", "grave_mound", G, [291, 308, 26, 57], [{ r: DIRT }]);
 add("graveyard", "grave_mound_h", G, [324, 339, 58, 26], [{ r: DIRT }]);
 
+// ---------- шаг 9 задачи 132: Поля, форты, мосты, лагерь, кузня ----------
+// CraftPix (Fortress Kit, Bridges, Undead): сетка 16, фортовые стены и мосты — ×2 (герой 32 px = два тайла кита), башня и мёртвое — 1:1 или меньше.
+// LPC (Village Decorations, Blacksmith): сетка 32, пиксель 1:1. Краска — рампы палитры игры.
+const CANVAS = rd("canvas", P.cloth.rag), CGREEN = rd("cloth_green", P.cloth.green), TERRA = rd("terracotta", P.dirt);
+const FIREO = rd("forge_fire", P.magic.fire.slice(1)), WATERR = rd("water", P.water.slice(1, 4));
+const BLUEW: Pred = (p) => p.h >= 175 && p.h < 235 && p.s > 0.4 && p.v > 0.45;
+const ORANGE: Pred = (p) => p.s >= 0.5 && p.v >= 0.65 && (p.h <= 55 || p.h >= 345);
+const TERRACOTTA: Pred = (p) => p.s >= 0.3 && p.h >= 5 && p.h < 28 && p.y >= 90;
+const STONES: Rule[] = [{ r: WOOD, when: BROWN }, { r: STONE }];
+const BRIDGE_BRICK: Rule[] = [{ r: TERRA, when: TERRACOTTA }, { r: WOOD, when: BROWN }, { r: STONE }];
+const FORT = "fort.tiles", BR = "bridges.set", UD = "undead.obj", DC = "deco.set", SM = "smith.set";
+add("fortkit", "tower_block", FORT, [16, 32, 64, 112], STONES, { dark: 20 });
+add("fortkit", "wall_low_a", FORT, [16, 200, 64, 24], STONES, { dark: 20, scale: 2 });
+add("fortkit", "wall_low_b", FORT, [16, 232, 64, 24], STONES, { dark: 20, scale: 2 });
+add("fortkit", "gate_arch", FORT, [160, 16, 32, 32], STONES, { dark: 20, scale: 2 });
+add("fortkit", "stairs", FORT, [160, 176, 48, 48], STONES, { dark: 20, scale: 2 });
+add("fortkit", "ladder", FORT, [96, 176, 16, 80], WOODEN, { scale: 2 });
+add("bridges", "stone_h", BR, [84, 2, 103, 66], BRIDGE_BRICK, { dark: 20, scale: 2 });
+add("bridges", "brick_h", BR, [500, 0, 137, 77], BRIDGE_BRICK, { dark: 20, scale: 2 });
+add("bridges", "rope_h", BR, [277, 161, 119, 33], BRIDGE_BRICK, { dark: 20, scale: 2 });
+add("bridges", "stone_v", BR, [11, 37, 41, 102], BRIDGE_BRICK, { dark: 20, scale: 2 });
+add("bridges", "brick_v", BR, [426, 41, 43, 128], BRIDGE_BRICK, { dark: 20, scale: 2 });
+add("bridges", "rope_v", BR, [227, 160, 26, 121], BRIDGE_BRICK, { dark: 20, scale: 2 });
+const CROWNGOLD = rd("crown_gold", P.gold.slice(0, 4));
+const UBONE: Rule[] = [{ r: CROWNGOLD, when: (p) => p.s >= 0.45 && p.h >= 28 && p.h < 58 && p.v > 0.5 }, { r: MOSS, when: GREENISH }, { r: DEADWOOD, when: BROWN }, { r: BONE }];
+add("undead", "giant_skeleton", UD, [5, 3, 150, 113], UBONE, { scale: 0.75 });
+add("undead", "ruin_a", UD, [0, 125, 80, 98], [{ r: STONE }]);
+add("undead", "ruin_b", UD, [80, 125, 80, 98], [{ r: STONE }]);
+add("undead", "ruin_arch", UD, [0, 300, 76, 67], [{ r: STONE }]);
+add("undead", "skull_trio", UD, [370, 473, 25, 22], UBONE);
+add("undead", "skull_cluster", UD, [440, 80, 40, 48], UBONE);
+add("undead", "bird_skull", UD, [420, 433, 20, 30], UBONE);
+add("undead", "jaw", UD, [391, 560, 30, 22], UBONE);
+add("undead", "ribs", UD, [481, 115, 61, 25], UBONE);
+add("undead", "bones_a", UD, [3, 560, 43, 27], UBONE);
+add("undead", "bones_b", UD, [104, 560, 29, 24], UBONE);
+add("undead", "bones_c", UD, [243, 560, 44, 24], UBONE);
+add("deco", "tent_side", DC, [386, 1733, 124, 147], [{ r: WOOD, when: BROWN }, { r: CANVAS }], { scale: 0.75 });
+add("deco", "wagon_covered", DC, [199, 1250, 116, 133], [{ r: CGREEN, when: GREEN_WIDE }, { r: WOOD }], { scale: 0.75 });
+add("deco", "wagon_open", DC, [199, 1408, 116, 71], [{ r: WOOD }], { scale: 0.75 });
+add("deco", "wheels", DC, [416, 1440, 64, 66], [{ r: WOOD }]);
+add("deco", "target", DC, [142, 1517, 34, 48], [{ r: RED_WOOD, when: (p) => p.s >= 0.5 && (p.h < 20 || p.h > 340) }, { r: WOOD }]);
+add("deco", "spear_rack", DC, [38, 1504, 49, 32], [{ r: WOOD }]);
+add("deco", "stocks", DC, [133, 1472, 58, 32], [{ r: WOOD }]);
+add("deco", "gallows", DC, [1, 1426, 52, 59], [{ r: WOOD }]);
+add("deco", "pillory", DC, [69, 1415, 56, 75], [{ r: WOOD }]);
+const SMITHR = (iron: boolean): Rule[] => [{ r: WATERR, when: BLUEW }, { r: WOOD, when: BROWN }, { r: iron ? DSTEEL : STONE }];
+add("smith", "forge_cone", SM, [256, 0, 128, 192], SMITHR(false), { scale: 0.75 });
+add("smith", "forge_small", SM, [0, 0, 64, 128], SMITHR(false));
+add("smith", "anvil_a", SM, [331, 419, 46, 27], SMITHR(true));
+add("smith", "anvil_b", SM, [288, 421, 32, 24], SMITHR(true));
+add("smith", "tub_a", SM, [448, 429, 64, 35], SMITHR(true));
+add("smith", "tub_b", SM, [512, 416, 64, 64], SMITHR(true));
+add("smith", "bench", SM, [258, 482, 61, 64], SMITHR(true));
+add("smith", "tool_rack", SM, [322, 480, 125, 66], SMITHR(true));
+add("smith", "coal_pile", SM, [263, 196, 113, 50], [{ r: OBSIDIAN }]);
+
 // ---------- перекраска ----------
 interface Prep {
   def: ObjDef;
@@ -243,6 +308,7 @@ const sheetPc = (key: string): PC => {
     const file = path.join(ROOT, SHEETS[key]);
     if (!fs.existsSync(file)) throw new Error(`нет листа ${SHEETS[key]}: распакуйте архивы в vendor/<пак>/src (см. vendor/<пак>/LICENSE.txt)`);
     pc = readPng(file);
+    if (KEYED.has(key)) for (let i = 0; i < pc.w * pc.h; i++) if (pc.data[i * 4] === 129 && pc.data[i * 4 + 1] === 161 && pc.data[i * 4 + 2] === 0) pc.data[i * 4 + 3] = 0;
     sheetCache.set(key, pc);
   }
   return pc;
@@ -547,7 +613,7 @@ function main() {
   // размеры в том же виде, что объекты в client/public/assets/manifest.json: { id: { w, h } }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, "objects-manifest.json"), JSON.stringify(Object.fromEntries(results.map((r) => [r.id, { w: r.out.w, h: r.out.h }]))));
-  for (const pack of ["basic", "volcano", "graveyard"] as Pack[]) {
+  for (const pack of ["basic", "volcano", "graveyard", "fortkit", "bridges", "undead", "deco", "smith"] as Pack[]) {
     const mine = results.filter((r) => r.def.pack === pack);
     const manifest = mine.map((r) => ({
       id: r.id, file: path.relative(ROOT, r.file).replace(/\\/g, "/"), size: [r.out.w, r.out.h], tiles: [r.out.w / 32, r.out.h / 32],

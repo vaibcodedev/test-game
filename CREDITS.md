@@ -11,6 +11,16 @@
 - **Fantasy UI Borders** и **Cursor Pixel Pack**, автор Kenney ([kenney.nl](https://kenney.nl)), лицензия CC0: рамка окон, разделитель заголовка и курсоры.
 - **LiteUI Fantasy**, автор cathean ([cathean.itch.io/liteui-fantasy](https://cathean.itch.io/liteui-fantasy)), «назовите свою цену»: тонкие рамки ячеек, слотов и полос здоровья и маны, плашка героя и рамка панели умений (нарезка и перекраска — `tools/gen/vendor-liteui.ts`). Раздача файлов в условиях не оговорена.
 
+- **Шаг 9 задачи 132 — Поля, форты, лагеря** (листы собирают `tools/gen/vendor.ts` и `tools/gen/battlefield.ts`; готовое — `client/public/assets/objects/v_*.png` и `vfx/r/bf-*.png`, только в приватном репозитории):
+  - **Free Medieval Fortress Top-Down Pixel Minigame Kit**, **Free Bridges Top-Down Pixel Art Asset Pack** и **Free Undead Pixel Tileset Top Down**, CraftPix.net ([craftpix.net/file-licenses](https://craftpix.net/file-licenses/), скачаны с free-game-assets.itch.io): стены, башни, ворота, мосты, кости, руины. Подпись не нужна; раздавать файлы, в том числе изменённые, нельзя; обучать ИИ нельзя.
+  - **[LPC] Medieval Village Decorations**, bluecarrot16 и авторы LPC, CC-BY-SA 4.0 / 3.0, [opengameart.org](https://opengameart.org/content/lpc-medieval-village-decorations): шатёр, повозки, колёса, мишень, стойки. Копилефт: изменённые спрайты (`v_deco_*`) остаются под CC-BY-SA; полный список авторов — `docs/licenses/CREDITS-decorations-medieval.txt` (приложен целиком).
+  - **[LPC] Blacksmith**, bluecarrot16, CC-BY 4.0 / OGA-BY 3.0, [opengameart.org](https://opengameart.org/content/lpc-blacksmith) (`docs/licenses/CREDITS-blacksmith.txt`): горны, наковальни, бадьи, верстак.
+  - **[LPC] Siege Weapons**, bluecarrot16 (при участии Herodom, по заказу castelonia), OGA-BY 3.0, [opengameart.org](https://opengameart.org/content/lpc-siege-weapons): катапульта и баллиста.
+  - **[LPC] Flames**, Lanea Zimmerman (Sharm), CC-BY 3.0, [opengameart.org](https://opengameart.org/content/lpc-flames): огонь факелов.
+  - **Pixel Art Fire Asset Pack** и **Pack 3**, Devkidd ([devkidd.itch.io](https://devkidd.itch.io/pixel-fire-asset-pack)): огонь и дым; подпись желательна, раздавать файлы нельзя.
+  - **2D Pixel Art Training Dummy**, Elthen ([elthen.itch.io](https://elthen.itch.io/2d-pixel-art-training-dummy)), Common Sense License 1.0: манекен; раздавать файлы нельзя.
+  - Свои, в том же стиле (`tools/gen/bf-gen.ts`, `bf-gen2.ts`): башни стен, шатры фракций, павшие и лошадь, повозки, требушет, таран, осадная башня, колья, кровь и гарь.
+
 Исходные архивы паков (`vendor/`) в репозиторий не попадают. Готовое из них — перекрашенные объекты (`client/public/assets/objects/v_*.png`), листы эффектов (`client/public/assets/vfx/r/`) и нарезка LiteUI (`client/public/ui/liteui/`) — коммитится: репозиторий приватный с 2026-10-21. Лицензии Schwarnhild, 0_mem0ry, Sentient Dream Studio и pimen запрещают раздачу файлов, поэтому публичным репозиторий делать нельзя, пока они в истории.
 
 Изображения рисует код генератора в `tools/gen/` (`canvas.ts`, `palette.ts`, `tiles.ts`, `units.ts`, `objects.ts`). Команда `npm run assets` пересоздаёт их в `client/public/assets/`. Палитра собрана вручную в `tools/gen/palette.ts`.

@@ -33,6 +33,59 @@
           "url": "https://cathean.itch.io/liteui-fantasy",
           "what": "Тонкие рамки ячеек, слотов и полос здоровья и маны, плашка героя и рамка панели умений",
           "license": "Лицензия автора"
+        },
+        {
+          "name": "Free Medieval Fortress Top-Down Pixel Minigame Kit, Free Bridges Top-Down Pixel Art Asset Pack, Free Undead Pixel Tileset Top Down",
+          "by": "Автор: CraftPix.net",
+          "url": "https://craftpix.net/file-licenses/",
+          "what": "Стены, башни, ворота и мосты, кости, руины и скелет-исполин для Полей вечных битв",
+          "license": "Бесплатная лицензия CraftPix"
+        },
+        {
+          "name": "[LPC] Medieval Village Decorations",
+          "by": "Автор: bluecarrot16 и авторы LPC (полный список — в файле docs/licenses/CREDITS-decorations-medieval.txt)",
+          "url": "https://opengameart.org/content/lpc-medieval-village-decorations",
+          "what": "Шатёр, повозки, колёса, мишень, стойки, колодки и виселица лагерей и поселений",
+          "license": "CC-BY-SA 4.0 / 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+        },
+        {
+          "name": "[LPC] Blacksmith",
+          "by": "Автор: bluecarrot16",
+          "url": "https://opengameart.org/content/lpc-blacksmith",
+          "what": "Горны с живым огнём, наковальни, бадьи, верстак, стойки с инструментом",
+          "license": "CC-BY 4.0 / OGA-BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+        },
+        {
+          "name": "[LPC] Siege Weapons",
+          "by": "Автор: bluecarrot16 (при участии Herodom), заказ castelonia",
+          "url": "https://opengameart.org/content/lpc-siege-weapons",
+          "what": "Катапульта и баллиста с анимацией выстрела",
+          "license": "OGA-BY 3.0",
+          "licenseUrl": "https://static.opengameart.org/OGA-BY-3.0.txt"
+        },
+        {
+          "name": "[LPC] Flames",
+          "by": "Автор: Lanea Zimmerman (Sharm)",
+          "url": "https://opengameart.org/content/lpc-flames",
+          "what": "Огонь факелов и жаровен",
+          "license": "CC-BY 3.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/3.0/"
+        },
+        {
+          "name": "Pixel Art Fire Asset Pack и Pixel Art Fire Asset Pack 3",
+          "by": "Автор: Devkidd",
+          "url": "https://devkidd.itch.io/pixel-fire-asset-pack",
+          "what": "Огонь и дым горящих обломков и повозок",
+          "license": "Лицензия автора"
+        },
+        {
+          "name": "2D Pixel Art Training Dummy",
+          "by": "Автор: Elthen",
+          "url": "https://elthen.itch.io/2d-pixel-art-training-dummy",
+          "what": "Тренировочный манекен для сценок муштры",
+          "license": "Лицензия автора"
         }
       ]
     },

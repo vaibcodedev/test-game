@@ -3442,6 +3442,122 @@
    "w": 32,
    "h": 32
   },
+  "bf_arrows_planted": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_blood_a": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_blood_b": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_fallen_sol_a": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_fallen_sol_b": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_fallen_umb_a": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_fallen_umb_b": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_horse_fallen_sol": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_horse_fallen_umb": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_map_table": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_palisade_gate": {
+   "w": 96,
+   "h": 96
+  },
+  "bf_ram": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_scorch": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_shield_stand": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_siege_tower": {
+   "w": 96,
+   "h": 160
+  },
+  "bf_skeleton_armor": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_spike_barrier": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_sword_planted": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_sword_planted_dark": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_tent_burnt": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_tent_sol": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_tent_sol_cmd": {
+   "w": 128,
+   "h": 96
+  },
+  "bf_tent_torn": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_tent_umb": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_tent_umb_cmd": {
+   "w": 128,
+   "h": 96
+  },
+  "bf_wagon_broken_a": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_wagon_broken_b": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_wall_tower_sol": {
+   "w": 64,
+   "h": 128
+  },
+  "bf_wall_tower_umb": {
+   "w": 64,
+   "h": 128
+  },
   "v_basic_bush": {
    "w": 64,
    "h": 32
@@ -3573,6 +3689,90 @@
   "v_basic_stump_small": {
    "w": 32,
    "h": 32
+  },
+  "v_bridges_brick_h": {
+   "w": 288,
+   "h": 160
+  },
+  "v_bridges_brick_v": {
+   "w": 96,
+   "h": 288
+  },
+  "v_bridges_rope_h": {
+   "w": 256,
+   "h": 96
+  },
+  "v_bridges_rope_v": {
+   "w": 64,
+   "h": 256
+  },
+  "v_bridges_stone_h": {
+   "w": 224,
+   "h": 160
+  },
+  "v_bridges_stone_v": {
+   "w": 96,
+   "h": 224
+  },
+  "v_deco_gallows": {
+   "w": 64,
+   "h": 64
+  },
+  "v_deco_pillory": {
+   "w": 64,
+   "h": 96
+  },
+  "v_deco_spear_rack": {
+   "w": 64,
+   "h": 64
+  },
+  "v_deco_stocks": {
+   "w": 64,
+   "h": 64
+  },
+  "v_deco_target": {
+   "w": 64,
+   "h": 64
+  },
+  "v_deco_tent_side": {
+   "w": 96,
+   "h": 128
+  },
+  "v_deco_wagon_covered": {
+   "w": 96,
+   "h": 128
+  },
+  "v_deco_wagon_open": {
+   "w": 96,
+   "h": 64
+  },
+  "v_deco_wheels": {
+   "w": 96,
+   "h": 96
+  },
+  "v_fortkit_gate_arch": {
+   "w": 96,
+   "h": 96
+  },
+  "v_fortkit_ladder": {
+   "w": 64,
+   "h": 192
+  },
+  "v_fortkit_stairs": {
+   "w": 96,
+   "h": 128
+  },
+  "v_fortkit_tower_block": {
+   "w": 64,
+   "h": 128
+  },
+  "v_fortkit_wall_low_a": {
+   "w": 160,
+   "h": 64
+  },
+  "v_fortkit_wall_low_b": {
+   "w": 160,
+   "h": 64
   },
   "v_graveyard_coffin_closed": {
    "w": 64,
@@ -3765,6 +3965,90 @@
   "v_graveyard_sword_grave": {
    "w": 32,
    "h": 64
+  },
+  "v_smith_anvil_a": {
+   "w": 64,
+   "h": 32
+  },
+  "v_smith_anvil_b": {
+   "w": 32,
+   "h": 32
+  },
+  "v_smith_bench": {
+   "w": 64,
+   "h": 96
+  },
+  "v_smith_coal_pile": {
+   "w": 128,
+   "h": 64
+  },
+  "v_smith_forge_cone": {
+   "w": 128,
+   "h": 160
+  },
+  "v_smith_forge_small": {
+   "w": 96,
+   "h": 128
+  },
+  "v_smith_tool_rack": {
+   "w": 128,
+   "h": 96
+  },
+  "v_smith_tub_a": {
+   "w": 64,
+   "h": 64
+  },
+  "v_smith_tub_b": {
+   "w": 64,
+   "h": 64
+  },
+  "v_undead_bird_skull": {
+   "w": 32,
+   "h": 32
+  },
+  "v_undead_bones_a": {
+   "w": 64,
+   "h": 32
+  },
+  "v_undead_bones_b": {
+   "w": 32,
+   "h": 32
+  },
+  "v_undead_bones_c": {
+   "w": 64,
+   "h": 32
+  },
+  "v_undead_giant_skeleton": {
+   "w": 128,
+   "h": 96
+  },
+  "v_undead_jaw": {
+   "w": 32,
+   "h": 32
+  },
+  "v_undead_ribs": {
+   "w": 64,
+   "h": 32
+  },
+  "v_undead_ruin_a": {
+   "w": 96,
+   "h": 128
+  },
+  "v_undead_ruin_arch": {
+   "w": 96,
+   "h": 96
+  },
+  "v_undead_ruin_b": {
+   "w": 96,
+   "h": 128
+  },
+  "v_undead_skull_cluster": {
+   "w": 64,
+   "h": 64
+  },
+  "v_undead_skull_trio": {
+   "w": 32,
+   "h": 32
   },
   "v_volcano_boulder": {
    "w": 32,
