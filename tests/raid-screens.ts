@@ -78,10 +78,14 @@ async function main() {
     // Вестник в Эмберхолле: подойти и открыть окно сбора
     const h = RAID_HERALDS[0];
     await send(a, "dbg", { op: "tp", x: h.x, y: h.y + 26 });
-    await sleep(1200);
-    await a.keyboard.press("f");
+    // ждём, пока телепорт дойдёт до клиента (на медленной машине 1,2 с бывало мало — F жали вдали от Вестника)
+    await a.waitForFunction((x, y) => { const n = (window as any).__net, s = n.room?.state?.players?.get?.(n.id); return s && Math.hypot(s.x - x, s.y - y) < 40; }, { timeout: 10000 }, h.x, h.y + 26)
+      .catch(async () => { throw new Error(`телепорт к ${h.id} (${h.x},${h.y + 26}) не дошёл: ${await a.evaluate(() => { const n = (window as any).__net, u = n.room?.state?.players?.get?.(n.id); return JSON.stringify(u && [u.x, u.y]); })}`); });
+    await sleep(600);
+    await a.keyboard.press("g"); // «Экшен» по умолчанию: G — взаимодействие, F — умение 8
     await sleep(500);
     const opened = await a.evaluate(() => !!document.querySelector(".raid-dialog"));
+    console.log(`  вестник ${h.id}: окно по G — ${opened ? "да" : "нет, открываем напрямую"}`);
     if (!opened) await a.evaluate((id) => (window as any).__game.registry.get("hud").raid.open(id), h.id);
     await waitFor(a, () => !!document.querySelector(".raid-dialog"), 5000, "окно сбора");
     await sleep(600);
@@ -96,10 +100,10 @@ async function main() {
     await shot(a, "3-antechamber");
     await send(a, "dbg", { op: "auto" });
     await send(a, "dbg", { op: "god" });
-    await waitFor(a, () => (window as any).__net.room.state.stage === "pull", 15000, "этап pull");
+    await waitFor(a, () => (window as any).__net.room?.state?.stage === "pull", 30000, "этап pull");
     await sleep(700);
     await shot(a, "4-start-banner");
-    await waitFor(a, () => (window as any).__net.room.state.stage === "fight", 20000, "бой");
+    await waitFor(a, () => (window as any).__net.room?.state?.stage === "fight", 40000, "бой");
     await sleep(2200);
     await shot(a, "5-awake-yell");
     await sleep(6000);
