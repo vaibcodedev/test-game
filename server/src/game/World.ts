@@ -37,7 +37,7 @@ import { Townfolk } from "./townfolk";
 import { Soldiers } from "./soldiers";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
 import { applySlow, endShield, tickEffects } from "./effects";
-import { auraPack } from "./auras";
+import { auraPack, targetAuras } from "./auras";
 import * as auraFx from "./auraFx";
 import type { Player } from "./Player";
 
@@ -59,6 +59,8 @@ export interface HitOpts {
   noReflect?: boolean;
   /** Не прерывать скрытность атакующего (яд). */
   noBreak?: boolean;
+  /** Потолок снижения бронёй (доля 0…1): удар почти мимо брони (лучники башен стен, data/patrols.json towers.armorCap). */
+  armorCap?: number;
 }
 
 /**
@@ -370,6 +372,10 @@ export class World {
       }
       // обозначения бафов и дебафов на юните (Unit.fx, задача 129): набор ключей из того же списка эффектов; поле уходит всей комнате, как x, y и hp, но только при смене набора
       auraFx.playerFx(this, p, au.list);
+      // эффекты выбранной цели (плашка цели): только этому игроку, при смене цели и при смене подписи списка
+      const ta = p.targetId ? this.actor(p.targetId) : undefined;
+      const tm = targetAuras(p, ta && !this.isDead(ta) && !(ta !== p && this.hostile(p, ta) && this.stealthed(ta)) ? ta : undefined, this.time, wall);
+      if (tm) p.send("tauras", tm);
       if (p.bagsDirty) {
         p.bagsDirty = false;
         p.send("loot", [...p.bags.values()]);
@@ -467,7 +473,7 @@ export class World {
     let armor = this.isPlayer(dst) ? dst.derived.armor + (dst.warcryUntil > this.time ? dst.warcryArmor : 0) : dst.stats.armor;
     if (o.kind && o.kind !== "phys") armor *= 0.5;
     const preArmor = amount;
-    amount *= 1 - armorReduction(armor, level);
+    amount *= 1 - Math.min(armorReduction(armor, level), o.armorCap ?? 1);
     if (!this.isPlayer(dst)) amount *= (dst.ai.weak?.dmg?.[o.kind ?? "phys"] ?? 1) * dst.dmgTakenMul;
     // PvP (BALANCE.md «PvP»): устойчивость по уровню цели, бонус заточки оружия атакующего — долей plusShare. Сразу после брони:
     // поглощения ресурсом («Мановая броня»), щиты и лечение от заблокированного считаются в единицах здоровья, а урон героя растёт как L².

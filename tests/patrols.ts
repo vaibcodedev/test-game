@@ -13,6 +13,8 @@ import { MOBS } from "../shared/mobs";
 import { World } from "../server/src/game/World";
 import { Mob } from "../server/src/game/Mob";
 import { Player, newSave } from "../server/src/game/Player";
+import type { PlayerSave } from "../server/src/db";
+import { raidBotSave } from "../server/src/arena/botgear";
 import { WorldState } from "../server/src/rooms/schema";
 import type { ClassId } from "../shared/classes";
 
@@ -182,6 +184,99 @@ const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.rang
   run(4000);
   check("своего башня не трогает", dmgTo(p, isTower) === 0);
   drop(p);
+}
+
+// ---------- 5б. башни: доля здоровья и пристрелка ----------
+{
+  const T = P.towers, R = T.range;
+  const isAnyTower = (s: unknown) => S.towers.some((t) => t.mob === s);
+  const foeTowers = (x: number, y: number) => S.towers.filter((t) => t.faction === "solgard" && Math.hypot(t.x - x, t.y - y) < R).length;
+  const tw = S.towers.find((t) => t.faction === "solgard" && Math.abs(t.mob.y / TILE - 110) < 3)!;
+  /** Точка у башни tw, где в радиусе ровно n башен Сольгарда (перебор кольцами). */
+  const spotWith = (n: number, from = tw) => {
+    for (let r = 60; r < R; r += 30) for (let k = 0; k < 24; k++) {
+      const x = from.x + Math.cos((k / 24) * Math.PI * 2) * r, y = from.y + Math.sin((k / 24) * Math.PI * 2) * r;
+      if (foeTowers(x, y) === n) return { x, y };
+    }
+    return null;
+  };
+  const mk = (save: PlayerSave, x: number, y: number) => {
+    const p = new Player(`h${++uid}`, `Герой${uid}`, save, () => {});
+    w.addPlayer(p);
+    p.unit.x = x;
+    p.unit.y = y;
+    return p;
+  };
+  const naked40 = () => { const s = newSave("deathknight", { x: 0, y: 0 }); s.level = 40; for (const k of Object.keys(s.equip)) (s.equip as Record<string, unknown>)[k] = null; return s; };
+  const max100 = () => { const s = raidBotSave("deathknight", 100, "", "max"); for (const it of Object.values(s.equip)) if (it) it.plus = 10; return s; };
+  /** Стоит под башнями (здоровье держим полным, считаем урон башен): мс до набора урона = maxHp (смерть), доля за 30 с. */
+  const stand = (save: PlayerSave, at: { x: number; y: number }) => {
+    const p = mk(save, at.x, at.y);
+    keep.push(p);
+    hits = [];
+    let death = -1;
+    for (let t = 0; t < 30000; t += 50) {
+      p.unit.hp = p.unit.maxHp;
+      p.unit.x = at.x; p.unit.y = at.y;
+      w.update(50);
+      if (death < 0 && dmgTo(p, isAnyTower) >= p.unit.maxHp) death = t + 50;
+    }
+    const share = dmgTo(p, isAnyTower) / p.unit.maxHp;
+    drop(p);
+    return { death, share, hp: p.unit.maxHp, armor: p.derived.armor };
+  };
+  run(6000); // башни перезарядились, прошлые пристрелки сброшены
+  // пробежка мимо башни: 150 px/с по прямой в 300 px от лучника
+  {
+    const p = mk(naked40(), tw.x - 700, tw.y + 300);
+    hits = [];
+    let shots = 0;
+    for (let x = tw.x - 700; x <= tw.x + 700; x += 7.5) {
+      p.unit.x = x; p.unit.y = tw.y + 300;
+      w.update(50);
+    }
+    run(1500);
+    shots = hits.filter((h) => h.dst === p && isAnyTower(h.src)).length;
+    const lost = dmgTo(p, isAnyTower) / p.unit.maxHp;
+    check("герой 40 ур. без экипировки пробегает мимо башни и выживает", lost < 1 && shots >= 2 && shots <= 6, `${shots} выстрелов, −${(lost * 100).toFixed(0)} % здоровья`);
+    w.removePlayer(p.id);
+  }
+  // пристрелка сбрасывается после ухода из радиуса
+  {
+    const at = spotWith(1)!;
+    const p = mk(naked40(), at.x, at.y);
+    keep.push(p);
+    run(6000);
+    const vals = () => hits.filter((h) => h.dst === p && isAnyTower(h.src)).map((h) => h.v);
+    hits = [];
+    run(5000, () => { p.unit.x = at.x; p.unit.y = at.y; });
+    const a = vals();
+    hits = [];
+    run(T.resetMs + 1500, () => { p.unit.x = tw.x + 3000; p.unit.y = tw.y; });
+    hits = [];
+    run(1600, () => { p.unit.x = at.x; p.unit.y = at.y; });
+    const b = vals();
+    check("пристрелка растёт с каждым выстрелом", a.length >= 3 && a.every((v, i) => !i || v > a[i - 1]), a.join(" → "));
+    check("ушёл дальше resetMs — пристрелка с нуля", b.length >= 1 && b[0] < a[0] && b[0] <= Math.ceil(p.unit.maxHp * T.pctMaxHp), `${a.at(-1)} → ${b[0]} (без пристрелки ${Math.round(p.unit.maxHp * T.pctMaxHp)} до брони)`);
+    drop(p);
+  }
+  const one = spotWith(1)!, pair = spotWith(2, S.towers.find((t) => t.faction === "solgard" && spotWith(2, t))!)!;
+  const r40 = stand(naked40(), one), r40b = stand(naked40(), pair);
+  const r100 = stand(max100(), one), r100b = stand(max100(), pair);
+  const sec = (r: { death: number }) => r.death < 0 ? "жив" : `${(r.death / 1000).toFixed(1)} с`;
+  console.log(`  до смерти у стены: 40 ур. без экипировки — 1 башня ${sec(r40)}, 2 башни ${sec(r40b)}; 100 ур. +10 (hp ${r100.hp}, броня ${r100.armor}) — 1 башня ${sec(r100)}, 2 башни ${sec(r100b)}`);
+  check("герой 100 ур. в легендарках +10 под башней 30 с — погибает", r100.death > 0 || r100.share > 0.8, `урон ${(r100.share * 100).toFixed(0)} % здоровья`);
+  // свой под башней цел
+  {
+    const s = raidBotSave("warrior", 100, "", "max");
+    for (const it of Object.values(s.equip)) if (it) it.plus = 10;
+    const own = mk(s, one.x, one.y);
+    keep.push(own);
+    hits = [];
+    run(8000, () => { own.unit.x = one.x; own.unit.y = one.y; });
+    check("своего башня не трогает (100 ур.)", dmgTo(own, isAnyTower) === 0 && !S.towerRamp.get(own.id)?.n);
+    drop(own);
+  }
 }
 
 // ---------- 6. столица: стража сектора ----------

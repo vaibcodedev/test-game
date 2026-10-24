@@ -201,6 +201,8 @@ export class Soldiers {
   /** Все бойцы-юниты (в w.mobs). */
   readonly list: Mob[] = [];
   readonly towers: Tower[] = [];
+  /** Пристрелка башен по герою (id): n — выстрелов по нему подряд, seen — когда он последний раз был в радиусе вражеской башни. */
+  readonly towerRamp = new Map<string, { n: number; seen: number }>();
   readonly sites: SoldierSite[] = [];
   private scanAt = 0;
   private mobScanAt = 0;
@@ -424,9 +426,25 @@ export class Soldiers {
     }
   }
 
-  /** Лучники на башнях: ближайший враг в радиусе — стрела со стены (стена не мешает: стреляют сверху). */
+  /**
+   * Лучники на башнях: ближайший враг в радиусе — стрела со стены (стена не мешает: стреляют сверху). Выстрел снимает pctMaxHp
+   * максимального здоровья цели, броня режет не больше armorCap; пристрелка — каждый следующий выстрел по той же цели (любой башни)
+   * сильнее на rampPerShot, до rampMax; цель вне радиуса всех вражеских башен дольше resetMs (или погибла) — пристрелка с нуля.
+   * Щиты, блок и снижения урона работают как обычно (World.hit).
+   */
   private shootTowers() {
-    const t = this.w.time, R = P.towers.range;
+    const t = this.w.time, T = P.towers, R = T.range;
+    for (const p of this.w.players.values()) {
+      const st = this.towerRamp.get(p.id);
+      if (p.dead) { if (st) st.n = 0; continue; }
+      if (!this.towers.some((tw) => tw.faction !== p.faction && dist(tw, p) < R)) continue;
+      if (!st) this.towerRamp.set(p.id, { n: 0, seen: t });
+      else {
+        if (t - st.seen > T.resetMs) st.n = 0;
+        st.seen = t;
+      }
+    }
+    for (const id of this.towerRamp.keys()) if (!this.w.players.has(id)) this.towerRamp.delete(id);
     for (const tw of this.towers) {
       if (t < tw.attackAt) continue;
       let best: Player | null = null, bd = R;
@@ -437,11 +455,15 @@ export class Soldiers {
       }
       if (!best) continue;
       const p = best;
-      tw.attackAt = t + P.towers.attackMs;
+      tw.attackAt = t + T.attackMs;
+      const st = this.towerRamp.get(p.id) ?? { n: 0, seen: t };
+      this.towerRamp.set(p.id, st);
+      const mult = Math.min(T.rampMax, 1 + T.rampPerShot * st.n++);
       const ms = (bd / P.arrowSpeed) * 1000;
       this.w.emit({ t: "proj", k: "arrow", from: tw.mob.id, fx: tw.x, fy: tw.y, to: p.id, tx: p.x, ty: p.y, ms });
       this.w.later(ms, () => {
-        if (this.foeOf(tw.faction, p) && dist(tw, p) <= R * 1.25) this.w.hit(tw.mob, p, { kind: "phys" });
+        if (this.foeOf(tw.faction, p) && dist(tw, p) <= R * 1.25)
+          this.w.hit(tw.mob, p, { kind: "phys", flat: p.unit.maxHp * T.pctMaxHp * mult, armorCap: T.armorCap, canCrit: false });
       });
     }
   }
