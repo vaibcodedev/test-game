@@ -23,6 +23,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { PC, hash01, hex, mix, type RGBA, type Ramp } from "./canvas";
+import { writeRaiderArt } from "./zone-bosses-art-sol_raider_chief";
+import { writeRevenantArt } from "./zone-bosses-art-umb_revenant_reaper";
+import { writeGolemArt } from "./zone-bosses-art-sol_rune_golem";
+import { writeFogTreantArt } from "./zone-bosses-art-umb_fog_treant";
+import { writeChainedBeastArt } from "./zone-bosses-art-sol_chained_beast";
+import { writeMinotaurArt } from "./zone-bosses-art-umb_ash_minotaur";
+import { writeAbominationArt } from "./zone-bosses-art-umb_marsh_abomination";
 
 export const ZB_FRAME = 64;
 const N = ZB_FRAME;
@@ -2262,4 +2269,11 @@ export function writeTreantArt(root: string, outDir: string): string[] {
 /** Арт боссов по id карточки (data/zone-bosses.json): шаг 2 — пилот-древень, шаг 3 — остальные семь тем же способом. */
 export const ZONE_BOSS_ART: Record<string, { name: string; write: (root: string, outDir: string) => string[] }> = {
   sol_forest_warden: { name: "treant", write: writeTreantArt },
+  sol_raider_chief: { name: "sol_raider_chief", write: writeRaiderArt },
+  umb_revenant_reaper: { name: "umb_revenant_reaper", write: writeRevenantArt },
+  sol_rune_golem: { name: "sol_rune_golem", write: writeGolemArt },
+  umb_fog_treant: { name: "umb_fog_treant", write: writeFogTreantArt },
+  umb_ash_minotaur: { name: "umb_ash_minotaur", write: writeMinotaurArt },
+  sol_chained_beast: { name: "sol_chained_beast", write: writeChainedBeastArt },
+  umb_marsh_abomination: { name: "umb_marsh_abomination", write: writeAbominationArt },
 };
