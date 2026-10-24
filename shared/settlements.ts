@@ -153,7 +153,6 @@ function make(p: RawPlace): Settlement {
 }
 
 export const SETTLEMENTS: Settlement[] = (world.places.list as RawPlace[]).filter((p) => p.kind === "settlement").map(make);
-export const settlementById = (id: string) => SETTLEMENTS.find((s) => s.id === id);
 
 /** Клетки проёма ворот (тайлы мира). */
 export function gateCells(s: Settlement): Cell[] {

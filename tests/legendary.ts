@@ -197,7 +197,7 @@ async function main() {
     const p = mkPlayer(w, "mage", 64, "Гладиатор");
     const delivered: number[] = [];
     const prev = services.arena;
-    (services as { arena: unknown }).arena = { pendingRewards: () => [{ id: 7, rank: "gold", mode: "solo", season: 3 }], markDelivered: (id: number) => delivered.push(id) };
+    (services as { arena: unknown }).arena = { pendingRewards: () => [{ id: 7, rank: "gold", mode: "solo", season: 3 }], markDelivered: (id: number) => delivered.push(id), rating: () => ({ wins: 0 }) };
     try { deliverArenaRewards(p); } finally { (services as { arena: unknown }).arena = prev; }
     const med = p.save.inventory.find((i) => i?.unique === "arena_gold");
     assert(med && med.ilvl === 64 && med.req === 61 && delivered[0] === 7, "медальон: " + JSON.stringify(med));

@@ -1,5 +1,3 @@
-export const GAME_TITLE = "Пепельный Предел";
-
 /** Размер тайла и базовая сетка пиксель-арта. */
 export const TILE = 32;
 /**
@@ -32,7 +30,6 @@ export const PLAYER_RADIUS = 10;
 /** Предел уровня (задача 39, BALANCE.md); levelCap в data/world.json должен совпадать. */
 export const MAX_LEVEL = 100;
 export const STAT_POINTS_PER_LEVEL = 3;
-export const SKILL_POINTS_PER_LEVEL = 1;
 export const INVENTORY_SIZE = 24;
 export const LOOT_BAG_TTL_MS = 90_000;
 export const PICKUP_RANGE = 72;

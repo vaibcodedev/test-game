@@ -25,7 +25,7 @@ const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 /** Кольцо под ногами у выбранного и у наведённого: враг — красное (P.foe), союзник — зелёное (P.ally). */
 export const RING_FOE = Phaser.Display.Color.HexStringToColor(P.foe).color;
 export const RING_ALLY = Phaser.Display.Color.HexStringToColor(P.ally).color;
-const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
+const MELEE = new Set(["guard", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
 /** Прямоугольник непрозрачных пикселей кадра (в пикселях кадра, слева сверху): считается один раз на кадр текстуры, по картинке листа. */
 const alphaCache = new Map<string, readonly [number, number, number, number] | null>();
 const sheetData = new Map<string, ImageData | null>();
@@ -601,7 +601,7 @@ export class UnitView {
   private guardBadge(left: number, cy: number) {
     // боец фракции — цвета её герба (data/npc-gear.json heraldry.badge), стража Эмберхолла — красный
     const hb = this.u.kind === UnitKind.Soldier ? HERALDRY[this.u.faction]?.badge : undefined;
-    const c = hb ? hex(hb.field) : this.u.sprite === "guard_desert" ? 0x2fb0a2 : this.u.sprite === "guard_snow" ? 0x4a8ae8 : 0xd02a34;
+    const c = hb ? hex(hb.field) : 0xd02a34;
     const bx = left - 9, by = Math.round(cy - 5);
     const g = this.frameGfx;
     g.fillStyle(WELL, 0.9).fillRect(bx - 1, by - 1, 9, 11).fillRect(bx, by + 9, 7, 1).fillRect(bx + 1, by + 10, 5, 1);

@@ -14,15 +14,8 @@
 import { CHEST, fanRays, HIT_EDGE, wallEnds, wallMark, type Placed } from "../../../shared/skillShape";
 import type { SkillDef } from "../../../shared/skills";
 import type { CastPlan } from "./castResolve";
-import { saveMouseOpts, mouseOpts, type AimMode } from "./keybinds";
+import { mouseOpts } from "./keybinds";
 import { DEPTH } from "./terrain";
-
-export const getAimMode = (): AimMode => mouseOpts.aimMode;
-export function setAimMode(m: AimMode) {
-  if (m !== "preview" && m !== "quick" && m !== "confirm") return;
-  mouseOpts.aimMode = m;
-  saveMouseOpts();
-}
 
 const OK = 0xfff0a0, BAD = 0xff4040;
 type Elem = "fire" | "ice" | "light" | "dark" | "poison" | "steel";

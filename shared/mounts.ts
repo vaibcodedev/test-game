@@ -27,7 +27,6 @@ export interface MountDef {
 export const MOUNTS: Record<string, MountDef> = Object.fromEntries(Object.entries(data.mounts).map(([id, m]) => [id, { ...(m as object), id } as MountDef]));
 export const MOUNT_IDS = Object.keys(MOUNTS);
 export const MOUNT_CAST_MS = data.castMs;
-export const MOUNT_COMBAT_LOCK_MS = data.combatLockMs;
 export const MOUNT_TIERS = data.tiers as Record<MountTier, string>;
 export const MOUNT_SOURCES = data.sources as Record<MountSource, string>;
 export const mountSprite = (id: string) => `mount_${id}`;

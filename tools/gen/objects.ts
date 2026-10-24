@@ -250,16 +250,6 @@ const crystal: Art = () => {
   }
   return c.outline();
 };
-const bag = (boss: boolean): Art => () => {
-  const c = new PC(32, 32);
-  const r = boss ? P.cloth.purple : P.leather;
-  c.shadedEllipse(16, 22, 9, 8, r);
-  c.poly([[11, 15], [21, 15], [18, 11], [14, 11]], r[2]);
-  c.rect(11, 15, 10, 2, P.gold[2]);
-  c.ellipse(16, 21, 2.5, 2.5, P.gold[3]);
-  if (boss) for (const [x, y] of [[8, 10], [24, 12], [16, 6]]) c.set(x, y, P.gold[4]);
-  return c.outline();
-};
 
 /** Колонна цитадели 64×100: обсидиан с раскалёнными трещинами. */
 const chaosPillar: Art = () => {
@@ -309,7 +299,6 @@ export const OBJECT_ART: Record<string, Art> = {
   fountain, stall, lamp, well, barrel, crate, pillar, torch,
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),
   mushrooms: mushrooms(false), mushrooms_glow: mushrooms(true), lilypad, bones, ember_vent: emberVent, crystal, chaos_pillar: chaosPillar, raid_portal: raidPortal,
-  bag: bag(false), bag_boss: bag(true),
   // добыча на земле: листы 20 кадров (tools/gen/loot.ts), клиент — client/src/game/lootView.ts
   ...lootObjects(),
   ...TOWN_ART,

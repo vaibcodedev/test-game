@@ -30,8 +30,7 @@ const tips = (): string[] => {
 };
 
 /**
- * Окно «Помощь»: клавиши по разделам (hotkeySections) и советы. Все разделы лежат в одном .keys — у таблицы одна колонка клавиш;
- * её читает tests/keybinds-screens.ts (innerText первого .keys).
+ * Окно «Помощь»: клавиши по разделам (hotkeySections) и советы. Все разделы лежат в одном .keys — у таблицы одна колонка клавиш.
  */
 export function fillHelp(body: Element) {
   const sections = hotkeySections(keybinds).map((s) => `<h3 class="sec-h">${esc(s.title)}</h3><dl>${s.rows.map((r) => `<div class="keys-row"><dt><span>${keysCell(r.keys)}</span></dt><dd>${esc(r.what)}</dd></div>`).join("")}</dl>`).join("");

@@ -125,7 +125,6 @@ export const phaseNo = (n: number) => ROMAN[n] ?? String(n + 1);
 
 // ---------------------------------------------------------------- карта
 const M = D.map;
-export const RAID_W = M.w, RAID_H = M.h;
 const px = (t: Tile) => ({ x: t.x * TILE, y: t.y * TILE });
 /** Точки карты цитадели в пикселях. */
 export const RAID_POINTS = {

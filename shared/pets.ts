@@ -39,7 +39,6 @@ export const PET_RESUMMON_MS = data.resummonMs;
 export const PET_FOLLOW_DIST = data.followDist;
 export const PET_TELEPORT_DIST = data.teleportDist;
 export const PET_DROP_CHANCE = data.dropChance;
-export const FIRST_PET = "wolf";
 
 export const petStats = (def: PetDef, level: number) => ({
   maxHp: Math.round(def.hp * (40 + level * 24)),

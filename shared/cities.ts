@@ -264,8 +264,6 @@ export function nearestCity(found: readonly string[] | undefined, px: number, py
 
 // ---------- телепорт ----------
 export const TELEPORT_CAST_MS = 3000;
-/** Телепорт нельзя, пока не прошло столько мс после последнего боя. */
-export const TELEPORT_COMBAT_MS = 8000;
 export const TELEPORT_RANGE = 110;
 /** Цена по расстоянию между городами: 50–200 золота. */
 export function teleportPrice(a: City, b: City): number {

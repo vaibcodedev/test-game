@@ -1,6 +1,6 @@
 /** Фракции из /data/factions.json: Сольгард и Умбрат. Правила вражды: спорные зоны, арена, нейтральные города. */
 import data from "../data/factions.json";
-import { CLASSES, classFaction, type ClassId, type FactionId } from "./classes";
+import { type ClassId, type FactionId } from "./classes";
 import { cityAtTile, isEnemyCapital } from "./cities";
 import { TILE } from "./constants";
 import { isTownZone, Zone, ZONES, zoneAtPx, type WorldMap } from "./map";
@@ -27,17 +27,13 @@ export const FACTIONS = Object.fromEntries(
 ) as Record<FactionId, FactionDef>;
 export const FACTION_IDS = Object.keys(FACTIONS) as FactionId[];
 export const isFactionId = (v: unknown): v is FactionId => typeof v === "string" && v in FACTIONS;
-export const factionOf = classFaction;
 export const enemyFaction = (f: FactionId): FactionId => (f === "solgard" ? "umbrath" : "solgard");
 /** Цвет врага (героя противоположной фракции): ник, полоска здоровья, чат, мини-карта. */
 export const FOE_COLOR = "#ff3030";
 export const factionColor = (f: FactionId | string | undefined) => FACTIONS[(f as FactionId) ?? "solgard"]?.color ?? "#a8e0ff";
-/** Класс принадлежит фракции. */
-export const classInFaction = (cls: ClassId, f: FactionId) => CLASSES[cls]?.faction === f;
 
 /** Спорные зоны (PvP между фракциями в открытом мире). */
 const PVP = new Set<number>(data.pvpZones.map((n) => Zone[n as keyof typeof Zone]).filter((z) => z !== undefined));
-export const isPvpZone = (z: Zone) => PVP.has(z);
 export const NEUTRAL_CITIES = new Set<string>(data.neutralCities);
 export const OUTLAW = data.outlaw;
 

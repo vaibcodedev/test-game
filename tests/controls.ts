@@ -3,9 +3,14 @@ import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from 
 import { generateMap } from "../shared/map";
 import { homeCity } from "../shared/cities";
 import { MAP_SEED } from "../shared/constants";
-import { bodyDist, pickOrder, type PickCtx, type PickKind, type PickSource } from "../client/src/game/castResolve";
+import { pickOrder, type PickCtx, type PickKind, type PickSource } from "../client/src/game/castResolve";
 
 const MAP = generateMap(MAP_SEED);
+/** Заглушка зоны тела для pickOrder (круг r 14, центр на 12 px выше ног; как в tests/cast-resolve.ts). Настоящая зона — client/src/game/hit.ts (tests/pick.ts). */
+const bodyDist = (x: number, y: number, wx: number, wy: number, reach: number): number => {
+  const d = Math.hypot(wx - x, wy - (y - 12));
+  return d < 14 + reach ? d : Infinity;
+};
 // слизень — у столицы героя (воин — Сольгард, Аурелион): ближайший к Эмберхоллу теперь у вражеской столицы, где героя бьёт стража (задача 132)
 const home = homeCity("solgard").spawn;
 const spawns = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
@@ -241,7 +246,7 @@ async function main() {
         const foe: U = { id, x: mx, y: my, foe: true }, tank: U = { id: ally.id, x: mx + 60, y: my, foe: false };
         const click = (units: U[], items: { kind: "bag" | "npc"; x: number; y: number; r: number }[], wx: number, wy: number, o: Partial<PickCtx> = {}): [PickKind, string | null] => {
           // mine — мой герой: он берётся без допуска (own), остальные — с допуском
-          const nearest = (list: U[], reach: number, own = reach) => { let b: string | null = null, bd = Infinity; for (const u of list) { const d = bodyDist(u.x, u.y, false, false, wx, wy, u.mine ? own : reach); if (d < bd) { bd = d; b = u.id; } } return b; };
+          const nearest = (list: U[], reach: number, own = reach) => { let b: string | null = null, bd = Infinity; for (const u of list) { const d = bodyDist(u.x, u.y, wx, wy, u.mine ? own : reach); if (d < bd) { bd = d; b = u.id; } } return b; };
           const src: PickSource = {
             foe: (r) => nearest(units.filter((u) => u.foe), r),
             townFoe: () => null,

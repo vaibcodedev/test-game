@@ -1,6 +1,6 @@
 /** Объекты и иконки ресурсов биомов: пустыня, снега, вулкан, подводная бухта. Опорная точка — нижняя середина. */
-import { PC, hash01, hex, ramp, rng, shade, withA, type Ramp } from "./canvas";
-import { BIOME, OUTLINE_SOFT, OUTLINE_WATER, P } from "./palette";
+import { PC, hash01, hex, ramp, rng, withA, type Ramp } from "./canvas";
+import { BIOME, OUTLINE_SOFT, P } from "./palette";
 
 type Art = () => PC;
 const { cactusG, sandRock, snowRock, basaltR } = BIOME;
@@ -124,54 +124,11 @@ const obsidianSpire: Art = () => {
 const basalt: Art = () => boulder(32, 28, 53, basaltR, hex("#f06a1a"));
 const sandstone: Art = () => boulder(32, 28, 61, sandRock);
 
-const coralA: Art = () => {
-  const c = new PC(32, 40);
-  const R = rng(3);
-  const col = P.coral.pink;
-  c.line(16, 38, 16, 18, col[2], 4);
-  for (const [x, y, ex, ey] of [[16, 28, 7, 12], [16, 24, 25, 8], [16, 33, 6, 26], [16, 30, 26, 22]] as number[][]) {
-    c.line(x, y, ex, ey, col[2], 3);
-    c.ellipse(ex, ey, 2.5, 2.5, col[3]);
-  }
-  c.ellipse(16, 16, 3.5, 3.5, col[3]);
-  for (let i = 0; i < 8; i++) c.set(8 + R() * 16, 14 + R() * 24, col[1]);
-  return c.outline();
-};
-const coralB: Art = () => {
-  const c = new PC(32, 32);
-  c.shadedEllipse(16, 22, 11, 8, P.coral.orange);
-  for (const [x, y] of [[9, 20], [14, 16], [20, 17], [24, 21], [16, 22], [11, 25], [20, 25]]) { c.ellipse(x, y, 2.2, 1.8, P.coral.orange[0]); c.set(x, y - 1, P.coral.orange[3]); }
-  c.shadedEllipse(8, 27, 4, 3, P.coral.purple);
-  c.shadedEllipse(25, 27, 4.5, 3.5, P.coral.purple);
-  return c.outline();
-};
-const kelp: Art = () => {
-  const c = new PC(32, 56);
-  const L = ramp("#143a24", "#1e5a30", "#2e8040", "#58b058");
-  for (const [x0, h, ph] of [[10, 44, 0], [16, 54, 2], [22, 38, 4]]) {
-    for (let y = 0; y < h; y++) {
-      const x = x0 + Math.sin(y * 0.22 + ph) * 3;
-      c.rect(x, 55 - y, 2, 1, L[1 + (y % 6 < 3 ? 1 : 2)]);
-      if (y % 9 === 4) c.rect(x + 2, 55 - y, 2, 1, L[3]);
-    }
-  }
-  return c.outline(OUTLINE_WATER);
-};
 const shell: Art = () => {
   const c = new PC(32, 32);
   c.shadedEllipse(16, 24, 5, 4, ramp("#7a5a6a", "#b08a98", "#e0b8c0", "#fff0f0"));
   for (let i = -2; i <= 2; i++) c.line(16, 27, 16 + i * 2, 21, hex("#b08a98"), 1);
   return c.outline();
-};
-const airVent: Art = () => {
-  const c = new PC(32, 32);
-  c.shadedEllipse(16, 26, 9, 4, P.seabed.map((x) => shade(x, 0.8)));
-  c.ellipse(16, 26, 5, 2, hex("#0a2a3a"));
-  for (const [x, y, r] of [[16, 20, 3], [13, 13, 2.2], [19, 8, 1.8], [15, 3, 1.4]]) {
-    c.ellipse(x, y, r, r, withA(hex("#bfeaff"), 170));
-    c.set(x - 1, y - 1, hex("#ffffff"));
-  }
-  return c.outline(OUTLINE_WATER);
 };
 
 // ---- узлы добычи ----
@@ -213,7 +170,7 @@ export const BIOME_ART: Record<string, Art> = {
   cactus, cactus_small: cactusSmall, palm, dry_bush: dryBush, sandstone,
   snow_pine: snowPine, snow_rock: snowRockArt, ice_spike: iceSpike, snow_bush: snowBush,
   obsidian_spire: obsidianSpire, basalt,
-  coral_a: coralA, coral_b: coralB, kelp, shell, air_vent: airVent,
+  shell,
   node_cactus: nodeCactus, node_ice: nodeIce, node_obsidian: nodeObsidian, node_pearl: nodePearl,
 };
 

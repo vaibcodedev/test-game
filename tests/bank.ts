@@ -1,5 +1,6 @@
 /** Проверки банка. Запуск: npx tsx tests/bank.ts */
 import { BANKER, SHARED_TAB } from "../shared/bank";
+import { QUESTS } from "../shared/quests";
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 
 type B = Bot & { bank: any; trade: any; req: any };
@@ -56,16 +57,18 @@ async function main() {
       await a.until(() => idxOf(a, "sword") >= 0 && !inBank(a, "sword"), 2000, "меч в сумке");
     });
 
-    await check("квестовый предмет нельзя в банк и склад", async () => {
+    // квестовый предмет — цель задания «добыть»; таких заданий сейчас может не быть (тогда проверки нет)
+    const QB = Object.values(QUESTS).find((q) => q.kind === "gather")?.target;
+    if (QB) await check("квестовый предмет нельзя в банк и склад", async () => {
       await toBanker(a);
-      a.send("dbg", { op: "item", base: "cactus_juice" });
-      await a.until(() => idxOf(a, "cactus_juice") >= 0, 2000, "сок кактуса");
+      a.send("dbg", { op: "item", base: QB });
+      await a.until(() => idxOf(a, QB) >= 0, 2000, QB);
       a.toasts.length = 0;
-      a.send("bank:put", { index: idxOf(a, "cactus_juice"), tab: 0, slot: 3 });
+      a.send("bank:put", { index: idxOf(a, QB), tab: 0, slot: 3 });
       await toast(a, "Квестовый предмет");
-      a.send("bank:put", { index: idxOf(a, "cactus_juice"), tab: SHARED_TAB, slot: 0 });
+      a.send("bank:put", { index: idxOf(a, QB), tab: SHARED_TAB, slot: 0 });
       await sleep(200);
-      assert(idxOf(a, "cactus_juice") >= 0 && !inBank(a, "cactus_juice"), "предмет остался в сумке");
+      assert(idxOf(a, QB) >= 0 && !inBank(a, QB), "предмет остался в сумке");
     });
 
     await check("зелья складываются в стопку", async () => {
@@ -114,7 +117,8 @@ async function main() {
         await a.until(() => inv(a).every(Boolean), 2000, "сумка полна");
         const before = bankItems(a).length;
         const need = Math.min(30 - before, inv(a).filter((it) => it?.base === "ring").length);
-        for (let i = 0, n = 0; i < inv(a).length && n < need; i++) if (inv(a)[i]?.base === "ring") { a.send("bank:put", { index: i }); n++; }
+        // не чаще 25 сообщений в секунду: лимит сервера (data/server.json) отключает флудящего клиента
+        for (let i = 0, n = 0; i < inv(a).length && n < need; i++) if (inv(a)[i]?.base === "ring") { a.send("bank:put", { index: i }); n++; await sleep(40); }
         await a.until(() => bankItems(a).length === before + need, 3000, "кольца в банке");
       }
       a.send("dbg", { op: "fill" });

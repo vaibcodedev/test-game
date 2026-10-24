@@ -588,7 +588,7 @@ export class GameScene extends Phaser.Scene {
       const right = p.rightButtonDown();
       this.mouse.set(wx, wy);
       // один порядок с подсветкой и курсором (castResolve.pickOrder): прицел → враг → мешок, узел, NPC → меню союзника → союзник → враг магнитом → земля;
-      // мешки и узлы добычи берут обе кнопки (враг точно — раньше них), NPC в «Экшене» — только ПКМ
+      // мешки, узлы добычи и NPC берут обе кнопки (враг точно — раньше них)
       const hit = this.pickAt(right, this.clickPick);
       switch (hit.kind) {
         case "aim": {

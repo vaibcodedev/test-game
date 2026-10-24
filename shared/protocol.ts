@@ -54,47 +54,6 @@ export const BUFF_STEALTH = 256;
 export const BUFF_CURSE = 512;
 export const BUFF_BLEED = 1024;
 
-// ---------- клиент -> сервер ----------
-export interface ClientMessages {
-  input: { mx: number; my: number };
-  moveTo: { x: number; y: number };
-  target: { id: string | null };
-  /** Каст умения (задачи 115, 133; shared/skillShape.ts): x, y — точка (у ground — прижата к дальности от предсказанной позиции, сервер берёт её с допуском GROUND_TOL);
-   *  a — угол прицела (линии и стена огня), dx, dy — вектор от героя (рывка или до точки линии): сервер применяет их от своей позиции в момент исполнения (и из очереди).
-   *  q — окно очереди (мс), ap — опция «Подходить к цели». */
-  skill: { id: string; x: number; y: number; target?: string | null; a?: number; dx?: number; dy?: number; q?: number; ap?: boolean };
-  /** n — сколько очков вложить разом: целое 1…10, без поля — одно (вкладывается не больше, чем есть свободных). */
-  alloc: { stat: StatKey; n?: number };
-  learn: { id: string };
-  equip: { index: number };
-  unequip: { slot: Slot };
-  use: { index: number };
-  "use:base": { base: string };
-  "bars:set": { bar: number; i: number; ref: SlotRef | null };
-  "bars:swap": { a: { bar: number; i: number }; b: { bar: number; i: number } };
-  sell: { index: number };
-  swap: { a: number; b: number };
-  buy: { base: string; qty?: number };
-  "cook:buy": { id: string; qty?: number };
-  "smith:upgrade": { index?: number; slot?: Slot };
-  "smith:buy": { id: string; qty?: number };
-  pickup: { bag: string; index?: number };
-  chat: { text: string };
-  respawn: Record<string, never>;
-  "mount:toggle": Record<string, never>;
-  "mount:select": { id: string };
-  "mount:buy": { id: string };
-  "pet:toggle": Record<string, never>;
-  "pet:select": { id: string };
-  "pet:buy": { id: string };
-  "bag:expand": Record<string, never>;
-  /** Осмотр игрока: sid — id сессии из state.players. Ответ — сообщение "inspect" (InspectReply). */
-  inspect: { sid: string };
-  "tp:go": { id: string };
-  "quest:accept": { id: string };
-  "quest:turn": { id: string };
-}
-
 // ---------- сервер -> клиент ----------
 export interface SelfState {
   id: string;

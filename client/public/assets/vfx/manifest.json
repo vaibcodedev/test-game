@@ -1,18 +1,4 @@
 {
- "arrow-volley": {
-  "frameW": 56,
-  "frameH": 52,
-  "frames": 16,
-  "fps": 20,
-  "anchor": [
-   0.5,
-   0.7
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 150
-  }
- },
  "arrow-volley@2": {
   "frameW": 112,
   "frameH": 104,
@@ -123,17 +109,6 @@
    "twinkle": 2600
   }
  },
- "axe-blood": {
-  "frameW": 50,
-  "frameH": 16,
-  "frames": 5,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
- },
  "axe-blood-hit": {
   "frameW": 9,
   "frameH": 24,
@@ -148,17 +123,6 @@
    "tail": 100
   }
  },
- "axe-spin": {
-  "frameW": 20,
-  "frameH": 20,
-  "frames": 15,
-  "fps": 30,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
- },
  "axe-spin-blood": {
   "frameW": 20,
   "frameH": 20,
@@ -169,38 +133,6 @@
    0.5
   ],
   "blend": "normal"
- },
- "banner-blood": {
-  "frameW": 26,
-  "frameH": 40,
-  "frames": 6,
-  "fps": 8,
-  "anchor": [
-   0.269,
-   0.95
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260,
-   "scaleIn": 0.7
-  }
- },
- "banner-holy": {
-  "frameW": 26,
-  "frameH": 40,
-  "frames": 6,
-  "fps": 8,
-  "anchor": [
-   0.269,
-   0.95
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260,
-   "scaleIn": 0.7
-  }
  },
  "banner-ring-solgard": {
   "frameW": 264,
@@ -266,22 +198,6 @@
    "dust": "dust-puff"
   }
  },
- "banner-zone-holy": {
-  "frameW": 264,
-  "frameH": 206,
-  "frames": 6,
-  "fps": 8,
-  "anchor": [
-   0.5,
-   0.602
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 260,
-   "fadeOut": 320,
-   "scaleIn": 0.8
-  }
- },
  "bf-ballista-n": {
   "frameW": 91,
   "frameH": 80,
@@ -306,18 +222,6 @@
   "blend": "normal",
   "r": 1
  },
- "bf-ballista-w": {
-  "frameW": 81,
-  "frameH": 94,
-  "frames": 12,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   0.92
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "bf-catapult-n": {
   "frameW": 57,
   "frameH": 84,
@@ -333,18 +237,6 @@
  "bf-catapult-s": {
   "frameW": 57,
   "frameH": 78,
-  "frames": 12,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   0.92
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "bf-catapult-w": {
-  "frameW": 93,
-  "frameH": 83,
   "frames": 12,
   "fps": 10,
   "anchor": [
@@ -390,18 +282,6 @@
   "blend": "normal",
   "r": 1
  },
- "bf-fire-l": {
-  "frameW": 40,
-  "frameH": 38,
-  "frames": 16,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   1
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "bf-fire-m": {
   "frameW": 24,
   "frameH": 35,
@@ -426,30 +306,6 @@
   "blend": "normal",
   "r": 1
  },
- "bf-fire-t": {
-  "frameW": 29,
-  "frameH": 52,
-  "frames": 16,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   1
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "bf-flame-torch": {
-  "frameW": 26,
-  "frameH": 42,
-  "frames": 12,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   1
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "bf-forge-cone": {
   "frameW": 98,
   "frameH": 146,
@@ -467,18 +323,6 @@
   "frameH": 130,
   "frames": 12,
   "fps": 8,
-  "anchor": [
-   0.5,
-   1
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "bf-gate-stone": {
-  "frameW": 82,
-  "frameH": 62,
-  "frames": 14,
-  "fps": 10,
   "anchor": [
    0.5,
    1
@@ -695,30 +539,6 @@
   "blend": "add",
   "r": 1
  },
- "bolt-proj": {
-  "frameW": 24,
-  "frameH": 17,
-  "frames": 5,
-  "fps": 16,
-  "anchor": [
-   0.5,
-   0.529
-  ],
-  "blend": "add",
-  "r": 1
- },
- "bolt-splash": {
-  "frameW": 48,
-  "frameH": 42,
-  "frames": 11,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.976
-  ],
-  "blend": "add",
-  "r": 1
- },
  "bolt-strike": {
   "frameW": 49,
   "frameH": 56,
@@ -730,17 +550,6 @@
   ],
   "blend": "add",
   "r": 1
- },
- "bone-spikes": {
-  "frameW": 62,
-  "frameH": 33,
-  "frames": 9,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.939
-  ],
-  "blend": "normal"
  },
  "bone-spikes@2": {
   "frameW": 124,
@@ -828,17 +637,6 @@
    "fadeOut": 260
   }
  },
- "chain-shadow": {
-  "frameW": 16,
-  "frameH": 8,
-  "frames": 16,
-  "fps": 20,
-  "anchor": [
-   0,
-   0.5
-  ],
-  "blend": "normal"
- },
  "chain-steel": {
   "frameW": 16,
   "frameH": 8,
@@ -924,28 +722,6 @@
    "tail": 120
   }
  },
- "earth-spike": {
-  "frameW": 62,
-  "frameH": 33,
-  "frames": 9,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.939
-  ],
-  "blend": "normal"
- },
- "earth-spike@2": {
-  "frameW": 124,
-  "frameH": 66,
-  "frames": 9,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.939
-  ],
-  "blend": "normal"
- },
  "ember-bearer": {
   "frameW": 52,
   "frameH": 89,
@@ -980,46 +756,10 @@
   "blend": "normal",
   "r": 1
  },
- "expl-column": {
-  "frameW": 50,
-  "frameH": 82,
-  "frames": 12,
-  "fps": 11,
-  "anchor": [
-   0.5,
-   0.988
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "expl-dust": {
   "frameW": 40,
   "frameH": 28,
   "frames": 10,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "expl-large": {
-  "frameW": 58,
-  "frameH": 58,
-  "frames": 23,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "expl-large-blood": {
-  "frameW": 58,
-  "frameH": 58,
-  "frames": 23,
   "fps": 15,
   "anchor": [
    0.5,
@@ -1160,23 +900,6 @@
    "fadeOut": 260
   }
  },
- "fog-loop": {
-  "frameW": 44,
-  "frameH": 39,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.513
-  ],
-  "blend": "normal",
-  "r": 1,
-  "ease": {
-   "alpha": 0.6,
-   "fadeIn": 500,
-   "fadeOut": 600
-  }
- },
  "fog-poison": {
   "frameW": 44,
   "frameH": 39,
@@ -1228,17 +951,6 @@
    "fadeOut": 600
   }
  },
- "frost-ball": {
-  "frameW": 52,
-  "frameH": 22,
-  "frames": 5,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
- },
  "frost-splash": {
   "frameW": 25,
   "frameH": 52,
@@ -1252,17 +964,6 @@
   "ease": {
    "tail": 100
   }
- },
- "geyser": {
-  "frameW": 32,
-  "frameH": 64,
-  "frames": 12,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.953
-  ],
-  "blend": "normal"
  },
  "geyser-blood": {
   "frameW": 22,
@@ -1322,21 +1023,6 @@
   }
  },
  "heal-blood": {
-  "frameW": 41,
-  "frameH": 44,
-  "frames": 21,
-  "fps": 20,
-  "anchor": [
-   0.512,
-   0.5
-  ],
-  "blend": "add",
-  "r": 1,
-  "ease": {
-   "tail": 250
-  }
- },
- "heal-nature": {
   "frameW": 41,
   "frameH": 44,
   "frames": 21,
@@ -1517,18 +1203,6 @@
    "fadeIn": 90
   }
  },
- "holy-shield": {
-  "frameW": 62,
-  "frameH": 62,
-  "frames": 11,
-  "fps": 11,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "holy-slash-a": {
   "frameW": 54,
   "frameH": 56,
@@ -1586,18 +1260,6 @@
    "tail": 135
   }
  },
- "holy-sword": {
-  "frameW": 56,
-  "frameH": 126,
-  "frames": 13,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.905
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "ice-bolt": {
   "frameW": 24,
   "frameH": 8,
@@ -1625,41 +1287,6 @@
    "tail": 200
   }
  },
- "ice-crystal": {
-  "frameW": 28,
-  "frameH": 27,
-  "frames": 12,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   0.889
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "ice-crystal-bone": {
-  "frameW": 28,
-  "frameH": 27,
-  "frames": 12,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   0.889
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "ice-spikes": {
-  "frameW": 62,
-  "frameH": 33,
-  "frames": 9,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.939
-  ],
-  "blend": "normal"
- },
  "knife-spin": {
   "frameW": 14,
   "frameH": 14,
@@ -1668,17 +1295,6 @@
   "anchor": [
    0.5,
    0.5
-  ],
-  "blend": "normal"
- },
- "lava-spear": {
-  "frameW": 20,
-  "frameH": 64,
-  "frames": 12,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.969
   ],
   "blend": "normal"
  },
@@ -1829,30 +1445,6 @@
    "fadeIn": 90
   }
  },
- "poison-ball": {
-  "frameW": 16,
-  "frameH": 15,
-  "frames": 4,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.533
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "poison-ball-hit": {
-  "frameW": 26,
-  "frameH": 24,
-  "frames": 7,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "poison-skull": {
   "frameW": 33,
   "frameH": 40,
@@ -1953,70 +1545,6 @@
    ],
    "hold": 900
   }
- },
- "portal-nature": {
-  "frameW": 42,
-  "frameH": 42,
-  "frames": 5,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
- },
- "portal-open": {
-  "frameW": 40,
-  "frameH": 40,
-  "frames": 4,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 170
-  }
- },
- "portal-open-nature": {
-  "frameW": 40,
-  "frameH": 40,
-  "frames": 4,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 170
-  }
- },
- "portal-open-shadow": {
-  "frameW": 40,
-  "frameH": 40,
-  "frames": 4,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "tail": 170
-  }
- },
- "portal-shadow": {
-  "frameW": 42,
-  "frameH": 42,
-  "frames": 5,
-  "fps": 10,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
  },
  "puff-poison": {
   "frameW": 44,
@@ -2133,67 +1661,7 @@
   ],
   "blend": "normal"
  },
- "ring-arcane": {
-  "frameW": 44,
-  "frameH": 24,
-  "frames": 24,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260
-  }
- },
  "ring-blood": {
-  "frameW": 44,
-  "frameH": 24,
-  "frames": 24,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260
-  }
- },
- "ring-frost": {
-  "frameW": 44,
-  "frameH": 24,
-  "frames": 24,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260
-  }
- },
- "ring-holy": {
-  "frameW": 44,
-  "frameH": 24,
-  "frames": 24,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 220,
-   "fadeOut": 260
-  }
- },
- "ring-shadow": {
   "frameW": 44,
   "frameH": 24,
   "frames": 24,
@@ -2262,42 +1730,6 @@
    "fadeIn": 80,
    "tail": 140
   }
- },
- "shield-arcane": {
-  "frameW": 62,
-  "frameH": 62,
-  "frames": 11,
-  "fps": 11,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "shield-bone": {
-  "frameW": 62,
-  "frameH": 62,
-  "frames": 11,
-  "fps": 11,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "shield-steel": {
-  "frameW": 62,
-  "frameH": 62,
-  "frames": 11,
-  "fps": 11,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
  },
  "slash-blood": {
   "frameW": 62,
@@ -2509,18 +1941,6 @@
    "tail": 250
   }
  },
- "smoke-puff@2": {
-  "frameW": 112,
-  "frameH": 132,
-  "frames": 11,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "std-burned-sol": {
   "frameW": 38,
   "frameH": 64,
@@ -2674,46 +2094,6 @@
    0.9688
   ],
   "blend": "normal"
- },
- "summon-circle-fire": {
-  "frameW": 84,
-  "frameH": 60,
-  "frames": 22,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 200,
-   "fadeOut": 320,
-   "loop": [
-    6,
-    21
-   ],
-   "hold": 1400
-  }
- },
- "summon-circle-holy": {
-  "frameW": 84,
-  "frameH": 60,
-  "frames": 22,
-  "fps": 15,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal",
-  "ease": {
-   "fadeIn": 200,
-   "fadeOut": 320,
-   "loop": [
-    6,
-    21
-   ],
-   "hold": 1400
-  }
  },
  "summon-circle-nature": {
   "frameW": 64,
@@ -2897,17 +2277,6 @@
   ],
   "blend": "normal"
  },
- "water-ball": {
-  "frameW": 52,
-  "frameH": 22,
-  "frames": 5,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
- },
  "water-splash": {
   "frameW": 25,
   "frameH": 52,
@@ -2935,16 +2304,5 @@
   "ease": {
    "tail": 100
   }
- },
- "wind-slash": {
-  "frameW": 50,
-  "frameH": 16,
-  "frames": 5,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   0.5
-  ],
-  "blend": "normal"
  }
 }

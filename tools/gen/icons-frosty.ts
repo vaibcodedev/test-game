@@ -24,7 +24,7 @@
  *  его же мобильный `.slot img` 40px → 48px при слоте 52px (или ×1 = 24px); иконка роли рейда `.role-ic` 16px → 24px; hud.css `.slot img` 48px и
  *  `.hud-player .auras .cell` 26px остаются. 1 px прозрачного поля даёт 2 px зазора при ×2, поэтому у `.slot img` можно убрать `margin`.
  *
- *  Запуск превью: npx tsx tools/gen/icons-skills.ts (листы в tools/out/icons-preview/). */
+ *  Сборка в игру — tools/gen/icons-build.ts (npm run assets). */
 import { PC, hex, hash01, pnoise, type RGBA } from "./canvas";
 import { shapeOf, type Shape, type ShapeOpt } from "./icons-svg";
 

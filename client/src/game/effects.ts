@@ -35,8 +35,6 @@ const PROJ_TEX: Record<string, string> = { arrow: "fx_arrow", arcane: "fx_arcane
 
 export class Effects {
   private hazards = new Map<string, Phaser.GameObjects.GameObject[]>();
-  /** Живые пузыри щитов: ключ `${id}:${k}` -> снять пузырь (buff с ms <= 0 или повтор). */
-  private bubbles = new Map<string, () => void>();
   private rings = new Map<string, () => void>();
 
   constructor(
@@ -521,13 +519,12 @@ export class Effects {
         break;
       }
       case "buff": {
-        // снять эффект (щит пробит, вихрь прерван, баф снят): циклы умений этого вида на герое, пузырь щита и круг под ногами — сразу, не по таймеру.
+        // снять эффект (щит пробит, вихрь прерван, баф снят): циклы умений этого вида на герое и круг под ногами — сразу, не по таймеру.
         // У остальных видов ms 0 — разовая вспышка (ярость босса при смене фазы): она идёт ниже, как раньше
         if (f.ms <= 0) {
-          const key = `${f.id}:${f.k}`, ended = this.vfx.endBuff(f), bub = this.bubbles.get(key), ring = this.rings.get(key);
-          bub?.();
+          const key = `${f.id}:${f.k}`, ended = this.vfx.endBuff(f), ring = this.rings.get(key);
           ring?.();
-          if (ended || bub || ring || REMOVABLE.has(f.k)) break;
+          if (ended || ring || REMOVABLE.has(f.k)) break;
         }
         const u = this.unit(f.id);
         if (!u) return;
@@ -567,31 +564,6 @@ export class Effects {
         }
         if (f.k === "shock" || f.k === "burn" || f.k === "rhythm" || f.k === "soul") {
           this.burst(u.x, u.y - 12, f.k === "burn" ? "fx_ember" : "fx_spark", f.k === "shock" ? 0xa8e8ff : f.k === "burn" ? 0xff7a2a : f.k === "soul" ? 0x8aff9a : 0xffd060, 10, 60, 450, -30);
-          break;
-        }
-        if (f.k === "block" || f.k === "shield" || f.k === "invuln" || f.k === "antimagic") {
-          // один пузырь на (герой, вид): новый заменяет прежний (снятие, ms <= 0 — в начале case: барьер разбит или истёк)
-          const bk = `${f.id}:${f.k}`;
-          this.bubbles.get(bk)?.();
-          this.bubbles.delete(bk);
-          this.sound(f.k === "antimagic" ? "arcane" : "shield", u.x, u.y);
-          const gold = f.k === "shield" || f.k === "invuln";
-          const bub = s.add.ellipse(u.x, u.y - 10, f.k === "invuln" ? 56 : 44, f.k === "invuln" ? 64 : 52, f.k === "antimagic" ? 0xa060ff : gold ? 0xffd84a : 0x6ac0ff, 0.22).setStrokeStyle(2, f.k === "antimagic" ? 0xe0c8ff : gold ? 0xfff0b0 : 0xbfe6ff, 0.9).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.top - 30);
-          // пузырь идёт за телом героя: позицию ставит UnitView.update раз за кадр, в тех же целых пикселях, что и спрайт героя
-          // (таймер раз в 30 мс с дробными координатами отставал на несколько пикселей и дёргался относительно героя на бегу)
-          u.attach(bub, -10, null, true);
-          const watch = s.time.addEvent({ delay: 200, loop: true, callback: () => { const q = this.unit(f.id); if (!q || q.dead || q !== u) drop(); } });
-          s.tweens.add({ targets: bub, alpha: { from: 0.9, to: 0.5 }, yoyo: true, repeat: -1, duration: 300 });
-          // конец — по настоящему времени (Vfx.after): истёкший, пока вкладка была скрыта, пузырь снимается сразу при возврате
-          const end = this.vfx.after(f.ms, (late) => drop(late));
-          const drop = (late = 0) => {
-            end.cancel(); watch.remove(); s.tweens.killTweensOf(bub);
-            if (this.bubbles.get(bk) === drop) this.bubbles.delete(bk);
-            if (late > LATE_MS) { u.detach(bub); bub.destroy(); return; }
-            // гаснет, не отставая от героя (отвязывается, когда погас)
-            s.tweens.add({ targets: bub, alpha: 0, duration: 200, onComplete: () => { u.detach(bub); bub.destroy(); } });
-          };
-          this.bubbles.set(bk, drop);
           break;
         }
         this.burst(u.x, u.y - 12, "fx_spark", f.k === "taunted" ? 0xff8030 : f.k === "weak" ? 0x8a6a9a : color, 20, 80, 600, -40);

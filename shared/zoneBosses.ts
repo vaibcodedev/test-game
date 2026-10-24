@@ -58,7 +58,6 @@ export const ZB_LOW_HP = D.lowHpAt;
 /** Радиус арены (px мира): формы умений вокруг босса в него влезают (dodgeModel.arenaR). */
 export const ZB_ARENA = D.dodgeModel.arenaR;
 export const ZB_MOB: ZbMob | undefined = D.mob;
-export const isZoneBoss = (id: string) => Object.hasOwn(ZB_BY_ID, id);
 
 /** Таблица добычи босса (data/zone-boss-loot.json bosses). */
 export interface ZbLootTable {

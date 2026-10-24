@@ -140,7 +140,6 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   ...Object.fromEntries(Object.values(RESOURCES).map((r) => [r.id, { id: r.id, name: r.name, slot: "consumable", icon: r.icon, price: r.price, stack: 99 } as BaseItem])),
   ...Object.fromEntries(Object.values(FOOD).map((d) => [`food_${d.id}`, { id: `food_${d.id}`, name: d.name, slot: "consumable", icon: d.icon, price: d.price, stack: 20 } as BaseItem])),
 };
-export const EQUIP_BASES = Object.values(BASE_ITEMS).filter((b) => b.slot !== "consumable").map((b) => b.id);
 export const isTwoHanded = (baseId: string | undefined): boolean => !!baseId && BASE_ITEMS[baseId]?.hands === 2;
 
 // ---------------- каталог моделей (data/items.json) ----------------
@@ -230,12 +229,6 @@ export function makeLoot(cls: ClassId, ilvl: number, rarity: Rarity, rand: () =>
   return m ? makeModelItem(m.id, ilvl, rarity, rand) : makeItem(base.id, ilvl, rarity, rand);
 }
 
-/** Для админ-панели: предмет модели для предпросмотра. Без разброса (rand = 0.5): настоящий предмет отличается значениями аффиксов в пределах ±15%. */
-export function previewModelItem(id: string, ilvl: number, rarity: Rarity, plus = 0): Item | null {
-  if (!ITEM_MODELS[id]) return null;
-  const it = makeModelItem(id, ilvl, rarity, () => 0.5);
-  return plus > 0 ? { ...it, plus } : it;
-}
 
 /** Для админ-панели: сводка модели. faction — только стиль внешности (solgard / umbrath / "" — нейтральный), на характеристики не влияет. */
 export interface ItemModelInfo {
@@ -259,7 +252,6 @@ export function listItemModels(f: { slot?: Slot; base?: string; cls?: ClassId; m
 export function listItemCategories(): { base: string; category: string; slot: Slot | "consumable"; twoHanded: boolean; armorType?: string; classes: ClassId[] | null; models: number }[] {
   return Object.values(BASE_ITEMS).filter((b) => b.slot !== "consumable").map((b) => ({ base: b.id, category: b.typeName ?? b.name, slot: b.slot, twoHanded: b.hands === 2, armorType: b.armorType, classes: b.classes ?? null, models: MODELS_BY_CAT[b.id]?.length ?? 0 }));
 }
-export const itemModelInfo = (id: string): ItemModelInfo | undefined => (ITEM_MODELS[id] ? infoOf(ITEM_MODELS[id]) : undefined);
 
 const AFFIX_KEYS: ItemStatKey[] = ["str", "agi", "int", "vit", "hp", "crit"];
 function affixValue(k: ItemStatKey, ilvl: number, mult: number): number {

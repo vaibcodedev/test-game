@@ -7,7 +7,6 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { PC, hex, pnoise, type Ramp } from "./gen/canvas";
 import { P } from "./gen/palette";
-import { OBJECT_ART } from "./gen/objects";
 import { buildLootSheet, LOOT_FRAMES, type LootVariant } from "./gen/loot";
 
 const OUT = path.resolve("tools/out/loot-look");
@@ -61,11 +60,9 @@ function save(c: PC, name: string) {
 const hero = heroFrame();
 const grounds: [string, Ramp, number][] = [["GRASS", P.grass, 3], ["STONE", P.cobble, 5], ["ASH", P.ash, 7]];
 const CW = 40, RH = 50;
-// колонки: герой, было ×2, v1 ×5, v2 ×5
+// колонки: герой, v1 ×5, v2 ×5
 const cols: { label: string; img: () => PC }[] = [
   { label: "HERO", img: () => hero },
-  { label: "OLD", img: () => OBJECT_ART.bag() },
-  { label: "OLD B", img: () => OBJECT_ART.bag_boss() },
 ];
 for (const [v, tag] of [["bag", "V1"], ["chest", "V2"]] as [LootVariant, string][]) {
   for (let r = 0; r < 4; r++) cols.push({ label: `${tag} R${r}`, img: () => frameOf(v, r, false, 13) });
@@ -75,7 +72,7 @@ const imgs = cols.map((c) => c.img());
 const W = CW * cols.length + 8, H = 12 + RH * grounds.length + 4;
 const c = new PC(W, H);
 c.rect(0, 0, W, H, hex("#141018"));
-text(c, "OLD | V1 BAG | V2 CHEST    R0 COMMON R1 RARE R2 EPIC R3 LEGEND", 4, 3);
+text(c, "V1 BAG | V2 CHEST    R0 COMMON R1 RARE R2 EPIC R3 LEGEND", 4, 3);
 grounds.forEach(([name, r, seed], gi) => {
   const y0 = 12 + gi * RH;
   ground(c, 4, y0, W - 8, RH - 2, r, seed);

@@ -411,6 +411,16 @@ export interface GameEntry { frameW: number; frameH: number; frames: number; fps
 
 /** Листы и манифест для игры: client/public/assets/vfx/ (+ r/ для закрытых паков). Вызывается из tools/gen-assets.ts.
  *  Без vendor/ эффекты пака пропускаются, а уже собранные листы остаются в манифесте, пока файлы на диске (чистый клон соберёт только свободные). */
+/** Листы без ссылок в игре (аудит 2026-10-24): строятся дальше (основа вариантов и порталов, превью и монтажи vfx-compare), но в client/public не пишутся.
+ *  Понадобился в игре — убрать id отсюда и пересобрать (npm run assets). */
+const NOT_IN_GAME = new Set([
+  "arrow-volley", "axe-blood", "axe-spin", "banner-blood", "banner-holy", "bolt-proj", "bolt-splash", "bone-spikes", "chain-shadow", "earth-spike",
+  "expl-column", "expl-large", "expl-large-blood", "fog-loop", "frost-ball", "geyser", "heal-nature", "holy-shield", "holy-sword", "ice-crystal",
+  "ice-crystal-bone", "ice-spikes", "lava-spear", "poison-ball", "poison-ball-hit", "portal-nature", "portal-open", "portal-open-nature",
+  "portal-open-shadow", "portal-shadow", "ring-arcane", "ring-frost", "ring-holy", "ring-shadow", "shield-arcane", "shield-bone", "shield-steel",
+  "summon-circle-fire", "summon-circle-holy", "water-ball", "wind-slash"
+]);
+
 export function writeGameVfx(assetsRoot: string) {
   const dir = path.join(assetsRoot, "vfx");
   fs.mkdirSync(path.join(dir, "r"), { recursive: true });
@@ -418,8 +428,9 @@ export function writeGameVfx(assetsRoot: string) {
   let old: Record<string, GameEntry> = {};
   try { old = JSON.parse(fs.readFileSync(mf, "utf8")); } catch { /* первого манифеста ещё нет */ }
   const out: Record<string, GameEntry> = {};
-  for (const [id, e] of Object.entries(old)) if (fs.existsSync(path.join(dir, e.r ? "r" : "", `${id}.png`))) out[id] = e;
+  for (const [id, e] of Object.entries(old)) if (!NOT_IN_GAME.has(id) && fs.existsSync(path.join(dir, e.r ? "r" : "", `${id}.png`))) out[id] = e;
   for (const b of buildAll()) {
+    if (NOT_IN_GAME.has(b.id)) continue;
     const r = isRestricted(b.pack);
     toRow(b.frames, b.w, b.h).save(path.join(dir, r ? "r" : "", `${b.id}.png`));
     out[b.id] = { frameW: b.w, frameH: b.h, frames: b.frames.length, fps: b.fps, anchor: [Math.round(b.anchor[0] * 1000) / 1000, Math.round(b.anchor[1] * 1000) / 1000], blend: b.blend, ...(r ? { r: 1 as const } : {}), ...(b.ease ? { ease: b.ease } : {}), ...(b.scale ? { scale: b.scale } : {}), ...(b.orbit ? { orbit: b.orbit } : {}) };

@@ -563,11 +563,6 @@ export function shapeHits(map: WorldMap, g: Placed, units: readonly HitUnit[]): 
   return units.filter((u) => hit.has(u.id)).map((u) => u.id);
 }
 
-/** Попадает ли юнит в форму (без отбора роя и стрел веера): кандидат на удар или лечение. */
-export function inShape(map: WorldMap, g: Placed, u: HitUnit): boolean {
-  return u.ally ? allyIn(map, g, u) : foeIn(map, g, u);
-}
-
 /** Мир для правил модулей, которые превью повторяет за сервером: свои живые капканы и видимые юниты (цели роя). */
 export interface AimWorld { traps?: readonly { x: number; y: number; r: number }[]; units?: readonly HitUnit[] }
 /** Отказы модулей, которые зависят от мира: капкан (город, проходимость, соседний капкан — trapErr), рой без целей («В области нет целей»).

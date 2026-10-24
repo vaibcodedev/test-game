@@ -3,7 +3,7 @@
  *  выбор цели мышью: допуск, магнит, порядок (задача 134, шаг 1). Геометрия превью против сервера — tests/skill-shape.ts. Запуск: npx tsx tests/cast-resolve.ts */
 import assert from "node:assert/strict";
 import {
-  bodyDist, clampToRange, hitUnitsOf, pickOrder, pickReach, PICK_MAGNET, PICK_TOL, resolveCast, TRAP_GRACE, TrapWatch, unitRadius,
+  clampToRange, hitUnitsOf, pickOrder, pickReach, PICK_MAGNET, PICK_TOL, resolveCast, TRAP_GRACE, TrapWatch, unitRadius,
   type CastIn, type CastUnit, type HitView, type PickCtx, type PickKind, type PickOut, type PickSource,
 } from "../client/src/game/castResolve";
 import { activeSkills, SKILLS } from "../shared/skills";
@@ -173,13 +173,12 @@ assert.equal(pickReach(3, false, false), 4); assert.ok(Math.abs(pickReach(3, tru
 assert.equal(pickReach(2, false, true), 12, "«Крупные цели»: допуск ×2"); assert.equal(pickReach(2, true, true), 40, "«Крупные цели»: магнит ×2");
 assert.equal(pickReach(0, false, false), 12, "масштаб 0 — как 1");
 
-// зона тела — круг: радиус 14 (кадр больше 32 — 30), центр на 12 px выше ног (крупные и всадники — на 28); reach прибавляется к радиусу
-const hit = (large: boolean, mounted: boolean, wx: number, wy: number, reach = 0) => Number.isFinite(bodyDist(100, 100, large, mounted, wx, wy, reach));
-assert.ok(hit(false, false, 113.9, 88) && !hit(false, false, 114.1, 88), "радиус 14, центр на 12 выше ног");
-assert.ok(hit(true, false, 129.9, 72) && !hit(true, false, 130.1, 72), "крупный кадр: радиус 30, центр на 28");
-assert.ok(hit(false, true, 100, 85.9) && !hit(false, true, 100, 86.1), "всадник: центр на 28 выше ног");
-assert.ok(hit(false, false, 119.9, 88, 6) && !hit(false, false, 120.1, 88, 6), "допуск 6 px мира: до 20 от центра");
-assert.equal(bodyDist(100, 100, false, false, 100, 88, 0), 0);
+// Источник целей ниже — заглушка для порядка pickOrder: зона тела — круг (радиус 14, у крупного кадра 30; центр на 12 px выше ног, у крупных — на 28),
+// reach прибавляется к радиусу. Настоящая зона клика игры (силуэт кадра, плашка, след) — client/src/game/hit.ts, её проверяет tests/pick.ts.
+const bodyDist = (x: number, y: number, large: boolean, wx: number, wy: number, reach: number): number => {
+  const d = Math.hypot(wx - x, wy - (y - (large ? 28 : 12)));
+  return d < (large ? 30 : 14) + reach ? d : Infinity;
+};
 
 // мир для проверок: юниты (ноги x, y), мешки/узлы/NPC (центр зоны и радиус); те же правила «ближайший к курсору побеждает», что в GameScene
 // me — мой герой, pet — питомец, own — мой питомец, town — герой чужой фракции в нейтральном городе (бой запрещён)
@@ -188,7 +187,7 @@ interface It { kind: "bag" | "node" | "npc"; id?: string; x: number; y: number; 
 /** Ближайший по центру тела; мой герой и мои питомцы берутся с запасом own (по умолчанию — как остальные). */
 const nearest = (list: W[], wx: number, wy: number, reach: number, own = reach): string | null => {
   let best: string | null = null, bd = Infinity;
-  for (const w of list) { const d = bodyDist(w.x, w.y, !!w.large, false, wx, wy, w.me || w.own ? own : reach); if (d < bd) { bd = d; best = w.id; } }
+  for (const w of list) { const d = bodyDist(w.x, w.y, !!w.large, wx, wy, w.me || w.own ? own : reach); if (d < bd) { bd = d; best = w.id; } }
   return best;
 };
 const source = (units: W[], items: It[], wx: number, wy: number): PickSource => ({
@@ -256,8 +255,8 @@ assert.deepEqual(click([mob], [bagNear], 222, cy), ["bag", "bag1"], "«Экше�
 assert.deepEqual(click([mob], [bagUnder], 200, cy), ["foe", "m"], "«Экшен»: ЛКМ по мобу над мешком — только выбор врага");
 assert.deepEqual(click([], [bagNear], 222, cy), ["bag", "bag1"], "«Экшен»: ЛКМ по мешку без врага — подбор");
 assert.deepEqual(click([], [{ kind: "node", x: 224, y: 172, r: 24 }], 222, cy), ["node", null], "«Экшен»: ЛКМ по узлу добычи — сбор");
-assert.deepEqual(click([mob], [{ kind: "npc", x: 230, y: cy, r: 18 }], 230, cy), ["magnet", "m"], "«Экшен»: ЛКМ NPC не берёт — дальше по порядку");
-assert.deepEqual(click([], [{ kind: "npc", x: 230, y: cy, r: 18 }], 230, cy), ["ground", null], "«Экшен»: ЛКМ по NPC без врага — земля");
+assert.deepEqual(click([mob], [{ kind: "npc", x: 230, y: cy, r: 18 }], 230, cy), ["npc", null], "«Экшен»: ЛКМ берёт NPC, как мешок");
+assert.deepEqual(click([], [{ kind: "npc", x: 230, y: cy, r: 18 }], 230, cy), ["npc", null], "«Экшен»: ЛКМ по NPC без врага — NPC");
 assert.deepEqual(click([mob], [bagNear], 222, cy, { action: false }), ["bag", "bag1"], "«Классика»: мешок берут обе кнопки");
 // NPC рядом с врагом: клик по NPC (25–30 px от центра моба, вне допуска) — NPC, а не враг-магнит; клик на враге, залезшем в зону NPC, — враг
 const npc: It = { kind: "npc", x: 230, y: cy, r: 18 };
