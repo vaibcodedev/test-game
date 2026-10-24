@@ -30,6 +30,7 @@ import { AimPreview } from "./aim";
 import { aimUnit, castAim, hitUnitsOf, PICK_NEAR, pickOrder, pickReach, resolveCast, selTarget, tabOrder, TrapWatch, unitRadius, type CastPlan, type CastUnit, type HitView, type PickCtx, type PickOut, type PickSource } from "./castResolve";
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
+import { spawnLoot } from "./lootView";
 
 type NpcKind = WorldNpcKind | "enc" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
@@ -132,6 +133,8 @@ export class GameScene extends Phaser.Scene {
   private hoverPick: PickOut = { kind: "ground", id: null, ref: null };
   private cursorPick: PickOut = { kind: "ground", id: null, ref: null };
   private clickPick: PickOut = { kind: "ground", id: null, ref: null };
+  /** Подсветка мешка или узла добычи под курсором (их берёт ЛКМ): одна картинка на сцену, переезжает за наведением. */
+  private takeGlow!: Phaser.GameObjects.Image;
   /** Порядок при наложении (game/hit.ts): точно → передний → текущая цель → ближе центр. */
   private best = new PickBest();
   private pickSrc: PickSource = {
@@ -249,6 +252,7 @@ export class GameScene extends Phaser.Scene {
     if (mouseOpts.chase) net.send("chase", { on: true });
     this.aim = new AimPreview(this);
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
+    this.takeGlow = this.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xffe6a0).setAlpha(0.8).setVisible(false);
 
     net.watchUnits("players", (id, u) => this.addUnit(id, u), (id) => this.removeUnit(id));
     net.watchUnits("mobs", (id, u) => this.addUnit(id, u), (id) => this.removeUnit(id));
@@ -584,7 +588,7 @@ export class GameScene extends Phaser.Scene {
       const right = p.rightButtonDown();
       this.mouse.set(wx, wy);
       // один порядок с подсветкой и курсором (castResolve.pickOrder): прицел → враг → мешок, узел, NPC → меню союзника → союзник → враг магнитом → земля;
-      // в «Экшене» мешки, узлы и NPC берёт только ПКМ, в «Классике» обе кнопки
+      // мешки и узлы добычи берут обе кнопки (враг точно — раньше них), NPC в «Экшене» — только ПКМ
       const hit = this.pickAt(right, this.clickPick);
       switch (hit.kind) {
         case "aim": {
@@ -648,7 +652,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Курсор над миром — что сделает ПКМ: враг (в допуске, без магнита) — меч, NPC — рука, мешок и узел добычи — перчатка, иначе стрелка. */
+  /** Курсор над миром — что сделает ПКМ: враг (в допуске, без магнита) — меч, NPC — рука, мешок и узел добычи (их берут обе кнопки) — перчатка, иначе стрелка. */
   private cursorAt(hit: PickOut): CursorKind {
     return hit.kind === "foe" ? "attack" : hit.kind === "npc" ? "talk" : hit.kind === "bag" || hit.kind === "node" ? "take" : "arrow";
   }
@@ -670,7 +674,7 @@ export class GameScene extends Phaser.Scene {
    *  свои ник и полоска включаются настройками «Свои имена» и «Свои полоски», а не наведением.
    *  Без аллокаций: курсор в мире — один Vector2, результаты — постоянные объекты. */
   private updateHover() {
-    let hov: string | null = null, foe = true, cur: CursorKind = "arrow";
+    let hov: string | null = null, foe = true, cur: CursorKind = "arrow", glow = false;
     const me = this.me;
     if (this.mouseSeen && !this.overUi && this.input.manager.isOver && me && !me.dead) {
       const ap = this.input.activePointer;
@@ -678,6 +682,12 @@ export class GameScene extends Phaser.Scene {
       const l = this.pickAt(false, this.hoverPick);
       if (l.kind === "foe" || l.kind === "magnet") hov = l.id;
       else if (l.kind === "friend" && l.id !== net.id) { hov = l.id; foe = false; }
+      else if (l.kind === "bag" || l.kind === "node") {
+        // мешок или узел добычи, который возьмёт ЛКМ: мягкое свечение под ним
+        const bag = l.kind === "bag" ? this.bagViews.get(l.id!) : undefined, n = l.kind === "node" ? (l.ref as WorldMap["nodes"][number]) : undefined;
+        const gx = bag ? bag.x : n ? n.x : 0, gy = bag ? bag.y - 8 : n ? n.y - 14 : 0;
+        if (bag || n) { glow = true; this.takeGlow.setPosition(gx, gy).setDepth(gy + 18).setScale(n ? 1.3 : 1); }
+      }
       cur = this.cursorAt(this.pickAt(true, this.cursorPick));
     }
     if (hov !== this.hoverId) {
@@ -688,6 +698,7 @@ export class GameScene extends Phaser.Scene {
     const v = hov ? this.units.get(hov) : undefined;
     if (v) { v.hovered = true; v.hoverFoe = foe; }
     if (cur !== this.cursorKind) { this.cursorKind = cur; setCursor(cur); }
+    if (glow !== this.takeGlow.visible) this.takeGlow.setVisible(glow);
   }
 
   /** Враг ли юнит: мобы всегда; игроки — на арене из другой команды, в мире — противоположная фракция в спорной зоне или нейтральном городе (как World.hostile). */
@@ -1054,16 +1065,8 @@ export class GameScene extends Phaser.Scene {
     for (const [id, img] of this.bagViews) if (!ids.has(id)) { img.destroy(); this.bagViews.delete(id); }
     for (const b of bags) {
       if (this.bagViews.has(b.id)) continue;
-      const img = this.add.image(b.x, b.y, b.boss ? "o_bag_boss" : "o_bag").setOrigin(0.5, 1).setDepth(b.y - 1);
-      img.y -= 30;
-      this.tweens.add({ targets: img, y: b.y, duration: 380, ease: "Bounce.easeOut" });
-      const best = Math.max(...b.items.map((it) => it.rarity));
-      if (best > 0) {
-        const glow = this.add.image(b.x, b.y - 8, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(best >= 3 ? 0xff9a2e : best >= 2 ? 0xc47bff : 0x5fa8ff).setScale(0.9).setDepth(b.y - 2);
-        this.tweens.add({ targets: glow, alpha: { from: 0.7, to: 0.25 }, duration: 700, yoyo: true, repeat: -1 });
-        img.once("destroy", () => glow.destroy());
-      }
-      this.bagViews.set(b.id, img);
+      // добыча: падение с отскоком и мерцание по редкости — кадры листа (lootView.ts, tools/gen/loot.ts)
+      this.bagViews.set(b.id, spawnLoot(this, b));
     }
   }
 

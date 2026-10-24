@@ -8,6 +8,7 @@ import { CITY_ART } from "./cities";
 import { FACTION_ART } from "./factions";
 import { BIOME_ART, resourceIcon } from "./biomes";
 import { RESOURCE_IDS } from "../../shared/biomes";
+import { lootObjects } from "./loot";
 
 type Art = () => PC;
 
@@ -309,6 +310,8 @@ export const OBJECT_ART: Record<string, Art> = {
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),
   mushrooms: mushrooms(false), mushrooms_glow: mushrooms(true), lilypad, bones, ember_vent: emberVent, crystal, chaos_pillar: chaosPillar, raid_portal: raidPortal,
   bag: bag(false), bag_boss: bag(true),
+  // добыча на земле: листы 20 кадров (tools/gen/loot.ts), клиент — client/src/game/lootView.ts
+  ...lootObjects(),
   ...TOWN_ART,
   ...CITY_ART,
   ...FACTION_ART,

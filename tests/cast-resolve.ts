@@ -252,8 +252,12 @@ assert.deepEqual(click([mob], [], 200, cy, { aim: true, right: true }), ["aim", 
 const bagUnder: It = { kind: "bag", id: "bag1", x: 200, y: 190, r: 16 }, bagNear: It = { kind: "bag", id: "bag1", x: 224, y: 190, r: 16 };
 assert.deepEqual(click([mob], [bagUnder], 200, cy, { right: true }), ["foe", "m"], "мешок под мобом: враг важнее");
 assert.deepEqual(click([mob], [bagNear], 222, cy, { right: true }), ["bag", "bag1"], "мешок вне допуска моба берётся");
-assert.deepEqual(click([mob], [bagNear], 222, cy), ["magnet", "m"], "«Экшен»: ЛКМ мешок не берёт — враг магнитом");
-assert.deepEqual(click([], [bagNear], 222, cy), ["ground", null], "«Экшен»: ЛКМ по мешку без врага — земля, героя не двигает");
+assert.deepEqual(click([mob], [bagNear], 222, cy), ["bag", "bag1"], "«Экшен»: ЛКМ по мешку вне допуска моба — подбор (мешок раньше магнита)");
+assert.deepEqual(click([mob], [bagUnder], 200, cy), ["foe", "m"], "«Экшен»: ЛКМ по мобу над мешком — только выбор врага");
+assert.deepEqual(click([], [bagNear], 222, cy), ["bag", "bag1"], "«Экшен»: ЛКМ по мешку без врага — подбор");
+assert.deepEqual(click([], [{ kind: "node", x: 224, y: 172, r: 24 }], 222, cy), ["node", null], "«Экшен»: ЛКМ по узлу добычи — сбор");
+assert.deepEqual(click([mob], [{ kind: "npc", x: 230, y: cy, r: 18 }], 230, cy), ["magnet", "m"], "«Экшен»: ЛКМ NPC не берёт — дальше по порядку");
+assert.deepEqual(click([], [{ kind: "npc", x: 230, y: cy, r: 18 }], 230, cy), ["ground", null], "«Экшен»: ЛКМ по NPC без врага — земля");
 assert.deepEqual(click([mob], [bagNear], 222, cy, { action: false }), ["bag", "bag1"], "«Классика»: мешок берут обе кнопки");
 // NPC рядом с врагом: клик по NPC (25–30 px от центра моба, вне допуска) — NPC, а не враг-магнит; клик на враге, залезшем в зону NPC, — враг
 const npc: It = { kind: "npc", x: 230, y: cy, r: 18 };
