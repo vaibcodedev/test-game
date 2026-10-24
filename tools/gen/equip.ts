@@ -1,6 +1,6 @@
 /** Иконки экипировки 32×32: тип × класс (шлем/доспех/сапоги) × редкость, уникальные; легендарные 48×48 и модели каталога (equip-models.ts). */
 import { PC, hex, mix, ramp, withA, type RGBA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { EQUIP, P } from "./palette";
 import { LEGENDARIES, type LegendaryDef } from "../../shared/legendary";
 import { BASE_ITEMS, ICON_VARIANT_SLOTS, ICON_VARIANTS, ITEM_PALETTES, UNIQUES, iconId, type ModelLook, type Rarity } from "../../shared/items";
 import { BASE_SHAPE, ICON, buildAllModelIcons, buildBaseIcons, crestAt, drawModel, MODEL_CATS } from "./equip-models";
@@ -233,7 +233,7 @@ function bannerIcon(u: LegendaryDef, tint: RGBA, c2: RGBA): PC {
   const flag = hex(u.look.flag ?? (umb ? "#4a1a6a" : "#a8242c")), F = tintRamp(flag), metal = umb ? BONE : hex("#f0c040");
   const pole = umb ? [hex("#1c1822"), hex("#3a3446")] : [hex("#5a3a1e"), hex("#8a5a2a")];
   c.line(11, 46, 11, 4, pole[0], 3); c.line(10, 46, 10, 4, pole[1], 1);
-  if (umb) { c.shadedEllipse(11, 3, 3, 2.6, ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff")); c.set(10, 3, DK); c.set(12, 3, DK); }
+  if (umb) { c.shadedEllipse(11, 3, 3, 2.6, EQUIP.skull); c.set(10, 3, DK); c.set(12, 3, DK); }
   else { c.poly([[11, -1], [14, 4], [8, 4]], metal); c.line(11, 0, 11, 3, WH, 1); }
   c.rect(9, 6, 33, 2, metal); c.rect(9, 6, 33, 1, mix(metal, WH, 0.4));
   const x0 = 13, x1 = 40, top = 8, h = 25 + ti, form = u.look.form ?? "swallow";
@@ -309,7 +309,7 @@ function orbitIcon(c: PC, kind: string, tint: RGBA, c2: RGBA) {
 }
 
 /**
- * Легендарная иконка 48×48: модель категории (архетип look.shape) в палитре темы — камень и руны цвета tint/c2, металл и ткань
+ * Легендарная иконка 48×48: модель категории (форма look.form, иначе архетип look.shape, иначе базовый архетип категории) в палитре темы — камень и руны цвета tint/c2, металл и ткань
  * с оттенком темы; за предметом — крылья, знамя заменяет плащ; поверх — навершие, гравировка, корона/нимб, наплечники, цепи,
  * парящие руны и клинки; призрачная копия оружия. Кайма двойная оранжевая (цвет редкости), с яруса 85 — ореол темы.
  */
@@ -349,7 +349,7 @@ export function buildLegendaryIcon(id: string): PC {
   if (slot === "weapon" || slot === "offhand") {
     let hx = 0, hy = 0, tx = 0, ty = 0, lo = Infinity, hi = -Infinity;
     for (let y = 0; y < ICON; y++) for (let x = 0; x < ICON; x++) if (item.alpha(x, y) > 200) { const v = x - y; if (v < lo) { lo = v; hx = x; hy = y; } if (v > hi) { hi = v; tx = x; ty = y; } }
-    if (lk.pommel === "skull") { out.shadedEllipse(hx + 2, hy - 2, 3, 2.8, ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff")); out.set(hx + 1, hy - 2, tint); out.set(hx + 3, hy - 2, tint); }
+    if (lk.pommel === "skull") { out.shadedEllipse(hx + 2, hy - 2, 3, 2.8, EQUIP.skull); out.set(hx + 1, hy - 2, tint); out.set(hx + 3, hy - 2, tint); }
     else if (lk.pommel === "eye") { out.ellipse(hx + 2, hy - 2, 3.6, 2.4, BONE); out.ellipse(hx + 2, hy - 2, 1.5, 1.5, tint); out.set(hx + 2, hy - 2, DK); out.set(hx + 1, hy - 3, WH); }
     else if (lk.pommel === "flame") for (let q = 0; q < 3; q++) { const x = hx + q * 2; out.line(x, hy - 1, x, hy - 5 - (q === 1 ? 3 : 1), q === 1 ? c2 : tint, 2); out.set(x, hy - 6 - (q === 1 ? 3 : 1), WH); }
     else if (lk.pommel === "gem") { out.shadedEllipse(hx + 2, hy - 2, 3, 3, tintRamp(tint)); out.set(hx + 1, hy - 3, WH); out.ellipse(hx + 2, hy - 2, 4, 4, withA(c2, 80)); }

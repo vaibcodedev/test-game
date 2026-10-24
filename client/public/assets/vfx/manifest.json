@@ -2294,6 +2294,72 @@
   "blend": "normal",
   "r": 1
  },
+ "std-burned-sol": {
+  "frameW": 38,
+  "frameH": 64,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9688
+  ],
+  "blend": "normal"
+ },
+ "std-burned-umb": {
+  "frameW": 39,
+  "frameH": 64,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9688
+  ],
+  "blend": "normal"
+ },
+ "std-fallen-sol": {
+  "frameW": 90,
+  "frameH": 56,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.6111,
+   0.3929
+  ],
+  "blend": "normal"
+ },
+ "std-fallen-umb": {
+  "frameW": 90,
+  "frameH": 56,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.6222,
+   0.3929
+  ],
+  "blend": "normal"
+ },
+ "std-torn-sol": {
+  "frameW": 38,
+  "frameH": 64,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9688
+  ],
+  "blend": "normal"
+ },
+ "std-torn-umb": {
+  "frameW": 39,
+  "frameH": 64,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9688
+  ],
+  "blend": "normal"
+ },
  "summon-circle-fire": {
   "frameW": 84,
   "frameH": 60,
@@ -2499,72 +2565,6 @@
   "anchor": [
    0.5,
    0.5
-  ],
-  "blend": "normal"
- },
- "std-torn-sol": {
-  "frameW": 38,
-  "frameH": 64,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.9688
-  ],
-  "blend": "normal"
- },
- "std-torn-umb": {
-  "frameW": 39,
-  "frameH": 64,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.9688
-  ],
-  "blend": "normal"
- },
- "std-burned-sol": {
-  "frameW": 38,
-  "frameH": 64,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.9688
-  ],
-  "blend": "normal"
- },
- "std-burned-umb": {
-  "frameW": 39,
-  "frameH": 64,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   0.9688
-  ],
-  "blend": "normal"
- },
- "std-fallen-sol": {
-  "frameW": 90,
-  "frameH": 56,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.6111,
-   0.3929
-  ],
-  "blend": "normal"
- },
- "std-fallen-umb": {
-  "frameW": 90,
-  "frameH": 56,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.6222,
-   0.3929
   ],
   "blend": "normal"
  }

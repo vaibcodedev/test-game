@@ -1,12 +1,9 @@
 /** Объекты и иконки ресурсов биомов: пустыня, снега, вулкан, подводная бухта. Опорная точка — нижняя середина. */
 import { PC, hash01, hex, ramp, rng, shade, withA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { BIOME, OUTLINE_SOFT, OUTLINE_WATER, P } from "./palette";
 
 type Art = () => PC;
-const cactusG = ramp("#16402a", "#24603a", "#3c8a44", "#6cb45a", "#a0d878");
-const sandRock = ramp("#6a4a2a", "#8c6636", "#b08848", "#d0a866", "#e8c88a");
-const snowRock = ramp("#4a5870", "#6c7e98", "#9aaec8", "#c4d6ea", "#f2f8ff");
-const basaltR = ramp("#14121c", "#241f30", "#382f4a", "#4e4468", "#6a5e88");
+const { cactusG, sandRock, snowRock, basaltR } = BIOME;
 
 /** Неровный валун заданной палитры. */
 function boulder(w: number, h: number, seed: number, r: Ramp, crack = r[0]): PC {
@@ -67,7 +64,7 @@ const dryBush: Art = () => {
     const a = -Math.PI / 2 + (R() - 0.5) * 2.2, l = 8 + R() * 8;
     c.line(16, 30, 16 + Math.cos(a) * l, 30 + Math.sin(a) * l, P.deadwood[2 + (i % 2)], 1);
   }
-  return c.outline(withA(hex("#1b1422"), 140));
+  return c.outline(OUTLINE_SOFT);
 };
 
 const snowPine: Art = () => {
@@ -158,7 +155,7 @@ const kelp: Art = () => {
       if (y % 9 === 4) c.rect(x + 2, 55 - y, 2, 1, L[3]);
     }
   }
-  return c.outline(withA(hex("#102030"), 160));
+  return c.outline(OUTLINE_WATER);
 };
 const shell: Art = () => {
   const c = new PC(32, 32);
@@ -174,7 +171,7 @@ const airVent: Art = () => {
     c.ellipse(x, y, r, r, withA(hex("#bfeaff"), 170));
     c.set(x - 1, y - 1, hex("#ffffff"));
   }
-  return c.outline(withA(hex("#102030"), 160));
+  return c.outline(OUTLINE_WATER);
 };
 
 // ---- узлы добычи ----

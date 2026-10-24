@@ -1,13 +1,13 @@
 /** Летающие и необычные маунты: грифон, костяной дракон, виверна, феникс, паук, раптор. */
 import { ramp, type RGBA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { MOUNT, P } from "./palette";
 import { Rig, V, VIEW_DOWN, VIEW_SIDE, VIEW_UP, lerp, type V3 } from "./mounts-rig";
 import { eyes, flow, quad, saddle, type Built, type Ctx } from "./mounts-quad";
 import { flame } from "./mounts-horses";
 
 const hx = (c: string): RGBA => ramp(c)[0];
 const F = VIEW_DOWN;
-const BONE = ramp("#3a342c", "#6a6254", "#a39a86", "#d4cdb8", "#f4efde");
+const { BONE, GBODY, GWING, GWING2, GHEAD, BEAK, PHX, PHX2, RAPT, RSTR, SPD, SPR } = MOUNT;
 
 /** Крыло: рука (плечо-локоть-кисть) с взмахом и перья или перепонка. s = ±1 сторона. */
 export function wing(r: Rig, c: Ctx, s: number, root: V3, span: number, chord: number, kind: "feather" | "membrane", main: Ramp, edge: Ramp, o: { fingers?: number; A?: number; arm?: Ramp } = {}) {
@@ -57,11 +57,6 @@ export function wing(r: Rig, c: Ctx, s: number, root: V3, span: number, chord: n
 }
 
 // ---------------- грифон ----------------
-const GBODY = ramp("#4a2e14", "#7a4e22", "#a8762e", "#cf9e48", "#ecc87a");
-const GWING = ramp("#2e1c0e", "#58381a", "#8a5e2e", "#b88a4a", "#e4c88a");
-const GWING2 = ramp("#5a4630", "#8a7250", "#bca480", "#e2d2b0", "#fffaf0");
-const GHEAD = ramp("#7a7080", "#aca4b4", "#d8d2e0", "#f0ecf6", "#ffffff");
-const BEAK = ramp("#5a3a0a", "#a86c10", "#e0a420", "#ffd448", "#fff2a0");
 export const GRIFFIN = (ph: number, run: boolean): Built =>
   quad({
     shY: 11, hpY: -11, legTop: 18, bodyR: 7.2, rumpR: 6.2, bodyW: 6.4, rumpW: 5.8, up: 7, low: 6.4, legR: [3, 2], legX: 3.8, stride: 0, lift: 0, foot: "claw", pole: [1, -1],
@@ -144,8 +139,6 @@ export const WYVERN = (ph: number, run: boolean): Built =>
   dragon({ body: ramp("#1c0a1c", "#381238", "#5e1e50", "#8c3468", "#b85a88"), belly: ramp("#4a3036", "#74505a", "#a08088", "#c8b0b0"), bone: ramp("#2a1420", "#4a2a38", "#7a5460", "#b08a90", "#e0c8c4"), membrane: ramp("#240a28", "#4a1450", "#7a2478", "#a8409c", "#d870c8"), eye: hx("#ffd848"), spike: ramp("#3a1428", "#6e2a44", "#a8485e", "#e0786e"), saddle: ramp("#0c0a14", "#1c1828", "#322c44", "#4c4464"), trim: P.gold, noFront: true }, ph, run);
 
 // ---------------- феникс ----------------
-const PHX = ramp("#6a1408", "#b83210", "#f0661c", "#ffa83a", "#ffe890");
-const PHX2 = ramp("#8a2010", "#d44a14", "#ff8a24", "#ffcc52", "#fff4b0");
 export const PHOENIX = (ph: number, run: boolean): Built =>
   quad({
     shY: 9, hpY: -9, legTop: 18, bodyR: 6.4, rumpR: 5.6, bodyW: 5.6, rumpW: 5, up: 6, low: 6, legR: [1.8, 1.2], legX: 3, stride: 0, lift: 0, foot: "claw", pole: [1, -1],
@@ -173,8 +166,6 @@ export const PHOENIX = (ph: number, run: boolean): Built =>
   }, ph, run);
 
 // ---------------- раптор ----------------
-const RAPT = ramp("#0e3a38", "#1a6a60", "#2e9a84", "#5ccaa0", "#a8f0c8");
-const RSTR = ramp("#5a2208", "#a8480e", "#e0781c", "#ffb04a");
 export const RAPTOR = (ph: number, run: boolean): Built =>
   quad({
     shY: 8, hpY: -5, legTop: 22, bodyR: 6.4, rumpR: 7.4, bodyW: 5.2, rumpW: 5.8, up: 11, low: 11.4, legR: [3.6, 1.7], legX: 3.4, stride: 9, lift: 8, foot: "claw", pole: [1, 1],
@@ -199,13 +190,11 @@ export const RAPTOR = (ph: number, run: boolean): Built =>
     deco: (r, c) => {
       // полосы на боках и спине
       r.pair((s) => { for (let k = 0; k < 4; k++) r.cap(V(s * 4.6, c.H[1] + 2 + k * 3.2, c.bodyZ + 4), V(s * 5.2, c.H[1] + 2.8 + k * 3.2, c.bodyZ - 2), 0.8, 0.8, RSTR, { wa: 0.8, wb: 0.8, views: VIEW_SIDE, bias: 1.2, noise: 0 }); });
-      saddle(r, c, ramp("#3a2216", "#5e3a22", "#8a5a34", "#b07e4c"), P.gold, 1.1);
+      saddle(r, c, P.wood, P.gold, 1.1);
     },
   }, ph, run);
 
 // ---------------- гигантский паук ----------------
-const SPD = ramp("#0a0610", "#1a1024", "#2c1c3c", "#46305c", "#6a4c84");
-const SPR = ramp("#3a0608", "#780c10", "#c01c1c", "#ff5040");
 export function SPIDER(ph: number, run: boolean): Built {
   const r = new Rig();
   const tt = ph * Math.PI * 2;

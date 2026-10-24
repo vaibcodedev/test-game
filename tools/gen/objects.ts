@@ -1,7 +1,7 @@
 /** Объекты мира, иконки предметов и умений, эффекты. Опорная точка объектов — нижняя середина. */
 import { PC, hash01, hex, mix, ramp, rng, shade, withA, type RGBA, type Ramp } from "./canvas";
 import { DATA_SKILL_ICONS } from "../../shared/skills";
-import { P } from "./palette";
+import { OUTLINE_SOFT, P } from "./palette";
 import { FOOD } from "../../shared/food";
 import { TOWN_ART } from "./town";
 import { CITY_ART } from "./cities";
@@ -205,7 +205,7 @@ function tuft(kind: "flowers" | "tallgrass" | "fern" | "reeds"): PC {
       c.set(x, y, hex("#f8f0a0"));
     }
   }
-  return c.outline(withA(hex("#1b1422"), 140));
+  return c.outline(OUTLINE_SOFT);
 }
 const mushrooms = (glow: boolean): Art => () => {
   const c = new PC(32, 32);

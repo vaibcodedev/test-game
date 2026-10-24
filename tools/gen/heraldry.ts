@@ -6,7 +6,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PC, hex, type RGBA } from "./canvas";
-import { P } from "./palette";
+import { OUTLINE, P } from "./palette";
 
 type Col = RGBA;
 type Pt = [number, number];
@@ -1317,13 +1317,13 @@ function bannerCard(id: string): PC {
   tex.blit(em, Math.floor((CW - em.w) / 2), sol ? 5 : 4);
   const L = new PC(CW + 8, CH + 8);
   L.blit(tex, 4, 6);
-  out.blit(outlined(L, hex("#1b1422")), 0, 0);
+  out.blit(outlined(L, OUTLINE), 0, 0);
   const rod = sol ? [P.wood[1], P.wood[2], P.wood[3]] : [U.k1, U.p1, U.p2];
   const knob = sol ? [G[1], G[3]] : [U.sil[1], U.sil[3]];
   for (let x = 1; x <= CW + 6; x++) { out.set(x, 2, rod[2]); out.set(x, 3, rod[1]); out.set(x, 4, rod[0]); }
   for (const kx of [0, CW + 6]) for (let y = 1; y <= 5; y++) { out.set(kx, y, knob[0]); out.set(kx + 1, y, y <= 2 ? knob[1] : knob[0]); }
   for (const rx of [7, 15, CW - 8, CW]) { out.set(rx, 5, knob[1]); out.set(rx + 1, 5, knob[0]); }
-  return outlined(out, hex("#1b1422"));
+  return outlined(out, OUTLINE);
 }
 
 // ---------------------------------------------------------------- сборка листа

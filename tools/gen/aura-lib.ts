@@ -5,6 +5,7 @@
  *  лист ×2 для зума 2 и 4, лист ×3 для зума 3; рисунок один — фигуры заданы в пикселях мира). */
 import { PC, hex, rng, mix, type RGBA, type Ramp } from "./canvas";
 import { RAMPS } from "./vfx-lib";
+import { OUTLINE_FX } from "./palette";
 
 export const TAU = Math.PI * 2;
 export { PC, hex, rng, mix };
@@ -38,7 +39,7 @@ export const RP: Record<string, Ramp> = {
   sky: R("#12365e", "#1f5a96", "#3a86c8", "#7ec8ff", "#c8ecff", "#ffffff"),
 };
 /** Тёмный контур значков и предметов (чуть тонированный). */
-export const INK: RGBA = hex("#120a18");
+export const INK: RGBA = OUTLINE_FX;
 
 // ====================================================================== модель слоёв
 /** Куда ставится слой: feet — точка под ногами, body — центр тела (13 px над ногами), hand — у руки (10 вправо, 11 вверх),

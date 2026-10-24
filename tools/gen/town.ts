@@ -1,14 +1,11 @@
 /** Пиксель-арт Эмберхолла: стены, башни, ворота, таверна, банк, кузница, врата арены, рыночная мелочь. Опора — нижняя середина. */
 import { PC, hash01, hex, mix, ramp, shade, withA, type RGBA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { TOWN, P } from "./palette";
 
 type Art = () => PC;
 
 /** Тёплый городской камень и цвета Эмберхолла (багрянец и золото). */
-const ST = ramp("#2e2a30", "#4a4446", "#6a625e", "#8a8178", "#aca294", "#cbc2b2");
-const ROOF_SLATE = ramp("#1e2230", "#2c3246", "#3c4560", "#52607e", "#6c7c9c");
-const ROOF_BROWN = ramp("#3a1e14", "#5a2e1e", "#7c4228", "#9c5a36", "#bc7a4c");
-const MARBLE = ramp("#6a6670", "#8e8a94", "#b4b0b8", "#d4d0d6", "#eeeaf0");
+const { ST, ROOF_SLATE, ROOF_BROWN, MARBLE } = TOWN;
 const RED = P.cloth.red;
 const GOLD = P.gold;
 

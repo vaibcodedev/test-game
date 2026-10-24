@@ -1,6 +1,6 @@
 /** Четвероногие маунты (конь, олень, лев, волк, кабан, медведь, ящер) на общем каркасе mounts-rig.ts. */
 import { ramp } from "./canvas";
-import { P } from "./palette";
+import { MOUNT, P } from "./palette";
 import { Rig, V, VIEW_DOWN, VIEW_SIDE, VIEW_UP, ik2, lerp, type V3 } from "./mounts-rig";
 import type { Ramp } from "./canvas";
 
@@ -127,5 +127,4 @@ export function flow(r: Rig, from: V3, dir: V3, n: number, seg: number, r0: numb
   return pts;
 }
 
-export const BROWN = ramp("#24140c", "#3e2415", "#60391f", "#855230", "#a86f44");
-export const DARKMANE = ramp("#0e0a08", "#1c1410", "#2c201a", "#44342a");
+export const { BROWN, DARKMANE } = MOUNT;

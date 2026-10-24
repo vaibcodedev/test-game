@@ -1,5 +1,5 @@
 /**
- * Генератор всех игровых ассетов (оригинальный пиксель-арт, сетка 32×32).
+ * Генератор всех игровых ассетов (оригинальный пиксель-арт, сетка 32×32; палитра и контуры — tools/gen/palette.ts).
  * Запуск: npm run assets. Результат: client/public/assets/** и manifest.json.
  */
 import fs from "node:fs";
@@ -70,7 +70,7 @@ for (const id of Object.keys(SKILL_ICONS)) {
   else if (fresh === null) buildSkillIcon(id).save(file);
   manifest.icons.push(id);
 }
-// иконки маунтов и питомцев для магазина: первый кадр их спрайт-листа
+// иконки питомцев для магазина: первый кадр их спрайт-листа (иконки маунтов 48×48 — выше, buildMountIcon в tools/gen/mounts.ts)
 for (const id of Object.keys(UNIT_ART).filter((u) => u.startsWith("pet_"))) {
   const sheet = PNG.sync.read(fs.readFileSync(path.join(OUT, `units/${id}.png`)));
   const fr = UNIT_ART[id].frame, ic = new PNG({ width: fr, height: fr });

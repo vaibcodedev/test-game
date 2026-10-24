@@ -6,15 +6,13 @@
  * Опорная точка — нижняя середина, размеры кратны тайлу (32 px).
  */
 import { PC, hash01, hex, ramp, withA, type RGBA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { FACTION, P } from "./palette";
 import { bricks, slabs, stallArt } from "./town";
 
 type Art = () => PC;
 
-const WHITE = ramp("#6e6a64", "#a8a296", "#d2ccbe", "#ece6d8", "#fffaee");
+const { WHITE, SKY, DARK } = FACTION;
 const GOLD = P.gold;
-const SKY = ramp("#1c3a6a", "#2c5c9a", "#4a8ad0", "#7ec8ff");
-const DARK = ramp("#100c16", "#1e1828", "#2e2640", "#40365a", "#564a74");
 const PURP = P.magic.purple;
 const VENOM = P.magic.green;
 const BONE = P.bone;

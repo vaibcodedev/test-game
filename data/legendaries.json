@@ -1605,9 +1605,9 @@
    "c2": "#e0d0ff",
    "fx": "souls",
    "pommel": "skull",
-   "ghost": true
-  },
-  "shape": "runic"
+   "ghost": true,
+   "shape": "runic"
+  }
  },
  "dusk_fangs": {
   "name": "Клыки Вечерней Тени",
@@ -1629,9 +1629,9 @@
    "c2": "#d8ffb0",
    "fx": "leaf",
    "pommel": "star",
-   "orbit": "blades"
-  },
-  "shape": "twinsaber"
+   "orbit": "blades",
+   "shape": "twinsaber"
+  }
  },
  "last_dawn_bow": {
   "name": "Лук Последнего Рассвета",
@@ -1653,9 +1653,9 @@
    "c2": "#ffffff",
    "fx": "spark",
    "blade": "long",
-   "ghost": true
-  },
-  "shape": "crescent"
+   "ghost": true,
+   "shape": "crescent"
+  }
  },
  "blood_font_staff": {
   "name": "Посох Багряного Истока",
@@ -1678,9 +1678,9 @@
    "c2": "#ff9aa8",
    "fx": "drip",
    "pommel": "skull",
-   "orbit": "blades"
-  },
-  "shape": "skull"
+   "orbit": "blades",
+   "shape": "skull"
+  }
  },
  "flame_crown_standard": {
   "name": "Знамя Пылающей Короны",
@@ -1703,9 +1703,9 @@
    "back": "banner",
    "crest": "crown",
    "flag": "#6a1428",
-   "train": true
-  },
-  "shape": "crest"
+   "train": true,
+   "shape": "crest"
+  }
  },
  "last_guard_helm": {
   "name": "Шлем Последнего Стража",
@@ -1728,9 +1728,9 @@
    "c2": "#fff8e0",
    "fx": "spark",
    "helm": "wings",
-   "eyes": true
-  },
-  "shape": "plumed"
+   "eyes": true,
+   "shape": "plumed"
+  }
  },
  "dusk_dawn_vestment": {
   "name": "Риза Вечерней Зари",
@@ -1753,9 +1753,9 @@
    "fx": "feather",
    "back": "wings",
    "wings": "feather",
-   "pauld": "crystal"
-  },
-  "shape": "vestment"
+   "pauld": "crystal",
+   "shape": "vestment"
+  }
  },
  "silent_hunter_mask": {
   "name": "Маска Безгласного Охотника",
@@ -1775,9 +1775,9 @@
   "look": {
    "form": "mask",
    "c2": "#c8ffb0",
-   "fx": "souls"
-  },
-  "shape": "mask"
+   "fx": "souls",
+   "shape": "mask"
+  }
  },
  "frost_aegis": {
   "name": "Аргус Ледяного Рассвета",

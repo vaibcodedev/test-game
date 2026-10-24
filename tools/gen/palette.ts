@@ -1,5 +1,14 @@
-/** Единая палитра игры: тёплые землистые тона, холодная вода, яркие акценты магии. */
-import { ramp } from "./canvas";
+/** Единая палитра игры: тёплые землистые тона, холодная вода, яркие акценты магии; рампы отдельных генераторов и контуры. */
+import { OUTLINE, hex, ramp, withA, type RGBA } from "./canvas";
+
+/** Контуры. OUTLINE — основной тёмный контур спрайтов и иконок (по умолчанию у PC.outline, задан в canvas.ts). */
+export { OUTLINE };
+/** Полупрозрачный контур мягких силуэтов: тени, кусты, лужи. */
+export const OUTLINE_SOFT: RGBA = withA(OUTLINE, 140);
+/** Холодный полупрозрачный контур подводных объектов (кораллы, раковины). */
+export const OUTLINE_WATER: RGBA = withA(hex("#102030"), 160);
+/** Контур анимаций умений и аур (tools/gen/aura-*.ts, INK). */
+export const OUTLINE_FX: RGBA = hex("#120a18");
 
 export const P = {
   skin: ramp("#6e3f35", "#a8644e", "#d9956f", "#f2c49b"),
@@ -70,4 +79,79 @@ export const P = {
   timber: ramp("#2e1c14", "#45291c", "#5e3a26"),
   glass: ramp("#2a3a5a", "#ffd27a", "#fff0b8"),
   crystal: ramp("#2a1a5a", "#4a34a8", "#7a6ae0", "#b0a8ff", "#ffffff"),
+};
+
+/** Биомы (tools/gen/biomes.ts): кактус, скалы пустыни и снегов, базальт. */
+export const BIOME = {
+  cactusG: ramp("#16402a", "#24603a", "#3c8a44", "#6cb45a", "#a0d878"),
+  sandRock: ramp("#6a4a2a", "#8c6636", "#b08848", "#d0a866", "#e8c88a"),
+  snowRock: ramp("#4a5870", "#6c7e98", "#9aaec8", "#c4d6ea", "#f2f8ff"),
+  basaltR: ramp("#14121c", "#241f30", "#382f4a", "#4e4468", "#6a5e88"),
+};
+
+/** Малые города (tools/gen/cities.ts): песчаник оазиса, бирюза, снег, срубы. */
+export const CITY = {
+  SAND: ramp("#5e3e22", "#8c6638", "#b88c50", "#d8b074", "#f0d498"),
+  TEAL: ramp("#0e3a3c", "#1a5c5a", "#2a8a80", "#58b8a8"),
+  SNOWC: ramp("#8aa0c0", "#b4c8e0", "#dce8f6", "#f4f9ff"),
+  LOG: ramp("#2e1c10", "#4c2e18", "#6e4624", "#946034", "#b27c46"),
+};
+
+/** Столицы фракций (tools/gen/factions.ts): белый камень Аурелиона, небо витражей, тёмный камень Мортхейма. */
+export const FACTION = {
+  WHITE: ramp("#6e6a64", "#a8a296", "#d2ccbe", "#ece6d8", "#fffaee"),
+  SKY: ramp("#1c3a6a", "#2c5c9a", "#4a8ad0", "#7ec8ff"),
+  DARK: ramp("#100c16", "#1e1828", "#2e2640", "#40365a", "#564a74"),
+};
+
+/** Эмберхолл (tools/gen/town.ts): городской камень, сланцевая и бурая кровля, мрамор. */
+export const TOWN = {
+  ST: ramp("#2e2a30", "#4a4446", "#6a625e", "#8a8178", "#aca294", "#cbc2b2"),
+  ROOF_SLATE: ramp("#1e2230", "#2c3246", "#3c4560", "#52607e", "#6c7c9c"),
+  ROOF_BROWN: ramp("#3a1e14", "#5a2e1e", "#7c4228", "#9c5a36", "#bc7a4c"),
+  MARBLE: ramp("#6a6670", "#8e8a94", "#b4b0b8", "#d4d0d6", "#eeeaf0"),
+};
+
+/** Маунты (tools/gen/mounts-*.ts): шкуры, гривы, перья, кости, пламя. */
+export const MOUNT = {
+  IVORY: ramp("#3a3022", "#7a6a4c", "#b8a478", "#e2d2a4", "#fff4d0"),
+  NOSE: ramp("#050304", "#120a0c", "#2a1a1c", "#4a3234"),
+  WHITE: ramp("#7a7e92", "#a8acc0", "#d2d6e4", "#eceef8", "#ffffff"),
+  TAWNY: ramp("#4a2e14", "#7a4e22", "#a8762e", "#cf9e48", "#ecc87a"),
+  LMANE: ramp("#240e06", "#44200c", "#6c3a14", "#945a22", "#bc8238"),
+  ASH: ramp("#1e2026", "#3a3d48", "#5e6370", "#8a909c", "#b8bdc8"),
+  ASHB: ramp("#4a4e58", "#767b88", "#9ea4b0", "#c6cad2"),
+  EMBER: ramp("#4a1a0c", "#8a3412", "#c85a1a", "#f08a30", "#ffd070"),
+  SPIRIT: ramp("#1a2a5a", "#3250a0", "#5c88d8", "#9cc4f8", "#e4f4ff"),
+  BOARC: ramp("#1c1410", "#2e221a", "#463428", "#64503c", "#86705a"),
+  BEARC: ramp("#1e120c", "#34201a", "#503428", "#74503a", "#9a7452"),
+  SAND: ramp("#4a3418", "#7a5a2a", "#a8803c", "#cfa656", "#ecd088"),
+  SPIKE: ramp("#5a2a14", "#8a4420", "#b86a30", "#e09a4c"),
+  BONE: ramp("#3a342c", "#6a6254", "#a39a86", "#d4cdb8", "#f4efde"),
+  GBODY: ramp("#4a2e14", "#7a4e22", "#a8762e", "#cf9e48", "#ecc87a"),
+  GWING: ramp("#2e1c0e", "#58381a", "#8a5e2e", "#b88a4a", "#e4c88a"),
+  GWING2: ramp("#5a4630", "#8a7250", "#bca480", "#e2d2b0", "#fffaf0"),
+  GHEAD: ramp("#7a7080", "#aca4b4", "#d8d2e0", "#f0ecf6", "#ffffff"),
+  BEAK: ramp("#5a3a0a", "#a86c10", "#e0a420", "#ffd448", "#fff2a0"),
+  PHX: ramp("#6a1408", "#b83210", "#f0661c", "#ffa83a", "#ffe890"),
+  PHX2: ramp("#8a2010", "#d44a14", "#ff8a24", "#ffcc52", "#fff4b0"),
+  RAPT: ramp("#0e3a38", "#1a6a60", "#2e9a84", "#5ccaa0", "#a8f0c8"),
+  RSTR: ramp("#5a2208", "#a8480e", "#e0781c", "#ffb04a"),
+  SPD: ramp("#0a0610", "#1a1024", "#2c1c3c", "#46305c", "#6a4c84"),
+  SPR: ramp("#3a0608", "#780c10", "#c01c1c", "#ff5040"),
+  NAVY: ramp("#0e1a36", "#1a2e5e", "#2c4a8e", "#4468b8", "#6a8ad4"),
+  WHITEC: ramp("#6c6e7c", "#a4a8b8", "#d0d4e0", "#eceef6", "#ffffff"),
+  CHEST: ramp("#2e1a10", "#4c2c1a", "#6e4228", "#94603a", "#b8845a"),
+  GHOST: ramp("#0c2c38", "#176070", "#2ea0a8", "#6ce0d0", "#c8fff0"),
+  GHOST_P: ramp("#1c0c38", "#3a1c70", "#6a38b0", "#a470e8", "#e0c8ff"),
+  NIGHT: ramp("#0e0814", "#221830", "#3c2e50", "#5a4a72", "#7a6a96"),
+  NIGHT_HEAD: ramp("#05030a", "#0e0814", "#1c1228", "#34264a", "#52406c"),
+  HELLFIRE: ramp("#5a0c08", "#a81c0c", "#e8541a", "#ffa030", "#ffee90"),
+  BROWN: ramp("#24140c", "#3e2415", "#60391f", "#855230", "#a86f44"),
+  DARKMANE: ramp("#0e0a08", "#1c1410", "#2c201a", "#44342a"),
+};
+
+/** Иконки экипировки (tools/gen/equip.ts): костяной череп навершия и шлема Умбрата. */
+export const EQUIP = {
+  skull: ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff"),
 };

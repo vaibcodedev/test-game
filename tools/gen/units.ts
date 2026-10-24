@@ -373,7 +373,7 @@ function slime(body: Ramp, pose: Pose, k = 1, bubbles = false): PC {
   c.ellipse(L(cx), L(29 - 1.2), L(rx * 0.95), L(1.4), withA(body[0], 255));
   c.ellipse(L(cx - rx * 0.4), L(cy - ry * 0.45), L(2), L(1.2), withA(hex("#ffffff"), 200));
   for (const s of [-1, 1]) {
-    c.rect(L(cx + 2.5 + s * 2.2 - 0.5), L(cy - 1), L(1.5), L(2.5), hex("#1b1422"));
+    c.rect(L(cx + 2.5 + s * 2.2 - 0.5), L(cy - 1), L(1.5), L(2.5), OUTLINE);
     c.set(L(cx + 2.5 + s * 2.2), L(cy - 1), hex("#ffffff"));
   }
   if (bubbles) for (const [bx, by] of [[-3, 2], [1, 3.5], [-5, -1]]) c.ellipse(L(cx + bx), L(cy + by), L(1), L(1), withA(body[3], 220));
@@ -403,10 +403,10 @@ function quadruped(o: { body: Ramp; belly?: Ramp; tusk?: boolean; ears?: "point"
   c.shadedEllipse(hx, hy, 4.5, 4, o.body);
   const sn = o.snout ?? o.body;
   c.shadedEllipse(hx + 3.5, hy + 1.2, 2.6, 2, sn, undefined, false);
-  c.set(Math.round(hx + 5.5), Math.round(hy + 0.5), hex("#1b1422"));
+  c.set(Math.round(hx + 5.5), Math.round(hy + 0.5), OUTLINE);
   if (o.ears === "point") c.poly([[hx - 2.5, hy - 2.5], [hx - 1, hy - 7.5], [hx + 1, hy - 3]], o.body[2]);
   else c.ellipse(hx - 1.5, hy - 3.5, 1.6, 1.6, o.body[1]);
-  c.rect(Math.round(hx + 1), Math.round(hy - 1), 1, 1, atk >= 1 && atk <= 2 ? hex("#ff4030") : hex("#1b1422"));
+  c.rect(Math.round(hx + 1), Math.round(hy - 1), 1, 1, atk >= 1 && atk <= 2 ? hex("#ff4030") : OUTLINE);
   if (o.tusk) c.line(hx + 4, hy + 2.8, hx + 5.5, hy + 0.5, P.bone[3], 1);
   if (atk === 1 || atk === 2) c.line(hx + 3, hy + 3, hx + 5, hy + 3.5, hex("#f2ecdf"), 1);
   return c.outline();

@@ -1,14 +1,11 @@
 /** Пиксель-арт малых городов: Оазис Миражей (песчаник, шатры, пальмы) и Снежная долина (частокол, срубы, жаровни); камень телепорта. */
 import { PC, hash01, hex, ramp, withA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { CITY, P } from "./palette";
 import { bricks, slabs, stallArt } from "./town";
 
 type Art = () => PC;
 
-const SAND = ramp("#5e3e22", "#8c6638", "#b88c50", "#d8b074", "#f0d498");
-const TEAL = ramp("#0e3a3c", "#1a5c5a", "#2a8a80", "#58b8a8");
-const SNOWC = ramp("#8aa0c0", "#b4c8e0", "#dce8f6", "#f4f9ff");
-const LOG = ramp("#2e1c10", "#4c2e18", "#6e4624", "#946034", "#b27c46");
+const { SAND, TEAL, SNOWC, LOG } = CITY;
 const FIRE = P.magic.fire;
 
 /** Зубцы песчаника. */

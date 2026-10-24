@@ -1,17 +1,15 @@
 /** Звери: белый олень, лев, волки (пепельный, призрачный), кабан, медведь, песчаный ящер. */
 import { ramp, type RGBA, type Ramp } from "./canvas";
-import { P } from "./palette";
+import { MOUNT, P } from "./palette";
 import { Rig, V, VIEW_DOWN, VIEW_SIDE, VIEW_UP, lerp, type V3 } from "./mounts-rig";
 import { eyes, flow, quad, saddle, type Built, type Ctx, type Q } from "./mounts-quad";
 import { flame } from "./mounts-horses";
 
 const hx = (c: string): RGBA => ramp(c)[0];
-const IVORY = ramp("#3a3022", "#7a6a4c", "#b8a478", "#e2d2a4", "#fff4d0");
-const NOSE = ramp("#050304", "#120a0c", "#2a1a1c", "#4a3234");
+const { IVORY, NOSE, WHITE, TAWNY, LMANE, ASH, ASHB, EMBER, SPIRIT, BOARC, BEARC, SAND, SPIKE } = MOUNT;
 const F = VIEW_DOWN;
 
 // ---------------- олень ----------------
-const WHITE = ramp("#7a7e92", "#a8acc0", "#d2d6e4", "#eceef8", "#ffffff");
 export const STAG = (ph: number, run: boolean): Built =>
   quad({
     shY: 10, hpY: -10, legTop: 21, bodyR: 6, rumpR: 6.2, bodyW: 5, rumpW: 5.2, up: 11, low: 10.5, legR: [2, 1.3], legX: 3, stride: 8, lift: 6, foot: "hoof", pole: [1, -1],
@@ -45,8 +43,6 @@ export const STAG = (ph: number, run: boolean): Built =>
   }, ph, run);
 
 // ---------------- лев ----------------
-const TAWNY = ramp("#4a2e14", "#7a4e22", "#a8762e", "#cf9e48", "#ecc87a");
-const LMANE = ramp("#240e06", "#44200c", "#6c3a14", "#945a22", "#bc8238");
 export const LION = (ph: number, run: boolean): Built =>
   quad({
     shY: 12, hpY: -11, legTop: 13, bodyR: 7, rumpR: 6, bodyW: 6, rumpW: 5.6, up: 7, low: 6.6, legR: [3.2, 2.3], legX: 3.8, stride: 7.5, lift: 4.2, foot: "paw", pole: [-1, -1],
@@ -102,15 +98,11 @@ function wolfQ(L: WolfLook): Q {
     },
   };
 }
-const ASH = ramp("#1e2026", "#3a3d48", "#5e6370", "#8a909c", "#b8bdc8");
-const ASHB = ramp("#4a4e58", "#767b88", "#9ea4b0", "#c6cad2");
-const EMBER = ramp("#4a1a0c", "#8a3412", "#c85a1a", "#f08a30", "#ffd070");
 export const ASH_WOLF = (ph: number, run: boolean): Built => {
   const q = wolfQ({ body: ASH, belly: ASHB, mane: EMBER, eye: EMBER[4] });
-  q.deco = (r, c) => saddle(r, c, ramp("#3a2216", "#5e3a22", "#8a5a34", "#b07e4c"), EMBER);
+  q.deco = (r, c) => saddle(r, c, P.wood, EMBER);
   return quad(q, ph, run);
 };
-const SPIRIT = ramp("#1a2a5a", "#3250a0", "#5c88d8", "#9cc4f8", "#e4f4ff");
 export const SPIRIT_WOLF = (ph: number, run: boolean): Built => {
   const q = wolfQ({ body: SPIRIT, belly: ramp("#4468b8", "#7aa4e8", "#b8d8ff", "#eefaff"), mane: ramp("#102a60", "#2858b8", "#58a0f0", "#a8e0ff", "#f0ffff"), eye: hx("#ffffff"), spirit: true });
   q.deco = (r, c) => { saddle(r, c, ramp("#1c1040", "#322068", "#54389a", "#8264cc"), ramp("#2858b8", "#58a0f0", "#a8e0ff", "#f0ffff")); };
@@ -118,7 +110,6 @@ export const SPIRIT_WOLF = (ph: number, run: boolean): Built => {
 };
 
 // ---------------- кабан ----------------
-const BOARC = ramp("#1c1410", "#2e221a", "#463428", "#64503c", "#86705a");
 export const BOAR = (ph: number, run: boolean): Built =>
   quad({
     shY: 8, hpY: -9, legTop: 11, bodyR: 8.2, rumpR: 7.2, bodyW: 7.4, rumpW: 6.6, up: 5.6, low: 5.4, legR: [3, 2], legX: 4.2, stride: 6, lift: 3.6, foot: "hoof", pole: [1, -1],
@@ -137,11 +128,10 @@ export const BOAR = (ph: number, run: boolean): Built =>
       for (let i = 0; i < 9; i++) { const t = i / 8, y = lerp(N[1] - 1, c.H[1] + 1, t), z = lerp(N[2] + 4.5, c.H[2] + c.q.rumpR + 0.6, t); r.cap(V(0, y, z), V(0, y - 1.6, z + 3.4 + Math.sin(i * 1.7)), 1.1, 0.3, ramp("#0e0a08", "#1c1410", "#32261c"), { wa: 1, wb: 0.3, bias: 1, noise: 0, front: i < 2 ? F : 0 }); void nb; }
     },
     tail: (r, c) => r.chain([V(0, c.q.hpY - 6.5, c.H[2] + 2.5), V(Math.sin(c.tt * 2) * 1.6, c.q.hpY - 8.5, c.H[2] + 4.5), V(Math.sin(c.tt * 2) * 2, c.q.hpY - 9.5, c.H[2] + 3.2)], 1, 0.6, BOARC, { front: VIEW_UP }),
-    deco: (r, c) => saddle(r, c, ramp("#3a2216", "#5e3a22", "#8a5a34", "#b07e4c"), ramp("#6a4210", "#a8681c", "#e0a630")),
+    deco: (r, c) => saddle(r, c, P.wood, ramp("#6a4210", "#a8681c", "#e0a630")),
   }, ph, run);
 
 // ---------------- медведь ----------------
-const BEARC = ramp("#1e120c", "#34201a", "#503428", "#74503a", "#9a7452");
 export const BEAR = (ph: number, run: boolean): Built =>
   quad({
     shY: 9, hpY: -10, legTop: 13, bodyR: 9.5, rumpR: 8.6, bodyW: 8.6, rumpW: 7.8, up: 6.4, low: 6.2, legR: [4, 3], legX: 4.8, stride: 5.5, lift: 3.4, foot: "paw", pole: [-1, -1],
@@ -157,12 +147,10 @@ export const BEAR = (ph: number, run: boolean): Built =>
       r.ball(V(0, c.S[1] - 1, c.S[2] + 6.5), 6, BEARC, { wa: 5.5, noise: 0.25 });
     },
     tail: (r, c) => r.ball(V(0, c.q.hpY - 8.4, c.H[2] + 4), 2, BEARC, { front: VIEW_UP }),
-    deco: (r, c) => saddle(r, c, ramp("#3a2216", "#5e3a22", "#8a5a34", "#b07e4c"), P.steel, 1.3),
+    deco: (r, c) => saddle(r, c, P.wood, P.steel, 1.3),
   }, ph, run);
 
 // ---------------- песчаный ящер ----------------
-const SAND = ramp("#4a3418", "#7a5a2a", "#a8803c", "#cfa656", "#ecd088");
-const SPIKE = ramp("#5a2a14", "#8a4420", "#b86a30", "#e09a4c");
 export const SAND_LIZARD = (ph: number, run: boolean): Built =>
   quad({
     shY: 13, hpY: -11, legTop: 9, bodyR: 6, rumpR: 6.4, bodyW: 7, rumpW: 7.2, up: 5.5, low: 5.4, legR: [2.4, 1.7], legX: 5, splay: 3, stride: 6, lift: 3.4, foot: "claw", pole: [1, -1],

@@ -1,6 +1,6 @@
 /** Кони: бурый конь, боевой конь Сольгарда, дестриэ, скелет коня, кошмарный скакун. */
 import { ramp, type RGBA } from "./canvas";
-import { P } from "./palette";
+import { MOUNT, P } from "./palette";
 import { Rig, V, VIEW_DOWN, VIEW_SIDE, VIEW_UP, lerp, type V3 } from "./mounts-rig";
 import { BROWN, DARKMANE, eyes, flow, quad, saddle, type Built, type Ctx, type Q } from "./mounts-quad";
 import type { Ramp } from "./canvas";
@@ -59,9 +59,7 @@ function horseQ(look: HorseLook, o: Partial<Q> = {}): Q {
 export const HORSE_BROWN = (ph: number, run: boolean): Built =>
   quad(horseQ({ body: BROWN, mane: DARKMANE, belly: ramp("#38241a", "#54382a", "#74503a", "#946a4c"), blaze: true }, { deco: (r, c) => saddle(r, c, P.leather, P.gold) }), ph, run);
 
-const NAVY = ramp("#0e1a36", "#1a2e5e", "#2c4a8e", "#4468b8", "#6a8ad4");
-const WHITEC = ramp("#6c6e7c", "#a4a8b8", "#d0d4e0", "#eceef6", "#ffffff");
-const CHEST = ramp("#2e1a10", "#4c2c1a", "#6e4228", "#94603a", "#b8845a");
+const { NAVY, WHITEC, CHEST, GHOST, GHOST_P, BONE, NIGHT, NIGHT_HEAD, HELLFIRE } = MOUNT;
 
 /** Попона: накидка с золотой каймой и гербом (золотое солнце на синем поле) поверх туловища. */
 function caparison(r: Rig, c: Ctx, cloth: Ramp, trim: Ramp, emblem: Ramp, grow = 1.6) {
@@ -84,7 +82,7 @@ export const WAR_HORSE = (ph: number, run: boolean): Built =>
   quad(horseQ({ body: ramp("#3c3844", "#5c5a68", "#85838f", "#aeacb8", "#d2d0da"), mane: ramp("#1c1a20", "#34303a", "#524c5a", "#7a7284"), chanfron: P.steel, plume: ramp("#4a1018", "#8a1c24", "#c43a38", "#ee7a62"), eye: hx("#150c08") }, {
     deco: (r, c) => {
       caparison(r, c, NAVY, P.gold, P.gold);
-      saddle(r, c, ramp("#3a2216", "#5e3a22", "#8a5a34", "#b07e4c"), P.gold);
+      saddle(r, c, P.wood, P.gold);
       // нагрудник и налобник
       r.cap(V(-3, c.S[1] + 4.5, c.S[2] - 1), V(3, c.S[1] + 4.5, c.S[2] - 1), 2.6, 2.6, P.gold, { wa: 1.4, wb: 1.4, front: VIEW_DOWN, bias: 4, noise: 0 });
     },
@@ -117,9 +115,6 @@ export const DESTRIER = (ph: number, run: boolean): Built =>
   }), ph, run);
 
 // ---------- Умбрат ----------
-const GHOST = ramp("#0c2c38", "#176070", "#2ea0a8", "#6ce0d0", "#c8fff0");
-const GHOST_P = ramp("#1c0c38", "#3a1c70", "#6a38b0", "#a470e8", "#e0c8ff");
-const BONE = ramp("#3a342c", "#6a6254", "#a39a86", "#d4cdb8", "#f4efde");
 
 /** Язык пламени: многоугольник, мерцающий по фазе. */
 export function flame(r: Rig, base: V3, h: number, w: number, tt: number, seed: number, rp: Ramp, o: { front?: number; lean?: V3 } = {}) {
@@ -172,9 +167,6 @@ export const SKEL_HORSE = (ph: number, run: boolean): Built =>
     },
   }, ph, run);
 
-const NIGHT = ramp("#0e0814", "#221830", "#3c2e50", "#5a4a72", "#7a6a96");
-const NIGHT_HEAD = ramp("#05030a", "#0e0814", "#1c1228", "#34264a", "#52406c");
-const HELLFIRE = ramp("#5a0c08", "#a81c0c", "#e8541a", "#ffa030", "#ffee90");
 export const NIGHTMARE = (ph: number, run: boolean): Built =>
   quad(horseQ({ body: NIGHT, mane: HELLFIRE, eye: hx("#ffd040"), heavy: true, ears: true, chanfron: undefined }, {
     legR: [2.9, 2.0], stride: 8, lift: 6,
