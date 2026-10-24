@@ -6,6 +6,7 @@
  * Контроль и дебаффы от героя проверяют w.canAffect (нейтральный город, ушедший из мира герой) и не ложатся от мёртвого источника.
  * Ни контроль, ни дебаффы (из любого источника, и без него) не ложатся на полностью неуязвимого (w.isImmune).
  */
+import { noteAuraSource } from "./auras";
 import { BAL } from "../../../shared/balance";
 import type { Player } from "./Player";
 import type { Actor, World } from "./World";
@@ -103,12 +104,16 @@ function allowed(w: World, by: Actor | null, a: Actor) {
 
 /** Замедление a на pct% на ms (контроль: срок режет «Несгибаемый»). by — кто накладывает. true — замедление действует. */
 export function applySlow(w: World, by: Actor | null, a: Actor, pct: number, ms: number): boolean {
-  return allowed(w, by, a) && put(w, a, "slow", pct, ccMs(w, a, ms, by));
+  if (!allowed(w, by, a)) return false;
+  const t = ccMs(w, a, ms, by), took = put(w, a, "slow", pct, t);
+  if (took) noteAuraSource(a, "slow", by, w.time + t); // источник — для пометки «мой» в плашке цели (auras.ts)
+  return took;
 }
 
 /** Ослабление: урон a −pct% на ms (с эффектом «weak» на клиенте). true — ослабление действует. */
 export function applyWeaken(w: World, by: Actor | null, a: Actor, pct: number, ms: number): boolean {
   if (!allowed(w, by, a) || !put(w, a, "weak", pct, ms)) return false;
+  noteAuraSource(a, "weak", by, w.time + ms);
   w.emit({ t: "buff", id: a.id, k: "weak", ms: a.weakUntil - w.time });
   return true;
 }
@@ -123,6 +128,7 @@ export function applyStun(w: World, by: Actor | null, a: Actor, ms: number): boo
   const until = w.time + ccMs(w, a, ms, by);
   if (!(until > w.time) || !allowed(w, by, a)) return false;
   a.stunUntil = Math.max(a.stunUntil, until);
+  noteAuraSource(a, "stun", by, until);
   return true;
 }
 
@@ -131,5 +137,6 @@ export function applyRoot(w: World, by: Actor | null, a: Actor, ms: number): boo
   const until = w.time + ccMs(w, a, ms, by);
   if (!(until > w.time) || !allowed(w, by, a)) return false;
   a.rootUntil = Math.max(a.rootUntil, until);
+  noteAuraSource(a, "root", by, until);
   return true;
 }
