@@ -40,8 +40,10 @@ export abstract class Boss {
    * Подстройка (data/balance.json bosses.scaleToAttacker): в бою уровень поднимается до уровня самого сильного героя на арене
    * или среди нанёсших урон — босс рассчитан на группу своего уровня, а не на героя на 50 уровней старше. Вниз — только при сбросе.
    */
+  /** Подстраивать ли уровень под героев (боссы стартовых земель — нет: уровень строго по полосе зоны). */
+  protected scales = true;
   private scaleUp() {
-    if (!BAL.bosses.scaleToAttacker || this.m.dead) return;
+    if (!this.scales || !BAL.bosses.scaleToAttacker || this.m.dead) return;
     // вне боя — по героям на арене в обе стороны (прошёл мимо — вернулся к своему), в бою — только вверх
     const idle = this.m.state === "idle";
     let lv = idle ? this.baseLevel : this.m.level;

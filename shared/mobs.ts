@@ -2,6 +2,7 @@ import world from "../data/world.json";
 import ai from "../data/mobAI.json";
 import raid from "../data/raid.json";
 import { bossBal } from "./balance";
+import { ZB_CARDS, ZB_MOB } from "./zoneBosses";
 
 /** Поведение моба из data/mobAI.json. */
 export interface MobAI {
@@ -85,6 +86,19 @@ export const MOBS: Record<string, MobDef> = {
     uniques: ["ashbringer", "cinder_staff", "phoenix_bow", "ashen_crown"],
   },
 };
+
+// боссы стартовых земель (задача 136): карточки data/zone-bosses.json, числа моба — там же (mob), уровень — levels.boss
+{
+  const z = ZB_MOB ?? { hp: 30, dmg: 2.2, armor: 1.3, xp: 20, gold: 1, speed: 62, aggro: 260, range: 64, attackCd: 2, radius: 22, color: {} };
+  const scale = world.levels.levelCap / world.levels.designCap;
+  for (const c of ZB_CARDS) {
+    MOBS[c.id] = {
+      id: c.id, name: c.name, sprite: c.id, size: 2, boss: true, level: Math.max(1, Math.round(c.levels.boss * scale)), respawn: c.respawnMs / 1000,
+      hp: z.hp, dmg: z.dmg, armor: z.armor, xp: z.xp, gold: z.gold, speed: z.speed, aggro: z.aggro, range: z.range, attackCd: z.attackCd, radius: z.radius,
+      color: z.color[c.id] ?? "#c87a3a",
+    };
+  }
+}
 
 // уровни боссов — из data/world.json (пересчитываются вместе с уровнями зон); здоровье, урон и броня — data/balance.json bosses
 {

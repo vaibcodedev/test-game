@@ -22,6 +22,7 @@ import {
 } from "../../../shared/protocol";
 import type { WorldState } from "../rooms/schema";
 import { createBoss } from "./bosses";
+import { createZoneBoss } from "./zoneBosses";
 import * as legendary from "./legendary";
 import * as tanks from "./tanks";
 import * as healers from "./healers";
@@ -282,7 +283,7 @@ export class World {
     for (const b of this.map.bosses) {
       const def = MOBS[b.id];
       const m = new Mob(this.uid("b"), def, def.level!, { x: b.x, y: b.y });
-      m.boss = createBoss(this, m, b.arena);
+      m.boss = createBoss(this, m, b.arena) ?? createZoneBoss(this, m, b.arena);
       this.addMob(m);
     }
   }

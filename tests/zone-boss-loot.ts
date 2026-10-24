@@ -9,7 +9,7 @@ import loot from "../data/zone-boss-loot.json";
 import catalog from "../data/items.json";
 
 type Spec = { id: string; name: string; base: string; ilvl: number; rarity: number; fac: string; cls: string[]; affix: string[]; stats: Record<string, number>; prop: string; lore: string; look: Record<string, unknown>; boss: string; card: string };
-type Table = { name: string; level: number; band: [number, number]; special: { item: string; chance: number }[]; gold: { mult: number }; loot: { items: number; rarityBonus: number }; potion: { id: string; chance: number; qty: [number, number] }; mats: { id: string; chance: number; qty: [number, number] }[]; legendary: number; pet: number };
+type Table = { name: string; level: number; band: [number, number]; special: { item: string; chance: number }[]; gold: { mult: number }; loot: { items: number; epic: number }; potion: { id: string; chance: number; qty: [number, number] }; mats: { id: string; chance: number; qty: [number, number] }[]; legendary: number; pet: number };
 const ITEMS = loot.items as unknown as Record<string, Spec>;
 const TABLES = loot.bosses as unknown as Record<string, Table>;
 const CARDS = zb.bosses as unknown as { id: string; name: string; levels: { band: [number, number]; boss: number }; loot: { name: string; cat: string; slot: string; rarity: string; lvl: number; affix: string[] }[] }[];
@@ -43,7 +43,8 @@ async function main() {
   });
 
   await check("особые вещи совпадают с карточками, id свои и не заняты", () => {
-    const taken = new Set([...Object.keys(UNIQUES), ...Object.keys(ITEM_MODELS), ...Object.keys(LEGENDARIES), ...Object.keys(BASE_ITEMS)]);
+    // особые вещи уже в UNIQUES (shared/items.ts берёт их отсюда, задача 136 шаг 4) — свои id не в счёт
+    const taken = new Set([...Object.keys(UNIQUES).filter((k) => !Object.hasOwn(ITEMS, k)), ...Object.keys(ITEM_MODELS), ...Object.keys(LEGENDARIES), ...Object.keys(BASE_ITEMS)]);
     for (const [id, it] of Object.entries(ITEMS)) {
       assert(it.id === id, `id ${id} ≠ ${it.id}`);
       assert(!taken.has(id), `id ${id} уже занят`);
@@ -104,7 +105,7 @@ async function main() {
       for (const s of t.special) assert(s.chance > 0 && s.chance <= 0.08, `${id}: шанс ${s.item} ${s.chance}`);
       assert(sum <= 0.2, `${id}: особых вещей ${sum} за убийство`);
       assert(t.gold.mult > 0 && t.gold.mult < 25, `${id}: золото ×${t.gold.mult}`);
-      assert(t.loot.items >= 0 && t.loot.items <= 2 && t.loot.rarityBonus >= 0 && t.loot.rarityBonus < 0.45, `${id}: обычная добыча`);
+      assert(t.loot.items >= 1 && t.loot.items <= 2 && t.loot.epic >= 0.15 && t.loot.epic <= 0.3, `${id}: вещи по уровню (1–2 шт., эпическая 15–30 %)`);
       assert(BASE_ITEMS[t.potion.id]?.slot === "consumable" && t.potion.chance <= 1 && t.potion.qty[0] <= t.potion.qty[1] && t.potion.qty[1] <= 3, `${id}: зелья`);
       for (const m of t.mats) {
         assert(MATERIALS[m.id], `${id}: нет материала ${m.id}`);

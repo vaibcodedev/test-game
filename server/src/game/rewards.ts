@@ -12,6 +12,48 @@ import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import type { World } from "./World";
 import { grantPets, petXp, rollPetDrop } from "./Pet";
+import { ZB_LOOT, type ZbLootTable } from "../../../shared/zoneBosses";
+import type { ClassId } from "../../../shared/classes";
+
+/**
+ * Защита фарма (data/balance.json loot.bossLevelGap, bossLevelFree): с босса ниже bossLevelFree (80, Поля вечных битв) герою старше него
+ * больше чем на gap уровней не падает ничего —
+ * ни вещей, ни золота, ни материалов. Уровень босса — свой (def.level), не подстроенный под героев; считается по каждому герою.
+ */
+/** Редкость вещи с босса: не ниже редкой, эпическая с шансом epic. */
+export const bossRarity = (rand: () => number, epic: number): Rarity => (rand() < epic ? Rarity.Epic : Rarity.Rare);
+
+export function bossLootDenied(m: Pick<Mob, "level" | "def">, p: Pick<Player, "level">): boolean {
+  if (!m.def.boss) return false;
+  const lv = m.def.level ?? m.level;
+  return lv < BAL.loot.bossLevelFree && p.level - lv > BAL.loot.bossLevelGap;
+}
+
+/**
+ * Добыча босса стартовых земель (задача 136, data/zone-boss-loot.json) на одного героя: особая вещь — одна попытка по порядку,
+ * у каждой свой шанс, вещи не по классу выпадают из таблицы, не больше одной; обычные вещи, зелье, материалы и легендарка — по таблице.
+ * Уровень вещей — уровень босса из таблицы (не подстроенный под героев). legend — id выпавшей легендарки (для объявления).
+ */
+export function zoneBossItems(t: ZbLootTable, cls: ClassId, rand: () => number = Math.random): { items: Item[]; legend?: Item } {
+  const items: Item[] = [];
+  for (const s of t.special) {
+    const u = UNIQUES[s.item];
+    const b = u && BASE_ITEMS[u.base];
+    if (!b || (b.classes && !b.classes.includes(cls))) continue;
+    if (rand() < s.chance) { items.push(makeUnique(s.item, u.ilvl)); break; }
+  }
+  // обычные вещи с боссов не падают: каждая вещь по уровню — редкая или эпическая (решения пользователя 2026-10-24)
+  for (let i = 0; i < t.loot.items; i++) items.push(makeLoot(cls, t.level, bossRarity(rand, t.loot.epic), rand));
+  const qty = ([a, b]: [number, number]) => a + Math.floor(rand() * (b - a + 1));
+  if (rand() < t.potion.chance) items.push({ ...makeItem(t.potion.id, 1, 0), qty: qty(t.potion.qty) });
+  for (const m of t.mats) if (rand() < m.chance) items.push({ ...makeItem(m.id, 1, 0), qty: qty(m.qty) });
+  let legend: Item | undefined;
+  if (t.legendary > 0 && rand() < t.legendary) {
+    const id = rollLegendary(cls, t.level, rand);
+    if (id) { legend = makeLegendary(id); items.push(legend); }
+  }
+  return { items, legend };
+}
 
 export function gainXp(w: World, p: Player, xp: number) {
   const s = p.save;
@@ -61,7 +103,9 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
     const share = boss ? 1 : Math.min(1, 0.7 + 0.3 / group);
     const xp = Math.round(xpForKill(m.stats.xp, m.level, p.level) * share);
     const [g0, g1] = m.stats.gold;
-    const gold = Math.round((g0 + Math.random() * (g1 - g0)) * (boss ? 25 : 1));
+    const zt = boss ? ZB_LOOT[m.def.id] : undefined;
+    const denied = bossLootDenied(m, p);
+    const gold = denied ? 0 : Math.round((g0 + Math.random() * (g1 - g0)) * (zt ? zt.gold.mult : boss ? 25 : 1));
     p.save.gold += gold;
     p.save.kills++;
     const mk = (p.save.mobKills ??= {});
@@ -70,11 +114,24 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
     if (boss) p.save.bossKills[m.def.id] = (p.save.bossKills[m.def.id] || 0) + 1;
     gainXp(w, p, xp);
     petXp(w, p, Math.round(xp * 0.7));
-    rollPetDrop(w, p, boss ? 25 : m.elite ? 5 : 1);
+    if (!denied) rollPetDrop(w, p, zt ? zt.pet : boss ? 25 : m.elite ? 5 : 1);
     p.selfDirty = true;
+    if (denied) {
+      p.send("toast", { text: `${m.def.name} слишком слаб для вас: добычи нет.`, kind: "info" });
+      continue;
+    }
 
     // добыча: у каждого своя
     const items: Item[] = [];
+    if (zt) {
+      // босс стартовых земель: своя таблица, остальная добыча боссов подземелий (вещи, материалы, легендарка) — не его
+      const got = zoneBossItems(zt, p.cls);
+      items.push(...got.items);
+      if (got.legend) w.system(`⚡ ${p.name} получил легендарный предмет [${got.legend.name}]!`);
+      dropBag(w, p, m.x, m.y, items, true);
+      p.send("toast", { text: `${m.def.name} повержен! Заберите добычу.`, kind: "loot" });
+      continue;
+    }
     if (boss) {
       const pool = (m.def.uniques ?? []).filter((id) => {
         const b = BASE_ITEMS[UNIQUES[id].base];
@@ -82,7 +139,8 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
       });
       const uid = pool[Math.floor(Math.random() * pool.length)];
       if (uid) items.push(makeUnique(uid, m.level)); // уникальная вещь — уровня босса
-      for (let i = 0; i < 2; i++) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random, 0.45)));
+      // обычные вещи с боссов не падают: вещи по уровню — редкие или эпические (data/balance.json loot.boss)
+      for (let i = 0; i < BAL.loot.boss.items; i++) items.push(makeLoot(p.cls, m.level, bossRarity(Math.random, BAL.loot.boss.epic)));
       items.push({ ...makeItem("hp_potion", 1, 0), qty: 3 });
     } else {
       // шансы — data/balance.json loot (уменьшены по просьбе пользователя)

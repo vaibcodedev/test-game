@@ -4,6 +4,7 @@ import { RESOURCES } from "./biomes";
 import { MATERIALS, PLUS_BONUS } from "./upgrade";
 import catalog from "../data/items.json";
 import { MOBS } from "./mobs";
+import { ZB_ITEMS } from "./zoneBosses";
 
 export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "cloak" | "ring" | "amulet";
 export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"];
@@ -374,7 +375,8 @@ export function iconId(icon: string, variant: ClassId, rarity: Rarity): string {
 
 /** Единственная точка выбора иконки предмета для всего UI. */
 export function iconFor(it: Pick<Item, "base" | "stats" | "uid" | "rarity" | "unique"> & { legendary?: string; model?: string }): string {
-  if (it.unique) return "uq_" + it.unique;
+  // особая добыча боссов стартовых земель — своих иконок пока нет: иконка базы в цвете редкости
+  if (it.unique && !Object.hasOwn(ZB_ITEMS, it.unique)) return "uq_" + it.unique;
   if (it.legendary) return "lg_" + it.legendary;
   // модель: своя иконка на каждую редкость (камень и кайма в цвете редкости, docs/gear-visuals.md 2.1)
   if (it.model && ITEM_MODELS[it.model]) return `im_${it.model}_${Math.max(0, Math.min(2, it.rarity | 0))}`; // легендарной редкости у моделей нет — r3 рисуется как r2
@@ -392,6 +394,10 @@ export interface UniqueDef {
   ilvl: number;
   stats: ItemStats;
   lore: string;
+  /** Редкость вещи (по умолчанию эпическая): особая добыча боссов стартовых земель бывает и редкой. */
+  rarity?: Rarity;
+  /** Свойство из карточки (пока только текст): особая добыча боссов стартовых земель. */
+  prop?: string;
 }
 export const UNIQUES: Record<string, UniqueDef> = {
   heartwood_staff: { id: "heartwood_staff", name: "Посох Сердцевины", base: "staff", ilvl: 15, stats: { int: 12, vit: 6, hp: 60 }, lore: "Ещё тёплый от соков Древнего Энта." },
@@ -413,6 +419,9 @@ export const UNIQUES: Record<string, UniqueDef> = {
   arena_platinum: { id: "arena_platinum", name: "Платиновый медальон арены", base: "amulet", ilvl: 25, stats: { str: 8, agi: 8, int: 8, vit: 8, crit: 4 }, lore: "Награда за сезон арены. Ранг: Платина." },
   arena_diamond: { id: "arena_diamond", name: "Алмазный медальон арены", base: "amulet", ilvl: 30, stats: { str: 10, agi: 10, int: 10, vit: 10, crit: 5 }, lore: "Награда за сезон арены. Ранг: Алмаз." },
 };
+
+// особая добыча боссов стартовых земель (задача 136, data/zone-boss-loot.json): по формату UNIQUES, выдаёт server/src/game/rewards.ts
+for (const z of Object.values(ZB_ITEMS)) UNIQUES[z.id] = { id: z.id, name: z.name, base: z.base, ilvl: z.ilvl, stats: z.stats as ItemStats, lore: z.lore, rarity: z.rarity as Rarity, prop: z.prop };
 
 /** Уровень уникальной вещи по умолчанию: уровень босса, с которого она падает (data/world.json), иначе ilvl записи. */
 export function uniqueLevel(id: string): number {
@@ -436,10 +445,11 @@ function scaleUniqueStats(st: ItemStats, from: number, to: number): ItemStats {
  */
 export function makeUnique(id: string, ilvl: number = uniqueLevel(id)): Item {
   const u = UNIQUES[id], lvl = Math.max(1, Math.round(ilvl));
-  const base = makeItem(u.base, lvl, Rarity.Epic, () => 0.5);
+  const rar = u.rarity ?? Rarity.Epic;
+  const base = makeItem(u.base, lvl, rar, () => 0.5);
   const stats: ItemStats = {};
   const main = BASE_ITEMS[u.base].roll!(lvl);
-  for (const [k, v] of Object.entries(main)) stats[k as ItemStatKey] = Math.round((v as number) * (k.startsWith("dmg") || k === "armor" ? RARITY_MULT[Rarity.Epic] : 1));
+  for (const [k, v] of Object.entries(main)) stats[k as ItemStatKey] = Math.round((v as number) * (k.startsWith("dmg") || k === "armor" ? RARITY_MULT[rar] : 1));
   for (const [k, v] of Object.entries(scaleUniqueStats(u.stats, u.ilvl, lvl))) stats[k as ItemStatKey] = (stats[k as ItemStatKey] || 0) + (v as number);
   return { ...base, name: u.name, stats, unique: id, ilvl: lvl, req: Math.max(1, lvl - 3), bound: true };
 }

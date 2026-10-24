@@ -14,6 +14,7 @@ import { GearLayers, parseGear } from "./GearLayers";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { capBand, placeText, worldText } from "./worldText";
 import { UnitAuras, afx, countHero } from "./auraFx";
+import { zbDef, zbFx, zbViews } from "./zoneBoss";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
 export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
@@ -182,6 +183,8 @@ export class UnitView {
     // кольцо выбора и наведения лежит над кругами бафов и щитов (DEPTH.ground + 7): те почти того же размера и цвета и скрыли бы его
     this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 7.5).setScale(big ? 2 : 1);
     this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, 30 / 32);
+    // босс стартовых земель (задача 136): кадры листа ставит game/zoneBoss.ts
+    if (tex === `u_${this.sid}` && zbDef(this.sid)) zbViews.add(this);
     if (u.kind === UnitKind.Pet) {
       this.sprite.setScale(0.8);
       this.shadow.setScale(0.8);
@@ -632,6 +635,7 @@ export class UnitView {
   }
 
   destroy() {
+    if (zbViews.delete(this)) zbFx?.drop(this);
     this.sprite.destroy();
     this.mountSpr?.destroy();
     this.mountFront?.destroy();

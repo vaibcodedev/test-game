@@ -10,7 +10,7 @@ export interface Balance {
   mana: { int: { a: number; b: number; q: number }; healer: { a: number; b: number; q: number } };
   pet: { refLevel: number };
   /** Добыча с обычных мобов: шансы вещи, второй вещи и зелья (data/balance.json loot). */
-  loot: { item: number; extra: number; potion: number };
+  loot: { item: number; extra: number; potion: number; bossLevelGap: number; bossLevelFree: number; boss: { items: number; epic: number } };
   heal: { power: number[][] };
   pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; mitigationCap: number; ccMult: number; class: Record<string, { dmg?: number; taken?: number }> };
 }

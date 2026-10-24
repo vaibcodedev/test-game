@@ -18,6 +18,12 @@
     ],
     "unlock": { "path": 2, "scatter": 2, "ring": 3, "leap": 3, "dash": 3, "hunt": 4 }
   },
+  "mob": {
+    "_doc": "Числа моба для всех восьми боссов (shared/mobs.ts): hp, dmg, armor — множители к мобу своего уровня (у Энта подземелий — 115, 5.5, 1.5 на группу из пяти; здесь — на двух-трёх героев полосы, бой около 2 мин). xp — множитель опыта, gold — золота моба (таблица добычи ещё ×10, data/zone-boss-loot.json). speed, aggro, range, attackCd, radius — как у мобов (aggro меньше arenaR: босс не уходит с арены). color — точка на карте и в подсказках.",
+    "hp": 30, "dmg": 2.5, "armor": 1.4, "xp": 25, "gold": 1,
+    "speed": 62, "aggro": 260, "range": 64, "attackCd": 2.0, "radius": 22,
+    "color": { "sol_raider_chief": "#c0402a", "sol_forest_warden": "#5a8a32", "sol_rune_golem": "#8ab0b0", "sol_chained_beast": "#7a5a40", "umb_revenant_reaper": "#8a70b0", "umb_fog_treant": "#40b0a8", "umb_ash_minotaur": "#d0602a", "umb_marsh_abomination": "#7a9a40" }
+  },
   "bosses": [
     {
       "id": "sol_raider_chief",

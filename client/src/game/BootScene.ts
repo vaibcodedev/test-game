@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
 import { initAuraFx, loadAuraFx } from "./auraFx";
 import { loading } from "../ui/loading";
+import { zbCreate, zbLoad, type ZbManifest } from "./zoneBoss";
 
 export interface Manifest {
   units: Record<string, { frame: number; cols?: number }>;
@@ -37,6 +38,9 @@ export class BootScene extends Phaser.Scene {
       // обозначения бафов и дебафов на юнитах (задача 129): каталог, затем листы; нет каталога — всё остаётся по-старому
       this.load.json("aurafx", "/assets/aura-fx/manifest.json");
       this.load.once("filecomplete-json-aurafx", () => loadAuraFx(this, this.cache.json.get("aurafx")));
+      // боссы стартовых земель (задача 136): листы 64×64 и эффекты мира; нет каталога — боссы рисуются запасным листом
+      this.load.json("zbm", "/assets/zone-bosses/manifest.json");
+      this.load.once("filecomplete-json-zbm", () => zbLoad(this, this.cache.json.get("zbm") as ZbManifest | undefined));
     });
   }
 
@@ -44,6 +48,7 @@ export class BootScene extends Phaser.Scene {
     const m = this.cache.json.get("manifest") as Manifest;
     makeVfxAnims(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>);
     initAuraFx(this);
+    zbCreate(this);
     for (const id of Object.keys(m.units)) {
       const cols = m.units[id].cols ?? 12;
       for (let row = 0; row < 3; row++) {

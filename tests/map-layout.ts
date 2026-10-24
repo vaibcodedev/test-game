@@ -16,7 +16,7 @@ import world from "../data/world.json";
 import { CITIES, cityById } from "../shared/cities";
 import { MAP_SEED, PLAYER_SPEED, TILE } from "../shared/constants";
 import { factionLandAt, landLabel } from "../shared/factions";
-import { BOSS_SPAWNS, CELL_BLOCK, CELL_RESERVED, DUNGEON, DUNGEON_ROOMS, PLACES, ZONES, ZONE_COUNT, Zone, generateMap, isTownZone, riverX, zoneAtPx, zoneDanger } from "../shared/map";
+import { BOSS_SPAWNS, ZONE_BOSS_SPAWNS, CELL_BLOCK, CELL_RESERVED, DUNGEON, DUNGEON_ROOMS, PLACES, ZONES, ZONE_COUNT, Zone, generateMap, isTownZone, riverX, zoneAtPx, zoneDanger } from "../shared/map";
 import { SETTLEMENTS } from "../shared/settlements";
 import { RAID_GATE } from "../shared/raid";
 import { TOWN } from "../shared/town";
@@ -287,6 +287,11 @@ const targets: Tgt[] = [
   // врата рейда — одна точка на оси (клетка 549 или 550): путь к ним от обеих столиц равен
   { name: "Врата рейда (549 | 550)", a: [AXIS - 1, RAID_GATE ? Math.floor(RAID_GATE.y / TILE) : 345] },
   { name: "Босс кольца 50–60 (Энт | Ведьма)", a: [Math.floor(BOSS_SPAWNS.find((b) => b.id === "ent")!.x / TILE), Math.floor(BOSS_SPAWNS.find((b) => b.id === "ent")!.y / TILE)], b: [Math.floor(BOSS_SPAWNS.find((b) => b.id === "witch")!.x / TILE), Math.floor(BOSS_SPAWNS.find((b) => b.id === "witch")!.y / TILE)] },
+  // боссы стартовых земель (задача 136): пары запад | восток по полосам уровней
+  ...((world.layout as { zoneBosses?: { west: string; east: string }[] }).zoneBosses ?? []).map((z) => {
+    const a = BOSS_SPAWNS.find((b) => b.id === z.west)!, b = BOSS_SPAWNS.find((q) => q.id === z.east)!;
+    return { name: `Босс ${z.west} | ${z.east}`.slice(0, 40), a: [Math.floor(a.x / TILE), Math.floor(a.y / TILE)] as [number, number], b: [Math.floor(b.x / TILE), Math.floor(b.y / TILE)] as [number, number] };
+  }),
 ];
 let maxDiff = 0;
 for (const t of targets) {
@@ -587,7 +592,7 @@ console.log("7. мобы и места");
   }
   console.log("   узлы добычи (запад|восток): " + nodeRows.join("; "));
   // бестиарий: место обитания боссов — зона, где они стоят на карте (тексты слухов в server/src/game/rumors.ts правятся вместе с ним)
-  for (const id of ["ent", "witch", "ashlord"]) {
+  for (const id of ["ent", "witch", "ashlord", ...ZONE_BOSS_SPAWNS.map((b) => b.id)]) {
     const b = BOSS_SPAWNS.find((q) => q.id === id)!, zone = ZONES[zoneAtPx(m, b.x, b.y)].name, hab = (bestiary as Record<string, { habitat?: string[] }>)[id]?.habitat ?? [];
     check(hab.includes(zone), `бестиарий: ${id} обитает в «${hab.join(", ")}», а на карте стоит в «${zone}»`);
   }

@@ -1,0 +1,2126 @@
+{
+ "_doc": "Боссы стартовых земель (задача 136): каталог для client/src/game/zoneBoss.ts. Собирает tools/gen/zone-bosses-to-game.ts — руками не править.",
+ "bosses": {
+  "sol_forest_warden": {
+   "file": "sol_forest_warden.png",
+   "cols": 80,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "cast": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "hold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "slam": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "spread": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "spreadHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "lash": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 68,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "root": {
+     "file": "treant-rootfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "snareIn": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      },
+      "snareHold": {
+       "col": 6,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "snareOut": {
+       "col": 10,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      },
+      "furrow": {
+       "col": 16,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    }
+   },
+   "skills": {
+    "root_snare": {
+     "waves": [
+      {
+       "pre": [
+        "cast",
+        "hold"
+       ],
+       "strike": "slam"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "root",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "snareIn",
+        "snareHold",
+        "snareOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "snareHold": 1500
+       }
+      }
+     ]
+    },
+    "root_furrow": {
+     "waves": [
+      {
+       "pre": [
+        "cast",
+        "hold"
+       ],
+       "strike": "slam"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "root",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "furrow"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "branch_sweep": {
+     "waves": [
+      {
+       "pre": [
+        "spread",
+        "spreadHold"
+       ],
+       "strike": "lash"
+      }
+     ],
+     "fx": []
+    }
+   },
+   "motes": {
+    "file": "treant-mote.png",
+    "size": 5,
+    "frames": 4,
+    "fps": 8,
+    "y": 0,
+    "orbits": [
+     {
+      "c": [
+       -19,
+       -44
+      ],
+      "r": [
+       4,
+       2.5
+      ],
+      "period": 3.2,
+      "phase": 0
+     },
+     {
+      "c": [
+       20,
+       -38
+      ],
+      "r": [
+       3.5,
+       3
+      ],
+      "period": 2.8,
+      "phase": 1.7
+     },
+     {
+      "c": [
+       -4,
+       -59
+      ],
+      "r": [
+       5,
+       2
+      ],
+      "period": 3.6,
+      "phase": 3.1
+     },
+     {
+      "c": [
+       22,
+       -20
+      ],
+      "r": [
+       3,
+       4
+      ],
+      "period": 3,
+      "phase": 4.4
+     },
+     {
+      "c": [
+       -23,
+       -18
+      ],
+      "r": [
+       3.5,
+       3.5
+      ],
+      "period": 3.4,
+      "phase": 2.2
+     }
+    ]
+   }
+  },
+  "sol_raider_chief": {
+   "file": "sol_raider_chief.png",
+   "cols": 98,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "sweepUp": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "sweepHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "sweep": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "torchUp": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "torchHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "throw": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "inhale": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "inhaleHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "roar": {
+     "col": 76,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 86,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "torch": {
+     "file": "sol_raider_chief-torch.png",
+     "fw": 20,
+     "fh": 20,
+     "ax": 10,
+     "ay": 10,
+     "rows": 1,
+     "anims": {
+      "spin": {
+       "col": 0,
+       "n": 8,
+       "fps": 16,
+       "loop": true
+      }
+     }
+    },
+    "fire": {
+     "file": "sol_raider_chief-fire.png",
+     "fw": 112,
+     "fh": 112,
+     "ax": 56,
+     "ay": 62,
+     "rows": 2,
+     "anims": {
+      "ignite": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      },
+      "burn": {
+       "col": 6,
+       "n": 8,
+       "fps": 12,
+       "loop": true
+      },
+      "out": {
+       "col": 14,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    },
+    "roar": {
+     "file": "sol_raider_chief-roar.png",
+     "fw": 184,
+     "fh": 184,
+     "ax": 92,
+     "ay": 92,
+     "rows": 1,
+     "anims": {
+      "wave": {
+       "col": 0,
+       "n": 8,
+       "fps": 15,
+       "loop": false,
+       "hit": 0
+      }
+     }
+    }
+   },
+   "skills": {
+    "axe_sweep": {
+     "waves": [
+      {
+       "pre": [
+        "sweepUp",
+        "sweepHold"
+       ],
+       "strike": "sweep"
+      }
+     ],
+     "fx": []
+    },
+    "torch_throw": {
+     "waves": [
+      {
+       "pre": [
+        "torchUp",
+        "torchHold"
+       ],
+       "strike": "throw"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "torch",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "spin"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "torch",
+       "flyMs": 450
+      },
+      {
+       "fx": "fire",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "ignite",
+        "burn",
+        "out"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "burn": 6000
+       }
+      }
+     ]
+    },
+    "war_roar": {
+     "waves": [
+      {
+       "pre": [
+        "inhale",
+        "inhaleHold"
+       ],
+       "strike": "roar"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "roar",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "wave"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "self"
+      }
+     ]
+    }
+   },
+   "release": {
+    "down": [
+     4,
+     -33
+    ],
+    "up": [
+     -4,
+     -40
+    ],
+    "side": [
+     14,
+     -38
+    ]
+   }
+  },
+  "umb_revenant_reaper": {
+   "file": "umb_revenant_reaper.png",
+   "cols": 98,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "reapWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "reapHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "reap": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "handsWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "handsHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "handsSlam": {
+     "col": 60,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stoneWind": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "stoneHold": {
+     "col": 74,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "stoneCast": {
+     "col": 78,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 86,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "hands": {
+     "file": "umb_revenant_reaper-handsfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "hands": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    },
+    "stone": {
+     "file": "umb_revenant_reaper-stonefx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "stone": {
+       "col": 0,
+       "n": 14,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    }
+   },
+   "skills": {
+    "scythe_arc": {
+     "waves": [
+      {
+       "pre": [
+        "reapWind",
+        "reapHold"
+       ],
+       "strike": "reap"
+      }
+     ],
+     "fx": []
+    },
+    "grave_hands": {
+     "waves": [
+      {
+       "pre": [
+        "handsWind",
+        "handsHold"
+       ],
+       "strike": "handsSlam"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "hands",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "hands"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "gravestone": {
+     "waves": [
+      {
+       "pre": [
+        "stoneWind",
+        "stoneHold"
+       ],
+       "strike": "stoneCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "stone",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "stone"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    }
+   }
+  },
+  "sol_rune_golem": {
+   "file": "sol_rune_golem.png",
+   "cols": 98,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "fistUp": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "fistHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "fistSlam": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "cageCast": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "cageHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "cageSlam": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "pulseCast": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "pulseHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "pulseBurst": {
+     "col": 76,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 86,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "fist": {
+     "file": "sol_rune_golem-fistfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 46,
+     "rows": 2,
+     "anims": {
+      "crater": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      },
+      "burst": {
+       "col": 10,
+       "n": 6,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    },
+    "slab": {
+     "file": "sol_rune_golem-slabfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 46,
+     "rows": 2,
+     "anims": {
+      "slabRise": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      },
+      "slabHold": {
+       "col": 6,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "slabStrike": {
+       "col": 10,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      },
+      "dropWarn": {
+       "col": 18,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "dropFall": {
+       "col": 22,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    },
+    "pulse": {
+     "file": "sol_rune_golem-pulsefx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 46,
+     "rows": 2,
+     "anims": {
+      "pulse": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      }
+     }
+    }
+   },
+   "skills": {
+    "rune_fist": {
+     "waves": [
+      {
+       "pre": [
+        "fistUp",
+        "fistHold"
+       ],
+       "strike": "fistSlam"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "fist",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "crater"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      },
+      {
+       "fx": "fist",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "burst"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "r",
+       "k": 0.7,
+       "count": 6
+      }
+     ]
+    },
+    "slab_cage": {
+     "waves": [
+      {
+       "pre": [
+        "cageCast",
+        "cageHold"
+       ],
+       "strike": "cageSlam"
+      },
+      {}
+     ],
+     "fx": [
+      {
+       "fx": "slab",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "slabRise",
+        "slabHold",
+        "slabStrike"
+       ],
+       "pin": 2,
+       "timing": "wind",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 34
+      },
+      {
+       "fx": "slab",
+       "waves": [
+        1
+       ],
+       "seq": [
+        "dropWarn",
+        "dropFall"
+       ],
+       "pin": 1,
+       "timing": "wind",
+       "place": "marks"
+      }
+     ]
+    },
+    "rune_pulse": {
+     "waves": [
+      {
+       "pre": [
+        "pulseCast",
+        "pulseHold"
+       ],
+       "strike": "pulseBurst"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "pulse",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "pulse"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 40
+      }
+     ]
+    }
+   }
+  },
+  "umb_fog_treant": {
+   "file": "umb_fog_treant.png",
+   "cols": 94,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "gazeIn": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "gazeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "gazeFire": {
+     "col": 42,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "miasmaIn": {
+     "col": 50,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "miasmaHold": {
+     "col": 54,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "miasmaBurst": {
+     "col": 58,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "sporeIn": {
+     "col": 66,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "sporeHold": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "sporeBurst": {
+     "col": 74,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 82,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "beam": {
+     "file": "umb_fog_treant-beamfx.png",
+     "fw": 32,
+     "fh": 16,
+     "ax": 6,
+     "ay": 8,
+     "rows": 3,
+     "anims": {
+      "beam": {
+       "col": 0,
+       "n": 8,
+       "fps": 15,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    },
+    "miasma": {
+     "file": "umb_fog_treant-miasmafx.png",
+     "fw": 96,
+     "fh": 104,
+     "ax": 48,
+     "ay": 60,
+     "rows": 2,
+     "anims": {
+      "settle": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      },
+      "hold": {
+       "col": 6,
+       "n": 8,
+       "fps": 12,
+       "loop": true
+      },
+      "burst": {
+       "col": 14,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    },
+    "spore": {
+     "file": "umb_fog_treant-sporefx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "fall": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      },
+      "lie": {
+       "col": 6,
+       "n": 4,
+       "fps": 8,
+       "loop": true
+      },
+      "burst": {
+       "col": 10,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    }
+   },
+   "skills": {
+    "gaze_beam": {
+     "waves": [
+      {
+       "pre": [
+        "gazeIn",
+        "gazeHold"
+       ],
+       "strike": "gazeFire"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "beam",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "beam"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "beam"
+      }
+     ]
+    },
+    "miasma": {
+     "waves": [
+      {
+       "pre": [
+        "miasmaIn",
+        "miasmaHold"
+       ],
+       "strike": "miasmaBurst"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "miasma",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "settle",
+        "hold",
+        "burst"
+       ],
+       "pin": 2,
+       "timing": "wind",
+       "place": "marks"
+      }
+     ]
+    },
+    "spore_rain": {
+     "waves": [
+      {
+       "pre": [
+        "sporeIn",
+        "sporeHold"
+       ],
+       "strike": "sporeBurst"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "spore",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "fall",
+        "lie",
+        "burst"
+       ],
+       "pin": 2,
+       "timing": "wind",
+       "place": "marks"
+      }
+     ]
+    }
+   },
+   "eye": [
+    0,
+    -39
+   ],
+   "fog": {
+    "file": "umb_fog_treant-fog.png",
+    "wisp": {
+     "w": 32,
+     "h": 12,
+     "frames": 4,
+     "y": 0
+    },
+    "mote": {
+     "size": 5,
+     "frames": 4,
+     "y": 12,
+     "fps": 8
+    },
+    "wisps": [
+     {
+      "r": [
+       26,
+       7
+      ],
+      "period": 14,
+      "phase": 0.2,
+      "frame": 0,
+      "lift": 2
+     },
+     {
+      "r": [
+       22,
+       6
+      ],
+      "period": 11,
+      "phase": 1.1,
+      "frame": 1,
+      "lift": 1
+     },
+     {
+      "r": [
+       29,
+       8
+      ],
+      "period": 17,
+      "phase": 2,
+      "frame": 2,
+      "lift": 3
+     },
+     {
+      "r": [
+       20,
+       5
+      ],
+      "period": 12,
+      "phase": 2.9,
+      "frame": 3,
+      "lift": 1
+     },
+     {
+      "r": [
+       27,
+       7
+      ],
+      "period": 15,
+      "phase": 3.8,
+      "frame": 1,
+      "lift": 2
+     },
+     {
+      "r": [
+       24,
+       6
+      ],
+      "period": 13,
+      "phase": 4.7,
+      "frame": 0,
+      "lift": 2
+     },
+     {
+      "r": [
+       30,
+       7
+      ],
+      "period": 19,
+      "phase": 5.6,
+      "frame": 2,
+      "lift": 1
+     }
+    ],
+    "motes": [
+     {
+      "c": [
+       -17,
+       -47
+      ],
+      "r": [
+       4,
+       2.5
+      ],
+      "period": 3.4,
+      "phase": 0
+     },
+     {
+      "c": [
+       18,
+       -42
+      ],
+      "r": [
+       3.5,
+       3
+      ],
+      "period": 2.9,
+      "phase": 1.9
+     },
+     {
+      "c": [
+       -21,
+       -22
+      ],
+      "r": [
+       3,
+       4
+      ],
+      "period": 3.1,
+      "phase": 3.3
+     }
+    ]
+   }
+  },
+  "sol_chained_beast": {
+   "file": "sol_chained_beast.png",
+   "cols": 122,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "whirlUp": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "whirlHold": {
+     "col": 38,
+     "n": 8,
+     "fps": 16,
+     "loop": true
+    },
+    "whirlSlam": {
+     "col": 46,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "whirlWide": {
+     "col": 52,
+     "n": 8,
+     "fps": 16,
+     "loop": true
+    },
+    "whirlLash": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "crouch": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "crouchHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "lunge": {
+     "col": 76,
+     "n": 12,
+     "fps": 12,
+     "loop": false,
+     "hit": 5
+    },
+    "howl": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "howlHold": {
+     "col": 92,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "huntR": {
+     "col": 96,
+     "n": 7,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "huntL": {
+     "col": 103,
+     "n": 7,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 110,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "chain": {
+     "file": "sol_chained_beast-chainfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "slam": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      }
+     }
+    },
+    "lunge": {
+     "file": "sol_chained_beast-lungefx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "land": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      }
+     }
+    },
+    "hunt": {
+     "file": "sol_chained_beast-huntfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "claw": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    }
+   },
+   "skills": {
+    "chain_whirl": {
+     "waves": [
+      {
+       "pre": [
+        "whirlUp",
+        "whirlHold"
+       ],
+       "strike": "whirlSlam"
+      },
+      {
+       "pre": [
+        "whirlWide"
+       ],
+       "strike": "whirlLash"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "chain",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "slam"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "arcs",
+       "radius": "r",
+       "spacing": 56
+      },
+      {
+       "fx": "chain",
+       "waves": [
+        1
+       ],
+       "seq": [
+        "slam"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "arcs",
+       "radius": "r2",
+       "spacing": 56
+      }
+     ]
+    },
+    "spike_lunge": {
+     "waves": [
+      {
+       "pre": [
+        "crouch",
+        "crouchHold"
+       ],
+       "strike": "lunge"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "lunge",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "land"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "hunt": {
+     "waves": [
+      {
+       "pre": [
+        "howl",
+        "howlHold"
+       ],
+       "strike": "huntR"
+      },
+      {
+       "strike": "huntL"
+      },
+      {
+       "strike": "huntR"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "hunt",
+       "waves": [
+        0,
+        1,
+        2
+       ],
+       "seq": [
+        "claw"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    }
+   }
+  },
+  "umb_ash_minotaur": {
+   "file": "umb_ash_minotaur.png",
+   "cols": 112,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "axeUp": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "axeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "axeSweep": {
+     "col": 42,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 2
+    },
+    "axeTurn": {
+     "col": 52,
+     "n": 8,
+     "fps": 12,
+     "loop": false
+    },
+    "ramPaw": {
+     "col": 60,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "ramHold": {
+     "col": 64,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "charge": {
+     "col": 68,
+     "n": 8,
+     "fps": 16,
+     "loop": true
+    },
+    "ramStop": {
+     "col": 76,
+     "n": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "stompUp": {
+     "col": 82,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "stompHold": {
+     "col": 86,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "stomp": {
+     "col": 90,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 100,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "burn": {
+     "file": "umb_ash_minotaur-burnfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 1,
+     "anims": {
+      "burn": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": true
+      }
+     }
+    },
+    "ram": {
+     "file": "umb_ash_minotaur-ramfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "hoof": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      }
+     }
+    },
+    "ash": {
+     "file": "umb_ash_minotaur-ashfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "puff": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    }
+   },
+   "burn": "burn",
+   "skills": {
+    "rune_axe": {
+     "waves": [
+      {
+       "pre": [
+        "axeUp",
+        "axeHold"
+       ],
+       "strike": "axeSweep"
+      },
+      {
+       "pre": [
+        "axeTurn",
+        "axeHold"
+       ],
+       "strike": "axeSweep",
+       "turn": true
+      }
+     ],
+     "fx": []
+    },
+    "ram": {
+     "waves": [
+      {
+       "pre": [
+        "ramPaw",
+        "ramHold"
+       ],
+       "strike": "charge",
+       "hold": 480,
+       "post": [
+        "ramStop"
+       ]
+      }
+     ],
+     "fx": [
+      {
+       "fx": "ram",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "hoof"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "ash_stomp": {
+     "waves": [
+      {
+       "pre": [
+        "stompUp",
+        "stompHold"
+       ],
+       "strike": "stomp"
+      },
+      {},
+      {}
+     ],
+     "fx": [
+      {
+       "fx": "ash",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "puff"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "inner",
+       "spacing": 28
+      },
+      {
+       "fx": "ash",
+       "waves": [
+        1,
+        2
+       ],
+       "seq": [
+        "puff"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 28
+      }
+     ]
+    }
+   }
+  },
+  "umb_marsh_abomination": {
+   "file": "umb_marsh_abomination.png",
+   "cols": 114,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "gape": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "gapeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "snap": {
+     "col": 42,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "turn": {
+     "col": 50,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "turnHold": {
+     "col": 54,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "snap2": {
+     "col": 58,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "call": {
+     "col": 66,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "callHold": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "plunge": {
+     "col": 74,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "swell": {
+     "col": 84,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "swellHold": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "burst": {
+     "col": 92,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "death": {
+     "col": 102,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "maw": {
+     "file": "umb_marsh_abomination-mawfx.png",
+     "fw": 96,
+     "fh": 96,
+     "ax": 48,
+     "ay": 60,
+     "rows": 2,
+     "anims": {
+      "mawIn": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      },
+      "mawWide": {
+       "col": 6,
+       "n": 4,
+       "fps": 12,
+       "loop": false
+      },
+      "mawWideHold": {
+       "col": 10,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "mawWideSnap": {
+       "col": 14,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    },
+    "gas": {
+     "file": "umb_marsh_abomination-gasfx.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 52,
+     "rows": 2,
+     "anims": {
+      "gasRise": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      },
+      "gasHold": {
+       "col": 6,
+       "n": 6,
+       "fps": 8,
+       "loop": true
+      },
+      "gasFade": {
+       "col": 12,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    }
+   },
+   "skills": {
+    "bite": {
+     "waves": [
+      {
+       "pre": [
+        "gape",
+        "gapeHold"
+       ],
+       "strike": "snap"
+      },
+      {
+       "pre": [
+        "turn",
+        "turnHold"
+       ],
+       "strike": "snap2"
+      }
+     ],
+     "fx": []
+    },
+    "swamp_maws": {
+     "waves": [
+      {
+       "pre": [
+        "call",
+        "callHold"
+       ],
+       "strike": "plunge"
+      },
+      {}
+     ],
+     "fx": [
+      {
+       "fx": "maw",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "mawIn",
+        "mawWide",
+        "mawWideHold"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "mawWideHold": 1000
+       }
+      },
+      {
+       "fx": "maw",
+       "waves": [
+        1
+       ],
+       "seq": [
+        "mawWideSnap"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "corpse_gas": {
+     "waves": [
+      {
+       "pre": [
+        "swell",
+        "swellHold"
+       ],
+       "strike": "burst"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "gas",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "gasRise",
+        "gasHold",
+        "gasFade"
+       ],
+       "pin": 2,
+       "timing": "wind",
+       "place": "area",
+       "spacing": 64
+      }
+     ]
+    }
+   }
+  }
+ }
+}

@@ -201,6 +201,11 @@ type FxBody =
   | { t: "pose"; id: string; k: "swing" | "slam" | "roar" | "idle"; ms: number }
   /** Рейд-босс: реплика крупным текстом над головой и строкой в чате. */
   | { t: "yell"; id: string; text: string }
+  /**
+   * Босс стартовых земель (задача 136): волна w умения ab началась — замах ms до удара; pts — центры меток [x, y, …] (у конуса —
+   * вершина), a — направление конуса, step — мс между ударами меток ряда, r/r2 — размеры формы. ab «burn» с tgt — поджог героя на ms.
+   */
+  | { t: "zb"; id: string; ab: string; w: number; ms: number; pts?: number[]; a?: number; step?: number; r?: number; r2?: number; tgt?: string }
   /** Рейд: мощный удар — тряска и вспышка (quake | rift | phase | sun | death | berserk) в точке x, y. */
   | { t: "shake"; k: string; x: number; y: number }
   /** Телепорт: cast — начало каста у камня (sx,sy), go — уход, arrive — прибытие, cancel — прерван */

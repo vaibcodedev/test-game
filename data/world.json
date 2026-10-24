@@ -54,6 +54,13 @@
         "note": "мировой босс на оси, свободен"
       }
     ],
+    "_zoneBossesDoc": "Боссы стартовых земель (задача 136, карточки — data/zone-bosses.json): пара на полосу уровней — west в клетке x, y (Сольгард), east — в зеркальной клетке 1099 − x (Умбрат); центр клетки +0,5. arena — радиус арены, тайлы (ровная земля без декора и мобов, как у прежних боссов). Места — в своей зоне, вдали от дорог, поселений и мест (подбор — tests/zone-bosses.ts).",
+    "zoneBosses": [
+      { "west": "sol_raider_chief", "east": "umb_revenant_reaper", "x": 96, "y": 170, "arena": 10 },
+      { "west": "sol_forest_warden", "east": "umb_fog_treant", "x": 88, "y": 90, "arena": 10 },
+      { "west": "sol_rune_golem", "east": "umb_ash_minotaur", "x": 119, "y": 74, "arena": 10 },
+      { "west": "sol_chained_beast", "east": "umb_marsh_abomination", "x": 165, "y": 66, "arena": 10 }
+    ],
     "settlements": [
       { "id": "s1", "lv": [1, 10], "west": ["Ясный Дол", 96, 214], "east": ["Погост Скорби", 1003, 214], "spur": "sol_spur_1" },
       { "id": "s2", "lv": [10, 20], "west": ["Мельничный Брод", 112, 126], "east": ["Чёрный Брод", 987, 126], "spur": "sol_spur_2" },
