@@ -865,7 +865,7 @@
           "rarity": "r3",
           "lvl": 28,
           "fac": "umbrath",
-          "cls": ["deathknight", "reaver", "warrior"],
+          "cls": ["deathknight", "reaver"],
           "affix": ["str", "crit"],
           "prop": "Лезвие поджигает цель при ударе: горит 3 с, по секунде получает небольшой урон.",
           "look": { "mat": "blackiron", "trim": "bone", "fx": "fire" }

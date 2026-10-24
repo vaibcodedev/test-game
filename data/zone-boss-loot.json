@@ -1,0 +1,1334 @@
+{
+  "_doc": "Особая добыча боссов стартовых земель (задача 136, шаг 5; docs/zone-bosses.md). В игру ещё не подключена — подключение в шаге 4 (server/src/game/rewards.ts). items — особые вещи по формату UNIQUES (shared/items.ts): base — категория BASE_ITEMS, ilvl — уровень вещи из карточки (в полосе уровней босса, не выше его уровня), stats — добавочные характеристики при этом ilvl (основные — от базы по ilvl и редкости, как в makeUnique), rarity — 1 редкая / 2 эпическая (card r1–r2 → 1, r3 → 2; легендарная — только у легендарок), fac — только стиль вида, cls — рекомендованные классы (не ограничение), prop — свойство из карточки (пока только текст), look — вид в формате моделей data/items.json (формы и ключи палитр — только существующие, без новых генераторов), boss — с кого падает. Сила: сумма долей stats от аффикса своего уровня ≤ 1,4 у редкой и 2,0 у эпической (+0,1 у колец и амулетов) — ниже самой слабой уникальной вещи подземелий (Болотоходы, 2,16) на том же уровне, и по каждой характеристике не выше их; меньше, чем у случайной эпической (4 с лишним), — особенность вещи в свойстве prop; проверка — tests/zone-boss-loot.ts.",
+  "_tableDoc": "bosses — таблица добычи на каждого героя-участника, как у боссов подземелий в rewards.ts, но реже (просьба пользователя: добычу делать реже; босс возрождается раз в 30 мин). special — одна попытка на убийство: вещи по порядку, шанс chance у каждой; вещи, которые класс героя не может надеть, выпадают из таблицы (шансы остальных не растут); не больше одной особой вещи. gold.mult — множитель к золоту моба уровня босса (у боссов подземелий ×25). loot — обычные вещи по уровню босса (makeLoot): items штук, rarityBonus к rollRarity (у боссов подземелий 2 шт. и 0,45). potion — шанс зелья и число. mats — материалы кузнеца (data/upgrade.json): шанс и [мин, макс] (у боссов подземелий руда 4–7 и пыль 2–4 всегда). legendary — шанс легендарки (rollLegendary по уровню босса; у боссов подземелий 0,04). pet — множитель шанса питомца в rollPetDrop (у боссов подземелий 25, у элиты 5).",
+  "items": {
+    "zb_glutton_axe": {
+      "id": "zb_glutton_axe",
+      "name": "Топор Ненасытного",
+      "base": "greataxe",
+      "ilvl": 9,
+      "rarity": 1,
+      "fac": "",
+      "cls": [
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 3,
+        "crit": 1
+      },
+      "prop": "Каждый удар по врагу копит «голод» до пяти; на полном голоде следующий удар бьёт по кругу вокруг цели.",
+      "lore": "Северяне говорят, что этот топор никогда не бывает сыт.",
+      "look": {
+        "shape": "bardiche",
+        "mat": "iron",
+        "trim": "bronze",
+        "cloth": "brown",
+        "haft": "wood",
+        "fx": "ruby",
+        "guard": "disc",
+        "pommel": "gem"
+      },
+      "boss": "sol_raider_chief",
+      "card": "r2"
+    },
+    "zb_chief_cloak": {
+      "id": "zb_chief_cloak",
+      "name": "Красный плащ вожака",
+      "base": "cloak",
+      "ilvl": 8,
+      "rarity": 1,
+      "fac": "",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "hp"
+      ],
+      "stats": {
+        "vit": 3,
+        "hp": 22
+      },
+      "prop": "Первый удар по носителю в каждом бою на 15% слабее.",
+      "lore": "Вожак не снимал его ни в бою, ни во сне.",
+      "look": {
+        "shape": "fur",
+        "mat": "bronze",
+        "trim": "bronze",
+        "cloth": "red",
+        "haft": "wood",
+        "fx": "ruby",
+        "guard": "bar",
+        "pommel": "ring",
+        "hide": "whitefur"
+      },
+      "boss": "sol_raider_chief",
+      "card": "r2"
+    },
+    "zb_raider_furhelm": {
+      "id": "zb_raider_furhelm",
+      "name": "Меховой шлем ватажника",
+      "base": "leather_helm",
+      "ilvl": 6,
+      "rarity": 1,
+      "fac": "",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 2,
+        "vit": 1
+      },
+      "prop": "На вспаханной земле и в снегу скорость не падает.",
+      "lore": "Мех пахнет дымом сожжённых нив.",
+      "look": {
+        "shape": "fur",
+        "rich": 0,
+        "mat": "blackiron",
+        "trim": "bronze",
+        "cloth": "brown",
+        "hide": "leather",
+        "haft": "darkwood",
+        "fx": "sun",
+        "guard": "cross",
+        "pommel": "gem"
+      },
+      "boss": "sol_raider_chief",
+      "card": "r1"
+    },
+    "zb_grove_staff": {
+      "id": "zb_grove_staff",
+      "name": "Посох пущи",
+      "base": "staff",
+      "ilvl": 16,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 6,
+        "crit": 1
+      },
+      "prop": "При крите цель на секунду запутывается в корнях и замедляется.",
+      "lore": "Срезан с живой ветви Дубослава — и всё ещё растёт.",
+      "look": {
+        "shape": "root",
+        "mat": "iron",
+        "trim": "gold",
+        "cloth": "white",
+        "haft": "wood",
+        "fx": "sun",
+        "guard": "wings",
+        "pommel": "gem"
+      },
+      "boss": "sol_forest_warden",
+      "card": "r2"
+    },
+    "zb_warden_cuirass": {
+      "id": "zb_warden_cuirass",
+      "name": "Древесная кираса стража",
+      "base": "leather_armor",
+      "ilvl": 18,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 6,
+        "vit": 4
+      },
+      "prop": "Пока стоишь на месте, броня растёт за счёт коры (до 3 с); при движении бонус гаснет.",
+      "lore": "Кора на ней затягивает царапины к утру.",
+      "look": {
+        "shape": "harness",
+        "rich": 0,
+        "mat": "steel",
+        "trim": "gold",
+        "cloth": "moss",
+        "hide": "leather",
+        "haft": "wood",
+        "deco": "filigree",
+        "fx": "sun",
+        "guard": "cross",
+        "pommel": "ball"
+      },
+      "boss": "sol_forest_warden",
+      "card": "r2"
+    },
+    "zb_goldleaf_ring": {
+      "id": "zb_goldleaf_ring",
+      "name": "Перстень золотого листа",
+      "base": "ring",
+      "ilvl": 20,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "healer",
+        "bloodweaver",
+        "mage"
+      ],
+      "affix": [
+        "int",
+        "hp"
+      ],
+      "stats": {
+        "int": 11,
+        "hp": 73
+      },
+      "prop": "Рядом с деревьями чуть быстрее лечит союзников в радиусе 120 px.",
+      "lore": "Золотой лист, свёрнутый в кольцо руками древня.",
+      "look": {
+        "shape": "twist",
+        "rich": 0,
+        "mat": "radiant",
+        "trim": "gold",
+        "cloth": "white",
+        "gem": "sun",
+        "haft": "wood",
+        "deco": "wings",
+        "fx": "sun",
+        "guard": "ornate",
+        "pommel": "ring"
+      },
+      "boss": "sol_forest_warden",
+      "card": "r3"
+    },
+    "zb_mason_hammer": {
+      "id": "zb_mason_hammer",
+      "name": "Рунный молот каменотёса",
+      "base": "hammer",
+      "ilvl": 26,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 13,
+        "crit": 1
+      },
+      "prop": "Удар по земле оставляет руну: следующий удар в это место сильнее.",
+      "lore": "Им вытесывали руны курганов, пока камень не встал сам.",
+      "look": {
+        "shape": "rune",
+        "mat": "steel",
+        "trim": "gold",
+        "cloth": "azure",
+        "gem": "sun",
+        "haft": "wood",
+        "deco": "runes",
+        "fx": "diamond",
+        "guard": "wings",
+        "pommel": "gem"
+      },
+      "boss": "sol_rune_golem",
+      "card": "r3"
+    },
+    "zb_sentinel_shield": {
+      "id": "zb_sentinel_shield",
+      "name": "Каменный щит часового",
+      "base": "shield",
+      "ilvl": 24,
+      "rarity": 1,
+      "fac": "",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "vit",
+        "str"
+      ],
+      "stats": {
+        "vit": 8,
+        "str": 5
+      },
+      "prop": "Раз в 10 с гасит следующий круговой удар по носителю.",
+      "lore": "Осколок плеча Рунолита, ещё тёплый от рун.",
+      "look": {
+        "shape": "tower",
+        "mat": "rune",
+        "trim": "steel",
+        "cloth": "teal",
+        "gem": "sun",
+        "haft": "wood",
+        "deco": "runes",
+        "fx": "diamond",
+        "guard": "bar",
+        "pommel": "spike"
+      },
+      "boss": "sol_rune_golem",
+      "card": "r2"
+    },
+    "zb_silent_talisman": {
+      "id": "zb_silent_talisman",
+      "name": "Талисман Безмолвного",
+      "base": "amulet",
+      "ilvl": 29,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "healer",
+        "bloodweaver",
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 15,
+        "vit": 10
+      },
+      "prop": "Пока носитель стоит на месте, медленно восстанавливает здоровье.",
+      "lore": "Молчит. Всегда. Даже когда должен бы кричать.",
+      "look": {
+        "shape": "rune",
+        "rich": 1,
+        "mat": "rune",
+        "trim": "gold",
+        "cloth": "azure",
+        "gem": "diamond",
+        "haft": "yew",
+        "deco": "runes",
+        "fx": "diamond",
+        "guard": "disc",
+        "pommel": "ball"
+      },
+      "boss": "sol_rune_golem",
+      "card": "r3"
+    },
+    "zb_chain_mace": {
+      "id": "zb_chain_mace",
+      "name": "Цепная булава Лютобора",
+      "base": "mace",
+      "ilvl": 36,
+      "rarity": 2,
+      "fac": "",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 18,
+        "crit": 1
+      },
+      "prop": "Крюк на конце цепи при ударе сцепляет цель на 1 с; сильнее, если бьёшь со спины.",
+      "lore": "Цепь когда-то держала зверя. Теперь держит врагов.",
+      "look": {
+        "shape": "flail",
+        "mat": "iron",
+        "trim": "iron",
+        "cloth": "grey",
+        "gem": "diamond",
+        "haft": "wood",
+        "deco": "chains",
+        "fx": "sun",
+        "guard": "ornate",
+        "pommel": "ball"
+      },
+      "boss": "sol_chained_beast",
+      "card": "r3"
+    },
+    "zb_spiked_plate": {
+      "id": "zb_spiked_plate",
+      "name": "Шипастые наплечники Цепного",
+      "base": "plate_armor",
+      "ilvl": 38,
+      "rarity": 2,
+      "fac": "",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "str"
+      ],
+      "stats": {
+        "vit": 19,
+        "str": 12
+      },
+      "prop": "Шипы отражают часть урона тому, кто бьёт носителя в упор.",
+      "lore": "Шипы росли сквозь латы, пока зверь носил их.",
+      "look": {
+        "shape": "plate",
+        "rich": 1,
+        "mat": "rust",
+        "trim": "bone",
+        "cloth": "red",
+        "gem": "ruby",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "ruby",
+        "guard": "bar",
+        "pommel": "spike"
+      },
+      "boss": "sol_chained_beast",
+      "card": "r3"
+    },
+    "zb_cursed_link": {
+      "id": "zb_cursed_link",
+      "name": "Звено проклятой цепи",
+      "base": "amulet",
+      "ilvl": 40,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver",
+        "rogue"
+      ],
+      "affix": [
+        "str",
+        "hp"
+      ],
+      "stats": {
+        "str": 21,
+        "hp": 141
+      },
+      "prop": "Пока здоровье выше половины, даёт силу; ниже — короткую вспышку ярости на 5 с.",
+      "lore": "На звене ещё видно выцветший Солнечный Щит.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "iron",
+        "trim": "gold",
+        "cloth": "azure",
+        "gem": "sun",
+        "haft": "yew",
+        "deco": "chains",
+        "fx": "sun",
+        "guard": "ornate",
+        "pommel": "spike"
+      },
+      "boss": "sol_chained_beast",
+      "card": "r3"
+    },
+    "zb_returned_scythe": {
+      "id": "zb_returned_scythe",
+      "name": "Серп Вернувшегося",
+      "base": "scythe",
+      "ilvl": 9,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 3,
+        "crit": 1
+      },
+      "prop": "Каждое убийство возвращает носителю 3% здоровья.",
+      "lore": "Вернулся из кургана вместе с хозяином.",
+      "look": {
+        "shape": "reaper",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "moss",
+        "haft": "deadwood",
+        "fx": "fel",
+        "guard": "curved",
+        "pommel": "gem"
+      },
+      "boss": "umb_revenant_reaper",
+      "card": "r2"
+    },
+    "zb_barrow_cloak": {
+      "id": "zb_barrow_cloak",
+      "name": "Плащ курганного короля",
+      "base": "cloak",
+      "ilvl": 8,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver",
+        "rogue"
+      ],
+      "affix": [
+        "vit",
+        "hp"
+      ],
+      "stats": {
+        "vit": 3,
+        "hp": 22
+      },
+      "prop": "После удара по носителю три секунды он в тени: враги рядом хуже видят его.",
+      "lore": "Саван курганного короля, сшитый заново из лохмотьев.",
+      "look": {
+        "shape": "shroud",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "haft": "darkwood",
+        "fx": "onyx",
+        "guard": "claw",
+        "pommel": "ball"
+      },
+      "boss": "umb_revenant_reaper",
+      "card": "r2"
+    },
+    "zb_barrow_mask": {
+      "id": "zb_barrow_mask",
+      "name": "Костяная маска курганника",
+      "base": "leather_helm",
+      "ilvl": 10,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 4,
+        "vit": 2
+      },
+      "prop": "Пыль и туман не замедляют шаг.",
+      "lore": "Под маской всегда холодно, как в склепе.",
+      "look": {
+        "shape": "mask",
+        "rich": 0,
+        "mat": "bone",
+        "trim": "bone",
+        "cloth": "black",
+        "hide": "darkleather",
+        "haft": "darkwood",
+        "fx": "onyx",
+        "guard": "cross",
+        "pommel": "gem"
+      },
+      "boss": "umb_revenant_reaper",
+      "card": "r2"
+    },
+    "zb_fogeye_staff": {
+      "id": "zb_fogeye_staff",
+      "name": "Посох туманного глаза",
+      "base": "staff",
+      "ilvl": 17,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 6,
+        "crit": 1
+      },
+      "prop": "При крите цель на 2 с окутывает туман: её скорость падает.",
+      "lore": "Ветвь Мглогляда. На сучке ещё тлеет бирюзовая искра.",
+      "look": {
+        "shape": "root",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "moss",
+        "haft": "darkwood",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "ring"
+      },
+      "boss": "umb_fog_treant",
+      "card": "r2"
+    },
+    "zb_bog_cuirass": {
+      "id": "zb_bog_cuirass",
+      "name": "Болотная кираса",
+      "base": "leather_armor",
+      "ilvl": 15,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 5,
+        "vit": 3
+      },
+      "prop": "В тумане и на болоте скорость не падает, а шаги не слышны рядом стоящим врагам.",
+      "lore": "Мох на ней не сохнет даже у костра.",
+      "look": {
+        "shape": "mantle",
+        "rich": 0,
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "moss",
+        "hide": "darkleather",
+        "haft": "darkwood",
+        "fx": "fel",
+        "guard": "bar",
+        "pommel": "spike"
+      },
+      "boss": "umb_fog_treant",
+      "card": "r2"
+    },
+    "zb_eye_core": {
+      "id": "zb_eye_core",
+      "name": "Глазное ядро Мглогляда",
+      "base": "orb",
+      "ilvl": 20,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock",
+        "healer",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "hp"
+      ],
+      "stats": {
+        "int": 10,
+        "hp": 70
+      },
+      "prop": "Каждый удар по цели, которую видит ядро, даёт щит на 5% здоровья на 3 с.",
+      "lore": "Ядро глаза древня. Оно смотрит, даже когда ты отвернулся.",
+      "look": {
+        "shape": "eye",
+        "mat": "obsidian",
+        "trim": "obsidian",
+        "cloth": "shroud",
+        "haft": "deadwood",
+        "deco": "skull",
+        "fx": "emerald",
+        "guard": "bar",
+        "pommel": "skull"
+      },
+      "boss": "umb_fog_treant",
+      "card": "r3"
+    },
+    "zb_taur_axe": {
+      "id": "zb_taur_axe",
+      "name": "Рунный топор Тавра",
+      "base": "greataxe",
+      "ilvl": 28,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 14,
+        "crit": 1
+      },
+      "prop": "Лезвие поджигает цель при ударе: горит 3 с, по секунде получает небольшой урон.",
+      "lore": "Руны на лезвии гаснут, только когда топор в крови.",
+      "look": {
+        "shape": "executioner",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "haft": "deadwood",
+        "deco": "spikes",
+        "fx": "ruby",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_ash_minotaur",
+      "card": "r3"
+    },
+    "zb_executioner_greaves": {
+      "id": "zb_executioner_greaves",
+      "name": "Кольчужные поножи палача",
+      "base": "plate_boots",
+      "ilvl": 25,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "str"
+      ],
+      "stats": {
+        "vit": 9,
+        "str": 6
+      },
+      "prop": "Не сбивается с ног от таранов и толчков: короткая стойкость после удара.",
+      "lore": "Звенья пропахли пеплом предгорий.",
+      "look": {
+        "shape": "greave",
+        "rich": 0,
+        "mat": "iron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "fel",
+        "haft": "deadwood",
+        "deco": "spikes",
+        "fx": "ruby",
+        "guard": "bar",
+        "pommel": "ring"
+      },
+      "boss": "umb_ash_minotaur",
+      "card": "r2"
+    },
+    "zb_skull_charm": {
+      "id": "zb_skull_charm",
+      "name": "Черепной оберег на поясе",
+      "base": "amulet",
+      "ilvl": 30,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver",
+        "rogue"
+      ],
+      "affix": [
+        "str",
+        "hp"
+      ],
+      "stats": {
+        "str": 16,
+        "hp": 107
+      },
+      "prop": "Когда рядом погибает враг, носитель получает силу на 5 с.",
+      "lore": "Череп с пояса Тавра. Чей — Тавр уже не помнил.",
+      "look": {
+        "shape": "skull",
+        "rich": 1,
+        "mat": "bone",
+        "trim": "iron",
+        "cloth": "shroud",
+        "gem": "ruby",
+        "haft": "darkwood",
+        "deco": "skull",
+        "fx": "ruby",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "umb_ash_minotaur",
+      "card": "r3"
+    },
+    "zb_mire_fang": {
+      "id": "zb_mire_fang",
+      "name": "Клык Топей",
+      "base": "dagger",
+      "ilvl": 35,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "crit"
+      ],
+      "stats": {
+        "agi": 18,
+        "crit": 1
+      },
+      "prop": "Удар оставляет яд: три секунды урона во времени, до трёх слоёв.",
+      "lore": "Зуб одной из пастей Многорота. Яд на нём не высыхает.",
+      "look": {
+        "shape": "fang",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "moss",
+        "gem": "emerald",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "ornate",
+        "pommel": "ball"
+      },
+      "boss": "umb_marsh_abomination",
+      "card": "r3"
+    },
+    "zb_stitched_plate": {
+      "id": "zb_stitched_plate",
+      "name": "Шовная кираса",
+      "base": "plate_armor",
+      "ilvl": 38,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "hp"
+      ],
+      "stats": {
+        "vit": 19,
+        "hp": 128
+      },
+      "prop": "Пока носитель стоит на месте, медленно восстанавливает здоровье: 1% в 5 с.",
+      "lore": "Сшита из лат тех, кого Многорот проглотил.",
+      "look": {
+        "shape": "bone",
+        "rich": 1,
+        "mat": "plague",
+        "trim": "bone",
+        "cloth": "moss",
+        "gem": "fel",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "bar",
+        "pommel": "ball"
+      },
+      "boss": "umb_marsh_abomination",
+      "card": "r3"
+    },
+    "zb_stitched_hood": {
+      "id": "zb_stitched_hood",
+      "name": "Сшитый капюшон",
+      "base": "cloth_helm",
+      "ilvl": 40,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "healer",
+        "warlock",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 20,
+        "vit": 13
+      },
+      "prop": "Показывает ядовитые лужи за 2 с до того, как они станут опасны.",
+      "lore": "Швы на капюшоне иногда шевелятся.",
+      "look": {
+        "shape": "cowl",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_marsh_abomination",
+      "card": "r3"
+    }
+  },
+  "bosses": {
+    "sol_raider_chief": {
+      "name": "Хрольф Ненасытный",
+      "level": 10,
+      "band": [
+        1,
+        10
+      ],
+      "special": [
+        {
+          "item": "zb_glutton_axe",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_chief_cloak",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_raider_furhelm",
+          "chance": 0.06
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        }
+      ],
+      "legendary": 0,
+      "pet": 5
+    },
+    "sol_forest_warden": {
+      "name": "Дубослав",
+      "level": 20,
+      "band": [
+        10,
+        20
+      ],
+      "special": [
+        {
+          "item": "zb_grove_staff",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_warden_cuirass",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_goldleaf_ring",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.25,
+          "qty": [
+            1,
+            1
+          ]
+        }
+      ],
+      "legendary": 0,
+      "pet": 5
+    },
+    "sol_rune_golem": {
+      "name": "Рунолит Безмолвный",
+      "level": 30,
+      "band": [
+        20,
+        30
+      ],
+      "special": [
+        {
+          "item": "zb_mason_hammer",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_sentinel_shield",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_silent_talisman",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.35,
+          "qty": [
+            1,
+            1
+          ]
+        }
+      ],
+      "legendary": 0.005,
+      "pet": 5
+    },
+    "sol_chained_beast": {
+      "name": "Лютобор Цепной",
+      "level": 40,
+      "band": [
+        30,
+        40
+      ],
+      "special": [
+        {
+          "item": "zb_chain_mace",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_spiked_plate",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_cursed_link",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.5,
+          "qty": [
+            1,
+            1
+          ]
+        }
+      ],
+      "legendary": 0.01,
+      "pet": 5
+    },
+    "umb_revenant_reaper": {
+      "name": "Ардрик Вернувшийся",
+      "level": 10,
+      "band": [
+        1,
+        10
+      ],
+      "special": [
+        {
+          "item": "zb_returned_scythe",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_barrow_cloak",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_barrow_mask",
+          "chance": 0.06
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        }
+      ],
+      "legendary": 0,
+      "pet": 5
+    },
+    "umb_fog_treant": {
+      "name": "Мглогляд",
+      "level": 20,
+      "band": [
+        10,
+        20
+      ],
+      "special": [
+        {
+          "item": "zb_fogeye_staff",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_bog_cuirass",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_eye_core",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.25,
+          "qty": [
+            1,
+            1
+          ]
+        }
+      ],
+      "legendary": 0,
+      "pet": 5
+    },
+    "umb_ash_minotaur": {
+      "name": "Тавр Пепельный",
+      "level": 30,
+      "band": [
+        20,
+        30
+      ],
+      "special": [
+        {
+          "item": "zb_taur_axe",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_executioner_greaves",
+          "chance": 0.06
+        },
+        {
+          "item": "zb_skull_charm",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.35,
+          "qty": [
+            1,
+            1
+          ]
+        }
+      ],
+      "legendary": 0.005,
+      "pet": 5
+    },
+    "umb_marsh_abomination": {
+      "name": "Многорот",
+      "level": 40,
+      "band": [
+        30,
+        40
+      ],
+      "special": [
+        {
+          "item": "zb_mire_fang",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_stitched_plate",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_stitched_hood",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 10
+      },
+      "loot": {
+        "items": 1,
+        "rarityBonus": 0.15
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.5,
+          "qty": [
+            1,
+            1
+          ]
+        }
+      ],
+      "legendary": 0.01,
+      "pet": 5
+    }
+  }
+}
