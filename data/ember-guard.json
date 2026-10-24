@@ -1,0 +1,48 @@
+{
+  "_doc": "Стража Эмберхолла — Пепельнорождённые (решение пользователя к задаче 132, шаг 8). Вид утверждён (tools/out/npc-sets/ember.png): бронза, бирюза, эмблема «пламя очага над наковальней»; поверх — доработка «Пепельнорождённые»: тело из остывшего шлака (nude_ashborn_<класс>.png, генератор tools/gen/npc-sets.ts), тлеющие трещины в латах, глаза-угли в прорези шлема, искры и пепел (код — client/src/game/ashborn.ts, цифры — fx). Лор — data/factions.json neutral.ember. Знамёна — tools/gen/ember-banners.ts. В игру подключается после второй части шага 8 (см. ashborn.ts).",
+  "body": {
+    "_doc": "Тело: цвета кожи и волос nude_<класс> → шлак и пепел; skin — точные цвета кожи из листа → новый цвет; прочее (волосы) — по яркости в рампу ash. veins — тусклые жилы углей на теле (кадр 32×32, вид: 0 спереди, 1 сзади, 2 сбоку).",
+    "skin": { "#f2c49b": "#6c6460", "#d9956f": "#58504e", "#975a46": "#3a3236", "#a8644e": "#463e40", "#6e3f35": "#2a2426" },
+    "ash": ["#1c1618", "#2a2426", "#463e40", "#6c6460", "#8a827e"],
+    "eye": "#c23a12",
+    "vein": ["#7a1c10", "#c23a12"],
+    "veins": [[[17, 18], [17, 19], [16, 20], [12, 26], [19, 27]], [[14, 18], [15, 19], [15, 20], [13, 27]], [[15, 18], [16, 19], [16, 21], [14, 27]]]
+  },
+  "fx": {
+    "_doc": "Цикл frames кадров на fps к/с (12/12 — как ветер штандартов); всё плавно: пульс cos с easeInOutSine, частицы — easeOutCubic. glow — цвета, которые светятся ночью (рисовать поверх ночного затемнения / blend ADD).",
+    "frames": 12,
+    "fps": 12,
+    "fire": ["#5a1408", "#a8300e", "#f06a1a", "#ffb03a", "#ffe88a"],
+    "char": "#241816",
+    "halo": "#f06a1a",
+    "cracks": { "helm": 1, "armor": 3, "boots": 2, "offhand": 1 },
+    "crackLen": [3, 4],
+    "eyes": { "0": [[12, 12], [13, 12], [18, 12], [19, 12]], "2": [[20, 12], [21, 12]] },
+    "eyeCore": ["#ffb03a", "#ffe88a", "#fff6d0"],
+    "embers": 5,
+    "emberArea": [8, 16, 23, 25],
+    "emberBands": [[7, 11], [20, 24]],
+    "emberRise": [9, 13],
+    "ashColor": "#7c7470"
+  },
+  "look": {
+    "_doc": "Геральдика (как EMB/CLOTH в tools/gen/npc-sets.ts): эмблема 6 и 4 px, ткань табарда и поле щита.",
+    "emblem": {
+      "pal": { "Y": "#fff0a0", "O": "#ff9a2e", "R": "#d8441c", "C": "#f0b860", "c": "#9a6428" },
+      "e6": ["..YY..", ".OYYO.", ".ROOR.", "..RR..", "CCCCCC", ".cCCc.", "cc..cc"],
+      "e4": [".YY.", "ROOR", "CCCC", "c..c"],
+      "out": "#2a1608"
+    },
+    "cloth": { "f": "#2e6e66", "fs": "#1e4a46", "t": "#e0a050", "td": "#8a5a24", "belt": "#4a2e18", "buckle": "#f0b860", "shield": "#2e6e66" }
+  },
+  "figs": [
+    { "id": "halberdier", "title": "АЛЕБАРДЩИК ОЧАГА", "cls": "warrior", "tabard": "wide", "cloakArms": true, "helm": "plate_helm_84", "armor": "plate_armor_37", "boots": "plate_boots_37", "cloak": "cloak_str_68", "weapon": "scythe_12" },
+    { "id": "shieldbearer", "title": "ЩИТОНОСЕЦ ОЧАГА", "cls": "warrior", "tabard": "narrow", "cloakArms": true, "helm": "plate_helm_37", "armor": "plate_armor_84", "boots": "plate_boots_84", "off": "shield_68", "cloak": "cloak_int_84", "weapon": "spear_84" },
+    { "id": "crossbowman", "title": "АРБАЛЕТЧИК ОЧАГА", "cls": "ranger", "tabard": "wide", "cloakArms": true, "helm": "plate_helm_60", "armor": "plate_armor_60", "boots": "plate_boots_60", "cloak": "cloak_str_68", "weapon": "crossbow_84" },
+    { "id": "archer", "title": "ЛУЧНИК ОЧАГА", "cls": "ranger", "tabard": "narrow", "cloakArms": true, "helm": "leather_helm_52", "armor": "leather_armor_52", "boots": "leather_boots_52", "cloak": "cloak_agi_52", "weapon": "bow_44" }
+  ],
+  "banners": {
+    "_doc": "Знамёна Эмберхолла (tools/out/standards/ember-banners.png, листы ember-*.png, описание — ember-banners.json там же): штандарт города — на стены и ворота, якорь — низ подтока или крюк на стене; знамя знаменосца стражи — в руке, якорь — хват древка. Вариант выбирает пользователь.",
+    "variant": null
+  }
+}

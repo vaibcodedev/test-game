@@ -1982,6 +1982,9 @@ function stackRows(rows: PC[], gap = 18, margin = 16): PC {
 const FAC_NAME: Record<Fac, string> = { solgard: "СОЛЬГАРД", umbrath: "УМБРАТ" };
 const anchorPx = (a: Anim): [number, number] => [Math.round(a.anchor[0] * a.w * 10) / 10, Math.round(a.anchor[1] * a.h * 10) / 10];
 
+// для знамён Эмберхолла (tools/gen/ember-banners.ts): те же сцены, раскадровки и строки превью
+export { scene, board, previewRow, stackRows, strip, onMast, anchorPx, MAST_TOP, BGC, DIM, INK, type Anim };
+
 /** Все штандарты задачи 130. Листы — кадры в строку, пиксель листа — пиксель мира. */
 export function STANDARDS() {
   const home = [homeSolgard(), homeUmbrath()];
