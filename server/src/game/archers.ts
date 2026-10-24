@@ -14,7 +14,7 @@ import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { addDot, dots, endDot, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
-import { registerAuraHook } from "./auras";
+import { noteAuraSource, registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
 
@@ -64,7 +64,7 @@ const huntedBy = new WeakMap<object, Player>();
 // значок метки на герое-цели (auras.ts): охотник бьёт меченого сильнее; метка живёт, пока охотник жив и не перенёс её на другого
 registerAuraHook((a, _now, aura) => {
   const h = huntedBy.get(a), hs = h && !h.dead ? states.get(h) : undefined;
-  if (hs && hs.markId === (a as Actor).id) aura("hunter_mark", hs.markUntil, { v: hs.markPct });
+  if (hs && hs.markId === (a as Actor).id) aura("hunter_mark", hs.markUntil, { v: hs.markPct, by: h });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
@@ -428,7 +428,7 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
     const dur = pv(p, "dr_curse_power").dur;
     w.later((w.dist(p, target) / 850) * 1000 + 60, () => {
       const e = curseOf(w, p, target);
-      if (e) { e.until += dur * 1000; target.curseUntil = Math.max(target.curseUntil, e.until); }
+      if (e) { e.until += dur * 1000; target.curseUntil = Math.max(target.curseUntil, e.until); noteAuraSource(target, "curse", p, e.until); }
     }, p);
   }
   if (id === "dr_weakening" && target && rk(p, "dr_blight")) {

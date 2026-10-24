@@ -6,7 +6,7 @@ import type { RumorMsg } from "../../shared/rumors";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../shared/encounters";
 import type { TradeView } from "../../shared/trade";
 import type { BankView } from "../../shared/bank";
-import type { Aura, ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
+import type { Aura, TargetAurasMsg, ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
 import { ROOM_NAME } from "../../shared/protocol";
 import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, RECONNECT_SEC } from "../../shared/accounts";
 
@@ -30,6 +30,8 @@ type Events = {
   self: SelfState;
   /** Эффекты на герое (бафы и дебафы): полный список, приходит при смене набора или сроков. */
   auras: Aura[];
+  /** Эффекты выбранной цели (плашка цели): только мне, при смене цели и при смене набора или сроков. */
+  tauras: TargetAurasMsg;
   fx: Fx[];
   chat: ChatLine;
   toast: ToastMsg;
@@ -354,6 +356,7 @@ export class Net {
       this.emit("self", s);
     });
     room.onMessage("auras", (list: Aura[]) => this.emit("auras", list));
+    room.onMessage("tauras", (m: TargetAurasMsg) => this.emit("tauras", m));
     room.onMessage("fx", (list: Fx[]) => this.emit("fx", list));
     room.onMessage("chat", (l: ChatLine) => this.emit("chat", l));
     room.onMessage("toast", (t: ToastMsg) => this.emit("toast", t));

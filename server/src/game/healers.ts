@@ -16,7 +16,7 @@ import type { Player } from "./Player";
 import { segDist } from "../../../shared/skillShape";
 import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { clearDots, mostWounded, type CastCtx } from "./umbrath";
-import { registerAuraHook } from "./auras";
+import { noteAuraSource, registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { BAL, leechMult, pvpHealMult } from "../../../shared/balance";
 
@@ -224,6 +224,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
       const key = `${p.id}|${target.id}`, token = (leeches.get(key) || 0) + 1;
       leeches.set(key, token);
       target.curseUntil = Math.max(target.curseUntil, until);
+      noteAuraSource(target, "curse", p, until);
       const dmg = Math.max(1, Math.round((weaponAvg(p) * v.tick) / 100));
       for (let i = 1; i <= v.dur; i++)
         w.later(i * 1000, () => {

@@ -29,6 +29,8 @@ export class Mob {
   weakPct = 0;
   curseUntil = 0;
   bleedUntil = 0;
+  /** Стаки кровотечения: для значка в плашке цели (auras.ts), ставит umbrath.addDot. */
+  bleedStacks = 0;
   /** Кто сколько урона нанёс: для опыта, лута и угрозы. */
   damageBy = new Map<string, number>();
   threat = new Map<string, number>();
@@ -123,7 +125,7 @@ export class Mob {
     this.damageBy.clear();
     this.threat.clear();
     this.tauntUntil = 0;
-    this.stunUntil = this.rootUntil = this.slowUntil = this.weakUntil = this.curseUntil = this.bleedUntil = 0;
+    this.stunUntil = this.rootUntil = this.slowUntil = this.weakUntil = this.curseUntil = this.bleedUntil = this.bleedStacks = 0;
     this.windUntil = this.slamAt = this.healAt = 0;
     this.seenCc = { stun: 0, slow: 0, root: 0 };
     this.boss?.reset();

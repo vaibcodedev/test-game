@@ -20,7 +20,8 @@ import { generateArenaMap } from "../shared/arena";
 import { MOBS } from "../shared/mobs";
 import { TILE } from "../shared/constants";
 import type { ClassId } from "../shared/classes";
-import type { Fx } from "../shared/protocol";
+import type { Fx, TargetAurasMsg } from "../shared/protocol";
+import { applySlow, applyStun } from "../server/src/game/effects";
 import { absorbHtml, absorbSpan } from "../client/src/ui/absorb";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -312,6 +313,65 @@ const gone = (id: string) => buffs(id).filter((f) => f.ms <= 0);
   assert.equal(auraOf(v, w, "bleed")?.n, 1);
   endDot(a, v, "bleed");
   assert.ok(!keysOf(v, w).includes("bleed") && v.bleedStacks === 0, "жатва ран снимает значок кровотечения");
+}
+{
+  // эффекты выбранной цели ("tauras"): только выбравшему, при выборе, наложении и снятии; мои — с m: 1
+  const w = mkWorld();
+  const box = new Map<string, TargetAurasMsg[]>();
+  const mk = (cls: ClassId, dx: number) => {
+    const save = newSave(cls, { x: 5 * TILE + dx, y: 8.5 * TILE });
+    save.level = 40;
+    const id = `ta${++uid}`, got: TargetAurasMsg[] = [];
+    box.set(id, got);
+    const p = new Player(id, `Цель${uid}`, save, (type: string, msg: unknown) => { if (type === "tauras") got.push(msg as TargetAurasMsg); });
+    w.addPlayer(p);
+    return p;
+  };
+  const me = mk("warrior", 0), other = mk("mage", 20), ally = mk("healer", -20);
+  const mob = mobFor(w, me);
+  mob.unit.hp = mob.unit.maxHp = 1_000_000;
+  const inbox = (p: Player) => box.get(p.id)!.splice(0);
+  w.update(50);
+  assert.deepEqual(inbox(me), [], "цели нет — сообщений нет");
+  me.targetId = mob.id;
+  w.update(50);
+  assert.deepEqual(inbox(me), [{ id: mob.id, list: [] }], "выбор цели — список (пустой)");
+  w.update(50);
+  assert.deepEqual(inbox(me), [], "без изменений — тишина");
+  applySlow(w, me, mob, 30, 4000);
+  applyStun(w, other, mob, 2000);
+  w.update(50);
+  const m1 = inbox(me);
+  assert.equal(m1.length, 1, "наложение — новый список");
+  const sl = m1[0].list.find((a) => a.k === "slow"), stn = m1[0].list.find((a) => a.k === "stun");
+  assert.ok(sl && sl.m === 1 && sl.v === 30 && sl.ms > 3500, "моё замедление — с пометкой m и временем");
+  assert.ok(stn && stn.m === undefined && stn.ms > 1500, "чужое оглушение — без пометки");
+  assert.deepEqual(inbox(other), [], "не выбравший цель ничего не получает");
+  assert.deepEqual(inbox(ally), [], "и третий игрок тоже");
+  mob.slowUntil = 0;
+  w.update(50);
+  const m2 = inbox(me);
+  assert.ok(m2.length === 1 && !m2[0].list.some((a) => a.k === "slow") && m2[0].list.some((a) => a.k === "stun"), "снятие — список без снятого эффекта");
+  // союзник: бафы на нём, мой — с пометкой
+  ally.renewUntil = w.time + 9000; ally.renewAmt = 40; ally.renewBy = me;
+  ally.hasteUntil = w.time + 5000; ally.hastePct = 20;
+  me.targetId = ally.id;
+  w.update(50);
+  const m3 = inbox(me);
+  assert.equal(m3.length, 1);
+  assert.equal(m3[0].id, ally.id, "смена цели — список новой цели");
+  assert.equal(m3[0].list.find((a) => a.k === "renew")?.m, 1, "моё обновление на союзнике — m");
+  assert.equal(m3[0].list.find((a) => a.k === "haste")?.m, undefined, "его собственное ускорение — не моё");
+  other.targetId = ally.id;
+  w.update(50);
+  const o1 = inbox(other);
+  assert.ok(o1.length === 1 && o1[0].list.find((a) => a.k === "renew")?.m === undefined, "у другого наблюдателя моё обновление — не его");
+  assert.deepEqual(inbox(me), [], "чужой выбор не шлёт мне ничего");
+  me.targetId = null;
+  w.update(50);
+  assert.deepEqual(inbox(me), [{ id: null, list: [] }], "цель сброшена — пустой список один раз");
+  w.update(50);
+  assert.deepEqual(inbox(me), []);
 }
 {
   // полоса щита в рамках: ширина — доля здоровья, левый край — конец здоровья, не помещается — заходит на здоровье справа

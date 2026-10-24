@@ -1,4 +1,5 @@
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
+import { resetTargetAuras } from "../game/auras";
 import { ARENA_MODES, MODE_NAMES, rankOf, TEAM_SIZE, type ArenaInfo, type ArenaMode, type ModeRating } from "../../../shared/arena";
 import { classFaction, STAT_NAMES, type StatKey } from "../../../shared/classes";
 import { homeCity } from "../../../shared/cities";
@@ -231,6 +232,7 @@ export class WorldRoom extends Room<WorldState> {
     p.selfDirty = true;
     p.bagsDirty = true;
     p.aurasSig = null; // список эффектов — заново: пока связи не было, сообщения терялись
+    resetTargetAuras(p); // и список эффектов цели
     const key = p.name.toLowerCase();
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: false, resumed: true });
     sendNodes(this.world, p);

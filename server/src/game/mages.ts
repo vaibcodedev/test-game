@@ -64,9 +64,9 @@ const shockedBy = new WeakMap<object, Player>(), hexedBy = new WeakMap<object, P
 registerAuraHook((a, _now, aura) => {
   const id = (a as Actor).id;
   const m = shockedBy.get(a), until = m && !m.dead ? states.get(m)?.shock.get(id) : undefined;
-  if (m && until !== undefined && rk(m, "mg_conduction")) aura("shock", until, { v: pv(m, "mg_conduction").shock });
+  if (m && until !== undefined && rk(m, "mg_conduction")) aura("shock", until, { v: pv(m, "mg_conduction").shock, by: m });
   const h = hexedBy.get(a), hx = h && !h.dead ? states.get(h)?.hex.get(id) : undefined;
-  if (hx) aura("hex", hx.until, { v: hx.pct });
+  if (hx) aura("hex", hx.until, { v: hx.pct, by: h });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));

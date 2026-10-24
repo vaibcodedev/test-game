@@ -4,6 +4,7 @@
  * Тёмный следопыт проклинает и ослабляет, Чернокнижник — урон со временем, мана из врагов и скелеты,
  * Потрошитель — кровотечения, прыжки и ярость от ран (World.hit).
  */
+import { noteAuraSource } from "./auras";
 import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";
 import { petUnitId, type PetDef } from "../../../shared/pets";
@@ -61,9 +62,10 @@ export function addDot(w: World, p: Player, target: Actor, key: "curse" | "bleed
   e.dmg = Math.max(e.dmg, dmg);
   e.until = Math.max(e.until, w.time + durS * 1000);
   dots.set(k, e);
+  noteAuraSource(target, key === "bleed" ? "bleed" : "curse", p, e.until); // «мой» в плашке цели (auras.ts)
   if (key === "bleed") {
     target.bleedUntil = Math.max(target.bleedUntil, e.until);
-    if (w.isPlayer(target)) target.bleedStacks = e.stacks; // стаки для значка эффекта в рамке героя (auras.ts)
+    target.bleedStacks = e.stacks; // стаки для значка эффекта в рамке героя и в плашке цели (auras.ts)
   } else target.curseUntil = Math.max(target.curseUntil, e.until);
   if (live) return;
   const tick = () => {

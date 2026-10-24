@@ -53,7 +53,7 @@ const markedBy = new WeakMap<object, Player>();
 registerAuraHook((a, _now, aura) => {
   const d = markedBy.get(a);
   const mk = d && !d.dead && rk(d, "dk_mortality") ? states.get(d)?.marks.get((a as Actor).id) : undefined;
-  if (d && mk) aura("mortality", mk.until, { n: mk.n, v: mk.n * pv(d, "dk_mortality").perMark });
+  if (d && mk) aura("mortality", mk.until, { n: mk.n, v: mk.n * pv(d, "dk_mortality").perMark, by: d });
 });
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
 const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));

@@ -3,6 +3,7 @@
  * RaidDirector. Войти можно только по резервации из сбора у Вестника (onAuth отклоняет прямые подключения). Прогресс пишется
  * в базу: после победы — сразу всем одной транзакцией, при выходе — каждому; позиция в мире — та, что была до рейда.
  */
+import { resetTargetAuras } from "../game/auras";
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
 import { RECONNECT_SEC } from "../../../shared/accounts";
 import { PATCH_MS, TICK_MS } from "../../../shared/constants";
@@ -151,6 +152,7 @@ export class RaidRoom extends Room<RaidState> {
           p.selfDirty = true;
           p.bagsDirty = true;
           p.aurasSig = null; // список эффектов — заново
+          resetTargetAuras(p); // и список эффектов цели
           return;
         }
       } catch {}

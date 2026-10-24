@@ -100,27 +100,44 @@
   flex: none;
   margin-left: auto;
 }
-/* бафы и дебафы (еда — тоже баф): значки слева в низу рамки; нет эффектов — значков нет (hidden) */
-.hud-player .auras {
+/* бафы и дебафы (еда — тоже баф): значки слева в низу рамки героя и под здоровьем в плашке цели; нет эффектов — значков нет (hidden) */
+.hud-player .auras,
+.hud-target .auras {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
 }
-.hud-player .auras .cell {
+.hud-player .auras .cell,
+.hud-target .auras .cell {
   --cell: 26px;
   cursor: var(--cur-arrow);
 }
-.hud-player .auras .cell.debuff {
+.hud-player .auras .cell.debuff,
+.hud-target .auras .cell.debuff {
   border-color: var(--bad);
 }
+/* плашка цели (как в WoW): мои эффекты — полный размер и яркость, чужие — мельче и приглушены; строка прижата к низу */
+.hud-target .auras {
+  align-items: flex-end;
+  padding-top: var(--sp-0);
+}
+.hud-target .auras .cell:not(.mine) {
+  --cell: 20px;
+  opacity: .7;
+}
+.hud-target .auras .cell.mine:not(.debuff) {
+  border-color: var(--gold);
+}
 /* стаки — справа вверху, оставшееся время — снизу по центру */
-.hud-player .auras .qty {
+.hud-player .auras .qty,
+.hud-target .auras .qty {
   top: 0;
   bottom: auto;
   font-size: var(--fs-2xs);
   line-height: 1.1;
 }
-.hud-player .auras .tm {
+.hud-player .auras .tm,
+.hud-target .auras .tm {
   position: absolute;
   inset: auto 0 0;
   text-align: center;

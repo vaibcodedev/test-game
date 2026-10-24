@@ -3,6 +3,7 @@
  * резервации места из очереди (onAuth отклоняет прямые подключения). После боя сервер
  * резервирует место в мире, и игрок возвращается туда, где стоял перед матчем.
  */
+import { resetTargetAuras } from "../game/auras";
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
 import {
   arenaSpawn, BOT_RATING_MULT, COUNTDOWN_MS, eloDelta, generateArenaMap, MATCH_MS,
@@ -164,6 +165,7 @@ export class ArenaRoom extends Room<ArenaState> {
           this.welcome(fresh, part);
           p.selfDirty = true;
           p.aurasSig = null; // список эффектов — заново
+          resetTargetAuras(p); // и список эффектов цели
           if (this.result) fresh.send("arena:result", this.result);
           return;
         }

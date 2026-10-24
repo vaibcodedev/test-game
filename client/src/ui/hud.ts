@@ -83,8 +83,11 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""):
   return e;
 }
 
-/** Эффект на герое в HUD: end — performance.now() окончания, 0 — бессрочный. */
-interface AuraRow { k: string; n?: number; v?: number; end: number }
+/** Эффект на герое или цели в HUD: end — performance.now() окончания, 0 — бессрочный; m — наложен мной (только у цели). */
+interface AuraRow { k: string; n?: number; v?: number; end: number; m?: boolean }
+type AuraCell = { el: HTMLElement; tm: HTMLElement; st: HTMLElement; a: AuraRow };
+/** Строка значков эффектов: рамка героя или плашка цели. Ячейки живут между обновлениями (меняются только время и стаки). */
+interface AuraStrip { el: HTMLElement; rows: AuraRow[]; cells: Map<string, AuraCell>; order?: (a: AuraRow, b: AuraRow) => number }
 
 /** Слот экипировки → базовый предмет для силуэта пустой ячейки. */
 const ghostBase: Record<string, string> = {};
@@ -142,11 +145,13 @@ export class Hud {
   readonly quest: QuestUI;
   readonly tp: TeleportUI;
   /** Бафы и дебафы героя (сообщение "auras"): строка значков под полосами в рамке героя; еда — тоже баф. */
-  private auras: AuraRow[] = [];
-  private aurasEl = el("div", "auras");
-  private auraCells = new Map<string, { el: HTMLElement; tm: HTMLElement; st: HTMLElement; a: AuraRow }>();
-  /** Ключ эффекта, над значком которого сейчас подсказка (остаток времени в ней обновляется раз в секунду). */
-  private auraHover = "";
+  private heroAuras: AuraStrip = { el: el("div", "auras"), rows: [], cells: new Map() };
+  /** Эффекты выбранной цели (сообщение "tauras", только мне): строка значков под полосой здоровья в плашке цели; мои — крупнее и ярче. */
+  private tgtAuras: AuraStrip = { el: el("div", "auras"), rows: [], cells: new Map() };
+  /** Чей список лежит в tgtAuras (id юнита); показывается, только пока это и есть выбранная цель. */
+  private tgtAurasId: string | null = null;
+  /** Значок, над которым сейчас подсказка (остаток времени в ней обновляется раз в секунду). */
+  private auraHover: { s: AuraStrip; k: string } | null = null;
 
   /** Низ левой колонки (рамка героя, группа, рейд, питомец, задания), локальные px корня. */
   private leftBottom = 0;
@@ -257,7 +262,8 @@ export class Hud {
     });
     this.bank = new BankUI(root, { itemTip: (it, s) => this.itemTip(it, s), tipFor: (e, h) => this.tipFor(e, h), hideTip: () => (this.tip.hidden = true), showInv: () => { if (this.wins.inv.hidden && this.ctx?.net.self) { this.wins.inv.hidden = false; this.renderSelf(this.ctx.net.self); } } });
     this.bags = new BagsUI(root, () => this.showInvWin());
-    this.aurasEl.hidden = true;
+    this.heroAuras.el.hidden = true;
+    this.tgtAuras.el.hidden = true;
     window.setInterval(() => this.tickAuras(), 1000);
     this.trade = new TradeUI(root, { itemTip: (it, s) => this.itemTip(it, s), tipFor: (e, h) => this.tipFor(e, h), hideTip: () => (this.tip.hidden = true) });
     this.trade.onChange = () => {
@@ -306,6 +312,7 @@ export class Hud {
     this.tip.hidden = true;
     this.targetBox.hidden = true;
     this.setAuras([]);
+    this.setTargetAuras(null, []);
   }
 
   /** Вызывается при каждом запуске сцены (мир или арена); подписки на сеть — один раз. */
@@ -322,6 +329,7 @@ export class Hud {
         this.renderSelf(s);
       });
       n.on("auras", (l) => this.setAuras(l));
+      n.on("tauras", (m) => this.setTargetAuras(m.id, m.list));
       n.on("chat", (l) => this.chatLine(l));
       n.on("toast", (t) => this.toast(t));
       n.on("combat", (m) => this.setCombat(m.on));
@@ -765,7 +773,7 @@ export class Hud {
       ${s.xpNext || pts ? `<div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}</div>` : ""}
       <div class="pf-foot">${gold(s.gold)}</div>`;
     // низ рамки: бафы и дебафы слева (один и тот же элемент — значки и подсказки переживают перерисовку), золото справа
-    this.player.querySelector(".pf-foot")!.prepend(this.aurasEl);
+    this.player.querySelector(".pf-foot")!.prepend(this.heroAuras.el);
     this.player.querySelectorAll<HTMLElement>("[data-open]").forEach((p) => (p.onclick = () => this.toggle(p.dataset.open!)));
 
     // панель умений: строится один раз, см. ui/hotbar.ts
@@ -798,49 +806,59 @@ export class Hud {
     if (!this.wins.shop.hidden) this.renderShop(s);
   }
 
-  // ---------- бафы и дебафы в рамке героя ----------
+  // ---------- бафы и дебафы в рамке героя и в плашке цели ----------
+  private static rowsOf(list: Aura[]): AuraRow[] {
+    const t = performance.now();
+    return list.map((a) => ({ k: a.k, n: a.n, v: a.v, end: a.ms > 0 ? t + a.ms : 0, m: a.m === 1 }));
+  }
   /** Новый полный список эффектов (сообщение "auras" или синтетический из аудита): отсчёт идёт здесь, от момента получения. */
   setAuras(list: Aura[]) {
-    const t = performance.now();
-    this.auras = list.map((a) => ({ k: a.k, n: a.n, v: a.v, end: a.ms > 0 ? t + a.ms : 0 }));
-    this.renderAuras();
+    this.heroAuras.rows = Hud.rowsOf(list);
+    this.renderAuras(this.heroAuras);
+  }
+  /** Эффекты выбранной цели (сообщение "tauras"; id null — цели нет). Порядок значков выбирает frame() по тому, враг это или союзник. */
+  setTargetAuras(id: string | null, list: Aura[]) {
+    this.tgtAurasId = id;
+    this.tgtAuras.rows = Hud.rowsOf(list);
+    this.renderAuras(this.tgtAuras);
   }
 
-  /** Строка значков под полосами: сначала бафы, затем дебафы. Ячейки живут между обновлениями (меняется только время и стаки), нет эффектов — нет строки. */
-  private renderAuras() {
+  /** Строка значков: у героя — сначала бафы, затем дебафы; у цели — порядок strip.order. Нет эффектов — нет строки. */
+  private renderAuras(s: AuraStrip) {
     const t = performance.now();
-    const rows = this.auras.filter((a) => AURAS[a.k] && (!a.end || a.end > t)).sort((a, b) => auraCompare(a.k, b.k));
-    this.auras = rows;
+    const rows = s.rows.filter((a) => AURAS[a.k] && (!a.end || a.end > t)).sort(s.order ?? ((a, b) => auraCompare(a.k, b.k)));
+    s.rows = rows;
     const keep = new Set(rows.map((r) => r.k));
-    for (const [k, c] of this.auraCells) {
+    for (const [k, c] of s.cells) {
       if (keep.has(k)) continue;
-      if (this.auraHover === k) { this.auraHover = ""; this.tip.hidden = true; }
+      if (this.auraHover?.s === s && this.auraHover.k === k) { this.auraHover = null; this.tip.hidden = true; }
       c.el.remove();
-      this.auraCells.delete(k);
+      s.cells.delete(k);
     }
     rows.forEach((a, i) => {
-      let c = this.auraCells.get(a.k);
-      if (!c) this.auraCells.set(a.k, (c = this.makeAuraCell(a)));
+      let c = s.cells.get(a.k);
+      if (!c) s.cells.set(a.k, (c = this.makeAuraCell(s, a)));
       c.a = a;
-      if (this.aurasEl.children[i] !== c.el) this.aurasEl.insertBefore(c.el, this.aurasEl.children[i] ?? null);
+      if (c.el.classList.contains("mine") !== !!a.m) c.el.classList.toggle("mine", !!a.m);
+      if (s.el.children[i] !== c.el) s.el.insertBefore(c.el, s.el.children[i] ?? null);
       const tm = a.end ? auraTimeLabel(a.end - t) : "";
       if (c.tm.textContent !== tm) c.tm.textContent = tm;
       const st = a.n && a.n > 1 ? String(a.n) : "";
       if (c.st.textContent !== st) { c.st.textContent = st; c.st.hidden = !st; }
     });
-    this.aurasEl.hidden = rows.length === 0;
+    if (s === this.heroAuras) s.el.hidden = rows.length === 0; // строку цели прячет frame(): ещё и по тому, чей это список
   }
 
-  /** Ячейка эффекта: значок, стаки, время; у дебафа красная рамка; еда — .food-buff. Подсказка — общая (this.tip). */
-  private makeAuraCell(a: AuraRow) {
+  /** Ячейка эффекта: значок, стаки, время; у дебафа красная рамка; еда — .food-buff; у цели мой эффект — .mine. Подсказка — общая (this.tip). */
+  private makeAuraCell(s: AuraStrip, a: AuraRow): AuraCell {
     const d = AURAS[a.k];
     const e = el("div", `cell aura${d.kind === "debuff" ? " debuff" : ""}${foodOfAura(a.k) ? " food-buff" : ""}`, `<img src="${icon(d.icon)}" alt=""><span class="qty" hidden></span><span class="tm"></span>`);
     e.setAttribute("role", "img");
     e.setAttribute("aria-label", d.name);
-    const c = { el: e, tm: e.querySelector<HTMLElement>(".tm")!, st: e.querySelector<HTMLElement>(".qty")!, a };
-    e.onmouseenter = (ev) => { this.auraHover = a.k; this.tip.innerHTML = this.auraTip(c.a); this.tip.hidden = false; this.moveTip(ev); };
+    const c: AuraCell = { el: e, tm: e.querySelector<HTMLElement>(".tm")!, st: e.querySelector<HTMLElement>(".qty")!, a };
+    e.onmouseenter = (ev) => { this.auraHover = { s, k: a.k }; this.tip.innerHTML = this.auraTip(c.a); this.tip.hidden = false; this.moveTip(ev); };
     e.onmousemove = (ev) => this.moveTip(ev);
-    e.onmouseleave = () => { if (this.auraHover === a.k) { this.auraHover = ""; this.tip.hidden = true; } };
+    e.onmouseleave = () => { if (this.auraHover?.s === s && this.auraHover.k === a.k) { this.auraHover = null; this.tip.hidden = true; } };
     return c;
   }
 
@@ -854,16 +872,16 @@ export class Hud {
     const bad = d.kind === "debuff";
     return [
       `<div class="t${bad ? " warn" : ""}">${esc(d.name)}</div>`,
-      `<div class="d">${bad ? "Дебафф" : "Бафф"} · ${a.end ? `осталось ${auraTimeWords(left)}` : "без срока"}</div>`,
+      `<div class="d">${bad ? "Дебафф" : "Бафф"}${a.m ? " · ваш" : ""} · ${a.end ? `осталось ${auraTimeWords(left)}` : "без срока"}</div>`,
       `<div>${esc(auraText(d.desc, a.v, a.n, formatNumber))}</div>`,
     ].join("");
   }
 
   /** Раз в секунду: время в углу значков, исчезновение истёкших и остаток в открытой подсказке. */
   private tickAuras() {
-    if (!this.auras.length) return;
-    this.renderAuras();
-    const c = this.auraHover ? this.auraCells.get(this.auraHover) : undefined;
+    if (this.heroAuras.rows.length) this.renderAuras(this.heroAuras);
+    if (this.tgtAuras.rows.length) this.renderAuras(this.tgtAuras);
+    const h = this.auraHover, c = h ? h.s.cells.get(h.k) : undefined;
     if (c && !this.tip.hidden) this.tip.innerHTML = this.auraTip(c.a);
   }
 
@@ -1414,6 +1432,19 @@ export class Hud {
 
   // ---------- каждый кадр ----------
   private lastPos = { x: 0, y: 0 };
+  private tgtFoe: boolean | null = null;
+  /** Порядок значков цели: на враге сначала дебафы, на союзнике — бафы; внутри вида мои эффекты первыми, дальше — порядок data/auras.json. */
+  private static targetOrder(foe: boolean) {
+    const rank = (k: string) => ((AURAS[k]?.kind === "debuff") === foe ? 0 : 1);
+    return (a: AuraRow, b: AuraRow) => rank(a.k) - rank(b.k) || Number(!!b.m) - Number(!!a.m) || auraCompare(a.k, b.k);
+  }
+  /** Враг ли юнит (только для порядка значков цели): моб не моей фракции, герой другой команды (арена) или фракции, нарушитель. */
+  private isFoeUnit(t: UnitState, me: UnitState | null): boolean {
+    if (!me) return t.kind !== UnitKind.Player;
+    if (t.kind !== UnitKind.Player) return !(t.faction && t.faction === me.faction);
+    if (t.team && me.team) return t.team !== me.team;
+    return t.faction !== me.faction || !!t.outlaw;
+  }
   frame(info: FrameInfo) {
     const me = info.me;
     this.lastPos = info.pos;
@@ -1425,7 +1456,7 @@ export class Hud {
       // щит-поглощение поверх HP (как в WoW): от конца здоровья вправо; не помещается — заходит на здоровье с правого края
       const abs = document.getElementById("hp-abs");
       if (abs) {
-        const now = performance.now(), sh = this.auras.find((a) => a.k === "shield" && (!a.end || a.end > now))?.v ?? 0;
+        const now = performance.now(), sh = this.heroAuras.rows.find((a) => a.k === "shield" && (!a.end || a.end > now))?.v ?? 0;
         const w = Math.min(100, (sh / Math.max(1, me.maxHp)) * 100);
         setHidden(abs, w <= 0);
         if (w > 0) { abs.style.left = `${Math.min((Math.max(0, me.hp) / Math.max(1, me.maxHp)) * 100, 100 - w)}%`; abs.style.width = `${w}%`; }
@@ -1470,7 +1501,13 @@ export class Hud {
       if (this.targetBox.dataset.sig !== sig) {
         this.targetBox.dataset.sig = sig;
         this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i>${absorbHtml(t.hp, t.maxHp, shield)}<span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
+        this.targetBox.append(this.tgtAuras.el); // один и тот же элемент: значки и подсказки переживают перерисовку
       }
+      // эффекты цели: список от сервера только для этой цели; на враге сначала дебафы, на союзнике — бафы, внутри вида мои — первыми
+      const ownList = !!info.targetId && info.targetId === this.tgtAurasId;
+      const foe = this.isFoeUnit(t, me);
+      if (ownList && foe !== this.tgtFoe) { this.tgtFoe = foe; this.tgtAuras.order = Hud.targetOrder(foe); this.renderAuras(this.tgtAuras); }
+      setHidden(this.tgtAuras.el, !(ownList && this.tgtAuras.rows.length > 0));
     } else setHidden(this.targetBox, true);
 
     // рамка питомца под рамкой героя
