@@ -201,7 +201,8 @@ const UNIQUE_TINT: Record<string, [string, number, V]> = {
 
 export function buildUniqueIcon(id: string): PC {
   const u = UNIQUES[id];
-  const [col, k, v] = UNIQUE_TINT[id];
+  // особые вещи боссов стартовых земель (zb_*) своих оттенков пока не имеют — иконка базы без тинта (решение пользователя: иконки — в задаче 138)
+  const [col, k, v] = UNIQUE_TINT[id] ?? ["#ffffff", 0, "warrior"];
   const tint = hex(col);
   const c = draw(BASE_ITEMS[u.base].icon, v, 2);
   c.map((p) => (p[3] < 255 || p[0] + p[1] + p[2] < 110 ? p : mix(p, tint, k)));

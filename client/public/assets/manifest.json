@@ -177,6 +177,30 @@
   "chaos_knight": {
    "frame": 128,
    "cols": 24
+  },
+  "sol_chained_beast": {
+   "frame": 64
+  },
+  "sol_forest_warden": {
+   "frame": 64
+  },
+  "sol_raider_chief": {
+   "frame": 64
+  },
+  "sol_rune_golem": {
+   "frame": 64
+  },
+  "umb_ash_minotaur": {
+   "frame": 64
+  },
+  "umb_fog_treant": {
+   "frame": 64
+  },
+  "umb_marsh_abomination": {
+   "frame": 64
+  },
+  "umb_revenant_reaper": {
+   "frame": 64
   }
  },
  "mounts": {
@@ -3134,6 +3158,38 @@
    "w": 32,
    "h": 32
   },
+  "loot_r0": {
+   "w": 680,
+   "h": 35
+  },
+  "loot_r0_boss": {
+   "w": 840,
+   "h": 42
+  },
+  "loot_r1": {
+   "w": 680,
+   "h": 35
+  },
+  "loot_r1_boss": {
+   "w": 840,
+   "h": 42
+  },
+  "loot_r2": {
+   "w": 680,
+   "h": 35
+  },
+  "loot_r2_boss": {
+   "w": 840,
+   "h": 42
+  },
+  "loot_r3": {
+   "w": 680,
+   "h": 35
+  },
+  "loot_r3_boss": {
+   "w": 840,
+   "h": 42
+  },
   "wall_h": {
    "w": 32,
    "h": 56
@@ -4133,38 +4189,6 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
-  },
-  "loot_r0": {
-   "w": 680,
-   "h": 35
-  },
-  "loot_r0_boss": {
-   "w": 840,
-   "h": 42
-  },
-  "loot_r1": {
-   "w": 680,
-   "h": 35
-  },
-  "loot_r1_boss": {
-   "w": 840,
-   "h": 42
-  },
-  "loot_r2": {
-   "w": 680,
-   "h": 35
-  },
-  "loot_r2_boss": {
-   "w": 840,
-   "h": 42
-  },
-  "loot_r3": {
-   "w": 680,
-   "h": 35
-  },
-  "loot_r3_boss": {
-   "w": 840,
-   "h": 42
   }
  },
  "icons": [
@@ -5901,6 +5925,30 @@
   "uq_arena_gold",
   "uq_arena_platinum",
   "uq_arena_diamond",
+  "uq_zb_glutton_axe",
+  "uq_zb_chief_cloak",
+  "uq_zb_raider_furhelm",
+  "uq_zb_grove_staff",
+  "uq_zb_warden_cuirass",
+  "uq_zb_goldleaf_ring",
+  "uq_zb_mason_hammer",
+  "uq_zb_sentinel_shield",
+  "uq_zb_silent_talisman",
+  "uq_zb_chain_mace",
+  "uq_zb_spiked_plate",
+  "uq_zb_cursed_link",
+  "uq_zb_returned_scythe",
+  "uq_zb_barrow_cloak",
+  "uq_zb_barrow_mask",
+  "uq_zb_fogeye_staff",
+  "uq_zb_bog_cuirass",
+  "uq_zb_eye_core",
+  "uq_zb_taur_axe",
+  "uq_zb_executioner_greaves",
+  "uq_zb_skull_charm",
+  "uq_zb_mire_fang",
+  "uq_zb_stitched_plate",
+  "uq_zb_stitched_hood",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",
