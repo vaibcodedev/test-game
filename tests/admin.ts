@@ -252,12 +252,18 @@ async function main() {
     const water = scan("вода у берега", (tx, ty) => cellFlag(tx, ty, CELL_BLOCK) && !cellFlag(tx, ty, CELL_WALL) && isWater(tx, ty) && gap(tx, ty));
     const wall = scan("стена", (tx, ty) => cellFlag(tx, ty, CELL_WALL) && gap(tx, ty));
     const closed = scan("глухой участок", (tx, ty) => tx > SNAP + 2 && ty > SNAP + 2 && tx < MAP.w - SNAP - 2 && ty < MAP.h - SNAP - 2 && cellFlag(tx, ty, CELL_BLOCK) && nearest({ x: center(tx), y: center(ty) }, SNAP + 1) === Infinity);
-    /** Админ шлёт admin:tp { x, y } и ждёт, пока позиция сместится (цели в тесте дальше 8 px друг от друга); возвращает итоговую. */
+    /** Админ шлёт admin:tp { x, y } и ждёт, пока позиция сместится (цели в тесте дальше 8 px друг от друга) и устоится
+     *  (не меняется 300 мс — опрос вместо фиксированной паузы: под нагрузкой патчи состояния приходят с задержкой); возвращает итоговую. */
     const tpTo = async (p: Pt) => {
       const from = pos(adm);
       adm.send("admin:tp", { x: p.x, y: p.y });
-      await adm.until(() => dist(pos(adm), from) > 8, 3000, `телепорт в ${Math.round(p.x)},${Math.round(p.y)} из ${Math.round(from.x)},${Math.round(from.y)}, сейчас ${Math.round(pos(adm).x)},${Math.round(pos(adm).y)}`);
-      await sleep(150);
+      await adm.until(() => dist(pos(adm), from) > 8, 8000, `телепорт в ${Math.round(p.x)},${Math.round(p.y)} из ${Math.round(from.x)},${Math.round(from.y)}, сейчас ${Math.round(pos(adm).x)},${Math.round(pos(adm).y)}`);
+      let last = pos(adm), since = Date.now();
+      await adm.until(() => {
+        const q = pos(adm);
+        if (dist(q, last) >= 0.5) { last = q; since = Date.now(); return false; }
+        return Date.now() - since >= 300;
+      }, 5000, `позиция после телепорта в ${Math.round(p.x)},${Math.round(p.y)} не устоялась`);
       return pos(adm);
     };
     await check("ТП по координатам в проходимую клетку: ровно в эту точку", async () => {

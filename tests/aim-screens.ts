@@ -79,6 +79,15 @@ function mobScene(m: WorldMap) {
   }
   throw new Error("нет одинокого слизня");
 }
+/** Босс для шара с целью (центр тела крупного юнита): герой в 140–200 px от логова на открытом месте вне города, логово видно. */
+function bossScene(m: WorldMap) {
+  for (const bs of m.bosses) for (const d of [160, 140, 200]) for (let k = 0; k < 8; k++) {
+    const x = Math.round(bs.x + Math.cos((k * Math.PI) / 4) * d), y = Math.round(bs.y + Math.sin((k * Math.PI) / 4) * d);
+    if (isTownZone(zoneAtPx(m, x, y)) || !walkable(m, x, y, 14) || !openAround(m, x, y, 30) || !lineClear(m, x, y, bs.x, bs.y)) continue;
+    return { x, y, bx: bs.x, by: bs.y };
+  }
+  return null;
+}
 /** Пачка для роя (круг 130): 3 и больше спавнов в 140 px от первого (спавны стоят не ближе 90 px друг к другу; вне города, босс дальше 600 px);
  *  герой в 150–190 px от их середины (8 сторон) на открытом месте, середина видна от героя и над полем на обоих зумах. */
 function packScene(m: WorldMap) {
@@ -156,6 +165,20 @@ async function enter(browser: Browser, name: string): Promise<Page> {
     net.send = (t: string, m?: unknown) => { w.__sent.push([t, m]); return orig(t, m); };
   });
   return page;
+}
+/** Камера страницы встала: точка мира (x, y) в кадре с запасом 40 px и обзор не менялся 10 отрисованных кадров подряд.
+ *  После телепорта камера догоняет героя (lerp 0.15) — экранные координаты до этого неверны; у фоновой вкладки кадры редки,
+ *  поэтому неподвижность меряем кадрами игрового цикла, а не временем. */
+async function camSettled(page: Page, x: number, y: number, what: string) {
+  await page.bringToFront();
+  let last: { x: number; y: number; f: number } | null = null, since = 0;
+  await waitCond(async () => {
+    const v = (await page.evaluate(`(() => { const g = window.__game, c = g.scene.getScene('game').cameras.main, w = c.worldView; return { x: w.x, y: w.y, w: w.width, h: w.height, f: g.loop.frame }; })()`)) as { x: number; y: number; w: number; h: number; f: number };
+    const inside = x > v.x + 40 && x < v.x + v.w - 40 && y > v.y + 40 && y < v.y + v.h - 40;
+    if (!last || Math.abs(v.x - last.x) >= 0.5 || Math.abs(v.y - last.y) >= 0.5) since = v.f;
+    last = v;
+    return inside && v.f - since >= 10;
+  }, 15000, what);
 }
 /** Экранные координаты точки мира. */
 const toClient = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}, c = s.cameras.main, r = s.game.canvas.getBoundingClientRect();
@@ -312,6 +335,9 @@ async function shotAt(page: Page, skill: string, find: () => Promise<{ x: number
 /** Ближайший к точке живой моб (в 260 px). */
 const mobNear = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}; let b = null, bd = 260; for (const v of s.units.values()) { if (v.u.kind !== 1 || v.dead) continue;
   const d = Math.hypot(v.x - ${x}, v.y - ${y}); if (d < bd) { bd = d; b = { x: v.x, y: v.y }; } } return b; })()`) as Promise<{ x: number; y: number } | null>;
+/** Ближайший к точке живой босс (в 400 px). */
+const bossNear = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}; let b = null, bd = 400; for (const v of s.units.values()) { if (v.u.kind !== 2 || v.dead) continue;
+  const d = Math.hypot(v.x - ${x}, v.y - ${y}); if (d < bd) { bd = d; b = { x: v.x, y: v.y }; } } return b; })()`) as Promise<{ x: number; y: number } | null>;
 /** Середина живых мобов в 220 px от точки (пачка для роя), если их хотя бы 2. */
 const packNear = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}; let n = 0, sx = 0, sy = 0; for (const v of s.units.values()) { if (v.u.kind !== 1 || v.dead) continue;
   if (Math.hypot(v.x - ${x}, v.y - ${y}) < 220) { n++; sx += v.x; sy += v.y; } } return n >= 2 ? { x: sx / n, y: sy / n } : null; })()`) as Promise<{ x: number; y: number } | null>;
@@ -343,6 +369,7 @@ async function shots2(browser: Browser, mage: Page, errors: string[]) {
       async (p, z) => { await shot(p, "frostnova", { x: W.x + 90, y: W.y + 60 }, `self-aoe-z${z}`); },
       async (p, z) => { await tpWait(p, S); await shot(p, "blink", { x: S.x + 190, y: S.y }, `dash-shore-z${z}`); },
       async (p, z) => { await tpWait(p, M); await shotMob(p, "fireball", M, `bolt-target-z${z}`); },
+      async (p, z) => { const B = bossScene(MAP); if (!B) return; await tpWait(p, B); await shotAt(p, "fireball", () => bossNear(p, B.bx, B.by), `bolt-boss-z${z}`, "босс", -24); },
     ] },
     { name: "Стрелок", cls: "ranger", skills: ["volley", "hr_pierce", "hr_trap"], scenes: [
       // точка — ниже линии героя: (W.x + 150, W.y − 40) на зуме 3 ложилась под мини-карту (курсор над интерфейсом — веер по взгляду, а не на курсор)
@@ -391,8 +418,8 @@ async function shots2(browser: Browser, mage: Page, errors: string[]) {
     }
     await learnAll(page, h.skills);
     await onBar(page, h.bar ?? h.skills);
-    // AIM_LOOK=A|B|C — вариант вида превью; AIM_NIGHT=1 — клиентские часы сдвинуты в ночь (сервер не затронут)
-    await page.evaluate(`(() => { window.__aimLook = ${JSON.stringify(process.env.AIM_LOOK ?? "")}; if (${process.env.AIM_NIGHT ? 1 : 0}) { const D = 20 * 60 * 1000, n = Date.now.bind(Date); Date.now = () => Math.floor(n() / D) * D + 0.8 * D; } })()`);
+    // AIM_NIGHT=1 — клиентские часы сдвинуты в ночь (сервер не затронут)
+    await page.evaluate(`(() => { if (${process.env.AIM_NIGHT ? 1 : 0}) { const D = 20 * 60 * 1000, n = Date.now.bind(Date); Date.now = () => Math.floor(n() / D) * D + 0.8 * D; } })()`);
     for (const z of [2, 3]) {
       await setZoom(page, z);
       for (const sc of h.scenes) await sc(page, z);
@@ -428,7 +455,11 @@ async function main() {
     await mage.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 99 }); n.send("dbg", { op: "god" }); });
     await healer.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 10 }); n.send("dbg", { op: "god" }); });
     await healer.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y]);
-    await waitCond(async () => (await atPos(healer, sp.x + 150, sp.y)) && (await atPos(mage, sp.x + 150, sp.y - 70)), 15000, "телепорт лекаря и мага").catch(() => {});
+    await mage.evaluate(([x, y]) => (window as any).__net.send("dbg", { op: "tp", x, y }), [sp.x + 150, sp.y - 70]);
+    await waitCond(async () => (await atPos(healer, sp.x + 150, sp.y)) && (await atPos(mage, sp.x + 150, sp.y - 70)), 15000, "телепорт лекаря и мага").catch(async () => {
+      console.log("  DIAG tp: target", JSON.stringify({ x: sp.x + 150, y: sp.y }), "mage", JSON.stringify(await mage.evaluate(`(() => { const s = (window.__game.scene.getScene('game')); const n = window.__net; const p = n.room.state.players.get(n.id); return { pos: s.pos, me: s.me && { x: s.me.x, y: s.me.y, dead: s.me.dead }, srv: p && { x: p.x, y: p.y }, want: { x: ${sp.x + 150}, y: ${sp.y - 70} } }; })()`)), "healer", JSON.stringify(await healer.evaluate(`(() => { const s = (window.__game.scene.getScene('game')); const n = window.__net; const p = n.room.state.players.get(n.id); return { pos: s.pos, me: s.me && { x: s.me.x, y: s.me.y, dead: s.me.dead }, srv: p && { x: p.x, y: p.y }, cached: n.self && { x: n.self.x, y: n.self.y } }; })()`)));
+      throw new Error("лекарь и маг не встали на места после телепорта");
+    });
     for (const id of ["frostnova", "blink", "meteor"]) { await mage.evaluate((i) => (window as any).__net.send("learn", { id: i }), id); await sleep(250); }
     await mage.waitForFunction(() => (window as any).__net.self.skills.meteor && (window as any).__net.self.bars[0].some((r: any) => r && r.s === "meteor"), { timeout: 5000 });
     // снимки превью (задача 133) — до проверок: их отказ не должен оставить фазу без снимков
@@ -446,6 +477,7 @@ async function main() {
     await waitCond(async () => !!(await healer.evaluate(`(() => { const s = ${scene}; for (const [id, v] of s.units) if (id !== window.__net.id && v.u.name === "Метеор") return true; return false; })()`)), 5000, "союзник виден лекарю").catch(() => {});
     const ally = (await healer.evaluate(`(() => { const s = ${scene}; for (const [id, v] of s.units) if (id !== window.__net.id && v.u.name === "Метеор") return { id, x: v.x, y: v.y }; return null; })()`)) as { id: string; x: number; y: number } | null;
     must(ally, "союзник не виден лекарю");
+    await camSettled(healer, ally!.x, ally!.y - 14, "камера лекаря встала у союзника");
     const sc = await toClient(healer, ally!.x, ally!.y - 14);
     await healer.mouse.move(sc.x, sc.y, { steps: 4 });
     await sleep(300);
@@ -458,12 +490,13 @@ async function main() {
     await healer.keyboard.up(heal as any);
     await waitCond(async () => (await skillsSent(healer)) >= 1, 2000, "каст лечения").catch(() => {});
     const casts = await sent(healer, "skill");
-    must(casts.length === 1 && casts[0].id === "heal" && casts[0].target === ally!.id, "лечение не ушло в союзника под курсором: " + JSON.stringify(casts) + " ally=" + JSON.stringify(ally) + " sc=" + JSON.stringify(sc) + " st=" + JSON.stringify(await state(healer)) + " dbg=" + JSON.stringify(await healer.evaluate((p: any) => { const sc_id = p.id; const s = (window as any).__game.scene.getScene("game"); const e = document.elementFromPoint(p.x, p.y) as HTMLElement; const ap = s.input.activePointer; return { el: e?.tagName + "." + e?.className, overUi: s.overUi, px: ap.x, py: ap.y, al: (() => { const v = s.units.get(sc_id); return v && { en: s.isEnemy(v), k: v.u.kind, f: v.u.faction, mf: (window as any).__net.self.faction, ht: v.hitTest(s.cameras.main.getWorldPoint(ap.x, ap.y).x, s.cameras.main.getWorldPoint(ap.x, ap.y).y), vx: v.x, vy: v.y }; })(), pf: s.pickFriend(s.cameras.main.getWorldPoint(ap.x, ap.y).x, s.cameras.main.getWorldPoint(ap.x, ap.y).y) }; }, { ...sc, id: ally!.id })) + " self=" + (await healer.evaluate(() => (window as any).__net.id)));
+    must(casts.length === 1 && casts[0].id === "heal" && casts[0].target === ally!.id, "лечение не ушло в союзника под курсором: " + JSON.stringify(casts) + " ally=" + JSON.stringify(ally) + " sc=" + JSON.stringify(sc) + " st=" + JSON.stringify(await state(healer)) + " dbg=" + JSON.stringify(await healer.evaluate((p: any) => { const sc_id = p.id; const s = (window as any).__game.scene.getScene("game"); const e = document.elementFromPoint(p.x, p.y) as HTMLElement; const ap = s.input.activePointer; return { el: e?.tagName + "." + e?.className, overUi: s.overUi, px: ap.x, py: ap.y, al: (() => { const v = s.units.get(sc_id); return v && { en: s.isEnemy(v), k: v.u.kind, f: v.u.faction, mf: (window as any).__net.self.faction, ht: v.hitTest(s.cameras.main.getWorldPoint(ap.x, ap.y).x, s.cameras.main.getWorldPoint(ap.x, ap.y).y), vx: v.x, vy: v.y }; })(), pf: s.pickFriend(s.cameras.main.getWorldPoint(ap.x, ap.y).x, s.cameras.main.getWorldPoint(ap.x, ap.y).y) }; }, { ...sc, id: ally!.id })) + " self=" + (await healer.evaluate(() => (window as any).__net.id)) + " cam=" + JSON.stringify(await healer.evaluate(() => { const s = (window as any).__game.scene.getScene("game"), c = s.cameras.main, r = s.game.canvas.getBoundingClientRect(); return { sx: c.scrollX, sy: c.scrollY, z: c.zoom, wv: { x: c.worldView.x, y: c.worldView.y, w: c.worldView.width, h: c.worldView.height }, mid: { x: c.midPoint.x, y: c.midPoint.y }, vp: { x: c.x, y: c.y, w: c.width, h: c.height }, r: { l: r.left, t: r.top, w: r.width, h: r.height }, gs: { w: s.game.scale.width, h: s.game.scale.height }, css: s.css, me: { x: s.me?.x, y: s.me?.y, sx: s.me?.sprite?.x, sy: s.me?.sprite?.y } }; })));
     must((await state(healer)).target === before.target, "цель сменилась");
     ok("лекарь: лечение ушло в союзника под курсором, выбранная цель не изменилась");
 
     // ---- маг: метеор с превью ложится в курсор, зажатый дальностью ----
     await waitCond(() => atPos(mage, sp.x + 150, sp.y - 70), 5000, "маг на месте").catch(() => {});
+    await camSettled(mage, sp.x + 150, sp.y - 70, "камера мага встала у героя");
     const me = await state(mage);
     const far = await toClient(mage, me.x, me.y); far.x = 8; far.y = 8;
     await mage.mouse.move(far.x, far.y, { steps: 4 });

@@ -179,7 +179,7 @@ async function main() {
       await page.screenshot({ path: path.join(OUT, "shot-worldmap-1.png") });
       const box = (await page.$eval(".wm-view canvas", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }));
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, -300); await sleep(100); }
+      for (let i = 0; i < 3; i++) { await page.mouse.wheel({ deltaY: -300 }); await sleep(100); }
       await sleep(400);
       await page.screenshot({ path: path.join(OUT, "shot-worldmap-2.png") });
       await page.evaluate(() => (Array.from(document.querySelectorAll(".wm-btn")).find((b) => b.textContent === "Центрировать на мне") as HTMLElement).click());

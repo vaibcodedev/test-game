@@ -128,14 +128,16 @@ async function main() {
     await check("умение тратит ману и уходит на перезарядку", async () => {
       const sp = spawnOf("goblin");
       a.send("dbg", { op: "tp", x: sp.x + 30, y: sp.y });
-      await sleep(250);
-      const mp0 = a.me().mp;
+      await a.until(() => Math.hypot(a.me().x - (sp.x + 30), a.me().y - sp.y) < 3, 3000, "телепорт к гоблину");
+      const mp0 = a.me().mp, t0 = Date.now();
+      // мана регенерирует (derived.mpRegen в секунду), поэтому порог «потрачено 8» учитывает регенерацию за время каста
+      const regen = a.self!.derived.mpRegen;
       let cd = 0;
       const gob = mobNear(a, sp.x, sp.y, 300);
       a.room.onMessage("cd", (c: any) => { if (c.id === "taunt") cd = c.ms; });
       a.send("skill", { id: "taunt", x: sp.x, y: sp.y, target: gob });
       await a.until(() => cd > 0, 2000, "перезарядка");
-      await a.until(() => a.me().mp <= mp0 - 8, 1000, "мана потрачена");
+      await a.until(() => a.me().mp <= mp0 - 8 + (regen * (Date.now() - t0)) / 1000 + 1, 3000, "мана потрачена");
       const mp1 = a.me().mp;
       a.send("skill", { id: "taunt", x: sp.x, y: sp.y, target: gob });
       await sleep(300);
