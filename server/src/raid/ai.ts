@@ -350,7 +350,8 @@ export function raidThink(w: World, p: Player, d: RaidDirector) {
     if (s) { p.engaged = false; moveTo(p, s, 6); return; }
   } else if (a.pillar >= 0) { a.pillar = -1; a.slot = -1; }
   const pend = zs.filter((z) => z.id !== "sun" && z.id !== "berserk");
-  const live = pend.filter((z) => z.id === "pool" || z.until - t <= HORIZON);
+  // «Приговор» (круг под каждым, стоящий умирает) — уходить сразу, как увидел, а не за HORIZON до удара
+  const live = pend.filter((z) => z.id === "pool" || z.id === "verdict" || z.until - t <= HORIZON);
   const pos = rolePos(w, p, d);
   // точка опасна, если её накроет вскоре после того, как бот туда добежит; уже отгоревшие полосы и далёкие удары — нет
   const speed = Math.max(60, w.playerSpeed(p));
@@ -359,6 +360,11 @@ export function raidThink(w: World, p: Player, d: RaidDirector) {
     const travel = (r / speed) * 1000;
     return pend.some((z) => {
       if (z.id === "pool") return inDanger(z, x, y, m);
+      // «Приговор»: круги стоят на месте до срабатывания — опасна и точка, и место, где бот будет в момент удара, если не добежит
+      if (z.id === "verdict") {
+        const k = Math.min(1, Math.max(0, z.until - t) / Math.max(1, travel));
+        return inDanger(z, x, y, m) || inDanger(z, p.x + (x - p.x) * k, p.y + (y - p.y) * k, m);
+      }
       const tf = z.until - t;
       if (tf < 0) return false;
       if (tf >= travel - 60) return tf <= travel + STAY && inDanger(z, x, y, m);
@@ -429,7 +435,9 @@ export function raidThink(w: World, p: Player, d: RaidDirector) {
   const blocked = pend.length > 0 && [0.25, 0.5, 0.75, 1].some((k) => unsafe(p.x + (pos.x - p.x) * k, p.y + (pos.y - p.y) * k, far * k, 12));
   if (target === b && !blocked) moveTo(p, pos, ranged ? 22 : 14);
   else p.moveTo = null;
-  engage(p, target, !blocked && (target !== b || !ranged));
+  // пока висит «Приговор», не подходить к цели: подход к боссу заводит обратно в круги
+  const holdV = pend.some((z) => z.id === "verdict");
+  engage(p, target, !blocked && !holdV && (target !== b || !ranged));
   if (role === "healer" && healThink(w, p, d, a)) return;
   if (role === "healer" && p.unit.mp / Math.max(1, p.unit.maxMp) < 0.25) return; // мана на исходе: только лечение
   useSkills(w, p, target, d);
