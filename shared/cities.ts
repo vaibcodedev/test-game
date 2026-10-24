@@ -53,35 +53,44 @@ export const STYLE = {
   solgard: {
     wall_h: "sol_wall_h", wall_v: "sol_wall_v", tower: "sol_tower", gate: "sol_gate", houses: ["sol_house", "sol_temple"],
     stalls: ["stall_gold", "stall_blue"], light: "lamp", tree: "v_basic_oak_small",
-    extra: [["sun_banner", -11, -2], ["sun_banner", 10, -2], ["sun_statue", -9, 5], ["sun_banner", 9, -4]] as [string, number, number][],
+    standard: "std-home-sol", wallBanner: "std-wall-sol", gateBanner: "std-gate-sol",
+    extra: [["std-home-sol", -11, -2], ["std-home-sol", 10, -2], ["sun_statue", -9, 5], ["std-home-sol", 9, -4]] as [string, number, number][],
   },
   umbrath: {
     wall_h: "umb_wall_h", wall_v: "umb_wall_v", tower: "umb_tower", gate: "umb_gate", houses: ["umb_house", "umb_crypt"],
     stalls: ["stall_purple", "stall_purple"], light: "soul_brazier", tree: "v_graveyard_dead_tree_a",
+    standard: "std-home-umb", wallBanner: "std-wall-umb", gateBanner: "std-gate-umb",
     // погост Мортхейма на свободной земле у стен (не на улицах, кольце и площади): надгробия, кресты, плиты, статуи (Graveyard)
-    extra: [["crown_banner", -11, -2], ["crown_banner", 10, -2], ["bone_pile", -9, 5], ["dark_obelisk", 9, -4],
+    extra: [["std-home-umb", -11, -2], ["std-home-umb", 10, -2], ["bone_pile", -9, 5], ["dark_obelisk", 9, -4],
       ["v_graveyard_cross_a", 8, 2], ["v_graveyard_stone_b", 10, 2], ["v_graveyard_slab_a", 9, 4], ["v_graveyard_statue_a", 11, 3],
       ["v_graveyard_statue_b", -8, 3], ["v_graveyard_cross_c", -10, 2], ["v_graveyard_slab_b", -9, -3], ["v_graveyard_stele_a", -10, -5],
       ["v_graveyard_stone_c", 7, -2], ["v_graveyard_cross_b", 11, -4]] as [string, number, number][],
   },
 } as const;
+/**
+ * Знамёна столиц и фортов (решение 5 — знамёна главный мотив мира; листы — tools/gen/standards.ts, в игру — standards-to-game.ts).
+ * Настенные (STYLE.gateBanner/wallBanner, проход не загораживают; ставит shared/map.ts): над обоими воротами, на всех восьми башнях
+ * и посреди пролётов северной и южной стен — CITY_WALL_BANNERS, dx (полутайлы: середина пролёта между угловой и надвратной башней).
+ * Штандарты своих земель на древке (STYLE.standard) у входа — CITY_ENTRANCE: у северных ворот изнутри (снаружи их закрыли бы
+ * башни), у южных — снаружи; в 6 клетках от оси ворот — между знамёнами надвратных башен и пролётов, не заслоняют их (и оберег форта у южных ворот).
+ */
+export const CITY_WALL_BANNERS = [-8.5, 8.5];
+const CITY_ENTRANCE: [number, number][] = [[-6, -CITY_WALL.y + 1], [6, -CITY_WALL.y + 1], [-6, CITY_WALL.y + 2], [6, CITY_WALL.y + 2]];
 export function cityDecor(style: CityStyle): [string, number, number][] {
   const s = STYLE[style];
   const out: [string, number, number][] = COMMON.map(([k, x, y]) => [k === "~light" ? s.light : k === "~tree" ? s.tree : k, x, y]);
-  return [...out, ...s.extra.map((e) => [...e] as [string, number, number])];
+  return [...out, ...s.extra.map((e) => [...e] as [string, number, number]), ...CITY_ENTRANCE.map(([x, y]) => [s.standard, x, y] as [string, number, number])];
 }
 
 /**
  * Форт (задача 132, шаги 4 и 10): казармы в северном ряду; у южных углов — командирские шатры, у западной стены — шатры своей фракции и стол с картой;
  * плац — площадь |dx|≤6, |dy|≤4 с манекенами (анимированные листы bf-dummy-*) и стойками; кузня — у восточной стены (горны bf-forge-*, наковальни, бадья);
  * двор осадных машин у южных ворот: требушет (запад), катапульта и баллиста (восток). Проходы |dx|≤1, кольцо и маршруты стражи свободны.
- * Виды с «~» зависят от стиля (FORT_KIND). Штандарты фракции — на стенах (через 5 клеток) и по обе стороны ворот: [dx, dy].
+ * Виды с «~» зависят от стиля (FORT_KIND). Знамёна — как у столиц (настенные и штандарты у входа, CITY_ENTRANCE), и ещё штандарты
+ * на древке вдоль боковых стен изнутри: [dx, dy].
  */
 export const FORT_HOUSES: [number, number][] = [[-11, -6], [-6, -6], [3, -6], [8, -6]];
-const FORT_BANNERS: [number, number][] = [
-  [-3, -10], [3, -10], [-3, 10], [3, 10], [-13, -10], [13, -10], [-13, 10], [13, 10],
-  [-8, -10], [8, -10], [-8, 10], [8, 10], [-13, 0], [13, 0], [-13, -5], [13, -5], [-13, 5], [13, 5],
-];
+const FORT_BANNERS: [number, number][] = [[-13, -5], [13, -5], [-13, 5], [13, 5], ...CITY_ENTRANCE];
 const FORT_KIND: Record<CityStyle, Record<string, string>> = {
   solgard: { "~tent": "bf_tent_sol", "~cmd": "bf_tent_sol_cmd" },
   umbrath: { "~tent": "bf_tent_umb", "~cmd": "bf_tent_umb_cmd" },
@@ -102,7 +111,7 @@ const FORT_SIEGE: [string, number, number][] = [
 /** Убранство форта: общее без садов и погоста, лагерь, плац, кузня, двор осадных машин и штандарты своей фракции. */
 export function fortDecor(style: CityStyle): [string, number, number][] {
   const s = STYLE[style];
-  const banner = style === "solgard" ? "sun_banner" : "crown_banner";
+  const banner = s.standard;
   const kind = (k: string) => (k === "~light" ? s.light : FORT_KIND[style][k] ?? k);
   const common = COMMON.filter(([k]) => k !== "~tree").map(([k, x, y]) => [kind(k), x, y] as [string, number, number]);
   return [

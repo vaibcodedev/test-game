@@ -226,7 +226,7 @@ export function buildSettlement(s: Settlement, b: SettleBuild, seed: number) {
   };
   // штандарты (world.json → banners) — первыми: ограда обходит их клетки
   const flag = new Set(s.banners.map((q) => q.y * 4096 + q.x));
-  for (const q of s.banners) b.put(s.look === "sol" ? "sun_banner" : "crown_banner", q.x, q.y);
+  for (const q of s.banners) b.put(s.look === "sol" ? "std-home-sol" : "std-home-umb", q.x, q.y);
   const gate = new Set(gateCells(s).map(([x, y]) => y * 4096 + x));
   const open = (x: number, y: number) => gate.has(y * 4096 + x) || flag.has(y * 4096 + x);
   const x0 = s.x - s.ring.w, x1 = s.x + s.ring.w, y0 = s.y - s.ring.n, y1 = s.y + s.ring.s;

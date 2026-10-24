@@ -15,7 +15,7 @@ import world from "../data/world.json";
 import PATROLS from "../data/patrols.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
-import { CAPITAL_DECOR, CITIES, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
+import { CAPITAL_DECOR, CITIES, CITY_HOUSES, CITY_WALL_BANNERS, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
 import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
@@ -129,7 +129,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 7; // 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 8; // 8 — штандарты своих земель у ворот городов, фортов и постов у мостов (вместо sun/crown_banner); 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -239,7 +239,9 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   sol_house: { w: 4, h: 3 },
   sol_temple: { w: 4, h: 3 },
   stall_gold: { w: 2, h: 1 },
-  sun_banner: { w: 1, h: 1 },
+  // штандарты своих земель на древке (анимированные листы vfx std-home-*: tools/gen/standards-to-game.ts) — у ворот городов, фортов, поселений и мостов
+  "std-home-sol": { w: 1, h: 1 },
+  "std-home-umb": { w: 1, h: 1 },
   sun_statue: { w: 1, h: 1 },
   umb_wall_h: { w: 1, h: 1 },
   umb_wall_v: { w: 1, h: 1 },
@@ -248,7 +250,6 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   umb_crypt: { w: 4, h: 3 },
   stall_purple: { w: 2, h: 1 },
   soul_brazier: { w: 1, h: 1 },
-  crown_banner: { w: 1, h: 1 },
   bone_pile: { w: 1, h: 1 },
   dark_obelisk: { w: 1, h: 1 },
   // дороги и поселения
@@ -813,6 +814,13 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
   for (let dx = -CITY_WALL.x; dx <= CITY_WALL.x; dx++) for (const dy of [-CITY_WALL.y, CITY_WALL.y]) if (wallOk(dx, dy)) place(St.wall_h, X(dx), Y(dy));
   for (let dy = -CITY_WALL.y + 1; dy < CITY_WALL.y; dy++) for (const dx of [-CITY_WALL.x, CITY_WALL.x]) if (wallOk(dx, dy)) place(St.wall_v, X(dx), Y(dy));
   for (const dy of [-CITY_WALL.y, CITY_WALL.y]) objects.push({ kind: St.gate, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 2 });
+  // настенные знамёна (проход не загораживают): над воротами, на башнях и посреди пролётов северной и южной стен; объект — у основания
+  // стены на 1 px ниже неё (рисуется поверх кладки), высоту крепления задаёт якорь листа (tools/gen/standards-to-game.ts)
+  for (const dy of [-CITY_WALL.y, CITY_WALL.y]) {
+    objects.push({ kind: St.gateBanner, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 1 });
+    for (const dx of CITY_WALL_BANNERS) objects.push({ kind: St.wallBanner, x: X(dx) * TILE + 16, y: (Y(dy) + 1) * TILE - 1 });
+  }
+  for (const [dx, dy] of CITY_TOWERS) objects.push({ kind: St.wallBanner, x: (X(dx) + 1) * TILE, y: (Y(dy) + 1) * TILE - 1 });
   const fits = (kind: string, x: number, y: number) => {
     const f = OBJECT_FOOTPRINT[kind] ?? { w: 1, h: 1 };
     for (let j = 0; j < f.h; j++) for (let i = 0; i < f.w; i++) if (cell[(y - j) * w + x + i] & CELL_BLOCK) return false;
@@ -948,7 +956,7 @@ const wallNear = (x: number, y: number) => Math.abs(foldX(x) - tableX(WALL_TAB, 
  * по ломаной walls.line; на уступах достраивается горизонтальная клетка, чтобы стена была связной. Проёмы ворот (walls.gates) — у мостов, у каждого
  * по краям башни (walls.towers: якорь — левая нижняя клетка 2×2, колонки wallCol−1…wallCol). Восток — зеркало запада (клетка i ↔ w − 1 − i).
  */
-function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn) {
+function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn, bannerObjects: MapObject[]) {
   const inGate = (y: number) => WALLS.gates.some((g) => Math.abs(y - g.y) <= g.half);
   for (const east of [false, true]) {
     const X = (c: number) => (east ? w - 1 - c : c);
@@ -967,6 +975,18 @@ function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn)
         if (towerCells.has(i) || cell[i] & CELL_BLOCK) continue;
         place(wallKind, x, y);
       }
+    }
+    // знамёна у постов на мостах: настенные на обеих башнях у ворот (выше двери, поверх нарисованного стяга башни) и штандарты на древке
+    // по бокам проёма с внутренней стороны (world.json → banners, роли gate-in-n/s)
+    for (const t of WALLS.towers) {
+      if (!WALLS.gates.some((g) => Math.abs(t.y - g.y) <= g.half + 3)) continue;
+      const c = wallCol(t.y), ax = east ? w - 1 - c : c - 1;
+      bannerObjects.push({ kind: east ? "std-wall-umb-hi" : "std-wall-sol-hi", x: (ax + 1) * TILE + 6, y: (t.y + 1) * TILE - 1 });
+    }
+    for (const b of world.banners.list as { bridge?: string; role: string; faction: string; x: number; y: number }[]) {
+      if (!b.bridge || !b.role.startsWith("gate-in") || (b.faction === "umbrath") !== east) continue;
+      const x = Math.floor(b.x), y = Math.floor(b.y);
+      if (!(cell[y * w + x] & CELL_BLOCK)) place(east ? "std-home-umb" : "std-home-sol", x, y);
     }
   }
 }
@@ -1032,7 +1052,7 @@ export function generateMap(seed: number): WorldMap {
   buildTown(seed, w, cell, objects, place);
   for (const c of CITIES) if (c.style) buildCity(c, cell, w, objects, place, seed);
   buildBridges(cell, w, objects);
-  buildRiverWalls(cell, w, h, place);
+  buildRiverWalls(cell, w, h, place, objects);
   buildPlaces(cell, w, objects, place, seed);
   // указатели у перекрёстков: ближайшая свободная клетка у обочины
   for (const s of world.signs.list) {

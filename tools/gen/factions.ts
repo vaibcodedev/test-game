@@ -177,16 +177,6 @@ function solHouse(temple: boolean): PC {
   }
   return c.outline();
 }
-const sunBanner: Art = () => {
-  const c = new PC(32, 96);
-  c.rect(15, 6, 3, 88, P.wood[2]);
-  c.rect(15, 6, 1, 88, P.wood[3]);
-  c.ellipse(16, 5, 3, 3, GOLD[3]);
-  c.rect(6, 10, 21, 2, GOLD[2]);
-  bannerCloth(c, 7, 12, 18, 40, P.cloth.white, (x, y) => sunEmblem(c, x, y));
-  c.shadedEllipse(16, 92, 8, 3, WHITE);
-  return c.outline();
-};
 const sunStatue: Art = () => {
   const c = new PC(32, 96);
   c.shadedRect(4, 72, 24, 22, WHITE);
@@ -266,16 +256,6 @@ const soulBrazier: Art = () => {
   c.poly([[10, 25], [13, 12], [16, 19], [19, 6], [22, 25]], (x, y) => (y > 18 ? PURP[2] : PURP[3]));
   c.poly([[13, 25], [16, 15], [19, 25]], PURP[4]);
   c.ellipse(16, 46, 3, 2, BONE[2]);
-  return c.outline();
-};
-const crownBanner: Art = () => {
-  const c = new PC(32, 96);
-  c.rect(15, 6, 3, 88, DARK[2]);
-  c.poly([[13, 6], [16, 0], [19, 6]], BONE[3]);
-  c.rect(6, 10, 21, 2, P.darkSteel[3]);
-  bannerCloth(c, 7, 12, 18, 40, P.cloth.purple, (x, y) => crownEmblem(c, x, y));
-  c.shadedEllipse(16, 92, 8, 3, DARK);
-  for (let k = 0; k < 3; k++) c.ellipse(10 + k * 6, 90, 2.5, 2, BONE[2 + (k % 2)]);
   return c.outline();
 };
 const bonePile: Art = () => {
@@ -365,9 +345,9 @@ const campfire: Art = () => {
 export const FACTION_ART: Record<string, Art> = {
   sol_wall_h: () => wallH(WHITE, false, 41), sol_wall_v: () => wallV(WHITE, 43), sol_tower: solTower, sol_gate: () => archGate(WHITE, false, 45),
   sol_house: () => solHouse(false), sol_temple: () => solHouse(true), stall_gold: () => stallArt(hex("#e8b84a")),
-  sun_banner: sunBanner, sun_statue: sunStatue,
+  sun_statue: sunStatue,
   umb_wall_h: () => wallH(DARK, true, 61), umb_wall_v: () => wallV(DARK, 63), umb_tower: umbTower, umb_gate: () => archGate(DARK, true, 65),
   umb_house: () => umbHouse(false), umb_crypt: () => umbHouse(true), stall_purple: () => stallArt(hex("#7a3ab0")),
-  soul_brazier: soulBrazier, crown_banner: crownBanner, bone_pile: bonePile, dark_obelisk: darkObelisk,
+  soul_brazier: soulBrazier, bone_pile: bonePile, dark_obelisk: darkObelisk,
   signpost, bridge_h: () => bridge(true), bridge_v: () => bridge(false), ruin_pillar: ruinPillar, ruin_wall: ruinWall, campfire,
 };

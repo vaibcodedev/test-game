@@ -2565,6 +2565,50 @@
   ],
   "blend": "normal"
  },
+ "std-gate-sol": {
+  "frameW": 46,
+  "frameH": 47,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.8936
+  ],
+  "blend": "normal"
+ },
+ "std-gate-umb": {
+  "frameW": 45,
+  "frameH": 47,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.8936
+  ],
+  "blend": "normal"
+ },
+ "std-home-sol": {
+  "frameW": 42,
+  "frameH": 71,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9577
+  ],
+  "blend": "normal"
+ },
+ "std-home-umb": {
+  "frameW": 41,
+  "frameH": 71,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9577
+  ],
+  "blend": "normal"
+ },
  "std-torn-sol": {
   "frameW": 38,
   "frameH": 64,
@@ -2584,6 +2628,50 @@
   "anchor": [
    0.5,
    0.9688
+  ],
+  "blend": "normal"
+ },
+ "std-wall-sol": {
+  "frameW": 42,
+  "frameH": 41,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.1463
+  ],
+  "blend": "normal"
+ },
+ "std-wall-sol-hi": {
+  "frameW": 42,
+  "frameH": 41,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.8293
+  ],
+  "blend": "normal"
+ },
+ "std-wall-umb": {
+  "frameW": 40,
+  "frameH": 41,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.1463
+  ],
+  "blend": "normal"
+ },
+ "std-wall-umb-hi": {
+  "frameW": 40,
+  "frameH": 41,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.8293
   ],
   "blend": "normal"
  },

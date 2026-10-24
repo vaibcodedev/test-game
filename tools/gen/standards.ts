@@ -615,6 +615,60 @@ function homeUmbrath(): Anim {
   return { id: "home-umbrath", title: "СВОИ ЗЕМЛИ", frames, w: FW, h: FH, anchor: [20.5 / FW, 68 / FH], fps: FPS, fac: "umbrath", hero: "deathknight" };
 }
 
+// ---------------------------------------------------------------- настенные знамёна (задача 132: стены, башни и ворота столиц, фортов, постов у мостов)
+/** Ветер у стены: полотнище висит вплотную к камню — без сноса, лёгкое качание низа (±1 px), складки мягче и реже, чем на древке;
+ *  смена сдвига строки держится 2 кадра (hold) — колыхание, а не трепет. */
+const WIND_WALL: Wind = { lean: 0, sway: 1.2, lag: 6, lambda: N, slant: 0.12, f0: 0.12, f1: 0.75, lightT: 0.72, darkT: 0.42, deepT: 2, embT: 0.85, rip: N, ripT: 0.55, fieldD: 4, topShade: 1, hold: true };
+/** Настенное знамя: брус на двух крюках, вбитых в кладку, петли, полотнище с гербом (без древка). Якорь — середина верха бруса
+ *  (точка крепления; в игре — tools/gen/standards-to-game.ts переносит её на нужную высоту стены или башни). */
+function hangBanner(o: { id: string; title: string; kit: Kit; CW: number; CH: number; inside: (x: number, y: number) => boolean; cloth: (d: number) => Col;
+  emb: PC; embY: number; ties: [number, number][]; wind: Wind; barOver: number }): Anim {
+  const k = o.kit, side = 6, bar = 2, X0 = side + o.barOver, Y0 = bar + 3;
+  const FW = o.CW + 2 * X0, FH = Y0 + o.CH + 4;
+  const tex = clothTex(o.CW, o.CH, o.inside, (_x, _y, d) => o.cloth(d));
+  const emb: Emb = { pc: o.emb, x: Math.floor((o.CW - o.emb.w) / 2), y: o.embY };
+  const iron = k.fac === "solgard" ? { L: STEEL[3], M: STEEL[2], D: STEEL[1] } : { L: IRON[3], M: IRON[2], D: IRON[1] };
+  const frames: PC[] = [];
+  for (let t = 0; t < N; t++) {
+    const f = new PC(FW, FH);
+    const co = windCloth(tex, emb, t, o.wind, k.tone);
+    co.L.outline(OUTLINE);
+    f.blit(co.L, X0 - co.M, Y0);
+    layer(f, (l) => {
+      // крюки в кладке над брусом — по четверти ширины от краёв
+      for (const hx of [X0 + Math.round(o.CW / 4) - 1, X0 + o.CW - Math.round(o.CW / 4) - 1]) stamp(l, hx, bar - 2, ["LM", "MD"], iron);
+      k.bar(l, X0 - o.barOver, X0 + o.CW - 1 + o.barOver, bar);
+      for (const [u, w] of o.ties) k.tie(l, X0 + u, w, bar - 1, Y0);
+    });
+    frames.push(f);
+  }
+  return { id: o.id, title: o.title, frames, w: FW, h: FH, anchor: [(FW / 2) / FW, bar / FH], fps: FPS, fac: k.fac };
+}
+/** Сольгард: белое полотно с голубой каймой и острым низом (как штандарт своих земель); у ворот — крупнее, с золотой строчкой
+ *  и эмблемой s20, на стенах и башнях — 24×32 с эмблемой s16. */
+function wallSolgard(gate: boolean): Anim {
+  const CW = gate ? 28 : 24, CH = gate ? 38 : 32, pointY = CH - CW / 4 - 1;
+  const inside = (x: number, y: number) => y <= pointY || Math.abs(x + 0.5 - CW / 2) <= CW / 2 - 2 * (y - pointY);
+  const cloth = gate ? (d: number) => (d <= 2 ? AZ[2] : d === 3 ? WH[1] : d === 4 ? G[2] : d === 5 ? WH[1] : WH[2]) : SOL.cloth;
+  return hangBanner({
+    id: gate ? "gate-solgard" : "wall-solgard", title: gate ? "НАД ВОРОТАМИ" : "НА СТЕНЕ И БАШНЕ", kit: SOL, CW, CH, inside, cloth,
+    emb: factionEmblem("solgard", gate ? "s20" : "s16"), embY: gate ? 5 : 3,
+    ties: gate ? [[1, 3], [12, 4], [24, 3]] : [[1, 3], [10, 4], [20, 3]], wind: gate ? { ...WIND_WALL, fieldD: 6, stiff: 5 } : WIND_WALL, barOver: 3,
+  });
+}
+/** Умбрат: чёрно-пурпурное полотно с гробовой стопой; у ворот — крупнее, с серебряной строчкой и эмблемой s20. */
+function wallUmbrath(gate: boolean): Anim {
+  const CW = gate ? 29 : 24, CH = gate ? 38 : 32, footY = CH - 10;
+  const inset = (y: number) => (y <= footY ? 0 : Math.ceil((y - footY) / 2));
+  const inside = (x: number, y: number) => x >= inset(y) && x <= CW - 1 - inset(y);
+  const cloth = gate ? (d: number) => (d === 1 ? UP[2] : d === 2 ? UP[1] : d === 3 ? UK[1] : d === 4 ? SIL[2] : d === 5 ? UK[1] : UK[2]) : UMB.cloth;
+  return hangBanner({
+    id: gate ? "gate-umbrath" : "wall-umbrath", title: gate ? "НАД ВОРОТАМИ" : "НА СТЕНЕ И БАШНЕ", kit: UMB, CW, CH, inside, cloth,
+    emb: factionEmblem("umbrath", gate ? "s20" : "s16"), embY: gate ? 5 : 3,
+    ties: gate ? [[1, 3], [13, 3], [25, 3]] : [[1, 3], [10, 3], [20, 3]], wind: gate ? { ...WIND_WALL, fieldD: 6, stiff: 5 } : WIND_WALL, barOver: 2,
+  });
+}
+
 // ---------------------------------------------------------------- повреждённые штандарты спорных земель (походный размер, эмблема s16)
 /** Порванный, в стрелах. Полотно-основа (Сольгард — прямоугольник 22×28, Умбрат — гробовая стопа 23×29) режется: лохмотья низа,
  *  большой вырванный клок, дыра, разрыв от кромки, оторванная петля (угол провис). Кайма считается по целому контуру — рваные края
@@ -1366,7 +1420,7 @@ function captureBase(): Anim {
   return { id: "capture-base", title: "ОСНОВАНИЕ ЗАХВАТА", frames: [full, plinth, mast], w: BASE_W, h: BASE_H, anchor: [0.5, BASE_GY / BASE_H], fps: 0, fac: "solgard" };
 }
 
-export { homeSolgard, homeUmbrath, torn, burned, fallen, royalSolgard, royalUmbrath, captureBase, readPng, crop, scaleNN, paintGround, logoSheet, LOGOS, logoFinal, label };
+export { homeSolgard, homeUmbrath, wallSolgard, wallUmbrath, torn, burned, fallen, royalSolgard, royalUmbrath, captureBase, readPng, crop, scaleNN, paintGround, logoSheet, LOGOS, logoFinal, label };
 /** Модель ветра — общая со «Знаменем защиты» (tools/gen/vfx-banner.ts). */
 export { N as WIND_FRAMES, FPS as WIND_FPS, windPlan, windCloth, planShifts, toneFn, clothTex, distMap, stamp, layer, despeckle, WIND_HOME, type Wind, type Emb, type ToneFn, type ClothOut };
 
@@ -1990,7 +2044,8 @@ export function STANDARDS() {
   const home = [homeSolgard(), homeUmbrath()];
   const torns = [torn("solgard"), torn("umbrath")], burns = [burned("solgard"), burned("umbrath")], falls = [fallen("solgard"), fallen("umbrath")];
   const royal = [royalSolgard(), royalUmbrath()], base = captureBase();
-  return { home, torns, burns, falls, royal, base };
+  const walls = [wallSolgard(false), wallUmbrath(false), wallSolgard(true), wallUmbrath(true)];
+  return { home, torns, burns, falls, royal, base, walls };
 }
 
 
@@ -2032,7 +2087,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // --logo — только эмблема игры (варианты, итог и эмблема для экрана загрузки), без листов штандартов
   if (process.argv.includes("--logo")) { writeLogos(); console.log(OUT); process.exit(0); }
   for (const f of ["_debug.png", "_debug_capture.png"]) fs.rmSync(path.join(OUT, f), { force: true });   // черновые листы прошлого прогона
-  const { home, torns, burns, falls, royal, base } = STANDARDS();
+  const { home, torns, burns, falls, royal, base, walls } = STANDARDS();
   const meta: Record<string, object> = {};
   const save = (a: Anim, extra: object = {}) => {
     strip(a.frames).save(path.join(OUT, `${a.id}.png`));
@@ -2040,6 +2095,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   };
   for (const a of home) save(a, { note: "якорь — низ подтока (точка на земле)" });
   for (const a of [...torns, ...burns]) save(a, { note: "без основания; якорь — низ подтока" });
+  for (const a of walls) save(a, { note: "настенное, без древка; якорь — середина верха бруса (точка крепления к стене)" });
   for (const a of falls) {
     save(a, { note: "сборка: земля + обломок; в игре — два слоя", layers: { ground: `${a.id}-ground.png`, stump: `${a.id}-stump.png` } });
     a.ground.save(path.join(OUT, `${a.id}-ground.png`));
@@ -2067,6 +2123,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       FAC_COL[a.fac], [scene(a, k, ground, 2), scene(a, k, ground, 3), board(a, 2, cols)]));
   };
   for (const a of home) animRow(a, "grass", "ШТАНДАРТ СВОИХ ЗЕМЕЛЬ");
+  for (const a of walls) rows.push(previewRow(`${FAC_NAME[a.fac]} — НАСТЕННОЕ ЗНАМЯ ${a.title}`, `${a.w}×${a.h}, ${a.frames.length} КАДРОВ, ${a.fps} К/С`,
+    FAC_COL[a.fac], [board({ ...a, frames: [a.frames[0]] }, 4), board(a, 2)]));
   for (const a of torns) animRow(a, "dirt", "СПОРНЫЕ ЗЕМЛИ: ПОРВАННЫЙ, В СТРЕЛАХ");
   for (const a of burns) animRow(a, "dirt", "СПОРНЫЕ ЗЕМЛИ: ОБГОРЕВШИЙ");
   for (const a of falls) animRow(a, "dirt", "СПОРНЫЕ ЗЕМЛИ: СЛОМАННЫЙ В ГРЯЗИ, С ПАВШИМ", 6);

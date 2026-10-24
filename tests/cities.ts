@@ -175,7 +175,7 @@ console.log(`NPC мира: ${WORLD_NPCS.length}; банкиров ${BANKERS.leng
     const mobs = m.spawns.filter((sp) => settleDist(sp.x / TILE, sp.y / TILE) <= GUARD_RANGE_TILES + 2 && Math.hypot(sp.x / TILE - s.x, sp.y / TILE - s.y) < 30);
     if (mobs.length) fail(`${tag}: мобы у ограды (в досягаемости стражи): ${mobs.map((sp) => sp.mob).join(", ")}`);
     // штандарты своей фракции — на своих клетках (по бокам проёма ворот и по углам ограды)
-    const kind = s.faction === "solgard" ? "sun_banner" : "crown_banner";
+    const kind = s.faction === "solgard" ? "std-home-sol" : "std-home-umb";
     for (const b of s.banners) if (!m.objects.some((o) => o.kind === kind && Math.floor(o.x / TILE) === b.x && Math.floor(o.y / TILE) === b.y)) fail(`${tag}: нет штандарта ${b.role} на ${b.x},${b.y}`);
     const gateFlags = s.banners.filter((b) => b.role === "settle-gate");
     if (gateFlags.length !== 2 || !gateFlags.every((b) => gateCells(s).some(([x, y]) => Math.abs(x - b.x) + Math.abs(y - b.y) === 1))) fail(`${tag}: штандарты settle-gate не по бокам проёма ворот`);
