@@ -6,7 +6,6 @@ import { MAP_SEED } from "../shared/constants";
 import { bodyDist, pickOrder, type PickCtx, type PickKind, type PickSource } from "../client/src/game/castResolve";
 
 const MAP = generateMap(MAP_SEED);
-const town = MAP.playerSpawn;
 // слизень — у столицы героя (воин — Сольгард, Аурелион): ближайший к Эмберхоллу теперь у вражеской столицы, где героя бьёт стража (задача 132)
 const home = homeCity("solgard").spawn;
 const spawns = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
@@ -145,6 +144,10 @@ async function main() {
 
     await check("каст вне дальности подводит героя и кастует (подход)", async () => {
       const id = await setup();
+      // слизень помнит угрозу прошлых проверок и сам бежит к герою (тогда подходить не нужно): уводим героя за поводок — моб возвращается домой и забывает угрозу
+      a.send("dbg", { op: "tp", x: cur.x + 900, y: cur.y });
+      await a.until(() => { const m = mob(a, id); return !!m && Math.hypot(m.x - cur.x, m.y - cur.y) < 70 && m.anim !== 1; }, 6000, "слизень вернулся домой");
+      await sleep(400);
       a.send("dbg", { op: "tp", x: cur.x + 420, y: cur.y });
       await sleep(300);
       const n0 = countCd(la, "taunt"), d0 = dist(a, id);
@@ -176,7 +179,8 @@ async function main() {
     m.send("dbg", { op: "level", v: 20 });
     m.send("dbg", { op: "god" });
     await sleep(300);
-    m.send("dbg", { op: "tp", x: town.x, y: town.y });
+    // своя столица, не Эмберхолл: там атакующие умения запрещены (решение 11 задачи 132)
+    m.send("dbg", { op: "tp", x: home.x, y: home.y });
     m.send("learn", { id: "frostnova" });
     await sleep(200);
     m.send("learn", { id: "blink" });

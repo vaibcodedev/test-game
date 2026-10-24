@@ -4,6 +4,7 @@ import { MOB_AI, type MobAI, type MobDef } from "../../../shared/mobs";
 import { Anim, UnitKind } from "../../../shared/protocol";
 import { ELITE } from "../../../shared/elites";
 import { Unit } from "../rooms/schema";
+import type { SoldierState } from "./soldiers";
 
 export type MobState = "idle" | "chase" | "return" | "dead";
 
@@ -52,6 +53,9 @@ export class Mob {
   immune = false;
   /** Множитель получаемого урона (рейд-босс на паузе смены фазы — 0.1). */
   dmgTakenMul = 1;
+  /** Боец фракции (задача 132, шаг 5): фракция и поведение (server/src/game/soldiers.ts); у обычного моба "" и null. */
+  faction = "";
+  soldier: SoldierState | null = null;
 
   constructor(
     readonly id: string,

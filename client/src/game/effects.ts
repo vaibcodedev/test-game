@@ -239,9 +239,10 @@ export class Effects {
       }
       case "proj": {
         const from = this.unit(f.from);
-        if (!from) return;
+        // стрелок без юнита (лучник на башне стены) — точка вылета fx, fy
+        if (!from && f.fx === undefined) return;
         const tex = PROJ_TEX[f.k] ?? "fx_arcane";
-        const sx = from.x, sy = from.y - (from.frame > 32 ? 30 : 14);
+        const sx = from ? from.x : f.fx!, sy = from ? from.y - (from.frame > 32 ? 30 : 14) : f.fy!;
         const to = f.to ? this.unit(f.to) : undefined;
         const tx = to ? to.x : f.tx, ty = to ? to.y - (to.frame > 32 ? 26 : 12) : f.ty - 12;
         this.sound(f.k === "arrow" || f.k === "aimed" ? "arrow" : (SFX_OF[f.k === "fireball" ? "fire" : f.k] ?? "arcane"), sx, sy);

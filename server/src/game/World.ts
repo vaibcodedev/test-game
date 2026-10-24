@@ -33,6 +33,7 @@ import { grantKillRewards } from "./rewards";
 import { tickEncounters } from "./encounters";
 import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
+import { Soldiers } from "./soldiers";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
 import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack } from "./auras";
@@ -109,6 +110,8 @@ export class World {
   /** Постоянные зоны урона (лужи яда, огонь). */
   /** Стражники и горожане города (только в мире, не на арене). */
   town: Townfolk | null = null;
+  /** Бойцы фракций: патрули, посты, стража поселений и городов, лучники на башнях (только в мире). */
+  soldiers: Soldiers | null = null;
   hazards: { id: string; x: number; y: number; r: number; until: number; dps: number; kind: FxKind; owner: Mob; tickAt: number }[] = [];
 
   constructor(
@@ -118,7 +121,10 @@ export class World {
   ) {
     this.map = opts.map ?? generateMap(MAP_SEED);
     if (opts.mobs !== false) this.spawnAll();
-    if (opts.mobs !== false && !opts.map) this.town = new Townfolk(this);
+    if (opts.mobs !== false && !opts.map) {
+      this.town = new Townfolk(this);
+      this.soldiers = new Soldiers(this);
+    }
   }
 
   // ---------- инфраструктура ----------
@@ -194,6 +200,13 @@ export class World {
   hostile(a: Actor, b: Actor): boolean {
     if (a === b) return false;
     const pa = this.isPlayer(a), pb = this.isPlayer(b);
+    // боец фракции (soldiers.ts): враг только героям мира чужой фракции; мобов и других бойцов не трогает
+    const fa = pa ? "" : (a as Mob).faction, fb = pb ? "" : (b as Mob).faction;
+    if (fa || fb) {
+      if (pa === pb) return false;
+      const p = (pa ? a : b) as Player;
+      return p.team === 0 && !!p.faction && p.faction !== (fa || fb);
+    }
     if (pa !== pb) return true;
     if (!pa || !pb) return false;
     if (this.pvpActive || this.opts.mobs === false) return this.pvpActive && a.team !== 0 && b.team !== 0 && a.team !== b.team;
@@ -251,7 +264,7 @@ export class World {
   /** Живые враги в круге, которых src может задеть (canAffect): мобы и враждебные игроки. */
   enemiesInCircle(src: Actor, x: number, y: number, r: number): Actor[] {
     if (this.absent(src)) return [];
-    const out: Actor[] = this.mobsInCircle(x, y, r);
+    const out: Actor[] = this.mobsInCircle(x, y, r).filter((m) => !m.faction || this.hostile(src, m)); // свои бойцы фракции — не враги
     for (const p of this.playersInCircle(x, y, r)) if (this.hostile(src, p) && this.canAffect(src, p)) out.push(p);
     // урон по площади не проходит сквозь стены
     return out.filter((a) => lineClear(this.map, x, y, (a as { x: number }).x, (a as { y: number }).y));
@@ -295,6 +308,7 @@ export class World {
     for (const m of this.mobs.values()) if (this.awake(m)) this.updateMob(m, dt);
     for (const pet of [...this.pets.values()]) updatePet(this, pet, dt);
     this.town?.update(dt);
+    this.soldiers?.update(dt);
     this.updateHazards();
     if (this.opts.mobs !== false) tickEncounters(this);
     this.flush();
@@ -316,8 +330,8 @@ export class World {
   /** Спит ли моб: обычный, без цели и угрозы, вдали от героев. Боссы, призванные и вернувшиеся домой не спят. */
   private awake(m: Mob): boolean {
     if (m.def.boss || m.summoned || m.state !== "idle" || m.threat.size) return true;
-    const C = World.AWAKE_CHUNK;
-    return this.awakeChunks.has(Math.floor(m.home.y / C) * 4096 + Math.floor(m.home.x / C));
+    const C = World.AWAKE_CHUNK, at = m.soldier ? m.unit : m.home; // патруль уходит от точки появления: спит по текущему месту
+    return this.awakeChunks.has(Math.floor(at.y / C) * 4096 + Math.floor(at.x / C));
   }
 
   private runTimers() {
@@ -399,6 +413,8 @@ export class World {
     if (this.isDead(dst) || this.isDead(src)) return MISS;
     // отложенный удар героя, который уже не в этом мире (или по такому герою), не проходит: ни урона, ни угрозы, ни награды
     if (this.absent(src) || this.absent(dst)) return MISS;
+    // боец фракции и свои (герои его фракции, мобы, другие бойцы) друг друга не ранят
+    if (((!this.isPlayer(src) && src.faction) || (!this.isPlayer(dst) && dst.faction)) && !this.hostile(src, dst)) return MISS;
     // нейтральный город: герой не может ранить героя (кроме отпора нарушителю); попытка — нарушение
     if (this.townSafe(src, dst)) {
       if (!o.noProc) this.markOutlaw(src as Player);
@@ -630,9 +646,9 @@ export class World {
     m.respawnAt = this.time + respawn;
     m.boss?.onDeath();
     if (m.boss) this.bossKills.set(m.def.id, { by: killer && this.isPlayer(killer) ? killer.name : "неизвестный герой", at: this.time });
-    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); mountDrops.onKill(this, killer, m); }
+    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); if (!m.faction) mountDrops.onKill(this, killer, m); }
     if (m.def.raid) this.onRaidKill?.(m, killer);
-    else grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined);
+    else if (!m.faction) grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined); // боец фракции — без опыта и добычи
     if (m.summoned) this.later(2500, () => this.removeMob(m));
   }
 
@@ -969,6 +985,7 @@ export class World {
   }
 
   updateMob(m: Mob, dt: number) {
+    if (m.soldier) return this.soldiers?.step(m, dt); // боец фракции — своё поведение (soldiers.ts)
     const u = m.unit;
     const t = this.time;
     if (m.dead) {
@@ -1094,7 +1111,7 @@ export class World {
     if (this.time < m.healAt || m.stunUntil > this.time) return;
     let best: Mob | null = null, bf = 0.75;
     for (const a of this.mobs.values()) {
-      if (a === m || a.dead || a.def.boss || a.state === "return") continue;
+      if (a === m || a.dead || a.def.boss || a.faction || a.state === "return") continue;
       const f = a.unit.hp / a.unit.maxHp;
       if (f >= bf || this.dist(a, m) > h.range || !lineClear(this.map, m.x, m.y, a.x, a.y)) continue;
       if (a.state !== "chase" && this.time - a.lastHitAt > 8000) continue;

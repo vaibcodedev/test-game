@@ -37,6 +37,8 @@ export enum UnitKind {
   Guard = 4,
   /** Горожанин: просто гуляет по улицам. */
   Citizen = 5,
+  /** Боец фракции (задача 132, шаг 5): патруль, пост моста, стража поселений и городов фракций; враг героям чужой фракции (u.faction). */
+  Soldier = 6,
 }
 /** Битовые флаги эффектов на юните (видны всем). */
 export const BUFF_SLOW = 1;
@@ -182,7 +184,8 @@ export type Fx = FxBody & { s?: string; c?: string };
 
 type FxBody =
   | { t: "dmg"; id: string; v: number; crit?: boolean; k?: FxKind; heal?: boolean; miss?: boolean; abs?: boolean; imm?: boolean }
-  | { t: "proj"; k: string; from: string; tx: number; ty: number; ms: number; to?: string }
+  /** fx, fy — откуда летит снаряд, если стрелок не юнит (лучник на башне стены, задача 132). */
+  | { t: "proj"; k: string; from: string; tx: number; ty: number; ms: number; to?: string; fx?: number; fy?: number }
   | { t: "aoe"; k: string; x: number; y: number; r: number }
   | { t: "cone"; k: string; x: number; y: number; a: number; r: number; w: number }
   /** Телеграф: circle — круг r; ring — кольцо r..r2; cone — конус r, угол a, раствор w (рад); line — линия длиной r по углу a, полуширина w (рейд). */

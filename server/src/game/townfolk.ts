@@ -37,16 +37,19 @@ interface Site {
 }
 const SITES: Site[] = [
   { x: TOWN.x, y: TOWN.y, half: TOWN_HALF, sideX: WALL.x - 2, gateGuards: GATE_GUARDS, patrols: PATROLS, spots: CITIZEN_SPOTS, count: CITIZEN_COUNT, guard: G, people: C.people },
+  // стража столиц, фортов и поселений фракций — бойцы фракций (soldiers.ts, задача 132, шаг 5): убиваемы, бьют врагов по секторам; здесь только горожане
   ...CITIES.filter((c) => c.style).map((c): Site => ({
-    x: c.x, y: c.y, half: c.half, sideX: null, gateGuards: CITY_GATE_GUARDS, patrols: CITY_PATROLS, spots: CITY_CITIZEN_SPOTS, count: CITY_CITIZEN_COUNT,
+    x: c.x, y: c.y, half: c.half, sideX: null, gateGuards: c.capital ? [] : CITY_GATE_GUARDS, patrols: c.capital ? [] : CITY_PATROLS, spots: CITY_CITIZEN_SPOTS, count: CITY_CITIZEN_COUNT,
     guard: { ...G, ...c.guard! }, people: c.people!,
   })),
-  // поселения безопасных земель: двое у ворот (у боковых ворот смотрят наружу), патруль по улицам, двое жителей; стража бьёт мобов у ограды
+  // поселения безопасных земель: двое жителей (стража — бойцы фракции)
   ...SETTLEMENTS.map((s): Site => ({
     x: s.x, y: s.y, half: { x: s.ring.w, y: Math.max(s.ring.n, s.ring.s) }, sideX: s.gate === "e" || s.gate === "w" ? s.ring.w - 1 : null,
-    gateGuards: s.posts, patrols: [s.patrol], spots: s.spots, count: s.people.length, guard: { ...G, ...s.guard }, people: s.people,
+    gateGuards: [], patrols: [], spots: s.spots, count: s.people.length, guard: { ...G, ...s.guard }, people: s.people,
   })),
 ];
+/** Места со своей стражей здесь (Эмберхолл): только у них стража ищет мобов. */
+const GUARDED = SITES.filter((s) => s.gateGuards.length || s.patrols.length);
 /** Расстояние в тайлах от точки (тайлы) до прямоугольника города (0 внутри). */
 function siteDist(s: Site, x: number, y: number): number {
   const ex = Math.max(0, Math.abs(x - (s.x + 0.5)) - s.half.x - 0.5);
@@ -135,7 +138,7 @@ export class Townfolk {
 
   /** Моб угрожает городу: живой, не босс и в пределах GUARD_RANGE_TILES от стен. */
   private threat(m: Mob, site: Site) {
-    return this.alive(m) && !m.def.boss && siteDist(site, m.x / TILE, m.y / TILE) <= GUARD_RANGE_TILES;
+    return this.alive(m) && !m.def.boss && !m.faction && siteDist(site, m.x / TILE, m.y / TILE) <= GUARD_RANGE_TILES;
   }
 
   update(dt: number) {
@@ -165,7 +168,7 @@ export class Townfolk {
     for (const g of all) if (g.foe && (!this.threat(g.foe, g.site) || g.foe.state === "return")) g.foe = null;
     for (const m of this.w.mobs.values()) {
       if (m.dead || all.some((g) => g.foe === m)) continue;
-      const site = SITES.find((s) => this.threat(m, s));
+      const site = GUARDED.find((s) => this.threat(m, s));
       if (!site) continue;
       const guards = all.filter((g) => g.site === site);
       let best: Folk | null = null, bd = Infinity;
