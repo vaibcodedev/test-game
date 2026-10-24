@@ -1,6 +1,6 @@
 /**
  * Браузерная проверка наведения мышью (задача 134, шаг 1): кольцо под ногами, ник и полоска HP у моба под курсором (вместо тинта),
- * допуск клика 12 px экрана и магнит ЛКМ 40 px (меч — только в допуске), пересчёт каждый кадр при неподвижной мыши; кольцо ровно цвета палитры (заливка) над кругами бафов,
+ * допуск клика 12 px экрана и магнит ЛКМ 40 px от силуэта кадра и плашки ника (меч — только в допуске; шаг 2), пересчёт каждый кадр при неподвижной мыши; кольцо ровно цвета палитры (заливка) над кругами бафов,
  * мышь вне окна и на своём герое — без подсветки. Зум 2 и 3, «Экшен».
  * Запуск (под замком tools/out/scenario.lock): TEST_PORT=2871 VITE_TEST_PORT=5271 npx tsx tests/hover-screens.ts   (Chrome: CHROME_PATH или стандартные пути)
  * Снимки: tools/out/hover/hover-{off,on,magnet}-z{2,3}.png (вырезка вокруг слизня, ×3)
@@ -47,9 +47,11 @@ async function enter(browser: Browser, name: string, zoom: number): Promise<Page
 const toClient = (page: Page, x: number, y: number) => page.evaluate(`(() => { const s = ${scene}, c = s.cameras.main, r = s.game.canvas.getBoundingClientRect();
   return { x: r.left + (${x} - c.worldView.x) * (r.width / c.worldView.width), y: r.top + (${y} - c.worldView.y) * (r.height / c.worldView.height) }; })()`) as Promise<{ x: number; y: number }>;
 interface Snap { id: string; x: number; y: number; hx: number; hy: number; hover: string | null; cursor: string; css: number; d: number; ring: { vis: boolean; alpha: number; tint: number; fill: boolean; depth: number }; label: boolean; bar: number; tinted: boolean; canvasCursor: string; ui: boolean }
-/** Слизень и состояние наведения сейчас: d — расстояние от курсора (activePointer) до центра тела слизня в пикселях мира. */
+/** Слизень и состояние наведения сейчас: d — R + расстояние от курсора (activePointer) до зоны клика слизня в пикселях мира (силуэт кадра и плашка ника,
+ *  задача 134, шаг 2; без следа — слизень стоит): пороги «точно» R + 12/зум и магнит R + 40/зум остаются теми же. */
 const snap = (page: Page, id: string) => page.evaluate(`(() => { const s = ${scene}, v = s.units.get(${JSON.stringify(id)}), ap = s.input.activePointer, c = s.cameras.main.getWorldPoint(ap.x, ap.y);
-  return { id: v.id, x: v.x, y: v.y, hx: s.pos.x, hy: s.pos.y, hover: s.hoverId, cursor: s.cursorKind, css: s.css, d: Math.hypot(c.x - v.x, c.y - (v.y - 12)),
+  const bx = (b, pad) => b.x1 < b.x0 ? Infinity : Math.hypot(Math.max(b.x0 - pad - c.x, 0, c.x - b.x1 - pad), Math.max(b.y0 - pad - c.y, 0, c.y - b.y1 - pad));
+  return { id: v.id, x: v.x, y: v.y, hx: s.pos.x, hy: s.pos.y, hover: s.hoverId, cursor: s.cursorKind, css: s.css, d: 14 + (bx(v.plate, 2) === 0 ? 0 : bx(v.body, 0)),
     ring: { vis: v.ring.visible, alpha: v.ring.alpha, tint: v.ring.tintTopLeft, fill: v.ring.tintFill, depth: v.ring.depth }, label: v.label.visible, bar: v.bar.commandBuffer.length, tinted: v.sprite.isTinted,
     canvasCursor: s.game.canvas.style.cursor, ui: s.overUi }; })()`) as Promise<Snap>;
 /** Живой слизень рядом с героем, не дальше 400 px (id). */

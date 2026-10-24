@@ -3,7 +3,7 @@ import Phaser from "phaser";
 import { overlay } from "./overlay";
 import { BUFF_BLEED, BUFF_CURSE, BUFF_STEALTH, BUFF_BURN, BUFF_ENRAGE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, BUFF_WARCRY, Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { net, type UnitState } from "../net";
-import { bodyDist } from "./castResolve";
+import { emptyBox, hitUnit, silhouette, Trail, TRAIL_MS, unionBox, type Box, type Hit } from "./hit";
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
@@ -24,6 +24,46 @@ const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 export const RING_FOE = Phaser.Display.Color.HexStringToColor(P.foe).color;
 export const RING_ALLY = Phaser.Display.Color.HexStringToColor(P.ally).color;
 const MELEE = new Set(["guard", "guard_desert", "guard_snow", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
+/** Прямоугольник непрозрачных пикселей кадра (в пикселях кадра, слева сверху): считается один раз на кадр текстуры, по картинке листа. */
+const alphaCache = new Map<string, readonly [number, number, number, number] | null>();
+const sheetData = new Map<string, ImageData | null>();
+function frameAlpha(f: Phaser.Textures.Frame): readonly [number, number, number, number] | null {
+  const key = f.texture.key + "|" + f.name;
+  let a = alphaCache.get(key);
+  if (a !== undefined) return a;
+  let data = sheetData.get(f.texture.key);
+  if (data === undefined) {
+    const img = f.source.image as CanvasImageSource & { width: number; height: number };
+    try {
+      const cv = document.createElement("canvas");
+      cv.width = img.width; cv.height = img.height;
+      const g = cv.getContext("2d", { willReadFrequently: true })!;
+      g.drawImage(img, 0, 0);
+      data = g.getImageData(0, 0, cv.width, cv.height);
+    } catch { data = null; }
+    sheetData.set(f.texture.key, data);
+  }
+  a = null;
+  if (data) {
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let y = 0; y < f.cutHeight; y++) for (let x = 0; x < f.cutWidth; x++) {
+      if (data.data[((f.cutY + y) * data.width + f.cutX + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 >= 0) a = [x0, y0, x1 + 1, y1 + 1];
+  }
+  alphaCache.set(key, a);
+  return a;
+}
+/** Непрозрачная часть кадра спрайта в пикселях мира (с отражением и origin); прозрачный кадр или нет данных — весь кадр. */
+function spriteAlphaBox(sp: Phaser.GameObjects.Sprite, out: Box): Box {
+  const f = sp.frame, w = f.cutWidth, h = f.cutHeight;
+  const a = frameAlpha(f) ?? [0, 0, w, h];
+  const left = sp.x - sp.originX * w * sp.scaleX, top = sp.y - sp.originY * h * sp.scaleY;
+  const ax0 = sp.flipX ? w - a[2] : a[0], ax1 = sp.flipX ? w - a[0] : a[2];
+  out.x0 = left + ax0 * sp.scaleX; out.x1 = left + ax1 * sp.scaleX;
+  out.y0 = top + a[1] * sp.scaleY; out.y1 = top + a[3] * sp.scaleY;
+  return out;
+}
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
 /** Вспышка от удара: белая копия кадра поверх тела с этой прозрачностью гаснет за FLASH_MS и повторяется не чаще FLASH_GAP —
  *  рисунок виден сквозь неё, и под градом ударов в рейде босс не белеет целиком. */
@@ -210,6 +250,7 @@ export class UnitView {
   unseen = false;
   update(dt: number, px?: number, py?: number) {
     const u = this.u;
+    let jump = false;
     if (px !== undefined && py !== undefined) {
       this.x = px;
       this.y = py;
@@ -218,6 +259,7 @@ export class UnitView {
       if (dx * dx + dy * dy > 160 * 160) {
         this.x = u.x;
         this.y = u.y;
+        jump = true;
       } else if (this.npc) {
         // стражники и горожане шлют позицию редко (5 раз в секунду): ровное движение к ней
         const d = Math.hypot(dx, dy);
@@ -230,6 +272,7 @@ export class UnitView {
         this.y += dy * k;
       }
     }
+    this.trail.push(this.scene.time.now, this.x, this.y, jump);
     // смерть и возрождение
     if (u.anim === Anim.Dead && !this.dead) this.showDead(false);
     else if (u.anim !== Anim.Dead && this.dead) {
@@ -453,11 +496,13 @@ export class UnitView {
     // полоска здоровья: у мобов только раненых или выбранных (боссы — всегда), тонкая, 2 px; под курсором — у любого существа, даже при выключенных «Полоски»
     const mobHidden = (u.kind === UnitKind.Mob || u.kind === UnitKind.Pet) && u.hp >= u.maxHp && !this.selected && !hov;
     const showBar = ((this.isSelf ? overlay.selfBars : overlay.bars) || hov) && !this.dead && !this.npc && !mobHidden && (u.kind !== UnitKind.Player || u.hp < u.maxHp || this.isSelf || hov);
+    let barX = 0, barY = 0, barW = 0;
     if (!showBar) this.bar.clear();
     else {
       this.lastHp = u.hp;
       const w = (this.frame > 32 ? 40 : 20) + (u.elite ? 8 : 0);
       const bx = Math.round(lx - w / 2), by = Math.round(top - 2);
+      barX = bx; barY = by; barW = w;
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
       this.bar.clear();
       this.bar.fillStyle(u.elite ? 0xf0c040 : 0x0a0608, 0.55).fillRect(bx - 1, by - 1, w + 2, 4);
@@ -466,6 +511,7 @@ export class UnitView {
       const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
       this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * k), 2);
     }
+    this.placeZones(mounted, showBar, barX, barY, barW);
 
     // обозначения бафов и дебафов (задача 129): набор ключей приходит с сервера в u.fx, рисует UnitAuras; значки — над подписью, по её середине.
     // Низ значков — на 1 px выше верха того, что подписано на самом деле (ник, титул, рамка — с подъёмом ника под курсором), без подписи — на 2 px выше полоски.
@@ -547,10 +593,42 @@ export class UnitView {
     this.torchGlow.setVisible(true).setPosition(hx + 1, hy - 3).setDepth(DEPTH.top - 12).setScale(2.2 * fl).setAlpha(0.55 * fl);
   }
 
-  /** Расстояние от курсора до центра тела юнита или Infinity (мёртвый — всегда мимо). Зона — круг по телу (castResolve.bodyDist) с запасом reach
-   *  в пикселях мира: допуск клика или магнит (castResolve.pickReach: пиксели экрана / масштаб CSS, «Крупные цели» ×2). Без запаса — ровно по телу. */
-  hitTest(wx: number, wy: number, reach = 0): number {
-    return this.dead ? Infinity : bodyDist(this.x, this.y, this.frame > 32, this.mounted, wx, wy, reach);
+  /** Расстояние от курсора до зоны юнита (0 — в зоне) или Infinity (мёртвый — всегда мимо); итог для порядка — в this.hit. Зона — силуэт кадра
+   *  (всадник с маунтом) с запасом reach в пикселях мира (допуск или магнит, castResolve.pickReach), плашка ника и полоски, а при trail — след бегущего
+   *  за TRAIL_MS (game/hit.ts). Без запаса — ровно по телу, плашке и следу. whole = false — всадник без маунта (свой герой). */
+  hitTest(wx: number, wy: number, reach = 0, trail = true, whole = true): number {
+    if (this.dead) { this.hit.d = Infinity; this.hit.exact = false; return Infinity; }
+    let tdx = 0, tdy = 0;
+    if (trail && this.trail.past(this.scene.time.now, TRAIL_MS, this.trailPt)) { tdx = this.trailPt.x - this.x; tdy = this.trailPt.y - this.y; }
+    return hitUnit(this.hit, whole ? this.body : this.rider, this.plate, this.y, tdx, tdy, wx, wy, reach);
+  }
+  /** Зоны клика (задача 134, шаг 2; game/hit.ts), ставит update: body — силуэт кадра (всадник — с маунтом), plate — видимые ник, титул и полоска HP. */
+  readonly body: Box = emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
+  /** Только кадр героя без маунта: свой всадник кликается по себе, иначе конь вокруг героя в центре экрана съел бы клик-шаг. */
+  readonly rider: Box = emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
+  readonly plate: Box = emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
+  /** Итог последнего hitTest: точное ли попадание, глубина, расстояние до центра — для порядка при наложении (hit.PickBest). */
+  readonly hit: Hit = { d: Infinity, exact: false, depth: 0, center: Infinity };
+  private trail = new Trail();
+  private trailPt = { x: 0, y: 0 };
+  private tmpBox: Box = emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
+  /** Зоны клика по тому, что нарисовано в этом кадре. */
+  private placeZones(mounted: boolean, showBar: boolean, barX: number, barY: number, barW: number) {
+    const sp = this.sprite;
+    silhouette(this.body, sp.x, sp.y, this.frame, this.u.kind === UnitKind.Pet ? 0.8 : 1);
+    const r = this.rider;
+    r.x0 = this.body.x0; r.y0 = this.body.y0; r.x1 = this.body.x1; r.y1 = this.body.y1;
+    // маунт — по непрозрачным пикселям текущего кадра (задний и передний слой): конь анфас узкий, сбоку длинный
+    if (mounted && this.mountSpr && this.mountFront) {
+      unionBox(this.body, spriteAlphaBox(this.mountSpr, this.tmpBox));
+      unionBox(this.body, spriteAlphaBox(this.mountFront, this.tmpBox));
+    }
+    const p = this.plate;
+    emptyBox(p);
+    const t = this.tmpBox;
+    if (this.label.visible) { t.x0 = this.label.x; t.x1 = this.label.x + this.label.width; t.y0 = this.label.y - this.label.height; t.y1 = this.label.y; unionBox(p, t); }
+    if (this.titleText.visible && this.titleText.text) { t.x0 = this.titleText.x; t.x1 = this.titleText.x + this.titleText.width; t.y0 = this.titleText.y - this.titleText.height; t.y1 = this.titleText.y; unionBox(p, t); }
+    if (showBar) { t.x0 = barX - 1; t.x1 = barX + barW + 1; t.y0 = barY - 1; t.y1 = barY + 3; unionBox(p, t); }
   }
 
   destroy() {

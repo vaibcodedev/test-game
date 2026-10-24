@@ -1,4 +1,5 @@
 import { layoutLabels } from "./labelLayout";
+import { PickBest } from "./hit";
 import Phaser from "phaser";
 import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../../../shared/constants";
 import { Nav } from "../../../shared/path";
@@ -131,6 +132,8 @@ export class GameScene extends Phaser.Scene {
   private hoverPick: PickOut = { kind: "ground", id: null, ref: null };
   private cursorPick: PickOut = { kind: "ground", id: null, ref: null };
   private clickPick: PickOut = { kind: "ground", id: null, ref: null };
+  /** Порядок при наложении (game/hit.ts): точно → передний → текущая цель → ближе центр. */
+  private best = new PickBest();
   private pickSrc: PickSource = {
     foe: (reach) => this.foeAt(this.mouse.x, this.mouse.y, reach, "open"),
     townFoe: (reach) => this.foeAt(this.mouse.x, this.mouse.y, reach, "town"),
@@ -685,6 +688,8 @@ export class GameScene extends Phaser.Scene {
   /** Враг ли юнит: мобы всегда; игроки — на арене из другой команды, в мире — противоположная фракция в спорной зоне или нейтральном городе (как World.hostile). */
   isEnemy(v: UnitView): boolean {
     if (v.u.kind === UnitKind.Pet || v.npc) return false;
+    // боец фракции (задача 132, шаг 5): враг только героям чужой фракции
+    if (v.u.kind === UnitKind.Soldier) return !!net.self && net.kind === "world" && v.u.faction !== net.self.faction;
     if (v.u.kind !== UnitKind.Player) return true;
     if (v.u.buffs & BUFF_STEALTH) return false;
     if (net.kind === "arena") return v.u.team !== 0 && v.u.team !== net.arena?.team;
@@ -701,22 +706,20 @@ export class GameScene extends Phaser.Scene {
   /** Ближайший к точке мира живой враг: тело юнита с запасом reach (пиксели мира). set: open — те, кого здесь можно бить (мобы, боссы, герои в спорной зоне и на арене),
    *  town — герои чужой фракции в нейтральном городе, any — все (каст по наведению). Без аллокаций — вызывается каждый кадр. */
   private foeAt(wx: number, wy: number, reach: number, set: "open" | "town" | "any" = "any"): string | null {
-    let best: string | null = null, bd = Infinity;
+    const b = this.best; b.reset();
     for (const v of this.units.values()) {
-      const d = v.hitTest(wx, wy, reach);
-      if (d < bd && this.isEnemy(v) && (set === "any" || this.townFoe(v) === (set === "town"))) { bd = d; best = v.id; }
+      if (v.hitTest(wx, wy, reach) < Infinity && this.isEnemy(v) && (set === "any" || this.townFoe(v) === (set === "town"))) b.offer(v.id, v.hit, v.id === this.targetId);
     }
-    return best;
+    return b.id;
   }
 
   /** Союзник-игрок, которому ПКМ откроет меню обмена: не я, не враг, не скрытый. */
   private menuAt(wx: number, wy: number, reach: number): string | null {
-    let best: string | null = null, bd = Infinity;
+    const b = this.best; b.reset();
     for (const v of this.units.values()) {
-      const d = v.hitTest(wx, wy, reach);
-      if (d < bd && v.u.kind === UnitKind.Player && v.id !== net.id && !v.unseen && !this.isEnemy(v)) { bd = d; best = v.id; }
+      if (v.hitTest(wx, wy, reach) < Infinity && v.u.kind === UnitKind.Player && v.id !== net.id && !v.unseen && !this.isEnemy(v)) b.offer(v.id, v.hit, v.id === this.targetId);
     }
-    return best;
+    return b.id;
   }
 
   /** Мой герой и мои питомцы. */
@@ -727,12 +730,13 @@ export class GameScene extends Phaser.Scene {
   /** Союзник для выбора и лекаря: игроки, включая себя, и питомцы; скрытый игрок не виден и не выбирается.
    *  Мой герой и мои питомцы берутся с запасом own (в кликах — 0: допуск вокруг героя в центре экрана съел бы клик-шаг), остальные — с запасом reach. */
   private friendAt(wx: number, wy: number, reach: number, own = reach): string | null {
-    let best: string | null = null, bd = Infinity;
+    const b = this.best; b.reset();
     for (const v of this.units.values()) {
-      const d = v.hitTest(wx, wy, this.mine(v) ? own : reach);
-      if (d < bd && (v.u.kind === UnitKind.Player || v.u.kind === UnitKind.Pet) && !v.unseen && !this.isEnemy(v)) { bd = d; best = v.id; }
+      // свои — без следа и без маунта: клик туда, где герой был миг назад или рядом с конём, — это шаг, а не выбор себя
+      const mine = this.mine(v);
+      if (v.hitTest(wx, wy, mine ? own : reach, !mine, !mine) < Infinity && (v.u.kind === UnitKind.Player || v.u.kind === UnitKind.Pet) && !v.unseen && !this.isEnemy(v)) b.offer(v.id, v.hit, v.id === this.targetId);
     }
-    return best;
+    return b.id;
   }
 
   /** Мешок с добычей, узел добычи или NPC под точкой мира — в таком порядке; нашлось — кладёт в out kind, id и ref. */
