@@ -16,6 +16,7 @@ import { newSkillIcon } from "./gen/icons-build";
 import { newItemIcon } from "./gen/icons-items";
 import { buildUnitSheet, UNIT_ART } from "./gen/units";
 import { writeGameVfx } from "./gen/vfx";
+import { writeWardsGame } from "./gen/wards";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
@@ -88,6 +89,8 @@ manifest.fx.push("chaos_halo");
 
 // анимации умений (задача 127): листы из паков в vendor/ (необязательны) и сгенерированные; каталог — assets/vfx/manifest.json
 writeGameVfx(OUT);
+// обереги против невидимок (задача 132, шаг 6): анимированные объекты ward-sol/umb и вспышка срабатывания, см. tools/gen/wards.ts
+writeWardsGame(OUT);
 
 // Ручные PNG (не из генератора) тоже попадают в манифест: можно просто положить файл в папку.
 const pngSize = (f: string) => {

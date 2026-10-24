@@ -17,11 +17,12 @@ import { shakeCam } from "./camShake";
 
 const MAX_BURST = 36;
 const MAX_POOL = 90;
-const SFX_OF: Record<string, sfx.SfxName> = { bolt: "arcane", storm: "arcane", timewarp: "arcane", hex: "shadow", soul: "shadow", meta: "shadow",blood: "shadow", fire: "fire", frost: "frost", poison: "poison", arcane: "arcane", shadow: "shadow", holy: "holy", nature: "poison", phys: "hit", bash: "slam", glare: "holy", banner: "holy", divine: "holy", nova: "holy", rune: "frost", chains: "shadow", reap: "shadow", antimagic: "arcane", ray: "holy", hymn: "heal", ward: "shield", cleanse: "heal", pact: "shadow", burst: "explosion", tide: "shadow" };
+const SFX_OF: Record<string, sfx.SfxName> = { bolt: "arcane", storm: "arcane", timewarp: "arcane", hex: "shadow", soul: "shadow", meta: "shadow",blood: "shadow", fire: "fire", frost: "frost", poison: "poison", arcane: "arcane", shadow: "shadow", holy: "holy", nature: "poison", phys: "hit", bash: "slam", glare: "holy", banner: "holy", divine: "holy", nova: "holy", rune: "frost", chains: "shadow", reap: "shadow", antimagic: "arcane", ray: "holy", hymn: "heal", ward: "shield", cleanse: "heal", pact: "shadow", burst: "explosion", tide: "shadow", ward_sol: "holy", ward_umb: "shadow" };
 
 const KIND_COLOR: Record<string, number> = {
   // умения магов
   bolt: 0xa8e8ff, storm: 0xc8f0ff, timewarp: 0xb080ff, hex: 0xa040ff, soul: 0x8aff9a, meta: 0xc040ff,
+  ward_sol: 0xffe08a, ward_umb: 0xb46aff,
   phys: 0xffffff, fire: 0xff8a3a, frost: 0x8ad0ff, poison: 0x9aff5a, arcane: 0xc08aff, shadow: 0xa070ff, nature: 0x8adf5a, holy: 0xfff0a0, heal: 0x7aff7a, blood: 0xe0304a,
   // умения танков
   bash: 0xffe090, glare: 0xfff4b0, banner: 0xffd060, divine: 0xffffff, nova: 0xfff0a0, rune: 0x7ad8ff, chains: 0xb080ff, reap: 0x8aff9a, antimagic: 0xc080ff,

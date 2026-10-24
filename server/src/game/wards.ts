@@ -58,7 +58,8 @@ export class Wards {
     const w = this.w, t = w.time;
     this.unhide(p);
     revealed.set(p, t + WD.revealMs);
-    w.emit({ t: "aoe", k: ward.faction === "umbrath" ? "shadow" : "holy", x: ward.x, y: ward.y, r: 60 });
+    // вспышка оберега: волна у его подножия (клиент — лист ward-reveal-sol/umb, tools/gen/wards.ts)
+    w.emit({ t: "aoe", k: ward.faction === "umbrath" ? "ward_umb" : "ward_sol", x: ward.x, y: ward.y + TILE / 2 - 2, r: 60 });
     p.send("toast", { text: `Оберег раскрыл вас! ${WD.revealMs / 1000} с нельзя скрыться`, kind: "error" });
     // откат на кнопках скрытности — не короче «Раскрыт»
     for (const id of STEALTH_SKILLS) {

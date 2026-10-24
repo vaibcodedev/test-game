@@ -2743,6 +2743,50 @@
    "tail": 250
   }
  },
+ "ward-reveal-sol": {
+  "frameW": 104,
+  "frameH": 84,
+  "frames": 12,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.8571
+  ],
+  "blend": "normal"
+ },
+ "ward-reveal-umb": {
+  "frameW": 104,
+  "frameH": 84,
+  "frames": 12,
+  "fps": 14,
+  "anchor": [
+   0.5,
+   0.8571
+  ],
+  "blend": "normal"
+ },
+ "ward-sol": {
+  "frameW": 28,
+  "frameH": 46,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.9348
+  ],
+  "blend": "normal"
+ },
+ "ward-umb": {
+  "frameW": 28,
+  "frameH": 46,
+  "frames": 12,
+  "fps": 10,
+  "anchor": [
+   0.5,
+   0.9348
+  ],
+  "blend": "normal"
+ },
  "water-ball": {
   "frameW": 52,
   "frameH": 22,

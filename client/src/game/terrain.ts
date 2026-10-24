@@ -162,6 +162,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "lamp") glow(objs, o.x, o.y - 46, 0xffd27a, 2.2, 0.45, true);
     if (o.kind === "ember_vent") glow(objs, o.x, o.y - 6, 0xff5a1a, 1.4, 0.5, true);
     if (o.kind === "mushrooms_glow") glow(objs, o.x, o.y - 8, 0x5aa8ff, 1.1, 0.35);
+    if (o.kind === "ward-sol") glow(objs, o.x, o.y - 32, 0xffd860, 1.3, 0.35);
+    if (o.kind === "ward-umb") glow(objs, o.x, o.y - 30, 0xa070ff, 1.3, 0.38);
     if (o.kind === "crystal") glow(objs, o.x, o.y - 12, 0x9a8aff, 1.3, 0.4);
     if (o.kind === "house" || o.kind === "house_blue") for (const dx of [-36, 38]) glow(objs, o.x + dx, o.y - 30, 0xffd27a, 1.2, 0.35);
     if (o.kind === "tavern") for (const [dx, dy] of [[-71, -26], [-39, -26], [61, -26], [93, -26], [-80, -64], [-38, -64], [40, -64], [84, -64]]) glow(objs, o.x + dx, o.y + dy, 0xffc870, 1.2, 0.38);

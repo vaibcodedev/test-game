@@ -654,6 +654,9 @@ export class Vfx {
   }
   /** Круг/взрыв: hit в точке; пока летит снаряд этого умения, hit играет сам снаряд. */
   aoe(f: Extract<Fx, { t: "aoe" }>): boolean {
+    // оберег раскрыл невидимку (server/src/game/wards.ts): своя вспышка у подножия оберега
+    const ward = f.k === "ward_sol" ? "ward-reveal-sol" : f.k === "ward_umb" ? "ward-reveal-umb" : undefined;
+    if (ward) { if (!this.has(ward)) return false; this.atGround(ward, f.x, f.y); return true; }
     const hit = this.slot(f, "hit");
     if (!hit || (f.s && this.scene.time.now - (this.projSeen.get(f.s) ?? -1e9) < 1500)) return !!hit;
     this.markHit(f);
