@@ -885,6 +885,11 @@ function buildAnim(v: Variant, a: Anim): { sheet: PC; emis: PC } {
   return { sheet, emis };
 }
 
+/** Кадр покоя (первый) варианта в виде row (0 — вниз, 1 — вверх, 2 — вбок) — для общих монтажей партий (задача 140). */
+export function skeletonIdleFrame(v: Variant, row: number): { img: PC; emis: PC } {
+  return frameAt(buildAnim(v, "idle"), 0, row);
+}
+
 // ---------------- монтаж ----------------
 type Sheets = Record<Anim, { sheet: PC; emis: PC }>;
 const frameAt = (s: { sheet: PC; emis: PC }, i: number, row: number) => ({ img: crop(s.sheet, i * N, row * N, N, N), emis: crop(s.emis, i * N, row * N, N, N) });

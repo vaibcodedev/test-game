@@ -623,7 +623,19 @@ export function holeComponents(c: PC): number[][] {
  * Контур 1 px по силуэту; узкие щели (до gaps px между двумя частями по горизонтали или вертикали) остаются
  * прозрачными — в них виден фон (просветы между рёбрами, руками и телом, ногами).
  */
-export function outlineGaps(c: PC, out: RGBA, gaps: number) {
+export function outlineGaps(c: PC, out: RGBA, gaps: number, onlyBody = false) {
+  if (onlyBody) {
+    // обвести только то, что ещё без контура: пустой пиксель рядом с цветом тела (не с контуром) — иначе второе кольцо
+    const isOut = (q: RGBA | null) => !!q && q[0] === out[0] && q[1] === out[1] && q[2] === out[2];
+    const body = (x: number, y: number) => { const q = c.get(x, y); return !!q && q[3] > 120 && !isOut(q); };
+    const put: number[] = [];
+    for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) {
+      if (c.alpha(x, y) > 40) continue;
+      if (body(x - 1, y) || body(x + 1, y) || body(x, y - 1) || body(x, y + 1)) put.push(y * c.w + x);
+    }
+    for (const i of put) c.data.set([out[0], out[1], out[2], 255], i * 4);
+    return;
+  }
   if (gaps <= 0) { c.outline(out); return; }
   const N = c.w, M = c.h;
   const A = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y < M && c.alpha(x, y) > 120;
@@ -676,8 +688,8 @@ export function thicken(c: PC, out: RGBA, minLen = 3, skip: RGBA[] = [], gaps = 
   }
   if (!put.length) return;
   for (const [x, y, q] of put) c.data.set([q[0], q[1], q[2], 255], (y * N + x) * 4);
-  // новые пиксели обвести (контур не стирает уже нарисованное)
-  outlineGaps(c, out, gaps);
+  // новые пиксели обвести (контур не стирает уже нарисованное; уже обведённое — второй раз не обводится)
+  outlineGaps(c, out, gaps, true);
 }
 
 export interface Rendered { body: PC; emis: PC; gb: GBuf; prims: Prim[]; L: Look }
