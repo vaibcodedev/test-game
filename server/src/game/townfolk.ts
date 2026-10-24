@@ -12,6 +12,7 @@ import { Nav } from "../../../shared/path";
 import { Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { CITIZEN_COUNT, CITIZEN_SPOTS, GATE_GUARDS, GUARD_RANGE_TILES, PATROLS, TOWN, TOWN_HALF, WALL } from "../../../shared/town";
 import { Unit } from "../rooms/schema";
+import { EMBER_SETS, npcGearStrings } from "../../../shared/npcGear";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import type { World } from "./World";
@@ -88,6 +89,7 @@ export class Townfolk {
   readonly folk: Folk[] = [];
   private scanAt = 0;
   private n = 0;
+  private ashN = 0;
   /** Таймеры города: перекличка на стенах и тревога (общая, чтобы не трубить на каждого моба). */
   private callAt = new Map<Site, number>();
   private alarmAt = new Map<Site, number>();
@@ -97,15 +99,18 @@ export class Townfolk {
       // клетка-смещение от центра города → центр клетки в пикселях; точка маршрута (с .5) → пиксели
       const cellPx = (dx: number, dy: number) => ({ x: (site.x + dx) * TILE + 16, y: (site.y + dy) * TILE + 16 });
       const ptPx = (dx: number, dy: number) => ({ x: (site.x + dx) * TILE, y: (site.y + dy) * TILE });
-      for (const [dx, dy] of site.gateGuards) {
+      site.gateGuards.forEach(([dx, dy], i) => {
         const p = cellPx(dx, dy);
         // смотрят наружу: у боковых стен — от центра, у северных и южных ворот — к зрителю
         const dir = site.sideX !== null && Math.abs(dx) >= site.sideX ? (dx < 0 ? Dir.Left : Dir.Right) : Dir.Down;
-        this.add(site, true, p.x, p.y, { ...p, dir }, []);
-      }
+        const f = this.add(site, true, p.x, p.y, { ...p, dir }, []);
+        // знаменосец — первый часовой каждой пары у ворот (shared/town.ts GATE_GUARDS)
+        if (site === SITES[0]) this.ashborn(f, i < GATE_GUARDS.length && i % 2 === 0);
+      });
       for (const r of site.patrols) {
         const route = r.map(([dx, dy]) => ptPx(dx, dy));
-        this.add(site, true, route[0].x, route[0].y, null, route);
+        const f = this.add(site, true, route[0].x, route[0].y, null, route);
+        if (site === SITES[0]) this.ashborn(f, false);
       }
       const spots = site.spots.map(([dx, dy]) => cellPx(dx, dy));
       for (let i = 0; i < site.count; i++) {
@@ -131,6 +136,16 @@ export class Townfolk {
     this.folk.push(f);
     this.w.state.mobs.set(f.id, u);
     return f;
+  }
+
+  /** Стража Эмберхолла — Пепельнорождённые (data/ember-guard.json): снаряжение и геральдика, как у бойцов фракций, наборы по очереди;
+   *  клиент рисует их телом nude_ashborn_<cls> со слоями (геральдика ember — по kind Guard). */
+  private ashborn(f: Folk, bannerman: boolean) {
+    const s = EMBER_SETS[this.ashN++ % EMBER_SETS.length], g = npcGearStrings(s, bannerman), u = f.unit;
+    u.sprite = s.cls;
+    u.gear = g.gear;
+    u.weapon = g.weapon;
+    u.herald = g.herald;
   }
 
   /** Моб жив и ещё в мире: encounters/bosses убирают мобов без dead (removeMob) — такие перестают быть целью. */

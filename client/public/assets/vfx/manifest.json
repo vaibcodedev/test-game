@@ -946,6 +946,28 @@
   ],
   "blend": "normal"
  },
+ "ember-bearer": {
+  "frameW": 52,
+  "frameH": 89,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.9663
+  ],
+  "blend": "normal"
+ },
+ "ember-std": {
+  "frameW": 64,
+  "frameH": 95,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
  "expl-blue": {
   "frameW": 33,
   "frameH": 40,

@@ -3,6 +3,7 @@
  * в формате Player.recalc (plus = 0) и геральдикой u.herald; клиент рисует бойца, как героя (GearLayers), с гербами фракции.
  */
 import NG from "../data/npc-gear.json";
+import EG from "../data/ember-guard.json";
 import { ITEM_MODELS } from "./items";
 import { LEGENDARIES } from "./legendary";
 
@@ -18,6 +19,10 @@ export interface Heraldry {
   banner: { flag: string; edge: string; pole: [string, string]; metal: string; legend: string };
   badge: { field: string; mark: string };
   torch: { flame: string; core: string; glow: string };
+  /** Пепельнорождённые (стража Эмберхолла): тело nude_ashborn_<cls>, угли в трещинах, глаза-угли, искры (client/src/game/ashborn.ts). */
+  ash?: boolean;
+  /** Знамя знаменосца — готовый лист vfx (id), а не рисованное GearLayers.flagPole. */
+  bearerSheet?: string;
 }
 /** Геральдика на бойце (GearInput.herald): фракция гербов, табард, герб на спине плаща, знаменосец. */
 export interface Herald { fac: string; tabard: Tabard; arms: boolean; banner: boolean; H: Heraldry }
@@ -28,7 +33,11 @@ export const NPC_GEAR = NG as unknown as {
   sets: Record<string, Record<NpcTier, { melee: NpcSet[]; ranged: NpcSet[] }>>;
   heraldry: Record<string, Heraldry>;
 };
-export const HERALDRY = NPC_GEAR.heraldry;
+/** Нейтральная стража Эмберхолла — Пепельнорождённые (data/ember-guard.json): гербы и ткань оттуда, знамя знаменосца — лист «Жаровня». */
+const EMBER_LOOK = EG.look as unknown as Omit<Heraldry, "ash" | "bearerSheet">;
+export const HERALDRY: Record<string, Heraldry> = { ...NPC_GEAR.heraldry, ember: { ...EMBER_LOOK, ash: true, bearerSheet: EG.game.bearerSheet } };
+/** Сеты стражи Эмберхолла (идут по очереди): формат NpcSet, arms — герб на спине плаща. */
+export const EMBER_SETS: NpcSet[] = EG.figs.map((f) => ({ title: f.title, cls: f.cls, tabard: f.tabard as Tabard, arms: f.cloakArms, helm: f.helm, armor: f.armor, boots: f.boots, off: (f as { off?: string }).off, cloak: f.cloak, weapon: f.weapon }));
 
 /** Деталь строки снаряжения (формат Player.recalc, plus = 0): модель каталога или L:<легендарка> (редкость 3). */
 function piece(id: string | undefined, r: number): string {

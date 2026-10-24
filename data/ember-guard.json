@@ -33,7 +33,15 @@
       "e4": [".YY.", "ROOR", "CCCC", "c..c"],
       "out": "#2a1608"
     },
-    "cloth": { "f": "#2e6e66", "fs": "#1e4a46", "t": "#e0a050", "td": "#8a5a24", "belt": "#4a2e18", "buckle": "#f0b860", "shield": "#2e6e66" }
+    "cloth": { "f": "#2e6e66", "fs": "#1e4a46", "t": "#e0a050", "td": "#8a5a24", "belt": "#4a2e18", "buckle": "#f0b860", "shield": "#2e6e66", "hem": "fringe" },
+    "banner": { "flag": "#2e6e66", "edge": "#c88a40", "pole": ["#3a2210", "#6a4218"], "metal": "#f0b860", "legend": "#2e6e66" },
+    "badge": { "field": "#2e6e66", "mark": "#f0b860" },
+    "torch": { "flame": "#ff7a1a", "core": "#ffd860", "glow": "#ffd080" }
+  },
+  "game": {
+    "_doc": "В игре (shared/npcGear.ts HERALDRY.ember, server/src/game/townfolk.ts): стража Эмберхолла — u.sprite = cls, u.gear/u.weapon/u.herald как у бойцов фракций; клиент берёт геральдику ember для kind Guard. Тела nude_ashborn_<cls> и листы знамён (vfx ember-std — штандарт на башнях стен у ворот и посреди пролётов, ember-bearer — знамя знаменосца) делает npm run assets (tools/gen/ashborn-body.ts, tools/gen/ember-banners.ts writeEmberBannersGame). Знаменосец — первый часовой каждой пары у ворот; наборы figs идут по очереди. Светящееся (угли, глаза, искры) ночью рисуется поверх затемнения.",
+    "bearerSheet": "ember-bearer",
+    "citySheet": "ember-std"
   },
   "figs": [
     { "id": "halberdier", "title": "АЛЕБАРДЩИК ОЧАГА", "cls": "warrior", "tabard": "wide", "cloakArms": true, "helm": "plate_helm_84", "armor": "plate_armor_37", "boots": "plate_boots_37", "cloak": "cloak_str_68", "weapon": "scythe_12" },

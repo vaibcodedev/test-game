@@ -1,10 +1,9 @@
 /**
  * Сеты NPC на утверждение (задача 132, шаг 8, первая часть; решения 9 и 11 docs/map-rework.md): бойцы и стража Сольгарда
  * (паладины) и Умбрата (латы нежити) по рангам — слабые, средние, сильные, мегасильные, у каждого ближник и дальник, по 2 варианта;
- * отдельно — нейтральная стража Эмберхолла. Вид собирается тем же кодом, что и герой в игре: тело nude_<класс> из ассетов +
- * слои снаряжения client/src/game/GearLayers.ts (собираются esbuild с заглушкой Phaser и рисуются в PC). Новые детали — геральдика
- * поверх слоёв (табард с гербом, герб на щите, на спине плаща и на знамени) — пиксельные эмблемы утверждённых гербов 130
- * («Восход над Оплотом», «Корона над гробом») и предложение эмблемы Эмберхолла; в игру не ставится (вторая часть шага 8).
+ * отдельно — нейтральная стража Эмберхолла (Пепельнорождённые). Вид собирается тем же кодом, что и в игре: тело nude_<класс> из ассетов +
+ * слои снаряжения client/src/game/GearLayers.ts (собираются esbuild с заглушкой Phaser и рисуются в PC) с геральдикой GearInput.herald
+ * (shared/npcGear.ts HERALDRY: табард с гербом, герб на щите, на спине плаща и на знамени; у Эмберхолла — угли, глаза-угли и искры).
  * Выход: tools/out/npc-sets/solgard.png, umbrath.png, ember.png, overview.png. Запуск: npx tsx tools/gen/npc-sets.ts
  */
 import fs from "node:fs";
@@ -14,8 +13,10 @@ import { build } from "esbuild";
 import { PC, hex, type RGBA } from "./canvas";
 import { crop, label, paintGround, readPng, scaleNN } from "./standards";
 import { BASE_ITEMS, ITEM_MODELS } from "../../shared/items";
+import { HERALDRY, type Herald, type Heraldry, type Tabard } from "../../shared/npcGear";
 import EMBER_DATA from "../../data/ember-guard.json";
-import { ashCracks, ashEyes, ashEmbers, ASH_FRAMES, ASH_FPS, type AshRect } from "../../client/src/game/ashborn";
+import { ASH_FRAMES, ASH_FPS, type AshRect } from "../../client/src/game/ashborn";
+import { ASH_CLASSES, ashBody as ashFrom } from "./ashborn-body";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const OUT = path.join(ROOT, "tools/out/npc-sets");
@@ -26,7 +27,7 @@ const K = 3; // масштаб показа — как камера игры (zo
 const SHIM = `
 const HexStringToColor = (h) => { const n = parseInt(String(h).replace("#", "").slice(0, 6), 16) || 0; return { color: n, red: (n >> 16) & 255, green: (n >> 8) & 255, blue: n & 255 }; };
 const RGBToString = (r, g, b, _a, p = "#") => p + [r, g, b].map((v) => Math.max(0, Math.min(255, v | 0)).toString(16).padStart(2, "0")).join("");
-export default { Display: { Color: { HexStringToColor, RGBToString } } };`;
+export default { Display: { Color: { HexStringToColor, RGBToString } }, BlendModes: { NORMAL: 0, ADD: 1 } };`;
 
 type Op = { k: "r"; x: number; y: number; w: number; h: number; c: number; a: number } | { k: "c"; x: number; y: number; r: number; c: number; a: number } | { k: "e"; x: number; y: number; w: number; h: number; c: number; a: number };
 class RecGraphics {
@@ -37,6 +38,7 @@ class RecGraphics {
   setVisible() { return this; }
   setDepth() { return this; }
   setAlpha() { return this; }
+  setBlendMode() { return this; }
   destroy() {}
   fillStyle(c: number, a = 1) { this.f = [c, a]; return this; }
   fillRect(x: number, y: number, w: number, h: number) { this.ops.push({ k: "r", x, y, w, h, c: this.f[0], a: this.f[1] }); return this; }
@@ -54,136 +56,23 @@ function paint(dst: PC, g: RecGraphics) {
   }
 }
 
-type GLMod = { GearLayers: new (scene: unknown) => GLInst; LEGENDARIES: Record<string, { look: Record<string, unknown> }> };
+type GLMod = { GearLayers: new (scene: unknown) => GLInst };
 type GLInst = { draw(i: Record<string, unknown>): void; [k: string]: unknown };
 async function loadGearLayers(): Promise<GLMod> {
   const res = await build({
-    stdin: { contents: `export { GearLayers } from "./client/src/game/GearLayers"; export { LEGENDARIES } from "./shared/legendary";`, resolveDir: ROOT, loader: "ts" },
+    stdin: { contents: `export { GearLayers } from "./client/src/game/GearLayers";`, resolveDir: ROOT, loader: "ts" },
     bundle: true, write: false, format: "esm", platform: "node", logLevel: "error",
     plugins: [{ name: "phaser-shim", setup(b) { b.onResolve({ filter: /^phaser$/ }, () => ({ path: "phaser", namespace: "shim" })); b.onLoad({ filter: /.*/, namespace: "shim" }, () => ({ contents: SHIM, loader: "js" })); } }],
   });
   return (await import("data:text/javascript;base64," + Buffer.from(res.outputFiles[0].text).toString("base64"))) as GLMod;
 }
 
-// ---------------------------------------------------------------- геральдика на снаряжении (новые детали)
+// ---------------------------------------------------------------- геральдика: как в игре — GearInput.herald (shared/npcGear.ts HERALDRY)
 type Fac = "solgard" | "umbrath" | "ember";
-/** Пиксельные эмблемы гербов: 6 px (широкий табард, большой щит, спина плаща) и 4 px (узкий табард, малый щит, знамя). */
-const EMB: Record<Fac, { pal: Record<string, string>; e6: string[]; e4: string[]; out: string }> = {
-  // «Восход над Оплотом»: солнце с лучами над щитом лазури с белой стеной и воротами, золотая кайма
-  solgard: {
-    pal: { r: "#e0a630", G: "#ffc840", g: "#c88a20", Y: "#fff4c8", B: "#3a86c8", b: "#1f5a96", W: "#f4eedc", D: "#12365e" },
-    e6: ["r.gg.r", ".gYYg.", "DDDDDD", "DWBBWD", "DWWWWD", "DbWWbD", ".DDDD."],
-    e4: [".gg.", "DDDD", "DWWD", ".DD."], out: "#3a2208",
-  },
-  // «Корона над гробом»: сиреневая корона над черепом с зелёными глазницами и позвонком (гробовидный щит — поле табарда)
-  umbrath: {
-    pal: { l: "#d0b4f0", L: "#9a62b8", q: "#6a3c8a", B: "#ece4cc", b: "#c8bc9c", d: "#8f8468", K: "#05030a", G: "#7aff6a" },
-    e6: ["l.LL.l", "LLLLLq", ".BBbd.", "BGbbGd", "bbKKbd", ".dbbd.", "..dd.."],
-    e4: ["lLLq", "BBbd", "GbbG", ".dd."], out: "#05030a",
-  },
-  // предложение для Эмберхолла (решение 11, свой вид): пламя очага над бронзовой наковальней, бирюза и бронза
-  ember: EMBER_DATA.look.emblem,
-};
-/** Ткань табарда и поле щита: Сольгард — слоновая кость и золото, Умбрат — чернь и пурпур, Эмберхолл — бирюза и бронза. */
-const CLOTH: Record<Fac, { f: string; fs: string; t: string; td: string; belt: string; buckle: string; shield: string }> = {
-  solgard: { f: "#e2d4b0", fs: "#bfae88", t: "#e0a630", td: "#a8681c", belt: "#6a4210", buckle: "#ffd864", shield: "#e2d4b0" },
-  umbrath: { f: "#22163a", fs: "#100a1a", t: "#9a62b8", td: "#6a3c8a", belt: "#2c2838", buckle: "#c4c2d4", shield: "#100a1a" },
-  ember: EMBER_DATA.look.cloth,
-};
-
-type Tabard = "wide" | "narrow" | "none";
-interface Npc { fac: Fac; tabard: Tabard; ash?: boolean }
-let CUR: Npc | null = null;
-let VIEW = 0;
-/** Пепельнорождённые: время кадра (мс) и светящиеся прямоугольники кадра (для ночи — поверх затемнения). */
-let ASH_T = 0;
-let GLOW: AshRect[] = [];
-
-/** Перехват отрисовки GearLayers: геральдика кладётся в ту же деталь (тот же слой, тот же контур заточки) через её R(). */
-function patch(GL: GLMod) {
-  const P = GL.GearLayers.prototype as unknown as Record<string, (...a: unknown[]) => unknown>;
-  const R = (self: unknown, x: number, y: number, w: number, h: number, c: string) => (P.R as (...a: unknown[]) => void).call(self, x, y, w, h, c);
-  const emblem = (self: unknown, fac: Fac, big: boolean, x: number, y: number, outline = false) => {
-    const E = EMB[fac], rows = big ? E.e6 : E.e4;
-    if (outline) rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === ".") return; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = rows[j + dy]?.[i + dx]; if (!nc || nc === ".") R(self, x + i + dx, y + j + dy, 1, 1, E.out); } }));
-    rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== ".") R(self, x + i, y + j, 1, 1, E.pal[ch]); }));
-  };
-  const origEnd = P.end;
-  P.end = function (this: Record<string, unknown>, slot: unknown, ...rest: unknown[]) {
-    const n = CUR;
-    const pre = (this.cap as unknown[] | null)?.length ?? 0;
-    if (n && slot === "armor" && n.tabard !== "none") {
-      const C = CLOTH[n.fac], wide = n.tabard === "wide", y0 = 16;
-      if (VIEW === 2) {
-        // сбоку: полотнище спереди и сзади корпуса, кайма по краю
-        for (const [x, w] of [[17, 3], [12, 2]] as const) { R(this, x, y0, w, 12, C.f); R(this, x + (x > 15 ? w - 1 : 0), y0, 1, 12, C.t); R(this, x, y0 + 12, w, 1, C.td); }
-        R(this, 12, y0 + 8, 8, 1, C.belt);
-      } else {
-        const x0 = wide ? 12 : 13, w = wide ? 8 : 6;
-        for (let j = 0; j < 13; j++) {
-          // низ: Сольгард — ласточкин хвост, Умбрат — гробовая стопа (сужение), Эмберхолл — ровный с бахромой
-          let a = 0, b = w;
-          if (n.fac === "umbrath" && j >= 10) { a = j - 9; b = w - (j - 9); }
-          for (let i = a; i < b; i++) {
-            if (n.fac === "solgard" && j >= 11 && Math.abs(i - (w - 1) / 2) < (j === 12 ? 1.6 : 0.6)) continue;
-            const edge = i === a || i === b - 1 || j === 0;
-            const c = j === 12 ? C.td : edge ? (i === b - 1 ? C.td : C.t) : i === b - 2 ? C.fs : C.f;
-            R(this, x0 + i, y0 + j, 1, 1, n.fac === "ember" && j === 12 && i % 2 ? C.t : c);
-          }
-        }
-        R(this, x0, y0 + 8, w, 1, C.belt); R(this, x0 + w / 2 - 1, y0 + 8, 2, 1, C.buckle);
-        if (VIEW === 0) emblem(this, n.fac, wide, x0 + 1, y0 + 1);
-        else R(this, x0 + w / 2 - 1, y0 + 2, 2, 4, C.t); // со спины — полоса каймы по шву
-      }
-    }
-    if (n && slot === "offhand" && VIEW === 0 && this.__shield) {
-      const s = this.__shield as { w: number; h: number }, C = CLOTH[n.fac];
-      const x = 8 - s.w + 3, y = 17, iw = s.w - 2, ih = s.h - 2;
-      if (iw >= 3) {
-        R(this, x + 1, y + 1, iw, ih, C.shield);
-        const big = iw >= 6 && ih >= 8, ew = big ? 6 : 4, eh = big ? 7 : EMB[n.fac].e4.length;
-        if (iw >= ew && ih >= eh) emblem(this, n.fac, big, x + 1 + Math.floor((iw - ew) / 2), y + 1 + Math.max(0, Math.floor((ih - eh) / 2) - (big ? 1 : 0)));
-      }
-    }
-    if (n && slot === "cloak" && VIEW === 1 && this.__cloakArms) emblem(this, n.fac, true, 13, 17, true);
-    const rects = (this.cap as { g: RecGraphics; x: number; y: number; w: number; h: number; a: number }[] | null) ?? [];
-    const res = origEnd.call(this, slot, ...rest);
-    // Пепельнорождённые: тлеющие трещины по пикселям детали без табарда и герба (как будет в GearLayers.end — client/src/game/ashborn.ts)
-    if (n?.ash && rects.length > pre) {
-      const cover = new Set<number>(), keyOf = (x: number, y: number) => y * 4096 + x, px: [number, number][] = [];
-      for (const r of rects.slice(pre)) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) cover.add(keyOf(x, y));
-      const seen = new Set<number>();
-      for (const r of rects.slice(0, pre)) if (r.a >= 0.5) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
-        const k = keyOf(x, y);
-        if (!cover.has(k) && !seen.has(k)) { seen.add(k); px.push([x, y]); }
-      }
-      const g = rects[0].g, fx = ashCracks(px, String(slot), ASH_T, 7);
-      for (const q of fx) g.fillStyle(parseInt(q.c.slice(1), 16), q.a).fillRect(q.x, q.y, q.w, q.h);
-      GLOW.push(...fx.filter((q) => q.glow));
-    }
-    return res;
-  };
-  // щит: запомнить размер (как в GearLayers.shield) — для поля и герба
-  const origShield = P.shield;
-  P.shield = function (this: Record<string, unknown>, ...a: unknown[]) {
-    const sm = a[9] as { look: { shape: string } } | undefined, o = a[0] as { r: number }, shp = sm?.look.shape ?? "";
-    let w = 6 + Math.min(3, o.r), h = 8 + Math.min(4, o.r * 1.5);
-    if (shp === "tower") { w = 8; h = 13; } else if (shp === "buckler") { w = 5; h = 5; } else if (shp === "round" || shp === "aegis") { w = 8; h = 8; } else if (shp === "spiked") { w = 7; h = 7; } else if (shp === "kite" || shp === "crystal") { w = 7; h = 12; } else if (sm) { w = 7; h = 10; }
-    this.__shield = shp === "bone" ? null : { w, h };
-    return origShield.apply(this, a);
-  };
-  // герб на знамени чемпиона: вместо солнца/черепа легендарки — малая эмблема утверждённого герба фракции
-  const origCrest = P.crest;
-  P.crest = function (this: unknown, kind: unknown, cxu: unknown, cyu: unknown, ...rest: unknown[]) {
-    const cx = cxu as number, cy = cyu as number;
-    if (CUR && CUR.fac !== "ember" && (kind === "sun" || kind === "skull")) { emblem(this, CUR.fac, false, cx - 2, cy - 2, true); return; }
-    return origCrest.call(this, kind, cx, cy, ...rest);
-  };
-  // без анимации тем: статичный кадр, частиц нет (у NPC plus = 0 — контура заточки тоже нет)
-  const origPrep = P.prepareFx;
-  P.prepareFx = function (this: Record<string, unknown>, ...a: unknown[]) { origPrep.apply(this, a); this.themeOn = false; (this.parts as Map<string, number>).clear(); };
-  // знамя чемпиона Сольгарда — ткань слоновой кости, как утверждённое знамя фракции (130)
-  GL.LEGENDARIES.dawn_standard.look.flag = "#d8cba8";
+/** Геральдика фигуры: утверждённый вид Эмберхолла — без углей (ash: false), Пепельнорождённые — HERALDRY.ember как в игре. */
+function heraldOf(f: Fig, fac: Fac, ash: boolean): Herald {
+  const H: Heraldry = fac === "ember" && !ash ? { ...HERALDRY.ember, ash: false } : HERALDRY[fac];
+  return { fac, tabard: f.tabard, arms: !!f.cloakArms, banner: false, H };
 }
 
 // ---------------------------------------------------------------- наборы
@@ -277,35 +166,12 @@ const HERO: Record<Fac, Fig> = {
 const CW = 40, CH = 50, FX = 4, FY = 16; // ячейка вида и место кадра 32×32 в ней
 const bodies = new Map<string, PC>();
 const body = (cls: string) => { let b = bodies.get(cls); if (!b) { b = readPng(path.join(ROOT, `client/public/assets/units/nude_${cls}.png`)); bodies.set(cls, b); } return b; };
-
-/** Тело Пепельнорождённого: лист nude_<класс> → кожа и волосы в шлак и пепел (data/ember-guard.json body), глаза — тлеющие,
- *  тусклые жилы углей. Лист того же размера и раскладки — в игре подменяет nude_<класс> у стражи Эмберхолла. */
+/** Тело Пепельнорождённого (tools/gen/ashborn-body.ts — тот же код, что у листов игры). */
 const ashBodies = new Map<string, PC>();
-function ashBody(cls: string): PC {
-  let b = ashBodies.get(cls);
-  if (b) return b;
-  const B = EMBER_DATA.body, src = body(cls).clone(), skin = new Map(Object.entries(B.skin).map(([k, v]) => [k, hex(v)]));
-  const ash = B.ash.map((q) => hex(q)), OUTL = new Set(["1b1422", "2a1a24"]), EYE = "2a1a24";
-  b = src.map((c) => {
-    if (!c[3]) return c;
-    const k = c.slice(0, 3).map((v) => v.toString(16).padStart(2, "0")).join("");
-    if (k === "1b1422") return c;
-    if (k === EYE) return hex(B.eye);
-    const m = skin.get("#" + k);
-    if (m) return m;
-    if (OUTL.has(k)) return c;
-    const lum = (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255;               // волосы и прочее — по яркости в рампу пепла
-    return ash[Math.max(0, Math.min(ash.length - 1, Math.round(lum * (ash.length - 1) * 1.15)))];
-  });
-  // жилы углей: по виду (строка листа), во всех кадрах строки — только там, где тело
-  for (let row = 0; row < 3; row++) for (let col = 0; col < 8; col++) for (const [i, [x, y]] of B.veins[row].entries()) {
-    const X = col * 32 + x, Y = row * 32 + y + (col === 3 || col === 7 ? -1 : 0);
-    const c = b.get(X, Y);
-    if (c && c[3] && c.slice(0, 3).join() !== "27,20,34") b.set(X, Y, hex(B.vein[i % 2]));
-  }
-  ashBodies.set(cls, b);
-  return b;
-}
+const ashBody = (cls: string) => { let b = ashBodies.get(cls); if (!b) { b = ashFrom(body(cls)); ashBodies.set(cls, b); } return b; };
+/** Светящиеся прямоугольники последней фигуры (для ночи — поверх затемнения): слой свечения GearLayers. */
+let GLOW: AshRect[] = [];
+const hexOf = (c: number) => "#" + c.toString(16).padStart(6, "0");
 
 function figure(GL: GLMod, f: Fig, fac: Fac, view: number, ash?: { t: number }): PC {
   const out = new PC(CW, CH);
@@ -314,27 +180,17 @@ function figure(GL: GLMod, f: Fig, fac: Fac, view: number, ash?: { t: number }):
   const scene = { add: { graphics: () => new RecGraphics() } };
   const gl = new GL.GearLayers(scene);
   const fr = crop(ash ? ashBody(f.cls) : body(f.cls), 0, view * 32, 32, 32);
-  CUR = f === HERO[fac] ? null : { fac, tabard: f.tabard, ash: !!ash };
-  ASH_T = ash?.t ?? 0;
-  GLOW = [];
-  VIEW = view;
-  (gl as Record<string, unknown>).__cloakArms = !!f.cloakArms;
   const r = f.r ?? 0, rl = (id?: string) => (id?.startsWith("L:") ? 3 : r);
   const gear = [piece(f.helm, rl(f.helm)), piece(f.armor, rl(f.armor)), piece(f.boots, rl(f.boots)), piece(f.off, rl(f.off)), piece(f.cloak, rl(f.cloak))].join("|");
-  gl.draw({ cls: f.cls, faction: fac === "umbrath" ? "umbrath" : "solgard", gear, weapon: weaponStr(f.weapon, r), view, flip: false, col: 0, ox: FX, oy: FY, t: 0, seed: 7, self: false });
-  CUR = null;
+  const herald = f === HERO[fac] ? null : heraldOf(f, fac, !!ash);
+  // still — статичный кадр без тем, частиц и заточки; night 1 — светящееся Пепельнорождённых копится в слое glow (ночь монтажа)
+  gl.draw({ cls: f.cls, faction: fac === "umbrath" ? "umbrath" : "solgard", gear, weapon: weaponStr(f.weapon, r), view, flip: false, col: 0, ox: FX, oy: FY, t: ash?.t ?? 0, seed: 7, self: false, herald, night: ash ? 1 : 0, still: true });
   const back = gl.back as RecGraphics, front = gl.front as RecGraphics;
   paint(out, back);
   out.blit(fr, FX, FY);
   paint(out, front);
-  if (ash) {
-    // глаза-угли и искры — кадровые координаты (в игре — через GearLayers.R, с flip и покачиванием шага)
-    const fx = [...ashEyes(view, ash.t), ...ashEmbers(ash.t, 7)].map((q) => ({ ...q, x: q.x + FX, y: q.y + FY }));
-    const g = new RecGraphics();
-    for (const q of fx) g.fillStyle(parseInt(q.c.slice(1), 16), q.a).fillRect(q.x, q.y, q.w, q.h);
-    paint(out, g);
-    GLOW.push(...fx.filter((q) => q.glow));
-  }
+  const glow = gl.glow as RecGraphics | undefined;
+  GLOW = ash && glow ? glow.ops.flatMap((o) => (o.k === "r" ? [{ x: o.x, y: o.y, w: o.w, h: o.h, c: hexOf(o.c), a: o.a, glow: true }] : [])) : [];
   return out;
 }
 
@@ -479,18 +335,17 @@ function ashMontage(GL: GLMod): PC {
   return big;
 }
 
-/** Листы для игры: тела nude_ashborn_<класс>.png (раскладка как nude_<класс>) — tools/out/npc-sets/ashborn/. */
+/** Превью тел nude_ashborn_<класс>.png (в игру их кладёт npm run assets — tools/gen/ashborn-body.ts) — tools/out/npc-sets/ashborn/. */
 function writeAshBodies() {
   const dir = path.join(OUT, "ashborn");
   fs.mkdirSync(dir, { recursive: true });
-  for (const cls of [...new Set(EMBER_DATA.figs.map((f) => f.cls))]) ashBody(cls).save(path.join(dir, `nude_ashborn_${cls}.png`));
+  for (const cls of ASH_CLASSES) ashBody(cls).save(path.join(dir, `nude_ashborn_${cls}.png`));
 }
 
-export { loadGearLayers, patch, figure, EMBER, HERO, type Fig, type GLMod };
+export { loadGearLayers, figure, EMBER, HERO, type Fig, type GLMod };
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const GL = await loadGearLayers();
-  patch(GL);
   fs.mkdirSync(OUT, { recursive: true });
   factionSheet(GL, "solgard", SOLGARD, "СОЛЬГАРД - ПАЛАДИНЫ: ЛАТЫ, ТАБАРД И ЩИТ С ГЕРБОМ «ВОСХОД НАД ОПЛОТОМ», ПЛАЩ").save(path.join(OUT, "solgard.png"));
   factionSheet(GL, "umbrath", UMBRATH, "УМБРАТ - ЛАТЫ НЕЖИТИ С ГЕРБОМ «КОРОНА НАД ГРОБОМ»").save(path.join(OUT, "umbrath.png"));

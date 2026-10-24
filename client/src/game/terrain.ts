@@ -164,6 +164,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "mushrooms_glow") glow(objs, o.x, o.y - 8, 0x5aa8ff, 1.1, 0.35);
     if (o.kind === "ward-sol") glow(objs, o.x, o.y - 32, 0xffd860, 1.3, 0.35);
     if (o.kind === "ward-umb") glow(objs, o.x, o.y - 30, 0xa070ff, 1.3, 0.38);
+    if (o.kind === "ember-std") glow(objs, o.x, o.y - 84, 0xffa040, 1.1, 0.4, true); // живой огонь жаровни-навершия штандарта Эмберхолла
     if (o.kind === "crystal") glow(objs, o.x, o.y - 12, 0x9a8aff, 1.3, 0.4);
     if (o.kind === "house" || o.kind === "house_blue") for (const dx of [-36, 38]) glow(objs, o.x + dx, o.y - 30, 0xffd27a, 1.2, 0.35);
     if (o.kind === "tavern") for (const [dx, dy] of [[-71, -26], [-39, -26], [61, -26], [93, -26], [-80, -64], [-38, -64], [40, -64], [84, -64]]) glow(objs, o.x + dx, o.y + dy, 0xffc870, 1.2, 0.38);

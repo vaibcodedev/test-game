@@ -6,12 +6,13 @@
  *  2 «Жаровня» — бронзовая парча в главе над алой выпушкой, герб в бронзовом медальоне, низ тремя языками с кистями,
  *  навершие — жаровня с живым огнём и искрами. Ветер — модель штандартов (windCloth, 12 кадров, 12 к/с), огонь — плавно (easing).
  *  Запуск: npx tsx tools/gen/ember-banners.ts → tools/out/standards/ember-banners.png (сравнение с фракционными), листы ember-*.png,
- *  ember-banners.json (кадры, якоря). В игру — после выбора варианта (вторая часть шага 8). */
+ *  ember-banners.json (кадры, якоря). В игру — выбранный вариант 2 «Жаровня»: npm run assets → writeEmberBannersGame (vfx ember-std, ember-bearer). */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PC, hex, OUTLINE, type RGBA } from "./canvas";
 import { P } from "./palette";
+import EMBER from "../../data/ember-guard.json";
 import {
   WIND_FRAMES as N, WIND_FPS as FPS, windPlan, windCloth, toneFn, clothTex, distMap, stamp, layer, WIND_HOME, type Wind,
   homeSolgard, homeUmbrath, royalSolgard, royalUmbrath, captureBase, scene, board, previewRow, stackRows, strip, onMast, anchorPx,
@@ -295,6 +296,25 @@ const SPECS: Spec[] = [
   { id: "ember-city-2", title: "ШТАНДАРТ ГОРОДА, ВАРИАНТ 2 «ЖАРОВНЯ»", v: 2, kind: "city", CW: 36, CH: 58 },
   { id: "ember-bearer-2", title: "ЗНАМЯ ЗНАМЕНОСЦА, ВАРИАНТ 2 «ЖАРОВНЯ»", v: 2, kind: "bearer", CW: 24, CH: 34 },
 ];
+
+// ---------------------------------------------------------------- в игру
+/** Листы выбранного варианта (data/ember-guard.json banners.variant, game.citySheet/bearerSheet) в assets/vfx и записи в vfx/manifest.json
+ *  (остальные записи не трогаются). Штандарт города — объект карты на башнях стен Эмберхолла (shared/map.ts buildTown): якорь — низ кадра
+ *  (крюк приходится под зубцы башни, полотнище — по её лицевой стене); знамя знаменосца — якорь у подтока (UnitView.bearerFlag). */
+export function writeEmberBannersGame(assetsRoot: string): void {
+  const dir = path.join(assetsRoot, "vfx"), mf = path.join(dir, "manifest.json");
+  let m: Record<string, unknown> = {};
+  try { m = JSON.parse(fs.readFileSync(mf, "utf8")); } catch { /* манифеста ещё нет */ }
+  const v = EMBER.banners.variant, G = EMBER.game;
+  for (const [kind, id] of [["city", G.citySheet], ["bearer", G.bearerSheet]] as const) {
+    const a = build(SPECS.find((s) => s.v === v && s.kind === kind)!);
+    strip(a.frames).save(path.join(dir, `${id}.png`));
+    const anchor = kind === "city" ? [+a.anchor[0].toFixed(4), 1] : [+a.anchor[0].toFixed(4), +a.anchor[1].toFixed(4)];
+    m[id] = { frameW: a.w, frameH: a.h, frames: a.frames.length, fps: a.fps, anchor, blend: "normal" };
+  }
+  const sorted = Object.fromEntries(Object.entries(m).sort(([a], [b]) => (a < b ? -1 : 1)));
+  fs.writeFileSync(mf, JSON.stringify(sorted, null, 1) + "\n");
+}
 
 // ---------------------------------------------------------------- превью
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");

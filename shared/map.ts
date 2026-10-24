@@ -16,7 +16,7 @@ import PATROLS from "../data/patrols.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
 import { CAPITAL_DECOR, CITIES, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
-import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, TOWERS, TOWN, townGround, WALL } from "./town";
+import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
 
@@ -758,6 +758,8 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
   for (let dx = -WALL.x; dx <= WALL.x; dx++) for (const dy of [-WALL.y, WALL.y]) if (wallOk(dx, dy)) place("wall_h", X(dx), Y(dy));
   for (let dy = -WALL.y + 1; dy < WALL.y; dy++) for (const dx of [-WALL.x, WALL.x]) if (wallOk(dx, dy)) place("wall_v", X(dx), Y(dy));
   for (const dy of [-WALL.y, WALL.y]) objects.push({ kind: "gate_arch", x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 2 });
+  // штандарты «Жаровня» на башнях (низ листа — у основания башни, на 1 px ниже: рисуется поверх неё)
+  for (const [dx, dy] of STANDARD_TOWERS) objects.push({ kind: TOWN_STANDARD, x: (X(dx) + 1) * TILE, y: (Y(dy) + 1) * TILE - 1 });
   // частокол вокруг безопасной полосы: у дорог проём (дорога идёт к воротам через полосу)
   for (let dy = -BELT_HALF.y; dy <= BELT_HALF.y; dy++) for (let dx = -BELT_HALF.x; dx <= BELT_HALF.x; dx++) {
     if (!isBeltFence(dx, dy) || roadDist(X(dx) + 0.5, Y(dy) + 0.5) < 1.6) continue;

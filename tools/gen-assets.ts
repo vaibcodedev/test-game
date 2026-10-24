@@ -17,6 +17,8 @@ import { newItemIcon } from "./gen/icons-items";
 import { buildUnitSheet, UNIT_ART } from "./gen/units";
 import { writeGameVfx } from "./gen/vfx";
 import { writeWardsGame } from "./gen/wards";
+import { writeAshBodiesGame } from "./gen/ashborn-body";
+import { writeEmberBannersGame } from "./gen/ember-banners";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
@@ -91,6 +93,9 @@ manifest.fx.push("chaos_halo");
 writeGameVfx(OUT);
 // обереги против невидимок (задача 132, шаг 6): анимированные объекты ward-sol/umb и вспышка срабатывания, см. tools/gen/wards.ts
 writeWardsGame(OUT);
+// стража Эмберхолла — Пепельнорождённые (задача 132, шаг 8): тела из шлака и знамёна «Жаровня» (data/ember-guard.json)
+for (const id of writeAshBodiesGame(OUT)) manifest.units[id] = { frame: 32 };
+writeEmberBannersGame(OUT);
 
 // Ручные PNG (не из генератора) тоже попадают в манифест: можно просто положить файл в папку.
 const pngSize = (f: string) => {

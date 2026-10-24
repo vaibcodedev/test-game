@@ -109,7 +109,7 @@
         "out": "#05030a"
       },
       "cloth": { "f": "#22163a", "fs": "#100a1a", "t": "#9a62b8", "td": "#6a3c8a", "belt": "#2c2838", "buckle": "#c4c2d4", "shield": "#100a1a", "hem": "coffin" },
-      "banner": { "flag": "#22163a", "edge": "#6a3c8a", "pole": ["#8f8468", "#c8bc9c"], "metal": "#ece4cc", "legend": "#4a1a6a" },
+      "banner": { "flag": "#22163a", "edge": "#6a3c8a", "pole": ["#8f8468", "#c8bc9c"], "metal": "#ece4cc", "legend": "#3e1a5c" },
       "badge": { "field": "#46265e", "mark": "#d0b4f0" },
       "torch": { "flame": "#6a3c8a", "core": "#b8ffa8", "glow": "#9aff8a" }
     }

@@ -178,6 +178,12 @@
    "frame": 128,
    "cols": 24
   },
+  "nude_ashborn_warrior": {
+   "frame": 32
+  },
+  "nude_ashborn_ranger": {
+   "frame": 32
+  },
   "sol_chained_beast": {
    "frame": 64
   },

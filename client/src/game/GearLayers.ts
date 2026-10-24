@@ -15,6 +15,7 @@ import { enchantTier, ENCHANT_COLOR, GEAR_FX } from "../../../shared/gearFx";
 import { gearFxMode } from "./overlay";
 import { onGearFlash, setHiddenParticles, type HiddenReason } from "./gearHooks";
 import type { Herald } from "../../../shared/npcGear";
+import { ashCracks, ashEmbers, ashEyes, ASH_HALO, type AshRect } from "./ashborn";
 
 const ENCHANT = GEAR_FX.enchant, LIMITS = GEAR_FX.limits;
 /** Заточка на герое — приглушённый тон (data/gear-fx.json heroColor), в интерфейсе остаётся яркий ENCHANT_COLOR. */
@@ -24,6 +25,8 @@ const PK = 1 << 17, OFF = 8192;
 const KEY = (x: number, y: number) => (x + OFF) * PK + (y + OFF);
 const KX = (k: number) => Math.floor(k / PK) - OFF, KY = (k: number) => (k % PK) - OFF;
 type Rect = { g: Phaser.GameObjects.Graphics; x: number; y: number; w: number; h: number; c: number; a: number };
+/** Светящееся Пепельнорождённых ночью — над ночным затемнением (terrain.ts DEPTH.top - 20, здесь DEPTH.top - 19 без импорта сцены). */
+const GLOW_DEPTH = 1e6 - 19;
 /** Когда каждый герой рисовался последний раз: больше 15 героев в кадре — частицы чужих выключаются. */
 const ACTIVE = new Map<object, number>();
 
@@ -75,6 +78,10 @@ export interface GearInput {
   sid?: string; self?: boolean;
   /** Боец фракции (задача 132, шаг 8): гербы на табарде, щите, спине плаща и знамени, знаменосец (shared/npcGear.ts). */
   herald?: Herald | null;
+  /** Ночь 0…1 (shared/daynight.ts): светящееся Пепельнорождённых рисуется ещё раз поверх затемнения. */
+  night?: number;
+  /** Статичный кадр без тем легендарок, частиц и контура заточки (листы на утверждение, tools/gen/npc-sets.ts). */
+  still?: boolean;
 }
 
 const MELEE = new Set(["sword", "axe", "dagger", "mace", "greatsword", "twinblades", "greataxe", "hammer", "spear", "scythe"]);
@@ -108,14 +115,23 @@ export class GearLayers {
   private unflash: () => void;
   /** Геральдика бойца в текущем кадре (null — герой). */
   private hd: Herald | null = null;
+  /** Свечение ночью (только у Пепельнорождённых): пиксели поверх затемнения и мягкий отсвет (ADD). */
+  private glow?: Phaser.GameObjects.Graphics;
+  private bloom?: Phaser.GameObjects.Graphics;
+  private glowK = 0;
+  private seedA = 0;
+  /** С какого прямоугольника текущей детали начинается геральдика (табард, герб на щите): трещины углей её не трогают. */
+  private herAt = -1;
+  private scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene) {
+    this.scene = scene;
     this.back = scene.add.graphics();
     this.front = scene.add.graphics();
     this.unflash = onGearFlash((sid, slot, ms, color) => { if (sid && sid === this.sid) this.flash = { slot, ms, color }; });
   }
 
-  hide() { this.back.clear().setVisible(false); this.front.clear().setVisible(false); }
+  hide() { this.back.clear().setVisible(false); this.front.clear().setVisible(false); this.glow?.clear().setVisible(false); this.bloom?.clear().setVisible(false); }
 
   private R(x: number, y: number, w: number, h: number, hex: string, a = 1) {
     const xx = x + this.sx, px = this.flip ? 32 - xx - w : xx;
@@ -146,7 +162,15 @@ export class GearLayers {
     const wr = Number(wrs || 0), wplus = Number(wps || 0);
     this.back.clear().setVisible(true);
     this.front.clear().setVisible(true);
-    this.flip = i.flip; this.ox = i.ox; this.oy = i.oy; this.sid = i.sid ?? ""; this.hd = i.herald ?? null;
+    this.flip = i.flip; this.ox = i.ox; this.oy = i.oy; this.sid = i.sid ?? ""; this.hd = i.herald ?? null; this.seedA = i.seed;
+    // Пепельнорождённые ночью: светящееся — ещё раз поверх затемнения (своя пара слоёв, создаётся по первой надобности)
+    this.glowK = this.hd?.H.ash ? Math.max(0, Math.min(1, (i.night ?? 0) * 2)) : 0;
+    if (this.glowK > 0 && !this.glow) {
+      this.glow = this.scene.add.graphics().setDepth(GLOW_DEPTH);
+      this.bloom = this.scene.add.graphics().setDepth(GLOW_DEPTH - 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    }
+    this.glow?.clear().setVisible(this.glowK > 0);
+    this.bloom?.clear().setVisible(this.glowK > 0);
     const pal = i.faction === "umbrath" ? PAL.umbrath : PAL.solgard;
     const legOf = (id: string): LegendaryDef | undefined => (id ? LEGENDARIES[id] : undefined);
     // кайма — по редкости своей детали: легендарка оранжевая, r≥1 цвет редкости, r0 нейтральная (docs/gear-visuals.md 2.1)
@@ -199,7 +223,8 @@ export class GearLayers {
     // знаменосец: знамя фракции за спиной (если плащ — не легендарное знамя), без контура и частиц
     const drawStandard = () => {
       const hd = this.hd;
-      if (!hd?.banner || legOf(cl.leg)?.look.back === "banner") return;
+      // готовый лист знамени (стража Эмберхолла, «Жаровня») рисует UnitView спрайтом
+      if (!hd?.banner || hd.H.bearerSheet || legOf(cl.leg)?.look.back === "banner") return;
       this.sx = 0; this.sy = 0;
       const B = hd.H.banner, umb = hd.fac === "umbrath";
       this.flagPole({ umb, flag: B.flag, side: B.edge, hem: B.edge, pole: B.pole, metal: B.metal, ti: 3, form: "", tint: B.edge, c2: B.metal, crest: (cx, cy) => this.emblem(hd, false, cx - 2, cy - 2, true) }, i, bob, walking, tt);
@@ -358,7 +383,7 @@ export class GearLayers {
       }
       // крылья и призрачные цепи легендарного доспеха (зона доспеха: плечи и спина)
       if (L && (L.look.back === "wings" || L.look.chains)) { this.sx = 0; this.sy = 0; this.legendBack(L, i, bob, walking, tt, "armor"); this.sx = lx; this.sy = ly; }
-      if (this.hd && this.hd.tabard !== "none") this.tabard(this.hd, view, y0);
+      if (this.hd && this.hd.tabard !== "none") { this.herAt = this.cap?.length ?? -1; this.tabard(this.hd, view, y0); }
       this.end("armor", a.plus, L);
     }
     if (up) { drawCloak(); drawStandard(); }
@@ -396,6 +421,14 @@ export class GearLayers {
       if (wb === "twinblades" && o.r < 0) this.weapon(wb, wr, legOf(wl), pal, { ...i, weapon: "" }, bob, wplus, true, wm);
       this.end("weapon", wplus, legOf(wl));
     }
+    // ---- Пепельнорождённые: глаза-угли в прорези шлема (с наклоном и шагом, как шлем) и искры с плеч ----
+    if (this.hd?.H.ash) {
+      this.g = this.front;
+      this.sx = lx; this.sy = ly;
+      for (const q of ashEyes(view, t)) this.ash(q, bob);
+      this.sx = 0; this.sy = 0;
+      for (const q of ashEmbers(t, i.seed)) this.ash(q, 0);
+    }
     this.flushHidden();
   }
 
@@ -405,12 +438,13 @@ export class GearLayers {
     ACTIVE.set(this, i.t);
     let crowd = 0;
     for (const [k, at] of ACTIVE) { if (i.t - at < 400) crowd++; else if (i.t - at > 5000) ACTIVE.delete(k); }
-    const mode = i.self ? "all" : gearFxMode();
+    const mode = i.still ? "off" : i.self ? "all" : gearFxMode();
     this.enchantOn = mode === "all";
     this.themeOn = mode !== "off";
     this.t = i.t;
     this.parts.clear();
     this.hidden = {};
+    if (i.still) return;
     // приоритет источников: оружие, вторая рука, затем легендарки (шлем, доспех, сапоги), затем вещи +10 в том же порядке
     const order = [...pieces.slice(0, 2).filter((p) => p.L || p.plus >= 10), ...pieces.slice(2).filter((p) => p.L), ...pieces.slice(2).filter((p) => !p.L && p.plus >= 10)];
     let sources = 0, budget = LIMITS.particles;
@@ -429,7 +463,21 @@ export class GearLayers {
     if (key !== this.hiddenKey) { this.hiddenKey = key; setHiddenParticles(this.sid, Object.keys(this.hidden).length ? this.hidden : null); }
   }
   /** Начать деталь: прямоугольники копятся, чтобы сначала нарисовать контур заточки, потом саму деталь. */
-  private begin() { this.cap = []; }
+  private begin() { this.cap = []; this.herAt = -1; }
+  /** Прямоугольник Пепельнорождённого в кадровых координатах (через R: flip, наклон); светящийся ночью — ещё и поверх затемнения. */
+  private ash(q: AshRect, dy: number) {
+    this.R(q.x, q.y + dy, q.w, q.h, q.c, q.a);
+    if (q.glow && this.glowK > 0) {
+      const xx = q.x + this.sx, px = this.flip ? 32 - xx - q.w : xx;
+      this.glowAt(Math.round(this.ox + px), Math.round(this.oy + q.y + dy + this.sy), q);
+    }
+  }
+  /** Светящийся пиксель (мировые координаты) поверх ночного затемнения и мягкий отсвет вокруг ядра. */
+  private glowAt(X: number, Y: number, q: AshRect) {
+    const k = this.glowK;
+    this.glow!.fillStyle(C(q.c), q.a * k).fillRect(X, Y, q.w, q.h);
+    if (q.a >= 0.9) this.bloom!.fillStyle(C(ASH_HALO), 0.07 * k).fillRect(X - 1, Y - 1, q.w + 2, q.h + 2).fillStyle(C(ASH_HALO), 0.05 * k).fillRect(X - 2, Y, q.w + 4, q.h).fillRect(X, Y - 2, q.w, q.h + 4);
+  }
   /** Закончить деталь: контур/ореол заточки по ступени, сама деталь, бегущая точка, частицы источника. */
   private end(slot: Slot, plus: number, L?: LegendaryDef) {
     const rects = this.cap ?? [];
@@ -466,8 +514,27 @@ export class GearLayers {
       }
     }
     for (const r of rects) r.g.fillStyle(r.c, r.a).fillRect(r.x, r.y, r.w, r.h);
+    if (this.hd?.H.ash) this.cracks(rects, slot);
     const n = this.parts.get(slot) ?? 0;
     if (n && px.size) this.particles(g, px, n, L, slot);
+  }
+  /** Тлеющие трещины Пепельнорождённого по пикселям детали без геральдики (табарда и герба): ashborn.ts ashCracks.
+   *  Координаты — от угла кадра (ключи ashborn рассчитаны на малые числа), обратно — в мир. */
+  private cracks(rects: Rect[], slot: Slot) {
+    const her = this.herAt >= 0 ? this.herAt : rects.length, X0 = Math.round(this.ox), Y0 = Math.round(this.oy);
+    const cover = new Set<number>(), seen = new Set<number>(), px: [number, number][] = [];
+    for (let k = her; k < rects.length; k++) { const r = rects[k]; for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) cover.add(KEY(x, y)); }
+    for (let k = 0; k < her; k++) {
+      const r = rects[k];
+      if (r.a < 0.5) continue;
+      for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) { const q = KEY(x, y); if (!cover.has(q) && !seen.has(q)) { seen.add(q); px.push([x - X0, y - Y0]); } }
+    }
+    if (!px.length) return;
+    const g = rects[0].g;
+    for (const q of ashCracks(px, slot, this.t, this.seedA)) {
+      g.fillStyle(C(q.c), q.a).fillRect(q.x + X0, q.y + Y0, q.w, q.h);
+      if (q.glow && this.glowK > 0) this.glowAt(q.x + X0, q.y + Y0, q);
+    }
   }
   /** Внешний контур силуэта шириной 1 px. */
   private ring1(px: Set<number>) {
@@ -541,7 +608,8 @@ export class GearLayers {
     const view = i.view, side = view === 2, up = view === 1, t = i.t;
     const cp = m ? PR(m.look.cloth, "red") : null;
     // легендарный плащ: ткань — полотнище знамени (look.flag) или цвет темы, кайма оранжевая
-    const lc = L ? L.look.flag ?? (L.look.back === "banner" ? flagOf(L) : dark(L.tint, 0.75)) : "";
+    // у бойца фракции плащ-знамя — ткань знамени фракции (heraldry.banner.legend), как полотнище в banner()
+    const lc = L ? (this.hd && L.look.back === "banner" ? this.hd.H.banner.legend : L.look.flag ?? (L.look.back === "banner" ? flagOf(L) : dark(L.tint, 0.75))) : "";
     const body = L ? lc : cp ? cp[1] : pal.cape, mid = L ? dark(lc, 1.18) : cp ? cp[2] : pal.cape, dk = dark(body, 0.65), lt = L ? L.look.c2 : cp ? cp[3] : pal.cape;
     const edge = c.leg ? RARITY_COLORS[3] : m ? rimOf(m.look, c.r, m.fac).T : pal.capeEdge;
     const shape = L ? (L.look.back === "banner" ? "short" : "long") : m?.look.shape ?? "long", umb = m ? m.fac === "umbrath" : i.faction === "umbrath";
@@ -951,6 +1019,7 @@ export class GearLayers {
     if (hd && !up && !side && shp !== "bone") {
       const iw = ww - 2, ih = h - 2;
       if (iw >= 3) {
+        this.herAt = this.cap?.length ?? -1;
         this.R(xx + 1, y + 1, iw, ih, hd.H.cloth.shield);
         const big = iw >= 6 && ih >= 8, ew = big ? 6 : 4, eh = big ? hd.H.emblem.e6.length : hd.H.emblem.e4.length;
         if (iw >= ew && ih >= eh) this.emblem(hd, big, xx + 1 + Math.floor((iw - ew) / 2), y + 1 + Math.max(0, Math.floor((ih - eh) / 2) - (big ? 1 : 0)));
@@ -1354,6 +1423,6 @@ export class GearLayers {
 
   setDepth(d: number) { this.back.setDepth(d - 0.1); this.front.setDepth(d + 0.5); }
   /** Прозрачность всего снаряжения (скрытность: как у спрайта героя). */
-  setAlpha(a: number) { this.back.setAlpha(a); this.front.setAlpha(a); }
-  destroy() { this.unflash(); ACTIVE.delete(this); if (this.sid) setHiddenParticles(this.sid, null); this.back.destroy(); this.front.destroy(); }
+  setAlpha(a: number) { this.back.setAlpha(a); this.front.setAlpha(a); this.glow?.setAlpha(a); this.bloom?.setAlpha(a); }
+  destroy() { this.unflash(); ACTIVE.delete(this); if (this.sid) setHiddenParticles(this.sid, null); this.back.destroy(); this.front.destroy(); this.glow?.destroy(); this.bloom?.destroy(); }
 }

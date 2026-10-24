@@ -103,6 +103,10 @@ export const TOWERS: [number, number][] = [
   [-13, -WALL.y], [12, -WALL.y], [-13, WALL.y + 1], [12, WALL.y + 1],
   [-25, -10], [-25, 11], [WALL.x, -10], [WALL.x, 11],
 ];
+/** Штандарты Эмберхолла «Жаровня» (data/ember-guard.json, лист vfx ember-std — npm run assets): висят на башнях у ворот и посреди пролётов
+ *  (все башни, кроме угловых), поверх красного стяга башни; анимация ветра — цикл листа. */
+export const TOWN_STANDARD = "ember-std";
+export const STANDARD_TOWERS: [number, number][] = TOWERS.slice(4);
 /** Клетка — проём ворот в стене. */
 export const isGate = (dx: number, dy: number) =>
   (Math.abs(dx) <= 1 && Math.abs(dy) === WALL.y) || (Math.abs(dy) <= 1 && Math.abs(dx) === WALL.x);

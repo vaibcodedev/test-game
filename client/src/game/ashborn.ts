@@ -3,17 +3,17 @@
  * глаза-угли в прорези шлема, искры и пепел. Чистые функции без Phaser: возвращают прямоугольники 1 px, генератор
  * tools/gen/npc-sets.ts и игра рисуют их одинаково. Цикл data fx.frames кадров (12 к/с), пульс и полёт — с easing.
  *
- * Подключение в GearLayers (после второй части шага 8), для NPC с ashborn: true:
- *  - тело: лист nude_ashborn_<класс> (tools/out/npc-sets/ashborn/) вместо nude_<класс>;
- *  - end(slot, …): после рисования детали — ashCracks(пиксели детали без табарда/герба, slot, t, seed) → g.fillStyle(c, a).fillRect;
- *  - draw(): в конце, во front — ashEyes(view, t) и ashEmbers(t, seed) через this.R (кадровые координаты: flip и покачивание шага учтутся);
- *  - glow: true — светится: ночью рисовать поверх затемнения (или blend ADD).
+ * Подключено в GearLayers для геральдики с ash (shared/npcGear.ts HERALDRY.ember — стража Эмберхолла, kind Guard):
+ *  - тело: лист nude_ashborn_<класс> (npm run assets, tools/gen/ashborn-body.ts) вместо nude_<класс> — UnitView;
+ *  - end(slot, …): после рисования детали — ashCracks(пиксели детали без табарда/герба, slot, t, seed) — GearLayers.cracks;
+ *  - draw(): в конце, во front — ashEyes(view, t) и ashEmbers(t, seed) через R (flip, наклон и шаг учтены);
+ *  - glow: true — светится: ночью ещё раз поверх затемнения (GearLayers.glow) и мягкий отсвет (bloom, ADD).
  */
 import data from "../../../data/ember-guard.json";
 
 export interface AshRect { x: number; y: number; w: number; h: number; c: string; a: number; glow: boolean }
 const FX = data.fx;
-export const ASH_FRAMES = FX.frames, ASH_FPS = FX.fps;
+export const ASH_FRAMES = FX.frames, ASH_FPS = FX.fps, ASH_HALO = FX.halo;
 const PERIOD = (FX.frames / FX.fps) * 1000;
 
 const h32 = (a: number, b: number, c: number) => {

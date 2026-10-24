@@ -112,6 +112,9 @@ export class UnitView {
   private buffGfx?: Phaser.GameObjects.Graphics;
   private buffMask = 0;
   private layers?: GearLayers;
+  /** Знамя знаменосца стражи Эмберхолла — готовый лист vfx («Жаровня», heraldry.bearerSheet), в руке. */
+  private bearer?: Phaser.GameObjects.Sprite;
+  private bearerGlow?: Phaser.GameObjects.Image;
   /** Геральдика бойца фракции (u.herald, задача 132 шаг 8): разбирается один раз, пока строка не сменится. */
   private herald: Herald | null = null;
   private heraldKey: string | undefined = "";
@@ -182,7 +185,9 @@ export class UnitView {
     this.npc = u.kind === UnitKind.Guard || u.kind === UnitKind.Citizen;
     // герои рисуются голым телом, одежда — слоями экипировки (GearLayers)
     // бойцы фракций со снаряжением (задача 132, шаг 8) — так же: тело класса и слои
-    this.sid = this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
+    // стража Эмберхолла — Пепельнорождённые: тело из шлака nude_ashborn_<класс> (npm run assets, tools/gen/ashborn-body.ts)
+    const ash = this.layered() && this.heraldOf()?.H.ash && scene.textures.exists(`u_nude_ashborn_${u.sprite}`);
+    this.sid = ash ? `nude_ashborn_${u.sprite}` : this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
     const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_slime";
     this.frame = scene.textures.get(tex).get(0).width;
     const big = this.frame > 32;
@@ -219,11 +224,11 @@ export class UnitView {
 
   /** Рисуется ли юнит слоями снаряжения: герой и боец фракции с набором (u.gear). */
   private layered() {
-    return this.u.kind === UnitKind.Player || (this.u.kind === UnitKind.Soldier && !!this.u.gear);
+    return this.u.kind === UnitKind.Player || ((this.u.kind === UnitKind.Soldier || this.u.kind === UnitKind.Guard) && !!this.u.gear);
   }
   private heraldOf(): Herald | null {
     const u = this.u;
-    if (u.herald !== this.heraldKey) { this.heraldKey = u.herald; this.herald = u.kind === UnitKind.Soldier ? parseHerald(u.faction, u.herald) : null; }
+    if (u.herald !== this.heraldKey) { this.heraldKey = u.herald; this.herald = u.kind === UnitKind.Soldier ? parseHerald(u.faction, u.herald) : u.kind === UnitKind.Guard ? parseHerald("ember", u.herald) : null; }
     return this.herald;
   }
 
@@ -513,8 +518,10 @@ export class UnitView {
       const row = rowOf(u.dir), fr = Number(this.sprite.frame.name) || 0;
       this.layers.setDepth(this.y);
       this.layers.setAlpha(stealthy ? this.sprite.alpha : 1);
-      this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf, herald: this.heraldOf() });
-    } else this.layers?.hide();
+      const hd = this.heraldOf();
+      this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf, herald: hd, night: hd?.H.ash ? nightLevel(Date.now()) : 0 });
+      this.bearerFlag(hd?.banner && hd.H.bearerSheet ? hd.H.bearerSheet : "", stealthy ? this.sprite.alpha : 1);
+    } else { this.layers?.hide(); this.bearer?.setVisible(false); this.bearerGlow?.setVisible(false); }
 
     // полоска здоровья: у мобов только раненых или выбранных (боссы — всегда), тонкая, 2 px; под курсором — у любого существа, даже при выключенных «Полоски»
     const mobHidden = (u.kind === UnitKind.Mob || u.kind === UnitKind.Pet) && u.hp >= u.maxHp && !this.selected && !hov;
@@ -603,6 +610,28 @@ export class UnitView {
     g.fillStyle(hb ? hex(hb.mark) : 0xffe08a, 1).fillRect(bx + 3, by + 2, 1, 5).fillRect(bx + 2, by + 3, 3, 1);
   }
 
+  /** Знамя знаменосца из листа vfx (стража Эмберхолла): подток на земле у руки без факела, полотнище колышется циклом листа;
+   *  спереди и сбоку — перед телом, со спины — за ним. */
+  private bearerFlag(sheet: string, alpha: number) {
+    if (!sheet || !this.scene.anims.exists(`vfx_${sheet}`)) { this.bearer?.setVisible(false); this.bearerGlow?.setVisible(false); return; }
+    if (!this.bearer) {
+      const e = (this.scene.cache.json.get("vfxm") ?? {})[sheet] as { anchor: [number, number]; frames: number } | undefined;
+      this.bearer = this.scene.add.sprite(0, 0, `vfx_${sheet}`).setOrigin(e?.anchor[0] ?? 0.5, e?.anchor[1] ?? 1);
+      this.bearer.play({ key: `vfx_${sheet}`, repeat: -1, startFrame: this.seed % (e?.frames ?? 1) });
+    }
+    const d = this.u.dir, side = d === Dir.Left || d === Dir.Right;
+    // факел — в правой руке (UnitView.torch: +8, со спины −7), знамя — в другой
+    const dx = d === Dir.Left ? 7 : d === Dir.Up ? 7 : side ? -5 : -8;
+    this.bearer.setVisible(true).setAlpha(alpha).setFlipX(d === Dir.Left).setPosition(Math.round(this.sprite.x + dx), Math.round(this.sprite.y)).setDepth(d === Dir.Up ? this.y + 0.7 : side ? this.y - 0.3 : this.y + 0.6);
+    // ночью огонь жаровни-навершия светит поверх затемнения
+    const night = nightLevel(Date.now());
+    if (night > 0.2) {
+      this.bearerGlow ??= this.scene.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xffa040);
+      const top = this.bearer.y - this.bearer.displayOriginY, fl = 0.85 + Math.sin(this.scene.time.now / 90 + this.seed) * 0.1;
+      this.bearerGlow.setVisible(true).setPosition(this.bearer.x, top + 8).setDepth(DEPTH.top - 12).setScale(1.2 * fl).setAlpha(Math.min(1, night * 1.4) * 0.6 * alpha);
+    } else this.bearerGlow?.setVisible(false);
+  }
+
   /** Факел в руке: ночью с мерцающим светом (ADD), днём прячется. */
   private torch(on: boolean) {
     if (!on) { this.torchGfx?.setVisible(false); this.torchGlow?.setVisible(false); return; }
@@ -677,6 +706,8 @@ export class UnitView {
     this.torchGlow?.destroy();
     this.buffGfx?.destroy();
     this.layers?.destroy();
+    this.bearer?.destroy();
+    this.bearerGlow?.destroy();
     this.afxView?.destroy();
   }
 }
