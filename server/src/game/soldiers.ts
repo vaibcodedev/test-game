@@ -261,7 +261,8 @@ export class Soldiers {
     const list = NPC_GEAR.sets[f][tier][kind], key = `${f}:${tier}:${kind}`, n = this.variant.get(key) ?? 0;
     this.variant.set(key, n + 1);
     const set = list[n % list.length];
-    const bannerman = power?.kind !== "champion" && !this.banners.has(st.group);
+    // в городах (столицы и форты) знаменосцев нет (решение пользователя 2026-10-24) — только в патрулях, на мостах и в поселениях
+    const bannerman = power?.kind !== "champion" && !st.site?.city && !this.banners.has(st.group);
     if (bannerman) this.banners.add(st.group);
     const g = npcGearStrings(set, bannerman), u = m.unit;
     u.sprite = set.cls;

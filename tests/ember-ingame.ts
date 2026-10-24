@@ -135,7 +135,7 @@ async function scenario() {
             return { n, ash, layered, herald, bearer, glow };`);
           check(st.n >= 5 && st.ash === st.n && st.layered === st.n, `стража Эмберхолла — тело nude_ashborn_<класс> со слоями: ${st.ash}/${st.n}, слои ${st.layered}`);
           check(st.herald === st.n, `геральдика ember (Пепельнорождённые) у всей стражи рядом: ${st.herald}/${st.n}`);
-          check(st.bearer >= 1, `знаменосец со знаменем «Жаровня»: ${st.bearer}`);
+          check(st.bearer === 0, `в городе знаменосцев нет (решение пользователя): ${st.bearer}`);
           check(tod === "day" ? st.glow === 0 : st.glow === st.n, `${tod === "day" ? "днём слоя свечения нет" : "ночью светящееся — поверх затемнения"}: ${st.glow}/${st.n}`);
         }
         save(`guard-z${zoom}-${tod}.png`, await snap(row.x + 3 * DX, row.y - 30, 6 * DX + 30, 112));

@@ -104,8 +104,8 @@ export class Townfolk {
         // смотрят наружу: у боковых стен — от центра, у северных и южных ворот — к зрителю
         const dir = site.sideX !== null && Math.abs(dx) >= site.sideX ? (dx < 0 ? Dir.Left : Dir.Right) : Dir.Down;
         const f = this.add(site, true, p.x, p.y, { ...p, dir }, []);
-        // знаменосец — первый часовой каждой пары у ворот (shared/town.ts GATE_GUARDS)
-        if (site === SITES[0]) this.ashborn(f, i < GATE_GUARDS.length && i % 2 === 0);
+        // в городах знаменосцев нет (решение пользователя 2026-10-24): знамёна — на башнях стен
+        if (site === SITES[0]) this.ashborn(f, false);
       });
       for (const r of site.patrols) {
         const route = r.map(([dx, dy]) => ptPx(dx, dy));
