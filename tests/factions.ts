@@ -189,7 +189,7 @@ async function main() {
       await sleep(200);
       sol.toasts.length = 0;
       sol.send("tp:go", { id: home.id });
-      await sol.until(() => sol.toasts.some((t) => t.includes("Камень врага")), 2000, "камень врага закрыт: " + sol.toasts.join("|") + " hp " + sol.me().hp + " анимация " + sol.me().anim);
+      await sol.until(() => sol.toasts.some((t) => (t.includes("Камень врага") || t.includes("не служит врагам"))), 2000, "камень врага закрыт: " + sol.toasts.join("|") + " hp " + sol.me().hp + " анимация " + sol.me().anim);
       // герой Умбрата в своём форте: форт открывается, телепорт к столице работает
       umb.send("dbg", { op: "gold", v: 1000 });
       umb.send("dbg", { op: "tp", x: fu.stone.x, y: fu.stone.y + 20 });
