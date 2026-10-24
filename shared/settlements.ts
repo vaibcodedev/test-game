@@ -56,7 +56,7 @@ export interface Settlement {
   posts: Cell[];
   patrol: Cell[];
   spots: Cell[];
-  /** Клетки (тайлы) штандартов из world.json → banners: у ворот и по углам ограды. */
+  /** Клетки (тайлы) штандартов из world.json → banners: пара по бокам проёма ворот (settle-gate). */
   banners: { x: number; y: number; role: string }[];
 }
 

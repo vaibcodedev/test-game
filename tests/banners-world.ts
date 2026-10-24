@@ -1,11 +1,12 @@
 /**
  * Знамёна мира (задача 132, решение 5): снимки ворот и стен обеих столиц, обоих фортов, двух поселений и поста у Главного моста
  * на зуме 2, днём и ночью, в игре (сервер в этом же процессе, Vite и Chrome) и рендером карты (tools/preview-region.ts, ×2).
- * Снимки «было» и «стало» складываются в сравнения cmp-<место>-<день|ночь|карта>.png (было — сверху, стало — снизу).
+ * Снимки двух прогонов (TAG) складываются в сравнения <CMP>-<место>-<день|ночь|карта>.png: A — сверху, B — снизу (по умолчанию
+ * before | after → cmp-*; прореживание по отзыву пользователя: A=now B=thin CMP=thin — «как было после первой расстановки | стало»).
  *
  * Запуск (строго по одному; перед прогоном mkdir tools/out/scenario.lock, после — rmdir):
- *   TAG=before|after: $env:TAG="after"; $env:TEST_PORT="2851"; $env:VITE_TEST_PORT="5251"; npx tsx tests/banners-world.ts
- *   только рендер карты без сервера: npx tsx tests/banners-world.ts --regions; сравнения: npx tsx tests/banners-world.ts --compose
+ *   TAG — метка прогона (before, after, now, thin): $env:TAG="thin"; $env:TEST_PORT="2851"; $env:VITE_TEST_PORT="5251"; npx tsx tests/banners-world.ts
+ *   только рендер карты без сервера: npx tsx tests/banners-world.ts --regions; сравнения: $env:A="now"; $env:B="thin"; $env:CMP="thin"; npx tsx tests/banners-world.ts --compose
  * Выход — tools/out/banners-world/. Chrome: CHROME_PATH.
  */
 import fs from "node:fs";
@@ -16,7 +17,9 @@ import { PNG } from "pngjs";
 import { MAP_W, TILE } from "../shared/constants";
 
 const OUT = path.resolve("tools/out/banners-world");
-const TAG = process.env.TAG === "before" ? "before" : "after";
+const TAG = process.env.TAG || "after";
+/** Прогоны «до»: в них новых знамён нет или их ещё не проверяем. */
+const OLD = TAG === "before" || TAG === "now";
 const VIEW = { width: 1600, height: 1000 };
 /** Кадр в пикселях мира (на зуме 2 — 1600×960). */
 const FW = 800, FH = 480;
@@ -48,13 +51,13 @@ function regions() {
 /** Сравнения: было сверху, стало снизу, полоса 8 px между ними. */
 function compose() {
   for (const s of SPOTS) for (const [kind, file] of [["day", `ingame-%-${s.id}-day.png`], ["night", `ingame-%-${s.id}-night.png`], ["map", `region-%-${s.id}.png`]]) {
-    const a = path.join(OUT, file.replace("%", "before")), b = path.join(OUT, file.replace("%", "after"));
+    const a = path.join(OUT, file.replace("%", process.env.A || "before")), b = path.join(OUT, file.replace("%", process.env.B || "after"));
     if (!fs.existsSync(a) || !fs.existsSync(b)) continue;
     const A = read(a), B = read(b), gap = 8, out = new PNG({ width: Math.max(A.width, B.width), height: A.height + gap + B.height });
     for (let i = 0; i < out.data.length; i += 4) { out.data[i] = 22; out.data[i + 1] = 19; out.data[i + 2] = 26; out.data[i + 3] = 255; }
     PNG.bitblt(A, out, 0, 0, A.width, A.height, 0, 0);
     PNG.bitblt(B, out, 0, 0, B.width, B.height, 0, A.height + gap);
-    save(`cmp-${s.id}-${kind}.png`, out);
+    save(`${process.env.CMP || "cmp"}-${s.id}-${kind}.png`, out);
   }
 }
 
@@ -144,7 +147,7 @@ async function scenario() {
         await sleep(2600);
         await run("sc.cameras.main.stopFollow(); sc.cameras.main.centerOn(a.x, a.y);", { x: cx, y: cy });
         await sleep(1400);
-        if (TAG === "after" && tod === "day") {
+        if (!OLD && tod === "day") {
           const n = await run<number>("let n = 0; for (const o of sc.children.list) if (o.type === 'Sprite' && o.texture && /^vfx_std-(home|wall|gate)-/.test(o.texture.key) && o.anims && o.anims.isPlaying && Math.abs(o.x - a.x) < 400 && Math.abs(o.y - a.y) < 320) n++; return n;", { x: cx, y: cy });
           check(n > 0, `${s.id}: знамёна в кадре играют анимацию (${n})`);
         }

@@ -15,7 +15,7 @@ import world from "../data/world.json";
 import PATROLS from "../data/patrols.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
-import { CAPITAL_DECOR, CITIES, CITY_HOUSES, CITY_WALL_BANNERS, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
+import { CAPITAL_DECOR, CITIES, CITY_CORNER_TOWERS, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
 import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
@@ -129,7 +129,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 8; // 8 — штандарты своих земель у ворот городов, фортов и постов у мостов (вместо sun/crown_banner); 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 9; // 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -814,13 +814,10 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
   for (let dx = -CITY_WALL.x; dx <= CITY_WALL.x; dx++) for (const dy of [-CITY_WALL.y, CITY_WALL.y]) if (wallOk(dx, dy)) place(St.wall_h, X(dx), Y(dy));
   for (let dy = -CITY_WALL.y + 1; dy < CITY_WALL.y; dy++) for (const dx of [-CITY_WALL.x, CITY_WALL.x]) if (wallOk(dx, dy)) place(St.wall_v, X(dx), Y(dy));
   for (const dy of [-CITY_WALL.y, CITY_WALL.y]) objects.push({ kind: St.gate, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 2 });
-  // настенные знамёна (проход не загораживают): над воротами, на башнях и посреди пролётов северной и южной стен; объект — у основания
+  // настенные знамёна (проход не загораживают): крупное над аркой ворот и по одному на угловых башнях; объект — у основания
   // стены на 1 px ниже неё (рисуется поверх кладки), высоту крепления задаёт якорь листа (tools/gen/standards-to-game.ts)
-  for (const dy of [-CITY_WALL.y, CITY_WALL.y]) {
-    objects.push({ kind: St.gateBanner, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 1 });
-    for (const dx of CITY_WALL_BANNERS) objects.push({ kind: St.wallBanner, x: X(dx) * TILE + 16, y: (Y(dy) + 1) * TILE - 1 });
-  }
-  for (const [dx, dy] of CITY_TOWERS) objects.push({ kind: St.wallBanner, x: (X(dx) + 1) * TILE, y: (Y(dy) + 1) * TILE - 1 });
+  for (const dy of [-CITY_WALL.y, CITY_WALL.y]) objects.push({ kind: St.gateBanner, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 1 });
+  for (const [dx, dy] of CITY_CORNER_TOWERS) objects.push({ kind: St.wallBanner, x: (X(dx) + 1) * TILE, y: (Y(dy) + 1) * TILE - 1 });
   const fits = (kind: string, x: number, y: number) => {
     const f = OBJECT_FOOTPRINT[kind] ?? { w: 1, h: 1 };
     for (let j = 0; j < f.h; j++) for (let i = 0; i < f.w; i++) if (cell[(y - j) * w + x + i] & CELL_BLOCK) return false;
@@ -976,17 +973,12 @@ function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn,
         place(wallKind, x, y);
       }
     }
-    // знамёна у постов на мостах: настенные на обеих башнях у ворот (выше двери, поверх нарисованного стяга башни) и штандарты на древке
-    // по бокам проёма с внутренней стороны (world.json → banners, роли gate-in-n/s)
+    // знамя у поста на мосту — одно на сторону: настенное на южной башне у ворот (выше двери, поверх нарисованного стяга башни;
+    // у северной башни стоит оберег)
     for (const t of WALLS.towers) {
-      if (!WALLS.gates.some((g) => Math.abs(t.y - g.y) <= g.half + 3)) continue;
+      if (!WALLS.gates.some((g) => t.y > g.y && t.y - g.y <= g.half + 3)) continue;
       const c = wallCol(t.y), ax = east ? w - 1 - c : c - 1;
       bannerObjects.push({ kind: east ? "std-wall-umb-hi" : "std-wall-sol-hi", x: (ax + 1) * TILE + 6, y: (t.y + 1) * TILE - 1 });
-    }
-    for (const b of world.banners.list as { bridge?: string; role: string; faction: string; x: number; y: number }[]) {
-      if (!b.bridge || !b.role.startsWith("gate-in") || (b.faction === "umbrath") !== east) continue;
-      const x = Math.floor(b.x), y = Math.floor(b.y);
-      if (!(cell[y * w + x] & CELL_BLOCK)) place(east ? "std-home-umb" : "std-home-sol", x, y);
     }
   }
 }

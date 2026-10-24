@@ -179,9 +179,9 @@ console.log(`NPC мира: ${WORLD_NPCS.length}; банкиров ${BANKERS.leng
     for (const b of s.banners) if (!m.objects.some((o) => o.kind === kind && Math.floor(o.x / TILE) === b.x && Math.floor(o.y / TILE) === b.y)) fail(`${tag}: нет штандарта ${b.role} на ${b.x},${b.y}`);
     const gateFlags = s.banners.filter((b) => b.role === "settle-gate");
     if (gateFlags.length !== 2 || !gateFlags.every((b) => gateCells(s).some(([x, y]) => Math.abs(x - b.x) + Math.abs(y - b.y) === 1))) fail(`${tag}: штандарты settle-gate не по бокам проёма ворот`);
+    // углы ограды — без штандартов (знамёна акцентами: только пара у ворот)
     const corners = [[-s.ring.w, -s.ring.n], [s.ring.w, -s.ring.n], [-s.ring.w, s.ring.s], [s.ring.w, s.ring.s]];
-    const wallFlags = s.banners.filter((b) => b.role === "settle-wall");
-    if (wallFlags.length !== 4 || !wallFlags.every((b) => corners.some(([dx, dy]) => b.x === s.x + dx && b.y === s.y + dy))) fail(`${tag}: штандарты settle-wall не по углам ограды`);
+    if (s.banners.length !== 2 || corners.some(([dx, dy]) => m.objects.some((o) => o.kind === kind && Math.floor(o.x / TILE) === s.x + dx && Math.floor(o.y / TILE) === s.y + dy))) fail(`${tag}: штандарты не только у ворот`);
   }
   // по одному поселению в каждой большой зоне своих земель: 1–10, 10–20, 20–30, 30–40 у каждой фракции
   for (const f of ["solgard", "umbrath"]) for (const r of ["1–10", "10–20", "20–30", "30–40"]) if (!lv.has(`${f}:${r}`)) fail(`${f}: нет поселения в зоне ${r}`);

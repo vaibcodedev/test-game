@@ -94,7 +94,7 @@ check(ZONES[Zone.Fields].name === "Поля вечных битв" && ZONES[Zone
   // центр места не в воде и не в лаве (мелкое убранство вроде костра может стоять на самой клетке)
   const wet = (x: number, y: number) => [m.vtx[y * (W + 1) + x], m.vtx[y * (W + 1) + x + 1], m.vtx[(y + 1) * (W + 1) + x], m.vtx[(y + 1) * (W + 1) + x + 1]].some((t) => t === 0 || t === 1);
   check(PLACES.every((p) => !wet(Math.round(p.x), Math.round(p.y))), "место в воде или лаве: " + PLACES.filter((p) => wet(Math.round(p.x), Math.round(p.y))).map((p) => p.id).join(","));
-  // штандарты: у ворот стен и мостов — 36; у каждого поселения (шаг 3) — шесть своей фракции: два у ворот и четыре по углам ограды; все — зеркальными парами
+  // штандарты: места у ворот стен и мостов — 36; у каждого поселения — два своей фракции по бокам ворот (углы ограды без них — знамёна акцентами); все — зеркальными парами
   const bn = world.banners.list as { id: string; bridge?: string; place?: string; role: string; faction: string; x: number; y: number }[];
   const atBridge = bn.filter((q) => q.bridge), atSettle = bn.filter((q) => q.place);
   check(atBridge.length === 36, `штандартов у ворот и мостов 36, сейчас ${atBridge.length}`);
@@ -104,8 +104,8 @@ check(ZONES[Zone.Fields].name === "Поля вечных битв" && ZONES[Zone
     `поселений 8 (по 4 на фракцию, на своих землях), сейчас ${SETTLEMENTS.length}`);
   for (const s of SETTLEMENTS) {
     const own = atSettle.filter((q) => q.place === s.id);
-    check(own.length === 6 && own.every((q) => q.faction === s.faction), `${s.name}: штандартов своей фракции ${own.filter((q) => q.faction === s.faction).length} из 6`);
-    check(own.filter((q) => q.role === "settle-gate").length === 2 && own.filter((q) => q.role === "settle-wall").length === 4, `${s.name}: штандарты не у ворот (2) и по углам ограды (4)`);
+    check(own.length === 2 && own.every((q) => q.faction === s.faction), `${s.name}: штандартов своей фракции ${own.filter((q) => q.faction === s.faction).length} из 2`);
+    check(own.every((q) => q.role === "settle-gate"), `${s.name}: штандарты не у ворот`);
   }
 }
 {
