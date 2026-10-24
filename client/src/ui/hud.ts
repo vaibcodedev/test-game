@@ -169,7 +169,7 @@ export class Hud {
   private layoutBottom() {
     const bw = this.bar.offsetWidth, bh = this.bar.offsetHeight;
     if (!bw || !bh) return;
-    const EDGE = 12, GAP = 8, FRAME = 8, MIN = 320;
+    const EDGE = 12, GAP = 8, FRAME = 8, MIN = 300;
     const s = scaleOf(this.bar), W = innerWidth / s, H = innerHeight / s;
     const beside = (W - bw) / 2 - FRAME - EDGE - GAP;
     const fits = beside >= MIN;

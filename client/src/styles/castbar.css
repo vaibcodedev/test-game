@@ -3,13 +3,13 @@
    Состояния: .in — появление, .ok — успех (вспышка и уход), .fail — прерывание (трещина, дрожь, затухание). */
 .cb { --cc: var(--gold); --p: 0; pointer-events: none; font-family: var(--font); color: var(--fg); }
 .cb[hidden] { display: none !important; }
-.cb-self { position: fixed; left: 50%; bottom: 116px; translate: -50% 0; z-index: 20; }
+.cb-self { position: fixed; left: 50%; bottom: 124px; translate: -50% 0; z-index: 20; --cs: .8; scale: var(--cs); transform-origin: 50% 100%; }
 .cb-boss { align-self: center; --cc: var(--boss); }
 .cb.in { animation: cb-in .22s cubic-bezier(.2, .9, .3, 1.25) both; }
 .cb.ok { animation: cb-out .52s cubic-bezier(.4, 0, .2, 1) forwards; }
 .cb.fail { animation: cb-shake .3s cubic-bezier(.36, .07, .19, .97), cb-fade .76s cubic-bezier(.55, 0, .75, .2) forwards; }
-@keyframes cb-in { from { opacity: 0; scale: .92; } to { opacity: 1; scale: 1; } }
-@keyframes cb-out { 0% { opacity: 1; scale: 1; } 35% { opacity: 1; scale: 1.05; } 100% { opacity: 0; scale: 1.08; } }
+@keyframes cb-in { from { opacity: 0; scale: calc(.92 * var(--cs, 1)); } to { opacity: 1; scale: var(--cs, 1); } }
+@keyframes cb-out { 0% { opacity: 1; scale: var(--cs, 1); } 35% { opacity: 1; scale: calc(1.05 * var(--cs, 1)); } 100% { opacity: 0; scale: calc(1.08 * var(--cs, 1)); } }
 @keyframes cb-fade { 0%, 45% { opacity: 1; filter: none; } 100% { opacity: 0; filter: grayscale(.8) brightness(.6); } }
 @keyframes cb-shake { 0%, 100% { translate: var(--tx, 0) 0; } 20% { translate: calc(var(--tx, 0px) - 4px) 0; } 40% { translate: calc(var(--tx, 0px) + 3px) 0; } 60% { translate: calc(var(--tx, 0px) - 2px) 0; } 80% { translate: calc(var(--tx, 0px) + 1px) 0; } }
 .cb-self { --tx: -50%; }

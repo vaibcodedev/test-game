@@ -1,6 +1,6 @@
 /* ---------- панель умений (ui/hotbar.ts) — компактная лента в духе GW2/ESO: крылья по краям, герб фракции посреди умений ----------
    Размеры подобраны так, чтобы чат вставал слева от панели уже на 1366×768 при масштабе 100% (ui/hud.ts layoutBottom, MIN 320):
-   слот 36px, иконка 34px; крылья — в собственных полях панели (их ширина входит в offsetWidth).
+   слот 39px, иконка 37px; крылья — в собственных полях панели (их ширина входит в offsetWidth).
    Состояния: шторка перезарядки по кругу (--p ставит hotbar.ts) с лучом на краю и числом, .rdy — вспышка готовности,
    .nomana — синеватая, .oor/.nolos — красноватая (умножение слоем .tint, как SetVertexColor в WoW), .press и :active — вдавливание,
    .queued — бегущая золотая рамка, пустой слот — вдавленное гнездо, .drag и [data-dragging] — перетаскивание. */
@@ -9,9 +9,9 @@
   content: "";
   position: absolute;
   top: 50%;
-  width: 22px;
-  height: 34px;
-  margin-top: -17px;
+  width: 24px;
+  height: 38px;
+  margin-top: -19px;
   pointer-events: none;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .7));
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 84'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffe9a0'/%3E%3Cstop offset='.4' stop-color='%23d6a84b'/%3E%3Cstop offset='1' stop-color='%235a3a14'/%3E%3C/linearGradient%3E%3ClinearGradient id='d' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%232e2432'/%3E%3Cstop offset='1' stop-color='%230e0b10'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M64 18 C44 12 22 6 3 2 C10 14 17 23 31 30 C18 33 10 40 4 50 C18 49 30 47 41 44 C31 53 25 63 22 78 C35 68 47 60 64 56 Z' fill='url(%23g)' stroke='%23000' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M64 25 C47 21 31 17 17 11 C23 20 30 26 40 31 C30 35 22 39 16 45 C30 44 42 42 50 40 C42 47 36 55 33 64 C42 58 52 53 64 50 Z' fill='url(%23d)'/%3E%3Ccircle cx='58' cy='37' r='4' fill='%23ffe9a0' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -25,7 +25,7 @@
 .hb-extras { display: flex; gap: 2px; align-items: flex-end; position: relative; }
 
 .hud-bar .hb-slot, .hud-bar .hb-extras .slot {
-  --sz: 36px;
+  --sz: 39px;
   --trim: #6a5236;
   width: var(--sz);
   height: var(--sz);
@@ -35,9 +35,9 @@
   box-shadow: 0 0 0 1px var(--trim);
   transition: scale .12s cubic-bezier(.2, .7, .3, 1), translate .12s cubic-bezier(.2, .7, .3, 1), filter .15s, box-shadow .2s, opacity .2s;
 }
-.hud-bar .hb-slot img { width: 34px; height: 34px; margin: 0; border-radius: 2px; image-rendering: auto; }
-.hud-bar .hb-extras .slot img { width: 32px !important; height: 32px !important; left: 1px !important; top: 1px !important; }
-.hud-bar .hb-slot .act, .hud-bar .hb-extras .slot > span { font-size: 18px !important; line-height: 34px !important; }
+.hud-bar .hb-slot img { width: 37px; height: 37px; margin: 0; border-radius: 2px; image-rendering: auto; }
+.hud-bar .hb-extras .slot img { width: 35px !important; height: 35px !important; left: 1px !important; top: 1px !important; }
+.hud-bar .hb-slot .act, .hud-bar .hb-extras .slot > span { font-size: 18px !important; line-height: 38px !important; }
 /* скос и внутренняя тень поверх иконки, под надписями (первый из позиционированных детей) */
 .hud-bar .hb-slot::before, .hud-bar .hb-extras .slot::before {
   content: "";
@@ -119,8 +119,8 @@
   display: block;
   position: relative;
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   margin: -6px 4px 0;
   align-self: flex-start;
   border-radius: 50%;
