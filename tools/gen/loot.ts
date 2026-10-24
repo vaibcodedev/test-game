@@ -14,6 +14,8 @@ export const LOOT_DROP = 10;
 
 const RARITY = ["#e8e2d0", "#5fa8ff", "#c47bff", "#ff9a2e"];
 const WHITE = hex("#fffaf0");
+/** Светлый контур заметности (тёплый нейтральный, полупрозрачный). */
+const VIS_RING = hex("#efe2c0", 190);
 /** Рампа редкости: 0 — тень, 2 — токен, 4 — почти белый. */
 function rr(r: number): Ramp {
   const t = hex(RARITY[r]);
@@ -166,9 +168,11 @@ function sparkle(c: PC, x: number, y: number, s: number, R: Ramp) {
 }
 
 /** Лист 20 кадров: падение и отскок (0..9), покой с мерцанием (10..19). */
-export function buildLootSheet(variant: LootVariant, r: number, boss: boolean) {
+export function buildLootSheet(variant: LootVariant, r: number, boss: boolean, vis = true) {
   const k = boss ? 1.35 : 1;
   const obj = LOOT_DRAW[variant](r, k);
+  // заметность на любой земле: светлый тёплый контур 1 px поверх тёмного (нейтральный, не цвет редкости)
+  if (vis) obj.outline(VIS_RING);
   const FW = obj.w + 12, FH = obj.h + 16, G = FH - 3, CX = FW / 2;
   const R = rr(r);
   const sheet = new PC(FW * LOOT_FRAMES, FH);
@@ -185,7 +189,9 @@ export function buildLootSheet(variant: LootVariant, r: number, boss: boolean) {
   };
   const shadow = (f: PC, lift: number) => {
     const rx = (obj.w * 0.42) * (1 - lift / 40), a = 110 * (1 - lift / 30);
-    f.ellipse(CX + 0.5, G + 0.5, rx, 1.8, withA(OUTLINE, Math.round(a)));
+    // мягкое тёмное пятно под предметом: широкий слабый слой и плотное ядро
+    if (vis) f.ellipse(CX + 0.5, G + 0.5, rx + 3, 3, withA(OUTLINE, Math.round(a * 0.5)));
+    f.ellipse(CX + 0.5, G + 0.5, rx, vis ? 2.2 : 1.8, withA(OUTLINE, Math.round(vis ? a * 1.25 : a)));
   };
   const frames: PC[] = [];
   // 0..9: падение (easeIn), удар со сплющиванием, отскок (easeOut), осадка

@@ -30,7 +30,7 @@ import { AimPreview } from "./aim";
 import { aimUnit, castAim, hitUnitsOf, PICK_NEAR, pickOrder, pickReach, resolveCast, selTarget, tabOrder, TrapWatch, unitRadius, type CastPlan, type CastUnit, type HitView, type PickCtx, type PickOut, type PickSource } from "./castResolve";
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
-import { spawnLoot } from "./lootView";
+import { removeLoot, spawnLoot } from "./lootView";
 
 type NpcKind = WorldNpcKind | "enc" | "stone";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
@@ -1062,7 +1062,8 @@ export class GameScene extends Phaser.Scene {
 
   syncBags(bags: LootBag[]) {
     const ids = new Set(bags.map((b) => b.id));
-    for (const [id, img] of this.bagViews) if (!ids.has(id)) { img.destroy(); this.bagViews.delete(id); }
+    // убранный мешок: рядом с героем — эффект подбора (lootView.ts), иначе тихо гаснет
+    for (const [id, img] of this.bagViews) if (!ids.has(id)) { removeLoot(this, img, this.pos, PICKUP_RANGE + 24); this.bagViews.delete(id); }
     for (const b of bags) {
       if (this.bagViews.has(b.id)) continue;
       // добыча: падение с отскоком и мерцание по редкости — кадры листа (lootView.ts, tools/gen/loot.ts)

@@ -121,3 +121,34 @@ for (const v of ["bag", "chest"] as LootVariant[]) {
   for (let y = 0; y < big.h; y++) for (let x = 0; x < big.w; x++) { const p = d.get(Math.floor(x / 10), Math.floor(y / 10))!; if (p[3]) big.set(x, y, p); }
   big.save(path.join(OUT, "detail.png"));
 }
+
+// заметность обычной добычи: «было | стало» на траве, камне, пепле, снегу и ночью (×4)
+{
+  const fr = (v: LootVariant, r: number, vis: boolean) => {
+    const { sheet, fw, fh } = buildLootSheet(v, r, false, vis);
+    const f = new PC(fw, fh);
+    for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) { const p = sheet.get(13 * fw + x, y)!; if (p[3]) f.set(x, y, p); }
+    return f;
+  };
+  const vcols: [string, PC][] = [
+    ["HERO", hero], ["OLD V2", fr("chest", 0, false)], ["NEW V2", fr("chest", 0, true)], ["OLD V1", fr("bag", 0, false)], ["NEW V1", fr("bag", 0, true)],
+    ["V2 R1", fr("chest", 1, true)], ["V2 R2", fr("chest", 2, true)], ["V2 R3", fr("chest", 3, true)], ["V1 R1", fr("bag", 1, true)], ["V1 R3", fr("bag", 3, true)],
+  ];
+  const rows: [string, Ramp, number, boolean][] = [["GRASS", P.grass, 3, false], ["STONE", P.cobble, 5, false], ["ASH", P.ash, 7, false], ["SNOW", P.snow, 13, false], ["NIGHT", P.grass, 3, true], ["NIGHT ASH", P.ash, 7, true]];
+  const cw = 38, rh = 44;
+  const v = new PC(cw * vcols.length + 8, 12 + rows.length * rh);
+  v.rect(0, 0, v.w, v.h, hex("#141018"));
+  text(v, "OLD | NEW  COMMON R0 VISIBILITY   R1-R3 FOR COMPARISON", 4, 3);
+  rows.forEach(([name, rp, seed, night], ri) => {
+    const y0 = 12 + ri * rh;
+    const row = new PC(v.w - 8, rh - 2);
+    ground(row, 0, 0, row.w, row.h, rp, seed);
+    vcols.forEach(([, im], ci) => row.blit(im, ci * cw + Math.round((cw - im.w) / 2), row.h - 6 - im.h + (ci === 0 ? 2 : 3)));
+    // ночь: как сумерки в игре — затемнение с холодным оттенком
+    if (night) row.map((c) => [Math.round(c[0] * 0.38), Math.round(c[1] * 0.42), Math.round(c[2] * 0.55), c[3]]);
+    v.blit(row, 4, y0);
+    text(v, name, 6, y0 + 2);
+    if (ri === 0) vcols.forEach(([l], ci) => text(v, l, 4 + ci * cw + Math.round(cw / 2 - l.length * 2), y0 + rh - 9));
+  });
+  save(v, "visible.png");
+}
