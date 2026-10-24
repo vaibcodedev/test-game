@@ -1,4 +1,5 @@
 /** Города: диалог заданий, журнал, трекер под рамкой героя и окно камня телепорта. */
+import { npcRefuses, stoneRefuses } from "./npcGate";
 import { formatNumber, gold } from "./gold";
 import { CITIES, TELEPORT_CAST_MS, cityKnown, isEnemyCapital, stoneNear, teleportPrice, type City, type CityNpc } from "../../../shared/cities";
 import { FACTIONS, type FactionId } from "../../../shared/factions";
@@ -103,6 +104,7 @@ export class QuestUI {
     this.net = net;
   }
   open(giver: string) {
+    if (npcRefuses(this.net, "quest", giver)) return;
     this.giver = giver;
     this.winKey = "";
     this.win.hidden = false;
@@ -186,6 +188,7 @@ export class TeleportUI {
     this.net = net;
   }
   open(pos: { x: number; y: number }) {
+    if (stoneRefuses(this.net, pos)) return;
     this.pos = pos;
     this.opened = true;
     this.key = "";

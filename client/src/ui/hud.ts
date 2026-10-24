@@ -1,4 +1,5 @@
 /** Интерфейс поверх игры (DOM): панели, окна, чат, мини-карта, подсказки. */
+import { npcRefuses, setNpcGateToast } from "./npcGate";
 import { formatNumber, gold, goldify } from "./gold";
 import { initWindowDrag, resetWindowPositions, scaleOf } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
@@ -233,6 +234,7 @@ export class Hud {
     this.mini.append(miniBtn);
     this.buildMenu();
     this.makeWindows();
+    setNpcGateToast((text) => this.toast({ text, kind: "error" }));
     this.arena = new ArenaUI(root, (text, kind) => this.toast({ text, kind }));
     this.raid = new RaidHud(root);
     this.bestiary = new BestiaryUI(root, icon);
@@ -632,6 +634,7 @@ export class Hud {
   }
   /** Окно торговли; name — у кого (торговцы городов и поселений), по умолчанию Марфа. */
   openShop(name = "Торговка Марфа") {
+    if (npcRefuses(this.ctx?.net, "shop", name)) return;
     this.ctx.net.send("market:get", {});
     const title = this.wins.shop.querySelector("h2 > span");
     if (title && title.textContent !== name) title.textContent = name;

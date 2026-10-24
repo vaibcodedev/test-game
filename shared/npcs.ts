@@ -7,13 +7,15 @@ import townfolk from "../data/townfolk.json";
 import { ARENA_NPC } from "./arena";
 import { BAGMEN } from "./bags";
 import { BANKERS } from "./bank";
-import { CITIES } from "./cities";
+import { cityAtTile, CITIES } from "./cities";
+import { TILE } from "./constants";
+import { FACTIONS, type FactionId } from "./factions";
 import { COOKS } from "./food";
 import { MARKET_MERCHANT } from "./map";
 import { QUEST_GIVERS } from "./quests";
 import { RAID, RAID_HERALDS } from "./raid";
 import { RUMOR_NPCS } from "./rumors";
-import { SETTLEMENTS } from "./settlements";
+import { settlementAt, SETTLEMENTS } from "./settlements";
 import { SMITHS } from "./upgrade";
 
 /** Что делает NPC по нажатию (окно на клиенте): торговля, арена, еда, заточка, банк, сумки, слухи, рейд, задания. */
@@ -46,3 +48,40 @@ export const WORLD_NPCS: WorldNpc[] = [
   ...RAID_HERALDS.map((h) => as("raid")({ ...h, sprite: RAID.npc.sprite, color: RAID.npc.color, tint: Number(RAID.npc.tint) })),
   ...QUEST_GIVERS.map(as("quest")),
 ];
+
+// ---------- фракция NPC (решение пользователя: чужим не служат) ----------
+
+/** Фракция NPC по месту (пиксели): столица/форт — capital, поселение — его фракция; Эмберхолл и дикие земли — null (служат всем). */
+export function npcFaction(x: number, y: number): FactionId | null {
+  const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+  const c = cityAtTile(tx, ty);
+  if (c) return (c.capital as FactionId | undefined) ?? null;
+  return (settlementAt(tx, ty)?.faction as FactionId | undefined) ?? null;
+}
+const VERB: Record<WorldNpcKind, string> = {
+  shop: "не торгует с врагами", cook: "не торгует с врагами", bank: "не торгует с врагами", bags: "не торгует с врагами",
+  smith: "не работает на врагов", quest: "не даёт заданий врагам", rumor: "не говорит с врагами", raid: "не собирает в поход врагов", arena: "не служит врагам",
+};
+/** Текст отказа: «Казначей Лукиан не торгует с врагами Сольгарда». */
+export function npcRefusalText(n: { kind: WorldNpcKind; name: string; x: number; y: number }, f: FactionId): string {
+  return `${n.name} ${VERB[n.kind]} ${FACTIONS[f]?.name ?? f}а`;
+}
+/** Отказ NPC герою чужой фракции, или null — служит (свой, нейтральный, без фракции у героя). */
+export function npcRefusal(n: { kind: WorldNpcKind; name: string; x: number; y: number }, heroFaction: string | undefined): string | null {
+  const f = npcFaction(n.x, n.y);
+  if (!f || !heroFaction || f === heroFaction) return null;
+  return npcRefusalText(n, f);
+}
+/**
+ * Сервер: рядом (≤ range) есть NPC вида kind, но все ближние — чужой фракции → текст отказа; иначе null (дальность проверяет вызывающий).
+ */
+export function serviceRefusal(kind: WorldNpcKind, x: number, y: number, heroFaction: string | undefined, range: number): string | null {
+  let refusal: string | null = null;
+  for (const n of WORLD_NPCS) {
+    if (n.kind !== kind || Math.hypot(n.x - x, n.y - y) > range) continue;
+    const r = npcRefusal(n, heroFaction);
+    if (!r) return null;
+    refusal ??= r;
+  }
+  return refusal;
+}

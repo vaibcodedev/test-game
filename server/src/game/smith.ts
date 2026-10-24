@@ -1,5 +1,6 @@
 /** Кузнецы (Гром в Эмберхолле и кузнецы столиц): покупка материалов и улучшение предметов +1…+10. Всё проверяется на сервере. */
 import { MERCHANT_RANGE } from "../../../shared/constants";
+import { serviceRefusal } from "../../../shared/npcs";
 import { BASE_ITEMS, itemName, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
 import { failLevel, MATERIALS, MAX_PLUS, SMITHS, stepFor } from "../../../shared/upgrade";
 import { addItem } from "./inventory";
@@ -9,6 +10,8 @@ import type { World } from "./World";
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
 /** Рядом ли кузнец: Эмберхолл или любая из столиц (решение 2 задачи 132). */
 const smithNear = (w: World, p: Player) => SMITHS.some((s) => w.dist(p, s) <= MERCHANT_RANGE);
+/** Кузнец рядом, но чужой фракции: текст отказа. */
+const smithRefusal = (p: Player) => serviceRefusal("smith", p.x, p.y, p.faction, MERCHANT_RANGE);
 const count = (p: Player, base: string) => p.save.inventory.reduce((n, it) => n + (it && it.base === base ? it.qty ?? 1 : 0), 0);
 function take(p: Player, base: string, n: number) {
   const inv = p.save.inventory;
@@ -26,6 +29,8 @@ export function buyMaterial(w: World, p: Player, id: unknown, qtyRaw: unknown) {
   const m = typeof id === "string" ? MATERIALS[id] : undefined;
   if (!m) return;
   if (!smithNear(w, p)) return err(p, "Кузнец далеко");
+  const no = smithRefusal(p);
+  if (no) return err(p, no);
   const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.min(99, qtyRaw as number)) : 1;
   const price = m.price * qty;
   if (p.save.gold < price) return err(p, "Не хватает золота");
@@ -43,6 +48,8 @@ export function upgradeItem(w: World, p: Player, index: unknown, slot: unknown, 
   if (p.dead) return;
   if (p.team !== 0) return err(p, "На арене улучшать нельзя");
   if (!smithNear(w, p)) return err(p, "Кузнец далеко");
+  const no = smithRefusal(p);
+  if (no) return err(p, no);
   let it: Item | null | undefined;
   if (slot !== undefined && slot !== null) {
     if (typeof slot !== "string" || !SLOTS.includes(slot as Slot)) return;

@@ -1,4 +1,5 @@
 /** Повар Борщан: небольшое окно с блюдами; описание бонусов еды для подсказок. */
+import { npcRefuses } from "./npcGate";
 import { gold } from "./gold";
 import { COOK, COOKS, FOOD_IDS, FOOD, type Dish } from "../../../shared/food";
 import { ITEM_STAT_NAMES, type ItemStatKey } from "../../../shared/items";
@@ -62,6 +63,7 @@ export class CookUI {
     this.net = net;
   }
   open(id?: string) {
+    if (npcRefuses(this.net, "cook", id)) return;
     this.who = COOKS.find((c) => c.id === id) ?? COOK;
     this.win.hidden = false;
     if (this.built !== this.who.id) this.build();

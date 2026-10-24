@@ -1,4 +1,5 @@
 /** Банк Голдмунда: вкладки, ячейки, перетаскивание сумка ⇄ банк, золото и покупка места. Всё проверяет сервер. */
+import { npcRefuses } from "./npcGate";
 import { gold } from "./gold";
 import { BANK_STEP, BANK_TAB_SIZE, BANK_TABS, BANKER, BANKERS, SHARED_SIZE, SHARED_TAB, type BankView } from "../../../shared/bank";
 import { iconFor, itemName, type Item } from "../../../shared/items";
@@ -97,6 +98,7 @@ export class BankUI {
   }
   /** id — банкир, у которого открыли (Эмберхолл или столица): его имя в заголовке и приветствие. */
   open(id?: string) {
+    if (npcRefuses(this.net, "bank", id)) return;
     const who = BANKERS.find((b) => b.id === id) ?? BANKER;
     this.win.querySelector("h2 > span")!.textContent = who.name;
     this.win.querySelector(".npc-say")!.textContent = who.greeting ?? "";

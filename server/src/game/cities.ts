@@ -1,9 +1,11 @@
 /** Города на сервере: открытие телепортов, телепорт-кастинг (3 с) и задания. Всё проверяется здесь, клиент шлёт намерения. */
 import { cityAtTile, cityById, cityKnown, homeCity, isEnemyCapital, stoneNear, teleportPrice, TELEPORT_CAST_MS } from "../../../shared/cities";
 import { TILE } from "../../../shared/constants";
+import { FACTIONS, type FactionId } from "../../../shared/factions";
 import { makeItem, Rarity } from "../../../shared/items";
 import { QUESTS, QUEST_GIVERS, QUEST_MAX_ACTIVE } from "../../../shared/quests";
 import { MERCHANT_RANGE } from "../../../shared/constants";
+import { npcRefusal } from "../../../shared/npcs";
 import type { On } from "../rooms/common";
 import { addItem } from "./inventory";
 import type { Player } from "./Player";
@@ -58,7 +60,7 @@ export function startTeleport(w: World, p: Player, id: unknown) {
   if (!from) return err(p, "Подойдите к камню телепорта");
   const to = cityById(id);
   const found = p.save.cities ?? [];
-  if (isEnemyCapital(from, p.faction)) return err(p, "Камень врага вам не подчиняется");
+  if (isEnemyCapital(from, p.faction)) return err(p, `Камень телепорта ${from.name} не служит врагам ${FACTIONS[from.capital as FactionId]?.name ?? ""}а`);
   if (!to || to.id === from.id || !cityKnown(to, found, p.faction)) return err(p, "Этот телепорт не открыт");
   if (p.tele) return;
   if (p.inCombat(w.time)) return err(p, "Нельзя телепортироваться в бою");
@@ -91,15 +93,18 @@ export function questProgress(p: Player, kind: "kill" | "gather", target: string
   if (changed) p.selfDirty = true;
 }
 
-function nearGiver(w: World, p: Player, giver: string) {
+/** Ошибка заказчика: далеко или чужой фракции; null — можно. */
+function giverErr(w: World, p: Player, giver: string): string | null {
   const g = QUEST_GIVERS.find((x) => x.id === giver);
-  return !!g && w.dist(p, g) <= MERCHANT_RANGE;
+  if (!g || w.dist(p, g) > MERCHANT_RANGE) return "Заказчик далеко";
+  return npcRefusal({ kind: "quest", name: g.name, x: g.x, y: g.y }, p.faction);
 }
 
 function accept(w: World, p: Player, id: unknown) {
   const def = typeof id === "string" ? QUESTS[id] : undefined;
   if (!def || p.dead) return;
-  if (!nearGiver(w, p, def.giver)) return err(p, "Заказчик далеко");
+  const ge = giverErr(w, p, def.giver);
+  if (ge) return err(p, ge);
   const q = qs(p);
   if (q.done.includes(def.id) || def.id in q.active) return;
   if (p.level < def.level) return err(p, `Нужен ${def.level} уровень`);
@@ -112,7 +117,8 @@ function accept(w: World, p: Player, id: unknown) {
 function turnIn(w: World, p: Player, id: unknown) {
   const def = typeof id === "string" ? QUESTS[id] : undefined;
   if (!def || p.dead) return;
-  if (!nearGiver(w, p, def.giver)) return err(p, "Заказчик далеко");
+  const ge = giverErr(w, p, def.giver);
+  if (ge) return err(p, ge);
   const q = qs(p);
   if ((q.active[def.id] ?? -1) < def.n) return;
   const backup = JSON.stringify(p.save.inventory);

@@ -25,6 +25,7 @@ import { raidBotSave } from "../arena/botgear";
 import type { RaidMember } from "../raid/director";
 import type { RaidOptions } from "./RaidRoom";
 import { heraldNear, RAID, RAID_CFG, RAID_ROLES, type RaidRole } from "../../../shared/raid";
+import { serviceRefusal } from "../../../shared/npcs";
 import { CLASSES, type ClassId } from "../../../shared/classes";
 import { GameDB, type PlayerSave } from "../db";
 import { sendPrices, setMarketDb } from "../game/market";
@@ -33,7 +34,7 @@ import { registerAdmin } from "../game/admin";
 import { registerEncounters } from "../game/encounters";
 import { registerBiomes, sendNodes } from "../game/biomes";
 import { questProgress, registerCities } from "../game/cities";
-import { addItem, buy, buyFood, nearMerchant, equip, pickup, sell, swap, unequip, useBase, useItem } from "../game/inventory";
+import { addItem, buy, buyFood, merchantRefusal, nearMerchant, equip, pickup, sell, swap, unequip, useBase, useItem } from "../game/inventory";
 import { Player } from "../game/Player";
 import { gainXp } from "../game/rewards";
 import { forgetRumors, rumorFor } from "../game/rumors";
@@ -473,6 +474,8 @@ export class WorldRoom extends Room<WorldState> {
     on("raid:info", (p) => this.sendMuster(key(p)));
     on("raid:join", (p) => {
       if (!heraldNear(p.x, p.y, RAID.npc.range + 40)) return p.send("toast", { text: "Подойдите к Вестнику Цитадели", kind: "error" });
+      const no = serviceRefusal("raid", p.x, p.y, p.faction, RAID.npc.range + 40);
+      if (no) return p.send("toast", { text: no, kind: "error" });
       // группа входит целиком
       let group = [p];
       const party = this.parties.members(key(p));
@@ -553,6 +556,8 @@ export class WorldRoom extends Room<WorldState> {
     on<{ id: unknown }>("pet:buy", (p, m) => {
       if (typeof m.id !== "string" || p.dead) return;
       if (!nearMerchant(w(), p)) return p.send("toast", { text: "Подойдите к торговке", kind: "error" });
+      const no = merchantRefusal(p);
+      if (no) return p.send("toast", { text: no, kind: "error" });
       buyPet(w(), p, m.id);
     });
     on<{ id: unknown }>("mount:buy", (p, m) => {
@@ -560,6 +565,8 @@ export class WorldRoom extends Room<WorldState> {
       const err = (text: string) => p.send("toast", { text, kind: "error" });
       if (!def || p.dead) return;
       if (!nearMerchant(w(), p)) return err("Подойдите к торговке");
+      const no = merchantRefusal(p);
+      if (no) return err(no);
       if (p.save.mounts?.includes(def.id)) return err("Маунт уже у вас");
       if (p.level < def.level) return err(`${def.name}: нужен ${def.level} уровень`);
       if (def.source !== "vendor" || def.price <= 0) return err("Этот маунт не продаётся");

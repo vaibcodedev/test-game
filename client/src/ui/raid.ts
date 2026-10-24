@@ -1,4 +1,5 @@
 /** Интерфейс рейда (задача 114): окно сбора у Вестника, полоса босса, рамки рейда, баннеры, итоги. */
+import { npcRefuses } from "./npcGate";
 import { RARITY_COLORS } from "../../../shared/items";
 import { CLASSES } from "../../../shared/classes";
 import { UnitKind } from "../../../shared/protocol";
@@ -134,6 +135,7 @@ export class RaidHud {
   // ---------- окно сбора ----------
   open(npcId: string) {
     if (this.net.kind !== "world") return;
+    if (npcRefuses(this.net, "raid", npcId)) return;
     this.npcId = npcId;
     this.modal.hidden = false;
     this.net.send("raid:info", {});

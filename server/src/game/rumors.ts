@@ -1,5 +1,6 @@
 /** Слухи: выбор реплики NPC и подстановка живого состояния мира (боссы, арена, онлайн). */
 import { RUMOR_NPCS, type RumorMsg } from "../../../shared/rumors";
+import { npcRefusal } from "../../../shared/npcs";
 import { services } from "../arena/registry";
 import type { Player } from "./Player";
 import type { World } from "./World";
@@ -29,6 +30,8 @@ export function rumorFor(w: World, p: Player, npcId: unknown): RumorMsg | null {
   const prev = last.get(p.id);
   const now = Date.now();
   if (prev && now - prev.at < 1000) return null;
+  const no = npcRefusal({ kind: "rumor", name: npc.name, x: npc.x, y: npc.y }, p.faction);
+  if (no) { last.set(p.id, { at: now, npc: npc.id, i: -1 }); return { npc: npc.id, name: npc.name, text: no }; }
   const top = services.arena.top("1v1", 1)[0];
   const lines = npc.lines.filter((l) => top || !l.includes("{top}"));
   let i = Math.floor(Math.random() * lines.length);

@@ -1,4 +1,5 @@
 /** Сумочник Кожемякин: расширение сумки за золото. Всё проверяет сервер. */
+import { npcRefuses } from "./npcGate";
 import { gold } from "./gold";
 import { BAGMAN, BAGMEN, BAG_MAX, BAG_STEP, bagPrice } from "../../../shared/bags";
 import type { Net } from "../net";
@@ -30,6 +31,7 @@ export class BagsUI {
   }
   get isOpen() { return !this.win.hidden; }
   open(id?: string) {
+    if (npcRefuses(this.net, "bags", id)) return;
     this.who = BAGMEN.find((b) => b.id === id) ?? BAGMAN;
     this.win.querySelector("h2 > span")!.textContent = this.who.name;
     this.win.hidden = false;

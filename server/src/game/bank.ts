@@ -1,6 +1,7 @@
 /** Банк Голдмунда: перенос предметов и золота между сумкой и банком.
  *  Каждая операция: проверки → изменение в памяти → сохранение игрока одной транзакцией SQLite (при ошибке — откат памяти). */
 import { MERCHANT_RANGE } from "../../../shared/constants";
+import { serviceRefusal } from "../../../shared/npcs";
 import { BANK_GOLD_MAX, BANK_STEP, BANK_TAB_SIZE, BANK_TABS, BANKERS, bankPrice, newBank, SHARED_SIZE, SHARED_TAB, type BankSave, type BankView } from "../../../shared/bank";
 import { BASE_ITEMS, type Item } from "../../../shared/items";
 import type { GameDB } from "../db";
@@ -57,7 +58,7 @@ export class BankService {
     if (p.team !== 0 || this.busy(p)) return "Банк недоступен на арене и в очереди на неё";
     // банкиры — в Эмберхолле и в обеих столицах (решение 2 задачи 132)
     if (!BANKERS.some((b) => this.world().dist(p, b) <= MERCHANT_RANGE)) return "Банкир далеко";
-    return null;
+    return serviceRefusal("bank", p.x, p.y, p.faction, MERCHANT_RANGE);
   }
 
   /** Выполнить изменение атомарно: fn возвращает текст ошибки (ничего не меняется) или null. */

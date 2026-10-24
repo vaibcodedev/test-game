@@ -1,6 +1,7 @@
 /** Инвентарь, экипировка, зелья, торговец, подбор добычи. Каждая операция проверяется на сервере. */
 import { COOKS, FOOD, foodOf, type Dish } from "../../../shared/food";
 import { MERCHANT_RANGE, PICKUP_RANGE } from "../../../shared/constants";
+import { serviceRefusal } from "../../../shared/npcs";
 import { BASE_ITEMS, ONEHAND, canEquip, isTwoHanded, iconFor, itemName, itemValue, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
 import { usableBase } from "../../../shared/hotbar";
 import { MATERIALS } from "../../../shared/upgrade";
@@ -142,6 +143,8 @@ export function buyFood(w: World, p: Player, id: unknown, qtyRaw: unknown) {
   const dish = typeof id === "string" ? FOOD[id] : undefined;
   if (!dish) return;
   if (!COOKS.some((c) => w.dist(p, c) <= MERCHANT_RANGE)) return err(p, "Повар далеко");
+  const no = serviceRefusal("cook", p.x, p.y, p.faction, MERCHANT_RANGE);
+  if (no) return err(p, no);
   const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.min(20, qtyRaw as number)) : 1;
   const price = dish.price * qty;
   if (p.save.gold < price) return err(p, "Не хватает золота");
@@ -157,12 +160,16 @@ export function buyFood(w: World, p: Player, id: unknown, qtyRaw: unknown) {
 export function nearMerchant(w: World, p: Player) {
   return w.map.merchants.some((m) => w.dist(p, m) <= MERCHANT_RANGE);
 }
+/** Торговец рядом, но чужой фракции (все ближние): текст отказа, иначе null. */
+export const merchantRefusal = (p: Player) => serviceRefusal("shop", p.x, p.y, p.faction, MERCHANT_RANGE);
 
 export function sell(w: World, p: Player, index: unknown) {
   if (!validIndex(p, index)) return;
   const it = p.save.inventory[index];
   if (!it) return;
   if (!nearMerchant(w, p)) return err(p, "Торговец далеко");
+  const no = merchantRefusal(p);
+  if (no) return err(p, no);
   if (isQuestItem(it.base)) return err(p, QUEST_ITEM_MSG);
   const qty = it.qty ?? 1;
   const gold = sellPrice(it) * qty;
@@ -177,6 +184,8 @@ export function sell(w: World, p: Player, index: unknown) {
 export function buy(w: World, p: Player, baseId: unknown, qtyRaw: unknown) {
   if (typeof baseId !== "string" || (baseId !== "hp_potion" && baseId !== "mp_potion")) return;
   if (!nearMerchant(w, p)) return err(p, "Торговец далеко");
+  const no = merchantRefusal(p);
+  if (no) return err(p, no);
   const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.min(20, qtyRaw as number)) : 1;
   const price = (BASE_ITEMS[baseId].price ?? 15) * qty;
   if (p.save.gold < price) return err(p, "Не хватает золота");

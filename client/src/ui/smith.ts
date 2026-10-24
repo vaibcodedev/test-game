@@ -1,4 +1,5 @@
 /** Кузнец Гром: окно улучшения предметов (+1…+10) и покупки материалов. */
+import { npcRefuses } from "./npcGate";
 import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
@@ -63,6 +64,7 @@ export class SmithUI {
     this.net = net;
   }
   open(id?: string) {
+    if (npcRefuses(this.net, "smith", id)) return;
     this.who = SMITHS.find((s) => s.id === id) ?? SMITH;
     this.win.querySelector("h2 > span")!.textContent = this.who.name;
     this.win.hidden = false;
