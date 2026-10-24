@@ -9,56 +9,68 @@ import { erode, type Gen, type Orbit } from "./vfx-gen";
 
 const put = (f: PC, x: number, y: number, c: RGBA) => f.set(Math.round(x), Math.round(y), c);
 const TAU = Math.PI * 2;
-const mk = (id: string, role: Gen["role"], frames: PC[], w: number, h: number, anchor: [number, number], fps: number, hero?: string): Gen => ({ id, pack: "gen", role, frames, w, h, anchor, fps, blend: "normal", hero });
+const mk = (id: string, role: Gen["role"], frames: PC[], w: number, h: number, anchor: [number, number], fps: number, hero?: string, ease?: Gen["ease"]): Gen => ({ id, pack: "gen", role, frames, w, h, anchor, fps, blend: "normal", hero, ...(ease ? { ease } : {}) });
 
-/** Щит-пузырь на герое: обод в 2 пикселя, крупа стекла внутри, блик бежит по кругу. 8 кадров цикла. */
+/** Щит-пузырь на герое (сразу в размере игры 39×44, без уменьшения): обод в 2 пикселя (внешний тон темнее), стекло — полупрозрачная заливка,
+ *  светлее к верхнему левому краю (объём), постоянный блик слева сверху; по ободу бежит блик с хвостом из 7 точек: 60 кадров при 30 к/с —
+ *  оборот за 2 с, 6° (≈1.9 px) за кадр, цикл бесшовный. Крупы стекла нет: она «ползла» по кадрам. */
 function auraBubble(id: string, ramp: string): Gen {
-  const W = 44, H = 50, cx = W / 2, cy = H / 2, rx = 20, ry = 23, N = 8, R = RAMPS[ramp];
+  const W = 39, H = 44, cx = 19.5, cy = 22, rx = 17.5, ry = 20.5, N = 60, R = RAMPS[ramp];
+  const glass = new PC(W, H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy;
+    if (d > 1) continue;
+    if (d > 0.8) glass.set(x, y, d > 0.92 ? R[3] : R[2]);
+    else { const lit = Math.max(0, -(dx + dy) * 0.7); glass.set(x, y, [...(lit > 0.35 ? R[2] : R[1]).slice(0, 3), Math.round(26 + 34 * lit + 30 * d)] as RGBA); }
+  }
+  put(glass, cx - 10, cy - 14, R[5]); put(glass, cx - 11, cy - 13, R[4]); put(glass, cx - 9, cy - 15, R[4]); put(glass, cx - 12, cy - 11, R[3]);
   const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, H);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy;
-      if (d > 1) continue;
-      if (d > 0.82) f.set(x, y, d > 0.93 ? R[3] : R[2]);
-      else if ((x + y * 2 + t) % 7 === 0 && d > 0.35) f.set(x, y, R[1]);
-    }
-    const a0 = (t / N) * TAU;
-    for (let k = 0; k < 7; k++) { const a = a0 + k * 0.11; put(f, cx + Math.cos(a) * (rx - 0.5), cy + Math.sin(a) * (ry - 0.5), k < 2 ? R[5] : R[4]); }
-    put(f, cx - 11, cy - 15, R[5]); put(f, cx - 12, cy - 14, R[4]); put(f, cx - 10, cy - 16, R[4]);
+    const f = glass.clone(), a0 = (t / N) * TAU;
+    for (let k = 6; k >= 0; k--) { const a = a0 - k * 0.11; put(f, cx - 0.5 + Math.cos(a) * (rx - 0.7), cy - 0.5 + Math.sin(a) * (ry - 0.7), k < 2 ? R[5] : k < 4 ? R[4] : R[3]); }
     return f;
   });
-  return mk(id, "aura", frames, W, H, [0.5, 0.5], 10, "warrior");
+  return mk(id, "aura", frames, W, H, [0.5, 0.5], 30, "warrior");
 }
 
-/** Кольцо под ногами героя (бафы-круги): две дуги и ползущие засечки. 8 кадров цикла. */
+/** Кольцо под ногами героя (бафы-круги, сразу 44×24): две дуги и засечки, сдвигающиеся на 2 позиции за цикл (24 кадра при 15 к/с — 1.6 с,
+ *  3° за кадр, цвет засечек на стыке совпадает). */
 function auraRing(id: string, ramp: string): Gen {
-  const W = 52, H = 28, cx = W / 2, cy = H / 2, rx = 24, ry = 11, N = 8, R = RAMPS[ramp];
+  const W = 44, H = 24, cx = W / 2, cy = H / 2, rx = 20, ry = 9.3, N = 24, R = RAMPS[ramp];
   const frames = Array.from({ length: N }, (_, t) => {
     const f = new PC(W, H);
-    for (let i = 0; i < 220; i++) { const a = (i / 220) * TAU; put(f, cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, R[2]); put(f, cx + Math.cos(a) * (rx - 3), cy + Math.sin(a) * (ry - 1.5), R[1]); }
+    // обод в 2 пикселя (внешний тон и светлая кромка внутри) и тёмное внутреннее кольцо — объём вместо двух нитей
+    for (let i = 0; i < 260; i++) {
+      const a = (i / 260) * TAU, c = Math.cos(a), sn = Math.sin(a);
+      put(f, cx - 0.5 + c * rx, cy - 0.5 + sn * ry, R[2]);
+      put(f, cx - 0.5 + c * (rx - 0.9), cy - 0.5 + sn * (ry - 0.9), sn < 0 ? R[4] : R[3]);
+      put(f, cx - 0.5 + c * (rx - 2.6), cy - 0.5 + sn * (ry - 1.6), R[1]);
+    }
     for (let k = 0; k < 10; k++) {
-      const a = ((k + t / N) / 10) * TAU;
-      for (let rr = rx - 3; rr <= rx; rr++) put(f, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * (ry / rx), k % 2 ? R[3] : R[5]);
+      const a = ((k + (2 * t) / N) / 10) * TAU;
+      for (let rr = rx - 2.5; rr <= rx; rr += 0.5) put(f, cx - 0.5 + Math.cos(a) * rr, cy - 0.5 + Math.sin(a) * rr * (ry / rx), k % 2 ? R[3] : R[5]);
     }
     return f;
   });
-  return mk(id, "aura", frames, W, H, [0.5, 0.5], 10, "healer");
+  return mk(id, "aura", frames, W, H, [0.5, 0.5], 15, "healer");
 }
 
-/** Берсерк: языки красного пламени снизу вверх вокруг героя. 8 кадров цикла. */
+/** Берсерк (сразу 34×44): языки красного пламени снизу вверх вокруг героя; язык растёт и опадает (длина len·sin(πp)), верхняя треть пути
+ *  темнее. 20 кадров при 30 к/с — цикл 667 мс, подъём 1.7 px за кадр. */
 function auraRage(id: string): Gen {
-  const W = 36, H = 46, N = 8, R = RAMPS.blood, r = rng(21);
-  const tongues = Array.from({ length: 20 }, () => ({ x: 4 + r() * 28, ph: r(), len: 6 + Math.floor(r() * 6) }));
+  const W = 34, H = 44, N = 20, R = RAMPS.blood, r = rng(21);
+  const tongues = Array.from({ length: 20 }, () => ({ x: 4 + r() * 26, ph: r(), len: 6 + Math.floor(r() * 6) }));
   const frames = Array.from({ length: N }, (_, t) => {
     const f = new PC(W, H);
     for (const g of tongues) {
-      const p = (g.ph + t / N) % 1, y = H - 4 - p * (H - 10), sway = Math.sin((p + g.ph) * TAU) * 1.5;
-      for (let k = 0; k < g.len; k++) { const kk = k / g.len; put(f, g.x + sway * (1 - kk), y - k, R[kk < 0.4 ? 4 : kk < 0.75 ? 3 : 2]); put(f, g.x + 1 + sway, y - k, R[kk < 0.4 ? 3 : 2]); }
-      put(f, g.x + sway, y - g.len, R[5]);
+      const p = (g.ph + t / N) % 1, y = H - 4 - p * (H - 10), sway = Math.sin((p + g.ph) * TAU) * 1.5, len = Math.round(g.len * Math.sin(Math.PI * p));
+      if (len < 1) continue;
+      const top = p > 2 / 3;
+      for (let k = 0; k < len; k++) { const kk = k / len; put(f, g.x + sway * (1 - kk), y - k, R[top ? 2 : kk < 0.4 ? 4 : kk < 0.75 ? 3 : 2]); put(f, g.x + 1 + sway, y - k, R[top ? 1 : kk < 0.4 ? 3 : 2]); }
+      put(f, g.x + sway, y - len, R[top ? 3 : 5]);
     }
     return f;
   });
-  return mk(id, "aura", frames, W, H, [0.5, 0.85], 12, "reaver");
+  return mk(id, "aura", frames, W, H, [0.5, 0.86], 30, "reaver");
 }
 
 /** Рунный клинок рыцаря смерти: 4 каменно-ледяные плитки с вырезанной руной кружат вокруг героя на уровне пояса, 7×8 пикселей мира.
@@ -243,26 +255,35 @@ function flameLoop(id: string): Gen {
   return mk(id, "aura", frames, W, H, [0.5, 0.9], 12, "mage");
 }
 
-/** Руны на клинке: четыре ромба по эллипсу вокруг героя, задние тусклее. 8 кадров цикла. */
+/** «Благословение» (руны света): орбиту считает клиент (Vfx.orbit, как у рун рыцаря смерти), лист — плитки 11×11 из 12 кадров:
+ *  0–3 — ромб (центр R[5], кольца R[4], R[3], R[2] и тёмный контур R[1]), 4–7 — ореол (кольцо радиуса 4 тоном R[3], add), 8–11 — блик (центр и крест R[5]). */
 function auraRunes(id: string, ramp: string): Gen {
-  const W = 46, H = 40, cx = W / 2, cy = H / 2, N = 8, R = RAMPS[ramp];
-  const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, H);
-    const items = Array.from({ length: 4 }, (_, k) => { const a = ((k + t / N) / 4) * TAU; return { x: cx + Math.cos(a) * 19, y: cy + 6 + Math.sin(a) * 7, back: Math.sin(a) < 0 }; }).sort((p, q) => p.y - q.y);
-    for (const it of items) {
-      const c = it.back ? R[2] : R[4], d = it.back ? R[1] : R[3];
-      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const m = Math.abs(dx) + Math.abs(dy); if (m <= 3 && !(m === 3 && it.back)) put(f, it.x + dx, it.y + dy, m === 0 ? R[5] : m === 1 ? c : m === 2 ? d : R[2]); }
-    }
-    return f;
+  const S = 11, c = 5, R = RAMPS[ramp];
+  const tile = (fn: (m: number, dx: number, dy: number) => RGBA | null) => { const f = new PC(S, S); for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const dx = x - c, dy = y - c, q = fn(Math.abs(dx) + Math.abs(dy), dx, dy); if (q) f.set(x, y, q); } return f; };
+  // четыре ромба чуть разные: вытянутый, круглее, с бликом сверху, с тёмной гранью снизу справа
+  const body = (k: number) => tile((m, dx, dy) => {
+    const mm = k === 0 ? Math.abs(dx) * 1.3 + Math.abs(dy) * 0.85 : k === 1 ? Math.hypot(dx, dy) * 1.12 : m;
+    if (mm > 4.2) return null;
+    if (mm > 3.3) return R[1];
+    if (k === 3 && dx + dy > 1) return mm < 1.5 ? R[4] : R[2];
+    if (k === 2 && dy < -1 && dx <= 0) return R[5];
+    return mm < 0.8 ? R[5] : mm < 1.8 ? R[4] : mm < 2.6 ? R[3] : R[2];
   });
-  return mk(id, "aura", frames, W, H, [0.5, 0.5], 10, "deathknight");
+  const halo = () => tile((_m, dx, dy) => { const d = Math.hypot(dx, dy); return d > 3.6 && d <= 4.6 ? [...R[3].slice(0, 3), 150] as RGBA : d > 4.6 && d <= 5.3 ? [...R[2].slice(0, 3), 70] as RGBA : null; });
+  const glint = () => tile((_m, dx, dy) => (dx === 0 && dy === 0 ? hex("#ffffff") : (dx === 0 && Math.abs(dy) <= 2) || (dy === 0 && Math.abs(dx) <= 2) ? (Math.abs(dx + dy) === 2 ? [...R[5].slice(0, 3), 170] as RGBA : R[5]) : null));
+  const ks = [0, 1, 2, 3];
+  const g = mk(id, "aura", [...ks.map(body), ...ks.map(halo), ...ks.map(glint)], S, S, [0.5, 0.5], 1, "healer", { fadeIn: 350, fadeOut: 350 });
+  g.orbit = { n: 4, rx: 18, ry: 6.5, oy: -8, period: 3200, bob: 0, bobPeriod: 1900, glow: [0.2, 0.6], glowPeriod: 1500, back: 0.55, twinkle: 2600 };
+  return g;
 }
 
-/** Капкан: раскрытые челюсти с зубьями захлопываются, искры. 7 кадров, один проход. */
+/** Капкан: опускается на землю (y −3 → 0, челюсти раскрываются 0.6 → 1), пауза, захлопывается с разгоном (1 → 0.7 → 0.3 → 0), искры в кадре
+ *  смыкания и тусклее в следующем, отдача на 1 px. 9 кадров при 15 к/с, один проход. */
 function trap(id: string): Gen {
-  const W = 36, H = 28, N = 7, D = hex("#23262f"), M = hex("#5d667c"), L = hex("#a9b4c8"), Wh = hex("#f2f6ff"), rust = hex("#8a5a3a");
+  const W = 36, H = 28, N = 9, D = hex("#23262f"), M = hex("#5d667c"), L = hex("#a9b4c8"), Wh = hex("#f2f6ff"), Wd = hex("#a9b4c8"), rust = hex("#8a5a3a");
+  const OPEN = [0.6, 1, 1, 0.7, 0.3, 0, 0, 0, 0], DY = [-3, 0, 0, 0, 0, 0, 1, 0, 0];
   const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, H), cx = W / 2, cy = 15, open = t < 3 ? 1 : t === 3 ? 0.4 : 0;
+    const f = new PC(W, H), cx = W / 2, cy = 15 + DY[t], open = OPEN[t];
     f.ellipse(cx, cy + 1, 15, 6, D); f.ellipse(cx, cy, 14, 5, M); f.ellipse(cx, cy - 0.5, 12, 4, rust);        // плита с ржавой серединой
     for (const side of [-1, 1]) {
       const off = side * open * 7;
@@ -275,17 +296,18 @@ function trap(id: string): Gen {
         put(f, x, base + side * 2, L); put(f, x, base + side * 3, side < 0 ? M : L);
       }
     }
-    if (t === 3 || t === 4) for (const [dx, dy] of [[-10, -6], [10, -6], [0, -9], [-6, 6], [6, 6]]) put(f, cx + dx, cy + dy, Wh);
+    if (t === 5 || t === 6) for (const [dx, dy] of [[-10, -6], [10, -6], [0, -9], [-6, 6], [6, 6]]) { const s2 = t === 5 ? 1 : 1.6; put(f, cx + dx * s2, cy + dy * s2, t === 5 ? Wh : Wd); if (t === 5) put(f, cx + dx + Math.sign(dx), cy + dy, Wd); }
     return f;
   });
-  return mk(id, "cast", frames, W, H, [0.5, 0.6], 12, "ranger");
+  return mk(id, "cast", frames, W, H, [0.5, 0.6], 15, "ranger", { fadeIn: 120, tail: 250 });
 }
 
-/** Ворон в полёте вправо: крупное тело, голова с клювом, взмах двух крыльев. 4 кадра цикла. */
+/** Ворон в полёте вправо: крупное тело, голова с клювом, взмах двух крыльев туда и обратно (up = −1.5 − 9.5·cos(2πt/N)), стык бесшовный.
+ *  8 кадров при 15 к/с. */
 function raven(id: string): Gen {
-  const W = 34, H = 28, N = 4, R = RAMPS.shadow, beak = hex("#e0b84a"), eye = hex("#ffffff");
+  const W = 34, H = 28, N = 8, R = RAMPS.shadow, beak = hex("#e0b84a"), eye = hex("#ffffff");
   const frames = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, H), cx = 15, cy = 15, up = [-11, -5, 3, 8][t];
+    const f = new PC(W, H), cx = 15, cy = 15, up = -1.5 - 9.5 * Math.cos((t / N) * TAU);
     for (const dz of [0, 1]) {                                                                               // дальнее крыло темнее и сзади
       const wy = cy + up * (dz ? 0.6 : 1), tip = cx - 7 - (dz ? 2 : 0);
       f.poly([[cx - 2, cy - 1], [cx + 5, cy - 1], [tip, wy], [cx - 8, wy + (up < 0 ? 3 : -3)]], dz ? R[0] : R[2]);
@@ -298,85 +320,105 @@ function raven(id: string): Gen {
     for (let x = -4; x < 6; x++) put(f, cx + x, cy - 3, R[3]);                                                // блик по спине
     return f;
   });
-  return mk(id, "proj", frames, W, H, [0.55, 0.55], 14, "darkranger");
+  return mk(id, "proj", frames, W, H, [0.55, 0.55], 15, "darkranger");
 }
 
-/** Дождь стрел: пять стрел падают наискось, втыкаются и дрожат, пыль. 10 кадров, один проход. */
-function arrowVolley(id: string): Gen {
-  const W = 56, H = 52, N = 10, wood = hex("#b08a5a"), steel = hex("#c8d0de"), fl = hex("#e8e0d0"), dust = hex("#d8c8a0"), dk = hex("#6a4c34");
-  const arrows = [[10, 38, 0], [22, 44, 1], [34, 36, 2], [44, 42, 3], [28, 30, 4]].map(([x, y, i]) => ({ x, y, land: 2 + i }));
-  const frames = Array.from({ length: N }, (_, t) => {
+/** Дождь стрел: пять стрел падают наискось (4 кадра, шаг (−2.5, −5) и светлый след), втыкаются, дрожат и гаснут альфой за 3 кадра; пыль
+ *  клубками 2×2 в 2 тона гаснет альфой. Стрела — по планке паков: наконечник 3 px, древко 2 px (свет и тень), оперение 3 px, тёмный контур
+ *  и тень на земле. scale 2 — лист ×2 для площадного @2. 16 кадров при 20 к/с, один проход. */
+function arrowVolley(id: string, scale = 1): Gen {
+  const W = 56, H = 52, N = 16, O = hex("#24180f"), wood = hex("#c09a64"), woodD = hex("#7e5a36"), steel = hex("#e4ebf4"), steelD = hex("#8e98aa");
+  const fl = hex("#f2ece0"), flD = hex("#c8b8a0"), red = hex("#b04a3a"), dust = hex("#d8c8a0"), dustD = hex("#a08c68"), trail = hex("#f4ecd8"), sh = hex("#000000", 90);
+  const arrows = [[10, 38, 0], [22, 44, 1], [34, 36, 2], [44, 42, 3], [28, 30, 4]].map(([x, y, i]) => ({ x, y, land: 4 + 2 * i }));
+  /** Стрела остриём в (x, y), древко уходит вверх с наклоном 0.4 px на строку; sw — дрожание хвоста. */
+  const arrow = (x: number, y: number, sw: number, len: number) => {
+    const L = new PC(W, H), at = (s: number) => x - s * 0.4 + sw * (s / 10);
+    put(L, at(0), y, steel); put(L, at(1) - 1, y - 1, steelD); put(L, at(1), y - 1, steel); put(L, at(1) + 1, y - 1, steelD);
+    for (let s = 2; s < len - 3; s++) { put(L, at(s), y - s, wood); put(L, at(s) + 1, y - s, woodD); }
+    for (let s = len - 3; s < len; s++) { put(L, at(s) - 1, y - s, fl); put(L, at(s), y - s, s === len - 2 ? red : fl); put(L, at(s) + 1, y - s, flD); }
+    L.outline(O);
+    return L;
+  };
+  const base = Array.from({ length: N }, (_, t) => {
     const f = new PC(W, H);
     for (const a of arrows) {
       const dt = t - a.land;
-      if (dt < -2) continue;
+      if (dt < -4) continue;
       if (dt < 0) {
-        const k = -dt, hx = a.x - 5 * k, hy = a.y - 10 * k;
-        for (let s = 0; s < 8; s++) put(f, hx - s * 0.5, hy - s, s < 2 ? steel : s > 5 ? fl : wood);
+        const k = -dt, hx = a.x - 2.5 * k, hy = a.y - 5 * k;
+        for (let s = 1; s <= 3; s++) put(f, hx - 4 - s * 1.2, hy - 10 - s * 2.5, [...trail.slice(0, 3), Math.round(170 - s * 45)] as RGBA);
+        f.blit(arrow(hx, hy, 0, 11), 0, 0);
       } else {
-        const sw = dt < 3 ? (dt % 2 ? 1 : -1) * (dt === 0 ? 0 : 1) : 0;
-        if (t >= N - 2 && (a.x + t) % 2) continue;
-        for (let s = 0; s < 9; s++) put(f, a.x - s * 0.4 + sw * (s / 9), a.y - s, s < 1 ? steel : s > 6 ? fl : wood);
-        put(f, a.x, a.y + 1, dk); put(f, a.x + 1, a.y + 1, dk);
-        if (dt < 3) for (const [dx, dy] of [[-3, 0], [3, 0], [-5, -1], [5, -1], [0, -2]]) put(f, a.x + (dx * (dt + 1)) / 2, a.y + dy - dt, dust);
+        const sw = dt < 3 ? (dt % 2 ? 1 : -1) * (dt === 0 ? 0 : 1) : 0, fade = t >= N - 3 ? (N - t) / 4 : 1;
+        const shade = new PC(W, H); shade.ellipse(a.x - 1, a.y + 1.5, 3, 1.2, sh); f.blit(shade, 0, 0, false, fade);
+        f.blit(arrow(a.x, a.y, sw, 9), 0, 0, false, fade);
+        if (dt < 4) for (const [dx, dy] of [[-3, 0], [3, 0], [-5, -1], [5, -1], [0, -2]]) {
+          const px = a.x + (dx * (dt + 1)) / 2, py = a.y + dy - dt, al = Math.round(255 * (1 - dt / 4));
+          put(f, px, py, [...dust.slice(0, 3), al] as RGBA); put(f, px + 1, py, [...dustD.slice(0, 3), al] as RGBA); put(f, px, py + 1, [...dustD.slice(0, 3), al] as RGBA);
+        }
       }
     }
     return f;
   });
-  return mk(id, "aoe", frames, W, H, [0.5, 0.7], 14, "ranger");
+  const frames = scale > 1 ? base.map((f) => scaleNN(f, scale)) : base;
+  return mk(id, "aoe", frames, W * scale, H * scale, [0.5, 0.7], 20, "ranger", { tail: 150 });
 }
 
-/** Метательный топор: вращение, 4 кадра цикла 20×20. */
+/** Метательный топор: вращение вокруг центра масс (голова не ходит по кругу), 15 кадров при 30 к/с — 24° за кадр, 2 оборота в секунду. 20×20. */
 function axeSpin(id: string, ramp?: string): Gen {
-  const S = 20, N = 4, wood = hex("#7a4e2c"), woodL = hex("#a8723e"), M = hex("#6e788e"), L = hex("#c8d0de"), W = hex("#ffffff"), D = hex("#2a2e3a");
-  const base = new PC(S, S);
-  base.line(10, 16, 10, 5, wood, 1); base.line(11, 16, 11, 5, woodL, 1);
-  base.poly([[11, 3], [17, 1], [18, 8], [11, 8]], M); base.poly([[11, 3], [16, 2], [17, 5], [11, 6]], L);
-  base.line(17, 2, 17, 8, W, 1); base.line(11, 8, 18, 8, D, 1);
-  const frames = Array.from({ length: N }, (_, t) => base.rotated((t * Math.PI) / 2, 10.5, 10.5));
-  return mk(id, "proj", ramp ? gradientMap(frames, RAMPS[ramp], 1.3) : frames, S, S, [0.5, 0.5], 16, "reaver");
+  const S = 20, N = 15, wood = hex("#7a4e2c"), woodL = hex("#a8723e"), M = hex("#6e788e"), L = hex("#c8d0de"), W = hex("#ffffff"), D = hex("#2a2e3a");
+  const base = new PC(S, S), ox = -3, oy = 3;
+  base.line(10 + ox, 16 + oy, 10 + ox, 5 + oy, wood, 1); base.line(11 + ox, 16 + oy, 11 + ox, 5 + oy, woodL, 1);
+  base.poly([[11 + ox, 3 + oy], [17 + ox, 1 + oy], [18 + ox, 8 + oy], [11 + ox, 8 + oy]], M); base.poly([[11 + ox, 3 + oy], [16 + ox, 2 + oy], [17 + ox, 5 + oy], [11 + ox, 6 + oy]], L);
+  base.line(17 + ox, 2 + oy, 17 + ox, 8 + oy, W, 1); base.line(11 + ox, 8 + oy, 18 + ox, 8 + oy, D, 1);
+  const frames = Array.from({ length: N }, (_, t) => base.rotated((t * TAU) / N, 10, 10));
+  return mk(id, "proj", ramp ? gradientMap(frames, RAMPS[ramp], 1.3) : frames, S, S, [0.5, 0.5], 30, "reaver");
 }
 
-/** Кандалы: цепное кольцо смыкается вокруг цели, держится и рассыпается. 10 кадров, один проход. */
+/** Кандалы: цепное кольцо смыкается вокруг цели (t0 — половина звеньев, t0–3 — защёлкивание), искры (t4), блик бежит по звеньям и кольцо
+ *  чуть дышит (t5–9), рассыпается одним зерном (t10–13: 0.2 / 0.4 / 0.6 / 0.8). 14 кадров при 15 к/с, один проход. */
 function shackle(id: string, ramp?: string): Gen {
-  const W = 52, H = 34, cx = W / 2, cy = H / 2 + 1, N = 10, D = hex("#23262f"), M = hex("#5d667c"), L = hex("#a9b4c8"), Wh = hex("#f2f6ff");
+  const W = 52, H = 34, cx = W / 2, cy = H / 2 + 1, N = 14, D = hex("#23262f"), M = hex("#5d667c"), L = hex("#a9b4c8"), Wh = hex("#f2f6ff");
   const raw = Array.from({ length: N }, (_, t) => {
-    const f = new PC(W, H), k = t < 4 ? 1.5 - t * 0.17 : 1, rx = 18 * k, ry = 8 * k, links = 14;
+    const f = new PC(W, H), k = t < 4 ? 1.5 - t * 0.17 : 1, rx = 18 * k + (t >= 5 && t <= 9 ? 0.5 * Math.sin(((t - 5) / 5) * TAU) : 0), ry = 8 * k, links = 14;
     const order = Array.from({ length: links }, (_, i) => i).sort((a, b) => Math.sin(((a / links) * TAU)) - Math.sin(((b / links) * TAU)));   // задние звенья рисуем первыми
+    const shine = t >= 5 && t <= 9 ? (t * 3) % 14 : -1;
     for (const i of order) {
       const a = (i / links) * TAU + (t < 4 ? t * 0.35 : 0), x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry, back = Math.sin(a) < 0;
-      const c = back ? M : L, d = back ? D : M;
+      const lit = i === shine || i === (shine + 1) % 14;
+      const c = lit ? Wh : back ? M : L, d = lit ? L : back ? D : M;
       if (i % 2) { for (const [dx, dy] of [[-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [-2, 0], [2, 0], [-2, 1], [-1, 1], [0, 1], [1, 1], [2, 1]]) put(f, x + dx, y + dy, dy < 0 ? c : d); }
       else { for (let dy = -2; dy <= 2; dy++) put(f, x, y + dy, dy < 0 ? c : d); put(f, x + 1, y, d); }
     }
     if (t === 4) for (const [dx, dy] of [[-15, -4], [15, -4], [0, 10], [-10, 7], [10, 7]]) put(f, cx + dx, cy + dy, Wh);
-    if (t >= N - 2) erode(f, (t - (N - 3)) * 0.3, 5 + t);
+    if (t === 0) erode(f, 0.5, 7);
+    if (t >= 10) erode(f, (t - 9) * 0.2, 7);
     return f;
   });
-  return mk(id, "hit", ramp ? gradientMap(raw, RAMPS[ramp], 1) : raw, W, H, [0.5, 0.55], 14, "deathknight");
+  return mk(id, "hit", ramp ? gradientMap(raw, RAMPS[ramp], 1) : raw, W, H, [0.5, 0.55], 15, "deathknight", { fadeIn: 80, tail: 140 });
 }
 
-/** Лужа крови: вязкая поверхность с лопающимися пузырями. 8 кадров цикла. */
+/** Лужа крови (сразу 52×33): вязкая поверхность волнуется бесшовно (wob по 2πt/N), блик дрожит на месте, пузыри лопаются. 16 кадров при 12 к/с. */
 function bloodPool(id: string): Gen {
-  const W = 66, H = 42, cx = W / 2, cy = H / 2, N = 8, B = RAMPS.blood, r = rng(33);
+  const W = 52, H = 33, cx = W / 2, cy = H / 2, N = 16, B = RAMPS.blood, r = rng(33), ph = (t: number) => (t / N) * TAU;
   const bubbles = Array.from({ length: 6 }, () => ({ a: r() * TAU, d: r() * 0.7, ph: r() }));
   const frames = Array.from({ length: N }, (_, t) => {
     const f = new PC(W, H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const ang = Math.atan2((y - cy) * 1.7, x - cx), wob = 1 + 0.06 * Math.sin(ang * 4 + t * 0.8) + 0.04 * Math.sin(ang * 7 - t);
-      const d = Math.hypot((x + 0.5 - cx) / 31, (y + 0.5 - cy) / 18) / wob;
+      const ang = Math.atan2((y - cy) * 1.7, x - cx), wob = 1 + 0.06 * Math.sin(ang * 4 + ph(t)) + 0.04 * Math.sin(ang * 7 - ph(t));
+      const d = Math.hypot((x + 0.5 - cx) / 24.5, (y + 0.5 - cy) / 14.2) / wob;
       if (d > 1) continue;
       f.set(x, y, d > 0.88 ? B[0] : d > 0.55 ? B[1] : B[2]);
     }
-    for (let k = 0; k < 6; k++) { const a = -2.6 + k * 0.12 + t * 0.02; put(f, cx + Math.cos(a) * 22, cy + Math.sin(a) * 11, B[4]); }
+    for (let k = 0; k < 6; k++) { const a = -2.6 + 0.12 * k + 0.07 * Math.sin(ph(t)); put(f, cx + Math.cos(a) * 17.4, cy + Math.sin(a) * 8.7, B[4]); }
     for (const b of bubbles) {
-      const p = (b.ph + t / N) % 1, x = cx + Math.cos(b.a) * b.d * 26, y = cy + Math.sin(b.a) * b.d * 13;
+      const p = (b.ph + t / N) % 1, x = cx + Math.cos(b.a) * b.d * 20.5, y = cy + Math.sin(b.a) * b.d * 10.3;
       if (p < 0.6) { put(f, x, y, B[3]); put(f, x + 1, y, B[3]); put(f, x, y - 1, B[3]); put(f, x + 1, y - 1, B[4]); }
       else if (p < 0.8) for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) put(f, x + dx, y + dy, B[4]);
     }
     return f;
   });
-  return mk(id, "aoe", frames, W, H, [0.5, 0.5], 8, "bloodweaver");
+  return mk(id, "aoe", frames, W, H, [0.5, 0.5], 12, "bloodweaver");
 }
 
 export function GENERATED2(): Gen[] {
@@ -384,7 +426,7 @@ export function GENERATED2(): Gen[] {
     auraBubble("bubble-steel", "steel"), auraBubble("bubble-arcane", "arcane"), auraBubble("bubble-holy", "holy"), auraBubble("bubble-bone", "bone"), auraBubble("bubble-shadow", "shadow"),
     auraRing("ring-blood", "blood"), auraRing("ring-holy", "holy"), auraRing("ring-frost", "frost"), auraRing("ring-shadow", "shadow"), auraRing("ring-arcane", "arcane"),
     auraRage("aura-rage"), flameLoop("flame-loop"), runeSet(), runeSet(3), auraRunes("aura-runes-holy", "holy"),
-    trap("trap-snap"), raven("raven-fly"), arrowVolley("arrow-volley"),
+    trap("trap-snap"), raven("raven-fly"), arrowVolley("arrow-volley"), arrowVolley("arrow-volley@2", 2),
     axeSpin("axe-spin"), axeSpin("axe-spin-blood", "blood"),
     shackle("shackle-steel"), shackle("shackle-shadow", "shadow"), bloodPool("blood-pool"),
   ];

@@ -8,6 +8,7 @@ import { placeText, worldText } from "./worldText";
 import * as sfx from "./sfx";
 import { TeleportFx } from "./teleportFx";
 import { RaidBoss } from "./raidBoss";
+import { ZoneBossFx, zbAttach } from "./zoneBoss";
 import { net } from "../net";
 import { P } from "../../../shared/palette";
 import { CROWD } from "./labelLayout";
@@ -46,7 +47,11 @@ export class Effects {
     this.tp = new TeleportFx(scene, unit, selfId, (x, y) => this.near(x, y, 600));
     this.vfx = new Vfx(scene, unit);
     if (net.kind === "raid") this.raid = new RaidBoss(scene, unit);
+    this.zb = new ZoneBossFx(scene, unit);
+    zbAttach(this.zb);
   }
+  /** Боссы стартовых земель (задача 136): связки умений и эффекты мира. */
+  private zb: ZoneBossFx;
   private raid?: RaidBoss;
   private tp: TeleportFx;
   /** Анимации умений из листов (data/skill-fx.json); где листа нет — прежние частицы. */
@@ -247,7 +252,8 @@ export class Effects {
         const tx = to ? to.x : f.tx, ty = to ? to.y - (to.frame > 32 ? 26 : 12) : f.ty - 12;
         this.sound(f.k === "arrow" || f.k === "aimed" ? "arrow" : (SFX_OF[f.k === "fireball" ? "fire" : f.k] ?? "arcane"), sx, sy);
         // свой спрайт снаряда умения (proj в data/skill-fx.json): прежний снаряд с частицами не нужен
-        if (this.vfx.proj(f, sx, sy, tx, ty, () => { if (f.k === "fireball") this.sound("explosion", tx, ty); })) break;
+        // звук взрыва — в живой точке прилёта (снаряд умения летит за бегущей целью)
+        if (this.vfx.proj(f, sx, sy, tx, ty, (x, y) => { if (f.k === "fireball") this.sound("explosion", x, y); })) break;
         const img = s.add.image(sx, sy, tex).setDepth(DEPTH.top - 40).setRotation(Math.atan2(ty - sy, tx - sx));
         if (f.k === "blood") img.setTint(0xe0304a);
         if (f.k === "fireball" || f.k === "fire") img.setScale(f.k === "fireball" ? 1.3 : 1);
@@ -260,7 +266,8 @@ export class Effects {
             img.destroy();
             trail.stop();
             s.time.delayedCall(300, () => trail.destroy());
-            if (this.vfx.projHit(f, tx, ty)) { if (f.k === "fireball") this.sound("explosion", tx, ty); return; }
+            // летел влево — брызги попадания по ходу снаряда (зеркало), та же формула, что у Vfx.fly
+            if (this.vfx.projHit(f, tx, ty, Math.abs(tx - sx) > 0.5 * Math.abs(ty - sy) && tx < sx)) { if (f.k === "fireball") this.sound("explosion", tx, ty); return; }
             this.flash(tx, ty, trailColor, f.k === "fireball" ? 1 : 0.6);
             if (f.k !== "arrow") this.burst(tx, ty, "fx_spark", trailColor, 10, 70, 380);
             if (f.k === "fireball") { this.sound("explosion", tx, ty); this.burst(tx, ty, "fx_ember", trailColor, 12, 90, 500, 40); }
@@ -464,15 +471,27 @@ export class Effects {
       }
       case "blink": {
         if (this.vfx.blink(f) && f.k !== "charge") break; // рывок Рывка оставляет полосу и дым частицами
+        if (f.k === "leap") {
+          // прыжок босса стартовых земель: пыль на взлёте и в месте приземления (воронку рисует эффект мира)
+          this.burst(f.x0, f.y0 - 6, "fx_smoke", 0xc8b08a, 10, 40, 500);
+          this.burst(f.x1, f.y1 - 6, "fx_smoke", 0xc8b08a, 14, 50, 600);
+          this.sound("slam", f.x1, f.y1);
+          this.shake(f.x1, f.y1, 200, 0.006);
+          break;
+        }
         if (f.k === "charge") {
-          const tr = s.add.graphics().setDepth(DEPTH.top - 40).setBlendMode(Phaser.BlendModes.ADD);
-          tr.lineStyle(8, 0xffd070, 0.5).lineBetween(f.x0, f.y0 - 10, f.x1, f.y1 - 10);
-          tr.lineStyle(2, 0xffffff, 0.9).lineBetween(f.x0, f.y0 - 10, f.x1, f.y1 - 10);
-          s.tweens.add({ targets: tr, alpha: 0, duration: 260, onComplete: () => tr.destroy() });
+          // притягивание (рывок цели к кастеру, «Хватка смерти»): без золотой полосы, дыма и искр; камеру трясёт только у участника
+          const pull = !!f.c && f.id !== f.c, mine = f.c === this.selfId || f.id === this.selfId;
+          if (!pull) {
+            const tr = s.add.graphics().setDepth(DEPTH.top - 40).setBlendMode(Phaser.BlendModes.ADD);
+            tr.lineStyle(8, 0xffd070, 0.5).lineBetween(f.x0, f.y0 - 10, f.x1, f.y1 - 10);
+            tr.lineStyle(2, 0xffffff, 0.9).lineBetween(f.x0, f.y0 - 10, f.x1, f.y1 - 10);
+            s.tweens.add({ targets: tr, alpha: 0, duration: 260, onComplete: () => tr.destroy() });
+            for (let i = 0; i <= 8; i++) { const t = i / 8; this.burst(f.x0 + (f.x1 - f.x0) * t, f.y0 + (f.y1 - f.y0) * t - 10, "fx_smoke", 0xd0b890, 2, 20, 500); }
+            this.burst(f.x1, f.y1 - 8, "fx_spark", 0xffd070, 14, 70, 350);
+          }
           this.sound("hit", f.x1, f.y1);
-          for (let i = 0; i <= 8; i++) { const t = i / 8; this.burst(f.x0 + (f.x1 - f.x0) * t, f.y0 + (f.y1 - f.y0) * t - 10, "fx_smoke", 0xd0b890, 2, 20, 500); }
-          this.burst(f.x1, f.y1 - 8, "fx_spark", 0xffd070, 14, 70, 350);
-          shakeCam(s.cameras.main, 120, 1);
+          if (mine) shakeCam(s.cameras.main, 120, 1);
           break;
         }
         if (f.k === "shadow") {
@@ -578,6 +597,9 @@ export class Effects {
         if (f.k === "enrage") { this.shake(u.x, u.y, 300, 0.006); this.sound("slam", u.x, u.y); }
         break;
       }
+      case "zb":
+        this.zb.handle(f);
+        break;
       case "pose":
       case "yell":
       case "shake":

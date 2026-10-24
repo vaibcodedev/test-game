@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  PC, RAMPS, loadDir, sliceSheet, readPng, cropToAnchor, pickIdx, peakIndex, trimBlank, downscaleMode, tidy, unionBox, toRow, gradientMap, storyboard, stackV, scaleNN, fill, drawText,
+  PC, RAMPS, flipH, isBlank, loadDir, sliceSheet, readPng, cropToAnchor, pickIdx, peakIndex, trimBlank, downscaleMode, tidy, unionBox, toRow, gradientMap, storyboard, stackV, scaleNN, fill, drawText,
   paintGround, BG, BEIGE, GOLD, type RGBA,
 } from "./vfx-lib";
 import { GENERATED, type Orbit } from "./vfx-gen";
@@ -40,6 +40,17 @@ interface Def {
   hero?: string;
   /** Кадр-пик для превью (с 0), если по числу пикселей выбирается неудачный. */
   peak?: number;
+  /** Порядок кадров исходника после from/to (ледяной снаряд: соседние кадры пака не похожи — перестановка даёт ровный цикл). */
+  order?: number[];
+  /** Вращающийся снаряд: к каждому кадру добавляется он же, повёрнутый на π/8 (два кадра пака → 4 фазы вращения). */
+  spin?: boolean;
+  /** Своя обработка кадров после обрезки пустых (бесшовный цикл облака). */
+  post?: (src: PC[]) => PC[];
+  /** Пустой кадр внутри последовательности (после уменьшения) заменяется предыдущим — без мигания. */
+  fillGaps?: boolean;
+  /** Промежуточные кадры: между соседними — среднее премультиплицированных (при ADD — точный кроссфейд 50 %), n → 2n − 1 кадров. */
+  tween?: boolean;
+  ease?: Ease;
 }
 
 const sds = (name: string) => () => loadDir(V("sds-holy", name, "Frames"));
@@ -52,10 +63,16 @@ const SDSX = "Pixel Explosion Effects Pack 01 v1_1";
 const NJ = (...p: string[]) => path.join("Ninja Adventure - Asset Pack", "FX", ...p);
 const sheet48 = (pack: string, dir: string, file: string) => () => sliceSheet(readPng(V(pack, dir, file)), 48, 48);
 
+/** Облако без «хлопка» на стыке цикла: n = 12 кадров, кадр k — src[k] поверх зеркального src[(k + 6) % 12] (недостающие кадры пустые). */
+function fogLoop(src: PC[]): PC[] {
+  const n = 12, w = src[0].w, h = src[0].h, at = (i: number) => src[i] ?? new PC(w, h);
+  return Array.from({ length: n }, (_, k) => { const o = new PC(w, h); o.blit(flipH(at((k + 6) % n)), 0, 0); o.blit(at(k), 0, 0); return o; });
+}
+
 const BASE: Def[] = [
   // ---- Pixel Holy Effects Pack 01 (Sentient Dream Studio), кадры 64×64, ~10 fps ----
   { id: "holy-heal", pack: "sds-holy", role: "aura", load: sds("Heal"), anchor: [0.5, 0.55], fps: 10, blend: "add", ramp: "holy", hero: "healer" },
-  { id: "holy-fury", pack: "sds-holy", role: "hit", load: sds("HeavensFury"), peak: 5, anchor: [0.5, 0.8], fps: 12, blend: "add", ramp: "holy", hero: "warrior" },
+  { id: "holy-fury", pack: "sds-holy", role: "hit", load: sds("HeavensFury"), peak: 5, anchor: [0.5, 0.8], fps: 12, blend: "add", ramp: "holy", hero: "warrior", fillGaps: true },
   { id: "holy-nova", pack: "sds-holy", role: "aoe", load: sds("HolyNova"), anchor: [0.5, 0.5], fps: 12, blend: "add", ramp: "holy", hero: "healer" },
   { id: "holy-shield", pack: "sds-holy", role: "aura", load: sds("HolyShield"), anchor: [0.5, 0.5], fps: 11, blend: "normal", ramp: "holy", hero: "warrior" },
   { id: "holy-slash-a", pack: "sds-holy", role: "slash", load: sds("HolySlash_A"), anchor: [0.5, 0.5], fps: 20, blend: "normal", ramp: "holy", hero: "warrior" },
@@ -77,12 +94,12 @@ const BASE: Def[] = [
   { id: "portal-open", pack: "foozle-magic", role: "cast", load: fz("Portal"), from: 6, to: 9, anchor: [0.5, 0.5], fps: 12, blend: "normal", hero: "mage" },
   { id: "lava-spear", pack: "foozle-magic", role: "hit", load: fz("Molten_Spear"), anchor: [0.5, 0.97], fps: 14, blend: "normal", hero: "mage" },
   { id: "earth-spike", pack: "foozle-magic", role: "aoe", load: fz("Earth_Spike"), anchor: [0.5, 0.97], fps: 14, blend: "normal", hero: "warrior" },
-  { id: "geyser", pack: "foozle-magic", role: "aoe", load: fz("Water_Geyser"), from: 3, to: 10, anchor: [0.5, 0.95], fps: 14, blend: "normal", hero: "healer" },
+  { id: "geyser", pack: "foozle-magic", role: "aoe", load: fz("Water_Geyser"), from: 1, to: 12, anchor: [0.5, 0.95], fps: 15, blend: "normal", hero: "healer" },
   { id: "tornado", pack: "foozle-magic", role: "aoe", load: fz("Tornado"), anchor: [0.5, 0.95], fps: 12, blend: "normal", hero: "rogue" },
   // ---- Dark VFX 01–02 (pimen) ----
   { id: "dark-bolt", pack: "pimen-dark", role: "proj", load: () => loadDir(V("pimen-dark", "Dark VFX 1", "Separeted frames")), from: 0, to: 9, anchor: [0.6, 0.5], fps: 16, blend: "normal", ramp: "shadow", gamma: 1.7, hero: "darkranger" },
   { id: "dark-bolt-hit", pack: "pimen-dark", role: "hit", load: () => loadDir(V("pimen-dark", "Dark VFX 1", "Separeted frames")), from: 10, to: 16, anchor: [0.45, 0.5], fps: 16, blend: "normal", ramp: "shadow", gamma: 1.7, hero: "darkranger" },
-  { id: "dark-wraith", pack: "pimen-dark", role: "aura", load: () => loadDir(V("pimen-dark", "Dark VFX 2", "Separated Frames")), anchor: [0.5, 0.8], fps: 10, blend: "normal", ramp: "shadow", gamma: 1.7, thin: 11, hero: "warlock" },
+  { id: "dark-wraith", pack: "pimen-dark", role: "aura", load: () => loadDir(V("pimen-dark", "Dark VFX 2", "Separated Frames")), anchor: [0.5, 0.8], fps: 10, blend: "normal", ramp: "shadow", gamma: 1.7, hero: "warlock" },
   // ---- Smear VFX 01 и Hit Effect 01 (pimen): 48×48 ----
   { id: "smear-h-steel", pack: "pimen-smear", role: "slash", load: sheet48("pimen-smear", "Smear VFX 01", "Smear 01 Horizontal 1.png"), anchor: [0.5, 0.5], fps: 24, blend: "normal", hero: "warrior" },
   { id: "smear-h-fire", pack: "pimen-smear", role: "slash", load: sheet48("pimen-smear", "Smear VFX 01", "Smear 01 Horizontal 2.png"), anchor: [0.5, 0.5], fps: 24, blend: "normal", hero: "warrior" },
@@ -100,37 +117,38 @@ const BASE: Def[] = [
   { id: "poison-ball", pack: "sds-poison", role: "proj", load: sh("sds-poison", "Poison Spells minipack/Spritesheets/PoisonProjectile_spritesheets/PoisonProjectile_flying_spritesheet.png", 64), anchor: [0.5, 0.5], fps: 12, blend: "normal", hero: "rogue" },
   { id: "poison-ball-hit", pack: "sds-poison", role: "hit", load: sh("sds-poison", "Poison Spells minipack/Spritesheets/PoisonProjectile_spritesheets/PoisonProjectile_fading_spritesheet.png", 64), anchor: [0.5, 0.5], fps: 12, blend: "normal", hero: "rogue" },
   // Sentient Dream Studio: Explosion Pack 01
-  { id: "expl-large", pack: "sds-expl", role: "hit", load: sh("sds-expl", `${SDSX}/LargeExplosionA/Spritesheet/LargeExplosionA_spritesheet.png`, 64), anchor: [0.5, 0.5], fps: 16, blend: "normal", thin: 12, hero: "mage" },
+  { id: "expl-large", pack: "sds-expl", role: "hit", load: sh("sds-expl", `${SDSX}/LargeExplosionA/Spritesheet/LargeExplosionA_spritesheet.png`, 64), anchor: [0.5, 0.5], fps: 15, blend: "normal", hero: "mage" },
   { id: "expl-column", pack: "sds-expl", role: "aoe", load: sh("sds-expl", `${SDSX}/LargeExplosionB/Spritesheet/LargeExplosionB_spritesheet.png`, 64, 128), anchor: [0.5, 0.92], fps: 14, blend: "normal", thin: 12, hero: "mage" },
   { id: "expl-dust", pack: "sds-expl", role: "hit", load: sh("sds-expl", `${SDSX}/DustExplosion/Spritesheet/DustExplosion_spritesheet.png`, 64), anchor: [0.5, 0.65], fps: 14, blend: "normal", hero: "warrior" },
   { id: "expl-blue", pack: "sds-expl", role: "hit", load: sh("sds-expl", `${SDSX}/BlueExplosionB/Spritesheet/BlueExplosionB_spritesheet.png`, 64), anchor: [0.5, 0.5], fps: 16, blend: "normal", ramp: "arcane", gamma: 1.3, hero: "mage" },
   // Sentient Dream Studio: Level Up и Dark Spells (крупные AoE, щупальца для пут)
   { id: "levelup", pack: "sds-levelup", role: "cast", load: sh("sds-levelup", "Level Up Effect/Spritesheet/Level Up Effect Spritesheet.png", 128), anchor: [0.5, 0.85], fps: 12, blend: "normal", ramp: "holy", hero: "warrior" },
-  { id: "dark-tentacles", pack: "sds-dark", role: "aoe", load: sh("sds-dark", "DarkSpells/DarkSpell_02/DarkSpell_02_spritesheet.png", 128), anchor: [0.5, 0.9], fps: 14, blend: "normal", ramp: "shadow", gamma: 1.4, thin: 12, hero: "darkranger" },
+  { id: "dark-tentacles", pack: "sds-dark", role: "aoe", load: sh("sds-dark", "DarkSpells/DarkSpell_02/DarkSpell_02_spritesheet.png", 256, 128), anchor: [0.5, 0.9], fps: 12, blend: "normal", ramp: "shadow", gamma: 1.4, hero: "darkranger", ease: { fadeIn: 80 } },
   // pimen: молнии (без размытия), лёд, дым
   { id: "bolt-proj", pack: "pimen-thunder1", role: "proj", load: sh("pimen-thunder1", "Thunder Effect 01/Thunder Projectile 1/Thunder projectile1 wo blur.png", 32), anchor: [0.5, 0.5], fps: 16, blend: "add", ramp: "bolt", gamma: 2, hero: "mage" },
   { id: "bolt-hit", pack: "pimen-thunder1", role: "hit", load: sh("pimen-thunder1", "Thunder Effect 01/Thunder Hit/Thunder hit wo blur.png", 32), anchor: [0.5, 0.5], fps: 16, blend: "add", ramp: "bolt", gamma: 2, hero: "mage" },
   { id: "bolt-strike", pack: "pimen-thunder2", role: "hit", load: sh("pimen-thunder2", "Thunder Effect 02/Thunder Strike/Thunderstrike wo blur.png", 64), anchor: [0.5, 0.97], fps: 16, blend: "add", ramp: "bolt", gamma: 2, hero: "mage" },
   { id: "bolt-splash", pack: "pimen-thunder2", role: "hit", load: sh("pimen-thunder2", "Thunder Effect 02/Thunder Splash/Thunder splash wo blur.png", 48), anchor: [0.5, 0.97], fps: 16, blend: "add", ramp: "bolt", gamma: 2, thin: 11, hero: "mage" },
-  { id: "ice-bolt", pack: "pimen-ice", role: "proj", load: sh("pimen-ice", "Ice Effect 01/Ice VFX 1/IceVFX 1 Repeatable.png", 48, 32), anchor: [0.6, 0.5], fps: 16, blend: "normal", hero: "deathknight" },
+  { id: "ice-bolt", pack: "pimen-ice", role: "proj", load: sh("pimen-ice", "Ice Effect 01/Ice VFX 1/IceVFX 1 Repeatable.png", 48, 32), order: [0, 4, 8, 1, 2, 7, 6, 3, 5, 9], anchor: [0.6, 0.5], fps: 12, blend: "normal", hero: "deathknight" },
   { id: "ice-bolt-hit", pack: "pimen-ice", role: "hit", load: sh("pimen-ice", "Ice Effect 01/Ice VFX 1/Ice VFX 1 Hit.png", 48, 32), anchor: [0.5, 0.5], fps: 16, blend: "normal", hero: "deathknight" },
   { id: "ice-crystal", pack: "pimen-ice", role: "aoe", load: () => [...sh("pimen-ice", "Ice Effect 01/Ice VFX 2/Ice VFX 2 Start.png", 32)(), ...sh("pimen-ice", "Ice Effect 01/Ice VFX 2/Ice VFX 2 Active.png", 32)()], anchor: [0.5, 0.9], fps: 14, blend: "normal", thin: 12, hero: "deathknight" },
   { id: "smoke-puff", pack: "pimen-smoke", role: "cast", load: sh("pimen-smoke", "Smoke Effect 01/Smoke VFX 2.png", 64), anchor: [0.5, 0.6], fps: 12, blend: "normal", hero: "rogue" },
-  { id: "fog-loop", pack: "pimen-smoke", role: "aura", load: sh("pimen-smoke", "Smoke Effect 01/Smoke VFX 2.png", 64), from: 2, to: 6, anchor: [0.5, 0.6], fps: 6, blend: "normal", hero: "rogue" },
+  // облако: бесшовный цикл из всех кадров клуба — кадр k поверх зеркального кадра k+6 (12 кадров, последний клуба пустой)
+  { id: "fog-loop", pack: "pimen-smoke", role: "aura", load: sh("pimen-smoke", "Smoke Effect 01/Smoke VFX 2.png", 64), post: fogLoop, anchor: [0.5, 0.6], fps: 12, blend: "normal", hero: "rogue" },
   // ImpactForge: дуга клинка (64×64, 9 кадров)
   { id: "blade-steel", pack: "impactforge", role: "slash", load: sh("impactforge", "Spritesheets/slash.png", 64), anchor: [0.5, 0.5], fps: 22, blend: "normal", hero: "warrior" },
   { id: "blade-dark", pack: "impactforge", role: "slash", load: sh("impactforge", "Spritesheets/slash_dark-Sheet.png", 64), anchor: [0.5, 0.5], fps: 22, blend: "normal", hero: "deathknight" },
   { id: "blade-fire", pack: "impactforge", role: "slash", load: sh("impactforge", "Spritesheets/slash_fire-Sheet.png", 64), anchor: [0.5, 0.5], fps: 22, blend: "normal", hero: "warrior" },
   { id: "blade-ice", pack: "impactforge", role: "slash", load: sh("impactforge", "Spritesheets/slash_ice-Sheet.png", 64), anchor: [0.5, 0.5], fps: 22, blend: "normal", hero: "deathknight" },
   // Ninja Adventure (CC0): метательная звезда 16×16, два кадра вращения
-  { id: "knife-spin", pack: "ninja", role: "proj", load: sh("ninja", NJ("Projectile", "Shuriken.png"), 16), anchor: [0.5, 0.5], fps: 14, blend: "normal", hero: "rogue" },
+  { id: "knife-spin", pack: "ninja", role: "proj", load: sh("ninja", NJ("Projectile", "Shuriken.png"), 16), spin: true, anchor: [0.5, 0.5], fps: 20, blend: "normal", hero: "rogue" },
 ];
 
 /** Перекрашенные копии: [новый id, исходный id, рампа, поправки]. Кровь, тьма и яд делаются из подходящих по форме эффектов. */
 const VARIANTS: [string, string, string, Partial<Def>?][] = [
   ["nova-frost", "holy-nova", "frost"], ["nova-arcane", "holy-nova", "arcane"], ["nova-shadow", "holy-nova", "shadow"], ["nova-blood", "holy-nova", "blood"],
   ["shield-steel", "holy-shield", "steel"], ["shield-arcane", "holy-shield", "arcane"], ["shield-bone", "holy-shield", "bone"],
-  ["heal-blood", "holy-heal", "blood"], ["heal-nature", "holy-heal", "nature"],
+  ["heal-blood", "holy-heal", "blood", { tween: true, fps: 20 }], ["heal-nature", "holy-heal", "nature", { tween: true, fps: 20 }],
   ["slash-shadow", "holy-slash-c", "shadow"], ["slash-blood", "holy-slash-b", "blood"],
   ["blood-ball", "fire-ball", "blood"], ["blood-ball-hit", "fire-ball-hit", "blood"],
   ["frost-ball", "water-ball", "frost"], ["frost-splash", "water-splash", "frost"],
@@ -168,17 +186,16 @@ export interface Built { ease?: Ease; id: string; pack: string; role: Role; fram
  *  остаются нативными, а увеличиваются целым ×2 по радиусу умения: в skill-fx.json id получает суффикс @2 (tools/gen/skill-fx-fit.ts). */
 export const FIT: Record<string, number> = {
   "fire-ball": 26, "fire-ball-hit": 30, "blood-ball": 26, "blood-ball-hit": 30, "dark-bolt": 24, "dark-bolt-hit": 30, "ice-bolt": 24, "ice-bolt-hit": 32,
-  "bolt-proj": 24, "bolt-hit": 32, "bolt-strike": 56, "bolt-splash": 48, "axe-spin": 16, "axe-spin-blood": 16, "knife-spin": 14, "raven-fly": 22,
-  "chain-steel": 16, "chain-shadow": 16, "poison-ball": 16, "poison-ball-hit": 32,
+  "bolt-proj": 24, "bolt-hit": 32, "bolt-strike": 56, "bolt-splash": 48, "raven-fly": 22,
+  "poison-ball": 16, "poison-ball-hit": 32,
   "hit-fire": 32, "hit-frost": 32, "hit-poison": 32, "hit-blood": 32, "hit-shadow": 32, "hit-holy": 32,
   "explosion": 40, "explosion-blood": 40, "explosion-shadow": 40, "explosion-poison": 40, "expl-large-shadow": 44, "expl-dust": 40, "expl-blue": 40,
   "holy-smite": 36, "holy-heal": 44, "heal-blood": 44, "heal-nature": 44, "poison-skull": 40, "poison-slash": 40,
   "blade-steel": 40, "blade-dark": 40, "blade-ice": 40, "blade-fire": 40, "blade-blood": 40, "blade-poison": 40, "blade-shadow": 40,
-  "blood-splash": 32, "blood-splash-b": 32, "axe-blood-hit": 24, "geyser-blood": 44, "dark-wraith": 48, "dark-tentacles": 56,
-  "shackle-steel": 40, "shackle-shadow": 40, "puff-shadow": 44, "puff-poison": 44, "puff-smoke": 44, "fog-loop": 44, "fog-shadow": 44, "fog-poison": 44, "fog-smoke": 44, "blood-pool": 52,
-  "bubble-steel": 44, "bubble-arcane": 44, "bubble-holy": 44, "bubble-bone": 44, "bubble-shadow": 44,
-  "banner-holy": 40, "banner-blood": 40, "ring-blood": 44, "ring-holy": 44, "ring-frost": 44, "ring-shadow": 44, "ring-arcane": 44,
-  "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36, "aura-rage": 44, "aura-runes-holy": 44,
+  "blood-splash": 32, "blood-splash-b": 32, "axe-blood-hit": 24, "geyser-blood": 44, "dark-wraith": 48, "dark-tentacles": 96,
+  "shackle-steel": 40, "shackle-shadow": 40, "puff-shadow": 44, "puff-poison": 44, "puff-smoke": 44, "fog-loop": 44, "fog-shadow": 44, "fog-poison": 44, "fog-smoke": 44,
+  "banner-holy": 40, "banner-blood": 40,
+  "tornado-blood": 48, "tornado-shadow": 48, "flame-loop": 36,
   "holy-fury": 56, "holy-nova-s": 56, "nova-shadow-s": 72, "summon-circle-nature": 64, "portal-hold": 36, "portal-hold-shadow": 36, "portal-hold-nature": 36,
 };
 
@@ -187,24 +204,59 @@ function rescale(b: Built, target: number): Built {
   const r = target / Math.max(b.w, b.h);
   if (r > 0.97) return b;
   const w2 = Math.max(4, Math.round(b.w * r)), h2 = Math.max(4, Math.round(b.h * r));
-  const frames = b.frames.map((f) => tidy(downscaleMode(f, w2, h2, 0.34), 1));
+  // слабые кадры (начало и таяние: меньше 30 % пикселей пикового) уменьшаются с низким порогом и без чистки одиночных пикселей —
+  // иначе исчезают целиком, и эффект возникает и обрывается за кадр
+  const solid = (f: PC) => { let n = 0; for (let i = 3; i < f.data.length; i += 4) if (f.data[i] >= 128) n++; return n; };
+  const peak = Math.max(1, ...b.frames.map(solid));
+  const frames = b.frames.map((f) => (solid(f) < 0.3 * peak ? downscaleMode(f, w2, h2, 0.13) : tidy(downscaleMode(f, w2, h2, 0.34), 1)));
   return { ...b, frames, w: w2, h: h2, anchor: [Math.round(b.anchor[0] * w2) / w2, Math.round(b.anchor[1] * h2) / h2] };
+}
+/** Кроссфейд соседних кадров: среднее премультиплицированных цветов (кадры одного размера). */
+function tweenFrames(fr: PC[]): PC[] {
+  const out: PC[] = [];
+  for (let i = 0; i < fr.length; i++) {
+    out.push(fr[i]);
+    if (i + 1 >= fr.length) break;
+    const a = fr[i], b = fr[i + 1], m = new PC(a.w, a.h);
+    for (let j = 0; j < a.data.length; j += 4) {
+      const aa = a.data[j + 3], ab = b.data[j + 3], s2 = aa + ab;
+      if (!s2) continue;
+      for (let c = 0; c < 3; c++) m.data[j + c] = Math.round((a.data[j + c] * aa + b.data[j + c] * ab) / s2);
+      m.data[j + 3] = Math.round(s2 / 2);
+    }
+    out.push(m);
+  }
+  return out;
+}
+/** После уменьшения: кадры меньше 3 пикселей в начале и в конце отрезаются; пустой кадр внутри (gaps) — копия предыдущего. */
+function cleanEnds(b: Built, gaps = false): Built {
+  const px = (f: PC) => { let n = 0; for (let i = 3; i < f.data.length; i += 4) if (f.data[i]) n++; return n; };
+  let a = 0, z = b.frames.length;
+  while (a < z - 1 && px(b.frames[a]) < 3) a++;
+  while (z - 1 > a && px(b.frames[z - 1]) < 3) z--;
+  if (a === 0 && z === b.frames.length && !gaps) return b;
+  const frames = b.frames.slice(a, z);
+  if (gaps) for (let i = 1; i < frames.length; i++) if (isBlank(frames[i])) frames[i] = frames[i - 1];
+  return { ...b, frames, peak: Math.max(0, Math.min(b.peak - a, frames.length - 1)) };
 }
 const scale2 = (b: Built): Built => ({ ...b, id: `${b.id}@2`, frames: b.frames.map((f) => scaleNN(f, 2)), w: b.w * 2, h: b.h * 2 });
 // арт двойной плотности (scale < 1) не уменьшается: его детали и есть смысл листа
-const fitted = (b: Built): Built => (FIT[b.id] && !b.scale ? rescale(b, FIT[b.id]) : b);
+const fitted = (b: Built, gaps = false): Built => (FIT[b.id] && !b.scale ? cleanEnds(rescale(b, FIT[b.id]), gaps) : b);
 
 /** Плавность по виду эффекта: ауры и щиты входят и выходят, круги призыва держатся и тают, портал открывается, держится и закрывается. */
 function easeOf(id: string): Ease | undefined {
-  if (/^summon-circle/.test(id)) return { fadeIn: 200, fadeOut: 320, scaleIn: 0.8, loop: [4, 6], hold: 1400 };
+  if (/^summon-circle/.test(id)) return { fadeIn: 200, fadeOut: 320, loop: [6, 21], hold: 1400 };
   // облака и лужи: полупрозрачные, входят и гаснут плавно (герои видны сквозь них)
-  if (/^(fog-)/.test(id)) return { alpha: 0.6, fadeIn: 500, fadeOut: 600, scaleIn: 0.85 };
+  if (/^(fog-)/.test(id)) return { alpha: 0.6, fadeIn: 500, fadeOut: 600 };
   if (/^(puff-|smoke-puff)/.test(id)) return { alpha: 0.65, fadeIn: 120, fadeOut: 300 };
-  if (/^blood-pool/.test(id)) return { alpha: 0.55, fadeIn: 400, fadeOut: 500, scaleIn: 0.85 };
+  if (/^portal-open/.test(id)) return { tail: 170 };
+  if (/^blood-pool/.test(id)) return { alpha: 0.55, fadeIn: 400, fadeOut: 500 };
   // штандарт: падает сверху с пружинящим ударом и пылью (drop, px), гаснет за 300 мс; кольцо ауры мягко входит
   if (/^banner-(solgard|umbrath)$/.test(id)) return { fadeOut: 300, drop: 72, dust: "dust-puff" };
   if (/^banner-ring/.test(id)) return { alpha: 0.9, fadeIn: 400, fadeOut: 300 };
-  if (/^(bubble-|ring-|aura-|banner-|flame-|tornado|holy-heal|heal-)/.test(id)) return { fadeIn: 220, fadeOut: 260, scaleIn: 0.7 };
+  // разовые вспышки лечения (heal-*) — один проход с хвостом; holy-heal — и вспышка, и аура (ease.aura в data/vfx-tune.json)
+  if (/^heal-/.test(id)) return { tail: 250 };
+  if (/^(bubble-|ring-|aura-|banner-|flame-|tornado|holy-heal)/.test(id)) return { fadeIn: 220, fadeOut: 260 };
   return undefined;
 }
 
@@ -212,7 +264,10 @@ function build(d: Def): Built {
   let src = d.load();
   const fw = src[0].w, fh = src[0].h;
   src = src.slice(d.from ?? 0, (d.to ?? src.length - 1) + 1);
+  if (d.order) src = d.order.filter((i) => i < src.length).map((i) => src[i]);
   src = trimBlank(src, d.from === undefined);
+  if (d.post) src = d.post(src);
+  if (d.spin) src = src.flatMap((f) => [f, f.rotated(Math.PI / 8, f.w / 2, f.h / 2)]);
   let fps = d.fps;
   if (d.thin && d.thin < src.length) { const n = src.length; src = pickIdx(n, d.thin).map((i) => src[i]); fps = Math.max(4, Math.round((fps * d.thin) / n)); }
   if (d.ramp) src = gradientMap(src, RAMPS[d.ramp], d.gamma ?? 1);
@@ -223,7 +278,21 @@ function build(d: Def): Built {
     if (box) { ax = Math.round((box[0] + box[2]) / 2); ay = Math.round((box[1] + box[3]) / 2); }
   }
   const norm = cropToAnchor(src, ax, ay, fw, fh);
-  return fitted({ id: d.id, pack: d.pack, role: d.role, frames: norm.frames, w: norm.w, h: norm.h, anchor: norm.anchor, fps, blend: d.blend, hero: d.hero, peak: Math.min(d.peak ?? peakIndex(norm.frames), norm.frames.length - 1) });
+  if (d.tween) { const b = fitted({ id: d.id, pack: d.pack, role: d.role, frames: norm.frames, w: norm.w, h: norm.h, anchor: norm.anchor, fps, blend: d.blend, hero: d.hero, peak: peakIndex(norm.frames) }); return { ...b, frames: tweenFrames(b.frames), peak: b.peak * 2 }; }
+  return fitted({ id: d.id, pack: d.pack, role: d.role, frames: norm.frames, w: norm.w, h: norm.h, anchor: norm.anchor, fps, blend: d.blend, hero: d.hero, peak: Math.min(d.peak ?? peakIndex(norm.frames), norm.frames.length - 1), ...(d.ease ? { ease: d.ease } : {}) }, d.fillGaps);
+}
+
+interface Tune { frames?: number; fps?: number; ease?: Record<string, unknown> }
+const TUNE = JSON.parse(fs.readFileSync(path.join(ROOT, "data/vfx-tune.json"), "utf8")) as Record<string, Tune>;
+/** JSON Merge Patch (RFC 7386): объекты сливаются, null удаляет поле. */
+function mergePatch(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const o: Record<string, unknown> = { ...base };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null) delete o[k];
+    else if (typeof v === "object" && !Array.isArray(v)) o[k] = mergePatch((o[k] as Record<string, unknown>) ?? {}, v as Record<string, unknown>);
+    else o[k] = v;
+  }
+  return o;
 }
 
 export function buildAll(): Built[] {
@@ -248,16 +317,31 @@ export function buildAll(): Built[] {
     const W = Math.max(open.w, loop.w), H = Math.max(open.h, loop.h);
     const pad = (b: Built) => b.frames.map((f) => { const o = new PC(W, H); o.blit(f, Math.floor((W - b.w) / 2), Math.floor((H - b.h) / 2)); return o; });
     const o = pad(open), l = pad(loop);
-    out.push(fitted({ id, pack: open.pack, role: "cast", frames: [...o, ...l, ...[...o].reverse()], w: W, h: H, anchor: [0.5, 0.5], fps: 11, blend: "normal", hero: "mage", peak: o.length + 1,
-      ease: { fadeIn: 220, fadeOut: 240, scaleIn: 0.6, loop: [o.length, o.length + l.length - 1], hold: 900 } }));
+    // между вторым и третьим кадром открытия — третий, уменьшенный до 0.75 по центру: раскрытие без скачка размера; закрытие — зеркально
+    if (o.length >= 3) {
+      const f = o[2], w2 = Math.round(f.w * 0.75), h2 = Math.round(f.h * 0.75), sm = downscaleMode(f, w2, h2, 0.34), mid = new PC(W, H);
+      mid.blit(sm, Math.round((W - w2) / 2), Math.round((H - h2) / 2));
+      o.splice(2, 0, mid);
+    }
+    out.push(fitted({ id, pack: open.pack, role: "cast", frames: [...o, ...l, ...[...o].reverse()], w: W, h: H, anchor: [0.5, 0.5], fps: 12, blend: "normal", hero: "mage", peak: o.length + 1,
+      ease: { fadeIn: 160, fadeOut: 240, loop: [o.length, o.length + l.length - 1], hold: 900 } }));
   }
   // суффикс @2 в data/skill-fx.json: целое увеличение ×2 для площадных эффектов (радиус умения)
   try {
     const table = JSON.parse(fs.readFileSync(path.join(ROOT, "data/skill-fx.json"), "utf8")) as Record<string, Record<string, string>>;
     const need = new Set(Object.values(table).flatMap((sl) => Object.values(sl)).filter((v) => v.endsWith("@2")).map((v) => v.slice(0, -2)));
-    for (const b of [...out]) if (need.has(b.id)) out.push(scale2(b));
+    // лист, нарисованный генератором сразу ×2 (arrow-volley@2), не дублируется увеличением
+    for (const b of [...out]) if (need.has(b.id) && !out.some((q) => q.id === `${b.id}@2`)) out.push(scale2(b));
   } catch { /* таблицы ещё нет */ }
   for (const b of out) if (!b.ease) b.ease = easeOf(b.id);
+  // плавность (задача 127, tools/out/vfx-smooth/plan.md §2): правки data/vfx-tune.json поверх сборки — обрезка пустых кадров в конце, fps, ease
+  for (const b of out) {
+    const t = TUNE[b.id];
+    if (!t) continue;
+    if (t.frames && t.frames < b.frames.length) { b.frames = b.frames.slice(0, t.frames); b.peak = Math.min(b.peak, t.frames - 1); }
+    if (t.fps) b.fps = t.fps;
+    if (t.ease) b.ease = mergePatch((b.ease ?? {}) as Record<string, unknown>, t.ease) as Ease;
+  }
   return out;
 }
 

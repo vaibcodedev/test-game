@@ -1,0 +1,461 @@
+{
+ "$about": "Плавность листов (задача 127, tools/out/vfx-smooth/plan.md §2): JSON Merge Patch по id эффекта поверх сборки tools/gen/vfx.ts — frames обрезает пустые кадры в конце, fps только делители 60, ease сливается (null удаляет поле)",
+ "aura-rage": {
+  "ease": {
+   "fadeIn": 180
+  }
+ },
+ "axe-blood-hit": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "blade-blood": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blade-dark": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blade-fire": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blade-ice": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blade-poison": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blade-shadow": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blade-steel": {
+  "fps": 20,
+  "ease": {
+   "tail": 150
+  }
+ },
+ "blood-ball-hit": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "blood-splash-b": {
+  "fps": 15,
+  "ease": {
+   "tail": 130
+  }
+ },
+ "bolt-hit": {
+  "fps": 15
+ },
+ "bubble-arcane": {
+  "ease": {
+   "fadeIn": 180
+  }
+ },
+ "bubble-bone": {
+  "ease": {
+   "fadeIn": 180
+  }
+ },
+ "bubble-holy": {
+  "ease": {
+   "fadeIn": 180
+  }
+ },
+ "bubble-shadow": {
+  "ease": {
+   "fadeIn": 180
+  }
+ },
+ "bubble-steel": {
+  "ease": {
+   "fadeIn": 180
+  }
+ },
+ "dark-bolt-hit": {
+  "fps": 15,
+  "ease": {
+   "tail": 130
+  }
+ },
+ "dark-wraith": {
+  "ease": {
+   "aura": {
+    "every": 1800
+   }
+  }
+ },
+ "dust-puff": {
+  "fps": 15,
+  "ease": {
+   "fadeIn": 60,
+   "tail": 120
+  }
+ },
+ "expl-blue": {
+  "fps": 15
+ },
+ "expl-dust": {
+  "fps": 15
+ },
+ "explosion": {
+  "fps": 15,
+  "ease": {
+   "tail": 200
+  }
+ },
+ "explosion-blood": {
+  "fps": 15,
+  "ease": {
+   "tail": 200
+  }
+ },
+ "explosion-poison": {
+  "fps": 15,
+  "ease": {
+   "tail": 200
+  }
+ },
+ "explosion-shadow": {
+  "fps": 15,
+  "ease": {
+   "tail": 200
+  }
+ },
+ "fire-ball-hit": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "frost-splash": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "geyser-blood": {
+  "fps": 15,
+  "ease": {
+   "tail": 140
+  }
+ },
+ "hit-blood": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "hit-fire": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "hit-frost": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "hit-holy": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "hit-poison": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "hit-shadow": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "holy-heal": {
+  "ease": {
+   "fadeIn": 180,
+   "aura": {
+    "every": 1500
+   }
+  }
+ },
+ "holy-nova": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "holy-nova-s": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "holy-nova@2": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "holy-slash-a": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "holy-slash-b": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "holy-slash-c": {
+  "fps": 20
+ },
+ "holy-smite": {
+  "fps": 15,
+  "ease": {
+   "tail": 135
+  }
+ },
+ "ice-bolt-hit": {
+  "fps": 15,
+  "ease": {
+   "tail": 200
+  }
+ },
+ "nova-arcane": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-arcane@2": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-blood": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-blood@2": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-frost": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-frost@2": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-shadow": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-shadow-s": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "nova-shadow@2": {
+  "ease": {
+   "fadeIn": 90
+  }
+ },
+ "poison-skull": {
+  "ease": {
+   "tail": 165
+  }
+ },
+ "poison-slash": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "puff-poison": {
+  "ease": {
+   "tail": 250
+  }
+ },
+ "puff-poison@2": {
+  "ease": {
+   "tail": 250
+  }
+ },
+ "puff-shadow": {
+  "ease": {
+   "tail": 250
+  }
+ },
+ "puff-smoke": {
+  "ease": {
+   "tail": 250
+  }
+ },
+ "puff-smoke@2": {
+  "ease": {
+   "tail": 250
+  }
+ },
+ "quake-slam": {
+  "ease": {
+   "tail": 220
+  }
+ },
+ "rocks": {
+  "frames": 5
+ },
+ "rocks-hit": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "slash-blood": {
+  "ease": {
+   "tail": 100
+  }
+ },
+ "slash-shadow": {
+  "fps": 20
+ },
+ "smear-h-blood": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-h-fire": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-h-frost": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-h-poison": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-h-shadow": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-h-steel": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-v-blood": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-v-fire": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-v-frost": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-v-poison": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smear-v-steel": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "smoke-puff": {
+  "ease": {
+   "tail": 250
+  }
+ },
+ "tornado": {
+  "ease": {
+   "fadeIn": 180,
+   "aura": {
+    "loop": [
+     0,
+     5
+    ]
+   }
+  }
+ },
+ "tornado-blood": {
+  "ease": {
+   "fadeIn": 180,
+   "aura": {
+    "loop": [
+     0,
+     5
+    ]
+   }
+  }
+ },
+ "tornado-shadow": {
+  "ease": {
+   "fadeIn": 180,
+   "aura": {
+    "loop": [
+     0,
+     5
+    ]
+   }
+  }
+ },
+ "water-splash": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ },
+ "wind-hit": {
+  "fps": 20,
+  "ease": {
+   "tail": 100
+  }
+ }
+}

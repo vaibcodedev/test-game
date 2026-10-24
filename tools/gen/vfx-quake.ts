@@ -68,18 +68,19 @@ export function quakeSlam(): Gen {
     const f = new PC(W, H);
     // воронка и толстые трещины в центре
     if (t >= 1) {
-      const fade = t > 12 ? Math.max(0, 1 - (t - 12) / 4) : 1;
+      // воронка и трещины тают с t = 11 за 5 кадров: накопительный порог по клетке 4×4 без t (пиксель, раз исчезнув, не возвращается)
+      const fade = t > 10 ? Math.max(0, 1 - (t - 10) / 5) : 1;
       if (fade > 0) {
         const rim = new PC(W, H); rim.ellipse(CX, CY, 25, 17.5, EARTH[1]); rim.ellipse(CX, CY, 22, 15, EARTH[0]); rim.ellipse(CX, CY + 1, 18, 12, hex("#150d07"));
         rim.outline(OUTL);
-        for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (fade < 1 && ((i * 5 + j * 3 + t) % 4) / 4 > fade) rim.clear(i, j);
-        f.blit(rim, 0, 0);
         for (const c of cracks) {
           let x = CX + Math.cos(c.a) * 12, y = CY + Math.sin(c.a) * 12 * ellY; const L = Math.min(c.len, Math.max(0, t - 0.5) * 7);
-          for (let s = 0; s < L; s += 3) { const aj = c.a + Math.sin(s * 0.6 + c.z) * 0.3, nx = x + Math.cos(aj) * 3, ny = y + Math.sin(aj) * 3 * ellY; f.line(Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), OUTL, 3); x = nx; y = ny; }
+          for (let s = 0; s < L; s += 3) { const aj = c.a + Math.sin(s * 0.6 + c.z) * 0.3, nx = x + Math.cos(aj) * 3, ny = y + Math.sin(aj) * 3 * ellY; rim.line(Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), OUTL, 3); x = nx; y = ny; }
           x = CX + Math.cos(c.a) * 12; y = CY + Math.sin(c.a) * 12 * ellY;
-          if (t < 10) for (let s = 0; s < L; s += 3) { const aj = c.a + Math.sin(s * 0.6 + c.z) * 0.3, nx = x + Math.cos(aj) * 3, ny = y + Math.sin(aj) * 3 * ellY; f.line(Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), t < 6 ? G[4] : G[3], 1); x = nx; y = ny; }
+          if (t < 10) for (let s = 0; s < L; s += 3) { const aj = c.a + Math.sin(s * 0.6 + c.z) * 0.3, nx = x + Math.cos(aj) * 3, ny = y + Math.sin(aj) * 3 * ellY; rim.line(Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), t < 6 ? G[4] : G[3], 1); x = nx; y = ny; }
         }
+        for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (fade < 1 && (((i * 5 + j * 3) % 4) + 0.5) / 4 > fade) rim.clear(i, j);
+        f.blit(rim, 0, 0);
       }
     }
     // задние половины шипов и глыб (дальше от зрителя) рисуются раньше пыли
@@ -118,7 +119,7 @@ export function quakeSlam(): Gen {
     for (const s of sparks) { if (t < 1 || t > s.life + 1) continue; const q = t - 1, x = CX + Math.cos(s.a) * s.v * q * 1.6, y = CY - 3 - s.up * q * 1.6 + 0.7 * q * q * 1.6 + Math.sin(s.a) * s.v * q * 0.5; put(f, x, y, q < s.life * 0.5 ? G[5] : G[3]); put(f, x + 1, y, q < s.life * 0.5 ? G[4] : G[2]); if (q < s.life * 0.4) { put(f, x, y + 1, G[3]); put(f, x - Math.cos(s.a), y + 1, G[2]); } }
     return f;
   });
-  return { id: "quake-slam", pack: "gen", role: "aoe", frames, w: W, h: H, anchor: [CX / W, CY / H], fps: 14, blend: "normal", hero: "warrior" };
+  return { id: "quake-slam", pack: "gen", role: "aoe", frames, w: W, h: H, anchor: [CX / W, CY / H], fps: 15, blend: "normal", hero: "warrior" };
 }
 
 function flipH(f: PC): PC {

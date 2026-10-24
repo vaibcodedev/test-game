@@ -36,76 +36,78 @@ function ell(f: PC, R: number, v: number, a0 = 0, a1 = Math.PI * 2) {
 }
 function polyStar(f: PC, R: number, rot: number, v: number) {
   const pts = [0, 1, 2].map((i) => { const a = rot + (i * Math.PI * 2) / 3; return [CX + Math.cos(a) * R, CY + Math.sin(a) * R * SQ] as [number, number]; });
-  for (let i = 0; i < 3; i++) f.line(Math.round(pts[i][0]), Math.round(pts[i][1]), Math.round(pts[(i + 1) % 3][0]), Math.round(pts[(i + 1) % 3][1]), gray(v));
+  // линия в 2 пикселя: тень снизу, свет сверху (объём вместо однопиксельной нити)
+  for (const [dy, vv] of [[1, Math.round(v * 0.45)], [0, v]] as const) for (let i = 0; i < 3; i++) f.line(Math.round(pts[i][0]), Math.round(pts[i][1]) + dy, Math.round(pts[(i + 1) % 3][0]), Math.round(pts[(i + 1) % 3][1]) + dy, gray(vv));
 }
-function circleFrame(t: number, N: number): PC {
+/** Кадр круга призыва: вход t0–5 (кольцо раскрывается (t+1)/6, звезда и руны проступают, вспышка на t5 — вне цикла), цикл t6–21: поворот
+ *  rot = t·π/48, засечки по ходу, звезда и руны против (за 16 кадров цикла — 60°, период узора: стык бесшовный). Кадров выхода нет —
+ *  выход клиент делает растворением (held) поверх вращения. */
+function circleFrame(t: number): PC {
   const f = new PC(CW, CH);
-  const grow = Math.min(1, (t + 1) / 4);            // кольцо раскрывается за 4 кадра
+  const grow = Math.min(1, (t + 1) / 6);
   const R = 38 * (0.35 + 0.65 * grow);
-  const rot = t * 0.22;                             // руны и звезда поворачиваются
+  const rot = (t * Math.PI) / 48;
   const flash = t === 5 ? 1 : 0;
   ell(f, R + 1, 40);                                // тёмная подложка кольца (даёт объём)
-  ell(f, R, 150); ell(f, R - 5, 110);
-  // засечки между кольцами, ползут по кругу
+  ell(f, R, 150); ell(f, R - 1, 205);               // обод в 2 пикселя: внешний тон и светлая кромка
+  ell(f, R - 5, 110); ell(f, R - 6, 55);            // внутреннее кольцо с тенью
+  // засечки между кольцами, ползут по кругу (18 штук — период 20°, кратен циклу 60°)
   const ticks = 18;
   for (let i = 0; i < ticks; i++) {
     const a = rot + (i * Math.PI * 2) / ticks;
     for (let rr = R - 4; rr < R; rr += 1) f.set(Math.round(CX + Math.cos(a) * rr), Math.round(CY + Math.sin(a) * rr * SQ), gray(i % 3 === 0 ? 235 : 175));
   }
   if (t >= 2) {                                      // две перевёрнутые тройки — шестиконечная звезда
-    const s = Math.min(1, (t - 1) / 3);
-    polyStar(f, (R - 8) * s, -rot * 0.6 - Math.PI / 2, 215);
-    polyStar(f, (R - 8) * s, -rot * 0.6 + Math.PI / 2, 215);
+    const s = Math.min(1, (t - 1) / 4);
+    polyStar(f, (R - 8) * s, -rot - Math.PI / 2, 215);
+    polyStar(f, (R - 8) * s, -rot + Math.PI / 2, 215);
     ell(f, (R - 10) * s, 130);
   }
   if (t >= 3) for (let i = 0; i < 6; i++) {          // руны-ромбы по углам звезды
-    const a = -rot * 0.6 - Math.PI / 2 + (i * Math.PI) / 3, x = Math.round(CX + Math.cos(a) * (R - 8)), y = Math.round(CY + Math.sin(a) * (R - 8) * SQ);
+    const a = -rot - Math.PI / 2 + (i * Math.PI) / 3, x = Math.round(CX + Math.cos(a) * (R - 8)), y = Math.round(CY + Math.sin(a) * (R - 8) * SQ);
     f.set(x, y, gray(255)); f.set(x + 1, y, gray(235)); f.set(x - 1, y, gray(235)); f.set(x, y + 1, gray(235)); f.set(x, y - 1, gray(235));
   }
   if (flash) for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) { const dx = (x - CX) / (R - 6), dy = (y - CY) / ((R - 6) * SQ); if (dx * dx + dy * dy < 0.5 && f.alpha(x, y)) f.set(x, y, gray(255)); }
-  if (t >= N - 3) erode(f, (t - (N - 4)) * 0.28, 7 + t);   // последние кадры рассыпаются
   return f;
 }
 function summonCircle(id: string, ramp: string): Gen {
-  const N = 10;
-  const raw = Array.from({ length: N }, (_, t) => circleFrame(t, N));
+  const N = 22;
+  const raw = Array.from({ length: N }, (_, t) => circleFrame(t));
   const frames = gradientMap(raw, RAMPS[ramp], 0.9);
-  return { id, pack: "gen", role: "aoe", frames, w: CW, h: CH, anchor: [0.5, 0.5], fps: 12, blend: "normal", hero: "warlock" };
+  return { id, pack: "gen", role: "aoe", frames, w: CW, h: CH, anchor: [0.5, 0.5], fps: 15, blend: "normal", hero: "warlock" };
 }
 
-// ---------- 2. Цепь: бесшовный отрезок 24×12 (клиент тянет вдоль линии), 6 кадров блика ----------
-const LW = 24, LH = 12;
+// ---------- 2. Цепь: бесшовный отрезок 16×8 (степень двойки — TileSprite тянет его вдоль линии), 16 кадров блика ----------
+const LW = 16, LH = 8;
+/** Звено анфас (кольцо) и звено ребром (планка сквозь отверстие); блик идёт по верхней кромке на 1 px за кадр — за 16 кадров весь отрезок,
+ *  стык бесшовный. */
 function chainFrame(t: number): PC {
   const f = new PC(LW, LH);
   const D = hex("#23262f"), M = hex("#5d667c"), L = hex("#a9b4c8"), W = hex("#f2f6ff");
-  const cy = 6;
+  const cy = 4;
   for (const off of [-LW, 0, LW]) {
-    // плоское звено (анфас): овальное кольцо с пустой серединой
-    for (let y = 0; y < LH; y++) for (let x = -4; x < LW + 4; x++) {
-      const dx = (x - (6 + off) + 0.5) / 8, dy = (y - cy + 0.5) / 5;
-      const d = dx * dx + dy * dy, inner = (dx / 0.62) ** 2 + (dy / 0.46) ** 2;
-      if (d <= 1 && inner >= 1 && x + 0 >= 0 && x < LW) f.set(x, y, d > 0.78 ? D : dy < -0.2 ? L : M);
+    for (let y = 0; y < LH; y++) for (let x = -3; x < LW + 3; x++) {
+      const dx = (x - (4 + off) + 0.5) / 5.4, dy = (y - cy + 0.5) / 3.6;
+      const d = dx * dx + dy * dy, inner = (dx / 0.58) ** 2 + (dy / 0.4) ** 2;
+      if (d <= 1 && inner >= 1 && x >= 0 && x < LW) f.set(x, y, d > 0.74 ? D : dy < -0.2 ? L : M);
     }
   }
   for (const off of [-LW, 0, LW]) {
-    // звено ребром: узкая планка, проходит сквозь отверстие плоского
-    for (let x = 10; x < 27; x++) for (let y = cy - 2; y < cy + 2; y++) {
+    for (let x = 7; x < 18; x++) for (let y = cy - 1; y < cy + 2; y++) {
       const X = x + off; if (X < 0 || X >= LW) continue;
-      const edge = x === 10 || x === 26 ? 1 : 0;
-      if (edge && (y === cy - 2 || y === cy + 1)) continue;
-      f.set(X, y, y === cy - 2 ? L : y === cy + 1 ? D : M);
+      const edge = x === 7 || x === 17;
+      if (edge && y !== cy) continue;
+      f.set(X, y, y === cy - 1 ? L : y === cy + 1 ? D : edge ? D : M);
     }
   }
-  // блик едет по цепи: белый пиксель на верхней кромке + искра-крестик в двух кадрах
-  const gx = (t * 4 + 3) % LW;
-  for (let y = 0; y < LH; y++) if (f.alpha(gx, y)) { f.set(gx, y, W); break; }
-  if (t % 3 === 1) { const sx = (gx + 12) % LW; for (let y = 0; y < LH; y++) if (f.alpha(sx, y)) { f.set(sx, y, W); f.set(sx, y - 1, [242, 246, 255, 160]); break; } }
+  const gx = t % LW;
+  for (let y = 0; y < LH; y++) if (f.alpha(gx, y)) { f.set(gx, y, W); const n = f.get(gx, y + 1); if (n && n[3]) f.set(gx, y + 1, L); break; }
   return f;
 }
 function chain(id: string, ramp?: string): Gen {
-  let frames = Array.from({ length: 6 }, (_, t) => chainFrame(t));
+  let frames = Array.from({ length: 16 }, (_, t) => chainFrame(t));
   if (ramp) frames = gradientMap(frames, RAMPS[ramp], 1);
-  return { id, pack: "gen", role: "hit", frames, w: LW, h: LH, anchor: [0, 0.5], fps: 12, blend: "normal", hero: "deathknight" };
+  return { id, pack: "gen", role: "hit", frames, w: LW, h: LH, anchor: [0, 0.5], fps: 20, blend: "normal", hero: "deathknight" };
 }
 
 // ---------- 3. Брызги крови: 8 кадров 48×40, капли летят дугой, на земле остаются пятна ----------
@@ -142,13 +144,14 @@ function bloodFrames(seed: number): PC[] {
     });
     // пятна на земле (остаются до конца, в последних кадрах сохнут)
     for (const [x, y, big] of splats) { f.set(x, y, big ? mid : dark); if (big) { f.set(x + 1, y, dark); f.set(x - 1, y, dark); f.set(x, y + 1, dark); } }
-    if (t >= N - 2) erode(f, (t - (N - 3)) * 0.3, 11 + t);
+    // растворение одним зерном с t = N − 4: 0.25 / 0.5 / 0.75 / 1 (последний кадр пустой)
+    if (t >= N - 4) erode(f, (t - (N - 5)) * 0.25, 11);
     frames.push(f);
   }
   return frames;
 }
 function bloodSplash(id: string, seed: number): Gen {
-  return { id, pack: "gen", role: "hit", frames: bloodFrames(seed), w: BW, h: BH, anchor: [0.5, 0.6], fps: 16, blend: "normal", hero: "reaver" };
+  return { id, pack: "gen", role: "hit", frames: bloodFrames(seed), w: BW, h: BH, anchor: [0.5, 0.6], fps: 15, blend: "normal", hero: "reaver", ease: { tail: 200 } };
 }
 
 export function GENERATED(): Gen[] {
