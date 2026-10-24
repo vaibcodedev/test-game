@@ -2543,6 +2543,28 @@
   ],
   "blend": "normal"
  },
+ "std-drape-sol": {
+  "frameW": 78,
+  "frameH": 47,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.8936
+  ],
+  "blend": "normal"
+ },
+ "std-drape-umb": {
+  "frameW": 78,
+  "frameH": 47,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.8936
+  ],
+  "blend": "normal"
+ },
  "std-fallen-sol": {
   "frameW": 90,
   "frameH": 56,
@@ -2562,28 +2584,6 @@
   "anchor": [
    0.6222,
    0.3929
-  ],
-  "blend": "normal"
- },
- "std-gate-sol": {
-  "frameW": 46,
-  "frameH": 47,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   1.8936
-  ],
-  "blend": "normal"
- },
- "std-gate-umb": {
-  "frameW": 45,
-  "frameH": 47,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   1.8936
   ],
   "blend": "normal"
  },
@@ -2609,6 +2609,50 @@
   ],
   "blend": "normal"
  },
+ "std-pennant-sol": {
+  "frameW": 32,
+  "frameH": 49,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.0408
+  ],
+  "blend": "normal"
+ },
+ "std-pennant-sol-hi": {
+  "frameW": 32,
+  "frameH": 49,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.4898
+  ],
+  "blend": "normal"
+ },
+ "std-pennant-umb": {
+  "frameW": 32,
+  "frameH": 49,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.0408
+  ],
+  "blend": "normal"
+ },
+ "std-pennant-umb-hi": {
+  "frameW": 32,
+  "frameH": 49,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1.4898
+  ],
+  "blend": "normal"
+ },
  "std-torn-sol": {
   "frameW": 38,
   "frameH": 64,
@@ -2628,50 +2672,6 @@
   "anchor": [
    0.5,
    0.9688
-  ],
-  "blend": "normal"
- },
- "std-wall-sol": {
-  "frameW": 42,
-  "frameH": 41,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   1.1463
-  ],
-  "blend": "normal"
- },
- "std-wall-sol-hi": {
-  "frameW": 42,
-  "frameH": 41,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   1.8293
-  ],
-  "blend": "normal"
- },
- "std-wall-umb": {
-  "frameW": 40,
-  "frameH": 41,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   1.1463
-  ],
-  "blend": "normal"
- },
- "std-wall-umb-hi": {
-  "frameW": 40,
-  "frameH": 41,
-  "frames": 12,
-  "fps": 12,
-  "anchor": [
-   0.5,
-   1.8293
   ],
   "blend": "normal"
  },

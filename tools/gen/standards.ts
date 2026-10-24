@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { PC, hex, pnoise, OUTLINE, type RGBA } from "./canvas";
 import { P } from "./palette";
-import { ARMS, factionEmblem } from "./heraldry";
+import { ARMS, factionEmblem, azureMedallion, SOLGARD_SHIELD_TOP } from "./heraldry";
 
 type Col = RGBA;
 type Fac = "solgard" | "umbrath";
@@ -615,58 +615,190 @@ function homeUmbrath(): Anim {
   return { id: "home-umbrath", title: "СВОИ ЗЕМЛИ", frames, w: FW, h: FH, anchor: [20.5 / FW, 68 / FH], fps: FPS, fac: "umbrath", hero: "deathknight" };
 }
 
-// ---------------------------------------------------------------- настенные знамёна (задача 132: стены, башни и ворота столиц, фортов, постов у мостов)
 /** Ветер у стены: полотнище висит вплотную к камню — без сноса, лёгкое качание низа (±1 px), складки мягче и реже, чем на древке;
  *  смена сдвига строки держится 2 кадра (hold) — колыхание, а не трепет. */
 const WIND_WALL: Wind = { lean: 0, sway: 1.2, lag: 6, lambda: N, slant: 0.12, f0: 0.12, f1: 0.75, lightT: 0.72, darkT: 0.42, deepT: 2, embT: 0.85, rip: N, ripT: 0.55, fieldD: 4, topShade: 1, hold: true };
-/** Настенное знамя: брус на двух крюках, вбитых в кладку, петли, полотнище с гербом (без древка). Якорь — середина верха бруса
- *  (точка крепления; в игре — tools/gen/standards-to-game.ts переносит её на нужную высоту стены или башни). */
-function hangBanner(o: { id: string; title: string; kit: Kit; CW: number; CH: number; inside: (x: number, y: number) => boolean; cloth: (d: number) => Col;
-  emb: PC; embY: number; ties: [number, number][]; wind: Wind; barOver: number }): Anim {
-  const k = o.kit, side = 6, bar = 2, X0 = side + o.barOver, Y0 = bar + 3;
-  const FW = o.CW + 2 * X0, FH = Y0 + o.CH + 4;
-  const tex = clothTex(o.CW, o.CH, o.inside, (_x, _y, d) => o.cloth(d));
-  const emb: Emb = { pc: o.emb, x: Math.floor((o.CW - o.emb.w) / 2), y: o.embY };
-  const iron = k.fac === "solgard" ? { L: STEEL[3], M: STEEL[2], D: STEEL[1] } : { L: IRON[3], M: IRON[2], D: IRON[1] };
+// ---------------------------------------------------------------- висящие знамёна (стены, башни и ворота столиц, фортов, постов у мостов)
+//  Редизайн (пользователь: прежнее настенное знамя на брусе повторяло штандарт на древке — рядом выглядело дублем). Та же семья (палитра
+//  и герб общие), другая подача. В игре: А — вымпел с ласточкиным хвостом и бахромой на шнуре — на угловых башнях и башнях постов у мостов,
+//  В — драпировка с фестонами и кистями — над аркой ворот (выбор пользователя). С — лента с медальоном на кольцах — только в превью.
+//  Тень на стене запечена в кадр (полупрозрачная, свет сверху слева). Превью вариантов: npx tsx tools/gen/standards.ts --redesign
+//  → tools/out/banners-redesign/.
+type Variant = "A" | "B" | "C";
+/** Тень на камне: силуэт кадра, сдвинутый вниз-вправо, полупрозрачный — под непрозрачными пикселями не видна. */
+const WALL_SHADOW: Col = [14, 10, 20, 92];
+function wallShadow(f: PC, dx = 1, dy = 2): PC {
+  const out = new PC(f.w, f.h);
+  for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (f.alpha(x - dx, y - dy) > 200) out.set(x, y, WALL_SHADOW);
+  out.blit(f, 0, 0);
+  return out;
+}
+/** Текстура с запасом прозрачных строк снизу: бахрома и кисти рисуются в слое полотнища (общий контур, общий сдвиг строк). */
+function padTex(tex: PC, rows: number): PC {
+  const out = new PC(tex.w, tex.h + rows);
+  out.blit(tex, 0, 0);
+  return out;
+}
+/** Последняя строка ткани в столбце u (−1 — пусто). */
+const lastRow = (tex: PC, u: number) => { for (let v = tex.h - 1; v >= 0; v--) if (tex.alpha(u, v)) return v; return -1; };
+/** Металл фракции: Сольгард — золото, Умбрат — серебро на чёрном железе. */
+const metal = (fac: Fac) => (fac === "solgard" ? { H: G[4], L: G[3], M: G[2], D: G[1], K: G[0] } : { H: SIL[3], L: SIL[2], M: SIL[1], D: IRON[1], K: IRON[0] });
+/** Бахрома по нижней кромке (only — какие строки низа): сплошная светлая плетёная строка, под ней нити — 2 из 3 столбцов (шаг 3 px — при сдвиге на 1 px
+ *  не мигает), длина len с плетёнкой; на зуме 2 читается и на светлой, и на тёмной кладке (общий контур слоя обводит нити). */
+function fringeAt(L: PC, co: ClothOut, tex: PC, fac: Fac, len = 3, only: (v: number) => boolean = () => true) {
+  const m = metal(fac);
+  for (let u = 0; u < tex.w; u++) {
+    const v = lastRow(tex, u), X = v >= 0 ? co.at(u, v) : -1;
+    if (X < 0 || !only(v)) continue;
+    L.set(X, v + 1, m.H);
+    if (u % 3 === 2) continue;
+    for (let k = 2; k <= len; k++) L.set(X, v + k, k === 2 ? (u % 3 === 0 ? m.L : m.M) : u % 3 === 0 ? m.M : m.D);
+  }
+}
+/** Кисть под столбцом u: шнур, узел-навершие, нити (5 строк). */
+function tasselAt(L: PC, co: ClothOut, tex: PC, fac: Fac, u: number) {
+  const v = lastRow(tex, u), X = v >= 0 ? co.at(u, v) : -1;
+  if (X < 0) return;
+  const m = metal(fac), thread = fac === "solgard" ? { f: G[2], F: G[3] } : { f: UP[2], F: UP[3] };
+  stamp(L, X - 1, v + 1, [".c.", "kHk", "kLD", "FfF", "F.f"], { c: m.M, H: m.H, k: m.L, L: m.M, D: m.D, F: thread.F, f: thread.f });
+}
+/** Пруток с навершиями (2 строки, x0..x1): Сольгард — золотой с шарами-солнцами, Умбрат — чёрное железо с ромбами-наконечниками. */
+function rodAt(l: PC, fac: Fac, x0: number, x1: number, y: number) {
+  const m = metal(fac);
+  for (let x = x0; x <= x1; x++) { l.set(x, y, fac === "solgard" ? m.L : IRON[3]); l.set(x, y + 1, fac === "solgard" ? m.D : IRON[1]); }
+  const cap = fac === "solgard" ? [".HL.", "HLLM", "LMMD", ".DD."] : [".H.", "HLM", "LMD", ".D."];
+  const w = cap[0].length;
+  stamp(l, x0 - w, y - 1, cap, m);
+  stamp(l, x1 + 1, y - 1, cap, m, true);
+}
+interface HangSpec {
+  id: string; title: string; fac: Fac; tex: PC; emb: Emb | null; wind: Wind;
+  /** Кадр, положение текстуры, якорь (точка крепления к стене). */
+  FW: number; FH: number; X0: number; Y0: number; anchor: [number, number];
+  /** В слое полотнища до контура: бахрома, кисти. */
+  post?: (L: PC, co: ClothOut) => void;
+  /** Крепёж поверх ткани (обводится): пруток, кольца, крюки. */
+  front?: (l: PC) => void;
+  /** Без контура, поверх всего: тонкий шнур. */
+  cords?: (f: PC) => void;
+}
+function buildHang(s: HangSpec): Anim {
   const frames: PC[] = [];
   for (let t = 0; t < N; t++) {
-    const f = new PC(FW, FH);
-    const co = windCloth(tex, emb, t, o.wind, k.tone);
+    const f = new PC(s.FW, s.FH);
+    const co = windCloth(s.tex, s.emb, t, s.wind, TONE[s.fac]);
+    s.post?.(co.L, co);
     co.L.outline(OUTLINE);
-    f.blit(co.L, X0 - co.M, Y0);
-    layer(f, (l) => {
-      // крюки в кладке над брусом — по четверти ширины от краёв
-      for (const hx of [X0 + Math.round(o.CW / 4) - 1, X0 + o.CW - Math.round(o.CW / 4) - 1]) stamp(l, hx, bar - 2, ["LM", "MD"], iron);
-      k.bar(l, X0 - o.barOver, X0 + o.CW - 1 + o.barOver, bar);
-      for (const [u, w] of o.ties) k.tie(l, X0 + u, w, bar - 1, Y0);
-    });
-    frames.push(f);
+    f.blit(co.L, s.X0 - co.M, s.Y0);
+    if (s.front) layer(f, s.front);
+    s.cords?.(f);
+    frames.push(wallShadow(f));
   }
-  return { id: o.id, title: o.title, frames, w: FW, h: FH, anchor: [(FW / 2) / FW, bar / FH], fps: FPS, fac: k.fac };
+  return { id: s.id, title: s.title, frames, w: s.FW, h: s.FH, anchor: [s.anchor[0] / s.FW, s.anchor[1] / s.FH], fps: FPS, fac: s.fac };
 }
-/** Сольгард: белое полотно с голубой каймой и острым низом (как штандарт своих земель); у ворот — крупнее, с золотой строчкой
- *  и эмблемой s20, на стенах и башнях — 24×32 с эмблемой s16. */
-function wallSolgard(gate: boolean): Anim {
-  const CW = gate ? 28 : 24, CH = gate ? 38 : 32, pointY = CH - CW / 4 - 1;
-  const inside = (x: number, y: number) => y <= pointY || Math.abs(x + 0.5 - CW / 2) <= CW / 2 - 2 * (y - pointY);
-  const cloth = gate ? (d: number) => (d <= 2 ? AZ[2] : d === 3 ? WH[1] : d === 4 ? G[2] : d === 5 ? WH[1] : WH[2]) : SOL.cloth;
-  return hangBanner({
-    id: gate ? "gate-solgard" : "wall-solgard", title: gate ? "НАД ВОРОТАМИ" : "НА СТЕНЕ И БАШНЕ", kit: SOL, CW, CH, inside, cloth,
-    emb: factionEmblem("solgard", gate ? "s20" : "s16"), embY: gate ? 5 : 3,
-    ties: gate ? [[1, 3], [12, 4], [24, 3]] : [[1, 3], [10, 4], [20, 3]], wind: gate ? { ...WIND_WALL, fieldD: 6, stiff: 5 } : WIND_WALL, barOver: 3,
+
+/** А — вымпел: длинное узкое полотнище с ласточкиным хвостом и бахромой, цвета обращены относительно штандарта (поле — лазурь / пурпур,
+ *  кайма — золотая / серебряная строчка), поперечная перевязь у хвоста; висит на прутке, пруток — на шнуре с крюка (якорь — крюк). */
+function pennant(fac: Fac, gate: boolean): Anim {
+  const sol = fac === "solgard", CW = gate ? 22 : 18, CH = gate ? 40 : 34, notch = gate ? 9 : 7, rodY = gate ? 6 : 5;
+  const notchHalf = (y: number) => (y < CH - notch ? -1 : ((y - (CH - notch) + 1) * (CW / 2 - 4)) / notch);
+  const inside = (x: number, y: number) => Math.abs(x + 0.5 - CW / 2) > notchHalf(y);
+  const bandY = CH - notch - (gate ? 7 : 6);
+  const col = (_x: number, y: number, d: number): Col => {
+    if (sol) return d === 1 ? AZ[2] : d === 2 ? G[3] : y >= bandY && y < bandY + 3 ? (y === bandY + 1 ? G[3] : WH[2]) : AZ[1];
+    return d === 1 ? UP[2] : d === 2 ? SIL[2] : y >= bandY && y < bandY + 3 ? (y === bandY + 1 ? SIL[2] : UK[1]) : UP[1];
+  };
+  const tex = padTex(clothTex(CW, CH, inside, (x, y, d) => col(x, y, d)), 5);
+  const em = factionEmblem(fac, gate ? "s20" : "s16");
+  const side = 7, X0 = side, FW = CW + 2 * side, FH = rodY + 1 + tex.h + 4, cx = X0 + CW / 2 - 0.5;
+  return buildHang({
+    id: `pennant-${fac}${gate ? "-gate" : ""}`, title: gate ? "А. ВЫМПЕЛ НАД ВОРОТАМИ" : "А. ВЫМПЕЛ НА СТЕНЕ И БАШНЕ", fac, tex, wind: { ...WIND_WALL, stiff: 3, fieldD: 3 },
+    emb: { pc: em, x: Math.floor((CW - em.w) / 2), y: 3 }, FW, FH, X0, Y0: rodY + 1, anchor: [Math.round(cx), 0],
+    post: (L, co) => fringeAt(L, co, tex, fac, 4, (v) => v === CH - 1),   // бахрома — только под концами хвоста (на косом вырезе рябила)
+    front: (l) => { rodAt(l, fac, X0 - 2, X0 + CW + 1, rodY); stamp(l, Math.round(cx) - 1, 0, ["LM", "MD"], sol ? { L: STEEL[3], M: STEEL[2], D: STEEL[1] } : { L: IRON[3], M: IRON[2], D: IRON[1] }); },
+    cords: (f) => {
+      const m = metal(fac), hx = Math.round(cx);
+      f.line(X0 - 1, rodY - 1, hx - 1, 1, m.M);
+      f.line(X0 + CW, rodY - 1, hx, 1, m.M);
+    },
   });
 }
-/** Умбрат: чёрно-пурпурное полотно с гробовой стопой; у ворот — крупнее, с серебряной строчкой и эмблемой s20. */
-function wallUmbrath(gate: boolean): Anim {
-  const CW = gate ? 29 : 24, CH = gate ? 38 : 32, footY = CH - 10;
-  const inset = (y: number) => (y <= footY ? 0 : Math.ceil((y - footY) / 2));
-  const inside = (x: number, y: number) => x >= inset(y) && x <= CW - 1 - inset(y);
-  const cloth = gate ? (d: number) => (d === 1 ? UP[2] : d === 2 ? UP[1] : d === 3 ? UK[1] : d === 4 ? SIL[2] : d === 5 ? UK[1] : UK[2]) : UMB.cloth;
-  return hangBanner({
-    id: gate ? "gate-umbrath" : "wall-umbrath", title: gate ? "НАД ВОРОТАМИ" : "НА СТЕНЕ И БАШНЕ", kit: UMB, CW, CH, inside, cloth,
-    emb: factionEmblem("umbrath", gate ? "s20" : "s16"), embY: gate ? 5 : 3,
-    ties: gate ? [[1, 3], [13, 3], [25, 3]] : [[1, 3], [10, 3], [20, 3]], wind: gate ? { ...WIND_WALL, fieldD: 6, stiff: 5 } : WIND_WALL, barOver: 2,
+
+/** В — драпировка: широкое короткое полотнище во всю ширину проёма (над воротами — 62 px), верхний клапан-рукав на прутке, низ фестонами,
+ *  кисти на стыках фестонов, по краям полосы; герб посередине. Силуэт широкий и низкий — противоположность высокому штандарту. */
+function drape(fac: Fac, gate: boolean): Anim {
+  const sol = fac === "solgard", CW = gate ? 62 : 34, CH0 = gate ? 27 : 21, depth = gate ? 6 : 5, k = 3, val = gate ? 5 : 4;
+  const sw = CW / k;
+  const bottom = (x: number) => CH0 + depth * Math.sin((Math.PI * ((x + 0.5) % sw)) / sw);
+  const CH = CH0 + depth + 1;
+  const stripe = (x: number) => { const e = Math.min(x, CW - 1 - x); return e === 4 || e === 5; };
+  const col = (x: number, y: number, d: number): Col => {
+    if (sol) return y < val - 1 ? AZ[2] : y === val - 1 ? G[3] : d === 1 ? AZ[2] : d === 2 ? G[2] : stripe(x) ? AZ[3] : WH[2];
+    return y < val - 1 ? UP[1] : y === val - 1 ? SIL[2] : d === 1 ? UP[2] : d === 2 ? SIL[1] : stripe(x) ? UP[1] : UK[2];
+  };
+  const tex = padTex(clothTex(CW, CH, (x, y) => y < bottom(x), col), 6);
+  // Сольгард: герб на белом шёлке сливался с полем — щит кладётся на лазурный медальон (как на штандарте Эмберхолла и в превью герба);
+  //  у медальона поле 2 px с каждой стороны, рисунок герба тот же. Число фестонов нечётное — герб над серединой фестона, а не над стыком.
+  const size = gate ? "s20" : "s16", em0 = factionEmblem(fac, size), em = sol ? azureMedallion(em0, SOLGARD_SHIELD_TOP[size]) : em0, emY = sol ? val - 1 : val + 1;
+  const side = 8, X0 = side, rodY = 2, FW = CW + 2 * side, FH = rodY + 1 + tex.h + 4;
+  const joints = Array.from({ length: k + 1 }, (_, i) => Math.max(0, Math.min(CW - 1, Math.round(i * sw))));
+  const iron = sol ? { L: STEEL[3], M: STEEL[2], D: STEEL[1] } : { L: IRON[3], M: IRON[2], D: IRON[1] };
+  return buildHang({
+    id: `drape-${fac}${gate ? "-gate" : ""}`, title: gate ? "В. ДРАПИРОВКА НАД ВОРОТАМИ" : "В. ДРАПИРОВКА НА СТЕНЕ И БАШНЕ", fac, tex,
+    wind: { ...WIND_WALL, sway: 1.0, stiff: 3, fieldD: 4, f0: 0.25, darkT: 0.5, deepT: 9 },
+    emb: { pc: em, x: Math.floor((CW - em.w) / 2), y: emY }, FW, FH, X0, Y0: rodY + 1, anchor: [FW / 2, rodY],
+    post: (L, co) => { for (const u of joints) tasselAt(L, co, tex, fac, u); },
+    front: (l) => {
+      for (const hx of [X0 + 2, X0 + CW - 4]) stamp(l, hx, rodY - 2, ["LM", "MD"], iron);
+      rodAt(l, fac, X0 - 2, X0 + CW + 1, rodY);
+    },
   });
+}
+
+/** С — лента с медальоном: узкая лента (8–10 px) с раздвоенным хвостом и кистями, вверху — крупный круглый медальон с гербом в металлической
+ *  оправе (оправа объёмная: свет сверху слева); висит на трёх кольцах на коротком прутке. Медальон стоит, колышется только хвост ленты. */
+function medallion(fac: Fac, gate: boolean): Anim {
+  const sol = fac === "solgard", RW = gate ? 10 : 8, R = gate ? 14 : 12, CH = gate ? 46 : 38, notch = gate ? 6 : 5;
+  const TW = 2 * R, cy = R + 4, ccx = TW / 2;
+  const inRib = (x: number, y: number) => {
+    const ax = Math.abs(x + 0.5 - ccx);
+    if (ax > RW / 2 || y >= CH) return false;
+    return !(y >= CH - notch && ax < ((y - (CH - notch) + 1) * (RW / 2 - 1.5)) / notch);
+  };
+  const r = (x: number, y: number) => Math.hypot(x + 0.5 - ccx, y + 0.5 - cy);
+  const inDisk = (x: number, y: number) => r(x, y) <= R;
+  const m = metal(fac);
+  const col = (x: number, y: number, d: number): Col => {
+    if (inDisk(x, y)) {
+      const rr = r(x, y), lit = x + 0.5 - ccx + (y + 0.5 - cy) < 0;
+      if (rr > R - 1.2) return lit ? m.L : m.D;
+      if (rr > R - 2.4) return lit ? m.H : m.M;
+      if (rr > R - 3.4) return lit ? m.D : m.L;
+      return sol ? AZ[1] : UK[1];
+    }
+    const ax = Math.abs(x + 0.5 - ccx);
+    if (sol) return d === 1 ? G[2] : ax < 1.5 ? WH[2] : AZ[2];
+    return d === 1 ? SIL[1] : ax < 1.5 ? UP[2] : UK[2];
+  };
+  const tex = padTex(clothTex(TW, CH, (x, y) => inRib(x, y) || inDisk(x, y), col), 6);
+  const em = factionEmblem(fac, gate ? "s20" : "s16");
+  const side = 6, X0 = side, rodY = 1, Y0 = rodY + 4, FW = TW + 2 * side, FH = Y0 + tex.h + 4, rx = X0 + ccx;
+  const tails = [Math.floor(ccx - RW / 2) + 1, Math.ceil(ccx + RW / 2) - 2];
+  return buildHang({
+    id: `medallion-${fac}${gate ? "-gate" : ""}`, title: gate ? "С. ЛЕНТА С МЕДАЛЬОНОМ НАД ВОРОТАМИ" : "С. ЛЕНТА С МЕДАЛЬОНОМ НА СТЕНЕ И БАШНЕ", fac, tex,
+    wind: { ...WIND_WALL, sway: 1.4, f0: 0.55, f1: 0.98, fieldD: 3, rip: 0 },
+    emb: { pc: em, x: Math.floor(ccx - em.w / 2), y: Math.round(cy - em.h / 2) }, FW, FH, X0, Y0, anchor: [Math.round(rx), rodY],
+    post: (L, co) => { for (const u of tails) tasselAt(L, co, tex, fac, u); },
+    front: (l) => {
+      rodAt(l, fac, Math.round(rx - RW / 2) - 3, Math.round(rx + RW / 2) + 2, rodY);
+      for (const ux of [Math.round(rx - RW / 2), Math.round(rx) - 1, Math.round(rx + RW / 2) - 2]) stamp(l, ux, rodY + 1, ["MLM", "L.D", "M.D", "DDD"], m);
+    },
+  });
+}
+/** Три варианта: настенное и надвратное для обеих фракций. */
+function REDESIGN(): Record<Variant, { wall: Record<Fac, Anim>; gate: Record<Fac, Anim> }> {
+  const mk = (f: (fac: Fac, gate: boolean) => Anim) => ({ wall: { solgard: f("solgard", false), umbrath: f("umbrath", false) }, gate: { solgard: f("solgard", true), umbrath: f("umbrath", true) } });
+  return { A: mk(pennant), B: mk(drape), C: mk(medallion) };
 }
 
 // ---------------------------------------------------------------- повреждённые штандарты спорных земель (походный размер, эмблема s16)
@@ -1420,7 +1552,7 @@ function captureBase(): Anim {
   return { id: "capture-base", title: "ОСНОВАНИЕ ЗАХВАТА", frames: [full, plinth, mast], w: BASE_W, h: BASE_H, anchor: [0.5, BASE_GY / BASE_H], fps: 0, fac: "solgard" };
 }
 
-export { homeSolgard, homeUmbrath, wallSolgard, wallUmbrath, torn, burned, fallen, royalSolgard, royalUmbrath, captureBase, readPng, crop, scaleNN, paintGround, logoSheet, LOGOS, logoFinal, label };
+export { homeSolgard, homeUmbrath, pennant, drape, medallion, REDESIGN, torn, burned, fallen, royalSolgard, royalUmbrath, captureBase, readPng, crop, scaleNN, paintGround, logoSheet, LOGOS, logoFinal, label };
 /** Модель ветра — общая со «Знаменем защиты» (tools/gen/vfx-banner.ts). */
 export { N as WIND_FRAMES, FPS as WIND_FPS, windPlan, windCloth, planShifts, toneFn, clothTex, distMap, stamp, layer, despeckle, WIND_HOME, type Wind, type Emb, type ToneFn, type ClothOut };
 
@@ -2044,7 +2176,7 @@ export function STANDARDS() {
   const home = [homeSolgard(), homeUmbrath()];
   const torns = [torn("solgard"), torn("umbrath")], burns = [burned("solgard"), burned("umbrath")], falls = [fallen("solgard"), fallen("umbrath")];
   const royal = [royalSolgard(), royalUmbrath()], base = captureBase();
-  const walls = [wallSolgard(false), wallUmbrath(false), wallSolgard(true), wallUmbrath(true)];
+  const walls = [pennant("solgard", false), pennant("umbrath", false), drape("solgard", true), drape("umbrath", true)];
   return { home, torns, burns, falls, royal, base, walls };
 }
 
@@ -2082,7 +2214,203 @@ function writeLogos() {
   emblem.save(path.join(ROOT, "client/public/ui/logo-emblem.png"));
 }
 
+// ---------------------------------------------------------------- превью редизайна висящих знамён (--redesign → tools/out/banners-redesign/)
+//  Кадры игры: tools/out/banners-world/thin-*-s-day.png (зум 2, нижняя половина — текущее состояние). Старые знамёна стираются чистым
+//  спрайтом ворот и башен (с подбором дневного освещения кадра), новые кладутся по тем же точкам крепления; штандарты у входа остаются.
+const RED_OUT = path.join(ROOT, "tools/out/banners-redesign");
+/** Сцена: кадр, ворота и угловые башни (левый верх спрайта ×2 в кадре, подобрано по рисунку), рамка вырезки. */
+const RED_SCENES: Record<Fac, { shot: string; city: string; gate: [number, number]; towers: [number, number][]; crop: [number, number, number, number] }> = {
+  solgard: { shot: "thin-aurelion-s-day.png", city: "АУРЕЛИОН", gate: [704, 1389], towers: [[576, 1364], [896, 1364]], crop: [400, 1320, 800, 400] },
+  umbrath: { shot: "thin-morthaim-s-day.png", city: "МОРТХЕЙМ", gate: [704, 1389], towers: [[576, 1364], [896, 1364]], crop: [400, 1320, 800, 400] },
+};
+/** Уточнить положение спрайта ×2 в кадре: перебор ±r по сумме разностей непрозрачных пикселей. */
+function locate(shot: PC, spr: PC, hint: [number, number], r = 3): [number, number] {
+  let best = Infinity, at = hint;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    let s = 0;
+    for (let y = 0; y < spr.h; y += 2) for (let x = 0; x < spr.w; x += 2) {
+      const q = spr.get(x, y)!;
+      if (q[3] < 255) continue;
+      const p = shot.get(hint[0] + dx + x * 2, hint[1] + dy + y * 2);
+      if (p) s += Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]);
+    }
+    if (s < best) { best = s; at = [hint[0] + dx, hint[1] + dy]; }
+  }
+  return at;
+}
+/** Освещение кадра: по каналу shot = a·src + b (наименьшие квадраты по непрозрачным пикселям спрайта вне вырезов). */
+function fitLight(shot: PC, items: { spr: PC; at: [number, number]; skip: (x: number, y: number) => boolean }[]) {
+  const S = [0, 0, 0].map(() => ({ n: 0, x: 0, y: 0, xx: 0, xy: 0 }));
+  for (const { spr, at, skip } of items) for (let y = 0; y < spr.h; y++) for (let x = 0; x < spr.w; x++) {
+    const q = spr.get(x, y)!;
+    if (q[3] < 255 || skip(x, y)) continue;
+    const p = shot.get(at[0] + x * 2, at[1] + y * 2);
+    if (!p) continue;
+    for (let k = 0; k < 3; k++) { const s = S[k]; s.n++; s.x += q[k]; s.y += p[k]; s.xx += q[k] * q[k]; s.xy += q[k] * p[k]; }
+  }
+  const ab = S.map((s) => { const a = (s.n * s.xy - s.x * s.y) / (s.n * s.xx - s.x * s.x); return [a, (s.y - a * s.x) / s.n]; });
+  return (c0: Col): Col => [0, 1, 2].map((k) => Math.max(0, Math.min(255, Math.round(ab[k][0] * c0[k] + ab[k][1])))).concat(c0[3]) as Col;
+}
+/** Кадр знамени ×2 в точке крепления (мир ×2), со светом сцены. */
+function pasteBanner(dst: PC, a: Anim, frame: number, attach: [number, number], light: (c0: Col) => Col) {
+  const f = a.frames[frame], ax = Math.round(a.anchor[0] * a.w), ay = Math.round(a.anchor[1] * a.h);
+  const x0 = attach[0] - ax * 2, y0 = attach[1] - ay * 2;
+  for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
+    const q = f.get(x, y)!;
+    if (!q[3]) continue;
+    const lit = light(q);
+    for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) dst.set(x0 + x * 2 + i, y0 + y * 2 + j, lit);
+  }
+}
+/** Подготовленная сцена фракции: кадр без старых настенных знамён, точки крепления, свет. */
+function redesignScene(fac: Fac) {
+  const sc = RED_SCENES[fac], k = fac === "solgard" ? "sol" : "umb";
+  const shot = readPng(path.join(ROOT, "tools/out/banners-world", sc.shot));
+  const gateSpr = readPng(path.join(ROOT, `client/public/assets/objects/${k}_gate.png`));
+  const towSpr = readPng(path.join(ROOT, `client/public/assets/objects/${k}_tower.png`));
+  const gate = locate(shot, gateSpr, sc.gate), towers = sc.towers.map((t) => locate(shot, towSpr, t));
+  // крепление (мир): ворота — 86 px над основанием, башня — 44 px (как std-gate-*/std-wall-* в tools/gen/standards-to-game.ts)
+  const gAttach: [number, number] = [gate[0] + gateSpr.w, gate[1] + gateSpr.h * 2 - 86 * 2];
+  const tAttach = towers.map((t): [number, number] => [t[0] + towSpr.w, t[1] + towSpr.h * 2 - 44 * 2]);
+  // прямоугольники старых знамён в мире ×2 (кадр 46×47 / 42×41, брус на 2 px ниже верха кадра) и в координатах спрайта
+  const oldG = { x: gAttach[0] - 46, y: gAttach[1] - 4, w: 92, h: 94 }, oldT = tAttach.map((t) => ({ x: t[0] - 42, y: t[1] - 4, w: 84, h: 82 }));
+  const inR = (r: { x: number; y: number; w: number; h: number }, X: number, Y: number) => X >= r.x && Y >= r.y && X < r.x + r.w && Y < r.y + r.h;
+  const light = fitLight(shot, [
+    { spr: gateSpr, at: gate, skip: (x, y) => inR(oldG, gate[0] + x * 2, gate[1] + y * 2) },
+    ...towers.map((t, i) => ({ spr: towSpr, at: t, skip: (x: number, y: number) => inR(oldT[i], t[0] + x * 2, t[1] + y * 2) })),
+  ]);
+  const clean = shot.clone();
+  const erase = (spr: PC, at: [number, number], r: { x: number; y: number; w: number; h: number }) => {
+    for (let Y = r.y; Y < r.y + r.h; Y++) for (let X = r.x; X < r.x + r.w; X++) {
+      const q = spr.get(Math.floor((X - at[0]) / 2), Math.floor((Y - at[1]) / 2));
+      if (q && q[3] === 255) clean.set(X, Y, light(q));
+      else if (q) { const p = shot.get(X, r.y + r.h + 2 + ((Y - r.y) % 8)); if (p) clean.set(X, Y, p); }   // проём арки: брусчатка снизу
+    }
+  };
+  erase(gateSpr, gate, oldG);
+  towers.forEach((t, i) => erase(towSpr, t, oldT[i]));
+  return { sc, shot, clean, light, gAttach, tAttach };
+}
+/** Вырезка сцены ×2 с вариантом знамён (кадр frame); v = null — текущее состояние. */
+function redesignPanel(s: ReturnType<typeof redesignScene>, set: { wall: Anim; gate: Anim } | null, frame: number): PC {
+  const [cx, cy, cw, ch] = s.sc.crop;
+  if (!set) return crop(s.shot, cx, cy, cw, ch);
+  const pc = s.clean.clone();
+  pasteBanner(pc, set.gate, frame, s.gAttach, s.light);
+  for (const t of s.tAttach) pasteBanner(pc, set.wall, frame, t, s.light);
+  return crop(pc, cx, cy, cw, ch);
+}
+
+// ---- минимальный кодировщик GIF89a (палитра до 256 цветов на ролик, LZW, повтор бесконечно)
+function encodeGif(frames: PC[], delayCs: number): Buffer {
+  const W = frames[0].w, H = frames[0].h;
+  // палитра: частоты цветов по 5 бит на канал, 256 самых частых; пиксель → ближайший цвет палитры
+  const freq = new Map<number, number>();
+  for (const f of frames) for (let i = 0; i < f.data.length; i += 4) {
+    const key = ((f.data[i] >> 3) << 10) | ((f.data[i + 1] >> 3) << 5) | (f.data[i + 2] >> 3);
+    freq.set(key, (freq.get(key) ?? 0) + 1);
+  }
+  const pal = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 256).map(([k0]) => [((k0 >> 10) & 31) * 8 + 4, ((k0 >> 5) & 31) * 8 + 4, (k0 & 31) * 8 + 4]);
+  while (pal.length < 256) pal.push([0, 0, 0]);
+  const near = new Map<number, number>();
+  const idxOf = (r: number, g: number, b: number) => {
+    const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+    let v = near.get(key);
+    if (v === undefined) {
+      let best = Infinity; v = 0;
+      const R0 = (r >> 3) * 8 + 4, G0 = (g >> 3) * 8 + 4, B0 = (b >> 3) * 8 + 4;
+      for (let i = 0; i < 256; i++) { const d = (pal[i][0] - R0) ** 2 + (pal[i][1] - G0) ** 2 + (pal[i][2] - B0) ** 2; if (d < best) { best = d; v = i; } }
+      near.set(key, v);
+    }
+    return v;
+  };
+  const out: number[] = [];
+  const u16 = (v: number) => out.push(v & 255, (v >> 8) & 255);
+  for (const ch of "GIF89a") out.push(ch.charCodeAt(0));
+  u16(W); u16(H); out.push(0xf7, 0, 0);
+  for (const p of pal) out.push(p[0], p[1], p[2]);
+  out.push(0x21, 0xff, 11, ..."NETSCAPE2.0".split("").map((ch) => ch.charCodeAt(0)), 3, 1, 0, 0, 0);
+  for (const f of frames) {
+    out.push(0x21, 0xf9, 4, 0); u16(delayCs); out.push(0, 0);
+    out.push(0x2c); u16(0); u16(0); u16(W); u16(H); out.push(0, 8);
+    const idx = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) idx[i] = idxOf(f.data[i * 4], f.data[i * 4 + 1], f.data[i * 4 + 2]);
+    // LZW
+    const bytes: number[] = [];
+    let cur = 0, nbits = 0, size = 9, next = 258;
+    const emit = (code: number) => { cur |= code << nbits; nbits += size; while (nbits >= 8) { bytes.push(cur & 255); cur >>>= 8; nbits -= 8; } };
+    let dict = new Map<number, number>();
+    emit(256);
+    let prefix = idx[0];
+    for (let i = 1; i < idx.length; i++) {
+      const kk = idx[i], key = prefix * 256 + kk, hit = dict.get(key);
+      if (hit !== undefined) { prefix = hit; continue; }
+      emit(prefix);
+      if (next === 4096) { emit(256); dict = new Map(); size = 9; next = 258; }
+      else { if (next >= 1 << size) size++; dict.set(key, next++); }
+      prefix = kk;
+    }
+    emit(prefix); emit(257);
+    if (nbits > 0) bytes.push(cur & 255);
+    for (let i = 0; i < bytes.length; i += 255) { const n = Math.min(255, bytes.length - i); out.push(n); for (let j = 0; j < n; j++) out.push(bytes[i + j]); }
+    out.push(0);
+  }
+  out.push(0x3b);
+  return Buffer.from(out);
+}
+
+function writeRedesign() {
+  fs.mkdirSync(RED_OUT, { recursive: true });
+  const R = REDESIGN(), facs: Fac[] = ["solgard", "umbrath"], vars: Variant[] = ["A", "B", "C"];
+  const VNAME: Record<Variant, string> = { A: "А — ВЫМПЕЛ С ЛАСТОЧКИНЫМ ХВОСТОМ", B: "В — ДРАПИРОВКА С ФЕСТОНАМИ И КИСТЯМИ", C: "С — ЛЕНТА С МЕДАЛЬОНОМ НА КОЛЬЦАХ" };
+  const meta: Record<string, object> = {};
+  // листы кадров (пиксель листа — пиксель мира) и раскадровки ×3
+  for (const v of vars) {
+    const rows: PC[] = [];
+    for (const fac of facs) for (const kind of ["wall", "gate"] as const) {
+      const a = R[v][kind][fac];
+      strip(a.frames).save(path.join(RED_OUT, `${a.id}.png`));
+      meta[a.id] = { file: `${a.id}.png`, frameW: a.w, frameH: a.h, frames: a.frames.length, fps: a.fps, anchor: anchorPx(a), faction: fac, variant: v, kind };
+      rows.push(previewRow(`${FAC_NAME[fac]} — ${a.title}`, `${a.w}×${a.h}, ${a.frames.length} КАДРОВ, ${a.fps} К/С, ТЕНЬ НА СТЕНЕ В КАДРЕ`, FAC_COL[fac], [board(a, 3, 12)]));
+    }
+    stackRows(rows).save(path.join(RED_OUT, `sheet-${v}.png`));
+  }
+  fs.writeFileSync(path.join(RED_OUT, "sheets.json"), JSON.stringify({ stage: "редизайн висящих знамён, этап 1 (превью)", cycle: { frames: N, fps: FPS }, sheets: meta }, null, 1));
+  // сравнение на воротах столиц: СЕЙЧАС | А | В | С, по строке на фракцию
+  const scenes = { solgard: redesignScene("solgard"), umbrath: redesignScene("umbrath") };
+  const gap = 12, head = 26, [, , cw, ch] = RED_SCENES.solgard.crop;
+  const W = gap + 4 * (cw + gap), H = 40 + 2 * (head + ch + gap) + gap;
+  const sheetPc = new PC(W, H);
+  fill(sheetPc, BGC);
+  label(sheetPc, "ВИСЯЩИЕ ЗНАМЁНА — ВАРИАНТЫ (ЭТАП 1, В ИГРУ НЕ СТАВИЛИСЬ). ЗУМ 2, ДЕНЬ; ШТАНДАРТЫ У ВХОДА — КАК В ИГРЕ", gap, 10, INK, 2);
+  facs.forEach((fac, r) => {
+    const y = 40 + r * (head + ch + gap);
+    const cols: [string, { wall: Anim; gate: Anim } | null][] = [["СЕЙЧАС", null], ...vars.map((v): [string, { wall: Anim; gate: Anim }] => [VNAME[v], { wall: R[v].wall[fac], gate: R[v].gate[fac] }])];
+    cols.forEach(([t, set], i) => {
+      const x = gap + i * (cw + gap);
+      label(sheetPc, `${scenes[fac].sc.city}: ${t}`, x, y + 6, set ? FAC_COL[fac] : DIM, 2);
+      sheetPc.blit(redesignPanel(scenes[fac], set, 0), x, y + head);
+    });
+  });
+  sheetPc.save(path.join(RED_OUT, "variants.png"));
+  // ролик на вариант: Аурелион | Мортхейм, ворота с башнями крупно, 12 кадров, 12 к/с (8 сотых — ближайшее в GIF)
+  for (const v of vars) {
+    const frames: PC[] = [];
+    for (let t = 0; t < N; t++) {
+      const parts = facs.map((fac) => crop(redesignPanel(scenes[fac], { wall: R[v].wall[fac], gate: R[v].gate[fac] }, t), 140, 30, 520, 340));
+      const f = new PC(parts[0].w * 2 + gap * 3, parts[0].h + head + gap);
+      fill(f, BGC);
+      label(f, VNAME[v], gap, 8, INK, 2);
+      parts.forEach((p, i) => f.blit(p, gap + i * (p.w + gap), head));
+      frames.push(f);
+    }
+    fs.writeFileSync(path.join(RED_OUT, `variant-${v}.gif`), encodeGif(frames, 8));
+  }
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // --redesign — только превью вариантов висящих знамён (tools/out/banners-redesign/), листы штандартов не пишутся
+  if (process.argv.includes("--redesign")) { writeRedesign(); console.log(RED_OUT); process.exit(0); }
   fs.mkdirSync(OUT, { recursive: true });
   // --logo — только эмблема игры (варианты, итог и эмблема для экрана загрузки), без листов штандартов
   if (process.argv.includes("--logo")) { writeLogos(); console.log(OUT); process.exit(0); }
@@ -2095,7 +2423,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   };
   for (const a of home) save(a, { note: "якорь — низ подтока (точка на земле)" });
   for (const a of [...torns, ...burns]) save(a, { note: "без основания; якорь — низ подтока" });
-  for (const a of walls) save(a, { note: "настенное, без древка; якорь — середина верха бруса (точка крепления к стене)" });
+  for (const a of walls) save(a, { note: "висящее, без древка: вымпел (башни) и драпировка (над воротами); якорь — точка крепления к стене (крюк вымпела, верх прутка драпировки); тень на стене в кадре" });
   for (const a of falls) {
     save(a, { note: "сборка: земля + обломок; в игре — два слоя", layers: { ground: `${a.id}-ground.png`, stump: `${a.id}-stump.png` } });
     a.ground.save(path.join(OUT, `${a.id}-ground.png`));
@@ -2123,7 +2451,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       FAC_COL[a.fac], [scene(a, k, ground, 2), scene(a, k, ground, 3), board(a, 2, cols)]));
   };
   for (const a of home) animRow(a, "grass", "ШТАНДАРТ СВОИХ ЗЕМЕЛЬ");
-  for (const a of walls) rows.push(previewRow(`${FAC_NAME[a.fac]} — НАСТЕННОЕ ЗНАМЯ ${a.title}`, `${a.w}×${a.h}, ${a.frames.length} КАДРОВ, ${a.fps} К/С`,
+  for (const a of walls) rows.push(previewRow(`${FAC_NAME[a.fac]} — ${a.title}`, `${a.w}×${a.h}, ${a.frames.length} КАДРОВ, ${a.fps} К/С`,
     FAC_COL[a.fac], [board({ ...a, frames: [a.frames[0]] }, 4), board(a, 2)]));
   for (const a of torns) animRow(a, "dirt", "СПОРНЫЕ ЗЕМЛИ: ПОРВАННЫЙ, В СТРЕЛАХ");
   for (const a of burns) animRow(a, "dirt", "СПОРНЫЕ ЗЕМЛИ: ОБГОРЕВШИЙ");

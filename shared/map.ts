@@ -973,12 +973,12 @@ function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn,
         place(wallKind, x, y);
       }
     }
-    // знамя у поста на мосту — одно на сторону: настенное на южной башне у ворот (выше двери, поверх нарисованного стяга башни;
+    // знамя у поста на мосту — одно на сторону: вымпел на южной башне у ворот (выше двери, поверх нарисованного стяга башни;
     // у северной башни стоит оберег)
     for (const t of WALLS.towers) {
       if (!WALLS.gates.some((g) => t.y > g.y && t.y - g.y <= g.half + 3)) continue;
       const c = wallCol(t.y), ax = east ? w - 1 - c : c - 1;
-      bannerObjects.push({ kind: east ? "std-wall-umb-hi" : "std-wall-sol-hi", x: (ax + 1) * TILE + 6, y: (t.y + 1) * TILE - 1 });
+      bannerObjects.push({ kind: east ? "std-pennant-umb-hi" : "std-pennant-sol-hi", x: (ax + 1) * TILE + 6, y: (t.y + 1) * TILE - 1 });
     }
   }
 }

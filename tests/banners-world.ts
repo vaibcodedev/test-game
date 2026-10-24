@@ -148,7 +148,7 @@ async function scenario() {
         await run("sc.cameras.main.stopFollow(); sc.cameras.main.centerOn(a.x, a.y);", { x: cx, y: cy });
         await sleep(1400);
         if (!OLD && tod === "day") {
-          const n = await run<number>("let n = 0; for (const o of sc.children.list) if (o.type === 'Sprite' && o.texture && /^vfx_std-(home|wall|gate)-/.test(o.texture.key) && o.anims && o.anims.isPlaying && Math.abs(o.x - a.x) < 400 && Math.abs(o.y - a.y) < 320) n++; return n;", { x: cx, y: cy });
+          const n = await run<number>("let n = 0; for (const o of sc.children.list) if (o.type === 'Sprite' && o.texture && /^vfx_std-(home|pennant|drape)-/.test(o.texture.key) && o.anims && o.anims.isPlaying && Math.abs(o.x - a.x) < 400 && Math.abs(o.y - a.y) < 320) n++; return n;", { x: cx, y: cy });
           check(n > 0, `${s.id}: знамёна в кадре играют анимацию (${n})`);
         }
         save(`ingame-${TAG}-${s.id}-${tod}.png`, await snap(cx, cy, FW, FH));

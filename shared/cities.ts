@@ -53,13 +53,13 @@ export const STYLE = {
   solgard: {
     wall_h: "sol_wall_h", wall_v: "sol_wall_v", tower: "sol_tower", gate: "sol_gate", houses: ["sol_house", "sol_temple"],
     stalls: ["stall_gold", "stall_blue"], light: "lamp", tree: "v_basic_oak_small",
-    standard: "std-home-sol", wallBanner: "std-wall-sol", gateBanner: "std-gate-sol",
+    standard: "std-home-sol", wallBanner: "std-pennant-sol", gateBanner: "std-drape-sol",
     extra: [["sun_statue", -9, 5]] as [string, number, number][],
   },
   umbrath: {
     wall_h: "umb_wall_h", wall_v: "umb_wall_v", tower: "umb_tower", gate: "umb_gate", houses: ["umb_house", "umb_crypt"],
     stalls: ["stall_purple", "stall_purple"], light: "soul_brazier", tree: "v_graveyard_dead_tree_a",
-    standard: "std-home-umb", wallBanner: "std-wall-umb", gateBanner: "std-gate-umb",
+    standard: "std-home-umb", wallBanner: "std-pennant-umb", gateBanner: "std-drape-umb",
     // погост Мортхейма на свободной земле у стен (не на улицах, кольце и площади): надгробия, кресты, плиты, статуи (Graveyard)
     extra: [["bone_pile", -9, 5], ["dark_obelisk", 9, -4],
       ["v_graveyard_cross_a", 8, 2], ["v_graveyard_stone_b", 10, 2], ["v_graveyard_slab_a", 9, 4], ["v_graveyard_statue_a", 11, 3],
@@ -70,7 +70,7 @@ export const STYLE = {
 /**
  * Знамёна столиц и фортов (решение 5 — знамёна главный мотив мира, но акцентами: отзыв пользователя — «перенасыщено»; листы —
  * tools/gen/standards.ts, в игру — standards-to-game.ts). Настенные (STYLE.gateBanner/wallBanner, проход не загораживают; ставит
- * shared/map.ts): одно крупное над аркой каждых ворот и по одному на угловых башнях — CITY_CORNER_TOWERS; надвратные башни и пролёты
+ * shared/map.ts): драпировка над аркой каждых ворот и по вымпелу на угловых башнях — CITY_CORNER_TOWERS; надвратные башни и пролёты
  * без знамён. Штандарты своих земель на древке (STYLE.standard) — пара снаружи у каждых ворот по сторонам входа (CITY_ENTRANCE):
  * в 5 клетках от оси ворот, у северных — за стеной (полотнище над гребнем), у южных — перед стеной; внутри города штандартов нет.
  */
