@@ -72,7 +72,11 @@ export class Hotbar {
     try { this.locked = localStorage.getItem(LOCK_KEY) !== "0"; } catch {}
     // во время перетаскивания показываем и пустую вторую панель — иначе в неё нельзя положить первое умение
     document.addEventListener("dragstart", () => this.el.classList.add("dragging"));
-    document.addEventListener("dragend", () => this.el.classList.remove("dragging"));
+    // dragend не приходит, если перетаскивание оборвалось (бросили вне окна, alt-tab, окно умения закрылось) —
+    // тогда снимаем показ и по drop, отпусканию кнопки и потере фокуса, иначе пустая панель висит до перезагрузки
+    const done = () => this.el.classList.remove("dragging");
+    for (const ev of ["dragend", "drop", "pointerup", "mouseup"]) document.addEventListener(ev, done);
+    window.addEventListener("blur", done);
     keybinds.onChange(() => { for (const row of this.cells) for (const c of row) this.paintKey(c); });
   }
 
