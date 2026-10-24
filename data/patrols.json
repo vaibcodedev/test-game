@@ -42,6 +42,27 @@
   },
   "towers": { "level": 60, "range": 420, "attackMs": 1200, "dmg": 3.2, "pctMaxHp": 0.04, "armorCap": 0.25, "rampPerShot": 0.25, "rampMax": 10, "resetMs": 3500 },
   "settlements": { "out": 1, "corners": true, "patrols": 2 },
+  "squads": {
+    "_doc": "Отряды на Полях (задача 132, шаг 11, «мягко»; soldiers.ts squads): из каждого форта раз в intervalMin минут (первый — через firstMin) выходит отряд members (первый — чемпион и ведущий, первый не-чемпион — знаменосец), на Полях не больше max отрядов от фракции; во время битвы за знамёна (Soldiers.bannerBattle, шаг 14) не выходят, вышедшие поворачивают домой. Идёт тем же строем, что патруль (formation), по дороге targets (sol_<road>, у Умбрата umb_<road>, вершины 0…to) к центру или ближнему знамени (выбор по весу weight; если враг уже вышел к meet — туда же, на сходку), стоит там holdMs и возвращается; встретил отряд врага — стычка: удар снимает долю здоровья цели (clash.meleePct / rangedPct от максимума), после боя через leaveMs выжившие идут в форт и уходят за ворота. Тела лежат bodyMs мс. Чужих героев бьют только в полосе zone тайлов от своей дороги, своих героев выручают — бьют мобов, напавших на героя своей фракции в helpRange px; в Эмберхолл и полосу вокруг (с запасом emberMargin тайлов) не заходят и там не бьют. Идут, только если герой ближе walkNear px, иначе спят.",
+    "intervalMin": 10,
+    "firstMin": 1,
+    "max": 2,
+    "members": ["melee", "melee", "ranged", "ranged"],
+    "walkNear": 1400,
+    "zone": 7,
+    "emberMargin": 4,
+    "holdMs": 25000,
+    "leaveMs": 2500,
+    "bodyMs": 60000,
+    "helpRange": 320,
+    "clash": { "meleePct": 0.12, "rangedPct": 0.08 },
+    "meet": "center",
+    "targets": [
+      { "id": "center", "road": "fort_center", "to": 4, "weight": 3 },
+      { "id": "north", "road": "fort_ember", "to": 3, "weight": 1 },
+      { "id": "south", "road": "fort_south", "to": 3, "weight": 1 }
+    ]
+  },
   "wards": {
     "_doc": "Обереги (задача 132, шаг 6; решение 3 — невидимок ловят только обереги): у ворот стен у мостов (с внешней стороны, у башни), у ворот поселений и фортов. Скрытый враг фракции оберега ближе radius px — раскрыт: скрытность снята, revealMs мс нельзя снова скрыться («Раскрыт»), оберег зовёт бойцов своей фракции в callRadius px. Свои не раскрываются; запрета скрытности на чужой земле нет. kinds — вид объекта на карте по фракции (анимированный лист vfx из tools/gen/wards.ts, вариант GAME_VARIANT; не загораживает проход); срабатывание — эффект ward-reveal-sol/umb (aoe ward_sol/ward_umb). list — клетки (тайлы), at — место: bridge_N/M/S, settlement id, fort id; восток — зеркало запада (x → 1099 − x).",
     "radius": 256,

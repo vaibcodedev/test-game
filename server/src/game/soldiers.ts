@@ -24,7 +24,7 @@ import { derive } from "../../../shared/formulas";
 import { raidBotSave } from "../arena/botgear";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { lineClear, moveWithCollision, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
-import { GUARD_RANGE_TILES } from "../../../shared/town";
+import { BELT_HALF, GUARD_RANGE_TILES, TOWN } from "../../../shared/town";
 import { NPC_GEAR, npcGearStrings, type NpcTier } from "../../../shared/npcGear";
 import type { MobDef } from "../../../shared/mobs";
 import { Anim, BUFF_BLEED, BUFF_CURSE, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, Dir, UnitKind } from "../../../shared/protocol";
@@ -93,7 +93,22 @@ export interface SoldierState {
   hy: number;
   /** Сила (шаг 7, data/npc-ranks.json): "" — обычный боец, "champion" — чемпион, "rankN" — звание стражи столицы. */
   power: string;
+  /** Отряд Полей (шаг 11): боец — патруль по дороге из форта, у отряда свой выход, стычка и уход. */
+  squad?: Squad;
 }
+
+/** Отряд на Полях (шаг 11, data/patrols.json squads): out — идёт к цели (и стоит там), back — возвращается в форт. */
+export interface Squad {
+  faction: Faction;
+  target: string;
+  group: Mob[];
+  route: Pt[];
+  phase: "out" | "back";
+  /** Было ли столкновение с отрядом врага и когда последний раз рядом был враг-боец. */
+  clashed: boolean;
+  foeSeen: number;
+}
+const SQ = P.squads;
 /** Вне боя позиция бойца пишется в схему не чаще (мс), как у стражи Эмберхолла (townfolk.ts): патрули не раздувают трафик. */
 const SYNC_MS = 200;
 /** Скорость поворота строя патруля, рад/с: не быстрее, чем бойцы успевают обойти дугу (догон formation.catchUp): разворот у конца дороги — 2–3 с. */
@@ -217,6 +232,12 @@ export class Soldiers {
   private sayAt = new WeakMap<object, number>();
   /** Обереги у ворот мостов, поселений и фортов (шаг 6). */
   readonly wards: Wards;
+  /** Отряды на Полях (шаг 11) и когда фракция выпустит следующий. */
+  readonly squads: Squad[] = [];
+  readonly squadAt: Record<Faction, number> = { solgard: 0, umbrath: 0 };
+  /** Идёт битва за знамёна (шаг 14 ставит): отряды не выходят, вышедшие поворачивают домой. */
+  bannerBattle = false;
+  private squadScanAt = 0;
 
   constructor(private w: World) {
     this.wards = new Wards(w, this);
@@ -225,6 +246,7 @@ export class Soldiers {
     this.buildSettlements();
     this.buildCities();
     this.buildTowers();
+    this.squadAt.solgard = this.squadAt.umbrath = w.time + SQ.firstMin * 60000;
   }
 
   // ---------- расстановка ----------
@@ -262,7 +284,7 @@ export class Soldiers {
   private dress(m: Mob, f: Faction, kind: Kind, st: Partial<SoldierState> & { group: Mob[] }, power: NpcPower | null) {
     const T = NPC_GEAR.tiers;
     const tier: NpcTier = power?.kind === "champion" ? T.champion : power?.kind === "rank" ? T.capitalRanks[power.rank] ?? T.champion
-      : st.role === "patrol" ? T.patrol : st.site?.city ? T.fort : st.site ? T.settlement : T.bridge;
+      : st.squad ? T.fort : st.role === "patrol" ? T.patrol : st.site?.city ? T.fort : st.site ? T.settlement : T.bridge;
     const list = NPC_GEAR.sets[f][tier][kind], key = `${f}:${tier}:${kind}`, n = this.variant.get(key) ?? 0;
     this.variant.set(key, n + 1);
     const set = list[n % list.length];
@@ -392,6 +414,134 @@ export class Soldiers {
     }
   }
 
+  // ---------- отряды Полей (шаг 11) ----------
+  /** Дорога отряда фракции к цели (data/patrols.json squads.targets): вершины 0…to, у Умбрата — зеркальная дорога umb_*. */
+  squadRoute(f: Faction, target: string): Pt[] {
+    const T = SQ.targets.find((x) => x.id === target) ?? SQ.targets[0];
+    const line = (world.roads as unknown as Record<string, [number, number][]>)[`${f === "solgard" ? "sol" : "umb"}_${T.road}`];
+    if (!Array.isArray(line)) return [];
+    return line.slice(0, T.to + 1).map(([x, y]) => free(this.w.map, x * TILE, y * TILE)).filter((p) => !this.inEmber(p.x, p.y));
+  }
+  /** Цель нового отряда: если отряд врага уже идёт на сходку (squads.meet) — туда же, иначе по весу. */
+  private squadTarget(f: Faction): string {
+    if (this.squads.some((q) => q.faction !== f && q.phase === "out" && q.target === SQ.meet)) return SQ.meet;
+    let r = Math.random() * SQ.targets.reduce((a, x) => a + x.weight, 0);
+    for (const x of SQ.targets) if ((r -= x.weight) < 0) return x.id;
+    return SQ.targets[0].id;
+  }
+  /** Выпустить отряд из форта фракции: members у начала дороги, первый — чемпион (ведёт), первый не-чемпион — знаменосец. null — нет дороги. */
+  spawnSquad(f: Faction, target = this.squadTarget(f)): Squad | null {
+    const route = this.squadRoute(f, target);
+    if (route.length < 2) return null;
+    const end = route[route.length - 1], level = zoneLevel(this.w.map, end.x, end.y) || P.cities.fort.level;
+    const q: Squad = { faction: f, target, group: [], route, phase: "out", clashed: false, foeSeen: 0 };
+    const h0 = dist(route[1], route[0]) || 1, hx = (route[1].x - route[0].x) / h0, hy = (route[1].y - route[0].y) / h0;
+    SQ.members.forEach((k, i) => {
+      this.add(f, k as Kind, level, route[0], { role: "patrol", group: q.group, route, idx: 1, hx, hy, squad: q }, undefined, undefined, i === 0 ? { kind: "champion" } : null);
+    });
+    this.squads.push(q);
+    return q;
+  }
+  /** Боец отряда уходит из мира (за воротами форта или тело после bodyMs); пустой отряд снимается. */
+  private dropMember(m: Mob) {
+    const q = m.soldier!.squad!;
+    this.w.removeMob(m);
+    const i = this.list.indexOf(m);
+    if (i >= 0) this.list.splice(i, 1);
+    q.group.splice(q.group.indexOf(m), 1);
+    if (!q.group.length) this.squads.splice(this.squads.indexOf(q), 1);
+  }
+  /** Отряд поворачивает в форт: весь строй — назад по дороге, выход через leaveMs. */
+  private squadBack(q: Squad) {
+    if (q.phase === "back") return;
+    q.phase = "back";
+    const t = this.w.time;
+    for (const g of q.group) {
+      const s = g.soldier!;
+      s.step = -1;
+      s.idx = Math.max(0, Math.min(s.idx, s.route.length - 1) - 1);
+      s.waitUntil = t + SQ.leaveMs;
+    }
+  }
+  /** Такт отрядов (раз в scanMs): выход по таймеру, поворот после стычки и в битву за знамёна. */
+  private squadTick() {
+    const t = this.w.time;
+    for (const f of ["solgard", "umbrath"] as Faction[]) {
+      if (t < this.squadAt[f] || this.bannerBattle) continue;
+      if (this.squads.filter((q) => q.faction === f).length >= SQ.max) continue;
+      if (this.spawnSquad(f)) this.squadAt[f] = t + SQ.intervalMin * 60000;
+    }
+    for (const q of this.squads) {
+      if (this.bannerBattle) { this.squadBack(q); continue; }
+      if (q.group.some((g) => this.alive(g) && g.soldier!.mobFoe?.soldier)) q.foeSeen = t;
+      // стычка кончилась (врагов-бойцов рядом нет leaveMs) — выжившие идут домой
+      if (q.clashed && t - q.foeSeen > SQ.leaveMs) {
+        if (q.phase === "out") this.squadBack(q);
+        else for (const g of q.group) g.soldier!.waitUntil = Math.min(g.soldier!.waitUntil, t);
+        q.clashed = false;
+      }
+    }
+  }
+  /** В Эмберхолле или полосе вокруг (с запасом squads.emberMargin тайлов): отряды туда не заходят и там не бьют. */
+  inEmber(x: number, y: number): boolean {
+    const k = SQ.emberMargin;
+    return Math.abs(x / TILE - (TOWN.x + 0.5)) <= BELT_HALF.x + 0.5 + k && Math.abs(y / TILE - (TOWN.y + 0.5)) <= BELT_HALF.y + 0.5 + k;
+  }
+  /**
+   * Боец отряда без врага-героя: ближний боец вражеского отряда в aggro (стычка) или моб, напавший на героя своей фракции в helpRange (выручка).
+   * Только у своей дороги и не у Эмберхолла.
+   */
+  private squadScan(m: Mob) {
+    const s = m.soldier!, q = s.squad!;
+    let best: Mob | null = null, bd = P.aggro;
+    for (const e of this.squads) {
+      if (e.faction === q.faction) continue;
+      for (const g of e.group) {
+        if (!this.alive(g)) continue;
+        const d = dist(g, m);
+        if (d < bd && this.inZone(m, g.x, g.y) && lineClear(this.w.map, m.x, m.y, g.x, g.y)) { bd = d; best = g; }
+      }
+    }
+    if (best) {
+      q.clashed = true;
+      q.foeSeen = this.w.time;
+      for (const g of q.group) if (this.alive(g) && !g.soldier!.foe && (g === m || !g.soldier!.mobFoe)) { g.soldier!.mobFoe = best; g.nav.reset(); }
+      return;
+    }
+    if (s.mobFoe) return;
+    bd = SQ.helpRange;
+    for (const p of this.w.players.values()) {
+      if (p.dead || p.faction !== m.faction || dist(p, m) > SQ.helpRange + P.aggro) continue;
+      for (const mob of this.w.mobs.values()) {
+        if (mob.dead || mob.faction || mob.def.boss || mob.unit.target !== p.id) continue;
+        const d = dist(mob, p);
+        if (d < bd && this.inZone(m, mob.x, mob.y)) { bd = d; best = mob; }
+      }
+    }
+    if (best) { s.mobFoe = best; m.nav.reset(); }
+  }
+  /** Стычка отрядов: удар снимает долю максимального здоровья бойца врага (squads.clash), дальник — стрелой. */
+  private fightSoldier(m: Mob, foe: Mob, dt: number, canMove: boolean): boolean {
+    const s = m.soldier!, t = this.w.time, reach = m.def.range + foe.def.radius;
+    const d = dist(m, foe), clear = lineClear(this.w.map, m.x, m.y, foe.x, foe.y);
+    let moving = false;
+    if ((d > reach || !clear) && canMove) moving = this.move(m, foe.x, foe.y, dt, this.speed(m, s.chase), s.ranged ? reach * 0.8 : reach - 6);
+    if (d <= reach + 4 && clear && t >= m.attackAt) {
+      m.attackAt = t + m.def.attackCd * 1000;
+      m.unit.dir = dirTo(foe.x - m.x, foe.y - m.y);
+      m.unit.aseq = (m.unit.aseq + 1) % 65535;
+      const v = Math.max(1, Math.round(foe.unit.maxHp * (s.ranged ? SQ.clash.rangedPct : SQ.clash.meleePct)));
+      const ms = s.ranged ? (d / P.arrowSpeed) * 1000 : 220;
+      if (s.ranged) this.w.emit({ t: "proj", k: "arrow", from: m.id, to: foe.id, tx: foe.x, ty: foe.y, ms });
+      this.w.later(ms, () => {
+        if (m.dead || !this.alive(foe) || (!s.ranged && dist(m, foe) > reach + 24)) return;
+        this.w.emit({ t: "dmg", id: foe.id, v, k: "phys" });
+        this.w.applyDamage(foe, v, m);
+      });
+    }
+    return moving;
+  }
+
   // ---------- секторы города ----------
   /** Сектор города по точке (пиксели): сетка cols×rows внутри стен, края — в крайние секторы. */
   sectorOf(site: SoldierSite, px: number, py: number): number {
@@ -428,6 +578,10 @@ export class Soldiers {
         this.citySectors();
         this.shootTowers();
       }
+    }
+    if (t >= this.squadScanAt) {
+      this.squadScanAt = t + P.scanMs;
+      this.squadTick();
     }
     if (t >= this.mobScanAt) {
       this.mobScanAt = t + 400;
@@ -600,6 +754,8 @@ export class Soldiers {
   step(m: Mob, dt: number) {
     const w = this.w, s = m.soldier!, u = m.unit, t = w.time;
     if (m.dead) {
+      // боец отряда не возрождается: тело лежит bodyMs и исчезает
+      if (s.squad) { if (t >= m.deadAt + SQ.bodyMs) this.dropMember(m); return; }
       if (t >= m.respawnAt) {
         m.reset();
         s.foe = s.mobFoe = null;
@@ -633,14 +789,17 @@ export class Soldiers {
       s.scanAt = t + P.scanMs;
       const foe = this.scan(m);
       if (foe) this.engage(m, foe);
+      else if (s.squad && !s.mobFoe?.soldier) this.squadScan(m);
     }
+    // отряд: цель-моб или боец врага ушёл от дороги (или к Эмберхоллу) — бросаем
+    if (s.squad && s.mobFoe && (!this.alive(s.mobFoe) || !this.inZone(m, s.mobFoe.x, s.mobFoe.y))) s.mobFoe = null;
     let moving = false;
     if (s.foe) {
       m.state = "chase";
       if (u.target !== s.foe.id) u.target = s.foe.id;
       moving = this.fight(m, s.foe, dt, canMove);
     } else if (s.mobFoe && this.alive(s.mobFoe) && m.state !== "return") {
-      moving = this.fightMob(m, s.mobFoe, dt, canMove);
+      moving = s.mobFoe.soldier ? this.fightSoldier(m, s.mobFoe, dt, canMove) : this.fightMob(m, s.mobFoe, dt, canMove);
     } else {
       s.mobFoe = null;
       if (u.target) u.target = "";
@@ -665,6 +824,7 @@ export class Soldiers {
   /** В зоне ли бойца точка (пиксели), с запасом extra тайлов: стража города и поселения — место с полосой, пост — круг, патруль — полоса вдоль маршрута. */
   private inZone(m: Mob, x: number, y: number, extra = 0): boolean {
     const s = m.soldier!, Z = P.zones;
+    if (s.squad) return !this.inEmber(x, y) && routeDist(s.route, x, y) <= (SQ.zone + extra) * TILE;
     if (s.site) return this.near(s.site, x, y, (s.site.city ? Z.city : Z.settlement) + extra);
     if (s.role === "patrol" && s.route.length > 1) return routeDist(s.route, x, y) <= (Z.patrol + extra) * TILE;
     const h = s.post ?? m.home;
@@ -752,7 +912,8 @@ export class Soldiers {
       if (t >= s.nearAt) {
         s.nearAt = t + P.scanMs;
         s.near = false;
-        for (const p of this.w.players.values()) if (!p.dead && dist(p, m) < P.walkNear) { s.near = true; break; }
+        const near = s.squad ? SQ.walkNear : P.walkNear;
+        for (const p of this.w.players.values()) if (!p.dead && dist(p, m) < near) { s.near = true; break; }
       }
       if (!s.near) return false;
       const p = s.route[s.idx];
@@ -764,7 +925,17 @@ export class Soldiers {
         if (!moving) {
           let next = s.idx + s.step;
           if (s.loop) next = (s.idx + 1) % s.route.length;
-          else if (next < 0 || next >= s.route.length) {
+          else if (s.squad && next < 0) {
+            // отряд вернулся к воротам форта — уходит за них
+            for (const g of [...s.squad.group]) this.dropMember(g);
+            return false;
+          } else if (s.squad && next >= s.route.length) {
+            // отряд дошёл до цели: стоит holdMs (здесь сходятся с врагом), потом домой
+            s.step = -1;
+            next = s.idx - 1;
+            s.waitUntil = t + SQ.holdMs;
+            s.squad.phase = "back";
+          } else if (next < 0 || next >= s.route.length) {
             s.step = s.step > 0 ? -1 : 1;
             next = s.idx + s.step;
             s.waitUntil = t + rnd(P.patrolWaitMs[0], P.patrolWaitMs[1]);
