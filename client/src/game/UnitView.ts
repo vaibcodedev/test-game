@@ -73,6 +73,8 @@ const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
 /** Вспышка от удара: белая копия кадра поверх тела с этой прозрачностью гаснет за FLASH_MS и повторяется не чаще FLASH_GAP —
  *  рисунок виден сквозь неё, и под градом ударов в рейде босс не белеет целиком. */
 const FLASH_MS = 90, FLASH_GAP = 250, FLASH_ALPHA = 0.5;
+/** Сглаживание хода чужих юнитов: разрыв до позиции сервера покрывается за столько интервалов между её приходами. */
+const LAG_K = 1.25;
 
 export class UnitView {
   sprite: Phaser.GameObjects.Sprite;
@@ -273,6 +275,12 @@ export class UnitView {
 
   /** Вызывается каждый кадр; px/py — позиция для отрисовки (у своего игрока — предсказанная). */
   private wasStealth = false;
+  /** Сглаживание хода (update): последняя позиция с сервера, когда пришла, средний интервал между приходами (мс) и скорость отрисовки (px/с). */
+  private srvX = NaN;
+  private srvY = NaN;
+  private srvAt = 0;
+  private ivl = 50;
+  private drawV = 0;
   /** Невидимый для меня скрытный игрок: его нельзя выбрать в меню ПКМ (иначе меню выдаст ник и позицию). */
   unseen = false;
   update(dt: number, px?: number, py?: number) {
@@ -287,14 +295,21 @@ export class UnitView {
         this.x = u.x;
         this.y = u.y;
         jump = true;
-      } else if (this.npc) {
-        // стражники и горожане шлют позицию редко (5 раз в секунду): ровное движение к ней
-        const d = Math.hypot(dx, dy);
-        const k = d > 0.01 ? Math.min(1, (Math.max(40, d * 5) * dt) / d) : 1;
-        this.x += dx * k;
-        this.y += dy * k;
       } else {
-        const k = Math.min(1, dt * 12);
+        // Ровный ход к позиции сервера для всех юнитов: мобы шлют её каждый такт (50 мс), стража, горожане и бойцы вне боя — раз в 200 мс.
+        // С приходом новой позиции скорость отрисовки ставится так, чтобы покрыть разрыв за LAG_K интервалов между приходами:
+        // ход постоянный (без рывка «быстро — стоп» у прежнего экспоненциального сглаживания), отставание ~ LAG_K интервала.
+        const now = this.scene.time.now;
+        if (u.x !== this.srvX || u.y !== this.srvY) {
+          const gap = now - this.srvAt;
+          if (gap > 0 && gap < 400) this.ivl += (gap - this.ivl) * 0.3;
+          this.srvX = u.x;
+          this.srvY = u.y;
+          this.srvAt = now;
+          this.drawV = Math.hypot(dx, dy) / ((this.ivl * LAG_K) / 1000);
+        }
+        const d = Math.hypot(dx, dy);
+        const k = d > 0.01 ? Math.min(1, (this.drawV * dt) / d) : 1;
         this.x += dx * k;
         this.y += dy * k;
       }

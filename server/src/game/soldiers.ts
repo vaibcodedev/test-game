@@ -16,7 +16,7 @@ import P from "../../../data/patrols.json";
 import NR from "../../../data/npc-ranks.json";
 import townfolk from "../../../data/townfolk.json";
 import world from "../../../data/world.json";
-import { PLAYER_RADIUS, TILE } from "../../../shared/constants";
+import { MOVE_MUL, PLAYER_RADIUS, TILE } from "../../../shared/constants";
 import { CITIES, type City } from "../../../shared/cities";
 import type { ClassId } from "../../../shared/classes";
 import { pvpDamageMult } from "../../../shared/balance";
@@ -88,11 +88,16 @@ export interface SoldierState {
   wx: number;
   wy: number;
   syncAt: number;
+  /** Ведущий патруля: направление хода (единичный вектор, сглажено) — от него считается строй (follow). */
+  hx: number;
+  hy: number;
   /** Сила (шаг 7, data/npc-ranks.json): "" — обычный боец, "champion" — чемпион, "rankN" — звание стражи столицы. */
   power: string;
 }
 /** Вне боя позиция бойца пишется в схему не чаще (мс), как у стражи Эмберхолла (townfolk.ts): патрули не раздувают трафик. */
 const SYNC_MS = 200;
+/** Скорость поворота строя патруля, рад/с: не быстрее, чем бойцы успевают обойти дугу (догон formation.catchUp): разворот у конца дороги — 2–3 с. */
+const TURN = 1.2;
 
 /** Лучник на башне стены: неубиваем, не юнит (его рисует башня); mob — источник удара для World.hit. */
 export interface Tower {
@@ -235,7 +240,7 @@ export class Soldiers {
     m.soldier = {
       ranged: kind === "ranged", site: null, sector: -1, post: null, route: [], loop: false, idx: 0, step: 1, waitUntil: 0,
       anchor: { x: at.x, y: at.y }, chase: P.units[kind].chaseSpeed, foe: null, mobFoe: null, scanAt: 0, near: false, nearAt: 0,
-      px: m.unit.x, py: m.unit.y, wx: m.unit.x, wy: m.unit.y, syncAt: 0, power: power ? (power.kind === "rank" ? `rank${power.rank}` : power.kind) : "", ...st,
+      px: m.unit.x, py: m.unit.y, wx: m.unit.x, wy: m.unit.y, syncAt: 0, hx: 1, hy: 0, power: power ? (power.kind === "rank" ? `rank${power.rank}` : power.kind) : "", ...st,
     };
     if (power) applyNpcPower(m, f, kind, power);
     this.dress(m, f, kind, st, power);
@@ -286,7 +291,9 @@ export class Soldiers {
         const route = line.slice(r.from, r.to + 1).map(([x, y]) => free(map, x * TILE, y * TILE));
         const group: Mob[] = [];
         for (let i = 0; i < r.size; i++) {
-          this.add(f, i % 2 ? "ranged" : "melee", level, route[0], { role: "patrol", group, route, idx: Math.min(1, route.length - 1), waitUntil: i * 1500 });
+          const h0 = route.length > 1 ? Math.hypot(route[1].x - route[0].x, route[1].y - route[0].y) || 1 : 1;
+          const hx = route.length > 1 ? (route[1].x - route[0].x) / h0 : 1, hy = route.length > 1 ? (route[1].y - route[0].y) / h0 : 0;
+          this.add(f, i % 2 ? "ranged" : "melee", level, route[0], { role: "patrol", group, route, idx: Math.min(1, route.length - 1), hx, hy });
         }
       }
     }
@@ -639,7 +646,7 @@ export class Soldiers {
       if (u.target) u.target = "";
       if (m.state === "chase") { m.state = "return"; m.nav.reset(); }
       if (m.state === "return") {
-        const home = s.post ?? s.anchor;
+        const home = s.post ?? this.formationSlot(m) ?? s.anchor;
         moving = canMove && this.move(m, home.x, home.y, dt, s.chase * 0.8, 2);
         u.hp = Math.min(u.maxHp, u.hp + Math.ceil(u.maxHp * 0.05 * dt * 10));
         if (!moving || dist(u, home) < 6) {
@@ -740,31 +747,103 @@ export class Soldiers {
   private walk(m: Mob, dt: number): boolean {
     const s = m.soldier!, t = this.w.time;
     if (s.route.length > 1) {
+      const lead = s.role === "patrol" ? this.leader(s.group) : null;
+      if (lead && lead !== m) return this.follow(m, lead, dt);
       if (t >= s.nearAt) {
         s.nearAt = t + P.scanMs;
         s.near = false;
         for (const p of this.w.players.values()) if (!p.dead && dist(p, m) < P.walkNear) { s.near = true; break; }
       }
-      if (t < s.waitUntil || !s.near) return false;
+      if (!s.near) return false;
       const p = s.route[s.idx];
-      const moving = this.move(m, p.x, p.y, dt, this.speed(m, m.def.speed), 2);
-      if (!moving) {
-        let next = s.idx + s.step;
-        if (s.loop) next = (s.idx + 1) % s.route.length;
-        else if (next < 0 || next >= s.route.length) {
-          s.step = s.step > 0 ? -1 : 1;
-          next = s.idx + s.step;
-          s.waitUntil = t + rnd(P.patrolWaitMs[0], P.patrolWaitMs[1]);
+      // направление строя поворачивается к следующей точке плавно (на передышке у конца дороги строй разворачивается на месте, по дуге, а не сквозь ведущего)
+      if (lead) this.turn(s, p.x - s.px, p.y - s.py, dt);
+      let moving = false;
+      if (t >= s.waitUntil) {
+        moving = this.move(m, p.x, p.y, dt, this.speed(m, m.def.speed), 2);
+        if (!moving) {
+          let next = s.idx + s.step;
+          if (s.loop) next = (s.idx + 1) % s.route.length;
+          else if (next < 0 || next >= s.route.length) {
+            s.step = s.step > 0 ? -1 : 1;
+            next = s.idx + s.step;
+            s.waitUntil = t + rnd(P.patrolWaitMs[0], P.patrolWaitMs[1]);
+          }
+          s.idx = Math.max(0, Math.min(s.route.length - 1, next));
+          m.nav.reset();
         }
-        s.idx = Math.max(0, Math.min(s.route.length - 1, next));
-        m.nav.reset();
       }
+      // маршрут ведущего — всему отряду: павшего ведущего сменит другой и пойдёт дальше с того же места
+      if (lead) for (const g of s.group) if (g !== m) { const gs = g.soldier!; gs.idx = s.idx; gs.step = s.step; gs.waitUntil = s.waitUntil; gs.hx = s.hx; gs.hy = s.hy; }
       return moving;
     }
     const post = s.post ?? s.anchor;
     const moving = this.move(m, post.x, post.y, dt, this.speed(m, m.def.speed * 1.6), 1);
     if (!moving && s.post && dist(m, post) < 4 && m.unit.dir !== s.post.dir) m.unit.dir = s.post.dir;
     return moving;
+  }
+
+  // ---------- строй патруля ----------
+  /** Повернуть направление строя к (dx, dy) не быстрее TURN рад/с. */
+  private turn(s: SoldierState, dx: number, dy: number, dt: number) {
+    if (Math.hypot(dx, dy) < 1) return;
+    const ca = Math.atan2(s.hy, s.hx);
+    let da = Math.atan2(dy, dx) - ca;
+    da -= Math.round(da / (2 * Math.PI)) * 2 * Math.PI;
+    const a = ca + Math.max(-TURN * dt, Math.min(TURN * dt, da));
+    s.hx = Math.cos(a);
+    s.hy = Math.sin(a);
+  }
+  /** Ведущий патруля: живой чемпион, иначе первый живой ближник, иначе первый живой. */
+  private leader(group: Mob[]): Mob | null {
+    let melee: Mob | null = null, any: Mob | null = null;
+    for (const g of group) {
+      if (!this.alive(g)) continue;
+      if (g.soldier!.power === "champion") return g;
+      if (!g.soldier!.ranged) melee ??= g;
+      any ??= g;
+    }
+    return melee ?? any;
+  }
+
+  /** Место бойца в строю патруля (data/patrols.json formation): [вбок, назад] от ведущего по его ходу; на непроходимом — ближе к оси строя. null — не патруль или сам ведущий. */
+  private formationSlot(m: Mob): Pt | null {
+    const s = m.soldier!;
+    if (s.role !== "patrol" || s.route.length < 2) return null;
+    const lead = this.leader(s.group);
+    if (!lead || lead === m) return null;
+    const F = P.formation, ls = lead.soldier!;
+    let mi = 0, ri = 0;
+    for (const g of s.group) {
+      if (g === lead || !this.alive(g)) continue;
+      if (g === m) break;
+      if (g.soldier!.ranged) ri++;
+      else mi++;
+    }
+    const list = s.ranged ? F.ranged : F.melee, [side, back] = list[(s.ranged ? ri : mi) % list.length];
+    const lx = ls.px, ly = ls.py, hx = ls.hx, hy = ls.hy;
+    // место непроходимо (край дороги, вода): зеркальный бок, потом ближе к оси — но тогда дальше назад, чтобы не встать в ведущего и соседей
+    for (const [k, extra] of [[1, 0], [-1, 0], [0.5, 0.5], [-0.5, 0.5], [0, 1]]) {
+      const b = back + Math.abs(side) * extra;
+      const x = lx - hy * side * k - hx * b, y = ly + hx * side * k - hy * b;
+      if (walkable(this.w.map, x, y, 7)) return { x, y };
+    }
+    return { x: lx - hx * (back + 30), y: ly - hy * (back + 30) };
+  }
+
+  /** Боец патруля (не ведущий) держит своё место в строю: отстал — догоняет быстрее, на месте — смотрит, куда ведущий. */
+  private follow(m: Mob, lead: Mob, dt: number): boolean {
+    const s = m.soldier!, slot = this.formationSlot(m);
+    if (!slot) return false;
+    const d = Math.hypot(slot.x - s.px, slot.y - s.py);
+    if (d < 1) {
+      this.sync(m, true);
+      if (lead.unit.anim !== Anim.Walk && m.unit.dir !== lead.unit.dir) m.unit.dir = lead.unit.dir;
+      return false;
+    }
+    // догон: на месте — шаг ведущего, дальше — быстрее, до catchUp; шаг не перескакивает место (move режет по расстоянию)
+    const v = m.def.speed * Math.min(P.formation.catchUp, 1 + d / 40);
+    return this.move(m, slot.x, slot.y, dt, this.speed(m, v), 0);
   }
 
   /** Шаг к точке по пути (shared/path.ts): как World.moveMob, но бойцы входят в города и поселения. */
@@ -779,7 +858,7 @@ export class Soldiers {
     if (!wp) return this.sync(m, true), false;
     const final = wp.x === gx && wp.y === gy;
     const dx = wp.x - x, dy = wp.y - y, d = Math.hypot(dx, dy) || 1;
-    const sp = Math.min(speed * dt, final ? d - stopAt : d);
+    const sp = Math.min(speed * MOVE_MUL * dt, final ? d - stopAt : d); // общий множитель ходьбы (data/balance.json moveMul)
     if (sp <= 0) return this.sync(m, true), false;
     const n = moveWithCollision(map, x, y, (dx / d) * sp, (dy / d) * sp, r);
     const moved = Math.abs(n.x - x) + Math.abs(n.y - y) > 0.01;

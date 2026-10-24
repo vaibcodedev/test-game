@@ -36,7 +36,9 @@ if (fs.existsSync(mf)) {
     const b = fs.readFileSync(file);
     assert.equal(b.readUInt32BE(16), e.frameW * e.frames, `${id}: ширина листа не равна кадру × число кадров`);
     assert.equal(b.readUInt32BE(20), e.frameH, `${id}: высота листа`);
-    assert.ok(Number.isInteger(e.frameW) && Number.isInteger(e.frameH) && e.fps > 0 && e.anchor[0] >= 0 && e.anchor[0] <= 1 && e.anchor[1] >= 0 && e.anchor[1] <= 1, `${id}: поля каталога`);
+    // висящие знамёна (tools/gen/standards-to-game.ts drop): объект стоит у основания стены, лист висит выше — якорь ниже листа (anchor[1] > 1) задуман
+    const hang = /^std-(pennant|drape)-/.test(id);
+    assert.ok(Number.isInteger(e.frameW) && Number.isInteger(e.frameH) && e.fps > 0 && e.anchor[0] >= 0 && e.anchor[0] <= 1 && e.anchor[1] >= 0 && e.anchor[1] <= (hang ? 3 : 1), `${id}: поля каталога`);
   }
   const missing = [...new Set(Object.values(table).flatMap((s) => Object.values(s)))].filter((id) => !cat[id]);
   console.log(`ok каталог vfx: ${Object.keys(cat).length} листов` + (missing.length ? `; без листа (нет vendor-паков, будут частицы): ${missing.length}` : ""));

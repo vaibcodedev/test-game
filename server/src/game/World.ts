@@ -1,6 +1,6 @@
 /** Игровой мир: вся симуляция на сервере. Комната Colyseus только передаёт сюда сообщения. */
 import { stepApproach, tickQueue } from "./skillQueue";
-import { MAP_SEED, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
+import { MAP_SEED, MOVE_MUL, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
 import { armorReduction } from "../../../shared/formulas";
 import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
 import { PLUS_BONUS } from "../../../shared/upgrade";
@@ -938,7 +938,8 @@ export class World {
     const final = wp.x === gx && wp.y === gy;
     const tx = wp.x, ty = wp.y;
     const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy) || 1;
-    const sp = Math.min(speed * dt, final ? d - stopAt : d);
+    // общий множитель ходьбы всех живых (data/balance.json moveMul): speed в данных мобов — «до множителя»
+    const sp = Math.min(speed * MOVE_MUL * dt, final ? d - stopAt : d);
     const n = moveWithCollision(this.map, u.x, u.y, (dx / d) * sp, (dy / d) * sp, r);
     if (this.inTown(n.x, n.y)) return false;
     const moved = Math.abs(n.x - u.x) + Math.abs(n.y - u.y) > 0.01;

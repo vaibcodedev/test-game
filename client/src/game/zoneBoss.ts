@@ -9,6 +9,7 @@
  */
 import Phaser from "phaser";
 import { Anim, Dir, type Fx } from "../../../shared/protocol";
+import { MOVE_MUL } from "../../../shared/constants";
 import { DEPTH } from "./terrain";
 import type { UnitView } from "./UnitView";
 
@@ -58,7 +59,7 @@ export function zbCreate(scene: Phaser.Scene) {
     for (let row = 0; row < 3; row++) {
       const mk = (key: string, a: A | undefined) => {
         if (!a || scene.anims.exists(`${id}-${key}-${row}`)) return;
-        scene.anims.create({ key: `${id}-${key}-${row}`, frames: scene.anims.generateFrameNumbers(`u_${id}`, { start: row * b.cols + a.col, end: row * b.cols + a.col + a.n - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+        scene.anims.create({ key: `${id}-${key}-${row}`, frames: scene.anims.generateFrameNumbers(`u_${id}`, { start: row * b.cols + a.col, end: row * b.cols + a.col + a.n - 1 }), frameRate: key === "walk" ? a.fps * MOVE_MUL : a.fps, repeat: a.loop ? -1 : 0 });
       };
       mk("walk", b.anims.walk);
       mk("attack", b.anims.attack);

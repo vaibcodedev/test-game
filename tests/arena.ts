@@ -200,7 +200,8 @@ async function main() {
       await enterMatch("1v1", [D1, D2], [D1, D2]);
       await waitFight(D1);
       D1.send("attack", { id: unitByName(D1, "Соперник") });
-      await D1.until(() => D1.room.state.players.get(unitByName(D1, "Соперник")).hp < D1.room.state.players.get(unitByName(D1, "Соперник")).maxHp, 6000, "попадание");
+      // 9 с: подход через арену пешком (скорость героя × moveMul 0,75, data/balance.json)
+      await D1.until(() => D1.room.state.players.get(unitByName(D1, "Соперник")).hp < D1.room.state.players.get(unitByName(D1, "Соперник")).maxHp, 9000, "попадание");
       await D1.until(() => !!D1.result, MATCH_MS + 4000, "конец по времени");
       const me = D1.result.players.find((p: any) => p.name === "Дуэлянт");
       assert(D1.result.reason === "time" && me.won, "по времени: " + JSON.stringify(D1.result));

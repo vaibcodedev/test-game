@@ -2,6 +2,7 @@
 import { armorReduction } from "../../../shared/formulas";
 import { lineClear, moveWithCollision } from "../../../shared/map";
 import { Nav } from "../../../shared/path";
+import { MOVE_MUL } from "../../../shared/constants";
 import {
   PETS, PET_CAST_MS, PET_DROP_CHANCE, PET_FOLLOW_DIST, PET_IDS, PET_RESUMMON_MS, PET_TELEPORT_DIST,
   petStats, petUnitId, petXpToNext, type PetDef,
@@ -336,7 +337,7 @@ export function updatePet(w: World, pet: Pet, dt: number) {
   u.buffs = pet.shellUntil > t ? 4 : 0;
   const target = o.dead ? null : pickTarget(w, pet);
   let moving = false;
-  const follow = Math.max(pet.def.speed, w.playerSpeed(o) * 1.1) * (od > 200 ? 1.5 : 1);
+  const follow = Math.max(pet.def.speed * MOVE_MUL, w.playerSpeed(o) * 1.1) * (od > 200 ? 1.5 : 1);
   if (target && od < 520) {
     const d = w.dist(u, target);
     u.target = target.id;
@@ -344,7 +345,7 @@ export function updatePet(w: World, pet: Pet, dt: number) {
     const clear = lineClear(w.map, u.x, u.y, target.x, target.y);
     if (t >= pet.attackAt && useSkill(w, pet, target, d)) {
       u.dir = World.dirTo(target.x - u.x, target.y - u.y);
-    } else if (d > reach || !clear) moving = step(w, pet, target.x, target.y, dt, pet.def.speed * 1.1, pet.def.projectile ? reach * 0.7 : reach - 6);
+    } else if (d > reach || !clear) moving = step(w, pet, target.x, target.y, dt, pet.def.speed * MOVE_MUL * 1.1, pet.def.projectile ? reach * 0.7 : reach - 6);
     else if (t >= pet.attackAt) {
       u.dir = World.dirTo(target.x - u.x, target.y - u.y);
       u.aseq = (u.aseq + 1) % 65535;

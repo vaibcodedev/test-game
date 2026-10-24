@@ -1,3 +1,5 @@
+import balance from "../data/balance.json";
+
 /** Размер тайла и базовая сетка пиксель-арта. */
 export const TILE = 32;
 /**
@@ -25,7 +27,10 @@ export const FORTS = { west: { x: 392, y: 180 }, east: { x: MAP_W - 1 - 392, y: 
 export const TICK_MS = 50;
 export const PATCH_MS = 50;
 
-export const PLAYER_SPEED = 150; // px/s
+/** Общий множитель скорости ходьбы всех живых (data/balance.json moveMul): герои, боты, мобы, бойцы, стража, горожане, питомцы. */
+export const MOVE_MUL: number = balance.moveMul;
+/** Скорость героя пешком, px/с: 150 «до множителя» × MOVE_MUL. */
+export const PLAYER_SPEED = 150 * MOVE_MUL;
 export const PLAYER_RADIUS = 10;
 /** Предел уровня (задача 39, BALANCE.md); levelCap в data/world.json должен совпадать. */
 export const MAX_LEVEL = 100;

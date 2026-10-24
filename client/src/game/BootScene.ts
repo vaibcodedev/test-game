@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { MOVE_MUL } from "../../../shared/constants";
 import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
 import { initAuraFx, loadAuraFx } from "./auraFx";
 import { loading } from "../ui/loading";
@@ -53,7 +54,7 @@ export class BootScene extends Phaser.Scene {
       const cols = m.units[id].cols ?? 12;
       for (let row = 0; row < 3; row++) {
         const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * cols + a, end: row * cols + b });
-        this.anims.create({ key: `${id}-walk-${row}`, frames: f(0, 3), frameRate: 8, repeat: -1 });
+        this.anims.create({ key: `${id}-walk-${row}`, frames: f(0, 3), frameRate: 8 * MOVE_MUL, repeat: -1 }); // шаг под общий множитель ходьбы (data/balance.json moveMul): ноги не скользят
         this.anims.create({ key: `${id}-attack-${row}`, frames: f(4, 7), frameRate: 14, repeat: 0 });
         this.anims.create({ key: `${id}-death-${row}`, frames: f(8, 11), frameRate: 9, repeat: 0 });
         if (cols >= 24) {
@@ -67,7 +68,7 @@ export class BootScene extends Phaser.Scene {
     for (const id of Object.keys(m.mounts ?? {})) {
       for (let row = 0; row < 6; row++) {
         const f = (a: number, b: number) => this.anims.generateFrameNumbers(`m_${id}`, { start: row * 12 + a, end: row * 12 + b });
-        this.anims.create({ key: `m_${id}-run-${row}`, frames: f(0, 7), frameRate: 14, repeat: -1 });
+        this.anims.create({ key: `m_${id}-run-${row}`, frames: f(0, 7), frameRate: 14 * MOVE_MUL, repeat: -1 });
         this.anims.create({ key: `m_${id}-idle-${row}`, frames: f(8, 11), frameRate: 4, repeat: -1 });
       }
     }

@@ -6,7 +6,7 @@
 import data from "../../../data/townfolk.json";
 import { CITIES, CITY_CITIZEN_COUNT, CITY_CITIZEN_SPOTS, CITY_GATE_GUARDS, CITY_PATROLS } from "../../../shared/cities";
 import { SETTLEMENTS } from "../../../shared/settlements";
-import { TILE } from "../../../shared/constants";
+import { MOVE_MUL, TILE } from "../../../shared/constants";
 import { moveWithCollision } from "../../../shared/map";
 import { Nav } from "../../../shared/path";
 import { Anim, Dir, UnitKind } from "../../../shared/protocol";
@@ -274,7 +274,7 @@ export class Townfolk {
     if (!wp) return false;
     const final = wp.x === gx && wp.y === gy;
     const dx = wp.x - f.x, dy = wp.y - f.y, d = Math.hypot(dx, dy) || 1;
-    const sp = Math.min(speed * dt, final ? d - stopAt : d);
+    const sp = Math.min(speed * MOVE_MUL * dt, final ? d - stopAt : d); // общий множитель ходьбы (data/balance.json moveMul)
     if (sp <= 0) return false;
     const n = moveWithCollision(this.w.map, f.x, f.y, (dx / d) * sp, (dy / d) * sp, R);
     const moved = Math.abs(n.x - f.x) + Math.abs(n.y - f.y) > 0.01;
