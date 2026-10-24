@@ -144,6 +144,9 @@ export class Hotbar {
         const c = this.makeCell(bar, i, s.bars[bar]?.[i] ?? null);
         this.cells[bar][i] = c;
         row.append(c.root);
+        // герб фракции посреди умений, орнамент между умениями и предметами (styles/hotbar.css)
+        if (i === 4) row.append(Object.assign(document.createElement("span"), { className: `hb-crest f-${s.faction}` }));
+        if (i === 8) row.append(Object.assign(document.createElement("span"), { className: "hb-orn" }));
       }
       if (bar === 0) { this.lockBtn.className = "hb-lock"; this.lockBtn.onclick = () => { this.setLock(!this.locked); this.lockBtn.blur(); }; row.append(this.lockBtn); }
       this.el.append(row);
@@ -164,7 +167,7 @@ export class Hotbar {
       else if ("i" in ref) inner = `<img src="${icon(BASE_ITEMS[ref.i].icon)}" alt="" draggable="false">`;
       else inner = `<span class="act">${ACTION_INFO[ref.a].glyph}</span>`;
     }
-    root.innerHTML = `${inner}${ref && "s" in ref ? `<i class="tint"></i>` : ""}<kbd>${esc(label)}</kbd>${ref ? `<i class="cd" style="transform:scaleY(0)"></i><span class="cdt"></span>${"s" in ref ? `<i class="gcd"></i>` : ""}` : ""}${ref && "i" in ref ? `<span class="qty"></span>` : ""}`;
+    root.innerHTML = `${inner}${ref && "s" in ref ? `<i class="tint"></i>` : ""}<kbd>${esc(label)}</kbd>${ref ? `<i class="cd"></i><span class="cdt"></span>${"s" in ref ? `<i class="gcd"></i>` : ""}` : ""}${ref && "i" in ref ? `<span class="qty"></span>` : ""}`;
     const cell: Cell = {
       root, kbd: root.querySelector("kbd")!, cd: root.querySelector(".cd"), cdt: root.querySelector(".cdt"), gcd: root.querySelector(".gcd"), qty: root.querySelector(".qty"),
       ref, label, cls: "", cdv: "", cdtv: "", gcdv: "", qtyv: "",
@@ -300,13 +303,17 @@ export class Hotbar {
         if (left > 0) cls.push("oncd");
         const cl = cls.join(" ");
         if (cl !== c.cls) {
+          // перезарядка кончилась — короткая вспышка готовности
+          if (c.cls.includes("oncd") && !cls.includes("oncd")) { c.root.classList.remove("rdy"); void c.root.offsetWidth; c.root.classList.add("rdy"); }
           for (const o of c.cls.split(" ")) if (o) c.root.classList.remove(o);
           for (const n of cls) c.root.classList.add(n);
           c.cls = cl;
         }
         if (c.cd) {
-          const v = left > 0 && total > 0 ? `scaleY(${Math.min(1, left / total).toFixed(2)})` : "scaleY(0)";
-          if (v !== c.cdv) { c.cdv = v; c.cd.style.transform = v; }
+          const p = left > 0 && total > 0 ? Math.min(1, left / total) : 0;
+          const v = p.toFixed(3);
+          // --p — доля перезарядки для круговой шторки (conic-gradient в hotbar.css)
+          if (v !== c.cdv) { c.cdv = v; c.cd.style.setProperty("--p", v); }
           const t = left > 0 ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : "";
           if (t !== c.cdtv) { c.cdtv = t; c.cdt!.textContent = t; }
         }
