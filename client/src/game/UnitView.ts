@@ -212,6 +212,7 @@ export class UnitView {
   private labelText() {
     const u = this.u;
     if (u.kind === UnitKind.Mob) return `${u.name} · ${u.level}`;
+    if (u.kind === UnitKind.Soldier && !u.level) return u.name; // чемпион и стража столиц (задача 132, шаг 7): уровень не подписан
     if (u.kind === UnitKind.Boss || u.kind === UnitKind.Guard || u.kind === UnitKind.Citizen) return u.name;
     if (u.kind === UnitKind.Pet) return `${u.name} (${net.unit(u.ownerId)?.name ?? "?"}) · ${u.level}`;
     return `${u.outlaw ? "⚔ " : ""}${u.name}${this.shortName ? "" : ` · ${u.level}`}`;

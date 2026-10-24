@@ -45,6 +45,7 @@ import { findPath } from "../../shared/path";
 import { MAP_SEED, PLAYER_RADIUS, TICK_MS } from "../../shared/constants";
 import { allocStats, coreActive, DEF_PASSIVE, DMG_BUFF, hasDmg, HEAL_FIRST, HEAL_SUPPORT, learnSkills, pickGear, type BuildMode, type GearMode } from "../../server/src/arena/botgear";
 import { findSafe, inDanger, trackDanger, type Danger } from "../../server/src/game/danger";
+import { applyNpcPower, soldierDef } from "../../server/src/game/soldiers";
 
 // ======================================================================
 //                         аргументы
@@ -1445,6 +1446,43 @@ if (ONLY.has("boss")) {
   }
   report.bosses = rows;
   summary.bosses = rows.map((r) => ({ ...r, ...(r.kind === "solo" ? { level_gear: undefined, max_gear: undefined, stand_max: undefined, lv: fmtBoss(r.level_gear as BossAgg), mx: fmtBoss(r.max_gear as BossAgg), st: fmtBoss(r.stand_max as BossAgg) } : {}) }));
+}
+
+if (ONLY.has("champion")) {
+  // задача 132, шаг 7: чемпион фракции (data/npc-ranks.json) против героя 100 ур. в максимальной экипировке (легендарки +10) чужой фракции.
+  // Чемпион — Mob со статами героя (soldiers.ts applyNpcPower), здесь без поведения бойца: обычный ИИ моба (подход, удар, выстрел). Цель — ≈ 50/50.
+  const reps = Number(arg("champ-reps") ?? (QUICK ? 2 : 4));
+  const rows: Record<string, unknown>[] = [];
+  let wins = 0, fights = 0;
+  log(`\n== 6) Чемпион против героя 100 ур. (легендарки +10), ${reps} боёв на пару: побед героя / боёв, ср. время, ср. остаток здоровья героя | чемпиона`);
+  for (const c of CLS) {
+    const f = CLASSES[c].faction === "solgard" ? "umbrath" : "solgard";
+    for (const kind of ["melee", "ranged"] as const) {
+      let w0 = 0, sec = 0, hpH = 0, hpC = 0;
+      for (let r = 0; r < reps; r++) {
+        seedRng("champion", c, kind, r);
+        const w = makeWorld(FIELD, true);
+        const p = spawnPlayer(w, build(c, 100, "pve", "max"), FIELD_C.x - 120, FIELD_C.y);
+        const m = new Mob(gid("m"), soldierDef(f, kind), 100, { x: FIELD_C.x + 120, y: FIELD_C.y });
+        applyNpcPower(m, f, kind, { kind: "champion" });
+        w.addMob(m);
+        const a = makeAgent(p, { enemies: () => (m.dead ? [] : [m]) });
+        for (let i = 0; i < (120 * 1000) / TICK_MS && !p.dead && !m.dead; i++) { think(w, a); w.update(TICK_MS); }
+        const win = m.dead || (!p.dead && ratio(p) > m.unit.hp / m.unit.maxHp);
+        if (win) w0++;
+        sec += w.time / 1000;
+        hpH += p.dead ? 0 : ratio(p);
+        hpC += m.dead ? 0 : m.unit.hp / m.unit.maxHp;
+      }
+      wins += w0;
+      fights += reps;
+      rows.push({ cls: c, champion: `${f}:${kind}`, heroWins: w0, fights: reps, sec: r1(sec / reps), heroHp: r3(hpH / reps), champHp: r3(hpC / reps) });
+      log(`${name(c)} против ${kind === "melee" ? "ближника" : "дальника"} ${f}: ${w0}/${reps}, ${r1(sec / reps)} с, ${r3(hpH / reps)} | ${r3(hpC / reps)}`);
+    }
+  }
+  log(`Итого: герой победил ${wins} из ${fights} (${Math.round((wins / Math.max(1, fights)) * 100)}%)`);
+  report.champion = rows;
+  summary.champion = { heroWinRate: r3(wins / Math.max(1, fights)), fights };
 }
 
 report.summary = summary;

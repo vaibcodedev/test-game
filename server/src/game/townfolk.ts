@@ -36,7 +36,9 @@ interface Site {
   people: { name: string; sprite: string }[];
 }
 const SITES: Site[] = [
-  { x: TOWN.x, y: TOWN.y, half: TOWN_HALF, sideX: WALL.x - 2, gateGuards: GATE_GUARDS, patrols: PATROLS, spots: CITIZEN_SPOTS, count: CITIZEN_COUNT, guard: G, people: C.people },
+  // Эмберхолл: посты и маршруты shared/town.ts и ещё столько же из data/townfolk.json (guard.posts, guard.patrols)
+  { x: TOWN.x, y: TOWN.y, half: TOWN_HALF, sideX: WALL.x - 2, gateGuards: [...GATE_GUARDS, ...(G.posts as [number, number][])], patrols: [...PATROLS, ...(G.patrols as [number, number][][])],
+    spots: CITIZEN_SPOTS, count: CITIZEN_COUNT, guard: G, people: C.people },
   // стража столиц, фортов и поселений фракций — бойцы фракций (soldiers.ts, задача 132, шаг 5): убиваемы, бьют врагов по секторам; здесь только горожане
   ...CITIES.filter((c) => c.style).map((c): Site => ({
     x: c.x, y: c.y, half: c.half, sideX: null, gateGuards: c.capital ? [] : CITY_GATE_GUARDS, patrols: c.capital ? [] : CITY_PATROLS, spots: CITY_CITIZEN_SPOTS, count: CITY_CITIZEN_COUNT,

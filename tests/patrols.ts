@@ -5,6 +5,8 @@
  * соседние подтягиваются, только если своих мало, остальные держат посты. Без сервера: мир в памяти, такт 50 мс.
  */
 import P from "../data/patrols.json";
+import NR from "../data/npc-ranks.json";
+import { npcPowerStats } from "../server/src/game/soldiers";
 import { TILE } from "../shared/constants";
 import { CITIES } from "../shared/cities";
 import { MOBS } from "../shared/mobs";
@@ -56,6 +58,33 @@ check("патрули на дорогах обеих фракций", ["solgard"
 check("в столице стражи больше, чем в форте", capital.guards.length > fort.guards.length, `${capital.guards.length} против ${fort.guards.length}`);
 check("башни с лучниками на стенах обеих фракций", S.towers.some((t) => t.faction === "solgard") && S.towers.some((t) => t.faction === "umbrath"), `${S.towers.length}`);
 
+// ---------- 0б. числа и сила (шаг 7, data/npc-ranks.json) ----------
+{
+  const patrolGroups = [...new Set(S.list.filter((m) => m.soldier!.role === "patrol").map((m) => m.soldier!.group))];
+  check("патрули по 4: 2 ближника и 2 дальника", patrolGroups.length > 0 && patrolGroups.every((g) => g.length === 4 && g.filter((m) => m.soldier!.ranged).length === 2), `${patrolGroups.length} патрулей`);
+  const bridgeGroups = [...new Set(bridgePosts.map((m) => m.soldier!.group))];
+  check("на мосту 5–6 бойцов с дальниками и минимум один чемпион", bridgeGroups.every((g) => g.length >= 5 && g.some((m) => m.soldier!.ranged) && g.some((m) => m.soldier!.power === "champion")),
+    bridgeGroups.map((g) => g.length).join(","));
+  const bridgeRegular = bridgePosts.find((m) => !m.soldier!.power && !m.soldier!.ranged)!, roadRegular = S.list.find((m) => m.soldier!.role === "patrol" && !m.soldier!.power && !m.soldier!.ranged && m.level === bridgeRegular.level);
+  check("обычный боец моста сильнее патрульного того же уровня", !roadRegular || (bridgeRegular.stats.maxHp > roadRegular.stats.maxHp && bridgeRegular.stats.dmg > roadRegular.stats.dmg));
+  const pool = S.list.filter((m) => !m.soldier!.power.startsWith("rank")), champs = pool.filter((m) => m.soldier!.power === "champion");
+  check("чемпион — в среднем каждый 6-й", champs.length / pool.length > 1 / 8 && champs.length / pool.length < 1 / 4, `${champs.length} из ${pool.length}`);
+  const champ = champs[0];
+  check("чемпион: статы героя 100 ур., уровень не подписан", champ.level === 100 && champ.unit.level === 0 && champ.dmgTakenMul < 1 && champ.stats.maxHp === npcPowerStats(champ.faction as "solgard", champ.soldier!.ranged ? "ranged" : "melee", { kind: "champion" }, champ.def.attackCd).maxHp);
+  const settle = S.sites.filter((s) => !s.city);
+  check("в поселениях посты по периметру и у ворот (≥ 8 стражи)", settle.every((s) => s.guards.length >= 8 && s.guards.some((g) => g.soldier!.ranged)), settle.map((s) => s.guards.length).join(","));
+  check("стражи: столица > форт > поселение", capital.guards.length > fort.guards.length && fort.guards.length > Math.max(...settle.map((s) => s.guards.length)), `${capital.guards.length} > ${fort.guards.length}`);
+  const caps = S.sites.filter((s) => s.city && !s.city.c.fort);
+  check("стража столиц — по званиям (+1…+10)", caps.every((s) => s.guards.every((g) => g.soldier!.power.startsWith("rank") && g.level === 100)) &&
+    new Set(caps[0].guards.map((g) => g.soldier!.power)).size === NR.capital.ranks.length);
+  const st = (r: number) => npcPowerStats("umbrath", "melee", { kind: "rank", rank: r }, 1.2);
+  check("звание выше — сильнее", NR.capital.ranks.every((_, r) => !r || (st(r).dmg > st(r - 1).dmg && st(r).armor >= st(r - 1).armor)) && NR.capital.ranks[0].plus === 1 && NR.capital.ranks.at(-1)!.plus === 10);
+  const ember = npcPowerStats("umbrath", "melee", { kind: "ember" }, 1.2), top = st(NR.capital.ranks.length - 1);
+  check("стража Эмберхолла сильнее столичной и неуязвима", ember.maxHp > top.maxHp * 2 && ember.dmg > top.dmg && w.town!.folk.some((f) => f.guard));
+  const plusOf = (s: string) => s.split("|").filter(Boolean).map((g) => Number(g.split(":")[1]) || 0);
+  check("у NPC plus = 0 (ни контура, ни частиц заточки)", S.list.every((m) => (!m.unit.weapon || Number(m.unit.weapon.split(":")[2]) === 0) && plusOf(m.unit.gear).every((v) => v === 0)));
+}
+
 // ---------- 1. пост моста: бьёт врага, не трогает своих и мобов ----------
 const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.ranged && Math.abs(m.y / TILE - 180) < 3)!;
 {
@@ -88,6 +117,7 @@ const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.rang
   const ride = (cls: ClassId) => {
     const p = hero(cls, post.x + 150, post.y);
     p.unit.mount = "horse";
+    p.unit.maxHp = p.unit.hp = 1e9; // чемпион поста (шаг 7) убивает голого героя 40 ур. с одного удара — смотрим выстрел и замедление
     let slowed = false, start = { x: p.x, y: p.y };
     hits = [];
     run(4000, () => { p.input = { mx: -1, my: 0 }; if (p.slowUntil > w.time) slowed = true; });
@@ -163,6 +193,7 @@ const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.rang
   const spot = { x: (c.x - 8) * TILE + 16, y: (c.y - 5) * TILE + 16 };
   const sec = S.sectorOf(capital, spot.x, spot.y);
   const foe = hero("warrior", spot.x, spot.y);
+  foe.unit.maxHp = foe.unit.hp = 1e9; // стража столицы бьёт как герой 100 ур. (шаг 7): за такт не убьёт, бой сектора виден целиком
   hits = [];
   run(3000);
   const resp = capital.guards.filter((g) => g.soldier!.foe === foe);
@@ -192,6 +223,47 @@ const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.rang
   run(2000);
   check("свой герой в своей столице цел", dmgTo(p, isSoldier) === 0 && !capital.guards.some((g) => g.soldier!.foe === p));
   drop(p);
+}
+
+// ---------- 7. поводок от дома (data/patrols.json zones): убегающего не гонят через полкарты ----------
+{
+  const Z = P.zones;
+  // уводит врага от точки from по направлению (dx, dy) со скоростью героя, потом стоит вдали; max — как далеко отходил каждый боец от дома
+  const flee = (from: { x: number; y: number }, dx: number, dy: number, who: Mob[], sec: number) => {
+    const p = hero(who[0].faction === "umbrath" ? "warrior" : "deathknight", from.x, from.y);
+    p.unit.maxHp = p.unit.hp = 1e9;
+    run(1500);
+    const engaged = who.filter((g) => g.soldier!.foe === p).length;
+    const far = new Map<Mob, number>();
+    run(sec * 1000, () => {
+      if (Math.hypot(p.x - from.x, p.y - from.y) < 60 * TILE) { p.unit.x += dx * 8; p.unit.y += dy * 8; }
+      for (const g of who) far.set(g, Math.max(far.get(g) ?? 0, d(g, p.x === from.x ? g : g.home)));
+    });
+    const chasing = who.filter((g) => g.soldier!.foe === p).length;
+    drop(p);
+    run(15000);
+    return { engaged, chasing, far };
+  };
+  // столица: враг у северных ворот изнутри убегает на север
+  const c = capital.city!.c;
+  const r1 = flee({ x: c.x * TILE + 16, y: (c.y - 8) * TILE }, 0, -1, capital.guards, 14);
+  const outCity = (g: Mob) => Math.max(0, Math.abs(g.y / TILE - (c.y + 0.5)) - c.half.y - 0.5, Math.abs(g.x / TILE - (c.x + 0.5)) - c.half.x - 0.5);
+  check("стража столицы вышла на врага", r1.engaged > 0, `${r1.engaged}`);
+  check(`враг ушёл дальше ${Z.city} тайлов от стен — стража отстала`, r1.chasing === 0);
+  check("стража не уходит дальше zones.city + slack от стен", capital.guards.every((g) => outCity(g) <= Z.city + Z.slack + 1));
+  check("стража столицы вернулась на посты", capital.guards.filter((g) => !g.dead).every((g) => !g.soldier!.foe && d(g, g.soldier!.post!) < 8));
+  // пост моста: враг уходит прочь от реки
+  const bp = bridgePosts.filter((m) => m.faction === "umbrath");
+  const g0 = bp[0].soldier!.group;
+  const r2 = flee({ x: bp[0].x - 120, y: bp[0].y }, 1, 0, g0, 14);
+  check("пост моста вышел на врага и отстал за zones.bridge", r2.engaged > 0 && r2.chasing === 0, `${r2.engaged}/${r2.chasing}`);
+  check("пост моста не уходит дальше zones.bridge + slack", g0.every((g) => (r2.far.get(g) ?? 0) <= (Z.bridge + Z.slack + 1) * TILE), Math.max(...g0.map((g) => r2.far.get(g) ?? 0)).toFixed(0));
+  check("пост моста вернулся", g0.every((g) => g.dead || (!g.soldier!.foe && d(g, g.soldier!.post!) < 8)));
+  // патруль: враг уводит его в сторону от дороги
+  const pt = S.list.find((m) => m.soldier!.role === "patrol" && m.faction === "solgard")!, pg = pt.soldier!.group;
+  const r3 = flee({ x: pt.x, y: pt.y + 80 }, 0, 1, pg, 14);
+  check("патруль вышел на врага и отстал у края полосы маршрута", r3.engaged > 0 && r3.chasing === 0, `${r3.engaged}/${r3.chasing}`);
+  check("патруль вернулся на маршрут", pg.every((g) => g.dead || !g.soldier!.foe));
 }
 
 console.log(bad ? `\n${bad} FAIL` : "\nвсё ок");
