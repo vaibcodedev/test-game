@@ -102,7 +102,7 @@ const ACTION: Layout = {
   interact: [k("KeyG")], talk: [],
   pet: [k("KeyZ")], petNext: [shift("KeyZ")],
   autorun: [k("NumLock"), k("KeyV")], // R занята умением 4, Shift+R — слот 4 панели 2
-  attack: [], // T занята умением 9; в «Экшене» атакуют ПКМ
+  attack: [k("Space")], // T занята умением 9: атака цели — Пробел и ПКМ (задача 134, шаг 3)
 };
 export const PRESETS: Record<PresetId, { name: string; layout: Layout }> = {
   classic: { name: "Классика", layout: CLASSIC },

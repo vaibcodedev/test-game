@@ -1,6 +1,7 @@
 /** Попадание мышью и порядок при наложении (задача 134, шаг 2; client/src/game/hit.ts): силуэт кадра (босс 128, всадник с конём), плашка ника и полоски,
  *  след 120 мс за бегущими, точно → передний → текущая цель → ближе центр. Запуск: npx tsx tests/pick.ts */
 import assert from "node:assert/strict";
+import { tabOrder, type TabUnit } from "../client/src/game/castResolve";
 import { boxDist, emptyBox, hitUnit, PickBest, silhouette, sweptDist, Trail, TRAIL_MS, unionBox, type Box, type Hit } from "../client/src/game/hit";
 
 const box = (): Box => emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
@@ -78,6 +79,16 @@ for (const fps of [60, 144]) {
   const t = new Trail(), out = { x: 0, y: 0 };
   t.push(0, 0, 0); t.push(50, 5, 0); t.push(100, 500, 0, true);
   ok(t.past(100, TRAIL_MS, out) && out.x === 500, "скачок — без следа");
+}
+
+// Tab (шаг 3): только враги на экране с прямой видимостью, сначала бьющие меня, затем ближние; за краем экрана — нет
+{
+  const t = (id: string, x: number, o: Partial<TabUnit> = {}): TabUnit => ({ id, x, y: 0, dead: false, enemy: true, inView: true, los: true, onMe: false, ...o });
+  const me = { x: 0, y: 0 };
+  ok(tabOrder([t("far", 300), t("near", 50), t("mid", 120)], me).join() === "near,mid,far", "Tab: ближние первыми");
+  ok(tabOrder([t("near", 50), t("hit", 200, { onMe: true })], me).join() === "hit,near", "Tab: бьющий меня первым");
+  ok(tabOrder([t("off", 30, { inView: false }), t("on", 400)], me).join() === "on", "Tab: за краем экрана — нет, хоть и ближе");
+  ok(tabOrder([t("wall", 30, { los: false }), t("d", 40, { dead: true }), t("ally", 20, { enemy: false })], me).length === 0, "Tab: за стеной, павший и союзник — нет");
 }
 
 console.log(`pick: ${n} ok`);

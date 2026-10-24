@@ -39,6 +39,21 @@ const near = u("n", 40, 0, true), far = u("z", 500, 0, true), dead = u("d", 5, 0
 assert.deepEqual(resolveCast({ ...en, units: [far, near, dead] }), { ok: false, err: "Нет цели" });
 assert.equal(ok(resolveCast({ ...en, autoTarget: true, units: [far, near, dead, u("m", 90, 0, true)] })).target, "n");
 assert.deepEqual(resolveCast({ ...en, autoTarget: true, units: [far] }), { ok: false, err: "Нет цели" });
+// задача 134, шаг 3: без точного наведения — выбранная цель; враг у курсора (магнитом или ближайший в 80 px экрана) — только если цели нет
+{
+  const nr = 80 / 2, sel = u("s", 150, 0, true), mag = u("mg", 120, 10, true), c1 = u("c1", 130, 0, true), c2 = u("c2", 60, 0, true);
+  assert.equal(ok(resolveCast({ ...en, selected: sel, hoverNear: mag, nearReach: nr, units: [c1] })).target, "s", "цель важнее врага у курсора");
+  assert.equal(ok(resolveCast({ ...en, hover: foe, selected: sel, hoverNear: mag, nearReach: nr })).target, "f", "точное наведение важнее цели");
+  assert.equal(ok(resolveCast({ ...en, hoverNear: mag, nearReach: nr, units: [c1] })).target, "mg", "без цели — подсвеченный магнитом");
+  assert.equal(ok(resolveCast({ ...en, nearReach: nr, units: [c2, c1, dead] })).target, "c1", "без цели — ближайший к курсору");
+  assert.deepEqual(resolveCast({ ...en, nearReach: nr, units: [u("x", 100, 60, true)] }), { ok: false, err: "Нет цели" }, "дальше 80 px экрана + радиус — нет");
+  assert.equal(ok(resolveCast({ ...en, nearReach: nr, units: [u("x", 100, 50, true)] })).target, "x", "40 + радиус 14 на зуме 2");
+  assert.deepEqual(resolveCast({ ...en, nearReach: nr, hoverCast: false, units: [c1] }), { ok: false, err: "Нет цели" }, "без каста по наведению — нет");
+  assert.deepEqual(resolveCast({ ...en, nearReach: nr, overUi: true, units: [c1] }), { ok: false, err: "Нет цели" }, "над интерфейсом — нет");
+  assert.equal(ok(resolveCast({ ...en, selected: u("al", 50, 0, false), nearReach: nr, units: [c1] })).target, "c1", "в цели союзник — для удара цели нет");
+  assert.equal(ok(resolveCast(base({ nearReach: nr, units: [u("me", 100, 0, false), u("a9", 110, 0, false)] }))).target, "a9", "лечение: союзник у курсора, не себя");
+  assert.equal(ok(resolveCast(base({ nearReach: nr, units: [u("a9", 300, 0, false)] }))).target, "me", "лечение: никого у курсора — себя");
+}
 assert.equal(ok(resolveCast({ ...en, selected: u("w", 250, 0, true) })).far, true, "цель вне дальности помечена");
 // «далеко» — как у сервера: дальше дальности + радиус цели (у боссов до 44; задача 133, шаг 2); без радиуса — как у героя (10)
 assert.equal(ok(resolveCast({ ...en, selected: u("b", 243, 0, true, { r: 44 }) })).far, false, "босс r 44 в 243 px при дальности 200 — не далеко");

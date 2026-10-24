@@ -86,6 +86,7 @@ test("«Экшен» описывает раздел 11: умения Q W E R A 
   assert.deepEqual(acts(kb, "Digit2"), ["potionMp"]);
   assert.deepEqual(acts(kb, "KeyG"), ["interact"]);
   assert.deepEqual(acts(kb, "Tab"), ["targetNext"]);
+  assert.deepEqual(acts(kb, "Space"), ["attack"], "Пробел — атака цели (задача 134, шаг 3)");
   assert.deepEqual(acts(kb, "KeyX"), ["mount"]);
   assert.deepEqual(acts(kb, "KeyZ"), ["pet"]);
   assert.deepEqual(acts(kb, "ArrowUp"), ["moveUp"]);
@@ -342,12 +343,13 @@ test("справка по разделам: GROUPS, строка на дейст
   assert.deepEqual(c.get("Действия"), ["Пробел — Подобрать или поговорить", "F — Поговорить с NPC", "X / Shift+X — Ездовое животное", "G / Shift+G — Питомец", "Shift+F — Следовать за целью"]);
   assert.deepEqual(c.get("Интерфейс"), ["C — Герой", "I — Сумка", "K — Умения", "M — Карта", "B — Бестиарий", "P — Арена", "Enter — Чат", "Esc — Закрыть окно, снять цель, меню"]);
   assert.deepEqual(hotkeySections(kb)[0].rows[0].keys.map((x) => !!x.word), [false, true, true], "«стрелки» и «клик» — слова, не плашки");
-  // «Экшен»: атаки на T и разговора на F нет — строк нет; автобег NumLock / V
+  // «Экшен»: атака цели — Пробел (задача 134, шаг 3); разговора на F нет — строки нет; автобег NumLock / V
   kb.setPreset("action");
   const a = table(kb);
   assert.deepEqual(a.get("Движение"), ["стрелки / клик — Ходьба", "NumLock / V — Автобег"]);
   assert.deepEqual(a.get("Панель умений"), ["Q W E R A S D F T — Умения", "1 — Зелье здоровья", "2 — Зелье маны"]);
-  assert.ok(!a.get("Цель")!.some((r) => r.endsWith("Атаковать цель")) && !a.get("Действия")!.some((r) => r.endsWith("Поговорить с NPC")), "строки без клавиши пропускаются");
+  assert.ok(a.get("Цель")!.includes("Пробел — Атаковать цель"), "атака цели — Пробел");
+  assert.ok(!a.get("Действия")!.some((r) => r.endsWith("Поговорить с NPC")), "строки без клавиши пропускаются");
   assert.ok(a.get("Действия")!.includes("Z / Shift+Z — Питомец"));
   // клавиши группы не подряд идущие F — перечислением, не «F2–F5»
   const kb2 = classicKb();

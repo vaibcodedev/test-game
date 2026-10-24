@@ -1,6 +1,6 @@
 /**
  * Выбор адресата каста (задача 115, шаг 6; docs/controls.md, раздел 6). Чистые функции, без Phaser и DOM.
- * Порядок для unit: юнит под курсором подходящего типа (цель не меняется) -> выбранная цель -> ally на себя (Alt — всегда) ->
+ * Порядок для unit: юнит под курсором подходящего типа (цель не меняется) -> выбранная цель -> у курсора (подсвеченный магнитом, иначе ближайший в 80 px экрана) -> ally на себя (Alt — всегда) ->
  * enemy: ближайший враг в дальности при «Автоцели», иначе ошибка. Точка — курсор, зажатый дальностью. Направление — на курсор;
  * курсор над интерфейсом — на цель, иначе вперёд. Курсор на враге (каст по наведению) — точка и направление по его ногам (задача 133).
  * castAim — где ляжет умение и что слать серверу: общая геометрия shared/skillShape.ts от предсказанной позиции героя (превью = сервер), с правилами
@@ -110,6 +110,10 @@ export interface CastIn {
   alt: boolean;
   hoverCast: boolean;
   autoTarget: boolean;
+  /** Враг у курсора без точного наведения (задача 134, шаг 3): тот, кого подсветка выбрала магнитом, — его берёт умение, если цели нет. */
+  hoverNear?: CastUnit | null;
+  /** Радиус «ближайший к курсору» в пикселях мира (PICK_NEAR / масштаб CSS); 0 или нет — правила нет. Только если цели нет. */
+  nearReach?: number;
 }
 /** far — сервер откажет «Слишком далеко» (только умения на цель); точку ground и направление сервер прижимает к дальности сам — у них far нет. */
 export type CastPlan =
@@ -144,6 +148,9 @@ export function resolveCast(c: CastIn): CastPlan {
       let t: CastUnit | null = null;
       if (c.hoverCast && !c.overUi && c.hover && fitsTarget(c.hover, s.target)) t = c.hover;
       else if (sel && fitsTarget(sel, s.target)) t = sel;
+      // решение пользователя: без точного наведения — выбранная цель; враг (союзник) у курсора — только если цели нет
+      else t = nearCursor(c, s.target);
+      if (t) { /* адресат найден */ }
       else if (s.target === "ally") t = { id: self.id, x: self.x, y: self.y, enemy: false, friend: true };
       else if (c.autoTarget) {
         // ближайший враг в дальности + его радиус (как сервер)
@@ -174,6 +181,21 @@ export function resolveCast(c: CastIn): CastPlan {
       return { ok: true, x: hv ? hv.x : c.cursor.x, y: hv ? hv.y : c.cursor.y, target: hv?.id ?? null, far: false };
     }
   }
+}
+
+/** Без цели: юнит подходящего типа у курсора — подсвеченный магнитом (hoverNear), иначе ближайший к курсору в nearReach (+ радиус юнита). */
+function nearCursor(c: CastIn, t: SkillTarget | undefined): CastUnit | null {
+  if (!c.hoverCast || c.overUi) return null;
+  if (c.hoverNear && fitsTarget(c.hoverNear, t)) return c.hoverNear;
+  const reach = c.nearReach ?? 0;
+  if (!(reach > 0)) return null;
+  let best: CastUnit | null = null, bd = Infinity;
+  for (const u of c.units) {
+    if (u.id === c.self.id || !fitsTarget(u, t)) continue;
+    const d = dist(u, c.cursor);
+    if (d <= reach + (u.r ?? PLAYER_RADIUS) && d < bd) { bd = d; best = u; }
+  }
+  return best;
 }
 
 /** Живой враг под курсором при касте по наведению (курсор не над интерфейсом). */
@@ -216,6 +238,8 @@ export function aimUnit(u: CastUnit | null | undefined): AimUnit | undefined {
 /** Допуск клика по существу и радиус магнита ЛКМ в «Экшене» — в пикселях экрана; «Крупные цели» удваивают оба. */
 export const PICK_TOL = 12;
 export const PICK_MAGNET = 40;
+/** Умение на цель без цели и без точного наведения — ближайший к курсору в 80 px экрана (docs/controls.md, раздел 11). */
+export const PICK_NEAR = 80;
 
 /** Запас к зоне тела в пикселях мира: пиксели экрана / масштаб CSS (пикселей CSS на пиксель мира, 2–3). Допуск, а при magnet — радиус магнита. */
 export function pickReach(css: number, magnet: boolean, bigTargets: boolean): number {
@@ -285,4 +309,14 @@ export function pickOrder(c: PickCtx, s: PickSource, out: PickOut): PickOut {
   if (c.action && !c.right) { const m = s.foe(pickReach(c.css, true, c.bigTargets)); if (m) { out.kind = "magnet"; out.id = m; return out; } }
   out.kind = "ground";
   return out;
+}
+
+/** Кандидат для Tab: на экране ли (inView), видно ли от героя (los), бьёт ли меня (onMe). */
+export interface TabUnit { id: string; x: number; y: number; dead: boolean; enemy: boolean; inView: boolean; los: boolean; onMe: boolean }
+/** Порядок Tab (задача 134, шаг 3): только враги на экране (камера) с прямой видимостью; сначала те, кто бьёт меня, затем ближние к герою. */
+export function tabOrder(list: readonly TabUnit[], self: { x: number; y: number }): string[] {
+  const d = (u: TabUnit) => Math.hypot(u.x - self.x, u.y - self.y);
+  return list.filter((u) => u.enemy && !u.dead && u.inView && u.los)
+    .sort((a, b) => (a.onMe ? 0 : 1) - (b.onMe ? 0 : 1) || d(a) - d(b))
+    .map((u) => u.id);
 }

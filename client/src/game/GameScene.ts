@@ -27,7 +27,7 @@ import { placeText, syncTextRes, worldText } from "./worldText";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
-import { aimUnit, castAim, hitUnitsOf, pickOrder, pickReach, resolveCast, selTarget, TrapWatch, unitRadius, type CastPlan, type CastUnit, type HitView, type PickCtx, type PickOut, type PickSource } from "./castResolve";
+import { aimUnit, castAim, hitUnitsOf, PICK_NEAR, pickOrder, pickReach, resolveCast, selTarget, tabOrder, TrapWatch, unitRadius, type CastPlan, type CastUnit, type HitView, type PickCtx, type PickOut, type PickSource } from "./castResolve";
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 
@@ -592,6 +592,11 @@ export class GameScene extends Phaser.Scene {
           const st = this.aimState!;
           if (right) this.cancelAim();
           else if (!st.hold) { this.aimState = null; this.castNow(SKILLS[st.id], (p.event as MouseEvent).altKey); }
+          else {
+            // зажатая клавиша умения («С превью») пропускает ЛКМ к выбору цели (тот же порядок, что без прицела); героя клик не двигает
+            const sel = this.pickAt(false, this.clickPick, true);
+            if (sel.kind === "foe" || sel.kind === "magnet" || sel.kind === "friend") this.setTarget(sel.id);
+          }
           return;
         }
         case "foe":
@@ -649,9 +654,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Что под курсором (this.mouse) для кнопки: один порядок для клика, подсветки и курсора (castResolve.pickOrder). */
-  private pickAt(right: boolean, out: PickOut): PickOut {
+  private pickAt(right: boolean, out: PickOut, ignoreAim = false): PickOut {
     const c = this.pickCtx;
-    c.aim = !!this.aimState;
+    c.aim = !ignoreAim && !!this.aimState;
     c.right = right;
     c.action = keybinds.presetId !== "classic";
     c.world = net.kind === "world";
@@ -768,16 +773,19 @@ export class GameScene extends Phaser.Scene {
 
   private tabList: string[] = [];
   private tabAt = 0;
-  /** Tab / Shift+Tab: враги в радиусе с прямой видимостью, сначала те, у кого цель — я, затем ближние; список замораживается на 2 с. */
+  /** Tab / Shift+Tab: только враги на экране (cameras.main.worldView) с прямой видимостью, сначала те, у кого цель — я, затем ближние (castResolve.tabOrder);
+   *  за краем экрана не берём — Tab не пуллит лагерь, которого не видно. Список замораживается на 2 с. */
   cycleTarget(dir = 1) {
     const now = performance.now();
     if (now - this.tabAt > 2000 || !this.tabList.length) {
-      const dist = (v: UnitView) => Math.hypot(v.x - this.pos.x, v.y - this.pos.y);
-      const onMe = (v: UnitView) => (v.u as { target?: string }).target === net.id ? 0 : 1;
-      this.tabList = [...this.units.entries()]
-        .filter(([, v]) => this.isEnemy(v) && !v.dead && dist(v) < (net.kind === "arena" ? 1400 : 420) && lineClear(this.map, this.pos.x, this.pos.y, v.x, v.y))
-        .sort((a, b) => onMe(a[1]) - onMe(b[1]) || dist(a[1]) - dist(b[1]))
-        .map(([id]) => id);
+      const view = this.cameras.main.worldView;
+      this.tabList = tabOrder([...this.units.values()].map((v) => {
+        const enemy = this.isEnemy(v) && !v.dead, inView = enemy && view.contains(v.x, v.y);
+        return {
+          id: v.id, x: v.x, y: v.y, dead: v.dead, enemy, inView,
+          los: inView && lineClear(this.map, this.pos.x, this.pos.y, v.x, v.y), onMe: (v.u as { target?: string }).target === net.id,
+        };
+      }), this.pos);
     }
     this.tabAt = now;
     const list = this.tabList.filter((id) => { const v = this.units.get(id); return v && !v.dead; });
@@ -875,7 +883,10 @@ export class GameScene extends Phaser.Scene {
   /** Вход для resolveCast: курсор (последнее положение над картой), юнит под ним, цель, «вперёд». */
   private castInput(def: SkillDef, alt: boolean) {
     const ap = this.input.activePointer, cur = this.cameras.main.getWorldPoint(ap.x, ap.y);
+    // адресат — как у подсветки (тот же PickBest: точно → передний → текущая цель → ближе центр); без точного наведения — выбранная цель,
+    // враг у курсора (подсвеченный магнитом в «Экшене», иначе ближайший в 80 px экрана) — только если цели нет (resolveCast)
     const hoverId = this.overUi ? null : def.target === "ally" ? this.pickFriend(cur.x, cur.y) : this.pick(cur.x, cur.y);
+    const nearId = this.overUi || def.target !== "enemy" || keybinds.presetId === "classic" ? null : this.pick(cur.x, cur.y, true);
     const d = this.me?.u.dir;
     const facing = d === Dir.Left ? { x: -1, y: 0 } : d === Dir.Right ? { x: 1, y: 0 } : d === Dir.Up ? { x: 0, y: -1 } : { x: 0, y: 1 };
     return {
@@ -885,6 +896,7 @@ export class GameScene extends Phaser.Scene {
       hover: this.castUnit(hoverId), selected: this.castUnit(this.targetId),
       units: [...this.units.keys()].map((k) => this.castUnit(k)).filter((x): x is CastUnit => !!x),
       facing, alt, hoverCast: mouseOpts.hoverCast, autoTarget: mouseOpts.autoTarget,
+      hoverNear: this.castUnit(nearId), nearReach: PICK_NEAR / (this.css > 0 ? this.css : 1),
     };
   }
 
