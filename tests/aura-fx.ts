@@ -20,6 +20,8 @@ import { World, type Actor } from "../server/src/game/World";
 import { Player, newSave } from "../server/src/game/Player";
 import { Mob } from "../server/src/game/Mob";
 import { castSkill } from "../server/src/game/skills";
+import { incoming } from "../server/src/game/tanks";
+import { generateRaidMap, raidSpawn } from "../shared/raid";
 import { WorldState } from "../server/src/rooms/schema";
 import { generateArenaMap } from "../shared/arena";
 import { CELL_BLOCK, CELL_WALL, lineClear } from "../shared/map";
@@ -213,6 +215,36 @@ const has = (u: { fx: string }, k: string) => fxOf(u).some((x) => x === k || x.s
   assert.equal(t.unit.fx, "", "знамя стоять перестало — обозначений нет");
   for (let i = 0; i < 30; i++) w.update(50);
   assert.equal(stats(w).banners, 0, "истёкшее знамя из записей убрано");
+}
+{
+  // рейд: боты — те же герои (Player, team 0, комната без мобов мира); бот-союзник в круге знамени получает и сам баф (снижение урона), и эмблему,
+  // бот другой фракции — тоже (в рейде фракции не враждуют); бот за кругом — ни того, ни другого
+  const w = new World(new WorldState(), () => {}, { map: generateRaidMap(), mobs: false, quiet: true });
+  const at = raidSpawn(0);
+  const raider = (cls: ClassId, dx: number, faction?: "solgard" | "umbrath") => {
+    const save = newSave(cls, { x: at.x + dx, y: at.y });
+    save.level = 40;
+    if (faction) save.faction = faction;
+    const p = new Player(`rb${++uid}`, `Бот${uid}`, save, () => {});
+    p.team = 0; p.unit.team = 0;
+    w.addPlayer(p);
+    p.unit.hp = p.unit.maxHp;
+    return p;
+  };
+  const t = raider("warrior", 0, "solgard");
+  t.save.skills.tp_banner = 1;
+  const bot = raider("mage", 40), botU = raider("warlock", -40, "umbrath"), far = raider("rogue", 400);
+  cast(w, t, "tp_banner", { x: t.x, y: t.y });
+  const r = SKILLS.tp_banner.v(1).reduce;
+  assert.equal(incoming(w, t, bot, 100, {}), 100 * (1 - r / 100), "бот-союзник в круге: знамя снижает урон");
+  assert.deepEqual(fxOf(bot.unit), ["zone_banner_solgard"], `бот-союзник в круге знамени: ${fxOf(bot.unit)}`);
+  assert.equal(incoming(w, t, botU, 100, {}), 100 * (1 - r / 100), "бот Умбрата в рейде: знамя снижает урон");
+  assert.deepEqual(fxOf(botU.unit), ["zone_banner_solgard"], `бот Умбрата в круге знамени Сольгарда: ${fxOf(botU.unit)}`);
+  assert.equal(incoming(w, t, far, 100, {}), 100, "бот вне круга: без снижения");
+  assert.equal(far.unit.fx, "", "бот вне круга — без обозначений");
+  // клиент: в рейде в кадре почти всегда толпа (больше 6 героев) — правила толпы не должны прятать эмблему знамени у чужих союзников
+  const cli = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../client/src/game/auraFx.ts"), "utf8");
+  assert.match(cli, /slot === OVERLAY\) ok = [^\n]*zone_banner_/, "правила толпы оставляют союзникам эмблему знамени zone_banner_*");
 }
 {
   // храмовник погиб — запись знамени снята сразу, у союзников обозначения нет; из двух знамён в круге выбор — как в хуке tanks.ts (сильнейшее)
