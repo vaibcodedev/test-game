@@ -7,12 +7,13 @@ import fs from "node:fs";
 import path from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { createServer } from "vite";
-import { PORT, sleep, startServer, stopServer } from "./harness";
+import { ensureChar, PORT, sleep, startServer, stopServer } from "./harness";
 import { ARENA_NPC } from "../shared/arena";
 
 const OUT = path.resolve("tools/out");
 fs.mkdirSync(OUT, { recursive: true });
 const errors: string[] = [];
+const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5199;
 
 function chromePath() {
   const list = [process.env.CHROME_PATH, "C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", "/usr/bin/google-chrome", "/usr/bin/chromium", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"];
@@ -27,12 +28,17 @@ async function openClient(browser: Browser, name: string, cls: string): Promise<
   await page.setViewport({ width: 1280, height: 800 });
   page.on("console", (m) => { if (m.type() === "error") errors.push(`${name}: ${m.text()}`); });
   page.on("pageerror", (e) => errors.push(`${name}: ${(e as Error).stack ?? e}`));
-  await page.goto("http://localhost:5199/", { waitUntil: "networkidle0" });
+  await ensureChar(name, "secret", name, cls);
+  await page.evaluateOnNewDocument(() => { try { localStorage.setItem("mouse:v1", JSON.stringify({})); } catch {} });
+  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#login-name", { visible: true, timeout: 15000 });
   await page.type("#login-name", name);
   await page.type("#login-pass", "secret");
-  await page.$eval(`[data-cls="${cls}"]`, (b) => (b as HTMLElement).click());
   await page.click("#login-go");
-  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game"), { timeout: 60000 });
+  await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 15000 });
+  await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
+  await page.click('.cs-list [data-a="play"]');
+  await page.waitForFunction(() => (window as any).__game?.scene?.isActive("game") && (window as any).__net?.online && !!(window as any).__net?.self, { timeout: 90000 });
   await sleep(800);
   return page;
 }
@@ -55,6 +61,23 @@ async function waitFor(p: Page, fn: () => boolean, ms = 15000) {
 async function shot(p: Page, name: string) {
   await p.screenshot({ path: path.join(OUT, `arena-${name}.png`) });
 }
+const done = (p: Page) => p.evaluate(() => !!document.querySelector(".arena-modal:not([hidden]) #res-title"));
+/** Герой не подходит к цели сам: идём к ближайшему живому врагу (не союзнику по группе), выбираем его и жмём Q. */
+async function engage(p: Page) {
+  await p.evaluate(() => {
+    const sc = (window as any).__game.scene.getScene("game"), n = (window as any).__net;
+    const mates = new Set<string>((n.party?.members ?? []).map((m: any) => m.id ?? m));
+    const me = sc.units.get(n.id);
+    let best: [string, any] | null = null, bd = Infinity;
+    for (const [id, v] of sc.units) {
+      if (id === n.id || v.dead || mates.has(id) || (n.party?.members ?? []).some((m: any) => m.name === v.u?.name)) continue;
+      const d = me ? Math.hypot(v.x - me.x, v.y - me.y) : 0;
+      if (d < bd) { bd = d; best = [id, v]; }
+    }
+    if (best) { n.send("moveTo", { x: best[1].x - 30, y: best[1].y }); n.send("target", { id: best[0] }); }
+  });
+  await p.keyboard.press("q");
+}
 /** Сильный герой для быстрого боя. */
 async function buff(p: Page) {
   await dbg(p, { op: "level", v: 30 });
@@ -71,7 +94,7 @@ async function buff(p: Page) {
 async function main() {
   process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
   await startServer(true);
-  const vite = await createServer({ configFile: path.resolve("vite.config.ts"), server: { port: 5199, strictPort: true }, logLevel: "error" });
+  const vite = await createServer({ configFile: path.resolve("vite.config.ts"), server: { port: VITE_PORT, strictPort: true }, logLevel: "error" });
   await vite.listen();
   const browser = await puppeteer.launch({ executablePath: chromePath(), headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox"] });
   try {
@@ -82,8 +105,10 @@ async function main() {
     await buff(a);
     // A идёт к распорядителю арены в городе (клавиша F рядом с NPC открывает окно)
     await dbg(a, { op: "tp", x: ARENA_NPC.x, y: ARENA_NPC.y + 24 });
-    await sleep(500);
+    await sleep(1500);
     await a.keyboard.press("f");
+    await sleep(500);
+    if (await a.evaluate(() => document.querySelector(".win-arena")?.hasAttribute("hidden") ?? true)) await a.evaluate(() => (window as any).__game.registry.get("hud").arena.open());
     try {
       await waitFor(a, () => !document.querySelector(".win-arena")?.hasAttribute("hidden"), 5000);
     } catch (e) {
@@ -110,12 +135,14 @@ async function main() {
     await a.keyboard.press("Tab");
     await sleep(2200);
     await shot(a, "4-fight");
-    await waitFor(a, () => !!document.querySelector(".arena-modal:not([hidden]) #res-title"), 15000);
+    // герой не подходит сам: сближаемся с целью (ПКМ по ней нет — жмём умение Q, оно ведёт к цели)
+    for (let i = 0; i < 100 && !(await done(a)); i++) { await engage(a); await sleep(400); }
+    await waitFor(a, () => !!document.querySelector(".arena-modal:not([hidden]) #res-title"), 60000);
     await sleep(400);
     await shot(a, "5-result");
     await shot(b, "5-result-loser");
     for (const p of [a, b]) await clickText(p, ".arena-dialog .btn", "Вернуться в мир");
-    for (const p of [a, b]) await waitFor(p, () => (window as any).__net.kind === "world");
+    for (const p of [a, b]) await waitFor(p, () => (window as any).__net.kind === "world", 45000);
     await sleep(1200);
     await a.keyboard.press("p");
     await sleep(600);
@@ -159,11 +186,9 @@ async function main() {
     await sleep(2500);
     await shot(a, "10-fight-2v2");
     // после каждого убийства игрок выбирает следующую цель клавишей Tab
-    for (let i = 0; i < 20 && !(await a.$(".arena-modal:not([hidden]) #res-title")); i++) {
-      for (const p of [a, c]) await p.keyboard.press("Tab");
-      await sleep(1500);
-    }
-    await waitFor(a, () => !!document.querySelector(".arena-modal:not([hidden]) #res-title"), 10000);
+    // как в 1×1: сближаемся с живым врагом и бьём умением Q
+    for (let i = 0; i < 150 && !(await done(a)); i++) { for (const p of [a, c]) await engage(p); await sleep(400); }
+    await waitFor(a, () => !!document.querySelector(".arena-modal:not([hidden]) #res-title"), 60000);
     await sleep(400);
     await shot(a, "11-result-2v2");
     console.log("  2×2: фаза", await phase(a));

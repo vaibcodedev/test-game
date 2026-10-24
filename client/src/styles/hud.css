@@ -1,10 +1,12 @@
 /* ---------- HUD ---------- */
 /* Одна ширина левой колонки: рамка героя, группа, рейд, питомец и задания (ui/hud.ts: stackLeftPanels ставит их столбиком) */
-:root { --hud-col: 270px; }
+/* Плашка цели — справа от рамки героя, как в WoW (--tgt-w). Верхние полосы по центру (рамка босса в рейде, табло арены)
+   стоят между ней и миникартой: --top-l / --top-r — края свободной полосы. В узком окне (windows.css) — как раньше, по центру */
+:root { --hud-col: 270px; --tgt-w: 200px; --top-l: calc(12px + var(--hud-col) + 20px + var(--tgt-w) + 20px); --top-r: calc(12px + 228px + 12px); }
 .hud-party, .hud-pet, .hud-quests, .raid-frames { left: 12px; width: var(--hud-col); }
 /* рамки LiteUI Fantasy (tools/gen/vendor-liteui.ts): плашка героя и панель умений — 9-slice ×2, углы выходят за плашку на 8px;
    нет картинки в client/public/ui/liteui/ — остаётся обычная рамка .panel */
-.hud-player, .hud-bar { border-image: url("/ui/liteui/panel.png") 18 / 18px / 8px stretch; image-rendering: pixelated; }
+.hud-player, .hud-bar, .hud-target { border-image: url("/ui/liteui/panel.png") 18 / 18px / 8px stretch; image-rendering: pixelated; }
 .hud-player {
   position: absolute;
   left: 12px;
@@ -155,51 +157,57 @@
 }
 .hud-target {
   position: absolute;
-  left: 50%;
-  top: 8px;
-  transform: translateX(-50%);
-  width: min(190px, calc(100vw - 600px));
-  min-width: 150px;
-  padding: var(--sp-0) var(--sp-2) var(--sp-1);
-  text-align: center;
-}
-.hud-target.in-raid {
-  top: 112px;
+  left: calc(12px + var(--hud-col) + 20px); /* углы рамок LiteUI выходят на 8px */
+  top: 12px;
+  width: var(--tgt-w);
+  padding: var(--sp-1h) var(--sp-2) var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
 }
 .hud-target.inspectable {
   cursor: var(--cur-pointer);
 }
 .hud-target.inspectable:hover {
-  border-color: var(--gold);
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
 }
 .hud-target .nm {
-  font-size: var(--fs-xs);
-  line-height: 14px;
-  margin-bottom: var(--sp-0);
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-b);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
-.hud-target .bar.hp {
-  height: 13px; /* рамка 1px: внутри 11px — ровно строка текста */
-  border-radius: var(--r-1);
+.hud-target .nm .muted {
+  font-weight: var(--fw);
+  font-size: var(--fs-xs);
 }
 .hud-target .bar.hp > span {
-  font-size: var(--fs-2xs);
-  line-height: 11px;
+  font-size: var(--fs-xs);
 }
 .hud-target.boss {
-  border-color: #a04030;
   box-shadow: var(--glow-boss);
-}
-.hud-target.boss {
-  width: min(240px, calc(100vw - 600px));
 }
 .hud-target.boss .nm {
   color: var(--boss);
-  font-size: var(--fs-sm);
 }
 .hud-target .phase {
   font-size: var(--fs-2xs);
   color: var(--dim);
-  margin-top: var(--sp-0);
+}
+/* узкое окно: места справа от рамки героя мало — плашка цели по центру сверху, в рейде под рамкой босса; верхние полосы — по центру */
+@media (max-width: 1100px) {
+  :root { --top-l: 260px; --top-r: 260px; }
+  .hud-target {
+    left: 50%;
+    top: 8px;
+    transform: translateX(-50%);
+    width: 200px;
+  }
+  .hud-target.in-raid {
+    top: 150px;
+  }
 }
 
 .hud-zone {

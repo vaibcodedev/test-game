@@ -39,7 +39,7 @@ export class RaidHud {
   // подложка окна сбора — .modal из kit.css; итоги (result) пока на старой разметке .raid-modal
   private modal = el("div", "modal raid-modal");
   private result = el("div", "raid-modal");
-  private top = el("div", "raid-top passthru");
+  private top = el("div", "panel raid-top passthru");
   private frames = el("div", "panel raid-frames");
   private count = el("div", "raid-count passthru");
   private banner = el("div", "raid-banner passthru");
@@ -66,11 +66,11 @@ export class RaidHud {
 
   constructor(readonly root: HTMLElement) {
     for (const e of [this.modal, this.result, this.top, this.frames, this.count, this.banner]) e.hidden = true;
-    this.top.innerHTML = `<div class="raid-bossbar"><div class="raid-fill" data-fill></div><i class="raid-tick" style="left:25%"></i><i class="raid-tick" style="left:50%"></i><i class="raid-tick" style="left:75%"></i>
-      <b class="raid-no" style="left:0">I</b><b class="raid-no" style="left:25%">IV</b><b class="raid-no" style="left:50%">III</b><b class="raid-no" style="left:75%">II</b>
-      <span class="raid-btext" data-text></span></div>
-      <div class="raid-phase" data-phase></div>
-      <div class="raid-cast" data-cast hidden><div class="raid-cfill" data-cfill></div><span data-cname></span><em data-ctime></em></div>
+    // рамка босса (дизайн-система: .panel, полосы — компонент .bar): имя и фаза — строкой над полосой, номера фаз — под ней, ниже каст и ярость
+    this.top.innerHTML = `<div class="raid-bhead" data-phase></div>
+      <div class="bar lg raid-bossbar"><i data-fill></i><b class="raid-tick" style="left:25%"></b><b class="raid-tick" style="left:50%"></b><b class="raid-tick" style="left:75%"></b><span data-text></span></div>
+      <div class="raid-nos"><b style="left:0">I</b><b style="left:25%">IV</b><b style="left:50%">III</b><b style="left:75%">II</b></div>
+      <div class="bar raid-cast" data-cast hidden><i data-cfill></i><span data-cname></span><em data-ctime></em></div>
       <div class="raid-berserk" data-berserk></div>`;
     this.bFill = this.top.querySelector("[data-fill]")!;
     this.bPhase = this.top.querySelector("[data-phase]")!;
@@ -253,7 +253,7 @@ export class RaidHud {
       this.bFill.style.width = `${k * 100}%`;
       this.bText.textContent = `${Math.ceil(k * 100)}% · ${num(Math.max(0, b.u.hp))} / ${num(b.u.maxHp)}`;
       const ph = Math.max(0, Math.min(RAID_PHASES.length - 1, b.u.phase));
-      this.bPhase.innerHTML = `<b>${esc(RAID.boss.name)}</b> · Фаза ${phaseNo(ph)} — ${esc(phaseName(ph))}`;
+      this.bPhase.innerHTML = `<b>${esc(RAID.boss.name)}</b><span>Фаза ${phaseNo(ph)} — ${esc(phaseName(ph))}</span>`;
     }
     this.top.classList.toggle("dim", !b);
     // каст босса

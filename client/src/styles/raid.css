@@ -26,20 +26,26 @@
 .raid-lootbox { display: flex; flex-direction: column; gap: var(--sp-1); }
 .raid-loot { display: block; font-weight: var(--fw-b); }
 
-.raid-top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 560px; max-width: calc(100vw - 24px); display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+/* рамка босса сверху: панель .panel, строка «имя · фаза» над полосой (не налезает на полосу и номера фаз), полосы — .bar из kit.css.
+   Стоит в свободной полосе между левой колонкой с плашкой цели и миникартой (--top-l / --top-r, hud.css), по центру её */
+.raid-top { position: absolute; top: 12px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(560px, calc(100vw - var(--top-l) - var(--top-r))); padding: var(--sp-1h) var(--sp-3) var(--sp-2); display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); box-shadow: var(--shadow-panel), var(--glow-boss); }
 .raid-top.dim { opacity: 0.4; }
-.raid-bossbar { position: relative; width: 100%; height: 18px; background: var(--well); border: 2px solid #8a4a2a; border-radius: var(--r-1); box-shadow: 0 0 10px rgba(255, 90, 20, 0.35); }
-.raid-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#ff6a2a, #b0200a); transition: width 0.15s linear; }
-.raid-tick { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: #ffe0a0; opacity: 0.85; }
-.raid-no { position: absolute; top: 19px; font-size: var(--fs-2xs); font-weight: var(--fw-b); color: var(--boss-soft); text-shadow: 0 0 3px #000; transform: translateX(-50%); }
-.raid-no:first-of-type { transform: none; }
-.raid-btext { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: var(--fw-b); color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; }
-.raid-phase { margin-top: var(--sp-1h); font-size: var(--fs); color: #ffb070; text-shadow: 0 0 4px #000; }
-.raid-cast { position: relative; width: 340px; max-width: 100%; height: 16px; background: var(--well); border: 1px solid #c07030; border-radius: var(--r-1); overflow: hidden; }
-.raid-cfill { position: absolute; left: 0; top: 0; bottom: 0; background: #e0902a; opacity: 0.85; }
-.raid-cast span { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: var(--fw-b); text-shadow: 0 0 3px #000; }
-.raid-cast em { position: absolute; right: 4px; top: 0; font-size: var(--fs-xs); font-style: normal; line-height: 16px; text-shadow: 0 0 3px #000; }
-.raid-berserk { font-size: var(--fs-xs); color: #d0b0a0; text-shadow: 0 0 3px #000; }
+.raid-bhead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); min-width: 0; line-height: 1.2; text-shadow: var(--shadow-text); }
+.raid-bhead b { color: var(--boss); font-size: var(--fs-md); font-weight: var(--fw-b); }
+.raid-bhead span { color: var(--boss-soft); font-size: var(--fs-sm); text-align: right; }
+.raid-bossbar { background: var(--hp-track); border-color: var(--line-hi); }
+.raid-bossbar > i { background: linear-gradient(var(--boss-soft) -60%, var(--boss) 45%, var(--hp-lo)); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -2px 0 rgba(0,0,0,.25), 1px 0 0 rgba(0,0,0,.6); }
+.raid-bossbar > span { font-size: var(--fs-xs); }
+.raid-tick { position: absolute; top: 0; bottom: 0; width: 1px; margin-left: -1px; background: var(--boss-soft); opacity: 0.7; }
+/* номера фаз под отметками полосы */
+.raid-nos { position: relative; height: 12px; margin-top: calc(-1 * var(--sp-0)); }
+.raid-nos b { position: absolute; top: 0; font-size: var(--fs-2xs); line-height: 12px; font-weight: var(--fw-b); color: var(--boss-soft); text-shadow: var(--outline-text); transform: translateX(-50%); }
+.raid-nos b:first-child { transform: none; }
+.raid-cast { align-self: center; width: min(340px, 100%); background: var(--well); }
+.raid-cast > i { background: linear-gradient(var(--boss-soft) -80%, var(--warn)); opacity: 0.85; }
+.raid-cast > span { font-size: var(--fs-xs); }
+.raid-cast > em { position: absolute; right: var(--sp-1); top: 0; bottom: 0; display: grid; place-items: center; font-size: var(--fs-xs); font-style: normal; font-weight: var(--fw-b); color: var(--fg); text-shadow: var(--outline-text); font-variant-numeric: tabular-nums; }
+.raid-berserk { align-self: center; font-size: var(--fs-xs); color: var(--dim); text-shadow: var(--shadow-text); font-variant-numeric: tabular-nums; }
 .raid-berserk.hot { color: var(--bad); font-weight: var(--fw-b); }
 
 /* рамки рейда: колонка --hud-col (hud.css), строки — .uframe из kit.css, значок роли .role-ic 24; больше 10 участников — два столбца */
