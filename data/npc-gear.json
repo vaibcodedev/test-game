@@ -1,0 +1,117 @@
+{
+  "_doc": "Снаряжение бойцов фракций (задача 132, шаг 8; утверждено 2026-10-24 по tools/out/npc-sets/overview.png — оба варианта вперемешку в каждом ранге). Боец рисуется как герой: тело nude_<cls> и слои снаряжения client/src/game/GearLayers.ts; сервер (server/src/game/soldiers.ts npcGear) шлёт u.sprite = cls, u.gear и u.weapon в формате Player.recalc с plus = 0 и u.herald — геральдику (табард, герб на плаще, знаменосец). Ранг по месту и силе: tiers — patrol (дороги), settlement (стража поселений), bridge (посты мостов), fort (стража фортов), capitalRanks — по званию стражи столиц (data/npc-ranks.json capital.ranks), champion — чемпионы. sets: фракция → ранг (weak — ополчение и новобранцы, mid — стража и бойцы, strong — ветераны и рыцари, mega — чемпионы и капитаны) → melee/ranged → варианты (идут по очереди). Деталь — модель каталога (data/items.json) или L:<легендарка> (data/legendaries.json); r — редкость обычных деталей, у легендарок всегда 3. tabard: wide | narrow | none; arms — герб на спине плаща. bannerman — в каждом отряде (патруль, пост моста, стража поселения и форта, стража столицы) первый боец не-чемпион несёт знамя фракции. championTitle — титул над именем чемпиона. heraldry: эмблемы гербов 130 (e6 — 6 px: широкий табард, большой щит, спина плаща; e4 — 4 px: узкий табард, малый щит, знамя), ткань табарда и поле щита (cloth), знамя знаменосца по штандартам tools/gen/standards.ts (banner: полотнище, кайма, древко, металл; legend — полотнище легендарного плаща-знамени чемпиона), значок щита у имени (badge), факел ночью (torch). Стража Эмберхолла — отдельно (data/ember-guard.json).",
+  "tiers": { "patrol": "weak", "settlement": "mid", "bridge": "strong", "fort": "strong", "capitalRanks": ["mid", "mid", "strong", "strong", "mega"], "champion": "mega" },
+  "championTitle": { "solgard": "Гордость Оплота", "umbrath": "Длань Короны" },
+  "sets": {
+    "solgard": {
+      "weak": {
+        "melee": [
+          { "title": "Ополченец", "cls": "warrior", "tabard": "narrow", "helm": "leather_helm_1", "armor": "leather_armor_30", "boots": "leather_boots_1", "weapon": "spear_6" },
+          { "title": "Новобранец", "cls": "warrior", "tabard": "narrow", "helm": "plate_helm_6", "armor": "plate_armor_1", "boots": "leather_boots_1", "off": "shield_24", "weapon": "sword_1" }
+        ],
+        "ranged": [
+          { "title": "Лучник ополчения", "cls": "ranger", "tabard": "narrow", "helm": "leather_helm_1", "armor": "leather_armor_1", "boots": "leather_boots_1", "weapon": "bow_6" },
+          { "title": "Арбалетчик-новобранец", "cls": "ranger", "tabard": "narrow", "helm": "leather_helm_37", "armor": "leather_armor_18", "boots": "leather_boots_1", "weapon": "crossbow_6" }
+        ]
+      },
+      "mid": {
+        "melee": [
+          { "title": "Страж Оплота", "cls": "warrior", "tabard": "wide", "arms": true, "helm": "plate_helm_24", "armor": "plate_armor_6", "boots": "plate_boots_6", "off": "shield_12", "cloak": "cloak_str_12", "weapon": "mace_18" },
+          { "title": "Боец с копьём", "cls": "warrior", "tabard": "wide", "helm": "plate_helm_6", "armor": "plate_armor_24", "boots": "plate_boots_24", "off": "shield_24", "weapon": "spear_24" }
+        ],
+        "ranged": [
+          { "title": "Арбалетчик стражи", "cls": "ranger", "tabard": "wide", "arms": true, "helm": "plate_helm_24", "armor": "plate_armor_44", "boots": "plate_boots_6", "cloak": "cloak_str_12", "weapon": "crossbow_24" },
+          { "title": "Егерь", "cls": "ranger", "tabard": "narrow", "arms": true, "helm": "leather_helm_18", "armor": "leather_armor_18", "boots": "leather_boots_18", "cloak": "cloak_agi_18", "weapon": "bow_12" }
+        ]
+      },
+      "strong": {
+        "melee": [
+          { "title": "Рыцарь-паладин", "cls": "warrior", "tabard": "wide", "arms": true, "helm": "plate_helm_68", "armor": "plate_armor_24", "boots": "plate_boots_44", "off": "shield_76", "cloak": "cloak_str_30", "weapon": "sword_60" },
+          { "title": "Ветеран с двуручником", "cls": "warrior", "tabard": "wide", "arms": true, "helm": "plate_helm_18", "armor": "plate_armor_6", "boots": "plate_boots_68", "cloak": "cloak_str_52", "weapon": "greatsword_30" }
+        ],
+        "ranged": [
+          { "title": "Рыцарь-арбалетчик", "cls": "ranger", "tabard": "wide", "arms": true, "helm": "plate_helm_68", "armor": "plate_armor_44", "boots": "plate_boots_44", "cloak": "cloak_str_30", "weapon": "crossbow_68" },
+          { "title": "Егерь-ветеран", "cls": "ranger", "tabard": "narrow", "arms": true, "helm": "leather_helm_60", "armor": "leather_armor_60", "boots": "leather_boots_60", "cloak": "cloak_agi_60", "weapon": "bow_30" }
+        ]
+      },
+      "mega": {
+        "melee": [
+          { "title": "Капитан стражи", "cls": "warrior", "tabard": "wide", "r": 3, "helm": "L:last_guard_helm", "armor": "L:last_wall_plate", "boots": "plate_boots_92", "off": "shield_100", "cloak": "L:dawn_standard", "weapon": "mace_84" },
+          { "title": "Чемпион Сольгарда", "cls": "warrior", "tabard": "wide", "arms": true, "r": 3, "helm": "plate_helm_92", "armor": "L:last_wall_plate", "boots": "plate_boots_92", "cloak": "cloak_str_100", "weapon": "greatsword_100" }
+        ],
+        "ranged": [
+          { "title": "Меткий чемпион", "cls": "ranger", "tabard": "wide", "r": 3, "helm": "L:last_guard_helm", "armor": "L:last_wall_plate", "boots": "plate_boots_92", "cloak": "L:dawn_standard", "weapon": "crossbow_92" },
+          { "title": "Капитан егерей", "cls": "ranger", "tabard": "narrow", "arms": true, "r": 3, "helm": "leather_helm_84", "armor": "L:moon_scout_jacket", "boots": "leather_boots_84", "cloak": "cloak_agi_84", "weapon": "bow_100" }
+        ]
+      }
+    },
+    "umbrath": {
+      "weak": {
+        "melee": [
+          { "title": "Поднятый ополченец", "cls": "deathknight", "tabard": "narrow", "helm": "leather_helm_6", "armor": "leather_armor_6", "boots": "leather_boots_6", "weapon": "mace_6" },
+          { "title": "Новобранец", "cls": "deathknight", "tabard": "narrow", "helm": "plate_helm_1", "armor": "plate_armor_1", "boots": "leather_boots_6", "off": "shield_1", "weapon": "sword_6" }
+        ],
+        "ranged": [
+          { "title": "Лучник-мертвец", "cls": "darkranger", "tabard": "narrow", "helm": "leather_helm_24", "armor": "leather_armor_24", "boots": "leather_boots_24", "weapon": "bow_1" },
+          { "title": "Арбалетчик-новобранец", "cls": "darkranger", "tabard": "narrow", "helm": "leather_helm_6", "armor": "leather_armor_6", "boots": "leather_boots_6", "cloak": "cloak_agi_6", "weapon": "crossbow_12" }
+        ]
+      },
+      "mid": {
+        "melee": [
+          { "title": "Страж Мортхейма", "cls": "deathknight", "tabard": "wide", "arms": true, "helm": "plate_helm_30", "armor": "plate_armor_30", "boots": "plate_boots_30", "off": "shield_60", "cloak": "cloak_str_37", "weapon": "sword_24" },
+          { "title": "Боец с алебардой", "cls": "deathknight", "tabard": "wide", "helm": "plate_helm_12", "armor": "plate_armor_12", "boots": "plate_boots_12", "weapon": "scythe_44" }
+        ],
+        "ranged": [
+          { "title": "Арбалетчик стражи", "cls": "darkranger", "tabard": "wide", "arms": true, "helm": "plate_helm_30", "armor": "plate_armor_30", "boots": "plate_boots_30", "cloak": "cloak_str_37", "weapon": "crossbow_30" },
+          { "title": "Тёмный лучник", "cls": "darkranger", "tabard": "narrow", "arms": true, "helm": "leather_helm_44", "armor": "leather_armor_44", "boots": "leather_boots_44", "cloak": "cloak_agi_68", "weapon": "bow_18" }
+        ]
+      },
+      "strong": {
+        "melee": [
+          { "title": "Рыцарь смерти", "cls": "deathknight", "tabard": "wide", "arms": true, "helm": "plate_helm_76", "armor": "plate_armor_76", "boots": "plate_boots_76", "cloak": "cloak_str_60", "weapon": "greatsword_60" },
+          { "title": "Ветеран-щитоносец", "cls": "deathknight", "tabard": "wide", "arms": true, "helm": "plate_helm_52", "armor": "plate_armor_52", "boots": "plate_boots_52", "off": "shield_84", "cloak": "cloak_str_37", "weapon": "mace_68" }
+        ],
+        "ranged": [
+          { "title": "Рыцарь-арбалетчик", "cls": "darkranger", "tabard": "wide", "arms": true, "helm": "plate_helm_52", "armor": "plate_armor_76", "boots": "plate_boots_52", "cloak": "cloak_str_60", "weapon": "crossbow_52" },
+          { "title": "Ветеран-лучник", "cls": "darkranger", "tabard": "narrow", "arms": true, "helm": "leather_helm_68", "armor": "leather_armor_68", "boots": "leather_boots_68", "cloak": "cloak_agi_68", "weapon": "bow_60" }
+        ]
+      },
+      "mega": {
+        "melee": [
+          { "title": "Капитан стражи", "cls": "deathknight", "tabard": "wide", "r": 3, "helm": "L:bone_crown_helm", "armor": "L:grave_bone_plate", "boots": "plate_boots_100", "cloak": "L:legion_banner", "weapon": "scythe_68" },
+          { "title": "Чемпион Умбрата", "cls": "deathknight", "tabard": "wide", "arms": true, "r": 3, "helm": "L:lich_crown", "armor": "L:grave_bone_plate", "boots": "plate_boots_100", "off": "shield_60", "cloak": "cloak_str_60", "weapon": "sword_92" }
+        ],
+        "ranged": [
+          { "title": "Меткий чемпион", "cls": "darkranger", "tabard": "wide", "r": 3, "helm": "plate_helm_100", "armor": "L:grave_bone_plate", "boots": "plate_boots_100", "cloak": "L:legion_banner", "weapon": "crossbow_100" },
+          { "title": "Капитан лучников", "cls": "darkranger", "tabard": "narrow", "arms": true, "r": 3, "helm": "leather_helm_92", "armor": "leather_armor_92", "boots": "leather_boots_92", "cloak": "cloak_agi_92", "weapon": "bow_84" }
+        ]
+      }
+    }
+  },
+  "heraldry": {
+    "solgard": {
+      "emblem": {
+        "pal": { "r": "#e0a630", "G": "#ffc840", "g": "#c88a20", "Y": "#fff4c8", "B": "#3a86c8", "b": "#1f5a96", "W": "#f4eedc", "D": "#12365e" },
+        "e6": ["r.gg.r", ".gYYg.", "DDDDDD", "DWBBWD", "DWWWWD", "DbWWbD", ".DDDD."],
+        "e4": [".gg.", "DDDD", "DWWD", ".DD."],
+        "out": "#3a2208"
+      },
+      "cloth": { "f": "#e2d4b0", "fs": "#bfae88", "t": "#e0a630", "td": "#a8681c", "belt": "#6a4210", "buckle": "#ffd864", "shield": "#e2d4b0", "hem": "swallow" },
+      "banner": { "flag": "#d6d0d8", "edge": "#3a86c8", "pole": ["#5e3a22", "#8a5a34"], "metal": "#e0a630", "legend": "#d8cba8" },
+      "badge": { "field": "#3a86c8", "mark": "#ffc840" },
+      "torch": { "flame": "#ff7a1a", "core": "#ffd860", "glow": "#ffd080" }
+    },
+    "umbrath": {
+      "emblem": {
+        "pal": { "l": "#d0b4f0", "L": "#9a62b8", "q": "#6a3c8a", "B": "#ece4cc", "b": "#c8bc9c", "d": "#8f8468", "K": "#05030a", "G": "#7aff6a" },
+        "e6": ["l.LL.l", "LLLLLq", ".BBbd.", "BGbbGd", "bbKKbd", ".dbbd.", "..dd.."],
+        "e4": ["lLLq", "BBbd", "GbbG", ".dd."],
+        "out": "#05030a"
+      },
+      "cloth": { "f": "#22163a", "fs": "#100a1a", "t": "#9a62b8", "td": "#6a3c8a", "belt": "#2c2838", "buckle": "#c4c2d4", "shield": "#100a1a", "hem": "coffin" },
+      "banner": { "flag": "#22163a", "edge": "#6a3c8a", "pole": ["#8f8468", "#c8bc9c"], "metal": "#ece4cc", "legend": "#4a1a6a" },
+      "badge": { "field": "#46265e", "mark": "#d0b4f0" },
+      "torch": { "flame": "#6a3c8a", "core": "#b8ffa8", "glow": "#9aff8a" }
+    }
+  }
+}

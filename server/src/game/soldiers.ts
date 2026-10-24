@@ -25,6 +25,7 @@ import { raidBotSave } from "../arena/botgear";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { lineClear, moveWithCollision, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
 import { GUARD_RANGE_TILES } from "../../../shared/town";
+import { NPC_GEAR, npcGearStrings, type NpcTier } from "../../../shared/npcGear";
 import type { MobDef } from "../../../shared/mobs";
 import { Anim, BUFF_BLEED, BUFF_CURSE, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, Dir, UnitKind } from "../../../shared/protocol";
 import { Mob } from "./Mob";
@@ -237,10 +238,37 @@ export class Soldiers {
       px: m.unit.x, py: m.unit.y, wx: m.unit.x, wy: m.unit.y, syncAt: 0, power: power ? (power.kind === "rank" ? `rank${power.rank}` : power.kind) : "", ...st,
     };
     if (power) applyNpcPower(m, f, kind, power);
+    this.dress(m, f, kind, st, power);
     st.group.push(m);
     this.w.addMob(m);
     this.list.push(m);
     return m;
+  }
+
+  /** Какой по счёту вариант набора (фракция:ранг:вид) выдан: варианты идут по очереди. */
+  private variant = new Map<string, number>();
+  /** Отряды, где знаменосец уже есть. */
+  private banners = new WeakSet<Mob[]>();
+  /**
+   * Снаряжение бойца (шаг 8, data/npc-gear.json): ранг по силе и месту, вариант по очереди; тело — класс набора (u.sprite), слои — u.gear и
+   * u.weapon в формате Player.recalc с plus = 0, геральдика — u.herald. Первый не-чемпион отряда — знаменосец, чемпион — с титулом над именем.
+   * Пишется один раз при расстановке: снаряжение не меняется, в схеме уходит только с полным состоянием при входе.
+   */
+  private dress(m: Mob, f: Faction, kind: Kind, st: Partial<SoldierState> & { group: Mob[] }, power: NpcPower | null) {
+    const T = NPC_GEAR.tiers;
+    const tier: NpcTier = power?.kind === "champion" ? T.champion : power?.kind === "rank" ? T.capitalRanks[power.rank] ?? T.champion
+      : st.role === "patrol" ? T.patrol : st.site?.city ? T.fort : st.site ? T.settlement : T.bridge;
+    const list = NPC_GEAR.sets[f][tier][kind], key = `${f}:${tier}:${kind}`, n = this.variant.get(key) ?? 0;
+    this.variant.set(key, n + 1);
+    const set = list[n % list.length];
+    const bannerman = power?.kind !== "champion" && !this.banners.has(st.group);
+    if (bannerman) this.banners.add(st.group);
+    const g = npcGearStrings(set, bannerman), u = m.unit;
+    u.sprite = set.cls;
+    u.gear = g.gear;
+    u.weapon = g.weapon;
+    u.herald = g.herald;
+    if (power?.kind === "champion") u.title = NPC_GEAR.championTitle[f] ?? "";
   }
 
   /** Патрули на дорогах: участок дороги Сольгарда и его зеркало у Умбрата, уровень — по середине участка Сольгарда. */

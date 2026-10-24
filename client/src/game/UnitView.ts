@@ -15,6 +15,7 @@ import { LEGENDARIES } from "../../../shared/legendary";
 import { capBand, placeText, worldText } from "./worldText";
 import { UnitAuras, afx, countHero } from "./auraFx";
 import { zbDef, zbFx, zbViews } from "./zoneBoss";
+import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
 export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
@@ -65,6 +66,9 @@ function spriteAlphaBox(sp: Phaser.GameObjects.Sprite, out: Box): Box {
   out.y0 = top + a[1] * sp.scaleY; out.y1 = top + a[3] * sp.scaleY;
   return out;
 }
+/** Цвет "#rrggbb" в число (кэш: значок и факел бойцов спрашивают каждый кадр). */
+const hexCache = new Map<string, number>();
+const hex = (h: string) => { let v = hexCache.get(h); if (v === undefined) { v = Phaser.Display.Color.HexStringToColor(h).color; hexCache.set(h, v); } return v; };
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
 /** Вспышка от удара: белая копия кадра поверх тела с этой прозрачностью гаснет за FLASH_MS и повторяется не чаще FLASH_GAP —
  *  рисунок виден сквозь неё, и под градом ударов в рейде босс не белеет целиком. */
@@ -108,6 +112,9 @@ export class UnitView {
   private buffGfx?: Phaser.GameObjects.Graphics;
   private buffMask = 0;
   private layers?: GearLayers;
+  /** Геральдика бойца фракции (u.herald, задача 132 шаг 8): разбирается один раз, пока строка не сменится. */
+  private herald: Herald | null = null;
+  private heraldKey: string | undefined = "";
   private seed = 0;
   private sid: string;
   stepAt = 0;
@@ -174,7 +181,8 @@ export class UnitView {
     this.y = u.y;
     this.npc = u.kind === UnitKind.Guard || u.kind === UnitKind.Citizen;
     // герои рисуются голым телом, одежда — слоями экипировки (GearLayers)
-    this.sid = u.kind === UnitKind.Player && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
+    // бойцы фракций со снаряжением (задача 132, шаг 8) — так же: тело класса и слои
+    this.sid = this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
     const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_slime";
     this.frame = scene.textures.get(tex).get(0).width;
     const big = this.frame > 32;
@@ -207,6 +215,16 @@ export class UnitView {
       }
     });
     if (u.anim === Anim.Dead) this.showDead(true);
+  }
+
+  /** Рисуется ли юнит слоями снаряжения: герой и боец фракции с набором (u.gear). */
+  private layered() {
+    return this.u.kind === UnitKind.Player || (this.u.kind === UnitKind.Soldier && !!this.u.gear);
+  }
+  private heraldOf(): Herald | null {
+    const u = this.u;
+    if (u.herald !== this.heraldKey) { this.heraldKey = u.herald; this.herald = u.kind === UnitKind.Soldier ? parseHerald(u.faction, u.herald) : null; }
+    return this.herald;
   }
 
   private labelText() {
@@ -448,8 +466,9 @@ export class UnitView {
     const lay = !this.nameHover;
     this.blockUp = Math.round(top - Math.min(framed && lay ? frameTop : nameY - lh, titleOn && lay ? titleY - Math.round(this.titleText.height) : Infinity) - this.barGap + (barsOn ? 4 : 0));
     this.frameGfx.clear();
-    if (u.kind === UnitKind.Guard && showName) this.guardBadge(left, (baseY + nameY - lh + this.band.cap) / 2);
-    this.torch(!this.dead && u.kind === UnitKind.Guard && nightLevel(Date.now()) > 0.35);
+    const guardish = u.kind === UnitKind.Guard || u.kind === UnitKind.Soldier;
+    if (guardish && showName) this.guardBadge(left, (baseY + nameY - lh + this.band.cap) / 2);
+    this.torch(!this.dead && guardish && nightLevel(Date.now()) > 0.35);
     if (u.elite && showName) {
       this.nameFrame(left, frameTop, frameBot, 0xf0c040);
       if (this.lastColor !== "#ffd24a") { this.lastColor = "#ffd24a"; this.label.setColor("#ffd24a"); }
@@ -488,13 +507,13 @@ export class UnitView {
     } else this.stun?.setVisible(false);
 
     // снаряжение в скрытности видят те же, кто видит героя (сам, союзники по команде), так же полупрозрачно; для остальных его нет, как и героя
-    const gearOn = u.kind === UnitKind.Player && !this.dead && !(stealthy && this.unseen) && this.frame === 32;
+    const gearOn = this.layered() && !this.dead && !(stealthy && this.unseen) && this.frame === 32;
     if (gearOn) {
       if (!this.layers) { this.layers = new GearLayers(this.scene); for (let k = 0; k < this.id.length; k++) this.seed = (this.seed * 31 + this.id.charCodeAt(k)) % 97; }
       const row = rowOf(u.dir), fr = Number(this.sprite.frame.name) || 0;
       this.layers.setDepth(this.y);
       this.layers.setAlpha(stealthy ? this.sprite.alpha : 1);
-      this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf });
+      this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf, herald: this.heraldOf() });
     } else this.layers?.hide();
 
     // полоска здоровья: у мобов только раненых или выбранных (боссы — всегда), тонкая, 2 px; под курсором — у любого существа, даже при выключенных «Полоски»
@@ -531,10 +550,11 @@ export class UnitView {
 
   /** Насколько шлем (рога, гребень, пламя) выше головы: имя и полоска поднимаются над ним. */
   private gearTop(): number {
-    if (this.u.kind !== UnitKind.Player || !this.u.gear) return 0;
+    if (!this.layered() || !this.u.gear) return 0;
     const parts = parseGear(this.u.gear), h = parts[0], cl = LEGENDARIES[parts[4].leg];
-    // знамя легендарного плаща выше головы: подпись поднимается над навершием (высота растёт с ярусом)
-    const banner = cl?.look.back === "banner" ? 12 + cl.ti * 2 + (cl.ti >= 3 ? 2 : 0) : 0;
+    // знамя легендарного плаща (и знаменосца бойцов, ярус 3) выше головы: подпись поднимается над навершием (высота растёт с ярусом)
+    const ti = cl?.look.back === "banner" ? cl.ti : this.heraldOf()?.banner ? 3 : -1;
+    const banner = ti >= 0 ? 12 + ti * 2 + (ti >= 3 ? 2 : 0) : 0;
     return Math.max(banner, h.r < 0 ? 0 : h.leg ? 12 : h.r >= 2 ? 6 : 0);
   }
 
@@ -572,28 +592,32 @@ export class UnitView {
   /** Значок щита слева от имени: цвет города (красный, бирюзовый, синий) со стальной каймой; cy — середина заглавных букв ника.
    *  Щит с каймой занимает строки by-1..by+10 (середина by+5); полпикселя при нечётной разнице уходит вниз: остриё щита лёгкое, его масса выше середины. */
   private guardBadge(left: number, cy: number) {
-    const c = this.u.sprite === "guard_desert" ? 0x2fb0a2 : this.u.sprite === "guard_snow" ? 0x4a8ae8 : 0xd02a34;
+    // боец фракции — цвета её герба (data/npc-gear.json heraldry.badge), стража Эмберхолла — красный
+    const hb = this.u.kind === UnitKind.Soldier ? HERALDRY[this.u.faction]?.badge : undefined;
+    const c = hb ? hex(hb.field) : this.u.sprite === "guard_desert" ? 0x2fb0a2 : this.u.sprite === "guard_snow" ? 0x4a8ae8 : 0xd02a34;
     const bx = left - 9, by = Math.round(cy - 5);
     const g = this.frameGfx;
     g.fillStyle(WELL, 0.9).fillRect(bx - 1, by - 1, 9, 11).fillRect(bx, by + 9, 7, 1).fillRect(bx + 1, by + 10, 5, 1);
     g.fillStyle(0xaab4c4, 1).fillRect(bx, by, 7, 8).fillRect(bx + 1, by + 8, 5, 1).fillRect(bx + 2, by + 9, 3, 1);
     g.fillStyle(c, 1).fillRect(bx + 1, by + 1, 5, 7).fillRect(bx + 2, by + 8, 3, 1);
-    g.fillStyle(0xffe08a, 1).fillRect(bx + 3, by + 2, 1, 5).fillRect(bx + 2, by + 3, 3, 1);
+    g.fillStyle(hb ? hex(hb.mark) : 0xffe08a, 1).fillRect(bx + 3, by + 2, 1, 5).fillRect(bx + 2, by + 3, 3, 1);
   }
 
   /** Факел в руке: ночью с мерцающим светом (ADD), днём прячется. */
   private torch(on: boolean) {
     if (!on) { this.torchGfx?.setVisible(false); this.torchGlow?.setVisible(false); return; }
+    // пламя по фракции бойца (data/npc-gear.json heraldry.torch): у Умбрата — мертвенное, у Сольгарда и стражи Эмберхолла — живой огонь
+    const T = (this.u.kind === UnitKind.Soldier ? HERALDRY[this.u.faction]?.torch : undefined) ?? { flame: "#ff7a1a", core: "#ffd860", glow: "#ffd080" };
     this.torchGfx ??= this.scene.add.graphics();
-    this.torchGlow ??= this.scene.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd080);
+    this.torchGlow ??= this.scene.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(hex(T.glow));
     const dx = this.u.dir === Dir.Left ? -8 : this.u.dir === Dir.Up ? -7 : 8;
     const hx = Math.round(this.x + dx), hy = Math.round(this.y - 13);
     const t = this.scene.time.now, fl = 0.75 + Math.sin(t / 70 + this.x) * 0.12 + Math.sin(t / 130) * 0.1 + Math.random() * 0.06;
     const g = this.torchGfx;
     g.setVisible(true).setDepth(this.y + 1).clear();
     g.fillStyle(0x4a2a10, 1).fillRect(hx, hy - 1, 2, 6);
-    g.fillStyle(0xff7a1a, 1).fillRect(hx - 1, hy - 4, 4, 3);
-    g.fillStyle(0xffd860, 1).fillRect(hx, hy - 5 + (fl > 0.8 ? 0 : 1), 2, 3);
+    g.fillStyle(hex(T.flame), 1).fillRect(hx - 1, hy - 4, 4, 3);
+    g.fillStyle(hex(T.core), 1).fillRect(hx, hy - 5 + (fl > 0.8 ? 0 : 1), 2, 3);
     this.torchGlow.setVisible(true).setPosition(hx + 1, hy - 3).setDepth(DEPTH.top - 12).setScale(2.2 * fl).setAlpha(0.55 * fl);
   }
 

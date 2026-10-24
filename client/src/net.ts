@@ -134,6 +134,8 @@ export interface UnitState {
   shield: number;
   /** Обозначения бафов и дебафов на юните (shared/auraFx.ts): строка по символу на эффект; рисует UnitAuras (game/auraFx.ts). */
   fx: string;
+  /** Боец фракции: геральдика (shared/npcGear.ts parseHerald); у остальных нет. */
+  herald?: string;
 }
 
 export function serverUrl(): string {

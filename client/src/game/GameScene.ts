@@ -1174,7 +1174,7 @@ export class GameScene extends Phaser.Scene {
     for (const [id, v] of this.units) {
       if (id !== net.id) v.update(dt);
       // шаги и звон доспехов идущей стражи рядом (до ~20 тайлов, громкость по расстоянию)
-      if (v.u.kind === UnitKind.Guard && v.u.anim === Anim.Walk && !v.dead && now >= v.stepAt) {
+      if ((v.u.kind === UnitKind.Guard || v.u.kind === UnitKind.Soldier) && v.u.anim === Anim.Walk && !v.dead && now >= v.stepAt) {
         const k = 1 - Math.hypot(v.x - this.pos.x, v.y - this.pos.y) / 640;
         v.stepAt = now + 330 + Math.random() * 60;
         if (k > 0.03) { sfx.play("step", k * 0.8); if (Math.random() < 0.28) sfx.play("clink", k * 0.7); }

@@ -14,6 +14,7 @@ import type { Slot } from "../../../shared/items";
 import { enchantTier, ENCHANT_COLOR, GEAR_FX } from "../../../shared/gearFx";
 import { gearFxMode } from "./overlay";
 import { onGearFlash, setHiddenParticles, type HiddenReason } from "./gearHooks";
+import type { Herald } from "../../../shared/npcGear";
 
 const ENCHANT = GEAR_FX.enchant, LIMITS = GEAR_FX.limits;
 /** Заточка на герое — приглушённый тон (data/gear-fx.json heroColor), в интерфейсе остаётся яркий ENCHANT_COLOR. */
@@ -72,6 +73,8 @@ export interface GearInput {
   view: number; flip: boolean; col: number; ox: number; oy: number; t: number; seed: number;
   /** id героя (подсветка детали из окна «Герой», пометки скрытых частиц) и свой ли это герой (эффекты видны всегда). */
   sid?: string; self?: boolean;
+  /** Боец фракции (задача 132, шаг 8): гербы на табарде, щите, спине плаща и знамени, знаменосец (shared/npcGear.ts). */
+  herald?: Herald | null;
 }
 
 const MELEE = new Set(["sword", "axe", "dagger", "mace", "greatsword", "twinblades", "greataxe", "hammer", "spear", "scythe"]);
@@ -103,6 +106,8 @@ export class GearLayers {
   private hiddenKey = "";
   private flash: { slot: Slot; ms: number; color: string; start?: number } | null = null;
   private unflash: () => void;
+  /** Геральдика бойца в текущем кадре (null — герой). */
+  private hd: Herald | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.back = scene.add.graphics();
@@ -141,7 +146,7 @@ export class GearLayers {
     const wr = Number(wrs || 0), wplus = Number(wps || 0);
     this.back.clear().setVisible(true);
     this.front.clear().setVisible(true);
-    this.flip = i.flip; this.ox = i.ox; this.oy = i.oy; this.sid = i.sid ?? "";
+    this.flip = i.flip; this.ox = i.ox; this.oy = i.oy; this.sid = i.sid ?? ""; this.hd = i.herald ?? null;
     const pal = i.faction === "umbrath" ? PAL.umbrath : PAL.solgard;
     const legOf = (id: string): LegendaryDef | undefined => (id ? LEGENDARIES[id] : undefined);
     // кайма — по редкости своей детали: легендарка оранжевая, r≥1 цвет редкости, r0 нейтральная (docs/gear-visuals.md 2.1)
@@ -186,10 +191,20 @@ export class GearLayers {
       if (up && Lc?.look.back === "wings") { this.g = this.front; this.wings(Lc, view, bob, walking, tt, i.seed); }
       if (!Lc || Lc.look.back !== "wings" || Lc.look.train) this.cloak(cl, cm, pal, i, bob, walking, Lc);
       if (Lc) this.legendBack(Lc, i, bob, walking, tt, "cloak", up);
+      // герб фракции на спине плаща бойца (виден со спины)
+      if (up && this.hd?.arms && !Lc) { this.g = this.front; this.emblem(this.hd, true, 13, 17 + bob, true); }
       this.end("cloak", cl.plus, Lc);
       this.g = this.front;
     };
-    if (!up) drawCloak();
+    // знаменосец: знамя фракции за спиной (если плащ — не легендарное знамя), без контура и частиц
+    const drawStandard = () => {
+      const hd = this.hd;
+      if (!hd?.banner || legOf(cl.leg)?.look.back === "banner") return;
+      this.sx = 0; this.sy = 0;
+      const B = hd.H.banner, umb = hd.fac === "umbrath";
+      this.flagPole({ umb, flag: B.flag, side: B.edge, hem: B.edge, pole: B.pole, metal: B.metal, ti: 3, form: "", tint: B.edge, c2: B.metal, crest: (cx, cy) => this.emblem(hd, false, cx - 2, cy - 2, true) }, i, bob, walking, tt);
+    };
+    if (!up) { drawCloak(); drawStandard(); }
 
     this.g = this.front;
     // ---- тело без брони: голое, пах скрыт пикселизацией; лохмотья — рваная ткань ----
@@ -343,9 +358,10 @@ export class GearLayers {
       }
       // крылья и призрачные цепи легендарного доспеха (зона доспеха: плечи и спина)
       if (L && (L.look.back === "wings" || L.look.chains)) { this.sx = 0; this.sy = 0; this.legendBack(L, i, bob, walking, tt, "armor"); this.sx = lx; this.sy = ly; }
+      if (this.hd && this.hd.tabard !== "none") this.tabard(this.hd, view, y0);
       this.end("armor", a.plus, L);
     }
-    if (up) drawCloak();
+    if (up) { drawCloak(); drawStandard(); }
     // ---- шлем ----
     this.sx = lx; this.sy = ly;
     if (h.r >= 0) {
@@ -622,9 +638,16 @@ export class GearLayers {
 
   /** Знамя-штандарт: древко над плечом, перекладина, полотнище с гербом колышется (сильнее при ходьбе); с яруса 85 кисти и крупное навершие. */
   private banner(L: LegendaryDef, i: GearInput, bob: number, walking: boolean, tt: number) {
-    const lk = L.look, ti = L.ti, view = i.view, up = view === 1, side = view === 2;
-    const umb = L.faction === "umbrath", flag = lk.flag ?? flagOf(L);
-    const pole = umb ? ["#1c1822", "#3a3446"] : ["#5a3a1e", "#8a5a2a"], metal = umb ? "#d8d0b8" : "#f0c040";
+    const lk = L.look, umb = L.faction === "umbrath", hd = this.hd;
+    // у бойца фракции — полотнище фракции и малая эмблема её герба вместо герба легендарки
+    const crest = hd ? (cx: number, cy: number) => this.emblem(hd, false, cx - 2, cy - 2, true) : (cx: number, cy: number) => this.crest(lk.crest ?? (umb ? "skull" : "sun"), cx, cy, L.tint, lk.c2);
+    const flag = hd ? hd.H.banner.legend : lk.flag ?? flagOf(L);
+    this.flagPole({ umb, flag, side: dark(flag, 0.7), hem: RARITY_COLORS[3], pole: umb ? ["#1c1822", "#3a3446"] : ["#5a3a1e", "#8a5a2a"], metal: umb ? "#d8d0b8" : "#f0c040", ti: L.ti, form: lk.form ?? "", tint: L.tint, c2: lk.c2, crest }, i, bob, walking, tt);
+  }
+  /** Знамя на древке за спиной: легендарный плащ-знамя (banner) или знамя знаменосца фракции (drawStandard). */
+  private flagPole(o: { umb: boolean; flag: string; side: string; hem: string; pole: readonly string[]; metal: string; ti: number; form: string; tint: string; c2: string; crest: (cx: number, cy: number) => void }, i: GearInput, bob: number, walking: boolean, tt: number) {
+    const ti = o.ti, view = i.view, up = view === 1, side = view === 2;
+    const umb = o.umb, flag = o.flag, pole = o.pole, metal = o.metal, lk = { form: o.form, c2: o.c2 }, L = { tint: o.tint };
     const top = -4 - ti * 2 + bob, fw = 7 + (ti >= 2 ? 1 : 0) + (ti >= 4 ? 1 : 0), fh = 8 + ti;
     // древко: спереди — за правым плечом, со спины — за левым (зеркально), сбоку — за спиной с наклоном назад
     const px = side ? 10 : up ? 10 : 21, dir = side || up ? 1 : -1; // куда от древка висит полотнище
@@ -647,14 +670,14 @@ export class GearLayers {
       if (lk.form === "double" && Math.abs(q - (fw - 1) / 2) < 0.6) continue; // двойное знамя: щель между полотнищами
       const notch = lk.form === "torn" ? 1 + ((q * 5 + i.seed) % 4) : lk.form === "pennant" ? Math.round((far / fw) * (fh - 2)) : lk.form === "double" ? (q < fw / 2 ? 2 : 0) : Math.abs(q - (fw - 1) / 2) < 1.2 ? 2 : 0, hgt = fh - notch;
       this.R(x, top + 2 + off, 1, hgt, q % 2 ? flag : dark(flag, 0.88));
-      this.R(x, top + 2 + off + hgt, 1, 1, RARITY_COLORS[3]); // кайма — цвет редкости
-      if (q === 0 || q === fw - 1) this.R(x, top + 2 + off, 1, hgt, dark(flag, 0.7));
+      this.R(x, top + 2 + off + hgt, 1, 1, o.hem); // кайма — цвет редкости (у знамени фракции — кайма штандарта)
+      if (q === 0 || q === fw - 1) this.R(x, top + 2 + off, 1, hgt, o.side);
     }
     // герб в середине полотнища (движется вместе с ним)
     const mid = Math.floor(fw / 2), cOff = Math.round(Math.sin(tt / 170 - mid * 0.7 + i.seed) * amp * 0.5);
     const nearCol = side ? fw - 1 : dir > 0 ? 0 : fw - 1, sgn = nearCol === 0 ? 1 : -1;
     if (lk.form === "double") for (const qx of [1, fw - 2]) { this.R(fx0 + qx, top + 2 + Math.floor(fh / 2) + cOff, 1, 2, L.tint); this.R(fx0 + qx, top + 2 + Math.floor(fh / 2) + cOff, 1, 1, lk.c2); }
-    else this.crest(lk.crest ?? (umb ? "skull" : "sun"), fx0 + (lk.form === "pennant" ? nearCol + sgn * 2 : mid), top + 2 + Math.floor(fh / 2) - 1 + cOff, L.tint, lk.c2);
+    else o.crest(fx0 + (lk.form === "pennant" ? nearCol + sgn * 2 : mid), top + 2 + Math.floor(fh / 2) - 1 + cOff);
     // кисти на концах перекладины (ярус 85+)
     if (ti >= 3) for (const x of [Math.min(fx0, bx) - (side ? 1 : 0), Math.min(fx0, bx) + fw + 1 - (side ? 1 : 0)]) { const sw = Math.round(Math.sin(tt / 200 + x) * (walking ? 1 : 0.5)); this.R(x + sw, top + 2, 1, 3, lk.c2); this.R(x + sw, top + 5, 1, 1, L.tint); }
     this.g = this.front;
@@ -923,6 +946,50 @@ export class GearLayers {
       if (L.look.pauld === "flame" || L.look.fx === "ember") this.flame(xx + ww / 2, y, 3, 4, L.tint, L.look.c2, this.themeOn ? t : 0, 2);
       else if (!up) for (const sp of [0, 1]) this.line(xx + sp * (ww - 1), y, xx + sp * (ww - 1) + (sp ? 2 : -2), y - 4, L.tint, 1);
     }
+    // щит бойца: поле цветом ткани фракции и герб по центру (большой — на щите от 6×8 внутри каймы)
+    const hd = this.hd;
+    if (hd && !up && !side && shp !== "bone") {
+      const iw = ww - 2, ih = h - 2;
+      if (iw >= 3) {
+        this.R(xx + 1, y + 1, iw, ih, hd.H.cloth.shield);
+        const big = iw >= 6 && ih >= 8, ew = big ? 6 : 4, eh = big ? hd.H.emblem.e6.length : hd.H.emblem.e4.length;
+        if (iw >= ew && ih >= eh) this.emblem(hd, big, xx + 1 + Math.floor((iw - ew) / 2), y + 1 + Math.max(0, Math.floor((ih - eh) / 2) - (big ? 1 : 0)));
+      }
+    }
+  }
+
+  // ---------------- геральдика бойцов фракций (задача 132, шаг 8; data/npc-gear.json heraldry) ----------------
+  /** Пиксельная эмблема герба: big — 6 px (широкий табард, большой щит, спина плаща), иначе 4 px; outline — контур 1 px снаружи. */
+  private emblem(hd: Herald, big: boolean, x: number, y: number, outline = false) {
+    const E = hd.H.emblem, rows = big ? E.e6 : E.e4;
+    if (outline) rows.forEach((r, j) => { for (let k = 0; k < r.length; k++) { if (r[k] === ".") continue; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = rows[j + dy]?.[k + dx]; if (!nc || nc === ".") this.R(x + k + dx, y + j + dy, 1, 1, E.out); } } });
+    rows.forEach((r, j) => { for (let k = 0; k < r.length; k++) if (r[k] !== ".") this.R(x + k, y + j, 1, 1, E.pal[r[k]]); });
+  }
+  /**
+   * Табард бойца поверх доспеха: ткань фракции с каймой, пояс с пряжкой; спереди — герб (широкий — 6 px, узкий — 4 px), со спины — полоса
+   * каймы по шву, сбоку — полотнища спереди и сзади корпуса. Низ: Сольгард — ласточкин хвост, Умбрат — гробовая стопа, Эмберхолл — бахрома.
+   */
+  private tabard(hd: Herald, view: number, y0: number) {
+    const C = hd.H.cloth, wide = hd.tabard === "wide";
+    if (view === 2) {
+      for (const [x, w] of [[17, 3], [12, 2]] as const) { this.R(x, y0, w, 12, C.f); this.R(x + (x > 15 ? w - 1 : 0), y0, 1, 12, C.t); this.R(x, y0 + 12, w, 1, C.td); }
+      this.R(12, y0 + 8, 8, 1, C.belt);
+      return;
+    }
+    const x0 = wide ? 12 : 13, w = wide ? 8 : 6;
+    for (let j = 0; j < 13; j++) {
+      let a = 0, b = w;
+      if (C.hem === "coffin" && j >= 10) { a = j - 9; b = w - (j - 9); }
+      for (let k = a; k < b; k++) {
+        if (C.hem === "swallow" && j >= 11 && Math.abs(k - (w - 1) / 2) < (j === 12 ? 1.6 : 0.6)) continue;
+        const edge = k === a || k === b - 1 || j === 0;
+        const c = j === 12 ? C.td : edge ? (k === b - 1 ? C.td : C.t) : k === b - 2 ? C.fs : C.f;
+        this.R(x0 + k, y0 + j, 1, 1, C.hem === "fringe" && j === 12 && k % 2 ? C.t : c);
+      }
+    }
+    this.R(x0, y0 + 8, w, 1, C.belt); this.R(x0 + w / 2 - 1, y0 + 8, 2, 1, C.buckle);
+    if (view === 0) this.emblem(hd, wide, x0 + 1, y0 + 1);
+    else this.R(x0 + w / 2 - 1, y0 + 2, 2, 4, C.t);
   }
 
   private weapon(wb: string, wr: number, L: LegendaryDef | undefined, pal: typeof PAL.solgard, i: GearInput, bob: number, plus: number, off = false, wm?: ItemModel) {
