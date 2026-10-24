@@ -9,14 +9,16 @@ import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 import { buildZoneLabels, type Label } from "./worldmap-labels";
 
-const HEAD = `"Ark Pixel 10", "Rubik", system-ui, sans-serif`;
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
-/** Шрифт заголовков на canvas: пиксель шрифта = 1/10 кегля, поэтому кегль — целое число раз по 10 пикселей экрана
- *  (не меньше двух пикселей шрифта); пробел сужен с 5 до 3 пикселей шрифта, как в styles/tokens.css (--head-ws). */
-const head = (px: number, dpr: number) => {
-  const k = Math.max(2, Math.round((px * dpr) / 10));
-  return { font: `${(k * 10) / dpr}px ${HEAD}`, size: (k * 10) / dpr, ws: `${(-2 * k) / dpr}px` };
-};
+/** Оформление подписей — как на схеме tools/map-plan.ts: Rubik, крупные числа уровней жирным, названия обычным, тёмная обводка ~3 px под заливкой.
+ *  Кегли и начертания — шкала токенов (styles/tokens.css: --fs-xs 12, --fs-sm 13, --fs 14, --fs-md 16, --fs-lg 18, --fs-h 20; --fw 400, --fw-b 600). */
+const FS = { xs: 12, sm: 13, base: 14, md: 16, lg: 18, h: 20 } as const;
+const font = (px: number, bold = false) => `${bold ? 600 : 400} ${px}px ${TEXT}`;
+/** Строка блока подписи; pill — цвет плашки под строкой (как «ОПАСНАЯ ЗОНА» на схеме). */
+/** Проверка места без рисования: true — проверить; "pair" — для зеркальных пар: подпись за краем экрана место не занимает и пару не прячет
+ *  (при приближении к одной стороне её подписи видны, хотя зеркальные за экраном); если на экране обе — рисуются обе или ни одной. */
+type Dry = boolean | "pair";
+interface Line { text: string; size: number; bold?: boolean; fill: string; pill?: string }
 const CITY = "#ffe08a";
 const KIND_NAME: Record<string, string> = { settlement: "Поселение", camp: "Лагерь", ruins: "Руины", meeting: "Место встречи" };
 const KIND_COLOR: Record<string, string> = { settlement: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
@@ -259,7 +261,7 @@ export class WorldMapView {
 
     const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
     const hits: Hit[] = [];
-    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16, ws = "0px", dry = false, inMap = false): boolean => {
+    const label = (text: string, x: number, y: number, fill: string, font: string, size = 16, ws = "0px", dry: Dry = false, inMap = false): boolean => {
       g.font = font;
       g.wordSpacing = ws;
       const w = Math.ceil(g.measureText(text).width);
@@ -268,16 +270,50 @@ export class WorldMapView {
       const x0 = inMap ? Math.min(Math.max(x - w / 2, X(0) + 3), X(m.w) - w - 3) : x - w / 2;
       const lx = Math.round(x0 * dpr) / dpr, ly = Math.round(y * dpr) / dpr;
       const r = { x0: lx - 2, y0: ly - size, x1: lx + w + 2, y1: ly + 2 };
-      if (r.x1 < 0 || r.x0 > this.W || r.y1 < 0 || r.y0 > this.H) return false;
+      if (r.x1 < 0 || r.x0 > this.W || r.y1 < 0 || r.y0 > this.H) return dry === "pair";
       if (placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) return false;
       if (dry) return true;
       placed.push(r);
-      g.lineWidth = 4;
-      g.strokeStyle = "rgba(14,10,16,0.92)";
+      g.lineWidth = 3;
+      g.strokeStyle = P.well;
       g.lineJoin = "round";
       g.strokeText(text, lx, ly);
       g.fillStyle = fill;
       g.fillText(text, lx, ly);
+      return true;
+    };
+    /** Блок подписи из строк с центром в (x, y): проверка места — по всему блоку (пара рисуется целиком или никак), в пределах карты. */
+    const block = (lines: Line[], x: number, y: number, dry: Dry = false): boolean => {
+      g.wordSpacing = "0px";
+      const ws = lines.map((l) => { g.font = font(l.size, l.bold); return Math.ceil(g.measureText(l.text).width) + (l.pill ? 10 : 0); });
+      const hs = lines.map((l) => Math.round(l.size * (l.pill ? 1.45 : 1.15)));
+      const bw = Math.max(...ws), bh = hs.reduce((a, b) => a + b, 0);
+      const cx = Math.min(Math.max(x, X(0) + 3 + bw / 2), X(m.w) - 3 - bw / 2);
+      const r = { x0: cx - bw / 2 - 2, y0: y - bh / 2, x1: cx + bw / 2 + 2, y1: y + bh / 2 };
+      if (r.x1 < 0 || r.x0 > this.W || r.y1 < 0 || r.y0 > this.H) return dry === "pair";
+      if (placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0)) return false;
+      if (dry) return true;
+      placed.push(r);
+      let top = r.y0;
+      lines.forEach((l, i) => {
+        g.font = font(l.size, l.bold);
+        const lx = Math.round((cx - (ws[i] - (l.pill ? 10 : 0)) / 2) * dpr) / dpr, ly = Math.round((top + hs[i] * 0.78) * dpr) / dpr;
+        if (l.pill) {
+          g.fillStyle = l.pill;
+          g.fillRect(Math.round((cx - ws[i] / 2) * dpr) / dpr, top + 1, ws[i], hs[i] - 2);
+          g.lineWidth = 1;
+          g.strokeStyle = P.fg;
+          g.strokeRect(Math.round((cx - ws[i] / 2) * dpr) / dpr + 0.5, top + 1.5, ws[i] - 1, hs[i] - 3);
+        } else {
+          g.lineWidth = 3;
+          g.strokeStyle = P.well;
+          g.lineJoin = "round";
+          g.strokeText(l.text, lx, ly);
+        }
+        g.fillStyle = l.fill;
+        g.fillText(l.text, lx, ly);
+        top += hs[i];
+      });
       return true;
     };
     g.textAlign = "left";
@@ -294,8 +330,8 @@ export class WorldMapView {
       g.fillStyle = col;
       g.fillRect(x - r, y - r, r * 2, r * 2);
       if (c.capital) { g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.strokeRect(x - r, y - r, r * 2, r * 2); }
-      const hf = head(c.capital ? 17 : 15, dpr);
-      label(open || c.capital ? c.name : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", hf.font, hf.size, hf.ws);
+      const cs = c.capital ? FS.md : FS.base;
+      label(open || c.capital ? (c.capital ? c.name.toUpperCase() : c.name) : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", font(cs, true), cs);
       hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : "Неизвестный город", sub: open || c.capital ? (c.capital ? "Столица фракции" : "Город") + " · безопасно" : "Ещё не открыт" });
     }
     // Врата Цитадели Хаоса (рейд)
@@ -305,24 +341,24 @@ export class WorldMapView {
       g.beginPath(); g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); g.fill();
       g.fillStyle = "#ff6a2a";
       g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
-      const hf = head(15, dpr);
-      label(RAID.map.gate, x, y - r - 6, P.boss, hf.font, hf.size, hf.ws);
+      label(RAID.map.gate, x, y - r - 6, P.boss, font(FS.base, true), FS.base);
       hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: `Рейд · ${RAID.boss.name} · ${RAID.raid.minLevel}+ ур.` });
     }
     // земли фракций (приоритет после городов): одна подпись на сторону цветом фракции
     if (big) {
-      const hl = head(s < 3 ? 16 : 19, dpr);
-      g.globalAlpha = s < 3 ? 0.9 : s < 6 ? 0.6 : 0.35;
-      const lf = (l: { x: number; y: number; land: FactionId }, dry = false) => label(landLabel(l.land).toUpperCase(), X(l.x), Y(l.y), factionColor(l.land), hl.font, hl.size, hl.ws, dry);
+      const ls = s < 3 ? FS.md : FS.lg;
+      g.globalAlpha = s < 3 ? 1 : s < 6 ? 0.6 : 0.35;
+      // точка подписи — центр строки (worldmap-labels.ts)
+      const lf = (l: { x: number; y: number; land: FactionId }, dry: Dry = false) => label(landLabel(l.land).toUpperCase(), X(l.x), Y(l.y) + ls * 0.36, factionColor(l.land), font(ls, true), ls, "0px", dry, true);
       // обе стороны парой: подпись одной стороны не рисуется без зеркальной
-      if (this.landLabels.length === 2) { if (lf(this.landLabels[0], true) && lf(this.landLabels[1], true)) for (const l of this.landLabels) lf(l); }
+      if (this.landLabels.length === 2) { if (lf(this.landLabels[0], "pair") && lf(this.landLabels[1], "pair")) for (const l of this.landLabels) lf(l); }
       else for (const l of this.landLabels) lf(l);
       g.globalAlpha = 1;
     }
     // названия рек
     if (big && s >= 1) for (const r of RIVERS) {
       const mid = r.path[Math.floor(r.path.length / 2)];
-      label(`р. ${r.name}`, X(mid[0]), Y(mid[1]), "#9ac4f0", `500 12px ${TEXT}`, 12);
+      label(`р. ${r.name}`, X(mid[0]), Y(mid[1]), "#9ac4f0", font(FS.xs), FS.xs);
     }
     // поселения по приоритету и масштабу
     if (big) {
@@ -344,17 +380,17 @@ export class WorldMapView {
         g.fillStyle = KIND_COLOR[p.kind];
         if (p.kind === "settlement") g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
         else { g.beginPath(); g.moveTo(x, y - sz - 1); g.lineTo(x + sz + 1, y + sz); g.lineTo(x - sz - 1, y + sz); g.closePath(); g.fill(); }
-        const fs = p.kind === "settlement" ? 13 : 11;
+        const fs = p.kind === "settlement" ? FS.sm : FS.xs;
         if (s >= minS[p.kind]) {
           // зеркальная пара поселений подписывается вместе: если одно название не влезло, не рисуется и второе
           const q = placePair.get(p);
           let show = shown.get(p);
           if (show === undefined) {
-            const dry = (a: typeof p) => label(a.name, X(a.x), Y(a.y) - sz - 5, KIND_COLOR[a.kind], `500 ${fs}px ${TEXT}`, fs, "0px", true);
+            const dry = (a: typeof p) => label(a.name, X(a.x), Y(a.y) - sz - 5, KIND_COLOR[a.kind], font(fs), fs, "0px", "pair");
             show = dry(p) && (!q || dry(q));
             shown.set(p, show); if (q) shown.set(q, show);
           }
-          if (show) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], `500 ${fs}px ${TEXT}`, fs);
+          if (show) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], font(fs), fs);
         }
         hits.push({ x, y, r: sz + 5, title: p.name, sub });
       }
@@ -365,22 +401,24 @@ export class WorldMapView {
         g.fillRect(x - 2, y - 4, 4, 8);
         hits.push({ x, y, r: 8, title: "Указатель", sub: sg.text });
       }
-      // зоны
-      const za = s < 3 ? 0.75 : s < 6 ? 0.5 : 0.28;
-      g.globalAlpha = za;
-      const hz = head(s < 3 ? 15 : 18, dpr);
+      // зоны: блок как на схеме — уровни крупно жирным, ниже название, у кольца и Полей — опасность (Поля — красной плашкой); на приближении бледнее
+      g.globalAlpha = s < 3 ? 1 : s < 6 ? 0.7 : 0.4;
+      const big2 = s >= 3;
+      const zlines = (z: Label): Line[] => {
+        const zi = ZONES[z.zone], out: Line[] = [];
+        if (zi && zi.levels[1] > 0 && !zi.note) out.push({ text: `${zi.levels[0]}–${zi.levels[1]}`, size: big2 ? FS.h : FS.lg, bold: true, fill: P.fg });
+        out.push({ text: z.text, size: big2 ? FS.base : FS.sm, fill: P.fg });
+        if (z.danger === "deadly") out.push({ text: DANGER_LABEL.deadly.toUpperCase(), size: FS.xs, bold: true, fill: P.fg, pill: P.hp });
+        else if (z.danger === "unsafe") out.push({ text: DANGER_LABEL.unsafe, size: FS.xs, bold: true, fill: P.warn });
+        return out;
+      };
       const zshown = new Map<Label, boolean>();
       for (const z of this.zoneLabels) {
         const pz = z.pair === undefined ? undefined : this.zoneLabels[z.pair];
-        const zdry = (a: Label) => label(a.text.toUpperCase(), X(a.x), Y(a.y), "#ffffff", hz.font, hz.size, hz.ws, true, true);
+        const zdry = (a: Label) => block(zlines(a), X(a.x), Y(a.y), "pair");
         let ok = zshown.get(z);
         if (ok === undefined) { ok = zdry(z) && (!pz || zdry(pz)); zshown.set(z, ok); if (pz) zshown.set(pz, ok); }
-        if (!ok) continue;
-        // вторая строка — опасность зоны цветом токена (кольцо 40–80 — янтарная, Поля 80–100 — красная) или «Земли Сольгарда / Умбрата» цветом фракции
-        const tag = zoneTag(z);
-        if (label(z.text.toUpperCase(), X(z.x), Y(z.y), "#ffffff", hz.font, hz.size, hz.ws, false, true) && tag) {
-          label(tag.text, X(z.x), Y(z.y) + hz.size * 0.9, tag.color, `600 ${s < 3 ? 12 : 13}px ${TEXT}`, s < 3 ? 12 : 13, "0px", false, true);
-        }
+        if (ok) block(zlines(z), X(z.x), Y(z.y));
       }
       g.globalAlpha = 1;
     }
