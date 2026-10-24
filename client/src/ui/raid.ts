@@ -7,6 +7,7 @@ import { phaseName, phaseNo, RAID, RAID_CFG, RAID_PHASES, RAID_ROLES, ROLE_NAMES
 import type { Net, UnitState } from "../net";
 import { setHidden } from "./kit";
 import { absorbApply } from "./absorb";
+import { CastBar } from "./castbar";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const num = (n: number) => Math.round(n).toLocaleString("ru-RU");
@@ -57,10 +58,7 @@ export class RaidHud {
   private bFill!: HTMLElement;
   private bPhase!: HTMLElement;
   private bText!: HTMLElement;
-  private cBox!: HTMLElement;
-  private cFill!: HTMLElement;
-  private cName!: HTMLElement;
-  private cTime!: HTMLElement;
+  private castBar = new CastBar("a", true);
   private berserkEl!: HTMLElement;
   private fRows!: HTMLElement;
   private fInfo!: HTMLElement;
@@ -71,16 +69,13 @@ export class RaidHud {
     this.top.innerHTML = `<div class="raid-bhead" data-phase></div>
       <div class="bar lg raid-bossbar"><i data-fill></i><b class="raid-tick" style="left:25%"></b><b class="raid-tick" style="left:50%"></b><b class="raid-tick" style="left:75%"></b><span data-text></span></div>
       <div class="raid-nos"><b style="left:0">I</b><b style="left:25%">IV</b><b style="left:50%">III</b><b style="left:75%">II</b></div>
-      <div class="bar raid-cast" data-cast hidden><i data-cfill></i><span data-cname></span><em data-ctime></em></div>
       <div class="raid-berserk" data-berserk></div>`;
     this.bFill = this.top.querySelector("[data-fill]")!;
     this.bPhase = this.top.querySelector("[data-phase]")!;
     this.bText = this.top.querySelector("[data-text]")!;
-    this.cBox = this.top.querySelector("[data-cast]")!;
-    this.cFill = this.top.querySelector("[data-cfill]")!;
-    this.cName = this.top.querySelector("[data-cname]")!;
-    this.cTime = this.top.querySelector("[data-ctime]")!;
     this.berserkEl = this.top.querySelector("[data-berserk]")!;
+    // каст босса — та же полоса, что у героя (ui/castbar.ts, рамка a), в цвете босса
+    this.berserkEl.before(this.castBar.el);
     this.frames.innerHTML = `<div class="raid-fhead"><b>Рейд</b><span class="raid-finfo" data-info></span><button class="btn small raid-leave">Выйти</button></div><div class="raid-rows" data-rows></div>`;
     this.fRows = this.frames.querySelector("[data-rows]")!;
     this.fInfo = this.frames.querySelector("[data-info]")!;
@@ -115,6 +110,8 @@ export class RaidHud {
     net.on("raid:cast", (m) => {
       const now = performance.now();
       this.cast = m.ms > 0 ? { name: m.name, from: now, until: now + m.ms } : null;
+      if (m.ms > 0) this.castBar.start(m.name, m.ms, { glyph: "☠" });
+      else this.castBar.end();
     });
     net.on("raid:banner", (m) => this.showBanner(m));
     net.on("raid:revive", (m) => {
@@ -126,6 +123,7 @@ export class RaidHud {
       this.modal.hidden = true;
       this.result.hidden = true;
       this.cast = null;
+      this.castBar.clear();
       this.revive.clear();
       this.lastKey = "";
       if (kind !== "raid") for (const e of [this.top, this.frames, this.count, this.banner]) e.hidden = true;
@@ -259,15 +257,7 @@ export class RaidHud {
     }
     this.top.classList.toggle("dim", !b);
     // каст босса
-    if (this.cast && now < this.cast.until) {
-      setHidden(this.cBox, false);
-      this.cName.textContent = this.cast.name;
-      this.cFill.style.width = `${((now - this.cast.from) / (this.cast.until - this.cast.from)) * 100}%`;
-      this.cTime.textContent = ((this.cast.until - now) / 1000).toFixed(1);
-    } else {
-      setHidden(this.cBox, true);
-      this.cast = null;
-    }
+    if (this.cast && now >= this.cast.until) { this.castBar.end(true); this.cast = null; }
     // берсерк
     const stage = st.stage ?? "";
     const bs = st.berserk ?? 0;

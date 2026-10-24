@@ -41,10 +41,6 @@
 .raid-nos { position: relative; height: 12px; margin-top: calc(-1 * var(--sp-0)); }
 .raid-nos b { position: absolute; top: 0; font-size: var(--fs-2xs); line-height: 12px; font-weight: var(--fw-b); color: var(--boss-soft); text-shadow: var(--outline-text); transform: translateX(-50%); }
 .raid-nos b:first-child { transform: none; }
-.raid-cast { align-self: center; width: min(340px, 100%); background: var(--well); }
-.raid-cast > i { background: linear-gradient(var(--boss-soft) -80%, var(--warn)); opacity: 0.85; }
-.raid-cast > span { font-size: var(--fs-xs); }
-.raid-cast > em { position: absolute; right: var(--sp-1); top: 0; bottom: 0; display: grid; place-items: center; font-size: var(--fs-xs); font-style: normal; font-weight: var(--fw-b); color: var(--fg); text-shadow: var(--outline-text); font-variant-numeric: tabular-nums; }
 .raid-berserk { align-self: center; font-size: var(--fs-xs); color: var(--dim); text-shadow: var(--shadow-text); font-variant-numeric: tabular-nums; }
 .raid-berserk.hot { color: var(--bad); font-weight: var(--fw-b); }
 

@@ -21,6 +21,7 @@ import type { Net, UnitState } from "../net";
 import { rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
 import { RaidHud } from "./raid";
+import { CastBar, castGlyph, type CastOpts, type CastVariant } from "./castbar";
 import { absorbHtml } from "./absorb";
 import { TradeUI } from "./trade";
 import { AdminUI } from "./admin";
@@ -402,11 +403,25 @@ export class Hud {
       const lc = this.lastCast;
       return this.castError(t.text, lc && performance.now() - lc.at < 800 ? lc.id : undefined);
     }
-    const d = el("div", `toast ${t.kind ?? "info"}`);
-    d.innerHTML = this.lootHtml(t.slot ? { ...t, text: `${t.text} — клавиша ${this.hotbar.keyOf(t.slot.bar, t.slot.i)}` } : t);
-    this.toasts.append(d);
-    while (this.toasts.children.length > 4) this.toasts.firstElementChild!.remove();
-    setTimeout(() => d.remove(), 3300);
+    const html = this.lootHtml(t.slot ? { ...t, text: `${t.text} — клавиша ${this.hotbar.keyOf(t.slot.bar, t.slot.i)}` } : t);
+    const cls = `toast ${t.kind ?? "info"}`;
+    // одинаковый тост уже висит — продлить его (анимация с начала, без мигания появления), а не ставить второй
+    const same = [...this.toasts.children].find((c) => c.className === cls && c.innerHTML === html) as (HTMLElement & { _hide?: number }) | undefined;
+    if (same) {
+      same.style.animation = "none";
+      void same.offsetWidth;
+      same.style.animation = "";
+      same.style.animationDelay = "-0.26s";
+      clearTimeout(same._hide);
+      same._hide = window.setTimeout(() => same.remove(), 3300 - 260);
+      if (t.kind !== "loot") return;
+    } else {
+      const d = el("div", cls) as HTMLElement & { _hide?: number };
+      d.innerHTML = html;
+      this.toasts.append(d);
+      while (this.toasts.children.length > 4) this.toasts.firstElementChild!.remove();
+      d._hide = window.setTimeout(() => d.remove(), 3300);
+    }
     if (t.kind === "loot") this.chatLine({ from: "", text: t.text, sys: true, loot: true, html: t.icon ? this.lootHtml(t) : undefined } as ChatLine & { loot: boolean; html?: string });
   }
   /** Текст тоста с иконкой предмета и цветными точками классов. */
@@ -1162,7 +1177,6 @@ export class Hud {
     });
   }
 
-  /** Полоса призыва маунта над панелью умений. */
   /** Шкала воздуха под водой (air < 0 — скрыть). */
   private airBar(air: number, max: number) {
     let box = document.getElementById("air-bar");
@@ -1187,16 +1201,33 @@ export class Hud {
     if (!this.wins.inv.hidden && this.ctx?.net.self) this.renderInv(this.ctx.net.self);
   }
 
+  /** Полосы каста героя (ui/castbar.ts): кольцо — призыв маунта и питомца, рамка — всё остальное (телепорт, добыча, умения). */
+  private castBars: Partial<Record<CastVariant, CastBar>> = {};
+  private castNow: CastBar | null = null;
   private mountCast(ms: number, name?: string) {
-    let box = document.getElementById("mount-cast");
-    if (!ms) return void box?.remove();
-    box?.remove();
-    box = el("div", "mount-cast-box", `<div class="mount-cast-label">${esc(name ?? "Маунт")}</div><div class="mount-cast-track"><i class="mount-cast-fill"></i></div>`);
-    box.id = "mount-cast";
-    box.style.setProperty("--dur", `${ms}ms`);
-    document.body.append(box);
-    const bar = box.querySelector("i") as HTMLElement;
-    requestAnimationFrame(() => requestAnimationFrame(() => (bar.style.width = "100%")));
+    if (!ms) return void this.castNow?.end();
+    const nm = name ?? "Маунт";
+    const look = this.castLook(nm);
+    const v: CastVariant = look.summon ? "c" : "a";
+    const bar = (this.castBars[v] ??= new CastBar(v));
+    if (this.castNow && this.castNow !== bar) { this.castNow.clear(); this.castNow.el.removeAttribute("id"); }
+    // id — метка для tests/ (controls-move, ui-audit-screens)
+    bar.el.id = "mount-cast";
+    if (!bar.el.isConnected) document.body.append(bar.el);
+    this.castNow = bar;
+    bar.start(nm, ms, look);
+  }
+
+  /** Иконка и цвет каста: маунт и питомец — своей картинкой (и кольцом), умение — значком умения, прочее — знаком; цвет — класса героя. */
+  private castLook(name: string): CastOpts & { summon?: boolean } {
+    const color = CLASS_COLOR[this.ctx?.net.self?.cls ?? ""];
+    const m = Object.values(MOUNTS).find((d) => d.name === name);
+    if (m) return { icon: icon(mountSprite(m.id)), color, summon: true };
+    const p = Object.values(PETS).find((d) => d.name === name);
+    if (p) return { icon: icon(p.sprite), glyph: "🐾", color, summon: true };
+    const sk = Object.values(SKILLS).find((d) => d.name === name) ?? Object.values(SKILLS).find((d) => d.name.startsWith(name));
+    if (sk?.icon) return { icon: icon(sk.icon), glyph: castGlyph(name), color };
+    return { glyph: castGlyph(name), color };
   }
 
   // ---------- торговка ----------
