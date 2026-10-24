@@ -72,35 +72,42 @@ export function cityDecor(style: CityStyle): [string, number, number][] {
 }
 
 /**
- * Форт (задача 132, шаг 4): казармы в северном ряду и два склада у южных углов вместо двух рядов домов; плац — площадь |dx|≤6, |dy|≤4 с чучелами и стойками;
- * кузня — у восточной стены (наковальня, жаровни, стойки); двор осадных машин — у южных ворот (ящики, бочки, тюки и стойки по обе стороны от прохода |dx|≤3).
- * Новых ассетов нет: всё из имеющихся объектов (шаг 9 заменит двор настоящими машинами). Проходы |dx|≤1, кольцо и маршруты стражи свободны.
- * Штандарты фракции — на стенах (через 5 клеток) и по обе стороны ворот: [dx, dy].
+ * Форт (задача 132, шаги 4 и 10): казармы в северном ряду; у южных углов — командирские шатры, у западной стены — шатры своей фракции и стол с картой;
+ * плац — площадь |dx|≤6, |dy|≤4 с манекенами (анимированные листы bf-dummy-*) и стойками; кузня — у восточной стены (горны bf-forge-*, наковальни, бадья);
+ * двор осадных машин у южных ворот: требушет (запад), катапульта и баллиста (восток). Проходы |dx|≤1, кольцо и маршруты стражи свободны.
+ * Виды с «~» зависят от стиля (FORT_KIND). Штандарты фракции — на стенах (через 5 клеток) и по обе стороны ворот: [dx, dy].
  */
-export const FORT_HOUSES: [number, number][] = [[-11, -6], [-6, -6], [3, -6], [8, -6], [-11, 8], [8, 8]];
+export const FORT_HOUSES: [number, number][] = [[-11, -6], [-6, -6], [3, -6], [8, -6]];
 const FORT_BANNERS: [number, number][] = [
   [-3, -10], [3, -10], [-3, 10], [3, 10], [-13, -10], [13, -10], [-13, 10], [13, 10],
   [-8, -10], [8, -10], [-8, 10], [8, 10], [-13, 0], [13, 0], [-13, -5], [13, -5], [-13, 5], [13, 5],
 ];
+const FORT_KIND: Record<CityStyle, Record<string, string>> = {
+  solgard: { "~tent": "bf_tent_sol", "~cmd": "bf_tent_sol_cmd" },
+  umbrath: { "~tent": "bf_tent_umb", "~cmd": "bf_tent_umb_cmd" },
+};
+const FORT_CAMP: [string, number, number][] = [
+  ["~cmd", -11, 8], ["~cmd", 8, 8], ["~tent", -11, -2], ["~tent", -11, 5], ["bf_map_table", -8, 3], ["bf_shield_stand", -8, -2],
+];
 const FORT_PLAZA: [string, number, number][] = [
-  ["dummy", -5, -1], ["dummy", -3, -1], ["weapon_rack", 5, -1], ["weapon_rack", 4, -1], ["dummy", 5, 1], ["dummy", -5, 1],
+  ["bf-dummy-0", -5, -1], ["bf-dummy-2", -3, -1], ["weapon_rack", 5, -1], ["weapon_rack", 4, -1], ["bf-dummy-1", 5, 1], ["bf-dummy-0", -5, 1],
 ];
 const FORT_FORGE: [string, number, number][] = [
-  ["anvil", 9, -3], ["~light", 10, -3], ["barrel", 11, -3], ["weapon_rack", 9, 5], ["crate", 10, 5], ["~light", 11, 4],
+  ["v_smith_anvil_a", 8, -3], ["bf-forge-small", 10, -3], ["v_smith_tub_a", 11, -4], ["bf-forge-cone", 9, 4], ["v_smith_anvil_b", 8, 4], ["weapon_rack", 11, 6],
 ];
 const FORT_SIEGE: [string, number, number][] = [
-  ["crate", -4, 6], ["crate", -3, 6], ["barrel", -5, 6], ["barrel", -4, 7], ["hay", -3, 7], ["weapon_rack", -5, 7],
-  ["crate", 4, 6], ["crate", 5, 6], ["barrel", 6, 6], ["barrel", 5, 7], ["hay", 4, 7], ["weapon_rack", 6, 7],
+  ["bf-trebuchet", -7, 8], ["barrel", -5, 6], ["crate", -4, 6],
+  ["bf-catapult-s", 3, 8], ["bf-ballista-s", 5, 8], ["hay", 4, 6], ["crate", 5, 6],
 ];
-/** Убранство форта: общее без садов и погоста, плац, кузня, двор осадных машин и штандарты своей фракции. */
+/** Убранство форта: общее без садов и погоста, лагерь, плац, кузня, двор осадных машин и штандарты своей фракции. */
 export function fortDecor(style: CityStyle): [string, number, number][] {
   const s = STYLE[style];
   const banner = style === "solgard" ? "sun_banner" : "crown_banner";
-  const light = (k: string) => (k === "~light" ? s.light : k);
-  const common = COMMON.filter(([k]) => k !== "~tree").map(([k, x, y]) => [light(k), x, y] as [string, number, number]);
+  const kind = (k: string) => (k === "~light" ? s.light : FORT_KIND[style][k] ?? k);
+  const common = COMMON.filter(([k]) => k !== "~tree").map(([k, x, y]) => [kind(k), x, y] as [string, number, number]);
   return [
+    ...[...FORT_CAMP, ...FORT_PLAZA, ...FORT_FORGE, ...FORT_SIEGE].map(([k, x, y]) => [kind(k), x, y] as [string, number, number]),
     ...common,
-    ...[...FORT_PLAZA, ...FORT_FORGE, ...FORT_SIEGE].map(([k, x, y]) => [light(k), x, y] as [string, number, number]),
     ...FORT_BANNERS.map(([x, y]) => [banner, x, y] as [string, number, number]),
   ];
 }

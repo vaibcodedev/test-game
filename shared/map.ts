@@ -128,7 +128,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 5;
+export const MAP_VERSION = 6; // 6 — декор Полей и мест (шаг 10 задачи 132): новые непроходимые объекты
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -141,6 +141,8 @@ export interface MapObject {
   y: number;
   /** Надпись (указатели у перекрёстков). */
   label?: string;
+  /** Отражён по x: зеркальная копия декора Полей (x → 1099 − x). */
+  flip?: boolean;
 }
 export interface SpawnPoint {
   x: number;
@@ -176,6 +178,7 @@ export interface WorldMap {
 
 /** Какие объекты непроходимы и сколько клеток занимают (от клетки привязки вправо и вверх). */
 export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefined> = {
+  ...D.BF_FOOTPRINT, // шатры, повозки, кузня, осадные машины, штандарты Полей (задача 132, шаг 10)
   ...D.VENDOR_FOOTPRINT, // деревья, заборы, обрывы, кладбище из паков (shared/decor.ts); наши oak, pine, dead_tree убраны
   rock: { w: 1, h: 1 },
   big_rock: { w: 2, h: 1 },
@@ -254,7 +257,7 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   campfire: { w: 1, h: 1 },
 };
 /** Объекты, лежащие на земле (под юнитами): мосты, лестницы, лазы, могилы. */
-export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", ...D.VENDOR_GROUND]);
+export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", ...D.VENDOR_GROUND, ...D.BF_GROUND]);
 
 // ---------- раскладка мира (data/world.json: layout, rivers, roads, walls; задача 132) ----------
 type Line = [number, number][];
@@ -932,7 +935,7 @@ function buildRiverWalls(cell: Uint8Array, w: number, h: number, place: PlaceFn)
   const inGate = (y: number) => WALLS.gates.some((g) => Math.abs(y - g.y) <= g.half);
   for (const east of [false, true]) {
     const X = (c: number) => (east ? w - 1 - c : c);
-    const wallKind = east ? "umb_wall_v" : "sol_wall_v", towerKind = east ? "umb_tower" : "sol_tower";
+    const wallKind = east ? "umb_wall_v" : "sol_wall_v", towerKind = east ? "bf_wall_tower_umb" : "bf_wall_tower_sol"; // башни с лучником (шаг 9)
     const towerCells = new Set<number>();
     for (const t of WALLS.towers) {
       const c = wallCol(t.y), ax = east ? w - 1 - c : c - 1;
@@ -1174,6 +1177,57 @@ export function generateMap(seed: number): WorldMap {
       if (x + 1 < w / 2 && okF(x + 1, y) && okF(xe - 1, y)) { place("big_rock", x, y); place("big_rock", xe - 1, y); }
     } else if (roll < 0.075) flat("ember_vent", 28);
     else if (roll < 0.14 && vtx[y * (w + 1) + x] === T.Grass && vtx[y * (w + 1) + xe] === T.Grass) flat("tallgrass", 30);
+  }
+  // Следы вечных битв (шаг 10): повреждённые и брошенные штандарты (главный мотив Полей, решение 5), тела, павшие лошади, воткнутое оружие,
+  // кровь и гарь, кости, рогатки, разбитые повозки, рваные и сгоревшие шатры, обломки осадных машин. Гуще — на «местах боёв» (крупный шум),
+  // реже — по всему полю. Как и выше: запад по хэшу клетки, восток — точное зеркало (привязка многоклеточных зеркальная, спрайт отражён),
+  // а фракция на зеркальной копии меняется (у штандарта Сольгарда на западе — штандарт Умбрата на востоке): обе половины равны.
+  // Непроходимое ставится только с кольцом свободных клеток вокруг — без запертых карманов; дороги, мосты, арены и места — в резерве (okF).
+  {
+    const ringFree = (x: number, y: number, fw: number, fh: number) => {
+      for (let j = -1; j <= fh; j++) for (let i = -1; i <= fw; i++) if (at(x + i, y - j + 0) & CELL_BLOCK || at(w - 1 - (x + i), y - j) & CELL_BLOCK) return false;
+      for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) if (x + i >= w / 2 || !okF(x + i, y - j) || !okF(w - 1 - x - i, y - j)) return false;
+      return true;
+    };
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w / 2; x++) {
+      const xe = w - 1 - x;
+      if (!okF(x, y) || !okF(xe, y) || hash(x, y, seed + 410) < 0.075) continue; // клетки с декором прохода выше не трогаем
+      const scar = vnoise(x, y, 11, seed + 421);
+      const dens = scar > 0.62 ? 1 : scar > 0.48 ? 0.4 : 0.12;
+      const r = hash(x, y, seed + 420) / dens;
+      if (r >= 0.15) continue;
+      const k0 = (list: readonly string[], s: number) => D.pick(list, hash(x, y, seed + s));
+      const jit = Math.floor((hash(x, y, seed + 422) - 0.5) * 12), jy = Math.floor((hash(x, y, seed + 423) - 0.5) * 8);
+      /** Мелочь без следа: запад со смещением jit, восток — зеркально, отражённая и с другой фракцией. */
+      const pair = (kind: string, dy = 30) => {
+        objects.push({ kind, x: x * TILE + 16 + jit, y: y * TILE + dy + jy });
+        objects.push({ kind: D.bfSwap(kind), x: xe * TILE + 16 - jit, y: y * TILE + dy + jy, flip: true });
+      };
+      /** Непроходимое fw×fh: привязка запада x, востока — w − x − fw (зеркальный след). */
+      const block = (kind: string) => {
+        const f = OBJECT_FOOTPRINT[kind] ?? { w: 1, h: 1 };
+        if (!ringFree(x, y, f.w, f.h)) return false;
+        place(kind, x, y);
+        place(D.bfSwap(kind), w - x - f.w, y);
+        objects[objects.length - 1].flip = true;
+        return true;
+      };
+      if (r < 0.024) block(k0(D.BF_STANDARDS, 430));
+      else if (r < 0.032) pair(k0(D.BF_STANDARDS_FALLEN, 431), 22);
+      else if (r < 0.056) pair(k0(D.BF_BODIES, 432));
+      else if (r < 0.06) pair(k0(D.BF_HORSES, 433));
+      else if (r < 0.08) pair(k0(D.BF_PLANTED, 434));
+      else if (r < 0.104) pair(k0(D.BF_STAINS, 435));
+      else if (r < 0.122) pair(k0(D.BF_BONES, 436), 28);
+      else if (r < 0.13) block("bf_spike_barrier");
+      else if (r < 0.135) { if (block(k0(D.BF_WAGONS, 437))) pair(k0(D.BF_PLANTED, 438)); }
+      else if (r < 0.139) {
+        const k = k0(D.BF_TENTS_RUINED, 439);
+        // у сгоревшего шатра ещё тлеет: дым и огонь (анимированные листы)
+        if (block(k) && k === "bf_tent_burnt") { objects.push({ kind: "bf-smoke", x: (x + 1.5) * TILE + 6, y: y * TILE + 20 }, { kind: "bf-smoke", x: (xe - 0.5) * TILE - 6, y: y * TILE + 20, flip: true }); }
+      } else if (r < 0.141 && scar > 0.62) block(k0(D.BF_WRECKS, 440));
+      else if (r < 0.146 && scar > 0.62) pair(hash(x, y, seed + 441) < 0.5 ? "bf-fire-s" : "bf-fire-m", 31);
+    }
   }
   // Данж: колонны, факелы на стенах.
   for (const [px, py] of [[142, 58], [149, 58], [142, 66], [149, 66], [142, 77], [149, 77], [142, 85], [149, 85], [159, 62], [172, 62], [159, 81], [172, 81]])

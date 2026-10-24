@@ -113,8 +113,20 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const nodeObjs = new Map<number, Phaser.GameObjects.GameObject[]>();
   const depleted = new Set<number>();
   const NODE_GLOW: Record<string, number> = { node_cactus: 0xc8ff8a, node_ice: 0x9ae0ff, node_obsidian: 0xff7a2a, node_pearl: 0xe8d8ff };
+  // анимированные объекты (огонь, горны, манекены, осадные машины, повреждённые штандарты — задача 132, шаг 10): вид объекта = id листа
+  // из vfx/manifest.json (tools/gen/battlefield.ts, tools/gen/standards-to-game.ts); цикл с кадра по хэшу места, чтобы соседние не шли в такт
+  const vfxCat = (scene.cache.json.get("vfxm") ?? {}) as Record<string, { anchor: [number, number]; frames: number }>;
+  const makeImage = (o: MapObject): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite => {
+    const e = vfxCat[o.kind];
+    if (e && !scene.textures.exists(`o_${o.kind}`) && scene.anims.exists(`vfx_${o.kind}`)) {
+      const s = scene.add.sprite(o.x, o.y, `vfx_${o.kind}`).setOrigin(o.flip ? 1 - e.anchor[0] : e.anchor[0], e.anchor[1]);
+      s.play({ key: `vfx_${o.kind}`, repeat: -1, startFrame: Math.floor(cellHash(o.x, o.y) * e.frames) % e.frames });
+      return s.setFlipX(!!o.flip);
+    }
+    return scene.add.image(o.x, o.y, `o_${o.kind}`).setOrigin(0.5, 1).setFlipX(!!o.flip);
+  };
   const makeObject = (o: MapObject, objs: Phaser.GameObjects.GameObject[]) => {
-    const img = scene.add.image(o.x, o.y, `o_${o.kind}`).setOrigin(0.5, 1);
+    const img = makeImage(o);
     objs.push(img);
     if (o.kind === "lilypad" || GROUND_OBJECTS.has(o.kind)) img.setDepth(DEPTH.ground - (GROUND_OBJECTS.has(o.kind) ? 1 : 0));
     else if (o.kind === "flowers" || o.kind === "tallgrass" || o.kind === "bones" || o.kind === "ember_vent") img.setDepth(o.y - 20);
@@ -157,6 +169,9 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       glow(objs, o.x - 48, o.y - 24, 0xff7a2a, 2.2, 0.6, true);
       glow(objs, o.x + 49, o.y - 138, 0xff8a3a, 0.9, 0.5, true);
     }
+    if (o.kind === "bf-fire-s" || o.kind === "bf-fire-m") glow(objs, o.x, o.y - 12, 0xff8a2a, 2.2, 0.55, true);
+    if (o.kind === "bf-forge-small") glow(objs, o.x, o.y - 26, 0xff7a2a, 1.8, 0.55, true);
+    if (o.kind === "bf-forge-cone") glow(objs, o.x, o.y - 40, 0xff7a2a, 2.6, 0.55, true);
     if (o.kind === "cauldron") glow(objs, o.x, o.y - 4, 0xff8a3a, 0.9, 0.45, true);
     if (o.kind === "arena_gate") glow(objs, o.x, o.y - 30, 0xff4a2a, 1.6, 0.35, true);
   };
@@ -213,7 +228,10 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const showCell = (c: Cell, on: boolean) => {
     if (c.shown === on) return;
     c.shown = on;
-    for (const o of c.objs) if (on) o.addToDisplayList(); else o.removeFromDisplayList();
+    for (const o of c.objs) {
+      if (on) o.addToDisplayList(); else o.removeFromDisplayList();
+      if (o instanceof Phaser.GameObjects.Sprite) { if (on) o.anims.resume(); else o.anims.pause(); }
+    }
     for (const t of c.tweens) if (on) t.resume(); else t.pause();
   };
   /** Отсечение всех ячеек куска по кадру [x0, x1) × [y0, y1). */

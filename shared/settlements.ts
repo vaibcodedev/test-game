@@ -2,7 +2,7 @@
  * Поселения безопасных земель (задача 132, шаг 3): по одному в каждой большой зоне земель фракции, четыре на сторону, восток — зеркало запада.
  * Место, вид, ворота и ограда — data/world.json → places (kind settlement); жители и NPC — data/settlements.json; штандарты — data/world.json → banners.
  * Сольгард — палаточный лагерь за замкнутым частоколом: малый у колодца (plan hamlet) или военный с учебным двором (camp).
- * Умбрат — деревня в руинах за разбитой оградой: тот же план, но вместо шатров и домов развалины, целым стоит только склеп.
+ * Умбрат — деревня в руинах за разбитой оградой: тот же план, шатры тёмные (шаг 10), вместо домов развалины, целым стоит только склеп.
  * План задан для запада (смещения от центральной клетки, +x — к реке); у восточных поселений он отражён: клетка dx ↔ −dx, точка t ↔ 1 − t.
  * Внутри — крест свободных улиц |dx| ≤ 1 и |dy| ≤ 1: от ворот любой стороны до площади путь прямой, поэтому пути от обеих столиц равны.
  * Файл не зависит от map.ts: генератор карты (постройки, земля, торговцы), сервер (стража, повара) и клиент (NPC) берут разметку отсюда.
@@ -91,14 +91,15 @@ const PLANS: Record<SettlePlan, [Role, number, number][]> = {
     ["fire", -6, 4], ["logs", -7, 5], ["hay", -4, 5], ["dummy", 6, 4], ["dummy", 7, 4], ["rack", 7, 5],
   ],
 };
-/** Виды по стилю. У Сольгарда на месте дома — шатёр. У Умбрата вместо шатра — развалины (ruin), первый дом — развалины дома (ruin_house), второй — склеп. */
+/** Виды по стилю (шаг 10 задачи 132): у Сольгарда шатры бело-золотые (bf_tent_sol), на месте дома — тоже шатёр, чучела учебного двора — манекены
+ *  (анимированные листы bf-dummy-*); у Умбрата шатры тёмные (bf_tent_umb), первый дом — развалины дома (ruin_house), второй — склеп. */
 const KINDS: Record<SettleLook, Record<Role, string[]>> = {
   sol: {
-    house: ["tent"], tent: ["tent"], stallM: ["stall_gold"], stallC: ["stall_blue"], light: ["lamp"], fire: ["campfire"], cauldron: ["cauldron"],
-    barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["hay"], dummy: ["dummy"], logs: ["v_basic_log_pile"], well: ["well"], tree: ["v_basic_oak_small"],
+    house: ["bf_tent_sol"], tent: ["bf_tent_sol"], stallM: ["stall_gold"], stallC: ["stall_blue"], light: ["lamp"], fire: ["campfire"], cauldron: ["cauldron"],
+    barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["hay"], dummy: ["bf-dummy-0", "bf-dummy-2"], logs: ["v_basic_log_pile"], well: ["well"], tree: ["v_basic_oak_small"],
   },
   umb: {
-    house: ["ruin_house", "umb_crypt"], tent: ["ruin"], stallM: ["stall_purple"], stallC: ["stall_purple"], light: ["soul_brazier"], fire: ["soul_brazier"], cauldron: ["cauldron"],
+    house: ["ruin_house", "umb_crypt"], tent: ["bf_tent_umb"], stallM: ["stall_purple"], stallC: ["stall_purple"], light: ["soul_brazier"], fire: ["soul_brazier"], cauldron: ["cauldron"],
     barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["bone_pile"], dummy: ["v_graveyard_sword_grave"], logs: ["v_graveyard_coffin_closed"], well: ["well"],
     tree: ["v_graveyard_dead_tree_a"],
   },
@@ -265,11 +266,13 @@ export function buildSettlement(s: Settlement, b: SettleBuild, seed: number) {
       y = e + 1;
     }
   }
+  // ворота частокола (Сольгард) и каменная арка (Умбрат) над проёмом с севера или юга — без следа, проём остаётся проходимым (шаг 10)
+  if (s.gate === "n" || s.gate === "s") b.deco(s.look === "sol" ? "bf_palisade_gate" : "v_fortkit_gate_arch", s.x, s.gate === "n" ? y0 : y1, 30);
   // объекты плана: дома чередуются, у Умбрата шатёр и первый дом — развалины
-  let houses = 0;
+  let houses = 0, dummies = 0;
   for (const [role, ax, ay] of [...COMMON, ...PLANS[s.plan]]) {
     const kinds = K[role];
-    const kind = role === "house" ? kinds[houses++ % kinds.length] : kinds[0];
+    const kind = role === "house" ? kinds[houses++ % kinds.length] : role === "dummy" ? kinds[dummies++ % kinds.length] : kinds[0];
     const ruin = RUINS[kind];
     if (ruin) for (const [k, dx, dy] of ruin) putW(k, ax + dx, ay + dy);
     else putW(kind, ax, ay);

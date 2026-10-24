@@ -87,3 +87,39 @@ export const VENDOR_GROUND = [
   "v_volcano_skull", "v_volcano_skull_ram", "v_volcano_ribs", "v_volcano_rock_a", "v_volcano_rock_b", "v_volcano_rock_c", "v_volcano_dead_stump",
   "v_basic_log", "v_basic_stump_small",
 ];
+
+// ---------- Поля вечных битв, форты и поселения (задача 132, шаг 10; ассеты шага 9 — tools/gen/bf-gen*.ts, battlefield.ts, vendor.ts) ----------
+/** Виды с дефисом — анимированные листы vfx/manifest.json (огонь, горны, манекены, осадные машины, повреждённые штандарты std-*: tools/gen/standards-to-game.ts). */
+/** Повреждённые штандарты, что стоят: порванный в стрелах и обгоревший, у каждой фракции свой. */
+export const BF_STANDARDS = ["std-torn-sol", "std-burned-sol", "std-torn-umb", "std-burned-umb"];
+/** Сломанный в грязи с павшим (лежит). */
+export const BF_STANDARDS_FALLEN = ["std-fallen-sol", "std-fallen-umb"];
+export const BF_BODIES = ["bf_fallen_sol_a", "bf_fallen_umb_a", "bf_fallen_sol_b", "bf_fallen_umb_b", "bf_skeleton_armor"];
+export const BF_HORSES = ["bf_horse_fallen_sol", "bf_horse_fallen_umb"];
+export const BF_PLANTED = ["bf_sword_planted", "bf_arrows_planted", "bf_sword_planted_dark", "bf_arrows_planted"];
+export const BF_STAINS = ["bf_blood_a", "bf_blood_b", "bf_scorch", "bf_blood_a"];
+export const BF_BONES = ["v_undead_bones_a", "v_undead_bones_b", "v_undead_bones_c", "v_undead_ribs", "v_undead_jaw", "v_undead_skull_trio", "v_undead_bird_skull"];
+export const BF_WAGONS = ["bf_wagon_broken_a", "bf_wagon_broken_b"];
+export const BF_TENTS_RUINED = ["bf_tent_torn", "bf_tent_burnt"];
+export const BF_WRECKS = ["bf_ram", "v_undead_giant_skeleton", "bf_siege_tower"];
+/** Пары фракций для зеркальной копии на Полях (восток — та же сцена с переменой сторон, чтобы обе половины были равны). */
+const BF_SWAP: Record<string, string> = {
+  "std-torn-sol": "std-torn-umb", "std-burned-sol": "std-burned-umb", "std-fallen-sol": "std-fallen-umb",
+  bf_fallen_sol_a: "bf_fallen_umb_a", bf_fallen_sol_b: "bf_fallen_umb_b", bf_horse_fallen_sol: "bf_horse_fallen_umb", bf_sword_planted: "bf_sword_planted_dark",
+};
+for (const [a, b] of Object.entries(BF_SWAP)) BF_SWAP[b] = a;
+export const bfSwap = (kind: string) => BF_SWAP[kind] ?? kind;
+/** След непроходимых объектов шага 10 (как VENDOR_FOOTPRINT). */
+export const BF_FOOTPRINT: Record<string, { w: number; h: number }> = {
+  bf_tent_sol: { w: 3, h: 2 }, bf_tent_umb: { w: 3, h: 2 }, bf_tent_torn: { w: 3, h: 2 }, bf_tent_burnt: { w: 3, h: 2 },
+  bf_tent_sol_cmd: { w: 4, h: 2 }, bf_tent_umb_cmd: { w: 4, h: 2 },
+  bf_map_table: { w: 2, h: 1 }, bf_shield_stand: { w: 2, h: 1 }, bf_spike_barrier: { w: 2, h: 1 },
+  bf_wagon_broken_a: { w: 3, h: 1 }, bf_wagon_broken_b: { w: 3, h: 1 }, bf_ram: { w: 4, h: 1 }, bf_siege_tower: { w: 3, h: 2 }, v_undead_giant_skeleton: { w: 3, h: 1 },
+  bf_wall_tower_sol: { w: 2, h: 2 }, bf_wall_tower_umb: { w: 2, h: 2 },
+  v_smith_anvil_a: { w: 2, h: 1 }, v_smith_anvil_b: { w: 1, h: 1 }, v_smith_tub_a: { w: 1, h: 1 }, v_smith_tub_b: { w: 1, h: 1 }, v_deco_spear_rack: { w: 2, h: 1 }, v_deco_target: { w: 2, h: 1 },
+  "bf-forge-small": { w: 2, h: 1 }, "bf-forge-cone": { w: 3, h: 2 }, "bf-dummy-0": { w: 1, h: 1 }, "bf-dummy-1": { w: 1, h: 1 }, "bf-dummy-2": { w: 1, h: 1 },
+  "bf-catapult-s": { w: 2, h: 1 }, "bf-catapult-n": { w: 2, h: 1 }, "bf-ballista-s": { w: 3, h: 1 }, "bf-ballista-n": { w: 3, h: 1 }, "bf-trebuchet": { w: 4, h: 2 },
+  "std-torn-sol": { w: 1, h: 1 }, "std-torn-umb": { w: 1, h: 1 }, "std-burned-sol": { w: 1, h: 1 }, "std-burned-umb": { w: 1, h: 1 },
+};
+/** Лежат на земле, под юнитами: тела, павшие лошади, кровь и гарь, кости, сломанный штандарт. */
+export const BF_GROUND = [...BF_BODIES, ...BF_HORSES, ...BF_STAINS, ...BF_BONES, ...BF_STANDARDS_FALLEN];
