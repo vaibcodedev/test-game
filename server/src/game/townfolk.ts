@@ -220,17 +220,21 @@ export class Townfolk {
     });
   }
 
-  /** Есть ли живой игрок в радиусе px от точки. */
-  private playerNear(x: number, y: number, px: number): boolean {
-    for (const p of this.w.players.values()) if (p.unit.anim !== Anim.Dead && Math.hypot(p.unit.x - x, p.unit.y - y) < px) return true;
+  /** Есть ли живой игрок в радиусе px от точки; seen — только видимые (не скрытые). */
+  private playerNear(x: number, y: number, px: number, seen = false): boolean {
+    const t = this.w.time;
+    for (const p of this.w.players.values()) if (p.unit.anim !== Anim.Dead && (!seen || p.stealthUntil <= t) && Math.hypot(p.unit.x - x, p.unit.y - y) < px) return true;
     return false;
   }
 
-  /** Голоса стражи: окрик у ворот и перекличка на стенах (только если рядом есть игрок — трафик минимален). */
+  /**
+   * Голоса стражи: окрик у ворот и перекличка на стенах (только если рядом есть игрок — трафик минимален).
+   * Окрик — только на видимых (задача 132, шаг 6): часовой скрытность не видит и скрытого не выдаёт, врагов ловят обереги (wards.ts).
+   */
   private voices(t: number) {
     for (const f of this.folk) {
       if (!f.guard || !f.post) continue;
-      const near = this.playerNear(f.x, f.y, 150);
+      const near = this.playerNear(f.x, f.y, 150, true);
       if (near && !f.nearP && t >= f.haltAt) {
         f.haltAt = t + 25000;
         this.w.emit({ t: "say", id: f.id, text: "Стой, кто идёт!", snd: "halt" });

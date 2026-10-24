@@ -6,13 +6,14 @@
  *  2. зеркальность: уровни зон, поверхность и проходимость Полей совпадают с зеркальной клеткой (x → 1099 − x), шум границ тоже;
  *  3. равные пути (все места, врата рейда, Эмберхолл, форты, боссы) и рост уровней от обеих столиц (±3 %), 16 направлений по проходимым клеткам,
  *     как на схеме tools/map-plan.ts; порядок зон по оболочкам и поясам, рост уровней мобов внутри зоны;
- *  4. на чужую безопасную землю без мостов не попасть (реки идут до воды края карты, броды закрыты, стены с воротами у мостов);
+ *  4. на чужую безопасную землю без мостов не попасть (реки идут до воды края карты, броды закрыты, стены с воротами у мостов); минуя оберег моста — тоже (шаг 6);
  *  5. связность с мостами: города, форты, Эмберхолл, мосты, боссы, все залы данжа (зал босса — пешком), мобы; у данжа один вход — по всему периметру;
  *  6. стены вдоль рек и башни: ровно три проёма — у мостов; при закрытых воротах изнутри до берега не дойти; мобы не у берега;
  *  7. ресурсы: у каждой стороны свои узлы всех четырёх видов.
  */
 import bestiary from "../data/bestiary.json";
 import world from "../data/world.json";
+import PATROLS from "../data/patrols.json";
 import { CITIES, cityById } from "../shared/cities";
 import { MAP_SEED, PLAYER_SPEED, TILE } from "../shared/constants";
 import { factionLandAt, landLabel } from "../shared/factions";
@@ -445,6 +446,29 @@ check(bridgeObjs.length === 6, `мостов 6 (по три на реку), се
     const other = isEast ? sA : sM, emberSp = cellOfPx(cityById("ember")!.spawn.x, cityById("ember")!.spawn.y);
     check(!isFinite(r.dist[other]), `${name}: без мостов дошёл до чужой столицы`);
     check(!isFinite(r.dist[emberSp]), `${name}: без мостов дошёл до Эмберхолла`);
+  }
+}
+{
+  // обереги (шаг 6, data/patrols.json wards): на безопасную землю фракции не попасть, минуя оберег её фракции — круг оберега (с запасом
+  // в 0,75 тайла) закрыт, от Эмберхолла не дойти ни до одной клетки земель; обереги — зеркальные пары на проходимых клетках
+  const WD = PATROLS.wards, rr = WD.radius / TILE - 0.75;
+  for (const o of WD.list) {
+    check(!block(o.x, o.y), `оберег ${o.at} (${o.faction}) на непроходимой клетке ${o.x},${o.y}`);
+    check(WD.list.some((q) => q.faction !== o.faction && q.x === mir(o.x) && q.y === o.y), `оберег ${o.at} ${o.x},${o.y} без зеркальной пары`);
+  }
+  for (const f of ["solgard", "umbrath"] as const) {
+    const shut = new Set<number>();
+    for (const o of WD.list) if (o.faction === f && o.at.startsWith("bridge_"))
+      for (let y = Math.floor(o.y - rr - 1); y <= o.y + rr + 1; y++) for (let x = Math.floor(o.x - rr - 1); x <= o.x + rr + 1; x++)
+        if (Math.hypot(x - o.x, y - o.y) <= rr) shut.add(y * W + x);
+    const em = cellOfPx(cityById("ember")!.spawn.x, cityById("ember")!.spawn.y);
+    const r = dijkstra(passOf(shut), em % W, (em / W) | 0);
+    let leak = 0;
+    for (let i = 0; i < r.dist.length; i++) if (isFinite(r.dist[i]) && factionLandAt(m, (i % W + 0.5) * TILE, (((i / W) | 0) + 0.5) * TILE) === f) leak++;
+    const leaks: string[] = [];
+    for (let i = 0; i < r.dist.length && leaks.length < 8; i++) if (isFinite(r.dist[i]) && factionLandAt(m, (i % W + 0.5) * TILE, (((i / W) | 0) + 0.5) * TILE) === f) leaks.push(`${i % W},${(i / W) | 0}`);
+    check(leak === 0, `${f}: на безопасную землю можно пройти мимо оберегов мостов — ${leak} клеток: ${leaks.join(" ")}`);
+    console.log(`   обереги ${f}: мимо оберегов мостов на земли — ${leak} клеток`);
   }
 }
 

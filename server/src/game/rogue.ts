@@ -13,6 +13,7 @@ import type { CastCtx } from "./umbrath";
 import { applyHaste, applyWeaken } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
+import { stealthBan } from "./wards";
 
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
@@ -163,6 +164,7 @@ export function castRogue(c: CastCtx): string | null | undefined {
     }
     case "as_smoke": {
       if (w.inTown(u.x, u.y)) return "В городе дымовая завеса недоступна";
+      { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       c.ok();
       w.emit({ t: "aoe", k: "shadow", x: u.x, y: u.y, r: v.radius });
       w.emit({ t: "hazard", id: w.uid("h"), k: "shadow", x: u.x, y: u.y, r: v.radius, ms: 2500 });
@@ -282,7 +284,7 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number) {
   if (dst.cls !== "rogue" || dst.dead || v <= 0 || src === dst || !rk(dst, "as_escape")) return;
   const s = st(dst), u = dst.unit;
   const m = pv(dst, "as_escape");
-  if (u.hp >= (u.maxHp * m.hp) / 100 || w.time < s.escapeReady || w.inTown(u.x, u.y)) return;
+  if (u.hp >= (u.maxHp * m.hp) / 100 || w.time < s.escapeReady || w.inTown(u.x, u.y) || stealthBan(w, dst)) return;
   s.escapeReady = w.time + m.icd * 1000;
   dst.stealthUntil = w.time + m.dur * 1000;
   dst.slowUntil = dst.rootUntil = 0;

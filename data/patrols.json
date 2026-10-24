@@ -40,5 +40,33 @@
     "fort": { "level": 90, "cols": 2, "rows": 2, "perSector": 4, "min": 3, "posts": [[-2, -9, "m"], [2, -9, "r"], [-2, 9, "m"], [2, 9, "r"], [-2, -13, "m"], [2, -13, "m"], [-2, 13, "m"], [2, 13, "m"], [-12, -9, "r"], [12, -9, "r"], [-12, 9, "r"], [12, 9, "r"]] }
   },
   "towers": { "level": 60, "range": 420, "attackMs": 1200, "dmg": 3.2, "pctMaxHp": 0.04, "armorCap": 0.25, "rampPerShot": 0.25, "rampMax": 10, "resetMs": 3500 },
-  "settlements": { "out": 1, "corners": true, "patrols": 2 }
+  "settlements": { "out": 1, "corners": true, "patrols": 2 },
+  "wards": {
+    "_doc": "Обереги (задача 132, шаг 6; решение 3 — невидимок ловят только обереги): у ворот стен у мостов (с внешней стороны, у башни), у ворот поселений и фортов. Скрытый враг фракции оберега ближе radius px — раскрыт: скрытность снята, revealMs мс нельзя снова скрыться («Раскрыт»), оберег зовёт бойцов своей фракции в callRadius px. Свои не раскрываются; запрета скрытности на чужой земле нет. kinds — вид объекта на карте по фракции (не загораживает проход). list — клетки (тайлы), at — место: bridge_N/M/S, settlement id, fort id; восток — зеркало запада (x → 1099 − x).",
+    "radius": 256,
+    "revealMs": 10000,
+    "callRadius": 640,
+    "scanMs": 250,
+    "kinds": { "solgard": "crystal", "umbrath": "dark_obelisk" },
+    "list": [
+      { "at": "bridge_N", "faction": "solgard", "x": 201, "y": 59 },
+      { "at": "bridge_M", "faction": "solgard", "x": 203, "y": 177 },
+      { "at": "bridge_S", "faction": "solgard", "x": 204, "y": 295 },
+      { "at": "bridge_N", "faction": "umbrath", "x": 898, "y": 59 },
+      { "at": "bridge_M", "faction": "umbrath", "x": 896, "y": 177 },
+      { "at": "bridge_S", "faction": "umbrath", "x": 895, "y": 295 },
+      { "at": "clear_dale", "faction": "solgard", "x": 99, "y": 207 },
+      { "at": "mill_ford", "faction": "solgard", "x": 115, "y": 120 },
+      { "at": "hunters_camp", "faction": "solgard", "x": 137, "y": 259 },
+      { "at": "svetlaya_post", "faction": "solgard", "x": 183, "y": 157 },
+      { "at": "sorrow_yard", "faction": "umbrath", "x": 1000, "y": 207 },
+      { "at": "black_ford", "faction": "umbrath", "x": 984, "y": 120 },
+      { "at": "white_tower", "faction": "umbrath", "x": 962, "y": 259 },
+      { "at": "black_post", "faction": "umbrath", "x": 916, "y": 157 },
+      { "at": "fort_solgard", "faction": "solgard", "x": 396, "y": 168 },
+      { "at": "fort_solgard", "faction": "solgard", "x": 396, "y": 192 },
+      { "at": "fort_umbrath", "faction": "umbrath", "x": 703, "y": 168 },
+      { "at": "fort_umbrath", "faction": "umbrath", "x": 703, "y": 192 }
+    ]
+  }
 }

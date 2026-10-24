@@ -6,7 +6,7 @@
  * фракции и только их — мобов он не трогает (стража мест добивает мобов у ограды, как стража Эмберхолла), площадные удары
  * и автоцели классов (World.enemiesInCircle) своих бойцов не задевают. Ходит и думает здесь (step из World.updateMob), бьёт через
  * World.hit — с бронёй и боем: чужак не сядет на коня и не уйдёт телепортом. Против верховых — выстрел издалека с замедлением.
- * Скрытых не видит (их ловят обереги, шаг 6). Вдали от героев спит, как мобы (World.awake — по текущему месту бойца).
+ * Скрытых не видит: их раскрывают обереги (wards.ts, шаг 6) и зовут бойцов рядом (call). Вдали от героев спит, как мобы (World.awake — по текущему месту бойца).
  * Павший возвращается через respawnMin минут. Поводок — от «дома» (data/patrols.json zones, тайлы): стража города — город и полоса у стен, поселения — ограда и рядом,
  * пост моста — круг у поста, патруль — полоса вдоль маршрута. Враг вышел за зону — боец бросает его, идёт домой и не цепляется снова, пока враг не вернётся в зону.
  * Стража города поделена на секторы: на врага в городе (и у стен) нападает стража его сектора, соседние подтягиваются, если своих мало,
@@ -29,6 +29,7 @@ import type { MobDef } from "../../../shared/mobs";
 import { Anim, BUFF_BLEED, BUFF_CURSE, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, Dir, UnitKind } from "../../../shared/protocol";
 import { Mob } from "./Mob";
 import { applySlow, tickEffects } from "./effects";
+import { Wards } from "./wards";
 import type { Player } from "./Player";
 import type { World } from "./World";
 
@@ -208,8 +209,11 @@ export class Soldiers {
   private mobScanAt = 0;
   /** Когда отряд (массив group) снова может крикнуть тревогу. */
   private sayAt = new WeakMap<object, number>();
+  /** Обереги у ворот мостов, поселений и фортов (шаг 6). */
+  readonly wards: Wards;
 
   constructor(private w: World) {
+    this.wards = new Wards(w, this);
     this.buildRoads();
     this.buildBridges();
     this.buildSettlements();
@@ -381,6 +385,7 @@ export class Soldiers {
   // ---------- такт ----------
   update(_dt: number) {
     const t = this.w.time;
+    this.wards.update();
     if (t >= this.scanAt) {
       this.scanAt = t + P.scanMs;
       if (this.w.players.size) {
@@ -499,6 +504,27 @@ export class Soldiers {
     this.sayAt.set(group, t + 20000);
     const lines = m.soldier!.site?.lines.length ? m.soldier!.site.lines : P.factions[m.faction as Faction].alarm;
     this.w.emit({ t: "say", id: m.id, text: lines[Math.floor(Math.random() * lines.length)], snd: "alarm" });
+  }
+
+  /**
+   * Зов оберега (wards.ts): раскрытого врага берут бойцы фракции f в радиусе r px от оберега — ближайший начинает бой (тревога, его отряд подхватывает),
+   * остальные свободные в радиусе — тоже на него. Стража города в зов не идёт: её ведут секторы (citySectors).
+   */
+  call(foe: Player, x: number, y: number, r: number, f: string) {
+    if (!this.foeOf(f, foe)) return;
+    const near = this.list
+      .filter((m) => m.faction === f && this.alive(m) && !m.soldier!.foe && m.soldier!.role !== "guard" && Math.hypot(m.x - x, m.y - y) <= r)
+      .sort((a, b) => dist(a, foe) - dist(b, foe));
+    if (!near.length) return;
+    this.engage(near[0], foe);
+    for (const m of near) {
+      const s = m.soldier!;
+      if (s.foe) continue;
+      s.foe = foe;
+      s.mobFoe = null;
+      m.state = "chase";
+      m.nav.reset();
+    }
   }
 
   /** Боец начал бой с героем: патруль запоминает место (поводок), отряд рядом подхватывает врага. */

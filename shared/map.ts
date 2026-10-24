@@ -12,6 +12,7 @@
  * Зоны, уровни, раскладка, реки, дороги, стены, поселения (shared/settlements.ts), лагеря, руины и указатели — в /data/world.json.
  */
 import world from "../data/world.json";
+import PATROLS from "../data/patrols.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
 import { CAPITAL_DECOR, CITIES, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
@@ -1308,6 +1309,9 @@ export function generateMap(seed: number): WorldMap {
       spawns.push({ x: (x + 0.5) * TILE, y: (y + 0.5) * TILE, mob: p.mob, level: Math.max(1, levelAt(z, x, y, 0).level) });
     }
   }
+
+  // обереги у ворот мостов, поселений и фортов (задача 132, шаг 6; data/patrols.json wards): видимый знак, проход не загораживает; в конце — id узлов не сдвигаются
+  for (const wd of PATROLS.wards.list) objects.push({ kind: (PATROLS.wards.kinds as Record<string, string>)[wd.faction], x: (wd.x + 0.5) * TILE, y: (wd.y + 1) * TILE - 2 });
 
   return {
     w,

@@ -2,11 +2,14 @@
  * Бойцы фракций (задача 132, шаг 5; server/src/game/soldiers.ts, data/patrols.json): пост моста бьёт врага и не трогает своих и мобов,
  * верховой враг не уходит от поста (выстрел, спешивание, замедление), без героев рядом бойцы спят, павший возвращается через respawnMin;
  * лучник на башне стены бьёт врага у стены, своих и скрытых не трогает, сам неуязвим; в столице на врага нападает стража его сектора,
- * соседние подтягиваются, только если своих мало, остальные держат посты. Без сервера: мир в памяти, такт 50 мс.
+ * соседние подтягиваются, только если своих мало, остальные держат посты; обереги (шаг 6) раскрывают скрытых врагов у моста (разбойник, тёмный следопыт),
+ * их бьёт пост, «Раскрыт» не даёт скрыться revealMs, своего скрытого не трогают, в городе скрытность снимается. Без сервера: мир в памяти, такт 50 мс.
  */
 import P from "../data/patrols.json";
 import NR from "../data/npc-ranks.json";
 import { npcPowerStats } from "../server/src/game/soldiers";
+import { revealedLeft, WARDS } from "../server/src/game/wards";
+import { castSkill } from "../server/src/game/skills";
 import { TILE } from "../shared/constants";
 import { CITIES } from "../shared/cities";
 import { MOBS } from "../shared/mobs";
@@ -359,6 +362,51 @@ const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.rang
   const r3 = flee({ x: pt.x, y: pt.y + 80 }, 0, 1, pg, 14);
   check("патруль вышел на врага и отстал у края полосы маршрута", r3.engaged > 0 && r3.chasing === 0, `${r3.engaged}/${r3.chasing}`);
   check("патруль вернулся на маршрут", pg.every((g) => g.dead || !g.soldier!.foe));
+}
+
+// ---------- 8. обереги (шаг 6, server/src/game/wards.ts): скрытого врага раскрывают и зовут бойцов, своего — нет; «Раскрыт» 10 с ----------
+{
+  const wardOf = (at: string, f: string) => WARDS.find((o) => o.at === at && o.faction === f)!;
+  const hidden = (cls: ClassId, x: number, y: number, skills: string[]) => {
+    const p = hero(cls, x, y);
+    for (const s of skills) p.save.skills[s] = 1;
+    p.unit.maxHp = p.unit.hp = 1e9; // чемпион поста убивает голого героя с одного удара — смотрим раскрытие и удары
+    p.stealthUntil = w.time + 60000;
+    return p;
+  };
+  const cast = (p: Player, id: string) => { p.unit.mp = p.unit.maxMp; p.gcdUntil = 0; p.cds.delete(id); return castSkill(w, p, id, p.x, p.y, null); };
+  for (const [cls, at, skill] of [["darkranger", wardOf("bridge_M", "solgard"), "dr_shadowmeld"], ["rogue", wardOf("bridge_M", "umbrath"), "stealth"]] as const) {
+    const p = hidden(cls, at.x + 40, at.y + 20, [skill]);
+    hits = [];
+    run(600);
+    check(`скрытый ${cls} у оберега моста раскрыт`, p.stealthUntil <= w.time && revealedLeft(w, p) > 0, `скрыт ещё ${Math.max(0, p.stealthUntil - w.time)} мс`);
+    const ban = cast(p, skill);
+    check(`${cls}: под «Раскрыт» скрыться нельзя`, !!ban && ban.startsWith("Раскрыт") && p.stealthUntil <= w.time, `${ban}`);
+    run(3500);
+    check(`${cls}: оберег позвал пост — раскрытого бьют`, dmgTo(p, isSoldier) > 0 && S.list.some((m) => m.soldier!.foe === p || dmgTo(p, (s) => s === m) > 0), `урон ${dmgTo(p, isSoldier)}`);
+    // уходит в поле подальше от постов: через 10 с после раскрытия снова может скрыться
+    p.unit.x = 300 * TILE; p.unit.y = 100 * TILE;
+    run(P.wards.revealMs - 4100 + 300);
+    check(`${cls}: через ${P.wards.revealMs / 1000} с «Раскрыт» снят и скрыться можно`, revealedLeft(w, p) === 0 && cast(p, skill) === null && p.stealthUntil > w.time, `${revealedLeft(w, p)} мс`);
+    drop(p);
+    run(5000);
+  }
+  {
+    const at = wardOf("bridge_M", "solgard");
+    const own = hidden("rogue", at.x + 40, at.y + 20, ["stealth"]);
+    hits = [];
+    run(1500);
+    check("свой скрытый у оберега не раскрыт", own.stealthUntil > w.time && revealedLeft(w, own) === 0 && dmgTo(own, isSoldier) === 0);
+    drop(own);
+  }
+  {
+    const cap = CITIES.find((c) => c.capital === "solgard" && !c.fort)!;
+    const p = hidden("rogue", cap.spawn.x, cap.spawn.y, ["stealth"]);
+    run(600);
+    check("в городе скрытность снимается", p.stealthUntil <= w.time && revealedLeft(w, p) === 0);
+    drop(p);
+  }
+  check("обереги: у каждого моста по два, у поселений и фортов — свои", WARDS.filter((o) => o.at.startsWith("bridge_")).length === 6 && WARDS.length === P.wards.list.length);
 }
 
 console.log(bad ? `\n${bad} FAIL` : "\nвсё ок");

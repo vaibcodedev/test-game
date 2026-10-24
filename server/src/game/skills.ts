@@ -17,6 +17,7 @@ import { applyPoison, castRogue, facing, isBehind, onCast as onRogueCast } from 
 import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effects";
 import type { Player } from "./Player";
 import { World, type Actor } from "./World";
+import { stealthBan } from "./wards";
 
 const angDiff = (a: number, b: number) => {
   let d = a - b;
@@ -362,6 +363,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
     }
     case "stealth": {
       if (w.inTown(u.x, u.y)) return "В городе скрытность недоступна";
+      { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       ok();
       p.stealthUntil = w.time + v.dur * 1000;
       p.targetId = null;

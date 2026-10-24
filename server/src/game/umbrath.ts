@@ -19,6 +19,7 @@ import { bleedMods } from "./reaver";
 import { dotMult } from "./mages";
 import { applyHaste } from "./effects";
 import { World, type Actor } from "./World";
+import { stealthBan } from "./wards";
 import { leechMult } from "../../../shared/balance";
 
 export interface CastCtx {
@@ -348,6 +349,7 @@ export function castUmbrath(c: CastCtx): string | null {
     }
     case "dr_shadowmeld": {
       if (w.inTown(u.x, u.y)) return "В городе уйти в тень нельзя";
+      { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       c.ok();
       p.stealthUntil = w.time + v.dur * 1000;
       p.critNextUntil = w.time + v.dur * 1000 + 4000;

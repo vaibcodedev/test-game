@@ -16,6 +16,7 @@ import { addDot, dots, endDot, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
 import { noteAuraSource, registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
+import { stealthBan } from "./wards";
 import { leechMult } from "../../../shared/balance";
 
 interface St {
@@ -543,7 +544,7 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
 export function afterDamaged(w: World, _src: Actor, dst: Player, _v: number, _o: HitOpts) {
   if (dst.cls !== "darkranger" || dst.dead || !rk(dst, "dr_last_shadow")) return;
   const s = st(dst);
-  if (dst.unit.hp >= dst.unit.maxHp * 0.35 || w.time < s.vanishReady || w.inTown(dst.x, dst.y)) return;
+  if (dst.unit.hp >= dst.unit.maxHp * 0.35 || w.time < s.vanishReady || w.inTown(dst.x, dst.y) || stealthBan(w, dst)) return;
   const m = pv(dst, "dr_last_shadow");
   s.vanishReady = w.time + m.icd * 1000;
   dst.stealthUntil = w.time + m.dur * 1000;
