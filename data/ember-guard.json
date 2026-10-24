@@ -42,7 +42,7 @@
     { "id": "archer", "title": "ЛУЧНИК ОЧАГА", "cls": "ranger", "tabard": "narrow", "cloakArms": true, "helm": "leather_helm_52", "armor": "leather_armor_52", "boots": "leather_boots_52", "cloak": "cloak_agi_52", "weapon": "bow_44" }
   ],
   "banners": {
-    "_doc": "Знамёна Эмберхолла (tools/out/standards/ember-banners.png, листы ember-*.png, описание — ember-banners.json там же): штандарт города — на стены и ворота, якорь — низ подтока или крюк на стене; знамя знаменосца стражи — в руке, якорь — хват древка. Вариант выбирает пользователь.",
-    "variant": null
+    "_doc": "Знамёна Эмберхолла (tools/out/standards/ember-banners.png, листы ember-*.png, описание — ember-banners.json там же): штандарт города — на стены и ворота, якорь — низ подтока или крюк на стене; знамя знаменосца стражи — в руке, якорь — хват древка. Вариант 2 «Жаровня» — выбор пользователя 2026-10-24.",
+    "variant": 2
   }
 }
