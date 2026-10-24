@@ -13,11 +13,12 @@ export function segmentWalkable(m: WorldMap, x0: number, y0: number, x1: number,
   return true;
 }
 
+/** Двоичная куча индексов клеток по f (f — общий буфер на карту, см. Scratch). */
 class Heap {
   a: number[] = [];
   f: Float64Array;
-  constructor(size: number) {
-    this.f = new Float64Array(size);
+  constructor(f: Float64Array) {
+    this.f = f;
   }
   push(i: number) {
     const a = this.a;
@@ -55,6 +56,25 @@ class Heap {
 }
 
 /**
+ * Переиспользуемые буферы A* на размер карты (аудит 1.2): вместо Map/Set/кучи на каждый вызов.
+ * Метка поколения: клетка «посещена в этом поиске», если seen[i] === gen (closed[i] === gen — закрыта); g, from, f валидны только при seen[i] === gen.
+ */
+interface Scratch { size: number; g: Float64Array; from: Int32Array; seen: Uint32Array; closed: Uint32Array; heap: Heap; gen: number }
+let scratch: Scratch | null = null;
+function getScratch(size: number): Scratch {
+  if (!scratch || scratch.size !== size) {
+    scratch = { size, g: new Float64Array(size), from: new Int32Array(size), seen: new Uint32Array(size), closed: new Uint32Array(size), heap: new Heap(new Float64Array(size)), gen: 0 };
+  }
+  if (++scratch.gen >= 0xffffffff) {
+    scratch.seen.fill(0);
+    scratch.closed.fill(0);
+    scratch.gen = 1;
+  }
+  scratch.heap.a.length = 0;
+  return scratch;
+}
+
+/**
  * Путь от (sx,sy) к (tx,ty) в пикселях. Возвращает точки (без стартовой) или null.
  * Если цель в непроходимой клетке — идём к ближайшей достигнутой клетке.
  */
@@ -63,40 +83,41 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
   const s = Math.floor(sy / TILE) * W + Math.floor(sx / TILE);
   const tcx = Math.floor(tx / TILE), tcy = Math.floor(ty / TILE);
   const goal = tcy * W + tcx;
-  const open = (i: number) => !(m.cell[i] & CELL_BLOCK);
-  const g = new Map<number, number>();
-  const from = new Map<number, number>();
-  const heap = new Heap(W * H);
+  const cell = m.cell;
+  const open = (i: number) => !(cell[i] & CELL_BLOCK);
+  const S = getScratch(W * H);
+  const { g, from, seen, closed, heap } = S, gen = S.gen;
   const h = (i: number) => {
     const dx = Math.abs((i % W) - tcx), dy = Math.abs(Math.floor(i / W) - tcy);
     return Math.max(dx, dy) + 0.414 * Math.min(dx, dy);
   };
-  g.set(s, 0);
+  g[s] = 0;
+  seen[s] = gen;
   heap.f[s] = h(s);
   heap.push(s);
   let best = s, bestH = h(s), expanded = 0;
-  const closed = new Set<number>();
   while (heap.size) {
     const cur = heap.pop();
-    if (closed.has(cur)) continue;
-    closed.add(cur);
+    if (closed[cur] === gen) continue;
+    closed[cur] = gen;
     if (cur === goal) { best = cur; break; }
     const hc = h(cur);
     if (hc < bestH) { bestH = hc; best = cur; }
     if (++expanded > maxNodes) break;
     const cx = cur % W, cy = Math.floor(cur / W);
+    const gc = g[cur];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       const nx = cx + dx, ny = cy + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
       const n = ny * W + nx;
-      if (!open(n) && n !== goal) continue;
       if (!open(n)) continue;
       if (dx && dy && (!open(cy * W + nx) || !open(ny * W + cx))) continue;
-      const ng = g.get(cur)! + (dx && dy ? 1.414 : 1);
-      if (ng < (g.get(n) ?? Infinity)) {
-        g.set(n, ng);
-        from.set(n, cur);
+      const ng = gc + (dx && dy ? 1.414 : 1);
+      if (seen[n] !== gen || ng < g[n]) {
+        seen[n] = gen;
+        g[n] = ng;
+        from[n] = cur;
         heap.f[n] = ng + h(n);
         heap.push(n);
       }
@@ -104,7 +125,7 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
   }
   if (best === s) return null;
   const cells: number[] = [];
-  for (let c = best; c !== s; c = from.get(c)!) cells.push(c);
+  for (let c = best; c !== s; c = from[c]) cells.push(c);
   cells.reverse();
   const pts = cells.map((c) => ({ x: (c % W) * TILE + TILE / 2, y: Math.floor(c / W) * TILE + TILE / 2 }));
   if (best === goal && walkable(m, tx, ty, r)) pts[pts.length - 1] = { x: tx, y: ty };

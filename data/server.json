@@ -1,0 +1,5 @@
+{
+  "_doc": "Настройки сервера (аудит 2026-10-24). backups — копии базы VACUUM INTO при старте и раз в intervalHours, хранится keep последних, папка dir рядом с базой (server/src/backup.ts). msgLimit — лимит сообщений на клиента за окно windowMs (server/src/rooms/common.ts makeOn): move — input и moveTo (обычный клиент шлёт input не чаще раза в 50 мс, ~20/с, плюс клики moveTo), general — остальные (умение с зажатой клавишей ~7/с, выбор цели, окна). Лимиты — с запасом ×3 к обычной игре. Сверх лимита сообщения отбрасываются; превышение kickAfterWindows окон подряд — отключение с записью в лог.",
+  "backups": { "keep": 7, "intervalHours": 24, "dir": "backups" },
+  "msgLimit": { "windowMs": 1000, "move": 75, "general": 30, "kickAfterWindows": 3 }
+}

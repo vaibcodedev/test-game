@@ -19,7 +19,7 @@ import { Player } from "../game/Player";
 import { World } from "../game/World";
 import { inArena, matchMs, services } from "../arena/registry";
 import { botThink } from "../arena/bots";
-import { makeOn, registerCombat } from "./common";
+import { guard, makeOn, registerCombat } from "./common";
 import { ArenaState } from "./schema";
 
 export interface Participant {
@@ -110,7 +110,7 @@ export class ArenaRoom extends Room<ArenaState> {
       this.bots.push(p);
     });
     this.setPatchRate(PATCH_MS);
-    this.setSimulationInterval((dt) => this.tick(dt), TICK_MS);
+    this.setSimulationInterval(guard("арена", (dt: number) => this.tick(dt)), TICK_MS);
   }
 
   override onAuth(): never {

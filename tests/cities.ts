@@ -12,6 +12,7 @@ import { factionLandAt } from "../shared/factions";
 import { COOKS } from "../shared/food";
 import { generateMap, isTownZone, roadDist, walkable, zoneAtPx, ZONES, Zone } from "../shared/map";
 import { WORLD_NPCS } from "../shared/npcs";
+import { RUMOR_ERRORS } from "../shared/rumors";
 import { segmentWalkable } from "../shared/path";
 import { gateCells, insideRing, SETTLEMENTS, settleDist } from "../shared/settlements";
 import { BELT_HALF, CITIZEN_SPOTS, GATE_GUARDS, GUARD_RANGE_TILES, PATROLS, TOWN } from "../shared/town";
@@ -77,6 +78,8 @@ function near(n: { x: number; y: number }) {
 }
 
 // ---------- NPC мира и банк, заточка, сумки в столицах (решение 2 задачи 132) ----------
+// сплетники: город из data/rumors.json существует, без города — своё место в Эмберхолле (запасного «центра города» нет)
+for (const e of RUMOR_ERRORS) fail(e);
 for (const n of WORLD_NPCS) if (!near(n)) fail(`NPC ${n.name} (${n.kind}): не подойти (${Math.floor(n.x / TILE)},${Math.floor(n.y / TILE)})`);
 if (new Set(WORLD_NPCS.map((n) => `${n.kind}:${n.id}`)).size !== WORLD_NPCS.length) fail("NPC мира повторяются");
 for (const [what, list] of [["банкир", BANKERS], ["кузнец", SMITHS], ["сумочник", BAGMEN]] as const) {

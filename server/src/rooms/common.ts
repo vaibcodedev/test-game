@@ -6,6 +6,8 @@ import { NO_FIGHT_MSG } from "../../../shared/cities";
 import { cancelAll, requestSkill } from "../game/skillQueue";
 import type { World } from "../game/World";
 import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
+import { KICK_CODE } from "../../../shared/accounts";
+import serverCfg from "../../../data/server.json";
 
 export const num = (v: unknown, min: number, max: number): number | null =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null;
@@ -23,11 +25,77 @@ export function cleanText(s: string): string {
 
 export type On = <T>(type: string, fn: (p: Player, msg: T) => void) => void;
 
-/** Подписка на сообщение с поиском игрока по сессии и защитой от исключений. */
+/**
+ * Обёртка тика таймера комнаты: исключение пишется в лог (не чаще раза в 10 с на таймер, со счётом пропущенных) и не роняет процесс.
+ */
+export function guard<A extends unknown[]>(name: string, fn: (...a: A) => void): (...a: A) => void {
+  let lastLog = -Infinity, hidden = 0;
+  return (...a: A) => {
+    try {
+      fn(...a);
+    } catch (e) {
+      const now = Date.now();
+      if (now - lastLog < 10_000) return void hidden++;
+      console.error(`[timer:${name}]${hidden ? ` (ещё ошибок с прошлой записи: ${hidden})` : ""}`, e);
+      lastLog = now;
+      hidden = 0;
+    }
+  };
+}
+
+/** Сообщения движения: клиент законно шлёт их чаще остальных — свой счётчик (data/server.json → msgLimit.move). */
+const MOVE_MSGS = new Set(["input", "moveTo"]);
+export const MSG_LIMIT = serverCfg.msgLimit;
+export const FLOOD_TEXT = "Соединение закрыто: слишком много сообщений от клиента";
+
+/** Счётчик сообщений клиента: окна по windowMs; over — сколько окон подряд лимит превышен. */
+interface Flood { win: number; move: number; general: number; over: number; overMarked: boolean; kicked: boolean; dropped: number }
+
+/**
+ * Лимит сообщений на клиента (аудит, раздел 3): сверх лимита за окно сообщение отбрасывается;
+ * kickAfterWindows окон подряд с превышением — отключение (KICK_CODE: клиент не переподключается) с записью в лог.
+ * Возвращает false, если сообщение надо отбросить.
+ */
+export function floodCheck(state: WeakMap<Client, Flood>, client: Client, type: string, now = Date.now(), cfg = MSG_LIMIT, name = ""): boolean {
+  let f = state.get(client);
+  if (!f) state.set(client, (f = { win: now, move: 0, general: 0, over: 0, overMarked: false, kicked: false, dropped: 0 }));
+  if (f.kicked) return false;
+  if (now - f.win >= cfg.windowMs) {
+    // окно без превышения (или пропуск окон) сбрасывает серию
+    if (!f.overMarked || now - f.win >= cfg.windowMs * 2) f.over = 0;
+    f.win = now;
+    f.move = f.general = 0;
+    f.overMarked = false;
+  }
+  const move = MOVE_MSGS.has(type);
+  const n = move ? ++f.move : ++f.general;
+  if (n <= (move ? cfg.move : cfg.general)) return true;
+  f.dropped++;
+  if (!f.overMarked) {
+    f.overMarked = true;
+    if (++f.over >= cfg.kickAfterWindows) {
+      f.kicked = true;
+      console.warn(`[flood] ${name || client.sessionId}: лимит сообщений превышен ${f.over} окна подряд (последнее: ${type}, отброшено ${f.dropped}) — отключение`);
+      try {
+        client.send("kicked", { text: FLOOD_TEXT });
+        client.leave(KICK_CODE);
+      } catch {}
+    }
+  }
+  return false;
+}
+
+/** Подписка на сообщение с поиском игрока по сессии, лимитом сообщений и защитой от исключений. */
 export function makeOn(room: Room<any>, world: () => World): On {
+  // по объекту соединения: после переподключения счёт заново, закрытые соединения уходят сборщику мусора
+  const flood = new WeakMap<Client, Flood>();
   return <T>(type: string, fn: (p: Player, msg: T) => void) => {
     room.onMessage(type, (client: Client, msg: T) => {
       const p = world().players.get(client.sessionId);
+      if (!floodCheck(flood, client, type, Date.now(), MSG_LIMIT, p?.name)) {
+        if (p && flood.get(client)?.kicked) p.noReconnect = true;
+        return;
+      }
       if (!p || msg === null || typeof msg !== "object") return;
       try {
         fn(p, msg);

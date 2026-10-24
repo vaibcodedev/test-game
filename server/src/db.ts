@@ -1,7 +1,7 @@
 /** Хранилище аккаунтов и прогресса: встроенный в Node модуль node:sqlite. */
 import type { Bars } from "../../shared/hotbar";
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { classFaction, type ClassId, type FactionId, type Stats } from "../../shared/classes";
@@ -70,8 +70,12 @@ export interface CharRow {
 
 export class GameDB {
   private db: DatabaseSync;
+  readonly file: string;
+  /** Хеш последнего записанного сохранения героя (ключ имени): автосохранение пропускает неизменившихся (аудит 1.5). */
+  private savedHash = new Map<string, string>();
 
   constructor(file = process.env.DB_PATH || path.resolve("server/data/game.sqlite")) {
+    this.file = file;
     if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
     this.db = new DatabaseSync(file);
     this.db.exec(`
@@ -196,6 +200,7 @@ export class GameDB {
     this.db
       .prepare("INSERT INTO players (name_key, name, salt, hash, cls, faction, level, data, created, updated, account_id) VALUES (?, ?, '', '', ?, ?, ?, ?, ?, ?, ?)")
       .run(GameDB.key(name), name.trim(), save.cls, save.faction ?? classFaction(save.cls), save.level, JSON.stringify(save), now, now, accountId);
+    this.savedHash.delete(GameDB.key(name));
   }
   /** Удаление героя вместе с его записями арены. */
   deleteChar(accountId: number, name: string): boolean {
@@ -207,6 +212,7 @@ export class GameDB {
         try { this.db.prepare(`DELETE FROM ${t} WHERE name_key = ?`).run(key); } catch {}
       }
       this.db.exec("COMMIT");
+      this.savedHash.delete(key);
       return n > 0;
     } catch (e) {
       this.db.exec("ROLLBACK");
@@ -287,24 +293,59 @@ export class GameDB {
     return this.db;
   }
 
-  save(name: string, save: PlayerSave) {
-    this.db
-      .prepare("UPDATE players SET data = ?, level = ?, updated = ? WHERE name_key = ?")
-      .run(JSON.stringify(save), save.level, Date.now(), GameDB.key(name));
+  private static hashOf(json: string) {
+    return createHash("sha1").update(json).digest("base64");
   }
-  /** Несколько сохранений одной транзакцией: все или ни одного (награды рейда сразу после победы). */
-  saveMany(list: { name: string; save: PlayerSave }[]) {
-    if (!list.length) return;
+
+  save(name: string, save: PlayerSave) {
+    const json = JSON.stringify(save), key = GameDB.key(name);
+    this.db.prepare("UPDATE players SET data = ?, level = ?, updated = ? WHERE name_key = ?").run(json, save.level, Date.now(), key);
+    this.savedHash.set(key, GameDB.hashOf(json));
+  }
+  /**
+   * Несколько сохранений одной транзакцией: все или ни одного (награды рейда, автосохранение мира).
+   * onlyChanged — пропустить героев, чьё сохранение не изменилось с последней записи через этот объект (save/saveMany/createChar).
+   * Возвращает, сколько героев записано.
+   */
+  saveMany(list: { name: string; save: PlayerSave }[], onlyChanged = false): number {
+    const rows: { key: string; json: string; hash: string; level: number }[] = [];
+    for (const { name, save } of list) {
+      const key = GameDB.key(name), json = JSON.stringify(save), hash = GameDB.hashOf(json);
+      if (onlyChanged && this.savedHash.get(key) === hash) continue;
+      rows.push({ key, json, hash, level: save.level });
+    }
+    if (!rows.length) return 0;
     const st = this.db.prepare("UPDATE players SET data = ?, level = ?, updated = ? WHERE name_key = ?");
     const now = Date.now();
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      for (const { name, save } of list) st.run(JSON.stringify(save), save.level, now, GameDB.key(name));
+      for (const r of rows) st.run(r.json, r.level, now, r.key);
       this.db.exec("COMMIT");
     } catch (e) {
       this.db.exec("ROLLBACK");
       throw e;
     }
+    for (const r of rows) this.savedHash.set(r.key, r.hash);
+    return rows.length;
+  }
+
+  /**
+   * Резервная копия базы (аудит, раздел 3): VACUUM INTO в dir (по умолчанию — папка backups рядом с базой),
+   * имя <база>-ГГГГММДД-ЧЧММСС.sqlite; хранятся keep последних, старые удаляются. Возвращает путь копии (null для базы в памяти).
+   */
+  backup(dir = path.join(path.dirname(this.file), "backups"), keep = 7, now = new Date()): string | null {
+    if (this.file === ":memory:") return null;
+    fs.mkdirSync(dir, { recursive: true });
+    const z = (n: number) => String(n).padStart(2, "0");
+    const stamp = `${now.getFullYear()}${z(now.getMonth() + 1)}${z(now.getDate())}-${z(now.getHours())}${z(now.getMinutes())}${z(now.getSeconds())}`;
+    const base = path.basename(this.file, ".sqlite");
+    const out = path.join(dir, `${base}-${stamp}.sqlite`);
+    fs.rmSync(out, { force: true }); // VACUUM INTO не перезаписывает существующий файл
+    this.db.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);
+    const ours = (f: string) => f.startsWith(base + "-") && /^\d{8}-\d{6}\.sqlite$/.test(f.slice(base.length + 1));
+    const old = fs.readdirSync(dir).filter(ours).sort();
+    for (const f of old.slice(0, Math.max(0, old.length - keep))) fs.rmSync(path.join(dir, f), { force: true });
+    return out;
   }
 
   top(limit = 10): { name: string; cls: string; level: number }[] {

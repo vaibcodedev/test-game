@@ -17,7 +17,7 @@ import { World } from "../game/World";
 import { inRaid, raids, services, worldNews } from "../arena/registry";
 import { RaidDirector, type RaidMember } from "../raid/director";
 import { collectBags, grantRaidRewards, type RaidLoot } from "../raid/rewards";
-import { makeOn, registerCombat } from "./common";
+import { guard, makeOn, registerCombat } from "./common";
 import { registerItems } from "./items";
 import { RaidState } from "./schema";
 
@@ -99,7 +99,7 @@ export class RaidRoom extends Room<RaidState> {
       });
     }
     this.setPatchRate(PATCH_MS);
-    this.setSimulationInterval((dt) => this.tick(dt), TICK_MS);
+    this.setSimulationInterval(guard("рейд", (dt: number) => this.tick(dt)), TICK_MS);
   }
 
   override onAuth(): never {

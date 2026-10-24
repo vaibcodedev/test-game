@@ -44,7 +44,7 @@ import { TradeManager } from "../trade/TradeManager";
 import { BankService } from "../game/bank";
 import { expandBag } from "../game/bags";
 import type { ArenaOptions, Participant } from "./ArenaRoom";
-import { makeOn, registerCombat, type On } from "./common";
+import { guard, makeOn, registerCombat, type On } from "./common";
 import { autoPlace, setSlot } from "../../../shared/hotbar";
 import { WorldState } from "./schema";
 
@@ -86,18 +86,18 @@ export class WorldRoom extends Room<WorldState> {
     this.setState(new WorldState());
     this.setPatchRate(PATCH_MS);
     this.world = new World(this.state, (type, msg) => this.broadcast(type, msg));
-    this.setSimulationInterval((dt) => this.world.update(dt), TICK_MS);
+    this.setSimulationInterval(guard("мир", (dt: number) => this.world.update(dt)), TICK_MS);
     const find = (key: string) => this.world.findByName(key);
     this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key) || inRaid.has(key));
     this.queue = new ArenaQueue(services.arena, find, (m) => void this.startMatch(m), (keys) => keys.forEach((k) => this.sendArenaInfo(k)));
     const away = (p: Player) => p.goingToArena || inArena.has(p.name.toLowerCase()) || inRaid.has(p.name.toLowerCase());
     this.trade = new TradeManager(() => this.world, () => WorldRoom.db, away, () => this.world.map.playerSpawn);
-    this.clock.setInterval(() => this.trade.tick(), 1000);
+    this.clock.setInterval(guard("обмен", () => this.trade.tick()), 1000);
     this.bank = new BankService(() => this.world, () => WorldRoom.db, () => this.world.map.playerSpawn, away, (p, i) => this.trade.locked(p, i));
     // сбор рейда (задача 114): у Вестников Цитадели, один на сервер
     this.muster = new RaidMuster(find, (list) => void this.startRaid(list), (keys) => keys.forEach((k) => this.sendMuster(k)),
       (key) => (this.queue.busy(key) ? "Вы в очереди арены" : find(key)?.goingToArena ? "Идёт переход" : null));
-    this.clock.setInterval(() => this.muster.tick(), 1000);
+    this.clock.setInterval(guard("сбор рейда", () => this.muster.tick()), 1000);
     worldNews.system = (text) => this.world.system(text);
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
@@ -110,10 +110,10 @@ export class WorldRoom extends Room<WorldState> {
     registerBiomes(on, () => this.world);
     registerCities(on, () => this.world);
     if (process.env.TEST_MODE === "1") this.registerDebug(on);
-    this.clock.setInterval(() => this.saveAll(), SAVE_INTERVAL_MS);
-    this.clock.setInterval(() => this.queue.tick(), 1000);
-    this.clock.setInterval(() => this.tickLogouts(), 200);
-    this.clock.setInterval(() => this.checkSeason(), 60_000);
+    this.clock.setInterval(guard("автосохранение", () => this.saveAll(true)), SAVE_INTERVAL_MS);
+    this.clock.setInterval(guard("очередь арены", () => this.queue.tick()), 1000);
+    this.clock.setInterval(guard("выход", () => this.tickLogouts()), 200);
+    this.clock.setInterval(guard("сезон арены", () => this.checkSeason()), 60_000);
     this.checkSeason();
   }
 
@@ -330,8 +330,10 @@ export class WorldRoom extends Room<WorldState> {
     client.leave(LOGOUT_CODE);
   }
 
-  saveAll() {
-    for (const p of this.world.players.values()) WorldRoom.db.save(p.name, p.toSave(this.world.map.playerSpawn));
+  /** Сохранение всех героев мира одной транзакцией (аудит 1.5); onlyChanged — только изменившиеся с прошлой записи (автосохранение). */
+  saveAll(onlyChanged = false) {
+    const spawn = this.world.map.playerSpawn;
+    return WorldRoom.db.saveMany([...this.world.players.values()].map((p) => ({ name: p.name, save: p.toSave(spawn) })), onlyChanged);
   }
 
   // ---------- арена ----------
