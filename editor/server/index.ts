@@ -11,7 +11,7 @@ const PORT = Number(process.env.EDITOR_PORT) || 5300;
 /** Вход в редактор (HTTP Basic, браузер спросит сам): по умолчанию admin / admin, меняется через EDITOR_USER и EDITOR_PASS. */
 const AUTH = "Basic " + Buffer.from(`${process.env.EDITOR_USER || "admin"}:${process.env.EDITOR_PASS || "admin"}`).toString("base64");
 const UI = path.join(ROOT, "editor", "ui");
-const MIME: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".woff2": "font/woff2", ".json": "application/json" };
+const MIME: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".json": "application/json" };
 
 let mobsCache: unknown;
 const store = createStore(undefined, (name) => {
