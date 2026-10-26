@@ -43,6 +43,7 @@ import { BAL } from "../../shared/balance";
 import { BOSS_SPAWNS, CELL_BLOCK, CELL_WALL, generateMap, T, walkable, Zone, zoneAtPx, type WorldMap } from "../../shared/map";
 import { findPath } from "../../shared/path";
 import { MAP_SEED, PLAYER_RADIUS, TICK_MS } from "../../shared/constants";
+import { botSave, botThink } from "../../server/src/arena/bots";
 import { allocStats, coreActive, DEF_PASSIVE, DMG_BUFF, hasDmg, HEAL_FIRST, HEAL_SUPPORT, learnSkills, pickGear, type BuildMode, type GearMode } from "../../server/src/arena/botgear";
 import { findSafe, inDanger, trackDanger, type Danger } from "../../server/src/game/danger";
 import { applyNpcPower, soldierDef } from "../../server/src/game/soldiers";
@@ -234,10 +235,12 @@ function avgHit(b: Build) {
 // ======================================================================
 // aggro 4000: манекен всегда «видит» героя и не уходит в возврат (в возврате моб восстанавливает 5% HP за тик и сбрасывает эффекты —
 // раньше это съедало урон тиков, когда у манекена не было угрозы, например при скрытности героя)
-const DUMMY_DEF: MobDef = { ...MOBS.boar, id: "sim_dummy", name: "Манекен", hp: 1, dmg: 1, armor: 1, xp: 0, speed: 0, aggro: 4000, range: 0, projectile: undefined };
+/** Образец манекена — обычный кабан (в data/mobs.json с a2fb677 — boar_boar). */
+const BOAR: MobDef = MOBS.boar ?? MOBS.boar_boar;
+const DUMMY_DEF: MobDef = { ...BOAR, id: "sim_dummy", name: "Манекен", hp: 1, dmg: 1, armor: 1, xp: 0, speed: 0, aggro: 4000, range: 0, projectile: undefined };
 /** Манекен под давлением: здоровье кабана × N, броня как у манекена, не ходит (удары — вручную в dummyRun). */
-const PDUMMY_DEF: MobDef = { ...MOBS.boar, id: "sim_dummy_p", name: "Манекен-кабан", hp: MOBS.boar.hp * PDUMMY_N, armor: 1, xp: 0, speed: 0, aggro: 4000, range: 0, projectile: undefined };
-const BRUTE_DEF: MobDef = { ...MOBS.boar, id: "sim_brute", name: "Громила", hp: 1, dmg: 1, armor: 1, xp: 0 };
+const PDUMMY_DEF: MobDef = { ...BOAR, id: "sim_dummy_p", name: "Манекен-кабан", hp: BOAR.hp * PDUMMY_N, armor: 1, xp: 0, speed: 0, aggro: 4000, range: 0, projectile: undefined };
+const BRUTE_DEF: MobDef = { ...BOAR, id: "sim_brute", name: "Громила", hp: 1, dmg: 1, armor: 1, xp: 0 };
 const INF = 1e9;
 
 function spawnMob(w: World, def: MobDef, level: number, x: number, y: number, elitePrefix = -1): Mob {
@@ -589,7 +592,7 @@ function dummyRun(cls: ClassId, level: number, seed: number, pressure: boolean, 
     if (dst === m && !m.dead) { const d = Math.min(v, m.unit.hp); total += d; if (w.time <= 10000) first10 += d; }
     origApply(dst, v, src);
   };
-  const mobCd = MOBS.boar.attackCd * 1000;
+  const mobCd = BOAR.attackCd * 1000;
   let mobAt = Math.floor(rng() * mobCd);
   const SEC = 60;
   for (let i = 0; i < (SEC * 1000) / TICK_MS && !p.dead; i++) {
@@ -1022,6 +1025,55 @@ function teamFight(teamA: ClassId[], teamB: ClassId[], level: number, rep: numbe
   if (verbose) log(`  итог: ${winner === 1 ? teamA.join("+") : winner === 2 ? teamB.join("+") : "ничья"}, бой ${fight} с; ${per.map((s) => `${s.cls}: урон ${s.dps}/с, получено ${s.dtps}/с, лечение ${s.hps}/с, щиты ${s.aps}/с, промахов ${s.misses}, неуязв. ${s.immune}, смерть ${s.diedAt ?? "-"}`).join("; ")}`);
   return { winner, fight, timeout: alive(1) && alive(2), per };
 }
+/**
+ * Дуэль героя против бота арены (как в игре после «бой с ботами»): герой — сборка симулятора и его ИИ (think),
+ * бот — server/src/arena/bots.ts botSave(класс, уровень, сохранение героя) и botThink каждые 250 мс (как ArenaRoom.tick).
+ * Разбор: урон/с обеих сторон, лечение/с и щиты бота, промахи и неуязвимость.
+ */
+function botDuel(hero: ClassId, botCls: ClassId, level: number, rep: number, gear: GearMode, verbose = false) {
+  const bH = build(hero, level, "pvp", gear);
+  Math.random = localRand(`botsave|${hero}|${botCls}|${level}|${gear}`);
+  const bSave = botSave(botCls, level, bH.save);
+  Math.random = rng;
+  seedRng("botduel", hero, botCls, level, rep, gear);
+  const w = makeWorld(ARENA, false);
+  w.pvpActive = true;
+  const ta = rep % 2 === 0 ? 1 : 2, tb = 3 - ta;
+  const sa = arenaSpawn(ta, 0), sb = arenaSpawn(tb, 0);
+  const ph = spawnPlayer(w, bH, sa.x, sa.y, ta);
+  const pb = spawnPlayer(w, { cls: botCls, level, mode: "pvp", gear, save: bSave }, sb.x, sb.y, tb);
+  const A = makeAgent(ph, { kite: true, enemies: () => [pb] });
+  A.next = Math.floor(rng() * 5) * TICK_MS;
+  let dmgH = 0, dmgB = 0, healB = 0, healH = 0, absB = 0, first = -1, inHeal = 0, thinkAt = Math.floor(rng() * 5) * TICK_MS;
+  const ev = { missB: 0, immB: 0, absHitsB: 0 };
+  const oe = w.emit.bind(w);
+  w.emit = (fx) => { const f = fx as { t: string; id?: string; miss?: boolean; imm?: boolean; abs?: boolean }; if (f.t === "dmg" && f.id === pb.id) { if (f.miss) ev.missB++; if (f.imm) ev.immB++; if (f.abs) ev.absHitsB++; } oe(fx); };
+  const oh = w.heal.bind(w);
+  w.heal = (q, v, show = true, by) => { inHeal++; try { const got = oh(q, v, show, by); if (q === pb) healB += got; else if (q === ph) healH += got; return got; } finally { inHeal--; } };
+  w.onHeal = (q, v) => { if (!inHeal && q === pb) absB += v; };
+  w.onDamage = (src, dst, v) => {
+    if (src === ph && dst === pb) dmgH += v; else if (src === pb && dst === ph) dmgB += v; else return;
+    if (first < 0) first = w.time / 1000;
+    if (verbose) log(`  [${(w.time / 1000).toFixed(2)}] ${src === ph ? hero : "бот " + botCls} → ${v} (${CTX ?? "auto"})  HP ${ph.unit.hp}/${ph.unit.maxHp} vs ${pb.unit.hp}/${pb.unit.maxHp}`);
+  };
+  const ticks = MATCH_MS / TICK_MS;
+  for (let i = 0; i < ticks && !ph.dead && !pb.dead; i++) {
+    think(w, A);
+    w.update(TICK_MS);
+    if (w.time >= thinkAt) { thinkAt = w.time + 250; botThink(w, pb, ph.dead ? [] : [ph]); }
+  }
+  const t = w.time / 1000, fight = first < 0 ? 0 : r1(t - first);
+  let winner = 0;
+  if (ph.dead !== pb.dead) winner = ph.dead ? 2 : 1;
+  else { const h1 = ratio(ph), h2 = ratio(pb); winner = Math.abs(h1 - h2) < 1e-4 ? 0 : h1 > h2 ? 1 : 2; }
+  const f = Math.max(1, fight);
+  const r = { winner, fight, timeout: !ph.dead && !pb.dead, hpHero: r3(ratio(ph)), hpBot: r3(ratio(pb)), botMaxHp: pb.unit.maxHp, heroMaxHp: ph.unit.maxHp, dpsHero: Math.round(dmgH / f), dpsBot: Math.round(dmgB / f), hpsBot: Math.round(healB / f), apsBot: Math.round(absB / f), hpsHero: Math.round(healH / f), ...ev };
+  if (verbose) {
+    const d = (p: Player) => ({ hp: p.unit.maxHp, armor: Math.round(p.derived.armor), dmg: [Math.round(p.derived.dmgMin), Math.round(p.derived.dmgMax)], dodge: r3(p.derived.dodge), taken: r3(p.derived.dmgTaken), equip: Object.fromEntries(Object.entries(p.save.equip).filter(([, it]) => it).map(([s, it]) => [s, `${it!.base} r${it!.rarity} +${it!.plus ?? 0} i${it!.ilvl}${it!.legendary ? " L" : ""}`])) });
+    log(`  герой ${JSON.stringify(d(ph))}\n  бот ${JSON.stringify(d(pb))}\n  умения бота ${JSON.stringify(pb.save.skills)}\n  итог ${JSON.stringify(r)}; умения героя ${JSON.stringify(A.casts)}`);
+  }
+  return r;
+}
 const DPS_CLS: ClassId[] = ["ranger", "mage", "rogue", "darkranger", "warlock", "reaver"];
 const TANK_CLS: ClassId[] = ["warrior", "deathknight"];
 const HEAL_CLS: ClassId[] = ["healer", "bloodweaver"];
@@ -1266,6 +1318,28 @@ if (TEAM1) {
   // разбор боя команд: --team1 rogue+mage,warrior+healer,100[,повтор][,max]
   const [a, b, l, r, g] = TEAM1.split(",");
   teamFight(a.split("+") as ClassId[], b.split("+") as ClassId[], Number(l) || 100, Number(r) || 0, g === "max" ? "max" : "level", MATCH_MS / 1000, true);
+  process.exit(0);
+}
+const BOTDUEL = arg("botduel");
+if (BOTDUEL) {
+  // разбор дуэли с ботом арены: --botduel reaver,warrior,100[,повтор][,max]
+  const [a, b, l, r, g] = BOTDUEL.split(",");
+  botDuel(a as ClassId, b as ClassId, Number(l) || 100, Number(r) || 0, g === "max" ? "max" : "level", true);
+  process.exit(0);
+}
+if (ONLY.has("arenabots")) {
+  // матрица «герой против бота арены»: --only arenabots [--classes ...] [--pvp-levels 30,100] [--reps 2] [--bot-gear max]
+  const g: GearMode = arg("bot-gear") === "max" ? "max" : "level";
+  const rows: Record<string, unknown>[] = [];
+  for (const l of PVP_LEVELS) for (const a of CLS) for (const b of CLS) {
+    const rs: ReturnType<typeof botDuel>[] = [];
+    for (let r = 0; r < PVP_REPS; r++) { const x = safe(`botduel ${a}-${b} L${l}`, () => botDuel(a, b, l, r, g)); if (x) rs.push(x); }
+    const win = (rs.filter((x) => x.winner === 1).length + rs.filter((x) => x.winner === 0).length / 2) / Math.max(1, rs.length);
+    const row = { level: l, hero: a, bot: b, win: r3(win), fight: r1(avg(rs.map((x) => x.fight))), timeouts: rs.filter((x) => x.timeout).length, dpsHero: Math.round(avg(rs.map((x) => x.dpsHero))), dpsBot: Math.round(avg(rs.map((x) => x.dpsBot))), hpsBot: Math.round(avg(rs.map((x) => x.hpsBot))), apsBot: Math.round(avg(rs.map((x) => x.apsBot))) };
+    rows.push(row);
+    log(JSON.stringify(row));
+  }
+  fs.writeFileSync(path.join(ROOT, arg("out") ?? "tools/out/arenabots.json"), JSON.stringify(rows, null, 1));
   process.exit(0);
 }
 const DUEL = arg("duel");

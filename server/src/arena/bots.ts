@@ -5,13 +5,12 @@
  */
 import { CLASSES, type ClassId, type FactionId } from "../../../shared/classes";
 import { FACTIONS } from "../../../shared/factions";
-import { BASE_ITEMS, canEquip, lootCategories, makeItem, OFFHAND_CLASSES, Rarity, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
-import { LEGEND_TIERS, LEGENDARIES } from "../../../shared/legendary";
+import type { Item } from "../../../shared/items";
 import { lineClear, walkable } from "../../../shared/map";
 import { findPath } from "../../../shared/path";
-import { SKILLS, activeSkills, classSkills, skillMana } from "../../../shared/skills";
+import { SKILLS, activeSkills, skillMana } from "../../../shared/skills";
 import { PLAYER_RADIUS } from "../../../shared/constants";
-import { skillPointsAt, statPointsAt } from "../../../shared/formulas";
+import { allocStats, learnSkills, pickGear, type GearMode } from "./botgear";
 import type { PlayerSave } from "../db";
 import { newSave, type Player } from "../game/Player";
 import { castSkill } from "../game/skills";
@@ -29,65 +28,20 @@ export interface BotSpec {
 const BOT_NAMES = ["Гром", "Вихрь", "Клык", "Тень", "Искра", "Буран", "Шип", "Ворон"];
 
 /**
- * Вещь бота «как у образца» в слоте: если класс бота может её надеть — копия (с заточкой, моделью и легендаркой);
- * иначе — вещь его класса того же слота, уровня, редкости и заточки; за чужую легендарку — добавка её бюджета
- * (data/legendaries.json _tiers.budget × вес слота) в главную характеристику и Выносливость.
+ * Сохранение бота: та же сборка, что у симулятора баланса (botgear.ts: allocStats, PvP-умения, pickGear — танк с одноручным
+ * оружием и щитом), уровень — образца; экипировка «максимальная» (эпик/легендарки +10), если образец в улучшенной экипировке
+ * (легендарка или средняя заточка от +5), иначе — редкая уровня. Раньше вещи копировались с образца: Храмовник брал двуручную
+ * легендарку Потрошителя (урон вдвое выше, чем у танка в симуляторе), очки — 60/40 и все умения по кругу.
  */
-function mirrorItem(it: Item, slot: Slot, cls: ClassId, level: number): Item | null {
-  if (!canEquip(it, cls, level)) return JSON.parse(JSON.stringify(it)) as Item;
-  const main = CLASSES[cls].mainStat;
-  const bases = slot === "weapon" ? [BASE_ITEMS[CLASSES[cls].startWeapon]] : lootCategories(cls).filter((b) => b.slot === slot);
-  const base = bases.find((b) => b && b.slot === slot);
-  if (!base) return null;
-  const rarity = Math.min(it.rarity, Rarity.Legendary) as Rarity;
-  const out = makeItem(base.id, it.ilvl, rarity, () => 0.5, [main, "vit"]);
-  out.req = Math.min(out.req, level);
-  if (it.plus) out.plus = it.plus;
-  const leg = it.legendary ? LEGENDARIES[it.legendary] : undefined;
-  if (leg) {
-    const pts = LEGEND_TIERS.budget[leg.ti] * (LEGEND_TIERS.slot[slot] ?? 1);
-    const add = (k: ItemStatKey, v: number) => { out.stats[k] = (out.stats[k] || 0) + Math.round(v); };
-    add(main, pts * 0.6);
-    add("vit", pts * 0.4);
-  }
-  return out;
-}
-
-/** Сохранение бота: уровень и предметы как у образца, очки характеристик и умений распределены. */
 export function botSave(cls: ClassId, level: number, like?: PlayerSave): PlayerSave {
   const s = newSave(cls, { x: 0, y: 0 });
   s.level = level;
-  const pts = statPointsAt(level);
-  s.alloc = { str: 0, agi: 0, int: 0, vit: 0 };
-  const main = CLASSES[cls].mainStat === "vit" ? "str" : CLASSES[cls].mainStat;
-  s.alloc[main] = Math.ceil(pts * 0.6);
-  s.alloc.vit = pts - s.alloc[main];
-  if (like) {
-    // зеркально честно: заточка, редкость и уровень вещей — как у образца (раньше оружие создавалось заново без заточки)
-    for (const slot of SLOTS as Slot[]) {
-      const it = like.equip[slot];
-      if (!it) continue;
-      if (slot === "offhand" && !OFFHAND_CLASSES.includes(cls)) continue;
-      s.equip[slot] = mirrorItem(it, slot, cls, level);
-    }
-    const w = s.equip.weapon;
-    if (w && BASE_ITEMS[w.base]?.hands === 2) s.equip.offhand = null;
-  }
-  // очки умений (skillPointsAt, стартовое уже вложено) — по кругу по доступным умениям
-  let free = skillPointsAt(level) - 1;
-  const tree = classSkills(cls);
-  for (let changed = true; free > 0 && changed; ) {
-    changed = false;
-    for (const d of tree) {
-      if (free <= 0) break;
-      const r = s.skills[d.id] || 0;
-      if (r >= d.maxRank || d.reqLevel > level) continue;
-      if (d.req && (s.skills[d.req.id] || 0) < d.req.rank) continue;
-      s.skills[d.id] = r + 1;
-      free--;
-      changed = true;
-    }
-  }
+  s.alloc = allocStats(cls, level);
+  s.skills = learnSkills(cls, level, "pvp");
+  const items = like ? (Object.values(like.equip).filter(Boolean) as Item[]) : [];
+  const plus = items.length ? items.reduce((a, it) => a + (it.plus || 0), 0) / items.length : 0;
+  const gear: GearMode = items.some((it) => it.legendary) || plus >= 5 ? "max" : "level";
+  s.equip = pickGear(cls, level, s.alloc, s.skills, gear);
   return s;
 }
 
