@@ -168,7 +168,22 @@ export class Hud {
   /** Нижняя раскладка от размеров панели умений: чат стоит рядом с ней, если слева хватает места (не уже MIN), иначе над ней;
    *  лог не выше свободного места между левой колонкой и низом. Все числа — в локальных px корня (учтён zoom интерфейса).
    *  --bar-top — верх панели умений с рамкой, от него считаются строка ошибок и подсказка действия. */
+  private crestPad = { l: 0, r: 0 };
+  /** Герб фракции — ровно посередине панели: более короткой стороне добавляем отступ у самого герба (крылья остаются вплотную к ячейкам). */
+  private centerCrest() {
+    const crest = this.bar.querySelector<HTMLElement>(".hb-row.r1 .hb-crest");
+    if (!crest) return;
+    const s = scaleOf(this.bar), b = this.bar.getBoundingClientRect(), c = crest.getBoundingClientRect();
+    const mid = (c.left + c.right) / 2;
+    const left = (mid - b.left) / s - this.crestPad.l, right = (b.right - mid) / s - this.crestPad.r;
+    const l = Math.max(0, Math.round(right - left)), r = Math.max(0, Math.round(left - right));
+    if (l === this.crestPad.l && r === this.crestPad.r) return;
+    this.crestPad = { l, r };
+    crest.style.marginLeft = `${6 + l}px`;
+    crest.style.marginRight = `${6 + r}px`;
+  }
   private layoutBottom() {
+    this.centerCrest();
     const bw = this.bar.offsetWidth, bh = this.bar.offsetHeight;
     if (!bw || !bh) return;
     const EDGE = 12, GAP = 8, FRAME = 8, MIN = 300;

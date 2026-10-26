@@ -145,7 +145,7 @@ export class Hotbar {
         this.cells[bar][i] = c;
         row.append(c.root);
         // герб фракции посреди умений, орнамент между умениями и предметами (styles/hotbar.css)
-        if (i === 4) row.append(Object.assign(document.createElement("span"), { className: `hb-crest f-${s.faction}` }));
+        if (i === 6) row.append(Object.assign(document.createElement("span"), { className: `hb-crest f-${s.faction}` }));
         if (i === 8) row.append(Object.assign(document.createElement("span"), { className: "hb-orn" }));
       }
       if (bar === 0) { this.lockBtn.className = "hb-lock"; this.lockBtn.onclick = () => { this.setLock(!this.locked); this.lockBtn.blur(); }; row.append(this.lockBtn); }

@@ -121,13 +121,13 @@
   flex: none;
   width: 38px;
   height: 38px;
-  margin: -6px 4px 0;
+  margin: -6px 6px 0;
   align-self: flex-start;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 40%, #33283a, #0e0b10 72%);
   box-shadow: 0 0 0 1px #000, 0 0 0 2px #8a6a4a, 0 0 0 4px #241b26, 0 0 0 5px #8a6a4a, 0 0 0 6px #000, 0 3px 8px rgba(0, 0, 0, .7), inset 0 0 6px rgba(0, 0, 0, .8);
 }
-.hb-crest::before { content: ""; position: absolute; left: 1px; top: 1px; width: 32px; height: 32px; image-rendering: pixelated; background: url("/assets/aura-fx/aura-tp_banner-emblem-solgard.png") 0 0 / 384px 32px; animation: hb-crest 1.8s steps(12) infinite; }
+.hb-crest::before { content: ""; position: absolute; left: 3px; top: 3px; width: 32px; height: 32px; image-rendering: pixelated; background: url("/assets/aura-fx/aura-tp_banner-emblem-solgard.png") 0 0 / 384px 32px; animation: hb-crest 1.8s steps(12) infinite; }
 .hb-crest.f-umbrath::before { background-image: url("/assets/aura-fx/aura-tp_banner-emblem-umbrath.png"); }
 .hb-crest::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; pointer-events: none; background:
   radial-gradient(circle, #ffe9a0 0 1px, #5a3a14 2px, transparent 2.5px) 50% 0 / 6px 6px no-repeat,
