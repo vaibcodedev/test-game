@@ -1076,7 +1076,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.pendingNpc = n;
       this.npcStill = 0;
-      net.send("moveTo", { x: n.sprite.x, y: n.sprite.y + 26 });
+      net.send("moveTo", { x: n.sprite.x, y: n.sprite.y + 20 });
     }
   }
   private openNpc(n: Npc) {
