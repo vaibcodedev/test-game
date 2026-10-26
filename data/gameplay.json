@@ -57,7 +57,8 @@
     "seasonDays": 28,
     "seasonResetKeep": 0.5,
     "historySize": 20,
-    "leaderboardSize": 100
+    "leaderboardSize": 100,
+    "botWaitMs": 0
   },
   "trade": {
     "slots": 8,

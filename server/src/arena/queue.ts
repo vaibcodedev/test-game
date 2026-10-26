@@ -12,9 +12,10 @@ import { enemyFaction } from "../../../shared/factions";
 import type { ArenaStore } from "./store";
 import { makeBots, type BotSpec } from "./bots";
 import { T } from "../../../shared/texts";
+import { GP } from "../../../shared/gameplay";
 
-/** Сколько ждать живого соперника перед предложением боя с ботом; в тестах — ARENA_BOT_WAIT_MS. */
-export const botWaitMs = () => Number(process.env.ARENA_BOT_WAIT_MS) || 45_000;
+/** Сколько ждать живого соперника перед предложением боя с ботом (data/gameplay.json arena.botWaitMs; 0 — сразу, живой соперник в очереди всё равно подбирается первым); в тестах — ARENA_BOT_WAIT_MS. */
+export const botWaitMs = () => (process.env.ARENA_BOT_WAIT_MS ? Number(process.env.ARENA_BOT_WAIT_MS) : GP.arena.botWaitMs);
 
 export interface QueueEntry {
   id: number;
