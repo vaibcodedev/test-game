@@ -42,7 +42,8 @@ import { WorldMapView } from "./worldmap";
 import { plusBadge, SmithUI } from "./smith";
 import { BankUI, parseBankDrag } from "./bank";
 import { BagsUI } from "./bags";
-import { MOUNTS, MOUNT_IDS, MOUNT_SOURCES, MOUNT_TIERS, TIER_COLOR, mountSprite } from "../../../shared/mounts";
+import { StableUI } from "./stable";
+import { MOUNTS, MOUNT_IDS, MOUNT_SOURCES, MOUNT_TIERS, TIER_COLOR, mountSprite, sealMount, isPart, PARTS, PART_PREFIX, SEAL } from "../../../shared/mounts";
 import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
@@ -143,6 +144,7 @@ export class Hud {
   readonly smith: SmithUI;
   readonly bank: BankUI;
   readonly bags: BagsUI;
+  readonly stable: StableUI;
   readonly quest: QuestUI;
   readonly tp: TeleportUI;
   /** Бафы и дебафы героя (сообщение "auras"): строка значков под полосами в рамке героя; еда — тоже баф. */
@@ -263,6 +265,7 @@ export class Hud {
     });
     this.bank = new BankUI(root, { itemTip: (it, s) => this.itemTip(it, s), tipFor: (e, h) => this.tipFor(e, h), hideTip: () => (this.tip.hidden = true), showInv: () => { if (this.wins.inv.hidden && this.ctx?.net.self) { this.wins.inv.hidden = false; this.renderSelf(this.ctx.net.self); } } });
     this.bags = new BagsUI(root, () => this.showInvWin());
+    this.stable = new StableUI(root, () => this.showInvWin());
     this.heroAuras.el.hidden = true;
     this.tgtAuras.el.hidden = true;
     window.setInterval(() => this.tickAuras(), 1000);
@@ -349,6 +352,7 @@ export class Hud {
       this.smith.bind(n);
       this.bank.bind(n);
       this.bags.bind(n);
+      this.stable.bind(n);
       this.quest.bind(n);
       this.tp.bind(n);
       this.chatLine({ from: "", text: `Добро пожаловать! Клик по земле — идти, по врагу — атаковать. Умения: ${skillKeys(keybinds)}. Арена — клавиша ${keybinds.label("winArena", 0)}.`, sys: true });
@@ -519,7 +523,7 @@ export class Hud {
     const byCls: Record<string, () => boolean> = {
       "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-enc": () => this.enc.close(),
       "win-cook": () => this.cook.close(), "win-quest": () => this.quest.close(), "win-qlog": () => this.quest.closeLog(), "win-tp": () => this.tp.close(),
-      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
+      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
     };
     const cls = [...top.classList].find((c) => byCls[c]);
     if (cls) byCls[cls]();
@@ -639,7 +643,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
+    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -694,6 +698,27 @@ export class Hud {
     this.tip.style.left = x / z + "px";
     this.tip.style.top = y / z + "px";
   }
+  /** Подсказка печати маунта или детали: что даёт / для чего, передаётся ли, как изучить, цена продажи. */
+  private stableItemTip(it: Item, s: SelfState, bare: boolean): string {
+    const head = (sub: string) => `<div class="tip-head"><div class="tip-ico"><span class="cell sm r${it.rarity}"><img src="${icon(iconFor(it))}" alt=""></span><div><div class="tip-title r${it.rarity}">${esc(itemName(it))}</div><div class="tip-sub">${sub}</div></div></div></div>`;
+    const trade = isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">Можно передать или продать, пока не изучена</div>`;
+    const price = bare ? "" : `<div class="tip-foot">Цена продажи: ${this.priceHtml(it)}</div>`;
+    const sm = sealMount(it.base);
+    if (sm) {
+      const m = MOUNTS[sm], owned = !!s.mounts?.includes(sm), low = s.level < m.level, foe = !!m.faction && m.faction !== s.faction;
+      return head(`${SEAL.name} · ${RARITY_NAMES[it.rarity]}`)
+        + `<div class="tip-sec"><div>Маунт: <b style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</b></div><div class="d">${MOUNT_TIERS[m.tier]} · скорость ×${String(m.speed).replace(".", ",")}${m.flying ? " · летающий" : ""} · с ${m.level} ур.</div>`
+        + `${owned ? `<div class="c-warn">Уже в коллекции — печать можно продать${isBound(it) ? "" : " или передать"}</div>` : low ? `<div class="c-bad">Нужен ${m.level} уровень</div>` : foe ? `<div class="c-bad">Только для другой фракции</div>` : ""}</div>`
+        + `<div class="tip-sec">${trade}<div>ПКМ / клик — изучить: маунт навсегда в коллекции</div></div>${price}`;
+    }
+    const pid = it.base.slice(PART_PREFIX.length), d = PARTS[pid];
+    const uses = MOUNT_IDS.map((id) => MOUNTS[id]).filter((m) => m.craft?.parts[pid] && (!m.faction || m.faction === s.faction));
+    const list = uses.map((m) => `<div><span style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</span> <span class="d">×${m.craft!.parts[pid]}${m.craft!.arenaRating ? `, рейтинг ${m.craft!.arenaRating}` : ""}</span></div>`).join("");
+    return head(`${pid === "gladiator" ? "Валюта арены" : "Деталь для конюшего"} · ${it.qty ?? 1} шт.`)
+      + `<div class="tip-sec"><div class="d">${esc(d.desc)}</div></div>`
+      + `<div class="tip-sec"><div class="d">Собирается у конюшего в:</div>${list || `<div class="d">—</div>`}</div>`
+      + `<div class="tip-sec">${isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">Можно передать или продать</div>`}</div>${price}`;
+  }
   /** Подсказка предмета. bare — без цены и подсказок по клику (осмотр чужого героя, лавка встречи, окно «Герой»). */
   itemTip(it: Item, s: SelfState, equipped = false, bare = false): string {
     const b = BASE_ITEMS[it.base];
@@ -702,6 +727,8 @@ export class Hud {
       const dish = foodOf(it.base);
       if (dish) return foodTip(dish) + `<div class="d">Клик — съесть · ${it.qty ?? 1} шт.</div>`;
       if (MATERIALS[it.base]) return lines.join("") + `<div class="d">Материал для улучшения у кузнеца Грома · ${it.qty ?? 1} шт.</div><div class="d">Цена: ${this.priceHtml(it)}</div>`;
+      // конюшня (задача 142): «Печать скакуна», Печать гладиатора и детали маунтов — сгруппированная подсказка (tip-head/tip-sec/tip-foot)
+      if (sealMount(it.base) || isPart(it.base)) return this.stableItemTip(it, s, bare);
       lines.push(`<div class="d">Расходуемое · ${it.qty ?? 1} шт.</div>`, `<div>${it.base === "hp_potion" ? "Восстанавливает 45% здоровья" : "Восстанавливает 50% маны"}</div>`, `<div class="d">Клавиша ${it.base === "hp_potion" ? "Q" : "E"} или клик</div>`);
     } else {
       const slot = b.slot, plus = it.plus || 0;
@@ -774,6 +801,7 @@ export class Hud {
     this.smith.update(s);
     this.bank.update();
     this.bags.update();
+    this.stable.update();
     if (this.lastSelfLevel && s.level > this.lastSelfLevel) this.toast({ text: `Новый уровень: ${s.level}! Очки характеристик и умений ждут (C, K)`, kind: "level" });
     this.lastSelfLevel = s.level;
     const net = this.ctx.net;
@@ -1117,6 +1145,8 @@ export class Hud {
           else this.ctx.net.send("equip", { index: i });
         };
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!));
+        // «Печать скакуна»: ПКМ тоже изучает (подсказка печати)
+        if (sealMount(it.base)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.ctx.net.send("use", { index: i }); };
       }
       grid.append(c);
     });

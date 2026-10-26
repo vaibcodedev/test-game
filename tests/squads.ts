@@ -115,7 +115,7 @@ check("Эмберхолл и полоса — не зона отряда", S.inE
   run(8000, tick);
   // свой герой у дороги, на него напал моб — выручают
   const own = hero("warrior", lead.x + 90, lead.y);
-  const mob = w.addMob(new Mob("tm1", MOBS.wolf, 85, { x: own.x + 50, y: own.y }));
+  const mob = w.addMob(new Mob("tm1", MOBS.wolffolk_chaser, 85, { x: own.x + 50, y: own.y }));
   mob.state = "chase";
   mob.targetId = own.id;
   mob.unit.target = own.id;

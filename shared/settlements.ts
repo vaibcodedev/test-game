@@ -1,13 +1,14 @@
 /**
  * Поселения безопасных земель (задача 132, шаг 3): по одному в каждой большой зоне земель фракции, четыре на сторону, восток — зеркало запада.
  * Место, вид, ворота и ограда — data/world.json → places (kind settlement); жители и NPC — data/settlements.json; штандарты — data/world.json → banners.
- * Сольгард — палаточный лагерь за замкнутым частоколом: малый у колодца (plan hamlet) или военный с учебным двором (camp).
- * Умбрат — деревня в руинах за разбитой оградой: тот же план, шатры тёмные (шаг 10), вместо домов развалины, целым стоит только склеп.
+ * Сольгард — лагерь с хижинами и шатрами за замкнутым частоколом: малый у колодца (plan hamlet) или военный с учебным двором (camp).
+ * Умбрат — деревня в руинах за тёмным частоколом с шипами (задача 141): тот же план, шатры тёмные (шаг 10), вместо домов развалины, целым стоит только склеп.
  * План задан для запада (смещения от центральной клетки, +x — к реке); у восточных поселений он отражён: клетка dx ↔ −dx, точка t ↔ 1 − t.
  * Внутри — крест свободных улиц |dx| ≤ 1 и |dy| ≤ 1: от ворот любой стороны до площади путь прямой, поэтому пути от обеих столиц равны.
  * Файл не зависит от map.ts: генератор карты (постройки, земля, торговцы), сервер (стража, повара) и клиент (NPC) берут разметку отсюда.
  *
- *   ограда: клетки dx = ±w, dy = −n и s; ворота — проём в 3 клетки посередине стороны gate, по бокам проёма и по углам — штандарты;
+ *   ограда: клетки dx = ±w, dy = −n и s, сплошной частокол; ворота — проём в 3 клетки посередине стороны gate,
+ *   штандарты — снаружи по бокам ворот (в 4 клетках от оси, за линией ограды; в 3 — обереги);
  *   рынок: прилавки 2×1 на клетках (−5…−4, 2) и (4…5, 2), торговец и повар стоят перед ними; котёл — (6, 2);
  *   место под камень перемещения — клетка (−3, 4), прибывший — под ней; возрождение — центральная клетка.
  */
@@ -91,11 +92,11 @@ const PLANS: Record<SettlePlan, [Role, number, number][]> = {
     ["fire", -6, 4], ["logs", -7, 5], ["hay", -4, 5], ["dummy", 6, 4], ["dummy", 7, 4], ["rack", 7, 5],
   ],
 };
-/** Виды по стилю (шаг 10 задачи 132): у Сольгарда шатры бело-золотые (bf_tent_sol), на месте дома — тоже шатёр, чучела учебного двора — манекены
+/** Виды по стилю (шаг 10 задачи 132): у Сольгарда шатры бело-золотые (bf_tent_sol), на месте дома — хижина hut_sol (задача 141), чучела учебного двора — манекены
  *  (анимированные листы bf-dummy-*); у Умбрата шатры тёмные (bf_tent_umb), первый дом — развалины дома (ruin_house), второй — склеп. */
 const KINDS: Record<SettleLook, Record<Role, string[]>> = {
   sol: {
-    house: ["bf_tent_sol"], tent: ["bf_tent_sol"], stallM: ["stall_gold"], stallC: ["stall_blue"], light: ["lamp"], fire: ["campfire"], cauldron: ["cauldron"],
+    house: ["hut_sol"], tent: ["bf_tent_sol"], stallM: ["stall_gold"], stallC: ["stall_blue"], light: ["lamp"], fire: ["campfire"], cauldron: ["cauldron"],
     barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["hay"], dummy: ["bf-dummy-0", "bf-dummy-2"], logs: ["v_basic_log_pile"], well: ["well"], tree: ["v_basic_oak_small"],
   },
   umb: {
@@ -223,50 +224,19 @@ export function buildSettlement(s: Settlement, b: SettleBuild, seed: number) {
     const w = b.width(kind);
     b.put(kind, s.x + (s.mirror ? -ax - (w - 1) : ax), s.y + ay);
   };
-  // штандарты (world.json → banners) — первыми: ограда обходит их клетки
-  const flag = new Set(s.banners.map((q) => q.y * 4096 + q.x));
+  // штандарты своих земель (world.json → banners) — снаружи по бокам ворот, не в линии ограды
   for (const q of s.banners) b.put(s.look === "sol" ? "std-home-sol" : "std-home-umb", q.x, q.y);
   const gate = new Set(gateCells(s).map(([x, y]) => y * 4096 + x));
-  const open = (x: number, y: number) => gate.has(y * 4096 + x) || flag.has(y * 4096 + x);
   const x0 = s.x - s.ring.w, x1 = s.x + s.ring.w, y0 = s.y - s.ring.n, y1 = s.y + s.ring.s;
-  // ограда — отрезками между проёмом и штандартами. Сольгард: частокол по 2 клетки (остаток — 1), по бокам — столбцы по клетке.
-  // Умбрат: кованая ограда на цоколе (5–6 клеток) вперемежку с обломками стены (2), по бокам — решётка по 4 клетки; остаток — колонна
-  const pillar = (x: number, y: number) => (b.hash(x, y, seed + 502) < 0.5 ? "v_graveyard_pillar_broken" : "v_graveyard_pillar");
-  const rowRun = (a: number, e: number, y: number) => {
-    for (let fence = true; a <= e; fence = !fence) {
-      const rem = e - a + 1;
-      if (s.look === "sol") { if (rem >= 2) { b.put("v_basic_palisade_5", a, y); a += 2; } else { b.put("v_basic_palisade_2", a, y); a++; } }
-      else if (fence && rem >= 5) { b.put(rem === 6 ? "v_graveyard_fence_long" : "v_graveyard_fence_base", a, y); a += rem === 6 ? 6 : 5; }
-      else if (rem >= 2) { b.put("ruin_wall", a, y); a += 2; }
-      else { b.put(pillar(a, y), a, y); a++; }
-    }
-  };
-  const colRun = (a: number, e: number, x: number) => {
-    while (a <= e) {
-      if (s.look === "umb" && e - a >= 3) { b.put("v_graveyard_fence_pole_v", x, a + 3); a += 4; } // привязка — нижняя клетка
-      else { b.put(s.look === "sol" ? "v_basic_palisade_2" : pillar(x, a), x, a); a++; }
-    }
-  };
-  for (const y of [y0, y1]) {
-    for (let x = x0; x <= x1; ) {
-      if (open(x, y)) { x++; continue; }
-      let e = x;
-      while (e + 1 <= x1 && !open(e + 1, y)) e++;
-      rowRun(x, e, y);
-      x = e + 1;
-    }
-  }
-  for (const x of [x0, x1]) {
-    for (let y = y0 + 1; y <= y1 - 1; ) {
-      if (open(x, y)) { y++; continue; }
-      let e = y;
-      while (e + 1 <= y1 - 1 && !open(x, e + 1)) e++;
-      colRun(y, e, x);
-      y = e + 1;
-    }
-  }
-  // ворота частокола (Сольгард) и каменная арка (Умбрат) над проёмом с севера или юга — без следа, проём остаётся проходимым (шаг 10)
-  if (s.gate === "n" || s.gate === "s") b.deco(s.look === "sol" ? "bf_palisade_gate" : "v_fortkit_gate_arch", s.x, s.gate === "n" ? y0 : y1, 30);
+  // частокол (задача 141): сплошной — звенья H по рядам, V по бокам, на углах — бастион из брёвен (pal_corner_*), у боковых ворот — столбы из двух брёвен;
+  // у северных и южных ворот крайние звенья перекрывают столбы-вышки ворот (кадр pal_gate_* шириной 5 клеток) — щелей нет
+  const L = s.look, post = new Set<number>();
+  if (s.gate === "e" || s.gate === "w") for (const d of [-2, 2]) post.add((s.y + d) * 4096 + (s.gate === "e" ? x1 : x0));
+  const corner = (x: number) => x === x0 || x === x1;
+  for (const y of [y0, y1]) for (let x = x0; x <= x1; x++) if (!gate.has(y * 4096 + x)) b.put(corner(x) ? `pal_corner_${L}` : post.has(y * 4096 + x) ? `pal_post_${L}` : `pal_h_${L}`, x, y);
+  for (const x of [x0, x1]) for (let y = y0 + 1; y < y1; y++) if (!gate.has(y * 4096 + x)) b.put(post.has(y * 4096 + x) ? `pal_post_${L}` : `pal_v_${L}`, x, y);
+  // ворота частокола над проёмом с севера или юга — без следа, проём остаётся проходимым (шаг 10)
+  if (s.gate === "n" || s.gate === "s") b.deco(`pal_gate_${L}`, s.x, s.gate === "n" ? y0 : y1, 30);
   // объекты плана: дома чередуются, у Умбрата шатёр и первый дом — развалины
   let houses = 0, dummies = 0;
   for (const [role, ax, ay] of [...COMMON, ...PLANS[s.plan]]) {

@@ -6,6 +6,9 @@ import { FOOD } from "../../shared/food";
 import { TOWN_ART } from "./town";
 import { CITY_ART } from "./cities";
 import { FACTION_ART } from "./factions";
+import { walls141Art } from "./walls141-game";
+import { WORLD_VOLUME } from "./volume-world";
+import { barrel, crate, stall } from "./walls141-props";
 import { BIOME_ART, resourceIcon } from "./biomes";
 import { RESOURCE_IDS } from "../../shared/biomes";
 import { lootObjects } from "./loot";
@@ -56,49 +59,6 @@ function rockShape(w: number, h: number, seed: number): PC {
 const rock: Art = () => rockShape(32, 28, 31);
 const bigRock: Art = () => rockShape(64, 44, 37);
 
-function house(roof: Ramp): PC {
-  const c = new PC(128, 128);
-  // передняя стена
-  c.shadedRect(6, 78, 116, 48, P.plaster);
-  for (const x of [6, 44, 82, 118]) c.rect(x, 78, 4, 48, P.timber[1]);
-  c.rect(6, 78, 116, 4, P.timber[2]);
-  c.rect(6, 100, 116, 3, P.timber[1]);
-  c.rect(6, 122, 116, 6, P.stone[1]);
-  // дверь
-  c.shadedRect(56, 96, 18, 30, P.wood, 2);
-  c.rect(64, 98, 1, 28, P.wood[0]);
-  c.ellipse(70, 112, 1, 1, P.gold[3]);
-  // окна
-  for (const x of [20, 94]) {
-    c.rect(x - 1, 87, 16, 14, P.timber[0]);
-    c.rect(x + 1, 89, 12, 10, P.glass[1]);
-    c.rect(x + 1, 89, 12, 3, P.glass[2]);
-    c.rect(x + 6, 89, 1, 10, P.timber[0]);
-    c.rect(x - 2, 101, 18, 3, P.wood[2]);
-    c.ellipse(x + 2, 103, 2, 1.5, hex("#e05a70"));
-    c.ellipse(x + 10, 103, 2, 1.5, hex("#f0d050"));
-  }
-  // крыша с черепицей
-  c.poly([[0, 82], [128, 82], [112, 14], [16, 14]], (x, y) => {
-    const row = Math.floor((y - 14) / 7);
-    const shift = row % 2 ? 4 : 0;
-    const edge = (y - 14) % 7 === 6;
-    const seam = (x + shift) % 8 === 0;
-    const side = x < 30 ? 1 : x > 98 ? -1 : 0;
-    let idx = 2 + (side > 0 ? 1 : side < 0 ? -1 : 0);
-    if (edge) idx = 0;
-    else if (seam) idx = 1;
-    else if ((y - 14) % 7 < 2) idx = Math.min(4, idx + 1);
-    return roof[idx];
-  });
-  c.rect(16, 12, 96, 4, roof[4]);
-  c.rect(0, 80, 128, 3, roof[0]);
-  // труба
-  c.shadedRect(88, 0, 12, 22, P.stone);
-  c.rect(86, 0, 16, 3, P.stone[3]);
-  return c.outline();
-}
-
 const fountain: Art = () => {
   const c = new PC(64, 72);
   c.shadedEllipse(32, 52, 30, 18, P.stone);
@@ -110,21 +70,6 @@ const fountain: Art = () => {
   c.ellipse(32, 25.5, 7.5, 2.5, P.water[3]);
   c.shadedEllipse(32, 14, 4, 6, P.stone);
   for (const [x, y] of [[24, 30], [40, 30], [20, 40], [44, 40], [32, 20]]) c.ellipse(x, y, 1.2, 1.5, withA(P.water[4], 220));
-  return c.outline();
-};
-const stall: Art = () => {
-  const c = new PC(64, 72);
-  for (const x of [6, 56]) c.shadedRect(x, 20, 3, 46, P.wood);
-  c.shadedRect(2, 50, 60, 18, P.wood);
-  c.rect(2, 50, 60, 3, P.wood[3]);
-  // товары
-  for (const [x, col] of [[10, P.magic.fire[2]], [20, P.magic.blue[2]], [30, P.magic.green[2]], [40, P.magic.fire[3]], [50, P.magic.purple[2]]] as [number, RGBA][]) {
-    c.shadedEllipse(x + 2, 46, 3, 3.5, [shade(col, 0.6), col, mix(col, hex("#ffffff"), 0.4), hex("#ffffff")]);
-    c.rect(x + 1, 41, 2, 2, P.wood[2]);
-  }
-  // навес в полоску
-  c.poly([[0, 22], [64, 22], [58, 6], [6, 6]], (x) => (Math.floor(x / 8) % 2 ? hex("#e8e0d0") : P.cloth.red[2]));
-  for (let x = 0; x < 64; x += 8) c.ellipse(x + 4, 23, 4, 2.5, Math.floor(x / 8) % 2 ? hex("#e8e0d0") : P.cloth.red[2]);
   return c.outline();
 };
 const lamp: Art = () => {
@@ -147,20 +92,6 @@ const well: Art = () => {
   c.poly([[0, 12], [32, 12], [24, 2], [8, 2]], P.roofRed[2]);
   c.line(7, 16, 25, 16, P.wood[1], 1);
   c.line(16, 16, 16, 30, hex("#c8b890"), 1);
-  return c.outline();
-};
-const barrel: Art = () => {
-  const c = new PC(32, 32);
-  c.shadedEllipse(16, 19, 9, 11, P.wood);
-  c.ellipse(16, 10, 8, 3, P.wood[1]);
-  for (const y of [13, 25]) c.rect(7, y, 18, 2, P.darkSteel[2]);
-  return c.outline();
-};
-const crate: Art = () => {
-  const c = new PC(32, 32);
-  c.shadedRect(5, 8, 22, 22, P.wood, 1);
-  c.line(6, 9, 26, 29, P.wood[1], 2);
-  c.rect(5, 8, 22, 2, P.wood[3]);
   return c.outline();
 };
 const pillar: Art = () => {
@@ -295,8 +226,9 @@ const raidPortal: Art = () => {
 
 export const OBJECT_ART: Record<string, Art> = {
   bush, rock, big_rock: bigRock,
-  house: () => house(P.roofRed), house_blue: () => house(P.roofBlue),
-  fountain, stall, lamp, well, barrel, crate, pillar, torch,
+  fountain, lamp, well, pillar, torch,
+  // прилавок, бочка, ящик в объёме 3/4 (задача 141): tools/gen/walls141-props.ts
+  stall: () => stall(P.cloth.red[2], "food"), barrel, crate,
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),
   mushrooms: mushrooms(false), mushrooms_glow: mushrooms(true), lilypad, bones, ember_vent: emberVent, crystal, chaos_pillar: chaosPillar, raid_portal: raidPortal,
   // добыча на земле: листы 20 кадров (tools/gen/loot.ts), клиент — client/src/game/lootView.ts
@@ -305,6 +237,10 @@ export const OBJECT_ART: Record<string, Art> = {
   ...CITY_ART,
   ...FACTION_ART,
   ...BIOME_ART,
+  // стены, башни, ворота, здания и частокол городов, фортов, поселений и Эмберхолла (задача 141): все варианты o_<kind>__<v>
+  ...walls141Art(),
+  // объёмный декор мира (шатёр лагеря, сено, руины, колонна, обелиск, указатель, колодец, фонарь): tools/gen/volume-world.ts
+  ...WORLD_VOLUME,
 };
 
 // ---------------- иконки 32×32 ----------------

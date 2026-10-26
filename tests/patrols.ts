@@ -103,7 +103,7 @@ const post = bridgePosts.find((m) => m.faction === "solgard" && !m.soldier!.rang
 }
 {
   const own = hero("warrior", post.x + 100, post.y);
-  const mob = w.addMob(new Mob("tm1", MOBS.wolf, 30, { x: post.x + 60, y: post.y + 40 }));
+  const mob = w.addMob(new Mob("tm1", MOBS.wolffolk_chaser, 30, { x: post.x + 60, y: post.y + 40 }));
   hits = [];
   run(3000);
   check("свой герой рядом с постом цел", dmgTo(own, isSoldier) === 0);

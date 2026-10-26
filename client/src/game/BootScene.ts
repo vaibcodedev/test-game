@@ -4,10 +4,12 @@ import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
 import { initAuraFx, loadAuraFx } from "./auraFx";
 import { loading } from "../ui/loading";
 import { zbCreate, zbLoad, type ZbManifest } from "./zoneBoss";
+import { mountTex, type MountMeta } from "../../../shared/mounts";
+import { loadInteriors, makeInteriorAnims } from "./interiors";
 
 export interface Manifest {
   units: Record<string, { frame: number; cols?: number }>;
-  mounts?: Record<string, { frame: number; gy: number; fly: number; cols: number; seat: [number, number][][] }>;
+  mounts?: Record<string, MountMeta>;
   objects: Record<string, { w: number; h: number }>;
   icons: string[];
   fx: string[];
@@ -30,7 +32,11 @@ export class BootScene extends Phaser.Scene {
       this.load.image("water", "/assets/tiles/water.png");
       this.load.image("lava_glow", "/assets/tiles/lava_glow.png");
       for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frame });
-      for (const [id, u] of Object.entries(m.mounts ?? {})) this.load.spritesheet(`m_${id}`, `/assets/mounts/${id}.png`, { frameWidth: u.frame, frameHeight: u.frame });
+      // маунты (задача 142): один лист на модель (sheet), у гербовых — второй лист для Умбрата (<модель>_umbrath)
+      for (const [id, u] of Object.entries(m.mounts ?? {})) for (const fac of u.fac ? ["", "umbrath"] : [""]) {
+        const key = mountTex(id, u, fac), file = key.slice(2);
+        if (!this.textures.exists(key)) this.load.spritesheet(key, `/assets/mounts/${file}.png`, { frameWidth: u.frame, frameHeight: u.frame });
+      }
       for (const id of Object.keys(m.objects)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`);
       for (const id of m.fx) this.load.image(`fx_${id}`, `/assets/fx/${id}.png`);
       // анимации умений (задача 127): каталог листов, затем сами листы
@@ -42,15 +48,30 @@ export class BootScene extends Phaser.Scene {
       // боссы стартовых земель (задача 136): листы 64×64 и эффекты мира; нет каталога — боссы рисуются запасным листом
       this.load.json("zbm", "/assets/zone-bosses/manifest.json");
       this.load.once("filecomplete-json-zbm", () => zbLoad(this, this.cache.json.get("zbm") as ZbManifest | undefined));
+      // интерьеры зданий (задача 144): залы, убранство, пламя
+      loadInteriors(this);
     });
   }
 
   create() {
     const m = this.cache.json.get("manifest") as Manifest;
     makeVfxAnims(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>);
+    makeInteriorAnims(this);
     initAuraFx(this);
     zbCreate(this);
     for (const id of Object.keys(m.units)) {
+      // мобы задачи 140 (tools/gen/mobs/game.ts): ≥ 45 столбцов — покой 12, ходьба 12, атака 9–10, гибель 12; 3 вида
+      const fw = m.units[id].frame, wide = this.textures.exists(`u_${id}`) ? Math.round(this.textures.get(`u_${id}`).getSourceImage().width / fw) : 0;
+      if (!m.units[id].cols && wide >= 45 && fw <= 48) {
+        for (let row = 0; row < 3; row++) {
+          const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * wide + a, end: row * wide + b });
+          this.anims.create({ key: `${id}-rest-${row}`, frames: f(0, 11), frameRate: 10, repeat: -1 });
+          this.anims.create({ key: `${id}-walk-${row}`, frames: f(12, 23), frameRate: 12 * MOVE_MUL, repeat: -1 });
+          this.anims.create({ key: `${id}-attack-${row}`, frames: f(24, wide - 13), frameRate: 14, repeat: 0 });
+          this.anims.create({ key: `${id}-death-${row}`, frames: f(wide - 12, wide - 1), frameRate: 12, repeat: 0 });
+        }
+        continue;
+      }
       const cols = m.units[id].cols ?? 12;
       for (let row = 0; row < 3; row++) {
         const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * cols + a, end: row * cols + b });
@@ -64,12 +85,16 @@ export class BootScene extends Phaser.Scene {
         }
       }
     }
-    // маунты: строки 0-2 основной слой, 3-5 передний слой; столбцы 0-7 бег, 8-11 покой
-    for (const id of Object.keys(m.mounts ?? {})) {
-      for (let row = 0; row < 6; row++) {
-        const f = (a: number, b: number) => this.anims.generateFrameNumbers(`m_${id}`, { start: row * 12 + a, end: row * 12 + b });
-        this.anims.create({ key: `m_${id}-run-${row}`, frames: f(0, 7), frameRate: 14 * MOVE_MUL, repeat: -1 });
-        this.anims.create({ key: `m_${id}-idle-${row}`, frames: f(8, 11), frameRate: 4, repeat: -1 });
+    // маунты: строки 0..views−1 — зверь, views..2·views−1 — слой поверх всадника; столбцы 0..run−1 бег, дальше покой.
+    // Новый лист (задача 142): 4 вида (вниз, вверх, вправо, влево — без отражения), бег 12 кадров, покой 24; старый: 3 вида, 8 + 4.
+    for (const [id, u] of Object.entries(m.mounts ?? {})) for (const fac of u.fac ? ["", "umbrath"] : [""]) {
+      const key = mountTex(id, u, fac);
+      if (this.anims.exists(`${key}-run-0`)) continue;
+      const cols = u.cols, run = u.run ?? 8, idle = u.idle ?? 4, views = u.views ?? 3;
+      for (let row = 0; row < views * 2; row++) {
+        const f = (a: number, b: number) => this.anims.generateFrameNumbers(key, { start: row * cols + a, end: row * cols + b });
+        this.anims.create({ key: `${key}-run-${row}`, frames: f(0, run - 1), frameRate: 14 * MOVE_MUL, repeat: -1 });
+        this.anims.create({ key: `${key}-idle-${row}`, frames: f(run, run + idle - 1), frameRate: u.idle ? 10 : 4, repeat: -1 });
       }
     }
     // все шрифты, которыми рисуют Phaser и canvas карты мира: иначе в текстуры подписей запечётся запасной шрифт.

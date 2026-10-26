@@ -5,8 +5,8 @@
  *  висящие знамёна (редизайн): вымпел std-pennant-* — на угловых башнях столиц и фортов и (-hi) на башнях постов у мостов, драпировка
  *  std-drape-* — над аркой ворот (shared/cities.ts, shared/map.ts). Якорь листа — точка крепления (крюк вымпела, верх прутка драпировки);
  *  drop опускает якорь на основание стены (px): объект стоит у основания на 1 px ниже её (рисуется поверх кладки по глубине y),
- *  а знамя висит на нужной высоте. Высота крепления от основания объекта: угловая башня sol/umb_tower — 50 px (низ бахромы вымпела
- *  чуть выше земли), башня поста у моста bf_wall_tower_* — 72 px, ворота sol/umb_gate — 86 px. Прежние листы std-wall и std-gate удаляются (REMOVED).
+ *  а знамя висит на нужной высоте. Высота крепления от основания объекта (задача 141: стены 86 px, башни 200 px): угловая башня sol/umb_tower — 73 px,
+ *  башня поста у моста bf_wall_tower_* — 72 px, ворота sol/umb_gate — 99 px (под карнизом надвратной арки). Прежние листы std-wall и std-gate удаляются (REMOVED).
  *  Запуск: npx tsx tools/gen/standards-to-game.ts */
 import fs from "node:fs";
 import path from "node:path";
@@ -20,9 +20,9 @@ const MAP: Record<string, { src: string; drop?: number }> = {
   "std-burned-sol": { src: "burned-solgard" }, "std-burned-umb": { src: "burned-umbrath" },
   "std-fallen-sol": { src: "fallen-solgard" }, "std-fallen-umb": { src: "fallen-umbrath" },
   "std-home-sol": { src: "home-solgard" }, "std-home-umb": { src: "home-umbrath" },
-  "std-pennant-sol": { src: "pennant-solgard", drop: 51 }, "std-pennant-umb": { src: "pennant-umbrath", drop: 51 },
+  "std-pennant-sol": { src: "pennant-solgard", drop: 74 }, "std-pennant-umb": { src: "pennant-umbrath", drop: 74 },
   "std-pennant-sol-hi": { src: "pennant-solgard", drop: 73 }, "std-pennant-umb-hi": { src: "pennant-umbrath", drop: 73 },
-  "std-drape-sol": { src: "drape-solgard-gate", drop: 87 }, "std-drape-umb": { src: "drape-umbrath-gate", drop: 87 },
+  "std-drape-sol": { src: "drape-solgard-gate", drop: 100 }, "std-drape-umb": { src: "drape-umbrath-gate", drop: 100 },
 };
 /** Прежние настенные знамёна (брус с крюками) — листы и записи манифеста убираются. */
 const REMOVED = ["std-wall-sol", "std-wall-umb", "std-wall-sol-hi", "std-wall-umb-hi", "std-gate-sol", "std-gate-umb"];

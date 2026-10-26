@@ -15,10 +15,12 @@ import world from "../data/world.json";
 import PATROLS from "../data/patrols.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
-import { CAPITAL_DECOR, CITIES, CITY_CORNER_TOWERS, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
+import { CAPITAL_DECOR, CITIES, cityHouseKind, CITY_CORNER_TOWERS, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
 import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
+import { assignArtVariants } from "./cityart";
+import { interiorAt, interiorCell } from "./interiors";
 
 export { TOWN } from "./town";
 export { CORE } from "./constants";
@@ -129,7 +131,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 9; // 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 10; // 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -144,6 +146,10 @@ export interface MapObject {
   label?: string;
   /** Отражён по x: зеркальная копия декора Полей (x → 1099 − x). */
   flip?: boolean;
+  /** Вариант вида (задача 141, shared/cityart.ts): кадр o_<kind>__<v> — стены, башни, ворота, здания городов и поселений. */
+  v?: string;
+  /** Сдвиг глубины отрисовки (px, задача 141): башня рисуется поверх торцов стен своей клетки и стены под ней. */
+  dz?: number;
 }
 export interface SpawnPoint {
   x: number;
@@ -209,6 +215,12 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   teleport_stone: { w: 1, h: 1 },
   pal_h: { w: 1, h: 1 },
   pal_v: { w: 1, h: 1 },
+  // частокол поселений (задача 141): звенья, столбы на углах и у ворот; хижина Сольгарда на месте шатра-дома
+  pal_h_sol: { w: 1, h: 1 }, pal_v_sol: { w: 1, h: 1 }, pal_post_sol: { w: 1, h: 1 }, pal_corner_sol: { w: 1, h: 1 },
+  pal_h_umb: { w: 1, h: 1 }, pal_v_umb: { w: 1, h: 1 }, pal_post_umb: { w: 1, h: 1 }, pal_corner_umb: { w: 1, h: 1 },
+  hut_sol: { w: 3, h: 2 },
+  // здания с входом (задача 141, shared/cities.ts CITY_ENTRANCES): храм Солнца Аурелиона и зиккурат Мортхейма
+  sol_church: { w: 4, h: 3 }, umb_ziggurat: { w: 4, h: 3 },
   tent: { w: 3, h: 2 },
   brazier: { w: 1, h: 1 },
   cactus: { w: 1, h: 1 },
@@ -760,7 +772,7 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
   // здания (двери проходимы — в них можно «зайти»)
   for (const b of BUILDINGS) {
     place(b.kind, X(b.x), Y(b.y));
-    for (const d of b.door ?? []) cell[Y(b.y) * w + X(b.x + d)] &= ~CELL_BLOCK;
+    // двери (b.door) пока закрыты и непроходимы (задача 141): вход в интерьер — отдельный шаг
   }
   place("fountain", X(-1), Y(0));
   for (const s of STALLS) place(s.kind, X(s.x), Y(s.y));
@@ -814,7 +826,7 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
     for (let j = 0; j < f.h; j++) for (let i = 0; i < f.w; i++) if (cell[(y - j) * w + x + i] & CELL_BLOCK) return false;
     return true;
   };
-  (c.fort ? FORT_HOUSES : CITY_HOUSES).forEach(([dx, dy], i) => place(St.houses[i % 2], X(dx), Y(dy)));
+  (c.fort ? FORT_HOUSES : CITY_HOUSES).forEach(([dx, dy], i) => place(cityHouseKind(c, i), X(dx), Y(dy)));
   CITY_STALLS.forEach(([dx, dy], i) => place(St.stalls[i], X(dx), Y(dy)));
   for (const [k, dx, dy] of c.fort ? fortDecor(style) : cityDecor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   // у столиц — наковальня кузнеца (банкир, кузнец и сумочник стоят у домов северного ряда, cities.ts)
@@ -1317,6 +1329,8 @@ export function generateMap(seed: number): WorldMap {
 
   // обереги у ворот мостов, поселений и фортов (задача 132, шаг 6; data/patrols.json wards): видимый знак, проход не загораживает; в конце — id узлов не сдвигаются
   for (const wd of PATROLS.wards.list) objects.push({ kind: (PATROLS.wards.kinds as Record<string, string>)[wd.faction], x: (wd.x + 0.5) * TILE, y: (wd.y + 1) * TILE - 2 });
+  // варианты вида стен, башен, ворот и зданий (задача 141): кадр o_<kind>__<v>
+  assignArtVariants(objects);
 
   return {
     w,
@@ -1343,12 +1357,17 @@ const MERCHANT_SPOTS = [MARKET_MERCHANT, ...CITIES.filter((c) => c.merchant).map
 // ---------- запросы к карте ----------
 export function cellAt(m: WorldMap, px: number, py: number): number {
   const x = Math.floor(px / TILE), y = Math.floor(py / TILE);
-  if (x < 0 || y < 0 || x >= m.w || y >= m.h) return CELL_BLOCK;
+  // за восточным краем карты мира — залы интерьеров (задача 144, shared/interiors.ts)
+  if (x < 0 || y < 0 || x >= m.w || y >= m.h) return m.w === MAP_W && x >= m.w ? interiorCell(px, py) : CELL_BLOCK;
   return m.cell[y * m.w + x];
 }
 export function zoneAtPx(m: WorldMap, px: number, py: number): Zone {
   const x = Math.floor(px / TILE), y = Math.floor(py / TILE);
-  if (x < 0 || y < 0 || x >= m.w || y >= m.h) return Zone.Meadow;
+  if (x < 0 || y < 0 || x >= m.w || y >= m.h) {
+    // зал интерьера — зона улицы перед его дверью (город: мирно, без PvP)
+    const r = m.w === MAP_W ? interiorAt(px, py) : null;
+    return r ? zoneAtPx(m, r.outSpot.x, r.outSpot.y) : Zone.Meadow;
+  }
   return m.zone[y * m.w + x] as Zone;
 }
 /** Множитель скорости от поверхности: в снегах вне дорог медленнее. */

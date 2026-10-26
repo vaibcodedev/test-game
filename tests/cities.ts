@@ -174,11 +174,13 @@ console.log(`NPC мира: ${WORLD_NPCS.length}; банкиров ${BANKERS.leng
     // мобов нет ни в поселении, ни в досягаемости его стражи (иначе стража била бы их прямо у точек появления)
     const mobs = m.spawns.filter((sp) => settleDist(sp.x / TILE, sp.y / TILE) <= GUARD_RANGE_TILES + 2 && Math.hypot(sp.x / TILE - s.x, sp.y / TILE - s.y) < 30);
     if (mobs.length) fail(`${tag}: мобы у ограды (в досягаемости стражи): ${mobs.map((sp) => sp.mob).join(", ")}`);
-    // штандарты своей фракции — на своих клетках (по бокам проёма ворот и по углам ограды)
+    // штандарты своей фракции — на своих клетках (снаружи по бокам ворот)
     const kind = s.faction === "solgard" ? "std-home-sol" : "std-home-umb";
     for (const b of s.banners) if (!m.objects.some((o) => o.kind === kind && Math.floor(o.x / TILE) === b.x && Math.floor(o.y / TILE) === b.y)) fail(`${tag}: нет штандарта ${b.role} на ${b.x},${b.y}`);
     const gateFlags = s.banners.filter((b) => b.role === "settle-gate");
-    if (gateFlags.length !== 2 || !gateFlags.every((b) => gateCells(s).some(([x, y]) => Math.abs(x - b.x) + Math.abs(y - b.y) === 1))) fail(`${tag}: штандарты settle-gate не по бокам проёма ворот`);
+    // задача 141: штандарты снаружи по бокам ворот — на клетку за линией ограды, в 4 клетках от оси проёма (в 3 — обереги; ограда сплошная)
+    const outside = (b: { x: number; y: number }) => Math.abs(b.x - s.x) > s.ring.w || b.y - s.y < -s.ring.n || b.y - s.y > s.ring.s;
+    if (gateFlags.length !== 2 || !gateFlags.every((b) => outside(b) && gateCells(s).some(([x, y]) => Math.abs(x - b.x) + Math.abs(y - b.y) === 4 && Math.max(Math.abs(x - b.x), Math.abs(y - b.y)) === 3))) fail(`${tag}: штандарты settle-gate не снаружи по бокам ворот`);
     // углы ограды — без штандартов (знамёна акцентами: только пара у ворот)
     const corners = [[-s.ring.w, -s.ring.n], [s.ring.w, -s.ring.n], [-s.ring.w, s.ring.s], [s.ring.w, s.ring.s]];
     if (s.banners.length !== 2 || corners.some(([dx, dy]) => m.objects.some((o) => o.kind === kind && Math.floor(o.x / TILE) === s.x + dx && Math.floor(o.y / TILE) === s.y + dy))) fail(`${tag}: штандарты не только у ворот`);

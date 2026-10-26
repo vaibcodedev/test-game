@@ -318,10 +318,10 @@ async function main() {
     adm.room.onMessage("admin:summoned", (l: Summoned[]) => lists.push(l));
     const last = () => lists[lists.length - 1] ?? [];
     const alive = (id: string) => adm.room.state.mobs.has(id);
-    /** Призыв слизня рядом с админом; возвращает новую строку списка (её id не было в прошлом списке). */
+    /** Призыв крысолюда рядом с админом; возвращает новую строку списка (её id не было в прошлом списке). */
     const summon = async () => {
       const before = new Set(last().map((x) => x.id)), k = lists.length;
-      adm.send("admin:spawn", { mob: "slime", level: 5 });
+      adm.send("admin:spawn", { mob: "ratfolk_cutter", level: 5 });
       await adm.until(() => lists.length > k, 3000, "список после призыва");
       const fresh = last().find((x) => !before.has(x.id));
       assert(fresh, "в списке нет нового монстра: " + JSON.stringify(last()));
@@ -331,7 +331,7 @@ async function main() {
     };
     await check("призыв: монстр в списке призванных (имя, уровень, здоровье)", async () => {
       const s = await summon();
-      assert(s.name === "Слизень" && s.level === 5 && s.hp > 0 && s.hp === s.maxHp && !s.boss && alive(s.id), JSON.stringify(s));
+      assert(s.name.includes("крысолюд") && s.level === 5 && s.hp > 0 && s.hp === s.maxHp && !s.boss && alive(s.id), JSON.stringify(s));
     });
     await check("«Убить» призванного: тело исчезает, список обновлён, добычи нет", async () => {
       const s = await summon(), k = lists.length, bags = adm.bags.length;
@@ -356,7 +356,7 @@ async function main() {
       await sleep(150);
       const t = adm.toasts.length;
       adm.send("admin:kill-target");
-      assert((await toastsAfter(t)).includes("Убит: Слизень"), "нет тоста об убийстве");
+      assert((await toastsAfter(t)).includes("Убит: Амбарный крысолюд-резака"), "нет тоста об убийстве");
       await adm.until(() => !alive(s.id), 4000, "тело цели убрано");
       const t2 = adm.toasts.length;
       adm.send("admin:kill-target");

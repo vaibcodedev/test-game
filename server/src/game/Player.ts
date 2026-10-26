@@ -14,6 +14,7 @@ import { hasUnknownSkills, starterSkill } from "../../../shared/skills";
 import { defaultBars, hasBars, migrateBars, validateBars, type Bars } from "../../../shared/hotbar";
 import type { PlayerSave } from "../db";
 import { Unit } from "../rooms/schema";
+import { saveSpot } from "./interiors";
 
 /** Новый герой в точке spawn (в игре — столица его фракции, см. server/src/index.ts). */
 export function newSave(cls: ClassId, spawn: { x: number; y: number }): PlayerSave {
@@ -332,6 +333,8 @@ export class Player {
       isAdmin: this.admin,
       mounts: this.save.mounts,
       mount: this.save.mount ?? "",
+      rep: this.save.rep ?? 0,
+      marks: this.save.marks ?? 0,
       pets: Object.fromEntries(Object.entries(this.save.pets ?? {}).map(([id, r]) => [id, { level: r.level, xp: r.xp, next: petXpToNext(r.level) }])),
       pet: this.save.pet ?? "",
       id: this.id,
@@ -364,8 +367,10 @@ export class Player {
     const s = this.save;
     const home = homeCity(this.faction);
     if (home.capital) spawn = home.spawn;
-    s.x = this.dead ? spawn.x : this.unit.x;
-    s.y = this.dead ? spawn.y : this.unit.y;
+    // из зала интерьера (задача 144) — на улицу перед его дверью
+    const out = this.dead ? null : saveSpot(this.unit.x, this.unit.y);
+    s.x = this.dead ? spawn.x : out ? out.x : this.unit.x;
+    s.y = this.dead ? spawn.y : out ? out.y : this.unit.y;
     s.mapVer = MAP_VERSION;
     s.hp = this.dead ? -1 : this.unit.hp;
     s.mp = this.unit.mp;

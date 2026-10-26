@@ -1,4 +1,6 @@
 /** Города на сервере: открытие телепортов, телепорт-кастинг (3 с) и задания. Всё проверяется здесь, клиент шлёт намерения. */
+import { MOUNT_EARN } from "../../../shared/mounts";
+import { addRep } from "./stable";
 import { cityAtTile, cityById, cityKnown, homeCity, isEnemyCapital, stoneNear, teleportPrice, TELEPORT_CAST_MS } from "../../../shared/cities";
 import { TILE } from "../../../shared/constants";
 import { FACTIONS, type FactionId } from "../../../shared/factions";
@@ -130,8 +132,9 @@ function turnIn(w: World, p: Player, id: unknown) {
   q.done.push(def.id);
   p.save.gold += def.reward.gold;
   gainXp(w, p, def.reward.xp);
+  addRep(p, MOUNT_EARN.repQuest);
   p.selfDirty = true;
-  p.send("toast", { text: `Задание сдано: ${def.name} (+${def.reward.gold} з, +${def.reward.xp} опыта)`, kind: "loot" });
+  p.send("toast", { text: `Задание сдано: ${def.name} (+${def.reward.gold} з, +${def.reward.xp} опыта, +${MOUNT_EARN.repQuest} репутации)`, kind: "loot" });
 }
 
 export function registerCities(on: On, w: () => World) {

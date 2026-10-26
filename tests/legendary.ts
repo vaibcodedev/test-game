@@ -209,7 +209,7 @@ async function main() {
     const w = mkWorld();
     const p = mkPlayer(w, "reaver", 100, "Падший");
     p.save.equip.armor = makeLegendary("fallen_wings"); p.recalc();
-    const mob = w.addMob(new Mob(w.uid("m"), MOBS.goblin, 90, { x: p.x + 30, y: p.y }));
+    const mob = w.addMob(new Mob(w.uid("m"), MOBS.goblin_slasher, 90, { x: p.x + 30, y: p.y }));
     p.unit.hp = p.unit.maxHp;
     w.hit(mob, p, { flat: p.unit.maxHp * 5 });
     assert(!p.dead && p.unit.hp >= 1, "феникс не спас: hp " + p.unit.hp);

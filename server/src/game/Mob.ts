@@ -92,6 +92,7 @@ export class Mob {
     this.speedMul = 1;
     this.stats = b;
     this.unit.name = this.def.name;
+    this.unit.sprite = this.def.sprite;
     this.unit.elite = 0;
     if (!this.def.boss && Math.random() < ELITE.chance) {
       const f = ELITE.prefixes[Math.floor(Math.random() * ELITE.prefixes.length)];
@@ -104,7 +105,9 @@ export class Mob {
         xp: b.xp * ELITE.xp,
         gold: [b.gold[0] * ELITE.gold, b.gold[1] * ELITE.gold],
       };
-      this.unit.name = `${f.name} ${this.def.name}`;
+      // свой вид усиленного (задача 140): лист и имя образа вместо случайной приставки
+      this.unit.name = this.def.eliteName ?? `${f.name} ${this.def.name}`;
+      if (this.def.eliteSprite) this.unit.sprite = this.def.eliteSprite;
       this.unit.elite = 1;
     }
     this.reset();

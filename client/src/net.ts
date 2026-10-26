@@ -36,6 +36,8 @@ type Events = {
   chat: ChatLine;
   toast: ToastMsg;
   mountcast: { ms: number; name?: string };
+  /** Конюший: лучший рейтинг арены за сезон (ответ на stable:open). */
+  "stable:info": { arenaRating: number };
   cast: { ms: number; name?: string };
   combat: { on: boolean };
   air: { air: number; max: number };
@@ -71,6 +73,8 @@ type Events = {
   "arena:history": HistoryRow[];
   rumor: RumorMsg;
   "enc:npc": EncNpcMsg;
+  /** Дверь интерьера (задача 144): fade — затемнить на ms, arrive — герой перенесён в (x, y), id — зал ("" — улица). */
+  int: { ph: "fade" | "arrive"; id: string; ms?: number; x: number; y: number };
   "enc:say": { id: string; text: string };
   "enc:move": { id: string; x: number; y: number; ms: number };
   "enc:gone": { id: string };
@@ -366,7 +370,8 @@ export class Net {
     // cast — сервер держит героя на месте (канал, воскрешение, танец): полоса каста и запрет предсказания шагов
     room.onMessage("cast", (m: { ms: number; name?: string }) => { this.emit("cast", m); this.emit("mountcast", m); });
     room.onMessage("mountcast", (m: { ms: number; name?: string }) => this.emit("mountcast", m));
-    for (const t of ["air", "node", "nodes"] as const) room.onMessage(t, (m: any) => this.emit(t, m));
+    room.onMessage("stable:info", (m: { arenaRating: number }) => this.emit("stable:info", m));
+    for (const t of ["air", "node", "nodes", "int"] as const) room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("loot", (b: LootBag[]) => {
       this.bags = b;
       this.emit("loot", b);

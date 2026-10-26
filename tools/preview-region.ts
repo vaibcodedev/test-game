@@ -67,7 +67,7 @@ for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
 // Анимированные (vfx/manifest.json: огонь, горны, штандарты Полей) — первый кадр с якорем листа; flip — зеркальная копия
 const vfxm = JSON.parse(fs.readFileSync("client/public/assets/vfx/manifest.json", "utf8")) as Record<string, { frameW: number; frameH: number; anchor: [number, number]; r?: 1 }>;
 const objs = m.objects.filter((o) => o.x > x0 * 32 - 160 && o.x < (x0 + w) * 32 + 160 && o.y > y0 * 32 && o.y < (y0 + h) * 32 + 200)
-  .sort((a, b) => (GROUND_OBJECTS.has(b.kind) ? 1 : 0) - (GROUND_OBJECTS.has(a.kind) ? 1 : 0) || a.y - b.y);
+  .sort((a, b) => (GROUND_OBJECTS.has(b.kind) ? 1 : 0) - (GROUND_OBJECTS.has(a.kind) ? 1 : 0) || a.y + (a.dz ?? 0) - b.y - (b.dz ?? 0));
 const cache = new Map<string, { img: PC; ax: number; ay: number } | null>();
 const frame0 = (src: PC, fw: number, fh: number) => {
   const pc = new PC(fw, fh);
@@ -80,9 +80,11 @@ const mirrorX = (src: PC) => {
   return pc;
 };
 for (const o of objs) {
-  const key = o.kind + (o.flip ? "|f" : "");
+  // вариант вида (задача 141, shared/cityart.ts): кадр <kind>__<v>, если есть
+  const vf0 = o.v && `client/public/assets/objects/${o.kind}__${o.v}.png`, hasV = !!vf0 && fs.existsSync(vf0);
+  const key = o.kind + (hasV ? "__" + o.v : "") + (o.flip ? "|f" : "");
   if (!cache.has(key)) {
-    const f = `client/public/assets/objects/${o.kind}.png`, e = vfxm[o.kind];
+    const f = hasV ? vf0 : `client/public/assets/objects/${o.kind}.png`, e = vfxm[o.kind];
     const vf = e && `client/public/assets/vfx/${e.r ? "r/" : ""}${o.kind}.png`;
     let v: { img: PC; ax: number; ay: number } | null = null;
     if (fs.existsSync(f)) v = { img: read(f), ax: 0.5, ay: 1 };

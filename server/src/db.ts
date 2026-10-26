@@ -37,6 +37,9 @@ export interface PlayerSave {
   /** Маунты: купленные/полученные и выбранный. */
   mounts?: string[];
   mount?: string;
+  /** Конюшня (задача 142): репутация фракции и Знаки Полей. */
+  rep?: number;
+  marks?: number;
   /** Питомцы: уровень и опыт каждого, выбранный. */
   pets?: Record<string, { level: number; xp: number }>;
   pet?: string;

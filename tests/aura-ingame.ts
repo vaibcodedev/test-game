@@ -327,7 +327,7 @@ async function scenario() {
     const { Mob } = await import("../server/src/game/Mob");
     const { MOBS } = await import("../shared/mobs");
     put(Cc, spot.x, spot.y - 150);
-    const mob = W().addMob(new Mob(W().uid("m"), MOBS.goblin, 5, { x: Cc.x + 40, y: Cc.y }));
+    const mob = W().addMob(new Mob(W().uid("m"), MOBS.goblin_slasher, 5, { x: Cc.x + 40, y: Cc.y }));
     mob.slowUntil = long();
     Cc.unit.mp = Cc.unit.maxMp; Cc.gcdUntil = 0;
     const e2 = castSkill(W(), Cc, "mg_firewall", mob.x, mob.y, null);

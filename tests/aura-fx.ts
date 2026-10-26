@@ -110,7 +110,7 @@ function mkHero(w: World, cls: ClassId, skills: string[], dx = 0, dy = 0, team =
   p.unit.mp = p.unit.maxMp;
   return p;
 }
-const mobAt = (w: World, x: number, y: number) => w.addMob(new Mob(w.uid("m"), MOBS.goblin, 20, { x, y }));
+const mobAt = (w: World, x: number, y: number) => w.addMob(new Mob(w.uid("m"), MOBS.goblin_slasher, 20, { x, y }));
 function cast(w: World, p: Player, id: string, at?: { x: number; y: number; id?: string }, run = 50) {
   p.unit.mp = p.unit.maxMp;
   p.gcdUntil = 0;

@@ -152,10 +152,12 @@ export interface Creature {
   eliteRu: string;
   /** плотность силуэта: [ширина, глубина] тела, рост прежний */
   widen?: [number, number];
-  /** гибель: back — навзничь, side — набок, crumble — оседает и рассыпается прахом */
-  death?: "back" | "side" | "crumble";
+  /** гибель: back — навзничь, side — набок, crumble — оседает и рассыпается прахом, roll — зверь заваливается на бок вокруг хребта (партия 2) */
+  death?: "back" | "side" | "crumble" | "roll";
   dust?: Ramp;
   ref?: string;
+  /** файл референса в папке ref (партия 2: banshee/ref1.png и т. п.); без него — ref.png */
+  refFile?: string;
 }
 export interface Variant { role: RoleDef; elite: boolean }
 export const variantsOf = (cr: Creature): Variant[] => {
@@ -1200,6 +1202,18 @@ function applyDeath(cr: Creature, v: Variant, sc: Scene, view: View, f: number, 
     const k = clamp(tb * 1.1, 0, 1);
     rigidView(sc, view, PC_BODY, q, c0, [cx * k, -1.0 * s * k, Math.max(0, -ext.zmin) * k]);
     if (f === 7 || f === 8) puffs.push({ at: [cx + (ext.xmin + ext.xmax) / 2 + sg * 6 * s, -1 * s, 0], k: f === 7 ? 0.5 : 1 }, { at: [cx, -1 * s, 0], k: f === 7 ? 0.4 : 0.9 });
+  } else if (kind === "roll") {
+    // партия 2, звери: заваливается на бок вокруг своей оси «хвост — голова», ложится по центру кадра
+    const axis = toView(view, [0, 1, 0]);
+    const qF = qFromAxis(axis, rad(84));
+    const q = qPow(qF, tb);
+    const c0: V3 = [0, 0, 0];
+    const ext = extentView(sc, view, PC_BODY, qF, c0);
+    const half = cam.N / 2 - 2;
+    const cx = clamp(-(ext.xmin + ext.xmax) / 2, -half - ext.xmin, half - ext.xmax);
+    const k = clamp(tb * 1.1, 0, 1);
+    rigidView(sc, view, PC_BODY, q, c0, [cx * k, 0, Math.max(0, -ext.zmin) * k]);
+    if (f === 7 || f === 8) puffs.push({ at: [cx + (ext.xmin + ext.xmax) / 2 + 5 * s, -1 * s, 0], k: f === 7 ? 0.5 : 1 }, { at: [cx - 3 * s, 0, 0], k: f === 7 ? 0.4 : 0.8 });
   } else {
     // оседает: клонится вперёд-вниз и уходит в землю, сверху рассыпается прахом (renderFrame)
     const qF = qFromAxis([1, 0, 0], rad(-24));
@@ -1781,7 +1795,7 @@ export function runCreature(cr: Creature, root: string, outDir: string, quiet = 
   const o = buildCreature(cr, quiet ? undefined : path.join(outDir, "sheets"));
   if (quiet) return o;
   const A = loadAssets(root);
-  const refPath = path.join(root, "tools", "out", "refs", "mobs", cr.ref ?? cr.id, "ref.png");
+  const refPath = path.join(root, "tools", "out", "refs", "mobs", cr.ref ?? cr.id, cr.refFile ?? "ref.png");
   const ref = fs.existsSync(refPath) ? loadPC(refPath) : null;
   fs.mkdirSync(outDir, { recursive: true });
   creaturePreview(o, A, ref).save(path.join(outDir, `${cr.id}.png`));
@@ -1794,5 +1808,8 @@ export function runCreature(cr: Creature, root: string, outDir: string, quiet = 
 export const isMainFile = (file: string) => !!process.argv[1] && path.resolve(process.argv[1]).replace(/\\/g, "/").endsWith(file);
 export const rootFromArgv = () => path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 export const BATCH_DIR = (root: string) => path.join(root, "tools", "out", "mobs-batch1");
+/** Партия 2 (зоны 40–100, данж, приспешники рейда). */
+export const BATCH2_DIR = (root: string) => path.join(root, "tools", "out", "mobs-batch2");
+export { ik }; // restPose уже экспортирована объявлением выше
 export { easeIn, easeOut, easeInOut, clamp, lerp, crop, stackRows, loadPC, scaleNN, fill, groundBg, text };
 export type { Prim, Cam };

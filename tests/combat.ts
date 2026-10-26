@@ -5,7 +5,7 @@ import { MAP_SEED } from "../shared/constants";
 
 const MAP = generateMap(MAP_SEED);
 const town = MAP.playerSpawn;
-const slime = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[0];
+const slime = MAP.spawns.filter((s) => s.mob === "ratfolk_cutter").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[0];
 
 type C = Bot & { combat: boolean; casts: number[] };
 async function join(name: string): Promise<C> {
@@ -39,7 +39,7 @@ async function main() {
       a.send("dbg", { op: "tp", x: slime.x + 30, y: slime.y });
       await sleep(400);
       let id: string | null = null, bd = 150;
-      a.room.state.mobs.forEach((m: any, k: string) => { const d = Math.hypot(m.x - slime.x, m.y - slime.y); if (m.anim !== 4 && m.sprite === "slime" && d < bd) { bd = d; id = k; } });
+      a.room.state.mobs.forEach((m: any, k: string) => { const d = Math.hypot(m.x - slime.x, m.y - slime.y); if (m.anim !== 4 && m.sprite.startsWith("ratfolk_cutter") && d < bd) { bd = d; id = k; } });
       assert(id, "слизень не найден");
       a.send("attack", { id });
       await a.until(() => a.room.state.mobs.get(id!)?.anim === 4, 20000, "моб убит");

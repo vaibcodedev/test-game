@@ -666,6 +666,7 @@ function sideOnly(fn: (p: Pose) => PC, frame = 32, squashDeath = true): UnitArt 
   return { frame, squashDeath, draw: (_v, p) => fn(p) };
 }
 
+// гоблины, слизень, кабан, волк, паук, краб и медуза — убраны (задача 140: их места заняли образы tools/gen/mobs, листы — tools/gen/mobs/game.ts)
 export const UNIT_ART: Record<string, UnitArt> = {
   /** Питомцы (data/pets.json): волчонок, огонёк, черепашка. */
   pet_wolf: sideOnly((p) => quadruped({ body: ramp_("#5a4a34", "#86704c", "#b09468", "#d8c090"), belly: P.bone, ears: "point", tail: "bushy" }, p)),
@@ -688,17 +689,11 @@ export const UNIT_ART: Record<string, UnitArt> = {
   citizen2: humanoidArt(SPECS.citizen2),
   citizen3: humanoidArt(SPECS.citizen3),
   citizen4: humanoidArt(SPECS.citizen4),
-  goblin: humanoidArt(SPECS.goblin),
-  goblin_shaman: humanoidArt(SPECS.goblin_shaman),
   skeleton: humanoidArt(SPECS.skeleton),
   skeleton_knight: humanoidArt(SPECS.skeleton_knight),
   drowned: humanoidArt(SPECS.drowned),
   imp: humanoidArt(SPECS.imp),
-  slime: sideOnly((p) => slime(P.magic.green.slice(0, 4).map((x) => mix(x, hex("#6ad04a"), 0.3)), p)),
   toxic_slime: sideOnly((p) => slime(ramp_("#4a5a10", "#7a9a18", "#b2d030", "#e0f070"), p, 1, true)),
-  boar: sideOnly((p) => quadruped({ body: ramp_("#3a2418", "#5e3c28", "#86583a", "#a87650"), tusk: true, ears: "round", snout: ramp_("#7a4a40", "#a06a5a", "#c88a78", "#e0a898"), mane: ramp_("#2a1a12", "#3e281c", "#56382a", "#6e4c38") }, p)),
-  wolf: sideOnly((p) => quadruped({ body: ramp_("#3a3c48", "#5c606e", "#8a8f9c", "#b4b8c4"), belly: P.bone, ears: "point", tail: "bushy" }, p)),
-  spider: sideOnly(spider),
   golem: sideOnly((p) => golem(p)),
   // биомы Неизведанных земель
   jackal: sideOnly((p) => quadruped({ body: ramp_("#5a3c1c", "#8a6030", "#c0904c", "#e8c078"), belly: P.bone, ears: "point", tail: "thin" }, p)),
@@ -707,8 +702,6 @@ export const UNIT_ART: Record<string, UnitArt> = {
   ice_golem: sideOnly((p) => golem(p, 1, P.ice, ramp_("#a0e0ff", "#c8f0ff", "#e0faff", "#ffffff", "#ffffff"))),
   magma_slime: sideOnly((p) => slime(ramp_("#6a1a08", "#c03a10", "#f07a1c", "#ffd060"), p, 1, true)),
   lava_hound: sideOnly((p) => quadruped({ body: ramp_("#2a1814", "#4a2418", "#7a3a20", "#a85a2c"), belly: ramp_("#c03a10", "#f06a1a", "#ff9a2a", "#ffd060"), ears: "point", tail: "bushy", mane: ramp_("#c03a10", "#f06a1a", "#ff9a2a", "#ffd060") }, p)),
-  sea_crab: sideOnly((p) => spider(p, ramp_("#6a1a14", "#a8301e", "#d8503a", "#f88a6c"), hex("#ffd0c0"), hex("#101018"))),
-  jellyfish: sideOnly((p) => slime(ramp_("#4a2a8a", "#7a52c8", "#b08af0", "#e8d8ff"), p, 1, true)),
   sapling: sideOnly(sapling),
   ent: sideOnly(ent, 64, false),
   witch: humanoidArt(SPECS.witch, 2),

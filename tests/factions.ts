@@ -78,7 +78,7 @@ async function main() {
       const toasts: string[] = [];
       const p = new Player("t_" + cls, "Тест" + cls, save, (t, m: any) => { if (t === "toast") toasts.push(m.text); });
       w.addPlayer(p);
-      const mob = w.addMob(new Mob(w.uid("m"), MOBS.goblin, 20, { x: p0.x + 50, y: p0.y }));
+      const mob = w.addMob(new Mob(w.uid("m"), MOBS.goblin_slasher, 20, { x: p0.x + 50, y: p0.y }));
       for (const s of activeSkills(cls)) {
         p.unit.mp = p.unit.maxMp; p.unit.hp = p.unit.maxHp; mob.unit.hp = mob.unit.maxHp;
         const err = castSkill(w, p, s.id, mob.x, mob.y, mob.id);

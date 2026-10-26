@@ -112,45 +112,6 @@ export const TOWN = {
   MARBLE: ramp("#6a6670", "#8e8a94", "#b4b0b8", "#d4d0d6", "#eeeaf0"),
 };
 
-/** Маунты (tools/gen/mounts-*.ts): шкуры, гривы, перья, кости, пламя. */
-export const MOUNT = {
-  IVORY: ramp("#3a3022", "#7a6a4c", "#b8a478", "#e2d2a4", "#fff4d0"),
-  NOSE: ramp("#050304", "#120a0c", "#2a1a1c", "#4a3234"),
-  WHITE: ramp("#7a7e92", "#a8acc0", "#d2d6e4", "#eceef8", "#ffffff"),
-  TAWNY: ramp("#4a2e14", "#7a4e22", "#a8762e", "#cf9e48", "#ecc87a"),
-  LMANE: ramp("#240e06", "#44200c", "#6c3a14", "#945a22", "#bc8238"),
-  ASH: ramp("#1e2026", "#3a3d48", "#5e6370", "#8a909c", "#b8bdc8"),
-  ASHB: ramp("#4a4e58", "#767b88", "#9ea4b0", "#c6cad2"),
-  EMBER: ramp("#4a1a0c", "#8a3412", "#c85a1a", "#f08a30", "#ffd070"),
-  SPIRIT: ramp("#1a2a5a", "#3250a0", "#5c88d8", "#9cc4f8", "#e4f4ff"),
-  BOARC: ramp("#1c1410", "#2e221a", "#463428", "#64503c", "#86705a"),
-  BEARC: ramp("#1e120c", "#34201a", "#503428", "#74503a", "#9a7452"),
-  SAND: ramp("#4a3418", "#7a5a2a", "#a8803c", "#cfa656", "#ecd088"),
-  SPIKE: ramp("#5a2a14", "#8a4420", "#b86a30", "#e09a4c"),
-  BONE: ramp("#3a342c", "#6a6254", "#a39a86", "#d4cdb8", "#f4efde"),
-  GBODY: ramp("#4a2e14", "#7a4e22", "#a8762e", "#cf9e48", "#ecc87a"),
-  GWING: ramp("#2e1c0e", "#58381a", "#8a5e2e", "#b88a4a", "#e4c88a"),
-  GWING2: ramp("#5a4630", "#8a7250", "#bca480", "#e2d2b0", "#fffaf0"),
-  GHEAD: ramp("#7a7080", "#aca4b4", "#d8d2e0", "#f0ecf6", "#ffffff"),
-  BEAK: ramp("#5a3a0a", "#a86c10", "#e0a420", "#ffd448", "#fff2a0"),
-  PHX: ramp("#6a1408", "#b83210", "#f0661c", "#ffa83a", "#ffe890"),
-  PHX2: ramp("#8a2010", "#d44a14", "#ff8a24", "#ffcc52", "#fff4b0"),
-  RAPT: ramp("#0e3a38", "#1a6a60", "#2e9a84", "#5ccaa0", "#a8f0c8"),
-  RSTR: ramp("#5a2208", "#a8480e", "#e0781c", "#ffb04a"),
-  SPD: ramp("#0a0610", "#1a1024", "#2c1c3c", "#46305c", "#6a4c84"),
-  SPR: ramp("#3a0608", "#780c10", "#c01c1c", "#ff5040"),
-  NAVY: ramp("#0e1a36", "#1a2e5e", "#2c4a8e", "#4468b8", "#6a8ad4"),
-  WHITEC: ramp("#6c6e7c", "#a4a8b8", "#d0d4e0", "#eceef6", "#ffffff"),
-  CHEST: ramp("#2e1a10", "#4c2c1a", "#6e4228", "#94603a", "#b8845a"),
-  GHOST: ramp("#0c2c38", "#176070", "#2ea0a8", "#6ce0d0", "#c8fff0"),
-  GHOST_P: ramp("#1c0c38", "#3a1c70", "#6a38b0", "#a470e8", "#e0c8ff"),
-  NIGHT: ramp("#0e0814", "#221830", "#3c2e50", "#5a4a72", "#7a6a96"),
-  NIGHT_HEAD: ramp("#05030a", "#0e0814", "#1c1228", "#34264a", "#52406c"),
-  HELLFIRE: ramp("#5a0c08", "#a81c0c", "#e8541a", "#ffa030", "#ffee90"),
-  BROWN: ramp("#24140c", "#3e2415", "#60391f", "#855230", "#a86f44"),
-  DARKMANE: ramp("#0e0a08", "#1c1410", "#2c201a", "#44342a"),
-};
-
 /** Иконки экипировки (tools/gen/equip.ts): костяной череп навершия и шлема Умбрата. */
 export const EQUIP = {
   skull: ramp("#6a6050", "#a89c80", "#d8d0b8", "#e8e0d0", "#ffffff"),

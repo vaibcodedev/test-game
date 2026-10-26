@@ -17,7 +17,7 @@ function spawnOf(mob: string) {
 function mobNear(b: Bot, x: number, y: number, r = 200, sprite?: string): string | null {
   let best: string | null = null, bd = r;
   b.room.state.mobs.forEach((m: any, id: string) => {
-    if (m.anim === 4 || (sprite && m.sprite !== sprite)) return;
+    if (m.anim === 4 || (sprite && !m.sprite.startsWith(sprite))) return; // усиленный — свой лист <моб>_elite
     const d = Math.hypot(m.x - x, m.y - y);
     if (d < bd) { bd = d; best = id; }
   });
@@ -117,16 +117,16 @@ async function main() {
     });
 
     console.log("Этап 3: бой");
-    await check("автоатака убивает слизня, опыт начислен", async () => {
+    await check("автоатака убивает крысолюда, опыт начислен", async () => {
       b.fx.length = 0;
-      await killNear(a, "slime");
+      await killNear(a, "ratfolk_cutter");
       await a.until(() => (a.self?.xp ?? 0) > 0 && a.self!.kills === 1, 2000, "опыт за убийство");
-      await a.until(() => a.self!.mobKills?.slime === 1, 2000, "бестиарий: счётчик убийств слизня");
-      assert(BESTIARY.slime?.desc, "бестиарий: нет записи слизня");
+      await a.until(() => a.self!.mobKills?.ratfolk_cutter === 1, 2000, "бестиарий: счётчик убийств крысолюда");
+      assert(BESTIARY.ratfolk_cutter?.desc, "бестиарий: нет записи крысолюда");
       assert(a.fx.some((f) => f.t === "dmg"), "нет событий урона");
     });
     await check("умение тратит ману и уходит на перезарядку", async () => {
-      const sp = spawnOf("goblin");
+      const sp = spawnOf("goblin_slasher");
       a.send("dbg", { op: "tp", x: sp.x + 30, y: sp.y });
       await a.until(() => Math.hypot(a.me().x - (sp.x + 30), a.me().y - sp.y) < 3, 3000, "телепорт к гоблину");
       const mp0 = a.me().mp, t0 = Date.now();
@@ -150,7 +150,7 @@ async function main() {
     });
     await check("маг: огненный шар летит снарядом", async () => {
       // не точка, у которой слизня только что убили: с задачи 132 в стартовой зоне слизни 1-го уровня, и это она же (вторая по близости — рядом)
-      const sp = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[1];
+      const sp = MAP.spawns.filter((s) => s.mob === "ratfolk_cutter").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[1];
       b.send("dbg", { op: "tp", x: sp.x + 120, y: sp.y });
       await sleep(300);
       const id = mobNear(b, sp.x, sp.y, 300);
@@ -257,7 +257,7 @@ async function main() {
     await check("с моба падает личный мешок, подбор проверяет дистанцию", async () => {
       a.send("dbg", { op: "drop", v: true });
       a.bags = [];
-      await killNear(a, "slime");
+      await killNear(a, "ratfolk_cutter");
       await a.until(() => a.bags.length > 0, 2000, "мешок");
       const bag = a.bags[a.bags.length - 1];
       assert(bag.items.length >= 1, "пустой мешок");

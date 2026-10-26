@@ -7,7 +7,7 @@ import { emptyBox, hitUnit, silhouette, Trail, TRAIL_MS, unionBox, type Box, typ
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
-import type { MountMeta } from "../../../shared/mounts";
+import { mountTex, type MountMeta } from "../../../shared/mounts";
 import { FOE_COLOR, factionColor } from "../../../shared/factions";
 import { P } from "../../../shared/palette";
 import { GearLayers, parseGear } from "./GearLayers";
@@ -190,7 +190,7 @@ export class UnitView {
     // стража Эмберхолла — Пепельнорождённые: тело из шлака nude_ashborn_<класс> (npm run assets, tools/gen/ashborn-body.ts)
     const ash = this.layered() && this.heraldOf()?.H.ash && scene.textures.exists(`u_nude_ashborn_${u.sprite}`);
     this.sid = ash ? `nude_ashborn_${u.sprite}` : this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
-    const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_slime";
+    const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_skeleton";
     this.frame = scene.textures.get(tex).get(0).width;
     const big = this.frame > 32;
     if (this.frame >= 96) this.nameRise = 0.9 * this.frame;
@@ -265,12 +265,23 @@ export class UnitView {
     this.attacking = false;
     const row = rowOf(this.u.dir);
     const key = `${this.sid}-death-${row}`;
-    if (instant || !this.scene.anims.exists(key)) this.sprite.setFrame(row * 12 + 11);
+    const wide = this.scene.anims.exists(`${this.sid}-rest-${row}`) ? Math.round(this.sprite.texture.getSourceImage().width / this.frame) : 0;
+    if (instant || !this.scene.anims.exists(key)) this.sprite.setFrame(wide ? row * wide + wide - 1 : row * 12 + 11);
     else this.sprite.play(key);
     this.sprite.setFlipX(this.u.dir === Dir.Left);
     this.label.setVisible(false);
     this.bar.clear();
     this.scene.tweens.add({ targets: [this.sprite, this.shadow], alpha: this.u.kind === UnitKind.Player ? 0.75 : 0.55, duration: 600, delay: 400 });
+  }
+
+  /** Стойка: у листов задачи 140 — анимация покоя, у прежних — первый кадр строки. */
+  private restPose(row: number) {
+    const rest = `${this.sid}-rest-${row}`;
+    if (this.scene.anims.exists(rest)) this.sprite.play(rest, true);
+    else {
+      this.sprite.stop();
+      this.sprite.setFrame(row * 12);
+    }
   }
 
   /** Вызывается каждый кадр; px/py — позиция для отрисовки (у своего игрока — предсказанная). */
@@ -324,8 +335,12 @@ export class UnitView {
       this.y = u.y;
       // снять затухание трупа (если возродился раньше, чем оно доиграло) и кадр смерти: стойку или бег поставит код ниже
       this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
-      this.sprite.stop();
-      this.sprite.setFrame(rowOf(u.dir) * 12);
+      // моб мог возродиться усиленным (задача 140): у него свой лист
+      if (!this.layered() && u.sprite !== this.sid && this.scene.textures.exists(`u_${u.sprite}`)) {
+        this.sid = u.sprite;
+        this.sprite.setTexture(`u_${u.sprite}`, 0);
+      }
+      this.restPose(rowOf(u.dir));
       this.sprite.setAlpha(0);
       this.shadow.setAlpha(1);
       this.label.setVisible(true);
@@ -345,10 +360,7 @@ export class UnitView {
         if (MELEE.has(u.sprite)) this.slash(u.dir);
       } else if (!this.attacking && (anim !== this.lastAnim || row !== this.lastRow)) {
         if (anim === Anim.Walk) this.sprite.play(`${this.sid}-walk-${row}`, true);
-        else {
-          this.sprite.stop();
-          this.sprite.setFrame(row * 12);
-        }
+        else this.restPose(row);
       }
       this.lastAnim = anim;
       this.lastRow = row;
@@ -357,33 +369,37 @@ export class UnitView {
     // позиция и глубина
     const bob = !this.dead && anim === Anim.Idle && !u.mount && !this.attacking ? Math.round(Math.sin(this.scene.time.now / 380 + this.x) * 0.6) : 0;
     const mmeta = u.mount ? (this.scene.cache.json.get("manifest")?.mounts?.[u.mount] as MountMeta | undefined) : undefined;
-    const mounted = !!mmeta && !this.dead && this.scene.textures.exists(`m_${u.mount}`);
+    const mtex = mmeta ? mountTex(u.mount, mmeta, u.faction) : "";
+    const mounted = !!mmeta && !this.dead && this.scene.textures.exists(mtex);
     this.mounted = mounted;
     this.mountDust = mounted && !mmeta?.fly;
     const big0 = this.frame > 32;
     let lift = 0, riderDx = 0, riderDy = 0, hover = 0;
     if (mounted && mmeta) {
-      if (!this.mountSpr || this.mountId !== u.mount) {
+      if (!this.mountSpr || this.mountId !== mtex) {
         this.mountSpr?.destroy();
         this.mountFront?.destroy();
-        this.mountId = u.mount;
+        this.mountId = mtex;
         const oy = mmeta.gy / mmeta.frame;
-        this.mountSpr = this.scene.add.sprite(this.x, this.y, `m_${u.mount}`, 0).setOrigin(0.5, oy);
-        this.mountFront = this.scene.add.sprite(this.x, this.y, `m_${u.mount}`, 0).setOrigin(0.5, oy);
+        this.mountSpr = this.scene.add.sprite(this.x, this.y, mtex, 0).setOrigin(0.5, oy);
+        this.mountFront = this.scene.add.sprite(this.x, this.y, mtex, 0).setOrigin(0.5, oy);
       }
       const ms = this.mountSpr, mf = this.mountFront!;
       const moving = u.anim === Anim.Walk;
-      const flip = u.dir === Dir.Left;
+      // лист задачи 142: 4 вида, влево — своя строка (герб и знамя не отражаются); старый лист: 3 вида, влево — отражение
+      const views = mmeta.views ?? 3;
+      const mrow = views === 4 && u.dir === Dir.Left ? 3 : row;
+      const flip = views !== 4 && u.dir === Dir.Left;
       const kind = moving ? "run" : "idle";
-      const kb = `m_${u.mount}-${kind}-${row}`;
+      const kb = `${mtex}-${kind}-${mrow}`;
       if (ms.anims.currentAnim?.key !== kb) {
         const t = ms.anims.currentAnim && moving ? ms.anims.getProgress() : 0;
         ms.play(kb);
-        mf.play(`m_${u.mount}-${kind}-${row + 3}`);
+        mf.play(`${mtex}-${kind}-${mrow + views}`);
         if (t) { ms.anims.setProgress(t); mf.anims.setProgress(t); }
       }
-      const col = (Number(ms.frame.name) || 0) % 12;
-      const seat = mmeta.seat[row]?.[col] ?? [0, -30];
+      const col = (Number(ms.frame.name) || 0) % mmeta.cols;
+      const seat = mmeta.seat[mrow]?.[col] ?? [0, -30];
       riderDx = Math.round(seat[0]) * (flip ? -1 : 1);
       riderDy = Math.round(seat[1]);
       hover = mmeta.fly ? Math.round(mmeta.fly + Math.sin(this.scene.time.now / 420 + this.x) * 1.5) : 0;

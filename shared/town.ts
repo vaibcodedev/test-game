@@ -35,7 +35,7 @@ export const GUARD_RANGE_TILES = 6;
 
 export type Ground = "cobble" | "grass" | "dirt";
 
-/** Здания: якорь — левая нижняя клетка (как в place()), door — смещения дверных клеток от якоря по x (проходимы). */
+/** Здания: якорь — левая нижняя клетка (как в place()), door — смещения дверных клеток от якоря по x (задача 141: пока закрыты и непроходимы, вход в интерьер — отдельный шаг). */
 export interface Building { kind: string; x: number; y: number; door?: number[] }
 export const BUILDINGS: Building[] = [
   // северный ряд домов (фасады на улицу dy=-9)

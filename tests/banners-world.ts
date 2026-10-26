@@ -7,7 +7,7 @@
  * Запуск (строго по одному; перед прогоном mkdir tools/out/scenario.lock, после — rmdir):
  *   TAG — метка прогона (before, after, now, thin): $env:TAG="thin"; $env:TEST_PORT="2851"; $env:VITE_TEST_PORT="5251"; npx tsx tests/banners-world.ts
  *   только рендер карты без сервера: npx tsx tests/banners-world.ts --regions; сравнения: $env:A="now"; $env:B="thin"; $env:CMP="thin"; npx tsx tests/banners-world.ts --compose
- * Выход — tools/out/banners-world/. Chrome: CHROME_PATH.
+ * Выход — tools/out/banners-world/ (OUT_DIR — другая папка). Chrome: CHROME_PATH. DAY_ONLY=1 — только день.
  */
 import fs from "node:fs";
 import net from "node:net";
@@ -16,7 +16,7 @@ import { execFileSync } from "node:child_process";
 import { PNG } from "pngjs";
 import { MAP_W, TILE } from "../shared/constants";
 
-const OUT = path.resolve("tools/out/banners-world");
+const OUT = path.resolve(process.env.OUT_DIR || "tools/out/banners-world");
 const TAG = process.env.TAG || "after";
 /** Прогоны «до»: в них новых знамён нет или их ещё не проверяем. */
 const OLD = TAG === "before" || TAG === "now";
@@ -25,13 +25,22 @@ const VIEW = { width: 1600, height: 1000 };
 const FW = 800, FH = 480;
 /** Места: центр кадра в тайлах (непрерывные). Восток — зеркало запада (x → 1100 − x). */
 const mir = (x: number) => MAP_W - x;
-const SPOTS: { id: string; x: number; y: number }[] = [
+const SPOTS: { id: string; x: number; y: number; nb?: true; hero?: [number, number] }[] = [
   { id: "aurelion-n", x: 56.5, y: 167.5 }, { id: "aurelion-s", x: 56.5, y: 190 },
   { id: "morthaim-n", x: mir(56.5), y: 167.5 }, { id: "morthaim-s", x: mir(56.5), y: 190 },
   { id: "fort-sol-n", x: 392.5, y: 167.5 }, { id: "fort-sol-s", x: 392.5, y: 190 },
   { id: "fort-umb-n", x: mir(392.5), y: 167.5 }, { id: "fort-umb-s", x: mir(392.5), y: 190 },
   { id: "clear-dale", x: 96.5, y: 214.5 }, { id: "sorrow-yard", x: mir(96.5), y: 214.5 },
   { id: "bridge-m-w", x: 204, y: 180.5 }, { id: "bridge-m-e", x: mir(204), y: 180.5 },
+  // задача 141: середины городов (дома, храмы) и Эмберхолл
+  { id: "aurelion-c", x: 56.5, y: 180, nb: true }, { id: "morthaim-c", x: mir(56.5), y: 180, nb: true }, { id: "fort-sol-c", x: 392.5, y: 180, nb: true }, { id: "fort-umb-c", x: mir(392.5), y: 180, nb: true },
+  // задача 141: герой стоит в проёме южных ворот Аурелиона (свод над ним, мостовая под ним)
+  { id: "aurelion-gate", x: 56.5, y: 189, nb: true, hero: [56.5, 191.6] },
+  { id: "ember-n", x: 550.5, y: 43, nb: true },
+  // задача 141 (правки 2): углы частокола, боковые и южные ворота поселений, вышка лучника крупно
+  { id: "sorrow-corner", x: 998, y: 211, nb: true }, { id: "dale-corner-se", x: 102, y: 219, nb: true },
+  { id: "black-post", x: 919.5, y: 155, nb: true }, { id: "white-tower", x: 964, y: 262.5, nb: true }, { id: "archer-tower", x: 202, y: 175, nb: true },
+  { id: "aurelion-gate-n", x: 56.5, y: 170, nb: true, hero: [56.5, 169.4] }, { id: "ember-gate-n", x: 550.5, y: 43, nb: true, hero: [550.5, 41.4] }, { id: "ember-w", x: 534, y: 57, nb: true }, { id: "ember-s", x: 550.5, y: 79, nb: true }, { id: "mill-ford", x: 112.5, y: 124 }, { id: "hunters-camp", x: 132, y: 262.5 },
 ];
 const save = (name: string, p: PNG) => { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, name), PNG.sync.write(p)); };
 const read = (f: string) => PNG.sync.read(fs.readFileSync(f));
@@ -138,16 +147,18 @@ async function scenario() {
   const hold = () => { if (H.dead) { H.dead = false; H.unit.anim = 0; } H.unit.x = at.x; H.unit.y = at.y; H.moveTo = null; H.unit.hp = H.unit.maxHp; };
   const keep = setInterval(hold, 50);
   try {
-    for (const [tod, frac] of [["day", 0.3], ["night", 0.82]] as const) {
+    // DAY_ONLY=1 — только дневные снимки (задача 141: «было | стало» днём)
+    for (const [tod, frac] of ([["day", 0.3], ["night", 0.82]] as const).filter(([t]) => !process.env.DAY_ONLY || t === "day")) {
       await page.evaluate((f: number) => { const C = 20 * 60 * 1000, r = (window as any).__realNow(); (window as any).__dshift = f * C - (r % C); }, frac);
-      for (const s of SPOTS) {
+      // ONLY=id,id — снять только эти места
+      for (const s of SPOTS.filter((q) => !process.env.ONLY || process.env.ONLY.split(",").includes(q.id))) {
         const cx = s.x * TILE, cy = s.y * TILE;
-        at = { x: cx, y: cy + FH / 2 + 60 };
+        at = s.hero ? { x: s.hero[0] * TILE, y: s.hero[1] * TILE } : { x: cx, y: cy + FH / 2 + 60 };
         hold();
         await sleep(2600);
         await run("sc.cameras.main.stopFollow(); sc.cameras.main.centerOn(a.x, a.y);", { x: cx, y: cy });
         await sleep(1400);
-        if (!OLD && tod === "day") {
+        if (!OLD && tod === "day" && !s.nb) {
           const n = await run<number>("let n = 0; for (const o of sc.children.list) if (o.type === 'Sprite' && o.texture && /^vfx_std-(home|pennant|drape)-/.test(o.texture.key) && o.anims && o.anims.isPlaying && Math.abs(o.x - a.x) < 400 && Math.abs(o.y - a.y) < 320) n++; return n;", { x: cx, y: cy });
           check(n > 0, `${s.id}: знамёна в кадре играют анимацию (${n})`);
         }

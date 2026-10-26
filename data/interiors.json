@@ -1,0 +1,56 @@
+{
+  "_doc": "Интерьеры зданий (задача 144): отдельное помещение за дверью. Вход — клик или клавиша взаимодействия по двери здания shared/cities.ts CITY_ENTRANCES (поле kind), выход — по двери изнутри. Помещение стоит за восточным краем карты (shared/interiors.ts), снаружи его никто не видит. w, h — размер в тайлах; wall — высота задней стены в тайлах (непроходима); door — левая из двух клеток двери в нижнем ряду. props — [вид, x, y]: левая верхняя клетка следа (след — props ниже), спрайт стоит на нижнем крае следа; алтари занимают клетки до самой стены — за алтарь не встать. Картинки — tools/gen/interiors.ts (client/public/assets/interiors).",
+  "props": {
+    "altar_sun": { "w": 4, "h": 3 },
+    "pew": { "w": 4, "h": 1 },
+    "pillar_sol": { "w": 1, "h": 1 },
+    "candelabra": { "w": 1, "h": 1 },
+    "vase_sun": { "w": 1, "h": 1 },
+    "lectern": { "w": 1, "h": 1 },
+    "altar_umb": { "w": 4, "h": 3 },
+    "pillar_umb": { "w": 1, "h": 1 },
+    "brazier_umb": { "w": 1, "h": 1 },
+    "bone_rack": { "w": 2, "h": 1 },
+    "skull_pile": { "w": 1, "h": 1 }
+  },
+  "list": [
+    {
+      "id": "sol_church",
+      "name": "Храм Солнца",
+      "kind": "sol_church",
+      "style": "sol",
+      "w": 20,
+      "h": 15,
+      "wall": 3,
+      "door": 9,
+      "dark": 0,
+      "props": [
+        ["altar_sun", 8, 3],
+        ["candelabra", 6, 4], ["candelabra", 13, 4],
+        ["vase_sun", 4, 3], ["vase_sun", 15, 3],
+        ["lectern", 12, 6],
+        ["pillar_sol", 2, 6], ["pillar_sol", 17, 6], ["pillar_sol", 2, 11], ["pillar_sol", 17, 11],
+        ["pew", 3, 8], ["pew", 13, 8], ["pew", 3, 10], ["pew", 13, 10], ["pew", 3, 12], ["pew", 13, 12],
+        ["candelabra", 1, 13], ["candelabra", 18, 13]
+      ]
+    },
+    {
+      "id": "umb_ziggurat",
+      "name": "Зиккурат Тьмы",
+      "kind": "umb_ziggurat",
+      "style": "umb",
+      "w": 20,
+      "h": 15,
+      "wall": 3,
+      "door": 9,
+      "dark": 0.18,
+      "props": [
+        ["altar_umb", 8, 3],
+        ["brazier_umb", 6, 4], ["brazier_umb", 13, 4], ["brazier_umb", 5, 12], ["brazier_umb", 14, 12],
+        ["pillar_umb", 3, 5], ["pillar_umb", 16, 5], ["pillar_umb", 3, 10], ["pillar_umb", 16, 10],
+        ["bone_rack", 1, 7], ["bone_rack", 17, 7],
+        ["skull_pile", 1, 12], ["skull_pile", 18, 12], ["skull_pile", 5, 3], ["skull_pile", 14, 3]
+      ]
+    }
+  ]
+}

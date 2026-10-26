@@ -3,6 +3,7 @@ import type { Client, Room } from "@colyseus/core";
 import { CHAT_MAX_LEN, TILE } from "../../../shared/constants";
 import type { Player } from "../game/Player";
 import { NO_FIGHT_MSG } from "../../../shared/cities";
+import { playWidth } from "../../../shared/interiors";
 import { cancelAll, requestSkill } from "../game/skillQueue";
 import type { World } from "../game/World";
 import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
@@ -115,7 +116,7 @@ export function registerCombat(on: On, world: () => World) {
     p.input.my = my;
   });
   on<{ x: unknown; y: unknown }>("moveTo", (p, m) => {
-    const x = num(m.x, 0, w().map.w * TILE), y = num(m.y, 0, w().map.h * TILE);
+    const x = num(m.x, 0, playWidth(w().map)), y = num(m.y, 0, w().map.h * TILE);
     if (x === null || y === null) return;
     w().stopFollow(p, true);
     p.moveTo = { x, y };
@@ -162,7 +163,7 @@ export function registerCombat(on: On, world: () => World) {
   on<{ on: unknown }>("chase", (p, m) => { p.chase = m.on === true; });
   on<{ id: unknown; x: unknown; y: unknown; target: unknown; q: unknown; ap: unknown; a: unknown; dx: unknown; dy: unknown }>("skill", (p, m) => {
     if (typeof m.id !== "string") return;
-    const x = num(m.x, 0, w().map.w * TILE) ?? p.x, y = num(m.y, 0, w().map.h * TILE) ?? p.y;
+    const x = num(m.x, 0, playWidth(w().map)) ?? p.x, y = num(m.y, 0, w().map.h * TILE) ?? p.y;
     // a — угол прицела (линии, стена огня), dx, dy — вектор рывка или до точки линии: сервер применяет их от своей позиции (задача 133, shared/skillShape.ts)
     const a = num(m.a, -8, 8) ?? undefined, dx = num(m.dx, -4000, 4000) ?? undefined, dy = num(m.dy, -4000, 4000) ?? undefined;
     // q — окно очереди из настроек клиента (0–500 мс), ap — опция «Подходить к цели»

@@ -3,6 +3,8 @@
  *  Сольгард — белый камень с золотом и синим, Умбрат — тёмный камень с фиолетовым; рампы из tools/gen/palette.ts. */
 import { PC, OUTLINE, mix, rng, hex, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
+import { LOOKS } from "./walls141-lib";
+import { archerTower } from "./walls141-walls";
 
 export type Fac = "solgard" | "umbrath";
 export const STONE_SOL: Ramp = P.cloth.white, STONE_UMB: Ramp = [hex("#16121c"), hex("#241e2e"), hex("#342c42"), hex("#463c58"), hex("#5a4e70")];
@@ -61,41 +63,8 @@ export function archer(pc: PC, x: number, y: number, fac: Fac) {
 
 /** Башня стены (опора — низ): 52×~112. Квадратное тело, пояс, бойницы, стяг, зубчатая площадка с лучником. */
 export function wallTower(fac: Fac): PC {
-  const S = fac === "solgard" ? STONE_SOL : STONE_UMB;
-  const accent = fac === "solgard" ? GOLD : PURP;
-  const W = 52, H = 118, pc = new PC(W, H);
-  const bx = 5, bw = 42, top = 44; // тело
-  // тень на земле
-  pc.ellipse(W / 2, H - 3, 24, 4, [0, 0, 0, 70]);
-  brick(pc, bx, top, bw, H - top - 4, S, fac === "solgard" ? 3 : 4);
-  // цоколь
-  pc.rect(bx - 2, H - 12, bw + 4, 9, pick(S, 2)); pc.rect(bx - 2, H - 12, bw + 4, 1, lit(S)); pc.rect(bx - 2, H - 4, bw + 4, 1, dim(S));
-  pc.rect(bx - 2, H - 12, 2, 9, pick(S, 3)); pc.rect(bx + bw, H - 12, 2, 9, pick(S, 1));
-  // пояс (карниз) под площадкой
-  pc.rect(bx - 3, top - 3, bw + 6, 5, pick(S, 3)); pc.rect(bx - 3, top - 3, bw + 6, 1, lit(S)); pc.rect(bx - 3, top + 1, bw + 6, 1, dim(S));
-  pc.rect(bx - 3, top - 3, 2, 5, lit(S)); pc.rect(bx + bw + 1, top - 3, 2, 5, pick(S, 1));
-  if (fac === "solgard") pc.rect(bx - 3, top - 1, bw + 6, 1, accent[3]); else pc.rect(bx - 3, top - 1, bw + 6, 1, accent[2]);
-  // бойницы
-  for (const sx of [14, 34]) { pc.rect(bx + sx - 2, top + 16, 4, 12, pick(S, 0)); pc.rect(bx + sx - 1, top + 17, 2, 10, OUTLINE); pc.rect(bx + sx - 2, top + 15, 4, 1, lit(S)); }
-  // дверь (арка) и ступень
-  pc.rect(bx + 15, H - 28, 12, 18, OUTLINE);
-  pc.poly([[bx + 15, H - 28], [bx + 21, H - 34], [bx + 27, H - 28]], OUTLINE);
-  pc.rect(bx + 16, H - 27, 10, 17, P.wood[1]); pc.rect(bx + 16, H - 27, 5, 17, P.wood[2]); pc.rect(bx + 21, H - 27, 1, 17, P.wood[0]);
-  pc.rect(bx + 24, H - 19, 1, 2, accent[3]);
-  // стяг на стене
-  const bxx = bx + bw - 17, by = top + 4, col = fac === "solgard" ? P.cloth.blue : P.cloth.purple;
-  pc.rect(bxx - 1, by - 2, 12, 2, P.wood[2]);
-  pc.poly([[bxx, by], [bxx + 10, by], [bxx + 10, by + 19], [bxx + 5, by + 15], [bxx, by + 19]], (x, y) => (x < bxx + 3 ? col[3] : x > bxx + 7 ? col[1] : col[2]));
-  if (fac === "solgard") { pc.ellipse(bxx + 5, by + 6, 3, 3, accent[3]); pc.rect(bxx + 4, by + 2, 3, 1, accent[4]); } else { pc.rect(bxx + 3, by + 4, 5, 4, PURP[3]); pc.rect(bxx + 4, by + 8, 3, 2, PURP[3]); pc.rect(bxx + 4, by + 5, 1, 1, OUTLINE); pc.rect(bxx + 6, by + 5, 1, 1, OUTLINE); }
-  // площадка с зубцами; лучник стоит в проёме между зубцами
-  const py = top - 3;
-  pc.rect(bx - 3, py - 8, bw + 6, 8, pick(S, 2)); // парапет-основа
-  merlons(pc, bx - 3, py - 15, 5, 7, 4, 8, S);
-  pc.rect(bx - 3, py - 8, bw + 6, 1, lit(S)); pc.rect(bx - 3, py - 1, bw + 6, 1, dim(S));
-  if (fac === "umbrath") for (let i = 0; i < 5; i++) { const mx = bx - 3 + i * 11 + 3; pc.poly([[mx - 1, py - 15], [mx + 2, py - 20], [mx + 5, py - 15]], accent[1]); pc.rect(mx + 1, py - 18, 1, 3, accent[2]); }
-  archer(pc, bx - 3 + 11 * 2 - 2, py - 27, fac); // над зубцами в среднем проёме
-  pc.rect(bx - 3 + 11 * 2 - 3, py - 15, 4, 7, pick(S, 2));
-  return pc.outline();
+  // задача 141: вышка лучника в стиле городских башен (tools/gen/walls141-walls.ts archerTower), тот же кадр, что пишет npm run assets
+  return archerTower(LOOKS[fac === "solgard" ? "sol_fort" : "umb_fort"], fac === "solgard" ? 2 : 3);
 }
 
 // ---------- шатры ----------

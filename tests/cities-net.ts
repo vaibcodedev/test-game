@@ -159,7 +159,7 @@ async function main() {
       b.send("quest:turn", { id: "mill_wolves" });
       await sleep(300);
       assert(b.self!.quests!.active.mill_wolves === 0, "сдано без выполнения");
-      b.send("dbg", { op: "qp", kind: "kill", target: "wolf", n: 8 });
+      b.send("dbg", { op: "qp", kind: "kill", target: "wolffolk_chaser", n: 8 });
       await b.until(() => b.self!.quests?.active.mill_wolves === 8, 1500, "прогресс");
       const gold = b.self!.gold;
       b.send("quest:turn", { id: "mill_wolves" });

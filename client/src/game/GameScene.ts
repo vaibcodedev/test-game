@@ -31,8 +31,10 @@ import { aimUnit, castAim, hitUnitsOf, PICK_NEAR, pickOrder, pickReach, resolveC
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 import { removeLoot, spawnLoot } from "./lootView";
+import { INTERIORS, interiorAt, type Interior } from "../../../shared/interiors";
+import { InteriorViews } from "./interiors";
 
-type NpcKind = WorldNpcKind | "enc" | "stone";
+type NpcKind = WorldNpcKind | "enc" | "stone" | "door";
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
@@ -156,6 +158,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private scenes: Scenes | null = null;
+  /** Интерьеры зданий (задача 144): залы за краем карты и зал, где сейчас герой. */
+  private interiors: InteriorViews | null = null;
+  private room: Interior | null = null;
+  /** Переход через дверь: куда перенесён герой; кадр проявляется, когда позиция придёт в состоянии (патч идёт позже сообщения). */
+  private arrive: { x: number; y: number; at: number } | null = null;
+  private fadeSeq = 0;
 
   create() {
     // сцена перезапускается при переходе мир ⇄ арена: сбрасываем состояние прошлого запуска
@@ -247,7 +255,29 @@ export class GameScene extends Phaser.Scene {
       }
       this.scenes = new Scenes(this, this.map);
       this.setupEncounters();
-    } else this.scenes = null;
+      // двери интерьеров (задача 144): снаружи — у двери здания, изнутри — в нижней стене зала; точки нажатия невидимы
+      for (const r of INTERIORS) {
+        const city = CITIES.find((c) => c.id === r.city)?.name ?? "";
+        this.npcs.push({ sprite: this.add.sprite(r.outDoor.x, r.outDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: `Войти: ${r.name}` });
+        this.npcs.push({ sprite: this.add.sprite(r.exitDoor.x, r.exitDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: `Выйти: ${city || "на улицу"}` });
+      }
+      this.interiors = new InteriorViews(this);
+      this.room = null;
+      // переход: сервер затемняет (fade), переносит героя и шлёт arrive — камера встаёт на новое место и кадр проявляется
+      this.cleanup.push(net.on("int", (m) => {
+        const cam = this.cameras.main;
+        if (m.ph === "fade") {
+          this.clickGoal = null; this.pendingNpc = null;
+          const seq = ++this.fadeSeq;
+          cam.fadeOut(m.ms ?? 240, 0, 0, 0);
+          // страховка: перенос не пришёл (разрыв, смерть) — кадр всё равно проявляется
+          this.time.delayedCall(2500, () => { if (seq === this.fadeSeq && !this.arrive) cam.fadeIn(200, 0, 0, 0); });
+          return;
+        }
+        if (m.ph === "arrive") this.arrive = { x: m.x, y: m.y, at: this.time.now };
+      }));
+      this.arrive = null;
+    } else { this.scenes = null; this.interiors = null; this.room = null; }
 
     if (mouseOpts.chase) net.send("chase", { on: true });
     this.aim = new AimPreview(this);
@@ -278,7 +308,7 @@ export class GameScene extends Phaser.Scene {
     const shadow = this.add.image(at.x, at.y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5);
     const label = { fontSize: "9px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 4 };
     const nameT = placeText(worldText(this, 0, 0, name, "plain", label).setDepth(DEPTH.top - 5), at.x, at.y - 31, 0.5, 1);
-    const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "raid" ? "☀" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : "!", "plain", { ...label, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, at.y - 40, 0.5, 1);
+    const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "raid" ? "☀" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : kind === "stable" ? "♞" : "!", "plain", { ...label, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, at.y - 40, 0.5, 1);
     this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
     this.npcExtras = [shadow, nameT, mark];
     this.npcs.push({ sprite: s, kind, id, name });
@@ -1015,7 +1045,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (const n of this.npcs) {
       const d = Math.hypot(n.sprite.x - hx, n.sprite.y - hy);
-      out.push({ rank: n.kind === "stone" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - 14, text: n.kind === "stone" ? "Использовать: Камень телепорта" : `Поговорить: ${n.name ?? "собеседник"}`, go: () => { reset(); this.talk(n); } });
+      out.push({ rank: n.kind === "stone" || n.kind === "door" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - 14, text: n.kind === "stone" ? "Использовать: Камень телепорта" : n.kind === "door" ? n.name ?? "Дверь" : `Поговорить: ${n.name ?? "собеседник"}`, go: () => { reset(); this.talk(n); } });
     }
     return out;
   }
@@ -1052,12 +1082,36 @@ export class GameScene extends Phaser.Scene {
     else if (n.kind === "smith") this.hud.smith.open(n.id);
     else if (n.kind === "bank") this.hud.bank.open(n.id);
     else if (n.kind === "bags") this.hud.bags.open(n.id);
+    else if (n.kind === "stable") this.hud.stable.open(n.id);
     else if (n.kind === "quest") this.hud.quest.open(n.id!);
     else if (n.kind === "stone") this.hud.tp.open(this.pos);
+    else if (n.kind === "door") net.send("door", { id: n.id });
     else if (n.kind === "rumor") this.hud.rumor.open(n.id!, n.name!);
     else if (n.kind === "enc") this.hud.enc.open(n.id!);
     else if (n.kind === "raid") this.hud.raid.open(n.id!);
     else this.hud.arena.open();
+  }
+
+  /** Герой вошёл в зал интерьера или вышел на улицу: границы камеры, надпись зала. */
+  private enterRoom(r: Interior | null) {
+    if (r === this.room) return;
+    this.room = r;
+    const cam = this.cameras.main;
+    if (r) {
+      this.fitRoom();
+      this.hud.showZone(r.name, CITIES.find((c) => c.id === r.city)?.name ?? "", r.style === "sol" ? "#ffd27a" : "#c08aff");
+    } else cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
+  }
+  /** Границы камеры в зале (каждый кадр: окно и масштаб меняются): по оси, где зал меньше кадра, границы — кадр с залом посередине
+   *  (Phaser прижал бы зал к левому/верхнему краю), вокруг — тьма за залом; где зал больше — камера идёт за героем внутри зала. */
+  private fitRoom() {
+    const r = this.room;
+    if (!r) return;
+    const cam = this.cameras.main, vw = cam.width / cam.zoom, vh = cam.height / cam.zoom;
+    const rw = r.w * TILE, rh = r.h * TILE, bw = Math.max(rw, Math.ceil(vw)), bh = Math.max(rh, Math.ceil(vh));
+    const bx = Math.round(r.ox + rw / 2 - bw / 2), by = Math.round(r.oy + rh / 2 - bh / 2);
+    const b = cam.getBounds();
+    if (b.x !== bx || b.y !== by || b.width !== bw || b.height !== bh) cam.setBounds(bx, by, bw, bh);
   }
 
   syncBags(bags: LootBag[]) {
@@ -1228,6 +1282,17 @@ export class GameScene extends Phaser.Scene {
       return true;
     });
 
+    // зал интерьера (задача 144): камера ограничена залом, своё освещение
+    const ar = this.arrive;
+    if (ar && me && (Math.hypot(me.u.x - ar.x, me.u.y - ar.y) < 6 || now - ar.at > 1500)) {
+      this.arrive = null;
+      this.pos = { x: me.u.x, y: me.u.y };
+      me.update(0, this.pos.x, this.pos.y);
+      this.enterRoom(interiorAt(this.pos.x, this.pos.y));
+      this.fadeSeq++;
+      this.cameras.main.centerOn(this.pos.x, this.pos.y - 12).fadeIn(320, 0, 0, 0);
+    }
+    if (this.interiors) { const r = interiorAt(this.pos.x, this.pos.y); if (r !== this.room) this.enterRoom(r); else this.fitRoom(); }
     // зона: название, затемнение
     const z = zoneAtPx(this.map, this.pos.x, this.pos.y);
     if (z !== this.zone) {
@@ -1251,7 +1316,9 @@ export class GameScene extends Phaser.Scene {
     // ночь (общий цикл по часам): затемнение и синева на поверхности, не в подземельях/арене/под водой
     const zs = zoneStyle(z);
     const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
-    const target = Math.max(tint.dark, night * 0.5);
+    // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
+    const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5);
+    this.interiors?.update(dt, night, this.room);
     const dark = this.world.dark;
     const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
     // цвет дымки зоны (снежная синева, пустынный жар) меняется так же плавно, как её плотность, а не скачком на границе
@@ -1271,7 +1338,8 @@ export class GameScene extends Phaser.Scene {
       me: me?.u ?? null,
       target: this.targetId ? (this.units.get(this.targetId)?.u ?? null) : null,
       targetId: this.targetId,
-      pos: this.pos,
+      // в зале миникарта и карта мира показывают героя у двери здания
+      pos: this.room ? this.room.outSpot : this.pos,
       units: this.units,
     });
   }

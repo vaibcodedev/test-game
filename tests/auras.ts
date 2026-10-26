@@ -100,7 +100,7 @@ function mkHero(w: World, cls: ClassId, skills: string[], dx = 0, team = 1): Pla
   p.unit.mp = p.unit.maxMp;
   return p;
 }
-const mobFor = (w: World, p: Player) => w.addMob(new Mob(w.uid("m"), MOBS.goblin, 20, { x: p.x + 40, y: p.y }));
+const mobFor = (w: World, p: Player) => w.addMob(new Mob(w.uid("m"), MOBS.goblin_slasher, 20, { x: p.x + 40, y: p.y }));
 const keysOf = (p: Player, w: World) => auraList(p, w.time).map((a) => a.k);
 const auraOf = (p: Player, w: World, k: string) => auraList(p, w.time).find((a) => a.k === k);
 /** Применить умение (отказ — провал теста) и пустить мир на run мс: такты героев и отложенные удары. */

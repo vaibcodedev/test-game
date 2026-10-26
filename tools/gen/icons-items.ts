@@ -22,6 +22,8 @@ export const ITEM_MAP: Record<string, string> = {
   potion_red: "P_Red05", potion_blue: "P_Blue05",
   res_cactus_juice: "P_Green05", res_ice_crystal: "I_Crystal01", res_obsidian: "I_Coal", res_pearl: "I_Opal",
   mat_ash_ore: "I_Rock04", mat_star_dust: "I_Diamond",
+  // конюшня (задача 142): «Печать скакуна» и детали маунтов (data/mounts.json seal, parts)
+  mount_seal: "I_Scroll02", mpart_saddle: "I_SolidShell", mpart_barding: "A_Armor04", mpart_egg: "I_Jade", mpart_feather: "I_Feather02", mpart_gladiator: "Ac_Medal01",
 };
 /** Про запас: предметов в игре пока нет (свитки, самоцветы). */
 export const RESERVE = ["I_Scroll", "I_Scroll02", "I_Map", "I_Ruby", "I_Sapphire", "I_Agate", "I_Amethist", "I_Jade"];
@@ -138,4 +140,22 @@ export function newItemIcon(name: string, target: string): PC | "keep" | null {
   const file = path.join(SRC, e.file + ".png");
   if (!fs.existsSync(file)) return fs.existsSync(target) ? "keep" : null;
   return adapt(readPng(file));
+}
+
+/** «Печать скакуна» маунта (задача 142): свиток печати (mount_seal) и уменьшенный маунт в своих цветах с контуром в правом нижнем углу.
+ *  seal — готовая иконка свитка 32×32, mount — иконка маунта (48×48, assets/icons/mount_<id>.png). */
+export function sealIconFor(seal: PC, mount: PC): PC {
+  const out = seal.clone();
+  const { pc } = trim(mount, 128);
+  const W = 23, H = 20, k = Math.min(W / pc.w, H / pc.h);
+  const w = Math.max(1, Math.round(pc.w * k)), h = Math.max(1, Math.round(pc.h * k));
+  const small = downscaleMode(pc, w, h, 0.4);
+  const ox = 32 - w - 1, oy = 32 - h - 1;
+  const solid = (x: number, y: number) => small.alpha(x, y) > 0;
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    if (solid(x, y)) continue;
+    if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) out.set(ox + x, oy + y, OUTLINE);
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (solid(x, y)) out.set(ox + x, oy + y, small.get(x, y)!);
+  return out;
 }

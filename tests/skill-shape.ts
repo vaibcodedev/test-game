@@ -131,7 +131,7 @@ const RADII = [10, 16, 28];
 const r01 = (n: number) => Math.round(n * 10) / 10;
 /** Неподвижный моб без агро: скорость 0, не бродит, не погибает от умений (смерть, добыча и возрождение — лишняя работа мира); boss — босс (его не притягивают). */
 function dummy(x: number, y: number, r: number, boss = false): Mob {
-  const mob = w.addMob(new Mob(w.uid("m"), { ...MOBS.goblin, speed: 0, aggro: 0, radius: r, boss }, 20, { x: r01(x), y: r01(y) }));
+  const mob = w.addMob(new Mob(w.uid("m"), { ...MOBS.goblin_slasher, speed: 0, aggro: 0, radius: r, boss }, 20, { x: r01(x), y: r01(y) }));
   mob.wanderAt = Infinity;
   mob.unit.maxHp = mob.unit.hp = 1e9;
   return mob;

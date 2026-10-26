@@ -84,6 +84,9 @@ export interface SelfState {
   isAdmin?: boolean;
   mounts?: string[];
   mount?: string;
+  /** Конюшня: репутация фракции и Знаки Полей. */
+  rep?: number;
+  marks?: number;
   /** Питомцы: владение (уровень, опыт, опыт до уровня), выбранный, осталось мс до повторного призыва. */
   pets?: Record<string, { level: number; xp: number; next: number }>;
   pet?: string;

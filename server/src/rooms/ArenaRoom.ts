@@ -3,6 +3,7 @@
  * резервации места из очереди (onAuth отклоняет прямые подключения). После боя сервер
  * резервирует место в мире, и игрок возвращается туда, где стоял перед матчем.
  */
+import { awardGladiators } from "../arena/gladiator";
 import { resetTargetAuras } from "../game/auras";
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
 import {
@@ -321,6 +322,10 @@ export class ArenaRoom extends Room<ArenaState> {
           ...(this.parts[i].bot ? { bot: true } : {}),
         })),
       });
+      // печати гладиатора (задача 142): за победу, серию и рейтинг больше, за участие — немного
+      try {
+        awardGladiators(players.map((r, i) => ({ nameKey: this.parts[i].nameKey, name: r.name, result: r.won ? "win" : r.draw ? "draw" : "loss", ratingAfter: r.ratingAfter, left: r.left, bot: !!this.parts[i].bot })), this.withBots);
+      } catch (e) { console.error("[arena] печати гладиатора:", e); }
     }
     this.broadcast("arena:result", this.result);
     this.clock.setTimeout(() => this.disconnect(), STAY_AFTER_MS);

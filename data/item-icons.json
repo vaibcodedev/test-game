@@ -68,6 +68,30 @@
   "src": "7soul1",
   "file": "I_Diamond"
  },
+ "mount_seal": {
+  "src": "7soul1",
+  "file": "I_Scroll02"
+ },
+ "mpart_saddle": {
+  "src": "7soul1",
+  "file": "I_SolidShell"
+ },
+ "mpart_barding": {
+  "src": "7soul1",
+  "file": "A_Armor04"
+ },
+ "mpart_egg": {
+  "src": "7soul1",
+  "file": "I_Jade"
+ },
+ "mpart_feather": {
+  "src": "7soul1",
+  "file": "I_Feather02"
+ },
+ "mpart_gladiator": {
+  "src": "7soul1",
+  "file": "Ac_Medal01"
+ },
  "reserve": [
   {
    "src": "7soul1",

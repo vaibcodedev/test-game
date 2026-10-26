@@ -8,25 +8,12 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { boarfolk } from "./boarfolk";
 import { PC } from "./lib";
-import { frogfolk } from "./frogfolk";
-import { ghoul } from "./ghoul";
-import { goblin } from "./goblin";
-import { hobgoblin } from "./hobgoblin";
-import { imp } from "./imp";
-import { kobold } from "./kobold";
-import { mummy } from "./mummy";
-import { ogre } from "./ogre";
-import { ratfolk } from "./ratfolk";
-import { satyr } from "./satyr";
-import { troll } from "./troll";
-import { wolffolk } from "./wolffolk";
-import { zombie } from "./zombie";
 import { skeletonIdleFrame, VARIANTS as SK_VARS, type Role as SkRole } from "./skeleton";
 import { BATCH_DIR, HERO_LOOK, OUTLINE_LIMIT, outlineLook, scaleNN, fill, groundBg, text, outlineStats, camOf, crop, loadPC, variantRu, frameAt, loadAssets, rootFromArgv, runCreature, sceneRow, stackRows, variantId, type Creature, type CreatureOut, type Item } from "./rig";
 
-export const BATCH1: Creature[] = [boarfolk, ratfolk, goblin, zombie, imp, wolffolk, satyr, ghoul, hobgoblin, kobold, mummy, ogre, troll, frogfolk];
+import { BATCH1 } from "./batch1-list";
+export { BATCH1 };
 
 type Pick = [string, string, boolean];
 /** Зоны 1–40: [образ, роль, усиленный]; последняя запись — элита зоны. */

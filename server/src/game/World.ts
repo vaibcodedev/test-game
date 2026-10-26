@@ -1173,7 +1173,7 @@ export class World {
     if (m.def.projectile) {
       const ms = (this.dist(u, target) / 300) * 1000;
       this.emit({ t: "proj", k: m.def.projectile, from: m.id, to: target.id, tx: target.x, ty: target.y, ms });
-      const kind: FxKind = m.def.projectile === "poison" ? "poison" : m.def.projectile === "fire" ? "fire" : "shadow";
+      const kind: FxKind = m.def.projectile === "poison" ? "poison" : m.def.projectile === "fire" ? "fire" : m.def.projectile === "arrow" ? "phys" : m.def.projectile === "arcane" ? "arcane" : "shadow";
       this.later(ms, () => {
         if (m.dead || target.dead || !lineClear(this.map, m.x, m.y, target.x, target.y)) return;
         this.hit(m, target, { kind, mult });

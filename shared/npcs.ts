@@ -17,9 +17,10 @@ import { RAID, RAID_HERALDS } from "./raid";
 import { RUMOR_NPCS } from "./rumors";
 import { settlementAt, SETTLEMENTS } from "./settlements";
 import { SMITHS } from "./upgrade";
+import { STABLEMASTERS } from "./stables";
 
-/** Что делает NPC по нажатию (окно на клиенте): торговля, арена, еда, заточка, банк, сумки, слухи, рейд, задания. */
-export type WorldNpcKind = "shop" | "arena" | "cook" | "smith" | "bank" | "bags" | "rumor" | "raid" | "quest";
+/** Что делает NPC по нажатию (окно на клиенте): торговля, арена, еда, заточка, банк, сумки, слухи, рейд, задания, конюшня. */
+export type WorldNpcKind = "shop" | "arena" | "cook" | "smith" | "bank" | "bags" | "rumor" | "raid" | "quest" | "stable";
 export interface WorldNpc {
   kind: WorldNpcKind;
   id: string;
@@ -47,6 +48,7 @@ export const WORLD_NPCS: WorldNpc[] = [
   ...RUMOR_NPCS.map(as("rumor")),
   ...RAID_HERALDS.map((h) => as("raid")({ ...h, sprite: RAID.npc.sprite, color: RAID.npc.color, tint: Number(RAID.npc.tint) })),
   ...QUEST_GIVERS.map(as("quest")),
+  ...STABLEMASTERS.map(as("stable")),
 ];
 
 // ---------- фракция NPC (решение пользователя: чужим не служат) ----------
@@ -59,7 +61,7 @@ export function npcFaction(x: number, y: number): FactionId | null {
   return (settlementAt(tx, ty)?.faction as FactionId | undefined) ?? null;
 }
 const VERB: Record<WorldNpcKind, string> = {
-  shop: "не торгует с врагами", cook: "не торгует с врагами", bank: "не торгует с врагами", bags: "не торгует с врагами",
+  shop: "не торгует с врагами", stable: "не торгует с врагами", cook: "не торгует с врагами", bank: "не торгует с врагами", bags: "не торгует с врагами",
   smith: "не работает на врагов", quest: "не даёт заданий врагам", rumor: "не говорит с врагами", raid: "не собирает в поход врагов", arena: "не служит врагам",
 };
 /** Текст отказа: «Казначей Лукиан не торгует с врагами Сольгарда». */

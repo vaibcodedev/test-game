@@ -222,7 +222,8 @@ if (process.argv[1] && path.resolve(process.argv[1]).endsWith("battlefield.ts"))
   const anims = buildPackAnims();
   const gen = await import("./bf-gen");
   const gen2 = await import("./bf-gen2");
-  const objs = { ...gen.OBJECTS, ...gen2.OBJECTS };
+  // объёмные версии шатров, осадных машин, повозок и т. п. (tools/gen/volume-bf.ts) заменяют плоские с теми же id
+  const objs = { ...gen.OBJECTS, ...gen2.OBJECTS, ...(await import("./volume-bf")).BF_VOLUME };
   const made: Record<string, PC> = {};
   for (const [id, f] of Object.entries(objs)) made[id] = saveObject(id, f());
   const genAnims = gen2.ANIMS();

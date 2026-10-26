@@ -8,6 +8,8 @@ import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, LOGOUT_COMBAT_MS, RECONNECT_SEC } fr
 import { freshChars, sessionOf } from "../accounts";
 import { xpToNext } from "../../../shared/formulas";
 import { MOUNTS } from "../../../shared/mounts";
+import { buySeal, stableBuy, stableCraft } from "../game/stable";
+import { bestArenaRating } from "../arena/gladiator";
 import { buyPet, selectPet, togglePet } from "../game/Pet";
 import { MAX_LEVEL, MERCHANT_RANGE, PLAYER_RADIUS } from "../../../shared/constants";
 import { MAP_VERSION, walkable } from "../../../shared/map";
@@ -35,6 +37,7 @@ import { registerAdmin } from "../game/admin";
 import { registerEncounters } from "../game/encounters";
 import { registerBiomes, sendNodes } from "../game/biomes";
 import { questProgress, registerCities } from "../game/cities";
+import { registerInteriors } from "../game/interiors";
 import { addItem, buy, buyFood, merchantRefusal, nearMerchant, equip, pickup, sell, swap, unequip, useBase, useItem } from "../game/inventory";
 import { Player } from "../game/Player";
 import { gainXp } from "../game/rewards";
@@ -109,6 +112,7 @@ export class WorldRoom extends Room<WorldState> {
     registerEncounters(on, () => this.world);
     registerBiomes(on, () => this.world);
     registerCities(on, () => this.world);
+    registerInteriors(on, () => this.world);
     if (process.env.TEST_MODE === "1") this.registerDebug(on);
     this.clock.setInterval(guard("автосохранение", () => this.saveAll(true)), SAVE_INTERVAL_MS);
     this.clock.setInterval(guard("очередь арены", () => this.queue.tick()), 1000);
@@ -564,24 +568,19 @@ export class WorldRoom extends Room<WorldState> {
       if (no) return p.send("toast", { text: no, kind: "error" });
       buyPet(w(), p, m.id);
     });
+    // маунты торговки (vendor) и конюшего (vendor, rep): печать в сумку; сборка из деталей — у конюшего (server/src/game/stable.ts)
     on<{ id: unknown }>("mount:buy", (p, m) => {
-      const def = typeof m.id === "string" ? MOUNTS[m.id] : undefined;
-      const err = (text: string) => p.send("toast", { text, kind: "error" });
+      const def = typeof m.id === "string" && Object.hasOwn(MOUNTS, m.id) ? MOUNTS[m.id] : undefined;
       if (!def || p.dead) return;
-      if (!nearMerchant(w(), p)) return err("Подойдите к торговке");
+      if (!nearMerchant(w(), p)) return p.send("toast", { text: "Подойдите к торговке", kind: "error" });
       const no = merchantRefusal(p);
-      if (no) return err(no);
-      if (p.save.mounts?.includes(def.id)) return err("Маунт уже у вас");
-      if (p.level < def.level) return err(`${def.name}: нужен ${def.level} уровень`);
-      if (def.source !== "vendor" || def.price <= 0) return err("Этот маунт не продаётся");
-      if (def.faction && def.faction !== p.faction) return err(`${def.name}: только для другой фракции`);
-      if (p.save.gold < def.price) return err("Не хватает золота");
-      p.save.gold -= def.price;
-      (p.save.mounts ??= []).push(def.id);
-      p.save.mount = def.id;
-      p.selfDirty = true;
-      p.send("toast", { text: `Получен маунт: ${def.name}`, kind: "loot" });
+      if (no) return p.send("toast", { text: no, kind: "error" });
+      if (def.source !== "vendor") return p.send("toast", { text: "Этот маунт — у конюшего", kind: "error" });
+      buySeal(p, def.id);
     });
+    on<{ id: unknown }>("stable:buy", (p, m) => stableBuy(w(), p, m.id));
+    on<{ id: unknown }>("stable:craft", (p, m) => stableCraft(w(), p, m.id, bestArenaRating(p.name.toLowerCase())));
+    on("stable:open", (p) => p.send("stable:info", { arenaRating: bestArenaRating(p.name.toLowerCase()) }));
     on<{ npc: unknown }>("rumor", (p, m) => {
       const r = rumorFor(w(), p, m.npc);
       if (r) p.send("rumor", r);
@@ -670,6 +669,14 @@ export class WorldRoom extends Room<WorldState> {
     on<{ op: string; [k: string]: unknown }>("dbg", (p, m) => {
       switch (m.op) {
         case "tp": p.unit.x = Number(m.x); p.unit.y = Number(m.y); p.moveTo = null; break;
+        case "mount": { // тест маунтов: выдать и сразу сесть (без каста); пустой id — спешиться
+          const id = String(m.id ?? "");
+          if (id && Object.hasOwn(MOUNTS, id) && !p.save.mounts?.includes(id)) (p.save.mounts ??= []).push(id);
+          if (id && Object.hasOwn(MOUNTS, id)) p.save.mount = id;
+          p.unit.mount = id && Object.hasOwn(MOUNTS, id) ? id : "";
+          p.selfDirty = true;
+          break;
+        }
         case "gear": { // тест внешности: {slots:{helmet:{r,plus,leg}}} — надевает без проверок
           const sl = (m.slots || {}) as Record<string, { base?: string; r?: number; plus?: number; leg?: string; rags?: boolean } | null>;
           for (const [k, v] of Object.entries(sl)) { if (!v) { (p.save.equip as Record<string, unknown>)[k] = null; continue; } const it = v.leg ? makeLegendary(v.leg) : makeItem(v.base || k, 20, (v.r || 0) as Rarity); it.plus = v.plus || 0; if (v.rags) it.rags = true; (p.save.equip as Record<string, unknown>)[k] = it; }
@@ -679,6 +686,7 @@ export class WorldRoom extends Room<WorldState> {
         case "xp": gainXp(w(), p, Number(m.v)); break;
         case "level": { const lv = Math.min(MAX_LEVEL, Number(m.v) || 1); while (p.level < lv) gainXp(w(), p, xpToNext(p.level) - p.save.xp); break; }
         case "gold": p.save.gold += Number(m.v); p.selfDirty = true; break;
+        case "rep": p.save.rep = Number(m.rep) || 0; p.save.marks = Number(m.marks) || 0; p.selfDirty = true; break; // конюшня (задача 142)
         case "hp": p.unit.hp = Math.max(1, Number(m.v)); break;
         case "god": p.unit.maxHp = 999999; p.unit.hp = 999999; break;
         case "drop": p.forceDrop = !!m.v; break;

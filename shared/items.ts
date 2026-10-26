@@ -5,6 +5,7 @@ import { MATERIALS, PLUS_BONUS } from "./upgrade";
 import catalog from "../data/items.json";
 import { MOBS } from "./mobs";
 import { ZB_ITEMS } from "./zoneBosses";
+import mountData from "../data/mounts.json";
 
 export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "cloak" | "ring" | "amulet";
 export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"];
@@ -139,6 +140,10 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   ...Object.fromEntries(Object.values(MATERIALS).map((m) => [m.id, { id: m.id, name: m.name, slot: "consumable", icon: m.icon, price: m.price, stack: 99 } as BaseItem])),
   ...Object.fromEntries(Object.values(RESOURCES).map((r) => [r.id, { id: r.id, name: r.name, slot: "consumable", icon: r.icon, price: r.price, stack: 99 } as BaseItem])),
   ...Object.fromEntries(Object.values(FOOD).map((d) => [`food_${d.id}`, { id: `food_${d.id}`, name: d.name, slot: "consumable", icon: d.icon, price: d.price, stack: 20 } as BaseItem])),
+  // «Печать скакуна» (задача 142): по одной на маунт, не складывается; изучение — shared/mounts.ts sealMount, server/src/game/stable.ts
+  ...Object.fromEntries(Object.entries(mountData.mounts).map(([id, m]) => [`mseal_${id}`, { id: `mseal_${id}`, name: `${mountData.seal.name}: ${m.name}`, typeName: mountData.seal.name, slot: "consumable", icon: `mseal_${id}`, price: (mountData.seal.price as Record<string, number>)[m.tier] ?? 300 } as BaseItem])),
+  // детали маунтов для сборки у конюшего (data/mounts.json parts)
+  ...Object.fromEntries(Object.entries(mountData.parts).map(([id, d]) => [`mpart_${id}`, { id: `mpart_${id}`, name: d.name, typeName: "Деталь для конюшего", slot: "consumable", icon: d.icon, price: d.price, stack: (d as { stack?: number }).stack ?? 20 } as BaseItem])),
 };
 export const isTwoHanded = (baseId: string | undefined): boolean => !!baseId && BASE_ITEMS[baseId]?.hands === 2;
 
@@ -447,8 +452,10 @@ export function makeUnique(id: string, ilvl: number = uniqueLevel(id)): Item {
 }
 
 /** Уникальные предметы боссов и награды арены привязаны к персонажу. */
-export function isBound(it: Item): boolean {
-  return !!it.bound || !!it.unique || !!it.legendary;
+export function isBound(it: Pick<Item, "base" | "bound" | "unique" | "legendary">): boolean {
+  // привязанные детали маунтов (перо феникса, Печать гладиатора) — всегда, как бы ни попали в сумку
+  const part = it.base.startsWith("mpart_") ? (mountData.parts as Record<string, { bound?: boolean }>)[it.base.slice(6)] : undefined;
+  return !!it.bound || !!it.unique || !!it.legendary || !!part?.bound;
 }
 
 export function itemValue(it: Item): number {

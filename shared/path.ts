@@ -1,6 +1,7 @@
 /** Поиск пути A* по клеткам карты (8 направлений, без срезания углов) и сглаживание по прямой видимости. */
 import { TILE } from "./constants";
 import { CELL_BLOCK, walkable, type WorldMap } from "./map";
+import { interiorAt, interiorGrid } from "./interiors";
 
 /** Проходима ли прямая для круга радиуса r (проверка шагами по 8 px). */
 export function segmentWalkable(m: WorldMap, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
@@ -62,7 +63,8 @@ class Heap {
 interface Scratch { size: number; g: Float64Array; from: Int32Array; seen: Uint32Array; closed: Uint32Array; heap: Heap; gen: number }
 let scratch: Scratch | null = null;
 function getScratch(size: number): Scratch {
-  if (!scratch || scratch.size !== size) {
+  // буфер не меньше нужного: зал интерьера (задача 144) ищет путь по своей маленькой сетке в буфере карты мира, без пересоздания
+  if (!scratch || scratch.size < size) {
     scratch = { size, g: new Float64Array(size), from: new Int32Array(size), seen: new Uint32Array(size), closed: new Uint32Array(size), heap: new Heap(new Float64Array(size)), gen: 0 };
   }
   if (++scratch.gen >= 0xffffffff) {
@@ -79,6 +81,13 @@ function getScratch(size: number): Scratch {
  * Если цель в непроходимой клетке — идём к ближайшей достигнутой клетке.
  */
 export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: number, r: number, maxNodes = 6000): { x: number; y: number }[] | null {
+  // зал интерьера за краем карты мира: A* по его сетке в его координатах
+  if (sx >= m.w * TILE) {
+    const room = interiorAt(sx, sy);
+    if (!room) return null;
+    const sub = interiorGrid(room) as unknown as WorldMap;
+    return findPath(sub, sx - room.ox, sy - room.oy, tx - room.ox, ty - room.oy, r, maxNodes)?.map((p) => ({ x: p.x + room.ox, y: p.y + room.oy })) ?? null;
+  }
   const W = m.w, H = m.h;
   const s = Math.floor(sy / TILE) * W + Math.floor(sx / TILE);
   const tcx = Math.floor(tx / TILE), tcy = Math.floor(ty / TILE);

@@ -13,7 +13,7 @@ const bodyDist = (x: number, y: number, wx: number, wy: number, reach: number): 
 };
 // слизень — у столицы героя (воин — Сольгард, Аурелион): ближайший к Эмберхоллу теперь у вражеской столицы, где героя бьёт стража (задача 132)
 const home = homeCity("solgard").spawn;
-const spawns = MAP.spawns.filter((s) => s.mob === "slime").sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
+const spawns = MAP.spawns.filter((s) => s.mob === "ratfolk_cutter").sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
 /** Точка появления слизня, которого нашёл setup(): позиции проверок считаются от неё (убитый слизень возрождается не сразу, живой — на соседней точке). */
 let cur: { x: number; y: number } = spawns[0];
 
@@ -21,7 +21,7 @@ let cur: { x: number; y: number } = spawns[0];
 function slimeNear(b: Bot): { id: string; x: number; y: number } | null {
   for (const s of spawns) {
     let id: string | null = null, bd = 150;
-    b.room.state.mobs.forEach((m: any, k: string) => { const d = Math.hypot(m.x - s.x, m.y - s.y); if (m.anim !== 4 && m.sprite === "slime" && d < bd) { bd = d; id = k; } });
+    b.room.state.mobs.forEach((m: any, k: string) => { const d = Math.hypot(m.x - s.x, m.y - s.y); if (m.anim !== 4 && m.sprite.startsWith("ratfolk_cutter") && d < bd) { bd = d; id = k; } });
     if (id) return { id, x: s.x, y: s.y };
   }
   return null;

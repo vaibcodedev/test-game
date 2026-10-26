@@ -123,14 +123,16 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       s.play({ key: `vfx_${o.kind}`, repeat: -1, startFrame: Math.floor(cellHash(o.x, o.y) * e.frames) % e.frames });
       return s.setFlipX(!!o.flip);
     }
-    return scene.add.image(o.x, o.y, `o_${o.kind}`).setOrigin(0.5, 1).setFlipX(!!o.flip);
+    // вариант вида (задача 141, shared/cityart.ts): кадр o_<kind>__<v>, без него — общий кадр вида
+    const key = o.v && scene.textures.exists(`o_${o.kind}__${o.v}`) ? `o_${o.kind}__${o.v}` : `o_${o.kind}`;
+    return scene.add.image(o.x, o.y, key).setOrigin(0.5, 1).setFlipX(!!o.flip);
   };
   const makeObject = (o: MapObject, objs: Phaser.GameObjects.GameObject[]) => {
     const img = makeImage(o);
     objs.push(img);
     if (o.kind === "lilypad" || GROUND_OBJECTS.has(o.kind)) img.setDepth(DEPTH.ground - (GROUND_OBJECTS.has(o.kind) ? 1 : 0));
     else if (o.kind === "flowers" || o.kind === "tallgrass" || o.kind === "bones" || o.kind === "ember_vent") img.setDepth(o.y - 20);
-    else img.setDepth(o.y);
+    else img.setDepth(o.y + (o.dz ?? 0));
     if (SWAY_TREES.has(o.kind)) {
       // лёгкое покачивание крон (деревья Basic из shared/decor.ts)
       const sway = (cellHash(o.x, o.y) - 0.5) * 0.04;
@@ -152,10 +154,13 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "campfire") glow(objs, o.x, o.y - 12, 0xff9a3a, 2.4, 0.6, true);
     if (o.kind === "dark_obelisk") glow(objs, o.x, o.y - 50, 0x9a4aff, 1.8, 0.45, true);
     if (o.kind === "sun_statue") glow(objs, o.x, o.y - 60, 0xffe08a, 1.8, 0.4);
-    if (o.kind === "sol_temple") glow(objs, o.x, o.y - 96, 0xffd860, 2.2, 0.35);
+    // здания с входом (задача 141): купол и свет из двери храма Солнца, фиолетовый огонь вершины и портал зиккурата
+    if (o.kind === "sol_church") { glow(objs, o.x + 7, o.y - 150, 0xffd860, 2.2, 0.35); glow(objs, o.x - 9, o.y - 24, 0xffcf6a, 1.6, 0.45); }
+    if (o.kind === "umb_ziggurat") { glow(objs, o.x - 2, o.y - 190, 0xb46aff, 2.4, 0.55, true); glow(objs, o.x - 9, o.y - 24, 0xa060ff, 1.6, 0.5); }
     if (o.kind === "umb_tower") glow(objs, o.x, o.y - 70, 0xb46aff, 1.4, 0.45, true);
-    if (o.kind === "umb_house" || o.kind === "umb_crypt") for (const dx of [-36, 38]) glow(objs, o.x + dx, o.y - 30, 0xb46aff, 1.1, 0.35);
-    if (o.kind === "sol_house") for (const dx of [-36, 38]) glow(objs, o.x + dx, o.y - 30, 0xffd27a, 1.2, 0.35);
+    // окна домов в 3/4 (задача 141, tools/gen/walls141-buildings.ts): слева −42 и справа +22 от середины, на 45 px выше основания
+    if (o.kind === "umb_house" || o.kind === "umb_crypt") for (const dx of [-42, 22]) glow(objs, o.x + dx, o.y - 45, 0xb46aff, 1.1, 0.35);
+    if (o.kind === "sol_house") for (const dx of [-42, 22]) glow(objs, o.x + dx, o.y - 45, 0xffd27a, 1.2, 0.35);
     if (o.kind === "torch") glow(objs, o.x, o.y - 22, 0xff9a3a, 2.4, 0.55, true);
     if (o.kind === "brazier") glow(objs, o.x, o.y - 26, 0xff8a2a, 2.6, 0.6, true);
     if (o.kind === "teleport_stone") glow(objs, o.x, o.y - 34, 0x7ac0ff, 2.2, 0.5, true);
@@ -166,8 +171,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "ward-umb") glow(objs, o.x, o.y - 30, 0xa070ff, 1.3, 0.38);
     if (o.kind === "ember-std") glow(objs, o.x, o.y - 84, 0xffa040, 1.1, 0.4, true); // живой огонь жаровни-навершия штандарта Эмберхолла
     if (o.kind === "crystal") glow(objs, o.x, o.y - 12, 0x9a8aff, 1.3, 0.4);
-    if (o.kind === "house" || o.kind === "house_blue") for (const dx of [-36, 38]) glow(objs, o.x + dx, o.y - 30, 0xffd27a, 1.2, 0.35);
-    if (o.kind === "tavern") for (const [dx, dy] of [[-71, -26], [-39, -26], [61, -26], [93, -26], [-80, -64], [-38, -64], [40, -64], [84, -64]]) glow(objs, o.x + dx, o.y + dy, 0xffc870, 1.2, 0.38);
+    if (o.kind === "house" || o.kind === "house_blue" || o.kind === "hut_sol") for (const dx of o.kind === "hut_sol" ? [-28, 14] : [-42, 22]) glow(objs, o.x + dx, o.y - (o.kind === "hut_sol" ? 33 : 45), 0xffd27a, 1.2, 0.35);
+    if (o.kind === "tavern") for (const dx of [-87, -50, 26, 63]) for (const dy of [-32, -78]) glow(objs, o.x + dx, o.y + dy, 0xffc870, 1.2, 0.38);
     if (o.kind === "forge") {
       glow(objs, o.x - 48, o.y - 24, 0xff7a2a, 2.2, 0.6, true);
       glow(objs, o.x + 49, o.y - 138, 0xff8a3a, 0.9, 0.5, true);

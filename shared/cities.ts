@@ -63,7 +63,7 @@ export const STYLE = {
     // погост Мортхейма на свободной земле у стен (не на улицах, кольце и площади): надгробия, кресты, плиты, статуи (Graveyard)
     extra: [["bone_pile", -9, 5], ["dark_obelisk", 9, -4],
       ["v_graveyard_cross_a", 8, 2], ["v_graveyard_stone_b", 10, 2], ["v_graveyard_slab_a", 9, 4], ["v_graveyard_statue_a", 11, 3],
-      ["v_graveyard_statue_b", -8, 3], ["v_graveyard_cross_c", -10, 2], ["v_graveyard_slab_b", -9, -3], ["v_graveyard_stele_a", -10, -5],
+      ["v_graveyard_statue_b", -8, 3], ["v_graveyard_cross_c", -10, 2], ["v_graveyard_slab_b", -9, -3], ["v_graveyard_stele_a", -11, -4],
       ["v_graveyard_stone_c", 7, -2], ["v_graveyard_cross_b", 11, -4]] as [string, number, number][],
   },
 } as const;
@@ -233,6 +233,24 @@ export const CITIES: City[] = [
   small("morthaim", "umbrath", MAP_W - 57, 180),
 ];
 export const cityById = (id: string) => CITIES.find((c) => c.id === id);
+/**
+ * Здания с входом (задача 141; интерьер и переход — следующий шаг, другой агент): храм Солнца в Аурелионе и зиккурат в Мортхейме —
+ * на месте дома CITY_HOUSES[house] (южный ряд у южных ворот). door — клетка двери (тайлы мира, нижний ряд следа здания; пока закрыта
+ * и непроходима), front — проходимая клетка перед дверью (кольцевая улица), сюда вешается переход.
+ */
+export interface CityEntrance { city: string; kind: string; house: number; door: { x: number; y: number }; front: { x: number; y: number } }
+const ENTERABLE: { city: string; kind: string; house: number }[] = [
+  { city: "aurelion", kind: "sol_church", house: 5 },
+  { city: "morthaim", kind: "umb_ziggurat", house: 5 },
+];
+/** Дверь — вторая клетка следа слева (середина фасада в 3/4: tools/gen/walls141-buildings.ts, x ≈ 55 px из 128). */
+export const CITY_ENTRANCES: CityEntrance[] = ENTERABLE.map((e) => {
+  const c = cityById(e.city)!, [dx, dy] = CITY_HOUSES[e.house];
+  return { ...e, door: { x: c.x + dx + 1, y: c.y + dy }, front: { x: c.x + dx + 1, y: c.y + dy + 1 } };
+});
+/** Вид дома столицы на месте i: здание с входом или обычный дом стиля. */
+export const cityHouseKind = (c: City, i: number): string =>
+  (!c.fort && ENTERABLE.find((e) => e.city === c.id && e.house === i)?.kind) || STYLE[c.style as CityStyle].houses[i % 2];
 /** Столица фракции (место появления и возрождения её героев); без фракции — Эмберхолл. */
 export const homeCity = (faction: string | undefined): City => CITIES.find((c) => c.capital && !c.fort && c.capital === faction) ?? CITIES[0];
 /** Чужая столица или чужой форт: телепорт не открывается, возрождения там нет. */

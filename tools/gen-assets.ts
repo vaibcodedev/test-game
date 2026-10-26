@@ -9,11 +9,12 @@ import { buildEquipIcons } from "./gen/equip";
 import { buildItemIcon, buildSkillIcon, FX_ART, ITEM_ICONS, OBJECT_ART, SKILL_ICONS } from "./gen/objects";
 import { buildLavaGlow, buildTileset, buildWater } from "./gen/tiles";
 import { buildChaosHalo, buildChaosKnightSheet, KNIGHT_COLS, KNIGHT_FRAME } from "./gen/raidboss";
-import { buildMountIcon, buildMountSheet, saveMountPng, type MountMeta } from "./gen/mounts";
-import { MODELS as MOUNT_MODELS } from "./gen/mounts-all";
+import { writeMountsGame, type GameMeta } from "./gen/mounts/build";
 import { PC } from "./gen/canvas";
 import { newSkillIcon } from "./gen/icons-build";
-import { newItemIcon } from "./gen/icons-items";
+import { newItemIcon, sealIconFor } from "./gen/icons-items";
+import { readPng } from "./gen/vendor-lib";
+import MOUNT_DATA from "../data/mounts.json";
 import { buildUnitSheet, UNIT_ART } from "./gen/units";
 import { writeGameVfx } from "./gen/vfx";
 import { writeWardsGame } from "./gen/wards";
@@ -25,8 +26,8 @@ const t0 = Date.now();
 const manifest = {
   /** cols — число столбцов листа, если не 12 (рейд-босс: 24). */
   units: {} as Record<string, { frame: number; cols?: number }>,
-  /** маунты: лист 12x6 кадров, см. tools/gen/mounts.ts */
-  mounts: {} as Record<string, MountMeta>,
+  /** маунты (задача 142): лист 36×8 кадров, см. tools/gen/mounts/build.ts — пишет раздел сам, после manifest.json */
+  mounts: {} as Record<string, GameMeta>,
   objects: {} as Record<string, { w: number; h: number }>,
   icons: [] as string[],
   fx: [] as string[],
@@ -43,13 +44,6 @@ for (const [id, art] of Object.entries(UNIT_ART)) {
 // рейд-босс «Рогатый Рыцарь Хаоса»: кадр 128, 24 столбца (шаг, удар, смерть, удар в землю, рёв, стойка), см. tools/gen/raidboss.ts
 buildChaosKnightSheet().save(path.join(OUT, "units/chaos_knight.png"));
 manifest.units.chaos_knight = { frame: KNIGHT_FRAME, cols: KNIGHT_COLS };
-for (const id of Object.keys(MOUNT_MODELS)) {
-  const { sheet, meta } = buildMountSheet(id);
-  saveMountPng(sheet, path.join(OUT, `mounts/${id}.png`));
-  saveMountPng(buildMountIcon(sheet, meta.frame), path.join(OUT, `icons/mount_${id}.png`));
-  manifest.mounts[id] = meta;
-  manifest.icons.push(`mount_${id}`);
-}
 for (const [id, art] of Object.entries(OBJECT_ART)) {
   const pc = art();
   pc.save(path.join(OUT, `objects/${id}.png`));
@@ -66,6 +60,19 @@ for (const id of ITEM_ICONS.filter((i) => i.startsWith("potion") || i.startsWith
   else if (fresh === null) buildItemIcon(id).save(file);
   manifest.icons.push(id);
 }
+// конюшня (задача 142): печать скакуна и детали маунтов — иконки 7Soul1 по data/item-icons.json
+for (const id of ["mount_seal", ...Object.keys(MOUNT_DATA.parts).map((p) => `mpart_${p}`)]) {
+  const file = path.join(OUT, `icons/${id}.png`), fresh = newItemIcon(id, file);
+  if (fresh instanceof PC) fresh.save(file);
+  if (fs.existsSync(file)) manifest.icons.push(id);
+}
+// печать каждого маунта: свиток и силуэт маунта (иконка маунта — из assets/icons, её пишет tools/gen/mounts/build.ts)
+for (const id of Object.keys(MOUNT_DATA.mounts)) {
+  const seal = path.join(OUT, "icons/mount_seal.png"), mount = path.join(OUT, `icons/mount_${id}.png`);
+  if (!fs.existsSync(seal) || !fs.existsSync(mount)) continue;
+  sealIconFor(readPng(seal), readPng(mount)).save(path.join(OUT, `icons/mseal_${id}.png`));
+  manifest.icons.push(`mseal_${id}`);
+}
 // иконки умений: новые из data/skill-icons.json (frosty + генератор), старая генерация — только для не вошедших в таблицу или если нет vendor/ и файла
 for (const id of Object.keys(SKILL_ICONS)) {
   const file = path.join(OUT, `icons/${id}.png`), fresh = newSkillIcon(id, file);
@@ -73,7 +80,7 @@ for (const id of Object.keys(SKILL_ICONS)) {
   else if (fresh === null) buildSkillIcon(id).save(file);
   manifest.icons.push(id);
 }
-// иконки питомцев для магазина: первый кадр их спрайт-листа (иконки маунтов 48×48 — выше, buildMountIcon в tools/gen/mounts.ts)
+// иконки питомцев для магазина: первый кадр их спрайт-листа (иконки маунтов 48×48 — tools/gen/mounts/build.ts)
 for (const id of Object.keys(UNIT_ART).filter((u) => u.startsWith("pet_"))) {
   const sheet = PNG.sync.read(fs.readFileSync(path.join(OUT, `units/${id}.png`)));
   const fr = UNIT_ART[id].frame, ic = new PNG({ width: fr, height: fr });
@@ -109,4 +116,6 @@ for (const id of scan("icons")) if (!manifest.icons.includes(id)) manifest.icons
 for (const id of scan("fx")) if (!manifest.fx.includes(id)) manifest.fx.push(id);
 
 fs.writeFileSync(path.join(OUT, "manifest.json"), JSON.stringify(manifest, null, 1));
+// маунты: листы, иконки и раздел manifest.mounts (дописывает manifest.json)
+writeMountsGame();
 console.log(`[assets] готово за ${Date.now() - t0} мс -> ${path.relative(process.cwd(), OUT)}`);
