@@ -187,7 +187,7 @@ const CAP_EXTRA: Record<CityStyle, [string, number, number][]> = {
   solgard: [["sun_statue", ...CAP_STATUE], ["fountain", -6, -4], ["fountain", 5, -4], ["fountain", -6, 7], ["fountain", 5, 7],
     ["v_basic_oak", -16, -5], ["v_basic_oak", 15, 6], ["v_basic_bush_yellow", -13, 6], ["v_basic_bush_blue", 12, -5], ["v_basic_bush_red", -12, -6], ["v_basic_bush_pink", 12, 6]],
   // кольцо из 8 жаровен вокруг кургана, сады костей в четвертях, обелиск
-  umbrath: [["umb_statue", ...CAP_STATUE], ["soul_brazier", 5, 0], ["soul_brazier", 3, 3], ["soul_brazier", 0, 5], ["soul_brazier", -4, 3], ["soul_brazier", -6, 0],
+  umbrath: [["umb_statue", ...CAP_STATUE], ["umb_barrow", -2, 2], ["soul_brazier", 5, 0], ["soul_brazier", 3, 3], ["soul_brazier", 0, 5], ["soul_brazier", -4, 3], ["soul_brazier", -6, 0],
     ["soul_brazier", -4, -4], ["soul_brazier", 0, -6], ["soul_brazier", 3, -4], ["dark_obelisk", 15, -6], ["bone_pile", -12, 6],
     ["v_graveyard_cross_a", 12, 4], ["v_graveyard_stone_b", 14, 4], ["v_graveyard_slab_a", 13, 6], ["v_graveyard_statue_a", 16, 5],
     ["v_graveyard_statue_b", -13, 4], ["v_graveyard_cross_c", -16, 4], ["v_graveyard_slab_b", -14, -4], ["v_graveyard_stele_a", -16, -5],

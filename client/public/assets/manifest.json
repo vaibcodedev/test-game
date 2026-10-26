@@ -639,6 +639,132 @@
   },
   "zombie_digger_elite": {
    "frame": 32
+  },
+  "canine_wolf": {
+   "frame": 32
+  },
+  "canine_wolf_elite": {
+   "frame": 32
+  },
+  "boar_boar": {
+   "frame": 32
+  },
+  "boar_boar_elite": {
+   "frame": 32
+  },
+  "rat_rat": {
+   "frame": 32
+  },
+  "rat_rat_elite": {
+   "frame": 32
+  },
+  "bat_bat": {
+   "frame": 32
+  },
+  "bat_bat_elite": {
+   "frame": 32
+  },
+  "spider_biter": {
+   "frame": 32
+  },
+  "spider_biter_elite": {
+   "frame": 32
+  },
+  "spider_spitter": {
+   "frame": 32
+  },
+  "spider_spitter_elite": {
+   "frame": 32
+  },
+  "beetle_armored": {
+   "frame": 32
+  },
+  "beetle_armored_elite": {
+   "frame": 32
+  },
+  "lizard_horned": {
+   "frame": 32
+  },
+  "lizard_horned_elite": {
+   "frame": 32
+  },
+  "lizard_clay": {
+   "frame": 32
+  },
+  "lizard_clay_elite": {
+   "frame": 32
+  },
+  "lizard_salamander": {
+   "frame": 32
+  },
+  "lizard_salamander_elite": {
+   "frame": 32
+  },
+  "basilisk_cave": {
+   "frame": 32
+  },
+  "basilisk_cave_elite": {
+   "frame": 32
+  },
+  "arthro_crab": {
+   "frame": 32
+  },
+  "arthro_crab_elite": {
+   "frame": 32
+  },
+  "crawler_crawler": {
+   "frame": 32
+  },
+  "crawler_crawler_elite": {
+   "frame": 32
+  },
+  "grove_cone": {
+   "frame": 32
+  },
+  "grove_cone_elite": {
+   "frame": 32
+  },
+  "grove_moss": {
+   "frame": 32
+  },
+  "grove_moss_elite": {
+   "frame": 32
+  },
+  "grove_mushroom": {
+   "frame": 32
+  },
+  "grove_mushroom_elite": {
+   "frame": 32
+  },
+  "grove_spore": {
+   "frame": 32
+  },
+  "grove_spore_elite": {
+   "frame": 32
+  },
+  "grove_root": {
+   "frame": 32
+  },
+  "grove_root_elite": {
+   "frame": 32
+  },
+  "grove_ent": {
+   "frame": 32
+  },
+  "grove_ent_elite": {
+   "frame": 32
+  },
+  "slime_jelly": {
+   "frame": 32
+  },
+  "slime_jelly_elite": {
+   "frame": 32
+  },
+  "slime_shell": {
+   "frame": 32
+  },
+  "slime_shell_elite": {
+   "frame": 32
   }
  },
  "mounts": {
@@ -31253,6 +31379,10 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
+  },
+  "umb_barrow": {
+   "w": 128,
+   "h": 152
   }
  },
  "icons": [

@@ -131,7 +131,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 12; // 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 13; // 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -247,6 +247,8 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   "std-home-umb": { w: 1, h: 1 },
   sun_statue: { w: 2, h: 2 },
   umb_statue: { w: 2, h: 2 },
+  // курган короля Морта под статуей (4×4 клетки, лежит на земле; ставится после статуи поверх её клеток)
+  umb_barrow: { w: 4, h: 4 },
   umb_wall_h: { w: 1, h: 1 },
   umb_wall_v: { w: 1, h: 1 },
   umb_tower: { w: 2, h: 2 },
@@ -263,7 +265,7 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   campfire: { w: 1, h: 1 },
 };
 /** Объекты, лежащие на земле (под юнитами): мосты, лестницы, лазы, могилы. */
-export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", ...D.VENDOR_GROUND, ...D.BF_GROUND]);
+export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", "umb_barrow", ...D.VENDOR_GROUND, ...D.BF_GROUND]);
 
 // ---------- раскладка мира (data/world.json: layout, rivers, roads, walls; задача 132) ----------
 type Line = [number, number][];
@@ -830,7 +832,12 @@ function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], p
   (c.fort ? FORT_HOUSES : L.houses).forEach(([dx, dy], i) => place(cityHouseKind(c, i), X(dx), Y(dy)));
   if (L.temple) place(TEMPLE_KIND[style], X(L.temple[0]), Y(L.temple[1])); // храм Солнца / зиккурат к северу от статуи (задача 145)
   L.stalls.forEach(([dx, dy], i) => place(St.stalls[i], X(dx), Y(dy)));
-  for (const [k, dx, dy] of c.fort ? fortDecor(style) : L.decor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
+  for (const [k, dx, dy] of c.fort ? fortDecor(style) : L.decor(style)) {
+    if (k !== "umb_barrow" && !fits(k, X(dx), Y(dy))) continue;
+    place(k, X(dx), Y(dy));
+    // курган: округлые углы кладки проходимы (иначе обход длиннее, чем у зеркального Аурелиона)
+    if (k === "umb_barrow") for (const [ox, oy] of [[0, 0], [3, 0], [0, 3], [3, 3]]) cell[(Y(dy) - oy) * w + X(dx) + ox] &= ~CELL_BLOCK;
+  }
   // у столиц — наковальня кузнеца (банкир, кузнец и сумочник стоят у домов северного ряда, cities.ts)
   if (c.capital && !c.fort) for (const [k, dx, dy] of L.anvil) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   place("teleport_stone", c.stoneTile.x, c.stoneTile.y);

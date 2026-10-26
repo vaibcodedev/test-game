@@ -23,7 +23,7 @@ import type { Mob } from "../server/src/game/Mob";
 // --batch=2 — партия 2 (зоны 40–100 и данж): по мобу из разных зон, снимки в tools/out/mobs-ingame2
 const BATCH2 = process.argv.includes("--batch=2");
 const ALL = BATCH2
-  ? ["gnoll_archer", "golem_sandstone", "orc_shield", "harpy_scavenger", "butcher_hook", "slime_plague", "canine_frost", "banshee_wail", "orc_thunder", "fallen_spirit_warrior", "fallen_spirit_hollow", "golem_magma", "cultist_pyro"]
+  ? ["gnoll_archer", "golem_sandstone", "orc_shield", "harpy_scavenger", "butcher_hook", "slime_plague", "canine_frost", "banshee_wail", "orc_thunder", "fallen_spirit_warrior", "fallen_spirit_hollow", "golem_magma", "cultist_pyro", "canine_wolf", "grove_ent", "spider_spitter", "slime_shell", "beetle_armored"]
   : ["boarfolk_axe", "goblin_slinger", "zombie_digger", "wolffolk_chaser", "imp_caster", "hobgoblin_sword", "mummy_guard", "ogre_woodcutter", "troll_brute", "frogfolk_shaman"];
 const ONLY = new Set(process.argv.find((a) => a.startsWith("--only="))?.slice(7).split(",").filter(Boolean) ?? []);
 const MOBS = ALL.filter((m) => !ONLY.size || ONLY.has(m));
