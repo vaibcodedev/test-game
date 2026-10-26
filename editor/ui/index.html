@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Редактор конфигов — Пепельный Предел</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/styles/tokens.css">
+  <link rel="stylesheet" href="/styles/fonts.css">
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/scrollbar.css">
+  <link rel="stylesheet" href="/styles/kit.css">
+  <link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="panel win s ed-win" aria-label="Список конфигов">
+      <h2><span>Конфиги</span></h2>
+      <div class="body" id="tree"></div>
+    </aside>
+    <main class="panel win xl ed-win">
+      <h2><span id="title"></span><span class="chip dim" id="path"></span></h2>
+      <div class="body" id="form-body">
+        <div id="report" class="card compact" hidden></div>
+        <div id="form"></div>
+      </div>
+      <div class="win-foot"><span class="win-foot-info" id="foot-info"></span><div id="bar" style="display:contents"></div></div>
+    </main>
+  </div>
+  <div id="modal" class="modal" hidden></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

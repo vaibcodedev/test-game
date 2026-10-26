@@ -1,0 +1,64 @@
+/* Редактор конфигов. Вид — только из дизайн-системы игры (tokens.css, kit.css, base.css, scrollbar.css, fonts.css);
+   здесь — раскладка страницы и мелочи, которых в kit.css нет. */
+@font-face { font-family: "Rubik"; src: url("/fonts/rubik/rubik-cyrillic-400-normal.woff2") format("woff2"); font-weight: 400; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Rubik"; src: url("/fonts/rubik/rubik-cyrillic-500-normal.woff2") format("woff2"); font-weight: 500; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Rubik"; src: url("/fonts/rubik/rubik-latin-400-normal.woff2") format("woff2"); font-weight: 400; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Rubik"; src: url("/fonts/rubik/rubik-latin-500-normal.woff2") format("woff2"); font-weight: 500; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+#app { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-4); height: 100vh; padding: var(--sp-4); }
+.win.ed-win { position: static; width: auto; max-height: none; height: 100%; min-height: 0; }
+#form, #form-body { gap: var(--sp-3); }
+#form { display: flex; flex-direction: column; gap: var(--sp-3); }
+#tree .ed-group { margin-bottom: var(--sp-2); }
+.tree-file { justify-content: flex-start; }
+.tree-file .lbl { flex: 1; text-align: left; }
+.tree-file .dirty-chip { display: none; }
+.tree-file.dirty .dirty-chip { display: inline-flex; }
+.sec-h .chip, .sec-h .sec-aside { margin-left: var(--sp-2); }
+.sec-h .sec-aside { margin-left: auto; }
+.ed-sec > summary { width: 100%; }
+.fld-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.fld-ctl { display: flex; align-items: center; gap: var(--sp-3); }
+.fld-ctl .range { max-width: 420px; }
+.fld-ctl input.num { flex: none; }
+.fld.mod { border-color: var(--warn); }
+.fld.bad { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad-line); }
+.fld:focus-within { border-color: var(--gold); box-shadow: var(--glow-sel); }
+.fld-live { padding: var(--sp-1) var(--sp-2); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); font-weight: var(--fw-b); }
+.fld-live:empty { display: none; }
+.fld-live::before { content: "Сейчас: "; color: var(--dim); font-weight: var(--fw); }
+.fld-lim .odd { color: var(--warn); }
+.fld textarea { width: 100%; background: var(--well); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-2); padding: var(--sp-2); font: inherit; }
+.fld textarea.json { min-height: 90px; font-family: Consolas, monospace; font-size: var(--fs-sm); }
+.fld textarea[aria-invalid="true"] { border-color: var(--bad); }
+.fld input.wide { width: 100%; max-width: 760px; }
+.pts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-1) var(--sp-4); }
+.pt { display: flex; gap: var(--sp-2); align-items: center; }
+.pt .lbl { color: var(--dim); font-size: var(--fs-sm); min-width: 62px; }
+.pt .input.num { width: 84px; }
+.curve-svg { width: 100%; max-width: 520px; height: 72px; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); }
+.curve-svg polyline { fill: none; stroke: var(--gold); stroke-width: 2; }
+.curve-svg circle { fill: var(--fg); stroke: var(--gold); }
+.row-acts { display: flex; gap: var(--sp-2); margin: var(--sp-1) 0; }
+.tbl-wrap { max-height: 560px; }
+.tbl-tools { display: flex; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-2); }
+.tbl-tools input { width: 280px; }
+.tbl th { cursor: var(--cur-pointer); white-space: nowrap; }
+.tbl td .input { height: 26px; }
+.tbl td .input.num { width: 84px; }
+.tbl td input[type="text"] { width: 150px; }
+.tbl td.mod .input { border-color: var(--warn); }
+.tbl tr.detail > td { background: var(--card); height: auto; }
+.detail-in { position: sticky; left: 8px; width: min(900px, calc(100vw - 520px)); }
+.diff { display: grid; grid-template-columns: 1fr 1fr; font-family: Consolas, monospace; font-size: var(--fs-sm); border: 1px solid var(--line); border-radius: var(--r-2); overflow: hidden; }
+.diff .hd { background: var(--card); color: var(--gold); padding: var(--sp-1) var(--sp-2); font-family: var(--font); font-weight: var(--fw-b); }
+.diff .c { padding: 1px var(--sp-2); white-space: pre-wrap; word-break: break-all; border-top: 1px solid var(--line); min-height: 1.4em; }
+.diff .c.del { background: color-mix(in srgb, var(--bad) 20%, transparent); }
+.diff .c.add { background: color-mix(in srgb, var(--ok) 18%, transparent); }
+.diff .c.gap { color: var(--dim); text-align: center; grid-column: 1 / -1; background: var(--well); }
+.diff mark { background: color-mix(in srgb, var(--num-gold) 35%, transparent); color: inherit; }
+#report ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-4); }
+#report pre { margin: var(--sp-1) 0 0; white-space: pre-wrap; font-size: var(--fs-xs); color: var(--dim); }
+.fld-more .kv { grid-template-columns: 170px minmax(0, 1fr); }
+.fld-more .kv > dd { text-align: left; font-weight: var(--fw); }
+.tree-file { text-align: left; }
