@@ -1511,6 +1511,23 @@ export class Hud {
     if (t.team && me.team) return t.team !== me.team;
     return t.faction !== me.faction || !!t.outlaw;
   }
+  /** След потерянного здоровья в рамке героя: держится 0,4 с ярко-жёлтым и плавно тает до текущего здоровья (как в WoW/LoL);
+   *  при лечении и регенерации сразу равен здоровью — поэтому постоянная регенерация не «замораживает» след. */
+  private lagK = -1;
+  private lagHold = 0;
+  private hpLag(k: number) {
+    const lag = document.getElementById("hp-lag");
+    if (!lag) return;
+    const now = performance.now();
+    if (this.lagK < 0 || k >= this.lagK) this.lagK = k;
+    else if (k < this.lagK - 0.001 && now > this.lagHold && this.lagHold === 0) this.lagHold = now + 400;
+    if (this.lagHold && now > this.lagHold) {
+      this.lagK = Math.max(k, this.lagK - 0.012);
+      if (this.lagK <= k) this.lagHold = 0;
+    }
+    const w = `${this.lagK * 100}%`;
+    if (lag.style.width !== w) lag.style.width = w;
+  }
   frame(info: FrameInfo) {
     const me = info.me;
     this.lastPos = info.pos;
@@ -1518,7 +1535,7 @@ export class Hud {
       const hp = document.getElementById("hp-fill"), mp = document.getElementById("mp-fill");
       // числа с разделителем разрядов, как у золота; текст пишется только при изменении
       const put = (id: string, t: string) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
-      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; const lag = document.getElementById("hp-lag"); if (lag) lag.style.width = hp.style.width; put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
+      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; this.hpLag(me.hp / Math.max(1, me.maxHp)); put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
       // щит-поглощение поверх HP (как в WoW): от конца здоровья вправо; не помещается — заходит на здоровье с правого края
       const abs = document.getElementById("hp-abs");
       if (abs) {
