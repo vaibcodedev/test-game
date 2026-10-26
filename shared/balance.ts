@@ -2,6 +2,8 @@
 import data from "../data/balance.json";
 import { CLASSES, type ClassId } from "./classes";
 
+/** PvP-поправка класса: число или точки [уровень, множитель] (наборы умений и оружие на 30 и 100 ур. разные). */
+type PvpK = number | number[][];
 interface BossBal { hp: number; dmg: number; armor: number; mech?: number }
 export interface Balance {
   gcd: number;
@@ -12,7 +14,7 @@ export interface Balance {
   /** Добыча с обычных мобов: шансы вещи, второй вещи и зелья (data/balance.json loot). */
   loot: { item: number; extra: number; potion: number; bossLevelGap: number; bossLevelFree: number; boss: { items: number; epic: number } };
   heal: { power: number[][] };
-  pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; mitigationCap: number; ccMult: number; class: Record<string, { dmg?: number; taken?: number }> };
+  pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; mitigationCap: number; ccMult: number; class: Record<string, { dmg?: PvpK; taken?: PvpK }> };
 }
 export const BAL = data as unknown as Balance;
 
@@ -64,8 +66,10 @@ function curve(points: number[][], level: number): number {
 }
 /** «Устойчивость»: множитель урона героя по герою уровня level. */
 export const pvpDamageMult = (level: number) => curve(BAL.pvp.damage, level);
-/** PvP-поправка класса (data/balance.json pvp.class): урон класса src по героям × получаемый классом dst от героев. */
-export const pvpClassMult = (src: ClassId, dst: ClassId) => (BAL.pvp.class[src]?.dmg ?? 1) * (BAL.pvp.class[dst]?.taken ?? 1);
+const pvpK = (v: PvpK | undefined, level: number) => (v === undefined ? 1 : typeof v === "number" ? v : curve(v, level));
+/** PvP-поправка класса (data/balance.json pvp.class): урон класса src (уровня srcLevel) по героям × получаемый классом dst (уровня dstLevel) от героев. */
+export const pvpClassMult = (src: ClassId, dst: ClassId, srcLevel = 100, dstLevel = srcLevel) =>
+  pvpK(BAL.pvp.class[src]?.dmg, srcLevel) * pvpK(BAL.pvp.class[dst]?.taken, dstLevel);
 /** Множитель лечения героя уровня level в PvP. */
 export const pvpHealMult = (level: number) => curve(BAL.pvp.heal, level);
 /** Множитель HP босса по его уровню (data/balance.json bosses.hpLevel). */

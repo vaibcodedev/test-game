@@ -482,7 +482,7 @@ export class World {
     if (pvpHit) {
       dst.pvpAt = this.time;
       const wp = src.save.equip.weapon?.plus || 0;
-      pvpK = (pvpDamageMult(dst.level) * pvpClassMult(src.cls, dst.cls) * (1 + PLUS_BONUS * wp * BAL.pvp.plusShare)) / (1 + PLUS_BONUS * wp);
+      pvpK = (pvpDamageMult(dst.level) * pvpClassMult(src.cls, dst.cls, src.level, dst.level) * (1 + PLUS_BONUS * wp * BAL.pvp.plusShare)) / (1 + PLUS_BONUS * wp);
       amount *= pvpK;
     }
     let reflect = 0;
