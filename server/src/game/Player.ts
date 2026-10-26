@@ -15,6 +15,7 @@ import { defaultBars, hasBars, migrateBars, validateBars, type Bars } from "../.
 import type { PlayerSave } from "../db";
 import { Unit } from "../rooms/schema";
 import { saveSpot } from "./interiors";
+import { GP } from "../../../shared/gameplay";
 
 /** Новый герой в точке spawn (в игре — столица его фракции, см. server/src/index.ts). */
 export function newSave(cls: ClassId, spawn: { x: number; y: number }): PlayerSave {
@@ -51,7 +52,7 @@ export function newSave(cls: ClassId, spawn: { x: number; y: number }): PlayerSa
 export type Sender = (type: string, msg: unknown) => void;
 
 /** Сколько после боевого действия игрок считается «в бою». */
-export const COMBAT_MS = 5000;
+export const COMBAT_MS = GP.timers.combatMs;
 
 export class Player {
   readonly unit = new Unit();

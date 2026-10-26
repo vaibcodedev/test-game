@@ -1,18 +1,19 @@
 /** Аккаунты и экран выбора героя: общие типы HTTP API, внешность героя, выход из игры. */
 import type { ClassId, FactionId } from "./classes";
 import type { Rarity, Slot } from "./items";
+import { GP } from "./gameplay";
 
 /** Героев на аккаунт. */
 export const MAX_CHARS = 6;
 /** Выход в бою: отсчёт, сбрасывается полученным уроном. */
-export const LOGOUT_COMBAT_MS = 10_000;
+export const LOGOUT_COMBAT_MS = GP.timers.logoutCombatMs;
 /** Код закрытия соединения после разрешённого выхода. */
 export const LOGOUT_CODE = 4010;
 /** Код закрытия старой сессии, когда тем же героем (или другим героем аккаунта) вошли с другой вкладки. */
 export const KICK_CODE = 4011;
 export const KICK_TEXT = "Вы вошли с другого устройства";
 /** Сколько секунд герой ждёт в мире после обрыва связи (переподключение без потерь). */
-export const RECONNECT_SEC = 30;
+export const RECONNECT_SEC = GP.timers.reconnectSec;
 
 /** Внешность: акцентный оттенок спрайта (индекс в LOOKS). */
 export const LOOKS: { name: string; rgb: number }[] = [

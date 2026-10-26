@@ -2,6 +2,7 @@
 import { TILE } from "./constants";
 import type { ClassId } from "./classes";
 import { CELL_BLOCK, CELL_WALL, T, TOWN, Zone, type WorldMap } from "./map";
+import { GP } from "./gameplay";
 
 /** Распорядитель арены в городе: у врат арены во дворе восточного квартала (shared/town.ts). */
 export const ARENA_NPC = {
@@ -18,26 +19,26 @@ export const MODE_NAMES: Record<ArenaMode, string> = {
 export const TEAM_SIZE: Record<ArenaMode, number> = { "1v1": 1, "2v2": 2 };
 
 /** Урон и лечение героя по герою — модель PvP в data/balance.json pvp (shared/balance.ts): устойчивость по уровню, потолки крита и удара. */
-export const START_RATING = 1000;
+export const START_RATING = GP.arena.startRating;
 /** Бой с ботами (соперник не нашёлся): рейтинг меняется слабее — доля от обычного Elo. История и таблица — как обычно. */
-export const BOT_RATING_MULT = 0.5;
-export const ELO_K = 32;
+export const BOT_RATING_MULT = GP.arena.botRatingMul;
+export const ELO_K = GP.arena.eloK;
 /** Окно подбора по рейтингу: ±100, затем +50 каждые 10 с ожидания, не больше ±1000. */
-export const QUEUE_WINDOW_BASE = 100;
-export const QUEUE_WINDOW_STEP = 50;
-export const QUEUE_WINDOW_EVERY_MS = 10_000;
-export const QUEUE_WINDOW_MAX = 1000;
-export const ACCEPT_MS = 15_000;
-export const COUNTDOWN_MS = 5_000;
+export const QUEUE_WINDOW_BASE = GP.arena.queueWindowBase;
+export const QUEUE_WINDOW_STEP = GP.arena.queueWindowStep;
+export const QUEUE_WINDOW_EVERY_MS = GP.arena.queueWindowEveryMs;
+export const QUEUE_WINDOW_MAX = GP.arena.queueWindowMax;
+export const ACCEPT_MS = GP.arena.acceptMs;
+export const COUNTDOWN_MS = GP.arena.countdownMs;
 /** Лимит матча: по времени побеждает бо́льший % здоровья. 90 с (было 180): бой танка с лекарем не тянется бесконечно, дуэль бойцов ~15–20 с. */
-export const MATCH_MS = 90_000;
+export const MATCH_MS = GP.arena.matchMs;
 /** Одних и тех же соперников нельзя получить больше 3 раз подряд. */
-export const MAX_REPEAT = 5;
-export const SEASON_DAYS = 28;
+export const MAX_REPEAT = GP.arena.maxRepeat;
+export const SEASON_DAYS = GP.arena.seasonDays;
 /** Мягкий сброс в конце сезона: рейтинг сдвигается к 1000 на половину расстояния. */
-export const SEASON_RESET_KEEP = 0.5;
-export const HISTORY_SIZE = 20;
-export const LEADERBOARD_SIZE = 100;
+export const SEASON_RESET_KEEP = GP.arena.seasonResetKeep;
+export const HISTORY_SIZE = GP.arena.historySize;
+export const LEADERBOARD_SIZE = GP.arena.leaderboardSize;
 
 export function queueWindow(waitedMs: number): number {
   return Math.min(

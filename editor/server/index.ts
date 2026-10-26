@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { build } from "esbuild";
 import { createStore, ROOT } from "./store";
 
-const PORT = Number(process.env.EDITOR_PORT) || 5255;
+const PORT = Number(process.env.EDITOR_PORT) || 5300;
 const UI = path.join(ROOT, "editor", "ui");
 const MIME: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".woff2": "font/woff2", ".json": "application/json" };
 

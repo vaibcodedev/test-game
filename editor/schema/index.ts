@@ -1,6 +1,7 @@
 import type { Ctx, Doc, Rules } from "./types";
 import { balanceRules, balanceTop } from "./balance";
 import { mobsRules, mountsRules, patrolsRules, zoneBossRules, itemsRules } from "./content";
+import { gameplayRules } from "./gameplay";
 import { guessDoc, humanize } from "./common";
 import { evalCurve } from "./curve";
 
@@ -14,6 +15,7 @@ export type Section = (typeof SECTIONS)[number];
 /** Файл → раздел дерева и русское название. Файлы без записи попадают в «Прочее». */
 export const FILE_META: Record<string, { section: Section; title: string; readonly?: boolean; virtual?: boolean }> = {
   balance: { section: "Баланс", title: "Баланс боя" },
+  gameplay: { section: "Баланс", title: "Общие числа игры" },
   upgrade: { section: "Баланс", title: "Заточка" },
   server: { section: "Баланс", title: "Настройки сервера" },
   classes: { section: "Баланс", title: "Классы героев" },
@@ -63,6 +65,7 @@ export const fileSection = (f: string): Section => FILE_META[f]?.section ?? "П�
 
 const RULES: Record<string, Rules> = {
   balance: balanceRules,
+  gameplay: gameplayRules,
   mobs: mobsRules,
   mounts: mountsRules,
   patrols: patrolsRules,

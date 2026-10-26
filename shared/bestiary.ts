@@ -2,11 +2,12 @@
 import data from "../data/bestiary.json";
 import { ZONES } from "./map";
 import { MOBS } from "./mobs";
+import { GP } from "./gameplay";
 
 /** Убийств для открытия полной записи обычного моба. */
-export const BESTIARY_FULL_KILLS = 10;
+export const BESTIARY_FULL_KILLS = GP.bestiary.fullKills;
 /** Убийств для открытия полной записи босса. */
-export const BESTIARY_FULL_KILLS_BOSS = 1;
+export const BESTIARY_FULL_KILLS_BOSS = GP.bestiary.fullKillsBoss;
 
 export const fullKills = (mobId: string) => (MOBS[mobId]?.boss ? BESTIARY_FULL_KILLS_BOSS : BESTIARY_FULL_KILLS);
 

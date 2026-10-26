@@ -14,6 +14,9 @@ const balance = store.read("balance");
 const missing = uncovered("balance", balance.data);
 assert.deepEqual(missing, [], `нет объяснения для: ${missing.join(", ")}`);
 
+const gp = store.read("gameplay");
+assert.deepEqual(uncovered("gameplay", gp.data), [], "нет объяснения в gameplay.json");
+
 // 2. сохранение без изменений — тот же файл, байт в байт (все файлы data/)
 for (const f of store.list().filter((x) => !x.readonly)) {
   const text = fs.readFileSync(store.file(f.name), "utf8");

@@ -1,4 +1,5 @@
 import balance from "../data/balance.json";
+import { GP } from "./gameplay";
 
 /** Размер тайла и базовая сетка пиксель-арта. */
 export const TILE = 32;
@@ -32,18 +33,18 @@ export const MOVE_MUL: number = balance.moveMul;
 /** Множитель радиуса агра обычных мобов (data/balance.json aggroMul); боссы — без него. */
 export const AGGRO_MUL: number = balance.aggroMul;
 /** Скорость героя пешком, px/с: 150 «до множителя» × MOVE_MUL. */
-export const PLAYER_SPEED = 150 * MOVE_MUL;
-export const PLAYER_RADIUS = 10;
+export const PLAYER_SPEED = GP.player.baseSpeed * MOVE_MUL;
+export const PLAYER_RADIUS = GP.player.radius;
 /** Предел уровня (задача 39, BALANCE.md); levelCap в data/world.json должен совпадать. */
 export const MAX_LEVEL = 100;
-export const STAT_POINTS_PER_LEVEL = 3;
-export const INVENTORY_SIZE = 24;
-export const LOOT_BAG_TTL_MS = 90_000;
-export const PICKUP_RANGE = 72;
-export const MERCHANT_RANGE = 110;
+export const STAT_POINTS_PER_LEVEL = GP.player.statPointsPerLevel;
+export const INVENTORY_SIZE = GP.player.inventorySize;
+export const LOOT_BAG_TTL_MS = GP.timers.lootBagTtlMs;
+export const PICKUP_RANGE = GP.ranges.pickup;
+export const MERCHANT_RANGE = GP.ranges.merchant;
 /** Клиент: на каком расстоянии от NPC или двери открывать окно (подходит вплотную; сервер допускает MERCHANT_RANGE). */
-export const TALK_RANGE = 30;
-export const RESPAWN_DELAY_MS = 4000;
-export const SAVE_INTERVAL_MS = 30_000;
-export const CHAT_MAX_LEN = 140;
+export const TALK_RANGE = GP.ranges.talk;
+export const RESPAWN_DELAY_MS = GP.timers.respawnDelayMs;
+export const SAVE_INTERVAL_MS = GP.timers.saveIntervalMs;
+export const CHAT_MAX_LEN = GP.player.chatMaxLen;
 export const NAME_RE = /^[A-Za-zА-Яа-яЁё0-9_]{3,16}$/;

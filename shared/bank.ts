@@ -4,13 +4,14 @@ import { CITIES, type CityNpc } from "./cities";
 import { TILE } from "./constants";
 import type { Item } from "./items";
 import { TOWN } from "./map";
+import { GP } from "./gameplay";
 
 export const BANK_TABS = data.tabs;
 export const BANK_TAB_SIZE = data.tabSize;
 export const BANK_START_SLOTS = data.startSlots;
 export const BANK_STEP = data.step;
 export const BANK_PRICES: number[] = data.prices;
-export const BANK_GOLD_MAX = 1_000_000_000;
+export const BANK_GOLD_MAX = GP.misc.bankGoldMax;
 /** «Общий склад» аккаунта: одна вкладка для всех героев аккаунта; в сообщениях — номер вкладки SHARED_TAB. */
 export const SHARED_TAB = BANK_TABS;
 export const SHARED_SIZE: number = data.sharedSize;

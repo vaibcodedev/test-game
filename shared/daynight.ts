@@ -1,5 +1,6 @@
+import { GP } from "./gameplay";
 /** Простой общий цикл дня и ночи по часам: у всех клиентов совпадает. */
-export const DAY_CYCLE_MS = 20 * 60 * 1000;
+export const DAY_CYCLE_MS = GP.timers.dayCycleMin * 60 * 1000;
 
 /** Степень ночи 0..1 (0 — день; плавные сумерки). Ночь занимает последнюю часть цикла. */
 export function nightLevel(ms: number): number {

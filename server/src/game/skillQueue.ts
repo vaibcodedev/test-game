@@ -6,13 +6,14 @@ import { SKILLS, skillMana } from "../../../shared/skills";
 import type { Player } from "./Player";
 import { castSkill } from "./skills";
 import type { World } from "./World";
+import { GP } from "../../../shared/gameplay";
 
 export type ErrCode = "target" | "range" | "los" | "mana" | "cd" | "learn";
 /** Запрос умения: x, y — точка (ground — с допуском GROUND_TOL); a — угол прицела (линии, стена огня), dx, dy — вектор рывка или до точки линии: из очереди они
  *  применяются от позиции героя в момент исполнения, а не к старой абсолютной точке (задача 133, shared/skillShape.ts). */
 export interface SkillReq { id: string; x: number; y: number; target: string | null; ap: boolean; until: number; a?: number; dx?: number; dy?: number }
 
-const APPROACH_MS = 4000;
+const APPROACH_MS = GP.misc.skillApproachMs;
 
 /** Код отказа по тексту, который вернул castSkill (или умения классов). */
 export function errCode(text: string): ErrCode | undefined {

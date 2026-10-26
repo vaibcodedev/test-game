@@ -1,0 +1,74 @@
+{
+  "_doc": "Общие числа игры, вынесенные из кода (аудит docs/config-audit.md, задача 145). Читает shared/gameplay.ts (GP). Бой и скорости — в balance.json; здесь — дальности, таймеры, прогресс, арена, обмен и прочее. Расстояния в px (клетка = 32 px), время в мс, если не сказано иначе.",
+  "player": {
+    "baseSpeed": 150,
+    "radius": 10,
+    "statPointsPerLevel": 3,
+    "inventorySize": 24,
+    "chatMaxLen": 140
+  },
+  "ranges": {
+    "pickup": 72,
+    "merchant": 110,
+    "talk": 30
+  },
+  "timers": {
+    "lootBagTtlMs": 90000,
+    "respawnDelayMs": 4000,
+    "saveIntervalMs": 30000,
+    "combatMs": 5000,
+    "logoutCombatMs": 10000,
+    "reconnectSec": 30,
+    "dayCycleMin": 20
+  },
+  "progression": {
+    "xpTailFrom": 30,
+    "skillDesignCap": 30,
+    "softStat": 120,
+    "dodgeCap": 0.3,
+    "xpBase": 20,
+    "xpScale": 30,
+    "xpPower": 1.65,
+    "xpTailMul": 3.6,
+    "xpTailPower": 1.5,
+    "mobXpBase": 12,
+    "mobXpPerLevel": 9,
+    "questXpPerTarget": 1.5
+  },
+  "arena": {
+    "startRating": 1000,
+    "botRatingMul": 0.5,
+    "eloK": 32,
+    "queueWindowBase": 100,
+    "queueWindowStep": 50,
+    "queueWindowEveryMs": 10000,
+    "queueWindowMax": 1000,
+    "acceptMs": 15000,
+    "countdownMs": 5000,
+    "matchMs": 90000,
+    "maxRepeat": 5,
+    "seasonDays": 28,
+    "seasonResetKeep": 0.5,
+    "historySize": 20,
+    "leaderboardSize": 100
+  },
+  "trade": {
+    "slots": 8,
+    "requestMs": 30000,
+    "confirmDelayMs": 3000
+  },
+  "bestiary": {
+    "fullKills": 10,
+    "fullKillsBoss": 1
+  },
+  "market": {
+    "halfLifeMs": 3600000,
+    "step": 0.08,
+    "minMul": 0.4
+  },
+  "misc": {
+    "bankGoldMax": 1000000000,
+    "skillApproachMs": 4000,
+    "petMoveRadius": 6
+  }
+}

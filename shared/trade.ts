@@ -1,10 +1,11 @@
 /** Обмен между игроками: константы и формат состояния окна. */
 import type { Item } from "./items";
+import { GP } from "./gameplay";
 
-export const TRADE_SLOTS = 8;
+export const TRADE_SLOTS = GP.trade.slots;
 export const TRADE_RANGE_TILES = 5;
-export const TRADE_REQUEST_MS = 30_000;
-export const TRADE_CONFIRM_DELAY_MS = 3000;
+export const TRADE_REQUEST_MS = GP.trade.requestMs;
+export const TRADE_CONFIRM_DELAY_MS = GP.trade.confirmDelayMs;
 
 export interface TradeSideView {
   name: string;

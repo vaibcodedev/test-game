@@ -12,9 +12,10 @@ import { Unit } from "../rooms/schema";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import { World } from "./World";
+import { GP } from "../../../shared/gameplay";
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
-const PET_MOVE_R = 6;
+const PET_MOVE_R = GP.misc.petMoveRadius;
 
 export class Pet {
   readonly unit = new Unit();

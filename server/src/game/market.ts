@@ -2,10 +2,11 @@
 import type { GameDB } from "../db";
 import { baseSellValue, type Item } from "../../../shared/items";
 import type { Player } from "./Player";
+import { GP } from "../../../shared/gameplay";
 
-const HALF_LIFE_MS = 3600_000;
-const STEP = 0.08;
-const MIN_MULT = 0.4;
+const HALF_LIFE_MS = GP.market.halfLifeMs;
+const STEP = GP.market.step;
+const MIN_MULT = GP.market.minMul;
 
 let store: GameDB | null = null;
 const mem = new Map<string, { sold: number; updated_at: number }>();

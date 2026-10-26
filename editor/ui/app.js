@@ -233,10 +233,11 @@ function renderField(path, value, doc) {
     box.append(ctl);
     ctl.replaceWith(numOrCurveEditor(path, value, doc, b, set, ro));
   } else if (kind === "text") {
-    const long = String(value).length > 70;
+    const long = String(value).length > 40 || String(value).includes("\n");
     const i = el(long ? "textarea" : "input", long ? "text" : "input wide");
     if (!long) i.type = "text";
     i.value = String(value); i.disabled = ro;
+    if (long) i.rows = Math.min(12, Math.max(2, Math.ceil(String(value).length / 90) + String(value).split("\n").length - 1));
     i.oninput = () => set(i.value);
     ctl.append(i);
   } else {
