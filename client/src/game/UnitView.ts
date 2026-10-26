@@ -133,6 +133,10 @@ export class UnitView {
   private lastAnim = -1;
   private lastRow = -1;
   private lastHp = -1;
+  /** Полоска здоровья с анимацией: barK плавно догоняет здоровье, trailK — светлый «след» потерянного здоровья, тает с задержкой. */
+  private barK = -1;
+  private trailK = -1;
+  private trailAt = 0;
   private lastLabel = "";
   private attacking = false;
   private flashUntil = 0;
@@ -347,6 +351,7 @@ export class UnitView {
       this.scene.tweens.add({ targets: this.sprite, alpha: 1, duration: 500 });
       this.lastAnim = -1;
       this.lastHp = -1;
+      this.barK = this.trailK = -1;
     }
 
     const row = rowOf(u.dir);
@@ -565,12 +570,19 @@ export class UnitView {
       const bx = Math.round(lx - w / 2), by = Math.round(top - 2);
       barX = bx; barY = by; barW = w;
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
+      const now = this.scene.time.now, dt = Math.min(0.1, this.scene.game.loop.delta / 1000);
+      if (this.barK < 0) this.barK = this.trailK = k;
+      if (k < this.trailK && k < this.barK) this.trailAt = now + 350; // след держится 0,35 с, потом тает
+      this.barK += (k - this.barK) * Math.min(1, dt * 14);
+      if (k >= this.trailK) this.trailK = k;
+      else if (now > this.trailAt) this.trailK = Math.max(k, this.trailK - dt * 0.9);
       this.bar.clear();
       this.bar.fillStyle(u.elite ? 0xf0c040 : 0x0a0608, 0.55).fillRect(bx - 1, by - 1, w + 2, 4);
       this.bar.fillStyle(0x0a0608, 0.9).fillRect(bx, by, w, 2);
       const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena" && net.kind !== "raid";
       const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
-      this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * k), 2);
+      if (this.trailK > this.barK) this.bar.fillStyle(0xfff0d0, 0.85).fillRect(bx + Math.round(w * this.barK), by, Math.round(w * this.trailK) - Math.round(w * this.barK), 2);
+      this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * this.barK), 2);
     }
     this.placeZones(mounted, showBar, barX, barY, barW);
 

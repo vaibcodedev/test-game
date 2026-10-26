@@ -12,3 +12,5 @@
 .raid-res-win { color: var(--gold); }
 .raid-res-loss { color: var(--bad); }
 .raid-title-gold { color: var(--gold); }
+/* след потерянного здоровья под полосой героя: светлый кусок тает с задержкой (ui/hud.ts #hp-lag) */
+.bar.hp .hp-lag { position: absolute; inset: 0 auto 0 0; background: #fff0d0; opacity: .8; transition: width .5s cubic-bezier(.4, 0, .2, 1) .35s; text-decoration: none; }

@@ -176,7 +176,7 @@ export class Effects {
       arc = st.side * (4 + Math.random() * 8) * wide;
       if (this.numState.size > 200) for (const [k, v] of this.numState) if (now - v.at > 2000) this.numState.delete(k);
     } else dx = (Math.random() - 0.5) * 24;
-    const size = small ? 8 : big ? 13 : 10;
+    const size = small ? 7 : big ? 11 : 8;
     const base = (big ? (mul > 1 ? 1.15 : 1.4) * mul : mul) * (dim < 1 ? 0.8 : 1);
     const a0 = (small ? 0.65 : 1) * dim;
     // цифру растягивают в base раз: рисуем в base раз чётче, и в покое 1 тексель = 1 пиксель холста

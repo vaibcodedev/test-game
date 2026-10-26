@@ -825,7 +825,7 @@ export class Hud {
     const xpPct = s.xpNext ? Math.floor((s.xp / s.xpNext) * 100) : 0;
     this.player.innerHTML = `
       <div class="row1"><span class="lvl" title="Уровень ${s.level}">${s.level}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="chip bad combat-badge" ${this.inCombat ? "" : "hidden"}>В бою</span><span class="cls">${CLASSES[s.cls].name}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
-      <div class="bar hp lg"><i id="hp-fill"></i><b class="abs" id="hp-abs" hidden></b><span id="hp-text"></span></div>
+      <div class="bar hp lg"><s class="hp-lag" id="hp-lag"></s><i id="hp-fill"></i><b class="abs" id="hp-abs" hidden></b><span id="hp-text"></span></div>
       <div class="bar mp"><i id="mp-fill"></i><span id="mp-text"></span></div>
       ${s.xpNext ? `<div class="bar xp" title="Опыт: ${xpPct}%"><i style="width:${xpPct}%"></i></div>` : ""}
       ${s.xpNext || pts ? `<div class="pts">${s.xpNext ? `<span class="c-dim">Опыт ${formatNumber(s.xp)} / ${formatNumber(s.xpNext)}</span>` : ""}${pts}</div>` : ""}
@@ -1528,7 +1528,7 @@ export class Hud {
       const hp = document.getElementById("hp-fill"), mp = document.getElementById("mp-fill");
       // числа с разделителем разрядов, как у золота; текст пишется только при изменении
       const put = (id: string, t: string) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
-      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
+      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; const lag = document.getElementById("hp-lag"); if (lag) lag.style.width = hp.style.width; put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
       // щит-поглощение поверх HP (как в WoW): от конца здоровья вправо; не помещается — заходит на здоровье с правого края
       const abs = document.getElementById("hp-abs");
       if (abs) {
