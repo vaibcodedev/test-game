@@ -39,6 +39,8 @@ export const INVENTORY_SIZE = 24;
 export const LOOT_BAG_TTL_MS = 90_000;
 export const PICKUP_RANGE = 72;
 export const MERCHANT_RANGE = 110;
+/** Клиент: на каком расстоянии от NPC или двери открывать окно (подходит вплотную; сервер допускает MERCHANT_RANGE). */
+export const TALK_RANGE = 44;
 export const RESPAWN_DELAY_MS = 4000;
 export const SAVE_INTERVAL_MS = 30_000;
 export const CHAT_MAX_LEN = 140;

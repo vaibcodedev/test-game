@@ -1,7 +1,7 @@
 import { layoutLabels } from "./labelLayout";
 import { PickBest } from "./hit";
 import Phaser from "phaser";
-import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../../../shared/constants";
+import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TALK_RANGE, TILE } from "../../../shared/constants";
 import { Nav } from "../../../shared/path";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneDanger, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
 import { ENV, RESOURCES } from "../../../shared/biomes";
@@ -1064,15 +1064,18 @@ export class GameScene extends Phaser.Scene {
     this.interactPick()?.go();
   }
   private tipAt = 0;
+  private npcLast = { x: 0, y: 0 };
+  private npcStill = 0;
 
   /** Подойти к NPC и открыть его окно. */
   talk(n: Npc) {
     const d = Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y);
-    if (d < MERCHANT_RANGE - 10) {
+    if (d < TALK_RANGE) {
       this.pendingNpc = null;
       this.openNpc(n);
     } else {
       this.pendingNpc = n;
+      this.npcStill = 0;
       net.send("moveTo", { x: n.sprite.x, y: n.sprite.y + 26 });
     }
   }
@@ -1267,8 +1270,12 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (this.pendingNpc) {
-      const n = this.pendingNpc;
-      if (Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y) < MERCHANT_RANGE - 10) {
+      const n = this.pendingNpc, d = Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y);
+      // вплотную; если путь упёрся (прилавок, стена) — с того места, где герой встал, в пределах сервера
+      const still = Math.hypot(this.pos.x - this.npcLast.x, this.pos.y - this.npcLast.y) < 0.5;
+      this.npcStill = still ? this.npcStill + 1 : 0;
+      this.npcLast = { x: this.pos.x, y: this.pos.y };
+      if (d < TALK_RANGE || (this.npcStill > 20 && d < MERCHANT_RANGE - 10)) {
         this.pendingNpc = null;
         this.openNpc(n);
       }
