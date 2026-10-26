@@ -3,7 +3,7 @@
    Состояния: .in — появление, .ok — успех (вспышка и уход), .fail — прерывание (трещина, дрожь, затухание). */
 .cb { --cc: var(--gold); --p: 0; pointer-events: none; font-family: var(--font); color: var(--fg); }
 .cb[hidden] { display: none !important; }
-.cb-self { position: fixed; left: 50%; bottom: 124px; translate: -50% 0; z-index: 20; --cs: .8; scale: var(--cs); transform-origin: 50% 100%; }
+.cb-self { position: fixed; left: 50%; bottom: 146px; translate: -50% 0; z-index: 20; --cs: .8; scale: var(--cs); transform-origin: 50% 100%; }
 .cb-boss { align-self: center; --cc: var(--boss); }
 .cb.in { animation: cb-in .22s cubic-bezier(.2, .9, .3, 1.25) both; }
 .cb.ok { animation: cb-out .52s cubic-bezier(.4, 0, .2, 1) forwards; }

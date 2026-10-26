@@ -4,7 +4,7 @@
  * Источник данных — SelfState.bars; изменения идут на сервер сообщениями bars:set / bars:swap и возвращаются в SelfState.
  */
 import { BASE_ITEMS } from "../../../shared/items";
-import { BAR_COUNT, BAR_SLOTS, usableBase, type Slot } from "../../../shared/hotbar";
+import { BAR_COUNT, BAR_SLOTS, SKILL_SLOTS, usableBase, type Slot } from "../../../shared/hotbar";
 import { lineClear, type WorldMap } from "../../../shared/map";
 import type { SelfState } from "../../../shared/protocol";
 import { inEmberWalls, NO_FIGHT_MSG } from "../../../shared/cities";
@@ -59,6 +59,9 @@ interface Cell {
 export class Hotbar {
   readonly el = document.createElement("div");
   private rows: HTMLElement[] = [];
+  /** Куда hud.ts кладёт кнопки маунта (X, в ленте) и питомца (Z, в правом блоке 2×2); пересоздаются в build. */
+  mountHost = document.createElement("span");
+  petHost = document.createElement("span");
   private cells: Cell[][] = [];
   private lockBtn = document.createElement("button");
   private sig = "";
@@ -133,6 +136,11 @@ export class Hotbar {
     this.el.innerHTML = "";
     this.rows = [];
     this.cells = [];
+    this.mountHost = Object.assign(document.createElement("span"), { className: "hb-extras" });
+    this.petHost = Object.assign(document.createElement("span"), { className: "hb-extras" });
+    // лента: [блок 2×2: Shift-предметы] 5 умений, герб, 4 умения, маунт [блок 2×2: зелья, слот 11, питомец]; блоки равны — герб ровно по центру
+    const holdL = Object.assign(document.createElement("div"), { className: "hb-hold l" });
+    const holdR = Object.assign(document.createElement("div"), { className: "hb-hold r" });
     // верхний ряд — панель 2 (с Shift), нижний — основная
     const order = [1, 0];
     for (const bar of order) {
@@ -140,15 +148,21 @@ export class Hotbar {
       row.className = `hb-row r${bar + 1}`;
       this.rows[bar] = row;
       this.cells[bar] = [];
+      row.append(bar === 0 ? holdL : Object.assign(document.createElement("span"), { className: "hb-hspace" }));
       for (let i = 0; i < BAR_SLOTS; i++) {
         const c = this.makeCell(bar, i, s.bars[bar]?.[i] ?? null);
         this.cells[bar][i] = c;
-        row.append(c.root);
-        // герб фракции посреди умений, орнамент между умениями и предметами (styles/hotbar.css)
-        if (i === 6) row.append(Object.assign(document.createElement("span"), { className: `hb-crest f-${s.faction}` }));
-        if (i === 8) row.append(Object.assign(document.createElement("span"), { className: "hb-orn" }));
+        if (i >= SKILL_SLOTS) (bar === 0 ? holdR : holdL).append(c.root);
+        else row.append(c.root);
+        if (i === 4) row.append(Object.assign(document.createElement("span"), { className: `hb-crest f-${s.faction}` }));
+        if (i === 8) row.append(bar === 0 ? this.mountHost : Object.assign(document.createElement("span"), { className: "hb-spacer" }));
       }
-      if (bar === 0) { this.lockBtn.className = "hb-lock"; this.lockBtn.onclick = () => { this.setLock(!this.locked); this.lockBtn.blur(); }; row.append(this.lockBtn); }
+      if (bar === 0) {
+        holdL.append(Object.assign(document.createElement("span"), { className: "hb-blank" }));
+        holdR.append(this.petHost);
+        row.append(holdR);
+        this.lockBtn.className = "hb-lock"; this.lockBtn.onclick = () => { this.setLock(!this.locked); this.lockBtn.blur(); }; row.append(this.lockBtn);
+      }
       this.el.append(row);
     }
     this.rows[1].classList.toggle("empty", s.bars[1].every((r) => !r));

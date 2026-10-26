@@ -27,6 +27,7 @@ import { TradeUI } from "./trade";
 import { AdminUI } from "./admin";
 import { BestiaryUI } from "./bestiary";
 import { RumorUI } from "./rumor";
+import { StatueUI } from "./statue";
 import { EncounterUI } from "./encounter";
 import { InspectUI } from "./inspect";
 import { enchantTotal, gearRows, legendBlock } from "./gearfx";
@@ -107,7 +108,6 @@ export class Hud {
   private wmView: WorldMapView | null = null;
   private bar = el("div", "panel hud-bar");
   private hotbar = new Hotbar();
-  private barExtras = el("div", "hb-extras");
   private menuBar = el("div", "hud-menu");
   private uiScale = 100;
   private chatSize = 14;
@@ -137,6 +137,8 @@ export class Hud {
   readonly admin: AdminUI;
   private gameMenu!: GameMenu;
   readonly rumor: RumorUI;
+  /** История статуи правителя в столице (задача 141). */
+  readonly statue: StatueUI;
   readonly enc: EncounterUI;
   readonly inspect: InspectUI;
   private targetSid: string | null = null;
@@ -168,22 +170,7 @@ export class Hud {
   /** Нижняя раскладка от размеров панели умений: чат стоит рядом с ней, если слева хватает места (не уже MIN), иначе над ней;
    *  лог не выше свободного места между левой колонкой и низом. Все числа — в локальных px корня (учтён zoom интерфейса).
    *  --bar-top — верх панели умений с рамкой, от него считаются строка ошибок и подсказка действия. */
-  private crestPad = { l: 0, r: 0 };
-  /** Герб фракции — ровно посередине панели: более короткой стороне добавляем отступ у самого герба (крылья остаются вплотную к ячейкам). */
-  private centerCrest() {
-    const crest = this.bar.querySelector<HTMLElement>(".hb-row.r1 .hb-crest");
-    if (!crest) return;
-    const s = scaleOf(this.bar), b = this.bar.getBoundingClientRect(), c = crest.getBoundingClientRect();
-    const mid = (c.left + c.right) / 2;
-    const left = (mid - b.left) / s - this.crestPad.l, right = (b.right - mid) / s - this.crestPad.r;
-    const l = Math.max(0, Math.round(right - left)), r = Math.max(0, Math.round(left - right));
-    if (l === this.crestPad.l && r === this.crestPad.r) return;
-    this.crestPad = { l, r };
-    crest.style.marginLeft = `${6 + l}px`;
-    crest.style.marginRight = `${6 + r}px`;
-  }
   private layoutBottom() {
-    this.centerCrest();
     const bw = this.bar.offsetWidth, bh = this.bar.offsetHeight;
     if (!bw || !bh) return;
     const EDGE = 12, GAP = 8, FRAME = 8, MIN = 300;
@@ -230,7 +217,7 @@ export class Hud {
   }
 
   constructor(readonly root: HTMLElement) {
-    this.bar.append(this.hotbar.el, this.barExtras);
+    this.bar.append(this.hotbar.el);
     root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.errLine, this.itip, this.death, this.tip);
     initWindowDrag(root, () => this.ctx?.net.self?.name ?? "");
     this.stackLeftPanels();
@@ -263,6 +250,7 @@ export class Hud {
     this.bestiary = new BestiaryUI(root, icon);
     this.admin = new AdminUI(root, (onPick, onCancel) => this.pickOnMap(onPick, onCancel));
     this.rumor = new RumorUI(root);
+    this.statue = new StatueUI(root);
     this.enc = new EncounterUI(root, { itemTip: (it, s) => this.itemTip(it, s, false, true), tipFor: (e, h) => this.tipFor(e, h) });
     this.inspect = new InspectUI(root, { itemTip: (it, s) => this.itemTip(it, s, false, true), tipFor: (e, h) => this.tipFor(e, h) });
     this.targetBox.onclick = () => { if (this.targetSid && this.ctx?.net.kind === "world") this.inspect.open(this.targetSid); };
@@ -536,7 +524,7 @@ export class Hud {
     }
     if (!top) return this.closeAll();
     const byCls: Record<string, () => boolean> = {
-      "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-enc": () => this.enc.close(),
+      "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-statue": () => this.statue.close(), "win-enc": () => this.enc.close(),
       "win-cook": () => this.cook.close(), "win-quest": () => this.quest.close(), "win-qlog": () => this.quest.closeLog(), "win-tp": () => this.tp.close(),
       "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
     };
@@ -658,7 +646,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
+    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.statue.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -836,7 +824,7 @@ export class Hud {
 
     // панель умений: строится один раз, см. ui/hotbar.ts
     this.hotbar.update(s);
-    this.barExtras.innerHTML = "";
+    this.hotbar.mountHost.innerHTML = ""; this.hotbar.petHost.innerHTML = "";
     {
       const mid = s.mount ?? "";
       const md = MOUNTS[mid];
@@ -845,7 +833,7 @@ export class Hud {
       b.style.position = "relative";
       b.onclick = () => this.ctx.toggleMount?.();
       this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">Скорость ×${md.speed} · призыв 2 с, стоя на месте. ${keybinds.label("mount", 0)} — сесть/слезть, ${keybinds.label("mountNext", 0)} — сменить. Не в бою, не на арене.</div>` : `<div class="t">Маунт</div><div class="d">Бурый конь — с 10 уровня</div>`);
-      this.barExtras.append(b);
+      this.hotbar.mountHost.append(b);
     }
     {
       const pd = PETS[s.pet ?? ""];
@@ -856,7 +844,7 @@ export class Hud {
       this.tipFor(b, () => pd && rec
         ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${keybinds.label("pet", 0)} — призвать (2 с) / отпустить, ${keybinds.label("petNext", 0)} — сменить. Погиб — призыв через 60 с. Не на арене.</div>`
         : `<div class="t">Питомец</div><div class="d">Волчонок — с 5 уровня. Другие — у торговки или редкая добыча.</div>`);
-      this.barExtras.append(b);
+      this.hotbar.petHost.append(b);
     }
     if (!this.wins.char.hidden) this.renderChar(s);
     if (!this.wins.inv.hidden) this.renderInv(s);

@@ -1,0 +1,22 @@
+/* ---------- окно истории статуи правителя (задача 141) ---------- */
+/* каркас (h2 → .body), ширина .m, .meta — kit.css; здесь положение и типографика надписи */
+.win-statue {
+  left: 50%;
+  top: 90px;
+  transform: translateX(-50%);
+  z-index: 4;
+  max-height: calc(100vh - 140px);
+}
+.win-statue .st-title {
+  margin: 0 0 var(--sp-2);
+}
+.win-statue .st-plaque {
+  font-style: italic;
+  margin: 0 0 var(--sp-3);
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--line);
+}
+.win-statue .st-text p {
+  margin: 0 0 var(--sp-2);
+  line-height: 1.45;
+}

@@ -4,7 +4,7 @@
    Состояния: шторка перезарядки по кругу (--p ставит hotbar.ts) с лучом на краю и числом, .rdy — вспышка готовности,
    .nomana — синеватая, .oor/.nolos — красноватая (умножение слоем .tint, как SetVertexColor в WoW), .press и :active — вдавливание,
    .queued — бегущая золотая рамка, пустой слот — вдавленное гнездо, .drag и [data-dragging] — перетаскивание. */
-.hud-bar { gap: var(--sp-1); padding: 5px 22px; background: linear-gradient(#211925, #100c13 75%); }
+.hud-bar { gap: var(--sp-1); padding: 3px 22px; background: linear-gradient(#211925, #100c13 75%); }
 .hud-bar::before, .hud-bar::after {
   content: "";
   position: absolute;
@@ -22,7 +22,20 @@
 .hb-row { display: flex; gap: 2px; align-items: center; }
 .hb-row.r2.empty { display: none; }
 .hb.dragging .hb-row.r2.empty { display: flex; opacity: .75; }
-.hb-extras { display: flex; gap: 2px; align-items: flex-end; position: relative; }
+.hb-extras { display: contents; }
+.hb-spacer { flex: none; width: 39px; height: 1px; }
+.hb-hspace { flex: none; width: 82px; height: 1px; }
+/* блоки 2×2 по краям ленты (слоты 32px): слева Shift-предметы, справа зелья и питомец; золотой стержень отделяет блок от умений */
+.hb-hold { display: grid; grid-template-columns: repeat(2, 32px); gap: 2px; flex: none; }
+.hb-hold.l { margin-right: 8px; padding-right: 8px; background: linear-gradient(transparent 6%, #e8c878 50%, transparent 94%) right center / 2px 100% no-repeat; }
+.hb-hold.r { margin-left: 8px; padding-left: 8px; background: linear-gradient(transparent 6%, #e8c878 50%, transparent 94%) left center / 2px 100% no-repeat; }
+.hb-blank { width: 32px; height: 32px; border-radius: var(--r-1); background: #0a080c; box-shadow: 0 0 0 1px #2a211f, inset 0 2px 4px rgba(0, 0, 0, .9); opacity: .5; pointer-events: none; }
+.hud-bar .hb-hold .slot, .hud-bar .hb-hold .hb-slot { --sz: 32px; width: 32px; height: 32px; }
+.hud-bar .hb-hold .slot img, .hud-bar .hb-hold .hb-slot img { width: 30px !important; height: 30px !important; left: 1px !important; top: 1px !important; }
+.hud-bar .hb-hold .slot kbd { font-size: 10px; }
+.hud-bar .hb-hold .slot .qty { font-size: 10px; }
+.hud-bar .hb-hold .slot .act, .hud-bar .hb-hold .slot > span:not(.qty):not(.cdt) { font-size: 16px !important; line-height: 31px !important; }
+.hud-bar .hb-hold .hb-slot .cdt { font-size: var(--fs-xs); }
 
 .hud-bar .hb-slot, .hud-bar .hb-extras .slot {
   --sz: 39px;
@@ -107,12 +120,12 @@
 .hud-bar .hb-slot[data-dragging] { opacity: .35; scale: .94; }
 
 /* замок раскладки — маленькая заклёпка в правом верхнем углу панели */
-.hb-lock { position: absolute; right: 4px; top: -8px; z-index: 2; width: 18px; height: 18px; padding: 0; font-size: 10px; line-height: 1; border: 1px solid #000; border-radius: 50%; background: var(--btn); box-shadow: 0 0 0 1px var(--line-hi); cursor: var(--cur-pointer); transition: box-shadow .15s; }
+.hb-lock { position: absolute; right: 3px; top: 1px; z-index: 2; width: 14px; height: 14px; padding: 0; font-size: 8px; line-height: 1; border: 1px solid #000; border-radius: 50%; background: var(--btn); box-shadow: 0 0 0 1px var(--line-hi); cursor: var(--cur-pointer); transition: box-shadow .15s; }
 .hb-lock:hover, .hb-lock.open { box-shadow: 0 0 0 1px var(--gold); }
 
 /* разделитель групп (умения | предметы | маунт и питомец): золотой стержень и ромб-заклёпка */
-.hb-orn, .hb-extras::before { content: ""; display: block; position: relative; flex: none; width: 8px; align-self: stretch; background: linear-gradient(transparent 4%, #5a4028 22%, #e8c878 50%, #5a4028 78%, transparent 96%) center / 2px 100% no-repeat; }
-.hb-orn::after, .hb-extras::after { content: ""; position: absolute; left: 1px; top: 50%; width: 6px; height: 6px; margin-top: -4px; rotate: 45deg; background: radial-gradient(circle at 35% 35%, #ffe9a0, var(--gold) 45%, #5a3a14); border: 1px solid #000; }
+.hb-orn { content: ""; display: block; position: relative; flex: none; width: 8px; align-self: stretch; background: linear-gradient(transparent 4%, #5a4028 22%, #e8c878 50%, #5a4028 78%, transparent 96%) center / 2px 100% no-repeat; }
+.hb-orn::after { content: ""; position: absolute; left: 1px; top: 50%; width: 6px; height: 6px; margin-top: -4px; rotate: 45deg; background: radial-gradient(circle at 35% 35%, #ffe9a0, var(--gold) 45%, #5a3a14); border: 1px solid #000; }
 
 /* герб фракции: медальон с кольцом и четырьмя заклёпками, живой (12 кадров), чуть выше ленты */
 .hb-crest {
@@ -121,8 +134,8 @@
   flex: none;
   width: 38px;
   height: 38px;
-  margin: -6px 6px 0;
-  align-self: flex-start;
+  margin: 0 6px;
+  align-self: center;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 40%, #33283a, #0e0b10 72%);
   box-shadow: 0 0 0 1px #000, 0 0 0 2px #8a6a4a, 0 0 0 4px #241b26, 0 0 0 5px #8a6a4a, 0 0 0 6px #000, 0 3px 8px rgba(0, 0, 0, .7), inset 0 0 6px rgba(0, 0, 0, .8);
