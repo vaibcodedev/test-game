@@ -6,6 +6,7 @@ import { failLevel, MATERIALS, MAX_PLUS, SMITHS, stepFor } from "../../../shared
 import { addItem } from "./inventory";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
 /** Рядом ли кузнец: Эмберхолл или любая из столиц (решение 2 задачи 132). */
@@ -28,16 +29,16 @@ function take(p: Player, base: string, n: number) {
 export function buyMaterial(w: World, p: Player, id: unknown, qtyRaw: unknown) {
   const m = typeof id === "string" ? MATERIALS[id] : undefined;
   if (!m) return;
-  if (!smithNear(w, p)) return err(p, "Кузнец далеко");
+  if (!smithNear(w, p)) return err(p, T("srv.smith.153"));
   const no = smithRefusal(p);
   if (no) return err(p, no);
   const qty = Number.isInteger(qtyRaw) ? Math.max(1, Math.min(99, qtyRaw as number)) : 1;
   const price = m.price * qty;
-  if (p.save.gold < price) return err(p, "Не хватает золота");
+  if (p.save.gold < price) return err(p, T("srv.bags.58"));
   const backup = JSON.stringify(p.save.inventory);
   if (!addItem(p, { ...makeItem(m.id, 1, Rarity.Common), qty })) {
     p.save.inventory = JSON.parse(backup);
-    return err(p, "Сумка полна");
+    return err(p, T("srv.biomes.76"));
   }
   p.save.gold -= price;
   p.selfDirty = true;
@@ -46,8 +47,8 @@ export function buyMaterial(w: World, p: Player, id: unknown, qtyRaw: unknown) {
 /** Улучшить предмет из сумки (index) или надетый (slot). locked — проверка окна обмена. */
 export function upgradeItem(w: World, p: Player, index: unknown, slot: unknown, locked: (i: unknown) => boolean) {
   if (p.dead) return;
-  if (p.team !== 0) return err(p, "На арене улучшать нельзя");
-  if (!smithNear(w, p)) return err(p, "Кузнец далеко");
+  if (p.team !== 0) return err(p, T("srv.smith.154"));
+  if (!smithNear(w, p)) return err(p, T("srv.smith.153"));
   const no = smithRefusal(p);
   if (no) return err(p, no);
   let it: Item | null | undefined;
@@ -56,15 +57,15 @@ export function upgradeItem(w: World, p: Player, index: unknown, slot: unknown, 
     it = p.save.equip[slot as Slot];
   } else {
     if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= p.save.inventory.length) return;
-    if (locked(index)) return err(p, "Предмет лежит в окне обмена");
+    if (locked(index)) return err(p, T("srv.bank.65"));
     it = p.save.inventory[index as number];
   }
-  if (!it || BASE_ITEMS[it.base]?.slot === "consumable") return err(p, "Это нельзя улучшить");
+  if (!it || BASE_ITEMS[it.base]?.slot === "consumable") return err(p, T("srv.smith.155"));
   const plus = it.plus || 0;
   const step = stepFor(plus);
-  if (!step) return err(p, "Предмет уже улучшен до максимума");
-  if (p.save.gold < step.gold) return err(p, "Не хватает золота");
-  if (count(p, "ash_ore") < step.ore || count(p, "star_dust") < step.dust) return err(p, "Не хватает материалов");
+  if (!step) return err(p, T("srv.smith.156"));
+  if (p.save.gold < step.gold) return err(p, T("srv.bags.58"));
+  if (count(p, "ash_ore") < step.ore || count(p, "star_dust") < step.dust) return err(p, T("srv.smith.157"));
   p.save.gold -= step.gold;
   take(p, "ash_ore", step.ore);
   take(p, "star_dust", step.dust);
@@ -77,5 +78,5 @@ export function upgradeItem(w: World, p: Player, index: unknown, slot: unknown, 
     p.unit.hp = Math.max(1, Math.round(p.unit.maxHp * ratio));
   }
   p.selfDirty = true;
-  p.send("toast", { text: ok ? `Успех! ${itemName(it)}` : `Неудача: ${it.name}, уровень снижен до +${it.plus || 0}`, kind: ok ? "loot" : "error" });
+  p.send("toast", { text: ok ? T("srv.smith.819", { it: itemName(it) }) : T("srv.smith.820", { name: it.name, plus: it.plus || 0 }), kind: ok ? "loot" : "error" });
 }

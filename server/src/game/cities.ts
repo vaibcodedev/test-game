@@ -13,6 +13,7 @@ import { addItem } from "./inventory";
 import type { Player } from "./Player";
 import { gainXp } from "./rewards";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
 
@@ -31,7 +32,7 @@ export function tickCities(w: World) {
     if (c && !found.includes(c.id) && !isEnemyCapital(c, p.faction)) {
       found.push(c.id);
       p.selfDirty = true;
-      p.send("toast", { text: `Открыт телепорт: ${c.name}`, kind: "level" });
+      p.send("toast", { text: T("srv.cities.80", { name: c.name }), kind: "level" });
     }
     const t = p.tele;
     if (!t) continue;
@@ -50,7 +51,7 @@ export function tickCities(w: World) {
       p.nav.reset();
       p.selfDirty = true;
       w.emit({ t: "tp", id: p.id, ph: "arrive", x: to.arrive.x, y: to.arrive.y });
-      p.send("toast", { text: `Телепорт: ${to.name} (−${t.price} з)`, kind: "info" });
+      p.send("toast", { text: T("srv.cities.81", { name: to.name, price: t.price }), kind: "info" });
     }
   }
 }
@@ -59,21 +60,21 @@ export function tickCities(w: World) {
 export function startTeleport(w: World, p: Player, id: unknown) {
   if (typeof id !== "string" || p.dead || p.team !== 0 || w.opts.mobs === false) return;
   const from = stoneNear(p.x, p.y);
-  if (!from) return err(p, "Подойдите к камню телепорта");
+  if (!from) return err(p, T("srv.cities.82"));
   const to = cityById(id);
   const found = p.save.cities ?? [];
-  if (isEnemyCapital(from, p.faction)) return err(p, `Камень телепорта ${from.name} не служит врагам ${FACTIONS[from.capital as FactionId]?.name ?? ""}а`);
-  if (!to || to.id === from.id || !cityKnown(to, found, p.faction)) return err(p, "Этот телепорт не открыт");
+  if (isEnemyCapital(from, p.faction)) return err(p, T("srv.cities.83", { name: from.name, name2: FACTIONS[from.capital as FactionId]?.name ?? "" }));
+  if (!to || to.id === from.id || !cityKnown(to, found, p.faction)) return err(p, T("srv.cities.84"));
   if (p.tele) return;
-  if (p.inCombat(w.time)) return err(p, "Нельзя телепортироваться в бою");
+  if (p.inCombat(w.time)) return err(p, T("srv.cities.85"));
   if (p.stunUntil > w.time || p.mountCast) return;
   const price = teleportPrice(from, to);
-  if (p.save.gold < price) return err(p, "Не хватает золота");
+  if (p.save.gold < price) return err(p, T("srv.bags.58"));
   w.breakMount(p);
   p.input = { mx: 0, my: 0 };
   p.moveTo = null;
   p.tele = { until: w.time + TELEPORT_CAST_MS, x: p.x, y: p.y, to: to.id, price };
-  p.send("mountcast", { ms: TELEPORT_CAST_MS, name: `Телепорт: ${to.name}` });
+  p.send("mountcast", { ms: TELEPORT_CAST_MS, name: T("srv.cities.791", { name: to.name }) });
   w.emit({ t: "tp", id: p.id, ph: "cast", x: p.x, y: p.y, sx: from.stone.x, sy: from.stone.y, ms: TELEPORT_CAST_MS });
 }
 
@@ -90,7 +91,7 @@ export function questProgress(p: Player, kind: "kill" | "gather", target: string
     if (!def || def.kind !== kind || def.target !== target || have >= def.n) continue;
     q.active[id] = Math.min(def.n, have + n);
     changed = true;
-    if (q.active[id] >= def.n) p.send("toast", { text: `Задание выполнено: ${def.name}. Вернитесь к заказчику`, kind: "level" });
+    if (q.active[id] >= def.n) p.send("toast", { text: T("srv.cities.86", { name: def.name }), kind: "level" });
   }
   if (changed) p.selfDirty = true;
 }
@@ -98,7 +99,7 @@ export function questProgress(p: Player, kind: "kill" | "gather", target: string
 /** Ошибка заказчика: далеко или чужой фракции; null — можно. */
 function giverErr(w: World, p: Player, giver: string): string | null {
   const g = QUEST_GIVERS.find((x) => x.id === giver);
-  if (!g || w.dist(p, g) > MERCHANT_RANGE) return "Заказчик далеко";
+  if (!g || w.dist(p, g) > MERCHANT_RANGE) return T("srv.cities.87");
   return npcRefusal({ kind: "quest", name: g.name, x: g.x, y: g.y }, p.faction);
 }
 
@@ -109,11 +110,11 @@ function accept(w: World, p: Player, id: unknown) {
   if (ge) return err(p, ge);
   const q = qs(p);
   if (q.done.includes(def.id) || def.id in q.active) return;
-  if (p.level < def.level) return err(p, `Нужен ${def.level} уровень`);
-  if (Object.keys(q.active).length >= QUEST_MAX_ACTIVE) return err(p, "Слишком много активных заданий");
+  if (p.level < def.level) return err(p, T("srv.cities.88", { level: def.level }));
+  if (Object.keys(q.active).length >= QUEST_MAX_ACTIVE) return err(p, T("srv.cities.89"));
   q.active[def.id] = 0;
   p.selfDirty = true;
-  p.send("toast", { text: `Задание принято: ${def.name}`, kind: "info" });
+  p.send("toast", { text: T("srv.cities.90", { name: def.name }), kind: "info" });
 }
 
 function turnIn(w: World, p: Player, id: unknown) {
@@ -126,7 +127,7 @@ function turnIn(w: World, p: Player, id: unknown) {
   const backup = JSON.stringify(p.save.inventory);
   if (def.reward.item && !addItem(p, { ...makeItem(def.reward.item.base, 1, Rarity.Common), qty: def.reward.item.qty })) {
     p.save.inventory = JSON.parse(backup);
-    return err(p, "Сумка полна");
+    return err(p, T("srv.biomes.76"));
   }
   delete q.active[def.id];
   q.done.push(def.id);
@@ -134,7 +135,7 @@ function turnIn(w: World, p: Player, id: unknown) {
   gainXp(w, p, def.reward.xp);
   addRep(p, MOUNT_EARN.repQuest);
   p.selfDirty = true;
-  p.send("toast", { text: `Задание сдано: ${def.name} (+${def.reward.gold} з, +${def.reward.xp} опыта, +${MOUNT_EARN.repQuest} репутации)`, kind: "loot" });
+  p.send("toast", { text: T("srv.cities.91", { name: def.name, gold: def.reward.gold, xp: def.reward.xp, repquest: MOUNT_EARN.repQuest }), kind: "loot" });
 }
 
 export function registerCities(on: On, w: () => World) {

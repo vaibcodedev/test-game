@@ -1,3 +1,4 @@
+import { T } from "../../../shared/texts";
 /**
  * Полоса каста (стили — styles/castbar.css), выбор пользователя «A + C»:
  *   a — рамка с заклёпками (LiteUI), золотое заполнение с бегущим бликом и искрой на конце, иконка слева, таймер справа:
@@ -82,7 +83,7 @@ export class CastBar {
     this.state = good ? "ok" : "fail";
     if (good) this.draw(1);
     const n = this.q<HTMLElement>(".cb-name");
-    if (n && !good) n.textContent = "Прервано";
+    if (n && !good) n.textContent = T("ui.castbar.276");
     const t = this.q<HTMLElement>(".cb-time");
     if (t) t.textContent = "";
     this.el.classList.add(good ? "ok" : "fail");

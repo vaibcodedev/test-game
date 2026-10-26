@@ -19,6 +19,7 @@ import { startEncounter, type EncKind } from "./encounters";
 import { MOUNTS } from "../../../shared/mounts";
 import { awardMount } from "./mountDrops";
 import { GP } from "../../../shared/gameplay";
+import { T } from "../../../shared/texts";
 
 const PERMA = 9e12;
 /** Телепорт по координатам (карта админ-панели, поля x, y): насколько далеко, в тайлах, искать проходимую клетку, если в точку встать нельзя. */
@@ -64,7 +65,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
         if (now - (deniedAt.get(key) ?? 0) < DENY_LOG_MS) return;
         if (deniedAt.size > 500) for (const [k, at] of deniedAt) if (now - at >= DENY_LOG_MS) deniedAt.delete(k);
         deniedAt.set(key, now);
-        console.warn(`[admin] попытка без прав: ${p.name} -> ${type}`);
+        console.warn(T("srv.admin.36", { name: p.name, type: type }));
         try { db().adminLog(p.name, "denied:" + type, "", {}); } catch {}
         return;
       }
@@ -152,7 +153,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
         if (!worn) notWorn = slot === "offhand" && isTwoHanded(t.save.equip.weapon?.base) ? "двуручное оружие занимает обе руки" : slot === "weapon" && isTwoHanded(first.base) && t.save.equip.offhand ? "сумка полна: некуда снять вторую руку" : "не удалось надеть";
       }
     }
-    toast(t, `Администратор выдал: ${nm}${given > 1 ? " ×" + given : ""}`, "loot");
+    toast(t, T("srv.admin.37", { nm: nm, given: given > 1 ? " ×" + given : "" }), "loot");
     const part = given < want ? ` · не влезло: ${want - given}` : "";
     const text = `Выдано ${nm}${given > 1 ? " ×" + given : ""}${worn ? " (надето)" : ""} → ${t.name}${part}${notWorn ? ` · не надето: ${notWorn}` : ""}`;
     reply(notWorn || part ? "warn" : "info", text, { given, worn });
@@ -162,21 +163,21 @@ export function registerAdmin(room: WorldRoom, on: On) {
   adm<{ name: unknown; v: unknown }>("admin:gold", (p, m) => {
     const t = online(str(m.name));
     const v = Math.round(num(m.v, -1e7, 1e7) ?? 0);
-    if (!t || !v) return toast(p, "Игрок не в сети или сумма 0", "error");
+    if (!t || !v) return toast(p, T("srv.admin.38"), "error");
     t.save.gold = Math.max(0, t.save.gold + v);
     t.selfDirty = true;
-    toast(p, `Золото ${t.name}: ${v > 0 ? "+" : ""}${v}`);
+    toast(p, T("srv.admin.39", { name: t.name, v: v > 0 ? "+" : "", v2: v }));
     log(p, "gold", t.name, { v });
   });
 
   adm<{ name: unknown; xp: unknown; level: unknown }>("admin:xp", (p, m) => {
     const t = online(str(m.name));
-    if (!t) return toast(p, "Игрок не в сети", "error");
+    if (!t) return toast(p, T("srv.admin.40"), "error");
     const lv = Math.round(num(m.level, 1, MAX_LEVEL) ?? 0);
     const xp = Math.round(num(m.xp, 0, 1e7) ?? 0);
     if (lv) while (t.level < lv) gainXp(w(), t, xpToNext(t.level) - t.save.xp);
     if (xp) gainXp(w(), t, xp);
-    toast(p, `${t.name}: уровень ${t.level}`);
+    toast(p, T("srv.admin.41", { name: t.name, level: t.level }));
     log(p, "xp", t.name, { level: lv, xp });
   });
 
@@ -198,11 +199,11 @@ export function registerAdmin(room: WorldRoom, on: On) {
       const x = num(m.x, 0, 1e6), y = num(m.y, 0, 1e6);
       if (x !== null && y !== null) {
         pos = nearestWalkable(w().map, x, y);
-        if (!pos) return toast(p, "Рядом нет прохода", "error");
+        if (!pos) return toast(p, T("srv.admin.42"), "error");
         what = `${Math.round(x)},${Math.round(y)}`;
       }
     }
-    if (!pos) return toast(p, "Цель телепорта не найдена", "error");
+    if (!pos) return toast(p, T("srv.admin.43"), "error");
     p.unit.x = pos.x;
     p.unit.y = pos.y;
     p.moveTo = null;
@@ -225,9 +226,9 @@ export function registerAdmin(room: WorldRoom, on: On) {
     const hours = num(m.hours, 0, 24 * 365) ?? 0;
     const reason = str(m.reason, 120);
     const until = hours > 0 ? Date.now() + hours * 3600_000 : PERMA;
-    if (!db().setBan(name, until, reason)) return toast(p, "Такого героя нет", "error");
+    if (!db().setBan(name, until, reason)) return toast(p, T("srv.admin.44"), "error");
     kick(name, "Аккаунт заблокирован");
-    toast(p, `Заблокирован: ${name}`);
+    toast(p, T("srv.admin.45", { name: name }));
     log(p, "ban", name, { hours, reason });
   });
   adm<{ name: unknown }>("admin:unban", (p, m) => {
@@ -251,7 +252,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
 
   adm<{ mob: unknown; level: unknown }>("admin:spawn", (p, m) => {
     const def = MOBS[str(m.mob)];
-    if (!def) return toast(p, "Нет такого моба", "error");
+    if (!def) return toast(p, T("srv.admin.46"), "error");
     const world = w();
     const level = def.level ?? Math.round(num(m.level, 1, 60) ?? p.level);
     const mob = new Mob(world.uid(def.boss ? "b" : "m"), def, level, { x: p.unit.x + 48, y: p.unit.y });
@@ -277,9 +278,9 @@ export function registerAdmin(room: WorldRoom, on: On) {
   /** «Убить цель»: монстр в цели админа — любой, не только призванный. */
   adm("admin:kill-target", (p) => {
     const t = w().mobs.get(p.unit.target);
-    if (!t || t.state === "dead") return toast(p, "В цели нет живого монстра", "error");
+    if (!t || t.state === "dead") return toast(p, T("srv.admin.47"), "error");
     adminKill(t);
-    toast(p, `Убит: ${t.def.name}`, "info");
+    toast(p, T("srv.admin.48", { name: t.def.name }), "info");
     log(p, "kill", t.def.id, { level: t.level, summoned: t.summoned });
     sendSummoned(p);
   });
@@ -287,7 +288,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
   adm<{ name: unknown; kind: unknown }>("admin:encounter", (p, m) => {
     const t = str(m.name) ? online(str(m.name)) : p;
     const kind = ["traveler", "ambush", "merchant"].includes(str(m.kind)) ? (str(m.kind) as EncKind) : undefined;
-    if (!t) return toast(p, "Игрок не в сети", "error");
+    if (!t) return toast(p, T("srv.admin.40"), "error");
     const title = startEncounter(w(), t, kind);
     toast(p, title ? `Встреча: ${title} → ${t.name}` : "Встреча не создана (уже есть или город/подземелье)", title ? "info" : "error");
     log(p, "encounter", t.name, { kind: kind ?? "random", ok: !!title });

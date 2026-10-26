@@ -14,16 +14,17 @@ import { selTarget } from "../game/castResolve";
 import { keybinds } from "../game/keybinds";
 import { mountSprite } from "../../../shared/mounts";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const LOCK_KEY = "hotbar:lock:v1";
 const POTION_MS = 1500;
 const ACTION_INFO: Record<string, { glyph: string; name: string; tip: string }> = {
-  mount: { glyph: "♞", name: "Маунт", tip: "Сесть на маунта и слезть" },
-  pet: { glyph: "🐾", name: "Питомец", tip: "Призвать и отпустить питомца" },
-  attack: { glyph: "⚔", name: "Атаковать цель", tip: "Подойти к цели и бить" },
-  interact: { glyph: "✋", name: "Взаимодействие", tip: "Подобрать добычу или поговорить" },
+  mount: { glyph: "♞", name: T("ui.hotbar.521"), tip: T("ui.hotbar.285") },
+  pet: { glyph: "🐾", name: T("ui.hotbar.522"), tip: T("ui.hotbar.286") },
+  attack: { glyph: "⚔", name: T("ui.hotbar.523"), tip: T("ui.hotbar.287") },
+  interact: { glyph: "✋", name: T("ui.hotbar.524"), tip: T("ui.hotbar.288") },
 };
 
 export interface HotbarCtx {
@@ -122,7 +123,7 @@ export class Hotbar {
   }
   private paintLock() {
     this.lockBtn.textContent = this.locked ? "🔒" : "🔓";
-    this.lockBtn.title = this.locked ? "Панель закрыта: слоты не двигаются. Shift+перетаскивание работает всегда. Клик — открыть" : "Панель открыта: слоты можно переставлять и снимать. Клик — закрыть";
+    this.lockBtn.title = this.locked ? T("ui.hotbar.525") : T("ui.hotbar.526");
     this.lockBtn.classList.toggle("open", !this.locked);
   }
 
@@ -243,10 +244,10 @@ export class Hotbar {
       // почему умение сейчас не нажать — та же причина, что у красной или синей иконки слота
       const st = this.cells[bar][i].cls.split(" ");
       const why = st.includes("nofight") ? NO_FIGHT_MSG
-        : st.includes("oor") ? "Цель дальше дальности умения — подойдите ближе"
-        : st.includes("nolos") ? "Цель за препятствием — нет прямой видимости"
-        : st.includes("nomana") ? "Не хватает маны"
-        : st.includes("notarget") ? "Нужна цель: Tab или клик по врагу" : "";
+        : st.includes("oor") ? T("ui.hotbar.527")
+        : st.includes("nolos") ? T("ui.hotbar.528")
+        : st.includes("nomana") ? T("ui.hotbar.529")
+        : st.includes("notarget") ? T("ui.hotbar.530") : "";
       return this.ctx.skillTip(SKILLS[ref.s], s) + (why ? `<div class="warn">${why}</div>` : "");
     }
     if ("i" in ref) {

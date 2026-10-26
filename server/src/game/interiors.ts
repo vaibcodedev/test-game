@@ -8,6 +8,7 @@ import { DOOR_FADE_MS, DOOR_RANGE, interiorAt, interiorById, type Interior } fro
 import type { On } from "../rooms/common";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
 /** Герои, которых уже переносят (повторное нажатие во время затемнения ничего не делает). */
@@ -20,9 +21,9 @@ export function useDoor(w: World, p: Player, id: unknown): string | null {
   const inside = interiorAt(p.x, p.y);
   if (inside && inside !== room) return "";
   const door = inside ? room.exitDoor : room.outDoor;
-  if (w.dist(p, door) > DOOR_RANGE) return "Подойдите к двери";
-  if (!inside && p.inCombat(w.time)) return "Нельзя войти в бою";
-  if (p.tele || p.mountCast || p.stunUntil > w.time) return "Сейчас нельзя";
+  if (w.dist(p, door) > DOOR_RANGE) return T("srv.interiors.101");
+  if (!inside && p.inCombat(w.time)) return T("srv.interiors.102");
+  if (p.tele || p.mountCast || p.stunUntil > w.time) return T("srv.interiors.103");
   const to = inside ? room.outSpot : room.entry;
   moving.add(p);
   p.input = { mx: 0, my: 0 };

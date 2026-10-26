@@ -5,6 +5,7 @@ import { plusBadge } from "./smith";
 import type { SelfState } from "../../../shared/protocol";
 import { TRADE_SLOTS, type TradeSideView, type TradeView } from "../../../shared/trade";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -45,7 +46,7 @@ export class TradeUI {
     this.menu.setAttribute("role", "menu");
     // каркас строится один раз: заголовок, .body и подвал остаются на месте, при обновлении меняются колонки и кнопки (фокус кнопок не теряется)
     this.win.innerHTML = `<h2><span></span><button class="x" aria-label="Закрыть">×</button></h2><div class="body"></div>
-      <div class="win-foot"><button class="btn" data-x>Отмена</button><div class="actions"><button class="btn" data-r>Готов</button><button class="btn primary" data-c>Обменять</button></div></div>`;
+      <div class="win-foot"><button class="btn" data-x>${T("ui.gamemenu.284")}</button><div class="actions"><button class="btn" data-r>${T("ui.trade.707")}</button><button class="btn primary" data-c>${T("ui.trade.708")}</button></div></div>`;
     this.title = this.win.querySelector<HTMLElement>("h2 > span")!;
     this.body = this.win.querySelector<HTMLElement>(".body")!;
     this.ready = this.win.querySelector<HTMLButtonElement>("[data-r]")!;
@@ -114,14 +115,14 @@ export class TradeUI {
     const until = performance.now() + m.ms;
     // вторичная кнопка слева, главная справа; сколько осталось на ответ — слева в подвале
     this.ask.innerHTML = `<section class="panel dialog sm arena-dialog" role="alertdialog" aria-labelledby="trade-ask-title">
-      <div class="dialog-head"><h2 class="dialog-title" id="trade-ask-title">Обмен</h2></div>
-      <div class="dialog-body"><p><b>${esc(m.from)}</b> предлагает обмен.</p></div>
-      <div class="dialog-foot"><span class="win-foot-info" data-left></span><button class="btn" data-a="0">Отклонить</button><button class="btn primary" data-a="1">Принять</button></div></section>`;
+      <div class="dialog-head"><h2 class="dialog-title" id="trade-ask-title">${T("ui.trade.709")}</h2></div>
+      <div class="dialog-body"><p><b>${esc(m.from)}</b> ${T("ui.trade.710")}</p></div>
+      <div class="dialog-foot"><span class="win-foot-info" data-left></span><button class="btn" data-a="0">${T("ui.trade.711")}</button><button class="btn primary" data-a="1">${T("ui.arena.351")}</button></div></section>`;
     const left = this.ask.querySelector<HTMLElement>("[data-left]")!;
     const tick = () => {
       const s = Math.ceil((until - performance.now()) / 1000);
       if (s <= 0) return void (this.ask.hidden = true);
-      left.textContent = `Осталось ${s} с`;
+      left.textContent = T("ui.trade.306", { v: s });
       this.askTimer = window.setTimeout(tick, 250);
     };
     tick();
@@ -158,20 +159,20 @@ export class TradeUI {
   /** Колонка стороны: заголовок со статусом, 8 слотов (свои — кнопки: клик убирает вещь, сюда же бросают из сумки), золото. */
   private column(side: TradeSideView, mine: boolean): HTMLElement {
     const k = mine ? "m" : "t";
-    const status = side.confirm ? `<span class="chip ok">Подтверждено ✓</span>` : side.ready ? `<span class="chip ok">Готов ✓</span>` : `<span class="chip dim">Не готов</span>`;
+    const status = side.confirm ? `<span class="chip ok">${T("ui.trade.712")}</span>` : side.ready ? `<span class="chip ok">${T("ui.trade.713")}</span>` : `<span class="chip dim">${T("ui.trade.714")}</span>`;
     const amount = mine
       ? `<span class="trade-amt"><input class="input num" type="number" min="0" step="1" value="${side.gold}" aria-label="Золото в обмене"><img class="coin" src="${icon("coin")}" alt="золото"></span>`
       : gold(side.gold);
     const col = el("section", "sec flat trade-col", `<div class="sec-head"><h3 class="sec-h">${mine ? "Вы отдаёте" : "Вы получаете"}</h3>${status}</div>
       <div class="cells trade-grid"></div>
-      <${mine ? "label" : "div"} class="trade-gold${this.lit(k + "g") ? " changed" : ""}"><span class="field-label">Золото</span>${amount}</${mine ? "label" : "div"}>`);
+      <${mine ? "label" : "div"} class="trade-gold${this.lit(k + "g") ? " changed" : ""}"><span class="field-label">${T("ui.bags.369")}</span>${amount}</${mine ? "label" : "div"}>`);
     const grid = col.querySelector(".cells")!;
     for (let i = 0; i < TRADE_SLOTS; i++) {
       const it = side.items[i];
       // кнопка только там, где клик что-то делает: своя занятая ячейка
       const c = el(mine && it ? "button" : "div", `cell${it ? " r" + it.rarity : " empty"}${this.lit(k + i) ? " changed" : ""}`);
       if (it) c.innerHTML = `<img src="${icon(iconFor(it))}" alt="${esc(itemName(it))}">${plusBadge(it)}${it.qty && it.qty > 1 ? `<span class="qty">${it.qty}</span>` : ""}`;
-      if (it) this.host.tipFor(c, () => this.host.itemTip(it, this.net.self!) + (mine ? `<div class="d">Клик — убрать из обмена</div>` : ""));
+      if (it) this.host.tipFor(c, () => this.host.itemTip(it, this.net.self!) + (mine ? `<div class="d">${T("ui.trade.715")}</div>` : ""));
       if (mine) {
         if (it) c.onclick = () => { this.host.hideTip(); this.net.send("trade:remove", { slot: i }); };
         c.ondragover = (e) => { e.preventDefault(); c.classList.add("drop"); };
@@ -204,16 +205,16 @@ export class TradeUI {
     const wait = Math.max(0, this.confirmAt - performance.now());
     const typed = document.activeElement instanceof HTMLInputElement && this.body.contains(document.activeElement) ? document.activeElement.value : null;
     const top = this.body.scrollTop;
-    this.title.textContent = `Обмен с ${they.name}`;
+    this.title.textContent = T("ui.trade.307", { v: they.name });
     this.ready.disabled = me.ready;
     this.confirm.disabled = !bothReady || me.confirm || wait > 0;
-    this.confirm.textContent = `Обменять${bothReady && wait > 0 ? ` (${Math.ceil(wait / 1000)})` : ""}`;
+    this.confirm.textContent = T("ui.trade.308", { v: bothReady && wait > 0 ? ` (${Math.ceil(wait / 1000)})` : "" });
     const cols = el("div", "trade-cols");
     cols.append(this.column(me, true), el("div", "divider v"), this.column(they, false));
     this.body.replaceChildren(
-      ...(v.gift ? [el("div", "trade-gift", `<span class="chip ok">Подарок</span><span class="note">Вы ничего не отдаёте</span>`)] : []),
+      ...(v.gift ? [el("div", "trade-gift", `<span class="chip ok">${T("ui.trade.716")}</span><span class="note">${T("ui.trade.717")}</span>`)] : []),
       cols,
-      el("p", "note", "Перетащите предметы из сумки или кликните по ним. Любое изменение сбрасывает подтверждения."),
+      el("p", "note", T("ui.trade.718")),
     );
     this.body.scrollTop = top;
     if (typed !== null) {

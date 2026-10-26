@@ -7,6 +7,7 @@ import { MOBS } from "./mobs";
 import { ZB_ITEMS } from "./zoneBosses";
 import mountData from "../data/mounts.json";
 import { sealIconFor, nameFor } from "./mountArt";
+import { IR } from "./itemRules";
 /** Печать гербового маунта: имя по фракции зрителя (задача 142). */
 function sealNamed<T extends { name: string }>(b: T, m: { name: string; desc: string; names?: Record<string, { name?: string; desc?: string }> }): T {
   if (!m.names) return b;
@@ -100,6 +101,8 @@ export interface BaseItem {
 }
 
 const r1 = (v: number) => Math.round(v);
+/** Основные характеристики базы по уровню вещи: каждое значение = округление(база + уровень × прирост) — числа в data/items-rules.json rolls. */
+const statRoll = (spec: Record<string, number[]>) => (l: number): ItemStats => Object.fromEntries(Object.entries(spec).map(([k, [a, b]]) => [k, r1(a + l * b)])) as ItemStats;
 const STR_MELEE: ClassId[] = ["warrior", "deathknight", "reaver"];
 const CASTERS: ClassId[] = ["mage", "healer", "warlock", "bloodweaver"];
 const LEATHER: ClassId[] = ["rogue", "ranger", "darkranger", "reaver"];
@@ -108,40 +111,40 @@ const LEATHER: ClassId[] = ["rogue", "ranger", "darkranger", "reaver"];
  * двуручное ≈ ×1.5 одноручного, у кожи и ткани часть брони заменена главной характеристикой.
  */
 export const BASE_ITEMS: Record<string, BaseItem> = {
-  sword: { id: "sword", name: "Меч", typeName: "Одноручный меч", slot: "weapon", icon: "sword", weaponType: "sword", classes: ["warrior", "deathknight"], roll: (l) => ({ dmgMin: r1(4 + l * 1.8), dmgMax: r1(8 + l * 2.6) }) },
-  greatsword: { id: "greatsword", name: "Двуручный меч", typeName: "Двуручный меч", slot: "weapon", icon: "greatsword", weaponType: "sword", hands: 2, classes: STR_MELEE, rec: ["deathknight", "reaver"], roll: (l) => ({ dmgMin: r1(6 + l * 2.7), dmgMax: r1(12 + l * 3.9) }) },
-  twinblades: { id: "twinblades", name: "Парные мечи", typeName: "Парные мечи", slot: "weapon", icon: "twinblades", weaponType: "dagger", classes: ["rogue", "reaver"], roll: (l) => ({ dmgMin: r1(4 + l * 1.5), dmgMax: r1(7 + l * 2.2), agi: r1(1 + l * 0.1) }) },
-  axe: { id: "axe", name: "Топор", typeName: "Топор", slot: "weapon", icon: "axe", weaponType: "axe", classes: ["warrior", "deathknight", "reaver"], roll: (l) => ({ dmgMin: r1(3 + l * 1.5), dmgMax: r1(10 + l * 3.1) }) },
-  greataxe: { id: "greataxe", name: "Секира", typeName: "Двуручный топор", slot: "weapon", icon: "greataxe", weaponType: "axe", hands: 2, classes: ["deathknight", "reaver"], roll: (l) => ({ dmgMin: r1(5 + l * 2.2), dmgMax: r1(15 + l * 4.6) }) },
-  mace: { id: "mace", name: "Булава", typeName: "Булава", slot: "weapon", icon: "mace", weaponType: "mace", classes: ["warrior", "deathknight"], roll: (l) => ({ dmgMin: r1(5 + l * 1.6), dmgMax: r1(9 + l * 2.7) }) },
-  hammer: { id: "hammer", name: "Молот", typeName: "Молот", slot: "weapon", icon: "hammer", weaponType: "mace", hands: 2, classes: STR_MELEE, rec: ["deathknight", "reaver"], roll: (l) => ({ dmgMin: r1(8 + l * 2.4), dmgMax: r1(13 + l * 4.0) }) },
-  spear: { id: "spear", name: "Копьё", typeName: "Копьё", slot: "weapon", icon: "spear", weaponType: "spear", classes: ["warrior", "deathknight"], roll: (l) => ({ dmgMin: r1(4 + l * 1.7), dmgMax: r1(8 + l * 2.5), vit: r1(1 + l * 0.15) }) },
-  scythe: { id: "scythe", name: "Коса", typeName: "Коса", slot: "weapon", icon: "scythe", weaponType: "scythe", hands: 2, classes: ["deathknight", "reaver"], roll: (l) => ({ dmgMin: r1(6 + l * 2.5), dmgMax: r1(13 + l * 4.0) }) },
-  shield: { id: "shield", name: "Щит", typeName: "Щит", slot: "offhand", icon: "shield", classes: ["warrior", "deathknight"], roll: (l) => ({ armor: r1(3 + l * 2), hp: r1(l * 1.5) }) },
-  orb: { id: "orb", name: "Сфера", typeName: "Сфера", slot: "offhand", icon: "orb", classes: CASTERS, rec: ["mage", "warlock"], roll: (l) => ({ int: r1(1 + l * 0.2), crit: r1(1 + l * 0.04) }) },
-  tome: { id: "tome", name: "Книга", typeName: "Книга", slot: "offhand", icon: "tome", classes: CASTERS, rec: ["healer", "bloodweaver"], roll: (l) => ({ int: r1(1 + l * 0.15), hp: r1(4 + l * 2) }) },
-  staff: { id: "staff", name: "Посох", typeName: "Посох", slot: "weapon", icon: "staff", weaponType: "staff", hands: 2, classes: CASTERS, rec: ["mage", "warlock"], roll: (l) => ({ dmgMin: r1(4 + l * 1.8), dmgMax: r1(8 + l * 2.8), int: r1(1 + l * 0.35) }) },
-  scepter: { id: "scepter", name: "Жезл", typeName: "Жезл", slot: "weapon", icon: "scepter", weaponType: "scepter", classes: CASTERS, rec: ["healer", "bloodweaver"], roll: (l) => ({ dmgMin: r1(4 + l * 1.6), dmgMax: r1(7 + l * 2.4), int: r1(1 + l * 0.25) }) },
-  dagger: { id: "dagger", name: "Кинжалы", typeName: "Кинжалы", slot: "weapon", icon: "dagger", weaponType: "dagger", classes: ["rogue", "reaver"], roll: (l) => ({ dmgMin: r1(3 + l * 1.3), dmgMax: r1(5 + l * 1.9), agi: r1(1 + l * 0.2) }) },
-  bow: { id: "bow", name: "Лук", typeName: "Лук", slot: "weapon", icon: "bow", weaponType: "bow", hands: 2, classes: ["ranger", "darkranger"], roll: (l) => ({ dmgMin: r1(4 + l * 1.7), dmgMax: r1(7 + l * 2.5) }) },
-  crossbow: { id: "crossbow", name: "Арбалет", typeName: "Арбалет", slot: "weapon", icon: "crossbow", weaponType: "bow", hands: 2, classes: ["ranger", "darkranger"], roll: (l) => ({ dmgMin: r1(5 + l * 1.95), dmgMax: r1(7 + l * 2.3) }) },
+  sword: { id: "sword", name: "Меч", typeName: "Одноручный меч", slot: "weapon", icon: "sword", weaponType: "sword", classes: ["warrior", "deathknight"], roll: statRoll(IR.rolls.sword) },
+  greatsword: { id: "greatsword", name: "Двуручный меч", typeName: "Двуручный меч", slot: "weapon", icon: "greatsword", weaponType: "sword", hands: 2, classes: STR_MELEE, rec: ["deathknight", "reaver"], roll: statRoll(IR.rolls.greatsword) },
+  twinblades: { id: "twinblades", name: "Парные мечи", typeName: "Парные мечи", slot: "weapon", icon: "twinblades", weaponType: "dagger", classes: ["rogue", "reaver"], roll: statRoll(IR.rolls.twinblades) },
+  axe: { id: "axe", name: "Топор", typeName: "Топор", slot: "weapon", icon: "axe", weaponType: "axe", classes: ["warrior", "deathknight", "reaver"], roll: statRoll(IR.rolls.axe) },
+  greataxe: { id: "greataxe", name: "Секира", typeName: "Двуручный топор", slot: "weapon", icon: "greataxe", weaponType: "axe", hands: 2, classes: ["deathknight", "reaver"], roll: statRoll(IR.rolls.greataxe) },
+  mace: { id: "mace", name: "Булава", typeName: "Булава", slot: "weapon", icon: "mace", weaponType: "mace", classes: ["warrior", "deathknight"], roll: statRoll(IR.rolls.mace) },
+  hammer: { id: "hammer", name: "Молот", typeName: "Молот", slot: "weapon", icon: "hammer", weaponType: "mace", hands: 2, classes: STR_MELEE, rec: ["deathknight", "reaver"], roll: statRoll(IR.rolls.hammer) },
+  spear: { id: "spear", name: "Копьё", typeName: "Копьё", slot: "weapon", icon: "spear", weaponType: "spear", classes: ["warrior", "deathknight"], roll: statRoll(IR.rolls.spear) },
+  scythe: { id: "scythe", name: "Коса", typeName: "Коса", slot: "weapon", icon: "scythe", weaponType: "scythe", hands: 2, classes: ["deathknight", "reaver"], roll: statRoll(IR.rolls.scythe) },
+  shield: { id: "shield", name: "Щит", typeName: "Щит", slot: "offhand", icon: "shield", classes: ["warrior", "deathknight"], roll: statRoll(IR.rolls.shield) },
+  orb: { id: "orb", name: "Сфера", typeName: "Сфера", slot: "offhand", icon: "orb", classes: CASTERS, rec: ["mage", "warlock"], roll: statRoll(IR.rolls.orb) },
+  tome: { id: "tome", name: "Книга", typeName: "Книга", slot: "offhand", icon: "tome", classes: CASTERS, rec: ["healer", "bloodweaver"], roll: statRoll(IR.rolls.tome) },
+  staff: { id: "staff", name: "Посох", typeName: "Посох", slot: "weapon", icon: "staff", weaponType: "staff", hands: 2, classes: CASTERS, rec: ["mage", "warlock"], roll: statRoll(IR.rolls.staff) },
+  scepter: { id: "scepter", name: "Жезл", typeName: "Жезл", slot: "weapon", icon: "scepter", weaponType: "scepter", classes: CASTERS, rec: ["healer", "bloodweaver"], roll: statRoll(IR.rolls.scepter) },
+  dagger: { id: "dagger", name: "Кинжалы", typeName: "Кинжалы", slot: "weapon", icon: "dagger", weaponType: "dagger", classes: ["rogue", "reaver"], roll: statRoll(IR.rolls.dagger) },
+  bow: { id: "bow", name: "Лук", typeName: "Лук", slot: "weapon", icon: "bow", weaponType: "bow", hands: 2, classes: ["ranger", "darkranger"], roll: statRoll(IR.rolls.bow) },
+  crossbow: { id: "crossbow", name: "Арбалет", typeName: "Арбалет", slot: "weapon", icon: "crossbow", weaponType: "bow", hands: 2, classes: ["ranger", "darkranger"], roll: statRoll(IR.rolls.crossbow) },
   // старые универсальные базы: остаются валидными для сохранений и стартовых вещей
-  helmet: { id: "helmet", name: "Шлем", typeName: "Шлем", slot: "helmet", icon: "helmet", roll: (l) => ({ armor: r1(2 + l * 1.6) }) },
-  armor: { id: "armor", name: "Доспех", typeName: "Доспех", slot: "armor", icon: "armor", roll: (l) => ({ armor: r1(4 + l * 3), hp: r1(l * 2) }) },
-  boots: { id: "boots", name: "Сапоги", typeName: "Сапоги", slot: "boots", icon: "boots", roll: (l) => ({ armor: r1(1 + l * 1.2) }) },
-  plate_helm: { id: "plate_helm", name: "Шлем", typeName: "Латный шлем", slot: "helmet", icon: "plate_helm", armorType: "plate", classes: STR_MELEE, roll: (l) => ({ armor: r1(3 + l * 2.0), vit: r1(1 + l * 0.06) }) },
-  leather_helm: { id: "leather_helm", name: "Капюшон", typeName: "Кожаный шлем", slot: "helmet", icon: "leather_helm", armorType: "leather", classes: LEATHER, roll: (l) => ({ armor: r1(2 + l * 1.4), agi: r1(1 + l * 0.1) }) },
-  cloth_helm: { id: "cloth_helm", name: "Колпак", typeName: "Тканевый убор", slot: "helmet", icon: "cloth_helm", armorType: "cloth", classes: CASTERS, roll: (l) => ({ armor: r1(1 + l * 1.0), int: r1(1 + l * 0.08) }) },
-  plate_armor: { id: "plate_armor", name: "Латы", typeName: "Латы", slot: "armor", icon: "plate_armor", armorType: "plate", classes: STR_MELEE, roll: (l) => ({ armor: r1(5 + l * 3.8), hp: r1(l * 2), vit: r1(1 + l * 0.12) }) },
-  leather_armor: { id: "leather_armor", name: "Куртка", typeName: "Кожаный доспех", slot: "armor", icon: "leather_armor", armorType: "leather", classes: LEATHER, roll: (l) => ({ armor: r1(4 + l * 2.6), hp: r1(l * 1.5), agi: r1(1 + l * 0.2) }) },
-  cloth_armor: { id: "cloth_armor", name: "Мантия", typeName: "Мантия", slot: "armor", icon: "cloth_armor", armorType: "cloth", classes: CASTERS, roll: (l) => ({ armor: r1(2 + l * 1.8), hp: r1(l * 2), int: r1(1 + l * 0.15) }) },
-  plate_boots: { id: "plate_boots", name: "Сабатоны", typeName: "Латные сапоги", slot: "boots", icon: "plate_boots", armorType: "plate", classes: STR_MELEE, roll: (l) => ({ armor: r1(2 + l * 1.5), vit: r1(1 + l * 0.05) }) },
-  leather_boots: { id: "leather_boots", name: "Ботинки", typeName: "Кожаные сапоги", slot: "boots", icon: "leather_boots", armorType: "leather", classes: LEATHER, roll: (l) => ({ armor: r1(1 + l * 1.0), agi: r1(1 + l * 0.08) }) },
-  cloth_boots: { id: "cloth_boots", name: "Туфли", typeName: "Тканевые туфли", slot: "boots", icon: "cloth_boots", armorType: "cloth", classes: CASTERS, roll: (l) => ({ armor: r1(1 + l * 0.7), int: r1(1 + l * 0.06) }) },
+  helmet: { id: "helmet", name: "Шлем", typeName: "Шлем", slot: "helmet", icon: "helmet", roll: statRoll(IR.rolls.helmet) },
+  armor: { id: "armor", name: "Доспех", typeName: "Доспех", slot: "armor", icon: "armor", roll: statRoll(IR.rolls.armor) },
+  boots: { id: "boots", name: "Сапоги", typeName: "Сапоги", slot: "boots", icon: "boots", roll: statRoll(IR.rolls.boots) },
+  plate_helm: { id: "plate_helm", name: "Шлем", typeName: "Латный шлем", slot: "helmet", icon: "plate_helm", armorType: "plate", classes: STR_MELEE, roll: statRoll(IR.rolls.plate_helm) },
+  leather_helm: { id: "leather_helm", name: "Капюшон", typeName: "Кожаный шлем", slot: "helmet", icon: "leather_helm", armorType: "leather", classes: LEATHER, roll: statRoll(IR.rolls.leather_helm) },
+  cloth_helm: { id: "cloth_helm", name: "Колпак", typeName: "Тканевый убор", slot: "helmet", icon: "cloth_helm", armorType: "cloth", classes: CASTERS, roll: statRoll(IR.rolls.cloth_helm) },
+  plate_armor: { id: "plate_armor", name: "Латы", typeName: "Латы", slot: "armor", icon: "plate_armor", armorType: "plate", classes: STR_MELEE, roll: statRoll(IR.rolls.plate_armor) },
+  leather_armor: { id: "leather_armor", name: "Куртка", typeName: "Кожаный доспех", slot: "armor", icon: "leather_armor", armorType: "leather", classes: LEATHER, roll: statRoll(IR.rolls.leather_armor) },
+  cloth_armor: { id: "cloth_armor", name: "Мантия", typeName: "Мантия", slot: "armor", icon: "cloth_armor", armorType: "cloth", classes: CASTERS, roll: statRoll(IR.rolls.cloth_armor) },
+  plate_boots: { id: "plate_boots", name: "Сабатоны", typeName: "Латные сапоги", slot: "boots", icon: "plate_boots", armorType: "plate", classes: STR_MELEE, roll: statRoll(IR.rolls.plate_boots) },
+  leather_boots: { id: "leather_boots", name: "Ботинки", typeName: "Кожаные сапоги", slot: "boots", icon: "leather_boots", armorType: "leather", classes: LEATHER, roll: statRoll(IR.rolls.leather_boots) },
+  cloth_boots: { id: "cloth_boots", name: "Туфли", typeName: "Тканевые туфли", slot: "boots", icon: "cloth_boots", armorType: "cloth", classes: CASTERS, roll: statRoll(IR.rolls.cloth_boots) },
   // плащ: отдельный слот, общий для всех классов; броня + аффиксы модели (BALANCE.md «Экипировка»)
-  cloak: { id: "cloak", name: "Плащ", typeName: "Плащ", slot: "cloak", icon: "cloak", roll: (l) => ({ armor: r1(1 + l * 1.1) }) },
+  cloak: { id: "cloak", name: "Плащ", typeName: "Плащ", slot: "cloak", icon: "cloak", roll: statRoll(IR.rolls.cloak) },
   ring: { id: "ring", name: "Кольцо", typeName: "Кольцо", slot: "ring", icon: "ring", roll: () => ({}) },
-  amulet: { id: "amulet", name: "Амулет", typeName: "Амулет", slot: "amulet", icon: "amulet", roll: (l) => ({ hp: r1(6 + l * 3) }) },
+  amulet: { id: "amulet", name: "Амулет", typeName: "Амулет", slot: "amulet", icon: "amulet", roll: statRoll(IR.rolls.amulet) },
   hp_potion: { id: "hp_potion", name: "Зелье здоровья", slot: "consumable", icon: "potion_red", price: 15, stack: 20 },
   mp_potion: { id: "mp_potion", name: "Зелье маны", slot: "consumable", icon: "potion_blue", price: 15, stack: 20 },
   ...Object.fromEntries(Object.values(MATERIALS).map((m) => [m.id, { id: m.id, name: m.name, slot: "consumable", icon: m.icon, price: m.price, stack: 99 } as BaseItem])),
@@ -226,7 +229,7 @@ export function lootCategories(cls: ClassId): BaseItem[] {
  * Добыча с мобов и товар торговцев: с шансом weaponChance — оружие класса, иначе слот брони/бижутерии/второй руки
  * (слот равновероятно, внутри слота — по рекомендации), затем модель по уровню. Характеристики — makeItem.
  */
-export function makeLoot(cls: ClassId, ilvl: number, rarity: Rarity, rand: () => number = Math.random, weaponChance = 0.3, faction?: string): Item {
+export function makeLoot(cls: ClassId, ilvl: number, rarity: Rarity, rand: () => number = Math.random, weaponChance = IR.weaponChance, faction?: string): Item {
   const cats = lootCategories(cls);
   const wantWeapon = rand() < weaponChance;
   let pool = cats.filter((b) => (b.slot === "weapon") === wantWeapon);
@@ -268,10 +271,10 @@ export function listItemCategories(): { base: string; category: string; slot: Sl
 const AFFIX_KEYS: ItemStatKey[] = ["str", "agi", "int", "vit", "hp", "crit"];
 function affixValue(k: ItemStatKey, ilvl: number, mult: number): number {
   switch (k) {
-    case "hp": return Math.round((8 + ilvl * 4) * mult);
+    case "hp": return Math.round((IR.affix.hpBase + ilvl * IR.affix.hpPerLevel) * mult);
     // крит — доля, а не очки: рост с ilvl медленный (был 0.12/ур.: +19% крита с одной эпической вещи 100 ур., 4 вещи — потолок 75%)
-    case "crit": return Math.max(1, Math.round((1 + ilvl * 0.025) * mult));
-    default: return Math.max(1, Math.round((1 + ilvl * 0.4) * mult));
+    case "crit": return Math.max(1, Math.round((IR.affix.critBase + ilvl * IR.affix.critPerLevel) * mult));
+    default: return Math.max(1, Math.round((IR.affix.statBase + ilvl * IR.affix.statPerLevel) * mult));
   }
 }
 const SUFFIX: Record<string, string> = { str: "силы", agi: "ловкости", int: "мудрости", vit: "стойкости", hp: "жизни", crit: "точности" };
@@ -290,7 +293,7 @@ export function newUid(): string {
 }
 
 /** Множитель урона и брони базы по редкости. Был [1, 1.2, 1.45, 1.7]: с заточкой +10 эпик/легендарка давали ×3.7 к урону героя, теперь максимальная экипировка ≈ ×2 (задача 45). */
-export const RARITY_MULT = [1, 1.2, 1.3, 1.4];
+export const RARITY_MULT = IR.rarityMult;
 
 /** Предмет по базе или по id модели каталога (data/items.json). prefer — приоритет аффиксов. */
 export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () => number = Math.random, prefer: ItemStatKey[] = []): Item {
@@ -302,15 +305,15 @@ export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () 
   const stats: ItemStats = {};
   const main = base.roll ? base.roll(ilvl) : {};
   for (const [k, v] of Object.entries(main)) stats[k as ItemStatKey] = Math.max(1, Math.round((v as number) * (k.startsWith("dmg") || k === "armor" ? mult : 1)));
-  let affixes = rarity === Rarity.Common ? 0 : rarity === Rarity.Rare ? 1 : rarity === Rarity.Epic ? 3 : 4;
-  if (base.slot === "ring" || base.slot === "amulet") affixes += 1;
+  let affixes = IR.affixCount[rarity];
+  if (base.slot === "ring" || base.slot === "amulet") affixes += IR.ringAmuletBonus;
   const pool = [...AFFIX_KEYS];
   const picked: ItemStatKey[] = [];
   for (let i = 0; i < affixes && pool.length; i++) {
     const pi = prefer[i] ? pool.indexOf(prefer[i]) : -1;
     const k = pool.splice(pi >= 0 ? pi : Math.floor(rand() * pool.length), 1)[0];
     picked.push(k);
-    stats[k] = (stats[k] || 0) + affixValue(k, ilvl, mult * (0.85 + rand() * 0.3));
+    stats[k] = (stats[k] || 0) + affixValue(k, ilvl, mult * (IR.affix.rollMin + rand() * IR.affix.rollRange));
   }
   let name = base.name;
   if (rarity === Rarity.Rare && picked.length) name = `${base.name} ${SUFFIX[picked[0]]}`;
@@ -319,11 +322,11 @@ export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () 
     const pre = PLURAL.has(baseId) ? EPIC_PREFIX_P[i] : FEM.has(baseId) ? EPIC_PREFIX_F[i] : NEUTER.has(baseId) ? EPIC_PREFIX_N[i] : EPIC_PREFIX[i];
     name = `${pre} ${base.name.toLowerCase()}${picked[0] ? " " + SUFFIX[picked[0]] : ""}`;
   }
-  return { uid: newUid(), base: baseId, name, rarity, ilvl, req: Math.max(1, ilvl - 2), stats };
+  return { uid: newUid(), base: baseId, name, rarity, ilvl, req: Math.max(1, ilvl - IR.reqLevelGap), stats };
 }
 
 /** Сколько аффиксов получает предмет слота и редкости (то же правило, что в makeItem; сверяется тестом tests/admin.ts). */
-export const affixCount = (slot: Slot, rarity: Rarity): number => (rarity === Rarity.Common ? 0 : rarity === Rarity.Rare ? 1 : rarity === Rarity.Epic ? 3 : 4) + (slot === "ring" || slot === "amulet" ? 1 : 0);
+export const affixCount = (slot: Slot, rarity: Rarity): number => IR.affixCount[rarity] + (slot === "ring" || slot === "amulet" ? 1 : 0);
 
 /**
  * Для админ-панели: что выдаст сервер, без случайного. Основные характеристики и гарантированные аффиксы (у модели это model.affix,
@@ -467,8 +470,8 @@ export function isBound(it: Pick<Item, "base" | "bound" | "unique" | "legendary"
 
 export function itemValue(it: Item): number {
   const b = BASE_ITEMS[it.base];
-  if (b.slot === "consumable") return Math.floor((b.price || 10) / 3);
-  return Math.round((4 + it.ilvl * 2.5) * (1 + it.rarity * 1.5) * (it.unique ? 3 : 1));
+  if (b.slot === "consumable") return Math.floor((b.price || 10) / IR.value.consumableDiv);
+  return Math.round((IR.value.base + it.ilvl * IR.value.perLevel) * (1 + it.rarity * IR.value.rarityStep) * (it.unique ? IR.value.uniqueMul : 1));
 }
 
 export function canEquip(it: Item, cls: ClassId, level: number): string | null {
@@ -482,8 +485,8 @@ export function canEquip(it: Item, cls: ClassId, level: number): string | null {
 /** Выбор редкости: для обычных мобов редкое — 20%, эпическое — 3%. */
 export function rollRarity(rand: () => number, bonus = 0): Rarity {
   const r = rand();
-  if (r < 0.03 + bonus * 0.5) return Rarity.Epic;
-  if (r < 0.23 + bonus) return Rarity.Rare;
+  if (r < IR.rarityChance.epic + bonus * IR.rarityChance.bonusEpicShare) return Rarity.Epic;
+  if (r < IR.rarityChance.epic + IR.rarityChance.rare + bonus) return Rarity.Rare;
   return Rarity.Common;
 }
 
@@ -505,5 +508,5 @@ export function effStats(it: Pick<Item, "stats" | "plus">): ItemStats {
 
 /** Нормальная цена продажи с учётом улучшения (+12% за уровень), без поправки на спрос. */
 export function baseSellValue(it: Item): number {
-  return itemValue(it) * (1 + 0.12 * (it.plus || 0));
+  return itemValue(it) * (1 + IR.value.plusSellStep * (it.plus || 0));
 }

@@ -13,6 +13,7 @@ import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import { World } from "./World";
 import { GP } from "../../../shared/gameplay";
+import { T } from "../../../shared/texts";
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const PET_MOVE_R = GP.misc.petMoveRadius;
@@ -58,7 +59,7 @@ export function grantPets(w: World, p: Player) {
   for (const d of Object.values(PETS)) {
     if (own[d.id] || d.price > 0 || p.level < d.level) continue;
     own[d.id] = { level: 1, xp: 0 };
-    p.send("toast", { text: `Питомец «${d.name}» теперь с вами! Призыв — клавиша G`, kind: "level" });
+    p.send("toast", { text: T("srv.Pet.119", { name: d.name }), kind: "level" });
   }
   if (!p.save.pet || !own[p.save.pet]) p.save.pet = Object.keys(own)[0] ?? "";
   p.selfDirty = true;
@@ -74,7 +75,7 @@ export function rollPetDrop(w: World, p: Player, mult: number) {
   own[d.id] = { level: 1, xp: 0 };
   if (!p.save.pet) p.save.pet = d.id;
   p.selfDirty = true;
-  p.send("toast", { text: `Из добычи выпал питомец: «${d.name}»! Выбор — Shift+G, призыв — G`, kind: "loot" });
+  p.send("toast", { text: T("srv.Pet.120", { name: d.name }), kind: "loot" });
 }
 
 export function buyPet(w: World, p: Player, id: string) {
@@ -82,14 +83,14 @@ export function buyPet(w: World, p: Player, id: string) {
   const err = (text: string) => p.send("toast", { text, kind: "error" });
   if (!d || p.dead) return;
   const own = (p.save.pets ??= {});
-  if (own[id]) return err("Питомец уже у вас");
-  if (p.level < d.level) return err(`${d.name}: нужен ${d.level} уровень`);
-  if (d.price <= 0 || p.save.gold < d.price) return err("Не хватает золота");
+  if (own[id]) return err(T("srv.Pet.121"));
+  if (p.level < d.level) return err(T("srv.Pet.122", { name: d.name, level: d.level }));
+  if (d.price <= 0 || p.save.gold < d.price) return err(T("srv.bags.58"));
   p.save.gold -= d.price;
   own[id] = { level: 1, xp: 0 };
   if (!p.save.pet) p.save.pet = id;
   p.selfDirty = true;
-  p.send("toast", { text: `Получен питомец: ${d.name}`, kind: "loot" });
+  p.send("toast", { text: T("srv.Pet.123", { name: d.name }), kind: "loot" });
 }
 
 export function selectPet(w: World, p: Player, id: string) {
@@ -112,10 +113,10 @@ export function togglePet(w: World, p: Player) {
   if (p.dead) return;
   if (w.pets.has(petUnitId(p.id))) return dismissPet(w, p);
   if (p.petCast) return cancelPetCast(p);
-  if (w.opts.mobs === false || p.team !== 0) return err("На арене питомцы недоступны");
+  if (w.opts.mobs === false || p.team !== 0) return err(T("srv.Pet.124"));
   const d = PETS[p.save.pet ?? ""];
-  if (!d || !p.save.pets?.[d.id]) return err("У вас нет питомца (Волчонок — с 5 уровня)");
-  if (w.time < p.petCdUntil) return err(`Питомец восстанавливается: ${Math.ceil((p.petCdUntil - w.time) / 1000)} с`);
+  if (!d || !p.save.pets?.[d.id]) return err(T("srv.Pet.125"));
+  if (w.time < p.petCdUntil) return err(T("srv.Pet.126", { ceil: Math.ceil((p.petCdUntil - w.time) / 1000) }));
   if (p.stunUntil > w.time || p.frozenUntil > w.time) return;
   p.input = { mx: 0, my: 0 };
   p.moveTo = null;
@@ -159,7 +160,7 @@ function killPet(w: World, pet: Pet) {
   pet.dead = true;
   if (!pet.def.temp) {
     pet.owner.petCdUntil = w.time + PET_RESUMMON_MS;
-    pet.owner.send("toast", { text: `${pet.def.name} пал. Призвать снова можно через ${PET_RESUMMON_MS / 1000} с`, kind: "error" });
+    pet.owner.send("toast", { text: T("srv.Pet.127", { name: pet.def.name, pet_resummon_ms: PET_RESUMMON_MS / 1000 }), kind: "error" });
   }
   removePet(w, pet);
 }
@@ -182,7 +183,7 @@ export function petXp(w: World, p: Player, xp: number) {
     pet.refresh();
     pet.unit.hp = pet.unit.maxHp;
     w.emit({ t: "lvl", id: pet.id, level: rec.level });
-    p.send("toast", { text: `${pet.def.name}: уровень ${rec.level}`, kind: "level" });
+    p.send("toast", { text: T("srv.Pet.128", { name: pet.def.name, level: rec.level }), kind: "level" });
   }
   p.selfDirty = true;
 }

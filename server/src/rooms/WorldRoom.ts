@@ -50,6 +50,7 @@ import type { ArenaOptions, Participant } from "./ArenaRoom";
 import { guard, makeOn, registerCombat, type On } from "./common";
 import { autoPlace, setSlot } from "../../../shared/hotbar";
 import { WorldState } from "./schema";
+import { T } from "../../../shared/texts";
 
 interface AuthResult {
   name: string;
@@ -89,18 +90,18 @@ export class WorldRoom extends Room<WorldState> {
     this.setState(new WorldState());
     this.setPatchRate(PATCH_MS);
     this.world = new World(this.state, (type, msg) => this.broadcast(type, msg));
-    this.setSimulationInterval(guard("мир", (dt: number) => this.world.update(dt)), TICK_MS);
+    this.setSimulationInterval(guard(T("srv.WorldRoom.838"), (dt: number) => this.world.update(dt)), TICK_MS);
     const find = (key: string) => this.world.findByName(key);
     this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key) || inRaid.has(key));
     this.queue = new ArenaQueue(services.arena, find, (m) => void this.startMatch(m), (keys) => keys.forEach((k) => this.sendArenaInfo(k)));
     const away = (p: Player) => p.goingToArena || inArena.has(p.name.toLowerCase()) || inRaid.has(p.name.toLowerCase());
     this.trade = new TradeManager(() => this.world, () => WorldRoom.db, away, () => this.world.map.playerSpawn);
-    this.clock.setInterval(guard("обмен", () => this.trade.tick()), 1000);
+    this.clock.setInterval(guard(T("srv.WorldRoom.839"), () => this.trade.tick()), 1000);
     this.bank = new BankService(() => this.world, () => WorldRoom.db, () => this.world.map.playerSpawn, away, (p, i) => this.trade.locked(p, i));
     // сбор рейда (задача 114): у Вестников Цитадели, один на сервер
     this.muster = new RaidMuster(find, (list) => void this.startRaid(list), (keys) => keys.forEach((k) => this.sendMuster(k)),
-      (key) => (this.queue.busy(key) ? "Вы в очереди арены" : find(key)?.goingToArena ? "Идёт переход" : null));
-    this.clock.setInterval(guard("сбор рейда", () => this.muster.tick()), 1000);
+      (key) => (this.queue.busy(key) ? T("srv.WorldRoom.840") : find(key)?.goingToArena ? T("srv.WorldRoom.841") : null));
+    this.clock.setInterval(guard(T("srv.WorldRoom.842"), () => this.muster.tick()), 1000);
     worldNews.system = (text) => this.world.system(text);
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
@@ -114,10 +115,10 @@ export class WorldRoom extends Room<WorldState> {
     registerCities(on, () => this.world);
     registerInteriors(on, () => this.world);
     if (process.env.TEST_MODE === "1") this.registerDebug(on);
-    this.clock.setInterval(guard("автосохранение", () => this.saveAll(true)), SAVE_INTERVAL_MS);
-    this.clock.setInterval(guard("очередь арены", () => this.queue.tick()), 1000);
-    this.clock.setInterval(guard("выход", () => this.tickLogouts()), 200);
-    this.clock.setInterval(guard("сезон арены", () => this.checkSeason()), 60_000);
+    this.clock.setInterval(guard(T("srv.WorldRoom.843"), () => this.saveAll(true)), SAVE_INTERVAL_MS);
+    this.clock.setInterval(guard(T("srv.WorldRoom.844"), () => this.queue.tick()), 1000);
+    this.clock.setInterval(guard(T("srv.WorldRoom.845"), () => this.tickLogouts()), 200);
+    this.clock.setInterval(guard(T("srv.WorldRoom.846"), () => this.checkSeason()), 60_000);
     this.checkSeason();
   }
 
@@ -137,7 +138,7 @@ export class WorldRoom extends Room<WorldState> {
     if (inRaid.has(key)) throw new ServerError(409, "Этот герой сейчас в рейде");
     for (const k of chars) if (inRaid.has(k)) throw new ServerError(409, "На аккаунте другой герой сейчас в рейде");
     const ban = db.banOf(name);
-    if (ban) throw new ServerError(403, `Герой заблокирован ${ban.until > 4e12 ? "навсегда" : "до " + new Date(ban.until).toLocaleString("ru-RU")}${ban.reason ? ": " + ban.reason : ""}`);
+    if (ban) throw new ServerError(403, `Герой заблокирован ${ban.until > 4e12 ? T("srv.WorldRoom.847") : "до " + new Date(ban.until).toLocaleString("ru-RU")}${ban.reason ? ": " + ban.reason : ""}`);
     // вход с другой вкладки: старая сессия (этого или другого героя аккаунта) закрывается с сообщением, герой сохраняется
     for (const k of chars) {
       const old = this.world.findByName(k);
@@ -169,11 +170,11 @@ export class WorldRoom extends Room<WorldState> {
     const p = new Player(id, auth.name, auth.save, (type, msg) => this.sockets.get(id)?.send(type, msg));
     p.admin = WorldRoom.db.isAdmin(p.name);
     p.accountId = auth.accountId ?? WorldRoom.db.ownerOf(p.name) ?? 0;
-    this.world.addPlayer(p, auth.fromArena ? `${p.name} возвращается с арены.` : auth.fromRaid ? `${p.name} возвращается из Цитадели Хаоса.` : undefined);
+    this.world.addPlayer(p, auth.fromArena ? T("srv.WorldRoom.848", { name: p.name }) : auth.fromRaid ? T("srv.WorldRoom.849", { name: p.name }) : undefined);
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: auth.created });
     sendNodes(this.world, p);
-    if (auth.created) client.send("toast", { text: "Добро пожаловать в Пепельный Предел!", kind: "level" });
-    if (reopen) client.send("toast", { text: "Мир перестроен: камни телепорта других городов закрыты — откройте их заново, дойдя пешком", kind: "info" });
+    if (auth.created) client.send("toast", { text: T("srv.WorldRoom.213"), kind: "level" });
+    if (reopen) client.send("toast", { text: T("srv.WorldRoom.214"), kind: "info" });
     deliverArenaRewards(p);
     deliverPending(p);
     const key = p.name.toLowerCase();
@@ -245,7 +246,7 @@ export class WorldRoom extends Room<WorldState> {
     for (const [id, until] of p.cds) if (until > t) p.send("cd", { id, ms: until - t });
     client.send("party", this.parties.state(key));
     this.sendArenaInfo(key);
-    p.send("toast", { text: "Соединение восстановлено", kind: "info" });
+    p.send("toast", { text: T("srv.WorldRoom.215"), kind: "info" });
   }
 
   /** Окончательный уход: сохранение (всегда), отмена обмена, очередь и группа, удаление из мира. */
@@ -269,12 +270,12 @@ export class WorldRoom extends Room<WorldState> {
       console.error("[world] сохранение при выходе:", e);
     }
     this.sockets.delete(p.id);
-    this.world.removePlayer(p.id, p.goingToArena ? (inRaid.has(p.name.toLowerCase()) ? `${p.name} отправляется в Цитадель Хаоса.` : `${p.name} отправляется на арену.`) : undefined);
+    this.world.removePlayer(p.id, p.goingToArena ? (inRaid.has(p.name.toLowerCase()) ? T("srv.WorldRoom.850", { name: p.name }) : T("srv.WorldRoom.851", { name: p.name })) : undefined);
   }
 
   /** Вход тем же аккаунтом с другой вкладки: старая сессия закрывается с сообщением, герой сохраняется. */
   private kick(p: Player) {
-    console.warn(`[world] ${p.name}: вход с другой вкладки, старая сессия ${p.id} закрыта`);
+    console.warn(T("srv.WorldRoom.216", { name: p.name, id: p.id }));
     p.noReconnect = true;
     const key = p.name.toLowerCase();
     const client = this.clients.find((c) => c.sessionId === p.id);
@@ -299,7 +300,7 @@ export class WorldRoom extends Room<WorldState> {
   /** Вне боя — сразу; в бою — отсчёт LOGOUT_COMBAT_MS, полученный урон его прерывает. */
   private requestLogout(p: Player) {
     if (p.logout) return;
-    if (p.goingToArena) return p.send("logout:cancel", { reason: "Идёт переход на арену" });
+    if (p.goingToArena) return p.send("logout:cancel", { reason: T("srv.WorldRoom.852") });
     const t = this.world.time;
     if (p.inCombat(t)) {
       p.logout = { start: t, end: t + LOGOUT_COMBAT_MS };
@@ -320,7 +321,7 @@ export class WorldRoom extends Room<WorldState> {
     const t = this.world.time;
     for (const p of this.world.players.values()) {
       if (!p.logout) continue;
-      if (p.hurtAt > p.logout.start) this.cancelLogout(p, "Выход прерван: вы получили урон");
+      if (p.hurtAt > p.logout.start) this.cancelLogout(p, T("srv.WorldRoom.853"));
       else if (t >= p.logout.end) this.finishLogout(p);
     }
   }
@@ -346,7 +347,7 @@ export class WorldRoom extends Room<WorldState> {
     if (closed !== null) this.onSeasonClosed(closed);
   }
   private onSeasonClosed(id: number) {
-    this.world.system(`Сезон арены ${id} завершён! Награды выданы, рейтинги частично сброшены.`);
+    this.world.system(T("srv.WorldRoom.854", { id: id }));
     for (const p of this.world.players.values()) {
       deliverArenaRewards(p);
       this.sendArenaInfo(p.name.toLowerCase());
@@ -382,7 +383,7 @@ export class WorldRoom extends Room<WorldState> {
     const keys = m.teams.flatMap((t) => t.flatMap((e) => e.members));
     const players = keys.map((k) => this.world.findByName(k));
     if (players.some((p) => !p || p.dead)) {
-      for (const p of players) p?.send("arena:cancelled", { reason: "Кто-то из участников недоступен. Встаньте в очередь снова" });
+      for (const p of players) p?.send("arena:cancelled", { reason: T("srv.WorldRoom.855") });
       return;
     }
     const season = services.arena.season().id;
@@ -414,7 +415,7 @@ export class WorldRoom extends Room<WorldState> {
       for (const p of players as Player[]) {
         inArena.delete(p.name.toLowerCase());
         p.goingToArena = false;
-        p.send("arena:cancelled", { reason: "Не удалось создать арену, попробуйте ещё раз" });
+        p.send("arena:cancelled", { reason: T("srv.WorldRoom.856") });
       }
     }
   }
@@ -426,17 +427,17 @@ export class WorldRoom extends Room<WorldState> {
       const mode = m.mode as ArenaMode;
       if (!ARENA_MODES.includes(mode)) return;
       if (p.goingToArena) return;
-      if (this.muster.has(key(p))) return p.send("toast", { text: "Вы стоите в сборе рейда", kind: "error" });
+      if (this.muster.has(key(p))) return p.send("toast", { text: T("srv.WorldRoom.217"), kind: "error" });
       let group = [p];
       const party = this.parties.members(key(p));
       if (mode === "2v2" && party && party.length === TEAM_SIZE["2v2"]) {
         const mates = party.map((x) => this.world.findByName(x.key));
-        if (mates.some((x) => !x)) return p.send("toast", { text: "Напарник по группе не в мире", kind: "error" });
+        if (mates.some((x) => !x)) return p.send("toast", { text: T("srv.WorldRoom.218"), kind: "error" });
         group = mates as Player[];
       }
       const err = this.queue.join(group, mode);
       if (err) return p.send("toast", { text: err, kind: "error" });
-      for (const g of group) g.send("toast", { text: `Очередь арены ${MODE_NAMES[mode]}${group.length > 1 ? " с группой" : ""}: ищем соперников`, kind: "info" });
+      for (const g of group) g.send("toast", { text: T("srv.WorldRoom.219", { mode: MODE_NAMES[mode], length: group.length > 1 ? ` ${T("srv.WorldRoom.857")}` : "" }), kind: "info" });
     });
     on("arena:cancel", (p) => this.queue.cancel(key(p)));
     on("arena:accept", (p) => this.queue.accept(key(p)));
@@ -456,7 +457,7 @@ export class WorldRoom extends Room<WorldState> {
     on<{ name: unknown }>("party:invite", (p, m) => {
       if (typeof m.name !== "string") return;
       const err = this.parties.invite(p, m.name);
-      p.send("toast", { text: err ?? `Приглашение отправлено: ${m.name}`, kind: err ? "error" : "info" });
+      p.send("toast", { text: err ?? T("srv.WorldRoom.858", { name: m.name }), kind: err ? "error" : "info" });
     });
     on<{ accept: unknown }>("party:respond", (p, m) => {
       const err = this.parties.respond(p, m.accept === true);
@@ -481,7 +482,7 @@ export class WorldRoom extends Room<WorldState> {
     const key = (p: Player) => p.name.toLowerCase();
     on("raid:info", (p) => this.sendMuster(key(p)));
     on("raid:join", (p) => {
-      if (!heraldNear(p.x, p.y, RAID.npc.range + 40)) return p.send("toast", { text: "Подойдите к Вестнику Цитадели", kind: "error" });
+      if (!heraldNear(p.x, p.y, RAID.npc.range + 40)) return p.send("toast", { text: T("srv.WorldRoom.220"), kind: "error" });
       const no = serviceRefusal("raid", p.x, p.y, p.faction, RAID.npc.range + 40);
       if (no) return p.send("toast", { text: no, kind: "error" });
       // группа входит целиком
@@ -489,12 +490,12 @@ export class WorldRoom extends Room<WorldState> {
       const party = this.parties.members(key(p));
       if (party && party.length > 1) {
         const mates = party.map((x) => this.world.findByName(x.key));
-        if (mates.some((x) => !x)) return p.send("toast", { text: "Участник группы не в мире", kind: "error" });
+        if (mates.some((x) => !x)) return p.send("toast", { text: T("srv.WorldRoom.221"), kind: "error" });
         group = mates as Player[];
       }
       const err = this.muster.join(group);
       if (err) return p.send("toast", { text: err, kind: "error" });
-      for (const g of group) g.send("toast", { text: `Вы встали в рейд на ${RAID.boss.name}${group.length > 1 ? " с группой" : ""}`, kind: "info" });
+      for (const g of group) g.send("toast", { text: T("srv.WorldRoom.222", { name: RAID.boss.name, length: group.length > 1 ? ` ${T("srv.WorldRoom.857")}` : "" }), kind: "info" });
     });
     on("raid:cancel", (p) => this.muster.cancel(key(p)));
     on("raid:start", (p) => {
@@ -544,7 +545,7 @@ export class WorldRoom extends Room<WorldState> {
       for (const p of players) {
         inRaid.delete(p.name.toLowerCase());
         p.goingToArena = false;
-        p.send("toast", { text: "Не удалось начать рейд, попробуйте ещё раз", kind: "error" });
+        p.send("toast", { text: T("srv.WorldRoom.223"), kind: "error" });
       }
     }
   }
@@ -563,7 +564,7 @@ export class WorldRoom extends Room<WorldState> {
     on<{ id: unknown }>("pet:select", (p, m) => typeof m.id === "string" && selectPet(w(), p, m.id));
     on<{ id: unknown }>("pet:buy", (p, m) => {
       if (typeof m.id !== "string" || p.dead) return;
-      if (!nearMerchant(w(), p)) return p.send("toast", { text: "Подойдите к торговке", kind: "error" });
+      if (!nearMerchant(w(), p)) return p.send("toast", { text: T("srv.WorldRoom.224"), kind: "error" });
       const no = merchantRefusal(p);
       if (no) return p.send("toast", { text: no, kind: "error" });
       buyPet(w(), p, m.id);
@@ -572,10 +573,10 @@ export class WorldRoom extends Room<WorldState> {
     on<{ id: unknown }>("mount:buy", (p, m) => {
       const def = typeof m.id === "string" && Object.hasOwn(MOUNTS, m.id) ? MOUNTS[m.id] : undefined;
       if (!def || p.dead) return;
-      if (!nearMerchant(w(), p)) return p.send("toast", { text: "Подойдите к торговке", kind: "error" });
+      if (!nearMerchant(w(), p)) return p.send("toast", { text: T("srv.WorldRoom.224"), kind: "error" });
       const no = merchantRefusal(p);
       if (no) return p.send("toast", { text: no, kind: "error" });
-      if (def.source !== "vendor") return p.send("toast", { text: "Этот маунт — у конюшего", kind: "error" });
+      if (def.source !== "vendor") return p.send("toast", { text: T("srv.WorldRoom.225"), kind: "error" });
       buySeal(p, def.id);
     });
     on<{ id: unknown }>("stable:buy", (p, m) => stableBuy(w(), p, m.id));
@@ -590,7 +591,7 @@ export class WorldRoom extends Room<WorldState> {
       if (typeof m.stat !== "string" || !Object.hasOwn(STAT_NAMES, m.stat)) return;
       const n = m.n === undefined ? 1 : m.n; // без n — одно очко, как раньше
       if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 10) return;
-      if (!p.allocate(m.stat as StatKey, n)) p.send("toast", { text: "Нет свободных очков", kind: "error" });
+      if (!p.allocate(m.stat as StatKey, n)) p.send("toast", { text: T("srv.WorldRoom.226"), kind: "error" });
     });
     on<{ id: unknown }>("learn", (p, m) => {
       const def = typeof m.id === "string" ? SKILLS[m.id] : undefined;
@@ -604,21 +605,21 @@ export class WorldRoom extends Room<WorldState> {
       // ранг 0→1: активное умение встаёт в свободный слот; клиент допишет «— клавиша R» по своей схеме
       const at = first && def.kind === "active" ? autoPlace(bars, p.cls, def.id) : null;
       if (at) { p.save.bars = setSlot(bars, at.bar, at.i, { s: def.id }); p.selfDirty = true; }
-      p.send("toast", { text: `${def.name}: ранг ${p.save.skills[def.id]}`, kind: "info", ...(at ? { slot: at } : {}) });
+      p.send("toast", { text: T("srv.WorldRoom.227", { name: def.name, id: p.save.skills[def.id] }), kind: "info", ...(at ? { slot: at } : {}) });
     });
     const lock = (p: Player, ...idx: unknown[]) => {
       if (!idx.some((i) => this.trade.locked(p, i))) return false;
-      p.send("toast", { text: "Предмет лежит в окне обмена", kind: "error" });
+      p.send("toast", { text: T("srv.bank.65"), kind: "error" });
       return true;
     };
     // осмотр игрока (docs/gear-visuals.md, раздел 4): цель в зоне видимости, не чаще раза в секунду
     on<{ sid: unknown }>("inspect", (p, m) => {
       if (typeof m.sid !== "string") return;
-      if (w().time - p.lastInspect < INSPECT_COOLDOWN_MS) return p.send("toast", { text: "Не так быстро", kind: "error" });
+      if (w().time - p.lastInspect < INSPECT_COOLDOWN_MS) return p.send("toast", { text: T("srv.common.212"), kind: "error" });
       p.lastInspect = w().time;
       const t = w().players.get(m.sid);
       if (!t || (t !== p && w().stealthed(t))) return;
-      if (t !== p && w().dist(p, t) > INSPECT_RANGE) return p.send("toast", { text: "Игрок слишком далеко", kind: "error" });
+      if (t !== p && w().dist(p, t) > INSPECT_RANGE) return p.send("toast", { text: T("srv.WorldRoom.228"), kind: "error" });
       const reply: InspectReply = {
         sid: m.sid,
         name: t.name,
@@ -647,7 +648,7 @@ export class WorldRoom extends Room<WorldState> {
     on<{ v: unknown }>("trade:gold", (p, m) => this.trade.gold(p, m.v));
     on("trade:ready", (p) => this.trade.ready(p));
     on("trade:confirm", (p) => this.trade.confirm(p));
-    on("trade:cancel", (p) => this.trade.cancel(p.name.toLowerCase(), `Обмен отменён: ${p.name} закрывает окно`));
+    on("trade:cancel", (p) => this.trade.cancel(p.name.toLowerCase(), T("srv.WorldRoom.859", { name: p.name })));
     on<{ base: unknown; qty: unknown }>("buy", (p, m) => buy(w(), p, m.base, m.qty));
     on<{ id: unknown; qty: unknown }>("cook:buy", (p, m) => buyFood(w(), p, m.id, m.qty));
     on<{ id: unknown; qty: unknown }>("smith:buy", (p, m) => buyMaterial(w(), p, m.id, m.qty));

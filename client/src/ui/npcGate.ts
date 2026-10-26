@@ -6,6 +6,7 @@ import { stoneNear, isEnemyCapital } from "../../../shared/cities";
 import { FACTIONS, type FactionId } from "../../../shared/factions";
 import { npcRefusal, WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 let toast: (text: string) => void = () => {};
 /** hud задаёт, куда показывать отказ. */
@@ -25,6 +26,6 @@ export function stoneRefuses(net: Net | undefined, pos: { x: number; y: number }
   const f = net?.self?.faction;
   const c = stoneNear(pos.x, pos.y);
   if (!f || !c || !isEnemyCapital(c, f)) return false;
-  toast(`Камень телепорта ${c.name} не служит врагам ${FACTIONS[c.capital as FactionId]?.name ?? ""}а`);
+  toast(T("ui.npcGate.300", { v: c.name, v2: FACTIONS[c.capital as FactionId]?.name ?? "" }));
   return true;
 }

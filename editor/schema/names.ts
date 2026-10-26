@@ -41,7 +41,9 @@ const WORDS: Record<string, string> = {
 };
 
 /** Явные русские названия частых ключей. */
+import { BASE_RU } from "./baseNames";
 export const KEY_RU: Record<string, string> = {
+  ...BASE_RU,
   _doc: "Пояснение", id: "Идентификатор", name: "Название", desc: "Описание", title: "Титул", text: "Текст", lore: "Предание", icon: "Иконка", sprite: "Спрайт",
   color: "Цвет", tint: "Оттенок", level: "Уровень", lvl: "С какого уровня", price: "Цена", gold: "Золото", hp: "Здоровье", dmg: "Урон", armor: "Броня", xp: "Опыт",
   speed: "Скорость", aggro: "Радиус замечания", range: "Дальность", radius: "Размер тела", size: "Размер", chance: "Шанс", faction: "Фракция", tier: "Ярус",

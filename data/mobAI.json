@@ -37,7 +37,6 @@
   "lizardfolk_javelin": {"kite": {"min": 100}, "weak": {"dmg": {"frost": 1.4}}},
   "lizardfolk_shaman": {"kite": {"min": 110}, "heal": {"range": 220, "pct": 0.15, "cd": 4}, "weak": {"dmg": {"frost": 1.4, "poison": 0.3}}},
   "nomad_axe": {"weak": {"dmg": {"frost": 1.2}}},
-  "nomad_shield": {"weak": {"dmg": {"arcane": 1.2, "phys": 0.85}}},
   "arthro_scorpion": {"weak": {"dmg": {"frost": 1.3}, "cc": {"stun": 1.3}}},
   "golem_sandstone": {"slam": {"r": 70, "ms": 1100, "mult": 1.9, "cd": 4.5, "k": "phys"}, "weak": {"dmg": {"frost": 1.4, "arcane": 1.3}, "cc": {"stun": 0.5, "slow": 1.2}}},
   "orc_axe": {"weak": {"dmg": {"arcane": 1.2}}},

@@ -15,6 +15,7 @@ import { applyHaste } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
+import { T } from "../../../shared/texts";
 
 /** massacre — токен вихря «Кровавой бойни» (оглушение его обрывает), massacreUntil — когда вихрь кончится (для значка эффекта). */
 interface St { furyStacks: number; furyUntil: number; defReady: number; defPending: boolean; massacre: number; massacreUntil: number }
@@ -52,9 +53,9 @@ export function castReaver(c: CastCtx): string | null | undefined {
   const u = p.unit;
   const range = def.range ?? 0;
   const needTarget = (): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };
@@ -90,7 +91,7 @@ export function castReaver(c: CastCtx): string | null | undefined {
     }
     case "rv_reap": {
       const list = w.enemiesInCircle(p, u.x, u.y, v.radius).map((m) => ({ m, d: dotOf(w, p, m, "bleed") })).filter((x) => x.d);
-      if (!list.length) return "Нет кровоточащих врагов рядом";
+      if (!list.length) return T("srv.reaver.131");
       c.ok();
       u.aseq = (u.aseq + 1) % 65535;
       w.emit({ t: "aoe", k: "burst", x: u.x, y: u.y, r: v.radius });
@@ -118,7 +119,7 @@ export function castReaver(c: CastCtx): string | null | undefined {
       // короче 24 — отказ (placeSkill уже отказал: поля min и minErr в data/skills_aim.json)
       const dx = Math.cos(c.aim), dy = Math.sin(c.aim);
       const len = rayLen(w.map, u.x, u.y, c.aim, range);
-      if (len < 24) return "Путь прегражден";
+      if (len < 24) return T("srv.reaver.132");
       const end = { x: u.x + dx * len, y: u.y + dy * len };
       c.ok();
       u.dir = dirTo(dx, dy);

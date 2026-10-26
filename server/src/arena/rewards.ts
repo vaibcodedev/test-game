@@ -4,6 +4,7 @@ import { makeUnique } from "../../../shared/items";
 import { addItem } from "../game/inventory";
 import type { Player } from "../game/Player";
 import { services } from "./registry";
+import { T } from "../../../shared/texts";
 
 /** Выдаёт все ожидающие награды игроку в мире. Медальон ждёт, пока в сумке не появится место. */
 export function deliverArenaRewards(p: Player) {
@@ -14,7 +15,7 @@ export function deliverArenaRewards(p: Player) {
     const id = `${rank.id}-${r.mode}-s${r.season}`;
     s.titles ??= [];
     if (!s.titles.some((t) => t.id === id)) {
-      s.titles.push({ id, name: `${rank.title} (${MODE_NAMES[r.mode as ArenaMode]}, сезон ${r.season})`, rank: rank.id });
+      s.titles.push({ id, name: T("srv.rewards.778", { title: rank.title, arenamode: MODE_NAMES[r.mode as ArenaMode], season: r.season }), rank: rank.id });
       // активные титул и рамка — по лучшему рангу
       const best = s.titles.reduce((a, b) => (RANKS.findIndex((x) => x.id === b.rank) > RANKS.findIndex((x) => x.id === a.rank) ? b : a));
       s.title = best.name;
@@ -22,12 +23,12 @@ export function deliverArenaRewards(p: Player) {
     }
     // медальон — по уровню игрока на момент выдачи (ранг задаёт его силу через запись UNIQUES)
     if (!addItem(p, makeUnique(rank.reward, s.level))) {
-      p.send("toast", { text: "Награда арены ждёт: освободите место в сумке", kind: "error" });
+      p.send("toast", { text: T("srv.rewards.34"), kind: "error" });
       continue;
     }
     store.markDelivered(r.id);
     // маунты арены — сборка у конюшего из Печатей гладиатора (задача 142, server/src/arena/gladiator.ts)
-    p.send("toast", { text: `Награда за сезон ${r.season} (${MODE_NAMES[r.mode as ArenaMode]}, ${rank.name}): титул, рамка и медальон`, kind: "loot" });
+    p.send("toast", { text: T("srv.rewards.35", { season: r.season, arenamode: MODE_NAMES[r.mode as ArenaMode], name: rank.name }), kind: "loot" });
   }
   p.applyCosmetics();
   p.selfDirty = true;

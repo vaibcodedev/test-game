@@ -18,6 +18,7 @@ import { noteAuraSource, registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { stealthBan } from "./wards";
 import { leechMult } from "../../../shared/balance";
+import { T } from "../../../shared/texts";
 
 interface St {
   /** «Стойка стрелка»: где и с какого момента стоит герой. */
@@ -211,9 +212,9 @@ export function castArcher(c: CastCtx): string | null | undefined {
   const s = st(p);
   const range = def.range ?? 0;
   const needTarget = (los = true): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (los && !lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (los && !lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };
@@ -273,7 +274,7 @@ export function castArcher(c: CastCtx): string | null | undefined {
       return null;
     }
     case "hr_beast": {
-      if (w.opts.mobs === false || p.team !== 0) return "На арене зверя не призвать";
+      if (w.opts.mobs === false || p.team !== 0) return T("srv.archers.52");
       c.ok();
       u.anim = Anim.Cast;
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });
@@ -338,7 +339,7 @@ export function castArcher(c: CastCtx): string | null | undefined {
         .filter((m) => !w.stealthed(m) && w.dist(u, m) <= range + v.radius && lineClear(w.map, u.x, u.y, m.x, m.y))
         .sort((a, b) => Math.hypot(a.x - pt.x, a.y - pt.y) - Math.hypot(b.x - pt.x, b.y - pt.y))
         .slice(0, Math.floor(v.n));
-      if (!list.length) return "В области нет целей";
+      if (!list.length) return T("srv.archers.53");
       c.ok();
       u.anim = Anim.Cast;
       w.later(350, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });

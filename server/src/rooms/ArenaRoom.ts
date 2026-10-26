@@ -22,6 +22,7 @@ import { inArena, matchMs, services } from "../arena/registry";
 import { botThink } from "../arena/bots";
 import { guard, makeOn, registerCombat } from "./common";
 import { ArenaState } from "./schema";
+import { T } from "../../../shared/texts";
 
 export interface Participant {
   name: string;
@@ -98,7 +99,7 @@ export class ArenaRoom extends Room<ArenaState> {
       if (this.phase !== "fight") return;
       stat(p)!.deaths++;
       if (killer && this.world.isPlayer(killer)) stat(killer)!.kills++;
-      this.world.system(`${p.name} повержен${killer && this.world.isPlayer(killer) ? ` (${killer.name})` : ""}`);
+      this.world.system(T("srv.ArenaRoom.831", { name: p.name, killer: killer && this.world.isPlayer(killer) ? ` (${killer.name})` : "" }));
     };
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
@@ -111,7 +112,7 @@ export class ArenaRoom extends Room<ArenaState> {
       this.bots.push(p);
     });
     this.setPatchRate(PATCH_MS);
-    this.setSimulationInterval(guard("арена", (dt: number) => this.tick(dt)), TICK_MS);
+    this.setSimulationInterval(guard(T("srv.ArenaRoom.832"), (dt: number) => this.tick(dt)), TICK_MS);
   }
 
   override onAuth(): never {
@@ -176,7 +177,7 @@ export class ArenaRoom extends Room<ArenaState> {
     if (this.phase !== "end") {
       // выход или обрыв связи до конца матча — поражение
       this.stats.get(key)!.left = true;
-      this.world.system(`${p.name} покидает арену — поражение`);
+      this.world.system(T("srv.ArenaRoom.833", { name: p.name }));
     }
     this.world.removePlayer(client.sessionId);
     this.byKey.delete(key);
@@ -266,7 +267,7 @@ export class ArenaRoom extends Room<ArenaState> {
       this.restore(p);
       p.frozenUntil = 0;
     }
-    this.world.system("Бой начался!");
+    this.world.system(T("srv.ArenaRoom.834"));
   }
 
   private checkEnd(now: number) {
@@ -346,7 +347,7 @@ export class ArenaRoom extends Room<ArenaState> {
     } catch (e) {
       p.goingHome = false;
       console.error("[arena] возврат в мир:", e);
-      client.send("toast", { text: "Не удалось вернуться в мир, войдите заново", kind: "error" });
+      client.send("toast", { text: T("srv.ArenaRoom.207"), kind: "error" });
     }
   }
 }

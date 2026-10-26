@@ -16,6 +16,7 @@ import type { PlayerSave } from "../db";
 import { Unit } from "../rooms/schema";
 import { saveSpot } from "./interiors";
 import { GP } from "../../../shared/gameplay";
+import { T } from "../../../shared/texts";
 
 /** Новый герой в точке spawn (в игре — столица его фракции, см. server/src/index.ts). */
 export function newSave(cls: ClassId, spawn: { x: number; y: number }): PlayerSave {
@@ -24,9 +25,9 @@ export function newSave(cls: ClassId, spawn: { x: number; y: number }): PlayerSa
   inventory[1] = { ...makeItem("mp_potion", 1, Rarity.Common), qty: 3 };
   const equip = Object.fromEntries(SLOTS.map((s) => [s, null])) as Record<Slot, Item | null>;
   equip.weapon = makeItem(CLASSES[cls].startWeapon, 1, Rarity.Common);
-  equip.weapon.name = "Потёртый " + equip.weapon.name.toLowerCase();
-  equip.armor = { ...makeItem("armor", 1, Rarity.Common), name: "Лохмотья", stats: { armor: 1 }, req: 1, rags: true };
-  equip.boots = { ...makeItem("boots", 1, Rarity.Common), name: "Обмотки", stats: { armor: 1 }, req: 1, rags: true };
+  equip.weapon.name = `${T("srv.Player.797")} ` + equip.weapon.name.toLowerCase();
+  equip.armor = { ...makeItem("armor", 1, Rarity.Common), name: T("srv.Player.798"), stats: { armor: 1 }, req: 1, rags: true };
+  equip.boots = { ...makeItem("boots", 1, Rarity.Common), name: T("srv.Player.799"), stats: { armor: 1 }, req: 1, rags: true };
   return {
     cls,
     faction: classFaction(cls),
@@ -204,7 +205,7 @@ export class Player {
   ) {
     if (save.cls === "warrior" && hasUnknownSkills(save.cls, save.skills)) {
       save.skills = { [starterSkill(save.cls)]: 1 };
-      send("toast", { text: "Умения воина изменены — очки возвращены", kind: "info" });
+      send("toast", { text: T("srv.Player.129"), kind: "info" });
     }
     save.faction ??= classFaction(save.cls);
     // предел уровня 30 → 100 (задача 39): кривая до 30 прежняя, опыт внутри уровня остаётся; страховка от мусора
@@ -299,7 +300,7 @@ export class Player {
     if (this.save.food && !this.activeFood()) {
       this.save.food = null;
       this.recalc();
-      this.send("toast", { text: "Действие еды закончилось", kind: "info" });
+      this.send("toast", { text: T("srv.Player.130"), kind: "info" });
     }
   }
 

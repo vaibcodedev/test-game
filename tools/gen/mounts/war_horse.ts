@@ -82,11 +82,11 @@ const stand = (): Leg[] => [
 ];
 /** Галоп: фазы копыт (задние, затем передние), опора 40 % цикла. */
 function runPose(t: number): Pose {
-  const S = 0.42;
+  const S = 0.42 * 0.85;
   const ph = [0.5, 0.6, 0.0, 0.1];
   const legs = stand().map((l, i) => {
     const front = i < 2;
-    const reach = front ? 7.2 : 6.6, lift = front ? 5.2 : 3.8;
+    const reach = (front ? 7.2 : 6.6) * 1.3, lift = (front ? 5.2 : 3.8) * 1.15;
     const u = (((t + ph[i]) % 1) + 1) % 1;
     let dy = 0, z = 0, fold = 0;
     if (u < S) dy = reach * (1 - (2 * u) / S);
@@ -393,7 +393,8 @@ export function warHorse(fac: Fac): MountSpec {
     return {
       sc: b.sc, bits: b.bits,
       seat: T([0, -0.8, 31.4]),
-      banner: { fac, base: add(sock, [0, 0, 2]), top: T([3.6, -7.6, 56]), t: f.i % 12, run: f.anim === "run", hang: { down: -1, up: 1, side: -1, left: 1 } },
+      stride: (2 * 7.2 * 1.3) / (0.42 * 0.85),
+      banner: { fac, base: add(sock, [0, 0, 2]), top: T([3.6, -7.6, 56]), t: Math.round((f.i * 12) / f.n) % 12, run: f.anim === "run", hang: { down: -1, up: 1, side: -1, left: 1 } },
     };
   };
   return { id: `war_horse_${fac}`, ru: sol ? "Боевой конь Сольгарда" : "Боевой конь Умбрата", N: 120, GY: 98, scale: 1.15, build };

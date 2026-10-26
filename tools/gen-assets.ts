@@ -118,6 +118,6 @@ for (const id of scan("icons")) if (!manifest.icons.includes(id)) manifest.icons
 for (const id of scan("fx")) if (!manifest.fx.includes(id)) manifest.fx.push(id);
 
 fs.writeFileSync(path.join(OUT, "manifest.json"), JSON.stringify(manifest, null, 1));
-// маунты: листы, иконки и раздел manifest.mounts (дописывает manifest.json)
-writeMountsGame();
+// маунты: раздел manifest.mounts и иконки из готовых листов (tools/gen/mounts/build.ts, кэш mounts/meta.json); листов нет — рисует
+writeMountsGame([], { reuse: true });
 console.log(`[assets] готово за ${Date.now() - t0} мс -> ${path.relative(process.cwd(), OUT)}`);

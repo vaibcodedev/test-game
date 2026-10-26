@@ -40,6 +40,8 @@ import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack, targetAuras } from "./auras";
 import * as auraFx from "./auraFx";
 import type { Player } from "./Player";
+import { T } from "../../../shared/texts";
+import { GP } from "../../../shared/gameplay";
 
 export type Broadcast = (type: string, msg: unknown) => void;
 export type Actor = Player | Mob;
@@ -167,7 +169,7 @@ export class World {
     return `${prefix}${(this.nextId++).toString(36)}`;
   }
 
-  addPlayer(p: Player, note = `${p.name} входит в мир.`) {
+  addPlayer(p: Player, note = T("srv.World.825", { name: p.name })) {
     this.players.set(p.id, p);
     this.state.players.set(p.id, p.unit);
     if (this.opts.mobs !== false) this.later(2500, () => grantPets(this, p));
@@ -183,7 +185,7 @@ export class World {
       m.threat.delete(id);
       if (m.targetId === id) m.targetId = null;
     }
-    if (!this.opts.quiet) this.system(note ?? `${p.name} покидает мир.`);
+    if (!this.opts.quiet) this.system(note ?? T("srv.World.826", { name: p.name }));
   }
   findByName(nameKey: string): Player | undefined {
     for (const p of this.players.values()) if (p.name.toLowerCase() === nameKey) return p;
@@ -231,7 +233,7 @@ export class World {
     p.unit.outlaw = 1;
     if (fresh) {
       p.guardHitAt = this.time + 300;
-      p.send("toast", { text: "В нейтральном городе сражаться нельзя! Стража атакует нарушителя", kind: "error" });
+      p.send("toast", { text: T("srv.World.177"), kind: "error" });
     }
   }
   /** Бой героев в нейтральном городе (в мире): запрещён, кроме отпора нарушителю. */
@@ -649,10 +651,10 @@ export class World {
     m.unit.buffs = 0;
     m.unit.target = "";
     m.deadAt = this.time;
-    const respawn = m.def.respawn ? m.def.respawn * 1000 : rnd(14000, 24000);
+    const respawn = m.def.respawn ? m.def.respawn * 1000 : rnd(GP.mobs.respawnMs[0], GP.mobs.respawnMs[1]);
     m.respawnAt = this.time + respawn;
     m.boss?.onDeath();
-    if (m.boss) this.bossKills.set(m.def.id, { by: killer && this.isPlayer(killer) ? killer.name : "неизвестный герой", at: this.time });
+    if (m.boss) this.bossKills.set(m.def.id, { by: killer && this.isPlayer(killer) ? killer.name : T("srv.World.827"), at: this.time });
     if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); if (!m.faction) mountDrops.onKill(this, killer, m); }
     if (m.def.raid) this.onRaidKill?.(m, killer);
     else if (!m.faction) grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined); // боец фракции — без опыта и добычи
@@ -678,7 +680,7 @@ export class World {
       m.threat.delete(p.id);
       if (m.targetId === p.id) m.targetId = null;
     }
-    p.send("toast", { text: "Вы погибли", kind: "error" });
+    p.send("toast", { text: T("srv.World.178"), kind: "error" });
     this.onPlayerKilled?.(p, killer);
   }
 
@@ -696,7 +698,7 @@ export class World {
     p.unit.anim = Anim.Idle;
     p.stunUntil = p.rootUntil = p.slowUntil = 0;
     p.selfDirty = true;
-    if (lost) p.send("toast", { text: `Потеряно ${lost} золота`, kind: "error" });
+    if (lost) p.send("toast", { text: T("srv.World.179", { lost: lost }), kind: "error" });
   }
 
   // ---------- маунты ----------
@@ -706,7 +708,7 @@ export class World {
       p.tele = null;
       this.emit({ t: "tp", id: p.id, ph: "cancel", x: p.x, y: p.y });
       p.send("mountcast", { ms: 0 });
-      p.send("toast", { text: "Телепорт прерван", kind: "error" });
+      p.send("toast", { text: T("srv.World.180"), kind: "error" });
     }
     if (p.mountCast) {
       p.mountCast = null;
@@ -723,11 +725,11 @@ export class World {
     const err = (text: string) => p.send("toast", { text, kind: "error" });
     if (p.dead) return;
     if (p.unit.mount || p.mountCast) return this.breakMount(p);
-    if (this.opts.mobs === false || p.team !== 0) return err("На арене маунты недоступны");
+    if (this.opts.mobs === false || p.team !== 0) return err(T("srv.World.181"));
     const m = MOUNTS[p.save.mount ?? ""];
-    if (!m || !p.save.mounts?.includes(m.id)) return err("У вас нет маунта (конь с 10 уровня)");
-    if (p.level < m.level) return err(`${mountName(m.id, p.faction)}: нужен ${m.level} уровень`);
-    if (p.inCombat(this.time)) return err("Нельзя призвать маунта в бою");
+    if (!m || !p.save.mounts?.includes(m.id)) return err(T("srv.World.182"));
+    if (p.level < m.level) return err(T("srv.World.183", { mountname: mountName(m.id, p.faction), level: m.level }));
+    if (p.inCombat(this.time)) return err(T("srv.World.184"));
     if (p.stunUntil > this.time || p.frozenUntil > this.time) return;
     p.input = { mx: 0, my: 0 };
     p.moveTo = null;
@@ -774,7 +776,7 @@ export class World {
     if (!p.followId) return;
     p.followId = null;
     p.followGo = false;
-    if (toast) p.send("toast", { text: "Следование прервано", kind: "info" });
+    if (toast) p.send("toast", { text: T("srv.World.185"), kind: "info" });
   }
 
   /** Сообщение клиенту: полоса каста (ms=0 — скрыть). */
@@ -810,7 +812,7 @@ export class World {
       p.intruder = intruder;
       if (intruder) {
         p.guardHitAt = t + 600;
-        p.send("toast", { text: "Вы во вражеской столице! Стража атакует чужака", kind: "error" });
+        p.send("toast", { text: T("srv.World.186"), kind: "error" });
       }
       u.outlaw = intruder || p.outlawUntil > t ? 1 : 0;
     }
@@ -857,7 +859,7 @@ export class World {
       p.castBreakable = false;
       this.castBar(p, 0);
       if (u.anim === Anim.Cast) u.anim = Anim.Idle;
-      p.send("toast", { text: "Каст прерван", kind: "error" });
+      p.send("toast", { text: T("srv.World.187"), kind: "error" });
     }
     const canMove = !frozen && p.stunUntil <= t && p.rootUntil <= t && p.castUntil <= t;
     const target = p.targetId ? this.actor(p.targetId) : undefined;
@@ -997,7 +999,7 @@ export class World {
 
   private announceElite(m: Mob) {
     const r = ELITE.announceTiles * 32;
-    for (const p of this.players.values()) if (this.dist(p, m) < r) p.send("toast", { text: `Рядом появился элитный моб: ${m.unit.name}`, kind: "loot" });
+    for (const p of this.players.values()) if (this.dist(p, m) < r) p.send("toast", { text: T("srv.World.188", { name: m.unit.name }), kind: "loot" });
   }
 
   updateMob(m: Mob, dt: number) {
@@ -1047,7 +1049,7 @@ export class World {
         m.state = "chase";
         m.targetId = pet.id;
         u.target = pet.id;
-        if (this.dist(u, m.home) > (m.def.boss ? 1.4 : 2.5) * m.def.aggro + 260) {
+        if (this.dist(u, m.home) > (m.def.boss ? GP.mobs.leashBossMul : GP.mobs.leashMul) * m.def.aggro + GP.mobs.leashExtra) {
           m.state = "return";
           m.targetId = null;
           u.target = "";
@@ -1063,7 +1065,7 @@ export class World {
         m.state = "chase";
         m.targetId = target.id;
         u.target = target.id;
-        const leash = (m.def.boss ? 1.4 : 2.5) * m.def.aggro + 260;
+        const leash = (m.def.boss ? GP.mobs.leashBossMul : GP.mobs.leashMul) * m.def.aggro + GP.mobs.leashExtra;
         if (this.dist(u, m.home) > leash) {
           m.state = "return";
           m.targetId = null;
@@ -1130,7 +1132,7 @@ export class World {
       if (a === m || a.dead || a.def.boss || a.faction || a.state === "return") continue;
       const f = a.unit.hp / a.unit.maxHp;
       if (f >= bf || this.dist(a, m) > h.range || !lineClear(this.map, m.x, m.y, a.x, a.y)) continue;
-      if (a.state !== "chase" && this.time - a.lastHitAt > 8000) continue;
+      if (a.state !== "chase" && this.time - a.lastHitAt > GP.mobs.healerRecentHitMs) continue;
       bf = f; best = a;
     }
     if (!best) return;

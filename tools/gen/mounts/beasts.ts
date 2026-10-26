@@ -267,7 +267,7 @@ interface ElephantOpt { skin: Mat; tex?: TexFn; tuskLen: number; tuskCurl: numbe
 function elephantCfg(o: ElephantOpt, L: Layout): BeastCfg {
   return {
     L, coat: o.skin, piv: [0, 0, 26], gait: { reach: [5.4, 5.2], lift: [3.6, 3.2], fold: [1.0, 0.8], phase: [0.5, 0.0, 0.75, 0.25], stance: 0.55, bob: 0.8, pitch: 0.03 },
-    legs: { hipZ: [21, 22], len: [[11.0, 9.6], [11.6, 9.4]], r: [[4.8, 3.8, 3.4], [5.0, 3.8, 3.4]], foot: "pad", footMat: IVORY, tex: o.tex, layers: true, footK: 1.3 },
+    legs: { hipZ: [21, 22], len: [[11.0, 9.6], [11.6, 9.4]], r: [[4.8, 3.8, 3.4], [5.0, 3.8, 3.4]], foot: "pad", footMat: IVORY, tex: o.tex, layers: true, footK: 1.0 },
     body: { z: 27.4, len: 14.4, w: 10.6, h: 10.2, tex: o.tex, hump: [4.0, 9.0, 6.4] },
     idle: (p, u) => {
       // хобот: вверх и трубит, качание; уши хлопают; вес с ноги на ногу
@@ -280,10 +280,10 @@ function elephantCfg(o: ElephantOpt, L: Layout): BeastCfg {
       actTail(p, u, 15, 21, 0.7);
     },
     head: (c) => {
-      const N = neck(c, [0, 13.6, 30], [0, 4.6, 2.4], [8.6, 7.4], o.skin, o.tex, 0.4);
+      const N = neck(c, [0, 13.6, 30], [0, 6.6, 2.0], [8.6, 7.4], o.skin, o.tex, 0.4);
       const A = headAxes(c, N.poll, N.nd, [0, 0.55, -0.83]);
       const H = A.H, g = c.sc.group(1.6);
-      c.sc.ell(g, o.skin, H(1.0, 1.8, 0), [5.6, 5.2, 5.6], [A.s, A.fv, A.w], { tex: o.tex });
+      c.sc.ell(g, o.skin, H(1.4, 1.6, 0), [6.2, 6.0, 6.6], [A.s, A.fv, A.w], { tex: o.tex });
       if (o.shag) c.sc.ell(c.sc.group(0.8), o.shag, H(-1.6, 4.6, 0), [4.6, 3.2, 3.2], [A.s, A.fv, A.w], { tex: hairTex });
       // уши: большие плоские
       const ea = c.p.a.ear ?? 0;
@@ -302,10 +302,10 @@ function elephantCfg(o: ElephantOpt, L: Layout): BeastCfg {
         const nq = add(q, mul(d, 2.4));
         c.sc.cone(gt, o.skin, q, lerp(2.6, 1.0, k / 8), nq, lerp(2.6, 1.0, (k + 1) / 8), { tex: (qq) => (qq.edge ? 0 : (qq.y + 40) % 2 === 0 ? -0.6 : 0) });
         q = nq;
-        d = norm(rotAxis(rotAxis(d, A.s, up > 0.1 ? -0.38 * up : 0.12 + (c.p.run ? -0.08 : 0)), A.w, sw * 0.4));
+        d = norm(rotAxis(rotAxis(d, A.s, up > 0.1 ? 0.38 * up : -0.1 + (c.p.run ? 0.06 : 0)), A.w, sw * 0.4));
       }
       // бивни
-      for (const sx of [-1, 1]) horn(c, IVORY, H(4.0, -2.2, sx * 2.6), add(mul(A.w, 1), add(mul(A.fv, 0.3), mul(A.s, sx * 0.3))), A.s, 5, o.tuskLen / 5, 1.2, -o.tuskCurl);
+      for (const sx of [-1, 1]) horn(c, IVORY, H(4.0, -2.2, sx * 2.6), add(mul(A.w, 1), add(mul(A.fv, 0.3), mul(A.s, sx * 0.3))), A.s, 5, o.tuskLen / 5, 1.3, o.tuskCurl);
       o.headDeco?.(c, A);
     },
     tail: (c) => segTail(c, c.T([0, -19.6, 30]), o.skin, { n: 4, seg: 2.0, r0: 0.9, r1: 0.6, droop: 2.4 }),

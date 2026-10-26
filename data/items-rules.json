@@ -1,0 +1,161 @@
+{
+  "_doc": "Правила предметов (аудит docs/config-audit.md, задача 145): как редкость влияет на силу вещи, сколько бонусов у вещи, как растут бонусы с уровнем, цена вещи и шансы редкости при добыче. Читает shared/itemRules.ts; формулы — shared/items.ts.",
+  "rarityMult": [1, 1.2, 1.3, 1.4],
+  "affixCount": [0, 1, 3, 4],
+  "ringAmuletBonus": 1,
+  "affix": {
+    "hpBase": 8,
+    "hpPerLevel": 4,
+    "critBase": 1,
+    "critPerLevel": 0.025,
+    "statBase": 1,
+    "statPerLevel": 0.4,
+    "rollMin": 0.85,
+    "rollRange": 0.3
+  },
+  "reqLevelGap": 2,
+  "value": {
+    "base": 4,
+    "perLevel": 2.5,
+    "rarityStep": 1.5,
+    "uniqueMul": 3,
+    "consumableDiv": 3,
+    "plusSellStep": 0.12
+  },
+  "rarityChance": {
+    "epic": 0.03,
+    "rare": 0.2,
+    "bonusEpicShare": 0.5
+  },
+  "weaponChance": 0.3,
+  "rolls": {
+    "sword": {
+      "dmgMin": [4, 1.8],
+      "dmgMax": [8, 2.6]
+    },
+    "greatsword": {
+      "dmgMin": [6, 2.7],
+      "dmgMax": [12, 3.9]
+    },
+    "twinblades": {
+      "dmgMin": [4, 1.5],
+      "dmgMax": [7, 2.2],
+      "agi": [1, 0.1]
+    },
+    "axe": {
+      "dmgMin": [3, 1.5],
+      "dmgMax": [10, 3.1]
+    },
+    "greataxe": {
+      "dmgMin": [5, 2.2],
+      "dmgMax": [15, 4.6]
+    },
+    "mace": {
+      "dmgMin": [5, 1.6],
+      "dmgMax": [9, 2.7]
+    },
+    "hammer": {
+      "dmgMin": [8, 2.4],
+      "dmgMax": [13, 4]
+    },
+    "spear": {
+      "dmgMin": [4, 1.7],
+      "dmgMax": [8, 2.5],
+      "vit": [1, 0.15]
+    },
+    "scythe": {
+      "dmgMin": [6, 2.5],
+      "dmgMax": [13, 4]
+    },
+    "shield": {
+      "armor": [3, 2],
+      "hp": [0, 1.5]
+    },
+    "orb": {
+      "int": [1, 0.2],
+      "crit": [1, 0.04]
+    },
+    "tome": {
+      "int": [1, 0.15],
+      "hp": [4, 2]
+    },
+    "staff": {
+      "dmgMin": [4, 1.8],
+      "dmgMax": [8, 2.8],
+      "int": [1, 0.35]
+    },
+    "scepter": {
+      "dmgMin": [4, 1.6],
+      "dmgMax": [7, 2.4],
+      "int": [1, 0.25]
+    },
+    "dagger": {
+      "dmgMin": [3, 1.3],
+      "dmgMax": [5, 1.9],
+      "agi": [1, 0.2]
+    },
+    "bow": {
+      "dmgMin": [4, 1.7],
+      "dmgMax": [7, 2.5]
+    },
+    "crossbow": {
+      "dmgMin": [5, 1.95],
+      "dmgMax": [7, 2.3]
+    },
+    "helmet": {
+      "armor": [2, 1.6]
+    },
+    "armor": {
+      "armor": [4, 3],
+      "hp": [0, 2]
+    },
+    "boots": {
+      "armor": [1, 1.2]
+    },
+    "plate_helm": {
+      "armor": [3, 2],
+      "vit": [1, 0.06]
+    },
+    "leather_helm": {
+      "armor": [2, 1.4],
+      "agi": [1, 0.1]
+    },
+    "cloth_helm": {
+      "armor": [1, 1],
+      "int": [1, 0.08]
+    },
+    "plate_armor": {
+      "armor": [5, 3.8],
+      "hp": [0, 2],
+      "vit": [1, 0.12]
+    },
+    "leather_armor": {
+      "armor": [4, 2.6],
+      "hp": [0, 1.5],
+      "agi": [1, 0.2]
+    },
+    "cloth_armor": {
+      "armor": [2, 1.8],
+      "hp": [0, 2],
+      "int": [1, 0.15]
+    },
+    "plate_boots": {
+      "armor": [2, 1.5],
+      "vit": [1, 0.05]
+    },
+    "leather_boots": {
+      "armor": [1, 1],
+      "agi": [1, 0.08]
+    },
+    "cloth_boots": {
+      "armor": [1, 0.7],
+      "int": [1, 0.06]
+    },
+    "cloak": {
+      "armor": [1, 1.1]
+    },
+    "amulet": {
+      "hp": [6, 3]
+    }
+  }
+}

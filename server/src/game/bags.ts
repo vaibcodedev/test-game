@@ -5,18 +5,19 @@ import { serviceRefusal } from "../../../shared/npcs";
 import type { GameDB } from "../db";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 export function expandBag(w: World, db: GameDB, spawn: { x: number; y: number }, p: Player, busy: boolean) {
   const err = (text: string) => p.send("toast", { text, kind: "error" });
-  if (p.dead) return err("Мёртвым сумка не нужна");
-  if (p.team !== 0 || busy) return err("Недоступно на арене и в очереди на неё");
-  if (!BAGMEN.some((b) => w.dist(p, b) <= MERCHANT_RANGE)) return err("Сумочник далеко");
+  if (p.dead) return err(T("srv.bags.54"));
+  if (p.team !== 0 || busy) return err(T("srv.bags.55"));
+  if (!BAGMEN.some((b) => w.dist(p, b) <= MERCHANT_RANGE)) return err(T("srv.bags.56"));
   const no = serviceRefusal("bags", p.x, p.y, p.faction, MERCHANT_RANGE);
   if (no) return err(no);
   const size = p.save.inventory.length;
   const price = bagPrice(size);
-  if (price === null) return err("Сумка уже максимального размера");
-  if (p.save.gold < price) return err("Не хватает золота");
+  if (price === null) return err(T("srv.bags.57"));
+  if (p.save.gold < price) return err(T("srv.bags.58"));
   p.save.gold -= price;
   for (let i = 0; i < BAG_STEP; i++) p.save.inventory.push(null);
   try {
@@ -29,8 +30,8 @@ export function expandBag(w: World, db: GameDB, spawn: { x: number; y: number },
     p.save.gold += price;
     p.save.inventory.length = size;
     p.selfDirty = true;
-    return err("Ошибка, ничего не изменилось");
+    return err(T("srv.bags.59"));
   }
   p.selfDirty = true;
-  p.send("toast", { text: `Сумка расширена: ${size + BAG_STEP} ячеек`, kind: "loot" });
+  p.send("toast", { text: T("srv.bags.60", { bag_step: size + BAG_STEP }), kind: "loot" });
 }

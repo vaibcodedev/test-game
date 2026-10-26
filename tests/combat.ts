@@ -5,7 +5,9 @@ import { MAP_SEED } from "../shared/constants";
 
 const MAP = generateMap(MAP_SEED);
 const town = MAP.playerSpawn;
-const slime = MAP.spawns.filter((s) => s.mob === "ratfolk_cutter").sort((a, b) => Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[0];
+// цель — самый слабый амбарный крысолюд (при равном уровне — ближайший к городу): ближайший к точке появления
+// оказался 7-го уровня (~400 HP, ~22 с автоатакой героя 10-го уровня — дольше таймаута 20 с); тест проверяет флаг боя, а не скорость убийства
+const slime = MAP.spawns.filter((s) => s.mob === "ratfolk_cutter").sort((a, b) => a.level - b.level || Math.hypot(a.x - town.x, a.y - town.y) - Math.hypot(b.x - town.x, b.y - town.y))[0];
 
 type C = Bot & { combat: boolean; casts: number[] };
 async function join(name: string): Promise<C> {

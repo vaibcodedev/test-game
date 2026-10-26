@@ -19,6 +19,7 @@ import { clearDots, mostWounded, type CastCtx } from "./umbrath";
 import { noteAuraSource, registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { BAL, leechMult, pvpHealMult } from "../../../shared/balance";
+import { T } from "../../../shared/texts";
 
 interface St {
   /** Баффы на герое: урон +dmgPct% (Благословение, «Дар ярости»), входящий урон −blessReduce%. */
@@ -124,17 +125,17 @@ export function castHealer(c: CastCtx): string | null | undefined {
   // точка ground уже прижата к дальности (с допуском) и проверена на прямую видимость в castSkill (placeSkill, shared/skillShape.ts) — как есть
   const pointAt = () => ({ x: c.ax, y: c.ay });
   const seeAlly = (a: Ally): string | null => {
-    if (a.player?.dead) return "Цель мертва";
+    if (a.player?.dead) return T("srv.healers.97");
     if (a.id !== p.id) {
-      if (w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
-      if (!lineClear(w.map, u.x, u.y, a.x, a.y)) return "Нет прямой видимости";
+      if (w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
+      if (!lineClear(w.map, u.x, u.y, a.x, a.y)) return T("srv.archers.51");
     }
     return null;
   };
   const needTarget = (): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const castAnim = () => { u.anim = Anim.Cast; w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; }); };
@@ -172,7 +173,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
     }
     case "cl_blessing": {
       const a = resolveAlly(w, p, c.targetId);
-      if (!a.player) return "Благословить можно только героя";
+      if (!a.player) return T("srv.healers.98");
       const err = seeAlly(a); if (err) return err;
       c.ok();
       const s = st(a.player), ms = v.dur * 1000;
@@ -196,7 +197,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
       const s = st(p), token = ++s.hymn, ticks = Math.round(v.ticks), ox = u.x, oy = u.y;
       const end = (p.castUntil = w.time + ticks * 1000);
       p.castBreakable = true;
-      w.castBar(p, ticks * 1000, "Гимн");
+      w.castBar(p, ticks * 1000, T("srv.healers.792"));
       p.moveTo = null;
       u.anim = Anim.Cast;
       w.emit({ t: "buff", id: p.id, k: "bless", ms: ticks * 1000 });
@@ -208,7 +209,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
           if (p.dead || p.stunUntil > w.time || Math.hypot(p.x - ox, p.y - oy) > 40) {
             s.hymn++; p.castUntil = 0; p.castBreakable = false; w.castBar(p, 0);
             if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle;
-            if (!p.dead) p.send("toast", { text: "Гимн прерван", kind: "error" });
+            if (!p.dead) p.send("toast", { text: T("srv.healers.99"), kind: "error" });
             return;
           }
           w.emit({ t: "aoe", k: "hymn", x: p.x, y: p.y, r: v.radius });
@@ -262,7 +263,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
     }
     case "bw_transfusion": {
       const a = resolveAlly(w, p, c.targetId);
-      if (a.id === p.id) return "Выберите союзника или призовите питомца";
+      if (a.id === p.id) return T("srv.healers.100");
       const err = seeAlly(a); if (err) return err;
       c.ok();
       const au = hpOf(a), fa = frac(a), fp = u.hp / Math.max(1, u.maxHp), avg = (fa + fp) / 2;

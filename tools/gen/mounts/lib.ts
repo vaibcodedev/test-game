@@ -27,7 +27,8 @@ import { factionEmblem } from "../heraldry";
 
 export type Fac = "solgard" | "umbrath";
 export type Anim = "run" | "idle";
-export const RUN_N = 12, IDLE_N = 24;
+/** Кадров бега и покоя (бег — 20: «12 мало, топорно», отзыв пользователя). */
+export const RUN_N = 20, IDLE_N = 24;
 /** Виды листа: вниз, вверх, вправо («side» библиотеки) и влево — настоящий вид с левого бока (модель повёрнута на 180°,
  *  свет тот же), а не зеркало: герб и знамя не отражаются. */
 export type MView = View | "left";
@@ -93,6 +94,8 @@ export interface Built {
   bits: Map<Prim, number>;
   seat: V3;
   banner?: Banner;
+  /** путь земли за цикл бега, единицы модели (до масштаба) — для скорости показа бега на клиенте */
+  stride?: number;
 }
 /** Пометить детали, добавленные в fn, видами переднего слоя. */
 export function front(b: { sc: Scene; bits: Map<Prim, number> }, mask: number, fn: () => void) {
@@ -131,7 +134,7 @@ function scaleBuilt(b: Built, k: number) {
   b.seat = S(b.seat);
   if (b.banner) { b.banner.base = S(b.banner.base); b.banner.top = S(b.banner.top); }
 }
-export interface Layers { back: PC; front: PC; eb: PC; ef: PC; seat: [number, number] }
+export interface Layers { back: PC; front: PC; eb: PC; ef: PC; seat: [number, number]; stride?: number }
 
 /** Один кадр одного вида: задний и передний слои, светящееся (ночь), посадка. */
 export function renderMount(spec: MountSpec, f: Frame, mview: MView): Layers {
@@ -173,7 +176,7 @@ export function renderMount(spec: MountSpec, f: Frame, mview: MView): Layers {
     if (inFront) composite(lay, back, r.gb.prim, r.gb.t, back, N);
   }
   sealPinholes(back, OUT_COL, true, 4);
-  return { back, front: frontPC, eb, ef, seat: [Math.round((sp[0] - N / 2) * 10) / 10, Math.round((sp[1] - spec.GY) * 10) / 10] };
+  return { back, front: frontPC, eb, ef, stride: b.stride, seat: [Math.round((sp[0] - N / 2) * 10) / 10, Math.round((sp[1] - spec.GY) * 10) / 10] };
 }
 
 // ---------------- знамя ----------------
@@ -343,12 +346,13 @@ export function pcStamp(pc: PC): { px: StampPx[]; colors: Record<string, RGBA> }
 }
 
 // ---------------- лист и проверки ----------------
-export interface SheetOut { sheet: PC; emis: PC; meta: { frame: number; gy: number; fly: number; cols: number; run: number; idle: number; seat: [number, number][][] }; problems: string[] }
-/** Лист: столбцы 0..11 — бег, 12..35 — покой; строки 0–3 задний слой (вниз, вверх, вправо, влево), 4–7 передний. */
+export interface SheetOut { sheet: PC; emis: PC; meta: { frame: number; gy: number; fly: number; cols: number; run: number; idle: number; seat: [number, number][][]; stride: number }; problems: string[] }
+/** Лист: столбцы 0..RUN_N−1 — бег (20), дальше покой (24); строки 0–3 задний слой (вниз, вверх, вправо, влево), 4–7 передний. */
 export function buildSheet(spec: MountSpec, name: string): SheetOut {
   const N = spec.N, cols = RUN_N + IDLE_N;
   const sheet = new PC(cols * N, 8 * N), emis = new PC(cols * N, 8 * N);
   const seat: [number, number][][] = [[], [], [], []];
+  let stride = 0;
   VIEWS4.forEach((view, v) => {
     for (let c = 0; c < cols; c++) {
       const f: Frame = c < RUN_N ? { anim: "run", i: c, n: RUN_N } : { anim: "idle", i: c - RUN_N, n: IDLE_N };
@@ -358,11 +362,12 @@ export function buildSheet(spec: MountSpec, name: string): SheetOut {
       emis.blit(L.eb, c * N, v * N);
       emis.blit(L.ef, c * N, (v + 4) * N);
       seat[v].push(L.seat);
+      if (f.anim === "run" && L.stride) stride = L.stride;
     }
   });
   const rows = ["вниз", "вверх", "вправо", "влево", "вниз·перед", "вверх·перед", "вправо·перед", "влево·перед"];
   const problems = [...frameEdgeCuts(sheet, N, OUT_COL, name, rows), ...frameHoles(crop(sheet, 0, 0, sheet.w, 4 * N), N, name, rows, 4)];
-  return { sheet, emis, meta: { frame: N, gy: spec.GY, fly: spec.fly ?? 0, cols, run: RUN_N, idle: IDLE_N, seat }, problems };
+  return { sheet, emis, meta: { frame: N, gy: spec.GY, fly: spec.fly ?? 0, cols, run: RUN_N, idle: IDLE_N, seat, stride: Math.round(stride * (spec.scale ?? 1) * 10) / 10 }, problems };
 }
 
 // ---------------- превью ----------------

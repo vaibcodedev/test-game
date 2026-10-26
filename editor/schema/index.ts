@@ -2,6 +2,8 @@ import type { Ctx, Doc, Rules } from "./types";
 import { balanceRules, balanceTop } from "./balance";
 import { mobsRules, mountsRules, patrolsRules, zoneBossRules, itemsRules } from "./content";
 import { gameplayRules } from "./gameplay";
+import { textsRules, checkTexts } from "./texts";
+import { itemRulesRules } from "./itemRules";
 import { guessDoc, humanize } from "./common";
 import { evalCurve } from "./curve";
 
@@ -36,6 +38,7 @@ export const FILE_META: Record<string, { section: Section; title: string; readon
   mounts: { section: "Маунты", title: "Маунты" },
   "mount-art": { section: "Маунты", title: "Картинки маунтов" },
   pets: { section: "Маунты", title: "Питомцы" },
+  "items-rules": { section: "Предметы", title: "Правила предметов" },
   items: { section: "Предметы", title: "Каталог экипировки" },
   "item-icons": { section: "Предметы", title: "Иконки предметов" },
   legendaries: { section: "Предметы", title: "Легендарные предметы" },
@@ -55,6 +58,7 @@ export const FILE_META: Record<string, { section: Section; title: string; readon
   townfolk: { section: "Города", title: "Горожане" },
   world: { section: "Города", title: "Карта мира" },
   scenes: { section: "Города", title: "Сцены" },
+  texts: { section: "Лор", title: "Тексты игры" },
   statues: { section: "Лор", title: "Статуи королей" },
   credits: { section: "Лор", title: "Титры" },
   "loading-tips": { section: "Лор", title: "Подсказки загрузки" },
@@ -66,6 +70,8 @@ export const fileSection = (f: string): Section => FILE_META[f]?.section ?? "П�
 const RULES: Record<string, Rules> = {
   balance: balanceRules,
   gameplay: gameplayRules,
+  texts: textsRules,
+  "items-rules": itemRulesRules,
   mobs: mobsRules,
   mounts: mountsRules,
   patrols: patrolsRules,
@@ -193,6 +199,7 @@ export function validate(file: string, data: any, original: any): Problem[] {
     if (d.max !== undefined && x > d.max) out.push({ path: p, message: `${d.title}: ${x} больше допустимого ${d.max}.` });
   };
   walk(data, original, []);
+  if (file === "texts") out.push(...checkTexts(data));
   return out;
 }
 

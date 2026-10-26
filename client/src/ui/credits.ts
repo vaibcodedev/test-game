@@ -4,6 +4,7 @@
  * закрывается крестиком и Esc (Hud.closeTop берёт верхнее .win и прячет его).
  */
 import credits from "../../../data/credits.json";
+import { T } from "../../../shared/texts";
 
 interface IconAuthor { name: string; icons: string[] }
 interface CreditItem {
@@ -36,7 +37,7 @@ const link = (url: string, text = host(url), cls = "") =>
 
 function authorsHtml(list: IconAuthor[]): string {
   const rows = list.map((a) => `<p class="cr-auth"><b>${esc(a.name)}</b> ${esc(a.icons.join(", "))}</p>`).join("");
-  return `<details class="disclosure cr-more"><summary>Какие иконки чьи</summary><div class="disclosure-body">${rows}</div></details>`;
+  return `<details class="disclosure cr-more"><summary>${T("ui.credits.475")}</summary><div class="disclosure-body">${rows}</div></details>`;
 }
 
 function itemHtml(it: CreditItem): string {

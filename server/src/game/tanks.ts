@@ -15,6 +15,7 @@ import { applyRoot, applySlow } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
+import { T } from "../../../shared/texts";
 
 interface Mark { n: number; until: number }
 interface St {
@@ -117,9 +118,9 @@ export function castTank(c: CastCtx): string | null | undefined {
   const s = st(p);
   const range = def.range ?? 0;
   const needTarget = (los = true): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (los && !lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (los && !lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };

@@ -5,6 +5,7 @@ import { COOK, COOKS, FOOD_IDS, FOOD, type Dish } from "../../../shared/food";
 import { ITEM_STAT_NAMES, type ItemStatKey } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -21,16 +22,16 @@ export function foodBonuses(d: Dish): string {
   return foodStats(d).join(", ");
 }
 /** Мгновенное лечение блюда: «35% здоровья, 10% маны» (пусто, если блюдо не лечит). */
-const instant = (d: Dish) => [d.hpPct ? `${d.hpPct}% здоровья` : "", d.mpPct ? `${d.mpPct}% маны` : ""].filter(Boolean).join(", ");
+const instant = (d: Dish) => [d.hpPct ? T("ui.cook.463", { hppct: d.hpPct }) : "", d.mpPct ? T("ui.cook.464", { mppct: d.mpPct }) : ""].filter(Boolean).join(", ");
 /** Подсказка блюда; left — оставшиеся минуты (для активного бафа). */
 export function foodTip(d: Dish, leftMin?: number): string {
   return [
     `<div class="t">${esc(d.name)}</div>`,
-    leftMin == null ? `<div class="d">Еда · ур. ${d.req}+ · бафф ${d.minutes} мин.</div>` : `<div class="d">Бафф еды · осталось ${leftMin} мин.</div>`,
-    instant(d) ? `<div>Сразу: ${instant(d)}</div>` : "",
+    leftMin == null ? `<div class="d">${T("ui.cook.465", { req: d.req, minutes: d.minutes })}</div>` : `<div class="d">${T("ui.cook.466", { leftmin: leftMin })}</div>`,
+    instant(d) ? `<div>${T("ui.cook.467", { d: instant(d) })}</div>` : "",
     `<div class="st">${foodBonuses(d)}</div>`,
-    d.heat ? `<div class="st">Защита от жара вулкана</div>` : "",
-    `<div class="d">Одновременно действует одна еда. На арене есть нельзя.</div>`,
+    d.heat ? `<div class="st">${T("ui.cook.468")}</div>` : "",
+    `<div class="d">${T("ui.cook.469")}</div>`,
   ].join("");
 }
 
@@ -80,7 +81,7 @@ export class CookUI {
     this.built = this.who.id;
     this.win.innerHTML = `<h2><span>${esc(this.who.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body">${this.who.greeting ? `<p class="npc-say">${esc(this.who.greeting)}</p>` : ""}
-        <section class="sec"><div class="sec-head"><h3 class="sec-h">Блюда</h3><span class="sec-aside"></span></div><div class="list boxed"></div></section></div>
+        <section class="sec"><div class="sec-head"><h3 class="sec-h">${T("ui.cook.470")}</h3><span class="sec-aside"></span></div><div class="list boxed"></div></section></div>
       <div class="win-foot"></div>`;
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
     this.aside = this.win.querySelector<HTMLElement>(".sec-aside")!;
@@ -88,13 +89,13 @@ export class CookUI {
     const list = this.win.querySelector<HTMLElement>(".list")!;
     this.rows = DISHES.map((id) => {
       const d = FOOD[id];
-      const fx = foodStats(d).map((t) => `<span class="chip ok">${t}</span>`).join("") + (d.heat ? `<span class="chip warn">Защита от жара вулкана</span>` : "");
+      const fx = foodStats(d).map((t) => `<span class="chip ok">${t}</span>`).join("") + (d.heat ? `<span class="chip warn">${T("ui.cook.468")}</span>` : "");
       const now = instant(d);
       const row = el("div", "row dish", `<span class="row-icon"><img src="${icon(d.icon)}" alt=""></span>
         <div class="row-main">
           <div class="row-title">${esc(d.name)}</div>
           <div class="dish-fx">${fx}</div>
-          <div class="row-sub">ур. ${d.req} · Бафф ${d.minutes} мин.${now ? ` · Сразу: ${now}` : ""}</div>
+          <div class="row-sub">${T("ui.cook.471", { req: d.req, minutes: d.minutes, now: now ? ` · Сразу: ${now}` : "" })}</div>
         </div>`);
       const prices = el("div", "price-stack");
       const btns = [1, 5].map((q) => {
@@ -114,11 +115,11 @@ export class CookUI {
     if (this.win.hidden) return;
     if (this.built !== this.who.id) this.build();
     const food = s.food ? FOOD[s.food.id] : undefined;
-    this.aside.textContent = food ? `Сейчас: ${food.name}` : "Одновременно действует одна еда";
+    this.aside.textContent = food ? T("ui.cook.472", { name: food.name }) : T("ui.cook.473");
     for (const r of this.rows) {
       // сервер продаёт блюдо любому уровню, но съесть его можно только с нужного
       const low = s.level < r.d.req;
-      const hint = low ? `Съесть можно с ${r.d.req} ур.` : "";
+      const hint = low ? T("ui.cook.474", { req: r.d.req }) : "";
       const cur = r.d === food;
       r.row.classList.toggle("current", cur);
       if (cur) r.row.setAttribute("aria-current", "true");
@@ -129,9 +130,9 @@ export class CookUI {
         const short = s.gold < price;
         btn.disabled = short;
         btn.toggleAttribute("data-short", short);
-        btn.title = short ? "Не хватает золота" : hint;
+        btn.title = short ? T("srv.bags.58") : hint;
       }
     }
-    this.foot.innerHTML = `<span class="win-foot-info">Золото</span>${gold(s.gold)}`;
+    this.foot.innerHTML = `<span class="win-foot-info">${T("ui.bags.369")}</span>${gold(s.gold)}`;
   }
 }

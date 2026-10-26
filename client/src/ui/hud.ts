@@ -52,6 +52,7 @@ import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
 import { AURAS, auraCompare, auraText, auraTimeLabel, auraTimeWords, foodOfAura } from "../../../shared/auras";
 import { DODGE_CAP, STAT_K } from "../../../shared/formulas";
 import { P } from "../../../shared/palette";
+import { T as TX } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -228,7 +229,7 @@ export class Hud {
     this.petBox.hidden = true;
     this.death.hidden = true;
     this.tip.hidden = true;
-    this.chatInput.placeholder = `${keybinds.label("chat", 0)} — написать в чат`;
+    this.chatInput.placeholder = TX("ui.hud.289", { v: keybinds.label("chat", 0) });
     this.chatInput.maxLength = 140;
     this.chatInput.id = "chat-input";
     this.chatBox.append(this.chatLog, this.chatInput);
@@ -238,8 +239,8 @@ export class Hud {
     this.mini.prepend(this.miniCanvas);
     this.mini.append(this.menuBar);
     const miniBtn = el("button", "mini-toggle", "▣");
-    miniBtn.title = "Свернуть или развернуть мини-карту";
-    miniBtn.setAttribute("aria-label", "Свернуть или развернуть мини-карту");
+    miniBtn.title = TX("ui.hud.290");
+    miniBtn.setAttribute("aria-label", TX("ui.hud.290"));
     miniBtn.onclick = () => this.toggleMinimap();
     this.mini.append(miniBtn);
     this.buildMenu();
@@ -304,7 +305,7 @@ export class Hud {
     fillHelp(this.wins.help.querySelector(".body")!);
     this.menuBar.replaceChildren();
     this.buildMenu();
-    this.chatInput.placeholder = `${keybinds.label("chat", 0)} — написать в чат`;
+    this.chatInput.placeholder = TX("ui.hud.289", { v: keybinds.label("chat", 0) });
     if (this.ctx?.net.self) this.renderSelf(this.ctx.net.self);
   }
 
@@ -358,7 +359,7 @@ export class Hud {
       this.stable.bind(n);
       this.quest.bind(n);
       this.tp.bind(n);
-      this.chatLine({ from: "", text: `Добро пожаловать! Клик по земле — идти, по врагу — атаковать. Умения: ${skillKeys(keybinds)}. Арена — клавиша ${keybinds.label("winArena", 0)}.`, sys: true });
+      this.chatLine({ from: "", text: TX("ui.hud.291", { v: skillKeys(keybinds), v2: keybinds.label("winArena", 0) }), sys: true });
     }
     this.arena.bind(n);
     this.raid.bind(n);
@@ -410,7 +411,7 @@ export class Hud {
       const lc = this.lastCast;
       return this.castError(t.text, lc && performance.now() - lc.at < 800 ? lc.id : undefined);
     }
-    const html = this.lootHtml(t.slot ? { ...t, text: `${t.text} — клавиша ${this.hotbar.keyOf(t.slot.bar, t.slot.i)}` } : t);
+    const html = this.lootHtml(t.slot ? { ...t, text: TX("ui.hud.292", { v: t.text, v2: this.hotbar.keyOf(t.slot.bar, t.slot.i) }) } : t);
     const cls = `toast ${t.kind ?? "info"}`;
     // одинаковый тост уже висит — продлить его (анимация с начала, без мигания появления), а не ставить второй
     const same = [...this.toasts.children].find((c) => c.className === cls && c.innerHTML === html) as (HTMLElement & { _hide?: number }) | undefined;
@@ -445,7 +446,7 @@ export class Hud {
       // противоположная фракция: имя и «чужой язык» красным
       const c = FOE_COLOR;
       d.className = "foreign";
-      d.title = `${FACTIONS[l.faction ?? "solgard"]?.name ?? ""}: чужой язык`;
+      d.title = TX("ui.hud.293", { v: FACTIONS[l.faction ?? "solgard"]?.name ?? "" });
       d.innerHTML = `<b style="color:${c}">${esc(l.from)}:</b> <i style="color:${c}">${esc(l.text)}</i>`;
     } else {
       // Умбрат: имя в цвете фракции (#8fd46a, правило 2.6): цвета классов (маг, тёмный следопыт, рыцарь смерти) совпадали с эпиком и бирюзой
@@ -477,17 +478,17 @@ export class Hud {
       this.root.append(w);
       this.wins[id] = w;
     };
-    mk("char", "win-char xl", "Герой");
-    mk("inv", "win-inv s", "Снаряжение и сумка");
+    mk("char", "win-char xl", TX("ui.arena.338"));
+    mk("inv", "win-inv s", TX("ui.hud.531"));
     this.wins.inv.append(el("div", "win-foot")); // подвал сумки: подсказка и золото, заполняет renderInv
-    mk("skills", "win-skills l", "Дерево умений");
-    mk("shop", "win-shop m", "Торговка Марфа");
+    mk("skills", "win-skills l", TX("ui.hud.532"));
+    mk("shop", "win-shop m", TX("ui.hud.533"));
     this.buildShopFrame();
-    mk("settings", "win-settings m", "Настройки");
+    mk("settings", "win-settings m", TX("ui.gamemenu.498"));
     this.buildSettings(this.wins.settings.querySelector(".body")!);
-    mk("help", "win-help m", "Помощь");
+    mk("help", "win-help m", TX("ui.gamemenu.500"));
     fillHelp(this.wins.help.querySelector(".body")!);
-    mk("worldmap", "win-worldmap", "Карта мира");
+    mk("worldmap", "win-worldmap", TX("ui.hud.534"));
   }
   openWorldMap() {
     const w = this.wins.worldmap;
@@ -536,7 +537,7 @@ export class Hud {
   }
   /** Меню под мини-картой: текстовые пункты с горячей клавишей справа. */
   private buildMenu() {
-    const items: [string, string, string, string][] = [["inv", "Сумка", keybinds.label("winInv", 0), "Сумка"], ["skills", "Умения", keybinds.label("winSkills", 0), "Умения"], ["map", "Карта", keybinds.label("winMap", 0), "Карта мира"], ["menu", "Меню", keybinds.label("escape", 0), "Игровое меню"]];
+    const items: [string, string, string, string][] = [["inv", TX("ui.hud.535"), keybinds.label("winInv", 0), TX("ui.hud.535")], ["skills", TX("ui.gamemenu.493"), keybinds.label("winSkills", 0), TX("ui.gamemenu.493")], ["map", TX("ui.gamemenu.497"), keybinds.label("winMap", 0), TX("ui.hud.534")], ["menu", TX("ui.hud.536"), keybinds.label("escape", 0), TX("ui.hud.537")]];
     for (const [k, text, key, label] of items) {
       const b = el("button", "btn mbtn", `<span class="ml">${text}</span><kbd>${key}</kbd>`);
       b.title = key ? `${label} (${key})` : label;
@@ -552,7 +553,7 @@ export class Hud {
     } catch {}
     // разделы окна — .sec с заголовком .sec-h, строки — .set-list (kit.css); сами строки строят helpers из controls.ts
     body.innerHTML = `<section class="sec">
-        <h3 class="sec-h">Интерфейс</h3>
+        <h3 class="sec-h">${TX("ui.hud.538")}</h3>
         <div class="set-list">
           ${rangeRow("set-scale", "Масштаб интерфейса", 80, 150, 5)}
           ${rangeRow("set-chat", "Размер шрифта чата", 14, 22, 1)}
@@ -560,7 +561,7 @@ export class Hud {
         </div>
       </section>
       <section class="sec">
-        <h3 class="sec-h">Звук</h3>
+        <h3 class="sec-h">${TX("ui.hud.539")}</h3>
         <div class="set-list">
           ${rangeRow("set-vol", "Громкость звуков", 0, 100, 5)}
           ${rangeRow("set-music", "Громкость музыки", 0, 100, 5)}
@@ -568,7 +569,7 @@ export class Hud {
         </div>
       </section>
       <section class="sec">
-        <h3 class="sec-h">Надписи и эффекты</h3>
+        <h3 class="sec-h">${TX("ui.hud.540")}</h3>
         <div class="set-list">
           ${checkRow("set-selfNames", "Мой ник над персонажем")}
           ${checkRow("set-selfBars", "Моя полоска здоровья")}
@@ -663,7 +664,7 @@ export class Hud {
     return `${gold(price)}${low ? ` <span class="warn">▼ спрос низкий</span>` : ""}`;
   }
   /** Окно торговли; name — у кого (торговцы городов и поселений), по умолчанию Марфа. */
-  openShop(name = "Торговка Марфа") {
+  openShop(name = TX("ui.hud.533")) {
     if (npcRefuses(this.ctx?.net, "shop", name)) return;
     this.ctx.net.send("market:get", {});
     const title = this.wins.shop.querySelector("h2 > span");
@@ -704,22 +705,22 @@ export class Hud {
   /** Подсказка печати маунта или детали: что даёт / для чего, передаётся ли, как изучить, цена продажи. */
   private stableItemTip(it: Item, s: SelfState, bare: boolean): string {
     const head = (sub: string) => `<div class="tip-head"><div class="tip-ico"><span class="cell sm r${it.rarity}"><img src="${icon(iconFor(it))}" alt=""></span><div><div class="tip-title r${it.rarity}">${esc(itemName(it))}</div><div class="tip-sub">${sub}</div></div></div></div>`;
-    const trade = isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">Можно передать или продать, пока не изучена</div>`;
-    const price = bare ? "" : `<div class="tip-foot">Цена продажи: ${this.priceHtml(it)}</div>`;
+    const trade = isBound(it) ? `<div class="c-bad">${TX("ui.hud.541")}</div>` : `<div class="c-ok">${TX("ui.hud.542")}</div>`;
+    const price = bare ? "" : `<div class="tip-foot">${TX("ui.hud.543", { it: this.priceHtml(it) })}</div>`;
     const sm = sealMount(it.base);
     if (sm) {
       const m = MOUNTS[sm], owned = !!s.mounts?.includes(sm), low = s.level < m.level, foe = !!m.faction && m.faction !== s.faction;
       return head(`${SEAL.name} · ${RARITY_NAMES[it.rarity]}`)
-        + `<div class="tip-sec"><div>Маунт: <b style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</b></div><div class="d">${MOUNT_TIERS[m.tier]} · скорость ×${String(m.speed).replace(".", ",")}${m.flying ? " · летающий" : ""} · с ${m.level} ур.</div>`
+        + `<div class="tip-sec"><div>${TX("ui.hud.544")} <b style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</b></div><div class="d">${TX("ui.hud.545", { tier: MOUNT_TIERS[m.tier], speed: String(m.speed).replace(".", ","), flying: m.flying ? " · летающий" : "", level: m.level })}</div>`
         + `${owned ? `<div class="c-warn">Уже в коллекции — печать можно продать${isBound(it) ? "" : " или передать"}</div>` : low ? `<div class="c-bad">Нужен ${m.level} уровень</div>` : foe ? `<div class="c-bad">Только для другой фракции</div>` : ""}</div>`
-        + `<div class="tip-sec">${trade}<div>ПКМ / клик — изучить: маунт навсегда в коллекции</div></div>${price}`;
+        + `<div class="tip-sec">${trade}<div>${TX("ui.hud.546")}</div></div>${price}`;
     }
     const pid = it.base.slice(PART_PREFIX.length), d = PARTS[pid];
     const uses = MOUNT_IDS.map((id) => MOUNTS[id]).filter((m) => m.craft?.parts[pid] && (!m.faction || m.faction === s.faction));
     const list = uses.map((m) => `<div><span style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</span> <span class="d">×${m.craft!.parts[pid]}${m.craft!.arenaRating ? `, рейтинг ${m.craft!.arenaRating}` : ""}</span></div>`).join("");
     return head(`${pid === "gladiator" ? "Валюта арены" : "Деталь для конюшего"} · ${it.qty ?? 1} шт.`)
       + `<div class="tip-sec"><div class="d">${esc(d.desc)}</div></div>`
-      + `<div class="tip-sec"><div class="d">Собирается у конюшего в:</div>${list || `<div class="d">—</div>`}</div>`
+      + `<div class="tip-sec"><div class="d">${TX("ui.hud.547")}</div>${list || `<div class="d">—</div>`}</div>`
       + `<div class="tip-sec">${isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">Можно передать или продать</div>`}</div>${price}`;
   }
   /** Подсказка предмета. bare — без цены и подсказок по клику (осмотр чужого героя, лавка встречи, окно «Герой»). */
@@ -728,34 +729,34 @@ export class Hud {
     const lines: string[] = [`<div class="t r${it.rarity}">${esc(itemName(it))}</div>`];
     if (b.slot === "consumable") {
       const dish = foodOf(it.base);
-      if (dish) return foodTip(dish) + `<div class="d">Клик — съесть · ${it.qty ?? 1} шт.</div>`;
-      if (MATERIALS[it.base]) return lines.join("") + `<div class="d">Материал для улучшения у кузнеца Грома · ${it.qty ?? 1} шт.</div><div class="d">Цена: ${this.priceHtml(it)}</div>`;
+      if (dish) return foodTip(dish) + `<div class="d">${TX("ui.hud.548", { qty: it.qty ?? 1 })}</div>`;
+      if (MATERIALS[it.base]) return lines.join("") + `<div class="d">${TX("ui.hud.549", { qty: it.qty ?? 1 })}</div><div class="d">${TX("ui.hud.550", { it: this.priceHtml(it) })}</div>`;
       // конюшня (задача 142): «Печать скакуна», Печать гладиатора и детали маунтов — сгруппированная подсказка (tip-head/tip-sec/tip-foot)
       if (sealMount(it.base) || isPart(it.base)) return this.stableItemTip(it, s, bare);
-      lines.push(`<div class="d">Расходуемое · ${it.qty ?? 1} шт.</div>`, `<div>${it.base === "hp_potion" ? "Восстанавливает 45% здоровья" : "Восстанавливает 50% маны"}</div>`, `<div class="d">Клавиша ${it.base === "hp_potion" ? "Q" : "E"} или клик</div>`);
+      lines.push(`<div class="d">${TX("ui.hud.551", { qty: it.qty ?? 1 })}</div>`, `<div>${it.base === "hp_potion" ? "Восстанавливает 45% здоровья" : "Восстанавливает 50% маны"}</div>`, `<div class="d">${TX("ui.hud.552", { e: it.base === "hp_potion" ? "Q" : "E" })}</div>`);
     } else {
       const slot = b.slot, plus = it.plus || 0;
       // у надетой вещи в строке типа название слота (title ячейки снимается при наведении, tipFor)
       const typ = itemTypeName(it), typTxt = equipped && SLOT_NAMES[slot] !== typ ? `${SLOT_NAMES[slot]}: ${typ}` : typ;
-      lines.push(`<div class="d">${RARITY_NAMES[it.rarity]} · ${typTxt}${isTwoHanded(it.base) ? " (двуручное)" : ""} · ур. предмета ${it.ilvl}</div>`);
+      lines.push(`<div class="d">${TX("ui.hud.553", { rarity: RARITY_NAMES[it.rarity], typtxt: typTxt, base: isTwoHanded(it.base) ? " (двуручное)" : "", ilvl: it.ilvl })}</div>`);
       const st = effStats(it);
       // доля заточки: разница между характеристикой с заточкой и без неё
       const up = (k: ItemStatKey) => (st[k] || 0) - (it.stats[k] || 0);
-      const fromPlus = (txt: string) => (txt ? ` <span class="st">(${txt} от заточки)</span>` : "");
+      const fromPlus = (txt: string) => (txt ? ` <span class="st">${TX("ui.hud.554", { txt: txt })}</span>` : "");
       if (st.dmgMin) {
         const lo = up("dmgMin"), hi = up("dmgMax");
-        lines.push(`<div>Урон: ${st.dmgMin}–${st.dmgMax}${fromPlus(hi > 0 ? `+${lo === hi ? hi : `${lo}–${hi}`}` : "")}</div>`);
+        lines.push(`<div>${TX("ui.hud.555", { dmgmin: st.dmgMin, dmgmax: st.dmgMax, fromplus: fromPlus(hi > 0 ? `+${lo === hi ? hi : `${lo}–${hi}`}` : "") })}</div>`);
       }
-      if (st.armor) lines.push(`<div>Броня: ${st.armor}${fromPlus(up("armor") > 0 ? `+${up("armor")}` : "")}</div>`);
+      if (st.armor) lines.push(`<div>${TX("ui.hud.556", { armor: st.armor, fromplus: fromPlus(up("armor") > 0 ? `+${up("armor")}` : "") })}</div>`);
       for (const [k, v] of Object.entries(st)) if (!["dmgMin", "dmgMax", "armor"].includes(k)) lines.push(`<div class="st">+${v}${k === "crit" ? "%" : ""} ${ITEM_STAT_NAMES[k as ItemStatKey]}${fromPlus(up(k as ItemStatKey) > 0 ? `+${up(k as ItemStatKey)}` : "")}</div>`);
       // что нарисовано на герое: ступень заточки и тема легендарки (data/gear-fx.json)
       // бирюза только у видимой заточки (ступень 1+); для +1…+3 строка серая, тема легендарки в цвете легендарки (правило 2.6)
-      if (plus > 0) lines.push(`<div class="fx${enchantTier(plus) >= 1 ? " ench" : ""}">Заточка +${plus}: ${esc(tierText(slot, enchantTier(plus)))}.${nextStepText(slot, plus) ? ` ${esc(nextStepText(slot, plus))}` : ""}</div>`);
+      if (plus > 0) lines.push(`<div class="fx${enchantTier(plus) >= 1 ? " ench" : ""}">${TX("ui.hud.557", { plus: plus, tiertext: esc(tierText(slot, enchantTier(plus))), nextsteptext: nextStepText(slot, plus) ? ` ${esc(nextStepText(slot, plus))}` : "" })}</div>`);
       const theme = legendText(slot, it.legendary);
-      if (theme) lines.push(`<div class="fx theme">Тема: ${esc(theme)}</div>`);
-      if (b.classes) lines.push(`<div class="${b.classes.includes(s.cls) || bare ? "d" : "warn"}">Класс: ${b.classes.map((c) => CLASSES[c].name).join(", ")}</div>`);
-      lines.push(`<div class="${it.req > s.level && !bare ? "warn" : "d"}">Требуется уровень ${it.req}</div>`);
-      if (isBound(it)) lines.push(`<div class="${bare ? "d" : "warn"}">Привязан к персонажу</div>`);
+      if (theme) lines.push(`<div class="fx theme">${TX("ui.gearfx.513", { theme: esc(theme) })}</div>`);
+      if (b.classes) lines.push(`<div class="${b.classes.includes(s.cls) || bare ? "d" : "warn"}">${TX("ui.hud.558", { map: b.classes.map((c) => CLASSES[c].name).join(", ") })}</div>`);
+      lines.push(`<div class="${it.req > s.level && !bare ? "warn" : "d"}">${TX("ui.hud.559", { req: it.req })}</div>`);
+      if (isBound(it)) lines.push(`<div class="${bare ? "d" : "warn"}">${TX("ui.hud.560")}</div>`);
       if (it.legendary && LEGENDARIES[it.legendary]) lines.push(`<div class="legend">★ ${esc(LEGENDARIES[it.legendary].desc)}</div>`, `<div class="lore">${esc(LEGENDARIES[it.legendary].lore)}</div>`);
       if (it.unique) lines.push(`<div class="lore">${esc(UNIQUES[it.unique].lore)}</div>`);
       if (!equipped) {
@@ -763,14 +764,14 @@ export class Hud {
         if (cur && cur.uid !== it.uid) {
           const diff = (k: ItemStatKey) => (st[k] || 0) - (effStats(cur)[k] || 0);
           const parts = (["dmgMax", "armor", "str", "agi", "int", "vit", "hp", "crit"] as ItemStatKey[]).map((k) => [k, diff(k)] as const).filter(([, v]) => v !== 0);
-          if (parts.length) lines.push(`<div class="d">Сравнение с надетым (${esc(itemName(cur))}): ${parts.map(([k, v]) => `<span style="color:${v > 0 ? "var(--ok)" : "var(--bad)"}">${v > 0 ? "+" : ""}${v} ${k === "dmgMax" ? "урон" : ITEM_STAT_NAMES[k].toLowerCase()}</span>`).join(", ")}</div>`);
+          if (parts.length) lines.push(`<div class="d">${TX("ui.hud.561", { v: esc(itemName(cur)), map: parts.map(([k, v]) => `<span style="color:${v > 0 ? "var(--ok)" : "var(--bad)"}">${v > 0 ? "+" : ""}${v} ${k === "dmgMax" ? "урон" : ITEM_STAT_NAMES[k].toLowerCase()}</span>`).join(", ") })}</div>`);
         }
       }
     }
     if (!bare) {
       lines.push(`<div class="d">${!this.wins.shop.hidden && !equipped ? "Клик — продать за " : "Цена у торговца: "}${this.priceHtml(it)}</div>`);
-      if (equipped) lines.push(`<div class="d">Клик — снять</div>`);
-      else if (b.slot !== "consumable" && this.wins.shop.hidden) lines.push(`<div class="d">Клик — надеть · перетаскивание — переложить</div>`);
+      if (equipped) lines.push(`<div class="d">${TX("ui.hud.562")}</div>`);
+      else if (b.slot !== "consumable" && this.wins.shop.hidden) lines.push(`<div class="d">${TX("ui.hud.563")}</div>`);
     }
     if (b.slot !== "consumable" && (it.plus || it.rarity > 0)) lines.push(`<div class="hint">${esc(GEAR_FX.texts.tooltipHint)}</div>`);
     return lines.join("");
@@ -780,13 +781,13 @@ export class Hud {
     // клавиша — по месту умения среди активных (так его вызывает панель), а не по полю slot, и по раскладке игрока
     const at = def.kind === "active" ? findRef(s.bars, { s: def.id }) : null;
     const key = at ? this.hotbar.keyOf(at.bar, at.i) : "";
-    const lines = [`<div class="t">${def.name}</div>`, `<div class="d">${def.kind === "active" ? `Активное${key ? ` · клавиша ${key}` : ""}` : "Пассивное"} · ранг ${r}/${def.maxRank}</div>`];
+    const lines = [`<div class="t">${def.name}</div>`, `<div class="d">${TX("ui.hud.564", { key: def.kind === "active" ? `Активное${key ? ` · клавиша ${key}` : ""}` : "Пассивное", r: r, maxrank: def.maxRank })}</div>`];
     lines.push(`<div>${def.desc(Math.max(1, r))}</div>`);
-    if (def.kind === "active") lines.push(`<div class="d">Мана: ${skillMana(def, r, s.level)} · Перезарядка: ${def.cd!(Math.max(1, r)).toFixed(1)} с${def.range ? ` · Дальность: ${Math.round(def.range / TILE)} кл.` : ""}</div>`);
-    if (r > 0 && r < def.maxRank) lines.push(`<div class="st">След. ранг: ${def.desc(r + 1)}</div>`);
+    if (def.kind === "active") lines.push(`<div class="d">${TX("ui.hud.565", { skillmana: skillMana(def, r, s.level), math: def.cd!(Math.max(1, r)).toFixed(1), math2: def.range ? ` · Дальность: ${Math.round(def.range / TILE)} кл.` : "" })}</div>`);
+    if (r > 0 && r < def.maxRank) lines.push(`<div class="st">${TX("ui.hud.566", { desc: def.desc(r + 1) })}</div>`);
     const why = canLearn(def, s.skills, s.level, s.skillPoints);
     if (why && r < def.maxRank) lines.push(`<div class="warn">${why}</div>`);
-    else if (!why) lines.push(`<div class="st">Клик — вложить очко</div>`);
+    else if (!why) lines.push(`<div class="st">${TX("ui.hud.567")}</div>`);
     return lines.join("");
   }
 
@@ -805,14 +806,14 @@ export class Hud {
     this.bank.update();
     this.bags.update();
     this.stable.update();
-    if (this.lastSelfLevel && s.level > this.lastSelfLevel) this.toast({ text: `Новый уровень: ${s.level}! Очки характеристик и умений ждут (C, K)`, kind: "level" });
+    if (this.lastSelfLevel && s.level > this.lastSelfLevel) this.toast({ text: TX("ui.hud.294", { v: s.level }), kind: "level" });
     this.lastSelfLevel = s.level;
     const net = this.ctx.net;
     // панель героя: уровень плашкой, ник и под ним класс, фракция; на максимальном уровне полосы опыта нет
-    const pts = [s.statPoints ? `<span class="pill" data-open="char">+${s.statPoints} хар.</span>` : "", s.skillPoints ? `<span class="pill" data-open="skills">+${s.skillPoints} ум.</span>` : ""].join("");
+    const pts = [s.statPoints ? `<span class="pill" data-open="char">${TX("ui.hud.568", { statpoints: s.statPoints })}</span>` : "", s.skillPoints ? `<span class="pill" data-open="skills">+${s.skillPoints} ум.</span>` : ""].join("");
     const xpPct = s.xpNext ? Math.floor((s.xp / s.xpNext) * 100) : 0;
     this.player.innerHTML = `
-      <div class="row1"><span class="lvl" title="Уровень ${s.level}">${s.level}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="chip bad combat-badge" ${this.inCombat ? "" : "hidden"}>В бою</span><span class="cls">${CLASSES[s.cls].name}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
+      <div class="row1"><span class="lvl" title="Уровень ${s.level}">${s.level}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span><span class="chip bad combat-badge" ${this.inCombat ? "" : "hidden"}>${TX("ui.hud.569")}</span><span class="cls">${CLASSES[s.cls].name}</span><span class="fac-badge" title="${esc(FACTIONS[s.faction]?.full ?? "")}">${esc(FACTIONS[s.faction]?.name ?? "")}</span></div>
       <div class="bar hp lg"><s class="hp-lag" id="hp-lag"></s><i id="hp-fill"></i><b class="abs" id="hp-abs" hidden></b><span id="hp-text"></span></div>
       <div class="bar mp"><i id="mp-fill"></i><span id="mp-text"></span></div>
       ${s.xpNext ? `<div class="bar xp" title="Опыт: ${xpPct}%"><i style="width:${xpPct}%"></i></div>` : ""}
@@ -832,7 +833,7 @@ export class Hud {
       const b = el("button", `slot ${md ? "" : "empty"}`, `${md ? `<img src="${icon(mountSprite(mid))}" alt="" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;position:absolute;left:3px;top:3px;${mounted ? "opacity:.55" : ""}">` : `<span style="font-size:26px;line-height:50px;display:block;text-align:center">♞</span>`}<kbd>${keybinds.label("mount", 0)}</kbd>`);
       b.style.position = "relative";
       b.onclick = () => this.ctx.toggleMount?.();
-      this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">Скорость ×${md.speed} · призыв 2 с, стоя на месте. ${keybinds.label("mount", 0)} — сесть/слезть, ${keybinds.label("mountNext", 0)} — сменить. Не в бою, не на арене.</div>` : `<div class="t">Маунт</div><div class="d">Бурый конь — с 10 уровня</div>`);
+      this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">${TX("ui.hud.570", { speed: md.speed, label: keybinds.label("mount", 0), label2: keybinds.label("mountNext", 0) })}</div>` : `<div class="t">${TX("ui.hotbar.521")}</div><div class="d">${TX("ui.hud.571")}</div>`);
       this.hotbar.mountHost.append(b);
     }
     {
@@ -842,8 +843,8 @@ export class Hud {
       const b = el("button", `slot ${pd ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${out ? "✕" : "🐾"}</span><kbd>${keybinds.label("pet", 0)}</kbd>`);
       b.onclick = () => this.ctx.togglePet?.();
       this.tipFor(b, () => pd && rec
-        ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${keybinds.label("pet", 0)} — призвать (2 с) / отпустить, ${keybinds.label("petNext", 0)} — сменить. Погиб — призыв через 60 с. Не на арене.</div>`
-        : `<div class="t">Питомец</div><div class="d">Волчонок — с 5 уровня. Другие — у торговки или редкая добыча.</div>`);
+        ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${TX("ui.hud.572", { label: keybinds.label("pet", 0), label2: keybinds.label("petNext", 0) })}</div>`
+        : `<div class="t">${TX("ui.hotbar.522")}</div><div class="d">${TX("ui.hud.573")}</div>`);
       this.hotbar.petHost.append(b);
     }
     if (!this.wins.char.hidden) this.renderChar(s);
@@ -947,41 +948,41 @@ export class Hud {
     const group = (title: string, rows: [string, string][]) =>
       `<div class="sub-grp"><h4 class="sub-h">${title}</h4><dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></div>`;
     const attack: [string, string][] = [
-      ["Урон", `${d.dmgMin}–${d.dmgMax}`],
-      ["Атак в секунду", (1 / d.attackCd).toFixed(2)],
-      ["Шанс крита", `${(d.crit * 100).toFixed(1)}%`],
-      ["Урон крита", `${Math.round(d.critMult * 100)}%`],
-      ["Сила умений", `${Math.round(d.skillMult * 100)}%`],
+      [TX("ui.arena.346"), `${d.dmgMin}–${d.dmgMax}`],
+      [TX("ui.hud.574"), (1 / d.attackCd).toFixed(2)],
+      [TX("ui.hud.575"), `${(d.crit * 100).toFixed(1)}%`],
+      [TX("ui.hud.576"), `${Math.round(d.critMult * 100)}%`],
+      [TX("ui.hud.577"), `${Math.round(d.skillMult * 100)}%`],
     ];
-    if (d.lifesteal) attack.push(["Вампиризм", `${Math.round(d.lifesteal * 100)}%`]);
+    if (d.lifesteal) attack.push([TX("ui.hud.578"), `${Math.round(d.lifesteal * 100)}%`]);
     const survive: [string, string][] = [
-      ["Здоровье", String(d.maxHp)],
-      ["Броня", String(d.armor)],
-      ["Уклонение", `${(d.dodge * 100).toFixed(1)}%`],
-      ["Реген здоровья", `${d.hpRegen.toFixed(1)}/с`],
-      ["Мана", String(d.maxMp)],
-      ["Реген маны", `${d.mpRegen.toFixed(1)}/с`],
+      [TX("ui.bestiary.389"), String(d.maxHp)],
+      [TX("ui.bestiary.390"), String(d.armor)],
+      [TX("ui.hud.579"), `${(d.dodge * 100).toFixed(1)}%`],
+      [TX("ui.hud.580"), `${d.hpRegen.toFixed(1)}/с`],
+      [TX("ui.hud.581"), String(d.maxMp)],
+      [TX("ui.hud.582"), `${d.mpRegen.toFixed(1)}/с`],
     ];
     const score: [string, string][] = [
-      ["Убито врагов", s.kills.toLocaleString("ru-RU")],
-      ["Повержено боссов", Object.values(s.bossKills).reduce((a, c) => a + c, 0).toLocaleString("ru-RU")],
+      [TX("ui.hud.583"), s.kills.toLocaleString("ru-RU")],
+      [TX("ui.hud.584"), Object.values(s.bossKills).reduce((a, c) => a + c, 0).toLocaleString("ru-RU")],
     ];
     b.innerHTML = `<div class="char-cols">
       <div class="char-main">
         <section class="sec">
-          <div class="sec-head"><h3 class="sec-h">Характеристики</h3><span class="chip${s.statPoints > 0 ? "" : " dim"}" title="Свободных очков характеристик">Свободно: ${s.statPoints}</span></div>
+          <div class="sec-head"><h3 class="sec-h">${TX("ui.bestiary.391")}</h3><span class="chip${s.statPoints > 0 ? "" : " dim"}" title="Свободных очков характеристик">${TX("ui.hud.585", { statpoints: s.statPoints })}</span></div>
           <div class="stats"></div>
-          <p class="field-hint">3 очка за уровень · наведите на название — что даёт</p>
+          <p class="field-hint">${TX("ui.hud.586")}</p>
         </section>
         <section class="sec">
-          <h3 class="sec-h">Показатели</h3>
+          <h3 class="sec-h">${TX("ui.hud.587")}</h3>
           ${group("Атака", attack)}${group("Выживание", survive)}${group("Счёт", score)}
         </section>
       </div>
       <div class="char-side"></div></div>`;
     // у классов без второй руки слота нет ни здесь, ни в сумке
     const slots = SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls));
-    const gear = el("section", "sec gear-block", `<div class="sec-head"><h3 class="sec-h">Снаряжение</h3></div>`);
+    const gear = el("section", "sec gear-block", `<div class="sec-head"><h3 class="sec-h">${TX("ui.hud.588")}</h3></div>`);
     const total = enchantTotal(slots.map((slot) => s.equip[slot]));
     if (total) gear.append(el("p", "gear-total", total));
     gear.append(gearRows(slots.map((slot) => ({ slot, item: s.equip[slot] })), s.id, {
@@ -991,18 +992,18 @@ export class Hud {
     b.querySelector(".char-side")!.append(gear, legendBlock(this.legendOpen, (open) => this.setLegendOpen(open)));
     // характеристики: название, значение, «+» (1 очко) и «+10» (сервер вкладывает не больше, чем есть свободных); без свободных очков кнопки выключены
     const grid = b.querySelector(".stats")!;
-    const tenHint = "Вложить 10 очков, если осталось меньше — все";
+    const tenHint = TX("ui.hud.589");
     for (const k of ["str", "agi", "int", "vit"] as StatKey[]) {
       const main = CLASSES[s.cls].mainStat === k;
       const name = el("span", "k", `${STAT_NAMES[k]}${main ? ' <span class="c-gold">★</span>' : ""}`);
-      this.tipFor(name, () => `<div class="t">${STAT_NAMES[k]}</div><div>${STAT_HINTS[k]}</div>${statTip(k, s)}<div class="d">Вложено: ${s.alloc[k]}</div>`);
+      this.tipFor(name, () => `<div class="t">${STAT_NAMES[k]}</div><div>${STAT_HINTS[k]}</div>${statTip(k, s)}<div class="d">${TX("ui.hud.590", { k: s.alloc[k] })}</div>`);
       const one = el("button", "btn icon small stat-add", "+");
       one.disabled = s.statPoints <= 0;
-      one.setAttribute("aria-label", `Добавить: ${STAT_NAMES[k]}`);
+      one.setAttribute("aria-label", TX("ui.hud.295", { v: STAT_NAMES[k] }));
       one.onclick = () => this.ctx.net.send("alloc", { stat: k });
       const ten = el("button", "btn small stat-add10", "+10");
       ten.disabled = s.statPoints <= 0;
-      ten.setAttribute("aria-label", `Добавить 10: ${STAT_NAMES[k]}`);
+      ten.setAttribute("aria-label", TX("ui.hud.296", { v: STAT_NAMES[k] }));
       ten.title = tenHint; // у выключенной кнопки игровая подсказка не появится, а родная — да
       this.tipFor(ten, () => `<div>${tenHint}</div>`);
       ten.onclick = () => this.ctx.net.send("alloc", { stat: k, n: 10 });
@@ -1033,7 +1034,7 @@ export class Hud {
     for (const kind of ["pet", "mount"] as const) {
       const id = kind === "pet" ? s.pet : s.mount;
       const owned = kind === "pet" ? !!id && !!s.pets?.[id] : !!id && !!s.mounts?.includes(id);
-      const label = kind === "pet" ? "Питомец" : "Маунт";
+      const label = kind === "pet" ? TX("ui.hotbar.522") : TX("ui.hotbar.521");
       const c = el("button", "cell comp");
       c.setAttribute("aria-expanded", String(this.petPop === kind));
       const img = owned ? (kind === "pet" ? PETS[id!]?.sprite : mountSprite(id!)) : "";
@@ -1057,8 +1058,8 @@ export class Hud {
     const cur = kind === "pet" ? s.pet : s.mount;
     if (!ids.length) {
       pop.append(el("p", "note", kind === "pet"
-        ? "Питомцев пока нет. Волчонка можно получить с 5 уровня, остальных продаёт торговка Марфа."
-        : "Маунтов пока нет. Их продаёт торговка Марфа в Эмберхолле."));
+        ? TX("ui.hud.591")
+        : TX("ui.hud.592")));
       return { cells, pop };
     }
     const list = el("div", "list boxed");
@@ -1073,7 +1074,7 @@ export class Hud {
       this.tipFor(r, () => kind === "pet" ? this.petTip(id, s) : this.mountTip(id));
       list.append(r);
     }
-    const act = el("button", "btn small", kind === "pet" ? "Призвать / отозвать" : "Сесть / слезть");
+    const act = el("button", "btn small", kind === "pet" ? TX("ui.hud.593") : TX("ui.hud.594"));
     act.onclick = () => send(kind === "pet" ? "pet:toggle" : "mount:toggle");
     pop.append(list, act);
     return { cells, pop };
@@ -1081,25 +1082,25 @@ export class Hud {
   private petTip(id: string, s: SelfState): string {
     const d = PETS[id];
     if (!d) return "";
-    return `<div class="t">${esc(d.name)} · ур. ${s.pets?.[id]?.level ?? 1}</div>${d.skills.map((k) => `<div><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}<div class="d">Призвать: ${esc(keybinds.label("pet", 0))}, выбрать следующего: ${esc(keybinds.label("petNext", 0))}</div>`;
+    return `<div class="t">${esc(d.name)} · ур. ${s.pets?.[id]?.level ?? 1}</div>${d.skills.map((k) => `<div><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}<div class="d">${TX("ui.hud.595", { label: esc(keybinds.label("pet", 0)), label2: esc(keybinds.label("petNext", 0)) })}</div>`;
   }
   private mountTip(id: string): string {
     const m = MOUNTS[id];
-    return m ? `<div class="t" style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</div><div>${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}</div><div class="d">${esc(m.desc)}</div><div class="d">${MOUNT_SOURCES[m.source]}. Сесть: ${esc(keybinds.label("mount", 0))}, выбрать следующий: ${esc(keybinds.label("mountNext", 0))}</div>` : "";
+    return m ? `<div class="t" style="color:${TIER_COLOR[m.tier]}">${esc(m.name)}</div><div>${TX("ui.hud.596", { tier: MOUNT_TIERS[m.tier], speed: m.speed, flying: m.flying ? " · летающий" : "" })}</div><div class="d">${esc(m.desc)}</div><div class="d">${TX("ui.hud.597", { source: MOUNT_SOURCES[m.source], label: esc(keybinds.label("mount", 0)), label2: esc(keybinds.label("mountNext", 0)) })}</div>` : "";
   }
   /** Что делает клик по вещи в сумке: обмен › банк › торговка › обычный режим. Плашка режима и обработчик клика берут ответ отсюда. */
   private invMode(): { id: "trade" | "bank" | "shop" | "use"; note: string } {
-    if (this.trade.isOpen) return { id: "trade", note: "Обмен: клик по вещи — предложить" };
-    if (this.bank.isOpen) return { id: "bank", note: "Банк открыт: клик по вещи — положить в банк" };
-    if (!this.wins.shop.hidden) return { id: "shop", note: "Торговка рядом: клик по вещи — продать" };
-    return { id: "use", note: this.inCombat ? "В бою снаряжение не меняется: надеть и снять — после боя" : "" };
+    if (this.trade.isOpen) return { id: "trade", note: TX("ui.hud.598") };
+    if (this.bank.isOpen) return { id: "bank", note: TX("ui.hud.599") };
+    if (!this.wins.shop.hidden) return { id: "shop", note: TX("ui.hud.600") };
+    return { id: "use", note: this.inCombat ? TX("ui.hud.601") : "" };
   }
   private renderInv(s: SelfState) {
     const b = this.body("inv");
     const mode = this.invMode();
     // надето: те же 6 колонок, что у сумки. Четыре вещи и питомец, ещё до четырёх вещей и маунт; питомец и маунт стоят в 6-й колонке (.cell.comp)
     // в бою снаряжение не меняется (сервер: inventory.ts, IN_COMBAT): чип в шапке раздела и замок на надетых вещах
-    const eqSec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Надето</h3>${this.inCombat ? `<span class="chip bad" title="В бою снаряжение не меняется">В бою</span>` : ""}</div>`);
+    const eqSec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">${TX("ui.hud.602")}</h3>${this.inCombat ? `<span class="chip bad" title="В бою снаряжение не меняется">В бою</span>` : ""}</div>`);
     const eq = el("div", "equip");
     const comp = this.renderCompanions(s);
     SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls)).forEach((slot, n) => {
@@ -1118,7 +1119,7 @@ export class Hud {
     if (comp.pop) eqSec.append(comp.pop);
 
     const used = s.inventory.filter(Boolean).length;
-    const bag = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Сумка</h3><span class="sec-aside" title="Занято ячеек из ${s.inventory.length}">${used} / ${s.inventory.length}</span></div>`);
+    const bag = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">${TX("ui.hud.535")}</h3><span class="sec-aside" title="Занято ячеек из ${s.inventory.length}">${used} / ${s.inventory.length}</span></div>`);
     if (mode.note) bag.append(el("p", "note inv-mode", mode.note));
     const grid = el("div", "grid");
     const locked = this.trade.lockedIndices();
@@ -1162,8 +1163,8 @@ export class Hud {
 
   private renderSkills(s: SelfState) {
     const b = this.body("skills");
-    b.innerHTML = `<section class="sec flat"><div class="sec-head"><h3 class="sec-h">Умения класса</h3><span class="chip${s.skillPoints > 0 ? "" : " dim"}" title="Свободных очков умений">Свободно: ${s.skillPoints}</span></div>
-      <p class="field-hint">1 очко за уровень, после 30-го — 1 за 2 уровня · активные умения квадратные, пассивные круглые</p>
+    b.innerHTML = `<section class="sec flat"><div class="sec-head"><h3 class="sec-h">${TX("ui.hud.603")}</h3><span class="chip${s.skillPoints > 0 ? "" : " dim"}" title="Свободных очков умений">${TX("ui.hud.604", { skillpoints: s.skillPoints })}</span></div>
+      <p class="field-hint">${TX("ui.hud.605")}</p>
       <div class="tree"></div></section>`;
     const tree = b.querySelector<HTMLElement>(".tree")!;
     const defs = classSkills(s.cls);
@@ -1215,7 +1216,7 @@ export class Hud {
     let box = document.getElementById("air-bar");
     if (air < 0) return void box?.remove();
     if (!box) {
-      box = el("div", "air-bar-box", `<div class="air-bar-label">Воздух</div><div class="air-bar-track"><i class="air-bar-fill"></i></div>`);
+      box = el("div", "air-bar-box", `<div class="air-bar-label">${TX("ui.hud.606")}</div><div class="air-bar-track"><i class="air-bar-fill"></i></div>`);
       box.id = "air-bar";
       document.body.append(box);
     }
@@ -1239,7 +1240,7 @@ export class Hud {
   private castNow: CastBar | null = null;
   private mountCast(ms: number, name?: string) {
     if (!ms) return void this.castNow?.end();
-    const nm = name ?? "Маунт";
+    const nm = name ?? TX("ui.hotbar.521");
     const look = this.castLook(nm);
     const v: CastVariant = look.summon ? "c" : "a";
     const bar = (this.castBars[v] ??= new CastBar(v));
@@ -1277,9 +1278,9 @@ export class Hud {
     body.id = "shop-body";
     body.setAttribute("role", "tabpanel");
     // shop-tabs — метка для tests/
-    const bar = el("div", "tabs fill shop-tabs", [["buy", "Купить"], ["sell", "Продать"]]
+    const bar = el("div", "tabs fill shop-tabs", [["buy", TX("ui.bank.378")], ["sell", TX("ui.hud.607")]]
       .map(([k, t]) => `<button class="btn tab" id="shop-tab-${k}" data-tab="${k}" aria-controls="shop-body"${k === this.shopTab ? ' aria-selected="true"' : ""}>${t}</button>`).join(""));
-    bar.setAttribute("aria-label", "Разделы лавки");
+    bar.setAttribute("aria-label", TX("ui.hud.297"));
     body.before(bar);
     this.wins.shop.append(el("div", "win-foot"));
     this.shopTabsH = tabs(bar, (key) => {
@@ -1312,8 +1313,8 @@ export class Hud {
       const stack = el("div", "price-stack si-btns"); // si-btns — метка для tests/
       for (const o of offers) {
         const b = el("button", "btn small price", `<span class="price-q">${o.q}</span>${gold(o.price)}`);
-        if (o.need && s.level < o.need) { b.disabled = true; b.title = `Нужен ${o.need} уровень`; }
-        else if (s.gold < o.price) { b.disabled = true; b.dataset.short = ""; b.title = "Не хватает золота"; }
+        if (o.need && s.level < o.need) { b.disabled = true; b.title = TX("ui.hud.298", { v: o.need }); }
+        else if (s.gold < o.price) { b.disabled = true; b.dataset.short = ""; b.title = TX("srv.bags.58"); }
         b.onclick = o.go;
         stack.append(b);
       }
@@ -1335,17 +1336,17 @@ export class Hud {
     });
     const mounts = MOUNT_IDS.filter((id) => MOUNTS[id].source === "vendor" && MOUNTS[id].price > 0 && !s.mounts?.includes(id) && (!MOUNTS[id].faction || MOUNTS[id].faction === s.faction)).map((id) => {
       const m = MOUNTS[id];
-      return row(mountSprite(id), m.name, `${MOUNT_TIERS[m.tier]} · скорость ×${m.speed}${m.flying ? " · летающий" : ""}`,
-        [{ q: "Купить", price: m.price, need: m.level, go: () => this.ctx.net.send("mount:buy", { id }) }], lv(m.level));
+      return row(mountSprite(id), m.name, TX("ui.hud.596", { tier: MOUNT_TIERS[m.tier], speed: m.speed, flying: m.flying ? " · летающий" : "" }),
+        [{ q: TX("ui.bank.378"), price: m.price, need: m.level, go: () => this.ctx.net.send("mount:buy", { id }) }], lv(m.level));
     });
     const pets = PET_IDS.filter((id) => PETS[id].price > 0 && !s.pets?.[id]).map((id) => {
       const d = PETS[id];
       return row(d.sprite, d.name, esc(d.skills.map((k) => k.name).join(", ")),
-        [{ q: "Купить", price: d.price, need: d.level, go: () => this.ctx.net.send("pet:buy", { id }) }], lv(d.level));
+        [{ q: TX("ui.bank.378"), price: d.price, need: d.level, go: () => this.ctx.net.send("pet:buy", { id }) }], lv(d.level));
     });
-    body.replaceChildren(el("p", "npc-say", "«Зелья свежие, цены честные.»"), sec("Зелья", potions),
-      ...(mounts.length ? [sec("Ездовые животные", mounts)] : []), ...(pets.length ? [sec("Питомцы", pets)] : []));
-    foot.innerHTML = `<span class="win-foot-info">Золото</span>${gold(s.gold)}`;
+    body.replaceChildren(el("p", "npc-say", TX("ui.hud.608")), sec(TX("ui.hud.609"), potions),
+      ...(mounts.length ? [sec(TX("ui.hud.610"), mounts)] : []), ...(pets.length ? [sec(TX("ui.hud.611"), pets)] : []));
+    foot.innerHTML = `<span class="win-foot-info">${TX("ui.bags.369")}</span>${gold(s.gold)}`;
   }
 
   /** «Продать»: вещи сумки ячейками, под каждой — цена всей стопки. Клик выбирает вещь, продаёт кнопка в подвале; обычные вещи выбираются разом. */
@@ -1354,15 +1355,15 @@ export class Hud {
     const total = (it: Item) => this.sellInfo(it).price * (it.qty ?? 1);
     const redraw = () => this.renderShop(this.ctx.net.self!);
     const picked = items.filter((it) => this.sellSel.has(it.uid));
-    if (!items.length) body.replaceChildren(el("p", "note", "Сумка пуста"));
+    if (!items.length) body.replaceChildren(el("p", "note", TX("ui.hud.612")));
     else {
-      const sec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">Сумка</h3></div>`);
+      const sec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">${TX("ui.hud.535")}</h3></div>`);
       // обычные вещи без заточки (расходуемое не в счёт): выбираются и снимаются разом
       const junk = items.filter((it) => it.rarity === 0 && !it.plus && BASE_ITEMS[it.base].slot !== "consumable" && !isQuestItem(it.base));
       if (junk.length) {
         const all = junk.every((it) => this.sellSel.has(it.uid));
-        const quick = el("button", "btn small sell-quick", `Выбрать обычные (${junk.length})`);
-        quick.title = "Обычные вещи без заточки";
+        const quick = el("button", "btn small sell-quick", TX("ui.hud.613", { junk: junk.length }));
+        quick.title = TX("ui.hud.299");
         quick.setAttribute("aria-pressed", String(all));
         quick.onclick = () => {
           this.tip.hidden = true;
@@ -1389,14 +1390,14 @@ export class Hud {
         grid.append(tile);
       }
       sec.append(grid);
-      body.replaceChildren(el("p", "note", "Выберите вещи и нажмите «Продать выбранное». Продаётся вся стопка; цена падает, если такие вещи часто продают."), sec);
+      body.replaceChildren(el("p", "note", TX("ui.hud.614")), sec);
     }
     // подвал: что выбрано и итог на кнопке
     const one = picked.length === 1 ? picked[0] : null;
-    const info = el("span", "win-foot-info", !picked.length ? "Ничего не выбрано"
-      : one ? `<span class="c-r${one.rarity}">${esc(itemName(one))}</span>${(one.qty ?? 1) > 1 ? ` ×${one.qty}` : ""}` : `Выбрано: ${picked.length}`);
+    const info = el("span", "win-foot-info", !picked.length ? TX("ui.hud.615")
+      : one ? `<span class="c-r${one.rarity}">${esc(itemName(one))}</span>${(one.qty ?? 1) > 1 ? ` ×${one.qty}` : ""}` : TX("ui.hud.616", { picked: picked.length }));
     const sum = picked.reduce((a, it) => a + total(it), 0);
-    const go = el("button", "btn primary sell-go", picked.length ? `Продать выбранное ${gold(sum, picked.length > 1 ? "~" : "")}` : "Продать выбранное");
+    const go = el("button", "btn primary sell-go", picked.length ? TX("ui.hud.617", { gold: gold(sum, picked.length > 1 ? "~" : "") }) : TX("ui.hud.618"));
     go.disabled = !picked.length;
     go.onclick = () => {
       this.tip.hidden = true;
@@ -1484,7 +1485,7 @@ export class Hud {
     }
     const zi = zoneAtPx(m, info.pos.x, info.pos.y);
     const z = ZONES[zi];
-    const sub = this.ctx.net.kind === "arena" ? "PvP" : z.safe ? "безопасно" : z.note ? "дикие края" : `ур. ${z.levels[0]}–${z.levels[1]}`;
+    const sub = this.ctx.net.kind === "arena" ? "PvP" : z.safe ? TX("ui.hud.619") : z.note ? TX("ui.hud.620") : `ур. ${z.levels[0]}–${z.levels[1]}`;
     // вторая строка, как на карте мира: кольцо 40–80 — «Небезопасная зона», Поля вечных битв 80–100 — прямо «Опасная зона» (задача 132, решение 1) цветом токена;
     // безопасные земли 1–40 — «Земли Сольгарда / Умбрата» цветом фракции (в столице не пишется — её название и так говорит)
     const danger = this.ctx.net.kind === "arena" ? null : zoneDanger(zi);
@@ -1532,17 +1533,17 @@ export class Hud {
         if (!this.deadSince) {
           this.deadSince = performance.now();
           this.death.hidden = false;
-          if (this.ctx.net.kind === "raid") this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Ждите воскрешения союзником.</p></div>`;
+          if (this.ctx.net.kind === "raid") this.death.innerHTML = `<div class="panel"><h2>${TX("ui.hud.621")}</h2><p class="muted">${TX("ui.hud.622")}</p></div>`;
           // на арене возрождения нет (комната арены не принимает respawn): павший ждёт конца боя
-          else if (this.ctx.net.kind === "arena") this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">На арене возрождения нет: бой идёт, пока жив хоть один герой вашей команды. Дождитесь его конца.</p></div>`;
+          else if (this.ctx.net.kind === "arena") this.death.innerHTML = `<div class="panel"><h2>${TX("ui.hud.621")}</h2><p class="muted">${TX("ui.hud.623")}</p></div>`;
           else {
-            this.death.innerHTML = `<div class="panel"><h2>Вы пали в бою</h2><p class="muted">Вы потеряете 10% золота и очнётесь в ближайшем открытом городе (или в столице своей фракции).</p><button class="btn primary" id="respawn">Возродиться</button></div>`;
+            this.death.innerHTML = `<div class="panel"><h2>${TX("ui.hud.621")}</h2><p class="muted">${TX("ui.hud.624")}</p><button class="btn primary" id="respawn">${TX("ui.hud.625")}</button></div>`;
             document.getElementById("respawn")!.onclick = () => this.ctx.net.send("respawn", {});
           }
         }
         const left = Math.ceil((RESPAWN_DELAY_MS - (performance.now() - this.deadSince)) / 1000);
         const btn = document.getElementById("respawn") as HTMLButtonElement | null;
-        if (btn) { btn.disabled = left > 0; btn.textContent = left > 0 ? `Возродиться (${left})` : "Возродиться"; }
+        if (btn) { btn.disabled = left > 0; btn.textContent = left > 0 ? TX("ui.hud.626", { left: left }) : TX("ui.hud.625"); }
       } else if (this.deadSince) {
         this.deadSince = 0;
         this.death.hidden = true;
@@ -1552,7 +1553,7 @@ export class Hud {
     const t = info.target;
     this.targetSid = t && t.anim !== Anim.Dead && t.kind === UnitKind.Player && this.ctx.net.kind === "world" ? info.targetId ?? null : null;
     this.targetBox.classList.toggle("inspectable", !!this.targetSid);
-    this.targetBox.title = this.targetSid ? "Клик — осмотреть" : "";
+    this.targetBox.title = this.targetSid ? TX("ui.hud.627") : "";
     const inRaid = this.ctx.net.kind === "raid";
     this.targetBox.classList.toggle("in-raid", inRaid);
     if (t && t.anim !== Anim.Dead && !(inRaid && t.kind === UnitKind.Boss)) { // в рейде у босса своя полоса сверху
@@ -1560,7 +1561,7 @@ export class Hud {
       const boss = t.kind === UnitKind.Boss;
       this.targetBox.classList.toggle("boss", boss);
       const def = Object.values(MOBS).find((m) => m.name === t.name);
-      const phase = boss ? `<div class="phase">Фаза ${t.phase + 1} · ур. ${t.level}${def?.uniques ? " · уникальная добыча" : ""}</div>` : "";
+      const phase = boss ? `<div class="phase">${TX("ui.hud.628", { phase: t.phase + 1, level: t.level, uniques: def?.uniques ? " · уникальная добыча" : "" })}</div>` : "";
       const shield = t.kind === UnitKind.Player ? Math.max(0, t.shield || 0) : 0; // щит-поглотитель шлётся только у героев
       const sig = `${t.name}|${t.level}|${t.hp}|${t.maxHp}|${t.phase}|${shield}`;
       if (this.targetBox.dataset.sig !== sig) {
@@ -1610,21 +1611,21 @@ function statTip(k: StatKey, s: SelfState): string {
   const c = CLASSES[s.cls], d = s.derived, main = c.mainStat === k;
   const L: string[] = [];
   if (k === "str") {
-    L.push(main ? `+${pct(c.mainK)} урона (ближний бой)` : `+${pct(STAT_K.strDmg)} урона`);
-    L.push(`+${STAT_K.strHp} здоровья`);
+    L.push(main ? TX("ui.hud.629", { maink: pct(c.mainK) }) : TX("ui.hud.630", { strdmg: pct(STAT_K.strDmg) }));
+    L.push(TX("ui.hud.631", { strhp: STAT_K.strHp }));
   } else if (k === "agi") {
-    if (main) L.push(`+${pct(c.mainK)} урона`);
-    else if (c.projectile) L.push(`+${pct(STAT_K.agiRanged)} урона (дальний бой)`);
-    L.push(`+${pct(STAT_K.agiCrit)} шанса крита`, `+${pct(STAT_K.agiDodge)} уклонения (до ${pct(DODGE_CAP)})`, "+0.4% скорости атаки");
+    if (main) L.push(TX("ui.hud.632", { maink: pct(c.mainK) }));
+    else if (c.projectile) L.push(TX("ui.hud.633", { agiranged: pct(STAT_K.agiRanged) }));
+    L.push(TX("ui.hud.634", { agicrit: pct(STAT_K.agiCrit) }), TX("ui.hud.635", { agidodge: pct(STAT_K.agiDodge), dodge_cap: pct(DODGE_CAP) }), TX("ui.hud.636"));
   } else if (k === "int") {
-    if (main) L.push(`+${pct(c.mainK)} урона`);
-    L.push(`+${pct(STAT_K.intSkill)} силы умений`, "+6 маны", "+0.12 маны/с");
+    if (main) L.push(TX("ui.hud.632", { maink: pct(c.mainK) }));
+    L.push(TX("ui.hud.637", { intskill: pct(STAT_K.intSkill) }), TX("ui.hud.638"), TX("ui.hud.639"));
   } else {
-    L.push(`+${STAT_K.vitHp} здоровья`, `+${STAT_K.vitArmor} брони`, "+0.12 здоровья/с");
+    L.push(TX("ui.hud.640", { vithp: STAT_K.vitHp }), TX("ui.hud.641", { vitarmor: STAT_K.vitArmor }), TX("ui.hud.642"));
   }
-  const now = k === "str" ? `Здоровье ${d.maxHp}, урон ${d.dmgMin}–${d.dmgMax}`
-    : k === "agi" ? `Крит ${(d.crit * 100).toFixed(1)}%, уклонение ${(d.dodge * 100).toFixed(1)}%`
-    : k === "int" ? `Мана ${d.maxMp}, сила умений ${Math.round(d.skillMult * 100)}%`
-    : `Здоровье ${d.maxHp}, броня ${d.armor}`;
-  return `<div class="d">За 1 очко: ${L.join(", ")}.</div><div class="d">Сейчас: ${now}</div>`;
+  const now = k === "str" ? TX("ui.hud.643", { maxhp: d.maxHp, dmgmin: d.dmgMin, dmgmax: d.dmgMax })
+    : k === "agi" ? TX("ui.hud.644", { v: (d.crit * 100).toFixed(1), v2: (d.dodge * 100).toFixed(1) })
+    : k === "int" ? TX("ui.hud.645", { maxmp: d.maxMp, math: Math.round(d.skillMult * 100) })
+    : TX("ui.hud.646", { maxhp: d.maxHp, armor: d.armor });
+  return `<div class="d">${TX("ui.hud.647", { l: L.join(", ") })}</div><div class="d">${TX("ui.hud.648", { now: now })}</div>`;
 }

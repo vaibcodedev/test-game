@@ -11,11 +11,12 @@ import { STABLEMASTERS } from "../../../shared/stables";
 import { FACTIONS, type FactionId } from "../../../shared/factions";
 import type { SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const TIER_ORDER: MountTier[] = ["common", "uncommon", "rare", "epic", "legendary"];
-const TIER_PLURAL: Record<MountTier, string> = { common: "Обычные", uncommon: "Необычные", rare: "Редкие — гербовые", epic: "Эпические", legendary: "Легендарные" };
+const TIER_PLURAL: Record<MountTier, string> = { common: T("ui.stable.688"), uncommon: T("ui.stable.689"), rare: T("ui.stable.690"), epic: T("ui.stable.691"), legendary: T("ui.stable.692") };
 type Tab = "all" | "ready" | "own";
 
 export class StableUI {
@@ -32,7 +33,7 @@ export class StableUI {
     this.win.className = "panel win l win-stable";
     this.win.hidden = true;
     this.win.innerHTML = `<h2><span></span><button class="x" aria-label="Закрыть">×</button></h2>
-      <div class="tabs stable-tabs" aria-label="Каталог"><button class="tab" data-tab="all" aria-selected="true">Все</button><button class="tab" data-tab="ready">Можно получить</button><button class="tab" data-tab="own">Коллекция</button></div>
+      <div class="tabs stable-tabs" aria-label="Каталог"><button class="tab" data-tab="all" aria-selected="true">${T("ui.stable.693")}</button><button class="tab" data-tab="ready">${T("ui.stable.694")}</button><button class="tab" data-tab="own">${T("ui.stable.695")}</button></div>
       <div class="body"></div><div class="win-foot"></div>`;
     this.body = this.win.querySelector<HTMLElement>(".body")!;
     this.foot = this.win.querySelector<HTMLElement>(".win-foot")!;
@@ -88,28 +89,28 @@ export class StableUI {
     const o = stableOffer(d, { ...s, arenaRating: this.arenaRating });
     const foe = !canRide(d, s.faction), low = s.level < d.level;
     const fac = d.faction ? ` · ${esc(FACTIONS[d.faction as FactionId]?.name ?? d.faction)}` : "";
-    const stats = `<span class="${low && !o.owned ? "c-bad" : ""}">ур. ${d.level}</span> · скорость ×${String(d.speed).replace(".", ",")}${d.flying ? " · полёт" : ""}`;
+    const stats = `<span class="${low && !o.owned ? "c-bad" : ""}">ур. ${d.level}</span> ${T("ui.stable.696", { speed: String(d.speed).replace(".", ","), flying: d.flying ? " · полёт" : "" })}`;
     // строка требований: детали значками со счётчиком, репутация и знаки, или итог
     let need = "";
-    if (o.owned) need = `<span class="c-ok">В коллекции</span>`;
-    else if (foe) need = `<span class="c-bad">Только для другой фракции</span>`;
-    else if (o.sealInBag) need = `<span class="c-warn">Печать в сумке — клик по ней, чтобы изучить</span>`;
-    else if (d.rep) need = `<span class="${(s.rep ?? 0) >= d.rep.rep ? "c-ok" : "c-bad"}">реп. ${formatNumber(s.rep ?? 0)}/${formatNumber(d.rep.rep)}</span> · <span class="${(s.marks ?? 0) >= d.rep.marks ? "c-ok" : "c-bad"}">знаки ${s.marks ?? 0}/${d.rep.marks}</span>`;
+    if (o.owned) need = `<span class="c-ok">${T("ui.stable.697")}</span>`;
+    else if (foe) need = `<span class="c-bad">${T("ui.stable.698")}</span>`;
+    else if (o.sealInBag) need = `<span class="c-warn">${T("ui.stable.699")}</span>`;
+    else if (d.rep) need = `<span class="${(s.rep ?? 0) >= d.rep.rep ? "c-ok" : "c-bad"}">${T("ui.stable.700", { formatnumber: formatNumber(s.rep ?? 0), rep: formatNumber(d.rep.rep) })}</span> · <span class="${(s.marks ?? 0) >= d.rep.marks ? "c-ok" : "c-bad"}">${T("ui.stable.701", { marks: s.marks ?? 0, marks2: d.rep.marks })}</span>`;
     else if (d.craft) {
       need = Object.entries(d.craft.parts).map(([p, n]) => {
         const have = countBase(s.inventory, partBase(p));
         return `<span class="st-part ${have >= n ? "c-ok" : "c-bad"}" title="${esc(PARTS[p]?.name ?? p)}"><img src="${icon(PARTS[p]?.icon ?? "gold")}" alt="${esc(PARTS[p]?.name ?? p)}">${have}/${n}</span>`;
       }).join("");
-      if (d.craft.arenaRating) need += `<span class="st-part ${this.arenaRating >= d.craft.arenaRating ? "c-ok" : "c-bad"}">рейт. ${this.arenaRating || 0}/${d.craft.arenaRating}</span>`;
-    } else if (d.source === "raid") need = `<span class="c-dim">Только трофей рейда</span>`;
-    else if (d.source === "start") need = `<span class="c-dim">С ${d.grantLevel || d.level} уровня бесплатно</span>`;
+      if (d.craft.arenaRating) need += `<span class="st-part ${this.arenaRating >= d.craft.arenaRating ? "c-ok" : "c-bad"}">${T("ui.stable.702", { arenarating: this.arenaRating || 0, arenarating2: d.craft.arenaRating })}</span>`;
+    } else if (d.source === "raid") need = `<span class="c-dim">${T("ui.stable.703")}</span>`;
+    else if (d.source === "start") need = `<span class="c-dim">${T("ui.stable.704", { level: d.grantLevel || d.level })}</span>`;
     // одна кнопка: «Купить» (торговец, гербовые) или «Собрать» (детали, печати гладиатора)
     let act = "";
     if (!o.owned && o.buy) {
-      const why = o.sealInBag ? "Печать уже в сумке" : o.missBuy.join(", ");
-      act = `<button class="btn small price" data-act="buy" data-id="${d.id}"${o.canBuy && !o.sealInBag ? "" : ` disabled title="${esc(why)}"`}><span class="price-q">Купить</span>${gold(d.price)}</button>`;
+      const why = o.sealInBag ? T("ui.stable.705") : o.missBuy.join(", ");
+      act = `<button class="btn small price" data-act="buy" data-id="${d.id}"${o.canBuy && !o.sealInBag ? "" : ` disabled title="${esc(why)}"`}><span class="price-q">${T("ui.bank.378")}</span>${gold(d.price)}</button>`;
     } else if (!o.owned && d.craft) {
-      act = `<button class="btn small price" data-act="craft" data-id="${d.id}"${o.canCraft ? "" : ` disabled title="${esc(o.missCraft.join(", "))}"`}><span class="price-q">Собрать</span>${d.craft.gold ? gold(d.craft.gold) : ""}</button>`;
+      act = `<button class="btn small price" data-act="craft" data-id="${d.id}"${o.canCraft ? "" : ` disabled title="${esc(o.missCraft.join(", "))}"`}><span class="price-q">${T("ui.stable.706")}</span>${d.craft.gold ? gold(d.craft.gold) : ""}</button>`;
     }
     return `<div class="st-card${o.owned ? " owned" : foe || low ? " locked" : ""}">
       <span class="st-icon"><img src="${icon(mountSprite(d.id))}" alt=""></span>

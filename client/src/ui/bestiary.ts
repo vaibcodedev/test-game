@@ -3,10 +3,11 @@ import { BESTIARY, fullKills, mobHabitat } from "../../../shared/bestiary";
 import { iconFor, makeItem, makeUnique } from "../../../shared/items";
 import { MOBS } from "../../../shared/mobs";
 import type { SelfState } from "../../../shared/protocol";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 /** Разделы списка по порядку; внутри раздела записи идут по возрастанию уровня. */
-const GROUPS = [["mob", "Мобы"], ["boss", "Боссы"], ["raid", "Цитадель Хаоса"]] as const;
+const GROUPS = [["mob", T("ui.bestiary.381")], ["boss", T("ui.bestiary.382")], ["raid", T("ui.bestiary.383")]] as const;
 const groupOf = (id: string) => (MOBS[id].raid ? "raid" : MOBS[id].boss ? "boss" : "mob");
 const rank = (id: string) => GROUPS.findIndex(([g]) => g === groupOf(id));
 const firstLevel = (id: string) => mobHabitat(id).levels?.[0] ?? 999;
@@ -30,7 +31,7 @@ export class BestiaryUI {
   constructor(root: HTMLElement, private icon: (name: string) => string) {
     this.win.className = "panel win l win-bestiary";
     this.win.hidden = true;
-    this.win.innerHTML = `<h2><span>Бестиарий</span><button class="x" aria-label="Закрыть">×</button></h2>
+    this.win.innerHTML = `<h2><span>${T("ui.bestiary.384")}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body"><div class="bst"><div class="bst-list list boxed scroll" role="listbox" aria-label="Мобы"></div><div class="bst-det"></div></div></div>`;
     this.list = this.win.querySelector<HTMLElement>(".bst-list")!;
     this.det = this.win.querySelector<HTMLElement>(".bst-det")!;
@@ -102,26 +103,26 @@ export class BestiaryUI {
 
   private detail(): string {
     const id = this.sel, def = MOBS[id], n = this.kills[id] || 0, need = fullKills(id);
-    if (!n) return `<p class="note bst-empty">Запись откроется после первого убийства.</p>`;
+    if (!n) return `<p class="note bst-empty">${T("ui.bestiary.385")}</p>`;
     const hab = mobHabitat(id), desc = BESTIARY[id]?.desc;
-    const tags = (def.boss ? `<span class="chip boss">Босс</span>` : "") + (def.raid ? `<span class="chip dim">Рейд</span>` : "");
+    const tags = (def.boss ? `<span class="chip boss">${T("ui.bestiary.386")}</span>` : "") + (def.raid ? `<span class="chip dim">${T("ui.bestiary.387")}</span>` : "");
     let html = `<section class="sec">
       <div class="bst-head">
         <div class="bst-ic"><div class="bst-sprite" style="background-image:url(/assets/units/${def.sprite}.png)"></div></div>
         <div class="card-titles"><h3 class="card-title">${esc(def.name)}</h3><div class="card-sub">${levelText(id) ? `Уровень ${levelText(id)} · убито: ${n}` : `Убито: ${n}`}</div>${tags ? `<div class="bst-tags">${tags}</div>` : ""}</div>
       </div>
       ${desc ? `<p class="card-text">${esc(desc)}</p>` : ""}`;
-    if (n < need) return html + `<div class="progress"><span>Убийств до полной записи</span><b>${n} / ${need}</b><div class="bar sm"><i style="width:${Math.round((n / need) * 100)}%"></i></div></div></section>`;
+    if (n < need) return html + `<div class="progress"><span>${T("ui.bestiary.388")}</span><b>${n} / ${need}</b><div class="bar sm"><i style="width:${Math.round((n / need) * 100)}%"></i></div></div></section>`;
     html += `</section>`;
-    const stats: [string, number][] = [["Здоровье", def.hp], ["Урон", def.dmg], ["Броня", def.armor]];
-    html += `<section class="sec"><h3 class="sec-h">Характеристики</h3><div class="bst-stats">${stats.map(([k, v]) => `<div class="card compact"><span class="bst-k">${k}</span><b class="bst-v">${pct(v)}</b></div>`).join("")}</div></section>
-      <section class="sec"><h3 class="sec-h">Обитает</h3>${hab.zones.length ? `<div class="bst-zones">${hab.zones.map((z) => `<span class="chip dim">${esc(z)}</span>`).join("")}</div>` : `<p class="note">—</p>`}</section>`;
+    const stats: [string, number][] = [[T("ui.bestiary.389"), def.hp], [T("ui.arena.346"), def.dmg], [T("ui.bestiary.390"), def.armor]];
+    html += `<section class="sec"><h3 class="sec-h">${T("ui.bestiary.391")}</h3><div class="bst-stats">${stats.map(([k, v]) => `<div class="card compact"><span class="bst-k">${k}</span><b class="bst-v">${pct(v)}</b></div>`).join("")}</div></section>
+      <section class="sec"><h3 class="sec-h">${T("ui.bestiary.392")}</h3>${hab.zones.length ? `<div class="bst-zones">${hab.zones.map((z) => `<span class="chip dim">${esc(z)}</span>`).join("")}</div>` : `<p class="note">—</p>`}</section>`;
     // добычу рейда выдаёт сам рейд по итогам боя (World.onRaidKill), а не убийство моба
-    if (def.raid) return html + `<section class="sec"><h3 class="sec-h">Добыча</h3><p class="note">Выдаётся по итогам рейда.</p></section>`;
+    if (def.raid) return html + `<section class="sec"><h3 class="sec-h">${T("ui.bestiary.393")}</h3><p class="note">${T("ui.bestiary.394")}</p></section>`;
     const items = def.boss
       ? [...(def.uniques ?? []).map((u) => makeUnique(u)), makeItem("hp_potion", 1, 0)]
       : [makeItem("hp_potion", 1, 0), makeItem("mp_potion", 1, 0)];
     const loot = items.map((it) => `<span class="cell md${it.rarity ? ` r${it.rarity}` : ""}" title="${esc(it.name)}"><img src="${this.icon(iconFor(it))}" alt="${esc(it.name)}"></span>`).join("");
-    return html + `<section class="sec"><h3 class="sec-h">Добыча</h3><div class="bst-loot">${loot}</div>${def.boss ? "" : `<p class="note">Также иногда выпадает снаряжение.</p>`}</section>`;
+    return html + `<section class="sec"><h3 class="sec-h">${T("ui.bestiary.393")}</h3><div class="bst-loot">${loot}</div>${def.boss ? "" : `<p class="note">Также иногда выпадает снаряжение.</p>`}</section>`;
   }
 }

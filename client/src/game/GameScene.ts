@@ -35,6 +35,7 @@ import { INTERIORS, interiorAt, type Interior } from "../../../shared/interiors"
 import { InteriorViews } from "./interiors";
 import { TowerArchers } from "./towerArchers";
 import { STATUES, type StatueKey } from "../ui/statue";
+import { T } from "../../../shared/texts";
 
 type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue";
 /** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
@@ -256,21 +257,21 @@ export class GameScene extends Phaser.Scene {
       for (const c of CITIES) {
         // камень телепорта нарисован картой; здесь только невидимая точка нажатия
         const st = this.add.sprite(c.stone.x, c.stone.y - 14, "u_merchant", 0).setVisible(false);
-        this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: "Камень телепорта" });
+        this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: T("ui.cities.430") });
       }
       // статуи правителей в столицах (задача 141): невидимая точка нажатия по высоте статуи, окно истории — data/statues.json
       for (const o of this.map.objects) {
         const key: StatueKey | null = o.kind === "sun_statue" ? "solgard" : o.kind === "umb_statue" ? "umbrath" : null;
         if (!key) continue;
-        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: `Осмотреть: статуя ${STATUES[key].name}`, hit: { dy: 66, r: 44 } });
+        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: T("ui.GameScene.754", { name: STATUES[key].name }), hit: { dy: 66, r: 44 } });
       }
       this.scenes = new Scenes(this, this.map);
       this.setupEncounters();
       // двери интерьеров (задача 144): снаружи — у двери здания, изнутри — в нижней стене зала; точки нажатия невидимы
       for (const r of INTERIORS) {
         const city = CITIES.find((c) => c.id === r.city)?.name ?? "";
-        this.npcs.push({ sprite: this.add.sprite(r.outDoor.x, r.outDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: `Войти: ${r.name}` });
-        this.npcs.push({ sprite: this.add.sprite(r.exitDoor.x, r.exitDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: `Выйти: ${city || "на улицу"}` });
+        this.npcs.push({ sprite: this.add.sprite(r.outDoor.x, r.outDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: T("ui.GameScene.755", { name: r.name }) });
+        this.npcs.push({ sprite: this.add.sprite(r.exitDoor.x, r.exitDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: T("ui.GameScene.756", { city: city || "на улицу" }) });
       }
       this.interiors = new InteriorViews(this);
       this.towerArchers = new TowerArchers(this, this.map);
@@ -479,7 +480,7 @@ export class GameScene extends Phaser.Scene {
   /** Выбрать врага и начать атаку: подход до дальности и автоатака (сообщение attack). */
   attackTarget(id: string | null = this.targetId) {
     const v = id ? this.units.get(id) : undefined;
-    if (!id || !v || v.dead || !this.isEnemy(v)) return this.hud.toast({ text: "Нужна цель: враг", kind: "error" });
+    if (!id || !v || v.dead || !this.isEnemy(v)) return this.hud.toast({ text: T("ui.GameScene.253"), kind: "error" });
     if (this.targetId !== id) this.setTarget(id);
     net.send("attack", { id });
   }
@@ -519,7 +520,7 @@ export class GameScene extends Phaser.Scene {
     const v = this.targetId ? this.units.get(this.targetId) : undefined;
     if (!v || v.u.kind !== UnitKind.Player || v.id === net.id) {
       if (this.following) { this.following = false; return net.send("follow", { id: null }); }
-      return this.hud.toast({ text: "Выберите игрока, чтобы следовать", kind: "error" });
+      return this.hud.toast({ text: T("ui.GameScene.254"), kind: "error" });
     }
     this.followUnit(v.id);
   }
@@ -866,7 +867,7 @@ export class GameScene extends Phaser.Scene {
     if (own.length < 2) return;
     const next = own[(own.indexOf(net.self?.pet ?? "") + 1) % own.length];
     net.send("pet:select", { id: next });
-    this.hud.toast({ text: `Питомец: ${PETS[next]?.name ?? next}`, kind: "info" });
+    this.hud.toast({ text: T("ui.GameScene.255", { v: PETS[next]?.name ?? next }), kind: "info" });
   }
 
   /** Shift+X: выбрать следующий из своих маунтов. */
@@ -875,7 +876,7 @@ export class GameScene extends Phaser.Scene {
     if (own.length < 2) return;
     const next = own[(own.indexOf(net.self?.mount ?? "") + 1) % own.length];
     net.send("mount:select", { id: next });
-    this.hud.toast({ text: `Маунт: ${MOUNTS[next]?.name ?? next}`, kind: "info" });
+    this.hud.toast({ text: T("ui.GameScene.256", { v: MOUNTS[next]?.name ?? next }), kind: "info" });
   }
 
   /** Нажатие слота панели (клавиша или клик): умение, предмет (по base) или действие. */
@@ -914,7 +915,7 @@ export class GameScene extends Phaser.Scene {
     if (!self || !this.me || this.me.dead) return;
     const def = SKILLS[id];
     if (!def || def.cls !== self.cls || def.kind !== "active") return;
-    if (!self.skills[def.id]) return this.hud.toast({ text: `«${def.name}» ещё не изучено (K — умения)`, kind: "error" });
+    if (!self.skills[def.id]) return this.hud.toast({ text: T("ui.GameScene.257", { v: def.name }), kind: "error" });
     this.aimState = null;
     const mode = mouseOpts.aimMode;
     if (mode === "quick" || (def.aim === "self" && mode === "confirm")) return this.castNow(def, alt);
@@ -960,19 +961,19 @@ export class GameScene extends Phaser.Scene {
     if (!def || !this.me || this.me.dead) return;
     const plan = resolveCast(this.castInput(def, alt));
     const fail = (text: string) => this.hud.castError(text, def.id);
-    if (!plan.ok) return fail(plan.err === "Нет цели" ? "Нет цели — Tab или клик по врагу" : plan.err);
+    if (!plan.ok) return fail(plan.err === "Нет цели" ? T("ui.GameScene.757") : plan.err);
     // предпроверка до отправки (отклик без RTT): мана, дальность, перезарядка; сервер всё равно судья
     const self = net.self, mp = this.me.u.mp, need = self ? skillMana(def, self.skills[def.id] || 1, self.level) : 0;
-    if (mp < need) return fail(`Не хватает маны: ${Math.floor(mp)} из ${need}`);
+    if (mp < need) return fail(T("ui.GameScene.258", { v: Math.floor(mp), v2: need }));
     if (def.aim === "unit" && def.range && plan.far && !mouseOpts.approach) {
       // как у сервера: дальше дальности + радиус цели
       const over = Math.hypot(plan.x - this.pos.x, plan.y - this.pos.y) - def.range - (this.castUnit(plan.target)?.r ?? PLAYER_RADIUS);
-      return fail(`Слишком далеко: ещё ${Math.max(1, Math.ceil(over / TILE))} кл.`);
+      return fail(T("ui.GameScene.259", { v: Math.max(1, Math.ceil(over / TILE)) }));
     }
     const now = performance.now(), cds = net.cooldowns;
     const own = (cds.get(def.id) ?? 0) - now, gcd = def.offGcd ? 0 : (cds.get("gcd") ?? 0) - now;
     if (Math.max(own, gcd) > mouseOpts.queueMs) {
-      if (own > 0) fail(`Перезарядка: ${(own / 1000).toFixed(1).replace(".", ",")} с`);
+      if (own > 0) fail(T("ui.GameScene.260", { v: (own / 1000).toFixed(1).replace(".", ",") }));
       return;
     }
     // куда ляжет — та же функция, которой решает сервер: его отказ (видимость, луч до стены, рывок в упор) — сразу, без RTT, но только если каст
@@ -1051,16 +1052,16 @@ export class GameScene extends Phaser.Scene {
     const reset = () => { this.pendingPickup = null; this.pendingNpc = null; this.pendingGather = null; };
     for (const [id, img] of this.bagViews) {
       const d = Math.hypot(img.x - hx, img.y - hy);
-      out.push({ rank: 0, d, cx: img.x, cy: img.y - 10, text: "Подобрать", go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
+      out.push({ rank: 0, d, cx: img.x, cy: img.y - 10, text: T("ui.GameScene.261"), go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
     }
     for (const n of this.map.nodes) {
       if (this.depletedNodes.has(n.id)) continue;
       const d = Math.hypot(n.x - hx, n.y - 14 - hy);
-      out.push({ rank: 1, d, cx: n.x, cy: n.y - 16, text: `Добыть: ${RESOURCES[n.res]?.name ?? "ресурс"}`, go: () => { reset(); this.pendingGather = n.id; if (d > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 }); } });
+      out.push({ rank: 1, d, cx: n.x, cy: n.y - 16, text: T("ui.GameScene.262", { v: RESOURCES[n.res]?.name ?? T("ui.GameScene.758") }), go: () => { reset(); this.pendingGather = n.id; if (d > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 }); } });
     }
     for (const n of this.npcs) {
       const d = Math.hypot(n.sprite.x - hx, n.sprite.y - hy);
-      out.push({ rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? "Использовать: Камень телепорта" : n.kind === "door" || n.kind === "statue" ? n.name ?? "Дверь" : `Поговорить: ${n.name ?? "собеседник"}`, go: () => { reset(); this.talk(n); } });
+      out.push({ rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? T("ui.GameScene.759") : n.kind === "door" || n.kind === "statue" ? n.name ?? T("ui.GameScene.760") : T("ui.GameScene.761", { name: n.name ?? "собеседник" }), go: () => { reset(); this.talk(n); } });
     }
     return out;
   }
@@ -1320,17 +1321,17 @@ export class GameScene extends Phaser.Scene {
     const z = zoneAtPx(this.map, this.pos.x, this.pos.y);
     if (z !== this.zone) {
       this.zone = z;
-      if (z === Zone.Arena) this.hud.showZone(`Арена · ${MODE_NAMES[net.arena?.mode ?? "1v1"]}`, "Победит тот, кто устоит");
+      if (z === Zone.Arena) this.hud.showZone(T("ui.GameScene.762", { v1: MODE_NAMES[net.arena?.mode ?? "1v1"] }), T("ui.GameScene.763"));
       else {
         // фракции: спорная зона (PvP с противоположной фракцией) и нейтральный город (бой запрещён)
         const place = net.kind === "world" ? pvpPlace(this.map, this.pos.x, this.pos.y) : "peace";
         // опасность (кольцо 40–80 — «Небезопасная зона», Поля — «Опасная зона») или земли фракции, затем уровни — как на карте мира и миникарте
-        const lv = `Уровни ${ZONES[z].levels[0]}–${ZONES[z].levels[1]}`, land = zoneLand(z);
+        const lv = T("ui.GameScene.764", { levels: ZONES[z].levels[0], levels2: ZONES[z].levels[1] }), land = zoneLand(z);
         const tag = zoneDanger(z) ?? (land ? landLabel(land) : null);
-        const base = ZONES[z].note ?? (ZONES[z].safe ? "Безопасная зона" : tag ? `${tag} · ${lv.toLowerCase()}` : lv);
+        const base = ZONES[z].note ?? (ZONES[z].safe ? T("ui.GameScene.765") : tag ? `${tag} · ${lv.toLowerCase()}` : lv);
         const cap = z === Zone.SolgardCity ? "solgard" : z === Zone.UmbrathCity ? "umbrath" : null;
-        const sub = cap ? (net.self?.faction === cap ? "Столица вашей фракции" : "Вражеская столица: стража атакует чужаков")
-          : place === "pvp" ? `${base} · спорная зона: PvP фракций` : place === "neutral" ? "Нейтральный город: бой фракций запрещён" : base;
+        const sub = cap ? (net.self?.faction === cap ? T("ui.GameScene.766") : T("ui.GameScene.767"))
+          : place === "pvp" ? T("ui.GameScene.768", { base: base }) : place === "neutral" ? T("ui.GameScene.769") : base;
         this.hud.showZone(ZONES[z].name, sub, place === "pvp" ? "#ff7a5a" : ZONE_COLOR[z] ?? ZONE_COLOR[zoneStyle(z)]);
       }
     }

@@ -115,11 +115,15 @@ export function keyed(keys: number[][], s: number): number[] {
   }
   return keys[keys.length - 1].slice(1);
 }
+export const REACH_K = 1.3, STANCE_K = 0.85;
+/** Путь земли за цикл бега (единицы модели): копыто проходит 2·reach за долю опоры. */
+export const strideOf = (o: GaitOpt = {}) => (2 * (o.reach ?? [7.2, 6.6])[0] * REACH_K) / ((o.stance ?? 0.42) * STANCE_K);
 export interface GaitOpt { reach?: [number, number]; lift?: [number, number]; fold?: [number, number]; phase?: number[]; stance?: number }
 /** Галоп/скачки: опора stance доли цикла, мах — дугой с подгибом. phase — [перед-лев, перед-прав, зад-лев, зад-прав]. */
 export function gallop(t: number, L: Layout, o: GaitOpt = {}): Leg[] {
-  const S = o.stance ?? 0.42, ph = o.phase ?? [0.5, 0.6, 0.0, 0.1];
-  const reach = o.reach ?? [7.2, 6.6], lift = o.lift ?? [5.2, 3.8], fold = o.fold ?? [1.9, 1.3];
+  // шаг длиннее и опора короче (задача 142, «бег топорный»): копыто проходит больший путь, ноги не скользят по земле
+  const S = (o.stance ?? 0.42) * STANCE_K, ph = o.phase ?? [0.5, 0.6, 0.0, 0.1];
+  const reach = (o.reach ?? [7.2, 6.6]).map((v) => v * REACH_K), lift = (o.lift ?? [5.2, 3.8]).map((v) => v * 1.15), fold = o.fold ?? [1.9, 1.3];
   return standLegs(L).map((l, i) => {
     const fr = i < 2 ? 0 : 1;
     const u = (((t + ph[i]) % 1) + 1) % 1;
@@ -145,6 +149,7 @@ export function basePose(L: Layout, t: number, run: boolean): Pose {
 export function runPose(t: number, L: Layout, o: GaitOpt & { bob?: number; pitch?: number } = {}): Pose {
   const p = basePose(L, t, true), w = TAU * t;
   p.legs = gallop(t, L, o);
+  p.a.stride = strideOf(o);
   p.bob = (o.bob ?? 1.3) * Math.sin(w + 2.2);
   p.pitch = (o.pitch ?? 0.075) * Math.sin(w + 0.4);
   p.neckP = 0.12 + 0.1 * Math.sin(w - 0.6);
@@ -574,7 +579,7 @@ export function sparks(c: Ctx, a: V3, b: V3, m: Mat, seed: number, every = 3, la
 
 // ---------------- сборка ----------------
 export function done(c: Ctx, seat: V3, banner?: Omit<Banner, "t" | "run">): Built {
-  return { sc: c.sc, bits: c.b.bits, seat: c.T(seat), banner: banner ? { ...banner, t: c.f.i % 12, run: c.f.anim === "run" } : undefined };
+  return { sc: c.sc, bits: c.b.bits, seat: c.T(seat), stride: c.p.a.stride, banner: banner ? { ...banner, t: Math.round((c.f.i * 12) / c.f.n) % 12, run: c.f.anim === "run" } : undefined };
 }
 
 // ---------------- действия покоя (u — доля цикла покоя; окна в кадрах из 24) ----------------

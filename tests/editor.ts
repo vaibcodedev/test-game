@@ -17,6 +17,27 @@ assert.deepEqual(missing, [], `нет объяснения для: ${missing.joi
 const gp = store.read("gameplay");
 assert.deepEqual(uncovered("gameplay", gp.data), [], "нет объяснения в gameplay.json");
 
+for (const n of ["items-rules"]) assert.deepEqual(uncovered(n, store.read(n).data), [], "нет объяснения в " + n + ".json");
+const tx = store.read("texts");
+assert.deepEqual(uncovered("texts", tx.data), [], "нет объяснения в texts.json");
+assert.deepEqual(validate("texts", tx.data, tx.data), [], "тексты не проходят проверку");
+{
+  const bad: any = JSON.parse(JSON.stringify(tx.data));
+  const k = Object.keys(bad.texts)[0];
+  bad.texts[k].text += " {нетТакой}";
+  bad.texts[k].text = bad.texts[k].text.replace("{нетТакой}", "{nosuch}");
+  assert.ok(validate("texts", bad, tx.data).length > 0, "неизвестная подстановка отклоняется");
+}
+
+{
+  const keys = new Set(Object.keys((tx.data as any).texts));
+  const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "node_modules" || e.name === "out" ? [] : walk(path.join(d, e.name))) : e.name.endsWith(".ts") ? [path.join(d, e.name)] : []));
+  const used: string[] = [];
+  for (const dir of ["server/src", "shared", "client/src"]) for (const f of walk(path.join(DATA, "..", dir))) for (const m of fs.readFileSync(f, "utf8").matchAll(/\bTT?\("([a-z]+\.[A-Za-z_]+\.\d+)"/g)) used.push(m[1]);
+  const missing2 = used.filter((k) => !keys.has(k));
+  assert.deepEqual(missing2, [], "в коде есть ключи текстов, которых нет в data/texts.json");
+}
+
 // 2. сохранение без изменений — тот же файл, байт в байт (все файлы data/)
 for (const f of store.list().filter((x) => !x.readonly)) {
   const text = fs.readFileSync(store.file(f.name), "utf8");

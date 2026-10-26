@@ -19,6 +19,7 @@ import type { Actor, World } from "../game/World";
 import { raidThink, type RaidAI } from "./ai";
 import { Chatter } from "./chatter";
 import { ChaosKnight } from "./chaosKnight";
+import { T } from "../../../shared/texts";
 
 /** Умения-провокации танков (на рейд-босса действуют через Director.tickTaunts). */
 const TAUNTS = ["taunt", "tp_hammer", "dk_death_grip"];
@@ -120,7 +121,7 @@ export class RaidDirector {
       if (this.stage === "fight" && w.isPlayer(src) && !w.isPlayer(dst)) this.stat(src).damage += v;
     };
     w.onHeal = (p, v) => { if (this.stage === "fight") this.stat(p).healing += v; };
-    w.reviveCheck = (_by, t) => (this.stage !== "fight" ? "Воскрешать можно только в бою" : this.revives <= 0 ? "Нет зарядов воскрешения" : this.channelOn(t) ? "Его уже поднимают" : null);
+    w.reviveCheck = (_by, t) => (this.stage !== "fight" ? T("srv.director.189") : this.revives <= 0 ? T("srv.director.192") : this.channelOn(t) ? T("srv.director.193") : null);
     w.onRevived = (by) => this.spend(by);
     this.setStage("gather");
   }
@@ -237,7 +238,7 @@ export class RaidDirector {
 
   private beginPull() {
     this.setStage("pull");
-    this.banner("start", RAID.banners.start, `Попытка ${this.attempt} из ${RAID_CFG.attempts}`);
+    this.banner("start", RAID.banners.start, T("srv.director.828", { attempt: this.attempt, attempts: RAID_CFG.attempts }));
     this.emit("pull");
   }
 
@@ -279,7 +280,7 @@ export class RaidDirector {
     this.setStage("wipe");
     this.knight.wipe();
     this.channels.clear();
-    this.banner("wipe", RAID.banners.wipe, this.attempt < RAID_CFG.attempts ? `Следующая попытка через ${Math.ceil(this.wipeMs / 1000)} с` : "");
+    this.banner("wipe", RAID.banners.wipe, this.attempt < RAID_CFG.attempts ? T("srv.director.829", { math: Math.ceil(this.wipeMs / 1000) }) : "");
     this.emit("wipe", { attempt: this.attempt });
   }
 
@@ -290,7 +291,7 @@ export class RaidDirector {
     for (const p of this.players()) this.restore(p);
     (this.boss.def as MobDef).aggro = 0;
     this.setStage("pull");
-    this.banner("attempt", RAID.banners.start, `Попытка ${this.attempt} из ${RAID_CFG.attempts}`);
+    this.banner("attempt", RAID.banners.start, T("srv.director.828", { attempt: this.attempt, attempts: RAID_CFG.attempts }));
     this.emit("pull");
   }
 
@@ -370,13 +371,13 @@ export class RaidDirector {
   /** raid:revive — канал рядом с телом; сбивается уроном, контролем или шагом. null — начат, иначе причина. */
   startRevive(by: Player, t: Player): string | null {
     const r = RAID_CFG.revives;
-    if (this.stage !== "fight") return "Воскрешать можно только в бою";
-    if (by.dead || !t.dead || by === t) return "Поднять можно только павшего союзника";
-    if (!this.byKey.has(t.name.toLowerCase())) return "Это не участник рейда";
-    if (this.revives <= 0) return "Нет зарядов воскрешения";
-    if (this.channelOn(t)) return "Его уже поднимают";
-    if (this.channels.has(by)) return "Вы уже воскрешаете";
-    if (this.w.dist(by, t) > r.range) return "Подойдите к телу ближе";
+    if (this.stage !== "fight") return T("srv.director.189");
+    if (by.dead || !t.dead || by === t) return T("srv.director.190");
+    if (!this.byKey.has(t.name.toLowerCase())) return T("srv.director.191");
+    if (this.revives <= 0) return T("srv.director.192");
+    if (this.channelOn(t)) return T("srv.director.193");
+    if (this.channels.has(by)) return T("srv.director.194");
+    if (this.w.dist(by, t) > r.range) return T("srv.director.195");
     const now = this.w.time;
     this.channels.set(by, { target: t, until: now + r.channelMs, at: now, x: by.x, y: by.y });
     by.moveTo = null;
@@ -384,7 +385,7 @@ export class RaidDirector {
     by.engaged = by.approach = false;
     by.castUntil = now + r.channelMs;
     by.unit.anim = Anim.Cast;
-    this.w.castBar(by, r.channelMs, "Воскрешение");
+    this.w.castBar(by, r.channelMs, T("srv.skills.818"));
     this.w.emit({ t: "buff", id: by.id, k: "heal", ms: r.channelMs });
     this.send("raid:revive", { target: t.id, by: by.name, ms: r.channelMs });
     this.emit("revive", { by: by.name, name: t.name, role: this.roleOf(by) });
@@ -404,7 +405,7 @@ export class RaidDirector {
     for (const [by, c] of [...this.channels]) {
       const broke = by.dead || by.hurtAt > c.at || by.stunUntil > now || Math.hypot(by.x - c.x, by.y - c.y) > 4 || !c.target.dead || this.w.players.get(c.target.id) !== c.target;
       if (broke) {
-        if (!by.dead && c.target.dead) by.send("toast", { text: "Воскрешение прервано", kind: "error" });
+        if (!by.dead && c.target.dead) by.send("toast", { text: T("srv.skills.149"), kind: "error" });
         this.cancelChannel(by);
         continue;
       }
@@ -418,7 +419,7 @@ export class RaidDirector {
       t.unit.anim = Anim.Idle;
       t.stunUntil = t.rootUntil = t.slowUntil = 0;
       t.selfDirty = true;
-      t.send("toast", { text: `${by.name} поднимает вас`, kind: "info" });
+      t.send("toast", { text: T("srv.director.196", { name: by.name }), kind: "info" });
       this.w.emit({ t: "buff", id: t.id, k: "heal", ms: 900 });
       this.w.emit({ t: "aoe", k: "heal", x: t.x, y: t.y, r: 60 });
     }

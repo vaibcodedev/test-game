@@ -107,5 +107,31 @@
     "base": 32,
     "stack": 128,
     "maxStacks": 7
+  },
+  "mobs": {
+    "respawnMs": [14000, 24000],
+    "leashMul": 2.5,
+    "leashBossMul": 1.4,
+    "leashExtra": 260,
+    "healerRecentHitMs": 8000
+  },
+  "rewards": {
+    "contribRange": 1200,
+    "shareBase": 0.7,
+    "shareGroup": 0.3,
+    "bossGoldMul": 25,
+    "petXpShare": 0.7,
+    "petDropBoss": 25,
+    "petDropElite": 5,
+    "bossPotionQty": 3,
+    "potionHpShare": 0.6,
+    "bossOreMin": 4,
+    "bossOreVar": 4,
+    "bossDustMin": 2,
+    "bossDustVar": 3,
+    "oreMin": 1,
+    "oreVar": 2,
+    "dustMinLevel": 12,
+    "dustEliteMul": 3
   }
 }

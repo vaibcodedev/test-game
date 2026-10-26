@@ -9,6 +9,7 @@ import type { World } from "../game/World";
 import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
 import { KICK_CODE } from "../../../shared/accounts";
 import serverCfg from "../../../data/server.json";
+import { T } from "../../../shared/texts";
 
 export const num = (v: unknown, min: number, max: number): number | null =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null;
@@ -37,7 +38,7 @@ export function guard<A extends unknown[]>(name: string, fn: (...a: A) => void):
     } catch (e) {
       const now = Date.now();
       if (now - lastLog < 10_000) return void hidden++;
-      console.error(`[timer:${name}]${hidden ? ` (ещё ошибок с прошлой записи: ${hidden})` : ""}`, e);
+      console.error(`[timer:${name}]${hidden ? ` ${T("srv.common.835", { hidden: hidden })}` : ""}`, e);
       lastLog = now;
       hidden = 0;
     }
@@ -47,7 +48,7 @@ export function guard<A extends unknown[]>(name: string, fn: (...a: A) => void):
 /** Сообщения движения: клиент законно шлёт их чаще остальных — свой счётчик (data/server.json → msgLimit.move). */
 const MOVE_MSGS = new Set(["input", "moveTo"]);
 export const MSG_LIMIT = serverCfg.msgLimit;
-export const FLOOD_TEXT = "Соединение закрыто: слишком много сообщений от клиента";
+export const FLOOD_TEXT = T("srv.common.836");
 
 /** Счётчик сообщений клиента: окна по windowMs; over — сколько окон подряд лимит превышен. */
 interface Flood { win: number; move: number; general: number; over: number; overMarked: boolean; kicked: boolean; dropped: number }
@@ -76,7 +77,7 @@ export function floodCheck(state: WeakMap<Client, Flood>, client: Client, type: 
     f.overMarked = true;
     if (++f.over >= cfg.kickAfterWindows) {
       f.kicked = true;
-      console.warn(`[flood] ${name || client.sessionId}: лимит сообщений превышен ${f.over} окна подряд (последнее: ${type}, отброшено ${f.dropped}) — отключение`);
+      console.warn(T("srv.common.208", { sessionid: name || client.sessionId, over: f.over, type: type, dropped: f.dropped }));
       try {
         client.send("kicked", { text: FLOOD_TEXT });
         client.leave(KICK_CODE);
@@ -153,12 +154,12 @@ export function registerCombat(on: On, world: () => World) {
     const id = typeof m.id === "string" ? m.id : null;
     if (!id) return w().stopFollow(p, true);
     const a = w().actor(id);
-    if (!a || a.id === p.id || !w().isPlayer(a) || w().isDead(a) || w().dist(p.unit, a) > 600) return void p.send("toast", { text: "Не удалось следовать", kind: "error" });
+    if (!a || a.id === p.id || !w().isPlayer(a) || w().isDead(a) || w().dist(p.unit, a) > 600) return void p.send("toast", { text: T("srv.common.209"), kind: "error" });
     p.followId = a.id;
     p.followGo = false;
     p.moveTo = null;
     p.engaged = p.approach = false;
-    p.send("toast", { text: `Вы следуете за ${a.name}`, kind: "info" });
+    p.send("toast", { text: T("srv.common.210", { name: a.name }), kind: "info" });
   });
   on<{ on: unknown }>("chase", (p, m) => { p.chase = m.on === true; });
   on<{ id: unknown; x: unknown; y: unknown; target: unknown; q: unknown; ap: unknown; a: unknown; dx: unknown; dy: unknown }>("skill", (p, m) => {
@@ -180,7 +181,7 @@ export function registerCombat(on: On, world: () => World) {
   on<{ bar: unknown; i: unknown; ref: unknown }>("bars:set", (p, m) => {
     if (!validPos(m.bar, m.i) || !barsOk(p)) return;
     const ref = cleanRef(m.ref ?? null, p.cls);
-    if (ref === undefined) return void p.send("toast", { text: "Это нельзя поставить на панель", kind: "error" });
+    if (ref === undefined) return void p.send("toast", { text: T("srv.common.211"), kind: "error" });
     p.save.bars = setSlot(p.bars(), m.bar as number, m.i as number, ref);
     p.selfDirty = true;
   });
@@ -201,7 +202,7 @@ export function registerCombat(on: On, world: () => World) {
     if (typeof m.text !== "string") return;
     const text = cleanText(m.text).slice(0, CHAT_MAX_LEN);
     if (!text) return;
-    if (w().time - p.lastChat < 600) return p.send("toast", { text: "Не так быстро", kind: "error" });
+    if (w().time - p.lastChat < 600) return p.send("toast", { text: T("srv.common.212"), kind: "error" });
     p.lastChat = w().time;
     w().playerChat(p, text);
   });

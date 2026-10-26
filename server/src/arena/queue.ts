@@ -11,6 +11,7 @@ import type { FactionId } from "../../../shared/classes";
 import { enemyFaction } from "../../../shared/factions";
 import type { ArenaStore } from "./store";
 import { makeBots, type BotSpec } from "./bots";
+import { T } from "../../../shared/texts";
 
 /** Сколько ждать живого соперника перед предложением боя с ботом; в тестах — ARENA_BOT_WAIT_MS. */
 export const botWaitMs = () => Number(process.env.ARENA_BOT_WAIT_MS) || 45_000;
@@ -74,15 +75,15 @@ export class ArenaQueue {
   }
 
   join(players: Player[], mode: ArenaMode, now = Date.now()): string | null {
-    if (players.length > TEAM_SIZE[mode]) return `В режиме ${MODE_NAMES[mode]} команда из ${TEAM_SIZE[mode]}`;
+    if (players.length > TEAM_SIZE[mode]) return T("srv.queue.30", { mode: MODE_NAMES[mode], mode2: TEAM_SIZE[mode] });
     for (const p of players) {
       const k = p.name.toLowerCase();
-      if (this.busy(k)) return `${p.name} уже в очереди`;
-      if (p.dead) return `${p.name} мёртв`;
+      if (this.busy(k)) return T("srv.queue.31", { name: p.name });
+      if (p.dead) return T("srv.queue.32", { name: p.name });
     }
     const ratings: Record<string, number> = {};
     for (const p of players) ratings[p.name.toLowerCase()] = this.store.rating(p.name.toLowerCase(), mode).rating;
-    if (players.some((p) => p.faction !== players[0].faction)) return "Команда арены — только из одной фракции";
+    if (players.some((p) => p.faction !== players[0].faction)) return T("srv.queue.33");
     this.entries.push({ id: this.nextId++, mode, members: players.map((p) => p.name.toLowerCase()), ratings, joinedAt: now, faction: players[0].faction });
     this.changed(players.map((p) => p.name.toLowerCase()));
     return null;
@@ -99,7 +100,7 @@ export class ArenaQueue {
 
   /** Игрок покинул мир: снимаем с очереди или отклоняем найденный матч. */
   drop(key: string) {
-    if (this.pendingOf(key)) this.decline(key, "вышел из игры");
+    if (this.pendingOf(key)) this.decline(key, T("srv.queue.771"));
     this.cancel(key);
   }
 
@@ -115,14 +116,14 @@ export class ArenaQueue {
     }
   }
 
-  decline(key: string, why = "отклонил матч") {
+  decline(key: string, why = T("srv.queue.772")) {
     const m = this.pendingOf(key);
     if (!m) return;
     this.pending.delete(m.id);
     if (m.bots) {
       for (const t of m.teams) for (const e of t) {
         this.entries.push(e);
-        for (const k of e.members) this.find(k)?.send("arena:cancelled", { reason: "Бой с ботом отменён. Продолжаем искать соперников" });
+        for (const k of e.members) this.find(k)?.send("arena:cancelled", { reason: T("srv.queue.773") });
       }
       this.changed(m.teams.flatMap(teamMembers));
       return;
@@ -132,11 +133,11 @@ export class ArenaQueue {
     const who = this.find(key)?.name ?? key;
     for (const t of m.teams) for (const e of t) {
       if (declinedEntries.has(e)) {
-        for (const k of e.members) this.find(k)?.send("arena:cancelled", { reason: k === key ? "Вы отклонили матч и покинули очередь" : `${who} ${why}. Группа покидает очередь` });
+        for (const k of e.members) this.find(k)?.send("arena:cancelled", { reason: k === key ? T("srv.queue.774") : T("srv.queue.775", { who: who, why: why }) });
       } else {
         // остальные возвращаются в очередь, сохраняя время ожидания
         this.entries.push(e);
-        for (const k of e.members) this.find(k)?.send("arena:cancelled", { reason: `${who} ${why}. Вы снова в очереди` });
+        for (const k of e.members) this.find(k)?.send("arena:cancelled", { reason: T("srv.queue.776", { who: who, why: why }) });
       }
     }
     this.changed(m.teams.flatMap(teamMembers));
@@ -174,7 +175,7 @@ export class ArenaQueue {
     for (const m of [...this.pending.values()]) {
       if (now < m.expiresAt) continue;
       const silent = m.teams.flatMap(teamMembers).find((k) => !m.accepted.has(k));
-      if (silent) this.decline(silent, "не подтвердил матч");
+      if (silent) this.decline(silent, T("srv.queue.777"));
     }
     for (const mode of ["1v1", "2v2"] as ArenaMode[]) this.matchMode(mode, now);
     this.offerBots(now);

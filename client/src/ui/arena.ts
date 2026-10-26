@@ -9,6 +9,7 @@ import type { Net, UnitState } from "../net";
 import { seg, setHidden, tabs, type TabsHandle } from "./kit";
 import { formatNumber } from "./gold";
 import { absorbApply } from "./absorb";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const clsName = (c: string) => CLASSES[c as ClassId]?.name ?? c;
@@ -26,10 +27,10 @@ const deltaTag = (n: number) => `<span class="delta ${n > 0 ? "c-ok" : n < 0 ? "
 const when = (at: number) => new Date(at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(", ", " ");
 const seasonText = (s: ArenaInfo["season"]) => {
   const left = Math.max(0, s.endsAt - s.now);
-  return `Сезон ${s.id} · до конца ${Math.floor(left / 86400000)} дн. ${Math.floor((left % 86400000) / 3600000)} ч.`;
+  return T("ui.arena.312", { id: s.id, math: Math.floor(left / 86400000), math2: Math.floor((left % 86400000) / 3600000) });
 };
-const TABS = [["rating", "Рейтинг и очередь"], ["top", "Лидеры"], ["history", "История"]] as const;
-const RESULT = { win: { name: "Победа", tone: "c-ok" }, loss: { name: "Поражение", tone: "c-bad" }, draw: { name: "Ничья", tone: "c-dim" } } as const;
+const TABS = [["rating", T("ui.arena.313")], ["top", T("ui.arena.314")], ["history", T("ui.arena.315")]] as const;
+const RESULT = { win: { name: T("ui.arena.316"), tone: "c-ok" }, loss: { name: T("ui.arena.317"), tone: "c-bad" }, draw: { name: T("ui.arena.318"), tone: "c-dim" } } as const;
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -119,7 +120,7 @@ export class ArenaUI {
     else this.close();
   }
   open() {
-    if (this.net.kind === "arena") return this.toast("Окно арены доступно в мире", "error");
+    if (this.net.kind === "arena") return this.toast(T("ui.arena.267"), "error");
     this.win.hidden = false;
     this.net.send("arena:info");
     this.renderWin();
@@ -134,7 +135,7 @@ export class ArenaUI {
   // ---------- окно арены ----------
   /** Каркас строится один раз: заголовок, вкладки и .body остаются на месте, при обновлении меняется только содержимое .body. */
   private buildWin() {
-    this.win.innerHTML = `<h2><span>Арена</span><button class="x" aria-label="Закрыть">×</button></h2>
+    this.win.innerHTML = `<h2><span>${T("ui.arena.319")}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="tabs" aria-label="Разделы арены">${TABS.map(([key, name]) => `<button class="btn tab" id="arena-tab-${key}" data-tab="${key}" aria-controls="arena-body">${name}</button>`).join("")}</div>
       <div class="body" id="arena-body" role="tabpanel"></div>
       <div class="win-foot"><span class="win-foot-info"></span></div>`;
@@ -159,7 +160,7 @@ export class ArenaUI {
     const typed = this.winBody.querySelector<HTMLInputElement>("#party-invite-name");
     const keep = typed && { value: typed.value, focus: document.activeElement === typed, from: typed.selectionStart, to: typed.selectionEnd };
     const next = el("div");
-    if (!info) next.append(el("p", "note", "Загрузка…"));
+    if (!info) next.append(el("p", "note", T("ui.arena.320")));
     else if (this.tab === "rating") this.renderRating(next, info);
     else if (this.tab === "top") this.renderTop(next);
     else this.renderHistory(next);
@@ -184,19 +185,19 @@ export class ArenaUI {
         <div class="card-title">${MODE_NAMES[mode]}</div>
         <div class="mode-rating">${r.rating}</div>
         <div class="mode-rank">${badge(r.rating)}${r.place ? `<span class="meta">${r.place} место</span>` : ""}</div>
-        <div class="card-meta">Побед ${r.wins} · поражений ${r.losses}${r.draws ? ` · ничьих ${r.draws}` : ""}</div>`);
+        <div class="card-meta">${T("ui.arena.321", { wins: r.wins, losses: r.losses, draws: r.draws ? ` · ничьих ${r.draws}` : "" })}</div>`);
       const act = el("div", "card-actions fill");
       const q = info.queue;
       if (q && q.mode === mode) {
-        card.append(el("div", "queue-status", `<span class="dot"></span> В очереди <b data-wait>${mmss(q.waitedMs)}</b> · окно ±<span data-window>${q.window}</span>${q.withParty ? " · с группой" : ""}`));
+        card.append(el("div", "queue-status", `<span class="dot"></span> ${T("ui.arena.322")} <b data-wait>${mmss(q.waitedMs)}</b> ${T("ui.arena.323")}<span data-window>${q.window}</span>${q.withParty ? " · с группой" : ""}`));
         if (q.note) card.append(el("p", "note", esc(q.note)));
-        const cancel = el("button", "btn", "Выйти из очереди");
+        const cancel = el("button", "btn", T("ui.arena.324"));
         cancel.onclick = () => this.net.send("arena:cancel");
         act.append(cancel);
       } else {
         const inParty = (info.party?.members.length ?? 0) > 1;
-        if (mode === "2v2") card.append(el("p", "note", inParty ? "Группа встанет в очередь вместе." : "Одиночек сервер соберёт в пару с близким рейтингом."));
-        const b = el("button", "btn primary", mode === "2v2" && inParty ? "В очередь с группой" : "В очередь");
+        if (mode === "2v2") card.append(el("p", "note", inParty ? T("ui.arena.325") : T("ui.arena.326")));
+        const b = el("button", "btn primary", mode === "2v2" && inParty ? T("ui.arena.327") : T("ui.arena.328"));
         b.disabled = !!info.queue || info.pending;
         b.onclick = () => this.net.send("arena:queue", { mode });
         act.append(b);
@@ -210,71 +211,71 @@ export class ArenaUI {
 
     // группа
     const party = el("section", "sec");
-    const head = el("div", "sec-head", `<h3 class="sec-h">Группа</h3>`);
+    const head = el("div", "sec-head", `<h3 class="sec-h">${T("ui.arena.329")}</h3>`);
     party.append(head);
     const members = info.party?.members ?? [];
     if (members.length) {
       party.append(el("ul", "list boxed", members.map((m) => `<li class="row dense"><span class="row-title">${esc(m.name)}<span class="meta">ур. ${m.level}</span></span><span class="row-end"><span class="meta">${clsName(m.cls)}</span>${m.online ? "" : '<span class="chip dim">Не в сети</span>'}</span></li>`).join("")));
-      const leave = el("button", "btn small", "Покинуть группу");
+      const leave = el("button", "btn small", T("ui.arena.330"));
       leave.onclick = () => this.net.send("party:leave");
       head.append(leave);
     } else {
       const input = el("input", "input");
-      input.placeholder = "Имя игрока";
+      input.placeholder = T("ui.arena.268");
       input.maxLength = 16;
       input.id = "party-invite-name";
       input.autocomplete = "off";
-      input.setAttribute("aria-label", "Имя игрока");
-      const go = el("button", "btn", "Пригласить");
+      input.setAttribute("aria-label", T("ui.arena.268"));
+      const go = el("button", "btn", T("ui.arena.331"));
       const send = () => { if (input.value.trim()) this.net.send("party:invite", { name: input.value.trim() }); input.value = ""; };
       go.onclick = send;
       input.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") send(); });
       const row = el("div", "input-group");
       row.append(input, go);
-      party.append(el("p", "note", "Для 2×2 пригласите напарника: он должен быть в мире."), row);
+      party.append(el("p", "note", T("ui.arena.332")), row);
     }
     body.append(party);
 
     // титулы
-    const titles = el("section", "sec", `<h3 class="sec-h">Титул и рамка</h3>`);
-    if (!info.titles.length) titles.append(el("p", "note", "Титулы по рангу: " + RANKS.map((r) => `<span class="c-var" style="--c:${r.color}">${r.title}</span>`).join(", ") + "."));
+    const titles = el("section", "sec", `<h3 class="sec-h">${T("ui.arena.333")}</h3>`);
+    if (!info.titles.length) titles.append(el("p", "note", `${T("ui.arena.334")} ` + RANKS.map((r) => `<span class="c-var" style="--c:${r.color}">${r.title}</span>`).join(", ") + "."));
     else {
       const list = el("div", "title-list choice");
       for (const t of ["", ...info.titles]) {
-        const b = el("button", "btn", t ? esc(t) : "Без титула");
+        const b = el("button", "btn", t ? esc(t) : T("ui.arena.335"));
         b.setAttribute("aria-pressed", String(info.title === t));
         b.onclick = () => this.net.send("arena:title", { name: t });
         list.append(b);
       }
       titles.append(list);
     }
-    titles.append(el("p", "note", `В конце сезона — титул, рамка и медальон по рангу, рейтинг частично сбрасывается к ${START_RATING}.`));
+    titles.append(el("p", "note", T("ui.arena.336", { start_rating: START_RATING })));
     body.append(titles);
   }
 
   private renderTop(body: HTMLElement) {
     const sw = el("div", "seg inline", ARENA_MODES.map((m) => `<button class="seg-opt" data-mode="${m}" aria-pressed="${this.topMode === m}">${MODE_NAMES[m]}</button>`).join(""));
-    sw.setAttribute("aria-label", "Режим");
+    sw.setAttribute("aria-label", T("ui.arena.269"));
     seg(sw, (mode) => { this.topMode = mode as ArenaMode; this.net.send("arena:top", { mode: this.topMode }); this.renderWin(); }, "mode");
     body.append(sw);
     const rows = this.top[this.topMode];
-    if (!rows) return void body.append(el("p", "note", "Загрузка…"));
-    if (!rows.length) return void body.append(el("p", "note", "В этом сезоне ещё никто не сыграл. Станьте первым!"));
+    if (!rows) return void body.append(el("p", "note", T("ui.arena.320")));
+    if (!rows.length) return void body.append(el("p", "note", T("ui.arena.337")));
     const me = this.net.self?.name;
-    body.append(el("div", "tbl-wrap", `<table class="tbl"><thead><tr><th class="num">#</th><th class="grow">Герой</th><th>Класс</th><th>Ранг</th><th class="num">Рейтинг</th><th class="num" title="Победы – поражения">П–П</th></tr></thead><tbody>${rows
+    body.append(el("div", "tbl-wrap", `<table class="tbl"><thead><tr><th class="num">#</th><th class="grow">${T("ui.arena.338")}</th><th>${T("ui.arena.339")}</th><th>${T("ui.arena.340")}</th><th class="num">${T("ui.arena.341")}</th><th class="num" title="Победы – поражения">П–П</th></tr></thead><tbody>${rows
       .map((r) => `<tr${r.name === me ? ' class="me"' : ""}><td class="num dim">${r.place}</td><td class="grow">${esc(r.name)}</td><td class="nowrap dim">${clsName(r.cls)}</td><td>${badge(r.rating)}</td><td class="num">${r.rating}</td><td class="num">${r.wins}–${r.losses}</td></tr>`)
       .join("")}</tbody></table>`));
   }
 
   private renderHistory(body: HTMLElement) {
     const rows = this.history;
-    if (!rows) return void body.append(el("p", "note", "Загрузка…"));
-    if (!rows.length) return void body.append(el("p", "note", "Вы ещё не сражались на арене."));
+    if (!rows) return void body.append(el("p", "note", T("ui.arena.320")));
+    if (!rows.length) return void body.append(el("p", "note", T("ui.arena.342")));
     const line = (r: HistoryRow) => {
       const o = RESULT[r.result];
       return `<tr><td class="nowrap dim">${when(r.at)}</td><td class="nowrap">${MODE_NAMES[r.mode]}${r.bot ? ' <span class="chip dim" title="Бой с ботом: рейтинг меняется слабее">Бот</span>' : ""}</td><td class="nowrap res ${o.tone}">${o.name}</td><td class="grow">${esc(r.enemies.join(", ") || "—")}${r.allies.length ? `<span class="sub">с ${esc(r.allies.join(", "))}</span>` : ""}</td><td class="num">${r.rating}${deltaTag(r.delta)}</td><td class="num">${r.damage}</td><td class="num">${r.healing}</td></tr>`;
     };
-    body.append(el("div", "tbl-wrap", `<table class="tbl"><thead><tr><th>Когда</th><th>Режим</th><th>Итог</th><th class="grow">Соперники</th><th class="num">Рейтинг</th><th class="num">Урон</th><th class="num">Лечение</th></tr></thead><tbody>${rows.map(line).join("")}</tbody></table>`));
+    body.append(el("div", "tbl-wrap", `<table class="tbl"><thead><tr><th>${T("ui.arena.343")}</th><th>${T("ui.arena.269")}</th><th>${T("ui.arena.344")}</th><th class="grow">${T("ui.arena.345")}</th><th class="num">${T("ui.arena.341")}</th><th class="num">${T("ui.arena.346")}</th><th class="num">${T("ui.arena.347")}</th></tr></thead><tbody>${rows.map(line).join("")}</tbody></table>`));
   }
 
   // ---------- всплывающие окна ----------
@@ -312,9 +313,9 @@ export class ArenaUI {
   private showInvite(from: string) {
     this.invite.hidden = false;
     this.invite.innerHTML = `<section class="panel dialog sm arena-dialog" role="alertdialog" aria-labelledby="invite-title">
-      <div class="dialog-head"><h2 class="dialog-title" id="invite-title">Приглашение в группу</h2></div>
-      <div class="dialog-body"><p>${esc(from)} приглашает вас в группу.</p></div>
-      <div class="dialog-foot"><button class="btn" data-a="0">Отказаться</button><button class="btn primary" data-a="1">Принять</button></div></section>`;
+      <div class="dialog-head"><h2 class="dialog-title" id="invite-title">${T("ui.arena.348")}</h2></div>
+      <div class="dialog-body"><p>${T("ui.arena.349", { from: esc(from) })}</p></div>
+      <div class="dialog-foot"><button class="btn" data-a="0">${T("ui.arena.350")}</button><button class="btn primary" data-a="1">${T("ui.arena.351")}</button></div></section>`;
     this.invite.querySelectorAll<HTMLButtonElement>("[data-a]").forEach((b) => (b.onclick = () => {
       this.net.send("party:respond", { accept: b.dataset.a === "1" });
       this.invite.hidden = true;
@@ -323,9 +324,9 @@ export class ArenaUI {
 
   private showResult(r: ArenaResultMsg) {
     const me = r.players.find((p) => p.name === this.net.self?.name);
-    const title = !me ? "Матч окончен" : me.draw ? "Ничья" : me.won ? "Победа!" : "Поражение";
+    const title = !me ? T("ui.arena.352") : me.draw ? T("ui.arena.318") : me.won ? T("ui.arena.353") : T("ui.arena.317");
     const tone = !me ? "" : me.draw ? " c-dim" : me.won ? " c-ok" : " c-bad";
-    const reason = r.reason === "time" ? "Время вышло: решил суммарный процент здоровья" : r.reason === "leave" ? "Соперник покинул бой" : "Все противники повержены";
+    const reason = r.reason === "time" ? T("ui.arena.354") : r.reason === "leave" ? T("ui.arena.355") : T("ui.arena.356");
     const change = me ? me.ratingAfter - me.ratingBefore : 0;
     const team = (t: number) => r.players.filter((p) => p.team === t).map((p) => `<tr class="team${t}${p.name === me?.name ? " me" : ""}"><td class="grow">${esc(p.name)}${p.left ? ' <span class="chip bad">Вышел</span>' : ""}</td><td class="nowrap dim">${clsName(p.cls)}</td><td class="num">${p.damage}</td><td class="num">${p.healing}</td><td class="num">${p.kills}/${p.deaths}</td><td class="num">${p.ratingAfter}${deltaTag(p.ratingAfter - p.ratingBefore)}</td></tr>`).join("");
     this.results.hidden = false;
@@ -334,13 +335,13 @@ export class ArenaUI {
       <div class="dialog-body">
         <p class="note">${MODE_NAMES[r.mode]} · ${reason} · ${mmss(r.durationMs)}</p>
         ${me ? `<div class="res-rating"><span class="meta">Рейтинг</span><span>${me.ratingBefore} → <b>${me.ratingAfter}</b></span>${deltaTag(change)}${badge(me.ratingAfter)}${r.bot ? `<span class="meta">Бой с ботом: рейтинг ×${BOT_RATING_MULT}</span>` : ""}</div>` : ""}
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="grow">Герой</th><th>Класс</th><th class="num">Урон</th><th class="num">Лечение</th><th class="num" title="Убийства / смерти">У/С</th><th class="num">Рейтинг</th></tr></thead><tbody>${[1, 2].map(team).join('<tr class="gap"><td colspan="6"></td></tr>')}</tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="grow">${T("ui.arena.338")}</th><th>${T("ui.arena.339")}</th><th class="num">${T("ui.arena.346")}</th><th class="num">${T("ui.arena.347")}</th><th class="num" title="Убийства / смерти">У/С</th><th class="num">${T("ui.arena.341")}</th></tr></thead><tbody>${[1, 2].map(team).join('<tr class="gap"><td colspan="6"></td></tr>')}</tbody></table></div>
       </div>
-      <div class="dialog-foot"><button class="btn primary" data-home>Вернуться в мир</button></div></section>`;
+      <div class="dialog-foot"><button class="btn primary" data-home>${T("ui.arena.357")}</button></div></section>`;
     const home = this.results.querySelector<HTMLButtonElement>("[data-home]")!;
     home.onclick = () => {
       home.disabled = true;
-      home.textContent = "Возвращаемся…";
+      home.textContent = T("ui.arena.270");
       this.net.send("arena:leave");
     };
     clearTimeout(this.resultTimer);
@@ -381,7 +382,7 @@ export class ArenaUI {
         let u: UnitState | undefined;
         for (const v of units.values()) if (v.u.kind === UnitKind.Player && v.u.name === m.name) { u = v.u; break; }
         const hpK = u ? Math.max(0, u.hp) / Math.max(1, u.maxHp) : 0, mpK = u && u.maxMp > 0 ? Math.max(0, u.mp) / u.maxMp : 0;
-        const txt = u ? `${formatNumber(Math.max(0, u.hp))} / ${formatNumber(u.maxHp)}` : m.online ? "далеко" : "не в сети";
+        const txt = u ? `${formatNumber(Math.max(0, u.hp))} / ${formatNumber(u.maxHp)}` : m.online ? T("ui.arena.358") : T("ui.arena.359");
         const hpEl = row.querySelector<HTMLElement>(".bar.hp > i")!, tx = row.querySelector<HTMLElement>(".bar.hp > span")!;
         hpEl.style.width = `${hpK * 100}%`;
         // щит-поглотитель союзника поверх здоровья (как в рамке героя); нет юнита рядом — нет и щита
@@ -406,9 +407,9 @@ export class ArenaUI {
     const row = (u: UnitState) => `<div class="pl"><span>${esc(u.name)}</span><div class="bar hp mini"><i style="width:${(Math.max(0, u.hp) / Math.max(1, u.maxHp)) * 100}%"></i></div></div>`;
     const names = (t: number) => net.arena!.teams[t - 1].map((p) => {
       const u = teamUnits(t).find((x) => x.name === p.name);
-      return u ? row(u) : `<div class="pl gone"><span>${esc(p.name)}</span><span class="c-bad">нет</span></div>`;
+      return u ? row(u) : `<div class="pl gone"><span>${esc(p.name)}</span><span class="c-bad">${T("ui.arena.360")}</span></div>`;
     }).join("");
-    const timer = st.phase === "fight" || st.phase === "end" ? mmss(st.timeLeft * 1000) : st.phase === "countdown" ? "старт" : "ждём игроков";
+    const timer = st.phase === "fight" || st.phase === "end" ? mmss(st.timeLeft * 1000) : st.phase === "countdown" ? T("ui.arena.361") : T("ui.arena.362");
     this.board.innerHTML = `<div class="side ally">${names(myTeam)}</div><div class="mid"><div class="mode">${MODE_NAMES[net.arena!.mode]}</div><div class="time">${timer}</div></div><div class="side enemy">${names(myTeam === 1 ? 2 : 1)}</div>`;
     // отсчёт
     if (st.phase === "countdown") {
@@ -416,7 +417,7 @@ export class ArenaUI {
       this.countdown.textContent = String(st.countdown || "");
     } else if (st.phase === "fight" && this.lastPhase === "countdown") {
       this.countdown.hidden = false;
-      this.countdown.textContent = "В бой!";
+      this.countdown.textContent = T("ui.arena.271");
       setTimeout(() => (this.countdown.hidden = true), 900);
     } else if (st.phase !== "fight") setHidden(this.countdown, st.phase !== "waiting");
     if (st.phase === "waiting") this.countdown.textContent = "…";

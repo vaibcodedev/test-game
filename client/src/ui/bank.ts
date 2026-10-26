@@ -7,6 +7,7 @@ import type { SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
 import { tabs, type TabsHandle } from "./kit";
 import { plusBadge } from "./smith";
+import { T } from "../../../shared/texts";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -52,12 +53,12 @@ export class BankUI {
       <div class="body" id="bank-body" role="tabpanel">
         <p class="npc-say">${esc(BANKER.greeting)}</p>
         <div class="cells bank-grid"></div>
-        <p class="note">Клик — забрать в сумку. Перетащите предмет из сумки сюда или клик по нему в сумке — положить.</p>
+        <p class="note">${T("ui.bank.370")}</p>
         <section class="sec">
-          <div class="sec-head"><h3 class="sec-h">Золото в банке</h3><span class="sec-aside bank-sum"></span></div>
-          <div class="input-group bank-gold"><input class="input" type="number" min="1" step="1" placeholder="Сумма" aria-label="Сумма золота"><button class="btn" data-g="1">Положить</button><button class="btn" data-g="-1">Снять</button></div>
+          <div class="sec-head"><h3 class="sec-h">${T("ui.bank.371")}</h3><span class="sec-aside bank-sum"></span></div>
+          <div class="input-group bank-gold"><input class="input" type="number" min="1" step="1" placeholder="Сумма" aria-label="Сумма золота"><button class="btn" data-g="1">${T("ui.bank.372")}</button><button class="btn" data-g="-1">${T("ui.bank.373")}</button></div>
         </section>
-        <section class="sec"><h3 class="sec-h">Расширение</h3><div class="list boxed bank-offer"></div></section>
+        <section class="sec"><h3 class="sec-h">${T("ui.bags.367")}</h3><div class="list boxed bank-offer"></div></section>
       </div>
       <div class="win-foot"></div>`;
     const q = <T extends HTMLElement>(sel: string) => this.win.querySelector<T>(sel)!;
@@ -155,7 +156,7 @@ export class BankUI {
       b.setAttribute("aria-controls", "bank-body");
       if (open) {
         const n = v.tabs[t].filter(Boolean).length;
-        b.innerHTML = `Вкладка ${t + 1}${n ? ` <span class="count">${n}</span>` : ""}`;
+        b.innerHTML = T("ui.bank.374", { t: t + 1, span: n ? ` <span class="count">${n}</span>` : "" });
         this.dropZone(b, (data) => {
           const from = bagSlot(data);
           if (from !== null) this.net.send("bank:put", { index: from, tab: t });
@@ -163,7 +164,7 @@ export class BankUI {
       } else {
         b.textContent = `🔒 ${t + 1}`;
         b.disabled = true;
-        b.title = "Вкладка не куплена";
+        b.title = T("ui.bank.272");
       }
       btns.push(b);
     }
@@ -174,8 +175,8 @@ export class BankUI {
       b.id = "bank-tab-shared";
       b.dataset.tab = "shared";
       b.setAttribute("aria-controls", "bank-body");
-      b.textContent = "Общий склад";
-      b.title = "Общий для всех героев вашего аккаунта";
+      b.textContent = T("ui.bank.273");
+      b.title = T("ui.bank.274");
       this.dropZone(b, (data) => {
         const from = bagSlot(data);
         if (from !== null) this.net.send("bank:put", { index: from, tab: SHARED_TAB });
@@ -193,7 +194,7 @@ export class BankUI {
       if (i >= cells.length) {
         c.className = "cell unbought";
         c.disabled = true;
-        c.title = "Ячейка не куплена";
+        c.title = T("ui.bank.275");
         continue;
       }
       const it = cells[i];
@@ -215,17 +216,17 @@ export class BankUI {
 
     this.sum.innerHTML = gold(v.gold);
 
-    if (v.price === null) this.offer.innerHTML = `<div class="row"><span class="row-title c-ok">Банк максимального размера</span></div>`;
+    if (v.price === null) this.offer.innerHTML = `<div class="row"><span class="row-title c-ok">${T("ui.bank.375")}</span></div>`;
     else {
       const last = v.tabs[v.tabs.length - 1];
-      const what = last.length < BANK_TAB_SIZE ? `+${BANK_STEP} ячеек во вкладке ${v.tabs.length}` : `Новая вкладка ${v.tabs.length + 1}`;
+      const what = last.length < BANK_TAB_SIZE ? T("ui.bank.376", { bank_step: BANK_STEP, tabs: v.tabs.length }) : T("ui.bank.377", { tabs: v.tabs.length + 1 });
       const poor = (s?.gold ?? 0) < v.price;
       // bank-buy — метка для tests/
-      this.offer.innerHTML = `<div class="row"><div class="row-main"><span class="row-title">${what}</span></div><div class="row-end bank-buy"><button class="btn small price"${poor ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">Купить</span>${gold(v.price)}</button></div></div>`;
+      this.offer.innerHTML = `<div class="row"><div class="row-main"><span class="row-title">${what}</span></div><div class="row-end bank-buy"><button class="btn small price"${poor ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">${T("ui.bank.378")}</span>${gold(v.price)}</button></div></div>`;
       this.offer.querySelector<HTMLButtonElement>(".btn")!.onclick = () => this.net.send("bank:buy", {});
     }
 
-    this.foot.innerHTML = `<span class="win-foot-info">Занято ячеек: ${cells.filter(Boolean).length} из ${cells.length}</span><span class="foot-gold"><span class="win-foot-info">В сумке</span>${gold(s?.gold ?? 0)}</span>`;
+    this.foot.innerHTML = `<span class="win-foot-info">${T("ui.bank.379", { boolean: cells.filter(Boolean).length, cells: cells.length })}</span><span class="foot-gold"><span class="win-foot-info">${T("ui.bank.380")}</span>${gold(s?.gold ?? 0)}</span>`;
   }
 
   /** Обновить при изменении личного состояния (золото в сумке). */

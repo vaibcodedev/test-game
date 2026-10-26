@@ -2,6 +2,7 @@
 import type { LogoutMode, Net } from "../net";
 import { hotkeySections, keybinds, mouseOpts, type ActionId, type HelpKey } from "../game/keybinds";
 import { CreditsUI } from "./credits";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 /** Подпись клавиши действия. */
@@ -14,18 +15,18 @@ const keysCell = (keys: HelpKey[]) => keys.map((k) => (k.word ? `<span class="c-
 /** Совет про мышь: зависит от схемы клавиш и от опции «ЛКМ атакует» (Настройки → Управление). */
 const mouseTip = () => {
   const classic = keybinds.presetId === "classic";
-  if (mouseOpts.lmbAttacks) return classic ? "Клик по врагу — атака, клик по земле — движение." : "ЛКМ и ПКМ по врагу — атака, ПКМ по земле — движение.";
-  return classic ? "Клик по земле — движение, ПКМ по врагу — атака, ЛКМ по врагу — выбор цели." : "ЛКМ — выбор цели, ПКМ — атака и движение.";
+  if (mouseOpts.lmbAttacks) return classic ? T("ui.gamemenu.480") : T("ui.gamemenu.481");
+  return classic ? T("ui.gamemenu.482") : T("ui.gamemenu.483");
 };
 const tips = (): string[] => {
   const hp = key("potionHp"), mp = key("potionMp"), inv = key("winInv");
   return [
     mouseTip(),
-    ...(hp && mp ? [`Зелья здоровья и маны — клавиши ${kbd(hp)} и ${kbd(mp)}.`] : []),
-    "Города безопасны. За стенами уровень врагов растёт — смотрите на подпись зоны под картой.",
-    "Задания берите у NPC в городах: награда золотом и опытом.",
-    "Тачпад: двухпальцевый тап — ПКМ (атака, взаимодействие); колесо или щипок — масштаб; «Крупные цели» — в настройках «Управление».",
-    `Тяжёлые вещи продавайте торговцу, лучшие надевайте через сумку${inv ? ` (${kbd(inv)})` : ""}.`,
+    ...(hp && mp ? [T("ui.gamemenu.484", { hp: kbd(hp), mp: kbd(mp) })] : []),
+    T("ui.gamemenu.485"),
+    T("ui.gamemenu.486"),
+    T("ui.gamemenu.487"),
+    T("ui.gamemenu.488", { inv: inv ? ` (${kbd(inv)})` : "" }),
   ];
 };
 
@@ -35,7 +36,7 @@ const tips = (): string[] => {
 export function fillHelp(body: Element) {
   const sections = hotkeySections(keybinds).map((s) => `<h3 class="sec-h">${esc(s.title)}</h3><dl>${s.rows.map((r) => `<div class="keys-row"><dt><span>${keysCell(r.keys)}</span></dt><dd>${esc(r.what)}</dd></div>`).join("")}</dl>`).join("");
   body.innerHTML = `<section class="sec"><div class="keys">${sections}</div></section>
-    <section class="sec"><h3 class="sec-h">Советы</h3><ul class="tips">${tips().map((t) => `<li>${t}</li>`).join("")}</ul></section>`;
+    <section class="sec"><h3 class="sec-h">${T("ui.gamemenu.489")}</h3><ul class="tips">${tips().map((t) => `<li>${t}</li>`).join("")}</ul></section>`;
 }
 
 export interface MenuActions {
@@ -80,27 +81,27 @@ export class GameMenu {
     const a = this.a;
     // [текст, клавиша, действие | null = скоро]
     const items: [string, string, (() => void) | null][] = [
-      ["Продолжить", key("escape"), () => {}],
-      ["Персонаж", key("winChar"), () => a.toggle("char")],
-      ["Инвентарь", key("winInv"), () => a.toggle("inv")],
-      ["Умения", key("winSkills"), () => a.toggle("skills")],
-      ["Квесты", "", () => a.openQuests()],
-      ["Бестиарий", key("winBestiary"), () => a.toggle("bestiary")],
-      ["Арена", key("winArena"), () => a.toggle("arena")],
-      ["Достижения", "", null],
-      ["Друзья и гильдия", "", null],
-      ["Карта", key("winMap"), () => a.openMap()],
-      ["Настройки", "", () => a.toggle("settings")],
-      ["Авторы", "", () => this.credits.toggle()],
-      ["Помощь", "", () => a.openHelp()],
-      ["Переподключиться", "", () => void window.dispatchEvent(new CustomEvent("emberfall:reconnect"))],
-      ["Сменить персонажа", "", a.net().kind === "arena" ? null : () => this.confirmLogout("char")],
-      ["Выйти из аккаунта", "", a.net().kind === "arena" ? null : () => this.confirmLogout("account")],
+      [T("ui.gamemenu.490"), key("escape"), () => {}],
+      [T("ui.gamemenu.491"), key("winChar"), () => a.toggle("char")],
+      [T("ui.gamemenu.492"), key("winInv"), () => a.toggle("inv")],
+      [T("ui.gamemenu.493"), key("winSkills"), () => a.toggle("skills")],
+      [T("ui.gamemenu.494"), "", () => a.openQuests()],
+      [T("ui.bestiary.384"), key("winBestiary"), () => a.toggle("bestiary")],
+      [T("ui.arena.319"), key("winArena"), () => a.toggle("arena")],
+      [T("ui.gamemenu.495"), "", null],
+      [T("ui.gamemenu.496"), "", null],
+      [T("ui.gamemenu.497"), key("winMap"), () => a.openMap()],
+      [T("ui.gamemenu.498"), "", () => a.toggle("settings")],
+      [T("ui.gamemenu.499"), "", () => this.credits.toggle()],
+      [T("ui.gamemenu.500"), "", () => a.openHelp()],
+      [T("ui.gamemenu.501"), "", () => void window.dispatchEvent(new CustomEvent("emberfall:reconnect"))],
+      [T("ui.gamemenu.502"), "", a.net().kind === "arena" ? null : () => this.confirmLogout("char")],
+      [T("ui.gamemenu.503"), "", a.net().kind === "arena" ? null : () => this.confirmLogout("account")],
     ];
-    if (a.isAdmin()) items.splice(7, 0, ["Админ-панель", key("winAdmin"), () => a.toggle("admin")]);
+    if (a.isAdmin()) items.splice(7, 0, [T("ui.gamemenu.504"), key("winAdmin"), () => a.toggle("admin")]);
     const p = document.createElement("div");
     p.className = "panel gmenu gm-main";
-    p.innerHTML = `<h2>Пепельный Предел</h2>`;
+    p.innerHTML = `<h2>${T("ui.gamemenu.505")}</h2>`;
     for (const [text, key, fn] of items) {
       const b = document.createElement("button");
       b.className = "btn gm-item";
@@ -123,11 +124,11 @@ export class GameMenu {
   private confirmLogout(mode: LogoutMode) {
     const p = document.createElement("div");
     p.className = "panel gmenu";
-    const title = mode === "char" ? "Сменить героя?" : "Выйти из аккаунта?";
-    p.innerHTML = `<h2>${title}</h2><p class="note gm-note">${mode === "char" ? "Вы вернётесь к выбору героя." : "Вы вернётесь на экран входа."} Прогресс сохранится.</p>`;
+    const title = mode === "char" ? T("ui.gamemenu.506") : T("ui.gamemenu.507");
+    p.innerHTML = `<h2>${title}</h2><p class="note gm-note">${T("ui.gamemenu.508", { char: mode === "char" ? "Вы вернётесь к выбору героя." : "Вы вернётесь на экран входа." })}</p>`;
     const yes = document.createElement("button"), no = document.createElement("button");
-    yes.className = "btn gm-item primary"; yes.textContent = mode === "char" ? "Сменить героя" : "Выйти";
-    no.className = "btn gm-item"; no.textContent = "Отмена";
+    yes.className = "btn gm-item primary"; yes.textContent = mode === "char" ? T("ui.gamemenu.509") : T("ui.raid.302");
+    no.className = "btn gm-item"; no.textContent = T("ui.gamemenu.284");
     no.onclick = () => this.open();
     yes.onclick = () => {
       yes.disabled = no.disabled = true;
@@ -152,9 +153,9 @@ export class GameMenu {
     const end = performance.now() + ms;
     const p = document.createElement("div");
     p.className = "panel gmenu";
-    p.innerHTML = `<h2>${title}</h2><p class="note gm-note">Вы в бою: выход через</p><div class="logout-wait"></div><p class="note gm-note">Полученный урон прервёт выход.</p>`;
+    p.innerHTML = `<h2>${title}</h2><p class="note gm-note">${T("ui.gamemenu.510")}</p><div class="logout-wait"></div><p class="note gm-note">${T("ui.gamemenu.511")}</p>`;
     const cancel = document.createElement("button");
-    cancel.className = "btn gm-item"; cancel.textContent = "Отмена";
+    cancel.className = "btn gm-item"; cancel.textContent = T("ui.gamemenu.284");
     cancel.onclick = () => this.close();
     p.append(cancel);
     const out = p.querySelector<HTMLElement>(".logout-wait")!;

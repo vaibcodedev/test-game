@@ -10,6 +10,7 @@ import { STABLEMASTERS } from "../../../shared/stables";
 import { addItem } from "./inventory";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const RAR: Record<MountTier, Rarity> = { common: Rarity.Common, uncommon: Rarity.Common, rare: Rarity.Rare, epic: Rarity.Epic, legendary: Rarity.Legendary };
 const SEAL_NAME = SEAL.name;
@@ -32,14 +33,14 @@ export function makePart(part: string, qty = 1): Item {
 export function giveItem(p: Player, it: Item) {
   if (addItem(p, it)) return;
   (p.save.pendingItems ??= []).push(it);
-  p.send("toast", { text: `${it.name} ждёт: освободите место в сумке`, kind: "error" });
+  p.send("toast", { text: T("srv.stable.158", { name: it.name }), kind: "error" });
 }
 
 /** Печать маунта в сумку (трофей, покупка, сборка). bound по умолчанию — по источнику (рейд, арена). */
 export function giveSeal(p: Player, mount: string, bound = sealBoundBySource(MOUNTS[mount])) {
   const it = makeSeal(mount, bound);
   giveItem(p, it);
-  p.send("toast", { text: `Получено: ${SEAL_NAME}: ${mountName(mount, p.faction)}`, kind: "loot" }); // имя по фракции героя (задача 142)
+  p.send("toast", { text: T("srv.stable.159", { seal_name: SEAL_NAME, mountname: mountName(mount, p.faction) }), kind: "loot" }); // имя по фракции героя (задача 142)
 }
 
 /** Выдать маунт в коллекцию (без дублей); первый — сразу выбран. */
@@ -51,7 +52,7 @@ export function awardMount(p: Player, id: string): boolean {
   own.push(id);
   if (!p.save.mount) p.save.mount = id;
   p.selfDirty = true;
-  p.send("toast", { text: `Получен маунт: ${mountName(id, p.faction)}`, kind: "loot" });
+  p.send("toast", { text: T("srv.stable.160", { mountname: mountName(id, p.faction) }), kind: "loot" });
   return true;
 }
 
@@ -61,9 +62,9 @@ export function learnSeal(p: Player, index: number) {
   const id = it && sealMount(it.base);
   if (!it || !id) return;
   const d = MOUNTS[id];
-  if (!canRide(d, p.faction)) return err(p, `${mountName(d.id, p.faction)}: только для другой фракции`);
-  if (p.level < d.level) return err(p, `${mountName(d.id, p.faction)}: нужен ${d.level} уровень`);
-  if (p.save.mounts?.includes(id)) return err(p, `${mountName(d.id, p.faction)} уже в коллекции — печать можно продать или передать`);
+  if (!canRide(d, p.faction)) return err(p, T("srv.stable.161", { mountname: mountName(d.id, p.faction) }));
+  if (p.level < d.level) return err(p, T("srv.stable.162", { mountname: mountName(d.id, p.faction), level: d.level }));
+  if (p.save.mounts?.includes(id)) return err(p, T("srv.stable.163", { mountname: mountName(d.id, p.faction) }));
   p.save.inventory[index] = null;
   awardMount(p, id);
   p.save.mount = id;
@@ -74,7 +75,7 @@ export function nearStable(w: World, p: Player) {
 }
 function stableGate(w: World, p: Player): boolean {
   if (p.dead) return false;
-  if (!nearStable(w, p)) { err(p, "Подойдите к конюшему"); return false; }
+  if (!nearStable(w, p)) { err(p, T("srv.stable.164")); return false; }
   const no = serviceRefusal("stable", p.x, p.y, p.faction, MERCHANT_RANGE);
   if (no) { err(p, no); return false; }
   return true;
@@ -91,11 +92,11 @@ export function stableBuy(w: World, p: Player, id: unknown) {
 export function buySeal(p: Player, id: string) {
   const d = MOUNTS[id];
   const o = stableOffer(d, stateOf(p));
-  if (!o.buy) return err(p, "Этот маунт не продаётся");
-  if (o.owned) return err(p, "Маунт уже у вас");
-  if (o.sealInBag) return err(p, "Печать этого маунта уже в сумке — изучите её");
-  if (!o.canBuy) return err(p, `${mountName(d.id, p.faction)}: не хватает — ${o.missBuy.join(", ")}`);
-  if (!p.save.inventory.includes(null)) return err(p, "Сумка полна");
+  if (!o.buy) return err(p, T("srv.stable.165"));
+  if (o.owned) return err(p, T("srv.stable.166"));
+  if (o.sealInBag) return err(p, T("srv.stable.167"));
+  if (!o.canBuy) return err(p, T("srv.stable.168", { mountname: mountName(d.id, p.faction), join: o.missBuy.join(", ") }));
+  if (!p.save.inventory.includes(null)) return err(p, T("srv.biomes.76"));
   p.save.gold -= d.price;
   if (d.rep) p.save.marks = (p.save.marks ?? 0) - d.rep.marks;
   giveSeal(p, d.id, false);
@@ -107,12 +108,12 @@ export function stableCraft(w: World, p: Player, id: unknown, arenaRating = 0) {
   const d = typeof id === "string" && Object.hasOwn(MOUNTS, id) ? MOUNTS[id] : undefined;
   if (!d || !stableGate(w, p)) return;
   const o = stableOffer(d, stateOf(p, arenaRating));
-  if (!o.craft) return err(p, "Этот маунт не собирается");
-  if (o.owned) return err(p, "Маунт уже у вас");
-  if (!o.canCraft) return err(p, `${mountName(d.id, p.faction)}: не хватает — ${o.missCraft.join(", ")}`);
+  if (!o.craft) return err(p, T("srv.stable.169"));
+  if (o.owned) return err(p, T("srv.stable.166"));
+  if (!o.canCraft) return err(p, T("srv.stable.170", { mountname: mountName(d.id, p.faction), join: o.missCraft.join(", ") }));
   const backup = JSON.stringify(p.save.inventory);
   for (const [part, n] of Object.entries(d.craft!.parts)) takeBase(p, partBase(part), n);
-  if (!p.save.inventory.includes(null)) { p.save.inventory = JSON.parse(backup); return err(p, "Сумка полна"); }
+  if (!p.save.inventory.includes(null)) { p.save.inventory = JSON.parse(backup); return err(p, T("srv.biomes.76")); }
   p.save.gold -= d.craft!.gold;
   giveSeal(p, d.id, craftBound(d));
   p.selfDirty = true;

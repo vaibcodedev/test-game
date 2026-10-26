@@ -7,6 +7,7 @@ import type { GameDB } from "../db";
 import { addItem } from "../game/inventory";
 import type { Player } from "../game/Player";
 import type { World } from "../game/World";
+import { T } from "../../../shared/texts";
 
 interface Offer {
   index: number;
@@ -55,37 +56,37 @@ export class TradeManager {
   /** Почему эти двое не могут торговать (или null). */
   private why(p: Player, q: Player): string | null {
     const w = this.world();
-    if (p.offline || q.offline) return "Игрок не в сети";
-    if (p.dead || q.dead) return "Мёртвые не торгуют";
-    if (p.faction !== q.faction) return "С противоположной фракцией торговать нельзя";
-    if (w.dist(p, q) > TRADE_RANGE_TILES * TILE) return "Слишком далеко для обмена (до 5 шагов)";
-    if (p.inCombat(w.time) || q.inCombat(w.time)) return "Нельзя торговать в бою";
-    if (this.busy(p) || this.busy(q)) return "Нельзя торговать на арене или в очереди на неё";
+    if (p.offline || q.offline) return T("srv.admin.40");
+    if (p.dead || q.dead) return T("srv.TradeManager.229");
+    if (p.faction !== q.faction) return T("srv.TradeManager.230");
+    if (w.dist(p, q) > TRADE_RANGE_TILES * TILE) return T("srv.TradeManager.231");
+    if (p.inCombat(w.time) || q.inCombat(w.time)) return T("srv.TradeManager.232");
+    if (this.busy(p) || this.busy(q)) return T("srv.TradeManager.233");
     return null;
   }
 
   request(p: Player, targetId: unknown) {
     const q = typeof targetId === "string" ? this.world().players.get(targetId) : undefined;
-    if (!q || q === p) return toast(p, "Игрок не найден");
-    if (this.trades.has(key(p))) return toast(p, "Вы уже торгуете");
-    if (this.trades.has(key(q))) return toast(p, `${q.name} уже торгует`);
+    if (!q || q === p) return toast(p, T("srv.TradeManager.234"));
+    if (this.trades.has(key(p))) return toast(p, T("srv.TradeManager.235"));
+    if (this.trades.has(key(q))) return toast(p, T("srv.TradeManager.236", { name: q.name }));
     const err = this.why(p, q);
     if (err) return toast(p, err);
     const cur = this.requests.get(key(q));
-    if (cur && cur.until > Date.now() && cur.from !== key(p)) return toast(p, `${q.name} уже отвечает на другой запрос`);
+    if (cur && cur.until > Date.now() && cur.from !== key(p)) return toast(p, T("srv.TradeManager.237", { name: q.name }));
     this.requests.set(key(q), { from: key(p), until: Date.now() + TRADE_REQUEST_MS });
     q.send("trade:request", { from: p.name, ms: TRADE_REQUEST_MS });
-    toast(p, `Запрос на обмен отправлен: ${q.name}`, "info");
+    toast(p, T("srv.TradeManager.238", { name: q.name }), "info");
   }
 
   respond(q: Player, accept: boolean) {
     const r = this.requests.get(key(q));
     this.requests.delete(key(q));
-    if (!r || r.until < Date.now()) return toast(q, "Запрос на обмен устарел");
+    if (!r || r.until < Date.now()) return toast(q, T("srv.TradeManager.239"));
     const p = this.find(r.from);
-    if (!p) return toast(q, "Игрок ушёл");
-    if (!accept) return toast(p, `${q.name} отклоняет обмен`);
-    if (this.trades.has(key(p)) || this.trades.has(key(q))) return toast(q, "Кто-то из вас уже торгует");
+    if (!p) return toast(q, T("srv.TradeManager.240"));
+    if (!accept) return toast(p, T("srv.TradeManager.241", { name: q.name }));
+    if (this.trades.has(key(p)) || this.trades.has(key(q))) return toast(q, T("srv.TradeManager.242"));
     const err = this.why(p, q);
     if (err) {
       toast(p, err);
@@ -123,12 +124,12 @@ export class TradeManager {
     if (!t || !Number.isInteger(index)) return;
     const it = p.save.inventory[index as number];
     if (!it) return;
-    if (isBound(it)) return toast(p, "Предмет привязан к персонажу — его нельзя передать");
+    if (isBound(it)) return toast(p, T("srv.TradeManager.243"));
     if (isQuestItem(it.base)) return toast(p, QUEST_ITEM_MSG);
     const s = this.sideOf(t, key(p));
     if (s.offers.some((o) => o && o.index === index)) return;
     let slot = Number.isInteger(slotRaw) && (slotRaw as number) >= 0 && (slotRaw as number) < TRADE_SLOTS && !s.offers[slotRaw as number] ? (slotRaw as number) : s.offers.indexOf(null);
-    if (slot < 0) return toast(p, `В окне обмена не больше ${TRADE_SLOTS} предметов`);
+    if (slot < 0) return toast(p, T("srv.TradeManager.244", { trade_slots: TRADE_SLOTS }));
     s.offers[slot] = { index: index as number, uid: it.uid, qty: it.qty ?? 1 };
     this.changed(t, s, slot);
   }
@@ -163,8 +164,8 @@ export class TradeManager {
   confirm(p: Player) {
     const t = this.trades.get(key(p));
     if (!t) return;
-    if (!t.a.ready || !t.b.ready) return toast(p, "Сначала оба должны нажать «Готов»");
-    if (Date.now() - t.changedAt < TRADE_CONFIRM_DELAY_MS) return toast(p, "Подождите пару секунд после изменения");
+    if (!t.a.ready || !t.b.ready) return toast(p, T("srv.TradeManager.245"));
+    if (Date.now() - t.changedAt < TRADE_CONFIRM_DELAY_MS) return toast(p, T("srv.TradeManager.246"));
     this.sideOf(t, key(p)).confirm = true;
     if (t.a.confirm && t.b.confirm) this.execute(t);
     else this.push(t);
@@ -185,7 +186,7 @@ export class TradeManager {
   /** Игрок вышел из мира: отменяем обмен и его запросы. */
   leave(p: Player) {
     this.requests.delete(key(p));
-    this.cancel(key(p), `Обмен отменён: ${p.name} отключился`);
+    this.cancel(key(p), T("srv.TradeManager.860", { name: p.name }));
   }
 
   /** Раз в секунду: просроченные запросы, расстояние, бой. */
@@ -194,16 +195,16 @@ export class TradeManager {
     for (const [k, r] of this.requests) if (r.until < now) {
       this.requests.delete(k);
       this.find(k)?.send("trade:request", null);
-      toast(this.find(r.from), "Запрос на обмен истёк", "info");
+      toast(this.find(r.from), T("srv.TradeManager.247"), "info");
     }
     for (const t of new Set(this.trades.values())) {
       const p = this.find(t.a.key), q = this.find(t.b.key);
       if (!p || !q) {
-        this.cancel(t.a.key, "Обмен отменён: игрок отключился");
+        this.cancel(t.a.key, T("srv.TradeManager.861"));
         continue;
       }
       const err = this.why(p, q);
-      if (err) this.cancel(t.a.key, "Обмен отменён: " + err.toLowerCase());
+      if (err) this.cancel(t.a.key, `${T("srv.TradeManager.862")} ` + err.toLowerCase());
     }
   }
 
@@ -238,9 +239,9 @@ export class TradeManager {
   /** Атомарный перенос: проверки, обмен в памяти, сохранение обоих и журнал в одной транзакции. */
   private execute(t: Trade) {
     const p = this.find(t.a.key), q = this.find(t.b.key);
-    if (!p || !q) return this.cancel(t.a.key, "Обмен отменён: игрок отключился");
+    if (!p || !q) return this.cancel(t.a.key, T("srv.TradeManager.861"));
     const err = this.why(p, q);
-    if (err) return this.cancel(t.a.key, "Обмен отменён: " + err.toLowerCase());
+    if (err) return this.cancel(t.a.key, `${T("srv.TradeManager.862")} ` + err.toLowerCase());
     const fail = (text: string) => {
       t.a.ready = t.b.ready = t.a.confirm = t.b.confirm = false;
       toast(p, text);
@@ -259,8 +260,8 @@ export class TradeManager {
       return out;
     };
     const ia = take(p, t.a), ib = take(q, t.b);
-    if (!ia || !ib) return fail("Предметы в обмене изменились — проверьте и подтвердите заново");
-    if (p.save.gold < t.a.gold || q.save.gold < t.b.gold) return fail("Не хватает золота для обмена");
+    if (!ia || !ib) return fail(T("srv.TradeManager.248"));
+    if (p.save.gold < t.a.gold || q.save.gold < t.b.gold) return fail(T("srv.TradeManager.249"));
 
     const backup = { pi: JSON.stringify(p.save.inventory), qi: JSON.stringify(q.save.inventory), pg: p.save.gold, qg: q.save.gold };
     const restore = () => {
@@ -277,7 +278,7 @@ export class TradeManager {
     if (!fitsP || !fitsQ) {
       restore();
       const who = [!fitsP && p.name, !fitsQ && q.name].filter(Boolean).join(" и ");
-      return fail(`Недостаточно места в сумке: ${who}. Освободите ячейки`);
+      return fail(T("srv.TradeManager.250", { who: who }));
     }
     p.save.gold += t.b.gold - t.a.gold;
     q.save.gold += t.a.gold - t.b.gold;
@@ -295,7 +296,7 @@ export class TradeManager {
       try { db.raw.exec("ROLLBACK"); } catch {}
       console.error("[trade] транзакция не прошла:", e);
       restore();
-      return fail("Ошибка обмена, ничего не передано");
+      return fail(T("srv.TradeManager.251"));
     }
     p.selfDirty = q.selfDirty = true;
     this.trades.delete(t.a.key);
@@ -303,7 +304,7 @@ export class TradeManager {
     for (const pl of [p, q]) {
       pl.send("trade:state", null);
       pl.send("trade:done", {});
-      toast(pl, "Обмен завершён", "info");
+      toast(pl, T("srv.TradeManager.252"), "info");
     }
   }
 }

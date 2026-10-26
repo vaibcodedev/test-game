@@ -6,6 +6,7 @@ import { BASE_ITEMS, iconFor, itemName, itemTypeName, type Item } from "../../..
 import type { SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
 import { plusBadge } from "./smith";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""): HTMLElementTagNameMap[K] {
@@ -22,7 +23,7 @@ export interface EncounterHost {
 }
 
 /** Тип вещи в строке лавки: «Двуручный меч», «Еда». */
-const kind = (it: Item) => (BASE_ITEMS[it.base]?.slot === "consumable" ? (foodOf(it.base) ? "Еда" : "Расходуемое") : itemTypeName(it));
+const kind = (it: Item) => (BASE_ITEMS[it.base]?.slot === "consumable" ? (foodOf(it.base) ? T("ui.encounter.476") : T("ui.encounter.477")) : itemTypeName(it));
 
 export class EncounterUI {
   private win = el("div", "panel win m win-enc");
@@ -72,7 +73,7 @@ export class EncounterUI {
   private dialog(m: EncDialogMsg) {
     this.id = m.id;
     this.shopShown = false;
-    this.frame(m.name, `<p class="npc-say">${esc(m.text)}</p>${m.opts.length ? `<div class="npc-opts"></div>` : ""}`, `<div class="actions"><button class="btn bye">Пока</button></div>`);
+    this.frame(m.name, `<p class="npc-say">${esc(m.text)}</p>${m.opts.length ? `<div class="npc-opts"></div>` : ""}`, `<div class="actions"><button class="btn bye">${T("ui.encounter.478")}</button></div>`);
     const box = this.win.querySelector(".npc-opts");
     for (const o of m.opts) {
       const b = el("button", "btn opt", esc(o.label));
@@ -94,7 +95,7 @@ export class EncounterUI {
       `<p class="npc-say">${esc(m.text)}</p>${m.stock.length
         ? `<section class="sec"><div class="sec-head"><h3 class="sec-h">Товары</h3><span class="sec-aside">Наведите на вещь — подсказка</span></div><div class="list boxed"></div></section>`
         : `<p class="note">Всё раскуплено</p>`}`,
-      `<span class="win-foot-info">Лавка закроется через ~${mins} мин.</span>${goldHtml(me?.gold ?? 0)}`,
+      `<span class="win-foot-info">${T("ui.encounter.479", { mins: mins })}</span>${goldHtml(me?.gold ?? 0)}`,
     );
     const list = this.win.querySelector(".list");
     for (const s of m.stock) {
@@ -108,7 +109,7 @@ export class EncounterUI {
         </div>`);
       const cell = row.querySelector<HTMLElement>(".cell")!;
       if (this.host && me) this.host.tipFor(cell, () => this.host!.itemTip(it, this.net.self!));
-      const btn = el("button", "btn small price", `<span class="price-q">Купить</span>${goldHtml(s.price)}`);
+      const btn = el("button", "btn small price", `<span class="price-q">${T("ui.bank.378")}</span>${goldHtml(s.price)}`);
       btn.onclick = () => this.net.send("enc:buy", { id: m.id, idx: s.idx });
       this.prices.push({ btn, price: s.price });
       const end = el("div", "row-end");
@@ -128,7 +129,7 @@ export class EncounterUI {
       const short = have < price;
       btn.disabled = short;
       btn.toggleAttribute("data-short", short);
-      btn.title = short ? "Не хватает золота" : "";
+      btn.title = short ? T("srv.bags.58") : "";
     }
   }
 }

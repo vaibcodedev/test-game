@@ -180,7 +180,7 @@ export function frostOwl(): MountSpec {
       p.pitch = 0.32 + 0.04 * Math.sin(w * 2); p.bob = 1.2 * Math.abs(Math.sin(w));
       const fl = Math.sin(w * 2);
       p.wing = [0, 1].map(() => ({ spread: 0.5 + 0.3 * fl, lift: 0.3 + 0.5 * fl, ruffle: 0 }));
-      p.tailPh = w * 2;
+      p.tailPh = w * 2; p.a.stride = 17.6 / 0.5;
     } else {
       // поворачивает голову почти назад, моргает, встряхивается (перья топорщатся), переступает
       const lk = win(t, 2 / 24, 11 / 24);

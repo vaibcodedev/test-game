@@ -8,6 +8,7 @@ import { addItem } from "./inventory";
 import type { Player } from "./Player";
 import type { World } from "./World";
 import type { On } from "../rooms/common";
+import { T } from "../../../shared/texts";
 
 interface PState {
   acc: number;
@@ -79,7 +80,7 @@ export function tickBiomes(w: World, dt: number) {
       if (nearLava(w.map, u.x, u.y)) hurt(w, p, ENV.lavaBurnPctPerSec * (resist ? 0.5 : 1), "fire");
       else if (z === Zone.Volcano && !resist) {
         hurt(w, p, ENV.heatDotPctPerSec, "fire");
-        if (w.time - st.warnAt > 30000) { st.warnAt = w.time; p.send("toast", { text: "Жар вулкана обжигает. Поможет «Жаропрочное рагу» у повара", kind: "info" }); }
+        if (w.time - st.warnAt > 30000) { st.warnAt = w.time; p.send("toast", { text: T("srv.biomes.75"), kind: "info" }); }
       }
     }
   }
@@ -101,13 +102,13 @@ function finishGather(w: World, s: WState, p: Player, st: PState) {
   const backup = JSON.stringify(p.save.inventory);
   if (!addItem(p, { ...makeItem(res.id, 1, Rarity.Common), qty })) {
     p.save.inventory = JSON.parse(backup);
-    return void p.send("toast", { text: "Сумка полна", kind: "error" });
+    return void p.send("toast", { text: T("srv.biomes.76"), kind: "error" });
   }
   p.selfDirty = true;
   questProgress(p, "gather", res.id, qty);
   s.depleted.set(c.node, w.time + ENV.nodeRespawnSec * 1000);
   w.broadcast("node", { id: c.node, up: false });
-  p.send("toast", { text: `Добыто: ${res.name}${qty > 1 ? ` ×${qty}` : ""}`, kind: "loot" });
+  p.send("toast", { text: T("srv.biomes.77", { name: res.name, qty: qty > 1 ? ` ×${qty}` : "" }), kind: "loot" });
 }
 
 /** Начать добычу: 2 секунды на месте рядом с узлом. */
@@ -116,15 +117,15 @@ export function startGather(w: World, p: Player, id: unknown) {
   const s = ws(w), st = ps(s, p);
   const n = s.nodes.get(id);
   if (!n) return;
-  if (s.depleted.has(id)) return void p.send("toast", { text: "Здесь уже пусто — ресурс скоро появится вновь", kind: "info" });
-  if (w.dist(p, n) > ENV.gatherRange) return void p.send("toast", { text: "Слишком далеко", kind: "error" });
+  if (s.depleted.has(id)) return void p.send("toast", { text: T("srv.biomes.78"), kind: "info" });
+  if (w.dist(p, n) > ENV.gatherRange) return void p.send("toast", { text: T("srv.biomes.79"), kind: "error" });
   if (p.stunUntil > w.time || p.mountCast) return;
   if (st.cast) return;
   w.breakMount(p);
   p.input = { mx: 0, my: 0 };
   p.moveTo = null;
   st.cast = { node: id, until: w.time + ENV.gatherMs, x: p.x, y: p.y };
-  p.send("mountcast", { ms: ENV.gatherMs, name: `Добыча: ${RESOURCES[n.res].name}` });
+  p.send("mountcast", { ms: ENV.gatherMs, name: T("srv.biomes.782", { name: RESOURCES[n.res].name }) });
 }
 
 /** Новому игроку — какие узлы сейчас пусты. */

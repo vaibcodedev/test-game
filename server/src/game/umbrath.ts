@@ -21,6 +21,7 @@ import { applyHaste } from "./effects";
 import { World, type Actor } from "./World";
 import { stealthBan } from "./wards";
 import { leechMult } from "../../../shared/balance";
+import { T } from "../../../shared/texts";
 
 export interface CastCtx {
   w: World;
@@ -163,9 +164,9 @@ export function castUmbrath(c: CastCtx): string | null {
   const u = p.unit;
   const range = def.range ?? 0;
   const needTarget = (los = true): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (los && !lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (los && !lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const face = (a: Actor) => { u.dir = World.dirTo(a.x - u.x, a.y - u.y); };
@@ -253,11 +254,11 @@ export function castUmbrath(c: CastCtx): string | null {
       if (a.id === p.id) {
         // без союзника — узы с собственным питомцем
         const pet = w.pets.get(petUnitId(p.id));
-        if (!pet || pet.dead) return "Выберите союзника или призовите питомца";
+        if (!pet || pet.dead) return T("srv.healers.100");
         a = { id: pet.id, x: pet.x, y: pet.y, pet };
       }
-      if (a.player?.dead) return "Цель мертва";
-      if (w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+      if (a.player?.dead) return T("srv.healers.97");
+      if (w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
       c.ok();
       const dur = v.dur + bondDur(p);
       const until = w.time + dur * 1000;
@@ -277,9 +278,9 @@ export function castUmbrath(c: CastCtx): string | null {
     case "bw_sacrifice": {
       const a = resolveAlly(w, p, c.targetId);
       const cost = sacrificeCost(p, Math.round((u.maxHp * v.cost) / 100), w);
-      if (u.hp <= cost) return "Слишком мало здоровья для жертвы";
-      if (a.player?.dead) return "Цель мертва";
-      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+      if (u.hp <= cost) return T("srv.umbrath.174");
+      if (a.player?.dead) return T("srv.healers.97");
+      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
       c.ok();
       u.hp -= cost;
       w.emit({ t: "dmg", id: p.id, v: cost, k: "blood" });
@@ -348,7 +349,7 @@ export function castUmbrath(c: CastCtx): string | null {
       return null;
     }
     case "dr_shadowmeld": {
-      if (w.inTown(u.x, u.y)) return "В городе уйти в тень нельзя";
+      if (w.inTown(u.x, u.y)) return T("srv.umbrath.175");
       { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       c.ok();
       p.stealthUntil = w.time + v.dur * 1000;
@@ -419,7 +420,7 @@ export function castUmbrath(c: CastCtx): string | null {
       const e = needTarget(); if (e) return e;
       // до цели по прямой (общая с превью: leapDest); вода или дерево на пути — отказ «Путь прегражден» (уже в placeSkill)
       const dest = leapDest(w.map, u, { x: t.x, y: t.y, r: w.radiusOf(t) });
-      if (dest.blocked) return "Путь прегражден";
+      if (dest.blocked) return T("srv.reaver.132");
       c.ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y, k: "charge" });
       u.x = dest.x;
@@ -456,7 +457,7 @@ export function castUmbrath(c: CastCtx): string | null {
       return null;
     }
   }
-  return "Умение недоступно";
+  return T("srv.skills.152");
 }
 
 /** Кровотечение «Рваной раны» (ранг из сохранения, минимум 1). */

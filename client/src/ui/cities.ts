@@ -8,10 +8,11 @@ import { QUESTS, QUEST_GIVERS, giverPlace, QUEST_MAX_ACTIVE, questsOf, type Ques
 import { RESOURCES } from "../../../shared/biomes";
 import { MOBS } from "../../../shared/mobs";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const targetName = (k: string, t: string) => (k === "kill" ? MOBS[t]?.name ?? t : RESOURCES[t]?.name ?? t);
-const verb = (k: string) => (k === "kill" ? "Убить" : "Добыть");
+const verb = (k: string) => (k === "kill" ? T("ui.cities.411") : T("ui.cities.412"));
 
 /** Заменяет разметку окна и возвращает прокрутку .body на место. */
 function repaint(win: HTMLElement, html: string) {
@@ -38,7 +39,7 @@ const goal = (d: QuestDef, have: number) => {
 /** Награда чипами: золото, опыт, зелья. */
 const reward = (d: QuestDef) => {
   const it = d.reward.item;
-  return `<div class="q-rew"><span class="meta">Награда</span><span class="chip">${gold(d.reward.gold)}</span><span class="chip xp">${formatNumber(d.reward.xp)} опыта</span>`
+  return `<div class="q-rew"><span class="meta">${T("ui.cities.413")}</span><span class="chip">${gold(d.reward.gold)}</span><span class="chip xp">${T("ui.cities.414", { xp: formatNumber(d.reward.xp) })}</span>`
     + `${it ? `<span class="chip dim">${it.base === "hp_potion" ? "Зелья здоровья" : "Зелья маны"} ×${it.qty}</span>` : ""}</div>`;
 };
 
@@ -96,9 +97,9 @@ export class QuestUI {
         return `<div class="quest-row card compact${ready ? " is-ready" : ""}">${head(d, ready ? `<span class="chip ok">Можно сдать</span>` : "")}${goal(d, n)}`
           + `${giver ? `<p class="note">Сдать: ${esc(giver)}${city ? ` · ${esc(city)}` : ""}</p>` : ""}</div>`;
       }).join("");
-    repaint(this.log, `<h2><span>Задания</span><button class="x" aria-label="Закрыть">×</button></h2>
+    repaint(this.log, `<h2><span>${T("ui.cities.415")}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body">${cards || `<p class="note">Активных заданий нет. Берите их у NPC в городах.</p>`}</div>
-      <div class="win-foot"><span class="win-foot-info">Активные задания: ${act.length} / ${QUEST_MAX_ACTIVE}</span></div>`);
+      <div class="win-foot"><span class="win-foot-info">${T("ui.cities.416", { act: act.length, quest_max_active: QUEST_MAX_ACTIVE })}</span></div>`);
   }
   bind(net: Net) {
     this.net = net;
@@ -122,7 +123,7 @@ export class QuestUI {
     const act = Object.entries(q.active).filter(([id]) => QUESTS[id]);
     this.track.hidden = !act.length;
     this.track.innerHTML = act.length
-      ? `<div class="qh">Задания</div>` + act.map(([id, n]) => {
+      ? `<div class="qh">${T("ui.cities.415")}</div>` + act.map(([id, n]) => {
         const d = QUESTS[id];
         return `<div class="qrow${n >= d.n ? " ok" : ""}"><span>${esc(d.name)}</span><b>${Math.min(n, d.n)}/${d.n}</b></div>`;
       }).join("")
@@ -146,25 +147,25 @@ export class QuestUI {
       .join("");
     repaint(this.win, `<h2><span>${esc(g.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body">${g.greeting ? `<p class="npc-say">${esc(g.greeting)}</p>` : ""}<div class="quest-list">${cards}</div></div>
-      <div class="win-foot"><span class="win-foot-info">Активные задания: ${taken} / ${QUEST_MAX_ACTIVE}</span></div>`);
+      <div class="win-foot"><span class="win-foot-info">${T("ui.cities.417", { taken: taken, quest_max_active: QUEST_MAX_ACTIVE })}</span></div>`);
   }
 
   /** Карточка задания: название, описание, цель, награда, действие внизу. Сданное сворачивается до названия и реплики NPC. */
   private card(d: QuestDef, st: QState, have: number | undefined, full: boolean): string {
-    const chip = st === "ready" ? `<span class="chip ok">Можно сдать</span>` : st === "done" ? `<span class="chip ok">Сдано</span>` : st === "locked" ? `<span class="chip bad">Нужен ${d.level} уровень</span>` : "";
+    const chip = st === "ready" ? `<span class="chip ok">${T("ui.cities.418")}</span>` : st === "done" ? `<span class="chip ok">${T("ui.cities.419")}</span>` : st === "locked" ? `<span class="chip bad">${T("ui.cities.420", { level: d.level })}</span>` : "";
     const cls = `quest-row card${st === "ready" ? " is-ready" : st === "done" ? " done" : ""}`;
     if (st === "done") return `<div class="${cls}">${head(d, chip)}<p class="note">${esc(d.done)}</p></div>`;
     const id = esc(d.id);
-    const btn = st === "ready" ? `<button class="btn small primary" data-act="turn" data-id="${id}">Сдать</button>`
-      : st === "avail" ? `<button class="btn small primary" data-act="accept" data-id="${id}"${full ? ` disabled title="Слишком много активных заданий"` : ""}>Принять</button>`
-      : st === "locked" ? `<button class="btn small" disabled title="Нужен ${d.level} уровень">Принять</button>`
-      : `<button class="btn small" disabled>В процессе</button>`;
+    const btn = st === "ready" ? `<button class="btn small primary" data-act="turn" data-id="${id}">${T("ui.cities.421")}</button>`
+      : st === "avail" ? `<button class="btn small primary" data-act="accept" data-id="${id}"${full ? ` disabled title="Слишком много активных заданий"` : ""}>${T("ui.arena.351")}</button>`
+      : st === "locked" ? `<button class="btn small" disabled title="Нужен ${d.level} уровень">${T("ui.arena.351")}</button>`
+      : `<button class="btn small" disabled>${T("ui.cities.422")}</button>`;
     return `<div class="${cls}">${head(d, chip)}<p class="note">${esc(d.text)}</p>${goal(d, have ?? 0)}${reward(d)}<div class="card-actions">${btn}</div></div>`;
   }
 }
 
 /** Подпись города под названием. */
-const kind = (c: City) => (c.fort ? `Форт: ${FACTIONS[c.capital as FactionId]?.name ?? c.capital}` : c.capital ? `Столица: ${FACTIONS[c.capital as FactionId]?.name ?? c.capital}` : "Нейтральный город");
+const kind = (c: City) => (c.fort ? T("ui.cities.423", { capital: FACTIONS[c.capital as FactionId]?.name ?? c.capital }) : c.capital ? T("ui.cities.424", { capital: FACTIONS[c.capital as FactionId]?.name ?? c.capital }) : T("ui.cities.425"));
 
 export class TeleportUI {
   private win = document.createElement("div");
@@ -216,17 +217,17 @@ export class TeleportUI {
     const rows = [...CITIES].sort((a, b) => rank(a) - rank(b) || price(a) - price(b)).map((c) => {
       const cur = c.id === here?.id, ok = cur || cityKnown(c, s.cities, s.faction), enemy = !ok && isEnemyCapital(c, s.faction);
       let end = "";
-      if (cur) end = `<span class="chip ok">Вы здесь</span>`;
+      if (cur) end = `<span class="chip ok">${T("ui.cities.426")}</span>`;
       else if (ok && here) {
         const p = price(c), short = s.gold < p;
-        end = `<button class="btn small price" data-go="${c.id}"${short ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">Телепорт</span>${gold(p)}</button>`;
+        end = `<button class="btn small price" data-go="${c.id}"${short ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">${T("ui.cities.427")}</span>${gold(p)}</button>`;
       }
-      const sub = ok ? kind(c) : enemy ? "Вражеская столица — телепорт закрыт" : "Не открыт — посетите город";
+      const sub = ok ? kind(c) : enemy ? T("ui.cities.428") : T("ui.cities.429");
       return `<div class="row tp-row${cur ? " current" : ""}${ok ? "" : " locked"}"${cur ? ` aria-current="true"` : ""}><div class="row-main"><div class="row-title">${esc(ok || enemy ? c.name : "???")}</div>`
         + `<div class="row-sub${enemy ? " c-bad" : ""}">${esc(sub)}</div></div>${end ? `<div class="row-end">${end}</div>` : ""}</div>`;
     }).join("");
-    repaint(this.win, `<h2><span>Камень телепорта</span><button class="x" aria-label="Закрыть">×</button></h2>
+    repaint(this.win, `<h2><span>${T("ui.cities.430")}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body"><p class="note">${here ? `Каст ${TELEPORT_CAST_MS / 1000} с: движение, урон и бой прерывают переход` : "Подойдите к камню телепорта"}</p><div class="tp-list list boxed">${rows}</div></div>
-      <div class="win-foot"><span class="win-foot-info">Золото</span>${gold(s.gold)}</div>`);
+      <div class="win-foot"><span class="win-foot-info">${T("ui.bags.369")}</span>${gold(s.gold)}</div>`);
   }
 }

@@ -49,7 +49,9 @@ async function main() {
     await startServer(true);
     for (const [hero, cls] of [["МаунтСол", "warrior"], ["МаунтУмб", "deathknight"]] as const) {
       await ensureChar(hero, "secret", hero, cls);
-      const page = await browser.newPage();
+      // свой контекст на героя: сессия прошлого аккаунта в localStorage не мешает входу
+      const ctxB = await browser.createBrowserContext();
+      const page = await ctxB.newPage();
       page.on("pageerror", (e) => errors.push(String(e)));
       await enter(page, hero);
       await page.evaluate(() => { const n = (window as any).__net; n.send("dbg", { op: "level", v: 70 }); n.send("dbg", { op: "god" }); });
@@ -81,6 +83,7 @@ async function main() {
         console.log(`  ok   ${hero}: ${id} → ${st.key}`);
       }
       await page.close();
+      await ctxB.close();
     }
     const img = (f: string) => `data:image/png;base64,${fs.readFileSync(f).toString("base64")}`;
     const html = `<html><body style="margin:0;background:#120f16;color:#e8dcc0;font:600 12px Rubik,Trebuchet MS,sans-serif;padding:10px">

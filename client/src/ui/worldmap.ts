@@ -8,6 +8,7 @@ import { DANGER_LABEL, PLACES, ZONES, type WorldMap } from "../../../shared/map"
 import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 import { buildZoneLabels, type Label } from "./worldmap-labels";
+import { T } from "../../../shared/texts";
 
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
 /** Оформление подписей — как на схеме tools/map-plan.ts: Rubik, крупные числа уровней жирным, названия обычным, тёмная обводка ~3 px под заливкой.
@@ -20,7 +21,7 @@ const font = (px: number, bold = false) => `${bold ? 600 : 400} ${px}px ${TEXT}`
 type Dry = boolean | "pair";
 interface Line { text: string; size: number; bold?: boolean; fill: string; pill?: string }
 const CITY = "#ffe08a";
-const KIND_NAME: Record<string, string> = { settlement: "Поселение", camp: "Лагерь", ruins: "Руины", meeting: "Место встречи" };
+const KIND_NAME: Record<string, string> = { settlement: T("ui.worldmap.719"), camp: T("ui.worldmap.720"), ruins: T("ui.worldmap.721"), meeting: T("ui.worldmap.722") };
 const KIND_COLOR: Record<string, string> = { settlement: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
 const ROADS = Object.entries(world.roads as unknown as Record<string, unknown>).filter(([k]) => k !== "_doc").map(([, v]) => v as [number, number][]);
 const RIVERS = Object.entries(world.rivers as unknown as Record<string, { width: number; path: [number, number][] }>).filter(([k]) => k !== "_doc").map(([name, r]) => ({ name, ...r }));
@@ -69,17 +70,17 @@ export class WorldMapView {
       b.onclick = fn;
       bar.append(b);
     };
-    btn("+", "Приблизить", () => this.zoomAt(1.5, this.W / 2, this.H / 2));
-    btn("−", "Отдалить", () => this.zoomAt(1 / 1.5, this.W / 2, this.H / 2));
-    btn("Сброс", "Показать весь мир", () => this.reset());
-    btn("Центрировать на мне", "Перейти к герою", () => this.centerMe());
+    btn("+", T("ui.worldmap.723"), () => this.zoomAt(1.5, this.W / 2, this.H / 2));
+    btn("−", T("ui.worldmap.724"), () => this.zoomAt(1 / 1.5, this.W / 2, this.H / 2));
+    btn(T("ui.worldmap.725"), T("ui.worldmap.726"), () => this.reset());
+    btn(T("ui.worldmap.727"), T("ui.worldmap.728"), () => this.centerMe());
     this.hint.className = "chip";
-    this.hint.textContent = "Клик — телепорт сюда · Esc — выход";
+    this.hint.textContent = T("ui.worldmap.309");
     this.hint.hidden = true;
     bar.append(this.hint);
     const leg = document.createElement("div");
     leg.className = "wm-legend";
-    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>Город <i style="background:${KIND_COLOR.settlement}"></i>Поселение <i style="background:${KIND_COLOR.camp}"></i>Лагерь <i style="background:${KIND_COLOR.ruins}"></i>Руины <i class="road"></i>Дорога <i class="river"></i>Река <i style="background:${factionColor("solgard")}"></i>Сольгард <i style="background:${factionColor("umbrath")}"></i>Умбрат`;
+    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>${T("ui.worldmap.729")} <i style="background:${KIND_COLOR.settlement}"></i>${T("ui.worldmap.719")} <i style="background:${KIND_COLOR.camp}"></i>${T("ui.worldmap.720")} <i style="background:${KIND_COLOR.ruins}"></i>${T("ui.worldmap.721")} <i class="road"></i>${T("ui.worldmap.730")} <i class="river"></i>${T("ui.worldmap.731")} <i style="background:${factionColor("solgard")}"></i>${T("ui.worldmap.732")} <i style="background:${factionColor("umbrath")}"></i>${T("ui.worldmap.733")}`;
     bar.append(leg);
     this.wrap.className = "wm-view";
     this.tip.className = "wm-tip";
@@ -332,7 +333,7 @@ export class WorldMapView {
       if (c.capital) { g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.strokeRect(x - r, y - r, r * 2, r * 2); }
       const cs = c.capital ? FS.md : FS.base;
       label(open || c.capital ? (c.capital ? c.name.toUpperCase() : c.name) : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", font(cs, true), cs);
-      hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : "Неизвестный город", sub: open || c.capital ? (c.capital ? "Столица фракции" : "Город") + " · безопасно" : "Ещё не открыт" });
+      hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : T("ui.worldmap.734"), sub: open || c.capital ? (c.capital ? T("ui.worldmap.735") : T("ui.worldmap.729")) + ` ${T("ui.worldmap.736")}` : T("ui.worldmap.737") });
     }
     // Врата Цитадели Хаоса (рейд)
     if (big && RAID_GATE) {
@@ -342,7 +343,7 @@ export class WorldMapView {
       g.fillStyle = "#ff6a2a";
       g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
       label(RAID.map.gate, x, y - r - 6, P.boss, font(FS.base, true), FS.base);
-      hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: `Рейд · ${RAID.boss.name} · ${RAID.raid.minLevel}+ ур.` });
+      hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: T("ui.worldmap.738", { name: RAID.boss.name, minlevel: RAID.raid.minLevel }) });
     }
     // земли фракций (приоритет после городов): одна подпись на сторону цветом фракции
     if (big) {
@@ -399,7 +400,7 @@ export class WorldMapView {
         const x = X(sg.x), y = Y(sg.y);
         g.fillStyle = "#c89a52";
         g.fillRect(x - 2, y - 4, 4, 8);
-        hits.push({ x, y, r: 8, title: "Указатель", sub: sg.text });
+        hits.push({ x, y, r: 8, title: T("ui.worldmap.310"), sub: sg.text });
       }
       // зоны: блок как на схеме — уровни крупно жирным, ниже название, у кольца и Полей — опасность (Поля — красной плашкой); на приближении бледнее
       g.globalAlpha = s < 3 ? 1 : s < 6 ? 0.7 : 0.4;
@@ -509,7 +510,7 @@ export class WorldMapView {
       if (this.pick) {
         // выбор точки: под курсором тайл и зона (города и поселения подписаны на самой карте)
         const t = this.tileAt(mp.x, mp.y);
-        if (t) h = { x: mp.x, y: mp.y, r: 0, title: `Тайл ${t.x}, ${t.y}`, sub: this.tileZoneText(t.x, t.y) };
+        if (t) h = { x: mp.x, y: mp.y, r: 0, title: T("ui.worldmap.311", { v: t.x, v2: t.y }), sub: this.tileZoneText(t.x, t.y) };
       } else {
         let bd = 1e9;
         for (const c of this.hits) {

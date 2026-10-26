@@ -3,6 +3,7 @@ import { npcRefuses } from "./npcGate";
 import { gold } from "./gold";
 import { BAGMAN, BAGMEN, BAG_MAX, BAG_STEP, bagPrice } from "../../../shared/bags";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -50,11 +51,11 @@ export class BagsUI {
     const price = bagPrice(size);
     // bank-buy — метка для tests/
     const offer = price === null
-      ? `<p class="note">Сумка уже самая большая</p>`
-      : `<div class="list boxed"><div class="row"><div class="row-main"><span class="row-title">+${BAG_STEP} ячеек</span><span class="row-sub">Сумка вырастет до ${size + BAG_STEP} ячеек</span></div>
-          <div class="row-end bank-buy"><button class="btn small price"${s.gold < price ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">Расширить</span>${gold(price)}</button></div></div></div>`;
-    this.body.innerHTML = `<p class="npc-say">${esc(this.who.greeting ?? "")}</p><section class="sec"><h3 class="sec-h">Расширение</h3>${offer}</section>`;
-    this.foot.innerHTML = `<span class="win-foot-info">Ячеек: ${size} из ${BAG_MAX}</span><span class="foot-gold"><span class="win-foot-info">Золото</span>${gold(s.gold)}</span>`;
+      ? `<p class="note">${T("ui.bags.363")}</p>`
+      : `<div class="list boxed"><div class="row"><div class="row-main"><span class="row-title">${T("ui.bags.364", { bag_step: BAG_STEP })}</span><span class="row-sub">${T("ui.bags.365", { bag_step: size + BAG_STEP })}</span></div>
+          <div class="row-end bank-buy"><button class="btn small price"${s.gold < price ? ` disabled data-short title="Не хватает золота"` : ""}><span class="price-q">${T("ui.bags.366")}</span>${gold(price)}</button></div></div></div>`;
+    this.body.innerHTML = `<p class="npc-say">${esc(this.who.greeting ?? "")}</p><section class="sec"><h3 class="sec-h">${T("ui.bags.367")}</h3>${offer}</section>`;
+    this.foot.innerHTML = `<span class="win-foot-info">${T("ui.bags.368", { size: size, bag_max: BAG_MAX })}</span><span class="foot-gold"><span class="win-foot-info">${T("ui.bags.369")}</span>${gold(s.gold)}</span>`;
     const b = this.body.querySelector<HTMLButtonElement>(".bank-buy .btn");
     if (b) b.onclick = () => this.net.send("bag:expand", {});
   }

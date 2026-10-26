@@ -23,7 +23,7 @@ export interface Model {
 export const MODELS: Model[] = [
   { id: "war_horse", ru: "Боевой конь со знаменем", refs: ["20-banner_armored_horse"], heraldic: true, spec: (f) => warHorse(f) },
   { id: "griffin", ru: "Королевский грифон", refs: ["11-owl_gryphon_gold", "12-owl_gryphon_gold_side"], heraldic: true, spec: (f) => griffin(f) },
-  { id: "draft_horse", ru: "Тяжеловоз", refs: ["17-draft_horse"], heraldic: false, spec: () => draftHorse() },
+  { id: "draft_horse", ru: "Бурый тяжеловоз", refs: ["17-draft_horse"], heraldic: false, spec: () => draftHorse() },
   { id: "parade_horse", ru: "Парадный конь со стягом", refs: ["07-banner_parade_horse"], heraldic: true, spec: (f) => paradeHorse(f) },
   { id: "spiked_horse", ru: "Шипастый латный конь", refs: ["03-spiked_armored_horse"], heraldic: true, spec: (f) => spikedHorse(f) },
   { id: "lava_horse", ru: "Лавовый конь", refs: ["04-lava_horse"], heraldic: false, spec: () => lavaHorse() },
@@ -43,7 +43,7 @@ export const MODELS: Model[] = [
   { id: "storm_drake", ru: "Чёрный грозовой дракен", refs: ["09-storm_drake_black"], heraldic: false, spec: () => stormDrakeBlack() },
   { id: "storm_drake_blue", ru: "Синий грозовой дракен", refs: ["10-storm_drake_blue"], heraldic: false, spec: () => stormDrakeBlue() },
   { id: "raptor", ru: "Рыжий раптор", refs: ["22-raptors"], heraldic: false, spec: () => raptor() },
-  { id: "raptor_sand", ru: "Пурпурный раптор", refs: ["22-raptors"], heraldic: false, spec: () => raptorSand() },
+  { id: "raptor_sand", ru: "Песчаный раптор", refs: ["22-raptors"], heraldic: false, spec: () => raptorSand() },
   { id: "dragonhorse", ru: "Рогатый драконоконь", refs: ["21-horned_dragonhorse"], heraldic: false, spec: () => dragonHorse() },
 ];
 /** id маунта из data/mounts.json → модель. */

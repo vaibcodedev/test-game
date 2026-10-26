@@ -6,6 +6,7 @@ import { NAME_RE } from "../../../shared/constants";
 import { SLOT_NAMES } from "../../../shared/items";
 import { plusBadgeN } from "./smith";
 import { api } from "../account";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const hex = (n: number) => "#" + n.toString(16).padStart(6, "0");
@@ -121,10 +122,10 @@ export class CharSelect {
   private renderList(msg = "") {
     this.mode = "list";
     const v = this.view!;
-    const p = this.panel("cs-list", `<div class="cs-head"><h1>Выбор героя</h1><span class="muted">Аккаунт <b class="gold">${esc(v.login)}</b> · героев ${v.chars.length}/${MAX_CHARS}</span></div>
+    const p = this.panel("cs-list", `<div class="cs-head"><h1>${T("ui.charselect.395")}</h1><span class="muted">${T("ui.charselect.396")} <b class="gold">${esc(v.login)}</b> ${T("ui.charselect.397", { chars: v.chars.length, max_chars: MAX_CHARS })}</span></div>
       <div class="cs-grid" role="listbox" aria-label="Герои аккаунта"></div>
       <p class="error" role="alert">${esc(msg)}</p>
-      <div class="cs-bar"><button class="btn primary lg" data-a="play">Играть</button><button class="btn lg" data-a="new">Создать</button><button class="btn lg danger" data-a="del">Удалить</button><span class="cs-sp"></span><button class="btn lg" data-a="out" title="Esc">← Выйти из аккаунта</button></div>`);
+      <div class="cs-bar"><button class="btn primary lg" data-a="play">${T("ui.charselect.277")}</button><button class="btn lg" data-a="new">${T("ui.charselect.398")}</button><button class="btn lg danger" data-a="del">${T("ui.charselect.399")}</button><span class="cs-sp"></span><button class="btn lg" data-a="out" title="Esc">${T("ui.charselect.400")}</button></div>`);
     const grid = p.querySelector<HTMLElement>(".cs-grid")!;
     for (let i = 0; i < MAX_CHARS; i++) {
       const c = v.chars[i];
@@ -132,7 +133,7 @@ export class CharSelect {
       b.type = "button";
       if (!c) {
         b.className = "card cs-slot empty";
-        b.innerHTML = `<span class="plus">+</span><span>Создать героя</span>`;
+        b.innerHTML = `<span class="plus">+</span><span>${T("ui.charselect.401")}</span>`;
         b.onclick = () => this.renderCreate();
         grid.append(b);
         continue;
@@ -174,7 +175,7 @@ export class CharSelect {
     const go = p.querySelector<HTMLButtonElement>('[data-a="play"]')!;
     const err = p.querySelector<HTMLElement>(".error")!;
     go.disabled = true;
-    go.textContent = "Вход…";
+    go.textContent = T("ui.main.265");
     err.textContent = "";
     try {
       await this.host.play(this.sel);
@@ -182,7 +183,7 @@ export class CharSelect {
     } catch (e) {
       err.textContent = (e as Error)?.message || String(e);
       go.disabled = false;
-      go.textContent = "Играть";
+      go.textContent = T("ui.charselect.277");
     }
   }
 
@@ -190,11 +191,11 @@ export class CharSelect {
   private confirmDelete(c: CharSummary) {
     const back = document.createElement("div");
     back.className = "gmenu-back";
-    back.innerHTML = `<form class="panel gmenu cs-del"><h2>Удалить героя?</h2>
-      <p class="muted" style="text-align:center"><b class="gold">${esc(c.name)}</b>, ${esc(CLASSES[c.cls]?.name ?? c.cls)} ${c.level} ур. Удаление необратимо: пропадут вещи, золото и рейтинг арены.</p>
-      <label class="field"><span class="field-label">Введите имя героя для подтверждения</span><input class="input" name="confirm" autocomplete="off" maxlength="16"></label>
+    back.innerHTML = `<form class="panel gmenu cs-del"><h2>${T("ui.charselect.402")}</h2>
+      <p class="muted" style="text-align:center"><b class="gold">${esc(c.name)}</b>${T("ui.charselect.403", { v: esc(CLASSES[c.cls]?.name ?? c.cls), level: c.level })}</p>
+      <label class="field"><span class="field-label">${T("ui.charselect.404")}</span><input class="input" name="confirm" autocomplete="off" maxlength="16"></label>
       <p class="error" role="alert"></p>
-      <button class="btn gm-item danger" type="submit" disabled>Удалить навсегда</button><button class="btn gm-item" type="button" data-a="no">Отмена</button></form>`;
+      <button class="btn gm-item danger" type="submit" disabled>${T("ui.charselect.405")}</button><button class="btn gm-item" type="button" data-a="no">${T("ui.gamemenu.284")}</button></form>`;
     const f = back.querySelector("form")!;
     const inp = f.querySelector("input")!, yes = f.querySelector<HTMLButtonElement>("[type=submit]")!;
     const close = () => back.remove();
@@ -223,16 +224,16 @@ export class CharSelect {
     this.mode = "create";
     const v = this.view!;
     let faction: FactionId = "solgard", cls: ClassId = FACTIONS.solgard.classes[0], look = 0;
-    const p = this.panel("cs-create", `<div class="cs-head"><h1>Новый герой</h1><span class="muted">Аккаунт <b class="gold">${esc(v.login)}</b> · героев ${v.chars.length}/${MAX_CHARS}</span></div>
+    const p = this.panel("cs-create", `<div class="cs-head"><h1>${T("ui.charselect.406")}</h1><span class="muted">${T("ui.charselect.396")} <b class="gold">${esc(v.login)}</b> ${T("ui.charselect.397", { chars: v.chars.length, max_chars: MAX_CHARS })}</span></div>
       <form class="cs-form" autocomplete="off">
         <div class="cs-preview"><div class="cs-stage"></div><b class="nm"></b><p class="muted desc"></p></div>
         <div class="cs-fields">
-          <label class="field"><span class="field-label">Имя героя</span><input class="input lg" name="name" minlength="3" maxlength="16" required placeholder="3–16 букв или цифр"></label>
-          <fieldset class="cs-factions"><legend class="sub-h">Фракция</legend><div class="factions"></div><p class="muted fdesc"></p></fieldset>
-          <fieldset class="classes"><legend class="sub-h">Класс</legend></fieldset>
-          <fieldset class="cs-looks"><legend class="sub-h">Внешность</legend><div class="looks"></div></fieldset>
+          <label class="field"><span class="field-label">${T("ui.charselect.407")}</span><input class="input lg" name="name" minlength="3" maxlength="16" required placeholder="3–16 букв или цифр"></label>
+          <fieldset class="cs-factions"><legend class="sub-h">${T("ui.charselect.408")}</legend><div class="factions"></div><p class="muted fdesc"></p></fieldset>
+          <fieldset class="classes"><legend class="sub-h">${T("ui.arena.339")}</legend></fieldset>
+          <fieldset class="cs-looks"><legend class="sub-h">${T("ui.charselect.409")}</legend><div class="looks"></div></fieldset>
           <p class="error" role="alert">${esc(msg)}</p>
-          <div class="cs-bar"><button class="btn primary lg" type="submit">Создать героя</button><button class="btn lg" type="button" data-a="back" title="Esc">← Назад</button></div>
+          <div class="cs-bar"><button class="btn primary lg" type="submit">${T("ui.charselect.401")}</button><button class="btn lg" type="button" data-a="back" title="Esc">${T("ui.charselect.410")}</button></div>
         </div>
       </form>`);
     const stage = p.querySelector<HTMLElement>(".cs-stage")!;
@@ -242,7 +243,7 @@ export class CharSelect {
     const update = () => {
       this.live = { cv, cls, look };
       drawHero(cv, cls, look, this.anim);
-      nameEl.textContent = `${CLASSES[cls].name} · ${LOOKS[look].name.toLowerCase()} облик`;
+      nameEl.textContent = T("ui.charselect.278", { v: CLASSES[cls].name, v2: LOOKS[look].name.toLowerCase() });
       descEl.innerHTML = `${esc(CLASSES[cls].desc)}<br><b class="trait">${esc(CLASSES[cls].trait)}</b>`;
       p.dataset.faction = faction;
     };
@@ -317,7 +318,7 @@ export class CharSelect {
     f.onsubmit = async (e) => {
       e.preventDefault();
       const name = inp.value.trim();
-      if (!NAME_RE.test(name)) return void (err.textContent = "Имя: 3–16 букв (кириллица или латиница), цифр или _");
+      if (!NAME_RE.test(name)) return void (err.textContent = T("ui.charselect.279"));
       const go = f.querySelector<HTMLButtonElement>("[type=submit]")!;
       go.disabled = true;
       err.textContent = "";

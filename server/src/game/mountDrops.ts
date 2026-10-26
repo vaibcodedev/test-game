@@ -4,6 +4,7 @@ import type { Player } from "./Player";
 import type { Mob } from "./Mob";
 import type { World } from "./World";
 import { awardMount, giveItem, giveSeal, makePart, onKillEarn } from "./stable";
+import { T } from "../../../shared/texts";
 
 export { awardMount };
 
@@ -21,7 +22,7 @@ export function onKill(_w: World, killer: Player, m: Mob) {
   }
   for (const part of Object.values(PARTS)) {
     if (!part.drop || m.level < part.drop.minLevel) continue;
-    if (Math.random() < part.drop.chance) { const it = makePart(part.id); giveItem(killer, it); killer.send("toast", { text: `Деталь для конюшего: ${it.name}`, kind: "loot" }); }
+    if (Math.random() < part.drop.chance) { const it = makePart(part.id); giveItem(killer, it); killer.send("toast", { text: T("srv.mountDrops.118", { name: it.name }), kind: "loot" }); }
   }
 }
 

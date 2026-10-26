@@ -16,6 +16,7 @@ import { EMBER_SETS, npcGearStrings } from "../../../shared/npcGear";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
 
@@ -125,7 +126,7 @@ export class Townfolk {
   private add(site: Site, guard: boolean, x: number, y: number, post: Folk["post"], route: Folk["route"], who?: { name: string; sprite: string }): Folk {
     const u = new Unit();
     u.kind = guard ? UnitKind.Guard : UnitKind.Citizen;
-    u.name = guard ? (post ? "Часовой" : site.guard.name) : who!.name;
+    u.name = guard ? (post ? T("srv.townfolk.821") : site.guard.name) : who!.name;
     u.sprite = guard ? site.guard.sprite : who!.sprite;
     u.level = guard ? G.level : 1;
     u.hp = u.maxHp = 1;
@@ -201,7 +202,7 @@ export class Townfolk {
         // тревога на весь город: колокол и рог у тех, кто рядом
         this.alarmAt.set(site, this.w.time + 30000);
         best.sayAt = this.w.time + 20000;
-        this.w.emit({ t: "say", id: best.id, text: "Тревога!", snd: "alarm" });
+        this.w.emit({ t: "say", id: best.id, text: T("srv.townfolk.171"), snd: "alarm" });
       } else if (this.w.time >= best.sayAt) {
         best.sayAt = this.w.time + 20000;
         this.w.emit({ t: "say", id: best.id, text: best.site.guard.lines[Math.floor(Math.random() * best.site.guard.lines.length)] });
@@ -224,7 +225,7 @@ export class Townfolk {
     g.unit.aseq = (g.unit.aseq + 1) % 65535;
     if (t >= g.sayAt) {
       g.sayAt = t + 8000;
-      this.w.emit({ t: "say", id: g.id, text: "Нарушитель! Взять его!", snd: "alarm" });
+      this.w.emit({ t: "say", id: g.id, text: T("srv.townfolk.172"), snd: "alarm" });
     }
     const ms = (bd / 700) * 1000;
     this.w.emit({ t: "proj", k: "arrow", from: g.id, to: p.id, tx: p.x, ty: p.y, ms });
@@ -252,7 +253,7 @@ export class Townfolk {
       const near = this.playerNear(f.x, f.y, 150, true);
       if (near && !f.nearP && t >= f.haltAt) {
         f.haltAt = t + 25000;
-        this.w.emit({ t: "say", id: f.id, text: "Стой, кто идёт!", snd: "halt" });
+        this.w.emit({ t: "say", id: f.id, text: T("srv.townfolk.173"), snd: "halt" });
       }
       f.nearP = near;
     }
@@ -263,7 +264,7 @@ export class Townfolk {
       if (!posts.length) continue;
       const f = posts[Math.floor(Math.random() * posts.length)];
       if (!this.playerNear(f.x, f.y, 700)) continue;
-      this.w.emit({ t: "say", id: f.id, text: Math.random() < 0.7 ? "Всё спокойно!" : "На посту всё тихо!", snd: "call" });
+      this.w.emit({ t: "say", id: f.id, text: Math.random() < 0.7 ? T("srv.townfolk.822") : T("srv.townfolk.823"), snd: "call" });
     }
   }
 

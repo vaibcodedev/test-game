@@ -57,10 +57,10 @@ const stand = (): Leg[] => [
   { foot: [-FX, FY, 0], fold: 0 }, { foot: [FX, FY, 0], fold: 0 }, { foot: [-HX, HY, 0], fold: 0 }, { foot: [HX, HY, 0], fold: 0 },
 ];
 function runPose(t: number): Pose {
-  const S = 0.44, ph = [0.5, 0.58, 0.0, 0.08];
+  const S = 0.44 * 0.85, ph = [0.5, 0.58, 0.0, 0.08];
   const legs = stand().map((l, i) => {
     const fr = i < 2;
-    const reach = fr ? 7.4 : 7.0, lift = fr ? 5.0 : 4.2;
+    const reach = (fr ? 7.4 : 7.0) * 1.3, lift = (fr ? 5.0 : 4.2) * 1.15;
     const u = (((t + ph[i]) % 1) + 1) % 1;
     let dy = 0, z = 0, fold = 0;
     if (u < S) dy = reach * (1 - (2 * u) / S);
@@ -286,7 +286,7 @@ export function griffin(fac: Fac = "solgard"): MountSpec {
     // подпруга
     sc.cone(sc.group(0), STRAP, T([7.0, 2.0, 22.0]), 0.9, T([5.6, 2.4, 16.6]), 0.9);
     sc.cone(sc.group(0), STRAP, T([-7.0, 2.0, 22.0]), 0.9, T([-5.6, 2.4, 16.6]), 0.9);
-    return { sc: b.sc, bits: b.bits, seat: T([0, -0.8, 30.2]) };
+    return { sc: b.sc, bits: b.bits, seat: T([0, -0.8, 30.2]), stride: (2 * 7.4 * 1.3) / (0.44 * 0.85) };
   };
   return { id: `griffin_${fac}`, ru: "Королевский грифон", N: 128, GY: 104, scale: 1.22, build };
 }

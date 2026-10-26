@@ -5,6 +5,7 @@ import type { Item } from "../../../shared/items";
 import type { InspectReply, SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
 import { gearRows } from "./gearfx";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -43,13 +44,13 @@ export class InspectUI {
   private show(m: InspectReply) {
     const cls = CLASSES[m.cls]?.name ?? m.cls;
     this.win.hidden = false;
-    this.win.innerHTML = `<h2><span>Осмотр: ${esc(m.name)}</span><button class="x" aria-label="Закрыть">×</button></h2>
+    this.win.innerHTML = `<h2><span>${T("ui.inspect.649", { name: esc(m.name) })}</span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body">
         <section class="sec flat">
-          <div class="sec-head"><h3 class="sec-h">Герой</h3><span class="chip dim">Уровень ${m.lvl}</span></div>
-          <dl class="kv"><dt>Класс</dt><dd>${esc(cls)}</dd><dt>Фракция</dt><dd style="color:${factionColor(m.fac)}">${esc(FACTIONS[m.fac]?.name ?? "—")}</dd></dl>
+          <div class="sec-head"><h3 class="sec-h">${T("ui.arena.338")}</h3><span class="chip dim">${T("ui.inspect.650", { lvl: m.lvl })}</span></div>
+          <dl class="kv"><dt>${T("ui.arena.339")}</dt><dd>${esc(cls)}</dd><dt>${T("ui.charselect.408")}</dt><dd style="color:${factionColor(m.fac)}">${esc(FACTIONS[m.fac]?.name ?? "—")}</dd></dl>
         </section>
-        <section class="sec gear-block"><div class="sec-head"><h3 class="sec-h">Снаряжение</h3></div></section>
+        <section class="sec gear-block"><div class="sec-head"><h3 class="sec-h">${T("ui.hud.588")}</h3></div></section>
       </div>`;
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => void this.close();
     const body = this.win.querySelector<HTMLElement>(".gear-block")!;

@@ -1,6 +1,6 @@
 /**
  * Задача 142: рапторы (22) — двуногие ящеры ниже коня: рыжий в племенной броне (костяной шлем с перьями, пластины на спине)
- * и пурпурный песчаный (полосы, рог на носу, простое седло). Корпус горизонтален, хвост — противовес, ноги пальцеходящие
+ * и песчаный (песочная чешуя в бурых полосах, рог на носу, простое седло — «Песчаный ящер» data). Корпус горизонтален, хвост — противовес, ноги пальцеходящие
  * с серповидным когтем, маленькие передние лапы. Бег — длинные шаги по очереди; покой — оглядывается, принюхивается к земле,
  * кричит (пасть), бьёт хвостом.
  */
@@ -26,12 +26,12 @@ function raptorBuild(o: RaptorOpt, f: Frame, view: MView): Built {
       const u = (t + k * 0.5) % 1;
       const S = 0.5;
       let dy = 0, z = 0, fold = 0;
-      if (u < S) dy = 7.4 * (1 - (2 * u) / S);
-      else { const s = (u - S) / (1 - S); dy = -7.4 + 14.8 * easeInOut(s); z = 4.6 * Math.sin(Math.PI * s); fold = 1.4 * Math.sin(Math.PI * s); }
+      if (u < S) dy = 9.4 * (1 - (2 * u) / S);
+      else { const s = (u - S) / (1 - S); dy = -9.4 + 18.8 * easeInOut(s); z = 4.6 * Math.sin(Math.PI * s); fold = 1.4 * Math.sin(Math.PI * s); }
       return { foot: [k ? 3.6 : -3.6, -1.0 + dy, z] as V3, fold };
     });
     p.bob = 1.4 * Math.abs(Math.cos(w)) - 0.7; p.pitch = 0.06 * Math.sin(w * 2); p.roll = 0.04 * Math.sin(w);
-    p.neckP = 0.25; p.tailPh = w * 2; p.tailWave = 1;
+    p.neckP = 0.25; p.tailPh = w * 2; p.tailWave = 1; p.a.stride = 18.8 / 0.5;
   } else {
     actLook(p, t, 1, 7, 0.7);
     // принюхивается: шея к земле
@@ -124,10 +124,10 @@ export function raptor(): MountSpec {
 }
 export function raptorSand(): MountSpec {
   const o: RaptorOpt = {
-    skin: M("пурпурная чешуя", R("#1a0414", "#320a26", "#561440", "#7e225e", "#a6347c", "#cc5a9c"), 2.1, 2.5),
-    belly: M("розовое брюхо", R("#3a1a26", "#5e2e40", "#86465c", "#ae627c", "#d28aa0"), 2.1, 2.4),
-    stripe: M("синие полосы", R("#060818", "#0c1430", "#14224e", "#20367a", "#3452a8"), 2.0, 2.3), tribal: false,
+    skin: M("песочная чешуя", R("#2a1a08", "#4a3212", "#725020", "#9a7234", "#c09a50", "#e0c27a"), 2.1, 2.5),
+    belly: M("светлое брюхо", R("#4a3a22", "#6e5a38", "#968056", "#bca67a", "#ddcaa0"), 2.1, 2.4),
+    stripe: M("бурые полосы", R("#0e0804", "#1e1008", "#321c0e", "#4a2a16", "#663c20"), 2.0, 2.3), tribal: false,
   };
-  return { id: "raptor_sand", ru: "Пурпурный раптор", N: 120, GY: 98, scale: 1.1, build: (f, v) => raptorBuild(o, f, v) };
+  return { id: "raptor_sand", ru: "Песчаный раптор", N: 120, GY: 98, scale: 1.1, build: (f, v) => raptorBuild(o, f, v) };
 }
 void Y; void lerp; void GOLD;

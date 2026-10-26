@@ -8,6 +8,7 @@ import type { Net, UnitState } from "../net";
 import { setHidden } from "./kit";
 import { absorbApply } from "./absorb";
 import { CastBar } from "./castbar";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const num = (n: number) => Math.round(n).toLocaleString("ru-RU");
@@ -76,7 +77,7 @@ export class RaidHud {
     this.berserkEl = this.top.querySelector("[data-berserk]")!;
     // каст босса — та же полоса, что у героя (ui/castbar.ts, рамка a), в цвете босса
     this.berserkEl.before(this.castBar.el);
-    this.frames.innerHTML = `<div class="raid-fhead"><b>Рейд</b><span class="raid-finfo" data-info></span><button class="btn small raid-leave">Выйти</button></div><div class="raid-rows" data-rows></div>`;
+    this.frames.innerHTML = `<div class="raid-fhead"><b>${T("ui.bestiary.387")}</b><span class="raid-finfo" data-info></span><button class="btn small raid-leave">${T("ui.raid.302")}</button></div><div class="raid-rows" data-rows></div>`;
     this.fRows = this.frames.querySelector("[data-rows]")!;
     this.fInfo = this.frames.querySelector("[data-info]")!;
     // выход — только вторым нажатием в течение 3 секунд
@@ -84,11 +85,11 @@ export class RaidHud {
     let armed = 0;
     leave.onclick = () => {
       if (!armed) {
-        leave.textContent = "Точно выйти?";
-        armed = window.setTimeout(() => { armed = 0; leave.textContent = "Выйти"; }, 3000);
+        leave.textContent = T("ui.raid.301");
+        armed = window.setTimeout(() => { armed = 0; leave.textContent = T("ui.raid.302"); }, 3000);
         return;
       }
-      clearTimeout(armed); armed = 0; leave.textContent = "Выйти";
+      clearTimeout(armed); armed = 0; leave.textContent = T("ui.raid.302");
       this.net.send("raid:leave", {});
     };
     this.fRows.addEventListener("click", (e) => {
@@ -169,20 +170,20 @@ export class RaidHud {
     }
     const mine = m?.joined;
     const leader = !!m && !!net.self && m.leader === net.self.name;
-    const why = m?.why || (low ? `Нужен уровень ${need}+` : "");
+    const why = m?.why || (low ? T("ui.raid.654", { need: need }) : "");
     const canJoin = !!m && !m.running && !why;
-    const block = why || (m?.running ? "Рейд уже идёт" : "");
+    const block = why || (m?.running ? T("ui.raid.655") : "");
     // причина про уровень уже в строке «Уровень»; остальные причины показываем под составом
     const extra = !low && m?.why ? m.why : "";
-    const status = !m ? "" : m.running ? `<span class="c-bad">Рейд уже идёт</span>` : m.open ? `Старт через <b data-left>${mmss(m.leftSec)}</b>` : "Сбор не начат";
-    const rows = `<dt>Требуется уровень</dt><dd${low ? ` class="bad"` : ""}>${need}+${low ? ` · у вас ${lvl}` : ""}</dd>`
-      + (m ? `<dt>Добыча</dt><dd${lockH ? ` class="warn"` : ""}>${lockH ? `Откат ${lockH} ч` : "Доступна"}</dd><dt>Победы</dt><dd>${m.wins}</dd>` : "");
+    const status = !m ? "" : m.running ? `<span class="c-bad">${T("ui.raid.655")}</span>` : m.open ? `${T("ui.raid.656")} <b data-left>${mmss(m.leftSec)}</b>` : T("ui.raid.657");
+    const rows = `<dt>${T("ui.raid.658")}</dt><dd${low ? ` class="bad"` : ""}>${need}+${low ? ` · у вас ${lvl}` : ""}</dd>`
+      + (m ? `<dt>${T("ui.bestiary.393")}</dt><dd${lockH ? ` class="warn"` : ""}>${lockH ? `Откат ${lockH} ч` : "Доступна"}</dd><dt>${T("ui.raid.659")}</dt><dd>${m.wins}</dd>` : "");
     this.modal.innerHTML = `<section class="panel dialog raid-dialog" role="dialog" aria-modal="true" aria-labelledby="raid-title">
       <div class="dialog-head"><h2 class="dialog-title" id="raid-title">${esc(RAID.npc.name)}</h2><button class="x" data-x aria-label="Закрыть">×</button></div>
       <div class="dialog-body">
         <p class="npc-say">${esc(RAID.npc.greeting)}</p>
         <section class="sec flat">
-          <h3 class="sec-h">Сбор рейда на босса: <span class="c-boss">${esc(RAID.boss.name)}</span></h3>
+          <h3 class="sec-h">${T("ui.raid.660")} <span class="c-boss">${esc(RAID.boss.name)}</span></h3>
           <p class="note raid-lore">${esc(shortLore(RAID.boss.lore))}</p>
           <dl class="kv">${rows}</dl>
           ${lockH ? `<p class="note">Пока откат не прошёл, бой доступен, но добычи не будет.</p>` : ""}
@@ -220,11 +221,11 @@ export class RaidHud {
       `<tr class="${p.name === me ? "me" : ""}"><td>${ROLE_ICON[p.role]} ${esc(p.name)}${p.bot ? ` <span class="muted">бот</span>` : ""}</td><td>${num(p.damage)}</td><td>${num(p.healing)}</td><td>${p.deaths}</td><td>${p.revives}</td></tr>`).join("");
     const loot = r.loot.length ? r.loot.map((it) => `<span class="raid-loot" style="color:${RARITY_COLORS[it.rarity] ?? "#e8e2d0"}">${esc(it.name)}${it.qty && it.qty > 1 ? ` ×${it.qty}` : ""}</span>`).join("") : `<span class="muted">${r.locked ? "Добыча не положена (откат)" : "Добычи нет"}</span>`;
     this.result.innerHTML = `<div class="panel raid-dialog raid-res"><h2><span class="${r.win ? "raid-res-win" : "raid-res-loss"}">${r.win ? "Победа" : "Рейд пал"}</span></h2>
-      <p class="muted">Попытка ${r.attempt} · бой ${mmss(r.durationMs / 1000)}</p>
-      <table class="raid-table"><thead><tr><th>Герой</th><th>Урон</th><th>Лечение</th><th>Смерти</th><th>Воскр.</th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="raid-lootbox"><b>Моя добыча</b><div>${loot}</div></div>
+      <p class="muted">${T("ui.raid.661", { attempt: r.attempt, mmss: mmss(r.durationMs / 1000) })}</p>
+      <table class="raid-table"><thead><tr><th>${T("ui.arena.338")}</th><th>${T("ui.arena.346")}</th><th>${T("ui.arena.347")}</th><th>${T("ui.raid.662")}</th><th>${T("ui.raid.663")}</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="raid-lootbox"><b>${T("ui.raid.664")}</b><div>${loot}</div></div>
       ${r.title ? `<p>Титул: <b class="raid-title-gold">${esc(r.title)}</b></p>` : ""}${r.frame ? `<p>Рамка: <b style="color:${RAID.frame.color}">${esc(r.frame)}</b></p>` : ""}
-      <div class="raid-btns"><button class="btn primary" data-world>В мир</button></div></div>`;
+      <div class="raid-btns"><button class="btn primary" data-world>${T("ui.raid.665")}</button></div></div>`;
     this.result.querySelector<HTMLButtonElement>("[data-world]")!.onclick = () => { this.result.hidden = true; this.net.send("raid:leave", {}); };
     this.result.hidden = false;
   }
@@ -253,7 +254,7 @@ export class RaidHud {
       this.bFill.style.width = `${k * 100}%`;
       this.bText.textContent = `${Math.ceil(k * 100)}% · ${num(Math.max(0, b.u.hp))} / ${num(b.u.maxHp)}`;
       const ph = Math.max(0, Math.min(RAID_PHASES.length - 1, b.u.phase));
-      this.bPhase.innerHTML = `<b>${esc(RAID.boss.name)}</b><span>Фаза ${phaseNo(ph)} — ${esc(phaseName(ph))}</span>`;
+      this.bPhase.innerHTML = `<b>${esc(RAID.boss.name)}</b><span>${T("ui.raid.666", { ph: phaseNo(ph), v: esc(phaseName(ph)) })}</span>`;
     }
     this.top.classList.toggle("dim", !b);
     // каст босса
@@ -263,7 +264,7 @@ export class RaidHud {
     const bs = st.berserk ?? 0;
     setHidden(this.berserkEl, stage !== "fight");
     this.berserkEl.classList.toggle("hot", bs > 0 && bs <= 30 || bs <= 0);
-    this.berserkEl.textContent = bs > 0 ? `Ярость через ${mmss(bs)}` : "ЯРОСТЬ";
+    this.berserkEl.textContent = bs > 0 ? T("ui.raid.667", { bs: mmss(bs) }) : T("ui.raid.668");
     // отсчёт
     const cd = Math.ceil(st.countdown ?? 0);
     this.count.textContent = (stage === "gather" || stage === "pull") && cd > 0 ? `${stage === "gather" ? "Сбор" : "Бой через"}: ${cd}` : "";
@@ -297,7 +298,7 @@ export class RaidHud {
       const rv = this.revive.get(x.id) ?? this.revive.get(x.u.name);
       if (rv && rv.until < now) { this.revive.delete(x.id); this.revive.delete(x.u.name); }
       const em = row.querySelector(".uframe-st")!;
-      const txt = x.dead ? (rv && rv.until >= now ? `поднимают… ${rv.by}` : "мёртв") : `${Math.ceil(k * 100)}%`;
+      const txt = x.dead ? (rv && rv.until >= now ? T("ui.raid.669", { by: rv.by }) : T("ui.raid.670")) : `${Math.ceil(k * 100)}%`;
       if (em.textContent !== txt) em.textContent = txt;
       row.classList.toggle("dead", x.dead);
       row.classList.toggle("self", x.id === this.net.id);

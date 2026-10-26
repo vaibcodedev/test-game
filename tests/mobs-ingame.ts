@@ -112,7 +112,10 @@ async function scenario() {
     Math.random = rnd;
     const bx = mob.home.x, by = mob.home.y;
     const ranged = !!mob.def.projectile;
-    const hx = bx + (ranged ? 110 : 34), hy = by + 6;
+    // дальник: сторона, откуда виден герой (в данже стены режут линию огня)
+    const { lineClear } = await import("../shared/map");
+    const side = ranged ? ([[110, 6], [-110, 6], [6, 110], [6, -110]] as const).find(([dx, dy]) => lineClear(W().map, bx, by, bx + dx, by + dy)) ?? [110, 6] : [34, 6];
+    const hx = bx + side[0], hy = by + side[1];
     let keep = setInterval(() => hold(H, hx, hy), 50);
     hold(H, hx, hy);
     mob.unit.x = bx; mob.unit.y = by;

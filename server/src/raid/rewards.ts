@@ -15,6 +15,7 @@ import type { Player } from "../game/Player";
 import { gainXp } from "../game/rewards";
 import type { World } from "../game/World";
 import type { RaidDirector } from "./director";
+import { T } from "../../../shared/texts";
 
 export interface RaidLoot {
   name: string;
@@ -107,7 +108,7 @@ export function grantRaidRewards(d: RaidDirector, now = Date.now()): Map<string,
       if (rand() < ch.legendary) {
         const own = pool.other.filter((l) => legendaryFits(l.id, p.cls));
         const id = own.length ? pick(own, rand)!.id : rollLegendary(p.cls, dr.ilvl, rand);
-        if (id) { items.push(makeLegendary(id)); w.system(`⚡ ${p.name} получил легендарный предмет [${LEGENDARIES[id].name}]!`); }
+        if (id) { items.push(makeLegendary(id)); w.system(T("srv.rewards.830", { name: p.name, name2: LEGENDARIES[id].name })); }
       }
       // трофеи: знамя и рога, шанс растёт на pityStep за победу без трофея (до pityMax)
       let got = false;
@@ -123,8 +124,8 @@ export function grantRaidRewards(d: RaidDirector, now = Date.now()): Map<string,
       raidMountTrophies(p, RAID_BOSS.id);
       rs.pity = got ? 0 : Math.min(ch.pityMax, rs.pity + ch.pityStep);
       dropBag(w, p, boss.x, boss.y, items, rand);
-      p.send("toast", { text: `${RAID_BOSS.name} повержен! Заберите добычу у тела.`, kind: "loot" });
-    } else p.send("toast", { text: "Откат добычи рейда: только опыт и золото", kind: "info" });
+      p.send("toast", { text: T("srv.rewards.203", { name: RAID_BOSS.name }), kind: "loot" });
+    } else p.send("toast", { text: T("srv.rewards.204"), kind: "info" });
     p.selfDirty = true;
     out.set(mem.key, loot);
   }
@@ -146,7 +147,7 @@ export function deliverPending(p: Player) {
   let n = 0;
   while (list.length && addItem(p, list[0])) { list.shift(); n++; }
   if (!list.length) delete p.save.pendingItems;
-  if (n) p.send("toast", { text: `Получена отложенная добыча: ${n}`, kind: "loot" });
-  if (list.length) p.send("toast", { text: `Добыча ждёт (${list.length}): освободите место в сумке`, kind: "error" });
+  if (n) p.send("toast", { text: T("srv.rewards.205", { n: n }), kind: "loot" });
+  if (list.length) p.send("toast", { text: T("srv.rewards.206", { length: list.length }), kind: "error" });
   p.selfDirty = true;
 }

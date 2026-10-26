@@ -4,11 +4,12 @@ import { npcRefusal } from "../../../shared/npcs";
 import { services } from "../arena/registry";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const BOSSES: Record<string, { alive: string; slain: string; gone: string }> = {
-  ent: { alive: "Древний Энт жив и бродит в Пустоши Павших", slain: "Древнего Энта одолел", gone: "Древний Энт пал, но пустошь скоро вернёт его" },
-  witch: { alive: "Болотная Ведьма жива и колдует в Чумных топях", slain: "Болотную Ведьму одолел", gone: "Болотная Ведьма пала, но топь скоро вернёт её" },
-  ashlord: { alive: "Повелитель Пепла жив и восседает в Пепельных чертогах", slain: "Повелителя Пепла одолел", gone: "Повелитель Пепла пал, но пепел скоро вернёт его" },
+  ent: { alive: T("srv.rumors.805"), slain: T("srv.rumors.806"), gone: T("srv.rumors.807") },
+  witch: { alive: T("srv.rumors.808"), slain: T("srv.rumors.809"), gone: T("srv.rumors.810") },
+  ashlord: { alive: T("srv.rumors.811"), slain: T("srv.rumors.812"), gone: T("srv.rumors.813") },
 };
 
 function bossState(w: World, id: string): string {
@@ -18,7 +19,7 @@ function bossState(w: World, id: string): string {
   const k = w.bossKills.get(id);
   if (!k) return b.gone;
   const min = Math.max(1, Math.round((w.time - k.at) / 60000));
-  return `${b.slain} ${k.by} (${min} мин. назад)`;
+  return T("srv.rumors.137", { slain: b.slain, by: k.by, min: min });
 }
 
 const last = new Map<string, { at: number; npc: string; i: number }>();
@@ -42,7 +43,7 @@ export function rumorFor(w: World, p: Player, npcId: unknown): RumorMsg | null {
     .replace("{witch}", () => `${bossState(w, "witch")}`)
     .replace("{ashlord}", () => `${bossState(w, "ashlord")}`)
     .replace("{online}", () => String(w.players.size))
-    .replace("{top}", () => (top ? `${top.name} (${top.rating})` : "никто"));
+    .replace("{top}", () => (top ? `${top.name} (${top.rating})` : T("srv.rumors.814")));
   return { npc: npc.id, name: npc.name, text };
 }
 

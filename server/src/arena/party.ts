@@ -2,6 +2,7 @@
 import type { PartyState } from "../../../shared/arena";
 import type { ClassId } from "../../../shared/classes";
 import type { Player } from "../game/Player";
+import { T } from "../../../shared/texts";
 
 const MAX_PARTY = 2;
 const INVITE_MS = 30_000;
@@ -39,13 +40,13 @@ export class Parties {
   invite(from: Player, targetName: string): string | null {
     const fk = from.name.toLowerCase();
     const tk = targetName.trim().toLowerCase();
-    if (tk === fk) return "Нельзя пригласить себя";
+    if (tk === fk) return T("srv.party.19");
     const target = this.find(tk);
-    if (!target) return "Игрок не в мире";
-    if (target.faction !== from.faction) return "В группу можно звать только героев своей фракции";
-    if (this.partyOf.has(tk)) return `${target.name} уже в группе`;
+    if (!target) return T("srv.party.20");
+    if (target.faction !== from.faction) return T("srv.party.21");
+    if (this.partyOf.has(tk)) return T("srv.party.22", { name: target.name });
     const mine = this.partyOf.get(fk);
-    if (mine && mine.length >= MAX_PARTY) return "Группа уже полная";
+    if (mine && mine.length >= MAX_PARTY) return T("srv.party.23");
     this.invites.set(tk, { from: fk, at: Date.now() });
     target.send("party:invite", { from: from.name });
     return null;
@@ -55,24 +56,24 @@ export class Parties {
     const tk = target.name.toLowerCase();
     const inv = this.invites.get(tk);
     this.invites.delete(tk);
-    if (!inv || Date.now() - inv.at > INVITE_MS) return "Приглашение устарело";
+    if (!inv || Date.now() - inv.at > INVITE_MS) return T("srv.party.24");
     const from = this.find(inv.from);
     if (!accept) {
-      from?.send("toast", { text: `${target.name} отказывается от приглашения`, kind: "info" });
+      from?.send("toast", { text: T("srv.party.25", { name: target.name }), kind: "info" });
       return null;
     }
-    if (!from) return "Пригласивший вышел из игры";
-    if (this.partyOf.has(tk)) return "Вы уже в группе";
+    if (!from) return T("srv.party.26");
+    if (this.partyOf.has(tk)) return T("srv.party.27");
     let list = this.partyOf.get(inv.from);
     if (!list) {
       list = [{ key: inv.from, name: from.name, cls: from.cls, level: from.level }];
       this.partyOf.set(inv.from, list);
     }
-    if (list.length >= MAX_PARTY) return "Группа уже полная";
+    if (list.length >= MAX_PARTY) return T("srv.party.23");
     list.push({ key: tk, name: target.name, cls: target.cls, level: target.level });
     this.partyOf.set(tk, list);
     this.notify(list);
-    for (const m of list) this.find(m.key)?.send("toast", { text: `Группа: ${list.map((x) => x.name).join(" и ")}`, kind: "info" });
+    for (const m of list) this.find(m.key)?.send("toast", { text: T("srv.party.28", { join: list.map((x) => x.name).join(" и ") }), kind: "info" });
     return null;
   }
 
@@ -87,7 +88,7 @@ export class Parties {
       for (const m of rest) {
         this.partyOf.delete(m.key);
         this.find(m.key)?.send("party", null);
-        this.find(m.key)?.send("toast", { text: `${left.name} покидает группу`, kind: "info" });
+        this.find(m.key)?.send("toast", { text: T("srv.party.29", { name: left.name }), kind: "info" });
       }
     } else {
       for (const m of rest) this.partyOf.set(m.key, rest);

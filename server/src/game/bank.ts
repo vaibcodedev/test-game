@@ -9,6 +9,7 @@ import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
 import { addItem } from "./inventory";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
 const isInt = (v: unknown): v is number => Number.isInteger(v);
@@ -54,10 +55,10 @@ export class BankService {
   }
 
   private why(p: Player): string | null {
-    if (p.dead) return "Мёртвым банк не нужен";
-    if (p.team !== 0 || this.busy(p)) return "Банк недоступен на арене и в очереди на неё";
+    if (p.dead) return T("srv.bank.61");
+    if (p.team !== 0 || this.busy(p)) return T("srv.bank.62");
     // банкиры — в Эмберхолле и в обеих столицах (решение 2 задачи 132)
-    if (!BANKERS.some((b) => this.world().dist(p, b) <= MERCHANT_RANGE)) return "Банкир далеко";
+    if (!BANKERS.some((b) => this.world().dist(p, b) <= MERCHANT_RANGE)) return T("srv.bank.63");
     return serviceRefusal("bank", p.x, p.y, p.faction, MERCHANT_RANGE);
   }
 
@@ -82,7 +83,7 @@ export class BankService {
       fail = fn(box);
     } catch (ex) {
       console.error("[bank]", ex);
-      fail = "Ошибка банка";
+      fail = T("srv.bank.779");
     }
     if (fail) {
       restore();
@@ -103,7 +104,7 @@ export class BankService {
       restore();
       p.selfDirty = true;
       this.send(p);
-      err(p, "Ошибка банка, ничего не изменилось");
+      err(p, T("srv.bank.64"));
       return false;
     }
     p.selfDirty = true;
@@ -168,11 +169,11 @@ export class BankService {
   /** Сумка → банк. С tab/slot — в конкретную ячейку (стопка или обмен местами), иначе — куда поместится. */
   put(p: Player, index: unknown, tab: unknown, slot: unknown) {
     if (!this.bagOk(p, index)) return;
-    if (this.locked(p, index)) return err(p, "Предмет лежит в окне обмена");
+    if (this.locked(p, index)) return err(p, T("srv.bank.65"));
     this.run(p, (x) => {
       const inv = p.save.inventory;
       const it = inv[index];
-      if (!it) return "Ячейка пуста";
+      if (!it) return T("srv.bank.66");
       if (isQuestItem(it.base)) return QUEST_ITEM_MSG;
       if (this.slotOk(x, tab, slot)) {
         const t = this.cells(x, tab)!, cur = t[slot as number];
@@ -189,19 +190,19 @@ export class BankService {
         return null;
       }
       inv[index] = null;
-      if (tab === SHARED_TAB && !p.accountId) return "Общий склад недоступен";
-      return this.stash(x, it, isInt(tab) ? tab : 0) ? null : tab === SHARED_TAB ? "На общем складе нет места" : "В банке нет места — купите ячейки";
+      if (tab === SHARED_TAB && !p.accountId) return T("srv.bank.67");
+      return this.stash(x, it, isInt(tab) ? tab : 0) ? null : tab === SHARED_TAB ? T("srv.bank.780") : T("srv.bank.781");
     });
   }
 
   /** Банк → сумка. С index — в конкретную ячейку сумки (стопка или обмен), иначе — куда поместится. */
   take(p: Player, tab: unknown, slot: unknown, index: unknown) {
-    if (index !== undefined && index !== null && this.locked(p, index)) return err(p, "Предмет лежит в окне обмена");
+    if (index !== undefined && index !== null && this.locked(p, index)) return err(p, T("srv.bank.65"));
     this.run(p, (x) => {
-      if (!this.slotOk(x, tab, slot)) return "Нет такой ячейки";
+      if (!this.slotOk(x, tab, slot)) return T("srv.bank.68");
       const t = this.cells(x, tab)!;
       const it = t[slot as number];
-      if (!it) return "Ячейка пуста";
+      if (!it) return T("srv.bank.66");
       const inv = p.save.inventory;
       if (this.bagOk(p, index)) {
         const cur = inv[index];
@@ -218,19 +219,19 @@ export class BankService {
         return null;
       }
       t[slot as number] = null;
-      return addItem(p, it) ? null : "Сумка полна";
+      return addItem(p, it) ? null : T("srv.biomes.76");
     });
   }
 
   /** Перестановка внутри банка. */
   move(p: Player, tab: unknown, slot: unknown, toTab: unknown, toSlot: unknown) {
     this.run(p, (x) => {
-      if (!this.slotOk(x, tab, slot) || !this.slotOk(x, toTab, toSlot)) return "Нет такой ячейки";
+      if (!this.slotOk(x, tab, slot) || !this.slotOk(x, toTab, toSlot)) return T("srv.bank.68");
       const A = this.cells(x, tab)!, B = this.cells(x, toTab)!;
       const a = slot as number, c = toSlot as number;
       if (A === B && a === c) return null;
       const it = A[a];
-      if (!it) return "Ячейка пуста";
+      if (!it) return T("srv.bank.66");
       const cur = B[c];
       const rest = cur ? this.merge(it, cur) : false;
       if (rest === false) {
@@ -248,12 +249,12 @@ export class BankService {
     if (!n) return;
     this.run(p, ({ b }) => {
       if (n > 0) {
-        if (p.save.gold < n) return "Не хватает золота в сумке";
-        if (b.gold + n > BANK_GOLD_MAX) return "Банк не примет столько золота";
+        if (p.save.gold < n) return T("srv.bank.69");
+        if (b.gold + n > BANK_GOLD_MAX) return T("srv.bank.70");
         p.save.gold -= n;
         b.gold += n;
       } else {
-        if (b.gold < -n) return "В банке нет столько золота";
+        if (b.gold < -n) return T("srv.bank.71");
         b.gold += n;
         p.save.gold -= n;
       }
@@ -265,15 +266,15 @@ export class BankService {
   buy(p: Player) {
     const ok = this.run(p, ({ b }) => {
       const price = bankPrice(b);
-      if (price === null) return "Банк уже максимального размера";
-      if (p.save.gold < price) return `Нужно ${price} золота`;
+      if (price === null) return T("srv.bank.72");
+      if (p.save.gold < price) return T("srv.bank.73", { price: price });
       const last = b.tabs[b.tabs.length - 1];
       if (last.length < BANK_TAB_SIZE) last.push(...new Array(Math.min(BANK_STEP, BANK_TAB_SIZE - last.length)).fill(null));
       else if (b.tabs.length < BANK_TABS) b.tabs.push(new Array(BANK_STEP).fill(null));
-      else return "Банк уже максимального размера";
+      else return T("srv.bank.72");
       p.save.gold -= price;
       return null;
     });
-    if (ok) p.send("toast", { text: `Банк расширен: +${BANK_STEP} ячеек`, kind: "info" });
+    if (ok) p.send("toast", { text: T("srv.bank.74", { bank_step: BANK_STEP }), kind: "info" });
   }
 }

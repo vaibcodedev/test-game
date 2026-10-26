@@ -14,6 +14,7 @@ import { applyHaste, applyWeaken } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { stealthBan } from "./wards";
+import { T } from "../../../shared/texts";
 
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
 const rk = (p: Player, id: string) => p.save.skills[id] || 0;
@@ -109,9 +110,9 @@ export function castRogue(c: CastCtx): string | null | undefined {
   const u = p.unit;
   const range = def.range ?? 0;
   const needTarget = (): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = dirTo(a.x - u.x, a.y - u.y); };
@@ -163,7 +164,7 @@ export function castRogue(c: CastCtx): string | null | undefined {
       return null;
     }
     case "as_smoke": {
-      if (w.inTown(u.x, u.y)) return "В городе дымовая завеса недоступна";
+      if (w.inTown(u.x, u.y)) return T("srv.rogue.135");
       { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       c.ok();
       w.emit({ t: "aoe", k: "shadow", x: u.x, y: u.y, r: v.radius });
@@ -179,12 +180,12 @@ export function castRogue(c: CastCtx): string | null | undefined {
       return null;
     }
     case "as_dance": {
-      if (!w.enemiesInCircle(p, u.x, u.y, v.radius).length) return "Нет врагов рядом";
+      if (!w.enemiesInCircle(p, u.x, u.y, v.radius).length) return T("srv.rogue.136");
       c.ok();
       const hops = Math.round(v.hops), gap = 260, s = st(p);
       s.danceUntil = w.time + hops * gap + 150;
       p.castUntil = Math.max(p.castUntil, s.danceUntil);
-      w.castBar(p, hops * gap + 150, "Танец клинков");
+      w.castBar(p, hops * gap + 150, T("srv.rogue.804"));
       p.moveTo = null;
       w.emit({ t: "aoe", k: "shadow", x: u.x, y: u.y, r: 50 });
       let last: Actor | undefined, n = 0;

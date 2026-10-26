@@ -10,6 +10,7 @@ import { TILE } from "../../../shared/constants";
 import type { Player } from "./Player";
 import type { Soldiers } from "./soldiers";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 const WD = P.wards;
 export interface Ward { x: number; y: number; faction: string; at: string }
@@ -27,7 +28,7 @@ export function revealedLeft(w: World, p: Player): number {
 /** Отказ в скрытности под «Раскрыт» (умения: текст ошибки; пассивки — просто не срабатывают). */
 export function stealthBan(w: World, p: Player): string | null {
   const ms = revealedLeft(w, p);
-  return ms > 0 ? `Раскрыт: скрыться нельзя ещё ${Math.ceil(ms / 1000)} с` : null;
+  return ms > 0 ? T("srv.wards.824", { math: Math.ceil(ms / 1000) }) : null;
 }
 
 export class Wards {
@@ -60,7 +61,7 @@ export class Wards {
     revealed.set(p, t + WD.revealMs);
     // вспышка оберега: волна у его подножия (клиент — лист ward-reveal-sol/umb, tools/gen/wards.ts)
     w.emit({ t: "aoe", k: ward.faction === "umbrath" ? "ward_umb" : "ward_sol", x: ward.x, y: ward.y + TILE / 2 - 2, r: 60 });
-    p.send("toast", { text: `Оберег раскрыл вас! ${WD.revealMs / 1000} с нельзя скрыться`, kind: "error" });
+    p.send("toast", { text: T("srv.wards.176", { revealms: WD.revealMs / 1000 }), kind: "error" });
     // откат на кнопках скрытности — не короче «Раскрыт»
     for (const id of STEALTH_SKILLS) {
       if (!p.save.skills?.[id]) continue;

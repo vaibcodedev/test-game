@@ -1,6 +1,7 @@
 /** Диалог городского сплетника: имя NPC, один слух, кнопки «Ещё слух» и «Пока». */
 import type { RumorMsg } from "../../../shared/rumors";
 import type { Net } from "../net";
+import { T } from "../../../shared/texts";
 
 export class RumorUI {
   private win = document.createElement("div");
@@ -17,7 +18,7 @@ export class RumorUI {
     // каркас строится один раз: при «Ещё слух» меняется только реплика, фокус остаётся на кнопке
     this.win.innerHTML = `<h2><span></span><button class="x" aria-label="Закрыть">×</button></h2>
       <div class="body"><p class="npc-say" aria-live="polite"></p></div>
-      <div class="win-foot"><div class="actions"><button class="btn bye">Пока</button><button class="btn primary more">Ещё слух</button></div></div>`;
+      <div class="win-foot"><div class="actions"><button class="btn bye">${T("ui.encounter.478")}</button><button class="btn primary more">${T("ui.rumor.671")}</button></div></div>`;
     this.title = this.win.querySelector<HTMLElement>("h2 > span")!;
     this.say = this.win.querySelector<HTMLElement>(".npc-say")!;
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();

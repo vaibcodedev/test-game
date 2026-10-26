@@ -10,6 +10,7 @@ import { setArtViewer } from "../../shared/mountArt";
 import { CharSelect } from "./ui/charselect";
 import { Hud } from "./ui/hud";
 import { loading } from "./ui/loading";
+import { T } from "../../shared/texts";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -23,7 +24,7 @@ syncHeadUnit();
 setArtViewer(() => net.self?.faction ?? "");
 const netMsg = (ex: unknown) => {
   const msg = (ex as Error)?.message || String(ex);
-  return /ECONNREFUSED|Failed to fetch|NetworkError|offline/i.test(msg) ? "Сервер недоступен. Запущен ли npm run dev?" : msg;
+  return /ECONNREFUSED|Failed to fetch|NetworkError|offline/i.test(msg) ? T("ui.main.739") : msg;
 };
 
 let game: Phaser.Game | null = null;
@@ -48,7 +49,7 @@ function setReg(on: boolean) {
   const go = $<HTMLButtonElement>("login-go"), make = $<HTMLButtonElement>("login-new");
   go.hidden = on;
   make.classList.toggle("primary", on);
-  make.textContent = on ? "Зарегистрироваться" : "Создать аккаунт";
+  make.textContent = on ? T("ui.main.266") : T("ui.main.740");
   $<HTMLInputElement>("login-pass2").required = on;
   $<HTMLInputElement>("login-pass").autocomplete = on ? "new-password" : "current-password";
   $("login-error").textContent = "";
@@ -68,7 +69,7 @@ function showLogin(msg = "") {
   $("login-error").textContent = msg;
   const go = $<HTMLButtonElement>("login-go"), make = $<HTMLButtonElement>("login-new");
   go.disabled = make.disabled = false;
-  go.textContent = "Войти";
+  go.textContent = T("ui.main.263");
   $<HTMLInputElement>("login-pass").value = "";
   ($<HTMLInputElement>("login-name").value ? $("login-pass") : $("login-name")).focus();
 }
@@ -81,9 +82,9 @@ async function doLogin(create: boolean) {
   const go = $<HTMLButtonElement>("login-go"), make = $<HTMLButtonElement>("login-new");
   const err = $("login-error");
   err.textContent = "";
-  if (create && password !== $<HTMLInputElement>("login-pass2").value) return void (err.textContent = "Пароли не совпадают");
+  if (create && password !== $<HTMLInputElement>("login-pass2").value) return void (err.textContent = T("ui.main.264"));
   go.disabled = make.disabled = true;
-  if (!create) go.textContent = "Вход…";
+  if (!create) go.textContent = T("ui.main.265");
   try {
     const view = await api.login(login, password, create);
     try { localStorage.setItem("emberfall-login", JSON.stringify({ name: login })); } catch {}
@@ -92,8 +93,8 @@ async function doLogin(create: boolean) {
   } catch (ex) {
     err.textContent = netMsg(ex);
     go.disabled = make.disabled = false;
-    if (create) make.textContent = "Зарегистрироваться";
-    go.textContent = "Войти";
+    if (create) make.textContent = T("ui.main.266");
+    go.textContent = T("ui.main.263");
   }
 }
 $<HTMLFormElement>("login-form").addEventListener("submit", (e) => {
@@ -141,12 +142,12 @@ function booting(g: Phaser.Game) {
 
 function enterWorld() {
   // экран загрузки (ui/loading.ts) закрывает HUD до готовности мира; уходит сам из GameScene
-  loading.show(lastChar ? `Вход в мир · ${lastChar}` : "", "Подключение к миру…");
+  loading.show(lastChar ? T("ui.main.741", { lastchar: lastChar }) : "", T("ui.loading.652"));
   $("ui").hidden = false;
   if (!hud) hud = new Hud($("ui"));
   if (game && !broken) {
     if (booting(game)) return;
-    loading.progress(0.9, "Строим мир…");
+    loading.progress(0.9, T("ui.main.742"));
     game.scene.start("game");
     return;
   }
@@ -215,7 +216,7 @@ net.on("switch", () => {
   $("ui").hidden = false;
   if (!game || broken) return enterWorld();
   if (booting(game)) return; // мир по новой комнате запустит BootScene, когда догрузит ассеты
-  loading.show("", "Строим мир…");
+  loading.show("", T("ui.main.742"));
   loading.progress(0.9);
   try {
     const sc = game.scene.getScene("game");
@@ -239,15 +240,15 @@ window.addEventListener("online", () => net.retryNow());
 net.on("lost", (msg) => forceExit("account", msg));
 /** Окно «Вы вошли с другого устройства» с кнопкой «Войти снова» (вход вытеснит другую вкладку). */
 function kickedModal(text: string) {
-  sysModal.show("Сессия закрыта", text, [
-    ["Войти снова", true, () => {
-      sysModal.busy("Вход…");
+  sysModal.show(T("ui.main.743"), text, [
+    [T("ui.main.744"), true, () => {
+      sysModal.busy(T("ui.main.265"));
       playChar(lastChar).then(() => sysModal.hide(), (e) => {
-        if ((e as { code?: number }).code === 401) forceExit("account", "Сессия истекла, войдите снова");
+        if ((e as { code?: number }).code === 401) forceExit("account", T("srv.accounts.9"));
         else kickedModal(netMsg(e));
       });
     }],
-    ["Выйти на экран входа", false, () => forceExit("account")],
+    [T("ui.main.745"), false, () => forceExit("account")],
   ]);
 }
 net.on("kicked", (text) => {
@@ -263,18 +264,18 @@ const reconnectBox = (() => {
   const back = document.createElement("div");
   back.className = "sys-back reconnect";
   back.hidden = true;
-  back.innerHTML = `<div class="panel gmenu sys-panel"><h2>Переподключение…</h2>
-    <p class="muted sys-text">Связь с сервером потеряна. Ваш герой ждёт вас в мире 30 секунд.</p>
+  back.innerHTML = `<div class="panel gmenu sys-panel"><h2>${T("ui.main.746")}</h2>
+    <p class="muted sys-text">${T("ui.main.747")}</p>
     <div class="logout-wait" id="rc-time">0 с</div><p class="muted sys-text" id="rc-next"></p>
-    <button class="btn gm-item primary" id="rc-now">Повторить сейчас</button>
-    <button class="btn gm-item" id="rc-exit">Выйти на экран входа</button></div>`;
+    <button class="btn gm-item primary" id="rc-now">${T("ui.main.748")}</button>
+    <button class="btn gm-item" id="rc-exit">${T("ui.main.745")}</button></div>`;
   document.body.append(back);
   let since = 0, nextAt = 0, attempt = 0, timer = 0;
   const tick = () => {
     const now = performance.now();
     back.querySelector("#rc-time")!.textContent = `${Math.floor((now - since) / 1000)} с`;
     const left = Math.ceil((nextAt - now) / 1000);
-    back.querySelector("#rc-next")!.textContent = attempt === 0 || left <= 0 ? "Подключаемся…" : `Попытка ${attempt} не удалась. Следующая через ${left} с`;
+    back.querySelector("#rc-next")!.textContent = attempt === 0 || left <= 0 ? T("ui.main.749") : T("ui.main.750", { attempt: attempt, left: left });
   };
   back.querySelector<HTMLButtonElement>("#rc-now")!.onclick = () => net.retryNow();
   back.querySelector<HTMLButtonElement>("#rc-exit")!.onclick = () => forceExit("account");
@@ -369,9 +370,9 @@ function crash(kind: string, err: unknown, where = "") {
   if (sysModal.open) return;
   const inGame = !$("ui").hidden;
   if (inGame) broken = true; // цикл Phaser мог остановиться — следующий вход пересоздаёт игру
-  sysModal.show("Что-то пошло не так", "В игре произошла ошибка. Можно переподключиться — герой и прогресс на сервере в сохранности.", [
-    ["Переподключиться", true, () => {
-      sysModal.busy("Переподключение…");
+  sysModal.show(T("ui.main.751"), T("ui.main.752"), [
+    [T("ui.gamemenu.501"), true, () => {
+      sysModal.busy(T("ui.main.746"));
       if (inGame && lastChar) {
         try { destroyGame(); } catch {}
         void net.recover(net.kind === "arena", net.kind !== "arena");
@@ -380,12 +381,12 @@ function crash(kind: string, err: unknown, where = "") {
         void toCharSelect();
       }
     }],
-    ["Выйти на экран входа", false, () => forceExit("account")],
+    [T("ui.main.745"), false, () => forceExit("account")],
   ]);
 }
 window.addEventListener("error", (e) => crash("error", e.error ?? e.message, `${e.filename ?? ""}:${e.lineno ?? 0}:${e.colno ?? 0}`));
 window.addEventListener("unhandledrejection", (e) => crash("unhandledrejection", e.reason));
-(window as any).__crash = (msg = "Проверка перехвата ошибок") => crash("test", new Error(msg));
+(window as any).__crash = (msg = T("ui.main.753")) => crash("test", new Error(msg));
 
 $("ui").hidden = true;
 (window as any).__net = net;

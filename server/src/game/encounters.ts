@@ -14,6 +14,7 @@ import type { World } from "./World";
 
 export type EncKind = "traveler" | "ambush" | "merchant";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../../shared/encounters";
+import { T as TT } from "../../../shared/texts";
 
 interface Enc {
   kind: EncKind;
@@ -119,7 +120,7 @@ export function startEncounter(w: World, p: Player, force?: EncKind): string | n
   const level = zoneLevel(w, p, spot.x, spot.y);
   const e: Enc = { kind, npcId: w.uid("e"), x: spot.x, y: spot.y, expireAt: w.time + data.lifetimeSec * 1000, phase: "idle", mobIds: [], level, stock: [] };
   all.set(p.id, e);
-  toast(p, `Вы встретили: ${D[kind].title}`, "info");
+  toast(p, TT("srv.encounters.92", { title: D[kind].title }), "info");
   if (kind === "ambush") {
     const n = Math.round(rnd(D.ambush.count[0], D.ambush.count[1] + 0.99));
     const leader = spawnMob(w, e, "bandit_leader", level, ring(w, p, 0, n, 130), true);
@@ -164,7 +165,7 @@ function rewardTraveler(w: World, p: Player, e: Enc) {
     if (addItem(p, it)) extra = `, ${it.name}`;
   }
   p.selfDirty = true;
-  toast(p, `Награда: +${gold} з, +${xp} опыта${extra}`, "loot");
+  toast(p, TT("srv.encounters.93", { gold: gold, xp: xp, extra: extra }), "loot");
 }
 
 function dialog(e: Enc): EncDialogMsg {
@@ -189,14 +190,14 @@ export function registerEncounters(on: On, world: () => World) {
   on<{ id: unknown }>("enc:talk", (p, m) => {
     const w = world(), e = get(w).get(p.id);
     if (!e || m.id !== e.npcId || p.dead || e.kind === "ambush") return;
-    if (!near(w, p, e)) return toast(p, "Подойдите ближе", "error");
+    if (!near(w, p, e)) return toast(p, TT("srv.encounters.94"), "error");
     if (e.kind === "merchant") p.send("enc:shop", shopMsg(w, e));
     else p.send("enc:dialog", dialog(e));
   });
   on<{ id: unknown; opt: unknown }>("enc:act", (p, m) => {
     const w = world(), e = get(w).get(p.id);
     if (!e || m.id !== e.npcId || e.kind !== "traveler" || e.phase !== "idle" || p.dead) return;
-    if (!near(w, p, e)) return toast(p, "Подойдите ближе", "error");
+    if (!near(w, p, e)) return toast(p, TT("srv.encounters.94"), "error");
     if (m.opt === "potion") {
       const inv = p.save.inventory;
       const i = inv.findIndex((it) => it && it.base === "hp_potion");
@@ -217,15 +218,15 @@ export function registerEncounters(on: On, world: () => World) {
   on<{ id: unknown; idx: unknown }>("enc:buy", (p, m) => {
     const w = world(), e = get(w).get(p.id);
     if (!e || m.id !== e.npcId || e.kind !== "merchant" || p.dead) return;
-    if (!near(w, p, e)) return toast(p, "Торговец далеко", "error");
+    if (!near(w, p, e)) return toast(p, TT("srv.encounters.95"), "error");
     const s = Number.isInteger(m.idx) ? e.stock[m.idx as number] : undefined;
     if (!s || s.sold) return;
-    if (p.save.gold < s.price) return toast(p, "Не хватает золота", "error");
-    if (!addItem(p, { ...s.item })) return toast(p, "Сумка полна", "error");
+    if (p.save.gold < s.price) return toast(p, TT("srv.bags.58"), "error");
+    if (!addItem(p, { ...s.item })) return toast(p, TT("srv.biomes.76"), "error");
     p.save.gold -= s.price;
     s.sold = true;
     p.selfDirty = true;
-    toast(p, `Куплено: ${s.item.name}`, "loot");
+    toast(p, TT("srv.encounters.96", { name: s.item.name }), "loot");
     p.send("enc:shop", shopMsg(w, e));
   });
 }

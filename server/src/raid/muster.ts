@@ -8,6 +8,7 @@ import { RAID_CFG, RAID_ROLES, raidRole, roleTargets, type RaidMemberInfo, type 
 import type { Player } from "../game/Player";
 import { raids } from "../arena/registry";
 import { lockoutLeft, raidState } from "./rewards";
+import { T } from "../../../shared/texts";
 
 export interface MusterEntry extends RaidMemberInfo {
   key: string;
@@ -40,8 +41,8 @@ export class RaidMuster {
 
   /** Почему герой не может встать в рейд ("" — может). */
   why(p: Player): string {
-    if (p.level < RAID_CFG.minLevel) return `Нужен ${RAID_CFG.minLevel} уровень`;
-    if (p.dead) return "Сначала воскресните";
+    if (p.level < RAID_CFG.minLevel) return T("srv.muster.197", { minlevel: RAID_CFG.minLevel });
+    if (p.dead) return T("srv.muster.198");
     return this.busy(p.name.toLowerCase()) ?? "";
   }
 
@@ -52,8 +53,8 @@ export class RaidMuster {
       if (err) return group.length > 1 ? `${p.name}: ${err}` : err;
     }
     const fresh = group.filter((p) => !this.has(p.name.toLowerCase()));
-    if (!fresh.length) return "Вы уже в рейде";
-    if (this.list.length + fresh.length > RAID_CFG.maxPlayers) return "Рейд уже собран";
+    if (!fresh.length) return T("srv.muster.199");
+    if (this.list.length + fresh.length > RAID_CFG.maxPlayers) return T("srv.muster.200");
     if (!this.list.length) this.startAt = now + musterMs();
     for (const p of fresh) this.list.push({ key: p.name.toLowerCase(), name: p.name, cls: p.cls as ClassId, level: p.level, role: raidRole(p.cls), at: now });
     this.changed();
@@ -69,8 +70,8 @@ export class RaidMuster {
   }
   /** Лидер (первый вставший) начинает раньше таймера. */
   startNow(key: string): string | null {
-    if (!this.list.length) return "Сбор не идёт";
-    if (this.list[0].key !== key) return "Начать может только лидер сбора";
+    if (!this.list.length) return T("srv.muster.201");
+    if (this.list[0].key !== key) return T("srv.muster.202");
     this.launch();
     return null;
   }

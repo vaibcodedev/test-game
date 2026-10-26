@@ -18,6 +18,7 @@ import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effe
 import type { Player } from "./Player";
 import { World, type Actor } from "./World";
 import { stealthBan } from "./wards";
+import { T } from "../../../shared/texts";
 
 const angDiff = (a: number, b: number) => {
   let d = a - b;
@@ -43,18 +44,18 @@ export function castSkill(w: World, p: Player, id: string, ax: number, ay: numbe
 
 function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number, targetId: string | null, extra?: AimExtra): string | null {
   const def = SKILLS[id];
-  if (!def || def.kind !== "active" || def.cls !== p.cls) return "Неизвестное умение";
+  if (!def || def.kind !== "active" || def.cls !== p.cls) return T("srv.skills.139");
   if (w.noFight(p) && isAttackSkill(def)) return NO_FIGHT_MSG;
   const rank = p.save.skills[id] || 0;
-  if (!rank) return "Умение не изучено";
-  if (p.dead) return "Вы мертвы";
-  if (p.stunUntil > w.time) return "Вы оглушены";
-  if (p.frozenUntil > w.time) return "Бой ещё не начался";
+  if (!rank) return T("srv.skills.140");
+  if (p.dead) return T("srv.skills.141");
+  if (p.stunUntil > w.time) return T("srv.skills.142");
+  if (p.frozenUntil > w.time) return T("srv.skills.143");
   const ready = p.cds.get(id) || 0;
   if (w.time < ready) return null; // молча: кнопку уже показывают на перезарядке
   if (!def.offGcd && w.time < p.gcdUntil) return null; // общий откат (data/balance.json gcd): молча, как перезарядка
   const mana = skillMana(def, rank, p.level);
-  if (p.unit.mp < mana) return "Недостаточно маны";
+  if (p.unit.mp < mana) return T("srv.skills.144");
   const u = p.unit;
   // точка прицела по умолчанию — перед героем
   if (!Number.isFinite(ax) || !Number.isFinite(ay)) { ax = u.x; ay = u.y + 1; }
@@ -135,8 +136,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
   switch (id) {
     // ---------- воин ----------
     case "taunt": {
-      if (!liveTarget) return "Нужна цель";
-      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
+      if (!liveTarget) return T("srv.archers.49");
+      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return T("srv.archers.50");
       ok();
       w.emit({ t: "aoe", k: "taunt", x: u.x, y: u.y, r: v.radius || 70 });
       const hitTargets = new Set<Actor>([liveTarget]);
@@ -163,13 +164,13 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "charge": {
-      if (!liveTarget) return "Нужна цель";
+      if (!liveTarget) return T("srv.archers.49");
       const d = w.dist(u, liveTarget);
-      if (d > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
-      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Путь прегражден";
+      if (d > range + w.radiusOf(liveTarget)) return T("srv.archers.50");
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return T("srv.reaver.132");
       // до цели по прямой (общая с превью: leapDest); вода или дерево на пути — отказ «Путь прегражден» уже в placeSkill
       const dest = leapDest(w.map, u, { x: liveTarget.x, y: liveTarget.y, r: w.radiusOf(liveTarget) });
-      if (dest.blocked) return "Путь прегражден";
+      if (dest.blocked) return T("srv.reaver.132");
       ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y, k: "charge" });
       u.x = dest.x;
@@ -251,9 +252,9 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
 
     // ---------- лучник ----------
     case "aimed": {
-      if (!liveTarget) return "Нужна цель";
-      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
-      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
+      if (!liveTarget) return T("srv.archers.49");
+      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return T("srv.archers.50");
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return T("srv.archers.51");
       ok();
       const ms = (w.dist(u, liveTarget) / 900) * 1000;
       w.emit({ t: "proj", k: "arrow", from: p.id, to: liveTarget.id, tx: liveTarget.x, ty: liveTarget.y, ms });
@@ -320,9 +321,9 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
 
     // ---------- разбойник ----------
     case "backstab": {
-      if (!liveTarget) return "Нужна цель";
-      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
-      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
+      if (!liveTarget) return T("srv.archers.49");
+      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return T("srv.archers.50");
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return T("srv.archers.51");
       const crit2 = wasStealthed || isBehind(p, liveTarget);
       ok();
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
@@ -331,9 +332,9 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "venom": {
-      if (!liveTarget) return "Нужна цель";
-      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
-      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
+      if (!liveTarget) return T("srv.archers.49");
+      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return T("srv.archers.50");
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return T("srv.archers.51");
       ok();
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
       applyPoison(w, p, liveTarget, rank);
@@ -341,13 +342,13 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "shadowstep": {
-      if (!liveTarget) return "Нужна цель";
-      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return "Цель слишком далеко";
-      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return "Нет прямой видимости";
+      if (!liveTarget) return T("srv.archers.49");
+      if (w.dist(u, liveTarget) > range + w.radiusOf(liveTarget)) return T("srv.archers.50");
+      if (!lineClear(w.map, u.x, u.y, liveTarget.x, liveTarget.y)) return T("srv.archers.51");
       const [fx, fy] = facing(liveTarget);
       // место за спиной — общая функция с превью (shared/skillShape.ts)
       const dest = behindSpot(w.map, liveTarget.x, liveTarget.y, fx, fy, w.radiusOf(liveTarget));
-      if (!dest) return "Нет места за спиной цели";
+      if (!dest) return T("srv.skills.145");
       ok();
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y, k: "shadow" });
       u.x = dest.x;
@@ -362,7 +363,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
     case "stealth": {
-      if (w.inTown(u.x, u.y)) return "В городе скрытность недоступна";
+      if (w.inTown(u.x, u.y)) return T("srv.skills.146");
       { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       ok();
       p.stealthUntil = w.time + v.dur * 1000;
@@ -378,16 +379,16 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       const a = resolveAlly(w, p, targetId);
       if (a.player?.dead) {
         const rr = p.save.skills.resurrect || 0;
-        if (!rr) return "Цель мертва (нужен талант «Воскрешение»)";
-        if (p.team !== 0 || w.pvpActive) return "На арене воскрешение недоступно";
-        if (w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+        if (!rr) return T("srv.skills.147");
+        if (p.team !== 0 || w.pvpActive) return T("srv.skills.148");
+        if (w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
         const why = w.reviveCheck?.(p, a.player); // рейд: заряды воскрешения
         if (why) return why;
         const tp = a.player, rv = SKILLS.resurrect.v(rr);
         ok();
         const end = (p.castUntil = w.time + rv.cast * 1000);
         p.castBreakable = true;
-        w.castBar(p, rv.cast * 1000, "Воскрешение");
+        w.castBar(p, rv.cast * 1000, T("srv.skills.818"));
         p.moveTo = null;
         u.anim = Anim.Cast;
         w.emit({ t: "buff", id: p.id, k: "heal", ms: rv.cast * 1000 });
@@ -397,20 +398,20 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
           w.castBar(p, 0);
           if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle;
           if (!tp.dead || w.players.get(tp.id) !== tp) return;
-          if (p.dead || p.stunUntil > w.time || w.dist(u, tp) > range + PLAYER_RADIUS + 40 || w.reviveCheck?.(p, tp)) return void p.send("toast", { text: "Воскрешение прервано", kind: "error" });
+          if (p.dead || p.stunUntil > w.time || w.dist(u, tp) > range + PLAYER_RADIUS + 40 || w.reviveCheck?.(p, tp)) return void p.send("toast", { text: T("srv.skills.149"), kind: "error" });
           w.onRevived?.(p, tp);
           tp.dead = false;
           tp.unit.hp = Math.max(1, Math.round(tp.unit.maxHp * rv.hp / 100));
           tp.unit.anim = Anim.Idle;
           tp.stunUntil = tp.rootUntil = tp.slowUntil = 0;
           tp.selfDirty = true;
-          tp.send("toast", { text: `${p.name} воскрешает вас`, kind: "info" });
+          tp.send("toast", { text: T("srv.skills.150", { name: p.name }), kind: "info" });
           w.emit({ t: "buff", id: tp.id, k: "heal", ms: 900 });
           w.emit({ t: "aoe", k: "heal", x: tp.x, y: tp.y, r: 60 });
         });
         return null;
       }
-      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
       ok();
       w.emit({ t: "buff", id: a.id, k: "heal", ms: 700 });
       smite(w, p, applyHeal(w, p, a, healPower(p) * v.heal / 100));
@@ -433,8 +434,8 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
     }
     case "renew": {
       const a = resolveAlly(w, p, targetId);
-      if (a.player?.dead) return "Цель мертва";
-      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+      if (a.player?.dead) return T("srv.healers.97");
+      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
       ok();
       const token = (hotToken.get(a.id) || 0) + 1;
       hotToken.set(a.id, token);
@@ -453,9 +454,9 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
     }
     case "holyshield": {
       const a = resolveAlly(w, p, targetId);
-      if (!a.player) return "Щит можно наложить только на героя";
-      if (a.player.dead) return "Цель мертва";
-      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return "Цель слишком далеко";
+      if (!a.player) return T("srv.skills.151");
+      if (a.player.dead) return T("srv.healers.97");
+      if (a.id !== p.id && w.dist(u, a) > range + PLAYER_RADIUS) return T("srv.archers.50");
       ok();
       const tp = a.player;
       tp.shieldAmt = healPower(p) * v.absorb / 100 * pvpHealScale(w, tp); // в PvP — как лечение (раньше «Святой щит» шёл мимо)
@@ -465,7 +466,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       return null;
     }
   }
-  return "Умение недоступно";
+  return T("srv.skills.152");
 }
 
 // ---------- помощники лекаря ----------

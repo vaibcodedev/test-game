@@ -15,6 +15,7 @@ import { MAP_VERSION, ZONES, zoneAtPx, type WorldMap } from "../../shared/map";
 import { inArena } from "./arena/registry";
 import { GameDB, type CharRow, type PlayerSave } from "./db";
 import { GP } from "../../shared/gameplay";
+import { T } from "../../shared/texts";
 
 export interface Session {
   accountId: number;
@@ -96,7 +97,7 @@ function summary(row: CharRow, map: WorldMap | null): CharSummary {
     zone,
     look: normLook(save.look),
     equip,
-    banned: row.banned_until > now ? `Заблокирован ${row.banned_until > 4e12 ? "навсегда" : "до " + new Date(row.banned_until).toLocaleString("ru-RU")}${row.ban_reason ? ": " + row.ban_reason : ""}` : undefined,
+    banned: row.banned_until > now ? T("srv.accounts.770", { tolocalestring: row.banned_until > 4e12 ? "навсегда" : "до " + new Date(row.banned_until).toLocaleString("ru-RU"), ban_reason: row.ban_reason ? ": " + row.ban_reason : "" }) : undefined,
   };
 }
 
@@ -125,32 +126,32 @@ export function accountRouter(d: AccountDeps): express.Router {
   r.post("/login", (req, res) => {
     const ip = ipOf(req);
     if (!d.test) {
-      if (perIp.blocked(ip)) return fail(res, 429, "Слишком много попыток входа. Подождите минуту");
+      if (perIp.blocked(ip)) return fail(res, 429, T("srv.accounts.1"));
       perIp.hit(ip);
     }
     const login = typeof req.body?.login === "string" ? req.body.login.trim() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     const create = req.body?.create === true;
-    if (!NAME_RE.test(login)) return fail(res, 400, "Логин: 3–16 букв (можно кириллицу), цифр или _");
-    if (password.length < 4 || password.length > 64) return fail(res, 400, "Пароль: от 4 до 64 символов");
+    if (!NAME_RE.test(login)) return fail(res, 400, T("srv.accounts.2"));
+    if (password.length < 4 || password.length > 64) return fail(res, 400, T("srv.accounts.3"));
     const db = d.db();
     const lk = GameDB.key(login);
     if (create) {
-      if (db.accountExists(login)) return fail(res, 409, "Такой логин уже занят");
+      if (db.accountExists(login)) return fail(res, 409, T("srv.accounts.4"));
       if (!d.test) {
-        if (regs.blocked(ip)) return fail(res, 429, "Слишком много новых аккаунтов с вашего адреса. Попробуйте позже");
+        if (regs.blocked(ip)) return fail(res, 429, T("srv.accounts.5"));
         regs.hit(ip);
       }
       const id = db.accountCreate(login, password);
       const token = newSession(id, login);
       return void res.json(view(token, sessions.get(token)!));
     }
-    if (badPass.blocked(lk)) return fail(res, 429, "Слишком много неверных паролей. Подождите 5 минут");
+    if (badPass.blocked(lk)) return fail(res, 429, T("srv.accounts.6"));
     const acc = db.accountLogin(login, password);
-    if (!acc) return fail(res, 404, "Аккаунт не найден. Нажмите «Создать аккаунт»");
+    if (!acc) return fail(res, 404, T("srv.accounts.7"));
     if (!acc.ok) {
       badPass.hit(lk);
-      return fail(res, 403, "Неверный пароль");
+      return fail(res, 403, T("srv.accounts.8"));
     }
     const token = newSession(acc.id, acc.login);
     res.json(view(token, sessions.get(token)!));
@@ -158,31 +159,31 @@ export function accountRouter(d: AccountDeps): express.Router {
 
   r.get("/chars", (req, res) => {
     const a = auth(req);
-    if (!a) return fail(res, 401, "Сессия истекла, войдите снова");
+    if (!a) return fail(res, 401, T("srv.accounts.9"));
     res.json(view(a.token, a.s));
   });
 
   r.post("/chars", (req, res) => {
     const a = auth(req);
-    if (!a) return fail(res, 401, "Сессия истекла, войдите снова");
+    if (!a) return fail(res, 401, T("srv.accounts.9"));
     const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
     const cls = req.body?.cls;
-    if (!NAME_RE.test(name)) return fail(res, 400, "Имя: 3–16 букв (можно кириллицу), цифр или _");
-    if (!isClassId(cls)) return fail(res, 400, "Выберите класс");
+    if (!NAME_RE.test(name)) return fail(res, 400, T("srv.accounts.10"));
+    if (!isClassId(cls)) return fail(res, 400, T("srv.accounts.11"));
     // фракция: выбирается первой; без неё (старый клиент) — фракция класса
     const faction = req.body?.faction ?? CLASSES[cls].faction;
-    if (!isFactionId(faction)) return fail(res, 400, "Выберите фракцию");
-    if (CLASSES[cls].faction !== faction) return fail(res, 400, `Класс «${CLASSES[cls].name}» не принадлежит фракции ${FACTIONS[faction].name}`);
+    if (!isFactionId(faction)) return fail(res, 400, T("srv.accounts.12"));
+    if (CLASSES[cls].faction !== faction) return fail(res, 400, T("srv.accounts.13", { name: CLASSES[cls].name, name2: FACTIONS[faction].name }));
     const db = d.db();
-    if (db.charsOf(a.s.accountId).length >= MAX_CHARS) return fail(res, 400, `Не больше ${MAX_CHARS} героев на аккаунте`);
-    if (db.ownerOf(name) !== null) return fail(res, 409, "Это имя уже занято");
+    if (db.charsOf(a.s.accountId).length >= MAX_CHARS) return fail(res, 400, T("srv.accounts.14", { max_chars: MAX_CHARS }));
+    if (db.ownerOf(name) !== null) return fail(res, 409, T("srv.accounts.15"));
     const save = d.newSave(cls as ClassId);
     save.faction = faction;
     save.look = normLook(req.body?.look);
     try {
       db.createChar(a.s.accountId, name, save);
     } catch {
-      return fail(res, 409, "Это имя уже занято");
+      return fail(res, 409, T("srv.accounts.15"));
     }
     freshChars.add(GameDB.key(name));
     res.json(view(a.token, a.s));
@@ -190,14 +191,14 @@ export function accountRouter(d: AccountDeps): express.Router {
 
   r.post("/chars/delete", (req, res) => {
     const a = auth(req);
-    if (!a) return fail(res, 401, "Сессия истекла, войдите снова");
+    if (!a) return fail(res, 401, T("srv.accounts.9"));
     const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
     const confirm = typeof req.body?.confirm === "string" ? req.body.confirm.trim() : "";
     const db = d.db();
-    if (!name || db.ownerOf(name) !== a.s.accountId) return fail(res, 404, "Герой не найден");
-    if (GameDB.key(confirm) !== GameDB.key(name)) return fail(res, 400, "Для удаления введите имя героя");
+    if (!name || db.ownerOf(name) !== a.s.accountId) return fail(res, 404, T("srv.accounts.16"));
+    if (GameDB.key(confirm) !== GameDB.key(name)) return fail(res, 400, T("srv.accounts.17"));
     const key = GameDB.key(name);
-    if (d.online(key) || inArena.has(key)) return fail(res, 409, "Герой сейчас в игре");
+    if (d.online(key) || inArena.has(key)) return fail(res, 409, T("srv.accounts.18"));
     db.deleteChar(a.s.accountId, name);
     freshChars.delete(key);
     res.json(view(a.token, a.s));

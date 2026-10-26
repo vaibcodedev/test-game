@@ -12,6 +12,7 @@ import { Mob } from "./Mob";
 import { applyRoot } from "./effects";
 import type { Player } from "./Player";
 import type { World } from "./World";
+import { T } from "../../../shared/texts";
 
 type Ability = { every: number; at: number; phases: number[]; run: () => void };
 
@@ -144,7 +145,7 @@ export abstract class Boss {
 
 class Ent extends Boss {
   protected thresholds = [0.5];
-  protected override yells = ["", "Лес поднимется против вас!", "Корни... уходят... в землю..."];
+  protected override yells = ["", T("srv.bosses.783"), T("srv.bosses.784")];
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
     const dmg = () => this.m.stats.dmg * this.mech;
@@ -179,7 +180,7 @@ class Ent extends Boss {
 
 class Witch extends Boss {
   protected thresholds = [0.6, 0.25];
-  protected override yells = ["", "Топь заберёт ваши кости!", "Довольно! Вы сгниёте здесь!", "Нет... моё болото..."];
+  protected override yells = ["", T("srv.bosses.785"), T("srv.bosses.786"), T("srv.bosses.787")];
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
     const dmg = () => this.m.stats.dmg * this.mech;
@@ -213,7 +214,7 @@ class Witch extends Boss {
 
 class AshLord extends Boss {
   protected thresholds = [0.66, 0.33];
-  protected override yells = ["", "Пепел к пеплу! Небо падёт на вас!", "ГОРИТЕ! ВСЕ ГОРИТЕ!", "Пламя... гаснет..."];
+  protected override yells = ["", T("srv.bosses.788"), T("srv.bosses.789"), T("srv.bosses.790")];
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
     const dmg = () => this.m.stats.dmg * this.mech;

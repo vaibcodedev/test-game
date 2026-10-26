@@ -3,6 +3,7 @@ import { enchantTier, GEAR_FX, legendText, tierText } from "../../../shared/gear
 import { effStats, iconFor, itemName, SLOT_NAMES, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import { hiddenParticles, type HiddenReason } from "../game/gearHooks";
 import { plusBadge } from "./smith";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -22,9 +23,9 @@ export interface GearRowsHost {
 function fxHtml(slot: Slot, item: Item, reason: HiddenReason | undefined): string {
   const plus = item.plus || 0, tier = enchantTier(plus);
   const parts: string[] = [];
-  if (plus > 0) parts.push(`<span${tier >= 1 ? ' class="ench"' : ""}>Заточка +${plus}: ${esc(tierText(slot, tier))}</span>`);
+  if (plus > 0) parts.push(`<span${tier >= 1 ? ' class="ench"' : ""}>${T("ui.gearfx.512", { plus: plus, tiertext: esc(tierText(slot, tier)) })}</span>`);
   const theme = legendText(slot, item.legendary);
-  if (theme) parts.push(`<span class="theme">Тема: ${esc(theme)}</span>`);
+  if (theme) parts.push(`<span class="theme">${T("ui.gearfx.513", { theme: esc(theme) })}</span>`);
   if (!parts.length) parts.push(esc(GEAR_FX.texts.noEffect));
   if (reason) parts.push(`<span class="hidden-fx">${esc(GEAR_FX.texts.hidden[reason])}</span>`);
   return parts.join(" · ");
@@ -41,7 +42,7 @@ export function gearRows(rows: GearRow[], sid: string, host: GearRowsHost): HTML
     row.dataset.slot = slot;
     if (!item) {
       row.classList.add("empty");
-      row.innerHTML = `<div class="cell md gr-cell"></div><div class="row-main"><span class="row-title c-dim">${SLOT_NAMES[slot]}</span><span class="row-sub gr-fx">пусто</span></div>`;
+      row.innerHTML = `<div class="cell md gr-cell"></div><div class="row-main"><span class="row-title c-dim">${SLOT_NAMES[slot]}</span><span class="row-sub gr-fx">${T("ui.gearfx.514")}</span></div>`;
     } else {
       row.innerHTML = `<div class="cell md r${item.rarity} gr-cell"><img src="${icon(iconFor(item))}" alt="">${plusBadge(item)}</div>
         <div class="row-main"><span class="row-title gr-name c-r${item.rarity}">${esc(itemName(item))}</span>
@@ -68,9 +69,9 @@ export function enchantTotal(items: (Item | null)[]): string {
     for (const k of ["str", "agi", "int", "vit"] as ItemStatKey[]) other += d(k);
   }
   if (!any) return "";
-  const parts = [`+${Math.round(dmg)} урона`, `+${armor} брони`];
-  if (other) parts.push(`+${other} к характеристикам`);
-  return `От заточки: ${parts.join(", ")}`;
+  const parts = [T("ui.gearfx.515", { dmg: Math.round(dmg) }), T("ui.gearfx.516", { armor: armor })];
+  if (other) parts.push(T("ui.gearfx.517", { other: other }));
+  return T("ui.gearfx.518", { parts: parts.join(", ") });
 }
 
 type Swatch = { type: string; color?: string; colors?: string[]; alpha?: number };
@@ -105,7 +106,7 @@ export function legendBlock(open: boolean, onToggle: (open: boolean) => void): H
     `<div class="row gl-row" data-id="${esc(l.id)}">${swatchHtml(l.swatch as Swatch)}<div class="row-main"><span class="row-title">${esc(l.title)}</span><span class="row-sub">${esc(l.text)}</span></div></div>`;
   const group = (title: string, ls: typeof GEAR_FX.legend) =>
     ls.length ? `<div class="sub-grp"><h4 class="sub-h">${title}</h4><div class="list">${ls.map(row).join("")}</div></div>` : "";
-  box.innerHTML = `<summary><h3 class="sec-h">Эффекты снаряжения</h3><span class="meta">Что значит свечение</span></summary>
+  box.innerHTML = `<summary><h3 class="sec-h">${T("ui.gearfx.519")}</h3><span class="meta">${T("ui.gearfx.520")}</span></summary>
     <div class="disclosure-body">${group("Снаряжение", GEAR_FX.legend.filter((l) => ON_GEAR.has(l.id)))}${group("Не от снаряжения", GEAR_FX.legend.filter((l) => !ON_GEAR.has(l.id)))}</div>`;
   box.addEventListener("toggle", () => onToggle(box.open));
   return box;

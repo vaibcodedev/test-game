@@ -7,6 +7,7 @@ import type { Player } from "./Player";
 import { castSkill } from "./skills";
 import type { World } from "./World";
 import { GP } from "../../../shared/gameplay";
+import { T } from "../../../shared/texts";
 
 export type ErrCode = "target" | "range" | "los" | "mana" | "cd" | "learn";
 /** Запрос умения: x, y — точка (ground — с допуском GROUND_TOL); a — угол прицела (линии, стена огня), dx, dy — вектор рывка или до точки линии: из очереди они
@@ -40,14 +41,14 @@ function refuse(w: World, p: Player, id: string, err: string, target: string | n
   const code = errCode(err);
   let text = err;
   const def = SKILLS[id];
-  if (code === "mana" && def) text = `Не хватает маны: ${Math.floor(p.unit.mp)} из ${skillMana(def, p.save.skills[id] || 1, p.level)}`;
-  else if (code === "target") text = "Нет цели — Tab или клик по врагу";
-  else if (code === "learn") text = "Не изучено — откройте K";
-  else if (code === "los") text = "Нет прямой видимости";
+  if (code === "mana" && def) text = T("srv.skillQueue.815", { mp: Math.floor(p.unit.mp), skillmana: skillMana(def, p.save.skills[id] || 1, p.level) });
+  else if (code === "target") text = T("ui.GameScene.757");
+  else if (code === "learn") text = T("srv.skillQueue.816");
+  else if (code === "los") text = T("srv.archers.51");
   else if (code === "range") {
     const t = target ? w.actor(target) : undefined;
     const over = t && def ? w.dist(p.unit, t) - ((def.range ?? 0) + w.radiusOf(t)) : 0;
-    text = `Слишком далеко: ещё ${Math.max(1, Math.ceil(over / TILE))} кл.`;
+    text = T("srv.skillQueue.817", { math: Math.max(1, Math.ceil(over / TILE)) });
   }
   p.send("toast", { text, kind: "error", ...(code ? { code } : {}) });
 }
@@ -78,7 +79,7 @@ export function requestSkill(w: World, p: Player, r: SkillReq, q: number) {
   if (left <= q) return setQueue(p, { ...r, until: w.time + left + 250 });
   // дольше окна очереди: на перезарядке умения говорим, сколько ждать (GCD — молча)
   const cdLeft = (p.cds.get(r.id) || 0) - w.time;
-  if (cdLeft > 0 && p.save.skills[r.id]) p.send("toast", { text: `Перезарядка: ${(cdLeft / 1000).toFixed(1).replace(".", ",")} с`, kind: "error", code: "cd" });
+  if (cdLeft > 0 && p.save.skills[r.id]) p.send("toast", { text: T("srv.skillQueue.138", { replace: (cdLeft / 1000).toFixed(1).replace(".", ",") }), kind: "error", code: "cd" });
 }
 
 /** Esc / cancel: очередь, подход, канал. Возвращает true, если было что снимать. */

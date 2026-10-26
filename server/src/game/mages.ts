@@ -20,6 +20,7 @@ import { applyHaste, applySlow, applyWeaken } from "./effects";
 import { registerAuraHook } from "./auras";
 import { World, type Actor, type HitOpts } from "./World";
 import { leechMult } from "../../../shared/balance";
+import { T } from "../../../shared/texts";
 
 interface St {
   // Боевой маг
@@ -103,9 +104,9 @@ export function castMage(c: CastCtx): string | null | undefined {
   const s = st(p);
   const range = def.range ?? 0;
   const needTarget = (): string | null => {
-    if (!c.liveTarget) return "Нужна цель";
-    if (w.dist(u, t) > range + w.radiusOf(t)) return "Цель слишком далеко";
-    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return "Нет прямой видимости";
+    if (!c.liveTarget) return T("srv.archers.49");
+    if (w.dist(u, t) > range + w.radiusOf(t)) return T("srv.archers.50");
+    if (!lineClear(w.map, u.x, u.y, t.x, t.y)) return T("srv.archers.51");
     return null;
   };
   const face = (a: { x: number; y: number }) => { u.dir = World.dirTo(a.x - u.x, a.y - u.y); };
@@ -242,7 +243,7 @@ export function castMage(c: CastCtx): string | null | undefined {
     }
     case "wl_demon": {
       const pt = pointAt();
-      if (w.opts.mobs === false || p.team !== 0) return "На арене призыв недоступен";
+      if (w.opts.mobs === false || p.team !== 0) return T("srv.mages.116");
       c.ok(); castAnim();
       w.emit({ t: "aoe", k: "shadow", x: pt.x, y: pt.y, r: 56 });
       summonDemon(w, p, pt, v.dur * 1000, v.power / 100);
@@ -251,7 +252,7 @@ export function castMage(c: CastCtx): string | null | undefined {
     case "wl_detonate": {
       const e = needTarget(); if (e) return e;
       const list = dotsOf(w, p, t);
-      if (!list.length) return "На цели нет ваших проклятий";
+      if (!list.length) return T("srv.mages.117");
       c.ok(); face(t); castAnim();
       let total = 0;
       for (const d of list) total += (d.dmg * d.stacks * d.left) / 1000;

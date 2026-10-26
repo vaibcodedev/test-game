@@ -6,6 +6,7 @@
 import data from "../../../data/loading-tips.json";
 import { setHidden } from "./kit";
 import { GP } from "../../../shared/gameplay";
+import { T } from "../../../shared/texts";
 
 const FADE_MS = GP.ui.loadingFadeMs;
 /** Мир так и не сообщил о готовности (сбой сцены) — экран всё равно уходит. */
@@ -32,11 +33,11 @@ function build(): HTMLElement {
     `<i style="--x:${(Math.random() * 100).toFixed(1)}%;--d:${(-Math.random() * 9).toFixed(2)}s;--t:${(6 + Math.random() * 6).toFixed(2)}s;--s:${(0.6 + Math.random() * 0.8).toFixed(2)}"></i>`).join("");
   r.innerHTML = `<div class="ld-embers" aria-hidden="true">${embers}</div>
     <div class="ld-box">
-      <div class="ld-logo"><img class="ld-emblem" src="${EMBLEM}" width="105" height="118" alt="" draggable="false"><span class="ld-kicker">MMORPG</span><h1 class="ld-title">Пепельный Предел</h1><div class="ld-rule" aria-hidden="true"></div></div>
+      <div class="ld-logo"><img class="ld-emblem" src="${EMBLEM}" width="105" height="118" alt="" draggable="false"><span class="ld-kicker">MMORPG</span><h1 class="ld-title">${T("ui.gamemenu.505")}</h1><div class="ld-rule" aria-hidden="true"></div></div>
       <p class="ld-sub"></p>
       <div class="progress ld-progress"><div class="bar lg"><i></i><span></span></div></div>
       <p class="ld-stage"></p>
-      <p class="ld-tip"><span class="ld-tip-h">Совет</span><span class="ld-tip-t"></span></p>
+      <p class="ld-tip"><span class="ld-tip-h">${T("ui.loading.651")}</span><span class="ld-tip-t"></span></p>
     </div>`;
   document.body.append(r);
   // нет файла — экран остаётся прежним (название без эмблемы), без значка битой картинки и пустого места
@@ -59,7 +60,7 @@ function paint() {
 
 export const loading = {
   /** Показать с подписью (кто и куда входит) и новым советом; если экран уже показан — только подпись и этап. */
-  show(sub = "", stage = "Подключение к миру…") {
+  show(sub = "", stage = T("ui.loading.652")) {
     root ??= build();
     clearTimeout(fadeTimer);
     clearTimeout(safety);
@@ -87,7 +88,7 @@ export const loading = {
   /** Мир готов: 100% и плавный уход. */
   done() {
     if (!root || !shown) return;
-    loading.progress(1, "Готово");
+    loading.progress(1, T("ui.loading.653"));
     shown = false;
     clearTimeout(safety);
     root.classList.add("out");

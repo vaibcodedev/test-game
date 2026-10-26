@@ -20,6 +20,7 @@ import { collectBags, grantRaidRewards, type RaidLoot } from "../raid/rewards";
 import { guard, makeOn, registerCombat } from "./common";
 import { registerItems } from "./items";
 import { RaidState } from "./schema";
+import { T } from "../../../shared/texts";
 
 export interface RaidOptions {
   members: RaidMember[];
@@ -99,7 +100,7 @@ export class RaidRoom extends Room<RaidState> {
       });
     }
     this.setPatchRate(PATCH_MS);
-    this.setSimulationInterval(guard("рейд", (dt: number) => this.tick(dt)), TICK_MS);
+    this.setSimulationInterval(guard(T("srv.RaidRoom.837"), (dt: number) => this.tick(dt)), TICK_MS);
   }
 
   override onAuth(): never {
@@ -252,7 +253,7 @@ export class RaidRoom extends Room<RaidState> {
     } catch (e) {
       this.homeBound.delete(key);
       console.error("[raid] возврат в мир:", e);
-      client.send("toast", { text: "Не удалось вернуться в мир, войдите заново", kind: "error" });
+      client.send("toast", { text: T("srv.ArenaRoom.207"), kind: "error" });
     }
   }
 

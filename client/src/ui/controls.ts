@@ -9,6 +9,7 @@ import {
   type ActionId, type AimMode, type Combo, type GroupId, type MouseOpts, type PresetId,
 } from "../game/keybinds";
 import { openModal, rangeFill, seg, type SegHandle } from "./kit";
+import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const ONCE_KEY = "controls:scheme-chosen";
@@ -59,28 +60,28 @@ function groups(): Group[] {
   return [
     { title: GROUPS.move, rows: by("move") },
     { title: GROUPS.target, rows: by("target") },
-    { title: GROUPS.bar, rows: BAR_ACTIONS, note: "Панель 2 — те же клавиши с Shift (⇧)." },
+    { title: GROUPS.bar, rows: BAR_ACTIONS, note: T("ui.controls.431") },
     { title: GROUPS.act, rows: by("act") },
     { title: GROUPS.ui, rows: by("ui") },
   ];
 }
 
-const AIM: [AimMode, string][] = [["preview", "С превью"], ["quick", "Быстрый"], ["confirm", "С подтверждением"]];
+const AIM: [AimMode, string][] = [["preview", T("ui.controls.432")], ["quick", T("ui.controls.433")], ["confirm", T("ui.controls.434")]];
 const CHECKS: [keyof MouseOpts, string, string][] = [
-  ["lmbAttacks", "ЛКМ атакует", "Левая кнопка выбирает и сразу атакует врага (без этого — только выбор цели)."],
-  ["chase", "Преследовать цель", "Герой сам идёт за атакуемой целью."],
-  ["hoverCast", "Каст по наведению", "Умение применяется к цели под курсором, не меняя текущую."],
-  ["autoTarget", "Автоцель", "Умение без цели выбирает ближайшего врага."],
-  ["approach", "Подходить к цели", "Если цель далеко, герой подойдёт и применит умение."],
-  ["bigTargets", "Крупные цели", "Увеличенная область клика по существам (удобно на тачпаде)."],
-  ["zoomWheel", "Колесо — масштаб", "Колесо мыши или жест щипка над полем меняет масштаб камеры (2–3)."],
+  ["lmbAttacks", T("ui.controls.435"), T("ui.controls.436")],
+  ["chase", T("ui.controls.437"), T("ui.controls.438")],
+  ["hoverCast", T("ui.controls.439"), T("ui.controls.440")],
+  ["autoTarget", T("ui.controls.441"), T("ui.controls.442")],
+  ["approach", T("ui.controls.443"), T("ui.controls.444")],
+  ["bigTargets", T("ui.controls.445"), T("ui.controls.446")],
+  ["zoomWheel", T("ui.controls.447"), T("ui.controls.448")],
 ];
-const HINT = "Нажмите на сочетание, чтобы изменить. Esc — отмена, Backspace — очистить. Можно назначить СКМ, Mouse4 и Mouse5.";
+const HINT = T("ui.controls.449");
 
 /** Разделы «Управление» и «Клавиши» внутри окна настроек; host — обёртка #set-controls. */
 export function buildControls(host: HTMLElement) {
   host.innerHTML = `<section class="sec flat">
-      <h3 class="sec-h">Управление</h3>
+      <h3 class="sec-h">${T("ui.controls.450")}</h3>
       <div class="set-list" id="ctl-opts">
         ${segRow("ctl-preset", "Схема клавиш", (Object.keys(PRESETS) as PresetId[]).map((p): [string, string] => [p, PRESETS[p].name]), "p")}
         ${segRow("ctl-aim", "Режим прицела", AIM, "m")}
@@ -89,7 +90,7 @@ export function buildControls(host: HTMLElement) {
       </div>
     </section>
     <section class="sec">
-      <h3 class="sec-h">Клавиши</h3>
+      <h3 class="sec-h">${T("ui.controls.451")}</h3>
       <p class="note ctl-hint" id="ctl-hint">${HINT}</p>
       <div id="ctl-groups"></div>
       <div class="set-list ctl-foot">${buttonRow("ctl-reset", "Значения по умолчанию", "Клавиши выбранной схемы и опции мыши", "Сбросить")}</div>
@@ -107,7 +108,7 @@ export function buildControls(host: HTMLElement) {
   const presetSeg: SegHandle = seg(host.querySelector<HTMLElement>("#ctl-preset")!, async (value) => {
     const p = value as PresetId;
     if (p === keybinds.presetId) return;
-    if (customised() && (await ask(`Выбрать схему «${PRESETS[p].name}»? Ваши назначения будут сброшены.`, ["Выбрать", "Отмена"])) !== 0) {
+    if (customised() && (await ask(T("ui.controls.452", { name: PRESETS[p].name }), [T("ui.controls.453"), T("ui.gamemenu.284")])) !== 0) {
       presetSeg.set(keybinds.presetId);
       return;
     }
@@ -115,12 +116,12 @@ export function buildControls(host: HTMLElement) {
   }, "p");
   const paintPreset = () => presetSeg.set(keybinds.presetId);
   host.querySelector<HTMLElement>("#ctl-reset")!.onclick = async () => {
-    if (customised() && (await ask("Вернуть клавиши выбранной схемы? Ваши назначения будут сброшены.", ["Сбросить", "Отмена"])) !== 0) return;
+    if (customised() && (await ask(T("ui.controls.454"), [T("ui.controls.455"), T("ui.gamemenu.284")])) !== 0) return;
     keybinds.reset();
     Object.assign(mouseOpts, DEFAULT_OPTS());
     saveMouseOpts();
     syncOpts();
-    say("Клавиши и опции возвращены.");
+    say(T("ui.controls.280"));
   };
 
   // ---- список клавиш ----
@@ -148,9 +149,9 @@ export function buildControls(host: HTMLElement) {
   async function capture(chip: HTMLElement, a: ActionId, slot: number) {
     capturing = true;
     const before = chip.textContent;
-    chip.textContent = "Нажмите клавишу";
+    chip.textContent = T("ui.controls.281");
     chip.classList.add("wait");
-    say(`«${nameOf(a)}»: нажмите клавишу или кнопку мыши. Esc — отмена, Backspace — очистить.`);
+    say(T("ui.controls.282", { v: nameOf(a) }));
     const combo = await new Promise<Combo | "clear" | null>((resolve) => {
       const end = (v: Combo | "clear" | null) => { window.removeEventListener("keydown", onKey, true); window.removeEventListener("mousedown", onMouse, true); setTimeout(() => { window.removeEventListener("mouseup", swallow, true); window.removeEventListener("auxclick", swallow, true); }, 400); resolve(v); }; // mouseup боковой кнопки ещё придёт: без отмены браузер уйдёт назад по истории
       const swallow = (e: Event) => { e.preventDefault(); e.stopImmediatePropagation(); };
@@ -161,7 +162,7 @@ export function buildControls(host: HTMLElement) {
         if (e.code === "Backspace" && !e.shiftKey && !e.ctrlKey && !e.altKey) return end("clear");
         const c = comboFromEvent(e);
         if (!c) return; // нажат один модификатор: ждём клавишу
-        if (isForbidden(c)) return say(`${comboLabel(c)} занято браузером — выберите другое сочетание.`, true);
+        if (isForbidden(c)) return say(T("ui.controls.283", { v: comboLabel(c) }), true);
         end(c);
       };
       const onMouse = (e: MouseEvent) => {
@@ -182,11 +183,11 @@ export function buildControls(host: HTMLElement) {
     else if (combo) {
       const owner = ACTIONS.find((o) => keybinds.combos(o.id).some((x) => comboKey(x) === comboKey(combo)));
       if (owner && !(owner.id === a && keybinds.combos(a)[slot] && comboKey(keybinds.combos(a)[slot]) === comboKey(combo))) {
-        const ok = (await ask(`${comboLabel(combo)} уже занято: «${owner.name}». Поменять местами?`, ["Поменять", "Отмена"])) === 0;
+        const ok = (await ask(T("ui.controls.456", { combo: comboLabel(combo), name: owner.name }), [T("ui.controls.457"), T("ui.gamemenu.284")])) === 0;
         if (!ok) { paintList(); return; }
       }
       const r = keybinds.rebind(a, slot, combo);
-      if (!r.ok) say(r.why === "forbidden" ? "Это сочетание занято браузером." : "Это сочетание назначить нельзя.", true);
+      if (!r.ok) say(r.why === "forbidden" ? T("ui.controls.458") : T("ui.controls.459"), true);
     }
     paintList();
   }
@@ -229,7 +230,7 @@ export async function offerSchemeOnce() {
   try { seen = localStorage.getItem(ONCE_KEY) === "1"; } catch { return; }
   // автотесты (puppeteer) не должны упираться в окно выбора; тест самого окна ставит controls:force-offer
   if (seen || (navigator.webdriver && localStorage.getItem("controls:force-offer") !== "1")) return;
-  const i = await ask("В игре новое управление. Выберите схему клавиш. «Экшен»: умения на Q W E R A S D F T, ходьба стрелками и правой кнопкой мыши. «Классика»: ходьба WASD, умения 1–9. Позже схему можно сменить в Настройках.", ["Экшен", "Классика"]);
+  const i = await ask(T("ui.controls.460"), [T("ui.controls.461"), T("ui.controls.462")]);
   try { localStorage.setItem(ONCE_KEY, "1"); } catch {}
   if (i === 1 && keybinds.presetId !== "classic") keybinds.setPreset("classic");
   else if (i === 0 && keybinds.presetId !== "action") keybinds.setPreset("action");
