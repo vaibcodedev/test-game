@@ -1,6 +1,6 @@
 /** Игровой мир: вся симуляция на сервере. Комната Colyseus только передаёт сюда сообщения. */
 import { stepApproach, tickQueue } from "./skillQueue";
-import { MAP_SEED, MOVE_MUL, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
+import { AGGRO_MUL, MAP_SEED, MOVE_MUL, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
 import { armorReduction } from "../../../shared/formulas";
 import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
 import { PLUS_BONUS } from "../../../shared/upgrade";
@@ -972,7 +972,7 @@ export class World {
       if (th > bt) { bt = th; best = p; }
     }
     if (best) return best;
-    let bd = m.def.aggro;
+    let bd = m.def.boss ? m.def.aggro : m.def.aggro * AGGRO_MUL;
     for (const p of this.players.values()) {
       if (p.dead || unseen(p) || this.inTown(p.x, p.y)) continue;
       const d = this.dist(p, m);

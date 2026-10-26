@@ -29,6 +29,8 @@ export const PATCH_MS = 50;
 
 /** Общий множитель скорости ходьбы всех живых (data/balance.json moveMul): герои, боты, мобы, бойцы, стража, горожане, питомцы. */
 export const MOVE_MUL: number = balance.moveMul;
+/** Множитель радиуса агра обычных мобов (data/balance.json aggroMul); боссы — без него. */
+export const AGGRO_MUL: number = balance.aggroMul;
 /** Скорость героя пешком, px/с: 150 «до множителя» × MOVE_MUL. */
 export const PLAYER_SPEED = 150 * MOVE_MUL;
 export const PLAYER_RADIUS = 10;
