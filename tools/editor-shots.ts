@@ -19,6 +19,7 @@ const browser = await puppeteer.launch({ executablePath: chrome, headless: true,
 const errors: string[] = [];
 try {
   const page = await browser.newPage();
+  await page.authenticate({ username: process.env.EDITOR_USER || "admin", password: process.env.EDITOR_PASS || "admin" });
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(String(e)));
   const open = async (name: string) => { await page.evaluate((n) => (window as any).__editor.openFile(n), name); await new Promise((r) => setTimeout(r, 300)); };
