@@ -134,6 +134,8 @@ export class Player {
   deadAt = 0;
   dead = false;
   castUntil = 0;
+  /** Каст стоя (Гимн, Воскрешение): движение героя его прерывает. */
+  castBreakable = false;
   /** Следование за игроком (follow): цель и признак «идём» (гистерезис 48/60 px). */
   followId: string | null = null;
   followGo = false;

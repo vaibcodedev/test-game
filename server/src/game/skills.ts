@@ -385,12 +385,15 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
         if (why) return why;
         const tp = a.player, rv = SKILLS.resurrect.v(rr);
         ok();
-        p.castUntil = w.time + rv.cast * 1000;
+        const end = (p.castUntil = w.time + rv.cast * 1000);
+        p.castBreakable = true;
         w.castBar(p, rv.cast * 1000, "Воскрешение");
         p.moveTo = null;
         u.anim = Anim.Cast;
         w.emit({ t: "buff", id: p.id, k: "heal", ms: rv.cast * 1000 });
         w.later(rv.cast * 1000, () => {
+          if (p.castUntil !== end) return; // снят движением или Esc
+          p.castBreakable = false;
           w.castBar(p, 0);
           if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle;
           if (!tp.dead || w.players.get(tp.id) !== tp) return;

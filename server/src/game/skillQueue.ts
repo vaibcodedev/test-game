@@ -1,4 +1,5 @@
 /** Очередь умений, подход к цели и коды отказов (задача 115, шаг 7–8; docs/controls.md, разделы 6 и 10). */
+import { Anim } from "../../../shared/protocol";
 import { TILE } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";
 import { SKILLS, skillMana } from "../../../shared/skills";
@@ -85,7 +86,7 @@ export function cancelAll(w: World, p: Player): boolean {
   p.pend = null;
   setQueue(p, null);
   if (p.mountCast) w.breakMount(p);
-  if (p.castUntil > w.time) { p.castUntil = 0; w.castBar(p, 0); }
+  if (p.castUntil > w.time) { p.castUntil = 0; p.castBreakable = false; w.castBar(p, 0); if (p.unit.anim === Anim.Cast) p.unit.anim = Anim.Idle; }
   return had;
 }
 

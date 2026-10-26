@@ -851,6 +851,14 @@ export class World {
     if (p.manaAcc >= 1) { const w = Math.floor(p.manaAcc); p.manaAcc -= w; u.mp = Math.min(u.maxMp, u.mp + w); }
 
     const frozen = p.frozenUntil > t;
+    // каст стоя прерывается, если игрок пошёл (WASD или клик по земле)
+    if (p.castBreakable && p.castUntil > t && (p.input.mx || p.input.my || p.moveTo)) {
+      p.castUntil = 0;
+      p.castBreakable = false;
+      this.castBar(p, 0);
+      if (u.anim === Anim.Cast) u.anim = Anim.Idle;
+      p.send("toast", { text: "Каст прерван", kind: "error" });
+    }
     const canMove = !frozen && p.stunUntil <= t && p.rootUntil <= t && p.castUntil <= t;
     const target = p.targetId ? this.actor(p.targetId) : undefined;
     const foe = !!target && this.hostile(p, target);

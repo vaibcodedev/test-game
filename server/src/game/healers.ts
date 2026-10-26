@@ -194,7 +194,8 @@ export function castHealer(c: CastCtx): string | null | undefined {
     case "cl_hymn": {
       c.ok(); castAnim();
       const s = st(p), token = ++s.hymn, ticks = Math.round(v.ticks), ox = u.x, oy = u.y;
-      p.castUntil = w.time + ticks * 1000;
+      const end = (p.castUntil = w.time + ticks * 1000);
+      p.castBreakable = true;
       w.castBar(p, ticks * 1000, "Гимн");
       p.moveTo = null;
       u.anim = Anim.Cast;
@@ -203,15 +204,16 @@ export function castHealer(c: CastCtx): string | null | undefined {
       for (let i = 1; i <= ticks; i++)
         w.later(i * 1000, () => {
           if (s.hymn !== token) return;
+          if (p.castUntil !== end) return void s.hymn++; // снят движением или Esc
           if (p.dead || p.stunUntil > w.time || Math.hypot(p.x - ox, p.y - oy) > 40) {
-            s.hymn++; p.castUntil = 0; w.castBar(p, 0);
+            s.hymn++; p.castUntil = 0; p.castBreakable = false; w.castBar(p, 0);
             if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle;
             if (!p.dead) p.send("toast", { text: "Гимн прерван", kind: "error" });
             return;
           }
           w.emit({ t: "aoe", k: "hymn", x: p.x, y: p.y, r: v.radius });
           for (const a of alliesAround(w, p, p.x, p.y, v.radius)) applyHeal(w, p, a, amt);
-          if (i === ticks) { p.castUntil = 0; w.castBar(p, 0); if (u.anim === Anim.Cast) u.anim = Anim.Idle; }
+          if (i === ticks) { p.castUntil = 0; p.castBreakable = false; w.castBar(p, 0); if (u.anim === Anim.Cast) u.anim = Anim.Idle; }
         });
       return null;
     }
