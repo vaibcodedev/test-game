@@ -6,6 +6,7 @@
  */
 import { PC, hash01, hex, mix, pnoise, ramp, shade, withA, type RGBA, type Ramp } from "./canvas";
 import { OUT, SHADOW, tone } from "./walls141-lib";
+import { shadowBox, shadowDisc, shadowFoot } from "./shadow";
 
 export { PC, hash01, hex, mix, pnoise, ramp, shade, withA, OUT, SHADOW, tone };
 export type { RGBA, Ramp };
@@ -167,15 +168,11 @@ export function cone(pc: PC, cx: number, baseY: number, r: number, ry: number, h
   }
 }
 /** Тень на земле: многоугольник полупрозрачным тёмным (под объект, рисуется первой). */
-export function shadowPoly(pc: PC, pts: Pt[], a = 80) {
-  fillPoly(pc, pts, () => withA(SHADOW, a));
+/** Тень на земле: общее правило (tools/gen/shadow.ts) по следу основания pts (выпуклый многоугольник) и высоте предмета h; рисуется первой. */
+export function shadowPoly(pc: PC, pts: Pt[], h = 40) {
+  shadowFoot(pc, pts as [number, number][], h);
 }
-export function shadowEllipse(pc: PC, cx: number, cy: number, rx: number, ry: number, a = 80) {
-  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
-    const d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2;
-    if (d <= 1) pc.set(x, y, withA(SHADOW, d > 0.7 ? a * 0.6 : a));
-  }
-}
+export { shadowBox, shadowDisc };
 /** Колесо с толщиной обода: диск к зрителю, обод выдавлен вглубь, спицы и ступица. */
 export function wheel3(pc: PC, cx: number, cy: number, r: number, wood: Ramp, iron: Ramp, opt: { spokes?: number; thick?: number; rot?: number; broken?: boolean } = {}) {
   const th = opt.thick ?? 3, [ddx, ddy] = depth(th);

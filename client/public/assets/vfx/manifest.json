@@ -1941,6 +1941,28 @@
    "tail": 250
   }
  },
+ "statue-fire-sol": {
+  "frameW": 14,
+  "frameH": 16,
+  "frames": 6,
+  "fps": 9,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
+ "statue-fire-umb": {
+  "frameW": 14,
+  "frameH": 16,
+  "frames": 6,
+  "fps": 9,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
  "std-burned-sol": {
   "frameW": 38,
   "frameH": 64,

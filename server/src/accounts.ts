@@ -14,6 +14,7 @@ import { iconFor, itemName, SLOTS } from "../../shared/items";
 import { MAP_VERSION, ZONES, zoneAtPx, type WorldMap } from "../../shared/map";
 import { inArena } from "./arena/registry";
 import { GameDB, type CharRow, type PlayerSave } from "./db";
+import { GP } from "../../shared/gameplay";
 
 export interface Session {
   accountId: number;
@@ -22,7 +23,7 @@ export interface Session {
 }
 
 /** Сессия живёт 2 часа с последнего обращения (токен хранится только во вкладке браузера). */
-const TTL = 2 * 3600_000;
+const TTL = GP.misc.sessionTtlHours * 3600_000;
 const sessions = new Map<string, Session>();
 /** Только что созданные герои: при первом входе — приветствие. */
 export const freshChars = new Set<string>();

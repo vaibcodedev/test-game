@@ -335,9 +335,9 @@
   },
   "adds": {
     "chaos_squire": {
-      "name": "Павший оруженосец",
+      "name": "Оруженосец Хаоса",
       "hint": "Ближний бой. Охотится на лекарей.",
-      "sprite": "skeleton_knight",
+      "sprite": "chaos_squire_halberd_elite",
       "role": "melee",
       "count": 4,
       "hp": 2.2,
@@ -352,7 +352,7 @@
     "chaos_spark": {
       "name": "Искра Хаоса",
       "hint": "Бьёт огнём издалека.",
-      "sprite": "imp",
+      "sprite": "chaos_spark_caster_elite",
       "role": "ranged",
       "count": 2,
       "hp": 1.3,

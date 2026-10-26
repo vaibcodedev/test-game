@@ -5,11 +5,12 @@
  */
 import data from "../../../data/loading-tips.json";
 import { setHidden } from "./kit";
+import { GP } from "../../../shared/gameplay";
 
-const FADE_MS = 400;
+const FADE_MS = GP.ui.loadingFadeMs;
 /** Мир так и не сообщил о готовности (сбой сцены) — экран всё равно уходит. */
-const SAFETY_MS = 30000;
-const EMBERS = 28;
+const SAFETY_MS = GP.ui.loadingSafetyMs;
+const EMBERS = GP.ui.loadingEmbers;
 /** Эмблема игры (пиксель-арт 105×118); размер задаёт styles/loading.css целым множителем пикселя экрана. */
 const EMBLEM = "/ui/logo-emblem.png";
 // картинка грузится, пока игрок на экране входа: к первому показу экрана загрузки она уже в кеше и не «выпрыгивает»

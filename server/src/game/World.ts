@@ -14,7 +14,7 @@ import { CLASSES } from "../../../shared/classes";
 import { inEmberWalls } from "../../../shared/cities";
 import { factionsHostile, inEnemyCapital, OUTLAW, pvpPlace, scramble } from "../../../shared/factions";
 import { MOBS } from "../../../shared/mobs";
-import { MOUNTS, MOUNT_CAST_MS } from "../../../shared/mounts";
+import { MOUNTS, mountName, MOUNT_CAST_MS } from "../../../shared/mounts";
 import * as mountDrops from "./mountDrops";
 import {
   Anim, BUFF_BLEED, BUFF_BURN, BUFF_CURSE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STEALTH, BUFF_STUN, BUFF_WARCRY, Dir,
@@ -726,13 +726,13 @@ export class World {
     if (this.opts.mobs === false || p.team !== 0) return err("На арене маунты недоступны");
     const m = MOUNTS[p.save.mount ?? ""];
     if (!m || !p.save.mounts?.includes(m.id)) return err("У вас нет маунта (конь с 10 уровня)");
-    if (p.level < m.level) return err(`${m.name}: нужен ${m.level} уровень`);
+    if (p.level < m.level) return err(`${mountName(m.id, p.faction)}: нужен ${m.level} уровень`);
     if (p.inCombat(this.time)) return err("Нельзя призвать маунта в бою");
     if (p.stunUntil > this.time || p.frozenUntil > this.time) return;
     p.input = { mx: 0, my: 0 };
     p.moveTo = null;
     p.mountCast = { until: this.time + MOUNT_CAST_MS, x: p.x, y: p.y };
-    p.send("mountcast", { ms: MOUNT_CAST_MS, name: m.name });
+    p.send("mountcast", { ms: MOUNT_CAST_MS, name: mountName(m.id, p.faction) }); // имя гербового — по фракции героя (задача 142)
   }
 
   // ---------- игроки ----------

@@ -18,10 +18,11 @@ import { addItem, equip } from "./inventory";
 import { startEncounter, type EncKind } from "./encounters";
 import { MOUNTS } from "../../../shared/mounts";
 import { awardMount } from "./mountDrops";
+import { GP } from "../../../shared/gameplay";
 
 const PERMA = 9e12;
 /** Телепорт по координатам (карта админ-панели, поля x, y): насколько далеко, в тайлах, искать проходимую клетку, если в точку встать нельзя. */
-const TP_SNAP_TILES = 6;
+const TP_SNAP_TILES = GP.misc.tpSnapTiles;
 
 /**
  * Куда встать при телепорте в точку (x, y), пиксели. Точка проходима — она и есть. Иначе спираль по кольцам тайлов вокруг неё (до TP_SNAP_TILES,

@@ -5,12 +5,16 @@
     "radius": 10,
     "statPointsPerLevel": 3,
     "inventorySize": 24,
-    "chatMaxLen": 140
+    "chatMaxLen": 140,
+    "maxChars": 6
   },
   "ranges": {
     "pickup": 72,
     "merchant": 110,
-    "talk": 30
+    "talk": 30,
+    "door": 110,
+    "guardTiles": 6,
+    "tradeTiles": 5
   },
   "timers": {
     "lootBagTtlMs": 90000,
@@ -19,7 +23,8 @@
     "combatMs": 5000,
     "logoutCombatMs": 10000,
     "reconnectSec": 30,
-    "dayCycleMin": 20
+    "dayCycleMin": 20,
+    "doorFadeMs": 260
   },
   "progression": {
     "xpTailFrom": 30,
@@ -69,6 +74,38 @@
   "misc": {
     "bankGoldMax": 1000000000,
     "skillApproachMs": 4000,
-    "petMoveRadius": 6
+    "petMoveRadius": 6,
+    "tpSnapTiles": 6,
+    "sessionTtlHours": 2
+  },
+  "aim": {
+    "groundTol": 32,
+    "dashMin": 16,
+    "rayMin": 30,
+    "chest": 12,
+    "summonR": 8,
+    "petTol": 12
+  },
+  "nav": {
+    "failMs": 1000,
+    "failShift": 48
+  },
+  "ui": {
+    "camShakeStep": 45,
+    "trailMs": 120,
+    "platePad": 2,
+    "labelCrowd": 8,
+    "labelRow": 8,
+    "textCapRatio": 0.7,
+    "vfxMax": 160,
+    "vfxLateMs": 250,
+    "loadingFadeMs": 400,
+    "loadingSafetyMs": 30000,
+    "loadingEmbers": 28
+  },
+  "fx": {
+    "base": 32,
+    "stack": 128,
+    "maxStacks": 7
   }
 }

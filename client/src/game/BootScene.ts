@@ -93,7 +93,8 @@ export class BootScene extends Phaser.Scene {
       const cols = u.cols, run = u.run ?? 8, idle = u.idle ?? 4, views = u.views ?? 3;
       for (let row = 0; row < views * 2; row++) {
         const f = (a: number, b: number) => this.anims.generateFrameNumbers(key, { start: row * cols + a, end: row * cols + b });
-        this.anims.create({ key: `${key}-run-${row}`, frames: f(0, run - 1), frameRate: 14 * MOVE_MUL, repeat: -1 });
+        // новый лист: базовые 30 к/с, UnitView подстраивает timeScale под скорость маунта (meta.stride), чтобы копыта не скользили
+        this.anims.create({ key: `${key}-run-${row}`, frames: f(0, run - 1), frameRate: u.stride ? 30 : 14 * MOVE_MUL, repeat: -1 });
         this.anims.create({ key: `${key}-idle-${row}`, frames: f(run, run + idle - 1), frameRate: u.idle ? 10 : 4, repeat: -1 });
       }
     }

@@ -72,30 +72,6 @@
   "imp": {
    "frame": 32
   },
-  "toxic_slime": {
-   "frame": 32
-  },
-  "golem": {
-   "frame": 32
-  },
-  "jackal": {
-   "frame": 32
-  },
-  "scorpion": {
-   "frame": 32
-  },
-  "frost_wolf": {
-   "frame": 32
-  },
-  "ice_golem": {
-   "frame": 32
-  },
-  "magma_slime": {
-   "frame": 32
-  },
-  "lava_hound": {
-   "frame": 32
-  },
   "sapling": {
    "frame": 32
   },
@@ -375,6 +351,294 @@
   },
   "zombie_digger_elite": {
    "frame": 32
+  },
+  "orc_axe": {
+   "frame": 32
+  },
+  "orc_axe_elite": {
+   "frame": 32
+  },
+  "orc_shield": {
+   "frame": 32
+  },
+  "orc_shield_elite": {
+   "frame": 32
+  },
+  "orc_thunder": {
+   "frame": 32
+  },
+  "orc_thunder_elite": {
+   "frame": 32
+  },
+  "orc_bow": {
+   "frame": 32
+  },
+  "orc_bow_elite": {
+   "frame": 32
+  },
+  "gnoll_chaser": {
+   "frame": 32
+  },
+  "gnoll_chaser_elite": {
+   "frame": 32
+  },
+  "gnoll_archer": {
+   "frame": 32
+  },
+  "gnoll_archer_elite": {
+   "frame": 32
+  },
+  "lizardfolk_javelin": {
+   "frame": 32
+  },
+  "lizardfolk_javelin_elite": {
+   "frame": 32
+  },
+  "lizardfolk_shaman": {
+   "frame": 32
+  },
+  "lizardfolk_shaman_elite": {
+   "frame": 32
+  },
+  "lizardfolk_salamander": {
+   "frame": 32
+  },
+  "lizardfolk_salamander_elite": {
+   "frame": 32
+  },
+  "barbarian_axe": {
+   "frame": 32
+  },
+  "barbarian_axe_elite": {
+   "frame": 32
+  },
+  "barbarian_shield": {
+   "frame": 32
+  },
+  "barbarian_shield_elite": {
+   "frame": 32
+  },
+  "barbarian_bow": {
+   "frame": 32
+  },
+  "barbarian_bow_elite": {
+   "frame": 32
+  },
+  "barbarian_legion": {
+   "frame": 32
+  },
+  "barbarian_legion_elite": {
+   "frame": 32
+  },
+  "barbarian_pyro": {
+   "frame": 32
+  },
+  "barbarian_pyro_elite": {
+   "frame": 32
+  },
+  "harpy_scavenger": {
+   "frame": 32
+  },
+  "harpy_scavenger_elite": {
+   "frame": 32
+  },
+  "harpy_screamer": {
+   "frame": 32
+  },
+  "harpy_screamer_elite": {
+   "frame": 32
+  },
+  "harpy_storm": {
+   "frame": 32
+  },
+  "harpy_storm_elite": {
+   "frame": 32
+  },
+  "golem_sandstone": {
+   "frame": 48
+  },
+  "golem_sandstone_elite": {
+   "frame": 48
+  },
+  "golem_lava": {
+   "frame": 48
+  },
+  "golem_lava_elite": {
+   "frame": 48
+  },
+  "golem_obsidian": {
+   "frame": 48
+  },
+  "golem_obsidian_elite": {
+   "frame": 48
+  },
+  "golem_siege": {
+   "frame": 48
+  },
+  "golem_siege_elite": {
+   "frame": 48
+  },
+  "golem_magma": {
+   "frame": 48
+  },
+  "golem_magma_elite": {
+   "frame": 48
+  },
+  "ice_golem_ice": {
+   "frame": 48
+  },
+  "ice_golem_ice_elite": {
+   "frame": 48
+  },
+  "butcher_cleaver": {
+   "frame": 48
+  },
+  "butcher_cleaver_elite": {
+   "frame": 48
+  },
+  "butcher_hook": {
+   "frame": 48
+  },
+  "butcher_hook_elite": {
+   "frame": 48
+  },
+  "fallen_spirit_warrior": {
+   "frame": 32
+  },
+  "fallen_spirit_warrior_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_spear": {
+   "frame": 32
+  },
+  "fallen_spirit_spear_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_archer": {
+   "frame": 32
+  },
+  "fallen_spirit_archer_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_hollow": {
+   "frame": 32
+  },
+  "fallen_spirit_hollow_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_shroud": {
+   "frame": 32
+  },
+  "fallen_spirit_shroud_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_ash": {
+   "frame": 32
+  },
+  "fallen_spirit_ash_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_drowned": {
+   "frame": 32
+  },
+  "fallen_spirit_drowned_elite": {
+   "frame": 32
+  },
+  "fallen_spirit_undead": {
+   "frame": 32
+  },
+  "fallen_spirit_undead_elite": {
+   "frame": 32
+  },
+  "banshee_wail": {
+   "frame": 32
+  },
+  "banshee_wail_elite": {
+   "frame": 32
+  },
+  "banshee_claw": {
+   "frame": 32
+  },
+  "banshee_claw_elite": {
+   "frame": 32
+  },
+  "void_spirit_caster": {
+   "frame": 32
+  },
+  "void_spirit_caster_elite": {
+   "frame": 32
+  },
+  "bone_witch_staff": {
+   "frame": 32
+  },
+  "bone_witch_staff_elite": {
+   "frame": 32
+  },
+  "wrapped_construct_guard": {
+   "frame": 32
+  },
+  "wrapped_construct_guard_elite": {
+   "frame": 32
+  },
+  "wrapped_construct_weaver": {
+   "frame": 32
+  },
+  "wrapped_construct_weaver_elite": {
+   "frame": 32
+  },
+  "canine_jackal": {
+   "frame": 32
+  },
+  "canine_jackal_elite": {
+   "frame": 32
+  },
+  "canine_frost": {
+   "frame": 32
+  },
+  "canine_frost_elite": {
+   "frame": 32
+  },
+  "canine_lava": {
+   "frame": 32
+  },
+  "canine_lava_elite": {
+   "frame": 32
+  },
+  "basilisk_sand": {
+   "frame": 32
+  },
+  "basilisk_sand_elite": {
+   "frame": 32
+  },
+  "arthro_scorpion": {
+   "frame": 32
+  },
+  "arthro_scorpion_elite": {
+   "frame": 32
+  },
+  "arthro_bone": {
+   "frame": 32
+  },
+  "arthro_bone_elite": {
+   "frame": 32
+  },
+  "slime_plague": {
+   "frame": 32
+  },
+  "slime_plague_elite": {
+   "frame": 32
+  },
+  "slime_magma": {
+   "frame": 32
+  },
+  "slime_magma_elite": {
+   "frame": 32
+  },
+  "chaos_squire_halberd_elite": {
+   "frame": 32
+  },
+  "chaos_spark_caster_elite": {
+   "frame": 32
   }
  },
  "mounts": {},
@@ -400,8 +664,8 @@
    "h": 64
   },
   "well": {
-   "w": 64,
-   "h": 64
+   "w": 36,
+   "h": 50
   },
   "pillar": {
    "w": 32,
@@ -560,8 +824,8 @@
    "h": 72
   },
   "sun_statue": {
-   "w": 32,
-   "h": 96
+   "w": 64,
+   "h": 152
   },
   "stall_purple": {
    "w": 64,
@@ -2698,6 +2962,10 @@
   "pal_v_umb__set-e-crack": {
    "w": 40,
    "h": 88
+  },
+  "umb_statue": {
+   "w": 64,
+   "h": 152
   }
  },
  "icons": [
@@ -4859,7 +5127,50 @@
   "mount_yak",
   "ring",
   "staff",
-  "sword"
+  "sword",
+  "mount_war_horse_umbrath",
+  "mseal_war_horse_umbrath",
+  "mount_griffin_umbrath",
+  "mseal_griffin_umbrath",
+  "mseal_draft_horse",
+  "mseal_parade_horse",
+  "mount_parade_horse_umbrath",
+  "mseal_parade_horse_umbrath",
+  "mount_destrier_umbrath",
+  "mseal_destrier_umbrath",
+  "mseal_spiked_horse",
+  "mount_spiked_horse_umbrath",
+  "mseal_spiked_horse_umbrath",
+  "mount_skel_horse_umbrath",
+  "mseal_skel_horse_umbrath",
+  "mseal_lava_horse",
+  "mseal_spectral_horse",
+  "mseal_clockwork_horse",
+  "mseal_clockwork_white",
+  "mseal_yak",
+  "mseal_spirit_elk",
+  "mseal_flame_hyena",
+  "mseal_war_rhino",
+  "mount_war_rhino_umbrath",
+  "mseal_war_rhino_umbrath",
+  "mount_spider_umbrath",
+  "mseal_spider_umbrath",
+  "mseal_war_elephant",
+  "mount_war_elephant_umbrath",
+  "mseal_war_elephant_umbrath",
+  "mount_lion_umbrath",
+  "mseal_lion_umbrath",
+  "mseal_pack_mammoth",
+  "mseal_bat_fox",
+  "mseal_white_gryphon",
+  "mount_white_gryphon_umbrath",
+  "mseal_white_gryphon_umbrath",
+  "mseal_crystal_gryphon",
+  "mseal_frost_owl",
+  "mseal_storm_drake",
+  "mseal_storm_drake_blue",
+  "mseal_raptor_sand",
+  "mseal_dragonhorse"
  ],
  "fx": [
   "arrow",

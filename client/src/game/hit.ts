@@ -1,3 +1,4 @@
+import { GP } from "../../../shared/gameplay";
 /**
  * Попадание мышью по юниту (задача 134, шаг 2; docs/aim-and-pick.md). Чистые функции, без Phaser и без аллокаций — зовутся каждый кадр.
  * Зона тела — прямоугольник силуэта по кадру: ±0,42·F по ширине, 0,9·F над ногами (и F/16 под ними, там ступни), питомцы ×0,8;
@@ -10,9 +11,9 @@
 /** Прямоугольник в пикселях мира; пустой — x1 < x0. */
 export interface Box { x0: number; y0: number; x1: number; y1: number }
 
-export const TRAIL_MS = 120;
+export const TRAIL_MS = GP.ui.trailMs;
 /** Запас к плашке (ник и полоска HP), пиксели мира. */
-export const PLATE_PAD = 2;
+export const PLATE_PAD = GP.ui.platePad;
 /** Глубина плашки: подписи рисуются над всеми телами (DEPTH.top), поэтому клик по нику важнее тела под ним. */
 export const PLATE_DEPTH = 1e6;
 

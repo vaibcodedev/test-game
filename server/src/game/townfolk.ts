@@ -4,7 +4,7 @@
  * клиент плавно доводит. Стражники неуязвимы, добивают мобов у стен и стреляют в нарушителей мира (бой фракций в нейтральном городе).
  */
 import data from "../../../data/townfolk.json";
-import { CITIES, CITY_CITIZEN_COUNT, CITY_CITIZEN_SPOTS, CITY_GATE_GUARDS, CITY_PATROLS } from "../../../shared/cities";
+import { CITIES, CITY_CITIZEN_COUNT, CITY_GATE_GUARDS, CITY_PATROLS, layoutOf } from "../../../shared/cities";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { MOVE_MUL, TILE } from "../../../shared/constants";
 import { moveWithCollision } from "../../../shared/map";
@@ -42,7 +42,7 @@ const SITES: Site[] = [
     spots: CITIZEN_SPOTS, count: CITIZEN_COUNT, guard: G, people: C.people },
   // стража столиц, фортов и поселений фракций — бойцы фракций (soldiers.ts, задача 132, шаг 5): убиваемы, бьют врагов по секторам; здесь только горожане
   ...CITIES.filter((c) => c.style).map((c): Site => ({
-    x: c.x, y: c.y, half: c.half, sideX: null, gateGuards: c.capital ? [] : CITY_GATE_GUARDS, patrols: c.capital ? [] : CITY_PATROLS, spots: CITY_CITIZEN_SPOTS, count: CITY_CITIZEN_COUNT,
+    x: c.x, y: c.y, half: c.half, sideX: null, gateGuards: c.capital ? [] : CITY_GATE_GUARDS, patrols: c.capital ? [] : CITY_PATROLS, spots: layoutOf(c).spots, count: CITY_CITIZEN_COUNT,
     guard: { ...G, ...c.guard! }, people: c.people!,
   })),
   // поселения безопасных земель: двое жителей (стража — бойцы фракции)

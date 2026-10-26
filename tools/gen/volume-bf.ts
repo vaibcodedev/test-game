@@ -6,7 +6,7 @@
 import {
   PC, hash01, hex, mix, withA, type RGBA, type Ramp, type N3, type Tex,
   CLOTH, WOOD, WOOD_D, IRON, LEATHER, ROPE, STONE, OUT, FRONT, TOP, RIGHT,
-  box, prism, face, fillPoly, cylV, ellipseFace, log, cone, shadowPoly, shadowEllipse, wheel3, depth, litC, planksV, planksH, grain, addTex, noTex, finish, tone,
+  box, prism, face, fillPoly, cylV, ellipseFace, log, cone, shadowPoly, shadowBox, shadowDisc, wheel3, depth, litC, planksV, planksH, grain, addTex, noTex, finish, tone,
 } from "./volume-lib";
 
 type Pt = [number, number];
@@ -35,7 +35,7 @@ export function ridgeTent(o: TentOpt): PC {
   const a = o.burnt ? CHAR : o.a, b = o.burnt ? CHAR : o.b, trim = o.burnt ? CHAR : o.trim;
   const stripes = o.stripes ?? 6, sw = W / stripes;
   // тень на землю вправо-вниз
-  shadowPoly(pc, [[x0 - 2, B + 1], [R[0] + 6, B + 4], [R2[0] + 12, R2[1] + 6], [R2[0], R2[1]], R]);
+  shadowPoly(pc, [[x0, B], R, R2, [x0 + D[0], B + D[1]]], 40);
   // растяжки за шатром (правые) — до ската
   const peg = (px: number, py: number) => { log(pc, px, py, px + 1, py - 5, 1.1, WOOD, { end: null }); };
   peg(R2[0] + 8, R2[1] + 3); fillLine(pc, A2[0], A2[1] + 6, R2[0] + 8, R2[1] - 1, ROPE[1]);
@@ -125,7 +125,7 @@ function fillLine(pc: PC, x0: number, y0: number, x1: number, y1: number, c: RGB
 // ---------------- шатёр командира: круглый павильон (4×2) ----------------
 export function pavilion(o: { a: Ramp; b: Ramp; trim: Ramp; flag: Ramp; seed: number }): PC {
   const r = 44, pc = new PC(r * 2 + 30, 116), cx = r + 10, wallTop = 66, wallBot = 96, ry = 15;
-  shadowEllipse(pc, cx + 10, wallBot + 6, r + 8, ry + 2, 85);
+  shadowDisc(pc, cx, wallBot, r + 1, ry, 40);
   // стена: цилиндр с полосами
   const bands = 10;
   for (let y = wallTop; y <= wallBot + ry; y++) for (let x = cx - r; x <= cx + r; x++) {
@@ -189,7 +189,7 @@ export const TENTS3: Record<string, () => PC> = {
 // ---------------- осадная башня (3×2) ----------------
 function siegeTower3(): PC {
   const pc = new PC(96, 150), x = 18, w = 44, top = 40, bot = 134, d = 22, D = depth(d);
-  shadowPoly(pc, [[x - 2, bot + 2], [x + w + 4, bot + 6], [x + w + D[0] + 14, bot + D[1] + 8], [x + w + D[0], bot + D[1]]], 85);
+  shadowBox(pc, x - 2, x + w, bot + 2, D, 110);
   const front = { r: WOOD, tex: addTex(planksV(6, 3), grain(4, 0.15)) };
   const side = { r: WOOD, tex: planksV(5, 5) };
   box(pc, x, top, w, bot - top, d, front, side, { r: WOOD, tex: planksH(4, 6) });
@@ -227,7 +227,7 @@ function fillLineD(pc: PC, x0: number, y0: number, x1: number, y1: number, c: RG
 // ---------------- таран (4×1) ----------------
 function ram3(): PC {
   const pc = new PC(124, 78), x0 = 10, x1 = 98, yE = 34, dd = 26, D = depth(dd), hr = 14;
-  shadowPoly(pc, [[x0 - 4, 70], [x1 + 8, 72], [x1 + D[0] + 16, 70 + D[1]], [x0 + D[0], 70 + D[1]]], 85);
+  shadowBox(pc, x0, x1, 70, D, 40);
   // рама-основание: два бруса (задний темнее)
   log(pc, x0 + D[0], 64 + D[1], x1 + D[0], 64 + D[1], 2.2, WOOD, { end: WOOD });
   // задние стойки
@@ -263,7 +263,7 @@ function ram3(): PC {
 // ---------------- рогатки (2×1) ----------------
 function spikeBarrier3(): PC {
   const pc = new PC(60, 40), y = 24;
-  shadowPoly(pc, [[4, 33], [52, 33], [58, 28], [12, 27]], 80);
+  shadowBox(pc, 4, 52, 33, [8, -6], 14);
   const stake = (x: number, front: boolean) => {
     if (front) log(pc, x + 6, 34, x - 6, 10, 1.7, WOOD, { tip: 5 });
     else log(pc, x - 5, 33, x + 8, 11, 1.6, WOOD.map((c) => mix(c, WOOD[0], 0.25)) as Ramp, { tip: 5 });
@@ -280,7 +280,7 @@ function spikeBarrier3(): PC {
 // ---------------- стойка щитов (2×1) ----------------
 function shieldStand3(): PC {
   const pc = new PC(60, 46), D = depth(8);
-  shadowPoly(pc, [[3, 42], [52, 42], [58, 37], [9, 37]], 80);
+  shadowBox(pc, 3, 50, 42, D, 22);
   // задние ноги-козлы и верхний брус с глубиной
   for (const x of [4, 48]) { log(pc, x + D[0] - 2, 42 + D[1], x + D[0] + 1, 16 + D[1], 1.4, WOOD.map((c) => mix(c, WOOD[0], 0.35)) as Ramp, { end: null }); }
   box(pc, 3, 15, 50, 3, 8, { r: WOOD, tex: grain(2, 0.2) }, { r: WOOD }, { r: WOOD, tex: planksH(2, 4) });
@@ -315,7 +315,7 @@ function shieldStand3(): PC {
 // ---------------- стол с картой (2×1) ----------------
 function mapTable3(): PC {
   const pc = new PC(60, 44), x = 6, y = 20, w = 42, d = 18, D = depth(d);
-  shadowPoly(pc, [[x, 41], [x + w + 2, 41], [x + w + D[0] + 6, 41 + D[1]], [x + D[0], 41 + D[1]]], 80);
+  shadowBox(pc, x, x + w, 41, D, 22);
   // ноги: задние, потом передние
   for (const lx of [x + 2, x + w - 5]) box(pc, lx + D[0] - 2, y + D[1] + 3, 3, 21, 2, { r: WOOD.map((c) => mix(c, WOOD[0], 0.4)) as Ramp }, { r: WOOD }, { r: WOOD });
   box(pc, x, y, w, 3, d, { r: WOOD, tex: grain(3, 0.2) }, { r: WOOD }, { r: WOOD, tex: planksH(4, 5) });
@@ -378,7 +378,7 @@ function ellipseRing(pc: PC, cx: number, cy: number, rx: number, ry: number, w: 
 }
 function wagon3(v: "a" | "b"): PC {
   const pc = new PC(104, 66);
-  shadowPoly(pc, [[8, 60], [80, 61], [96, 50], [26, 48]], 80);
+  shadowPoly(pc, [[8, 60], [80, 61], [90, 53], [20, 52]], 30);
   if (v === "a") {
     // кузов на сломанной оси: собирается отдельно и наклоняется к левому переднему углу
     const k = new PC(104, 66);

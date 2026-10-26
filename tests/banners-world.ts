@@ -40,7 +40,14 @@ const SPOTS: { id: string; x: number; y: number; nb?: true; hero?: [number, numb
   // задача 141 (правки 2): углы частокола, боковые и южные ворота поселений, вышка лучника крупно
   { id: "sorrow-corner", x: 998, y: 211, nb: true }, { id: "dale-corner-se", x: 102, y: 219, nb: true },
   { id: "black-post", x: 919.5, y: 155, nb: true }, { id: "white-tower", x: 964, y: 262.5, nb: true }, { id: "archer-tower", x: 202, y: 175, nb: true },
-  { id: "aurelion-gate-n", x: 56.5, y: 170, nb: true, hero: [56.5, 169.4] }, { id: "ember-gate-n", x: 550.5, y: 43, nb: true, hero: [550.5, 41.4] }, { id: "ember-w", x: 534, y: 57, nb: true }, { id: "ember-s", x: 550.5, y: 79, nb: true }, { id: "mill-ford", x: 112.5, y: 124 }, { id: "hunters-camp", x: 132, y: 262.5 },
+  { id: "aurelion-gate-n", x: 56.5, y: 170, nb: true, hero: [56.5, 169.4] },
+  // правки 6: герой в проёме ворот всех видов
+  { id: "gate-fort-sol-n", x: 392.5, y: 170, nb: true, hero: [392.5, 169.5] }, { id: "gate-morthaim-s", x: mir(56.5), y: 189, nb: true, hero: [mir(56.5), 191.6] },
+  { id: "gate-ember-s", x: 550.5, y: 77, nb: true, hero: [550.5, 79.6] }, { id: "gate-clear-dale", x: 96.5, y: 209, nb: true, hero: [96.5, 208.6] },
+  // задача 145: площади столиц целиком и вид от ворот
+  { id: "final-aurelion-square", x: 56, y: 179.5, nb: true }, { id: "final-aurelion-gate-s", x: 56.5, y: 190, nb: true }, { id: "final-aurelion-gate-n", x: 56.5, y: 169, nb: true },
+  { id: "final-morthaim-square", x: mir(56), y: 179.5, nb: true }, { id: "final-morthaim-gate-s", x: mir(56.5), y: 190, nb: true }, { id: "final-morthaim-gate-n", x: mir(56.5), y: 169, nb: true },
+  { id: "aurelion-square", x: 56, y: 182, nb: true }, { id: "morthaim-square", x: mir(56), y: 182, nb: true },   { id: "gate-sorrow-yard", x: mir(96.5), y: 209, nb: true, hero: [mir(96.5), 208.6] }, { id: "ember-gate-n", x: 550.5, y: 43, nb: true, hero: [550.5, 41.4] }, { id: "ember-w", x: 534, y: 57, nb: true }, { id: "ember-s", x: 550.5, y: 79, nb: true }, { id: "mill-ford", x: 112.5, y: 124 }, { id: "hunters-camp", x: 132, y: 262.5 },
 ];
 const save = (name: string, p: PNG) => { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, name), PNG.sync.write(p)); };
 const read = (f: string) => PNG.sync.read(fs.readFileSync(f));
@@ -164,6 +171,26 @@ async function scenario() {
         }
         save(`ingame-${TAG}-${s.id}-${tod}.png`, await snap(cx, cy, FW, FH));
       }
+    }
+    // LORE=1 (задача 141): клик по статуе правителя → окно истории; снимок страницы lore-<фракция>.png
+    if (process.env.LORE) for (const [key, sx] of [["solgard", 61], ["umbrath", MAP_W - 52]] as const) {
+      const ox = sx * TILE, oy = 184 * TILE - 2;
+      at = { x: ox, y: oy + 18 };
+      hold();
+      await sleep(1500);
+      const scr = await run<{ x: number; y: number }>("const cam = sc.cameras.main, g = window.__game; cam.stopFollow(); cam.centerOn(a.x, a.y - 40); return null;", { x: ox, y: oy });
+      void scr;
+      await sleep(600);
+      const p = await run<{ x: number; y: number }>("const cam = sc.cameras.main, g = window.__game, r = g.canvas.getBoundingClientRect(); return { x: r.left + (a.x - cam.worldView.x) * cam.zoom * r.width / g.scale.width, y: r.top + (a.y - cam.worldView.y) * cam.zoom * r.height / g.scale.height };", { x: ox, y: oy - 60 });
+      await page.mouse.move(p.x, p.y); await sleep(300);
+      const tip = await page.evaluate(() => document.querySelector(".interact-tip, .hud-interact")?.textContent ?? "");
+      await page.mouse.click(p.x, p.y, { button: "right" }); await sleep(900);
+      const st = await page.evaluate(() => { const w = document.querySelector<HTMLElement>(".win-statue"); return w && !w.hidden ? { key: w.dataset.statue, name: w.querySelector(".st-name")?.textContent } : null; });
+      check(!!st && st.key === key, `статуя ${key}: окно истории открыто (${st?.name ?? "нет"}; подсказка «${tip}»)`);
+      fs.mkdirSync(OUT, { recursive: true });
+      await page.screenshot({ path: path.join(OUT, `lore-${key}.png`) });
+      await page.keyboard.press("Escape"); await sleep(300);
+      check(await page.evaluate(() => !!document.querySelector<HTMLElement>(".win-statue")?.hidden), `статуя ${key}: Esc закрывает окно`);
     }
   } finally { clearInterval(keep); }
 }

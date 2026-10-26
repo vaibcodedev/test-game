@@ -515,35 +515,36 @@ export function watchTower(look: Look, wear: Wear = "clean", seed = 1): PC {
   return c;
 }
 
-/** Лучник на вышке 36×46 (в 1,45 раза крупнее бойца на земле — стоит на площадке): шлем-капеллина (Сольгард) или капюшон (Умбрат),
- *  лицо, табард цвета фракции с гербом на контрастном поле, кольчужные рукава, колчан за плечом, лук далеко в сторону и натянутая тетива.
- *  Свет слева, контур как у спрайтов. Низ фигуры закрывают зубцы площадки. */
-export function archerFigure(look: Look): PC {
-  const S = 1.45, f = new PC(36, 46), sol = look.faction === "sol";
+/** Поза лучника: b — вдох (плечи и голова на 1 px выше), h — поворот головы (−1 влево, 1 вправо), d — натяжение 0…1 (0 — лук опущен,
+ *  тетива прямая; 1 — тетива у щеки, стрела на тетиве), g — перехват лука (лук на 1 px ниже). */
+export interface ArcherPose { b: number; h: number; d: number; g: number }
+export const ARCHER_W = 36, ARCHER_H = 36;
+/** Лучник на вышке 36×36 (≈1,12 роста героя: стоит на площадке): шлем-капеллина (Сольгард) или капюшон (Умбрат), лицо, табард фракции
+ *  с каймой и гербом, кольчужные рукава, колчан, лук. Свет слева, контур как у спрайтов. Ноги ниже зубцов площадки в кадр не входят. */
+export function archerFigure(look: Look, pose: ArcherPose = { b: 0, h: 0, d: 1, g: 0 }): PC {
+  const S = 1.15, f = new PC(ARCHER_W, ARCHER_H), sol = look.faction === "sol";
   const P_ = (v: number) => Math.round(v * S);
   const skin = ramp("#6e3f35", "#a8644e", "#d9956f", "#f2c49b"), steel = ramp("#3a3f4c", "#5e6678", "#8f99ad", "#c8d0de", "#f2f6ff");
   const cl = sol ? ramp("#1a3270", "#2a52b0", "#3f78e0", "#7ab0ff") : ramp("#2a1048", "#4a1e7e", "#7a34c0", "#b070f0");
   const trim = sol ? ramp("#7a5410", "#c08a1c", "#f0c040", "#fff0a0") : ramp("#2a2a38", "#6a6a84", "#b8b8d0", "#f0f0ff");
   const wood = ramp("#3a2216", "#5e3a22", "#8a5a34", "#b07e4c");
-  const hx = P_(12), hy = P_(8);
-  // колчан за плечом
-  f.rect(P_(4), P_(5), P_(3), P_(10), wood[1]); f.rect(P_(4), P_(5), 1, P_(10), wood[2]);
-  for (const [x, col] of [[4, hex("#f0ece0")], [5.2, hex("#c83a3a")], [6.4, hex("#f0ece0")]] as const) f.rect(P_(x), P_(3), 1, P_(2), col);
+  const by = 4 - pose.b, hx = P_(12) + 2, hy = P_(8) + by;
+  // колчан
+  f.rect(P_(4) + 2, P_(5) + by, P_(3), P_(10), wood[1]); f.rect(P_(4) + 2, P_(5) + by, 1, P_(10), wood[2]);
+  for (const [x, col] of [[4, hex("#f0ece0")], [5.2, hex("#c83a3a")], [6.4, hex("#f0ece0")]] as const) f.rect(P_(x) + 2, P_(3) + by, 1, 2, col);
   // торс: табард со светом слева, кайма, пояс, герб
-  for (let y = P_(13); y < P_(29); y++) {
-    const half = y < P_(15) ? P_(5.2) : P_(4.3);
+  for (let y = P_(13) + by; y < ARCHER_H; y++) {
+    const half = y < P_(15) + by ? P_(5.2) : P_(4.3);
     for (let x = Math.round(hx - half); x < hx + half; x++) {
-      const u = (x + 0.5 - hx) / half, k = 0.68 + 0.5 * Math.max(0, -0.6 * u + 0.8 * Math.sqrt(Math.max(0, 1 - u * u)));
-      const sleeve = y < P_(15.5) && Math.abs(x + 0.5 - hx) > P_(2.6);
+      const u = (x + 0.5 - hx) / half, k = 0.66 + 0.52 * Math.max(0, -0.6 * u + 0.8 * Math.sqrt(Math.max(0, 1 - u * u)));
+      const sleeve = y < P_(15.5) + by && Math.abs(x + 0.5 - hx) > P_(2.6);
       let col = shade(sleeve ? steel[3] : cl[2], k);
-      if (!sleeve && Math.abs(x + 0.5 - hx) > half - 1.2) col = trim[1]; // кайма табарда
+      if (!sleeve && Math.abs(x + 0.5 - hx) > half - 1.2) col = trim[1];
       f.set(x, y, col);
     }
   }
-  for (let x = P_(7.5); x < P_(16.5); x++) { f.set(x, P_(23), wood[0]); f.set(x, P_(23) + 1, wood[1]); }
-  f.rect(hx - 1, P_(23), 3, 2, trim[2]);
-  // герб: щиток трима с эмблемой
-  f.rect(hx - 3, P_(16), 6, 5, trim[2]); f.rect(hx - 2, P_(16) + 1, 4, 3, sol ? trim[3] : cl[3]); f.set(hx - 1, P_(16) + 1, hex("#ffffff"));
+  for (let x = hx - P_(4.3); x < hx + P_(4.3); x++) { f.set(x, P_(23) + by, wood[0]); }
+  f.rect(hx - 2, P_(16) + by, 5, 4, trim[2]); f.rect(hx - 1, P_(16) + by + 1, 3, 2, sol ? trim[3] : cl[3]);
   // голова
   const hr = 3.4 * S;
   for (let y = Math.floor(hy - hr); y <= hy + hr; y++) for (let x = Math.floor(hx - hr); x <= hx + hr; x++) {
@@ -551,34 +552,47 @@ export function archerFigure(look: Look): PC {
     if (dx * dx + dy * dy > 1) continue;
     f.set(x, y, skin[dx < -0.25 ? 3 : dx > 0.35 ? 1 : 2]);
   }
-  f.rect(hx - 2, hy, 1, 2, OUT); f.rect(hx + 2, hy, 1, 2, OUT); f.rect(hx, hy + 3, 2, 1, skin[1]);
-  if (sol) { // капеллина с полями
-    for (let y = Math.floor(hy - 6.5 * S); y <= hy - 1; y++) for (let x = Math.floor(hx - 4 * S); x <= hx + 4 * S; x++) {
+  const ex = hx + pose.h;
+  f.set(ex - 2, hy, OUT); f.set(ex + 1, hy, OUT); f.set(ex - 1 + (pose.h > 0 ? 1 : 0), hy + 3, skin[1]);
+  if (sol) {
+    for (let y = Math.floor(hy - 6 * S); y <= hy - 1; y++) for (let x = Math.floor(hx - 4 * S); x <= hx + 4 * S; x++) {
       const dx = (x + 0.5 - hx) / (3.8 * S), dy = (y + 0.5 - (hy - 1)) / (5 * S);
       if (dx * dx + dy * dy <= 1) f.set(x, y, steel[dx < -0.3 ? 4 : dx > 0.3 ? 2 : 3]);
     }
-    for (let x = Math.round(hx - 5.5 * S); x <= hx + 5.5 * S; x++) { f.set(x, hy - 1, x < hx ? steel[3] : steel[1]); f.set(x, hy, withA(steel[0], 120)); }
-    f.set(hx, Math.round(hy - 6.5 * S), trim[3]);
-  } else { // тёмный капюшон с прорезью для лица
+    for (let x = Math.round(hx - 5.3 * S); x <= hx + 5.3 * S; x++) f.set(x, hy - 1, x < hx ? steel[3] : steel[1]);
+    f.set(hx, Math.round(hy - 6 * S), trim[3]);
+  } else {
     for (let y = Math.floor(hy - 5.5 * S); y <= hy + 4 * S; y++) for (let x = Math.floor(hx - 4.6 * S); x <= hx + 4.6 * S; x++) {
       const dx = (x + 0.5 - hx) / (4.6 * S), dy = (y + 0.5 - (hy - 0.5)) / (5.2 * S);
       if (dx * dx + dy * dy > 1) continue;
-      if (Math.abs(x + 0.5 - hx) < 2.7 * S && y > hy - 3 * S) continue;
+      if (Math.abs(x + 0.5 - ex) < 2.6 * S && y > hy - 3 * S) continue;
       f.set(x, y, shade(cl[1], dx < 0 ? 1.2 : 0.8));
     }
-    f.rect(hx - 2, hy, 1, 2, look.glass[2]); f.rect(hx + 2, hy, 1, 2, look.glass[2]);
+    f.set(ex - 2, hy, look.glass[2]); f.set(ex + 1, hy, look.glass[2]);
   }
-  // лук далеко в стороне (у зрителя справа), рука к луку, тетива к щеке, стрела
-  const bx = P_(22.5), bt = P_(2), bb = P_(26);
-  for (let y = bt; y <= bb; y++) { const t = (y - bt) / (bb - bt), x = Math.round(bx - Math.sin(t * Math.PI) * 4 * S); f.set(x, y, wood[t < 0.5 ? 3 : 2]); f.set(x + 1, y, wood[1]); f.set(x + 2, y, wood[0]); }
-  for (let x = P_(16); x < bx - 3; x++) { f.set(x, P_(14), steel[3]); f.set(x, P_(14) + 1, steel[2]); f.set(x, P_(14) + 2, steel[1]); }
-  f.rect(bx - 4, P_(14) - 1, 3, 4, skin[2]);
-  f.line(bx, bt, hx + P_(3), P_(11), hex("#ece4d4")); f.line(bx, bb, hx + P_(3), P_(11), hex("#ece4d4"));
-  f.line(hx + P_(3), P_(11), bx + 2, P_(11), wood[3]); f.rect(bx + 2, P_(11) - 1, 2, 3, steel[4]); f.set(hx + P_(3) - 1, P_(11), hex("#f0ece0"));
-  // правая рука тянет тетиву: плечо → локоть в сторону → кисть у щеки
-  f.line(hx - P_(4.5), P_(14.5), hx - P_(6.5), P_(11), steel[3], 2); f.line(hx - P_(6.5), P_(11), hx + P_(2), P_(11), steel[3], 2);
-  f.rect(hx + P_(2), P_(10), 3, 3, skin[2]);
+  // лук: в покое опущен и ближе к телу, при натяжении поднят и вынесен в сторону
+  const d = pose.d, bx = Math.round(hx + P_(7) + d * 3), bt = Math.round(2 + (1 - d) * 5 + pose.g), bb = bt + P_(23), mid = Math.round((bt + bb) / 2);
+  for (let y = bt; y <= bb; y++) { const t = (y - bt) / (bb - bt), x = Math.round(bx - Math.sin(t * Math.PI) * 3.6 * S); f.set(x, y, wood[t < 0.5 ? 3 : 2]); f.set(x + 1, y, wood[1]); }
+  const gx = bx - 4, gy = mid; // кисть на рукояти
+  for (let x = hx + P_(4); x < gx; x++) { f.set(x, gy, steel[3]); f.set(x, gy + 1, steel[1]); }
+  f.rect(gx, gy - 1, 3, 3, skin[2]);
+  // тетива и правая рука: кисть от рукояти (d=0) к щеке (d=1)
+  const cx = Math.round(bx + 1 - d * (bx + 1 - (hx + P_(3)))), cy = Math.round(gy + d * ((hy + 3) - gy));
+  f.line(bx + 1, bt, cx, cy, hex("#ece4d4")); f.line(bx + 1, bb, cx, cy, hex("#ece4d4"));
+  if (d > 0.25) { f.line(cx, cy, bx + 3, cy, wood[3]); f.rect(bx + 3, cy - 1, 2, 3, steel[4]); f.set(cx - 1, cy, hex("#f0ece0")); }
+  const sx = hx - P_(4.5), sy = P_(14.5) + by;
+  if (d > 0.25) { const ex2 = Math.round(sx - 2 - d * 2), ey2 = cy; f.line(sx, sy, ex2, ey2, steel[3], 2); f.line(ex2, ey2, cx, cy, steel[3], 2); }
+  else f.line(sx, sy, sx - 1, sy + 7, steel[3], 2);
+  f.rect(cx, cy - 1, 2, 3, skin[2]);
   return f.outline(OUT);
+}
+/** Кадры лучника: 24 кадра покоя (дыхание, поворот головы, перехват лука) и 8 кадров «натянул и целится» — цикл ≈5 с при 6 к/с. */
+export function archerFrames(look: Look): PC[] {
+  const out: PC[] = [];
+  const breath = [0, 0, 1, 1, 1, 1, 0, 0];
+  for (let k = 0; k < 24; k++) out.push(archerFigure(look, { b: breath[k % 8], h: k >= 8 && k < 14 ? -1 : k >= 18 && k < 22 ? 1 : 0, d: 0, g: k >= 14 && k < 18 ? 1 : 0 }));
+  for (const d of [0.2, 0.45, 0.7, 0.9, 1, 1, 1, 0.05]) out.push(archerFigure(look, { b: 1, h: 1, d, g: 0 }));
+  return out;
 }
 
 /** Вышка лучника у мостов и постов 80×176 (след 2×2) в стиле 141: каменное тело в 3/4 (лицо и боковая грань в тени),
@@ -626,11 +640,18 @@ export function archerTower(look: Look, seed = 1): PC {
   crestRow(g, look, fx0 - 3, fx1 - fx0 + 6, fy - 12, face, fy + 2);
   // лучник на площадке (за зубцами): фигура уровня спрайтов стражи — шлем или капюшон, лицо, табард с гербом, кольчужные рукава,
   // натянутый лук и колчан за плечом; низ закрывают зубцы
-  c.blit(archerFigure(look), cx - 16, fy - 46);
+  // лучник — отдельный анимированный объект поверх вышки (archer-sol/umb, tools/gen/walls141-game.ts writeArchersGame): правки 8
   c.blit(g, 0, 0);
   for (let i = 0; i < D; i++) { const off = Math.round(((i + 0.5) / D) * K); for (let y = fy - 12 - off; y < fy + 2 - off; y++) c.set(fx1 + 3 + i, y, shade(tex(face, fx1 + i, y + off), y < fy - 10 - off ? 0.85 : 0.55)); }
   // навес на столбах
-  const roofB = fy - 50;
+  const roofB = fy - 48; // навес выше головы лучника (правки 10)
+  // задняя стенка беседки (правки 10): глухие доски в тени — сквозь навес не видно бойцов позади вышки, лучник рисуется перед ней
+  for (let y = roofB; y < fy - 6; y++) for (let x = fx0 - 1; x < fx1 + D; x++) {
+    if (c.alpha(x, y)) continue;
+    const off = x >= fx1 ? Math.round(((x - fx1) / D) * K) : 0;
+    if (y < roofB + 2 - off && x >= fx1) continue;
+    c.set(x, y, tone(Wd, 1 + ((x - fx0) % 5 === 4 ? -0.8 : 0) + (y < roofB + 6 ? -0.5 : 0) - (x >= fx1 ? 0.4 : 0) + (hash01(x, y >> 2, seed) - 0.5) * 0.4));
+  }
   for (const px of [fx0 - 1, fx1 + 1, fx1 + D - 1]) for (let y = roofB; y < fy - 10; y++) { c.set(px, y, Wd[3]); c.set(px + 1, y, Wd[1]); }
   coneRoofPyramid(c, look.roofs[0], Math.round((fx0 + fx1 + D) / 2), roofB, Math.round((fx1 - fx0 + D) / 2) + 6, 26, seed);
   for (let x = fx0 - 4; x < fx1 + D + 6; x++) for (let k = 3; k < 6; k++) darken(c, x, roofB + k, 0.7);
@@ -727,6 +748,8 @@ export function gate(look: Look, state: GateState = "closed", wear: Wear = "clea
   for (const px of [0, 86]) for (let y = FACE_Y + 3; y < by - 6; y++) { c.set(px, y, S[5]); c.set(px + 9, y, S[1]); for (let x = px + 1; x < px + 9; x++) tint(c, x, y, S[5], 0.12); }
   // проём
   passage(c, look, cx, aw, ay, spring, by);
+  // правки 6: в проёме у земли ни полосы земли/травы, ни тени — только дорога насквозь (кадр рисуется поверх героя в проёме)
+  for (let y = by - 3; y < GATE_H; y++) for (let x = cx - aw; x < cx + aw; x++) if (y >= by || !c.alpha(x, y) || c.get(x, y)![3] < 255) c.clear(x, y);
   if (state === "open") {
     // створки распахнуты к стенам проёма: видны в ракурсе — доски, оковка, тень на мостовой; решётка поднята (зубья под сводом)
     for (const sgn of [-1, 1]) for (let i = 0; i < 9; i++) {
@@ -737,7 +760,7 @@ export function gate(look: Look, state: GateState = "closed", wear: Wear = "clea
         if ([spring - 4, Math.round((spring + by) / 2), by - 9].some((b) => y === b || y === b + 1)) c.set(x, y, y % 2 ? T[1] : T[3]);
       }
     }
-    for (const sgn of [-1, 1]) for (let i = 0; i < 6; i++) { const x = sgn < 0 ? cx - aw + 9 + i : cx + aw - 10 - i; for (let k = 0; k < 2; k++) c.set(x, by - 2 - k, withA([12, 8, 18, 255], 90 - i * 12)); }
+
     if (look.tier !== "settle") for (let x = cx - aw + 6; x < cx + aw - 6; x++) {
       const k = (x - cx + aw) % 6;
       for (let y = ay + 3; y < ay + 12; y++) {

@@ -12,6 +12,7 @@ import { PLAYER_RADIUS } from "./constants";
 import { isTownZone, lineClear, walkable, zoneAtPx, type WorldMap } from "./map";
 import { SKILLS, type SkillAim, type SkillDef } from "./skills";
 import aimData from "../data/skills_aim.json";
+import { GP } from "./gameplay";
 
 /**
  * Форма прицела. circle — круг у точки (ground); wall — стена поперёк прицела (капсула); bolt — снаряд до точки или цели со взрывом;
@@ -81,17 +82,17 @@ export interface AimSpec {
 
 /** Сервер принимает точку ground до дальности + GROUND_TOL от своей позиции героя (дальше — прижимает): превью считает от предсказанной позиции,
  *  сервер — от своей в момент исполнения (расхождение — пинг × скорость 150 px/с). Клиент прижимает ровно к дальности. */
-export const GROUND_TOL = 32;
+export const GROUND_TOL = GP.aim.groundTol;
 /** Рывок короче — отказ («Туда не переместиться», «Некуда отскочить»); рывок к цели, вставший раньше на столько и больше, — «Путь прегражден». */
-export const DASH_MIN = 16;
+export const DASH_MIN = GP.aim.dashMin;
 /** Луч короче — отказ «Нет прямой видимости» («Пронзающая стрела»; у «Метнуть топор» — 24 и «Путь прегражден», поля min и minErr). */
-export const RAY_MIN = 30;
+export const RAY_MIN = GP.aim.rayMin;
 /** Линии рисуются на уровне груди (y − CHEST), круги и полосы — по ногам; сервер мерит от ног. */
-export const CHEST = 12;
+export const CHEST = GP.aim.chest;
 /** Бледная кайма превью: край попадания по герою (радиус цели; у мобов — свой). */
 export const HIT_EDGE = PLAYER_RADIUS;
 /** Призыв встаёт там, где проходим кругом этого радиуса. */
-export const SUMMON_R = 8;
+export const SUMMON_R = GP.aim.summonR;
 export const NO_LOS = "Нет прямой видимости";
 export const BLOCKED = "Путь прегражден";
 export const NO_BEHIND = "Нет места за спиной цели";
@@ -433,7 +434,7 @@ export function aimExtras(def: SkillDef, g: Placed, from: { x: number; y: number
  *  его фракции (alliesAround); pet — питомец; boss — не притягивается цепями. Скрытых и павших в списке нет (client/src/game/castResolve.ts hitUnitsOf). */
 export interface HitUnit { id: string; x: number; y: number; r: number; ally?: boolean; kin?: boolean; pet?: boolean; boss?: boolean }
 /** Питомец в «Круге света»: сервер берёт его в радиусе круга + 12 (герою — + его радиус 10). */
-export const PET_TOL = 12;
+export const PET_TOL = GP.aim.petTol;
 
 /** Попадает ли враг в форму без отбора (как enemiesInCircle и проверки модулей): круг, стена, брызги, полоса, конус, нова — с видимостью
  *  от центра (у полос, конуса и новы — от героя, у «Сияния» — от середины луча). Веер — в коридоре хотя бы одной стрелы. */

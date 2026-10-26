@@ -2,6 +2,7 @@
 import { TILE } from "./constants";
 import { CELL_BLOCK, walkable, type WorldMap } from "./map";
 import { interiorAt, interiorGrid } from "./interiors";
+import { GP } from "./gameplay";
 
 /** Проходима ли прямая для круга радиуса r (проверка шагами по 8 px). */
 export function segmentWalkable(m: WorldMap, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
@@ -153,9 +154,9 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
 }
 
 /** Пауза после неудачного поиска (цель недостижима или уже стоим у ближайшей к ней клетки), мс. */
-export const NAV_FAIL_MS = 1000;
+export const NAV_FAIL_MS = GP.nav.failMs;
 /** Цель, сместившаяся от неудачной дальше этого (px), снимает паузу — новый приказ или цель ушла. */
-export const NAV_FAIL_SHIFT = 48;
+export const NAV_FAIL_SHIFT = GP.nav.failShift;
 
 /**
  * Навигация юнита: прямо, если видно, иначе по пути A* (пересчёт при смещении цели или раз в 0,8 с).

@@ -3,7 +3,7 @@ import type { Item } from "./items";
 import { GP } from "./gameplay";
 
 export const TRADE_SLOTS = GP.trade.slots;
-export const TRADE_RANGE_TILES = 5;
+export const TRADE_RANGE_TILES = GP.ranges.tradeTiles;
 export const TRADE_REQUEST_MS = GP.trade.requestMs;
 export const TRADE_CONFIRM_DELAY_MS = GP.trade.confirmDelayMs;
 

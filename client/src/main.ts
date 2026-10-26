@@ -6,6 +6,7 @@ import { api, apiBase, session } from "./account";
 import { BootScene } from "./game/BootScene";
 import { GameScene } from "./game/GameScene";
 import { net } from "./net";
+import { setArtViewer } from "../../shared/mountArt";
 import { CharSelect } from "./ui/charselect";
 import { Hud } from "./ui/hud";
 import { loading } from "./ui/loading";
@@ -18,6 +19,8 @@ const syncHeadUnit = () => {
   matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`).addEventListener("change", syncHeadUnit, { once: true });
 };
 syncHeadUnit();
+// иконки гербовых маунтов и их печатей — по фракции своего героя (задача 142)
+setArtViewer(() => net.self?.faction ?? "");
 const netMsg = (ex: unknown) => {
   const msg = (ex as Error)?.message || String(ex);
   return /ECONNREFUSED|Failed to fetch|NetworkError|offline/i.test(msg) ? "Сервер недоступен. Запущен ли npm run dev?" : msg;

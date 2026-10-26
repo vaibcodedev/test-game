@@ -6,6 +6,13 @@ import catalog from "../data/items.json";
 import { MOBS } from "./mobs";
 import { ZB_ITEMS } from "./zoneBosses";
 import mountData from "../data/mounts.json";
+import { sealIconFor, nameFor } from "./mountArt";
+/** Печать гербового маунта: имя по фракции зрителя (задача 142). */
+function sealNamed<T extends { name: string }>(b: T, m: { name: string; desc: string; names?: Record<string, { name?: string; desc?: string }> }): T {
+  if (!m.names) return b;
+  Object.defineProperty(b, "name", { get: () => `${mountData.seal.name}: ${nameFor(m)}`, enumerable: true });
+  return b;
+}
 
 export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "cloak" | "ring" | "amulet";
 export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"];
@@ -141,7 +148,7 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   ...Object.fromEntries(Object.values(RESOURCES).map((r) => [r.id, { id: r.id, name: r.name, slot: "consumable", icon: r.icon, price: r.price, stack: 99 } as BaseItem])),
   ...Object.fromEntries(Object.values(FOOD).map((d) => [`food_${d.id}`, { id: `food_${d.id}`, name: d.name, slot: "consumable", icon: d.icon, price: d.price, stack: 20 } as BaseItem])),
   // «Печать скакуна» (задача 142): по одной на маунт, не складывается; изучение — shared/mounts.ts sealMount, server/src/game/stable.ts
-  ...Object.fromEntries(Object.entries(mountData.mounts).map(([id, m]) => [`mseal_${id}`, { id: `mseal_${id}`, name: `${mountData.seal.name}: ${m.name}`, typeName: mountData.seal.name, slot: "consumable", icon: `mseal_${id}`, price: (mountData.seal.price as Record<string, number>)[m.tier] ?? 300 } as BaseItem])),
+  ...Object.fromEntries(Object.entries(mountData.mounts).map(([id, m]) => [`mseal_${id}`, sealNamed({ id: `mseal_${id}`, name: `${mountData.seal.name}: ${m.name}`, typeName: mountData.seal.name, slot: "consumable", icon: `mseal_${id}`, price: (mountData.seal.price as Record<string, number>)[m.tier] ?? 300 } as BaseItem, m as { name: string; desc: string; names?: Record<string, { name?: string; desc?: string }> })])),
   // детали маунтов для сборки у конюшего (data/mounts.json parts)
   ...Object.fromEntries(Object.entries(mountData.parts).map(([id, d]) => [`mpart_${id}`, { id: `mpart_${id}`, name: d.name, typeName: "Деталь для конюшего", slot: "consumable", icon: d.icon, price: d.price, stack: (d as { stack?: number }).stack ?? 20 } as BaseItem])),
 };
@@ -379,7 +386,7 @@ export function iconFor(it: Pick<Item, "base" | "stats" | "uid" | "rarity" | "un
   if (it.model && ITEM_MODELS[it.model]) return `im_${it.model}_${Math.max(0, Math.min(2, it.rarity | 0))}`; // легендарной редкости у моделей нет — r3 рисуется как r2
   const b = BASE_ITEMS[it.base];
   // расходники и ресурсы (зелья, еда, материалы, добыча биомов) рисуются одной иконкой без вариантов
-  if (!b || b.slot === "consumable") return b?.icon ?? "gold";
+  if (!b || b.slot === "consumable") return sealIconFor(b?.icon ?? "gold"); // печать скакуна гербового маунта — по фракции зрителя (задача 142)
   return iconId(b.icon, iconVariant(it), it.rarity);
 }
 

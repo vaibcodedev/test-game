@@ -33,9 +33,12 @@ import { loading } from "../ui/loading";
 import { removeLoot, spawnLoot } from "./lootView";
 import { INTERIORS, interiorAt, type Interior } from "../../../shared/interiors";
 import { InteriorViews } from "./interiors";
+import { TowerArchers } from "./towerArchers";
+import { STATUES, type StatueKey } from "../ui/statue";
 
-type NpcKind = WorldNpcKind | "enc" | "stone" | "door";
-type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[] };
+type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue";
+/** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
+type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number } };
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
 const AMBIENCE: Partial<Record<Zone, string>> = {
@@ -160,6 +163,8 @@ export class GameScene extends Phaser.Scene {
   private scenes: Scenes | null = null;
   /** Интерьеры зданий (задача 144): залы за краем карты и зал, где сейчас герой. */
   private interiors: InteriorViews | null = null;
+  /** Лучники на вышках стен у рек (задача 141): бойцы фракции без сети, см. towerArchers.ts. */
+  private towerArchers: TowerArchers | null = null;
   private room: Interior | null = null;
   /** Переход через дверь: куда перенесён герой; кадр проявляется, когда позиция придёт в состоянии (патч идёт позже сообщения). */
   private arrive: { x: number; y: number; at: number } | null = null;
@@ -253,6 +258,12 @@ export class GameScene extends Phaser.Scene {
         const st = this.add.sprite(c.stone.x, c.stone.y - 14, "u_merchant", 0).setVisible(false);
         this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: "Камень телепорта" });
       }
+      // статуи правителей в столицах (задача 141): невидимая точка нажатия по высоте статуи, окно истории — data/statues.json
+      for (const o of this.map.objects) {
+        const key: StatueKey | null = o.kind === "sun_statue" ? "solgard" : o.kind === "umb_statue" ? "umbrath" : null;
+        if (!key) continue;
+        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: `Осмотреть: статуя ${STATUES[key].name}`, hit: { dy: 66, r: 44 } });
+      }
       this.scenes = new Scenes(this, this.map);
       this.setupEncounters();
       // двери интерьеров (задача 144): снаружи — у двери здания, изнутри — в нижней стене зала; точки нажатия невидимы
@@ -262,6 +273,10 @@ export class GameScene extends Phaser.Scene {
         this.npcs.push({ sprite: this.add.sprite(r.exitDoor.x, r.exitDoor.y, "u_merchant", 0).setVisible(false), kind: "door", id: r.id, name: `Выйти: ${city || "на улицу"}` });
       }
       this.interiors = new InteriorViews(this);
+      this.towerArchers = new TowerArchers(this, this.map);
+      this.cleanup.push(() => { this.towerArchers?.destroy(); this.towerArchers = null; });
+      // выстрел башни (fx proj от точки башни, без юнита-стрелка): лучник на вышке поворачивается и стреляет
+      this.cleanup.push(net.on("fx", (list) => { for (const f of list) if (f.t === "proj" && f.fx !== undefined && f.fy !== undefined) this.towerArchers?.shot(f.fx, f.fy, f.tx, f.ty); }));
       this.room = null;
       // переход: сервер затемняет (fade), переносит героя и шлёт arrive — камера встаёт на новое место и кадр проявляется
       this.cleanup.push(net.on("int", (m) => {
@@ -796,8 +811,8 @@ export class GameScene extends Phaser.Scene {
       if (dx * dx + dy * dy <= 24 * 24 && !this.depletedNodes.has(n.id)) { out.kind = "node"; out.ref = n; return true; }
     }
     for (const n of this.npcs) {
-      const dx = n.sprite.x - wx, dy = n.sprite.y - 14 - wy;
-      if (dx * dx + dy * dy < 18 * 18) { out.kind = "npc"; out.ref = n; return true; }
+      const dx = n.sprite.x - wx, dy = n.sprite.y - (n.hit?.dy ?? 14) - wy, r = n.hit?.r ?? 18;
+      if (dx * dx + dy * dy < r * r) { out.kind = "npc"; out.ref = n; return true; }
     }
     return false;
   }
@@ -1031,7 +1046,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Единое взаимодействие (docs/controls.md, раздел 7): под курсором (24 px) → ближайший в 110 px по приоритету мешок, узел, NPC, камень, встреча → до 300 px с подходом. */
   private interactList() {
-    type It = { rank: number; d: number; cx: number; cy: number; text: string; under?: boolean; go: () => void };
+    type It = { rank: number; d: number; cx: number; cy: number; text: string; under?: boolean; r?: number; go: () => void };
     const out: It[] = [], hx = this.pos.x, hy = this.pos.y;
     const reset = () => { this.pendingPickup = null; this.pendingNpc = null; this.pendingGather = null; };
     for (const [id, img] of this.bagViews) {
@@ -1045,7 +1060,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (const n of this.npcs) {
       const d = Math.hypot(n.sprite.x - hx, n.sprite.y - hy);
-      out.push({ rank: n.kind === "stone" || n.kind === "door" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - 14, text: n.kind === "stone" ? "Использовать: Камень телепорта" : n.kind === "door" ? n.name ?? "Дверь" : `Поговорить: ${n.name ?? "собеседник"}`, go: () => { reset(); this.talk(n); } });
+      out.push({ rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? "Использовать: Камень телепорта" : n.kind === "door" || n.kind === "statue" ? n.name ?? "Дверь" : `Поговорить: ${n.name ?? "собеседник"}`, go: () => { reset(); this.talk(n); } });
     }
     return out;
   }
@@ -1054,7 +1069,7 @@ export class GameScene extends Phaser.Scene {
     const by = (a: { rank: number; d: number }, b: { rank: number; d: number }) => a.rank - b.rank || a.d - b.d;
     if (!this.overUi) {
       const ap = this.input.activePointer, c = this.cameras.main.getWorldPoint(ap.x, ap.y);
-      const under = list.filter((i) => Math.hypot(i.cx - c.x, i.cy - c.y) < 24).sort(by)[0];
+      const under = list.filter((i) => Math.hypot(i.cx - c.x, i.cy - c.y) < (i.r ?? 24)).sort(by)[0];
       if (under) { under.under = true; return under; }
     }
     return list.filter((i) => i.d <= 110).sort(by)[0] ?? list.filter((i) => i.d <= 300).sort((a, b) => a.d - b.d)[0] ?? null;
@@ -1089,6 +1104,7 @@ export class GameScene extends Phaser.Scene {
     else if (n.kind === "quest") this.hud.quest.open(n.id!);
     else if (n.kind === "stone") this.hud.tp.open(this.pos);
     else if (n.kind === "door") net.send("door", { id: n.id });
+    else if (n.kind === "statue") this.hud.statue.open(n.id as StatueKey);
     else if (n.kind === "rumor") this.hud.rumor.open(n.id!, n.name!);
     else if (n.kind === "enc") this.hud.enc.open(n.id!);
     else if (n.kind === "raid") this.hud.raid.open(n.id!);
@@ -1326,6 +1342,7 @@ export class GameScene extends Phaser.Scene {
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
     const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5);
     this.interiors?.update(dt, night, this.room);
+    this.towerArchers?.update(dt);
     const dark = this.world.dark;
     const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
     // цвет дымки зоны (снежная синева, пустынный жар) меняется так же плавно, как её плотность, а не скачком на границе

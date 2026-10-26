@@ -32,6 +32,8 @@ export function unitRadius(u: { kind: number; sprite: string; name: string }): n
   return byName;
 }
 const MOB_R = new Map<string, number>(Object.values(MOBS).map((m) => [`${m.sprite}|${m.name}`, m.radius]));
+// усиленный со своим листом и именем (задача 140): радиус — как у обычного
+for (const m of Object.values(MOBS)) if (m.eliteSprite && m.eliteName) MOB_R.set(`${m.eliteSprite}|${m.eliteName}`, m.radius);
 
 /** Выбранная цель для панели умений: hud.ts передаёт в hotbar.frame только её место — радиус и сторону сцена кладёт сюда каждый кадр (GameScene.update). */
 export const selTarget: { r: number; friend: boolean; enemy: boolean } = { r: PLAYER_RADIUS, friend: false, enemy: false };

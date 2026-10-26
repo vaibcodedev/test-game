@@ -6,6 +6,7 @@
  *
  * Запуск (строго по одному; перед прогоном mkdir tools/out/scenario.lock, после — rmdir):
  *   $env:TEST_PORT="2862"; $env:VITE_TEST_PORT="5262"; npx tsx tests/mobs-ingame.ts [--only=boarfolk_axe,...]
+ *   партия 2 (зоны 40–100, данж): ... npx tsx tests/mobs-ingame.ts --batch=2 → tools/out/mobs-ingame2/
  * Выход — tools/out/mobs-ingame/: <моб>-idle|attack|death|elite.png, montage.png, report.json. Chrome: CHROME_PATH.
  */
 import fs from "node:fs";
@@ -19,12 +20,16 @@ import type { Player } from "../server/src/game/Player";
 import type { World } from "../server/src/game/World";
 import type { Mob } from "../server/src/game/Mob";
 
-const ALL = ["boarfolk_axe", "goblin_slinger", "zombie_digger", "wolffolk_chaser", "imp_caster", "hobgoblin_sword", "mummy_guard", "ogre_woodcutter", "troll_brute", "frogfolk_shaman"];
+// --batch=2 — партия 2 (зоны 40–100 и данж): по мобу из разных зон, снимки в tools/out/mobs-ingame2
+const BATCH2 = process.argv.includes("--batch=2");
+const ALL = BATCH2
+  ? ["gnoll_archer", "golem_sandstone", "orc_shield", "harpy_scavenger", "butcher_hook", "slime_plague", "canine_frost", "banshee_wail", "orc_thunder", "fallen_spirit_warrior", "fallen_spirit_hollow", "golem_magma", "cultist_pyro"]
+  : ["boarfolk_axe", "goblin_slinger", "zombie_digger", "wolffolk_chaser", "imp_caster", "hobgoblin_sword", "mummy_guard", "ogre_woodcutter", "troll_brute", "frogfolk_shaman"];
 const ONLY = new Set(process.argv.find((a) => a.startsWith("--only="))?.slice(7).split(",").filter(Boolean) ?? []);
 const MOBS = ALL.filter((m) => !ONLY.size || ONLY.has(m));
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5262;
 const VIEW = { width: 1280, height: 800 };
-const OUT = path.resolve("tools/out/mobs-ingame");
+const OUT = path.resolve(BATCH2 ? "tools/out/mobs-ingame2" : "tools/out/mobs-ingame");
 const SHOT = { w: 220, h: 150 };
 
 let page: Page;

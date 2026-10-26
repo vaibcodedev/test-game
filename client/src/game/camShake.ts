@@ -6,8 +6,9 @@
  * целые пиксели мира (1–2; матрица переводит их в целые пиксели холста), затухает к концу и меняется раз в STEP мс, а не каждый кадр.
  */
 import Phaser from "phaser";
+import { GP } from "../../../shared/gameplay";
 
-const STEP = 45;
+const STEP = GP.ui.camShakeStep;
 interface State { px: number; next: number }
 const state = new WeakMap<Phaser.Cameras.Scene2D.Camera, State>();
 

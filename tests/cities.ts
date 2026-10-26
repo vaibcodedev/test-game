@@ -6,7 +6,8 @@
  */
 import { BAGMEN } from "../shared/bags";
 import { BANKERS } from "../shared/bank";
-import { CITIES, CITY_CITIZEN_SPOTS, CITY_GATE_GUARDS, CITY_PATROLS, CITY_GATES, cityAtTile, teleportPrice, nearestCity, homeCity, isEnemyCapital, inEmberWalls } from "../shared/cities";
+import PATROLS_JSON from "../data/patrols.json";
+import { CITIES, CITY_GATE_GUARDS, CITY_PATROLS, cityAtTile, cityGates, layoutOf, CITY_ENTRANCES, teleportPrice, nearestCity, homeCity, isEnemyCapital, inEmberWalls } from "../shared/cities";
 import { MAP_SEED, MERCHANT_RANGE, TILE } from "../shared/constants";
 import { factionLandAt } from "../shared/factions";
 import { COOKS } from "../shared/food";
@@ -64,10 +65,21 @@ for (const c of CITIES) {
     for (const [dx, dy] of GATE_GUARDS) check("ember пост", tile(TOWN.x, TOWN.y, dx, dy));
     continue;
   }
-  for (const g of CITY_GATES) check(`${c.id} ворота ${g.id}`, tile(c.x, c.y, g.x, g.y));
-  for (const [dx, dy] of CITY_GATE_GUARDS) check(`${c.id} пост ${dx},${dy}`, tile(c.x, c.y, dx, dy));
-  for (const r of CITY_PATROLS) for (const [dx, dy] of r) check(`${c.id} патруль ${dx},${dy}`, pt(c.x, c.y, dx, dy));
-  for (const [dx, dy] of CITY_CITIZEN_SPOTS) check(`${c.id} горожане ${dx},${dy}`, tile(c.x, c.y, dx, dy));
+  const L = layoutOf(c);
+  for (const g of cityGates(L)) check(`${c.id} ворота ${g.id}`, tile(c.x, c.y, g.x, g.y));
+  if (!c.capital) {
+    for (const [dx, dy] of CITY_GATE_GUARDS) check(`${c.id} пост ${dx},${dy}`, tile(c.x, c.y, dx, dy));
+    for (const r of CITY_PATROLS) for (const [dx, dy] of r) check(`${c.id} патруль ${dx},${dy}`, pt(c.x, c.y, dx, dy));
+  }
+  for (const [dx, dy] of L.spots) check(`${c.id} горожане ${dx},${dy}`, tile(c.x, c.y, dx, dy));
+  // задача 145: у столиц — статуя в центре площади, перед храмом свободная клетка у двери; посты стражи (data/patrols.json) на проходимых клетках
+  if (c.capital && !c.fort) {
+    const kind = c.style === "solgard" ? "sun_statue" : "umb_statue";
+    if (!m.objects.some((o) => o.kind === kind && Math.abs(o.x / TILE - c.x) < 1.01 && Math.abs((o.y + 2) / TILE - 1 - c.y) < 1.01)) fail(`${c.id}: статуя не в центре площади`);
+    const e = CITY_ENTRANCES.find((q) => q.city === c.id);
+    if (!e) fail(`${c.id}: нет двери храма`); else check(`${c.id} перед храмом`, tile(e.front.x, e.front.y, 0, 0));
+    for (const [dx, dy] of PATROLS_JSON.cities.capital.posts as [number, number, string][]) check(`${c.id} пост стражи ${dx},${dy}`, tile(c.x, c.y, dx, dy));
+  }
   // стоять у торговца/повара/заказчика/камня: рядом с точкой NPC есть проходимая клетка
   for (const n of [c.merchant!, c.cook!, c.quest].filter((q) => q)) if (!near(n!)) fail(`${c.id} ${n!.id}: не подойти`);
 }

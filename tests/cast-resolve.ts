@@ -65,8 +65,9 @@ assert.equal(ok(resolveCast({ ...en, autoTarget: true, units: [u("z", 215, 0, tr
 assert.equal(ok(resolveCast(base({ selected: u("a3", 340, 0, false, { r: 10 }) }))).far, true, "союзник: дальность + радиус героя");
 assert.equal(ok(resolveCast(base({ selected: u("a3", 309, 0, false, { r: 10 }) }))).far, false);
 // радиус юнита — как World.radiusOf: моб и босс — из MOBS по спрайту и имени (элита — с приставкой), остальные — PLAYER_RADIUS
-assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem.sprite, name: MOBS.golem.name }), MOBS.golem.radius);
-assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem.sprite, name: `Свирепый ${MOBS.golem.name}` }), MOBS.golem.radius, "элита");
+assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem_lava.sprite, name: MOBS.golem_lava.name }), MOBS.golem_lava.radius);
+assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem_lava.sprite, name: `Свирепый ${MOBS.golem_lava.name}` }), MOBS.golem_lava.radius, "элита");
+assert.equal(unitRadius({ kind: 1, sprite: MOBS.golem_lava.eliteSprite!, name: MOBS.golem_lava.eliteName! }), MOBS.golem_lava.radius, "усиленный — свой лист и имя");
 assert.equal(unitRadius({ kind: 2, sprite: MOBS.chaos_knight.sprite, name: MOBS.chaos_knight.name }), 44, "рейд-босс");
 assert.equal(unitRadius({ kind: 0, sprite: "warrior", name: "Герой" }), PLAYER_RADIUS);
 assert.equal(unitRadius({ kind: 3, sprite: "wolf", name: "Волк" }), PLAYER_RADIUS, "питомец — как герой");

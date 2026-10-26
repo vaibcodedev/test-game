@@ -45,7 +45,8 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 /** Внутренность стен города для секторов: |dx| ≤ 13, |dy| ≤ 10 от центра. */
-const IN = { x: 13, y: 10 };
+/** Внутренность города для сеток секторов: на 2 клетки меньше полуразмера зоны (столица 145 — 19×14, форт — 13×10). */
+const inOf = (half: { x: number; y: number }) => ({ x: half.x - 2, y: half.y - 2 });
 
 /** Место со стражей: город фракции (секторы) или поселение; стража добивает мобов у ограды. */
 export interface SoldierSite {
@@ -392,10 +393,10 @@ export class Soldiers {
       };
       // посты у ворот (изнутри и снаружи) и вдоль стен: [dx, dy, "m" | "r"], смотрят наружу
       for (const [dx, dy, k] of cfg.posts as [number, number, string][]) {
-        put((c.x + dx) * TILE + 16, (c.y + dy) * TILE + 16, k === "r" ? "ranged" : "melee", Math.abs(dy) >= 9 ? (dy < 0 ? Dir.Up : Dir.Down) : dx < 0 ? Dir.Left : Dir.Right, true);
+        put((c.x + dx) * TILE + 16, (c.y + dy) * TILE + 16, k === "r" ? "ranged" : "melee", Math.abs(dy) >= c.half.y - 3 ? (dy < 0 ? Dir.Up : Dir.Down) : dx < 0 ? Dir.Left : Dir.Right, true);
       }
       for (let j = 0; j < cfg.rows; j++) for (let i = 0; i < cfg.cols; i++) {
-        const sx = -IN.x + ((i + 0.5) * 2 * IN.x) / cfg.cols, sy = -IN.y + ((j + 0.5) * 2 * IN.y) / cfg.rows;
+        const IN = inOf(c.half), sx = -IN.x + ((i + 0.5) * 2 * IN.x) / cfg.cols, sy = -IN.y + ((j + 0.5) * 2 * IN.y) / cfg.rows;
         for (let k = 0; k < cfg.perSector; k++) put((c.x + 0.5 + sx) * TILE, (c.y + 0.5 + sy) * TILE, k % 2 ? "ranged" : "melee", Dir.Down, false);
       }
     }
@@ -546,7 +547,7 @@ export class Soldiers {
   /** Сектор города по точке (пиксели): сетка cols×rows внутри стен, края — в крайние секторы. */
   sectorOf(site: SoldierSite, px: number, py: number): number {
     const c = site.city!;
-    const dx = px / TILE - (site.x + 0.5), dy = py / TILE - (site.y + 0.5);
+    const dx = px / TILE - (site.x + 0.5), dy = py / TILE - (site.y + 0.5), IN = inOf(site.half);
     const i = Math.max(0, Math.min(c.cols - 1, Math.floor(((dx + IN.x) * c.cols) / (2 * IN.x))));
     const j = Math.max(0, Math.min(c.rows - 1, Math.floor(((dy + IN.y) * c.rows) / (2 * IN.y))));
     return j * c.cols + i;

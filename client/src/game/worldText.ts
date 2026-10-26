@@ -6,6 +6,7 @@
  */
 import Phaser from "phaser";
 import { P } from "../../../shared/palette";
+import { GP } from "../../../shared/gameplay";
 
 export const FONT = '"Rubik", "Trebuchet MS", sans-serif';
 
@@ -85,7 +86,7 @@ export function placeText(t: Phaser.GameObjects.Text, x: number, y: number, ax =
 }
 
 /** Высота заглавных Rubik в долях кегля (OS/2 sCapHeight = 700 при 1000 на em). */
-const CAP_RATIO = 0.7;
+const CAP_RATIO = GP.ui.textCapRatio;
 
 /**
  * Базовая линия и верх заглавных букв в блоке текста — в пикселях мира от верха блока.

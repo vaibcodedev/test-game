@@ -8,6 +8,7 @@
  *   центр (|dx|≤10, |dy|≤7) — площадь с фонтаном и рынком.
  */
 import { MAP_AXIS } from "./constants";
+import { GP } from "./gameplay";
 
 /**
  * Центр Эмберхолла (задача 132, вариант А схемы): на оси симметрии карты, вверху — над Полями вечных битв.
@@ -31,7 +32,7 @@ export const isBeltFence = (dx: number, dy: number) => {
   return ay === BELT_HALF.y ? ax > 2 : ay > 2;
 };
 /** Стражи защищают окрестности: столько тайлов от стен. */
-export const GUARD_RANGE_TILES = 6;
+export const GUARD_RANGE_TILES = GP.ranges.guardTiles;
 
 export type Ground = "cobble" | "grass" | "dirt";
 

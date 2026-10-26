@@ -1,0 +1,16 @@
+{
+ "_doc": "Задача 142: арт маунтов, который пишет tools/gen/mounts/build.ts. factionArt — id маунтов (и моделей) с гербовым слоем: у всадника/зрителя Умбрата лист mounts/<модель>_umbrath.png, иконки mount_<id>_umbrath.png и mseal_<id>_umbrath.png.",
+ "factionArt": [
+  "war_horse",
+  "destrier",
+  "skel_horse",
+  "spider",
+  "lion",
+  "griffin",
+  "parade_horse",
+  "spiked_horse",
+  "war_rhino",
+  "war_elephant",
+  "white_gryphon"
+ ]
+}

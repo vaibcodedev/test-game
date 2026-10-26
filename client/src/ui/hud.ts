@@ -12,7 +12,7 @@ import { MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
 import { isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
-import { CITIES, CITY_WALL } from "../../../shared/cities";
+import { CITIES, layoutOf } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
 import { MOBS } from "../../../shared/mobs";
 import { Anim, UnitKind, type Aura, type ChatLine, type SelfState, type ToastMsg } from "../../../shared/protocol";
@@ -1429,7 +1429,8 @@ export class Hud {
           const ax = Math.abs(x - c.x), ay = Math.abs(y - c.y);
           const pal: Record<string, [string, string]> = { desert: ["#d8b878", "#c8884a"], snow: ["#9a6a3a", "#6a4a32"], solgard: ["#f0ead8", "#d8a830"], umbrath: ["#3a2c48", "#7a3ab0"] };
           const [wallC, roofC] = pal[c.style!] ?? pal.snow;
-          col = ax >= CITY_WALL.x || ay >= CITY_WALL.y ? wallC : roofC;
+          const W = layoutOf(c).wall;
+          col = ax >= W.x || ay >= W.y ? wallC : roofC;
         } else {
         // город: стены и башни — светлый камень, дома — черепица
         const dx = Math.abs(x - TOWN.x), dy = Math.abs(y - TOWN.y);

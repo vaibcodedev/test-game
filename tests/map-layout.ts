@@ -581,7 +581,7 @@ console.log("6. стены вдоль рек");
   const solT = m.objects.filter((o) => o.kind === "bf_wall_tower_sol").length, umbT = m.objects.filter((o) => o.kind === "bf_wall_tower_umb").length;
   const solC = m.objects.filter((o) => o.kind === "sol_tower").length, umbC = m.objects.filter((o) => o.kind === "umb_tower").length;
   check(solT === umbT && solC === umbC, `башен Сольгарда ${solT}+${solC}, Умбрата ${umbT}+${umbC} — должно быть поровну`);
-  check(solT === towers.length && umbT === towers.length && solC === 16, `башен вдоль реки ${solT} вместо ${towers.length}, городских ${solC} вместо 16 (8 у столицы и 8 у форта)`);
+  check(solT === towers.length && umbT === towers.length && solC === 22, `башен вдоль реки ${solT} вместо ${towers.length}, городских ${solC} вместо 22 (14 у столицы — задача 145 — и 8 у форта)`);
   // «через равные промежутки»: между соседними башнями не у ворот ~23,6 тайла
   const free = towers.filter((y) => !world.walls.gates.some((g) => Math.abs(y - g.y) <= 5));
   const gaps = free.slice(1).map((y, i) => y - free[i]).filter((g) => g < 40);

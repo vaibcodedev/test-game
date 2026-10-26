@@ -154,6 +154,9 @@ export class Effects {
 
   /** Число героев в кадре (ставит GameScene): в толпе чужие цифры мельче и прозрачнее. */
   heroes = 0;
+  private numLive = 0;
+  /** Живые цифры (центр старта и время): новая не ложится поверх соседней — сдвигается выше. */
+  private numPos: { x: number; y: number; at: number }[] = [];
   private numState = new Map<string, { at: number; n: number; side: number }>();
   private tickAcc = new Map<string, { v: number; x: number; y: number; col: string; dim: number }>();
 
@@ -161,9 +164,11 @@ export class Effects {
    * Всплывающая цифра. id — цель: последовательные цифры по одной цели идут со сдвигом по вертикали и в разные стороны;
    * small — тики и DoT (мельче, прозрачнее); dim — множитель прозрачности/размера для чужих цифр в толпе.
    */
-  number(x: number, y: number, text: string, color: string, big = false, mul = 1, id = "", small = false, dim = 1) {
+  number(x: number, y: number, text: string, color: string, big = false, mul = 1, id = "", small = false, dim = 1, inc = false) {
     let dx = 0, dy = 0, arc = 0;
     const now = this.scene.time.now;
+    // предел одновременных цифр: сверх него мелкие и чужие в толпе не рисуются, остальные — до 60
+    if (this.numLive >= (big ? 60 : small || dim < 1 ? 24 : 40)) return;
     if (id) {
       const st = this.numState.get(id) ?? { at: 0, n: 0, side: Math.random() < 0.5 ? -1 : 1 };
       st.n = now - st.at < 700 ? st.n + 1 : 0;
@@ -172,24 +177,33 @@ export class Effects {
       this.numState.set(id, st);
       const wide = mul > 1 ? 3 : 1; // у рейд-босса большая цель: разброс шире
       dy = -(st.n % 5) * 8 * (wide > 1 ? 1.6 : 1);
-      dx = st.side * (6 + Math.random() * 10) * wide;
-      arc = st.side * (4 + Math.random() * 8) * wide;
+      // исходящие: старт на уровне полоски и сразу в сторону — середина цели (полоска, ник) не закрыта; входящие по герою: вправо-вниз от тела, другим цветом
+      dx = inc ? 14 + Math.random() * 8 : st.side * (16 + Math.random() * 12) * wide;
+      arc = inc ? 10 : st.side * (6 + Math.random() * 8) * wide;
+      if (inc) dy += 20;
       if (this.numState.size > 200) for (const [k, v] of this.numState) if (now - v.at > 2000) this.numState.delete(k);
     } else dx = (Math.random() - 0.5) * 24;
-    const size = small ? 7 : big ? 11 : 8;
-    const base = (big ? (mul > 1 ? 1.15 : 1.4) * mul : mul) * (dim < 1 ? 0.8 : 1);
+    const size = small ? 7 : big ? 10 : 8; // крит ≤ 1,25× обычной
+    const base = mul * (dim < 1 ? 0.8 : 1);
     const a0 = (small ? 0.65 : 1) * dim;
     // цифру растягивают в base раз: рисуем в base раз чётче, и в покое 1 тексель = 1 пиксель холста
-    const t = worldText(this.scene, 0, 0, text, "plain", { fontSize: `${size}px`, color, stroke: "#14080c", strokeThickness: small ? 2 : 3, fontStyle: big ? "bold" : "600" }, base).setDepth(DEPTH.top);
-    const rise = small ? 18 : big ? 34 : 26;
+    const t = worldText(this.scene, 0, 0, text, "plain", { fontSize: `${size}px`, color, stroke: big ? "#2a1608" : "#14080c", strokeThickness: small ? 2 : 3, fontStyle: big ? "bold" : "600" }, base).setDepth(DEPTH.top);
+    const rise = inc ? 14 : small ? 18 : big ? 30 : 24;
+    this.numLive++;
+    // старт выше ника и полоски (цифра в сторону, но никогда не на них); у соседних цифр — выше, пока не освободится место
+    let sy = y + dy - (inc ? 0 : 22);
+    const sx = x + dx;
+    this.numPos = this.numPos.filter((q) => now - q.at < 700);
+    for (let n = 0; n < 5 && this.numPos.some((q) => Math.abs(q.x - sx) < 22 && Math.abs(q.y - sy) < 9); n++) sy -= 9;
+    this.numPos.push({ x: sx, y: sy, at: now });
     // твины двигают центр (x, y), масштаб (s) и прозрачность (al) в объекте a, а текст каждый кадр ставится в целые пиксели:
     // появление — масштаб от 0.7 до 1; дуга — по x плавно уходит в сторону, по y вверх (крупные цифры выше, чтобы не закрывать цель)
-    const a = { x: x + dx, y: y + dy, s: base * 0.7, al: a0 };
+    const a = { x: sx, y: sy, s: base * (big ? 1.3 : 0.7), al: a0 };
     const put = () => { if (t.scene) placeText(t, a.x, a.y, 0.5, 0.5, a.s).setAlpha(a.al); };
     put();
-    this.scene.tweens.add({ targets: a, s: base, duration: 140, onUpdate: put });
+    this.scene.tweens.add({ targets: a, s: base, duration: big ? 170 : 140, ease: big ? "Back.easeOut" : "Linear", onUpdate: put }); // крит: короткий «поп» масштабом
     this.scene.tweens.add({ targets: a, x: a.x + arc, duration: 900, ease: "Sine.easeOut", delay: 100, onUpdate: put });
-    this.scene.tweens.add({ targets: a, y: a.y - rise, al: 0, duration: 900, ease: "Cubic.easeOut", delay: 120, onUpdate: put, onComplete: () => t.destroy() });
+    this.scene.tweens.add({ targets: a, y: a.y - rise, al: 0, duration: 900, ease: "Cubic.easeOut", delay: 120, onUpdate: put, onComplete: () => { t.destroy(); this.numLive--; } });
   }
 
   /** Мелкие тики по одной цели складываются в одну цифру раз в ~0,3 с. */
@@ -197,10 +211,10 @@ export class Effects {
     const acc = this.tickAcc.get(id);
     if (acc) { acc.v += v; return; }
     this.tickAcc.set(id, { v, x, y, col, dim });
-    this.scene.time.delayedCall(300, () => {
+    this.scene.time.delayedCall(900, () => {
       const a = this.tickAcc.get(id);
       this.tickAcc.delete(id);
-      if (a) this.number(a.x, a.y, String(a.v), a.col, false, 1, id, true, a.dim);
+      if (a) this.number(a.x, a.y, String(a.v), a.col, false, 1, id, true, a.dim, id === this.selfId);
     });
   }
 
@@ -236,7 +250,7 @@ export class Effects {
         const col = mine ? "#ff6a5a" : f.crit ? P.numGold : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
         const small = !f.crit && !raidBoss && f.v < Math.max(4, 0.025 * u.u.maxHp);
         if (small || crowdy) this.tick(f.id, u.x, y, f.v, col, dim);
-        else this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1, f.id, false, dim);
+        else this.number(u.x, y, f.crit ? `${f.v}!` : String(f.v), col, f.crit, raidBoss ? (f.crit ? 1.4 : 1.2) : 1, f.id, false, dim, mine);
         if (f.k && f.k !== "phys") this.burst(u.x, u.y - 12, "fx_spark", KIND_COLOR[f.k], 6, 50, 350);
         else this.burst(u.x, u.y - 12, "fx_spark", 0xffffff, 3, 40, 200, 0, 0.6);
         break;

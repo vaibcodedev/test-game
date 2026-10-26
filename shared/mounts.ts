@@ -1,6 +1,7 @@
 /** Маунты из /data/mounts.json: скорость по ярусу, источник, печати, детали и сборка у конюшего (задачи 118, 142). Вид рисует tools/gen/mounts*. */
 import data from "../data/mounts.json";
 import { RARITY_COLORS } from "./items";
+import { mountIconFor, nameFor, descFor } from "./mountArt";
 
 export type MountTier = "common" | "uncommon" | "rare" | "epic" | "legendary";
 export type MountSource = "start" | "vendor" | "rep" | "boss" | "raid" | "arena";
@@ -25,13 +26,26 @@ export interface MountDef {
   arena?: { wins: number };
   /** Боевые в гербовой броне: порог репутации и списываемые Знаки Полей (золото — price). */
   rep?: { rep: number; marks: number };
+  /** Гербовые: имя и описание по фракции (задача 142). */
+  names?: Record<string, { name?: string; desc?: string }>;
   /** Сборка у конюшего: детали (id из PARTS → число) и золото. */
   craft?: { parts: Record<string, number>; gold: number; arenaRating?: number };
 }
 export interface MountPart { id: string; name: string; desc: string; icon: string; tier: MountTier; price: number; bound?: boolean; drop?: { minLevel: number; chance: number }; raid?: string; dropChance?: number }
 
 export const MOUNT_SPEEDS = data.speeds as Record<MountTier, number>;
-export const MOUNTS: Record<string, MountDef> = Object.fromEntries(Object.entries(data.mounts).map(([id, m]) => [id, { ...(m as object), id, speed: MOUNT_SPEEDS[(m as { tier: MountTier }).tier] } as MountDef]));
+export const MOUNTS: Record<string, MountDef> = Object.fromEntries(Object.entries(data.mounts).map(([id, m]) => [id, withFactionNames({ ...(m as object), id, speed: MOUNT_SPEEDS[(m as { tier: MountTier }).tier] } as MountDef)]));
+/** Гербовые маунты (задача 142): имя и описание по фракции зрителя (names.solgard / names.umbrath); на сервере — общие,
+ *  в сообщениях игроку — mountName(id, p.faction). */
+function withFactionNames(d: MountDef): MountDef {
+  if (!d.names) return d;
+  const base = { name: d.name, desc: d.desc, names: d.names };
+  Object.defineProperty(d, "name", { get: () => nameFor(base), enumerable: true });
+  Object.defineProperty(d, "desc", { get: () => descFor(base), enumerable: true });
+  return d;
+}
+/** Имя маунта для героя фракции faction (сообщения сервера). */
+export const mountName = (id: string, faction: string) => (MOUNTS[id] ? nameFor({ name: (data.mounts as Record<string, { name: string }>)[id].name, desc: "", names: MOUNTS[id].names }, faction) : id);
 export const MOUNT_IDS = Object.keys(MOUNTS);
 export const MOUNT_CAST_MS = data.castMs;
 export const MOUNT_TIERS = data.tiers as Record<MountTier, string>;
@@ -43,7 +57,8 @@ export const MOUNT_CURRENCY = data.currency;
 /** Печати гладиатора за бои арены (data arena). */
 export const GLADIATOR = data.arena;
 export const GLADIATOR_PART = "gladiator";
-export const mountSprite = (id: string) => `mount_${id}`;
+/** Иконка маунта: у гербовых — по фракции зрителя (shared/mountArt.ts). */
+export const mountSprite = (id: string) => mountIconFor(id);
 /** Цвет яруса для рамок и подписей: четыре яруса совпадают с RARITY_COLORS предметов,
  *  «необычный» есть только у маунтов — у него свой зелёный. */
 export const TIER_COLOR: Record<MountTier, string> = {
@@ -169,6 +184,8 @@ export interface MountMeta {
   run?: number;
   idle?: number;
   views?: number;
+  /** Путь земли за цикл бега, px: скорость показа бега = run · скорость / stride (копыта не скользят). */
+  stride?: number;
   /** Модель (файл листа); у разных маунтов может быть одна. */
   sheet?: string;
   /** Гербовая модель: у всадника Умбрата — лист <sheet>_umbrath. */

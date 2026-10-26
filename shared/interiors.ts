@@ -7,6 +7,7 @@
 import data from "../data/interiors.json";
 import { CITY_ENTRANCES } from "./cities";
 import { MAP_W, TILE } from "./constants";
+import { GP } from "./gameplay";
 
 /** Флаги клеток — как CELL_BLOCK и CELL_WALL в shared/map.ts (этот модуль импортирует map.ts, обратный импорт дал бы цикл). */
 const BLOCK = 1, WALL = 2;
@@ -96,6 +97,6 @@ export function interiorGrid(r: Interior) {
 }
 
 /** Дальность нажатия двери (как у NPC), px. */
-export const DOOR_RANGE = 110;
+export const DOOR_RANGE = GP.ranges.door;
 /** Затемнение перехода: столько сервер ждёт перед переносом героя, мс. */
-export const DOOR_FADE_MS = 260;
+export const DOOR_FADE_MS = GP.timers.doorFadeMs;

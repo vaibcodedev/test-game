@@ -4,7 +4,7 @@
  */
 import { MERCHANT_RANGE } from "../../../shared/constants";
 import { makeItem, Rarity, type Item } from "../../../shared/items";
-import { canRide, countBase, craftBound, MOUNTS, MOUNT_EARN, PARTS, partBase, sealBase, sealBoundBySource, sealMount, stableOffer, type MountTier } from "../../../shared/mounts";
+import { canRide, countBase, craftBound, MOUNTS, MOUNT_EARN, mountName, SEAL, PARTS, partBase, sealBase, sealBoundBySource, sealMount, stableOffer, type MountTier } from "../../../shared/mounts";
 import { serviceRefusal } from "../../../shared/npcs";
 import { STABLEMASTERS } from "../../../shared/stables";
 import { addItem } from "./inventory";
@@ -12,6 +12,7 @@ import type { Player } from "./Player";
 import type { World } from "./World";
 
 const RAR: Record<MountTier, Rarity> = { common: Rarity.Common, uncommon: Rarity.Common, rare: Rarity.Rare, epic: Rarity.Epic, legendary: Rarity.Legendary };
+const SEAL_NAME = SEAL.name;
 const err = (p: Player, text: string) => p.send("toast", { text, kind: "error" });
 
 export function makeSeal(mount: string, bound = false): Item {
@@ -38,7 +39,7 @@ export function giveItem(p: Player, it: Item) {
 export function giveSeal(p: Player, mount: string, bound = sealBoundBySource(MOUNTS[mount])) {
   const it = makeSeal(mount, bound);
   giveItem(p, it);
-  p.send("toast", { text: `Получено: ${it.name}`, kind: "loot" });
+  p.send("toast", { text: `Получено: ${SEAL_NAME}: ${mountName(mount, p.faction)}`, kind: "loot" }); // имя по фракции героя (задача 142)
 }
 
 /** Выдать маунт в коллекцию (без дублей); первый — сразу выбран. */
@@ -50,7 +51,7 @@ export function awardMount(p: Player, id: string): boolean {
   own.push(id);
   if (!p.save.mount) p.save.mount = id;
   p.selfDirty = true;
-  p.send("toast", { text: `Получен маунт: ${d.name}`, kind: "loot" });
+  p.send("toast", { text: `Получен маунт: ${mountName(id, p.faction)}`, kind: "loot" });
   return true;
 }
 
@@ -60,9 +61,9 @@ export function learnSeal(p: Player, index: number) {
   const id = it && sealMount(it.base);
   if (!it || !id) return;
   const d = MOUNTS[id];
-  if (!canRide(d, p.faction)) return err(p, `${d.name}: только для другой фракции`);
-  if (p.level < d.level) return err(p, `${d.name}: нужен ${d.level} уровень`);
-  if (p.save.mounts?.includes(id)) return err(p, `${d.name} уже в коллекции — печать можно продать или передать`);
+  if (!canRide(d, p.faction)) return err(p, `${mountName(d.id, p.faction)}: только для другой фракции`);
+  if (p.level < d.level) return err(p, `${mountName(d.id, p.faction)}: нужен ${d.level} уровень`);
+  if (p.save.mounts?.includes(id)) return err(p, `${mountName(d.id, p.faction)} уже в коллекции — печать можно продать или передать`);
   p.save.inventory[index] = null;
   awardMount(p, id);
   p.save.mount = id;
@@ -93,7 +94,7 @@ export function buySeal(p: Player, id: string) {
   if (!o.buy) return err(p, "Этот маунт не продаётся");
   if (o.owned) return err(p, "Маунт уже у вас");
   if (o.sealInBag) return err(p, "Печать этого маунта уже в сумке — изучите её");
-  if (!o.canBuy) return err(p, `${d.name}: не хватает — ${o.missBuy.join(", ")}`);
+  if (!o.canBuy) return err(p, `${mountName(d.id, p.faction)}: не хватает — ${o.missBuy.join(", ")}`);
   if (!p.save.inventory.includes(null)) return err(p, "Сумка полна");
   p.save.gold -= d.price;
   if (d.rep) p.save.marks = (p.save.marks ?? 0) - d.rep.marks;
@@ -108,7 +109,7 @@ export function stableCraft(w: World, p: Player, id: unknown, arenaRating = 0) {
   const o = stableOffer(d, stateOf(p, arenaRating));
   if (!o.craft) return err(p, "Этот маунт не собирается");
   if (o.owned) return err(p, "Маунт уже у вас");
-  if (!o.canCraft) return err(p, `${d.name}: не хватает — ${o.missCraft.join(", ")}`);
+  if (!o.canCraft) return err(p, `${mountName(d.id, p.faction)}: не хватает — ${o.missCraft.join(", ")}`);
   const backup = JSON.stringify(p.save.inventory);
   for (const [part, n] of Object.entries(d.craft!.parts)) takeBase(p, partBase(part), n);
   if (!p.save.inventory.includes(null)) { p.save.inventory = JSON.parse(backup); return err(p, "Сумка полна"); }

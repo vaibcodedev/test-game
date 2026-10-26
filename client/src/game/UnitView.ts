@@ -7,7 +7,8 @@ import { emptyBox, hitUnit, silhouette, Trail, TRAIL_MS, unionBox, type Box, typ
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
 import { nightLevel } from "../../../shared/daynight";
-import { mountTex, type MountMeta } from "../../../shared/mounts";
+import { MOUNTS, mountTex, type MountMeta } from "../../../shared/mounts";
+import { PLAYER_SPEED } from "../../../shared/constants";
 import { FOE_COLOR, factionColor } from "../../../shared/factions";
 import { P } from "../../../shared/palette";
 import { GearLayers, parseGear } from "./GearLayers";
@@ -15,6 +16,7 @@ import { LEGENDARIES } from "../../../shared/legendary";
 import { capBand, placeText, worldText } from "./worldText";
 import { UnitAuras, afx, countHero } from "./auraFx";
 import { zbDef, zbFx, zbViews } from "./zoneBoss";
+import { drawPlate, newPlate, resetPlate } from "./nameplate";
 import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
@@ -133,10 +135,8 @@ export class UnitView {
   private lastAnim = -1;
   private lastRow = -1;
   private lastHp = -1;
-  /** Полоска здоровья с анимацией: barK плавно догоняет здоровье, trailK — светлый «след» потерянного здоровья, тает с задержкой. */
-  private barK = -1;
-  private trailK = -1;
-  private trailAt = 0;
+  /** Полоска здоровья с анимацией (game/nameplate.ts): плавное убывание, след потерянного, вспышка, лечение. */
+  private hpPlate = newPlate();
   private lastLabel = "";
   private attacking = false;
   private flashUntil = 0;
@@ -351,7 +351,7 @@ export class UnitView {
       this.scene.tweens.add({ targets: this.sprite, alpha: 1, duration: 500 });
       this.lastAnim = -1;
       this.lastHp = -1;
-      this.barK = this.trailK = -1;
+      resetPlate(this.hpPlate);
     }
 
     const row = rowOf(u.dir);
@@ -403,6 +403,9 @@ export class UnitView {
         mf.play(`${mtex}-${kind}-${mrow + views}`);
         if (t) { ms.anims.setProgress(t); mf.anims.setProgress(t); }
       }
+      // бег нового листа: скорость показа под скорость маунта — за цикл корпус проходит stride px, копыта не скользят
+      const ts = moving && mmeta.stride ? Math.max(12, Math.min(48, ((mmeta.run ?? 20) * PLAYER_SPEED * (MOUNTS[u.mount]?.speed ?? 1.6)) / mmeta.stride)) / 30 : 1;
+      if (ms.anims.timeScale !== ts) { ms.anims.timeScale = ts; mf.anims.timeScale = ts; }
       const col = (Number(ms.frame.name) || 0) % mmeta.cols;
       const seat = mmeta.seat[mrow]?.[col] ?? [0, -30];
       riderDx = Math.round(seat[0]) * (flip ? -1 : 1);
@@ -563,26 +566,16 @@ export class UnitView {
     const mobHidden = (u.kind === UnitKind.Mob || u.kind === UnitKind.Pet) && u.hp >= u.maxHp && !this.selected && !hov;
     const showBar = ((this.isSelf ? overlay.selfBars : overlay.bars) || hov) && !this.dead && !this.npc && !mobHidden && (u.kind !== UnitKind.Player || u.hp < u.maxHp || this.isSelf || hov);
     let barX = 0, barY = 0, barW = 0;
-    if (!showBar) this.bar.clear();
+    if (!showBar) { if (this.hpPlate.sig) { this.bar.clear(); this.hpPlate.sig = ""; this.hpPlate.barK = -1; } }
     else {
       this.lastHp = u.hp;
       const w = (this.frame > 32 ? 40 : 20) + (u.elite ? 8 : 0);
       const bx = Math.round(lx - w / 2), by = Math.round(top - 2);
       barX = bx; barY = by; barW = w;
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
-      const now = this.scene.time.now, dt = Math.min(0.1, this.scene.game.loop.delta / 1000);
-      if (this.barK < 0) this.barK = this.trailK = k;
-      if (k < this.trailK && k < this.barK) this.trailAt = now + 350; // след держится 0,35 с, потом тает
-      this.barK += (k - this.barK) * Math.min(1, dt * 14);
-      if (k >= this.trailK) this.trailK = k;
-      else if (now > this.trailAt) this.trailK = Math.max(k, this.trailK - dt * 0.9);
-      this.bar.clear();
-      this.bar.fillStyle(u.elite ? 0xf0c040 : 0x0a0608, 0.55).fillRect(bx - 1, by - 1, w + 2, 4);
-      this.bar.fillStyle(0x0a0608, 0.9).fillRect(bx, by, w, 2);
       const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena" && net.kind !== "raid";
       const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
-      if (this.trailK > this.barK) this.bar.fillStyle(0xfff0d0, 0.85).fillRect(bx + Math.round(w * this.barK), by, Math.round(w * this.trailK) - Math.round(w * this.barK), 2);
-      this.bar.fillStyle(col, 1).fillRect(bx, by, Math.round(w * this.barK), 2);
+      drawPlate(this.bar, this.hpPlate, { x: bx + w / 2, y: by, w, k, col, elite: !!u.elite, boss: u.kind === UnitKind.Boss }, this.scene.time.now, Math.min(0.1, this.scene.game.loop.delta / 1000));
     }
     this.placeZones(mounted, showBar, barX, barY, barW);
 

@@ -4,7 +4,7 @@ import type { Rarity, Slot } from "./items";
 import { GP } from "./gameplay";
 
 /** Героев на аккаунт. */
-export const MAX_CHARS = 6;
+export const MAX_CHARS = GP.player.maxChars;
 /** Выход в бою: отсчёт, сбрасывается полученным уроном. */
 export const LOGOUT_COMBAT_MS = GP.timers.logoutCombatMs;
 /** Код закрытия соединения после разрешённого выхода. */

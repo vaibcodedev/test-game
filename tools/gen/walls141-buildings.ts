@@ -10,6 +10,7 @@ import {
   masonryTile, mix, mossPatch, patch, pnoise, shade, tex, tint, tone, withA,
 } from "./walls141-lib";
 import { archWindow } from "./walls141-walls";
+import { shadowBox } from "./shadow";
 
 export type RoofKind = "tile" | "slate" | "shingle" | "thatch";
 export type WallKind = "stone" | "timber" | "plank";
@@ -259,7 +260,7 @@ function sideWall(c: PC, look: Look, kind: WallKind, x0: number, D: number, K: n
 const SHADOW_C: RGBA = [12, 8, 18, 255];
 /** Тень на земле: от здания вправо-вниз (свет сверху слева). */
 function dropShadow(c: PC, x0: number, x1: number, D: number, K: number, yb: number) {
-  c.poly([[x0 + 2, yb], [x1 + D, yb - K], [x1 + D + 9, yb - K + 4], [x1 + D + 9, yb + 2], [x1 + 4, yb + 5], [x0 + 6, yb + 5]], withA(SHADOW_C, 105));
+  shadowBox(c, x0, x1, yb, [D, -K], 90);
 }
 
 /** Крыльцо: две ступени перед дверью и (canopy) навес на кронштейнах. */
@@ -580,7 +581,7 @@ export function umbZiggurat(look: Look, wear: Wear = "clean", seed = 1): PC {
   const yb = H - 9, D = 14, K = 8;
   const face = masonryTile(look, "gothic", seed + 3), big = masonryTile(look, "block", seed + 4);
   // тень на земле
-  c.poly([[8, yb], [104 + D, yb - K], [104 + D + 10, yb - K + 4], [104 + D + 10, yb + 2], [100, yb + 5], [10, yb + 5]], withA(SHADOW_C, 110));
+  shadowBox(c, 8, 104, yb, [D, -K], 150);
   const tiers = [[6, 104, 40], [18, 92, 34], [30, 80, 30], [40, 70, 26]] as const;
   let y = yb;
   tiers.forEach(([x0, x1, h], ti) => {

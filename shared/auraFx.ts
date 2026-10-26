@@ -1,3 +1,4 @@
+import { GP } from "./gameplay";
 /**
  * Обозначения бафов и дебафов на юните (задача 129): общий формат поля Unit.fx для сервера и клиента.
  * Строка, по символу на эффект: код = FX_BASE + индекс ключа + FX_STACK × стаки (до FX_MAX_STACKS). Индекс ключа — место в списке
@@ -5,9 +6,9 @@
  * который пишет tools/gen/aura-fx.ts). Символы идут по возрастанию индекса: один и тот же набор — всегда одна и та же строка, поэтому
  * Colyseus шлёт поле только при смене набора или стаков. Здесь нет ни таблицы, ни JSON: модуль лёгкий, клиент его не раздувает.
  */
-export const FX_BASE = 32;
-export const FX_STACK = 128;
-export const FX_MAX_STACKS = 7;
+export const FX_BASE = GP.fx.base;
+export const FX_STACK = GP.fx.stack;
+export const FX_MAX_STACKS = GP.fx.maxStacks;
 /** Индексов ключей помещается столько (7 бит под индекс). */
 export const FX_MAX_KEYS = FX_STACK;
 

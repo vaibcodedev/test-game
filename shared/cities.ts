@@ -54,14 +54,14 @@ export const STYLE = {
     wall_h: "sol_wall_h", wall_v: "sol_wall_v", tower: "sol_tower", gate: "sol_gate", houses: ["sol_house", "sol_temple"],
     stalls: ["stall_gold", "stall_blue"], light: "lamp", tree: "v_basic_oak_small",
     standard: "std-home-sol", wallBanner: "std-pennant-sol", gateBanner: "std-drape-sol",
-    extra: [["sun_statue", -9, 5]] as [string, number, number][],
+    extra: [["sun_statue", 4, 3]] as [string, number, number][], // статуя героя 2×2 на площади справа от камня перемещения (задача 141)
   },
   umbrath: {
     wall_h: "umb_wall_h", wall_v: "umb_wall_v", tower: "umb_tower", gate: "umb_gate", houses: ["umb_house", "umb_crypt"],
     stalls: ["stall_purple", "stall_purple"], light: "soul_brazier", tree: "v_graveyard_dead_tree_a",
     standard: "std-home-umb", wallBanner: "std-pennant-umb", gateBanner: "std-drape-umb",
     // погост Мортхейма на свободной земле у стен (не на улицах, кольце и площади): надгробия, кресты, плиты, статуи (Graveyard)
-    extra: [["bone_pile", -9, 5], ["dark_obelisk", 9, -4],
+    extra: [["umb_statue", 4, 3], ["dark_obelisk", 9, -4],
       ["v_graveyard_cross_a", 8, 2], ["v_graveyard_stone_b", 10, 2], ["v_graveyard_slab_a", 9, 4], ["v_graveyard_statue_a", 11, 3],
       ["v_graveyard_statue_b", -8, 3], ["v_graveyard_cross_c", -10, 2], ["v_graveyard_slab_b", -9, -3], ["v_graveyard_stele_a", -11, -4],
       ["v_graveyard_stone_c", 7, -2], ["v_graveyard_cross_b", 11, -4]] as [string, number, number][],
@@ -143,6 +143,97 @@ const SMITH_AT: [number, number] = [10, -5];
 /** Убранство только столиц: [вид, dx, dy]. */
 export const CAPITAL_DECOR: [string, number, number][] = [["anvil", 11, -5]];
 
+// ---------- столицы (задача 145): 41×31 в стенах, круглая площадь со статуей короля в центре ----------
+/**
+ * Аурелион — «Площадь Солнца», Мортхейм — «Курганная площадь» (выбор пользователя, tools/out/cities145/*-a.png).
+ * Стены dx = ±20, dy = ±15, ворота север и юг; проспект |dx| ≤ 1 от ворот к площади, поперечная улица |dy| ≤ 1, кольцо вдоль стен dx = ±18 / dy = ±13.
+ * Площадь — круг радиусом 7,6 вокруг статуи 2×2 в центре (клетки −1…0), по краю — дорожка-кольцо; к северу — храм Солнца / зиккурат на оси
+ * (лицом к статуе), вокруг него — двор |dx| ≤ 4, проспект обходит храм. Дома — северный ряд (4) и южный (6), лавки — по краям площади на поперечной улице.
+ */
+export const CAP_WALL = { x: 20, y: 15 };
+export const CAP_HALF = { x: 21, y: 16 };
+const capDisc = (dx: number, dy: number) => Math.hypot(dx + 0.5, dy + 0.5);
+function capGround(dx: number, dy: number): CityGround {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ax <= 1 && ay >= CAP_WALL.y) return "road";
+  if (ax >= CAP_WALL.x || ay >= CAP_WALL.y) return "plain";
+  const d = capDisc(dx, dy);
+  if (d <= 7.6) return "road";
+  if (d <= 8.6) return "path";
+  if (ax <= 1 || ay <= 1) return "road";
+  if (dy <= -8 && dy >= -14 && ax <= 4) return "road"; // двор храма, проспект обходит храм
+  if (ax === 18 || ay === 13) return "path";
+  return "plain";
+}
+const CAP_TOWERS: [number, number][] = [
+  [-21, -15], [20, -15], [-21, 16], [20, 16],
+  [-3, -15], [2, -15], [-3, 16], [2, 16],
+  [-12, -15], [11, -15], [-12, 16], [11, 16], [-21, 1], [20, 1],
+];
+/** Дома 4×3: северный ряд (лицом на юг, к площади) и южный (лицом к кольцу у стены). */
+const CAP_HOUSES: [number, number][] = [[-17, -9], [-11, -9], [6, -9], [12, -9], [-17, 12], [-12, 12], [-7, 12], [3, 12], [8, 12], [13, 12]];
+/** Храм Солнца / зиккурат: 4×3 на оси к северу от статуи, дверь смотрит на статую. */
+const CAP_TEMPLE: [number, number] = [-2, -9];
+const CAP_STALLS: [number, number][] = [[-11, -3], [9, -3]];
+const CAP_STATUE: [number, number] = [-1, 0];
+const CAP_COMMON: [string, number, number][] = [
+  ["barrel", -12, -3], ["crate", -9, -3], ["barrel", 8, -3], ["crate", 11, -3], ["well", -15, 4],
+  ["~light", -3, -7], ["~light", 2, -7], ["~light", -9, 2], ["~light", 8, 2], ["~light", -3, 8], ["~light", 2, 8], ["~light", -3, 12], ["~light", 2, 12],
+  ["~tree", -15, -5], ["~tree", 14, -5], ["~tree", -14, 7], ["~tree", 14, 7], ["~tree", -9, 8], ["~tree", 9, 8],
+];
+const CAP_EXTRA: Record<CityStyle, [string, number, number][]> = {
+  // фонтаны по четырём сторонам площади, сады в четвертях
+  solgard: [["sun_statue", ...CAP_STATUE], ["fountain", -6, -4], ["fountain", 5, -4], ["fountain", -6, 7], ["fountain", 5, 7],
+    ["v_basic_oak", -16, -5], ["v_basic_oak", 15, 6], ["v_basic_bush_yellow", -13, 6], ["v_basic_bush_blue", 12, -5], ["v_basic_bush_red", -12, -6], ["v_basic_bush_pink", 12, 6]],
+  // кольцо из 8 жаровен вокруг кургана, сады костей в четвертях, обелиск
+  umbrath: [["umb_statue", ...CAP_STATUE], ["soul_brazier", 5, 0], ["soul_brazier", 3, 3], ["soul_brazier", 0, 5], ["soul_brazier", -4, 3], ["soul_brazier", -6, 0],
+    ["soul_brazier", -4, -4], ["soul_brazier", 0, -6], ["soul_brazier", 3, -4], ["dark_obelisk", 15, -6], ["bone_pile", -12, 6],
+    ["v_graveyard_cross_a", 12, 4], ["v_graveyard_stone_b", 14, 4], ["v_graveyard_slab_a", 13, 6], ["v_graveyard_statue_a", 16, 5],
+    ["v_graveyard_statue_b", -13, 4], ["v_graveyard_cross_c", -16, 4], ["v_graveyard_slab_b", -14, -4], ["v_graveyard_stele_a", -16, -5],
+    ["v_graveyard_stone_c", 12, -4], ["v_graveyard_cross_b", 13, -6]],
+};
+const CAP_ENTRANCE: [number, number][] = [[-5, -CAP_WALL.y - 2], [5, -CAP_WALL.y - 2], [-5, CAP_WALL.y + 2], [5, CAP_WALL.y + 2]];
+const CAP_SPOTS: [number, number][] = [[-9, -5], [9, -5], [-8, 5], [8, 5], [0, 10], [0, -12], [-15, 6], [15, -7]];
+
+/** Разметка города: столица фракции — крупная (CAP_*), форт — прежняя малая (CITY_*). */
+export interface CityLayout {
+  wall: { x: number; y: number }; half: { x: number; y: number };
+  ground(dx: number, dy: number): CityGround;
+  towers: [number, number][]; corner: [number, number][];
+  houses: [number, number][]; temple: [number, number] | null; stalls: [number, number][];
+  decor(style: CityStyle): [string, number, number][];
+  spots: [number, number][];
+  stone: [number, number]; merchant: [number, number]; cook: [number, number]; quest: [number, number]; rumor: [number, number];
+  banker: [number, number]; bagman: [number, number]; smith: [number, number]; anvil: [string, number, number][];
+  /** Клетка возрождения от центра. */
+  spawn: [number, number];
+}
+const CAP_LAYOUT: CityLayout = {
+  wall: CAP_WALL, half: CAP_HALF, ground: capGround, towers: CAP_TOWERS, corner: CAP_TOWERS.slice(0, 4),
+  houses: CAP_HOUSES, temple: CAP_TEMPLE, stalls: CAP_STALLS,
+  decor: (style) => {
+    const s = STYLE[style];
+    // у Мортхейма жаровни — только кольцо у кургана; улицы освещают кладбищенские фонари
+    const light = style === "umbrath" ? "v_graveyard_lamp_a" : s.light;
+    return [...CAP_COMMON.map(([k, x, y]) => [k === "~light" ? light : k === "~tree" ? s.tree : k, x, y] as [string, number, number]),
+      ...CAP_EXTRA[style].map((e) => [...e] as [string, number, number]), ...CAP_ENTRANCE.map(([x, y]) => [s.standard, x, y] as [string, number, number])];
+  },
+  spots: CAP_SPOTS, stone: [4, 2], merchant: [-10, -2], cook: [10, -2], quest: [-10, 3], rumor: [10, 3],
+  banker: [-15, -7], bagman: [-9, -7], smith: [13, -7], anvil: [["anvil", 14, -7]], spawn: [0, 3],
+};
+const FORT_LAYOUT: CityLayout = {
+  wall: CITY_WALL, half: CITY_HALF, ground: (dx, dy) => cityGround("solgard", dx, dy), towers: CITY_TOWERS, corner: CITY_TOWERS.slice(0, 4),
+  houses: CITY_HOUSES, temple: null, stalls: CITY_STALLS, decor: cityDecor, spots: CITY_CITIZEN_SPOTS,
+  stone: STONE_AT, merchant: MERCHANT_AT, cook: COOK_AT, quest: QUEST_AT, rumor: CITY_RUMOR_AT, banker: BANKER_AT, bagman: BAGMAN_AT, smith: SMITH_AT, anvil: CAPITAL_DECOR,
+  spawn: [0, 4],
+};
+/** Разметка города по id: столицы фракций — крупные (задача 145), форты — малые. */
+export const layoutOf = (c: { id: string; fort?: boolean; capital?: string }): CityLayout => (c.capital && !c.fort ? CAP_LAYOUT : FORT_LAYOUT);
+/** Проём ворот города (север и юг). */
+export const isGateOf = (L: CityLayout, dx: number, dy: number) => Math.abs(dx) <= 1 && Math.abs(dy) === L.wall.y;
+/** Куда выходят ворота города (снаружи). */
+export const cityGates = (L: CityLayout) => [{ id: "n", x: 0, y: -L.wall.y - 1 }, { id: "s", x: 0, y: L.wall.y + 1 }];
+
 export interface CityNpc {
   id: string;
   name: string;
@@ -194,21 +285,22 @@ const npcTile = (c: { x: number; y: number }, at: [number, number], n: RawNpc): 
 type CityId = Exclude<keyof typeof data, "_doc">;
 function small(id: CityId, style: CityStyle, x: number, y: number, fort = false): City {
   const d = data[id] as (typeof data)[CityId] & { capital?: string; quest?: RawNpc; banker?: RawNpc; smith?: RawNpc; bagman?: RawNpc };
-  const c = { x, y };
-  const st = { x: x + STONE_AT[0], y: y + STONE_AT[1] };
+  const c = { x, y }, L = layoutOf({ id, fort, capital: d.capital });
+  const st = { x: x + L.stone[0], y: y + L.stone[1] };
   return {
-    id, name: d.name, style, x, y, half: CITY_HALF,
+    id, name: d.name, style, x, y, half: L.half,
     stoneTile: st,
     stone: { x: st.x * TILE + 16, y: (st.y + 1) * TILE - 2 },
     arrive: tileCenter(st.x, st.y + 1),
     // столица: в центре площади (просторно — сюда приходят новички); малый город — у колодца
-    spawn: d.capital ? tileCenter(x, y) : tileCenter(x, y + 4),
-    merchant: npcStall(c, MERCHANT_AT, d.merchant),
-    cook: npcStall(c, COOK_AT, d.cook),
-    quest: d.quest && npcTile(c, QUEST_AT, d.quest),
-    banker: d.banker && npcTile(c, BANKER_AT, d.banker),
-    smith: d.smith && npcTile(c, SMITH_AT, d.smith),
-    bagman: d.bagman && npcTile(c, BAGMAN_AT, d.bagman),
+    // столица: у статуи в центре площади (просторно — сюда приходят новички); форт — у колодца
+    spawn: tileCenter(x + L.spawn[0], y + L.spawn[1]),
+    merchant: npcStall(c, L.merchant, d.merchant),
+    cook: npcStall(c, L.cook, d.cook),
+    quest: d.quest && npcTile(c, L.quest, d.quest),
+    banker: d.banker && npcTile(c, L.banker, d.banker),
+    smith: d.smith && npcTile(c, L.smith, d.smith),
+    bagman: d.bagman && npcTile(c, L.bagman, d.bagman),
     guard: d.guard,
     people: d.people,
     capital: d.capital,
@@ -234,23 +326,18 @@ export const CITIES: City[] = [
 ];
 export const cityById = (id: string) => CITIES.find((c) => c.id === id);
 /**
- * Здания с входом (задача 141; интерьер и переход — следующий шаг, другой агент): храм Солнца в Аурелионе и зиккурат в Мортхейме —
- * на месте дома CITY_HOUSES[house] (южный ряд у южных ворот). door — клетка двери (тайлы мира, нижний ряд следа здания; пока закрыта
+ * Здания с входом (задача 141; интерьер и переход — задача 144): храм Солнца в Аурелионе и зиккурат в Мортхейме. door — клетка двери (тайлы мира, нижний ряд следа здания; пока закрыта
  * и непроходима), front — проходимая клетка перед дверью (кольцевая улица), сюда вешается переход.
  */
-export interface CityEntrance { city: string; kind: string; house: number; door: { x: number; y: number }; front: { x: number; y: number } }
-const ENTERABLE: { city: string; kind: string; house: number }[] = [
-  { city: "aurelion", kind: "sol_church", house: 5 },
-  { city: "morthaim", kind: "umb_ziggurat", house: 5 },
-];
-/** Дверь — вторая клетка следа слева (середина фасада в 3/4: tools/gen/walls141-buildings.ts, x ≈ 55 px из 128). */
-export const CITY_ENTRANCES: CityEntrance[] = ENTERABLE.map((e) => {
-  const c = cityById(e.city)!, [dx, dy] = CITY_HOUSES[e.house];
-  return { ...e, door: { x: c.x + dx + 1, y: c.y + dy }, front: { x: c.x + dx + 1, y: c.y + dy + 1 } };
+export interface CityEntrance { city: string; kind: string; door: { x: number; y: number }; front: { x: number; y: number } }
+/** Храм Солнца и зиккурат (задача 145): на оси к северу от статуи, место — CityLayout.temple; дверь — вторая клетка следа слева. */
+export const TEMPLE_KIND: Record<CityStyle, string> = { solgard: "sol_church", umbrath: "umb_ziggurat" };
+export const CITY_ENTRANCES: CityEntrance[] = CITIES.filter((c) => c.style && layoutOf(c).temple).map((c) => {
+  const [dx, dy] = layoutOf(c).temple!;
+  return { city: c.id, kind: TEMPLE_KIND[c.style!], door: { x: c.x + dx + 1, y: c.y + dy }, front: { x: c.x + dx + 1, y: c.y + dy + 1 } };
 });
-/** Вид дома столицы на месте i: здание с входом или обычный дом стиля. */
-export const cityHouseKind = (c: City, i: number): string =>
-  (!c.fort && ENTERABLE.find((e) => e.city === c.id && e.house === i)?.kind) || STYLE[c.style as CityStyle].houses[i % 2];
+/** Вид дома города на месте i (храм ставится отдельно, CityLayout.temple). */
+export const cityHouseKind = (c: City, i: number): string => STYLE[c.style as CityStyle].houses[i % 2];
 /** Столица фракции (место появления и возрождения её героев); без фракции — Эмберхолл. */
 export const homeCity = (faction: string | undefined): City => CITIES.find((c) => c.capital && !c.fort && c.capital === faction) ?? CITIES[0];
 /** Чужая столица или чужой форт: телепорт не открывается, возрождения там нет. */

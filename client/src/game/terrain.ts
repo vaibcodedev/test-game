@@ -153,7 +153,13 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "soul_brazier") glow(objs, o.x, o.y - 26, 0xb46aff, 2.6, 0.6, true);
     if (o.kind === "campfire") glow(objs, o.x, o.y - 12, 0xff9a3a, 2.4, 0.6, true);
     if (o.kind === "dark_obelisk") glow(objs, o.x, o.y - 50, 0x9a4aff, 1.8, 0.45, true);
-    if (o.kind === "sun_statue") glow(objs, o.x, o.y - 60, 0xffe08a, 1.8, 0.4);
+    // анимированный огонь жаровен статуй (tools/gen/statues.ts writeStatueFire): листы statue-fire-sol/umb поверх кадра
+    if ((o.kind === "sun_statue" || o.kind === "umb_statue") && scene.anims.exists(`vfx_statue-fire-${o.kind === "sun_statue" ? "sol" : "umb"}`)) {
+      const key = `vfx_statue-fire-${o.kind === "sun_statue" ? "sol" : "umb"}`;
+      for (const [dx, dy] of [[-20, -25], [19, -26]]) { const f = scene.add.sprite(o.x + dx, o.y + dy, key).setOrigin(0.5, 1).setDepth(o.y + 1); f.play({ key, repeat: -1, startFrame: Math.floor(cellHash(o.x + dx, o.y) * 6) % 6 }); objs.push(f); }
+    }
+    if (o.kind === "sun_statue") glow(objs, o.x - 15, o.y - 138, 0xffe08a, 1.0, 0.3, true);
+    if (o.kind === "umb_statue") glow(objs, o.x, o.y - 146, 0xa060ff, 1.1, 0.3, true);
     // здания с входом (задача 141): купол и свет из двери храма Солнца, фиолетовый огонь вершины и портал зиккурата
     if (o.kind === "sol_church") { glow(objs, o.x + 7, o.y - 150, 0xffd860, 2.2, 0.35); glow(objs, o.x - 9, o.y - 24, 0xffcf6a, 1.6, 0.45); }
     if (o.kind === "umb_ziggurat") { glow(objs, o.x - 2, o.y - 190, 0xb46aff, 2.4, 0.55, true); glow(objs, o.x - 9, o.y - 24, 0xa060ff, 1.6, 0.5); }

@@ -9,6 +9,7 @@ import skillFx from "../../../data/skill-fx.json";
 import type { UnitView } from "./UnitView";
 import { DEPTH } from "./terrain";
 import { afx } from "./auraFx";
+import { GP } from "../../../shared/gameplay";
 
 /** Плавность листа (tools/gen/vfx.ts): fadeIn/fadeOut — мс появления и выхода (только альфа: масштаб пиксель-арта не твинится — пиксели «ползут»);
  *  без них — умолчания по роли (DEF); loop — кадры, которые повторяются, пока эффект держится; кадры после loop[1] — финал (закрытие портала,
@@ -70,14 +71,14 @@ export function makeVfxAnims(scene: Phaser.Scene, m: Record<string, VfxEntry>) {
 
 /** Плоские эффекты на земле (кольца, круги, лужи, нижние слои ударов <id>-ground): рисуются под героями. */
 const FLAT = /^(ring-|summon-circle|blood-pool|nova-|holy-nova|shackle|fog-|puff-|smoke-puff|banner-ring|quake-)|-ground$/;
-const MAX_ACTIVE = 160;
+const MAX_ACTIVE = GP.ui.vfxMax;
 const FRONT = 0.5; // слой на теле — чуть выше спрайта героя при сортировке по y
 
 /** Конец эффекта с длительностью (Vfx.after): cancel — снять, не вызывая; extend — перенести конец на ms от сейчас
  *  (перекаст щита, рун, знамени продлевает цикл, а не перезапускает его); false — конец уже наступил или снят. */
 export interface Deadline { cancel(): void; extend(ms: number): boolean }
 /** Конец пришёл позже срока больше чем на столько мс (вкладка была скрыта, кадров не было) — эффект давно истёк: снимать сразу, без растворения. */
-export const LATE_MS = 250;
+export const LATE_MS = GP.ui.vfxLateMs;
 
 /** Цикл на ключ (looping): stop(late) — снять; late — на сколько мс конец опоздал (больше LATE_MS — без растворения);
  *  id — лист цикла, extend(ms) — продлить тот же цикл (перекаст), false — цикл уже гаснет или его вид сменился. */

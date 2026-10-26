@@ -693,15 +693,7 @@ export const UNIT_ART: Record<string, UnitArt> = {
   skeleton_knight: humanoidArt(SPECS.skeleton_knight),
   drowned: humanoidArt(SPECS.drowned),
   imp: humanoidArt(SPECS.imp),
-  toxic_slime: sideOnly((p) => slime(ramp_("#4a5a10", "#7a9a18", "#b2d030", "#e0f070"), p, 1, true)),
-  golem: sideOnly((p) => golem(p)),
-  // биомы Неизведанных земель
-  jackal: sideOnly((p) => quadruped({ body: ramp_("#5a3c1c", "#8a6030", "#c0904c", "#e8c078"), belly: P.bone, ears: "point", tail: "thin" }, p)),
-  scorpion: sideOnly((p) => spider(p, ramp_("#5a3a14", "#8a5c20", "#c08a34", "#e8b858"), hex("#f2d070"), hex("#ffe040"), true)),
-  frost_wolf: sideOnly((p) => quadruped({ body: ramp_("#5a7088", "#8aa4bc", "#c0d8ec", "#f0faff"), belly: P.snow, ears: "point", tail: "bushy", mane: ramp_("#8aa4bc", "#b0c8e0", "#d8ecfa", "#ffffff") }, p)),
-  ice_golem: sideOnly((p) => golem(p, 1, P.ice, ramp_("#a0e0ff", "#c8f0ff", "#e0faff", "#ffffff", "#ffffff"))),
-  magma_slime: sideOnly((p) => slime(ramp_("#6a1a08", "#c03a10", "#f07a1c", "#ffd060"), p, 1, true)),
-  lava_hound: sideOnly((p) => quadruped({ body: ramp_("#2a1814", "#4a2418", "#7a3a20", "#a85a2c"), belly: ramp_("#c03a10", "#f06a1a", "#ff9a2a", "#ffd060"), ears: "point", tail: "bushy", mane: ramp_("#c03a10", "#f06a1a", "#ff9a2a", "#ffd060") }, p)),
+  // слизни, големы и звери Неизведанных земель — убраны (задача 140, партия 2: их места заняли образы tools/gen/mobs, листы — tools/gen/mobs/game2.ts)
   sapling: sideOnly(sapling),
   ent: sideOnly(ent, 64, false),
   witch: humanoidArt(SPECS.witch, 2),

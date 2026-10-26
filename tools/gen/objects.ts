@@ -8,7 +8,7 @@ import { CITY_ART } from "./cities";
 import { FACTION_ART } from "./factions";
 import { walls141Art } from "./walls141-game";
 import { WORLD_VOLUME } from "./volume-world";
-import { barrel, crate, stall } from "./walls141-props";
+import { barrel, crate, stall, well as well141, teleportStone, solHeroStatue, umbHeroStatue } from "./walls141-props";
 import { BIOME_ART, resourceIcon } from "./biomes";
 import { RESOURCE_IDS } from "../../shared/biomes";
 import { lootObjects } from "./loot";
@@ -226,7 +226,7 @@ const raidPortal: Art = () => {
 
 export const OBJECT_ART: Record<string, Art> = {
   bush, rock, big_rock: bigRock,
-  fountain, lamp, well, pillar, torch,
+  fountain, lamp, pillar, torch,
   // прилавок, бочка, ящик в объёме 3/4 (задача 141): tools/gen/walls141-props.ts
   stall: () => stall(P.cloth.red[2], "food"), barrel, crate,
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),
@@ -241,6 +241,8 @@ export const OBJECT_ART: Record<string, Art> = {
   ...walls141Art(),
   // объёмный декор мира (шатёр лагеря, сено, руины, колонна, обелиск, указатель, колодец, фонарь): tools/gen/volume-world.ts
   ...WORLD_VOLUME,
+  // правки 6 задачи 141: цельный колодец, объёмный камень телепорта, статуи героев фракций (tools/gen/walls141-props.ts)
+  well: well141, teleport_stone: teleportStone, sun_statue: solHeroStatue, umb_statue: umbHeroStatue,
 };
 
 // ---------------- иконки 32×32 ----------------

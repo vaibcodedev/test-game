@@ -15,7 +15,7 @@ import world from "../data/world.json";
 import PATROLS from "../data/patrols.json";
 import { ENV, resourceOfNode, type MapNode } from "./biomes";
 import { CORE, MAP_AXIS, MAP_H, MAP_W, MID, TILE } from "./constants";
-import { CAPITAL_DECOR, CITIES, cityHouseKind, CITY_CORNER_TOWERS, CITY_HOUSES, FORT_HOUSES, fortDecor, CITY_STALLS, CITY_TOWERS, CITY_WALL, STYLE, cityDecor, cityGround, inCityRect, isCityGate, type City, type CityStyle } from "./cities";
+import { CITIES, cityHouseKind, FORT_HOUSES, fortDecor, STYLE, TEMPLE_KIND, isGateOf, layoutOf, type City, type CityStyle } from "./cities";
 import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
@@ -131,7 +131,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 10; // 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 12; // 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -245,7 +245,8 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   // штандарты своих земель на древке (анимированные листы vfx std-home-*: tools/gen/standards-to-game.ts) — у ворот городов, фортов, поселений и мостов
   "std-home-sol": { w: 1, h: 1 },
   "std-home-umb": { w: 1, h: 1 },
-  sun_statue: { w: 1, h: 1 },
+  sun_statue: { w: 2, h: 2 },
+  umb_statue: { w: 2, h: 2 },
   umb_wall_h: { w: 1, h: 1 },
   umb_wall_v: { w: 1, h: 1 },
   umb_tower: { w: 2, h: 2 },
@@ -583,7 +584,7 @@ export function zoneAt(x: number, y: number, seed: number): Zone {
   if (inDungeon(x, y)) return Zone.Dungeon;
   const fx = Math.floor(x), fy = Math.floor(y);
   if (inTownRect(fx - TOWN.x, fy - TOWN.y)) return Zone.Town;
-  for (const c of CITIES) if (c.style && inCityRect(fx - c.x, fy - c.y)) return CITY_ZONE[c.id];
+  for (const c of CITIES) if (c.style && Math.abs(fx - c.x) <= c.half.x && Math.abs(fy - c.y) <= c.half.y) return CITY_ZONE[c.id];
   // границы зон извилистые: крупный шум (масштаб ×3) плюс мелкий; считается по сложенной x, поэтому восток — зеркало запада
   const west = x < AXIS, xm = foldX(x);
   const nb = (fbm(xm / 3, y / 3, seed + 71) - 0.5) * 1.6 + (fbm(xm, y, seed + 73) - 0.5) * 0.5;
@@ -641,7 +642,7 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
   const city = CITY_OF_ZONE.get(z);
   if (city) {
     const vx = Math.round(x) - city.x, vy = Math.round(y) - city.y;
-    const gs = [[-1, -1], [0, -1], [-1, 0], [0, 0]].map(([ox, oy]) => cityGround(city.style!, vx + ox, vy + oy));
+    const L = layoutOf(city), gs = [[-1, -1], [0, -1], [-1, 0], [0, 0]].map(([ox, oy]) => L.ground(vx + ox, vy + oy));
     const [road, path, plain] = CITY_GROUND[city.style!];
     return gs.includes("road") ? road : gs.includes("path") ? path : plain;
   }
@@ -806,38 +807,39 @@ function buildTown(seed: number, w: number, cell: Uint8Array, objects: MapObject
 
 /** Город со стилем (столица или форт): стены, башни, ворота, дома, прилавки, убранство, камень телепорта. */
 function buildCity(c: City, cell: Uint8Array, w: number, objects: MapObject[], place: PlaceFn, seed: number) {
-  const style = c.style as CityStyle, St = STYLE[style];
+  const style = c.style as CityStyle, St = STYLE[style], L = layoutOf(c), CITY_WALL = L.wall;
   const X = (dx: number) => c.x + dx, Y = (dy: number) => c.y + dy;
   const towerCells = new Set<number>();
-  for (const [dx, dy] of CITY_TOWERS) {
+  for (const [dx, dy] of L.towers) {
     place(St.tower, X(dx), Y(dy));
     for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) towerCells.add((dy - j) * 1000 + dx + i);
   }
-  const wallOk = (dx: number, dy: number) => !isCityGate(dx, dy) && !towerCells.has(dy * 1000 + dx);
+  const wallOk = (dx: number, dy: number) => !isGateOf(L, dx, dy) && !towerCells.has(dy * 1000 + dx);
   for (let dx = -CITY_WALL.x; dx <= CITY_WALL.x; dx++) for (const dy of [-CITY_WALL.y, CITY_WALL.y]) if (wallOk(dx, dy)) place(St.wall_h, X(dx), Y(dy));
   for (let dy = -CITY_WALL.y + 1; dy < CITY_WALL.y; dy++) for (const dx of [-CITY_WALL.x, CITY_WALL.x]) if (wallOk(dx, dy)) place(St.wall_v, X(dx), Y(dy));
   for (const dy of [-CITY_WALL.y, CITY_WALL.y]) objects.push({ kind: St.gate, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 2 });
   // настенные знамёна (проход не загораживают): крупное над аркой ворот и по одному на угловых башнях; объект — у основания
   // стены на 1 px ниже неё (рисуется поверх кладки), высоту крепления задаёт якорь листа (tools/gen/standards-to-game.ts)
   for (const dy of [-CITY_WALL.y, CITY_WALL.y]) objects.push({ kind: St.gateBanner, x: X(0) * TILE + 16, y: (Y(dy) + 1) * TILE - 1 });
-  for (const [dx, dy] of CITY_CORNER_TOWERS) objects.push({ kind: St.wallBanner, x: (X(dx) + 1) * TILE, y: (Y(dy) + 1) * TILE - 1 });
+  for (const [dx, dy] of L.corner) objects.push({ kind: St.wallBanner, x: (X(dx) + 1) * TILE, y: (Y(dy) + 1) * TILE - 1 });
   const fits = (kind: string, x: number, y: number) => {
     const f = OBJECT_FOOTPRINT[kind] ?? { w: 1, h: 1 };
     for (let j = 0; j < f.h; j++) for (let i = 0; i < f.w; i++) if (cell[(y - j) * w + x + i] & CELL_BLOCK) return false;
     return true;
   };
-  (c.fort ? FORT_HOUSES : CITY_HOUSES).forEach(([dx, dy], i) => place(cityHouseKind(c, i), X(dx), Y(dy)));
-  CITY_STALLS.forEach(([dx, dy], i) => place(St.stalls[i], X(dx), Y(dy)));
-  for (const [k, dx, dy] of c.fort ? fortDecor(style) : cityDecor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
+  (c.fort ? FORT_HOUSES : L.houses).forEach(([dx, dy], i) => place(cityHouseKind(c, i), X(dx), Y(dy)));
+  if (L.temple) place(TEMPLE_KIND[style], X(L.temple[0]), Y(L.temple[1])); // храм Солнца / зиккурат к северу от статуи (задача 145)
+  L.stalls.forEach(([dx, dy], i) => place(St.stalls[i], X(dx), Y(dy)));
+  for (const [k, dx, dy] of c.fort ? fortDecor(style) : L.decor(style)) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   // у столиц — наковальня кузнеца (банкир, кузнец и сумочник стоят у домов северного ряда, cities.ts)
-  if (c.capital && !c.fort) for (const [k, dx, dy] of CAPITAL_DECOR) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
+  if (c.capital && !c.fort) for (const [k, dx, dy] of L.anvil) if (fits(k, X(dx), Y(dy))) place(k, X(dx), Y(dy));
   place("teleport_stone", c.stoneTile.x, c.stoneTile.y);
   // кустики на открытой земле у стен (в Мортхейме — кости и туманные огоньки)
   const bush: Record<CityStyle, string> = { solgard: "flowers", umbrath: "bones" };
   const r = rng(seed + 11 + c.x);
   for (let dy = -CITY_WALL.y + 1; dy < CITY_WALL.y; dy++) for (let dx = -CITY_WALL.x + 1; dx < CITY_WALL.x; dx++) {
     const x = X(dx), y = Y(dy);
-    if (cell[y * w + x] & CELL_BLOCK || cityGround(style, dx, dy) !== "plain") continue;
+    if (cell[y * w + x] & CELL_BLOCK || L.ground(dx, dy) !== "plain") continue;
     const roll = r();
     if (roll < 0.05) objects.push({ kind: bush[style], x: x * TILE + 16, y: y * TILE + 30 });
     else if (style === "umbrath" && roll < 0.08) objects.push({ kind: "mushrooms_glow", x: x * TILE + 16, y: y * TILE + 30 });

@@ -6,7 +6,7 @@
 import {
   PC, hash01, hex, mix, withA, type RGBA, type Ramp, type N3, type Tex,
   CLOTH, WOOD, IRON, ROPE, STONE, MARBLE, STRAW, FRONT, TOP, RIGHT,
-  box, prism, frame32, face, fillPoly, cylV, ellipseFace, log, shadowPoly, shadowEllipse, depth, litC, planksV, planksH, grain, addTex, finish, ramp,
+  box, prism, frame32, face, fillPoly, cylV, ellipseFace, log, shadowPoly, shadowBox, shadowDisc, depth, litC, planksV, planksH, grain, addTex, finish, ramp,
 } from "./volume-lib";
 import { ridgeTent } from "./volume-bf";
 
@@ -31,7 +31,7 @@ function mossTop(pc: PC, x0: number, y0: number, w: number, h: number, seed: num
 /** Обломок стены (2×1, 64×48): колонки кладки разной высоты слева направо, верхи и правые грани видны, мох, щебень у подножия. */
 function ruinWall(): PC {
   const pc = new PC(72, 50), base = 46, d = 10, D = depth(d);
-  shadowPoly(pc, [[2, base], [62, base + 2], [70, base - 4], [10, base - 6]], 80);
+  shadowBox(pc, 3, 62, base, D, 34);
   const hs = [18, 26, 30, 22, 34, 28, 14, 10];
   hs.forEach((h, i) => {
     const x = 4 + i * 7, ht = h + Math.round(hash01(i, 2, 3) * 3);
@@ -54,7 +54,7 @@ function stone(pc: PC, cx: number, cy: number, r: number, mat: Ramp) {
 /** Сломанная колонна (32×64): плинт, каннелированный ствол, излом сверху светлый, обломок у подножия. */
 function ruinPillar(): PC {
   const pc = new PC(36, 64), cx = 15, base = 60;
-  shadowEllipse(pc, cx + 6, base, 14, 4, 80);
+  shadowBox(pc, cx - 10, cx + 10, base, depth(8), 44);
   box(pc, cx - 10, base - 6, 20, 6, 8, { r: RUIN, tex: grain(2, 0.2) }, { r: RUIN }, { r: RUIN, tex: grain(3, 0.2) });
   const top = 18;
   cylV(pc, cx + 2, top, base - 8, 7.5, RUIN, { k: 0.45, cap: null, tex: (phi) => (Math.floor((phi + 1.6) * 3.2) % 2 ? -0.35 : 0.15), ao: 3 });
@@ -71,7 +71,7 @@ function ruinPillar(): PC {
 /** Колонна-стела (32×64): квадратная, база и капитель плитами с глубиной. */
 function pillar(): PC {
   const pc = new PC(36, 64), x = 9, base = 60, d = 8;
-  shadowPoly(pc, [[x - 3, base], [x + 18, base + 2], [x + 24, base - 4], [x + 2, base - 6]], 80);
+  shadowBox(pc, x - 3, x + 15, base, depth(d), 48);
   box(pc, x - 3, base - 6, 18, 6, d, { r: STONE, tex: grain(1, 0.2) }, { r: STONE }, { r: STONE });
   box(pc, x, 12, 12, base - 18, d - 2, { r: STONE, tex: blocks(13, 8, 2) }, { r: STONE, tex: blocks(7, 8, 3) }, { r: STONE });
   box(pc, x - 3, 6, 18, 6, d, { r: STONE, tex: grain(4, 0.2) }, { r: STONE }, { r: STONE, tex: grain(5, 0.2) });
@@ -82,7 +82,7 @@ function darkObelisk(): PC {
   const pc = new PC(36, 96), cx = 15, base = 92, d = 7, D = depth(d);
   const OB = ramp("#0c0a14", "#18142a", "#262040", "#362e58", "#4a4072", "#62588e");
   const RUNE = [hex("#5a2a9a"), hex("#9a5ae0"), hex("#e0c0ff")];
-  shadowPoly(pc, [[cx - 11, base], [cx + 12, base + 2], [cx + 20, base - 4], [cx - 4, base - 6]], 85);
+  shadowBox(pc, cx - 10, cx + 10, base, depth(d + 2), 84);
   box(pc, cx - 10, base - 6, 20, 6, d + 2, { r: OB, tex: grain(1, 0.2) }, { r: OB }, { r: OB });
   const wb = 7, wt = 4, yT = 16;
   prism(pc, [[cx - wb, base - 6], [cx - wt, yT], [cx + wt, yT], [cx + wb, base - 6]], D, { r: OB, tex: grain(2, 0.25) }, { r: OB, tex: grain(3, 0.2) }, { r: OB });
@@ -104,7 +104,7 @@ function darkObelisk(): PC {
 /** Тюк сена (32×32): прямоугольный, перевязан, соломинки торчат. */
 function hay(): PC {
   const pc = new PC(32, 32), x = 3, y = 14, w = 20, h = 13, d = 10;
-  shadowPoly(pc, [[x, y + h], [x + w + 2, y + h + 2], [x + w + 9, y + h - 4], [x + 6, y + h - 6]], 80);
+  shadowBox(pc, x, x + w, y + h, depth(d), 14);
   const straw: Tex = (xx, yy) => (hash01(xx, Math.floor(yy / 2), 3) - 0.5) * 0.9 + (hash01(xx, yy, 4) < 0.08 ? -0.8 : 0);
   box(pc, x, y, w, h, d, { r: STRAW, tex: straw }, { r: STRAW, tex: straw }, { r: STRAW, tex: (xx, yy) => straw(yy, xx) });
   const D = depth(d);
@@ -118,7 +118,7 @@ function hay(): PC {
 /** Указатель (32×64): столб-бревно, три доски-стрелки с толщиной. */
 function signpost(): PC {
   const pc = new PC(40, 64), cx = 18, base = 60;
-  shadowEllipse(pc, cx + 5, base, 8, 3, 80);
+  shadowDisc(pc, cx, base, 3, 1.5, 50);
   const boardTex = addTex(planksH(3, 5), grain(6, 0.15));
   const board = (y: number, dir: number, w: number, tilt: number) => {
     const x0 = dir > 0 ? cx - 3 : cx + 3, x1 = x0 + dir * w;
@@ -137,7 +137,7 @@ function signpost(): PC {
 /** Колодец (32×48): каменный сруб-цилиндр, тёмная вода, стойки, двускатный козырёк, ворот с ведром. */
 function well(): PC {
   const pc = new PC(36, 50), cx = 15, base = 46, r = 11, top = 30;
-  shadowEllipse(pc, cx + 5, base, r + 3, 4, 85);
+  shadowDisc(pc, cx, base - 4, r, 4.5, 26);
   cylV(pc, cx, top, base - 4, r, STONE, { k: 0.45, cap: null, tex: (phi, y) => { const row = Math.floor((y - top) / 4), seg = Math.floor((phi + 1.6) * 3 + row * 0.5); return (y - top) % 4 === 3 || hash01(seg, row, 2) < 0.2 ? -0.9 : (hash01(seg, row, 3) - 0.5) * 0.6; }, ao: 2 });
   // кромка и вода
   ellipseFace(pc, cx, top, r, r * 0.45, STONE, TOP, grain(4, 0.3));
@@ -158,7 +158,7 @@ function well(): PC {
 /** Фонарь на столбе (32×64): чугунный столб, фонарь-коробка со стёклами и светом, шатровая крышка. */
 function lamp(): PC {
   const pc = new PC(32, 64), cx = 14, base = 60;
-  shadowEllipse(pc, cx + 4, base, 6, 2.5, 80);
+  shadowBox(pc, cx - 4, cx + 4, base, depth(4), 60);
   box(pc, cx - 4, base - 5, 8, 5, 4, { r: IRON }, { r: IRON }, { r: IRON });
   cylV(pc, cx, 22, base - 5, 1.6, IRON, { k: 0.5 });
   box(pc, cx - 3, 20, 7, 2, 4, { r: IRON }, { r: IRON }, { r: IRON });
