@@ -68,6 +68,7 @@ export function artTokens(kind: string, tier: ArtTier): string[] {
     case "gate": case "pal_gate": return GATE_STATES;
     case "house": return (a.types?.[tier] ?? []).flatMap((t) => (SINGLE.has(t) ? [`${t}-clean`] : HOUSE_WEARS.map((w) => `${t}-${w}`)));
     case "pal_corner": return ["e-clean", "e-moss", "w-clean", "w-moss"];
+    case "pal_v": return ["w", "e"].flatMap((sd) => PAL_TOKENS.map((t) => `${sd}-${t}`)); // наружная сторона бокового ряда
     default: return PAL_TOKENS;
   }
 }
@@ -128,6 +129,7 @@ export function assignArtVariants(objects: { kind: string; x: number; y: number;
         tok = SINGLE.has(t) ? `${t}-clean` : `${t}-${pickW(HOUSE_WEARS, HOUSE_WEIGHTS, r)}`;
         break;
       }
+      case "pal_v": tok = `${cx < ox ? "w" : "e"}-${pickW(PAL_TOKENS, PAL_WEIGHTS, r)}`; break;
       case "pal_corner": tok = `${palAt.has(cy * 4096 + cx + 1) ? "e" : "w"}-${r < 0.8 ? "clean" : "moss"}`; break;
       default: tok = pickW(PAL_TOKENS, PAL_WEIGHTS, r);
     }

@@ -874,41 +874,53 @@ export function palisadeH(look: Look, wear: Wear = "clean", seed = 1): PC {
   return c;
 }
 
-/** Частокол V 32×88 (стороны W/E): столбец спилов — те же брёвна (толщина 8 px, как в ряду H) уходят вглубь по 8 px: у каждого виден
- *  торец и короткий бок, у переднего — всё бревно; свет слева, тень бока вправо. Узора нет — только дерево, кольца и перевязь. */
-export function palisadeV(look: Look, wear: Wear = "clean", seed = 1): PC {
-  const c = new PC(32, 88), x0 = 11;
+/** Частокол V 40×88 (стороны W/E, правки 5): ОДИН ряд брёвен, как ряд H, — столбец спилов той же толщины (8 px), брёвна уходят вглубь
+ *  по 8 px (стык с соседними клетками ровный), и узкая видимая наружная грань этого же ряда (side «w» — запад, освещена; «e» — восток, в тени).
+ *  У Умбрата — шипы и черепа. */
+export function palisadeV(look: Look, side: "w" | "e" = "w", wear: Wear = "clean", seed = 1): PC {
+  const IW = 40, c = new PC(IW, 88), W = look.wood, flip = side === "e";
+  const X = (x: number, w = 1) => (flip ? IW - x - w : x);
+  const lx = 16, fx = 12, fw = 4;
+  // узкая наружная грань ряда: бока тех же брёвен, стыки через 8 px, перевязи
+  for (let i = 0; i < fw; i++) for (let y = 24; y < 84; y++) {
+    const within = (y + 4) % 8;
+    let v = (flip ? 0.9 : 1.5) + (i === 0 ? -0.5 : 0) + (within === 0 ? -0.8 : within === 1 ? 0.3 : 0) + (hash01(i, y >> 3, seed) - 0.5) * 0.4;
+    if (look.faction === "umb") v -= 0.3;
+    c.set(X(fx + i), y, tone(W, v));
+  }
+  for (const by of [50, 70]) for (let i = 0; i < fw; i++) { c.set(X(fx + i), by, look.faction === "umb" ? look.trim[2] : hex("#a8885a")); c.set(X(fx + i), by + 1, look.faction === "umb" ? look.trim[0] : hex("#6a4a28")); }
   for (let k = 0; k < 4; k++) {
     const dy = (3 - k) * 8;
-    log(c, look, x0, 10, 28 - dy, 82 - dy, seed + k, { ry: 2, fresh: wear === "patch" && k === 2, broken: wear === "chip" && k === 1, spike: look.faction === "umb" && k === 1 });
-    for (let y = 30 - dy; y < 82 - dy; y++) { darken(c, x0 + 10, y, 0.55); darken(c, x0 + 11, y, 0.78); }
+    log(c, look, X(lx, 8), 8, 26 - dy, 82 - dy, seed + k, { ry: 2, fresh: wear === "patch" && k === 2, broken: wear === "chip" && k === 1, spike: look.faction === "umb" && k % 2 === 1 });
   }
-  band(c, look, x0, x0 + 10, 52); band(c, look, x0, x0 + 10, 70);
-  mound(c, look, 5, 28, 84, seed);
-  if (wear === "moss") mossPatch(c, 6, 58, 22, 28, look, seed, false);
-  if (wear === "ivy") ivy(c, x0, 44, 9, 38, seed);
+  for (let y = 30; y < 82; y++) { darken(c, X(24), y, 0.55); darken(c, X(25), y, 0.78); }
+  band(c, look, flip ? IW - 24 : 16, flip ? IW - 16 : 24, 52); band(c, look, flip ? IW - 24 : 16, flip ? IW - 16 : 24, 70);
+  if (look.faction === "umb" && wear === "clean" && seed % 2 === 1) { const sx = X(20); c.ellipse(sx, 13, 3, 2.8, hex("#d8d0bc")); c.rect(sx - 2, 15, 4, 2, hex("#b8b09c")); c.set(sx - 1, 13, OUT); c.set(sx + 1, 13, OUT); }
+  mound(c, look, 9, 29, 84, seed);
+  if (wear === "moss") mossPatch(c, 10, 58, 18, 28, look, seed, false);
+  if (wear === "ivy") ivy(c, X(12, 4), 40, 4, 40, seed);
   c.outline(OUT);
-  groundHug(c, 4, 25, 85, look, seed);
+  groundHug(c, 9, 20, 85, look, seed);
   return c;
 }
 
-/** Угол частокола 40×96 (один кусок, «e» — ряд H уходит вправо, «w» — влево): толстый угловой столб с крупным спилом выше ограды,
+/** Угол частокола 40×96 (один кусок, «e» — ряд H уходит вправо, «w» — влево): угловой столб в 1,25 бревна, на пару px выше ряда,
  *  к нему подходит полуряд брёвен ряда H; столбец спилов стороны начинается под столбом. Перевязи огибают столб. */
 export function palisadeCorner(look: Look, side: "e" | "w" = "e", wear: Wear = "clean", seed = 1): PC {
-  const c = new PC(40, 96), by = 90, px = 20, half = 8;
+  const c = new PC(40, 96), by = 90, px = 20, half = 5; // столб 10 px (≈1,25 бревна), чуть выше ряда (правки 5)
   // полуряд H со стороны side (брёвна 8 px, как у звена; продолжаются под соседнее звено на 4 px)
   const xs = side === "e" ? [24, 32] : [0, 8];
   for (const [i, x] of xs.entries()) log(c, look, x, 8, 39 + Math.floor(hash01(i, seed, 5) * 4), by, seed + 20 + i, { spike: look.faction === "umb" && i === 0 });
   band(c, look, side === "e" ? 22 : 0, side === "e" ? 40 : 18, 56); band(c, look, side === "e" ? 22 : 0, side === "e" ? 40 : 18, 76);
   // угловой столб
-  log(c, look, px - half, half * 2, 26, by, seed + 7, { spike: look.faction === "umb" });
-  for (let y = 30; y < by; y++) darken(c, side === "e" ? px - half - 1 : px + half, y, 0.6);
-  for (const yy of [46, 66]) for (let x = px - half; x < px + half; x++) {
+  log(c, look, px - half, half * 2, 35, by, seed + 7, { spike: look.faction === "umb" });
+  for (let y = 38; y < by; y++) darken(c, side === "e" ? px - half - 1 : px + half, y, 0.6);
+  for (const yy of [55, 75]) for (let x = px - half; x < px + half; x++) {
     const yc = yy + Math.round(Math.sqrt(Math.max(0, 1 - ((x + 0.5 - px) / half) ** 2)) * 2);
     if (look.faction === "umb") { c.set(x, yc, look.trim[3]); c.set(x, yc + 1, look.trim[1]); }
     else { c.set(x, yc, x < px ? hex("#d8b880") : hex("#a88850")); c.set(x, yc + 1, hex("#7a5a30")); }
   }
-  if (look.faction === "umb" && wear === "clean") { c.ellipse(px, 15, 3.4, 3.2, hex("#d8d0bc")); c.rect(px - 2, 17, 4, 2, hex("#b8b09c")); c.set(px - 1, 15, OUT); c.set(px + 1, 15, OUT); }
+  if (look.faction === "umb" && wear === "clean") { c.ellipse(px, 26, 3.4, 3.2, hex("#d8d0bc")); c.rect(px - 2, 28, 4, 2, hex("#b8b09c")); c.set(px - 1, 26, OUT); c.set(px + 1, 26, OUT); }
   mound(c, look, 2, 38, by + 2, seed);
   if (wear === "moss") mossPatch(c, 4, 54, 32, 40, look, seed, false);
   if (wear === "ivy") ivy(c, px - 6, 34, 12, 50, seed);
@@ -919,10 +931,10 @@ export function palisadeCorner(look: Look, side: "e" | "w" = "e", wear: Wear = "
 
 /** Столб у бокового проёма ворот частокола 32×96: тот же угловой столб без полуряда — проём обрамлён толстыми брёвнами. */
 export function palisadePost(look: Look, wear: Wear = "clean", seed = 1): PC {
-  const c = new PC(32, 96), by = 90, px = 16, half = 8;
-  log(c, look, px - half, half * 2, 26, by, seed + 7, { spike: look.faction === "umb" });
-  for (let y = 30; y < by; y++) darken(c, px + half, y, 0.6);
-  for (const yy of [46, 66]) for (let x = px - half; x < px + half; x++) {
+  const c = new PC(32, 96), by = 90, px = 16, half = 5;
+  log(c, look, px - half, half * 2, 35, by, seed + 7, { spike: look.faction === "umb" });
+  for (let y = 38; y < by; y++) darken(c, px + half, y, 0.6);
+  for (const yy of [55, 75]) for (let x = px - half; x < px + half; x++) {
     const yc = yy + Math.round(Math.sqrt(Math.max(0, 1 - ((x + 0.5 - px) / half) ** 2)) * 2);
     if (look.faction === "umb") { c.set(x, yc, look.trim[3]); c.set(x, yc + 1, look.trim[1]); }
     else { c.set(x, yc, x < px ? hex("#d8b880") : hex("#a88850")); c.set(x, yc + 1, hex("#7a5a30")); }

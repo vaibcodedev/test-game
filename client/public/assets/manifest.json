@@ -544,7 +544,7 @@
    "h": 64
   },
   "pal_v": {
-   "w": 32,
+   "w": 40,
    "h": 88
   },
   "brazier": {
@@ -1671,30 +1671,6 @@
    "w": 32,
    "h": 64
   },
-  "pal_v__ember-clean": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v__ember-moss": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v__ember-ivy": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v__ember-patch": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v__ember-chip": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v__ember-crack": {
-   "w": 32,
-   "h": 88
-  },
   "pal_h_sol__set-clean": {
    "w": 32,
    "h": 64
@@ -1723,32 +1699,8 @@
    "w": 32,
    "h": 64
   },
-  "pal_v_sol__set-clean": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_sol__set-moss": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_sol__set-ivy": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_sol__set-patch": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_sol__set-chip": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_sol__set-crack": {
-   "w": 32,
-   "h": 88
-  },
   "pal_v_sol": {
-   "w": 32,
+   "w": 40,
    "h": 88
   },
   "pal_post_sol__set-clean": {
@@ -1843,32 +1795,8 @@
    "w": 32,
    "h": 64
   },
-  "pal_v_umb__set-clean": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_umb__set-moss": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_umb__set-ivy": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_umb__set-patch": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_umb__set-chip": {
-   "w": 32,
-   "h": 88
-  },
-  "pal_v_umb__set-crack": {
-   "w": 32,
-   "h": 88
-  },
   "pal_v_umb": {
-   "w": 32,
+   "w": 40,
    "h": 88
   },
   "pal_post_umb__set-clean": {
@@ -2050,54 +1978,6 @@
   "bf_wagon_broken_b": {
    "w": 96,
    "h": 64
-  },
-  "pal_corner_sol__set-chip": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_sol__set-clean": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_sol__set-crack": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_sol__set-ivy": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_sol__set-moss": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_sol__set-patch": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_umb__set-chip": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_umb__set-clean": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_umb__set-crack": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_umb__set-ivy": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_umb__set-moss": {
-   "w": 48,
-   "h": 104
-  },
-  "pal_corner_umb__set-patch": {
-   "w": 48,
-   "h": 104
   },
   "v_basic_bush": {
    "w": 64,
@@ -2674,6 +2554,150 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
+  },
+  "pal_v__ember-w-clean": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-w-moss": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-w-ivy": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-w-patch": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-w-chip": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-w-crack": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-e-clean": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-e-moss": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-e-ivy": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-e-patch": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-e-chip": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v__ember-e-crack": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-w-clean": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-w-moss": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-w-ivy": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-w-patch": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-w-chip": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-w-crack": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-e-clean": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-e-moss": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-e-ivy": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-e-patch": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-e-chip": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_sol__set-e-crack": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-w-clean": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-w-moss": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-w-ivy": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-w-patch": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-w-chip": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-w-crack": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-e-clean": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-e-moss": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-e-ivy": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-e-patch": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-e-chip": {
+   "w": 40,
+   "h": 88
+  },
+  "pal_v_umb__set-e-crack": {
+   "w": 40,
+   "h": 88
   }
  },
  "icons": [

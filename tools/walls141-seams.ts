@@ -81,8 +81,9 @@ for (const s of SETTLEMENTS) {
   const gate = gateCells(s), lines: [number, number, number, number][] = [];
   for (const y of [y0, y1]) {
     const gy = gate.every(([, gy]) => gy === y) ? gate : null, yy = (y + 1) * TILE - 24;
-    if (gy) { lines.push([x0 * TILE + 4, yy, (s.x - 1) * TILE - 1, yy]); lines.push([(s.x + 2) * TILE, yy, (x1 + 1) * TILE - 4, yy]); }
-    else lines.push([x0 * TILE + 4, yy, (x1 + 1) * TILE - 4, yy]);
+    // от угловых столбов (середина угловой клетки ± 5 px) — снаружи столба ограды нет
+    if (gy) { lines.push([x0 * TILE + 12, yy, (s.x - 1) * TILE - 1, yy]); lines.push([(s.x + 2) * TILE, yy, (x1 + 1) * TILE - 12, yy]); }
+    else lines.push([x0 * TILE + 12, yy, (x1 + 1) * TILE - 12, yy]);
   }
   for (const x of [x0, x1]) {
     const gx = gate.every(([gx]) => gx === x), xx = x * TILE + 16;

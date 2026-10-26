@@ -41,7 +41,7 @@ function build(kind: string, tier: ArtTier, tok: string): PC {
       return buildingsFor(L)[type](wear, seed);
     }
     case "pal_h": return palisadeH(L, tok as Wear, seed);
-    case "pal_v": return palisadeV(L, tok as Wear, seed);
+    case "pal_v": { const [sd, wear] = tok.split("-"); return palisadeV(L, sd as "w" | "e", wear as Wear, seed); }
     case "pal_post": return palisadePost(L, tok as Wear, seed);
     case "pal_corner": { const [side, wear] = tok.split("-"); return palisadeCorner(L, side as "e" | "w", wear as Wear, seed); }
   }
