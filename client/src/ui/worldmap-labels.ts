@@ -3,12 +3,13 @@
 import { CITIES } from "../../../shared/cities";
 import { landLabel, type FactionId } from "../../../shared/factions";
 import { PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
+import { GP } from "../../../shared/gameplay";
 
-const STEP = 4; // шаг сетки поиска частей зоны, тайлы
-const MIN_CELLS = 30; // меньше — часть не подписывается (клетки по STEP×STEP тайлов)
+const STEP = GP.ui.mapLabelStep; // шаг сетки поиска частей зоны, тайлы
+const MIN_CELLS = GP.ui.mapLabelMinCells; // меньше — часть не подписывается (клетки по STEP×STEP тайлов)
 const ROWS = [0.14, 0.34, 0.62, 0.86]; // высоты подписей поясов кольца (доля высоты карты): соседние пояса идут лесенкой
 /** Пикселей экрана на тайл на общем плане (окно 1440 px): по нему подписи земель раскладываются без наложений на общем плане. */
-const PX = 1.25;
+const PX = GP.ui.mapLabelScale;
 
 export interface Label {
   x: number; y: number; text: string;

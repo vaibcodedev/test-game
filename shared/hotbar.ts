@@ -7,11 +7,12 @@ import type { ClassId } from "./classes";
 import { BASE_ITEMS } from "./items";
 import { foodOf } from "./food";
 import { activeSkills, SKILLS } from "./skills";
+import { GP } from "./gameplay";
 
-export const BAR_COUNT = 2;
-export const BAR_SLOTS = 12;
+export const BAR_COUNT = GP.hotbar.bars;
+export const BAR_SLOTS = GP.hotbar.slots;
 /** Слоты 0..8 — «места умений» (клавиши умений схемы), 9..11 — предметы (зелья HP и MP на 9 и 10; 11 свободен). */
-export const SKILL_SLOTS = 9;
+export const SKILL_SLOTS = GP.hotbar.skillSlots;
 export const BAR_ACTION_IDS = ["mount", "pet", "attack", "interact"] as const;
 export type BarAction = (typeof BAR_ACTION_IDS)[number];
 export type SlotRef = { s: string } | { i: string } | { a: BarAction };

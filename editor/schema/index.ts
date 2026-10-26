@@ -4,6 +4,7 @@ import { mobsRules, mountsRules, patrolsRules, zoneBossRules, itemsRules } from 
 import { gameplayRules } from "./gameplay";
 import { textsRules, checkTexts } from "./texts";
 import { itemRulesRules } from "./itemRules";
+import { miscRules } from "./misc";
 import { guessDoc, humanize } from "./common";
 import { evalCurve } from "./curve";
 
@@ -26,7 +27,7 @@ export const FILE_META: Record<string, { section: Section; title: string; readon
   skills_archers: { section: "Баланс", title: "Умения: лучники" },
   skills_mages: { section: "Баланс", title: "Умения: маги" },
   skills_rogues: { section: "Баланс", title: "Умения: разбойники" },
-  mobs: { section: "Мобы", title: "Мобы (только чтение)", readonly: true, virtual: true },
+  mobs: { section: "Мобы", title: "Мобы" },
   mobAI: { section: "Мобы", title: "Поведение мобов" },
   bestiary: { section: "Мобы", title: "Бестиарий" },
   elites: { section: "Мобы", title: "Элитные мобы" },
@@ -72,6 +73,7 @@ const RULES: Record<string, Rules> = {
   gameplay: gameplayRules,
   texts: textsRules,
   "items-rules": itemRulesRules,
+  raid: miscRules,
   mobs: mobsRules,
   mounts: mountsRules,
   patrols: patrolsRules,

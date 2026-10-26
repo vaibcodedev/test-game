@@ -65,6 +65,10 @@ interface RaidData {
   raid: {
     minLevel: number; size: number; maxPlayers: number; musterMs: number; gatherMs: number; pullMs: number; enrageMs: number;
     attempts: number; lockoutH: number; endMs: number; wipeMs: number;
+    /** Провокации танков: угроза = макс. угроза × tauntMul + tauntFlat; дальность — range умения (или tauntRangeDefault) + радиус босса + tauntRangePad, px. */
+    tauntMul: number; tauntFlat: number; tauntRangeDefault: number; tauntRangePad: number;
+    /** Сколько мс до конца сбора остаётся после «поторопить» и сколько мс светится эффект лечения. */
+    hurryGatherMs: number; healFxMs: number;
     revives: { base: number; perPhase: number; max: number; channelMs: number; range: number; hpPct: number };
   };
   npc: { name: string; greeting: string; sprite: string; tint: string; color: string; range: number };

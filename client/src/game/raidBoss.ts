@@ -7,10 +7,11 @@ import type { UnitView } from "./UnitView";
 import { placeText, worldText } from "./worldText";
 import type { Hud } from "../ui/hud";
 import { shakeCam } from "./camShake";
+import { GP } from "../../../shared/gameplay";
 
 type Pose = "swing" | "slam" | "roar" | "idle";
 const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
-const MAX_SPARKS = 40;
+const MAX_SPARKS = GP.ui.sparksMax;
 
 export class RaidBoss {
   private halo?: Phaser.GameObjects.Image;

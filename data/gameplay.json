@@ -14,7 +14,8 @@
     "talk": 30,
     "door": 110,
     "guardTiles": 6,
-    "tradeTiles": 5
+    "tradeTiles": 5,
+    "teleport": 110
   },
   "timers": {
     "lootBagTtlMs": 90000,
@@ -24,7 +25,8 @@
     "logoutCombatMs": 10000,
     "reconnectSec": 30,
     "dayCycleMin": 20,
-    "doorFadeMs": 260
+    "doorFadeMs": 260,
+    "teleportCastMs": 3000
   },
   "progression": {
     "xpTailFrom": 30,
@@ -101,7 +103,18 @@
     "vfxLateMs": 250,
     "loadingFadeMs": 400,
     "loadingSafetyMs": 30000,
-    "loadingEmbers": 28
+    "loadingEmbers": 28,
+    "lagK": 1.25,
+    "burstMax": 36,
+    "poolMax": 90,
+    "trapGraceMs": 1500,
+    "pickTol": 12,
+    "pickMagnet": 40,
+    "pickNear": 80,
+    "mapLabelStep": 4,
+    "mapLabelMinCells": 30,
+    "mapLabelScale": 1.25,
+    "sparksMax": 40
   },
   "fx": {
     "base": 32,
@@ -133,5 +146,11 @@
     "oreVar": 2,
     "dustMinLevel": 12,
     "dustEliteMul": 3
+  },
+  "hotbar": {
+    "bars": 2,
+    "slots": 12,
+    "skillSlots": 9,
+    "potionMs": 1500
   }
 }

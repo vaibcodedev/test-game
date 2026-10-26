@@ -14,6 +14,7 @@ import { MOBS } from "../../../shared/mobs";
 import type { Fx } from "../../../shared/protocol";
 import { aimExtras, facingOf, placeSkill, ruleErr, shapeHits, type AimUnit, type AimWorld, type HitUnit, type Placed } from "../../../shared/skillShape";
 import { SKILLS, type SkillAim, type SkillDef, type SkillTarget } from "../../../shared/skills";
+import { GP } from "../../../shared/gameplay";
 
 /** Юнит для выбора адресата: r — радиус, как у сервера (World.radiusOf: герой и питомец — PLAYER_RADIUS, моб — свой); dir — взгляд (за спину);
  *  boss — босс (его не притягивают). */
@@ -39,7 +40,7 @@ for (const m of Object.values(MOBS)) if (m.eliteSprite && m.eliteName) MOB_R.set
 export const selTarget: { r: number; friend: boolean; enemy: boolean } = { r: PLAYER_RADIUS, friend: false, enemy: false };
 
 /** Запас к сроку лужи капкана: сервер повторяет её раз в 7,5 с сроком 8 с — запоздавший повтор не должен «гасить» живой капкан. */
-export const TRAP_GRACE = 1500;
+export const TRAP_GRACE = GP.ui.trapGraceMs;
 /**
  * Свои живые капканы для превью (правило модуля «Слишком близко к другому капкану»): клиент видит их по fx сервера — лужа hazard «holy» от капкана
  * (hr_trap или «Ловкий отскок» при перекате, roll) ставит его, удар aoe «phys» r 52 в его точке снимает; срок — v.dur капкана, сверх предела
@@ -238,10 +239,10 @@ export function aimUnit(u: CastUnit | null | undefined): AimUnit | undefined {
 // ---------- Выбор цели мышью (задача 134, шаг 1; docs/controls.md, разделы 4, 11, 12) ----------
 
 /** Допуск клика по существу и радиус магнита ЛКМ в «Экшене» — в пикселях экрана; «Крупные цели» удваивают оба. */
-export const PICK_TOL = 12;
-export const PICK_MAGNET = 40;
+export const PICK_TOL = GP.ui.pickTol;
+export const PICK_MAGNET = GP.ui.pickMagnet;
 /** Умение на цель без цели и без точного наведения — ближайший к курсору в 80 px экрана (docs/controls.md, раздел 11). */
-export const PICK_NEAR = 80;
+export const PICK_NEAR = GP.ui.pickNear;
 
 /** Запас к зоне тела в пикселях мира: пиксели экрана / масштаб CSS (пикселей CSS на пиксель мира, 2–3). Допуск, а при magnet — радиус магнита. */
 export function pickReach(css: number, magnet: boolean, bigTargets: boolean): number {

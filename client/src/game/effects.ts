@@ -14,9 +14,10 @@ import { P } from "../../../shared/palette";
 import { CROWD } from "./labelLayout";
 import { Vfx, LATE_MS } from "./vfx";
 import { shakeCam } from "./camShake";
+import { GP } from "../../../shared/gameplay";
 
-const MAX_BURST = 36;
-const MAX_POOL = 90;
+const MAX_BURST = GP.ui.burstMax;
+const MAX_POOL = GP.ui.poolMax;
 const SFX_OF: Record<string, sfx.SfxName> = { bolt: "arcane", storm: "arcane", timewarp: "arcane", hex: "shadow", soul: "shadow", meta: "shadow",blood: "shadow", fire: "fire", frost: "frost", poison: "poison", arcane: "arcane", shadow: "shadow", holy: "holy", nature: "poison", phys: "hit", bash: "slam", glare: "holy", banner: "holy", divine: "holy", nova: "holy", rune: "frost", chains: "shadow", reap: "shadow", antimagic: "arcane", ray: "holy", hymn: "heal", ward: "shield", cleanse: "heal", pact: "shadow", burst: "explosion", tide: "shadow", ward_sol: "holy", ward_umb: "shadow" };
 
 const KIND_COLOR: Record<string, number> = {

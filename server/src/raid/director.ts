@@ -201,7 +201,7 @@ export class RaidDirector {
     return this.stage === "fight" ? Math.max(0, Math.ceil((this.fightAt + RAID_CFG.enrageMs - this.w.time) / 1000)) : Math.ceil(RAID_CFG.enrageMs / 1000);
   }
   /** Все пришли (комната) — сбор можно сократить. */
-  hurryGather(ms = 3000) {
+  hurryGather(ms = RAID_CFG.hurryGatherMs) {
     if (this.stage === "gather" && this.w.time - this.stageAt < this.gatherMs - ms) this.stageAt = this.w.time - (this.gatherMs - ms);
   }
 
@@ -353,10 +353,10 @@ export class RaidDirector {
         if (!(p.save.skills[id] > 0)) continue;
         const key = p.id + id, cd = p.cds.get(id) || 0, prev = this.tauntCds.get(key) ?? cd;
         this.tauntCds.set(key, cd);
-        if (cd <= prev || p.targetId !== b.id || this.w.dist(p, b) > (SKILLS[id].range ?? 260) + b.def.radius + 20) continue;
+        if (cd <= prev || p.targetId !== b.id || this.w.dist(p, b) > (SKILLS[id].range ?? RAID_CFG.tauntRangeDefault) + b.def.radius + RAID_CFG.tauntRangePad) continue;
         let top = 0;
         for (const v of b.threat.values()) top = Math.max(top, v);
-        b.threat.set(p.id, Math.max(b.threat.get(p.id) || 0, top * 1.1 + 500));
+        b.threat.set(p.id, Math.max(b.threat.get(p.id) || 0, top * RAID_CFG.tauntMul + RAID_CFG.tauntFlat));
         b.targetId = p.id;
         this.emit("taunt", { by: p.name });
       }
@@ -420,7 +420,7 @@ export class RaidDirector {
       t.stunUntil = t.rootUntil = t.slowUntil = 0;
       t.selfDirty = true;
       t.send("toast", { text: T("srv.director.196", { name: by.name }), kind: "info" });
-      this.w.emit({ t: "buff", id: t.id, k: "heal", ms: 900 });
+      this.w.emit({ t: "buff", id: t.id, k: "heal", ms: RAID_CFG.healFxMs });
       this.w.emit({ t: "aoe", k: "heal", x: t.x, y: t.y, r: 60 });
     }
   }

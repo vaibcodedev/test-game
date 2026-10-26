@@ -11,6 +11,7 @@
 import data from "../data/cities.json";
 import { FORTS, MAP_W, TILE } from "./constants";
 import { BELT_HALF, TOWN, inTownWalls } from "./town";
+import { GP } from "./gameplay";
 
 export type CityStyle = "solgard" | "umbrath";
 export const CITY_WALL = { x: 14, y: 11 };
@@ -368,8 +369,8 @@ export function nearestCity(found: readonly string[] | undefined, px: number, py
 }
 
 // ---------- телепорт ----------
-export const TELEPORT_CAST_MS = 3000;
-export const TELEPORT_RANGE = 110;
+export const TELEPORT_CAST_MS = GP.timers.teleportCastMs;
+export const TELEPORT_RANGE = GP.ranges.teleport;
 /** Цена по расстоянию между городами: 50–200 золота. */
 export function teleportPrice(a: City, b: City): number {
   const d = Math.hypot(a.x - b.x, a.y - b.y);

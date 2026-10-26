@@ -69,7 +69,6 @@ const server = http.createServer(async (req, res) => {
       if (p === "/api/files") return json(res, 200, store.list());
       if (p === "/api/file") {
         const name = url.searchParams.get("name") ?? "";
-        if (name === "mobs" && !mobsCache) mobsCache = { mobs: (await import("../../shared/mobs")).MOBS };
         const f = store.read(name);
         return json(res, 200, { name, data: f.data, readonly: f.readonly });
       }

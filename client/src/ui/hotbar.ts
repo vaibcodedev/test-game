@@ -15,11 +15,12 @@ import { keybinds } from "../game/keybinds";
 import { mountSprite } from "../../../shared/mounts";
 import type { Net } from "../net";
 import { T } from "../../../shared/texts";
+import { GP } from "../../../shared/gameplay";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const LOCK_KEY = "hotbar:lock:v1";
-const POTION_MS = 1500;
+const POTION_MS = GP.hotbar.potionMs;
 const ACTION_INFO: Record<string, { glyph: string; name: string; tip: string }> = {
   mount: { glyph: "♞", name: T("ui.hotbar.521"), tip: T("ui.hotbar.285") },
   pet: { glyph: "🐾", name: T("ui.hotbar.522"), tip: T("ui.hotbar.286") },

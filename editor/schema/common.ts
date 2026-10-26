@@ -1,6 +1,7 @@
 import type { Ctx, Doc, Rules } from "./types";
 import { num, TILE, BASE_PLAYER_SPEED, plural, cells } from "./fmt";
 import { evalCurve } from "./curve";
+import { keyRu } from "./names";
 
 const moveMul = (c: Ctx) => Number(c.bal?.moveMul ?? 1);
 const aggroMul = (c: Ctx) => Number(c.bal?.aggroMul ?? 1);
@@ -138,7 +139,7 @@ export function guessDoc(key: string, v: unknown, file: string): Doc {
   const known = NAMES[key];
   const isNum = typeof v === "number";
   const base: Doc = {
-    title: known?.title ?? humanize(key),
+    title: known?.title ?? keyRu(key).text,
     what: known?.what ?? (isNum ? "Число. Подробного объяснения для этого поля пока нет — смотрите подсказку раздела выше." : typeof v === "boolean" ? "Переключатель: включено или выключено." : "Текст."),
     kind: isNum ? "num" : typeof v === "boolean" ? "bool" : typeof v === "string" ? "text" : undefined,
     unit: known?.unit ?? unitFromName(key, v),

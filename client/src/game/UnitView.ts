@@ -18,6 +18,7 @@ import { UnitAuras, afx, countHero } from "./auraFx";
 import { zbDef, zbFx, zbViews } from "./zoneBoss";
 import { drawPlate, newPlate, resetPlate } from "./nameplate";
 import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
+import { GP } from "../../../shared/gameplay";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
 export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
@@ -76,7 +77,7 @@ const rowOf = (dir: number) => (dir === Dir.Down ? 0 : dir === Dir.Up ? 1 : 2);
  *  рисунок виден сквозь неё, и под градом ударов в рейде босс не белеет целиком. */
 const FLASH_MS = 90, FLASH_GAP = 250, FLASH_ALPHA = 0.5;
 /** Сглаживание хода чужих юнитов: разрыв до позиции сервера покрывается за столько интервалов между её приходами. */
-const LAG_K = 1.25;
+const LAG_K = GP.ui.lagK;
 
 export class UnitView {
   sprite: Phaser.GameObjects.Sprite;
