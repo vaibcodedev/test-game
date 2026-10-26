@@ -13,20 +13,31 @@
   <link rel="stylesheet" href="/editor.css">
 </head>
 <body>
-  <div id="app">
-    <aside class="panel win s ed-win" aria-label="Список конфигов">
-      <h2><span>Конфиги</span></h2>
-      <div class="body" id="tree"></div>
-    </aside>
-    <main class="panel win xl ed-win">
-      <h2><span id="title"></span><span class="chip dim" id="path"></span></h2>
-      <div class="body" id="form-body">
-        <div id="report" class="card compact" hidden></div>
-        <div id="form"></div>
-      </div>
-      <div class="win-foot"><span class="win-foot-info" id="foot-info"></span><div id="bar" style="display:contents"></div></div>
-    </main>
+  <div class="m">
+    <div class="top">
+      <span class="logo">Конфиги</span>
+      <button class="search-btn" id="search-btn" type="button"><span class="ico">⌕</span><span>Найти настройку: «агр», «скорость коня», «золото»…</span><kbd class="kbd">Ctrl K</kbd></button>
+      <span class="grow"></span>
+      <span class="chip warn" id="top-chip" hidden></span>
+      <span class="chip dim">Пепельный Предел · data/*.json</span>
+    </div>
+    <div class="body2">
+      <nav class="panel rail" id="rail" aria-label="Разделы"></nav>
+      <main class="panel main">
+        <div id="head" class="head"></div>
+        <div id="content" class="content"></div>
+      </main>
+    </div>
+    <div class="panel actbar">
+      <span class="info" id="bar-info"></span>
+      <span class="grow"></span>
+      <button class="btn" id="b-diff" type="button">Что изменится…</button>
+      <button class="btn" id="b-undo" type="button">Отменить всё</button>
+      <button class="btn" id="b-check" type="button">Проверить</button>
+      <button class="btn primary" id="b-save" type="button">Сохранить</button>
+    </div>
   </div>
+  <div id="search" class="ov" hidden></div>
   <div id="modal" class="modal" hidden></div>
   <script type="module" src="/app.js"></script>
 </body>

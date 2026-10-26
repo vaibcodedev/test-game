@@ -45,14 +45,40 @@ export function createStore(dataDir = DATA, loadVirtual?: (name: string) => unkn
     if (after !== cur.text) fs.writeFileSync(file(name), after);
     return { ok: true as const, before: cur.text, after, changed: after !== cur.text, warnings: w };
   };
-  const revert = (name: string) => {
+  const preview = (name: string, data: unknown) => {
+    const cur = read(name);
+    return { before: cur.text, after: patchJson(cur.text, data) };
+  };
+  const rel = (name: string) => path.relative(ROOT, file(name)).replace(/\\/g, "/");
+  const HASH = /^(HEAD|[0-9a-f]{7,40})$/;
+  const git = (args: string[]) => execFileSync("git", args, { cwd: ROOT, maxBuffer: 64 << 20 });
+  /** История файла: последние коммиты, которые его меняли (только чтение git). */
+  const history = (name: string, n = 30) => {
+    const out = git(["log", "--follow", `-n${n}`, "--format=%H%x1f%an%x1f%aI%x1f%s%x1f%b%x1e", "--", rel(name)]).toString("utf8");
+    return out.split("\x1e").map((x) => x.trim()).filter(Boolean).map((x) => { const [hash, author, date, subject, body] = x.split("\x1f"); return { hash, author, date, subject, body: body ?? "" }; });
+  };
+  const flat = (v: unknown, p: string[], out: Map<string, unknown>) => {
+    if (v && typeof v === "object" && !(Array.isArray(v) && v.every((x) => x === null || typeof x !== "object"))) { for (const k of Object.keys(v as object)) if (!k.startsWith("_") && !/_doc$/i.test(k)) flat((v as any)[k], [...p, k], out); return; }
+    out.set(JSON.stringify(p), v);
+  };
+  /** Что поменял коммит в этом файле: список «путь: было → стало». */
+  const commitDiff = (name: string, hash: string) => {
+    if (!HASH.test(hash)) throw new Error("плохой хэш");
+    const get = (ref: string) => { try { return parseJson(git(["show", `${ref}:${rel(name)}`]).toString("utf8")); } catch { return undefined; } };
+    const a = new Map<string, unknown>(), b = new Map<string, unknown>();
+    flat(get(hash + "^"), [], a); flat(get(hash), [], b);
+    const items: { path: string[]; before: unknown; after: unknown }[] = [];
+    for (const k of new Set([...a.keys(), ...b.keys()])) if (JSON.stringify(a.get(k)) !== JSON.stringify(b.get(k))) items.push({ path: JSON.parse(k), before: a.get(k), after: b.get(k) });
+    return { total: items.length, items: items.slice(0, 300) };
+  };
+  const revert = (name: string, hash = "HEAD") => {
+    if (!HASH.test(hash)) throw new Error("плохой хэш");
     const f = file(name);
-    const rel = path.relative(ROOT, f).replace(/\\/g, "/");
     // git show, а не checkout: индекс не трогаем
-    const buf = execFileSync("git", ["show", `HEAD:${rel}`], { cwd: ROOT, maxBuffer: 64 << 20 });
+    const buf = git(["show", `${hash}:${rel(name)}`]);
     const before = fs.readFileSync(f, "utf8");
     fs.writeFileSync(f, buf);
     return { before, after: buf.toString("utf8") };
   };
-  return { list, read, check, save, revert, file };
+  return { list, read, check, save, preview, history, commitDiff, revert, file };
 }

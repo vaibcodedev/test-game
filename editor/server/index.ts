@@ -26,6 +26,7 @@ async function schemaBundle(): Promise<string> {
 
 const STATIC: [string, string][] = [
   ["/styles/", path.join(ROOT, "client", "src", "styles")],
+  ["/assets/", path.join(ROOT, "client", "public", "assets")],
   ["/ui/", path.join(ROOT, "client", "public", "ui")],
   ["/fonts/rubik/", path.join(ROOT, "node_modules", "@fontsource", "rubik", "files")],
   ["/fonts/", path.join(ROOT, "client", "src", "fonts")],
@@ -76,6 +77,12 @@ const server = http.createServer(async (req, res) => {
         const b = await readBody(req);
         return json(res, 200, store.check(b.name, b.data));
       }
+      if (p === "/api/history") return json(res, 200, store.history(url.searchParams.get("name") ?? ""));
+      if (p === "/api/commit-diff") return json(res, 200, store.commitDiff(url.searchParams.get("name") ?? "", url.searchParams.get("hash") ?? ""));
+      if (p === "/api/preview" && req.method === "POST") {
+        const b = await readBody(req);
+        return json(res, 200, store.preview(b.name, b.data));
+      }
       if (p === "/api/save" && req.method === "POST") {
         const b = await readBody(req);
         const r = store.save(b.name, b.data);
@@ -83,7 +90,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === "/api/revert" && req.method === "POST") {
         const b = await readBody(req);
-        const r = store.revert(b.name);
+        const r = store.revert(b.name, b.hash || "HEAD");
         return json(res, 200, { ...r, data: store.read(b.name).data });
       }
       if (p === "/api/tsc" && req.method === "POST") {

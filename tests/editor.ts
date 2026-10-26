@@ -27,14 +27,14 @@ for (const f of store.list().filter((x) => !x.readonly)) {
 {
   const text = balance.text;
   const d: any = JSON.parse(JSON.stringify(balance.data));
-  d.pvp.class.healer.dmg = [[30, 1.8], [100, 1.1]];
-  d.moveMul = 0.8;
+  d.pvp.class.healer.dmg = [[30, 9.9], [100, 8.8]];
+  d.moveMul = Math.round((d.moveMul + 0.1) * 100) / 100;
   const after = patchJson(text, d);
-  const a = text.split("\r\n"), b = after.split("\r\n");
+  const a = text.split(/\r?\n/), b = after.split(/\r?\n/);
   assert.equal(a.length, b.length, "число строк не должно меняться");
   const diff = a.map((l, i) => (l === b[i] ? 0 : 1) as number).reduce((x, y) => x + y, 0);
   assert.equal(diff, 2, `изменилось ${diff} строк вместо 2`);
-  assert.ok(after.includes("[[30, 1.8], [100, 1.1]]"), "массив точек остался в одной строке");
+  assert.ok(after.includes("[[30, 9.9], [100, 8.8]]"), "массив точек остался в одной строке");
   assert.deepEqual(parseJson(after), d);
   // добавленный ключ: файл остаётся валидным JSON, остальное не тронуто
   d.pvp.class.mage.extra = 1;
