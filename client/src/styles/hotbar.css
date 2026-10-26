@@ -30,11 +30,11 @@
 .hb-hold.l { margin-right: 8px; padding-right: 8px; background: linear-gradient(transparent 6%, #e8c878 50%, transparent 94%) right center / 2px 100% no-repeat; }
 .hb-hold.r { margin-left: 8px; padding-left: 8px; background: linear-gradient(transparent 6%, #e8c878 50%, transparent 94%) left center / 2px 100% no-repeat; }
 .hb-blank { width: 32px; height: 32px; border-radius: var(--r-1); background: #0a080c; box-shadow: 0 0 0 1px #2a211f, inset 0 2px 4px rgba(0, 0, 0, .9); opacity: .5; pointer-events: none; }
-.hud-bar .hb-hold .slot, .hud-bar .hb-hold .hb-slot { --sz: 32px; width: 32px; height: 32px; }
-.hud-bar .hb-hold .slot img, .hud-bar .hb-hold .hb-slot img { width: 30px !important; height: 30px !important; left: 1px !important; top: 1px !important; }
+.hud-bar .hb-hold .slot, .hud-bar .hb-hold .hb-slot, .hud-bar .hb-hold .hb-extras .slot { --sz: 32px; width: 32px; height: 32px; }
+.hud-bar .hb-hold .slot img, .hud-bar .hb-hold .hb-slot img, .hud-bar .hb-hold .hb-extras .slot img { width: 30px !important; height: 30px !important; left: 1px !important; top: 1px !important; }
 .hud-bar .hb-hold .slot kbd { font-size: 10px; }
 .hud-bar .hb-hold .slot .qty { font-size: 10px; }
-.hud-bar .hb-hold .slot .act, .hud-bar .hb-hold .slot > span:not(.qty):not(.cdt) { font-size: 16px !important; line-height: 31px !important; }
+.hud-bar .hb-hold .slot .act, .hud-bar .hb-hold .slot > span:not(.qty):not(.cdt), .hud-bar .hb-hold .hb-extras .slot > span { font-size: 16px !important; line-height: 31px !important; }
 .hud-bar .hb-hold .hb-slot .cdt { font-size: var(--fs-xs); }
 
 .hud-bar .hb-slot, .hud-bar .hb-extras .slot {
