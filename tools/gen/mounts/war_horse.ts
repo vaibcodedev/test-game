@@ -173,17 +173,18 @@ function deadPose(o: DeadOpt): Pose {
 function deadLeg(o: DeadOpt, i: number, hip: V3): { foot: V3; fold: number; bend: V3 } {
   const out = Math.sign(o.roll) || 1, fr = i < 2, k = i % 2;
   if (o.legs === "stretch") {
-    // вытянуты вдоль земли: передние вперёд, задние назад, чуть в сторону
-    const dx = 1.5 + k * 2.2, dy = fr ? 14.5 - k * 3.0 : -(13.0 - k * 2.5);
+    // вытянуты веером: передние вперёд, задние назад, дальняя нога дальше в сторону — ноги не сливаются с корпусом
+    const dx = k ? 8.5 : 2.5, dy = fr ? (k ? 15 : 21) : -(k ? 14 : 20);
     return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0, bend: [out * 0.2, 0, 1] };
   }
-  // подогнуты: копыта под брюхо — передние назад, задние вперёд, колени торчат в сторону
-  const dx = 6.0 + k * 1.8, dy = fr ? -3.5 + k * 2.0 : 3.8 - k * 2.0;
-  return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0.9, bend: [out * 0.5, fr ? 0.9 : -0.9, 0.6] };
+  // подогнуты: копыта под брюхо, колени торчат в стороны веером
+  const dx = k ? 11 : 6, dy = fr ? (k ? -2 : -6) : (k ? 2 : 6);
+  return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0.9, bend: [out * 0.6, fr ? 0.9 : -0.9, 0.6] };
 }
 
 // ---------------- сборка ----------------
 const X: V3 = [1, 0, 0], Y: V3 = [0, 1, 0], Z: V3 = [0, 0, 1];
+const HOOF_LIGHT: Mat = mat("копыто (светлая кромка)", R("#4a3a2c", "#7a6650", "#a8926e", "#d0be98", "#f0e4c4"), { base: 2.2, gain: 2.4 });
 const cross3 = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 export function warHorse(fac: Fac): MountSpec { return makeHorse(fac); }
 /** Павший конь той же модели (броня, попона, седло, голова — как у живого): поза deadPose, без знамени. */
@@ -228,7 +229,7 @@ function makeHorse(fac: Fac, dead?: DeadOpt): MountSpec {
       const pd = dead ? mul(norm(add(hip, mul(L.foot, -1))), 3.3) : rotAxis([0, -0.9, 3.2], X, -L.fold);
       const hoof = L.foot;
       const fet = add(hoof, pd);
-      const l1 = fr ? 9.3 : 11.4, l2 = fr ? 7.3 : 8.2;
+      const lk = dead ? 1.3 : 1, l1 = (fr ? 9.3 : 11.4) * lk, l2 = (fr ? 7.3 : 8.2) * lk;
       const knee = ik(hip, fet, l1, l2, bendV);
       const m = sx > 0 ? K.coat : K.coatDk;
       const mk = (q: Prim) => q;
@@ -257,7 +258,7 @@ function makeHorse(fac: Fac, dead?: DeadOpt): MountSpec {
       const hd = norm(pd);
       const hs = norm([1, 0, 0]);
       const hs2: V3 = dead ? norm([-hd[1], hd[0], 0.001]) : hs;
-      sc.box(sc.group(0), K.hoof, add(hoof, mul(hd, 0.9)), [1.95, 2.25, 1.0], dead ? [hs2, norm(cross3(hd, hs2)), hd] : [hs, norm(rotAxis(Y, X, -L.fold)), hd], 0.45, { big: false });
+      sc.box(sc.group(0), dead ? HOOF_LIGHT : K.hoof, add(hoof, mul(hd, 0.9)), dead ? [2.8, 3.1, 1.5] : [1.95, 2.25, 1.0], dead ? [hs2, norm(cross3(hd, hs2)), hd] : [hs, norm(rotAxis(Y, X, -L.fold)), hd], 0.45, { big: false });
     }
 
     // ---- корпус ----
@@ -274,7 +275,9 @@ function makeHorse(fac: Fac, dead?: DeadOpt): MountSpec {
 
     // ---- шея, голова, грива (поверх всадника при взгляде вниз) ----
     const NB = T([0, 12.4, 25.6]);
-    const neckDir = (v: V3): V3 => TD(rot(v, p.neckP, p.neckY));
+    const neckK = dead ? 1.45 : 1, hk = dead ? 1.6 : 1.15;
+    const neckAx = (v: V3): V3 => TD(rot(v, p.neckP, p.neckY));
+    const neckDir = (v: V3): V3 => mul(neckAx(v), neckK);
     const poll = add(NB, neckDir([0, 7.2, 12.4]));
     front(b, VB.down, () => {
       const gn = sc.group(2.2);
@@ -282,7 +285,7 @@ function makeHorse(fac: Fac, dead?: DeadOpt): MountSpec {
       sc.cone(gn, K.coat, add(NB, neckDir([0, 4.2, 5.6])), 4.6, add(poll, neckDir([0, 0.4, -1.2])), 3.1);
       sc.cone(gn, K.coat, add(NB, neckDir([0, -3.2, 4.8])), 3.6, add(poll, neckDir([0, -1.2, 0.2])), 2.7);
       // голова: оси — вниз-вперёд (w), лицом вперёд-вверх (fv), вбок (s)
-      const hrot = (v: V3) => neckDir(rotAxis(rotAxis(v, X, p.headP), [0, 0.62, -0.78], p.headR));
+      const hrot = (v: V3) => neckAx(rotAxis(rotAxis(v, X, p.headP), [0, 0.62, -0.78], p.headR));
       const w = norm(hrot([0, 0.62, -0.78])), fv = norm(hrot([0, 0.78, 0.62])), s = norm(hrot(X));
       const H = (a: number, c: number, d: number): V3 => add(poll, add(mul(w, a), add(mul(fv, c), mul(s, d))));
       const head0 = sc.prims.length, st0 = sc.stamps.length;
@@ -322,12 +325,12 @@ function makeHorse(fac: Fac, dead?: DeadOpt): MountSpec {
       for (const sx of [-1, 1]) sc.ball(sc.group(0), K.trim, H(9.0, -0.8, sx * 1.9), 0.55);
       // голова крупнее (боевой конь): всё от затылка ×1.15
       for (let k = head0; k < sc.prims.length; k++) {
-        const q = sc.prims[k], S = (v: V3): V3 => add(poll, mul(add(v, mul(poll, -1)), 1.15));
-        q.a = S(q.a); q.b = S(q.b); q.anc = S(q.anc); q.ra *= 1.15; q.rb *= 1.15; q.r = mul(q.r, 1.15); q.rr *= 1.15;
+        const q = sc.prims[k], S = (v: V3): V3 => add(poll, mul(add(v, mul(poll, -1)), hk));
+        q.a = S(q.a); q.b = S(q.b); q.anc = S(q.anc); q.ra *= hk; q.rb *= hk; q.r = mul(q.r, hk); q.rr *= hk;
       }
-      for (let k = st0; k < sc.stamps.length; k++) sc.stamps[k].at = add(poll, mul(add(sc.stamps[k].at, mul(poll, -1)), 1.15));
+      for (let k = st0; k < sc.stamps.length; k++) sc.stamps[k].at = add(poll, mul(add(sc.stamps[k].at, mul(poll, -1)), hk));
       // цепь от удил к нагруднику (провисает)
-      const HS = (a: number, c: number, d: number): V3 => add(poll, mul(add(H(a, c, d), mul(poll, -1)), 1.15));
+      const HS = (a: number, c: number, d: number): V3 => add(poll, mul(add(H(a, c, d), mul(poll, -1)), hk));
       for (const sx of [-1, 1]) {
         const a0 = HS(9.0, -0.8, sx * 2.1), a1 = T([sx * 6.8, 15.6, 25.2]);
         const n = 8;
