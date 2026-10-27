@@ -22,6 +22,8 @@ export class FortScenes {
   private live = new Map<string, Live>();
   private t0 = Date.now();
   private hero = { x: 0, y: 0 };
+  /** Короткие эффекты (искры, камень, пыль): свой счётчик по performance.now, не твины Phaser (те в игре не двигались). */
+  private anims: { t0: number; ms: number; step: (k: number) => void; end: () => void }[] = [];
 
   /** others — все юниты сцены (герои, в том числе свой): чужая фракция рядом замораживает сценку. */
   constructor(private sc: Phaser.Scene, private others: () => Iterable<{ u: UnitState }>) {}
@@ -60,7 +62,10 @@ export class FortScenes {
   }
 
   update(dt: number, hx: number, hy: number) {
-    const now = Date.now();
+    const now = Date.now(), pn = performance.now();
+    const cur = this.anims;
+    this.anims = []; // end() может запускать новые эффекты (камень → пыль): они попадают в новый список
+    for (const a of cur) { const k = (pn - a.t0) / a.ms; if (k >= 1) a.end(); else { a.step(k); this.anims.push(a); } }
     this.hero = { x: hx, y: hy };
     const t0 = Math.max(this.t0, now - 600);
     this.t0 = now;
@@ -96,9 +101,9 @@ export class FortScenes {
   /** Громкость по расстоянию от героя до точки: 0 за soundRadius. */
   private near(x: number, y: number) { return Math.max(0, 1 - Math.hypot(x - this.hero.x, y - this.hero.y) / FORT_SCENE_CFG.sound); }
 
-  /** Короткий кадровый счётчик 0→1 (искры, камень, пыль); по концу объекты убирает onEnd. */
+  /** Короткий эффект 0→1 за ms (искры, камень, пыль); по концу end убирает объекты. */
   private run(ms: number, step: (k: number) => void, end: () => void) {
-    this.sc.tweens.addCounter({ from: 0, to: 1, duration: ms, onUpdate: (tw) => step(tw.getValue() ?? 0), onComplete: end });
+    this.anims.push({ t0: performance.now(), ms, step, end });
   }
 
   private fx(f: FortFx) {
@@ -120,7 +125,7 @@ export class FortScenes {
   private shot(f: FortFx) {
     const c = FORT_SCENE_CFG.fx.shot, ms = num(c.flightMs), arc = num(c.arc);
     sfx.play("slam", num(c.gain) * this.near(f.x, f.y));
-    const stone = this.sc.add.circle(f.x, f.y, num(c.stoneR), num(c.stone)).setStrokeStyle(1, 0x2a2620).setDepth(DEPTH.top - 8);
+    const stone = this.sc.add.circle(f.x, f.y, num(c.stoneR), num(c.stone)).setStrokeStyle(2, 0x2a2620).setDepth(DEPTH.top - 8);
     const shade = this.sc.add.ellipse(f.x, f.y, 10, 5, 0x000000, 0.35).setDepth(DEPTH.ground + 6);
     this.run(ms, (k) => {
       const x = f.x + (f.tx - f.x) * k, y = f.y + (f.ty - f.y) * k;
@@ -142,5 +147,5 @@ export class FortScenes {
     }
   }
 
-  destroy() { for (const l of this.live.values()) this.drop(l); this.live.clear(); }
+  destroy() { for (const a of this.anims) a.end(); this.anims = []; for (const l of this.live.values()) this.drop(l); this.live.clear(); }
 }

@@ -24,7 +24,7 @@ const PASS = "secret";
 type Moment = { sec: number; zoom?: number; ox?: number; oy?: number; w?: number; h?: number; wait?: number };
 const MOMENT: Record<string, Moment[]> = {
   drill: [{ sec: 2.4 }], smith: [{ sec: 0.4, wait: 300 }], orders: [{ sec: 1.3 }, { sec: 8.3 }],
-  catapult: [{ sec: 14.95, wait: 600, oy: -60 }, { sec: 14.95, wait: 2000, zoom: 1, ox: 260, oy: -80, w: 1000, h: 560 }],
+  catapult: [{ sec: 14.95, wait: 250, oy: -60 }, { sec: 14.95, wait: 900, zoom: 1, ox: 260, oy: -80, w: 1000, h: 560 }, { sec: 14.95, wait: 1900, zoom: 1, ox: 260, oy: -80, w: 1000, h: 560 }],
 };
 let page: Page;
 const errors: string[] = [];
@@ -76,6 +76,8 @@ async function snap(cx: number, cy: number, w: number, h: number, period: number
     await new Promise((r) => setTimeout(r, a.wait));
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const k = cv.width / g.scale.width;
+    const dbg = sc.children.list.filter((o) => o.type === "Arc" || o.type === "Ellipse").map((o) => o.type[0] + Math.round(o.x) + "," + Math.round(o.y)).join(" ");
+    console.warn("fortdbg " + a.sec + " " + a.wait + " " + dbg.slice(0, 300));
     const out = { url: cv.toDataURL("image/png"), x: (a.cx - cam.worldView.x) * cam.zoom * k, y: (a.cy - cam.worldView.y) * cam.zoom * k, z: cam.zoom * k };
     Date.now = window.__dn;
     cam.setZoom(z0);
@@ -100,6 +102,7 @@ async function scenario() {
   try {
     for (const s of FORT_SCENES) {
       at = { x: s.x, y: s.y + 240 };
+      H.unit.faction = s.fort; // свой герой: чужой фракции сценка замирает (так и задумано)
       await sleep(2500); // герой на месте, сценка проснулась
       for (const [i, m] of (MOMENT[s.kind] ?? [{ sec: 1 }]).entries()) {
         const dir = s.fort === "solgard" ? 1 : -1, z = m.zoom ?? 2;
@@ -127,7 +130,8 @@ async function main() {
     page.on("console", (m) => { if (m.type() === "error" || m.type() === "warn") errors.push(`${m.type()}: ${m.text()}`); });
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e)}`));
     await scenario();
-    const warn = errors.filter((e) => !/переподключение|seat reservation|favicon|DevTools|WebGL|GPU stall|swiftshader|AudioContext|AnimationManager key already exists/i.test(e));
+    const warn = errors.filter((e) => !/fortdbg|переподключение|seat reservation|favicon|DevTools|WebGL|GPU stall|swiftshader|AudioContext|AnimationManager key already exists/i.test(e));
+    console.log(errors.filter((e) => /fortdbg/.test(e)).join(String.fromCharCode(10)));
     if (warn.length) { bad++; console.log("ошибки консоли:", warn.slice(0, 5).join(" | ")); }
   } catch (e) { console.log(String((e as Error)?.stack ?? e).slice(0, 1200)); bad++; }
   finally { await browser.close().catch(() => {}); await vite.close().catch(() => {}); }

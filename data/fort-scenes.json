@@ -25,8 +25,8 @@
    "dy": -1.5,
    "flightMs": 1700,
    "arc": 190,
-   "stone": "0x6a6258",
-   "stoneR": 4,
+   "stone": "0xe4dccb",
+   "stoneR": 6,
    "dustMs": 900,
    "dust": 7,
    "dustColor": "0xb8a888",
@@ -465,13 +465,13 @@
       },
       {
        "at": 9.5,
-       "dx": 0,
-       "dy": 7
+       "dx": 0.5,
+       "dy": 5.4
       },
       {
        "at": 11,
-       "dx": 0,
-       "dy": 7
+       "dx": 0.5,
+       "dy": 5.4
       },
       {
        "at": 14.5,

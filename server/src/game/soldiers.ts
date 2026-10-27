@@ -396,7 +396,8 @@ export class Soldiers {
         put((c.x + dx) * TILE + 16, (c.y + dy) * TILE + 16, k === "r" ? "ranged" : "melee", Math.abs(dy) >= c.half.y - 3 ? (dy < 0 ? Dir.Up : Dir.Down) : dx < 0 ? Dir.Left : Dir.Right, true);
       }
       for (let j = 0; j < cfg.rows; j++) for (let i = 0; i < cfg.cols; i++) {
-        const IN = inOf(c.half), sx = -IN.x + ((i + 0.5) * 2 * IN.x) / cfg.cols, sy = -IN.y + ((j + 0.5) * 2 * IN.y) / cfg.rows;
+        const IN = inOf(c.half), at = (cfg as { sectorAt?: [number, number][] }).sectorAt?.[j * cfg.cols + i]; // sectorAt — где стоит стража сектора (форты: вдали от сценок, шаг 12)
+        const sx = at ? at[0] - 0.5 : -IN.x + ((i + 0.5) * 2 * IN.x) / cfg.cols, sy = at ? at[1] - 0.5 : -IN.y + ((j + 0.5) * 2 * IN.y) / cfg.rows;
         for (let k = 0; k < cfg.perSector; k++) put((c.x + 0.5 + sx) * TILE, (c.y + 0.5 + sy) * TILE, k % 2 ? "ranged" : "melee", Dir.Down, false);
       }
     }
