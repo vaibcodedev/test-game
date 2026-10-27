@@ -4,6 +4,7 @@ import { CITIES } from "../../../shared/cities";
 import { landLabel, type FactionId } from "../../../shared/factions";
 import { PLACES, ZONES, isTownZone, type WorldMap } from "../../../shared/map";
 import { GP } from "../../../shared/gameplay";
+import { WAR_BASES } from "../../../shared/bannerWar";
 
 const STEP = GP.ui.mapLabelStep; // шаг сетки поиска частей зоны, тайлы
 const MIN_CELLS = GP.ui.mapLabelMinCells; // меньше — часть не подписывается (клетки по STEP×STEP тайлов)
@@ -68,8 +69,18 @@ export function buildZoneLabels(m: WorldMap): { zoneLabels: Label[]; landLabels:
     const zi = ZONES[z];
     zoneLabels.push({ x, y, text: zi.name, danger: zi.danger, land: zi.land, zone: z, pair });
   };
-  // центральные зоны (Поля, залы данжа, вулкан) — по центру части
-  for (const c of comps) if (Math.abs(c.cx - axis) < 30) { const p = nearest(c, c.cx, c.cy); add(c.z, p.x, p.y); }
+  // центральные зоны (Поля, залы данжа, вулкан) — по центру части, но не на основаниях «Знамён Предела» (их значок и подпись — свои)
+  const WAR_GAP = 40;
+  const clearOfWar = (x: number, y: number) => WAR_BASES.every((b) => Math.hypot(b.tx - x, b.ty - y) >= WAR_GAP);
+  for (const c of comps) if (Math.abs(c.cx - axis) < 30) {
+    let p = nearest(c, c.cx, c.cy);
+    if (!clearOfWar(p.x, p.y)) {
+      const byDist = c.cells.map((k) => ({ x: (k % gw) * STEP + STEP / 2, y: ((k / gw) | 0) * STEP + STEP / 2 })).filter((q) => Math.abs(q.x - axis) < STEP)
+        .sort((a, b) => Math.hypot(a.x - c.cx, a.y - c.cy) - Math.hypot(b.x - c.cx, b.y - c.cy));
+      p = byDist.find((q) => clearOfWar(q.x, q.y)) ?? p;
+    }
+    add(c.z, p.x, p.y);
+  }
   // части сторон: западная и её зеркальная восточная
   const west = comps.filter((c) => c.cx < axis - 30).sort((a, b) => a.cx - b.cx);
   const east = comps.filter((c) => c.cx > axis + 30);

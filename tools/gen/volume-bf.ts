@@ -261,19 +261,25 @@ function ram3(): PC {
 }
 
 // ---------------- рогатки (2×1) ----------------
-function spikeBarrier3(): PC {
+function spikeBarrier3(v = 0): PC {
   const pc = new PC(60, 40), y = 24;
   shadowBox(pc, 4, 52, 33, [8, -6], 14);
-  const stake = (x: number, front: boolean) => {
-    if (front) log(pc, x + 6, 34, x - 6, 10, 1.7, WOOD, { tip: 5 });
-    else log(pc, x - 5, 33, x + 8, 11, 1.6, WOOD.map((c) => mix(c, WOOD[0], 0.25)) as Ramp, { tip: 5 });
+  const dk = WOOD.map((c) => mix(c, WOOD[0], 0.25)) as Ramp;
+  const stake = (x: number, front: boolean, lean = 1, len = 24, broken = false) => {
+    const top = 34 - len;
+    if (broken) { log(pc, x + 3 * lean, 34, x + 1.5 * lean, top + 12, 1.7, WOOD, { end: WOOD }); for (const [dx, dy] of [[-1, 0], [1, -2], [2, 1]] as const) log(pc, x + 1.5 * lean + dx, top + 12, x + 1.5 * lean + dx + lean, top + 8 + dy, 0.9, WOOD, { end: null }); return; }
+    if (front) log(pc, x + 6 * lean, 34, x - 6 * lean, top, 1.7, WOOD, { tip: 5 });
+    else log(pc, x - 5 * lean, 33, x + 8 * lean, top + 1, 1.6, dk, { tip: 5 });
   };
-  for (const x of [12, 28, 44]) stake(x, false);
+  const xs = v === 3 ? [8, 20, 32, 44] : [12, 28, 44];
+  for (const x of xs) stake(x, false, v === 1 ? -1 : 1, v === 1 ? 20 : 24);
   log(pc, 4, y, 54, y - 3, 3.2, WOOD, { end: WOOD });
-  for (const x of [12, 28, 44]) { // стяжки
+  if (v === 3) log(pc, 4, y + 8, 54, y + 5, 2.4, dk, { end: dk });
+  for (const x of xs) { // стяжки
     for (let k = -3; k <= 3; k++) pc.set(x, y - 1 - Math.round((x - 4) * 0.06) + k, litC(ROPE, [0, -k / 3, 1], 0));
-    stake(x, true);
+    stake(x, true, v === 1 ? -1 : 1, v === 1 ? 20 : v === 3 ? 22 : 24, v === 2 && x === 28);
   }
+  if (v === 2) { log(pc, 36, 36, 52, 32, 1.4, WOOD, { tip: 5 }); } // отбитый кол лежит
   return finish(pc);
 }
 
@@ -376,7 +382,7 @@ function ellipseRing(pc: PC, cx: number, cy: number, rx: number, ry: number, w: 
     if (d <= 1 && d > 1 - w / Math.min(rx, ry * 2)) pc.set(x, y, c);
   }
 }
-function wagon3(v: "a" | "b"): PC {
+function wagon3(v: "a" | "b", post?: (pc: PC) => void): PC {
   const pc = new PC(104, 66);
   shadowPoly(pc, [[8, 60], [80, 61], [90, 53], [20, 52]], 30);
   if (v === "a") {
@@ -409,18 +415,72 @@ function wagon3(v: "a" | "b"): PC {
     box(pc, 74, 50, 12, 8, 6, { r: WOOD, tex: planksV(4, 3) }, { r: WOOD }, { r: WOOD, tex: planksH(3, 4) });
     box(pc, 30, 54, 9, 6, 5, { r: WOOD, tex: planksV(3, 5) }, { r: WOOD }, { r: WOOD });
   }
+  post?.(pc);
   return finish(pc);
 }
+
+
+// ---------------- варианты: сгоревшие и нагруженные повозки, шатры, разбитые катапульты ----------------
+const charPass = (pc: PC) => { // перекраска дерева в уголь, оставив железо
+  pc.map((c) => { if (!c[3]) return c; const l = (c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11) / 255; const warm = c[0] > c[2] + 14; return warm ? ([...CHAR[Math.max(0, Math.min(4, Math.round(l * 5.2 - 0.6)))].slice(0, 3), c[3]] as RGBA) : c; });
+};
+function embers(pc: PC, n: number, seed: number) {
+  for (let i = 0; i < n; i++) { const x = Math.floor(hash01(i, seed, 1) * pc.w), y = Math.floor(hash01(i, seed, 2) * pc.h); if (pc.alpha(x, y) && pc.get(x, y)![0] < 90) pc.set(x, y, i % 3 ? EMBER[2] : EMBER[3]); }
+}
+const WOOD_D2 = [hex("#241a12"), hex("#32241a"), hex("#42301f"), hex("#56402a"), hex("#6e5236")];
+const STRAW_R = [hex("#4a3412"), hex("#76561c"), hex("#a2802c"), hex("#c8a446"), hex("#e6c870"), hex("#f8e4a0")];
+const barrel3 = (pc: PC, cx: number, yb: number, r = 6) => {
+  cylV(pc, cx, yb - r * 2.2, yb, r, WOOD, { k: 0.45, cap: WOOD_D2, tex: (phi) => (Math.floor((phi + 2) * 3) % 2 ? -0.3 : 0.2) });
+  for (const y of [yb - r * 1.6, yb - r * 0.7]) for (let x = Math.round(cx - r); x <= Math.round(cx + r); x++) { const u = (x - cx) / r; if (Math.abs(u) <= 1) pc.set(x, Math.round(y), litC(IRON, [u, 0, Math.sqrt(1 - u * u)], 0)); }
+};
+const hay3 = (pc: PC, cx: number, cy: number, s: number) => { ellipseFace(pc, cx, cy, 6 * s, 3.2 * s, STRAW_R, TOP); for (let k = 0; k < 5; k++) pc.set(Math.round(cx - 5 * s + k * 2.4 * s), Math.round(cy + 3.5 * s), STRAW_R[2]); };
+/** Разбитая катапульта (3×1): a — рычаг сломан, колесо сорвано; b — сгоревший остов с углями; c — опрокинута на бок, колесо торчит вверх. */
+function catapultWreck(v: number): PC {
+  const pc = new PC(124, 70), B = 64;
+  const frame = WOOD;
+  shadowBox(pc, 8, 102, B, [14, -10], 36);
+  if (v === 2) {
+    box(pc, 22, B - 30, 12, 30, 10, { r: frame, tex: planksV(4, 3) }, { r: frame }, { r: frame, tex: planksH(3, 4) });
+    box(pc, 60, B - 26, 12, 26, 10, { r: frame, tex: planksV(4, 5) }, { r: frame }, { r: frame, tex: planksH(3, 6) });
+    log(pc, 28, B - 24, 66, B - 20, 3, frame, { end: frame }); log(pc, 28, B - 6, 66, B - 2, 2.4, frame, { end: frame });
+    wheel3(pc, 94, B - 22, 14, frame, IRON, { thick: 4, rot: 0.3, broken: true });
+    log(pc, 74, B - 4, 108, B - 12, 2.6, frame, { end: frame });
+    log(pc, 8, B - 4, 30, B - 36, 2.2, frame, { end: frame });
+    sack3(pc, 80, B, 1); ellipseFace(pc, 46, B - 36, 5, 3, STONE, TOP);
+    barrel3(pc, 110, B, 5);
+    return finish(pc);
+  }
+  const x0 = 14, w = 70, d = 18, D = depth(d);
+  box(pc, x0, B - 10, w, 6, d, { r: frame, tex: addTex(planksH(3, 7), grain(5, 0.15)) }, { r: frame }, { r: frame, tex: planksV(5, 3) });
+  for (const t of [0.2, 0.55, 0.85]) log(pc, x0 + w * t, B - 4, x0 + w * t + D[0], B - 4 + D[1], 1.8, frame, { end: frame });
+  log(pc, x0 + 20, B - 10, x0 + 24, B - 40, 3, frame, { end: frame }); log(pc, x0 + 48, B - 10, x0 + 44, B - 38, 3, frame, { end: frame });
+  log(pc, x0 + 24, B - 36, x0 + 44, B - 34, 2.2, IRON, { end: IRON });
+  log(pc, x0 + 34, B - 32, x0 + 60, B - 6, 2.6, frame, { end: frame });
+  for (const [dx, dy] of [[-1, 1], [1, 0], [0, -1]] as const) log(pc, x0 + 34 + dx, B - 32 + dy, x0 + 32 + dx, B - 38 + dy, 1.2, frame, { end: null });
+  ellipseFace(pc, x0 + 62, B - 4, 7, 3, frame, TOP); log(pc, x0 + 56, B - 2, x0 + 68, B - 2, 1.4, ROPE, { end: null });
+  if (v === 0) { wheel3(pc, x0 + 8, B - 6, 11, frame, IRON, { thick: 4, rot: 0.2 }); wheel3(pc, x0 + 66 + D[0], B - 6 + D[1], 11, frame, IRON, { thick: 4, rot: 0.9, broken: true }); flatWheel(pc, 100, B - 2, 10); ellipseFace(pc, 92, B - 9, 5, 4, STONE, [-0.3, 0.8, 0.5]); }
+  else { wheel3(pc, x0 + 10, B - 6, 11, frame, IRON, { thick: 4, rot: 0.5, broken: true }); flatWheel(pc, 96, B - 2, 10); charPass(pc); embers(pc, 26, 5); }
+  return finish(pc);
+}
+const SOL_T = { a: SOL_A, b: SOL_B, trim: CLOTH.gold }, UMB_T = { a: UMB_A, b: UMB_B, trim: CLOTH.purple };
 
 /** Новые объёмные bf_* (заменяют записи bf-gen.ts / bf-gen2.ts с теми же id). */
 export const BF_VOLUME: Record<string, () => PC> = {
   ...TENTS3,
   bf_siege_tower: siegeTower3,
   bf_ram: ram3,
-  bf_spike_barrier: spikeBarrier3,
+  bf_spike_barrier: () => spikeBarrier3(0), bf_spike_barrier_b: () => spikeBarrier3(1), bf_spike_barrier_c: () => spikeBarrier3(2), bf_spike_barrier_d: () => spikeBarrier3(3),
   bf_shield_stand: shieldStand3,
   bf_map_table: mapTable3,
   bf_wagon_broken_a: () => wagon3("a"),
   bf_wagon_broken_b: () => wagon3("b"),
+  bf_wagon_broken_c: () => wagon3("a", (pc) => { charPass(pc); embers(pc, 22, 3); }),
+  bf_wagon_broken_d: () => wagon3("b", (pc) => { barrel3(pc, 100, 60, 5); hay3(pc, 22, 60, 1.1); }),
+  bf_wagon_broken_e: () => wagon3("a", (pc) => { hay3(pc, 50, 36, 1.5); hay3(pc, 60, 34, 1.2); barrel3(pc, 94, 60, 5); }),
+  bf_tent_torn_b: () => ridgeTent({ ...SOL_T, torn: true, seed: 21, flag: CLOTH.blue }),
+  bf_tent_torn_c: () => ridgeTent({ ...UMB_T, torn: true, seed: 22 }),
+  bf_tent_burnt_b: () => ridgeTent({ a: CLOTH.rag, b: CLOTH.brown, trim: CLOTH.rag, burnt: true, seed: 23, w: 62, h: 46 }),
+  bf_tent_burnt_c: () => ridgeTent({ ...UMB_T, burnt: true, seed: 24 }),
+  bf_catapult_wreck_a: () => catapultWreck(0), bf_catapult_wreck_b: () => catapultWreck(1), bf_catapult_wreck_c: () => catapultWreck(2),
 };
 void prism; void cylV; void tone; void OUT; void STONE;

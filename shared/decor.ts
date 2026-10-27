@@ -96,16 +96,30 @@ export const BF_STANDARDS = ["std-torn-sol", "std-burned-sol", "std-torn-umb", "
 export const BF_STANDARDS_FALLEN = ["std-fallen-sol", "std-fallen-umb"];
 export const BF_BODIES = ["bf_fallen_sol_a", "bf_fallen_umb_a", "bf_fallen_sol_b", "bf_fallen_umb_b", "bf_skeleton_armor"];
 export const BF_HORSES = ["bf_horse_fallen_sol", "bf_horse_fallen_umb"];
-export const BF_PLANTED = ["bf_sword_planted", "bf_arrows_planted", "bf_sword_planted_dark", "bf_arrows_planted"];
-export const BF_STAINS = ["bf_blood_a", "bf_blood_b", "bf_scorch", "bf_blood_a"];
+/** Воткнутое оружие и щиты, стрелы (объёмные, с вариантами: tools/gen/bf-props.ts): у Сольгарда и Умбрата парные виды, нейтральные — общие. */
+export const BF_PLANTED = [
+  "bf_sword_planted", "bf_sword_sol_b", "bf_sword_sol_c", "bf_sword_sol_d", "bf_sword_planted_dark", "bf_sword_umb_b", "bf_sword_umb_c", "bf_sword_umb_d",
+  "bf_spear_sol_a", "bf_spear_sol_b", "bf_spear_sol_c", "bf_spear_umb_a", "bf_spear_umb_b", "bf_spear_umb_c",
+  "bf_shield_sol_a", "bf_shield_sol_b", "bf_shield_sol_c", "bf_shield_umb_a", "bf_shield_umb_b", "bf_shield_umb_c",
+  "bf_axe_a", "bf_axe_b", "bf_hammer_a", "bf_arrows_planted", "bf_arrows_b", "bf_arrows_c", "bf_arrows_d",
+];
+/** Пятна, воронки и обломки (лежат на земле). */
+export const BF_STAINS = [
+  "bf_blood_a", "bf_blood_b", "bf_blood_c", "bf_blood_d", "bf_scorch", "bf_scorch_b", "bf_scorch_c",
+  "bf_crater_a", "bf_crater_b", "bf_crater_c", "bf_debris_a", "bf_debris_b", "bf_debris_c",
+];
 export const BF_BONES = ["v_undead_bones_a", "v_undead_bones_b", "v_undead_bones_c", "v_undead_ribs", "v_undead_jaw", "v_undead_skull_trio", "v_undead_bird_skull"];
-export const BF_WAGONS = ["bf_wagon_broken_a", "bf_wagon_broken_b"];
-export const BF_TENTS_RUINED = ["bf_tent_torn", "bf_tent_burnt"];
-export const BF_WRECKS = ["bf_ram", "v_undead_giant_skeleton", "bf_siege_tower"];
+export const BF_WAGONS = ["bf_wagon_broken_a", "bf_wagon_broken_b", "bf_wagon_broken_c", "bf_wagon_broken_d", "bf_wagon_broken_e"];
+export const BF_TENTS_RUINED = ["bf_tent_torn", "bf_tent_burnt", "bf_tent_torn_b", "bf_tent_burnt_b", "bf_tent_torn_c", "bf_tent_burnt_c"];
+/** Рогатки (варианты: прямые, встречные, с обломанным колом, двойной ряд). */
+export const BF_BARRIERS = ["bf_spike_barrier", "bf_spike_barrier_b", "bf_spike_barrier_c", "bf_spike_barrier_d"];
+export const BF_WRECKS = ["bf_ram", "v_undead_giant_skeleton", "bf_siege_tower", "bf_catapult_wreck_a", "bf_catapult_wreck_b", "bf_catapult_wreck_c"];
 /** Пары фракций для зеркальной копии на Полях (восток — та же сцена с переменой сторон, чтобы обе половины были равны). */
 const BF_SWAP: Record<string, string> = {
   "std-torn-sol": "std-torn-umb", "std-burned-sol": "std-burned-umb", "std-fallen-sol": "std-fallen-umb",
-  bf_fallen_sol_a: "bf_fallen_umb_a", bf_fallen_sol_b: "bf_fallen_umb_b", bf_horse_fallen_sol: "bf_horse_fallen_umb", bf_sword_planted: "bf_sword_planted_dark",
+  bf_fallen_sol_a: "bf_fallen_umb_a", bf_fallen_sol_b: "bf_fallen_umb_b", bf_horse_fallen_sol: "bf_horse_fallen_umb", bf_sword_planted: "bf_sword_planted_dark", bf_sword_sol_b: "bf_sword_umb_b", bf_sword_sol_c: "bf_sword_umb_c", bf_sword_sol_d: "bf_sword_umb_d",
+  bf_spear_sol_a: "bf_spear_umb_a", bf_spear_sol_b: "bf_spear_umb_b", bf_spear_sol_c: "bf_spear_umb_c", bf_shield_sol_a: "bf_shield_umb_a", bf_shield_sol_b: "bf_shield_umb_b", bf_shield_sol_c: "bf_shield_umb_c",
+  bf_tent_torn_b: "bf_tent_torn_c", bf_tent_burnt_b: "bf_tent_burnt_c",
 };
 for (const [a, b] of Object.entries(BF_SWAP)) BF_SWAP[b] = a;
 export const bfSwap = (kind: string) => BF_SWAP[kind] ?? kind;
@@ -113,7 +127,9 @@ export const bfSwap = (kind: string) => BF_SWAP[kind] ?? kind;
 export const BF_FOOTPRINT: Record<string, { w: number; h: number }> = {
   bf_tent_sol: { w: 3, h: 2 }, bf_tent_umb: { w: 3, h: 2 }, bf_tent_torn: { w: 3, h: 2 }, bf_tent_burnt: { w: 3, h: 2 },
   bf_tent_sol_cmd: { w: 4, h: 2 }, bf_tent_umb_cmd: { w: 4, h: 2 },
-  bf_map_table: { w: 2, h: 1 }, bf_shield_stand: { w: 2, h: 1 }, bf_spike_barrier: { w: 2, h: 1 },
+  bf_map_table: { w: 2, h: 1 }, bf_shield_stand: { w: 2, h: 1 }, bf_spike_barrier: { w: 2, h: 1 }, bf_spike_barrier_b: { w: 2, h: 1 }, bf_spike_barrier_c: { w: 2, h: 1 }, bf_spike_barrier_d: { w: 2, h: 1 },
+  bf_tent_torn_b: { w: 3, h: 2 }, bf_tent_torn_c: { w: 3, h: 2 }, bf_tent_burnt_b: { w: 3, h: 2 }, bf_tent_burnt_c: { w: 3, h: 2 },
+  bf_wagon_broken_c: { w: 3, h: 1 }, bf_wagon_broken_d: { w: 3, h: 1 }, bf_wagon_broken_e: { w: 3, h: 1 }, bf_catapult_wreck_a: { w: 3, h: 1 }, bf_catapult_wreck_b: { w: 3, h: 1 }, bf_catapult_wreck_c: { w: 3, h: 1 },
   bf_wagon_broken_a: { w: 3, h: 1 }, bf_wagon_broken_b: { w: 3, h: 1 }, bf_ram: { w: 4, h: 1 }, bf_siege_tower: { w: 3, h: 2 }, v_undead_giant_skeleton: { w: 3, h: 1 },
   bf_wall_tower_sol: { w: 2, h: 2 }, bf_wall_tower_umb: { w: 2, h: 2 },
   v_smith_anvil_a: { w: 2, h: 1 }, v_smith_anvil_b: { w: 1, h: 1 }, v_smith_tub_a: { w: 1, h: 1 }, v_smith_tub_b: { w: 1, h: 1 }, v_deco_spear_rack: { w: 2, h: 1 }, v_deco_target: { w: 2, h: 1 },

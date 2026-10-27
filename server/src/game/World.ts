@@ -36,6 +36,8 @@ import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
 import { Soldiers } from "./soldiers";
 import { BannerWar, type WarStore } from "./bannerWar";
+import { FortSiege } from "./siege";
+import { moveGated } from "../../../shared/siege";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
 import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack, targetAuras } from "./auras";
@@ -122,6 +124,8 @@ export class World {
   soldiers: Soldiers | null = null;
   /** «Знамёна Предела» (задача 132, шаг 14; bannerWar.ts): только в мире. */
   war: BannerWar | null = null;
+  /** Осада форта (задача 132, шаг 15; siege.ts): только в мире. */
+  siege: FortSiege | null = null;
   hazards: { id: string; x: number; y: number; r: number; until: number; dps: number; kind: FxKind; owner: Mob; tickAt: number }[] = [];
 
   constructor(
@@ -135,6 +139,7 @@ export class World {
       this.town = new Townfolk(this);
       this.soldiers = new Soldiers(this);
       this.war = new BannerWar(this, opts.warStore);
+      this.siege = new FortSiege(this);
     }
   }
 
@@ -321,6 +326,7 @@ export class World {
     this.town?.update(dt);
     this.soldiers?.update(dt);
     this.war?.update();
+    this.siege?.update();
     this.updateHazards();
     if (this.opts.mobs !== false) tickEncounters(this);
     this.flush();
@@ -690,6 +696,7 @@ export class World {
     }
     p.send("toast", { text: T("srv.World.178"), kind: "error" });
     this.war?.onKill(p, killer);
+    this.siege?.onKill(p, killer);
     this.onPlayerKilled?.(p, killer);
   }
 
@@ -748,6 +755,11 @@ export class World {
     p.send("mountcast", { ms: MOUNT_CAST_MS, name: mountName(m.id, p.faction) }); // имя гербового — по фракции героя (задача 142)
   }
 
+  /** Шаг со стенами; в мире — и с воротами городов (shared/siege.ts): чужие упираются в закрытые, свои проходят. */
+  move(x: number, y: number, dx: number, dy: number, r: number, faction: string) {
+    return this.siege ? moveGated(this.map, x, y, dx, dy, r, faction) : moveWithCollision(this.map, x, y, dx, dy, r);
+  }
+
   // ---------- игроки ----------
   playerSpeed(p: Player): number {
     let s = PLAYER_SPEED * (MOUNTS[p.unit.mount]?.speed ?? 1);
@@ -767,7 +779,7 @@ export class World {
     const tx = wp.x, ty = wp.y;
     const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy) || 1;
     const sp = Math.min(this.playerSpeed(p) * dt, final ? d - stopAt : d);
-    const n = moveWithCollision(this.map, u.x, u.y, (dx / d) * sp, (dy / d) * sp, PLAYER_RADIUS);
+    const n = this.move(u.x, u.y, (dx / d) * sp, (dy / d) * sp, PLAYER_RADIUS, p.faction);
     // сравниваем уже округлённые координаты: иначе добавка <0,05 px давала «движение» вечно
     const rx = Math.round(n.x * 10) / 10, ry = Math.round(n.y * 10) / 10;
     const moved = rx !== u.x || ry !== u.y;
@@ -887,7 +899,7 @@ export class World {
       if (p.input.mx || p.input.my) {
         const len = Math.hypot(p.input.mx, p.input.my);
         const sp = this.playerSpeed(p) * dt;
-        const n = moveWithCollision(this.map, u.x, u.y, (p.input.mx / len) * sp, (p.input.my / len) * sp, PLAYER_RADIUS);
+        const n = this.move(u.x, u.y, (p.input.mx / len) * sp, (p.input.my / len) * sp, PLAYER_RADIUS, p.faction);
         moving = n.x !== u.x || n.y !== u.y;
         u.x = Math.round(n.x * 10) / 10;
         u.y = Math.round(n.y * 10) / 10;
@@ -962,7 +974,7 @@ export class World {
     const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy) || 1;
     // общий множитель ходьбы всех живых (data/balance.json moveMul): speed в данных мобов — «до множителя»
     const sp = Math.min(speed * MOVE_MUL * dt, final ? d - stopAt : d);
-    const n = moveWithCollision(this.map, u.x, u.y, (dx / d) * sp, (dy / d) * sp, r);
+    const n = this.move(u.x, u.y, (dx / d) * sp, (dy / d) * sp, r, m.faction);
     if (this.inTown(n.x, n.y)) return false;
     const moved = Math.abs(n.x - u.x) + Math.abs(n.y - u.y) > 0.01;
     u.x = Math.round(n.x * 10) / 10;
@@ -1016,6 +1028,7 @@ export class World {
 
   updateMob(m: Mob, dt: number) {
     if (m.soldier) return this.soldiers?.step(m, dt); // боец фракции — своё поведение (soldiers.ts)
+    if (m.siege) return; // ворота и осадные машины ведёт siege.ts
     const u = m.unit;
     const t = this.time;
     if (m.dead) {

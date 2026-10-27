@@ -1,0 +1,22 @@
+/* Осада форта (задача 132, шаг 15; client/src/ui/siege.ts): полоса осады — в стиле полосы «Знамён» (war.css .war-bar), ворота с полоской
+   здоровья, королевское знамя двора; окно итогов — .war-result. Только токены tokens.css; цвета фракций — --fac-sol и --fac-umb. */
+.siege-sides { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); font-weight: var(--fw-b); }
+.siege-sides .sol { color: var(--fac-sol); }
+.siege-sides .umb { color: var(--fac-umb); }
+.siege-sides .att { text-align: right; }
+.siege-sides .def { text-align: left; }
+.siege-sides .vs { color: var(--dim); font-weight: var(--fw); }
+.siege-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-2); }
+.siege-gate { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); color: var(--dim); }
+.siege-gate.n { align-items: flex-end; }
+.siege-gate.s { align-items: flex-start; }
+.siege-hp { position: relative; width: 100%; max-width: 120px; height: 8px; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-1); overflow: hidden; }
+.siege-hp > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fac-sol); transition: width 0.4s ease-out; }
+.siege-hp.umb > i { background: var(--fac-umb); }
+.siege-gate.broken { color: var(--warn); }
+.siege-gate.broken .siege-hp { border-color: var(--warn); }
+.siege-gate.hit .siege-hp { animation: siege-hit 0.35s ease-out; }
+@keyframes siege-hit { 0% { border-color: var(--warn); } 100% { border-color: var(--line); } }
+.siege-result .siege-how { margin: 0; text-align: center; color: var(--dim); font-size: var(--fs-sm); }
+.siege-result .siege-week { margin: 0; text-align: center; color: var(--gold); font-size: var(--fs-sm); }
+@media (prefers-reduced-motion: reduce) { .siege-gate.hit .siege-hp, .siege-hp > i { animation: none; transition: none; } }

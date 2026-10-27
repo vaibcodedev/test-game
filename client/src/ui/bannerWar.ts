@@ -4,7 +4,7 @@
  * и мир (client/src/game/bannerBases.ts), и карты. Оформление — дизайн-система (styles/war.css на токенах tokens.css и компонентах kit.css).
  */
 import { CLASSES, type ClassId } from "../../../shared/classes";
-import { factionColor, FACTIONS } from "../../../shared/factions";
+import { FACTIONS } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
 import { P } from "../../../shared/palette";
 import { T } from "../../../shared/texts";
@@ -38,6 +38,9 @@ export class WarHud {
   private result: ModalHandle | null = null;
   private lastHtml = "";
   private lastTick = 0;
+  /** «В форт»: в бою (событие combat, как у HUD) и до какого performance.now() перезарядка. */
+  private inCombat = false;
+  private tpUntil = 0;
 
   private net: Net = NET;
 
@@ -48,7 +51,12 @@ export class WarHud {
     this.banner.className = "war-banner passthru";
     this.banner.hidden = true;
     root.append(this.bar, this.banner);
-    this.bar.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest("[data-war-tp]")) this.net.send("war:tp", {}); });
+    this.bar.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-war-tp]");
+      if (b && !b.disabled && !this.inCombat && performance.now() >= this.tpUntil) this.net.send("war:tp", {});
+    });
+    net.on("combat", (m) => { this.inCombat = m.on; this.render(); });
+    net.on("war:tpcd", (m) => { this.tpUntil = performance.now() + m.ms; this.render(); });
     net.on("war", (s) => {
       warView.state = s;
       warView.at = performance.now();
@@ -82,14 +90,22 @@ export class WarHud {
     const note = s.ph === "battle" && !s.heart ? T("ui.bannerWar.3", { t: mmss(heartAt - now) }) : s.ph === "prep" && lvl < WAR.minLevel ? T("ui.bannerWar.4", { lvl: WAR.minLevel }) : "";
     const pips = (fr?.bases ?? []).map((d) => {
       const b = warView.byId.get(d.id);
-      const state = !b ? "" : b.lock ? T("ui.bannerWar.5") : b.c ? T("ui.bannerWar.6") : b.s > 0 ? T("ui.bannerWar.7") : b.o ? FACTIONS[b.o as WarFaction].name : T("ui.bannerWar.8");
+      const state = !b ? "" : b.lock ? T("ui.bannerWar.5", { min: WAR.schedule.heartOpenMin }) : b.c ? T("ui.bannerWar.6") : b.s > 0 ? T("ui.bannerWar.7") : b.o ? FACTIONS[b.o as WarFaction].name : T("ui.bannerWar.8");
       const fill = b ? Math.round((b.b ? b.h : b.hp) * 100) : 0;
       return `<span class="war-pip ${d.kind} o-${fcls(b?.o ?? "")} b-${fcls(b?.b || b?.hf || "")}${b?.c ? " contest" : ""}${b?.lock ? " lock" : ""}${b && b.s > 0 ? " seal" : ""}" title="${esc(d.name)} · ${esc(state)}"><i style="height:${fill}%"></i></span>`;
     }).join("");
     const html = `<div class="war-head"><span class="war-front">${esc(fr?.name ?? "")}</span><span class="war-time">${esc(time)}</span></div>
       <div class="war-score"><b class="war-num sol" title="${esc(FACTIONS.solgard.name)}">${s.score[0]}</b><span class="war-pips">${pips}</span><b class="war-num umb" title="${esc(FACTIONS.umbrath.name)}">${s.score[1]}</b></div>
-      ${note ? `<div class="war-note">${esc(note)}</div>` : ""}${tpOpen ? `<button class="btn war-tp" data-war-tp>${T("ui.bannerWar.9")}</button>` : ""}`;
+      ${note ? `<div class="war-note">${esc(note)}</div>` : ""}${tpOpen ? this.tpButton() : ""}`;
     if (html !== this.lastHtml) { this.lastHtml = html; this.bar.innerHTML = html; }
+  }
+
+  /** Кнопка «В форт»: в бою — серая с замком, на перезарядке — серая с отсчётом и шторкой, подсказка — почему. */
+  private tpButton(): string {
+    const left = this.tpUntil - performance.now(), cdMs = WAR.schedule.teleportCdSec * 1000;
+    if (this.inCombat) return `<button class="btn war-tp locked" data-war-tp disabled title="${esc(T("ui.bannerWar.33"))}">&#128274; ${T("ui.bannerWar.9")}</button>`;
+    if (left > 0) return `<button class="btn war-tp cd" data-war-tp disabled title="${esc(T("ui.bannerWar.34", { t: mmss(left) }))}" style="--cd:${Math.max(0, Math.min(1, left / cdMs)).toFixed(3)}">&#8987; ${mmss(left)}</button>`;
+    return `<button class="btn war-tp" data-war-tp>${T("ui.bannerWar.9")}</button>`;
   }
 
   private say(m: WarSayMsg) {
@@ -136,39 +152,87 @@ export class WarHud {
 }
 
 // ---------- метки на картах ----------
-const colorOf = (b: WarBaseView | undefined) => (b?.o ? factionColor(b.o) : P.dim);
+/** Значки оснований (tools/gen/war-bases.ts → client/public/ui/war/): владелец × вид точки. */
+const ICONS = new Map<string, HTMLImageElement>();
+for (const f of ["sol", "umb", "none"]) for (const h of ["", "-heart"]) {
+  const im = new Image();
+  im.src = `/ui/war/icon-${f}${h}.png`;
+  ICONS.set(`${f}${h}`, im);
+}
+const iconOf = (o: string, heart: boolean) => ICONS.get(`${fcls(o)}${heart ? "-heart" : ""}`);
+const lookCol = (f: string) => (f === "solgard" ? WAR.look.color.solgard : f === "umbrath" ? WAR.look.color.umbrath : WAR.look.color.neutral);
 
-/** Мини-карта: ромб у каждого основания (цвет владельца; спор — мигающая рамка, активный фронт — крупнее). */
+/** Владелец и, если идёт битва на фронте, ход захвата: «захватывается Умбратом — 45 %», «спор», «печать 1:20». */
+export function baseState(id: string): { owner: string; state: string } {
+  const b = warView.byId.get(id), s = warView.state, d = warBase(id);
+  const owner = b?.o ? T("ui.bannerWar.32", { of: WAR.look.of[b.o as WarFaction] }) : T("ui.bannerWar.8");
+  if (!b || !s || !d || s.ph !== "battle" || s.front !== d.front) return { owner, state: "" };
+  if (b.lock) return { owner, state: T("ui.bannerWar.5", { min: WAR.schedule.heartOpenMin }) };
+  if (b.c) return { owner, state: T("ui.bannerWar.6") };
+  if (b.s > 0) return { owner, state: `${T("ui.bannerWar.7")} ${mmss(b.s)}` };
+  if (b.hf) return { owner, state: T("ui.bannerWar.29", { faction: FACTIONS[b.hf as WarFaction].name }) };
+  if (b.b && b.o !== b.b) return { owner, state: T("ui.bannerWar.30", { faction: FACTIONS[b.b as WarFaction].name, pct: Math.round(b.h * 100) }) };
+  if (b.o && b.h < 1) return { owner, state: T("ui.bannerWar.31", { pct: Math.round(b.h * 100) }) };
+  return { owner, state: "" };
+}
+
+/** Мини-карта: маленькая плашка в цвете владельца (Сердце — с золотой точкой-короной), спор — мигающий обод. */
 export function drawWarMini(g: CanvasRenderingContext2D, X: (px: number) => number, Y: (py: number) => number) {
   const s = warView.state, blink = Math.floor(performance.now() / 400) % 2 === 0;
   for (const d of WAR_BASES) {
-    const b = warView.byId.get(d.id), on = !!s && s.ph !== "idle" && s.front === d.front;
-    const r = (d.kind === "heart" ? 4 : 3) + (on ? 1 : 0), x = Math.round(X(d.x)), y = Math.round(Y(d.y));
-    g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath();
-    g.fillStyle = colorOf(b); g.fill();
-    g.lineWidth = 1; g.strokeStyle = b?.c && blink ? P.warn : "#000"; g.stroke();
+    const b = warView.byId.get(d.id), on = !!s && s.ph !== "idle" && s.front === d.front, heart = d.kind === "heart";
+    const r = heart ? 5 : 4, x = Math.round(X(d.x)), y = Math.round(Y(d.y));
+    g.beginPath(); g.arc(x, y, r + 1, 0, Math.PI * 2); g.fillStyle = "#000"; g.fill();
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = b?.c && blink ? P.warn : lookCol(b?.o ?? ""); g.fill();
+    g.beginPath(); g.arc(x, y, r - 1.6, 0, Math.PI * 2); g.fillStyle = "#1a141e"; g.fill();
+    g.fillStyle = lookCol(b?.b || b?.o || ""); g.fillRect(x - 1, y - 2, 3, 4);
+    if (heart) { g.fillStyle = WAR.look.color.solgard; g.fillRect(x - 1, y - r - 3, 3, 2); }
+    if (on && b?.b && b.o !== b.b) { g.strokeStyle = lookCol(b.b); g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r + 2.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * b.h); g.stroke(); }
   }
 }
 
-/** Карта мира: знак основания со знаменем в цвете владельца; подсказка — имя, владелец и что даёт точка. */
-export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => number, Y: (ty: number) => number, s: number, hits: { x: number; y: number; r: number; title: string; sub: string }[]) {
+type Rect = { x0: number; y0: number; x1: number; y1: number };
+/**
+ * Карта мира: значок основания (плашка со знаменем владельца; Сердце крупнее, с короной), под ним подпись в стиле карты —
+ * имя и строка владельца или хода захвата; подпись не ложится на подписи зон и городов (placed), иначе пробует сверху и сбоку.
+ * Подсказка по наведению — имя, фронт, владелец, что даёт точка и ход захвата.
+ */
+export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => number, Y: (ty: number) => number, s: number, hits: { x: number; y: number; r: number; title: string; sub: string }[], placed: Rect[] = []) {
   const st = warView.state, blink = Math.floor(performance.now() / 400) % 2 === 0;
+  const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
+  const k = s >= 5 ? 2 : 1;
+  g.imageSmoothingEnabled = false;
   for (const d of WAR_BASES) {
-    const b = warView.byId.get(d.id), on = !!st && st.ph !== "idle" && st.front === d.front;
-    const k = Math.max(1, Math.min(2.2, s / 2.5)) * (d.kind === "heart" ? 1.25 : 1) * (on ? 1.15 : 1);
-    const x = X(d.x / TILE), y = Y(d.y / TILE);
-    // древко и флажок
-    g.fillStyle = "#000";
-    g.fillRect(Math.round(x - 1.5 * k), Math.round(y - 11 * k), Math.max(2, Math.round(3 * k)), Math.round(13 * k));
-    g.fillStyle = P.lineHi;
-    g.fillRect(Math.round(x - 0.5 * k), Math.round(y - 10 * k), Math.max(1, Math.round(k)), Math.round(11 * k));
-    g.beginPath(); g.moveTo(x + 0.5 * k, y - 10 * k); g.lineTo(x + 9 * k, y - 7.5 * k); g.lineTo(x + 0.5 * k, y - 5 * k); g.closePath();
-    g.fillStyle = colorOf(b); g.fill();
-    g.lineWidth = Math.max(1, k * 0.8); g.strokeStyle = b?.c && blink ? P.warn : "#000"; g.stroke();
-    // основание
-    g.fillStyle = "#000"; g.fillRect(Math.round(x - 3.5 * k), Math.round(y + 1 * k), Math.round(7 * k), Math.round(3 * k));
-    g.fillStyle = P.dim; g.fillRect(Math.round(x - 2.5 * k), Math.round(y + 1.5 * k), Math.round(5 * k), Math.max(1, Math.round(1.5 * k)));
-    const owner = b?.o ? FACTIONS[b.o as WarFaction].name : T("ui.bannerWar.8");
-    hits.push({ x, y: y - 5 * k, r: 10 * k, title: d.name, sub: `${warFront(d.front)?.name ?? ""} · ${owner} — ${bonusText(d.id)}` });
+    const b = warView.byId.get(d.id), on = !!st && st.ph !== "idle" && st.front === d.front, heart = d.kind === "heart";
+    const im = iconOf(b?.o ?? "", heart);
+    const x = Math.round(X(d.x / TILE)), y = Math.round(Y(d.y / TILE));
+    const iw = (im?.naturalWidth || 24) * k, ih = (im?.naturalHeight || 24) * k;
+    // прогресс захвата — дуга вокруг значка цветом знамени; спор — мигающий обод
+    if (on && b && (b.c || (b.b && b.h < 1))) {
+      g.lineWidth = 3;
+      g.strokeStyle = "#000"; g.beginPath(); g.arc(x, y, iw / 2 + 3, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = b.c ? (blink ? WAR.look.color.solgard : WAR.look.color.umbrath) : lookCol(b.b);
+      g.beginPath(); g.arc(x, y, iw / 2 + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (b.c ? 1 : b.h)); g.stroke();
+    }
+    if (im?.complete && im.naturalWidth) g.drawImage(im, Math.round(x - iw / 2), Math.round(y - ih / 2 - (heart ? 2 * k : 0)), iw, ih);
+    const rIcon = { x0: x - iw / 2, y0: y - ih / 2, x1: x + iw / 2, y1: y + ih / 2 };
+    placed.push(rIcon);
+    // подпись
+    const { owner, state } = baseState(d.id);
+    const lines = [{ text: d.name, font: `600 13px ${TEXT}`, fill: P.fg }, { text: state || owner, font: `400 12px ${TEXT}`, fill: state ? P.warn : b?.o ? lookCol(b.o) : P.dim }];
+    const ws = lines.map((l) => { g.font = l.font; return Math.ceil(g.measureText(l.text).width); }), bw = Math.max(...ws) + 4, bh = 30;
+    const spots = [[x, y + ih / 2 + 2], [x, y - ih / 2 - bh - 2], [x + iw / 2 + bw / 2 + 4, y - bh / 2], [x - iw / 2 - bw / 2 - 4, y - bh / 2]];
+    for (const [cx, top] of spots) {
+      const r = { x0: cx - bw / 2, y0: top, x1: cx + bw / 2, y1: top + bh };
+      if (placed.some((p) => p !== rIcon && r.x0 - 4 < p.x1 && r.x1 + 4 > p.x0 && r.y0 - 4 < p.y1 && r.y1 + 4 > p.y0)) continue;
+      placed.push(r);
+      lines.forEach((l, i) => {
+        g.font = l.font; g.lineWidth = 3; g.lineJoin = "round"; g.strokeStyle = P.well;
+        const tx = Math.round(cx - ws[i] / 2), ty = Math.round(top + 12 + i * 15);
+        g.strokeText(l.text, tx, ty); g.fillStyle = l.fill; g.fillText(l.text, tx, ty);
+      });
+      break;
+    }
+    hits.push({ x, y, r: iw / 2 + 4, title: d.name, sub: `${warFront(d.front)?.name ?? ""} · ${owner}${state ? ` · ${state}` : ""} — ${bonusText(d.id)}` });
   }
 }

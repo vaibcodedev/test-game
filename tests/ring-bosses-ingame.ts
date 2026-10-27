@@ -136,18 +136,30 @@ async function scenario() {
     for (const a of boss.abilities) a.at = 1e9;
     mob.unit.hp = mob.unit.maxHp;
     boss.run(ab);
+    const t0 = Date.now();
     const total = [ab, ...(ab.then ?? [])].reduce((s, wv) => s + wv.windupMs, 0);
     await sleep(Math.round(ab.windupMs * 0.6));
     const fr = await colOf(CARD.id);
-    check(!!fr && /Wind|Hold/.test(fr.anim), `${CARD.id}.${ab.id}: замах из связки (${fr?.anim})`);
+    check(!!fr && /Wind|Hold|^seal$|^wispCast$|^call$/.test(fr.anim), `${CARD.id}.${ab.id}: кадр из связки умения (${fr?.anim})`);
     if (ab.break) {
       const vis = await run<boolean>("const el = document.querySelector('.zb-cast .cb'); return !!el && !el.hidden");
       check(vis, `${CARD.id}.${ab.id}: полоса каста видна`);
       await page.screenshot({ path: path.join(OUT, "ingame-call-castbar.png") });
     }
+    // замах: сцена на паузе на время снимка (часы клиента стоят — связка и эффекты не убегают)
+    await run("sc.scene.pause();");
     save(`ingame-${ab.id}-wind.png`, await snap(bx, by - 10, 480, 340));
-    await sleep(Math.round(ab.windupMs * 0.4) + 160);
+    await run("sc.scene.resume();");
+    // удар: эффект мира идёт ~1,2 с от конца предупреждения — снимок через 250 мс после него (снимок замаха под SwiftShader долгий)
+    // удар: ждём, пока эффект мира станет виден, ставим сцену на паузу (кадр замирает) — снимок под SwiftShader долгий
+    let vis = 0;
+    for (let k = 0; k < 80 && !vis; k++) {
+      vis = await run<number>("const z = sc.fx && sc.fx.zb; if (!z) return 0; const n = z.fxs.filter((e) => e.boss === a && e.spr.some((s) => s.visible)).length; if (n) sc.scene.pause(); return n;", CARD.id);
+      if (!vis) await sleep(40);
+    }
+    check(vis > 0, `${CARD.id}.${ab.id}: эффект мира виден (${vis})`);
     save(`ingame-${ab.id}-hit.png`, await snap(bx, by - 10, 480, 340));
+    await run("sc.scene.resume();");
     await sleep(Math.max(0, total - ab.windupMs) + 1600);
     mob.unit.x = mob.home.x; mob.unit.y = mob.home.y;
   }

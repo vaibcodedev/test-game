@@ -38,6 +38,8 @@ import { InteriorViews } from "./interiors";
 import { TowerArchers } from "./towerArchers";
 import { FortScenes } from "./fortScenes";
 import { BannerBases } from "./bannerBases";
+import { SiegeView } from "./siegeView";
+import { moveGated } from "../../../shared/siege";
 import { STATUES, type StatueKey } from "../ui/statue";
 import { T } from "../../../shared/texts";
 
@@ -174,6 +176,8 @@ export class GameScene extends Phaser.Scene {
   private fortScenes: FortScenes | null = null;
   /** Основания «Знамён Предела» (задача 132, шаг 14): тумба, мачта, знамя на высоте подъёма, круг и кольцо прогресса — см. bannerBases.ts. */
   private bannerBases: BannerBases | null = null;
+  /** Осада форта и ворота городов (задача 132, шаг 15): кадры ворот по состоянию, машины, знамя двора — см. siegeView.ts. */
+  private siegeView: SiegeView | null = null;
   private room: Interior | null = null;
   /** Переход через дверь: куда перенесён герой; кадр проявляется, когда позиция придёт в состоянии (патч идёт позже сообщения). */
   private arrive: { x: number; y: number; at: number } | null = null;
@@ -288,6 +292,8 @@ export class GameScene extends Phaser.Scene {
       this.cleanup.push(() => { this.fortScenes?.destroy(); this.fortScenes = null; });
       this.bannerBases = new BannerBases(this);
       this.cleanup.push(() => { this.bannerBases?.destroy(); this.bannerBases = null; });
+      this.siegeView = new SiegeView(this, () => this.units);
+      this.cleanup.push(() => { this.siegeView?.destroy(); this.siegeView = null; });
       // выстрел башни (fx proj от точки башни, без юнита-стрелка): лучник на вышке поворачивается и стреляет
       this.cleanup.push(net.on("fx", (list) => { for (const f of list) if (f.t === "proj" && f.fx !== undefined && f.fy !== undefined) this.towerArchers?.shot(f.fx, f.fy, f.tx, f.ty); }));
       this.room = null;
@@ -1253,7 +1259,8 @@ export class GameScene extends Phaser.Scene {
       }
       if ((vx || vy) && step > 0) {
         this.lastDir = { dx: vx, dy: vy };
-        const n = moveWithCollision(this.map, this.pos.x, this.pos.y, vx * step, vy * step, PLAYER_RADIUS);
+        // в мире — ещё и ворота городов (shared/siege.ts): чужие упираются в закрытые, как на сервере
+        const n = net.kind === "world" && this.siegeView ? moveGated(this.map, this.pos.x, this.pos.y, vx * step, vy * step, PLAYER_RADIUS, net.self?.faction ?? "") : moveWithCollision(this.map, this.pos.x, this.pos.y, vx * step, vy * step, PLAYER_RADIUS);
         this.pos.x = n.x;
         this.pos.y = n.y;
         const err = Math.hypot(u.x - this.pos.x, u.y - this.pos.y);
@@ -1371,6 +1378,7 @@ export class GameScene extends Phaser.Scene {
     this.towerArchers?.update(dt);
     this.fortScenes?.update(dt, this.pos.x, this.pos.y);
     this.bannerBases?.update(dt, this.cameras.main.midPoint.x, this.cameras.main.midPoint.y);
+    this.siegeView?.update(dt, this.cameras.main.midPoint.x, this.cameras.main.midPoint.y);
     const dark = this.world.dark;
     const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
     // цвет дымки зоны (снежная синева, пустынный жар) меняется так же плавно, как её плотность, а не скачком на границе

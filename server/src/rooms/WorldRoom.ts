@@ -109,6 +109,7 @@ export class WorldRoom extends Room<WorldState> {
     registerCombat(on, () => this.world);
     this.onMessage("ping", (c) => c.send("pong", 0)); // сторож связи клиента
     on("war:tp", (p) => this.world.war?.teleport(p)); // «Знамёна Предела»: в свой форт перед битвой и в битве
+    on("siege:tp", (p) => this.world.siege?.teleport(p)); // осада форта: нападающие — в лагерь у ворот, оборона — в свой форт
     this.registerMessages(on);
     this.registerArena(on);
     this.registerRaid(on);
@@ -703,6 +704,7 @@ export class WorldRoom extends Room<WorldState> {
         case "fill": for (let i = 0; i < p.save.inventory.length; i++) if (!p.save.inventory[i]) p.save.inventory[i] = makeItem("ring", 1, Rarity.Common); break;
         case "rating": services.arena.setRating(p.name.toLowerCase(), p.name, p.cls, m.mode as ArenaMode, Number(m.v)); this.sendArenaInfo(p.name.toLowerCase()); break;
         case "war": w().war?.debug(String(m.act ?? ""), m); break; // «Знамёна Предела»: act start [front] | heart | end | skip ms | prep ms | owner base f | reset
+        case "siege": w().siege?.debug(String(m.act ?? ""), m); break; // осада форта: act start [att] | breach [gate] | hp gate pct | end [win] | prep ms | reset
         case "season:end": { const id = services.arena.closeSeasonIfDue(Date.now(), true); if (id !== null) this.onSeasonClosed(id); break; }
       }
       p.selfDirty = true;

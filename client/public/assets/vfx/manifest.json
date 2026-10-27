@@ -2255,30 +2255,111 @@
    "tail": 250
   }
  },
- "war-mast": {
-  "frameW": 72,
-  "frameH": 176,
+ "war-beam": {
+  "frameW": 40,
+  "frameH": 220,
   "frames": 1,
   "fps": 1,
   "anchor": [
    0.5,
-   0.9773
+   1
+  ],
+  "blend": "normal"
+ },
+ "war-dot": {
+  "frameW": 32,
+  "frameH": 32,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "war-mast": {
+  "frameW": 112,
+  "frameH": 216,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.963
   ],
   "blend": "normal",
   "mast": [
-   36,
+   56,
    30,
-   78
+   110
   ]
  },
+ "war-plate-sol": {
+  "frameW": 26,
+  "frameH": 28,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0,
+   0
+  ],
+  "blend": "normal"
+ },
+ "war-plate-umb": {
+  "frameW": 26,
+  "frameH": 28,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0,
+   0
+  ],
+  "blend": "normal"
+ },
  "war-plinth": {
-  "frameW": 72,
-  "frameH": 176,
+  "frameW": 112,
+  "frameH": 216,
   "frames": 1,
   "fps": 1,
   "anchor": [
    0.5,
-   0.9773
+   0.963
+  ],
+  "blend": "normal",
+  "plate": [
+   37,
+   154
+  ]
+ },
+ "war-ring": {
+  "frameW": 952,
+  "frameH": 952,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "war-ring-glow": {
+  "frameW": 952,
+  "frameH": 952,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "war-ring-sheen": {
+  "frameW": 952,
+  "frameH": 952,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
   ],
   "blend": "normal"
  },
@@ -2301,6 +2382,17 @@
   "anchor": [
    0.5,
    0.2231
+  ],
+  "blend": "normal"
+ },
+ "war-swords": {
+  "frameW": 24,
+  "frameH": 24,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
   ],
   "blend": "normal"
  },

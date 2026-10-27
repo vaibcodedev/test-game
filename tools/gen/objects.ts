@@ -8,6 +8,8 @@ import { CITY_ART } from "./cities";
 import { FACTION_ART } from "./factions";
 import { walls141Art } from "./walls141-game";
 import { WORLD_VOLUME } from "./volume-world";
+import { BF_PROPS } from "./bf-props";
+import { BF_MORE } from "./bf-more";
 import { umbBarrow } from "./barrow";
 import { barrel, crate, stall, well as well141, teleportStone, solHeroStatue, umbHeroStatue } from "./walls141-props";
 import { BIOME_ART, resourceIcon } from "./biomes";
@@ -242,6 +244,9 @@ export const OBJECT_ART: Record<string, Art> = {
   ...walls141Art(),
   // объёмный декор мира (шатёр лагеря, сено, руины, колонна, обелиск, указатель, колодец, фонарь): tools/gen/volume-world.ts
   ...WORLD_VOLUME,
+  // декор Полей вечных битв в объёме с вариантами (воткнутое оружие, щиты, стрелы, воронки, обломки, пятна; повозки, шатры, рогатки, катапульты): tools/gen/bf-props.ts, volume-bf.ts
+  ...BF_PROPS,
+  ...BF_MORE,
   // правки 6 задачи 141: цельный колодец, объёмный камень телепорта, статуи героев фракций (tools/gen/walls141-props.ts)
   well: well141, teleport_stone: teleportStone, sun_statue: solHeroStatue, umb_statue: umbHeroStatue, umb_barrow: umbBarrow,
 };

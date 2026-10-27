@@ -33,6 +33,7 @@ for (const f of D.fronts) {
     let blocked = 0, total = 0;
     for (let dy = -D.capture.radius; dy <= D.capture.radius; dy++) for (let dx = -D.capture.radius; dx <= D.capture.radius; dx++) {
       if (dx * dx + dy * dy > D.capture.radius ** 2) continue;
+      if (dy >= -2 && dy <= 1 && dx >= -3 && dx <= 2) continue; // постамент и его край
       total++;
       if (!walkable(w.map, (d.tx + dx) * TILE, (d.ty + dy) * TILE, 10)) blocked++;
     }
@@ -40,6 +41,8 @@ for (const f of D.fronts) {
     return blocked > 0 || objs > 0 || zoneAtPx(w.map, d.x, d.y) !== Zone.Fields;
   }).map((d) => d.id);
   check("круги захвата на Полях, проходимы и без декора", badCircles.length === 0, badCircles.join(", "));
+  const open = WAR_BASES.filter((d) => walkable(w.map, d.x, d.y, 4) || walkable(w.map, d.x - TILE, d.y - 10, 4));
+  check("постамент непроходим (след под ним)", open.length === 0, open.map((d) => d.id).join(", "));
   const fortGap = Math.min(...WAR_BASES.map((d) => Math.min(Math.hypot(d.tx - FORTS.west.x, d.ty - FORTS.west.y), Math.hypot(d.tx - FORTS.east.x, d.ty - FORTS.east.y))));
   check("основания не ближе 40 тайлов к фортам", fortGap >= 40, `${fortGap.toFixed(1)}`);
 }
@@ -198,6 +201,25 @@ war.debug("owner", { base: "center_e", f: "solgard" });
   check("павший на Полях в битве — в своём форте, без потери золота", sp.free && sp.x === fort.spawn.x && sp.y === fort.spawn.y);
   u5.dead = false;
   park(sols[0]); park(u5);
+}
+// ---------- 10б. «В форт»: не в бою, перезарядка ----------
+{
+  const p = hero("solgard", 520 * TILE, 200 * TILE), fort = CITIES.find((c) => c.id === "fort_solgard")!;
+  const atFort = () => p.x === fort.spawn.x && p.y === fort.spawn.y;
+  p.combatAt = w.time;
+  war.teleport(p);
+  check("«В форт» в бою — отказ", !atFort() && msgs.get(p.id)!.some((m) => m.type === "toast" && m.msg.kind === "error"));
+  p.combatAt = -1e9;
+  war.teleport(p);
+  check("«В форт» вне боя — в своём форте, клиенту перезарядка", atFort() && msgs.get(p.id)!.some((m) => m.type === "war:tpcd" && m.msg.ms === D.schedule.teleportCdSec * 1000));
+  p.unit.x = 520 * TILE; p.unit.y = 200 * TILE;
+  war.teleport(p);
+  check("«В форт» на перезарядке — отказ", !atFort());
+  run(D.schedule.teleportCdSec * 1000 + 500);
+  p.combatAt = -1e9;
+  war.teleport(p);
+  check("«В форт» после перезарядки — снова можно", atFort());
+  park(p);
 }
 // ---------- 11. конец, победа и награды ----------
 {

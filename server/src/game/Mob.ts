@@ -58,6 +58,8 @@ export class Mob {
   /** Боец фракции (задача 132, шаг 5): фракция и поведение (server/src/game/soldiers.ts); у обычного моба "" и null. */
   faction = "";
   soldier: SoldierState | null = null;
+  /** Ворота или осадная машина (задача 132, шаг 15): ведёт server/src/game/siege.ts, обычный ИИ моба не думает. */
+  siege = false;
 
   constructor(
     readonly id: string,

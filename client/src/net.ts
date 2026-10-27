@@ -9,6 +9,7 @@ import type { BankView } from "../../shared/bank";
 import type { Aura, TargetAurasMsg, ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
 import { ROOM_NAME } from "../../shared/protocol";
 import type { WarResultMsg, WarSayMsg, WarStateMsg } from "../../shared/bannerWar";
+import type { SiegeFxMsg, SiegeResultMsg, SiegeStateMsg } from "../../shared/siege";
 import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, RECONNECT_SEC } from "../../shared/accounts";
 
 export type LogoutMode = "char" | "account";
@@ -101,6 +102,12 @@ type Events = {
   war: WarStateMsg;
   "war:say": WarSayMsg;
   "war:result": WarResultMsg;
+  /** Перезарядка «В форт»: сколько мс ждать. */
+  "war:tpcd": { ms: number };
+  /** Осада форта (задача 132, шаг 15; shared/siege.ts): состояние, итог, эффекты машин и ворот (удар тарана, полёт камня, пролом, починка). */
+  siege: SiegeStateMsg;
+  "siege:result": SiegeResultMsg;
+  "siege:fx": SiegeFxMsg;
 };
 
 export interface ArenaWelcome {
@@ -395,7 +402,7 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result", "war:tpcd", "siege", "siege:result", "siege:fx"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

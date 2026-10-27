@@ -115,7 +115,10 @@ const pngSize = (f: string) => {
   return { w: p.width, h: p.height };
 };
 const scan = (dir: string) => fs.readdirSync(path.join(OUT, dir)).filter((f) => f.endsWith(".png")).map((f) => f.slice(0, -4));
-for (const id of scan("units")) if (!manifest.units[id]) manifest.units[id] = { frame: pngSize(path.join(OUT, "units", id + ".png")).h / 3 };
+// боссы с каталогом zone-bosses/manifest.json: кадр — оттуда (лист кольца перенесён по строкам — высота не 3 кадра, задача 139)
+const ZBM = path.join(OUT, "zone-bosses", "manifest.json");
+const zbFrame: Record<string, number> = fs.existsSync(ZBM) ? Object.fromEntries(Object.entries((JSON.parse(fs.readFileSync(ZBM, "utf8")) as { bosses: Record<string, { fw?: number }> }).bosses).map(([k, b]) => [k, b.fw ?? 64])) : {};
+for (const id of scan("units")) if (!manifest.units[id]) manifest.units[id] = { frame: zbFrame[id] ?? pngSize(path.join(OUT, "units", id + ".png")).h / 3 };
 for (const id of scan("objects")) if (!manifest.objects[id]) manifest.objects[id] = pngSize(path.join(OUT, "objects", id + ".png"));
 for (const id of scan("icons")) if (!manifest.icons.includes(id)) manifest.icons.push(id);
 for (const id of scan("fx")) if (!manifest.fx.includes(id)) manifest.fx.push(id);

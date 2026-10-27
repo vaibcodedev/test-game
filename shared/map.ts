@@ -132,7 +132,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 14; // 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 15; // 15 — декор Полей в объёме с вариантами (воткнутое оружие, щиты, воронки, обломки, повозки, шатры, катапульты: shared/decor.ts, tools/gen/bf-props.ts); 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -1279,12 +1279,12 @@ export function generateMap(seed: number): WorldMap {
       else if (r < 0.08) pair(k0(D.BF_PLANTED, 434));
       else if (r < 0.104) pair(k0(D.BF_STAINS, 435));
       else if (r < 0.122) pair(k0(D.BF_BONES, 436), 28);
-      else if (r < 0.13) block("bf_spike_barrier");
+      else if (r < 0.13) block(k0(D.BF_BARRIERS, 442));
       else if (r < 0.135) { if (block(k0(D.BF_WAGONS, 437))) pair(k0(D.BF_PLANTED, 438)); }
       else if (r < 0.139) {
         const k = k0(D.BF_TENTS_RUINED, 439);
         // у сгоревшего шатра ещё тлеет: дым и огонь (анимированные листы)
-        if (block(k) && k === "bf_tent_burnt") { objects.push({ kind: "bf-smoke", x: (x + 1.5) * TILE + 6, y: y * TILE + 20 }, { kind: "bf-smoke", x: (xe - 0.5) * TILE - 6, y: y * TILE + 20, flip: true }); }
+        if (block(k) && k.startsWith("bf_tent_burnt")) { objects.push({ kind: "bf-smoke", x: (x + 1.5) * TILE + 6, y: y * TILE + 20 }, { kind: "bf-smoke", x: (xe - 0.5) * TILE - 6, y: y * TILE + 20, flip: true }); }
       } else if (r < 0.141 && scar > 0.62) block(k0(D.BF_WRECKS, 440));
       else if (r < 0.146 && scar > 0.62) pair(hash(x, y, seed + 441) < 0.5 ? "bf-fire-s" : "bf-fire-m", 31);
     }
@@ -1359,6 +1359,8 @@ export function generateMap(seed: number): WorldMap {
   for (const wd of PATROLS.wards.list) objects.push({ kind: (PATROLS.wards.kinds as Record<string, string>)[wd.faction], x: (wd.x + 0.5) * TILE, y: (wd.y + 1) * TILE - 2 });
   // варианты вида стен, башен, ворот и зданий (задача 141): кадр o_<kind>__<v>
   assignArtVariants(objects);
+  // постаменты «Знамён Предела» (шаг 14): след 4×2 клетки под постаментом непроходим (круг захвата вокруг — проходим); зеркально (i ↔ 1099 − i)
+  for (const b of WAR_BASES) for (let y = Math.floor(b.ty) - 1; y <= Math.floor(b.ty); y++) for (let x = Math.round(b.tx) - 2; x <= Math.round(b.tx) + 1; x++) cell[y * w + x] |= CELL_BLOCK;
 
   return {
     w,

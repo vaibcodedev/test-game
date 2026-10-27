@@ -24,6 +24,9 @@
 @keyframes war-contest { 50% { border-color: var(--warn); } }
 .war-note { font-size: var(--fs-xs); color: var(--dim); text-align: center; }
 .war-tp { align-self: center; min-height: 0; padding: var(--sp-0) var(--sp-3); font-size: var(--fs-sm); }
+/* «В форт» недоступна: в бою — замок, на перезарядке — отсчёт и шторка, уходящая слева направо (--cd — доля оставшегося времени) */
+.war-tp:disabled { position: relative; overflow: hidden; color: var(--dim); filter: grayscale(1); cursor: not-allowed; font-variant-numeric: tabular-nums; }
+.war-tp.cd::after { content: ""; position: absolute; inset: 0 0 0 auto; width: calc(var(--cd) * 100%); background: var(--shade-cd); pointer-events: none; }
 
 .war-banner { position: absolute; top: 22%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 36px; font-weight: var(--fw-b); color: var(--fg); text-shadow: 0 3px 0 #000, 0 0 24px #000; white-space: nowrap; }
 .war-banner small { display: block; font-size: var(--fs-lg); font-weight: var(--fw); color: var(--dim); }

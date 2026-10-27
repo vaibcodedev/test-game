@@ -19,6 +19,8 @@ export interface WarBaseDef {
   ty: number;
   x: number;
   y: number;
+  /** Королевское знамя во дворе форта (осада, шаг 15): свой радиус круга, px; видно только в осаде этого форта. */
+  siege?: { fort: string; r: number };
 }
 export interface WarFrontDef { id: string; name: string; side: SideBonus; heart: HeartBonus; bases: WarBaseDef[] }
 
@@ -46,14 +48,14 @@ export function weekKey(ms: number): string {
   return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`;
 }
 
-/** Ближайшее начало «Часа войны» строго позже after (мс, местное время сервера). */
-export function nextWarStart(after: number): number {
+/** Ближайшее начало «Часа войны» строго позже after (мс, местное время сервера); siege — воскресная битва в 20:00 уступает осаде форта (шаг 15: есть нападающий). */
+export function nextWarStart(after: number, siege = false): number {
   const S = data.schedule;
   const d0 = new Date(after);
   for (let k = 0; k < 9; k++) {
     const day = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k);
     const dow = day.getDay(), weekend = dow === 0 || dow === 6;
-    const times = [...S.daily, ...(weekend ? S.weekend : [])].filter((t) => !(S.sundaySiege && dow === 0 && t === "20:00"));
+    const times = [...S.daily, ...(weekend ? S.weekend : [])].filter((t) => !(siege && S.sundaySiege && dow === 0 && t === "20:00"));
     const starts = times.map((t) => { const [h, mi] = t.split(":").map(Number); return new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, mi).getTime(); }).sort((a, b) => a - b);
     for (const s of starts) if (s > after) return s;
   }

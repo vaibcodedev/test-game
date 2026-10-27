@@ -17,6 +17,7 @@ import { MATERIALS } from "../../../shared/upgrade";
 import { TILE } from "../../../shared/constants";
 import { T } from "../../../shared/texts";
 import { addItem } from "./inventory";
+import { SIEGE, siegeAttacker } from "../../../shared/siege";
 import type { Player } from "./Player";
 import type { Actor, World } from "./World";
 
@@ -33,6 +34,8 @@ export interface WarSaved {
   frontIdx: number;
   week: string;
   wins: [number, number];
+  /** Неделя после осады форта (шаг 15, siege.ts): чьё знамя над воротами форта, кому бонус опыта и золота на Полях и до когда. */
+  siege?: { fort: string; flag: WarFaction; bonus: WarFaction; until: number } | null;
 }
 export interface WarStore { load(): WarSaved | null; save(s: WarSaved): void }
 /** Хранилище в JSON-файле (рядом с базой игры): запись через временный файл и переименование — файл не остаётся наполовину записанным. */
@@ -112,7 +115,7 @@ export class BannerWar {
     const rot = S.rotation;
     return warFront(rot[((this.saved.frontIdx % rot.length) + rot.length) % rot.length]) ?? WAR_FRONTS[0];
   }
-  private persist() {
+  persist() {
     for (const r of this.bases.values()) this.saved.owners[r.def.id] = r.owner ?? "";
     this.store?.save(this.saved);
   }
@@ -135,7 +138,7 @@ export class BannerWar {
     for (const id of this.known) if (!this.w.players.has(id)) { this.known.delete(id); this.moves.delete(id); }
     this.checkWeek(now);
     if (this.phase === "idle") {
-      const s = nextWarStart(now);
+      const s = nextWarStart(now, siegeAttacker(this.saved.wins) !== null);
       if (s - now <= Math.max(...S.announceMin) * MIN) this.prep(s);
     }
     if (this.phase === "prep") this.tickPrep(now);
@@ -472,7 +475,8 @@ export class BannerWar {
     if (!b) return { xp: 1, gold: 1, mats: 1, loot: 1 };
     const z = zoneAtPx(this.w.map, m.x, m.y);
     const fields = z === Zone.Fields;
-    return { xp: fields ? 1 + b.xpGold : 1, gold: fields ? 1 + b.xpGold : 1, mats: fields ? 1 + b.mats : 1, loot: z === Zone.Dungeon ? 1 + b.dungeon : 1 };
+    const sw = this.saved.siege, sb = sw && sw.bonus === p.faction && this.now() < sw.until ? SIEGE.reward.xpGold : 0; // неделя после осады
+    return { xp: fields ? 1 + b.xpGold + sb : 1, gold: fields ? 1 + b.xpGold + sb : 1, mats: fields ? 1 + b.mats : 1, loot: z === Zone.Dungeon ? 1 + b.dungeon : 1 };
   }
   /** Скорость героя вне боя на Полях. */
   speedMul(p: Player): number {
@@ -482,6 +486,8 @@ export class BannerWar {
   }
   /** Где возродиться павшему на Полях: в битве — в своём форте без потери золота; иначе у своей заставы центра, если она взята. */
   respawnAt(p: Player): { x: number; y: number; free: boolean } | null {
+    const sr = this.w.siege?.respawnAt(p); // осада форта: нападающие — в лагере у ворот, оборона — в форте
+    if (sr) return sr;
     if (!isWarFaction(p.faction) || zoneAtPx(this.w.map, p.x, p.y) !== Zone.Fields) return null;
     if (this.phase === "battle" && p.level >= WAR.minLevel) {
       const fort = CITIES.find((c) => c.id === `fort_${p.faction}`);
@@ -494,7 +500,16 @@ export class BannerWar {
   }
 
   /** Телепорт в свой форт: за teleportMin минут до битвы и во время неё. */
+  /** Перезарядка «В форт» по герою (имя → World.time, до которого нельзя). */
+  private tpCd = new Map<string, number>();
   teleport(p: Player) {
+    // не в бою и не чаще schedule.teleportCdSec (и для переноса осады); клиенту — сколько ждать (кнопка с отсчётом)
+    const key = p.name.toLowerCase(), left = (this.tpCd.get(key) ?? 0) - this.w.time;
+    if (p.inCombat(this.w.time)) return p.send("toast", { text: T("srv.bannerWar.18"), kind: "error" });
+    if (left > 0) { p.send("war:tpcd", { ms: left }); return p.send("toast", { text: T("srv.bannerWar.21", { n: Math.ceil(left / 1000) }), kind: "error" }); }
+    const x0 = p.x, y0 = p.y;
+    const done = () => { if (p.x !== x0 || p.y !== y0) { this.tpCd.set(key, this.w.time + S.teleportCdSec * 1000); p.send("war:tpcd", { ms: S.teleportCdSec * 1000 }); } };
+    if (this.w.siege?.active()) { this.w.siege.teleport(p); return done(); } // в осаде — в лагерь осады или в свой форт
     const now = this.now();
     const open = (this.phase === "prep" && this.t0 - now <= S.teleportMin * MIN) || this.phase === "battle";
     if (!open) return p.send("toast", { text: T("srv.bannerWar.16", { min: S.teleportMin }), kind: "error" });
@@ -508,6 +523,7 @@ export class BannerWar {
     p.moveTo = null;
     p.targetId = null;
     this.w.emit({ t: "tp", id: p.id, ph: "arrive", x: p.x, y: p.y });
+    done();
   }
 
   // ---------- сообщения ----------
