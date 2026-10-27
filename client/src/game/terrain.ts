@@ -9,7 +9,7 @@ import { GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type Wo
 import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
 import { CHUNK, cellHash, chunkRect, chunkRows, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
-import { NO_SHADOW, Shadow, shadowTick } from "./shadows";
+import { NO_SHADOW, Shadow, shadowTick, WALL_KINDS, WallShadow, type WallTile } from "./shadows";
 import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
 
@@ -138,11 +138,30 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     const key = o.v && scene.textures.exists(`o_${o.kind}__${o.v}`) ? `o_${o.kind}__${o.v}` : `o_${o.kind}`;
     return scene.add.image(o.x, o.y, key).setOrigin(0.5, 1).setFlipX(!!o.flip);
   };
+  /** Тайлы стены текущего куска: их тени склеиваются в полосы по прямым участкам (shadows.ts WallShadow). */
+  let wallTiles: WallTile[] | null = null;
+  const wallShadows = (tiles: WallTile[], objs: Phaser.GameObjects.GameObject[]) => {
+    const run = (key: (t: WallTile) => number, pos: (t: WallTile) => number) => {
+      const by = new Map<number, WallTile[]>();
+      for (const t of tiles) { const k = key(t); (by.get(k) ?? by.set(k, []).get(k)!).push(t); }
+      for (const g of by.values()) {
+        g.sort((a, b) => pos(a) - pos(b));
+        let cur: WallTile[] = [];
+        const flush = () => { if (cur.length) objs.push(new WallShadow(scene, cur).box); cur = []; };
+        for (const t of g) { if (cur.length && (pos(t) - pos(cur[cur.length - 1]) > TILE * 1.5 || cur.length >= 24)) flush(); cur.push(t); }
+        flush();
+      }
+    };
+    const hs = tiles.filter((t) => t.img.texture.key.includes("wall_h")), vs = tiles.filter((t) => !t.img.texture.key.includes("wall_h"));
+    tiles = hs; run((t) => t.y, (t) => t.x);
+    tiles = vs; run((t) => t.x, (t) => t.y);
+  };
   const makeObject = (o: MapObject, objs: Phaser.GameObjects.GameObject[]) => {
     const img = makeImage(o);
     objs.push(img);
     // динамическая тень из собственного кадра (game/shadows.ts): не для лежащего на земле, низкого и анимированного
-    if (img.type === "Image" && (img as Phaser.GameObjects.Image).height >= 20 && !NO_SHADOW.has(o.kind) && !GROUND_OBJECTS.has(o.kind)) {
+    if (wallTiles && WALL_KINDS.has(o.kind) && img.type === "Image") wallTiles.push({ img: img as Phaser.GameObjects.Image, x: o.x, y: o.y });
+    else if (img.type === "Image" && (img as Phaser.GameObjects.Image).height >= 20 && !NO_SHADOW.has(o.kind) && !GROUND_OBJECTS.has(o.kind)) {
       const sh = new Shadow(scene, o.x, o.y);
       sh.mirror(0, img as Phaser.GameObjects.Image, 0, 0);
       objs.push(sh.box);
@@ -269,6 +288,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     const objs: Phaser.GameObjects.GameObject[] = [], tweens: Phaser.Tweens.Tween[] = [];
     const cellPx = CELL * TILE, NC = CHUNK / CELL;
     const cells: Cell[] = [];
+    wallTiles = [];
     for (const o of buckets[cy * NX + cx]) {
       const ci = Math.max(0, Math.min(NC - 1, Math.floor((o.x - x0 * TILE) / cellPx)));
       const cj = Math.max(0, Math.min(NC - 1, Math.floor((o.y - 1 - y0 * TILE) / cellPx)));
@@ -284,6 +304,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       }
     }
     chunkTweens = [];
+    wallShadows(wallTiles, objs);
+    wallTiles = null;
     const list = cells.filter((c): c is Cell => !!c);
     for (const c of list) { objs.push(...c.objs); tweens.push(...c.tweens); }
     return { tm, objs, nodes: buckets[cy * NX + cx].map((o) => nodeOf.get(o)).filter((v): v is number => v !== undefined), tweens, cells: list };
