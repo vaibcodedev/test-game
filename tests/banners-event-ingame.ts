@@ -280,14 +280,15 @@ async function scenarioRules() {
   w.war!.debug("start", { front: "center" });
   await page.waitForFunction("document.querySelector('.war-bar') && !document.querySelector('.war-bar').hidden", { timeout: 20000, polling: 250 });
   await sleep(1000);
-  await page.click("[data-war-rules]");
-  await page.waitForSelector(".war-rules", { timeout: 5000 });
+  await page.$eval("[data-war-rules]", (b) => (b as HTMLElement).click()); // полоса перерисовывается раз в 0,5 с — щелчок мышью может попасть в снятый узел
+  await page.waitForSelector(".win-help .war-rules", { timeout: 5000 });
   await sleep(800);
   // окно целиком: снять ограничение высоты на время снимка
-  await page.evaluate(() => { const d = document.querySelector(".war-rules") as HTMLElement; d.style.maxHeight = "none"; (d.querySelector(".dialog-body") as HTMLElement).style.overflow = "visible"; const m = d.parentElement as HTMLElement; m.style.position = "absolute"; m.style.height = "auto"; });
+  await page.evaluate(() => { const w = document.querySelector(".win-help") as HTMLElement; w.style.maxHeight = "none"; (w.querySelector(".body") as HTMLElement).style.overflow = "visible"; });
   await page.setViewport({ width: VIEW.width, height: 2200, deviceScaleFactor: 1 });
   await sleep(600);
-  const el = await page.$(".war-rules");
+  check(await page.$eval(".win-help", (w) => !(w as HTMLElement).hidden && w.querySelector("#help-tab-war")?.getAttribute("aria-selected") === "true"), "«?» на полосе открывает «Помощь» на вкладке «Знамёна Предела»");
+  const el = await page.$(".win-help");
   if (el) await el.screenshot({ path: path.join(OUT, "rules.png") });
   const text = await page.$eval(".war-rules", (e) => e.textContent ?? "");
   check(!!el && /Идёт битва/.test(text) && /Осада/.test(text) && /Перемирие/.test(text) && /Свободно/.test(text), "окно правил: живая строка, все разделы, знаки карты");

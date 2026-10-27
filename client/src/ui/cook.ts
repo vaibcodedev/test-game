@@ -107,7 +107,7 @@ export class CookUI {
       });
       row.append(prices);
       list.append(row);
-      return { d, row, lvl: row.querySelector<HTMLElement>(".meta")!, btns };
+      return { d, row, lvl: row.querySelector<HTMLElement>(".row-sub")!, btns };
     });
   }
 

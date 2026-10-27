@@ -3,7 +3,8 @@ import type { LogoutMode, Net } from "../net";
 import { hotkeySections, keybinds, mouseOpts, type ActionId, type HelpKey } from "../game/keybinds";
 import { CreditsUI } from "./credits";
 import { T } from "../../../shared/texts";
-import { openWarRules } from "./bannerWar";
+import { fillWarRules } from "./bannerWar";
+import { tabs } from "./kit";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 /** Подпись клавиши действия. */
@@ -31,10 +32,32 @@ const tips = (): string[] => {
   ];
 };
 
+/** Вкладки окна «Помощь»: управление и советы, правила «Знамён Предела». */
+export type HelpTab = "keys" | "war";
+const HELP_TABS: [HelpTab, string][] = [["keys", T("ui.gamemenu.512")], ["war", T("ui.bannerWar.40")]];
+let helpTab: HelpTab = "keys";
+
 /**
- * Окно «Помощь»: клавиши по разделам (hotkeySections) и советы. Все разделы лежат в одном .keys — у таблицы одна колонка клавиш.
+ * Окно «Помощь» (.win из hud.ts): строка вкладок над .body и содержимое выбранной; без tab остаётся прежняя вкладка.
+ * Управление: клавиши по разделам (hotkeySections) и советы — все разделы в одном .keys, у таблицы одна колонка клавиш.
  */
-export function fillHelp(body: Element) {
+export function fillHelp(win: HTMLElement, tab: HelpTab = helpTab) {
+  helpTab = tab;
+  let bar = win.querySelector<HTMLElement>(".tabs");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "tabs";
+    bar.setAttribute("aria-label", T("ui.gamemenu.500"));
+    bar.innerHTML = HELP_TABS.map(([k, name]) => `<button class="btn tab" id="help-tab-${k}" data-tab="${k}" aria-controls="help-body">${esc(name)}</button>`).join("");
+    win.querySelector(".body")!.before(bar);
+    tabs(bar, (k) => fillHelp(win, k as HelpTab));
+  }
+  for (const b of bar.querySelectorAll<HTMLElement>(".tab")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
+  const body = win.querySelector<HTMLElement>(".body")!;
+  body.id = "help-body";
+  body.setAttribute("role", "tabpanel");
+  body.scrollTop = 0;
+  if (tab === "war") return fillWarRules(body);
   const sections = hotkeySections(keybinds).map((s) => `<h3 class="sec-h">${esc(s.title)}</h3><dl>${s.rows.map((r) => `<div class="keys-row"><dt><span>${keysCell(r.keys)}</span></dt><dd>${esc(r.what)}</dd></div>`).join("")}</dl>`).join("");
   body.innerHTML = `<section class="sec"><div class="keys">${sections}</div></section>
     <section class="sec"><h3 class="sec-h">${T("ui.gamemenu.489")}</h3><ul class="tips">${tips().map((t) => `<li>${t}</li>`).join("")}</ul></section>`;
@@ -95,7 +118,6 @@ export class GameMenu {
       [T("ui.gamemenu.498"), "", () => a.toggle("settings")],
       [T("ui.gamemenu.499"), "", () => this.credits.toggle()],
       [T("ui.gamemenu.500"), "", () => a.openHelp()],
-      [T("ui.bannerWar.40"), "", () => openWarRules()], // правила «Знамён Предела»
       [T("ui.gamemenu.501"), "", () => void window.dispatchEvent(new CustomEvent("emberfall:reconnect"))],
       [T("ui.gamemenu.502"), "", a.net().kind === "arena" ? null : () => this.confirmLogout("char")],
       [T("ui.gamemenu.503"), "", a.net().kind === "arena" ? null : () => this.confirmLogout("account")],

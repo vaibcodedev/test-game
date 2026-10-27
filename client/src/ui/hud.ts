@@ -36,7 +36,7 @@ import { InspectUI } from "./inspect";
 import { enchantTotal, gearRows, legendBlock } from "./gearfx";
 import { CookUI, foodTip } from "./cook";
 import { QuestUI, TeleportUI } from "./cities";
-import { fillHelp, GameMenu } from "./gamemenu";
+import { fillHelp, GameMenu, type HelpTab } from "./gamemenu";
 import { isTextField, keybinds, skillKeys } from "../game/keybinds";
 import { buildControls, buttonRow, checkRow, offerSchemeOnce, rangeRow, segRow } from "./controls";
 import { rangeFill, seg, setHidden, tabs, type TabsHandle } from "./kit";
@@ -272,7 +272,7 @@ export class Hud {
       toggle: (id) => this.toggle(id),
       openQuests: () => this.quest.toggleLog(),
       openMap: () => this.openWorldMap(),
-      openHelp: () => { fillHelp(this.wins.help.querySelector(".body")!); this.wins.help.hidden = false; }, // советы про мышь зависят от опций, поэтому справка собирается при открытии
+      openHelp: () => this.openHelp("keys"),
       isAdmin: () => !!this.ctx.net.self?.isAdmin,
       net: () => this.ctx.net,
     });
@@ -311,7 +311,7 @@ export class Hud {
 
   /** Раскладка изменилась: справка, меню под картой, чат и панель умений (список клавиш в настройках обновляет controls.ts). */
   private refreshKeys() {
-    fillHelp(this.wins.help.querySelector(".body")!);
+    fillHelp(this.wins.help);
     this.menuBar.replaceChildren();
     this.buildMenu();
     this.chatInput.placeholder = TX("ui.hud.289", { v: keybinds.label("chat", 0) });
@@ -496,8 +496,14 @@ export class Hud {
     mk("settings", "win-settings m", TX("ui.gamemenu.498"));
     this.buildSettings(this.wins.settings.querySelector(".body")!);
     mk("help", "win-help m", TX("ui.gamemenu.500"));
-    fillHelp(this.wins.help.querySelector(".body")!);
+    fillHelp(this.wins.help);
+    window.addEventListener("emberfall:help", (e) => this.openHelp((e as CustomEvent<{ tab: HelpTab }>).detail.tab));
     mk("worldmap", "win-worldmap", TX("ui.hud.534"));
+  }
+  /** «Помощь» на нужной вкладке; собирается при каждом открытии — советы про мышь зависят от опций, правила — от фракции и времени. */
+  openHelp(tab: HelpTab) {
+    fillHelp(this.wins.help, tab);
+    this.wins.help.hidden = false;
   }
   openWorldMap() {
     const w = this.wins.worldmap;

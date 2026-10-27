@@ -39,7 +39,8 @@
 .war-stats { margin: 0; font-size: var(--fs-sm); }
 @media (max-width: 700px) { .war-sides { grid-template-columns: 1fr; } }
 
-/* окно правил (openWarRules): разделы, живая строка сверху, знаки карты */
+/* правила — вкладка окна «Помощь» (fillWarRules): разделы, живая строка сверху, знаки карты */
+.war-rules { display: flex; flex-direction: column; gap: var(--sp-3); }
 .war-rules .war-now { margin: 0; padding: var(--sp-2) var(--sp-3); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); color: var(--gold); font-weight: var(--fw-b); }
 .war-rule h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); color: var(--gold); }
 .war-rule p { margin: 0 0 var(--sp-1h); line-height: 1.45; }

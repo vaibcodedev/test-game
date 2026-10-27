@@ -351,13 +351,16 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
 // ---------- окно правил ----------
 /** Имена оснований — по ним карта мира понимает, что щёлкнули по основанию (открыть правила). */
 export const WAR_BASE_NAMES = new Set(WAR_BASES.map((d) => d.name));
-let rules: ModalHandle | null = null;
-/**
- * Правила «Знамён Предела» для игрока (кнопка «?» на полосе битвы, щелчок по основанию на карте, меню игры): когда, как захватить,
- * очки, что дают точки, награды, осада, перемирие и знаки карты. Все числа — из data/faction-war.json и data/siege.json; сверху — живая строка.
- */
+/** Открыть правила: окно «Помощь» на вкладке «Знамёна Предела» (окно строит hud.ts, он и слушает это событие). */
 export function openWarRules() {
-  if (rules) return;
+  window.dispatchEvent(new CustomEvent("emberfall:help", { detail: { tab: "war" } }));
+}
+/**
+ * Правила «Знамён Предела» для игрока — вкладка окна «Помощь» (её открывают кнопка «?» на полосе битвы, щелчок по основанию на карте и сама «Помощь»):
+ * когда, как захватить, очки, что дают точки, награды, осада, перемирие и знаки карты. Все числа — из data/faction-war.json и data/siege.json;
+ * сверху — живая строка, она тикает, пока вкладка в документе.
+ */
+export function fillWarRules(body: HTMLElement) {
   const S = WAR.schedule, C = WAR.capture, SC = WAR.score, R = WAR.rewards, SG = SIEGE_DATA;
   const list = (a: (string | number)[]) => a.join(", ");
   const sec = (title: string, ...ps: string[]) => `<section class="war-rule"><h3>${esc(title)}</h3>${ps.map((p) => `<p>${esc(p)}</p>`).join("")}</section>`;
@@ -373,9 +376,7 @@ export function openWarRules() {
     [icon("icon-none-heart"), T("ui.bannerWar.5", { min: S.heartOpenMin }), T("ui.bannerWar.64", { heart: S.heartOpenMin })],
     ["", `${T("ui.bannerWar.30", { faction: FACTIONS.umbrath.name, pct: 45 })} · ${T("ui.bannerWar.6")}`, T("ui.bannerWar.65")],
   ].map(([ic, name, what]) => `<div class="war-legend-row"><span class="war-legend-ics">${ic}</span><span><b>${esc(name)}</b> — ${esc(what)}</span></div>`).join("");
-  const html = `<section class="panel dialog lg war-rules" role="dialog" aria-modal="true" aria-labelledby="war-rules-title">
-    <div class="dialog-head"><h2 class="dialog-title" id="war-rules-title">${T("ui.bannerWar.40")}</h2><button class="x" data-x aria-label="${T("ui.bannerWar.27")}">×</button></div>
-    <div class="dialog-body">
+  body.innerHTML = `<div class="war-rules">
       <p class="war-now" data-now></p>
       ${sec(T("ui.bannerWar.45"), T("ui.bannerWar.46", { daily: list(S.daily), weekend: list(S.weekend), dur: S.durationMin, fronts: S.rotation.map((id) => warFront(id)?.name ?? id).join(" → "), ann: list(S.announceMin), tp: S.teleportMin, cd: S.teleportCdSec }))}
       ${sec(T("ui.bannerWar.47"),
@@ -387,13 +388,8 @@ export function openWarRules() {
       ${sec(T("ui.bannerWar.57"), T("ui.bannerWar.58", { time: SG.schedule.time, dur: SG.schedule.durationMin, breach: SG.schedule.breachMin, days: SG.reward.days, pct: pct(SG.reward.xpGold) }))}
       ${sec(T("ui.bannerWar.59"), T("ui.bannerWar.60"))}
       <section class="war-rule"><h3>${esc(T("ui.bannerWar.61"))}</h3>${legend}</section>
-    </div>
-    <div class="dialog-foot"><button class="btn primary" data-x>${T("ui.bannerWar.27")}</button></div></section>`;
-  let timer = 0;
-  const m = openModal(html, { onClose: () => { clearInterval(timer); rules = null; } });
-  rules = m;
-  m.dialog.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest("[data-x]")) m.close(); });
-  const nowEl = m.dialog.querySelector<HTMLElement>("[data-now]")!;
+    </div>`;
+  const nowEl = body.querySelector<HTMLElement>("[data-now]")!;
   const tick = () => {
     const st = warView.state, now = warNow(), fr = warFront(st?.front ?? "")?.name ?? "";
     let text: string;
@@ -403,7 +399,7 @@ export function openWarRules() {
     if (nowEl.textContent !== text) nowEl.textContent = text;
   };
   tick();
-  timer = window.setInterval(tick, 500);
+  const timer = window.setInterval(() => { if (!nowEl.isConnected) clearInterval(timer); else if (!nowEl.closest<HTMLElement>(".win")?.hidden) tick(); }, 500);
 }
 
 /** Подсказка бафа земли (рамка героя): до когда — фронт и время следующей его битвы (срок присылает сервер). */
