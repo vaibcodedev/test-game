@@ -1363,8 +1363,9 @@ export function generateMap(seed: number): WorldMap {
   for (const wd of PATROLS.wards.list) objects.push({ kind: (PATROLS.wards.kinds as Record<string, string>)[wd.faction], x: (wd.x + 0.5) * TILE, y: (wd.y + 1) * TILE - 2 });
   // варианты вида стен, башен, ворот и зданий (задача 141): кадр o_<kind>__<v>
   assignArtVariants(objects);
-  // постаменты «Знамён Предела» (шаг 14): след 4×2 клетки под постаментом непроходим (круг захвата вокруг — проходим); зеркально (i ↔ 1099 − i)
-  for (const b of WAR_BASES) for (let y = Math.floor(b.ty) - 1; y <= Math.floor(b.ty); y++) for (let x = Math.round(b.tx) - 2; x <= Math.round(b.tx) + 1; x++) cell[y * w + x] |= CELL_BLOCK;
+  // постаменты «Знамён Предела» (шаг 14): след 4×2 клетки под постаментом непроходим (круг захвата вокруг — проходим); зеркально (i ↔ 1099 − i).
+  // Постамент стоит на look.plinthDrop px ниже центра круга (середина тела — в центре кольца): след — ряды под ним
+  for (const b of WAR_BASES) for (let y = Math.floor(b.ty + (WAR.look.plinthDrop - 7) / TILE); y <= Math.floor(b.ty + (WAR.look.plinthDrop + 7) / TILE); y++) for (let x = Math.round(b.tx) - 2; x <= Math.round(b.tx) + 1; x++) cell[y * w + x] |= CELL_BLOCK;
 
   return {
     w,

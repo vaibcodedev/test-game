@@ -33,7 +33,7 @@ for (const f of D.fronts) {
     let blocked = 0, total = 0;
     for (let dy = -D.capture.radius; dy <= D.capture.radius; dy++) for (let dx = -D.capture.radius; dx <= D.capture.radius; dx++) {
       if (dx * dx + dy * dy > D.capture.radius ** 2) continue;
-      if (dy >= -2 && dy <= 1 && dx >= -3 && dx <= 2) continue; // постамент и его край
+      if (dy >= -1 && dy <= 2 && dx >= -3 && dx <= 2) continue; // постамент и его край
       total++;
       if (!walkable(w.map, (d.tx + dx) * TILE, (d.ty + dy) * TILE, 10)) blocked++;
     }
@@ -41,7 +41,8 @@ for (const f of D.fronts) {
     return blocked > 0 || objs > 0 || zoneAtPx(w.map, d.x, d.y) !== Zone.Fields;
   }).map((d) => d.id);
   check("круги захвата на Полях, проходимы и без декора", badCircles.length === 0, badCircles.join(", "));
-  const open = WAR_BASES.filter((d) => walkable(w.map, d.x, d.y, 4) || walkable(w.map, d.x - TILE, d.y - 10, 4));
+  const drop = D.look.plinthDrop;
+  const open = WAR_BASES.filter((d) => walkable(w.map, d.x, d.y + drop, 4) || walkable(w.map, d.x - TILE, d.y + drop - 4, 4));
   check("постамент непроходим (след под ним)", open.length === 0, open.map((d) => d.id).join(", "));
   const fortGap = Math.min(...WAR_BASES.map((d) => Math.min(Math.hypot(d.tx - FORTS.west.x, d.ty - FORTS.west.y), Math.hypot(d.tx - FORTS.east.x, d.ty - FORTS.east.y))));
   check("основания не ближе 40 тайлов к фортам", fortGap >= 40, `${fortGap.toFixed(1)}`);
