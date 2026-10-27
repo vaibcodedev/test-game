@@ -24,8 +24,8 @@ import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
 import { setLightMode } from "./shadows";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
-import { capBand, placeText, syncTextRes, worldText } from "./worldText";
-import { drawNpcIcon, hasNpcIcon, NPC_ICON_SIZE } from "./npcIcons";
+import { capBand, HALO, placeText, syncTextRes, worldText } from "./worldText";
+import { NPC_ICON_SIZE, NPC_ICON_TEX, npcIconFrame } from "./npcIcons";
 import { ArenaIntroFx } from "./arenaIntro";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
@@ -348,22 +348,22 @@ export class GameScene extends Phaser.Scene {
     const shadow = this.add.image(at.x, at.y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5);
     // подпись NPC (решение пользователя 2026-10-27): роль мелко над именем, имя на ступень крупнее ника героя, тень 1 px вместо обводки,
     // значок службы слева от имени; «!» над подписью — только у квестодателей и встреч
-    const shadowed = { fontSize: "8px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 0, shadow: { offsetX: 0, offsetY: 1, color: "#120a10", blur: 0, fill: true } };
-    const words = name.split(" "), split = kind !== "enc" && words.length > 1;
-    const nameT = placeText(worldText(this, 0, 0, split ? words.slice(1).join(" ") : name, "plain", shadowed).setDepth(DEPTH.top - 5), at.x, at.y - 31, 0.5, 1);
+    const shadowed = { fontSize: "8px", fontStyle: "600", color, stroke: HALO, strokeThickness: 1, shadow: { offsetX: 0, offsetY: 1, color: "#120a10", blur: 0, fill: true } };
+    // роль и имя: последнее слово — личное имя, остальное — роль («Старый стражник Ивор»); без личного имени (вестник рейда, распорядитель арены) — одна строка
+    const words = name.split(" "), split = kind !== "enc" && kind !== "raid" && kind !== "arena" && words.length > 1;
+    const nameT = placeText(worldText(this, 0, 0, split ? words[words.length - 1] : name, "plain", shadowed).setDepth(DEPTH.top - 5), at.x, at.y - 31, 0.5, 1);
     const extras: Phaser.GameObjects.GameObject[] = [];
     if (split) {
-      const role = worldText(this, 0, 0, `«${words[0]}»`, "plain", { ...shadowed, fontSize: "6px", color: "#b8a98f" }).setDepth(DEPTH.top - 5);
+      const role = worldText(this, 0, 0, `«${words.slice(0, -1).join(" ")}»`, "plain", { ...shadowed, fontSize: "6px", color: "#e2d4b8" }).setDepth(DEPTH.top - 5);
       placeText(role, at.x, at.y - 31 - Math.round(nameT.height) + 2, 0.5, 1);
       extras.push(role);
     }
-    if (hasNpcIcon(kind)) {
-      const ig = this.add.graphics().setDepth(DEPTH.top - 5), { base, cap } = capBand(nameT);
-      drawNpcIcon(ig, kind, Math.round(nameT.x) - NPC_ICON_SIZE - 2, Math.round(nameT.y + (base + cap) / 2 - NPC_ICON_SIZE / 2));
-      extras.push(ig);
+    if (npcIconFrame(kind) >= 0) {
+      const { base, cap } = capBand(nameT);
+      extras.push(this.add.image(Math.round(nameT.x) - NPC_ICON_SIZE - 1, Math.round(nameT.y + (base + cap) / 2 - NPC_ICON_SIZE / 2), NPC_ICON_TEX, npcIconFrame(kind)).setOrigin(0, 0).setDepth(DEPTH.top - 5));
     }
     const markY = split ? at.y - 40 - 7 : at.y - 40;
-    const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : hasNpcIcon(kind) ? "" : "!", "plain", { ...shadowed, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, markY, 0.5, 1);
+    const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : npcIconFrame(kind) >= 0 ? "" : "!", "plain", { ...shadowed, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, markY, 0.5, 1);
     this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
     this.npcExtras = [shadow, nameT, mark, ...extras];
     this.npcs.push({ sprite: s, kind, id, name });

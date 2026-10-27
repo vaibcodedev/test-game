@@ -8,6 +8,9 @@ import Phaser from "phaser";
 import { P } from "../../../shared/palette";
 import { GP } from "../../../shared/gameplay";
 
+/** Ореол подписей: волосяная обводка 1 px цвета P.well с альфой 0,7 вместо толстой; под ней тень 1 px вниз. */
+export const HALO = "rgba(14,11,16,0.7)";
+
 export const FONT = '"Rubik", "Trebuchet MS", sans-serif';
 
 type TextStyle = Phaser.Types.GameObjects.Text.TextStyle;
@@ -48,7 +51,7 @@ export const textRes = (scene: Phaser.Scene): number => scene.cameras.main.zoom 
 export function worldText(scene: Phaser.Scene, x: number, y: number, text: string, preset: TextPreset, extra: TextStyle = {}, k = 1): Phaser.GameObjects.Text {
   const t = scene.add.text(x, y, text, { fontFamily: FONT, color: P.fg, stroke: P.well, ...PRESETS[preset], resolution: textRes(scene) * k, ...extra });
   // подписи по пресетам: тень 1 px вниз вместо обводки (решение пользователя 2026-10-27); «plain» — свой стиль вызывающего
-  if (preset !== "plain") { t.setStroke(P.well, 0); t.setShadow(0, 1, P.well, 0, false, true); }
+  if (preset !== "plain") { t.setStroke(HALO, 1); t.setShadow(0, 1, P.well, 0, false, true); }
   live.set(t, k);
   t.once(Phaser.GameObjects.Events.DESTROY, () => live.delete(t));
   return t.setFixedSize(0, Math.ceil(t.height - 1e-6));
