@@ -233,100 +233,82 @@ const MOSSD: RGBA[] = [[28, 58, 32, 255], [44, 90, 48, 255], [74, 138, 64, 255]]
 const LAVAH: RGBA[] = [[160, 42, 16, 255], [224, 84, 18, 255], [255, 154, 42, 255], [255, 226, 122, 255]];
 const ASHT: RGBA[] = [[42, 36, 38, 255], [60, 52, 54, 255], [84, 74, 76, 255]];
 const tn = (r: Ramp, v: number): RGBA => r[Math.max(0, Math.min(r.length - 1, Math.round(v)))];
-/** Плиты 16×16 с фаской по четырём углам: v — вариант, base — рампа, shift(slab) — сдвиг тона плиты. */
-function slabs(r: Ramp, seed: number, shift: (slab: number) => number, x: number, y: number): number {
+/** Плиты 16×16: ровный светлый тон с едва заметными швами (пол спокойный и светлее стен). base — средний тон рампы, shift(slab) — сдвиг тона плиты. */
+function slabs(r: Ramp, seed: number, shift: (slab: number) => number, x: number, y: number, base = 3.3): number {
   const lx = x % 16, ly = y % 16, slab = Math.floor(x / 16) + Math.floor(y / 16) * 2;
-  let v = 2.4 + shift(slab) + (pnoise(x, y, 8, S, seed + slab) - 0.5) * 0.7 + (pnoise(x, y, 4, S, seed + 3) - 0.5) * 0.45 + (hash01(x, y, seed + 7) - 0.5) * 0.25;
-  if (lx === 0 || ly === 0) v = 0.3; else if (lx === 1 || ly === 1) v += 0.8; else if (lx === 15 || ly === 15) v -= 0.7;
+  let v = base + shift(slab) * 0.5 + (pnoise(x, y, 8, S, seed + slab) - 0.5) * 0.3 + (hash01(x, y, seed + 7) - 0.5) * 0.1;
+  if (lx === 0 || ly === 0) v -= 0.55;
   return Math.max(0, Math.min(r.length - 1, v));
 }
 /** Трещина-жила по шумовой полосе: возвращает глубину в трещине 0..1 или 0. */
 const crackAt = (x: number, y: number, seed: number, w = 0.022) => { const n = pnoise(x, y, 8, S, seed); return Math.abs(n - 0.5) < w ? 1 - Math.abs(n - 0.5) / w : 0; };
 
-/** Мрамор собора: шахматные плиты, прожилки, трещины, мох, подтёки воды (v: 0 чистый, 1 трещина, 2 мох, 3 лужа). */
+/** Мрамор собора: ровные светлые плиты с тонкими швами (v: 0–3 — слегка разный тон, редкий мох у варианта 2). */
 function marble(): Texel {
   return (x, y, v) => {
-    const slab = Math.floor(x / 16) + Math.floor(y / 16) * 2;
-    let c = tn(MARB, slabs(MARB, 601, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.5 : -0.2), x, y));
-    if (v === 1 && crackAt(x, y, 640, 0.012) > 0 && slab === 1) c = MARB[0];
-    if (v === 2 && hash01(x, y, 650) < 0.18 && pnoise(x, y, 8, S, 651) > 0.55) c = MOSSD[hash01(x, y, 652) < 0.3 ? 2 : hash01(x, y, 653) < 0.6 ? 1 : 0];
-    if (v === 3) { const d = pnoise(x, y, 8, S, 660); if (d > 0.62) c = mix(c, [20, 64, 90, 255], 0.55 + (d - 0.62) * 1.2); }
+    let c = tn(MARB, slabs(MARB, 601, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.5 : -0.2), x, y, 3.4 + (v === 3 ? -0.15 : 0)));
+    if (v === 2 && hash01(x, y, 650) < 0.08 && pnoise(x, y, 8, S, 651) > 0.62) c = MOSSD[hash01(x, y, 652) < 0.5 ? 1 : 0];
     return c;
   };
 }
-/** Треснувший мрамор перехода: пепел, копоть и лава, сочащаяся из трещин (v: 0 пепел, 1 жилы, 2 жилы шире, 3 оплавленная плита). */
+/** Треснувший мрамор перехода: тот же светлый пол с пеплом и редкой жилой лавы (v: 0 пепел, 1 жила, 2 жила шире, 3 плита потемнее). */
 function crackedMarble(): Texel {
   return (x, y, v) => {
-    let c = tn(MARB, slabs(MARB, 701, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.1 : -0.5), x, y) - 0.4);
-    const ashN = pnoise(x, y, 8, S, 710);
-    if (ashN > 0.6 - v * 0.03) c = mix(c, ASHT[hash01(x, y, 711) < 0.3 ? 2 : 1], 0.65);
-    const ck = crackAt(x, y, 720 + v, v >= 2 ? 0.022 : 0.014);
-    if (ck > 0 && v >= 1 && v <= 2) c = ck > 0.7 ? LAVAH[3 - (hash01(x, y, 721) < 0.3 ? 1 : 0)] : ck > 0.4 ? LAVAH[2] : LAVAH[1];
-    else if (ck > 0) c = tn(MARB, 0.3);
-    else if (v >= 1 && v <= 2 && crackAt(x, y, 720 + v, 0.05) > 0) c = shade(c, 0.6);
-    if (v === 3 && hash01(x, y, 730) < 0.05) c = ASHT[0];
+    let c = tn(MARB, slabs(MARB, 701, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.2 : -0.4), x, y, 3.1 + (v === 3 ? -0.3 : 0)));
+    if (pnoise(x, y, 8, S, 710) > 0.66) c = mix(c, ASHT[hash01(x, y, 711) < 0.3 ? 2 : 1], 0.55);
+    const ck = crackAt(x, y, 720 + v, v === 2 ? 0.02 : 0.012);
+    if (ck > 0 && (v === 1 || v === 2)) c = ck > 0.6 ? LAVAH[2] : LAVAH[1];
     return c;
   };
 }
-/** Базальт склепа: тёмные плиты, жилы лавы (v: 0 гладкий, 1 жилы, 2 крупные трещины, 3 скол и зола). */
+/** Базальт склепа: ровные тёмно-фиолетовые плиты, светлее стен (v: 0 гладкий, 1 лёгкие пятна, 2 тонкий скол, 3 редкая жила лавы). */
 function basalt(): Texel {
-  // спокойный пол: крупные ровные плиты, лава — редкая волосяная жила только у варианта 3, у варианта 2 — слабая трещина без свечения
   return (x, y, v) => {
-    let c = tn(BAS, slabs(BAS, 801, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.2 : -0.2), x, y) - 0.2);
-    if (v === 1 && hash01(x, y, 810) < 0.03) c = shade(c, 0.7);
-    if (v === 2 && crackAt(x, y, 822, 0.012) > 0) c = BAS[0];
-    if (v === 3) { const ck = crackAt(x, y, 823, 0.01); if (ck > 0) c = ck > 0.6 ? LAVAH[2] : LAVAH[1]; else if (crackAt(x, y, 823, 0.045) > 0) c = shade(c, 0.65); }
+    let c = tn(BAS, slabs(BAS, 801, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.08 : -0.08), x, y, 3.45));
+    if (v === 1 && pnoise(x, y, 8, S, 810) > 0.7) c = shade(c, 0.88);
+    if (v === 2 && crackAt(x, y, 822, 0.008) > 0) c = BAS[1];
+    if (v === 3) { const ck = crackAt(x, y, 823, 0.008); if (ck > 0) c = ck > 0.6 ? LAVAH[2] : LAVAH[1]; }
     return c;
   };
 }
-/** Вытертая дорожка: гладкие светлее плиты, потёртости, без трещин. */
+/** Вытертая дорожка: ещё светлее плиты, без трещин. */
 function worn(): Texel {
   return (x, y, v) => {
-    const lx = x % 16, ly = y % 16, slab = Math.floor(x / 16) + Math.floor(y / 16) * 2;
-    let k = 2.9 + ((slab + Math.floor(slab / 2)) % 2 ? 0.15 : -0.1) + (pnoise(x, y, 8, S, 840 + slab) - 0.5) * 0.5 + (pnoise(x, y, 4, S, 843) - 0.5) * 0.3;
-    if (lx === 0 || ly === 0) k = 0.9; else if (lx === 15 || ly === 15) k -= 0.5; else if (lx === 1 || ly === 1) k += 0.4;
-    if (v === 3 && hash01(x, y, 845) < 0.04) k -= 0.8;
+    let k = slabs(BAS, 840, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.06 : -0.06), x, y, 4.2);
+    if (v === 3 && hash01(x, y, 845) < 0.03) k -= 0.4;
     return tn(BAS, k);
   };
 }
 
-/** Стены данжа по стилю s (0 собор, 1 переход, 2 склеп): верх (v 0–1) и лицо (v 0–3). */
+/** Стены данжа по стилю s (0 собор, 1 переход, 2 склеп): верх (v 0–1) — тёмная сплошная масса; лицо (v 0–3) — светлая кромка сверху, тёмная кладка, тёмная полоса у основания. */
 function wallTopS(s: number, v: number): PC {
-  const out = new PC(S, S), R = s === 2 ? BAS : MARB;
+  const out = new PC(S, S), R = s === 2 ? BASW : MARBW;
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    let k = 2.8 + (pnoise(x, y, 8, S, 300 + v + s * 20) - 0.5) * 1.4;
-    if (y < 2) k += 0.8; if (x === 0 || x === S - 1) k -= 0.8;
-    let c = tn(R, k);
-    if (s === 1 && crackAt(x, y, 340 + v, 0.018) > 0) c = LAVAH[2];
-    if (s === 2 && v === 1 && crackAt(x, y, 350, 0.016) > 0) c = LAVAH[1];
-    if (s === 0 && v === 1 && hash01(x, y, 360) < 0.06 && y > 20) c = MOSSD[1];
-    out.set(x, y, c);
+    let k = 0.9 + (pnoise(x, y, 8, S, 300 + v + s * 20) - 0.5) * 0.5;
+    if (s === 1 && crackAt(x, y, 340 + v, 0.012) > 0) k = 0.3;
+    out.set(x, y, tn(R, k));
   }
   return out;
 }
 function wallFaceS(s: number, v: number): PC {
-  const out = new PC(S, S), R = s === 2 ? BASW : MARBW;
+  const out = new PC(S, S), R = s === 2 ? BASW : MARBW, CAP = s === 2 ? BAS : MARB;
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    if (y < 6) { out.set(x, y, tn(s === 2 ? BAS : MARB, y === 5 ? 4.4 : y === 0 ? 3.6 : 3 + (hash01(x, y, 7) > 0.7 ? 0.5 : 0))); continue; }
-    const row = Math.floor((y - 6) / 7), off = row % 2 ? 8 : 0, bx = (x + off) % 16, by = (y - 6) % 7;
-    let k = 2.3 + (pnoise(x, y, 8, S, 400 + s * 9 + v) - 0.5) * 1.1 + (hash01(Math.floor((x + off) / 16), row, 31 + v + s * 5) > 0.5 ? 0.35 : -0.15);
-    if (by === 6 || bx === 0) k = 0.3; else if (by === 0) k += 0.9; else if (bx === 15) k -= 0.7;
-    if (y >= S - 3) k -= 0.7;
+    // светлая кромка-карниз: две строки почти белого верха и строка тени под ней
+    if (y < 2) { out.set(x, y, tn(CAP, y === 0 ? 5 : 4.2)); continue; }
+    if (y === 2) { out.set(x, y, tn(R, 0.4)); continue; }
+    const row = Math.floor((y - 3) / 7), off = row % 2 ? 8 : 0, bx = (x + off) % 16, by = (y - 3) % 7;
+    let k = 1.55 + (pnoise(x, y, 8, S, 400 + s * 9 + v) - 0.5) * 0.4 + (hash01(Math.floor((x + off) / 16), row, 31 + v + s * 5) > 0.5 ? 0.18 : -0.1);
+    if (by === 6 || bx === 0) k -= 0.7; else if (by === 0) k += 0.3;
+    if (y >= S - 5) k = 0.4 + (y - (S - 5)) * -0.05; // тёмная полоса у основания
     let c = tn(R, k);
     if (s === 0) {
-      if (v === 1 && y > 21 && hash01(x, y, 40) < 0.5 * (y - 21) / 10) c = MOSSD[hash01(x, y, 41) < 0.3 ? 2 : hash01(x, y, 42) < 0.6 ? 1 : 0];
-      if (v === 2 && Math.abs(x - 12 - (y - 14) * 0.5) < 0.6 && y > 10 && y < 26) c = MARB[0];
-      if (v === 3 && (y === 10 || y === 12) && x % 4 < 3) c = tn(GLDW, y === 10 ? 3 : 1.4);
+      if (v === 1 && y > 21 && y < S - 5 && hash01(x, y, 40) < 0.35 * (y - 21) / 10) c = MOSSD[hash01(x, y, 41) < 0.3 ? 1 : 0];
+      if (v === 3 && (y === 10 || y === 12) && x % 4 < 3) c = tn(GLDW, y === 10 ? 2.4 : 1);
     } else if (s === 1) {
-      if (y > 12) { const sm = pnoise(x, y, 4, S, 420); if (sm > 0.62) c = shade(c, 0.6); }
-      if (v >= 1 && crackAt(x, y, 440 + v, 0.03) > 0 && y > 8) c = LAVAH[v === 3 ? 3 : 2];
-      if (v === 2 && y > 24 && hash01(x, y, 445) < 0.5) c = ASHT[1];
+      if (v >= 2 && crackAt(x, y, 440 + v, 0.02) > 0 && y > 8 && y < S - 5) c = LAVAH[v === 3 ? 3 : 2];
     } else {
-      if (v === 3 && (by === 3 || by === 4) && y > 12 && y < 26) c = tn(IRNW, by === 3 ? 4 : 1.2);
-      if (v === 3 && by === 3 && x % 8 === 4) c = tn(IRNW, 5);
-      if (v === 2 && crackAt(x, y, 460, 0.026) > 0 && y > 8) c = LAVAH[2];
-      if (v === 1 && hash01(x, y, 470) < 0.05) c = shade(c, 0.6);
-      if (pnoise(x, y, 4, S, 480) > 0.66 && y > 8) c = shade(c, 0.7);
+      if (v === 3 && (by === 3 || by === 4) && y > 12 && y < 26) c = tn(IRNW, by === 3 ? 3.2 : 1.2);
+      if (v === 2 && crackAt(x, y, 460, 0.018) > 0 && y > 8 && y < S - 5) c = LAVAH[2];
     }
     out.set(x, y, c);
   }

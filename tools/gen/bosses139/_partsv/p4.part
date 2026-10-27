@@ -1,0 +1,235 @@
+
+/** Сцена пилота: герой, голем и чародей (вниз, вверх, вбок, влево) на траве — днём и ночью, ×k. */
+function sceneRow(A: Assets, sheets: Sheets, night: boolean, k: number): Row {
+  const H = 86;
+  return {
+    h: H * k + 40,
+    draw: (c, y0) => {
+      text(c, `×${k} · ${night ? "НОЧЬ" : "ДЕНЬ"} · ГЕРОЙ 32 · РУНОЛИТ 64 · ХОЗЯИН МИРАЖЕЙ 64 · ВНИЗ · ВВЕРХ · ВБОК · ВЛЕВО | РЕФЕРЕНС 33`, 16, y0 + 8);
+      const y = y0 + 34;
+      const wGround = 30 * k + 66 * 5 * k + 30 * k + 40;
+      groundBg(c, A.terrain, 16, y, wGround, H * k, k, "grass");
+      const yb = y + (H - 2) * k;
+      const fr = (row: number) => crop(sheets.img.idle, 0, row * FH, N, FH), fe = (row: number) => crop(sheets.emis.idle, 0, row * FH, N, FH);
+      const items: { img: PC; emis: PC | null; flip?: boolean; w: number; feet: number }[] = [
+        { img: heroAt(A, 0), emis: null, w: 30, feet: 30.4 },
+        { img: crop(A.golem, 0, 0, GOLEM_N, GOLEM_N), emis: null, w: 66, feet: 60 },
+        { img: fr(0), emis: fe(0), w: 66, feet: CAM.GY }, { img: fr(1), emis: fe(1), w: 66, feet: CAM.GY }, { img: fr(2), emis: fe(2), w: 66, feet: CAM.GY }, { img: fr(2), emis: fe(2), flip: true, w: 66, feet: CAM.GY },
+        { img: heroAt(A, 2), emis: null, w: 30, feet: 30.4 },
+      ];
+      let x = 28;
+      const pos: [number, number][] = [];
+      for (const it of items) {
+        const top = Math.round(yb - it.feet * k);
+        shadowBlob(c, x + (it.img.w / 2) * k, yb - 0.5 * k, Math.min(16, (it.img.w / 32) * 6.5) * k, 2.4 * k);
+        c.blit(scaleNN(it.img, k, it.flip), x, top);
+        pos.push([x, top]);
+        x += it.w * k;
+      }
+      if (night) {
+        nightRect(c, 16, y, wGround, H * k);
+        items.forEach((it, i) => it.emis && relight(c, it.emis, pos[i][0], pos[i][1], k, it.flip));
+      }
+    },
+  };
+}
+/**
+ * «Наш | референс»: сверху — ×1 и ×3 рядом с героем и личем на траве (как в игре), ниже — чародей вниз и вбок ×8 (покой, кадр 1)
+ * и образец 33 в тот же рост, днём и ночью.
+ */
+function buildCompare(sheets: Sheets, A: Assets): PC {
+  const k = 7;
+  const H = FH * k;
+  const RH = A.ref ? A.ref.h : H;
+  const rowH = Math.max(H, RH);
+  const W = Math.max(24 + 2 * N * k + 16 + 40 + (A.ref ? A.ref.w : H) + 24, 1500);
+  const TOP = 90 + 90 + 3 * 88 + 50 + 600;
+  const c = new PC(W, TOP + 2 * (rowH + 70) + 20);
+  fill(c, 0, 0, c.w, c.h, [30, 28, 34, 255]);
+  const lich = A.lich ? crop(A.lich, 0, 0, 80, 80) : null;
+  for (const [kk, y0] of [[1, 12], [3, 120]] as [number, number][]) {
+    text(c, `×${kk} · ГЕРОЙ · ЛИЧ ВЕДРАС · ХОЗЯИН МИРАЖЕЙ ВНИЗ И ВБОК`, 24, y0, 2);
+    const yb = y0 + 22 + 88 * kk;
+    groundBg(c, A.terrain, 24, y0 + 20, Math.min(W - 48, (32 + 84 + 66 * 2 + 40) * kk + 40), 90 * kk, kk, "grass");
+    let x = 40;
+    const put1 = (img: PC, feet: number, w: number) => { shadowBlob(c, x + (img.w / 2) * kk, yb - 0.5 * kk, Math.min(16, (img.w / 32) * 6.5) * kk, 2.4 * kk); c.blit(scaleNN(img, kk), x, Math.round(yb - feet * kk)); x += w * kk; };
+    put1(heroAt(A, 0), 30.4, 34);
+    if (lich) put1(lich, 75.4, 84);
+    put1(crop(sheets.img.idle, 0, 0, N, FH), CAM.GY, 66);
+    put1(crop(sheets.img.idle, 0, 2 * FH, N, FH), CAM.GY, 66);
+  }
+  // галерея: покой во все стороны (вниз, вверх, вбок, влево) + кадр удара посохом + кадр умения + зов двойников, ×4, день и ночь
+  {
+    const items = gallery(sheets);
+    const gy = 90 + 90 + 3 * 88 + 50;
+    for (const night of [false, true]) {
+      const x0 = night ? 24 + 6 * (N * 4 + 8) + 20 : 24;
+      void x0;
+    }
+    text(c, "ПОКОЙ: ВНИЗ · ВВЕРХ · ВБОК · ВЛЕВО | УДАР МЕЧОМ | РАЗМАХ | СТАЯ МЫШЕЙ  (×3, ДЕНЬ / НОЧЬ)", 24, gy, 2);
+    const gw = items.length * (N * 3 + 8) + 8;
+    for (const [ni, night] of [false, true].entries()) {
+      const gx = 24 + ni * 0;
+      const yy = gy + 22 + ni * (FH * 3 + 6);
+      void gx;
+      fill(c, 24, yy, gw, FH * 3, night ? [38, 46, 74, 255] : [150, 156, 140, 255]);
+      items.forEach((it, i) => {
+        const ix = 24 + 8 + i * (N * 3 + 8);
+        c.blit(scaleNN(it.img, 3, it.flip), ix, yy);
+        if (night) { nightRectPart(c, ix, yy, N * 3, FH * 3); relight(c, it.emis, ix, yy, 3, it.flip); }
+      });
+    }
+  }
+  for (const night of [false, true]) {
+    const y = TOP + 48 + (night ? rowH + 70 : 0);
+    text(c, night ? "НАШ · НОЧЬ" : "НАШ · ДЕНЬ", 24, y - 36, 3);
+    text(c, "РЕФЕРЕНС 33", 24 + 2 * N * k + 56, y - 36, 3);
+    const oy = y + rowH - H;
+    fill(c, 24, oy, 2 * N * k + 16, H, [150, 156, 140, 255]);
+    for (const [j, row] of [[0, 0], [1, 2]] as [number, number][]) c.blit(scaleNN(crop(sheets.img.idle, 0, row * FH, N, FH), k), 24 + j * (N * k + 16), oy);
+    if (night) {
+      nightRect(c, 24, oy, 2 * N * k + 16, H);
+      for (const [j, row] of [[0, 0], [1, 2]] as [number, number][]) relight(c, crop(sheets.emis.idle, 0, row * FH, N, FH), 24 + j * (N * k + 16), oy, k);
+    }
+    fill(c, 24 + 2 * N * k + 16 + 16, y, 4, rowH, [240, 232, 214, 255]);
+    if (A.ref) c.blit(A.ref, 24 + 2 * N * k + 56, y);
+  }
+  return c;
+}
+/** Референс 33 → png 360×540 с сохранением пропорций (через System.Drawing; чужой арт остаётся в tools/out, не в игре). */
+function ensureRef(root: string): PC | null {
+  const png = path.join(root, "tools", "out", "bosses139", "ref-33.png");
+  const jpg = path.join(root, "tools", "out", "refs", "bosses-139", "33.jpg");
+  if (!fs.existsSync(png) && fs.existsSync(jpg) && process.platform === "win32") {
+    const ps = `Add-Type -AssemblyName System.Drawing; $s=[System.Drawing.Image]::FromFile('${jpg}'); $b=New-Object System.Drawing.Bitmap 360,540; $g=[System.Drawing.Graphics]::FromImage($b); $g.InterpolationMode='HighQualityBicubic'; $g.DrawImage($s,0,0,360,540); $b.Save('${png}',[System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $b.Dispose(); $s.Dispose()`;
+    spawnSync("powershell", ["-NoProfile", "-Command", ps], { stdio: "ignore" });
+  }
+  return fs.existsSync(png) ? loadPC(png) : null;
+}
+
+export function writeMirArt(root: string, outDir: string, quick = false): string[] {
+  fs.mkdirSync(outDir, { recursive: true });
+  const files: string[] = [];
+  const save = (c: PC, name: string) => { const f = path.join(outDir, name); c.save(f); files.push(f); return c; };
+  const sheets = animSheets(quick ? ["idle"] : undefined, quick ? 1 : 99);
+  const A: Assets = {
+    hero: loadPC(path.join(root, "client", "public", "assets", "units", "warrior.png")),
+    terrain: loadPC(path.join(root, "client", "public", "assets", "tiles", "terrain.png")),
+    golem: loadPC(path.join(root, "client", "public", "assets", "units", "sol_rune_golem.png")),
+    ref: ensureRef(root),
+    lich: fs.existsSync(path.join(root, "client", "public", "assets", "units", "umb_crown_lich.png")) ? crop(loadPC(path.join(root, "client", "public", "assets", "units", "umb_crown_lich.png")), 0, 0, 80, 80) : null,
+  };
+  // лист лича в игре — широкий (перенос по строкам): первый кадр уже в левом верхнем углу, crop выше берёт его
+  save(buildCompare(sheets, A), "r45n-w-compare.png");
+  if (quick) return files;
+  const sheet = new PC(N * MIR_COLS, FH * 3), glow = new PC(N * MIR_COLS, FH * 3);
+  for (const [a] of ANIM_ORDER) { sheet.blit(sheets.img[a], MIR_ANIMS[a].col * N, 0); glow.blit(sheets.emis[a], MIR_ANIMS[a].col * N, 0); }
+  save(sheet, "mir-sheet.png");
+  save(glow, "mir-glow.png");
+  const fx = { blade: save(buildBladeFx(), "mir-fx-blade.png"), vortex: save(buildVortexFx(), "mir-fx-vortex.png"), mirage: save(buildMirageFx(), "mir-fx-mirage.png"), twister: save(buildTwisterFx(), "mir-fx-twister.png") };
+  save(buildMirageUnit(sheets), "mir-unit-mirage.png");
+  const rows = ["вниз", "вверх", "вбок"];
+  const bad: string[] = [];
+  for (let r = 0; r < 3; r++) for (let cI = 0; cI < MIR_COLS; cI++) {
+    let hits = 0;
+    for (let k2 = 0; k2 < FH; k2++) for (const [x, y] of [[0, k2], [N - 1, k2]]) { const q = sheet.get(cI * N + x, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    for (let k2 = 0; k2 < N; k2++) for (const y of [0, FH - 1]) { const q = sheet.get(cI * N + k2, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    if (hits) bad.push(`лист, ${rows[r]}, кадр ${cI + 1}: ${hits} px не цветом контура на краю`);
+  }
+  for (const [name, F] of Object.entries(FX)) {
+    const c = fx[name as keyof typeof fx];
+    for (let r = 0; r < 2; r++) for (let i = 0; i < F.n; i++) {
+      let hits = 0;
+      for (let y = 0; y < F.h; y++) for (let x = 0; x < F.w; x++) if ((x === 0 || y === 0 || x === F.w - 1 || y === F.h - 1) && c.alpha(i * F.w + x, r * F.h + y)) hits++;
+      if (hits) bad.push(`эффект ${name}, слой ${r}, кадр ${i + 1}: ${hits} px на краю`);
+    }
+  }
+  console.log(`  ${ID}: ${MIR_COLS} кадров × 3 вида, кадр ${N}×${FH}`);
+  if (bad.length) { console.warn(`  проверки: ${bad.length}\n${bad.slice(0, 30).map((s) => "    " + s).join("\n")}`); process.exitCode = 1; }
+  else console.log("  проверки: край кадра чист, проколов нет");
+  const W = 2000;
+  const rowsP: Row[] = [sceneRow(A, sheets, false, 3), sceneRow(A, sheets, true, 3)];
+  for (const [a] of ANIM_ORDER) rowsP.push(animRow(a, sheets, A, W));
+  for (const a of ["idle", "mirageHold", "bladeHold"] as MirAnim[]) rowsP.push(animRow(a, sheets, A, W, true));
+  const names: Record<MirFx, string> = { blade: "ЖАР-КЛИНОК", vortex: "ВОРОНКА", mirage: "ДВОЙНИК", twister: "СМЕРЧ (КОЛЬЦО)" };
+  for (const kx of Object.keys(FX) as MirFx[]) rowsP.push(fxRow(`×2 · ЭФФЕКТ МИРА · ${names[kx]} · ${FX[kx].n} КАДРОВ · ${FX[kx].fps} К/С · УДАР — КАДР ${FX[kx].hit + 1}`, fx[kx], FX[kx], A, W, FX[kx].w));
+  save(stackRows(rowsP, W), "mir-pilot.png");
+  return files;
+}
+
+const isMain = !!process.argv[1] && path.resolve(process.argv[1]).replace(/\\/g, "/").endsWith("bosses139/sol_mirage_sorcerer.ts");
+if (isMain) {
+  const root = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
+  const t = Date.now();
+  const files = writeMirArt(root, path.join(root, "tools", "out", "bosses139"), process.argv.includes("--quick"));
+  console.log(`  ${files.length} файлов, ${((Date.now() - t) / 1000).toFixed(0)} с`);
+}
+void linear; void hex; void cross;
+
+/**
+ * Мираж-двойник (моб <босс>_mirage, лист как у мобов: 12 столбцов × 3 вида; «ходьба» 0–3 и «атака» 4–7 — покой с дрожью, 8–11 — гибель:
+ * растворяется песком): призрачная копия чародея — песочно-голубая, полупрозрачная.
+ */
+export function buildMirageUnit(_sheets: Sheets): PC {
+  const out = new PC(N * 12, FH * 3);
+  const UP = ["x.....x", "xx...xx", ".xxxxx.", "..xxx.."], DOWN = ["..xxx..", ".xxxxx.", "xx...xx", "x.....x"];
+  const spots: [number, number][] = [[-14, -8], [8, -14], [16, 0], [-6, 6], [0, -4], [-18, 4], [12, 10], [-2, -16], [20, -9]];
+  for (let row = 0; row < 3; row++) for (let i = 0; i < 12; i++) {
+    const c = new PC(N, FH);
+    const dying = i >= 8, k = dying ? (i - 8) / 3.2 : 0;
+    spots.forEach(([dx, dy], j) => {
+      const flap = (Math.floor(i / 1) + j) % 2 ? UP : DOWN;
+      const bob = Math.round(Math.sin(i * 1.3 + j) * 2);
+      const X0 = Math.round(32 + dx * (1 + k * 1.6) + (dying ? Math.sin(j * 2.1) * 6 * k : 0)), Y0 = Math.round(58 + dy + bob - (dying ? 10 * k * (0.5 + (j % 3) * 0.3) : 0));
+      if (dying && hash01(j, i, 5) < k * 0.9) return;
+      flap.forEach((rowS, jj) => [...rowS].forEach((ch, q) => {
+        if (ch !== "x") return;
+        c.set(X0 - 3 + q, Y0 - 2 + jj, jj === 1 && q === 3 ? GLOWC[3] : q === 0 || q === 6 ? BLACK[2] : q === 3 ? BLACK[1] : SLATE[2]);
+      }));
+    });
+    c.outline(OUT);
+    out.blit(c, i * N, row * FH);
+  }
+  return out;
+}
+/** Кадры галереи: [img, emis, flip]. */
+function gallery(sheets: Sheets): { img: PC; emis: PC; flip?: boolean }[] {
+  const idle = (row: number, flip = false) => ({ img: crop(sheets.img.idle, 0, row * FH, N, FH), emis: crop(sheets.emis.idle, 0, row * FH, N, FH), flip });
+  const pose = (p: Pose, v: View) => renderMir(v, p);
+  return [idle(0), idle(1), idle(2), idle(2, true), pose(POSES.attack("down")[6], "down"), pose(POSES.bladeStrike("down")[3], "down"), pose(POSES.mirageCast("down")[4], "down")];
+}
+/** Ночь только по части холста. */
+function nightRectPart(c: PC, x: number, y: number, w: number, h: number) { nightRect(c, x, y, w, h); }
+
+/** Строка анимации ×2: вид вниз и вбок, герой для масштаба, день или ночь. */
+function animRow(a: MirAnim, sheets: Sheets, A: Assets, W: number, night = false): Row {
+  const d = MIR_ANIMS[a];
+  const k = 2;
+  return {
+    h: FH * k * 2 + 44,
+    draw: (c, y0) => {
+      text(c, `×2 · ${d.ru} · ${d.n} КАДРОВ · ${d.fps} К/С${d.loop ? " · ПО КРУГУ" : ""}${d.next ? ` · → ${MIR_ANIMS[d.next].ru}` : ""}${d.hit !== undefined ? ` · УДАР — КАДР ${d.hit + 1}` : ""}${night ? " · НОЧЬ" : ""}`, 16, y0 + 8);
+      for (const v of [0, 2]) {
+        const y = y0 + 34 + (v === 0 ? 0 : FH * k);
+        const wG = 70 + d.n * N * k;
+        groundBg(c, A.terrain, 16, y, Math.min(W - 32, wG), FH * k, k, "grass");
+        let x = 24;
+        const yb = y + CAM.GY * k;
+        shadowBlob(c, x + 16 * k, yb - 0.5 * k, 6.5 * k, 2.2 * k);
+        c.blit(scaleNN(heroAt(A, v === 0 ? 0 : 2), k, v === 2), x, Math.round(yb - 30.4 * k));
+        x += 30 * k;
+        const pos: number[] = [];
+        for (let i = 0; i < d.n; i++) {
+          shadowBlob(c, x + 32 * k, yb - 0.5 * k, 12 * k, 3.6 * k);
+          c.blit(scaleNN(crop(sheets.img[a], i * N, v * FH, N, FH), k), x, y);
+          pos.push(x);
+          x += N * k;
+        }
+        if (night) {
+          nightRect(c, 16, y, Math.min(W - 32, wG), FH * k);
+          pos.forEach((px, i) => relight(c, crop(sheets.emis[a], i * N, v * FH, N, FH), px, y, k));
+        }
+      }
+    },
+  };
+}

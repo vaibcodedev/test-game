@@ -91,6 +91,8 @@ export interface WorldOptions {
   quiet?: boolean;
   /** Хранилище владельцев оснований «Знамён Предела» (WorldRoom — файл рядом с базой). */
   warStore?: WarStore;
+  /** Подземелье «Пепельные чертоги»: свои мобы и босс, возрождение у входа, трофеи босса раз в сутки (shared/dungeon.ts). */
+  dungeon?: boolean;
 }
 
 const FOLLOW_NEAR = 48, FOLLOW_FAR = 60, FOLLOW_BREAK = 600;
@@ -708,7 +710,7 @@ export class World {
     p.save.gold -= lost;
     p.dead = false;
     // возрождение в ближайшем открытом городе своей фракции: своя столица всегда, чужая — никогда (на арене — у фонтана)
-    const sp = this.opts.mobs === false ? this.map.playerSpawn : ws ?? nearestCity(p.save.cities, p.x, p.y, p.faction).spawn;
+    const sp = this.opts.mobs === false || this.opts.dungeon ? this.map.playerSpawn : ws ?? nearestCity(p.save.cities, p.x, p.y, p.faction).spawn;
     p.unit.x = sp.x;
     p.unit.y = sp.y;
     p.unit.hp = p.unit.maxHp;

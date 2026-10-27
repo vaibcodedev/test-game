@@ -917,23 +917,28 @@ function chainPx(plot: Plot, x0: number, y0: number, x1: number, y1: number, sag
     // толстая тёмная цепь: звенья в 2 px, блик на каждом втором, тёмная кайма снизу
     const lit = Math.floor(s / 1.7 + ph * 2) % 2 === 0;
     const X = Math.round(x), Y = Math.round(y);
-    plot(X, Y - 1, hot > 0.5 ? EMBER[lit ? 3 : 2] : IRON[lit ? 4 : 2]);
-    plot(X, Y, hot > 0.5 ? EMBER[1] : IRON[1]);
-    plot(X, Y + 1, hot > 0.5 ? EMBER[0] : OUT);
+    // толстая светлая цепь: звено в 4 px — светлая кромка, тело, тень, тёмная кайма
+    plot(X, Y - 1, hot > 0.5 ? EMBER[4] : BLADE[4]);
+    plot(X, Y, hot > 0.5 ? EMBER[lit ? 3 : 2] : lit ? BLADE[3] : IRON[4]);
+    plot(X, Y + 1, hot > 0.5 ? EMBER[1] : IRON[2]);
+    plot(X, Y + 2, hot > 0.5 ? EMBER[0] : OUT);
+    if (lit) plot(X + 1, Y, hot > 0.5 ? EMBER[2] : IRON[4]);
   }
 }
 /** Кол клетки: железный столб с остриём, тень справа, светлая грань слева. */
 function stakePx(plot: Plot, x: number, yb: number, h: number) {
   if (h < 1) return;
+  // кол в 4 px: светлая кромка слева, светлое тело, тень справа, тёмная кайма — читается на пепле
   for (let k = 0; k < h; k++) {
     const y = yb - k;
     const top = k > h - 3;
-    plot(x - 1, y, IRON[top ? 1 : 4]);
-    if (!top || k === h - 3) plot(x, y, IRON[top ? 2 : 3]);
-    if (!top) plot(x + 1, y, IRON[1]);
+    const w = top ? (k === h - 1 ? 2 : 3) : 4;
+    const x0 = x - 2 + ((4 - w) >> 1);
+    for (let j = 0; j < w; j++) plot(x0 + j, y, j === 0 ? BLADE[4] : j === 1 ? IRON[4] : j === w - 1 && w > 2 ? IRON[2] : IRON[3]);
+    plot(x0 - 1, y, OUT); plot(x0 + w, y, OUT);
   }
-  plot(x, yb - h, IRON[4]);
-  plot(x - 1, yb + 1, DUST[0]); plot(x, yb + 1, DUST[0]); plot(x + 1, yb + 1, DUST[1]);
+  plot(x - 1, yb - h, BLADE[4]); plot(x, yb - h, BLADE[4]); plot(x - 1, yb - h - 1, OUT); plot(x, yb - h - 1, OUT);
+  for (const dx of [-3, -2, -1, 0, 1, 2]) plot(x + dx, yb + 1, dx < 0 ? DUST[3] : DUST[1]);
 }
 /**
  * «Цепь» (крюк в метке, 64×64, центр — (32, 44)): кадры 0–1 — крюк падает сверху наискось с цепью; кадр hit (2) — впивается
@@ -995,8 +1000,8 @@ function buildCageFx(): PC {
     const back = new PC(F.w, F.h), front = new PC(F.w, F.h);
     const pb = plotOf(back), pf = plotOf(front);
     const ph = i / 4;
-    let hgt = 18, hot = 0, lean = 0, chain = 1, sink = 0;
-    if (i < 6) { const e = easeOut(Math.min(1, (i + 1) / 5.5)); hgt = 18 * e; chain = i >= 4 ? (i - 3) / 2 : 0; }
+    let hgt = 24, hot = 0, lean = 0, chain = 1, sink = 0;
+    if (i < 6) { const e = easeOut(Math.min(1, (i + 1) / 5.5)); hgt = 24 * e; chain = i >= 4 ? (i - 3) / 2 : 0; }
     else if (i < 10) { hot = 1; }
     else { const e = easeIn((i - 9) / 6); lean = e; chain = Math.max(0, 1 - e * 3); sink = Math.max(0, e - 0.4) * 30; hot = 1 - e; }
     // тень и обод на земле
@@ -1012,13 +1017,25 @@ function buildCageFx(): PC {
       if (i <= 3) for (const s of [-1, 1]) plot(Math.round(p.x + s * (2 + i)), Math.round(p.y - i * 0.5), DUST[i < 2 ? 3 : 2]);
       if (i === 4) plot(Math.round(p.x), Math.round(p.y - h), EMBER[4]);
     }
+    // светящийся кандальный обруч в центре: кольцо углей на земле и яркая сердцевина, пульсирует
+    if (i >= 3 && i < 14) {
+      const k = i < 6 ? (i - 2) / 4 : i < 10 ? 1 : 1 - (i - 10) / 4;
+      const pul = i >= 6 && i < 10 ? (i % 2 ? 1 : 0.8) : 1;
+      disc(pb, F.ax, F.ay + 1, 7 * k, (d) => (d > 0.8 ? [255, 150, 50, Math.round(110 * pul)] : [255, 120, 30, Math.round(50 * pul)]));
+      for (let q = 0; q < 12; q++) {
+        const ang = (q / 12) * TAU + ph;
+        const x = Math.round(F.ax + Math.cos(ang) * 5.5 * k), y = Math.round(F.ay + 1 + Math.sin(ang) * 3.2 * k);
+        pb(x, y, q % 3 === 0 ? EMBER[4] : EMBER[3]); pb(x, y + 1, EMBER[1]);
+      }
+      pb(F.ax, F.ay + 1, EMBER[4]); pb(F.ax - 1, F.ay + 1, EMBER[4]);
+    }
     // цепи между остриями: верхний и средний пояс, раскалённые в удержании
     if (chain > 0.05 && hgt - sink > 4) for (let k = 0; k < NP; k++) {
       const a = tops[k], b = tops[(k + 1) % NP];
       const plot = (a.y + b.y) / 2 + hgt < F.ay ? pb : pf;
       const n = Math.max(1, Math.round(chain * 1));
       for (let r = 0; r < n + 1; r++) {
-        const yo = r * 7;
+        const yo = r * 9;
         const len = chain;
         const bx = lerp(a.x, b.x, len), by = lerp(a.y, b.y, len);
         chainPx(plot, a.x, a.y + 2 + yo, bx, by + 2 + yo, 2.5, hot * (r === 0 ? 1 : 0.6), ph);

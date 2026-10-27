@@ -7,7 +7,8 @@ import path from "node:path";
 import puppeteer, { type Page } from "puppeteer-core";
 import { createServer } from "vite";
 import { sleep, startServer, stopServer, PORT } from "../../tests/harness";
-import { DUNGEON_ROOMS } from "../../shared/map";
+import { DUNGEON_ROOMS } from "../../shared/dungeon";
+import { DUNGEON_DOOR } from "../../shared/map";
 
 const VITE_PORT = 5256, OUT = path.resolve("tools/out/dungeon");
 fs.mkdirSync(OUT, { recursive: true });
@@ -49,12 +50,88 @@ async function main() {
     await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
     await login(page, "Данж");
     const dbg = (m: Record<string, unknown>) => page.evaluate((x) => (window as any).__net.send("dbg", x), m);
+    /** Камера на точку (wx, wy) с зумом z, закреплена на каждом кадре; clip-снимок вокруг центра экрана размером w×h px. */
+    const camLock = (wx: number, wy: number, z: number) => page.evaluate(`(() => { const s = window.__game.scene.getScene("game"), c = s.cameras.main; c.stopFollow(); c.setZoom(${z}); window.__lock = [${wx}, ${wy}]; if (!window.__lockOn) { window.__lockOn = true; s.events.on("postupdate", () => { if (window.__lock) { c.stopFollow(); c.centerOn(window.__lock[0], window.__lock[1]); } }); } })()`);
+    const clipShot = async (w: number, h: number) => {
+      const r = (await page.evaluate(`(() => { const b = document.querySelector("canvas").getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; })()`)) as { x: number; y: number; w: number; h: number };
+      return (await page.screenshot({ clip: { x: Math.round(r.x + r.w / 2 - w / 2), y: Math.round(r.y + r.h / 2 - h / 2), width: w, height: h } })) as Buffer;
+    };
+    const sheetOf = async (items: { buf: Buffer; label: string }[], cols: number, tile: [number, number], file: string, zoomCrop = 0) => {
+      const p2 = await browser.newPage();
+      const imgs = items.map((it) => `<figure style="margin:0;width:${tile[0]}px"><div style="width:${tile[0]}px;height:${tile[1]}px;overflow:hidden;background:#111"><img src="data:image/png;base64,${it.buf.toString("base64")}" style="image-rendering:pixelated;display:block;${zoomCrop ? `width:${tile[0] * zoomCrop}px;margin:${-tile[1] * (zoomCrop - 1) / 2}px 0 0 ${-tile[0] * (zoomCrop - 1) / 2}px` : ""}"></div><figcaption style="font:12px monospace;color:#ddd;background:#222;padding:2px;line-height:14px">${it.label}</figcaption></figure>`).join("");
+      await p2.setViewport({ width: cols * tile[0] + 8, height: Math.ceil(items.length / cols) * (tile[1] + 20) + 8 });
+      await p2.setContent(`<body style="margin:4px;background:#000;line-height:0;display:grid;grid-template-columns:repeat(${cols},${tile[0]}px);gap:0">${imgs}</body>`);
+      await sleep(500);
+      await p2.screenshot({ path: path.join(OUT, file) });
+      await p2.close();
+    };
+    if (process.env.ENTR3) {
+      // три варианта входа в движке рядом (зум 2, герой у входа): entrance3-variants.png
+      await page.setViewport({ width: 1920, height: 1080 }); await sleep(1500);
+      await camLock(DUNGEON_DOOR.x, DUNGEON_DOOR.y - 60, 2);
+      await dbg({ op: "tp", x: DUNGEON_DOOR.x, y: DUNGEON_DOOR.y + 44 }); await sleep(3500);
+      await page.evaluate(`(() => { const s = window.__game.scene.getScene("game"); s.children.list.filter((o) => o.texture && o.texture.key === "o_dg_entrance").forEach((o) => o.setVisible(false)); ["a", "b", "c"].forEach((v, i) => { const x = ${DUNGEON_DOOR.x} + (i - 1) * 300, y = ${DUNGEON_DOOR.y} + 2; s.add.image(x, y, v === "a" ? "o_dg_entrance" : "o_dg_entrance_" + v).setOrigin(0.5, 1).setDepth(y); s.add.text(x - 6, y - 200, v.toUpperCase(), { fontSize: "22px", color: "#ffe08a" }).setDepth(1e6); }); })()`);
+      await sleep(600);
+      await page.screenshot({ path: path.join(OUT, "entrance3-variants.png") });
+      return;
+    }
+    if (process.env.ENTR) {
+      // вход в «Пепельные чертоги» снаружи: герой у подножия лестницы, зум 2, затем наведение мыши (подсказка) — entrance-final.png, entrance-final-hover.png
+      await camLock(DUNGEON_DOOR.x, DUNGEON_DOOR.y - 44, 2);
+      await dbg({ op: "tp", x: DUNGEON_DOOR.x, y: DUNGEON_DOOR.y + 40 }); await sleep(3500);
+      await page.screenshot({ path: path.join(OUT, "entrance-final.png") });
+      const r = (await page.evaluate(`(() => { const b = document.querySelector("canvas").getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; })()`)) as { x: number; y: number; w: number; h: number };
+      await page.mouse.move(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + 2 * 30)); await sleep(700);
+      await page.screenshot({ path: path.join(OUT, "entrance-final-hover.png") });
+      return;
+    }
+    if (process.env.FORT || process.env.CITY) {
+      // ворота форта своей фракции (общие правила ворот): герой подходит — створки открываются, уходит — закрываются; камера на воротах, один ракурс
+      const { GATES } = await import("../../shared/siege");
+      const city = !!process.env.CITY, g = GATES.find((q) => q.faction === "solgard" && q.city.startsWith("fort") !== city) ?? GATES[0], dir = g.side === "n" ? -1 : 1;
+      await camLock(g.x, g.y - dir * 20, 1.5);
+      const items: { buf: Buffer; label: string }[] = [];
+      await dbg({ op: "tp", x: g.x + 60, y: g.y + dir * 300 }); await sleep(3500); items.push({ buf: await clipShot(360, 300), label: "старт: герой ещё далеко" });
+      await dbg({ op: "tp", x: g.x + 60, y: g.y + dir * 40 }); await sleep(1500);
+      for (let f = 1; f <= 8; f++) { await page.evaluate(`window.__gateFrame = ${f}`); await sleep(150); items.push({ buf: await clipShot(360, 300), label: `кадр ${f}${f === 8 ? " (распахнуты)" : ""}` }); }
+      await page.evaluate("window.__gateFrame = undefined");
+      await dbg({ op: "tp", x: g.x + 60, y: g.y + dir * 300 });
+      for (let i = 1; i <= 3; i++) { await sleep(i === 1 ? 1700 : 300); items.push({ buf: await clipShot(360, 300), label: `закрытие (в реальном времени) ${i}` }); }
+      await sheetOf(items, 5, [360, 300], city ? "city-gate-sheet.png" : "fort-gate-sheet.png");
+      return;
+    }
     await dbg({ op: "god" });
+    // спуск по лестнице входа (общая комната подземелья), затем снимки внутри
+    await dbg({ op: "tp", x: DUNGEON_DOOR.x, y: DUNGEON_DOOR.y + 28 });
+    await sleep(800);
+    await page.evaluate(`window.__net.send("dungeon:enter", {})`);
+    await page.waitForFunction(`window.__net.kind === "dungeon"`, { timeout: 30000 });
+    await sleep(2500);
+    await dbg({ op: "god" });
+    if (process.env.GATES) {
+      // ворота данжа: все 8 кадров створок (принудительно), герой под перемычкой и за ней; камера на воротах, зум 2, один ракурс
+      const items: { buf: Buffer; label: string }[] = [];
+      for (const [name, id, cx, row] of [["двери собора", "g56", 1024, 8], ["решётка склепа", "g75", 960, 27]] as const) {
+        await camLock(cx, (row + 1) * 32 - 56, 2);
+        await dbg({ op: "tp", x: cx, y: (row + 2) * 32 + 8 }); await sleep(1200);
+        for (let k = 0; k < 8; k++) {
+          await page.evaluate(`window.__dgGateForce.set("${id}", ${k})`); await sleep(160);
+          items.push({ buf: await clipShot(340, 300), label: `${name}: кадр ${k}${k === 0 ? " (закрыты)" : k === 7 ? " (открыты)" : ""}` });
+        }
+        await page.evaluate(`window.__dgGateForce.set("${id}", 7)`);
+        await dbg({ op: "tp", x: cx, y: row * 32 + 20 }); await sleep(900); items.push({ buf: await clipShot(340, 300), label: `${name}: герой под перемычкой` });
+        await dbg({ op: "tp", x: cx, y: (row - 1) * 32 + 22 }); await sleep(900); items.push({ buf: await clipShot(340, 300), label: `${name}: герой за перемычкой` });
+        await page.evaluate(`window.__dgGateForce.delete("${id}")`);
+      }
+      await sheetOf(items, 5, [340, 300], "doors3-sheet.png");
+      await sheetOf([0, 3, 7, 8, 9, 10, 13, 17, 18, 19].map((i) => items[i]), 5, [340, 300], "doors3-sheet-x2.png", 2);
+      return;
+    }
     // входной зал, северный зал и зал босса (центры комнат DUNGEON_ROOMS в тайлах)
-    const spots = (process.env.SPOTS ?? "0,4,9").split(",").map((i) => DUNGEON_ROOMS[Number(i)]);
+    const spots = (process.env.SPOTS ?? "4,6,9").split(",").map((i) => DUNGEON_ROOMS[Number(i)]);
     let i = 1;
     for (const [x0, y0, x1, y1] of spots) {
-      await dbg({ op: "tp", x: ((x0 + x1) / 2) * 32, y: ((y0 + y1) / 2) * 32 });
+      await dbg({ op: "tp", x: ((x0 + x1) / 2) * 32, y: ((y0 + y1) / 2 + (process.env.DY ? Number(process.env.DY) : 0)) * 32 });
       await sleep(4500);
       await page.screenshot({ path: path.join(OUT, `${prefix}-${i}.png`) });
       i++;

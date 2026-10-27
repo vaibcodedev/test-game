@@ -256,7 +256,7 @@ net.on("kicked", (text) => {
   kickedModal(text);
 });
 // меню Esc: «Переподключиться» — выход из комнат и вход заново с полной загрузкой; выход при сломанной связи
-window.addEventListener("emberfall:reconnect", () => void net.recover(net.kind === "arena", net.kind !== "arena"));
+window.addEventListener("emberfall:reconnect", () => void net.recover(net.kind === "arena" || net.kind === "dungeon", net.kind !== "arena" && net.kind !== "dungeon"));
 window.addEventListener("emberfall:exit", (e) => forceExit((e as CustomEvent).detail === "account" ? "account" : "char"));
 
 // ---------- окно «Переподключение…» ----------
@@ -375,7 +375,7 @@ function crash(kind: string, err: unknown, where = "") {
       sysModal.busy(T("ui.main.746"));
       if (inGame && lastChar) {
         try { destroyGame(); } catch {}
-        void net.recover(net.kind === "arena", net.kind !== "arena");
+        void net.recover(net.kind === "arena" || net.kind === "dungeon", net.kind !== "arena" && net.kind !== "dungeon");
       } else {
         sysModal.hide();
         void toCharSelect();

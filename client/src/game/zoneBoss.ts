@@ -24,6 +24,8 @@ export interface ZbDef {
   file: string;
   /** Кадр листа (боссы кольца — 80; по умолчанию 64). */
   fw?: number;
+  /** Высота кадра, если лист не квадратный (по умолчанию = fw). */
+  fh?: number;
   /** Лист перенесён по строкам (ширина текстуры ≤ 8192): столбцов в строке листа; вид занимает ceil(cols / wrap) строк. */
   wrap?: number;
   cols: number;
@@ -55,7 +57,7 @@ export function zbLoad(scene: Phaser.Scene, m: ZbManifest | undefined) {
   if (!m?.bosses) return;
   MAN = m;
   for (const [id, b] of Object.entries(m.bosses)) {
-    scene.load.spritesheet(`u_${id}`, `/assets/units/${b.file}`, { frameWidth: b.fw ?? 64, frameHeight: b.fw ?? 64 });
+    scene.load.spritesheet(`u_${id}`, `/assets/units/${b.file}`, { frameWidth: b.fw ?? 64, frameHeight: b.fh ?? b.fw ?? 64 });
     for (const [k, f] of Object.entries(b.fx)) scene.load.image(fxKey(id, k), `/assets/zone-bosses/${f.file}`);
     if (b.motes) scene.load.image(fxKey(id, "_motes"), `/assets/zone-bosses/${b.motes.file}`);
     if (b.fog) scene.load.image(fxKey(id, "_fog"), `/assets/zone-bosses/${b.fog.file}`);

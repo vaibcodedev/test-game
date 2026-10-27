@@ -28,7 +28,7 @@ export interface ZbWave {
   windupMs: number;
   dmgPct: number;
   k?: string;
-  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number };
+  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number; pullMark?: number };
   escape?: number;
   /** Кольцо (задача 139): урон делится поровну на всех героев в круге. */
   share?: boolean;
@@ -37,6 +37,10 @@ export interface ZbWave {
   /** Кольцо: клетка вокруг героя с кандальным колом в центре (моб <босс>_cage): пока кол стоит, босс получает урон ×shield;
    *  через holdMs клетка с целым колом бьёт внутрь (dmgPct). hp — множитель здоровья кола к мобу уровня босса. */
   cage?: { holdMs: number; hp: number; shield: number };
+  /** Кольцо: мираж-двойники (моб <босс>_mirage, один удар): count штук по краю арены на holdMs; каждый повторяет умение mirror (у него mirror: true) со своего места. */
+  doubles?: { count: number; hp: number; holdMs: number; mirror: string; name?: string };
+  /** Умение повторяют двойники босса (кольцо «Песчаный смерч»). */
+  mirror?: boolean;
 }
 export interface ZbAbility extends ZbWave {
   id: string;

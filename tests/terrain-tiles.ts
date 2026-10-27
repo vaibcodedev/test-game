@@ -17,6 +17,7 @@ import { homeCity } from "../shared/cities";
 import { MAP_SEED, TILE } from "../shared/constants";
 import { generateMap, TERRAIN_COUNT, TERRAIN_KEYS, type WorldMap } from "../shared/map";
 import { generateRaidMap } from "../shared/raid";
+import { generateDungeonMap } from "../shared/dungeon";
 import { CHUNK, chunkRect, chunkRows, COLS, terrainLayers } from "../client/src/game/terrainTiles";
 
 let failed = 0;
@@ -85,7 +86,7 @@ else ok(`набор terrain.png ${img.width}×${img.height}: ${set.cols}×${set.
 // ---- карты: мир, арена, рейд ----
 const t0 = Date.now();
 const world = generateMap(MAP_SEED);
-const maps: [string, WorldMap][] = [["мир", world], ["арена", generateArenaMap()], ["рейд", generateRaidMap()]];
+const maps: [string, WorldMap][] = [["мир", world], ["арена", generateArenaMap()], ["рейд", generateRaidMap()], ["подземелье", generateDungeonMap()]];
 const used = new Set<number>();
 const worldLayers = terrainLayers(world);
 for (const [name, m] of maps) {
@@ -111,8 +112,8 @@ for (const f of ["solgard", "umbrath"]) {
 // ---- намеренные поломки: проверка должна их ловить ----
 const sp = homeCity("solgard").spawn, stx = Math.floor(sp.x / TILE), sty = Math.floor(sp.y / TILE);
 const mutants: [string, () => string[]][] = [
-  ["набор без строки стен данжа", () => problems("мир", world, worldLayers, tilesetOf(COLS * TILE, TERRAIN_COUNT * TILE).tiles)],
-  ["набор на строку короче (последняя поверхность без строки)", () => problems("мир", world, worldLayers, tilesetOf(COLS * TILE, (TERRAIN_COUNT - 1) * TILE).tiles)],
+  ["набор без строки стен данжа", () => { const d = generateDungeonMap(); return problems("подземелье", d, terrainLayers(d), tilesetOf(COLS * TILE, TERRAIN_COUNT * TILE).tiles); }],
+  ["набор на строку короче (последняя поверхность без строки)", () => { const d = generateDungeonMap(); return problems("подземелье", d, terrainLayers(d), tilesetOf(COLS * TILE, (TERRAIN_COUNT - 1) * TILE).tiles); }],
   ["новая поверхность у столицы без строки в наборе", () => {
     const vtx = world.vtx.slice();
     vtx[sty * (world.w + 1) + stx] = TERRAIN_COUNT;

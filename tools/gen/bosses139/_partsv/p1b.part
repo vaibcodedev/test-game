@@ -1,0 +1,77 @@
+  // ---------- плащ-крылья: огромный розовый плащ с рваными зубцами, подкладка алая; шире плеч, ложится крыльями по бокам ----------
+  {
+    const g = S.group(1.2);
+    const folds = (c: { l: V3; edge: boolean }) => {
+      if (c.edge) return 0;
+      const f = Math.sin(c.l[0] * 1.1 + 0.6);
+      return f > 0.8 ? -0.8 : f < -0.9 ? 0.45 : 0;
+    };
+    const cx = pel[0] + sw * 0.3, cy = pel[1] - 5.2;
+    const sway = p.wave * 0 + 0;
+    void sway;
+    // спинка
+    S.ell(g, wm(M.crim, W), [cx, cy, 25.4 - kn * 4], [4.4, 1.3, 18.0 - kn * 2], axes(PR), { tex: folds as never, part: S.newPart() });
+    // крылья: вынесены по бокам, веером вниз и наружу; на кромке — зубцы
+    for (const s of [1, -1]) {
+      const wing = S.newPart();
+      S.ell(g, wm(M.crim, W), [cx + s * 6.6, cy + 0.2, 23.4 - kn * 4], [2.8, 1.0, 16.4 - kn * 2], axes(PR, s * 0.2), { tex: folds as never, part: wing, tone: 0.1 });
+      S.ell(g, wm(M.crim, W), [cx + s * 9.8, cy + 0.6, 19.0 - kn * 4], [2.0, 0.9, 13.0 - kn * 2], axes(PR, s * 0.42), { tex: folds as never, part: wing, tone: 0.2 });
+      for (let i = 0; i < 5; i++) {
+        const tx = cx + s * (5.0 + i * 1.9), tz0 = 14 - i * 1.4, lift = Math.round(p.waveAmp * (0.5 + 0.5 * Math.sin(TAU * (p.wave + i * 0.21 + (s > 0 ? 0 : 0.5))))) * PXM;
+        S.cone(g, wm(M.crim, W), [tx, cy + 0.4, tz0 + 3], 1.9, [tx + s * 1.6, cy + 0.2, Math.max(0.5, 0.8 + i * 1.6 + lift - kn * 3)], 0.25, { part: S.newPart(), tone: i % 2 ? -0.15 : 0.25 });
+      }
+      // золотой наплечный диск на крыле
+      S.ball(g, wm(M.bronze, W), [cx + s * 8.4, cy + 1.0, 33.0], 0.9, { part: S.newPart() });
+    }
+  }
+  // ---------- ноги: длинные латные поножи с шипами и золотой оковкой, сапоги на каблуке ----------
+  {
+    const g = S.group(0.9);
+    for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
+      const k = p.kick[i];
+      const ft: V3 = [pel[0] + s * 2.5, pel[1] + 0.6 + 3.4 * k, Math.max(0, 3.4 + 2.6 * Math.max(0, k)) - kn * 2.4];
+      const hip: V3 = [pel[0] + s * 2.4, pel[1], HIP0 + 1 + shift[2]];
+      const knee = ik(hip, add(ft, [0, 0, 2]), 10.8, 10.8, [0, 1, 0.1]);
+      S.cone(g, wm(M.slate, W), hip, 2.5, knee, 2.1, { tone: -0.05, big: true });
+      S.cone(g, wm(M.slate, W), knee, 2.1, add(ft, [0, 0, 2.6]), 1.7, { tone: 0.05, big: true });
+      // наколенник с золотой вставкой и шипом вперёд; золотая полоса по бедру
+      S.ell(g, wm(M.copper, W), add(knee, [0, 1.8, 0]), [2.6, 1.2, 2.2], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], { part: S.newPart(), tone: 0.35 });
+      S.cone(g, wm(M.copper, W), add(knee, [0, 2.4, 0.2]), 0.9, add(knee, [0, 5.0, 0.8]), 0.1, { part: S.newPart() });
+      S.ball(g, wm(M.bronze, W), add(knee, [0, 2.9, 0]), 0.75, { part: S.newPart() });
+      S.cone(g, wm(M.bronze, W), add(hip, [s * 0.5, 2.0, -2]), 0.45, add(knee, [s * 0.4, 2.4, 2]), 0.45, { part: S.newPart() });
+      // плавник-шип на голени наружу и назад
+      S.cone(g, wm(M.copper, W), add(knee, [s * 1.8, -0.6, -3]), 0.9, add(ft, [s * 4.6, -2.4, 4.6]), 0.1, { part: S.newPart(), tone: 0.2 });
+      // сапог: высокий, носок острый, каблук
+      S.cone(g, wm(M.copper, W), add(ft, [0, 0, 6.2]), 2.1, add(ft, [0, 0, 1.6]), 1.9, { part: S.newPart(), tone: 0.15 });
+      S.ell(g, wm(M.slate, W), add(ft, [0, 2.6, 0.8]), [1.6, 3.6, 1.3], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], { part: S.newPart() });
+      S.cone(g, wm(M.copper, W), add(ft, [0, 5.0, 0.8]), 0.8, add(ft, [0, 7.4, 1.4]), 0.1, { part: S.newPart() });
+      S.cone(g, wm(M.copper, W), add(ft, [0, -2.2, 1.2]), 0.9, add(ft, [0, -3.8, 3.2]), 0.1, { part: S.newPart() });
+    }
+  }
+  // ---------- набедренники, торс в доспехе, пояс с черепом, золотая перевязь ----------
+  {
+    const g = S.group(1.8);
+    const bot: V3 = [pel[0] + sw * 0.1, pel[1] + 0.2, 20.2 - kn * 6];
+    const trim = (c: { u: number }) => (c.u > 0.94 ? { mat: M.bronze, d: -0.3 } : 0);
+    // юбка из пластин: узкий конус до середины бедра и две передние пластины
+    S.cone(g, wm(M.slate, W), PV([0, 0.2, 25.4]), 3.7, bot, 4.6 + 1.2 * kn, { tex: trim as never, tone: -0.1 });
+    const fw = norm(PR([0, 1, 0.1])), sd = PR([1, 0, 0]), upV = norm(PR([0, -0.2, 1]));
+    for (const s of [1, -1]) {
+      const c = PV([s * 1.8, 3.9, 22.2 + kn * 2]);
+      S.box(g, wm(M.copper, W), c, [1.6, 0.5, 5.2 - kn * 2], [sd, fw, upV], 0.35, { tex: trim as never, part: S.newPart(), tone: 0.1 });
+      S.cone(g, wm(M.copper, W), add(c, mul(upV, -5.2 + kn * 2)), 1.7, add(c, add(mul(upV, -8.4 + kn * 2), mul(sd, s * 0.6))), 0.15, { part: S.newPart(), tone: 0.1 });
+    }
+    // торс: узкий, грудь выпуклая, гребень по центру светлее; золотые линии
+    S.ell(g, wm(M.slate, W), T([0, 0.4, 32.6]), [3.8, 3.1, 6.6], axes(TV), { big: true });
+    S.ell(g, wm(M.copper, W), T([0, 2.2, 33.6]), [1.3, 1.1, 5.0], axes(TV), { part: S.newPart(), tone: 0.4 });
+    S.cone(g, wm(M.slate, W), PV([0, 0, 21]), 3.3, T([0, 0.3, 29.5]), 3.7, { tone: -0.1 });
+    S.cone(g, wm(M.bronze, W), T([4.2, 2.4, 36.0]), 0.45, T([-3.0, 4.4, 24.8]), 0.45, { part: S.newPart() });
+    // пояс и череп-пряжка
+    S.ell(g, wm(M.leath, W), PV([0, 0.4, 25.2]), [3.6, 3.2, 1.0], axes(PR), { part: S.newPart() });
+    const sk = PV([-1.6, 3.8, 24.0]);
+    S.ball(g, wm(M.cream, W), sk, 1.7, { part: S.newPart() });
+    S.ell(g, wm(M.cream, W), add(sk, mul(fw, 0.4)), [1.1, 0.9, 0.7], axes(PR), { part: S.newPart(), tone: -0.2 });
+    for (const s of [1, -1]) S.ball(g, wm(M.black, W), add(sk, add(mul(fw, 1.4), mul(sd, s * 0.7))), 0.4, { part: S.newPart() });
+    S.ball(g, M.glow, PV([0.8, 4.4, 26.2]), 0.5, { part: S.newPart() });
+  }
+

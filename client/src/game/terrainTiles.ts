@@ -3,7 +3,7 @@
  * Набор client/public/assets/tiles/terrain.png (tools/gen/tiles.ts): строка t — поверхность t (столбцы 0–13 — края по маске углов
  * TL=1, TR=2, BR=4, BL=8 минус 1, 14–17 — сплошная заливка), строка TERRAIN_COUNT — стены данжа (0–1 верх стены, 2–5 лицевая сторона).
  */
-import { CELL_WALL, TERRAIN_COUNT, dungeonStyle, type WorldMap } from "../../../shared/map";
+import { CELL_WALL, TERRAIN_COUNT, type WorldMap } from "../../../shared/map";
 
 /** Столбцов в наборе terrain.png. */
 export const COLS = 18;
@@ -34,7 +34,7 @@ export function terrainLayers(m: WorldMap): (Int16Array | null)[] {
     }
     if (m.cell[y * m.w + x] & CELL_WALL) {
       const below = y + 1 < m.h && m.cell[(y + 1) * m.w + x] & CELL_WALL;
-      (layers[0] ??= new Int16Array(m.w * m.h).fill(-1))[y * m.w + x] = TERRAIN_COUNT * COLS + dungeonStyle(x, y) * 6 + (below ? (x + y) % 2 : 2 + Math.floor(cellHash(x, y) * 4));
+      (layers[0] ??= new Int16Array(m.w * m.h).fill(-1))[y * m.w + x] = TERRAIN_COUNT * COLS + (m.dgStyle ? m.dgStyle[y * m.w + x] : 0) * 6 + (below ? (x + y) % 2 : 2 + Math.floor(cellHash(x, y) * 4));
     }
   }
   return layers;

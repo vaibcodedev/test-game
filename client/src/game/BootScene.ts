@@ -8,7 +8,7 @@ import { mountTex, type MountMeta } from "../../../shared/mounts";
 import { loadInteriors, makeInteriorAnims } from "./interiors";
 
 export interface Manifest {
-  units: Record<string, { frame: number; cols?: number }>;
+  units: Record<string, { frame: number; frameH?: number; cols?: number }>;
   mounts?: Record<string, MountMeta>;
   objects: Record<string, { w: number; h: number }>;
   icons: string[];
@@ -32,7 +32,7 @@ export class BootScene extends Phaser.Scene {
       this.load.image("terrain", "/assets/tiles/terrain.png");
       this.load.image("water", "/assets/tiles/water.png");
       this.load.image("lava_glow", "/assets/tiles/lava_glow.png");
-      for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frame });
+      for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frameH ?? u.frame });
       // маунты (задача 142): один лист на модель (sheet), у гербовых — второй лист для Умбрата (<модель>_umbrath)
       for (const [id, u] of Object.entries(m.mounts ?? {})) for (const fac of u.fac ? ["", "umbrath"] : [""]) {
         const key = mountTex(id, u, fac), file = key.slice(2);

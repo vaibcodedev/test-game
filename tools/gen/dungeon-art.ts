@@ -6,6 +6,8 @@
 import { PC, hash01, hex, mix, withA, type RGBA, ramp, type Ramp } from "./canvas";
 import { frame32, cylV, ellipseFace, log, box, fillPoly, litC, grain, planksH, CLOTH, depth } from "./volume-lib";
 import { shadowDisc, shadowBox } from "./shadow";
+import { DOOR_ART2 } from "./dungeon-doors2";
+import { entrance } from "./dungeon-entrance";
 import {
   type Scene, MAR, MARW, GLD, MOSS, WAT, CAND, FIRE, LAVA, BAS, BASW, IRN, ASH,
   flame, braziA, sarcA, bonesA, pillarA, pillarB, statueB, sarcB, candles, altarB, rubbleB, chainHang,
@@ -173,6 +175,74 @@ function dais(): PC {
   return out;
 }
 
+// ---------- вход в подземелье на карте мира (6×5 клеток) и лестница выхода внутри ----------
+/** Вход: холм из разбитого камня, в нём вырублен каменный портал (собор павших королей → склеп): по бокам статуи королей и жаровни, цепи на перемычке, лестница уходит вниз в темноту, снизу красный свет, пепел и искры. Опора — нижняя середина. */
+export function entranceV1(): PC {
+  const W = 232, H = 180, pc = new PC(W, H), cx = W / 2, yb = H - 6, S = stub(pc);
+  const STONE = ramp("#1c1a20", "#2c2a32", "#403c46", "#5a5560", "#7a747c", "#a09aa0");
+  // холм: неровная масса камня, светлее сверху
+  for (let y = 8; y < yb - 4; y++) for (let x = 6; x < W - 6; x++) {
+    const u = (x - cx) / (W / 2 - 6), top = 14 + (1 - u * u) * 12 + (hash01(Math.floor(x / 6), 3, 91) - 0.5) * 12, side = Math.abs(u);
+    if (y < top || side > 1 - Math.max(0, (y - 90) / 400) - (hash01(Math.floor(y / 5), 4, 92) - 0.5) * 0.06) continue;
+    const lit = 1 - (y - top) / 110, v = 1.6 + lit * 2.0 + (hash01(x, y, 93) - 0.5) * 0.9 + (hash01(Math.floor(x / 9), Math.floor(y / 7), 94) - 0.5) * 0.9;
+    pc.set(x, y, tone(STONE, v));
+  }
+  // обрушенные глыбы по склону и пепел у подножия
+  for (let k = 0; k < 14; k++) { const x = 10 + rnd(k, 1, 95) * (W - 20), y = 20 + rnd(k, 2, 95) * 100; pc.ellipse(x, y, 6 + rnd(k, 3, 95) * 6, 3 + rnd(k, 4, 95) * 3, withA(tone(STONE, 1 + rnd(k, 5, 95) * 2), 230)); }
+  pc.ellipse(cx, yb - 4, 104, 12, withA(hex("#16100e"), 200));
+  // тёмный проём портала
+  const ox0 = cx - 40, ox1 = cx + 40, oy0 = 58, oy1 = yb - 34;
+  for (let y = oy0; y < oy1; y++) for (let x = ox0; x < ox1; x++) { const gl = Math.max(0, (y - oy0) / (oy1 - oy0)); pc.set(x, y, mix(hex("#070509"), hex("#5a1408"), gl * gl * 0.9)); }
+  // косяки: две колонны и перемычка
+  for (const sx of [-1, 1]) {
+    const px = sx < 0 ? ox0 - 14 : ox1 + 14;
+    cylV(pc, px, oy0 - 6, oy1 + 2, 8, MAR, { k: 0.45, cap: null, tex: (phi) => (Math.floor((phi + 2) * 4) % 2 ? -0.25 : 0.2) });
+    box(pc, px - 11, oy1 - 4, 22, 9, 8, { r: MAR, tex: grain(2, 0.2) }, { r: MAR }, { r: MAR });
+    box(pc, px - 11, oy0 - 12, 22, 9, 8, { r: MAR, tex: grain(5, 0.2) }, { r: MAR }, { r: MAR });
+  }
+  box(pc, ox0 - 28, oy0 - 22, ox1 - ox0 + 56, 14, 10, { r: MAR, tex: grain(3, 0.2) }, { r: MAR }, { r: MAR });
+  for (let x = ox0 - 24; x < ox1 + 24; x += 6) pc.set(x, oy0 - 15, tone(GLD, x % 12 ? 2.4 : 3.6));
+  for (let k = 0; k < 5; k++) pc.rect(cx - 20 + k * 9, oy0 - 28, 6, 6, tone(GLD, k === 2 ? 3.6 : 2.2)); // зубцы-зарубки над перемычкой
+  lavaCrack(pc, cx - 30, oy0 - 18, 10, 71); lavaCrack(pc, cx + 34, oy0 - 14, 9, 72, -1);
+  // лестница вниз: ступени сужаются и темнеют к проёму, снизу красный свет
+  const steps = 7;
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1), y1 = oy1 + 4 + i * 5, hw = 36 + t * 24, y0 = y1 - 5;
+    for (let y = y0; y < y1; y++) for (let x = Math.round(cx - hw); x <= cx + hw; x++) {
+      const edge = y === y0, v = 0.8 + t * 2.6 + (edge ? 1.1 : -0.2) + (hash01(x, y, 97) - 0.5) * 0.5;
+      pc.set(x, y, mix(tone(STONE, v), hex("#ff5a1a"), (1 - t) * 0.28));
+    }
+  }
+  // красный отсвет на земле перед лестницей
+  for (let y = yb - 14; y < yb + 2; y++) for (let x = cx - 70; x < cx + 70; x++) { const d = ((x - cx) / 70) ** 2 + ((y - (yb - 6)) / 9) ** 2; if (d < 1 && pc.alpha(x, y)) pc.set(x, y, mix(pc.get(x, y)!, hex("#ff6a2a"), (1 - d) * 0.28)); }
+  // статуи павших королей по бокам портала, жаровни у лестницы
+  statueB(S, 32, yb - 6, 0); statueB(S, W - 32, yb - 6, 2);
+  braziA(S, cx - 66, yb - 4, 1.1); braziA(S, cx + 66, yb - 4, 1.1);
+  // цепи на перемычке
+  chainDrape(pc, ox0 - 18, oy0 - 8, ox0 + 6, oy0 + 30, 7); chainDrape(pc, ox1 + 18, oy0 - 8, ox1 - 6, oy0 + 34, 8);
+  // пепел, кости и искры
+  for (let k = 0; k < 9; k++) pc.ellipse(20 + rnd(k, 6, 98) * (W - 40), yb - 3 - rnd(k, 7, 98) * 5, 5 + rnd(k, 8, 98) * 5, 1.6, withA(tone(ASH, 1.2 + rnd(k, 9, 98)), 200));
+  emberDots(pc, 30, 8);
+  return frame32(pc.outline(hex("#0c0a12")));
+}
+/** Выход: каменные ступени вверх из подземелья, сверху бледный дневной свет, по бокам два столбика с факелами. Опора — нижняя середина. */
+function exitStairs(): PC {
+  const W = 112, H = 84, pc = new PC(W, H), cx = W / 2, yb = H - 4, S = stub(pc);
+  const STONE = ramp("#1c1a20", "#2c2a32", "#403c46", "#5a5560", "#7a747c", "#a09aa0");
+  shadowBox(pc, 10, W - 10, yb, [6, -3], 40);
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5, y1 = yb - i * 8, hw = 40 - t * 10;
+    for (let y = y1 - 8; y < y1; y++) for (let x = Math.round(cx - hw); x <= cx + hw; x++) {
+      const edge = y === y1 - 8, v = 2.0 + t * 1.8 + (edge ? 1.0 : -0.3) + (hash01(x, y, 99) - 0.5) * 0.4;
+      pc.set(x, y, mix(tone(STONE, v), hex("#bcd8f0"), t * 0.35));
+    }
+  }
+  for (let y = 4; y < 22; y++) for (let x = cx - 24; x <= cx + 24; x++) pc.set(x, y, mix(hex("#e8f2ff"), hex("#7aa0c8"), (y - 4) / 18 + (hash01(x, y, 3) - 0.5) * 0.1));
+  for (const sx of [-1, 1]) { pc.rect(cx + sx * 46 - 4, yb - 30, 8, 30, tone(STONE, 3)); pc.rect(cx + sx * 46 - 4, yb - 30, 8, 3, tone(STONE, 4.6)); }
+  braziA(S, cx - 46, yb - 30, 0.7); braziA(S, cx + 46, yb - 30, 0.7);
+  return frame32(pc.outline(hex("#0c0a12")));
+}
+
 export const DUNGEON_ART: Record<string, () => PC> = {
   dg_pillar_c_a: pillarCA, dg_pillar_c_b: pillarCB, dg_pillar_t_a: pillarTA, dg_pillar_t_b: pillarTB, dg_pillar_a_a: pillarAA, dg_pillar_a_b: pillarAB, dg_pillar_a_c: pillarAC, dg_pillar_a_d: pillarAD, dg_dais: dais,
   dg_statue_c_a: statue(0), dg_statue_c_b: statue(1), dg_statue_c_c: statue(2),
@@ -186,6 +256,7 @@ export const DUNGEON_ART: Record<string, () => PC> = {
   dg_banner_t_a: () => banner(CLOTH.purple, true, 3), dg_banner_t_b: () => banner(CLOTH.red, true, 4),
   dg_window_c_a: () => windowC(hex("#c04a8a"), hex("#e0b040"), false), dg_window_c_b: () => windowC(hex("#4a8ac0"), hex("#e0b040"), true),
   dg_grate_a: () => grateW(0), dg_grate_b: () => grateW(1), dg_chains_a: () => chainsW(0), dg_chains_b: () => chainsW(1),
-  dg_arch_c: archC, dg_arch_t: archT, dg_gate_a: gateA,
+  dg_entrance: entrance, dg_exit: exitStairs,
+  ...DOOR_ART2,
 };
-void BAS; void CAND; void FIRE; void flame; void planksH; void depth;
+void archC; void archT; void gateA; void BAS; void CAND; void FIRE; void flame; void planksH; void depth;

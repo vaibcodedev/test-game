@@ -1,0 +1,588 @@
+
+// ---------------- 2D-слои поверх тела ----------------
+type Ctx = { img: PC; emis: PC; t: Float32Array; prim: Int32Array; view: View };
+const put = (c: Ctx, x: number, y: number, col: RGBA, dz: number, glow = false) => {
+  x = Math.floor(x); y = Math.floor(y);
+  if (x < 1 || y < 1 || x >= FW - 1 || y >= FH - 1) return;
+  const i = y * FW + x;
+  if (c.prim[i] >= 0 && c.t[i] < dz - 1) return;
+  c.img.set(x, y, col);
+  if (glow) c.emis.set(x, y, col);
+};
+/** Круг-печать за спиной: два кольца рун, засечки по кругу вращаются; рисуется только на пустом фоне. */
+function drawSigil(c: Ctx, s: { c: V3; r: number; ph: number; k: number }) {
+  const [cx, cy] = scr(CAM, toView(c.view, s.c));
+  const draw = (x: number, y: number, col: RGBA) => {
+    x = Math.floor(x); y = Math.floor(y);
+    if (x < 1 || y < 1 || x >= FW - 1 || y >= FH - 1 || c.img.alpha(x, y)) return;
+    c.img.set(x, y, col);
+    c.emis.set(x, y, col);
+  };
+  const tone = (k: number) => GLOWC[clamp(Math.round(k), 1, 4)];
+  const n1 = Math.ceil(s.r * 7);
+  for (let i = 0; i < n1; i++) {
+    const a = (i / n1) * TAU;
+    draw(cx + Math.cos(a) * s.r, cy + Math.sin(a) * s.r, tone(2 + 1.4 * s.k));
+    draw(cx + Math.cos(a) * s.r * 0.8, cy + Math.sin(a) * s.r * 0.8, i % 3 === 0 ? tone(2.4 + s.k) : tone(1.4));
+  }
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * TAU + s.ph * TAU;
+    for (const rr of [0.88, 0.94]) draw(cx + Math.cos(a) * s.r * rr, cy + Math.sin(a) * s.r * rr, tone(3 + (i % 2)));
+  }
+}
+function drawRing(c: Ctx, r: { c: V3; r: number; k: number }, back: boolean) {
+  const steps = Math.ceil(r.r * 10);
+  const cv = toView(c.view, r.c);
+  for (let s = 0; s < steps; s++) {
+    const a = (s / steps) * TAU;
+    if (Math.sin(a * 5 + r.r * 0.4) < -1.2 + 1.3 * (1 - r.k)) continue;
+    const pv = toView(c.view, [r.c[0] + Math.cos(a) * r.r, r.c[1] + Math.sin(a) * r.r, 0]);
+    if (pv[1] < cv[1] !== back) continue;
+    const [sx, sy] = scr(CAM, pv);
+    const x = Math.floor(sx), y = Math.floor(Math.min(sy, CAM.GY + 2));
+    if (x < 1 || y < 2 || x >= FW - 1 || y >= FH - 1) continue;
+    const i = y * FW + x;
+    if (!back && c.prim[i] >= 0 && c.t[i] < depthOf(pv) - 0.5) continue;
+    if (back && c.img.alpha(x, y)) continue;
+    c.img.set(x, y - 1, SAND[r.k > 0.55 ? 4 : 3]);
+    c.img.set(x, y, SAND[r.k > 0.3 ? 2 : 1]);
+  }
+}
+function drawFlash(c: Ctx, f: { at: V3; k: number }) {
+  const v = toView(c.view, f.at);
+  const [sx, sy] = scr(CAM, v);
+  const L = Math.round(2 + 3 * f.k);
+  const x = clamp(Math.floor(sx), L + 2, FW - 3 - L), y = clamp(Math.floor(sy), L + 2, FH - 4);
+  const dz = depthOf(v);
+  for (let r = 1; r <= L; r++) {
+    const tone = r <= 1 ? 4 : r <= L - 1 ? 3 : 2;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1], [0, 1]]) put(c, x + dx * r, y + dy * Math.min(r, 2), FIRE[tone], dz, true);
+  }
+  if (f.k > 0.5) for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) put(c, x + dx * 2, y + dy, FIRE[3], dz, true);
+  put(c, x, y, FIRE[4], dz, true);
+}
+/** Огненный след посоха — полумесяц: изогнутая дуга, яркая белая сердцевина, расширяется к голове и истончается в хвост, искры по краю. */
+function drawTrail(c: Ctx, pts: V3[]) {
+  const vp = pts.map((q) => toView(c.view, q));
+  const sp0 = vp.map((q) => scr(CAM, q));
+  const [fx, fy] = sp0[0], [lx, ly] = sp0[sp0.length - 1];
+  const cl = Math.hypot(lx - fx, ly - fy) || 1;
+  const nx = -(ly - fy) / cl, ny = (lx - fx) / cl;
+  const sign = ny > 0 ? -1 : 1;
+  const sp = sp0.map(([x, y], i) => { const u = i / (sp0.length - 1); const b = 0.3 * cl * Math.sin(Math.PI * u) * sign; return [x + nx * b, y + ny * b] as [number, number]; });
+  const total = sp.length - 1;
+  for (let k = 0; k < total; k++) {
+    const [x0, y0] = sp[k], [x1, y1] = sp[k + 1];
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let s = 0; s <= steps; s++) {
+      const u = (k + s / steps) / total;
+      const x = lerp(x0, x1, s / steps), y = lerp(y0, y1, s / steps);
+      const w = 0.4 + 2.8 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.85 + 0.1)), 1.4) * (0.3 + 0.7 * u);
+      const dz = lerp(depthOf(vp[k]), depthOf(vp[k + 1]), s / steps);
+      for (let dy = -w; dy <= w + 0.01; dy += 0.5) for (let dx = -w; dx <= w + 0.01; dx += 0.5) {
+        if (dx * dx + dy * dy > w * w) continue;
+        const e = Math.hypot(dx, dy) / Math.max(0.5, w);
+        const tone = u < 0.3 ? (e < 0.5 ? 2 : 1) : e < 0.35 ? 4 : e < 0.65 ? 3 : 2;
+        if (u < 0.3 && ((Math.floor(x) + Math.floor(y)) & 1)) continue;
+        put(c, x + dx, y + dy, FIRE[tone], dz, true);
+      }
+      if (u > 0.35 && hash01(k, s, 41) < 0.12) put(c, x + (hash01(k, s, 7) - 0.5) * 9, y + (hash01(k, s, 9) - 0.5) * 7, FIRE[4], dz, true);
+    }
+  }
+}
+function drawDust(c: Ctx, d: { at: V3; k: number }) {
+  const [cx, cy0] = scr(CAM, toView(c.view, d.at));
+  const cy = Math.min(cy0, CAM.GY + 1);
+  const t = 1 - d.k;
+  for (let j = 0; j < 2; j++) {
+    const dir = j ? 1 : -1;
+    const px = cx + dir * (3 + 5 * t), py = cy - t * 1.4;
+    const rx = 1.8 + 1.5 * d.k, ry = Math.max(1, rx * 0.55);
+    for (let y = Math.floor(py - ry); y <= py + ry; y++) for (let x = Math.floor(px - rx); x <= px + rx; x++) {
+      const dx = (x + 0.5 - px) / rx, dy = (y + 0.5 - py) / ry;
+      if (dx * dx + dy * dy > 1 || x < 1 || y < 1 || x >= FW - 1 || y >= FH - 1) continue;
+      c.img.set(x, y, SAND[dy > 0.25 ? 2 : dx + dy < -0.5 ? 4 : 3]);
+    }
+  }
+}
+/** Песчаный вихрь у ног: две-три ленты частиц по эллипсу, поднимаются спиралью; задняя половина — под телом, передняя — над. */
+function drawSwirl(c: Ctx, sw: { c: V3; k: number; ph: number }) {
+  const cv = toView(c.view, sw.c);
+  const [cx, cy] = scr(CAM, cv);
+  for (let band = 0; band < 3; band++) {
+    const n = 16;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU + sw.ph * TAU * (band % 2 ? -1 : 1) + band * 1.9;
+      const rise = ((i / n + band / 3 + sw.ph * 0.5) % 1) * (22 * sw.k);
+      const rr = (10 + 5 * (1 - rise / 24)) * (0.75 + 0.25 * sw.k);
+      const x = cx + Math.cos(a) * rr, y = cy - rise + Math.sin(a) * rr * 0.34 - 1;
+      const front = Math.sin(a) > 0;
+      const col = SAND[front ? 4 - (i % 2) : 2 + (i % 2)];
+      const X0 = Math.floor(x), Y0 = Math.floor(y);
+      if (X0 < 1 || Y0 < 1 || X0 >= FW - 1 || Y0 >= FH - 1) continue;
+      if (!front && c.img.alpha(X0, Y0)) continue;
+      c.img.set(X0, Y0, col);
+      if (rise < 12 * sw.k && front) c.img.set(X0 + 1, Y0, SAND[2]);
+    }
+  }
+}
+/** Язычки пламени над жемчужиной посоха + искры. */
+function drawSparks(c: Ctx, sp: { at: V3; k: number }) {
+  const v = toView(c.view, sp.at);
+  const [x0, y0] = scr(CAM, v);
+  const dz = depthOf(v) - 2;
+  const k = sp.k;
+  const n = 5;
+  for (let j = 0; j < n; j++) {
+    const ph = (j * 0.37 + (c.t[0] ? 0 : 0));
+    const hgt = Math.round((2 + 4 * k) * (0.6 + 0.4 * hash01(j, Math.round(x0), 5)));
+    const x = Math.round(x0 + (j - 2) * 1.2);
+    for (let h = 0; h < hgt; h++) {
+      const u = h / Math.max(1, hgt - 1);
+      put(c, x + Math.round(Math.sin(u * 3 + j + ph) * 0.8), y0 - 1 - h - Math.abs(j - 2) * 0.5, FIRE[u < 0.3 ? 4 : u < 0.7 ? 3 : 2], dz, true);
+    }
+  }
+  for (const [dx, dy] of [[-3, -4], [3, -5], [0, -8], [-2, -7]]) if (k > 0.5) put(c, x0 + dx, y0 + dy, FIRE[4], dz, true);
+  put(c, x0, y0, FIRE[4], dz, true);
+  put(c, x0 - 1, y0, FIRE[3], dz, true); put(c, x0 + 1, y0, FIRE[3], dz, true);
+}
+function drawStars(c: Ctx, s: { at: V3; k: number }, ph: number) {
+  const v = toView(c.view, s.at);
+  const [cx, cy] = scr(CAM, v);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * TAU + ph * TAU;
+    const x = Math.round(cx + Math.cos(a) * 9), y = Math.round(cy + Math.sin(a) * 3);
+    const front = Math.sin(a) > 0;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) put(c, x + dx, y + dy, GLOWC[dx === 0 && dy === 0 ? 4 : front ? 3 : 2], -99, true);
+  }
+}
+function drawGlint(c: Ctx, at: V3) {
+  const v = toView(c.view, at);
+  const [x, y] = scr(CAM, v);
+  const dz = depthOf(v) - 2;
+  put(c, x - 1, y - 2, GLOWC[4], dz, true);
+}
+/** Стая летучих мышей: тело частично рассыпается (по ключу k), вокруг фигуры кружат мыши. */
+function drawBats(img: PC, k: number, t: number) {
+  if (k < 0.02) return;
+  for (let y = 2; y < FH - 2; y++) for (let x = 2; x < FW - 2; x++) if (img.alpha(x, y) > 200 && hash01(x, y, 17) < 0.5 * k) img.clear(x, y);
+  const UP = ["x...x", "xx.xx", ".xxx."], DOWN = [".xxx.", "xx.xx", "x...x"];
+  const n = Math.round(5 + 10 * k);
+  for (let i = 0; i < n; i++) {
+    const ang = i * 2.39 + t * TAU * (i % 2 ? 1 : -1) * 0.5;
+    const rr = (9 + 15 * ((i * 0.37) % 1)) * (0.5 + 0.5 * k);
+    const cx = Math.round(32 + Math.cos(ang) * rr), cy = Math.round(36 + Math.sin(ang) * rr * 0.9 - 4);
+    const pat = Math.floor(t * 6 + i) % 2 ? UP : DOWN;
+    pat.forEach((row, j) => [...row].forEach((ch, q) => {
+      if (ch !== "x") return;
+      const X = cx - 2 + q, Y = cy - 1 + j;
+      if (X < 1 || Y < 1 || X >= FW - 1 || Y >= FH - 1) return;
+      img.set(X, Y, j === 1 && q === 2 ? BLACK[1] : q === 0 || q === 4 ? BLACK[2] : SLATE[1]);
+    }));
+    if (cx >= 1 && cx < FW - 1 && cy >= 1 && cy < FH - 1) img.set(cx, cy, GLOWC[3]);
+  }
+}
+const colEq = (q: RGBA | null, o: RGBA) => !!q && q[3] > 120 && q[0] === o[0] && q[1] === o[1] && q[2] === o[2];
+
+/**
+ * Тело (160×160, двойное разрешение) → кадр 64×80: блок 2×2 даёт пиксель, если в нём ≥ 2 цветных (не контурных) точек; цвет — самый частый,
+ * светящийся — вне конкуренции. Контур 1 px строится заново на кадре 1× (selout), глубина и призма — из первой точки блока.
+ */
+function downscale(R0: ReturnType<typeof renderScene>): { img: PC; emis: PC; t: Float32Array; prim: Int32Array } {
+  const img = new PC(FW, FH), emis = new PC(FW, FH);
+  const t = new Float32Array(FW * FH), prim = new Int32Array(FW * FH).fill(-1);
+  const RN = CAMR.N;
+  for (let Y = 0; Y < FH; Y++) for (let X = 0; X < FW; X++) {
+    const votes = new Map<string, { n: number; c: RGBA; first: number }>();
+    let opaque = 0, em: RGBA | null = null, first = -1;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+      const rx = RX0 + X * 2 + dx, ry = Y * 2 + dy;
+      const q = R0.body.get(rx, ry);
+      if (!q || q[3] < 128) continue;
+      const e = R0.emis.get(rx, ry);
+      if (e && e[3] > 0) { em = e; if (first < 0) first = ry * RN + rx; continue; }
+      if (colEq(q, OUT)) continue;
+      opaque++;
+      if (first < 0) first = ry * RN + rx;
+      const key = q.join(",");
+      const v = votes.get(key);
+      if (v) v.n++; else votes.set(key, { n: 1, c: q, first: opaque });
+    }
+    if (em) { img.set(X, Y, em); emis.set(X, Y, em); }
+    else if (opaque >= 2) {
+      let best: { n: number; c: RGBA; first: number } | null = null;
+      for (const v of votes.values()) if (!best || v.n > best.n || (v.n === best.n && v.c[0] + v.c[1] + v.c[2] < best.c[0] + best.c[1] + best.c[2])) best = v;
+      img.set(X, Y, best!.c);
+    } else continue;
+    prim[Y * FW + X] = R0.gb.prim[first];
+    t[Y * FW + X] = R0.gb.t[first];
+  }
+  return { img, emis, t, prim };
+}
+
+/** Кадр чародея: { img, emis } 64×80. */
+export function renderMir(view: View, pose: Pose): { img: PC; emis: PC } {
+  const { S, X } = build(pose, view);
+  const R0 = renderScene(CAMR, S, view, OUT);
+  const D = downscale(R0);
+  const img = D.img;
+  const emis = D.emis;
+  const c: Ctx = { img, emis, t: D.t, prim: D.prim, view };
+  for (const r of X.rings) drawRing(c, r, true);
+  thicken(img, OUT, 3, [...GLOWC, ...FIRE, ...SAND, ...BRONZE]);
+  sealPinholes(img, OUT, true, 8);
+  selout(img);
+  const isOut = (q: RGBA | null) => colEq(q, OUT);
+  const kill: [number, number][] = [];
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    if (!isOut(img.get(x, y))) continue;
+    let body = false;
+    for (let dy = -1; dy <= 1 && !body; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const q = img.get(x + dx, y + dy);
+      if (q && q[3] > 120 && !isOut(q)) { body = true; break; }
+    }
+    if (!body) kill.push([x, y]);
+  }
+  for (const [x, y] of kill) { img.clear(x, y); emis.clear(x, y); }
+  for (let x = 0; x < FW; x++) {
+    if (!img.alpha(x, FH - 1)) continue;
+    const q = img.get(x, FH - 2)!;
+    if (q[3] > 120 && !isOut(q)) img.set(x, FH - 1, OUT); else img.clear(x, FH - 1);
+    emis.clear(x, FH - 1);
+  }
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    const q = img.get(x, y)!;
+    if (q[3] && isEmisCol(q) && !emis.alpha(x, y)) emis.set(x, y, q);
+    if (!q[3] || !isEmisCol(q)) emis.clear(x, y);
+  }
+  // контровой свет: светлая розово-сиреневая кромка 1 px по внешнему силуэту — сильнее со стороны света (сверху и слева), слабее с других
+  {
+    const RIM: RGBA = [244, 196, 250, 255];
+    const empty = (x: number, y: number) => { const q = img.get(x, y); return !q || q[3] < 120 || isOut(q); };
+    const snap = img.clone();
+    const same = (x: number, y: number) => { const q = snap.get(x, y); return !q || q[3] < 120 || isOut(q); };
+    void empty;
+    for (let y = 1; y < FH - 1; y++) for (let x = 1; x < FW - 1; x++) {
+      const q = snap.get(x, y)!;
+      if (q[3] < 200 || isOut(q) || isEmisCol(q)) continue;
+      const tl = same(x, y - 1) || same(x - 1, y), other = same(x + 1, y) || same(x, y + 1);
+      if (!tl && !other) continue;
+      const m = mix(q, RIM, tl ? 0.62 : 0.3);
+      img.set(x, y, [m[0], m[1], m[2], 255]);
+    }
+  }
+  // тело не касается края кадра: крайний ряд, кроме контура, срезается
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    if (x !== 0 && y !== 0 && x !== FW - 1 && y !== FH - 1) continue;
+    const q = img.get(x, y)!;
+    if (q[3] && !isOut(q)) { img.clear(x, y); emis.clear(x, y); }
+  }
+  // слои без контура — поверх готового тела
+  if (X.sigil) drawSigil(c, X.sigil);
+  if (pose.ghost > 0.02) drawBats(img, pose.ghost, pose.t);
+  if (X.swirl) drawSwirl(c, X.swirl);
+  for (const r of X.rings) drawRing(c, r, false);
+  if (pose.trail) drawTrail(c, pose.trail.map((q) => mul(q, K)));
+  for (const g of X.glints) drawGlint(c, g);
+  for (const sp of X.sparks) drawSparks(c, sp);
+  if (X.stars) drawStars(c, X.stars, pose.t);
+  if (X.flash) drawFlash(c, X.flash);
+  for (const d of X.dust) drawDust(c, d);
+  return { img, emis };
+}
+
+// ---------------- анимации ----------------
+type Num = number | V3 | [V3, V3] | [number, number] | V3[] | undefined;
+function lerpAny(a: Num, b: Num, t: number): Num {
+  if (typeof a === "number" && typeof b === "number") return lerp(a, b, t);
+  if (Array.isArray(a) && Array.isArray(b)) return (a as unknown[]).map((v, k) => lerpAny(v as Num, (b as unknown[])[k] as Num, t)) as Num;
+  return t < 0.5 ? a : b;
+}
+function lerpPose(a: Pose, b: Pose, t: number): Pose {
+  const o = { ...a } as Record<string, unknown>;
+  for (const k of Object.keys(a) as (keyof Pose)[]) {
+    if (k === "trail" || k === "flashAt" || k === "ringAt") continue;
+    o[k] = lerpAny(a[k] as Num, b[k] as Num, t);
+  }
+  return o as unknown as Pose;
+}
+interface Key { f: number; p: Partial<Pose>; ease?: (t: number) => number }
+function poseAt(base: Pose, keys: Key[], f: number): Pose {
+  const full = keys.map((k) => ({ ...base, ...k.p }) as Pose);
+  let j = 0;
+  while (j < keys.length - 2 && f >= keys[j + 1].f) j++;
+  const a = keys[j], b = keys[j + 1];
+  const u = clamp((f - a.f) / (b.f - a.f), 0, 1);
+  return lerpPose(full[j], full[j + 1], (b.ease ?? easeInOut)(u));
+}
+const keyed = (base: Pose, keys: Key[], n: number, seed: number): Pose[] =>
+  Array.from({ length: n }, (_, i) => ({ ...poseAt(base, keys, i), t: i / n, seed: seed + i }));
+/** Завиток посоха в мире (модель): для следа и вспышки. */
+function tipW(p: Pose, view: View): V3 {
+  const ad = norm(p.staff[1]);
+  const sh = p.held >= 0.5 ? bodyShift(view, p) : [0, 0, 0] as V3;
+  return add(add(p.staff[0], sh), mul(ad, STAFF_L + 3));
+}
+const trailOf = (base: Pose, keys: Key[], view: View, f0: number, f1: number, n = 7): V3[] =>
+  Array.from({ length: n }, (_, k) => tipW(poseAt(base, keys, lerp(f0, f1, k / (n - 1))), view));
+const TREMBLE = [0, 1, 0, -1];
+const windPoses = (R0: Pose, wind: Partial<Pose>, seed: number, n = 4) => keyed(R0, [{ f: 0, p: {} }, { f: n - 1, p: wind, ease: easeInOut }], n, seed);
+function holdPoses(R0: Pose, wind: Partial<Pose>, seed: number, n: number, mod: (i: number) => Partial<Pose>) {
+  const base = { ...R0, ...wind } as Pose;
+  return Array.from({ length: n }, (_, i) => ({ ...base, t: i / n, seed: seed + i, ...mod(i) }));
+}
+const rv = (view: View) => view === "side";
+
+/** Покой: дыхание по пикселю (грудь, плечи, голова), плащ и кисти качаются, хвост ведёт кончиком, жемчужина дышит. */
+function idlePoses(view: View, n = 12): Pose[] {
+  const R0 = restOf(view);
+  const chest = [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0];
+  const head = [0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0];
+  const sway = [0, 0, 0, 1, 1, 1, 0, 0, 0, -1, -1, -1];
+  const tail = [0, 0, 1, 1, 2, 2, 2, 1, 1, 0, 0, 0];
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / n;
+    return { ...R0, t, seed: 100 + i, chest: chest[i], headZ: head[i] - chest[i], sway: sway[i], tail: tail[i], wave: t, waveAmp: 1, glow: 1 + 0.25 * Math.sin(t * TAU) };
+  });
+}
+/** Меч в позе: боковая (lat) и передняя (fwd) координаты хвата в виде «вниз»; в виде «вбок» боковая теряется, вперёд — по y. */
+const SW = (view: View, lat: number, fwd: number, z: number, dlat: number, dfwd: number, dz: number): [V3, V3] =>
+  view === "side" ? stf([8, fwd + 2, z], [0, dfwd, dz]) : stf([lat, fwd, z], [dlat, dfwd, dz]);
+/** Ходьба: размеренный шаг, меч в руке покачивается остриём вниз, плащ-крылья колышутся. */
+function walkPoses(view: View, n = 12): Pose[] {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const bob = [0, -1, -1, 0, 0, 0, 0, -1, -1, 0, 0, 0];
+  const swayX = [0, 0, 1, 1, 1, 0, 0, 0, -1, -1, -1, 0];
+  return Array.from({ length: n }, (_, i) => {
+    const u = i / n;
+    const fw = Math.sin(TAU * u), lift = Math.max(0, Math.cos(TAU * u));
+    return {
+      ...R0, t: u, seed: 150 + i,
+      root: [side ? 0 : swayX[i], 0, 0] as V3, bob: bob[i] * PXM,
+      kick: [Math.max(0, Math.sin(TAU * u)) - 0.2, Math.max(0, Math.sin(TAU * u + Math.PI)) - 0.2] as [number, number],
+      sway: [0, 1, 1, 0, -1, -1][i % 6], tail: 0, wave: u * 2, waveAmp: 1.6,
+      staff: SW(view, 9, 5 + 2.4 * fw, 39.5 + 1.2 * lift, 0.22, 0.18 + 0.12 * fw, -0.96), dust: [i === 1 ? 0.5 : i === 7 ? 0.5 : 0, 0] as [number, number],
+    };
+  });
+}
+/** Удар: меч заносится за правое плечо остриём вверх-назад и рубит наотмашь вперёд-вниз (кадр 7), след, вспышка на острие. */
+function attackPoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const wind: Partial<Pose> = { yaw: side ? 0.12 : -0.28, pitch: -0.07, hp: -0.08, staff: SW(view, 8, -2, 41, 0.3, -0.55, 0.78), glow: 1.3, armLift: [1, 0] };
+  const hit: Partial<Pose> = { yaw: side ? -0.05 : 0.2, pitch: 0.2, hp: 0.1, bob: -2 * PXM, staff: SW(view, 6, 8, 36, -0.25, 0.82, -0.5), glow: 1.4, flash: 1, fire: 0.4 };
+  const keys: Key[] = [
+    { f: 0, p: {} }, { f: 1.5, p: { staff: SW(view, 9, 3, 40, 0.2, -0.1, 0.5) }, ease: easeInOut },
+    { f: 3, p: wind, ease: easeInOut }, { f: 4, p: { ...wind, armLift: [1, 1] }, ease: linear },
+    { f: 5, p: { ...hit, flash: 0, fire: 0.6 }, ease: easeIn }, { f: 6, p: hit, ease: easeOut }, { f: 7, p: { ...hit, flash: 0, bob: -1 * PXM, fire: 0.2 }, ease: easeOut },
+    { f: 8, p: { staff: SW(view, 8, 6, 38, 0.15, 0.4, -0.9) }, ease: easeInOut },
+    { f: 9, p: {}, ease: easeInOut },
+  ];
+  const poses = keyed(R0, keys, 10, 400);
+  poses[5].trail = trailOf(R0, keys, view, 4, 5);
+  poses[6].trail = trailOf(R0, keys, view, 4.2, 6);
+  poses[7].trail = trailOf(R0, keys, view, 5.4, 6.3, 4);
+  poses[6].flashAt = tipW(poses[6], view);
+  poses[6].dust = [1, 0];
+  return poses;
+}
+
+/** «Кровавый росчерк» (конус на танка): меч отведён назад вверх, клинок наливается багрянцем; рубит поперёк широкой дугой; удар — кадр 4. */
+function bladeKeys(view: View) {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const wind: Partial<Pose> = { pitch: -0.08, hp: -0.12, yaw: side ? 0.08 : -0.2, staff: SW(view, 10, -2, 42, 0.45, -0.5, 0.74), glow: 1.4, fire: 0.7, book: 0.7 };
+  const hit: Partial<Pose> = { ...wind, pitch: 0.16, hp: 0.08, yaw: side ? -0.05 : 0.3, bob: -1 * PXM, staff: SW(view, 5, 9, 37, -0.3, 0.86, -0.35), glow: 1.6, flash: 1, fire: 1 };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, fire: 0.9, staff: SW(view, 11, -4, 43, 0.5, -0.6, 0.62) }, ease: easeOut },
+    { f: 2, p: { ...hit, flash: 0, staff: SW(view, 8, 5, 40, 0, 0.7, 0.2) }, ease: easeIn }, { f: 3, p: hit, ease: easeOut },
+    { f: 4, p: { ...hit, flash: 0, fire: 0.8 }, ease: linear }, { f: 6, p: { ...hit, flash: 0, fire: 0.5, bob: 0 }, ease: easeOut },
+    { f: 8, p: { fire: 0.2 }, ease: easeInOut }, { f: 9, p: {}, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function bladeStrikePoses(view: View): Pose[] {
+  const { R0, keys } = bladeKeys(view);
+  const poses = keyed(R0, keys, 10, 540);
+  poses[2].trail = trailOf(R0, keys, view, 0.6, 2, 6);
+  poses[3].trail = trailOf(R0, keys, view, 1.4, 3, 7);
+  poses[4].trail = trailOf(R0, keys, view, 2.4, 3.8, 6);
+  poses[3].flashAt = tipW(poses[3], view);
+  poses[3].dust = [0.8, 0];
+  return poses;
+}
+/** «Вихрь мышей»: меч вскинут остриём вперёд-вверх, вокруг ног кружит стая; удар — клинок вонзается в землю, три кольца мглы. */
+function vortexKeys(view: View) {
+  const R0 = restOf(view);
+  const wind: Partial<Pose> = { pitch: -0.1, hp: -0.2, bob: 1 * PXM, staff: SW(view, 9, 4, 43, -0.05, 0.92, 0.38), glow: 1.5, swirl: 0.7, armLift: [1, 0], book: 0.8 };
+  const hit: Partial<Pose> = { ...wind, pitch: 0.12, hp: 0.1, bob: -2 * PXM, staff: SW(view, 9, 7, 38, 0.1, 0.22, -0.97), swirl: 1, ring: 0.08, dust: [1, 1], flash: 1, armLift: [0, 0] };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 2 * PXM }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
+    { f: 3, p: { ...hit, flash: 0, ring: 0.4, dust: [0.6, 0.6], swirl: 1 }, ease: linear }, { f: 4, p: { ...hit, flash: 0, ring: 0.8, dust: [0.3, 0.3], swirl: 0.9 }, ease: linear },
+    { f: 5, p: { ...hit, flash: 0, ring: 0, dust: [0, 0], swirl: 0.6 }, ease: linear }, { f: 7, p: { swirl: 0 }, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function vortexCastPoses(view: View): Pose[] {
+  const { R0, keys } = vortexKeys(view);
+  const poses = keyed(R0, keys, 8, 640).map((p, i) => ({ ...p, swirlPh: i * 0.11 }));
+  poses.forEach((p) => (p.ringAt = [0, 0, 0]));
+  poses[2].flashAt = [poses[2].staff[0][0] + poses[2].staff[1][0] * STAFF_L, poses[2].staff[0][1] + poses[2].staff[1][1] * STAFF_L, 1];
+  return poses;
+}
+/** «Распад в стаю»: руки разведены, плащ-крылья раскрыты, тело рассыпается стаей мышей, над головой вспыхивает круг. */
+function mirageKeys(view: View) {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const wind: Partial<Pose> = {
+    pitch: -0.1, hp: -0.18, bob: 1 * PXM, glow: 1.5, sigil: 0.8, book: 1, waveAmp: 2.4,
+    staff: SW(view, 11, 2, 41, 0.25, 0.2, -0.95),
+    hand: [[0, 0, 0], side ? [-9, 9, 45] : [-13, 4, 47]], pole: [[1, 0.1, -0.6], [-1, 0.2, 0.4]], armLift: [1, 1],
+  };
+  const hit: Partial<Pose> = { ...wind, pitch: 0.04, hp: 0.02, bob: 0, glow: 1.6, sigil: 1, ghost: 1, flash: 1, ring: 0.1 };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, ghost: 0.35 }, ease: easeOut }, { f: 2, p: { ...hit, flash: 0, ghost: 0.7 }, ease: easeIn }, { f: 3, p: hit, ease: easeOut },
+    { f: 4, p: { ...hit, flash: 0, ghost: 0.85, ring: 0.5 }, ease: linear }, { f: 5, p: { ...hit, flash: 0, ghost: 0.5, ring: 0.9, sigil: 0.7 }, ease: linear },
+    { f: 6, p: { ...hit, flash: 0, ghost: 0.15, ring: 0, sigil: 0.3, bob: 0 }, ease: easeInOut }, { f: 7, p: { ghost: 0, sigil: 0, book: 0.2 }, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function mirageCastPoses(view: View): Pose[] {
+  const { R0, keys } = mirageKeys(view);
+  const poses = keyed(R0, keys, 8, 840).map((p, i) => ({ ...p, swirlPh: i / 12 }));
+  poses.forEach((p) => (p.ringAt = [0, 0, 0]));
+  poses[3].flashAt = [0, 4, 48];
+  return poses;
+}
+/** «Буря крыльев» (кольцо): меч вскинут вперёд, клинок описывает круг; удар — остриём оземь, расходится кольцо мглы. */
+function twisterKeys(view: View) {
+  const R0 = restOf(view);
+  const wind: Partial<Pose> = { pitch: -0.08, hp: -0.16, bob: 1 * PXM, glow: 1.5, swirl: 0.8, staff: SW(view, 9, 3, 43, 0.1, 0.9, 0.4), armLift: [1, 0], book: 0.6 };
+  const hit: Partial<Pose> = { ...wind, pitch: 0.14, hp: 0.1, bob: -2 * PXM, staff: SW(view, 9, 7, 38, 0.1, 0.2, -0.97), swirl: 1, ring: 0.08, dust: [1, 1], flash: 1 };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 2 * PXM, swirl: 1 }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
+    { f: 3, p: { ...hit, flash: 0, ring: 0.4, dust: [0.6, 0.6] }, ease: linear }, { f: 4, p: { ...hit, flash: 0, ring: 0.78, dust: [0.3, 0.3] }, ease: linear },
+    { f: 5, p: { ...hit, flash: 0, ring: 1, dust: [0, 0], swirl: 0.7 }, ease: linear }, { f: 7, p: { swirl: 0 }, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function twisterCastPoses(view: View): Pose[] {
+  const { R0, keys } = twisterKeys(view);
+  const poses = keyed(R0, keys, 8, 940).map((p, i) => ({ ...p, swirlPh: i * 0.13 }));
+  poses.forEach((p) => (p.ringAt = [0, 0, 0]));
+  poses[2].flashAt = [poses[2].staff[0][0] + poses[2].staff[1][0] * STAFF_L, poses[2].staff[0][1] + poses[2].staff[1][1] * STAFF_L, 1];
+  return poses;
+}
+/** Оглушение: покачивается, голова свесилась набок, меч опущен остриём в землю, над головой кружат звёзды. */
+function stunPoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const rl = [0, 0.05, 0.08, 0.05, 0, -0.05, -0.08, -0.05];
+  return Array.from({ length: 8 }, (_, i) => ({
+    ...R0, t: i / 8, seed: 1500 + i, roll: rl[i], hp: 0.28, hr: -rl[i] * 1.4 + 0.12, pitch: 0.1, bob: -1 * PXM, glow: 0.35, stars: 1,
+    staff: SW(view, 9, 6, 37, 0.2, 0.15, -0.97), root: [[0, 1, 1, 1, 0, -1, -1, -1][i], 0, 0] as V3,
+    swirlPh: i / 8, sway: [0, 1, 1, 0, 0, -1, -1, 0][i], tail: 0, wave: i / 8, waveAmp: 1,
+  }));
+}
+/** Переход фазы (< 55 %): рывок назад, меч вскинут вверх-вперёд, плащ-крылья раскрыты, круг разгорается, стая вспыхивает по бокам. */
+function phasePoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const roar: Partial<Pose> = {
+    pitch: -0.14, hp: -0.3, bob: 2 * PXM, glow: 1.6, sigil: 1, fire: 1, swirl: 1, book: 1, waveAmp: 2.6,
+    staff: SW(view, 10, 3, 42, 0.2, 0.7, 0.62),
+    hand: [[0, 0, 0], side ? [-9, 9, 47] : [-13, 4, 48]], pole: [[1, 0.1, -0.6], [-1, 0.2, 0.4]], armLift: [1, 1],
+    ring: 0.06, ringAt: [0, 0, 0], dust: [1, 1],
+  };
+  const keys: Key[] = [
+    { f: 0, p: {} }, { f: 2, p: { pitch: 0.1, hp: 0.1, bob: -1 * PXM, glow: 0.7 }, ease: easeInOut }, { f: 4, p: roar, ease: easeOut },
+    { f: 5, p: { ...roar, ghost: 0.5, ring: 0.45, dust: [0.6, 0.6], flash: 1 }, ease: linear }, { f: 6, p: { ...roar, ghost: 1, ring: 0.85, dust: [0.2, 0.2] }, ease: linear },
+    { f: 8, p: { ...roar, ghost: 0.4, ring: 0, dust: [0, 0], bob: 1 * PXM }, ease: linear }, { f: 11, p: { glow: 1.1, sigil: 0, swirl: 0, ghost: 0, fire: 0.3 }, ease: easeInOut },
+  ];
+  const poses = keyed(R0, keys, 12, 1100).map((p, i) => ({ ...p, swirlPh: i / 12 }));
+  poses.forEach((p) => (p.ringAt = [0, 0, 0]));
+  poses[5].flashAt = [0, 4, 48];
+  return poses;
+}
+/**
+ * Гибель: отшатнулся, меч выпадает и ложится наискось; вампир оседает на колени (плащ-крылья лужей), клонится вперёд;
+ * глаза гаснут.
+ */
+function deathPoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const Wv = (v: V3): V3 => fromView(view, v);
+  const fall: [V3, V3] = [Wv([14, 3, 6]), norm(Wv([0.2, 0.3, -0.9]))];
+  const lying: [V3, V3] = [Wv([9, 2, 1.4]), norm(Wv([-0.35, -0.9, 0.02]))];
+  const recoil: Partial<Pose> = { pitch: -0.14, hp: -0.3, bob: 1 * PXM, glow: 1.6, sway: 1, flash: 0 };
+  const keys: Key[] = [
+    { f: 0, p: {} }, { f: 1, p: recoil, ease: easeOut }, { f: 2, p: { ...recoil, pitch: 0.08, hp: 0, bob: 0, glow: 1.1 }, ease: easeInOut },
+    { f: 3, p: { held: 0, staff: fall, hand: [[10, 8, 24], [-9.6, 6, 22]], pitch: 0.14, glow: 0.9, kneel: 0.3 }, ease: easeIn },
+    { f: 4, p: { held: 0, staff: lying, hand: [[9.6, 8, 18], [-9.6, 7, 16]], pitch: 0.22, glow: 0.7, kneel: 0.75, dust: [1, 1] }, ease: easeIn },
+    { f: 5, p: { held: 0, staff: lying, hand: [[9, 8, 15], [-9, 8, 13]], pitch: 0.3, hp: 0.2, glow: 0.5, kneel: 1, dust: [0.5, 0.5] }, ease: easeOut },
+    { f: 8, p: { held: 0, staff: lying, hand: [[8.6, 9, 14], [-8.6, 9, 12]], pitch: 0.44, hp: 0.5, glow: 0.2, kneel: 1, wither: 0.3 }, ease: easeInOut },
+    { f: 13, p: { held: 0, staff: lying, hand: [[8.4, 9, 13.5], [-8.4, 9, 11.6]], pitch: 0.5, hp: 0.6, hr: 0.1, glow: 0, kneel: 1, wither: 0.6 }, ease: easeOut },
+  ];
+  const poses = keyed(R0, keys, 14, 1300);
+  for (let i = 3; i < 14; i++) { poses[i].held = 0; if (i >= 4) poses[i].staff = lying; }
+  return poses;
+}
+
+
+export type MirAnim = "idle" | "walk" | "attack" | "bladeWind" | "bladeHold" | "bladeStrike" | "vortexWind" | "vortexHold" | "vortexCast"
+  | "mirageWind" | "mirageHold" | "mirageCast" | "twisterWind" | "twisterHold" | "twisterCast" | "stun" | "phase" | "death";
+type AnimDef = { col: number; n: number; fps: number; loop: boolean; ru: string; next?: MirAnim; hit?: number };
+const ANIM_ORDER: [MirAnim, Omit<AnimDef, "col">][] = [
+  ["idle", { n: 12, fps: 12, loop: true, ru: "покой" }],
+  ["walk", { n: 12, fps: 12, loop: true, ru: "ходьба" }],
+  ["attack", { n: 10, fps: 15, loop: false, ru: "удар мечом", hit: 6 }],
+  ["bladeWind", { n: 4, fps: 12, loop: false, ru: "замах росчерка", next: "bladeHold" }],
+  ["bladeHold", { n: 4, fps: 12, loop: true, ru: "багрянец на клинке", next: "bladeStrike" }],
+  ["bladeStrike", { n: 10, fps: 12, loop: false, ru: "кровавый росчерк", hit: 3 }],
+  ["vortexWind", { n: 4, fps: 12, loop: false, ru: "зов воронок", next: "vortexHold" }],
+  ["vortexHold", { n: 4, fps: 12, loop: true, ru: "песок кружит", next: "vortexCast" }],
+  ["vortexCast", { n: 8, fps: 12, loop: false, ru: "вихрь мышей", hit: 2 }],
+  ["mirageWind", { n: 4, fps: 12, loop: false, ru: "зов двойников", next: "mirageHold" }],
+  ["mirageHold", { n: 4, fps: 12, loop: true, ru: "мираж дрожит", next: "mirageCast" }],
+  ["mirageCast", { n: 8, fps: 12, loop: false, ru: "распад в стаю", hit: 3 }],
+  ["twisterWind", { n: 4, fps: 12, loop: false, ru: "замах смерча", next: "twisterHold" }],
+  ["twisterHold", { n: 4, fps: 12, loop: true, ru: "смерч набирает силу", next: "twisterCast" }],
+  ["twisterCast", { n: 8, fps: 12, loop: false, ru: "буря крыльев", hit: 2 }],
+  ["stun", { n: 8, fps: 12, loop: true, ru: "оглушение" }],
+  ["phase", { n: 12, fps: 12, loop: false, ru: "переход фазы", hit: 5 }],
+  ["death", { n: 14, fps: 12, loop: false, ru: "гибель" }],
+];
+export const MIR_ANIMS = {} as Record<MirAnim, AnimDef>;
+{
+  let col = 0;
+  for (const [k, a] of ANIM_ORDER) { MIR_ANIMS[k] = { ...a, col }; col += a.n; }
+}
+export const MIR_COLS = ANIM_ORDER.reduce((s, [, a]) => s + a.n, 0);
+export type MirFx = "blade" | "vortex" | "mirage" | "twister";
+export const MIR_SKILLS: Record<string, { windup: [MirAnim, MirAnim]; strike: MirAnim; fx?: MirFx }> = {
+  blood_slash: { windup: ["bladeWind", "bladeHold"], strike: "bladeStrike", fx: "blade" },
+  bat_whirl: { windup: ["vortexWind", "vortexHold"], strike: "vortexCast", fx: "vortex" },
+  bat_split: { windup: ["mirageWind", "mirageHold"], strike: "mirageCast", fx: "mirage" },
+  wing_storm: { windup: ["twisterWind", "twisterHold"], strike: "twisterCast", fx: "twister" },
+};
+const POSES: Record<MirAnim, (v: View) => Pose[]> = {
+  idle: (v) => idlePoses(v), walk: (v) => walkPoses(v), attack: attackPoses,
+  bladeWind: (v) => { const { R0, wind } = bladeKeys(v); return windPoses(R0, wind, 500).map((p, i) => ({ ...p, fire: [0.2, 0.4, 0.6, 0.7][i] })); },
+  bladeHold: (v) => { const { R0, wind } = bladeKeys(v); return holdPoses(R0, wind, 520, 4, (i) => ({ armLift: [TREMBLE[i], 0], glow: [1.4, 1.6, 1.45, 1.6][i], fire: [0.7, 0.9, 0.75, 1][i], flash: 0 })); },
+  bladeStrike: bladeStrikePoses,
+  vortexWind: (v) => { const { R0, wind } = vortexKeys(v); return windPoses(R0, wind, 600).map((p, i) => ({ ...p, swirl: [0.1, 0.3, 0.5, 0.7][i], swirlPh: i * 0.1 })); },
+  vortexHold: (v) => { const { R0, wind } = vortexKeys(v); return holdPoses(R0, wind, 620, 4, (i) => ({ armLift: [TREMBLE[i], 0], glow: [1.4, 1.6, 1.45, 1.6][i], swirl: 0.8, swirlPh: 0.4 + i * 0.125 })); },
+  vortexCast: vortexCastPoses,
+  mirageWind: (v) => { const { R0, wind } = mirageKeys(v); return windPoses(R0, wind, 800).map((p, i) => ({ ...p, sigil: [0.2, 0.45, 0.65, 0.8][i], swirlPh: i * 0.08 })); },
+  mirageHold: (v) => { const { R0, wind } = mirageKeys(v); return holdPoses(R0, wind, 820, 4, (i) => ({ armLift: [TREMBLE[i], TREMBLE[(i + 2) % 4]], glow: [1.4, 1.6, 1.45, 1.6][i], ghost: [0.12, 0.3, 0.18, 0.34][i], swirlPh: 0.3 + i * 0.083, sigil: 0.8 + 0.1 * (i % 2) })); },
+  mirageCast: mirageCastPoses,
+  twisterWind: (v) => { const { R0, wind } = twisterKeys(v); return windPoses(R0, wind, 900).map((p, i) => ({ ...p, swirl: [0.2, 0.45, 0.65, 0.8][i], swirlPh: i * 0.12 })); },
+  twisterHold: (v) => {
+    const { R0, wind } = twisterKeys(v);
+    return holdPoses(R0, wind, 920, 4, (i) => {
+      const a = (i / 4) * TAU;
+      const side = rv(v);
+      return { armLift: [TREMBLE[i], 0], glow: [1.4, 1.6, 1.45, 1.6][i], swirl: 1, swirlPh: 0.5 + i * 0.16, staff: side ? stf([10.5, 5 + 2 * Math.cos(a), 36], [0, 0.3 + 0.22 * Math.sin(a), 0.93]) : stf([12.5, 3, 36], [0.3 + 0.2 * Math.cos(a), 0.1 + 0.2 * Math.sin(a), 0.93]) };
+    });
+  },
+  twisterCast: twisterCastPoses, stun: stunPoses, phase: phasePoses, death: deathPoses,
+};

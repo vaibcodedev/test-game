@@ -1,3 +1,4 @@
+import { bossLootStatus, fmtLeft } from "../../../shared/dungeon";
 /** Награды за убийство: опыт и уровни, золото, личные мешки с добычей. */
 import { questProgress } from "./cities";
 import { LOOT_BAG_TTL_MS, MAX_LEVEL } from "../../../shared/constants";
@@ -111,6 +112,19 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
     const [g0, g1] = m.stats.gold;
     const zt = boss ? ZB_LOOT[m.def.id] : undefined;
     const denied = bossLootDenied(m, p);
+    // подземелье: трофеи босса — раз в сутки на героя (shared/dungeon.ts bossLootStatus)
+    const dg = boss && w.opts.dungeon ? bossLootStatus(p.save.dgLoot?.[m.def.id], Date.now()) : null;
+    if (dg?.looted) {
+      p.save.kills++;
+      const mk0 = (p.save.mobKills ??= {});
+      mk0[m.def.id] = (mk0[m.def.id] || 0) + 1;
+      p.save.bossKills[m.def.id] = (p.save.bossKills[m.def.id] || 0) + 1;
+      gainXp(w, p, Math.round(xpForKill(m.stats.xp, m.level, p.level) * share * wb.xp));
+      p.selfDirty = true;
+      p.send("toast", { text: `Трофеи ${m.def.name === "Повелитель Пепла" ? "Повелителя Пепла" : m.def.name} уже получены сегодня · ещё ${fmtLeft(dg.leftMs)}`, kind: "info" });
+      continue;
+    }
+    if (dg && !denied) { (p.save.dgLoot ??= {})[m.def.id] = Date.now(); const st = bossLootStatus(Date.now(), Date.now()); p.send("dungeon:status", { looted: true, leftMs: st.leftMs, at: Date.now() }); }
     const gold = denied ? 0 : Math.round((g0 + Math.random() * (g1 - g0)) * (zt ? zt.gold.mult : boss ? GP.rewards.bossGoldMul : 1) * wb.gold);
     p.save.gold += gold;
     p.save.kills++;

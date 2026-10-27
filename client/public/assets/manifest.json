@@ -124,6 +124,31 @@
   "nude_ashborn_ranger": {
    "frame": 32
   },
+  "umb_crown_lich": {
+   "frame": 80
+  },
+  "umb_ash_executioner": {
+   "frame": 64
+  },
+  "umb_ash_executioner_cage": {
+   "frame": 32
+  },
+  "sol_mirage_sorcerer": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_mirage_sorcerer_mirage": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "umb_crimson_vampire": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "umb_crimson_vampire_mirage": {
+   "frame": 64,
+   "frameH": 80
+  },
   "arthro_bone": {
    "frame": 32
   },
@@ -712,17 +737,8 @@
   "troll_brute_elite": {
    "frame": 48
   },
-  "umb_ash_executioner": {
-   "frame": 64
-  },
-  "umb_ash_executioner_cage": {
-   "frame": 32
-  },
   "umb_ash_minotaur": {
    "frame": 64
-  },
-  "umb_crown_lich": {
-   "frame": 80
   },
   "umb_fog_treant": {
    "frame": 64
@@ -31205,17 +31221,113 @@
    "w": 32,
    "h": 64
   },
-  "dg_arch_c": {
-   "w": 160,
-   "h": 128
+  "dg_entrance": {
+   "w": 256,
+   "h": 192
   },
-  "dg_arch_t": {
-   "w": 160,
-   "h": 128
+  "dg_exit": {
+   "w": 128,
+   "h": 96
   },
-  "dg_gate_a": {
+  "dg_pier_c": {
+   "w": 40,
+   "h": 76
+  },
+  "dg_pier_c2": {
+   "w": 40,
+   "h": 76
+  },
+  "dg_pier_t": {
+   "w": 40,
+   "h": 76
+  },
+  "dg_pier_t2": {
+   "w": 40,
+   "h": 76
+  },
+  "dg_pier_a": {
+   "w": 40,
+   "h": 76
+  },
+  "dg_pier_a2": {
+   "w": 40,
+   "h": 76
+  },
+  "dg_lintel_c": {
    "w": 160,
-   "h": 128
+   "h": 62
+  },
+  "dg_lintel_t": {
+   "w": 160,
+   "h": 62
+  },
+  "dg_lintel_a": {
+   "w": 160,
+   "h": 62
+  },
+  "dg_door_w_0": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_0": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_1": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_1": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_2": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_2": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_3": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_3": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_4": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_4": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_5": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_5": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_6": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_6": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_door_w_7": {
+   "w": 128,
+   "h": 80
+  },
+  "dg_port_7": {
+   "w": 128,
+   "h": 80
   },
   "umb_statue": {
    "w": 64,
@@ -31271,6 +31383,42 @@
   },
   "bf_tent_umb_cmd": {
    "w": 128,
+   "h": 128
+  },
+  "dg_arch_c": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_arch_t": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a_1": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a_2": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a_3": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a_4": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a_5": {
+   "w": 192,
+   "h": 128
+  },
+  "dg_gate_a_6": {
+   "w": 192,
    "h": 128
   },
   "v_basic_bush": {
@@ -33596,6 +33744,12 @@
   "uq_zb_verdict_greataxe",
   "uq_zb_hangman_hood",
   "uq_zb_condemned_chain",
+  "uq_zb_mirage_staff",
+  "uq_zb_horned_crown",
+  "uq_zb_mirage_pearl",
+  "uq_zb_scarlet_blade",
+  "uq_zb_count_collar",
+  "uq_zb_flock_fang",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",

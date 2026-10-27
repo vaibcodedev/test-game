@@ -1,0 +1,112 @@
+
+  // ---------- меч: огромный тёмно-фиолетовый клинок остриём вниз, ажурная гарда-когти, навершие; пятно света по лезвию ----------
+  const held = p.held >= 0.5;
+  const ad = norm(p.staff[1]);
+  const butt: V3 = add(p.staff[0], held ? shift : [0, 0, 0]);
+  const flat = norm(perp(ad, p.flat));
+  const e = norm(cross(ad, flat));
+  const top = add(butt, mul(ad, STAFF_L));
+  const grip0 = add(butt, mul(ad, SG));
+  const pearl: V3 = top;
+  {
+    const g = S.group(0.5);
+    // навершие и рукоять
+    S.ball(g, wm(M.bronze, W), butt, 1.3, { part: S.newPart() });
+    S.cone(g, wm(M.leath, W), butt, 0.9, add(butt, mul(ad, 9.0)), 0.9, { part: S.newPart() });
+    // гарда: поперечина с загнутыми кверху когтями и ажурным кольцом
+    const gd = add(butt, mul(ad, 9.6));
+    const gp = S.newPart();
+    S.box(g, wm(M.copper, W), gd, [5.4, 0.8, 0.9], [e, flat, ad], 0.3, { part: gp, tone: 0.2 });
+    for (const s of [1, -1]) {
+      const a = add(gd, mul(e, s * 5.2));
+      S.cone(g, wm(M.copper, W), a, 0.9, add(add(a, mul(e, s * 1.6)), mul(ad, -3.4)), 0.12, { part: gp, tone: 0.3 });
+      S.cone(g, wm(M.copper, W), a, 0.8, add(add(a, mul(e, s * 0.4)), mul(ad, 3.0)), 0.12, { part: gp, tone: 0.1 });
+    }
+    S.ball(g, wm(M.bronze, W), gd, 1.0, { part: S.newPart() });
+    // клинок: плоский, с долом по центру и светлой кромкой; сужается к острию
+    const bl0 = 10.6, bl1 = STAFF_L - 4.2;
+    const bc = add(butt, mul(ad, (bl0 + bl1) / 2));
+    const fuller = (q: { l: V3; edge: boolean }) => {
+      if (q.edge) return { mat: M.copper, d: 1.2 };
+      return Math.abs(q.l[0]) < 0.5 ? -0.9 : Math.abs(q.l[0]) > 1.35 ? 0.7 : 0;
+    };
+    S.box(g, wm(M.slate, W), bc, [1.9, 0.5, (bl1 - bl0) / 2], [e, flat, ad], 0.25, { tex: fuller as never, part: S.newPart(), big: true, tone: 0.2 });
+    S.cone(g, wm(M.slate, W), add(butt, mul(ad, bl1 - 0.3)), 1.9, top, 0.1, { part: S.newPart(), tone: 0.25 });
+    X.glints.push(top);
+  }
+
+  // ---------- руки: правая держит меч (латная перчатка), левая поднята — когти; наручи с плавниками ----------
+  {
+    const g = S.group(1.0);
+    const lift = pxM(view, 0, -p.armLift[0]);
+    const sh = add(T([6.0, 0.2, 36.6]), lift);
+    const fist: V3 = held ? grip0 : add(add(p.hand[0], shift), lift);
+    const el = ik(sh, fist, ARM[0], ARM[1], p.pole[0]);
+    S.cone(g, wm(M.slate, W), sh, 2.5, el, 2.1, { tone: 0.1 });
+    const fd = norm(sub(fist, el));
+    S.cone(g, wm(M.copper, W), add(el, mul(fd, 0.8)), 2.1, sub(fist, mul(fd, 1.2)), 2.3, { part: S.newPart() });
+    S.cone(g, wm(M.bronze, W), add(el, mul(fd, 3.2)), 2.25, add(el, mul(fd, 3.9)), 2.25, { part: S.newPart() });
+    const e0 = perp(fd, [0, 0, 1]);
+    S.ell(g, wm(M.copper, W), fist, [2.0, 1.9, 2.3], [e0, cross(fd, e0), fd], { part: S.newPart(), tone: 0.1 });
+    // левая: рука поднята, пальцы-когти растопырены
+    const g2 = S.group(1.0);
+    const lift2 = pxM(view, 0, -p.armLift[1]);
+    const sh2 = add(T([-6.0, 0.2, 36.6]), lift2);
+    const fist2 = add(add(p.hand[1], shift), lift2);
+    const el2 = ik(sh2, fist2, ARM[0], ARM[1], p.pole[1]);
+    S.cone(g2, wm(M.slate, W), sh2, 2.5, el2, 2.1, { tone: 0.1 });
+    const fd2 = norm(sub(fist2, el2));
+    S.cone(g2, wm(M.copper, W), add(el2, mul(fd2, 0.8)), 2.1, sub(fist2, mul(fd2, 1.2)), 2.0, { part: S.newPart() });
+    // плавники наручи: два шипа назад от предплечья
+    for (const q of [0.35, 0.65]) {
+      const b = add(el2, mul(sub(fist2, el2), q));
+      S.cone(g2, wm(M.copper, W), b, 0.9, add(b, [-2.6, -1.4, -3.6 + q * 2]), 0.1, { part: S.newPart(), tone: 0.15 });
+    }
+    S.ell(g2, wm(M.skin, W), fist2, [1.8, 1.5, 2.0], [perp(fd2, [0, 0, 1]), cross(fd2, perp(fd2, [0, 0, 1])), fd2], { part: S.newPart() });
+    const sp = 0.8 + 0.4 * clamp(p.book, 0, 1);
+    for (let i = -1; i <= 1; i++) {
+      const dir = norm(add(add(mul(fd2, 1.0), mul(perp(fd2, [0, 0, 1]), i * sp)), [0, 0.3, 0.6]));
+      S.cone(g2, wm(M.skin, W), add(fist2, mul(dir, 1.4)), 0.85, add(fist2, mul(dir, 6.2)), 0.15, { part: S.newPart(), tone: 0.1 });
+    }
+    S.cone(g2, wm(M.skin, W), fist2, 0.7, add(fist2, norm([1.2, 0.6, 0.6])), 0.2, { part: S.newPart() });
+  }
+  // ---------- плечи: широкие чешуйчатые наплечья с длинными шипами вверх и назад, золотой диск ----------
+  {
+    const g = S.group(0.9);
+    for (const s of [1, -1]) {
+      const big = s > 0 ? 1.0 : 0.9;
+      S.ell(g, wm(M.slate, W), T([s * 6.4, -0.2, 38.2]), [3.4 * big, 2.9 * big, 2.4 * big], axes(TV, s * 0.4), { big: true, part: S.newPart(), tone: 0.15 });
+      S.ell(g, wm(M.copper, W), T([s * 6.9, -0.1, 36.2]), [2.8 * big, 2.5 * big, 1.4], axes(TV, s * 0.55), { part: S.newPart(), tone: 0.1 });
+      S.ball(g, wm(M.bronze, W), T([s * 6.9, 2.2, 38.4]), 0.8, { part: S.newPart() });
+      const b = T([s * 6.0, -1.0, 39.8]);
+      S.cone(g, wm(M.copper, W), b, 1.5, add(b, TV([s * 2.6, -3.0, 8.0 * big])), 0.12, { part: S.newPart(), tone: 0.3 });
+      S.cone(g, wm(M.copper, W), add(b, TV([s * 1.0, 0.2, 0])), 1.0, add(b, TV([s * 5.0, 0.2, 3.4])), 0.1, { part: S.newPart(), tone: 0.2 });
+    }
+  }
+
+  // ---------- голова: бледное лицо с красными узорами, острые скулы, белые зачёсанные волосы, высокий воротник с алой подкладкой ----------
+  {
+    const g = S.group(1.2);
+    const HC = 45.8;
+    S.cone(g, wm(M.skin, W), T([0, 0.2, 37.0], true), 1.8, H([0, 0.4, 42.6]), 1.7, { part: S.newPart(), tone: -0.25 });
+    // воротник: два высоких крыла, внутри алое
+    for (const s of [1, -1]) {
+      S.ell(g, wm(M.slate, W), H([s * 3.6, -0.9, 43.8]), [1.1, 2.8, 4.6], axes(HV, s * 0.35, 0, 0), { part: S.newPart(), tone: 0.1 });
+      S.ell(g, wm(M.crim, W), H([s * 2.9, 0.2, 43.0]), [0.7, 2.2, 3.8], axes(HV, s * 0.3, 0, 0), { part: S.newPart(), tone: -0.1 });
+      S.cone(g, wm(M.copper, W), H([s * 4.0, -1.2, 46.4]), 0.8, H([s * 5.6, -2.8, 50.4]), 0.1, { part: S.newPart(), tone: 0.2 });
+    }
+    S.ell(g, wm(M.slate, W), H([0, -3.2, 43.4]), [3.6, 1.4, 3.8], axes(HV), { part: S.newPart(), tone: 0.05 });
+    // голова: череп, острые скулы, длинный подбородок
+    S.ell(g, wm(M.skin, W), H([0, 0.5, HC]), [3.4, 3.7, 4.3], axes(HV), { big: true });
+    S.ell(g, wm(M.skin, W), H([0, 1.8, HC - 2.5]), [2.6, 2.7, 2.5], axes(HV), { part: S.newPart(), tone: -0.2 });
+    S.cone(g, wm(M.skin, W), H([0, 2.4, HC - 2.6]), 1.4, H([0, 3.4, HC - 4.6]), 0.6, { part: S.newPart(), tone: -0.3 });
+    S.ell(g, wm(M.skin, W), H([0, 3.0, HC + 1.0]), [2.6, 1.0, 0.7], axes(HV), { part: S.newPart(), tone: -0.45 });
+    S.cone(g, wm(M.skin, W), H([0, 3.3, HC + 0.2]), 0.8, H([0, 5.0, HC - 1.6]), 0.4, { part: S.newPart(), tone: 0.25 });
+    for (const s of [1, -1]) S.cone(g, wm(M.skin, W), H([s * 2.8, 0.2, HC - 0.2]), 0.9, H([s * 5.6, -1.0, HC + 2.4]), 0.12, { part: S.newPart() });
+    // белые волосы: гладко назад, прядь на затылок
+    S.ell(g, wm(M.hair, W), H([0, -0.5, HC + 2.3]), [3.7, 3.7, 3.0], axes(HV), { part: S.newPart(), big: true });
+    S.cone(g, wm(M.hair, W), H([0, -2.6, HC + 1.6]), 2.0, H([0, -5.0, HC - 3.2]), 0.5, { part: S.newPart(), tone: 0.2 });
+    S.stamps.push({ at: H([0, 4.0, HC + 0.3]), n: HV([0, 1, 0]), px: ST_EYES, colors: keys, glow: GLOW_KEYS, halo: GLOWC[2], depthTol: 2.4, minFacing: 0.2 });
+    S.stamps.push({ at: H([0, 3.9, HC - 1.6]), n: HV([0, 1, 0]), px: ST_TATTOO, colors: keys, depthTol: 2.4, minFacing: 0.2 });
+  }
+

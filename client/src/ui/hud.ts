@@ -12,7 +12,9 @@ import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../
 import { MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
-import { isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
+import { DUNGEON_DOOR, isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
+import { DUNGEON_EXIT } from "../../../shared/dungeon";
+import { drawDgIcon } from "./dungeonIcon";
 import { CITIES, layoutOf } from "../../../shared/cities";
 import { TOWN, WALL } from "../../../shared/town";
 import { MOBS } from "../../../shared/mobs";
@@ -1498,6 +1500,8 @@ export class Hud {
       g.fillStyle = "#ff7a2a";
       g.fillRect(X(b.x) - 2, Y(b.y) - 2, 4, 4);
     }
+    // вход в «Пепельные чертоги» на карте мира и лестница выхода внутри (подземелье — отдельная карта на весь холст)
+    { const d = big ? DUNGEON_DOOR : this.ctx.net.kind === "dungeon" ? DUNGEON_EXIT : null; if (d) drawDgIcon(g, this.ctx.net.dungeon?.looted && big ? "taken" : "mini", X(d.x), Y(d.y), big ? 1 : 1); }
     if (big && this.ctx.net.kind === "world") { drawWarMini(g, X, Y); drawSiegeMini(g, X, Y); } // основания «Знамён Предела» и ворота осады
     for (const [, v] of info.units) {
       if (v.dead) continue;

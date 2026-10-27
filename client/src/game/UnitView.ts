@@ -200,12 +200,14 @@ export class UnitView {
     this.sid = ash ? `nude_ashborn_${u.sprite}` : this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
     const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_skeleton";
     this.frame = scene.textures.get(tex).get(0).width;
+    const frameH = scene.textures.get(tex).get(0).height;
     const big = this.frame > 32;
     if (this.frame >= 96) this.nameRise = 0.9 * this.frame;
+    else if (frameH > this.frame) this.nameRise = 0.9 * frameH; // высокий кадр (64×80): имя над макушкой
     this.shadow = scene.add.image(u.x, u.y, "fx_shadow_blob").setScale(big ? 2.2 : 1, big ? 2 : 1).setDepth(DEPTH.ground + 5);
     // кольцо выбора и наведения лежит над кругами бафов и щитов (DEPTH.ground + 7): те почти того же размера и цвета и скрыли бы его
     this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 7.5).setScale(big ? 2 : 1);
-    this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, 30 / 32);
+    this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, frameH > this.frame ? (frameH - 4) / frameH : 30 / 32);
     // босс стартовых земель (задача 136): кадры листа ставит game/zoneBoss.ts
     if (tex === `u_${this.sid}` && zbDef(this.sid)) zbViews.add(this);
     if (u.kind === UnitKind.Pet) {

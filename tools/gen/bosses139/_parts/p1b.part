@@ -1,0 +1,98 @@
+  // ---------- плащ: алая подкладка за спиной узкой спинкой и двумя полотнищами — алые края видны по бокам сюртука ----------
+  {
+    const g = S.group(1.2);
+    const folds = (c: { l: V3; edge: boolean }) => {
+      if (c.edge) return 0;
+      const f = Math.sin(c.l[0] * 1.3 + 0.6);
+      return f > 0.8 ? -0.8 : f < -0.9 ? 0.4 : 0;
+    };
+    const cx = pel[0] + sw * 0.3, cy = pel[1] - 4.2;
+    S.ell(g, wm(M.crim, W), [cx, cy, 22.8 - kn * 4], [5.2, 1.4, 14.6 - kn * 2], axes(PR), { tex: folds as never, part: S.newPart() });
+    for (const s of [1, -1]) {
+      S.ell(g, wm(M.crim, W), [cx + s * 5.0, cy + 0.6, 21.8 - kn * 4], [2.0, 1.3, 13.4 - kn * 2], axes(PR, s * 0.1), { tex: folds as never, part: S.newPart(), tone: 0.1 });
+    }
+    // рваный низ: короткие языки подкладки и кремовая кайма
+    const lift = (i: number) => Math.round(p.waveAmp * (0.5 + 0.5 * Math.sin(TAU * (p.wave + i * 0.23)))) * PXM;
+    for (let i = 0; i < 7; i++) {
+      const x = cx + (i - 3) * 1.9;
+      S.cone(g, wm(M.crim, W), [x, cy + 0.4, 9.4 - kn * 4], 1.5, [x + (i % 2 ? 0.5 : -0.5), cy + 0.2, Math.max(0.5, 3.0 + lift(i) - kn * 3)], 0.3, { part: S.newPart(), tone: i % 3 === 0 ? -0.3 : 0.1 });
+    }
+  }
+  // ---------- ноги: чёрные штаны, сапоги с бронзовой оковкой ----------
+  {
+    const g = S.group(0.9);
+    for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
+      const k = p.kick[i];
+      const ft: V3 = [pel[0] + s * 2.4, pel[1] + 0.6 + 3.4 * k, Math.max(0, 3.4 + 2.6 * Math.max(0, k)) - kn * 2.4];
+      const hip: V3 = [pel[0] + s * 2.8, pel[1], HIP0 - 2 + shift[2]];
+      const knee = ik(hip, add(ft, [0, 0, 2]), 9.6, 9.6, [0, 1, 0.1]);
+      S.cone(g, wm(M.black, W), hip, 2.3, knee, 1.9, { tone: -0.1 });
+      S.cone(g, wm(M.black, W), knee, 1.9, add(ft, [0, 0, 2.6]), 1.6);
+      // голенище: кожаное, бронзовые оковки сверху и посередине
+      const bt = add(ft, [0, 0, 6.6]);
+      S.cone(g, wm(M.leath, W), bt, 2.1, add(ft, [0, 0, 1.8]), 1.95, { part: S.newPart(), tone: 0.45 });
+      S.cone(g, wm(M.bronze, W), add(bt, [0, 0, 0.3]), 2.35, add(bt, [0, 0, -1.5]), 2.25, { part: S.newPart(), tone: 0.2 });
+      S.cone(g, wm(M.bronze, W), add(ft, [0, 0, 3.9]), 2.15, add(ft, [0, 0, 3.1]), 2.1, { part: S.newPart() });
+      // носок: чёрный башмак
+      S.ell(g, wm(M.black, W), add(ft, [0, 2.4, 0.8]), [1.9, 3.2, 1.6], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], { part: S.newPart() });
+    }
+  }
+  // ---------- сюртук: длинный, до середины голени; спереди — белая туника с тиснением ----------
+  {
+    const g = S.group(1.8);
+    const hem = (c: { l: V3; edge: boolean; u: number }) => {
+      if (c.edge) return 0;
+      if (c.u > 0.93) return { mat: M.bronze, d: -0.3 };
+      const f = Math.sin(Math.atan2(c.l[1], c.l[0]) * 7 + 0.3);
+      return f > 0.85 ? -0.9 : f < -0.9 ? 0.4 : 0;
+    };
+    const top = T([0, 0.2, 34.6], true);
+    const bot: V3 = [pel[0] + sw * 0.15, pel[1] + 0.2, 16.4 - kn * 6];
+    S.cone(g, wm(M.slate, W), top, 4.2, bot, 6.0 + 1.6 * kn, { tex: hem as never, ref: [1, 0, 0], big: true });
+    // грудь и талия
+    S.ell(g, wm(M.slate, W), T([0, 0.4, 32.8]), [4.5, 3.4, 6.4], axes(TV), { big: true });
+    S.cone(g, wm(M.slate, W), PV([0, 0, 21]), 3.9, T([0, 0.3, 29.5]), 4.3, { tone: -0.1 });
+    // полы: две полосы сланца по бокам от белой туники — распахнутый сюртук, кромка — бронзовая
+    for (const s of [1, -1]) {
+      const a = PV([s * 2.6, 4.4, 29]);
+      const b: V3 = [pel[0] + s * 3.7 + sw * 0.2, pel[1] + 5.4, 17.0 - kn * 6];
+      S.cone(g, wm(M.slate, W), a, 1.6, b, 2.2, { part: S.newPart(), tone: 0.15, tex: ((c: { u: number }) => (c.u > 0.9 ? { mat: M.bronze, d: -0.3 } : 0)) as never });
+    }
+    // туника: белая вставка, вышитая; бахрома внизу
+    const upV = norm(PR([0, -0.2, 1])), fw = norm(PR([0, 1, 0.1])), sd = PR([1, 0, 0]);
+    const c = PV([0, 5.3, 23.6 + kn * 2]);
+    const emb = (q: { x: number; y: number; ax: number; ay: number; edge: boolean }) => {
+      if (q.edge) return 0;
+      const dx = q.x - q.ax, dy = q.y - q.ay;
+      const d = Math.abs(((dx + dy * 1.2) % 4 + 4) % 4 - 2) + Math.abs(((dx - dy * 1.2) % 4 + 4) % 4 - 2);
+      return d < 1.1 ? -0.9 : d < 1.6 ? 0.5 : 0;
+    };
+    S.box(g, wm(M.cream, W), c, [2.0, 0.5, 6.4 - kn * 2.4], [sd, fw, upV], 0.3, { tex: emb as never, anc: c, part: S.newPart() });
+    for (let i = 0; i < 4; i++) {
+      const bx = add(c, add(mul(sd, -1.5 + i * 1.0), mul(upV, -6.4 + kn * 2.4)));
+      S.cone(g, wm(M.cream, W), bx, 0.5, add(bx, [0, 0, -1.7 - 0.4 * (i % 2)]), 0.2, { part: S.newPart() });
+    }
+  }
+  // ---------- пояс, сумка, перевязь, кисти ----------
+  {
+    const g = S.group(0.6);
+    S.ell(g, wm(M.leath, W), PV([0, 0.4, 25.2]), [4.3, 3.8, 1.0], axes(PR), { part: S.newPart() });
+    // пряжка-самоцвет (светится)
+    const bk = PV([0, 3.9, 25.1]);
+    S.box(g, wm(M.bronze, W), bk, [1.4, 0.6, 1.1], axes(PR), 0.3, { part: S.newPart() });
+    S.ball(g, M.glow, add(bk, norm(PR([0, 1, 0]))), 0.62, { part: S.newPart() });
+    // перевязь: от правого плеча к левому бедру
+    const a = T([3.4, 3.0, 36.4]), b = T([-3.8, 4.2, 24.6]);
+    S.cone(g, wm(M.leath, W), a, 0.8, b, 0.8, { part: S.newPart(), tone: -0.1 });
+    S.ball(g, wm(M.bronze, W), T([0, 4.4, 30.4]), 0.85, { part: S.newPart() });
+    // сумка на левом бедре: кожа, бронзовый замок
+    const bag = PV([-5.3, 2.6, 22.0]);
+    S.box(g, wm(M.leath, W), bag, [2.0, 1.7, 2.5], axes(PR, -0.1), 0.4, { part: S.newPart() });
+    S.box(g, wm(M.bronze, W), add(bag, mul(norm(PR([0, 1, 0])), 1.7)), [0.8, 0.4, 1.0], axes(PR), 0.15, { part: S.newPart() });
+    // кисточки: на груди у перевязи и на поясе справа — алые с золотом
+    for (const [q, l] of [[T([-1.8, 4.5, 32.2]), 5.6], [PV([4.2, 3.4, 24.6]), 6.2]] as [V3, number][]) {
+      S.cone(g, wm(M.bronze, W), q, 0.75, add(q, [sw * 0.3, 0, -1.6]), 0.75, { part: S.newPart() });
+      S.cone(g, wm(M.crim, W), add(q, [0, 0, -1.4]), 1.1, add(q, [sw * 0.5, 0, -l]), 0.5, { part: S.newPart(), tone: 0.15 });
+    }
+  }
+

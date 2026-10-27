@@ -65,6 +65,8 @@ export interface PlayerSave {
   pendingItems?: Item[];
   /** «Знамёна Предела» (задача 132, шаг 14): неделя (ключ — дата понедельника), Знаков за неделю, побед и битв за неделю. */
   war?: { week: string; marks: number; wins: number; battles: number };
+  /** Подземелье «Пепельные чертоги» (shared/dungeon.ts): когда в последний раз взяты трофеи босса (id → Date.now()), раз в сутки на героя. */
+  dgLoot?: Record<string, number>;
 }
 
 export interface CharRow {

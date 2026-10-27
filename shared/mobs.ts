@@ -65,6 +65,12 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
     };
     // кандальный кол клеток (кольцо, задача 139): стоит на месте, не бьёт, ломается
     const cage = c.abilities.find((a) => a.cage)?.cage;
+    // мираж-двойник (кольцо, задача 139): стоит на месте, не бьёт, гибнет от одного удара
+    const dbl = c.abilities.find((a) => a.doubles)?.doubles;
+    if (dbl) MOBS[`${c.id}_mirage`] = {
+      id: `${c.id}_mirage`, name: dbl.name ?? "Мираж", sprite: `${c.id}_mirage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
+      hp: dbl.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 14, color: "#d8c08a",
+    };
     if (cage) MOBS[`${c.id}_cage`] = {
       id: `${c.id}_cage`, name: "Кандальный кол", sprite: `${c.id}_cage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: cage.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 10, color: "#8a2a08",

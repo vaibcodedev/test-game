@@ -28,7 +28,7 @@ const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
 const manifest = {
   /** cols — число столбцов листа, если не 12 (рейд-босс: 24). */
-  units: {} as Record<string, { frame: number; cols?: number }>,
+  units: {} as Record<string, { frame: number; frameH?: number; cols?: number }>,
   /** маунты (задача 142): лист 36×8 кадров, см. tools/gen/mounts/build.ts — пишет раздел сам, после manifest.json */
   mounts: {} as Record<string, GameMeta>,
   objects: {} as Record<string, { w: number; h: number }>,
@@ -120,6 +120,8 @@ const scan = (dir: string) => fs.readdirSync(path.join(OUT, dir)).filter((f) => 
 // боссы с каталогом zone-bosses/manifest.json: кадр — оттуда (лист кольца перенесён по строкам — высота не 3 кадра, задача 139)
 const ZBM = path.join(OUT, "zone-bosses", "manifest.json");
 const zbFrame: Record<string, number> = fs.existsSync(ZBM) ? Object.fromEntries(Object.entries((JSON.parse(fs.readFileSync(ZBM, "utf8")) as { bosses: Record<string, { fw?: number }> }).bosses).map(([k, b]) => [k, b.fw ?? 64])) : {};
+// кадры листов боссов кольца и их спутников (кол клетки, мираж, стая) — из каталога боссов: их пишет tools/gen/bosses139/to-game.ts (запустить после генератора босса)
+for (const [id, u] of Object.entries(((fs.existsSync(ZBM) ? JSON.parse(fs.readFileSync(ZBM, "utf8")) : {}) as { units?: Record<string, { frame: number; frameH?: number }> }).units ?? {})) if (fs.existsSync(path.join(OUT, "units", id + ".png"))) manifest.units[id] = u;
 for (const id of scan("units")) if (!manifest.units[id]) manifest.units[id] = { frame: zbFrame[id] ?? pngSize(path.join(OUT, "units", id + ".png")).h / 3 };
 for (const id of scan("objects")) if (!manifest.objects[id]) manifest.objects[id] = pngSize(path.join(OUT, "objects", id + ".png"));
 for (const id of scan("icons")) if (!manifest.icons.includes(id)) manifest.icons.push(id);

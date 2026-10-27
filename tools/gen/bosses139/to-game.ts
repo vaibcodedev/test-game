@@ -4,13 +4,15 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
 import * as lich from "./umb_crown_lich";
 import * as exec from "./umb_ash_executioner";
+import * as mir from "./sol_mirage_sorcerer";
+import * as vam from "./umb_crimson_vampire";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -27,7 +29,7 @@ const fxDef = (id: string, k: string, F: FxIn) => ({
   file: `${id}-${k}.png`, fw: F.w, fh: F.h, ax: F.ax, ay: F.ay, rows: 2,
   anims: F.anims ? Object.fromEntries(Object.entries(F.anims).map(([a, q]) => [a, { col: q.col, n: q.n, fps: q.fps ?? F.fps, loop: q.loop, ...(q.hit !== undefined ? { hit: q.hit } : {}) }])) : { [k]: { col: 0, n: F.n, fps: F.fps, loop: false, hit: F.hit } },
 });
-interface Boss { id: string; sheet: string; frame: number; cols: number; wrap?: number; anims: Record<string, A>; fx: Record<string, { src: string; def: ReturnType<typeof fxDef> }>; skills: Record<string, unknown>; units?: { src: string; id: string; frame: number }[] }
+interface Boss { id: string; sheet: string; frame: number; frameH?: number; cols: number; wrap?: number; anims: Record<string, A>; fx: Record<string, { src: string; def: ReturnType<typeof fxDef> }>; skills: Record<string, unknown>; units?: { src: string; id: string; frame: number; frameH?: number }[] }
 
 const BOSSES: Boss[] = [
   {
@@ -55,32 +57,66 @@ const BOSSES: Boss[] = [
   },
 ];
 
+BOSSES.push({
+  id: mir.ID, sheet: "mir-sheet.png", frame: mir.FRAME, frameH: mir.FRAME_H, cols: mir.MIR_COLS, wrap: 64, anims: anims(mir.MIR_ANIMS),
+  fx: Object.fromEntries((["vortex", "mirage", "twister"] as const).map((k) => [k, { src: `mir-fx-${k}.png`, def: fxDef(mir.ID, k, mir.FX[k] as FxIn) }])),
+  skills: {
+    flame_blade: { waves: [{ pre: ["bladeWind", "bladeHold"], strike: "bladeStrike" }], fx: [] },
+    quicksand_vortex: { waves: [{ pre: ["vortexWind", "vortexHold"], strike: "vortexCast" }], fx: [{ fx: "vortex", waves: [0], seq: ["vortexIn", "vortexHold", "vortexOut"], pin: 0, timing: "strike", place: "marks", holds: { vortexHold: 2400 } }] },
+    false_doubles: { waves: [{ pre: ["mirageWind", "mirageHold"], strike: "mirageCast" }], fx: [{ fx: "mirage", waves: [0], seq: ["mirage"], pin: 0, timing: "strike", place: "marks" }] },
+    sand_twister: { waves: [{ pre: ["twisterWind", "twisterHold"], strike: "twisterCast" }], fx: [{ fx: "twister", waves: [0], seq: ["twister"], pin: 0, timing: "strike", place: "ring", radius: "mid", spacing: 52 }] },
+    // кольцо мираж-двойника: тот же вихрь на его месте, без замаха босса
+    sand_twister_mirage: { waves: [], fx: [{ fx: "twister", waves: [0], seq: ["twister"], pin: 0, timing: "strike", place: "ring", radius: "mid", spacing: 52 }] },
+  },
+  units: [{ src: "mir-unit-mirage.png", id: `${mir.ID}_mirage`, frame: mir.FRAME, frameH: mir.FRAME_H }],
+});
+
+BOSSES.push({
+  id: vam.ID, sheet: "vam-sheet.png", frame: vam.FRAME, frameH: vam.FRAME_H, cols: vam.MIR_COLS, wrap: 64, anims: anims(vam.MIR_ANIMS),
+  fx: Object.fromEntries((["vortex", "mirage", "twister"] as const).map((k) => [k, { src: `vam-fx-${k}.png`, def: fxDef(vam.ID, k, vam.FX[k] as FxIn) }])),
+  skills: {
+    blood_slash: { waves: [{ pre: ["bladeWind", "bladeHold"], strike: "bladeStrike" }], fx: [] },
+    bat_whirl: { waves: [{ pre: ["vortexWind", "vortexHold"], strike: "vortexCast" }], fx: [{ fx: "vortex", waves: [0], seq: ["vortexIn", "vortexHold", "vortexOut"], pin: 0, timing: "strike", place: "marks", holds: { vortexHold: 2400 } }] },
+    bat_split: { waves: [{ pre: ["mirageWind", "mirageHold"], strike: "mirageCast" }], fx: [{ fx: "mirage", waves: [0], seq: ["mirage"], pin: 0, timing: "strike", place: "marks" }] },
+    wing_storm: { waves: [{ pre: ["twisterWind", "twisterHold"], strike: "twisterCast" }], fx: [{ fx: "twister", waves: [0], seq: ["twister"], pin: 0, timing: "strike", place: "ring", radius: "mid", spacing: 52 }] },
+    // кольцо стаи: тот же вихрь на её месте, без замаха босса
+    wing_storm_mirage: { waves: [], fx: [{ fx: "twister", waves: [0], seq: ["twister"], pin: 0, timing: "strike", place: "ring", radius: "mid", spacing: 52 }] },
+  },
+  units: [{ src: "vam-unit-mirage.png", id: `${vam.ID}_mirage`, frame: vam.FRAME, frameH: vam.FRAME_H }],
+});
+
 const only = process.argv[2];
 fs.mkdirSync(OUT, { recursive: true });
-const man = JSON.parse(fs.readFileSync(MAN, "utf8")) as { bosses: Record<string, unknown> };
+const man = JSON.parse(fs.readFileSync(MAN, "utf8")) as { bosses: Record<string, unknown>; units?: Record<string, { frame: number; frameH?: number }> };
+/** Кадры листов юнитов боссов (сами боссы и их мобы-спутники): общий сборщик tools/gen-assets.ts берёт их отсюда и не теряет записи каталога units. */
+man.units ??= {};
+const unitFrame = (id: string, frame: number, frameH?: number) => { man.units![id] = { frame, ...(frameH && frameH !== frame ? { frameH } : {}) }; };
 /** Запись юнита в общий каталог — правкой текста (формат файла чужой: не переписываем его целиком). */
 let utext = fs.readFileSync(UMAN, "utf8");
-const setUnit = (id: string, frame: number) => {
-  const re = new RegExp(`("${id}": \\{\\s*"frame": )\\d+`);
+const setUnit = (id: string, frame: number, frameH?: number) => {
   const nl = utext.includes("\r\n") ? "\r\n" : "\n";
-  if (re.test(utext)) utext = utext.replace(re, `$1${frame}`);
-  else utext = utext.replace(/"units": \{\r?\n/, (m) => `${m}  "${id}": {${nl}   "frame": ${frame}${nl}  },${nl}`);
+  const hPart = frameH && frameH !== frame ? `,${nl}   "frameH": ${frameH}` : "";
+  const re = new RegExp(`("${id}": \\{\\s*"frame": )\\d+(,\\s*"frameH": \\d+)?`);
+  if (re.test(utext)) utext = utext.replace(re, `$1${frame}${hPart}`);
+  else utext = utext.replace(/"units": \{\r?\n/, (m) => `${m}  "${id}": {${nl}   "frame": ${frame}${hPart}${nl}  },${nl}`);
 };
 let unitsTouched = false;
 for (const b of BOSSES) {
   if (only && b.id !== only) continue;
   const src = PNG.sync.read(fs.readFileSync(path.join(SRC, b.sheet)));
-  const N = b.frame, w = b.wrap && b.cols * N > 8192 ? b.wrap : b.cols, per = Math.ceil(b.cols / w);
-  const out = new PNG({ width: w * N, height: 3 * per * N });
-  for (let row = 0; row < 3; row++) for (let c = 0; c < b.cols; c++) PNG.bitblt(src, out, c * N, row * N, N, N, (c % w) * N, (row * per + Math.floor(c / w)) * N);
+  const N = b.frame, NH = b.frameH ?? b.frame, w = b.wrap && b.cols * N > 8192 ? b.wrap : b.cols, per = Math.ceil(b.cols / w);
+  const out = new PNG({ width: w * N, height: 3 * per * NH });
+  for (let row = 0; row < 3; row++) for (let c = 0; c < b.cols; c++) PNG.bitblt(src, out, c * N, row * NH, N, NH, (c % w) * N, (row * per + Math.floor(c / w)) * NH);
   fs.writeFileSync(path.join(UNITS, `${b.id}.png`), PNG.sync.write(out));
   for (const f of Object.values(b.fx)) fs.copyFileSync(path.join(SRC, f.src), path.join(OUT, f.def.file));
-  man.bosses[b.id] = { file: `${b.id}.png`, fw: N, cols: b.cols, ...(w !== b.cols ? { wrap: w } : {}), anims: b.anims, fx: Object.fromEntries(Object.entries(b.fx).map(([k, f]) => [k, f.def])), skills: b.skills };
+  man.bosses[b.id] = { file: `${b.id}.png`, fw: N, ...(NH !== N ? { fh: NH } : {}), cols: b.cols, ...(w !== b.cols ? { wrap: w } : {}), anims: b.anims, fx: Object.fromEntries(Object.entries(b.fx).map(([k, f]) => [k, f.def])), skills: b.skills };
   // лист босса в общем каталоге юнитов — с его кадром (иначе сборщик ассетов возьмёт высоту / 3)
-  setUnit(b.id, N);
+  setUnit(b.id, N, NH);
+  unitFrame(b.id, N, NH);
   for (const u of b.units ?? []) {
     fs.copyFileSync(path.join(SRC, u.src), path.join(UNITS, `${u.id}.png`));
-    setUnit(u.id, u.frame);
+    setUnit(u.id, u.frame, u.frameH);
+    unitFrame(u.id, u.frame, u.frameH);
   }
   unitsTouched = true;
   console.log(`  ${b.id}: лист ${N}×${N} (${b.cols} столбцов${w !== b.cols ? `, перенос по ${w}` : ""}), эффекты ${Object.keys(b.fx).join(", ")}`);

@@ -146,6 +146,7 @@ export class ZoneBoss extends Boss {
     if (!tank || !this.inArena().length) return;
     if (ab.break) { this.channel(ab); return; }
     if (ab.cage) { this.cages(ab); return; }
+    if (ab.doubles) { this.doubles(ab); return; }
     const waves: ZbWave[] = [ab, ...(ab.then ?? [])];
     // занятость: сумма волн (с рядами и травлей)
     let total = 0;
@@ -156,6 +157,58 @@ export class ZoneBoss extends Boss {
     this.face(tank.x, tank.y);
     if (Math.random() < 0.6) this.line(this.card.lines.abilities[ab.id]);
     this.wave(ab, waves, 0, null, this.epoch);
+    if (ab.mirror) this.mirrorWave(ab);
+  }
+
+  /** Мираж-двойники (кольцо, doubles). */
+  private mirages = new Set<Mob>();
+  private doubles(ab: ZbAbility) {
+    const w = this.w, m = this.m, d = ab.doubles!, epoch = this.epoch;
+    const def = MOBS[`${m.def.id}_mirage`];
+    if (!def) return;
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
+    for (const old of this.mirages) if (!old.dead) { w.removeMob(old); this.adds.delete(old); }
+    this.mirages.clear();
+    const spots: { x: number; y: number }[] = [];
+    const a0 = Math.random() * Math.PI * 2;
+    for (let k = 0; k < d.count; k++) {
+      for (let rr = this.arena * 0.78; rr > 40; rr -= 20) {
+        const a = a0 + (k / d.count) * Math.PI * 2;
+        const x = Math.round(m.home.x + Math.cos(a) * rr), y = Math.round(m.home.y + Math.sin(a) * rr);
+        if (walkable(w.map, x, y, 12)) { spots.push({ x, y }); break; }
+      }
+    }
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: spots.flatMap((s) => [s.x, s.y]), r: ab.r });
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead) return;
+      for (const s of spots) {
+        const mob = new Mob(w.uid("d"), def, m.level, { x: s.x, y: s.y });
+        mob.summoned = true;
+        w.addMob(mob);
+        this.adds.add(mob);
+        this.mirages.add(mob);
+        w.later(d.holdMs, () => { if (!mob.dead && epoch === this.epoch) { w.removeMob(mob); this.adds.delete(mob); this.mirages.delete(mob); } });
+      }
+    });
+  }
+  /** Каждый живой двойник повторяет кольцо босса со своего места (убитый — нет). */
+  private mirrorWave(ab: ZbAbility) {
+    const w = this.w, m = this.m, epoch = this.epoch, k = kindOf(ab.k);
+    for (const d of this.mirages) {
+      if (d.dead) continue;
+      const shape = ab.tele === "ring" ? "ring" : "circle";
+      w.emit({ t: "zb", id: m.id, ab: `${ab.id}_mirage`, w: 0, ms: ab.windupMs, pts: [Math.round(d.x), Math.round(d.y)], r: ab.r, r2: ab.r2 });
+      const hit = new Set<string>();
+      w.telegraph(m, shape, d.x, d.y, ab.r, ab.windupMs, (p) => {
+        if (epoch !== this.epoch || d.dead || hit.has(p.id)) return;
+        hit.add(p.id);
+        w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
+        if (p.dead) this.killed(p);
+      }, { r2: ab.r2, k });
+    }
   }
 
   /**
@@ -399,6 +452,19 @@ export class ZoneBoss extends Boss {
         if (af?.burnMs) { p.burnUntil = w.time + af.burnMs; w.emit({ t: "zb", id: m.id, ab: "burn", w: 0, ms: af.burnMs, tgt: p.id }); }
         if (af?.poisonMs) p.poisonUntil = w.time + af.poisonMs;
         // цепь: рывок к боссу на pull px (не ближе 48 px к нему, только на проходимое место)
+        // воронка: рывок к центру метки на pullMark px
+        if (af?.pullMark && !p.dead) {
+          const dx = mk.x - p.x, dy = mk.y - p.y, d = Math.hypot(dx, dy);
+          const go = Math.min(af.pullMark, d);
+          if (go > 4) {
+            const x = p.x + (dx / d) * go, y = p.y + (dy / d) * go;
+            if (walkable(w.map, x, y, 10)) {
+              w.emit({ t: "blink", id: p.id, x0: p.x, y0: p.y, x1: x, y1: y, k: "charge" });
+              p.unit.x = x;
+              p.unit.y = y;
+            }
+          }
+        }
         if (af?.pull && !p.dead) {
           const dx = m.x - p.x, dy = m.y - p.y, d = Math.hypot(dx, dy);
           const go = Math.min(af.pull, Math.max(0, d - 48));

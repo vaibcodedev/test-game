@@ -1,0 +1,31 @@
+  // ---------- частицы и эффекты ----------
+  if (p.sigil > 0.02) X.sigil = { c: [pel[0], pel[1] - 8, 42], r: 15.5 * (0.85 + 0.15 * p.sigil), ph: p.swirlPh, k: p.sigil };
+  if (p.ring > 0.02) X.rings.push({ c: p.ringAt ?? [pel[0], pel[1], 0], r: 3 + 22 * p.ring, k: 1 - p.ring });
+  if (p.flash > 0.02) X.flash = { at: p.flashAt ?? add(pearl, [0, 0, 0]), k: p.flash };
+  for (let i = 0; i < 2; i++) if (p.dust[i] > 0.05) X.dust.push({ at: i === 0 && p.flashAt ? [p.flashAt[0], p.flashAt[1], 0] : [pel[0] + (i ? -6 : 6), pel[1] + 6, 0], k: p.dust[i] });
+  if (p.swirl > 0.02) X.swirl = { c: [pel[0], pel[1], 0], k: p.swirl, ph: p.swirlPh };
+
+  if (p.stars > 0.02) X.stars = { at: H([0, 0, 55]), k: p.stars };
+  // тело — в двойном разрешении (K·RS), слои 2D — в пикселях кадра 1× (K)
+  scaleScene(S, K * RS);
+  const sk = (v: V3) => mul(v, K);
+  if (X.sigil) X.sigil = { ...X.sigil, c: sk(X.sigil.c), r: X.sigil.r * K };
+  X.rings.forEach((r) => { r.c = sk(r.c); r.r *= K; });
+  if (X.flash) X.flash.at = sk(X.flash.at);
+  X.dust.forEach((d) => (d.at = sk(d.at)));
+  if (X.swirl) X.swirl.c = sk(X.swirl.c);
+  X.sparks.forEach((q) => (q.at = sk(q.at)));
+  if (X.stars) X.stars.at = sk(X.stars.at);
+  X.glints = X.glints.map(sk);
+  return { S, X };
+}
+
+function scaleScene(S: Scene, s: number) {
+  for (const q of S.prims) {
+    q.a = mul(q.a, s); q.b = mul(q.b, s); q.anc = mul(q.anc, s);
+    q.ra *= s; q.rb *= s; q.r = mul(q.r, s); q.rr *= s;
+    if (q.cut) q.cut = { n: q.cut.n, d: q.cut.d * s };
+  }
+  S.gk = S.gk.map((k) => k * s);
+  for (const st of S.stamps) st.at = mul(st.at, s);
+}

@@ -27,6 +27,8 @@ const ARCH = { cx: 48, aw: 30, top: 70, by: 146 };
 const ROYAL = { solgard: "war-royal-sol", umbrath: "war-royal-umb" } as const;
 const DRAPE = { solgard: "std-drape-sol", umbrath: "std-drape-umb" } as const;
 const FOOT = 18;
+/** Кадров створки ворот при открытии и закрытии. */
+const LEAF_FRAMES = 8;
 /** Дым и угли над проломом — столько мс, затем гаснут. */
 const SMOKE_MS = SIEGE.gates.smokeMs;
 
@@ -131,6 +133,25 @@ export class SiegeView {
       }
       ctx.putImageData(out, 0, 0);
       c.refresh();
+      // 8 кадров створки, распахивающейся ОТ зрителя на петле у края проёма (перспектива: свободный край уже, выше и темнее) — общий конвейер ворот (shared/gates.ts)
+      const left = key === kl;
+      for (let k = 1; k <= LEAF_FRAMES; k++) {
+        const th = (k / LEAF_FRAMES) * 1.68, sn = Math.sin(th), cs = Math.cos(th), xf = Math.max(0.1 * W, W * cs), rise = 16 * sn, Hd = H + 18;
+        const fk = `${key}_${k}`, fc = tx.createCanvas(fk, W, Hd)!, fctx = fc.getContext(), fo = fctx.createImageData(W, Hd);
+        for (let x = 0; x < W; x++) {
+          const t = left ? x / xf : (W - 1 - x) / xf;
+          if (t > 1) continue;
+          const sc = 1 - 0.3 * sn * t, ybot = Hd - 1 - rise * t, ytop = ybot - H * sc, sx = Math.min(W - 1, Math.floor(t * (W - 1))), srcX = left ? sx : W - 1 - sx;
+          for (let y = Math.max(0, Math.floor(ytop)); y <= Math.min(Hd - 1, Math.floor(ybot)); y++) {
+            const sy = Math.min(H - 1, Math.max(0, Math.floor(((y - ytop) / Math.max(1, ybot - ytop)) * H))), si = (sy * W + srcX) * 4, o = (y * W + x) * 4;
+            if (out.data[si + 3] < 8) continue;
+            const sh = 1 - 0.38 * sn * t;
+            fo.data[o] = out.data[si] * sh; fo.data[o + 1] = out.data[si + 1] * sh; fo.data[o + 2] = out.data[si + 2] * sh; fo.data[o + 3] = out.data[si + 3];
+          }
+        }
+        fctx.putImageData(fo, 0, 0);
+        fc.refresh();
+      }
     }
     return [kl, kr];
   }
@@ -168,10 +189,10 @@ export class SiegeView {
         const left = im.x - 48 + ARCH.cx - ARCH.aw, right = im.x - 48 + ARCH.cx + ARCH.aw, top = v.g.objY - 146 + ARCH.top;
         v.leafL ??= this.sc.add.image(0, 0, lv[0]).setOrigin(0, 0);
         v.leafR ??= this.sc.add.image(0, 0, lv[1]).setOrigin(1, 0);
-        const e = easeInOutSine(v.k), sx = 1 - 0.86 * e, shade = Math.round(255 - 90 * e);
-        const tint = (shade << 16) | (shade << 8) | shade;
-        v.leafL.setVisible(v.k < 1).setPosition(left, top).setScale(sx, 1).setTint(tint).setDepth(im.depth + 0.01);
-        v.leafR.setVisible(v.k < 1).setPosition(right, top).setScale(sx, 1).setTint(tint).setDepth(im.depth + 0.01);
+        const e = easeInOutSine(v.k), f = (window as unknown as { __gateFrame?: number }).__gateFrame ?? Math.round(e * LEAF_FRAMES);
+        const tl = f > 0 && this.sc.textures.exists(`${lv[0]}_${f}`) ? `${lv[0]}_${f}` : lv[0], tr = f > 0 && this.sc.textures.exists(`${lv[1]}_${f}`) ? `${lv[1]}_${f}` : lv[1];
+        v.leafL.setTexture(tl).setVisible(v.k < 1 || (window as unknown as { __gateFrame?: number }).__gateFrame !== undefined).setPosition(left, top - (f > 0 ? 18 : 0)).setDepth(im.depth + 0.01).clearTint();
+        v.leafR.setTexture(tr).setVisible(v.k < 1 || (window as unknown as { __gateFrame?: number }).__gateFrame !== undefined).setPosition(right, top - (f > 0 ? 18 : 0)).setDepth(im.depth + 0.01).clearTint();
       }
     } else { v.leafL?.setVisible(false); v.leafR?.setVisible(false); }
     this.updateWreck(v, im, broken && near, dt, now);

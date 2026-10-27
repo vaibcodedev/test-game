@@ -10,6 +10,15 @@ import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
 import { CHUNK, cellHash, chunkRect, chunkRows, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
 import { NO_SHADOW, Shadow, shadowTick } from "./shadows";
+import * as sfx from "./sfx";
+import { DUNGEON_GATES } from "../../../shared/dungeon";
+
+/** Ворота данжа «Пепельные чертоги»: состояние (id → открыты) приходит с сервера (DungeonRoom: dg:gate, dg:gates); створки на экране плавно доходят до него. */
+export const dgGateOpen = new Map<string, boolean>();
+/** Отладка/съёмка: принудительный кадр створок (id → 0..7), см. tools/gen/dungeon-shots.ts. */
+export const dgGateForce = new Map<string, number>();
+if (typeof window !== "undefined") (window as unknown as { __dgGateForce: Map<string, number> }).__dgGateForce = dgGateForce;
+interface DgGate { img: Phaser.GameObjects.Image; id: string; prefix: string; t: number }
 
 export const DEPTH = { water: -1000, terrain: -900, walls: -800, overlay: -700, ground: -600, top: 1e6 };
 
@@ -112,6 +121,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   // узлы добычи: картинка и свечение прячутся, пока ресурс исчерпан
   const nodeOf = new Map<MapObject, number>(m.nodes.map((n) => [m.objects[n.id], n.id]));
   const nodeObjs = new Map<number, Phaser.GameObjects.GameObject[]>();
+  const dgGates = new Set<DgGate>();
   const depleted = new Set<number>();
   const NODE_GLOW: Record<string, number> = { node_cactus: 0xc8ff8a, node_ice: 0x9ae0ff, node_obsidian: 0xff7a2a, node_pearl: 0xe8d8ff };
   // анимированные объекты (огонь, горны, манекены, осадные машины, повреждённые штандарты — задача 132, шаг 10): вид объекта = id листа
@@ -174,7 +184,19 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       else if (k === "dg_window_c_a") glow(objs, o.x, o.y - 14, 0xc04a8a, 1.2, 0.32);
       else if (k === "dg_window_c_b") glow(objs, o.x, o.y - 14, 0x4a8ac0, 1.2, 0.32);
       else if (k.startsWith("dg_grate")) glow(objs, o.x, o.y - 10, 0xff7a30, 1.2, 0.5, true);
-      else if (k === "dg_gate_a") glow(objs, o.x, o.y - 30, 0xff7a30, 2.2, 0.5, true);
+      else if (k === "dg_entrance") { glow(objs, o.x, o.y - 40, 0xff5a20, 3.2, 0.5, true); glow(objs, o.x - 66, o.y - 40, 0xff7a30, 1.6, 0.4, true); glow(objs, o.x + 66, o.y - 40, 0xff7a30, 1.6, 0.4, true); }
+      else if (k === "dg_exit") glow(objs, o.x, o.y - 56, 0xaad0ff, 2.2, 0.4);
+      else if (k === "dg_door_w" || k === "dg_port") {
+        if (k === "dg_port") glow(objs, o.x, o.y - 22, 0xff7a30, 2.0, 0.35, true);
+        const gate = DUNGEON_GATES.find((q) => Math.abs(q.cx - o.x) < 2 && Math.abs(q.cy + 16 - o.y) < 40);
+        if (gate) {
+          const g: DgGate = { img: img as Phaser.GameObjects.Image, id: gate.id, prefix: k, t: dgGateOpen.get(gate.id) ? 1 : 0 };
+          dgGates.add(g);
+          img.setDepth(o.y - 3);
+          (img as Phaser.GameObjects.Image).setTexture(`o_${k}_${g.t ? 7 : 0}`);
+          img.once("destroy", () => dgGates.delete(g));
+        }
+      }
       else if (k === "dg_arch_t") glow(objs, o.x, o.y - 30, 0xff7a30, 1.8, 0.3, true);
       else if (k === "dg_arch_c") glow(objs, o.x, o.y - 30, 0x4aa0c8, 2.0, 0.3);
       else if (k === "dg_dais") {
@@ -292,6 +314,19 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const PAD = 48;
   const update = (cam: Phaser.Cameras.Scene2D.Camera) => {
     shadowTick();
+    // ворота данжа: створки доходят до состояния сервера (кадры o_dg_door_w_0..7 и o_dg_port_0..7), звук при начале хода
+    if (dgGates.size) {
+      const dt = Math.min(0.1, scene.game.loop.delta / 1000);
+      for (const g of dgGates) {
+        const target = dgGateOpen.get(g.id) ? 1 : 0, was = g.t;
+        if (target > g.t) g.t = Math.min(1, g.t + dt / 0.9); else if (target < g.t) g.t = Math.max(0, g.t - dt / 0.9);
+        if (was === 0 && g.t > 0) sfx.play(g.prefix === "dg_port" ? "clink" : "step", 0.7);
+        else if (was === 1 && g.t < 1) sfx.play("clink", 0.5);
+        else if (was > 0 && g.t === 0) sfx.play("slam", 0.6);
+        const key = `o_${g.prefix}_${dgGateForce.get(g.id) ?? Math.round(g.t * 7)}`;
+        if (g.img.texture.key !== key && scene.textures.exists(key)) g.img.setTexture(key);
+      }
+    }
     const v = cam.worldView;
     follow(v);
     const vx0 = v.x - PAD, vy0 = v.y - PAD, vx1 = v.right + PAD, vy1 = v.bottom + PAD;

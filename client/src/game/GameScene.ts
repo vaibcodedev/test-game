@@ -14,6 +14,9 @@ import { WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
 import { ARENA_BLOCKED_TEXT, arenaBlocked, generateArenaMap, MODE_NAMES } from "../../../shared/arena";
 import { MOUNTS } from "../../../shared/mounts";
 import { generateRaidMap } from "../../../shared/raid";
+import { DUNGEON_EXIT, DUNGEON_GATES, generateDungeonMap } from "../../../shared/dungeon";
+import { CELL_BLOCK, DUNGEON_DOOR } from "../../../shared/map";
+import { fmtLeft } from "../../../shared/dungeon";
 import { net, type UnitState } from "../net";
 import { PETS } from "../../../shared/pets";
 import { CLASSES } from "../../../shared/classes";
@@ -21,12 +24,13 @@ import { factionsHostile, landLabel, pvpPlace, zoneLand } from "../../../shared/
 import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
-import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
+import { buildWorld, DEPTH, dgGateOpen, zoneTint, type WorldView } from "./terrain";
 import { setLightMode } from "./shadows";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { capBand, HALO, placeText, syncTextRes, worldText } from "./worldText";
 import { NPC_ICON_SIZE, NPC_ICON_TEX, npcIconFrame } from "./npcIcons";
 import { ArenaIntroFx } from "./arenaIntro";
+import { HoverGlow, type GlowSrc } from "./hoverGlow";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
@@ -44,9 +48,9 @@ import { moveGated } from "../../../shared/siege";
 import { STATUES, type StatueKey } from "../ui/statue";
 import { T } from "../../../shared/texts";
 
-type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue";
+type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue" | "dgdoor" | "dgexit";
 /** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
-type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number } };
+type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number }; glow?: Omit<GlowSrc, "depth"> };
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
 const AMBIENCE: Partial<Record<Zone, string>> = {
@@ -148,6 +152,8 @@ export class GameScene extends Phaser.Scene {
   private clickPick: PickOut = { kind: "ground", id: null, ref: null };
   /** Подсветка мешка или узла добычи под курсором (их берёт ЛКМ): одна картинка на сцену, переезжает за наведением. */
   private takeGlow!: Phaser.GameObjects.Image;
+  /** Свечение по силуэту NPC, статуи, двери, камня, входа под курсором (hoverGlow.ts). */
+  private hoverGlow!: HoverGlow;
   /** Порядок при наложении (game/hit.ts): точно → передний → текущая цель → ближе центр. */
   private best = new PickBest();
   private pickSrc: PickSource = {
@@ -217,7 +223,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once("destroy", done);
 
     this.hud = this.registry.get("hud") as Hud;
-    this.map = net.kind === "arena" ? generateArenaMap() : net.kind === "raid" ? generateRaidMap() : generateMap(net.seed);
+    this.map = net.kind === "arena" ? generateArenaMap() : net.kind === "raid" ? generateRaidMap() : net.kind === "dungeon" ? generateDungeonMap() : generateMap(net.seed);
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
@@ -272,14 +278,16 @@ export class GameScene extends Phaser.Scene {
       for (const c of CITIES) {
         // камень телепорта нарисован картой; здесь только невидимая точка нажатия
         const st = this.add.sprite(c.stone.x, c.stone.y - 14, "u_merchant", 0).setVisible(false);
-        this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: T("ui.cities.430") });
+        this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: T("ui.cities.430"), glow: { tex: "o_teleport_stone", x: c.stone.x, y: c.stone.y, ox: 0.5, oy: 1 } });
       }
       // статуи правителей в столицах (задача 141): невидимая точка нажатия по высоте статуи, окно истории — data/statues.json
       for (const o of this.map.objects) {
         const key: StatueKey | null = o.kind === "sun_statue" ? "solgard" : o.kind === "umb_statue" ? "umbrath" : null;
         if (!key) continue;
-        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: T("ui.GameScene.754", { name: STATUES[key].name }), hit: { dy: 66, r: 44 } });
+        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: T("ui.GameScene.754", { name: STATUES[key].name }), hit: { dy: 66, r: 44 }, glow: { tex: `o_${o.kind}`, x: o.x, y: o.y, ox: 0.5, oy: 1 } });
       }
+      // вход в подземелье «Пепельные чертоги» (задача 139): большая лестница на карте мира, точка нажатия у основания
+      this.npcs.push({ sprite: this.add.sprite(DUNGEON_DOOR.x, DUNGEON_DOOR.y, "u_merchant", 0).setVisible(false), kind: "dgdoor", id: "dungeon", name: "Пепельные чертоги · вход", hit: { dy: 70, r: 96 }, glow: this.objGlow("dg_entrance") });
       this.scenes = new Scenes(this, this.map);
       this.setupEncounters();
       // двери интерьеров (задача 144): снаружи — у двери здания, изнутри — в нижней стене зала; точки нажатия невидимы
@@ -314,7 +322,25 @@ export class GameScene extends Phaser.Scene {
         if (m.ph === "arrive") this.arrive = { x: m.x, y: m.y, at: this.time.now };
       }));
       this.arrive = null;
-    } else { this.scenes = null; this.interiors = null; this.room = null; }
+    } else {
+      this.scenes = null; this.interiors = null; this.room = null;
+      // подземелье: лестница выхода у входа
+      if (net.kind === "dungeon") this.npcs.push({ sprite: this.add.sprite(DUNGEON_EXIT.x, DUNGEON_EXIT.y, "u_merchant", 0).setVisible(false), kind: "dgexit", id: "exit", name: "Выход из подземелья", hit: { dy: 30, r: 48 }, glow: this.objGlow("dg_exit") });
+    }
+    // ворота подземелья: сервер шлёт состояние; клиент зеркалит проходимость клеток просвета (клик-ход и расчёт пути)
+    if (net.kind === "dungeon") {
+      const apply = (id: string, open: boolean) => {
+        dgGateOpen.set(id, open);
+        const g = DUNGEON_GATES.find((q) => q.id === id);
+        if (g) for (const [cx, cy] of g.cells) { const i = cy * this.map.w + cx; if (open) this.map.cell[i] &= ~CELL_BLOCK; else this.map.cell[i] |= CELL_BLOCK; }
+      };
+      dgGateOpen.clear();
+      for (const g of DUNGEON_GATES) apply(g.id, false);
+      this.cleanup.push(net.on("dg:gate", (m) => apply(m.id, m.open)));
+      this.cleanup.push(net.on("dg:gates", (m) => { for (const g of DUNGEON_GATES) apply(g.id, m.open.includes(g.id)); }));
+    }
+    // затемнение перед переходом в подземелье и обратно (сервер шлёт dungeon:fade, затем резервацию — сцена пересоздаётся)
+    this.cleanup.push(net.on("dungeon:fade", (m) => { this.clickGoal = null; this.pendingNpc = null; this.cameras.main.fadeOut(m.ms ?? 300, 0, 0, 0); }));
 
     if (mouseOpts.chase) net.send("chase", { on: true });
     this.aim = new AimPreview(this);
@@ -322,6 +348,8 @@ export class GameScene extends Phaser.Scene {
     this.arenaIntro = net.kind === "arena" ? new ArenaIntroFx(this, net) : null;
     this.cleanup.push(() => { this.arenaIntro?.destroy(); this.arenaIntro = null; });
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
+    this.hoverGlow = new HoverGlow(this);
+    this.cleanup.push(() => this.hoverGlow.destroy());
     this.takeGlow = this.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xffe6a0).setAlpha(0.8).setVisible(false);
 
     net.watchUnits("players", (id, u) => this.addUnit(id, u), (id) => this.removeUnit(id));
@@ -748,7 +776,7 @@ export class GameScene extends Phaser.Scene {
     c.aim = !ignoreAim && !!this.aimState;
     c.right = right;
     c.action = keybinds.presetId !== "classic";
-    c.world = net.kind === "world";
+    c.world = net.kind === "world" || net.kind === "dungeon";
     c.css = this.css;
     c.bigTargets = mouseOpts.bigTargets;
     return pickOrder(c, this.pickSrc, out);
@@ -759,7 +787,7 @@ export class GameScene extends Phaser.Scene {
    *  свои ник и полоска включаются настройками «Свои имена» и «Свои полоски», а не наведением.
    *  Без аллокаций: курсор в мире — один Vector2, результаты — постоянные объекты. */
   private updateHover() {
-    let hov: string | null = null, foe = true, cur: CursorKind = "arrow", glow = false;
+    let hov: string | null = null, foe = true, cur: CursorKind = "arrow", glow = false, npcGlow: Npc | null = null;
     const me = this.me;
     if (this.mouseSeen && !this.overUi && this.input.manager.isOver && me && !me.dead) {
       const ap = this.input.activePointer;
@@ -773,8 +801,10 @@ export class GameScene extends Phaser.Scene {
         const gx = bag ? bag.x : n ? n.x : 0, gy = bag ? bag.y - 8 : n ? n.y - 14 : 0;
         if (bag || n) { glow = true; this.takeGlow.setPosition(gx, gy).setDepth(gy + 18).setScale(n ? 1.3 : 1); }
       }
+      else if (l.kind === "npc") npcGlow = l.ref as Npc;
       cur = this.cursorAt(this.pickAt(true, this.cursorPick));
     }
+    this.hoverGlow.update(npcGlow ? this.glowOf(npcGlow) : null, this.game.loop.delta, this.time.now);
     if (hov !== this.hoverId) {
       const old = this.hoverId ? this.units.get(this.hoverId) : undefined;
       if (old) old.hovered = false;
@@ -784,6 +814,22 @@ export class GameScene extends Phaser.Scene {
     if (v) { v.hovered = true; v.hoverFoe = foe; }
     if (cur !== this.cursorKind) { this.cursorKind = cur; setCursor(cur); }
     if (glow !== this.takeGlow.visible) this.takeGlow.setVisible(glow);
+  }
+
+  /** Картинка объекта карты по виду (вход и выход подземелья): силуэт для свечения. */
+  private objGlow(kind: string): Npc["glow"] {
+    const o = this.map.objects.find((q) => q.kind === kind);
+    return o && this.textures.exists(`o_${kind}`) ? { tex: `o_${kind}`, x: o.x, y: o.y, ox: 0.5, oy: 1 } : undefined;
+  }
+
+  /** Что светить для NPC под курсором: силуэт объекта карты, текущий кадр видимого NPC или пятно по зоне нажатия (двери в стенах зданий). */
+  private glowOf(n: Npc): GlowSrc | null {
+    const s = n.sprite;
+    if (!s.active) return null;
+    if (n.glow) return { ...n.glow, depth: n.glow.y };
+    if (s.visible && s.angle === 0) return { tex: s.texture.key, frame: s.frame.name, x: s.x, y: s.y, ox: s.originX, oy: s.originY, flip: s.flipX, depth: s.depth };
+    const r = Math.min(n.hit?.r ?? 18, 40);
+    return { tex: null, x: s.x, y: s.y - (n.hit?.dy ?? 14), ox: 0.5, oy: 0.5, depth: s.y + 1, spot: { w: r * 2.4, h: r * 2 } };
   }
 
   /** Враг ли юнит: мобы всегда; игроки — на арене из другой команды, в мире — противоположная фракция в спорной зоне или нейтральном городе (как World.hostile). */
@@ -1108,7 +1154,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (const n of this.npcs) {
       const d = Math.hypot(n.sprite.x - hx, n.sprite.y - hy);
-      out.push({ rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? T("ui.GameScene.759") : n.kind === "door" || n.kind === "statue" ? n.name ?? T("ui.GameScene.760") : T("ui.GameScene.761", { name: n.name ?? "собеседник" }), go: () => { reset(); this.talk(n); } });
+      out.push({ rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" || n.kind === "dgdoor" || n.kind === "dgexit" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? T("ui.GameScene.759") : n.kind === "dgdoor" ? this.dungeonHint(n.name ?? "") : n.kind === "dgexit" ? n.name ?? "" : n.kind === "door" || n.kind === "statue" ? n.name ?? T("ui.GameScene.760") : T("ui.GameScene.761", { name: n.name ?? "собеседник" }), go: () => { reset(); this.talk(n); } });
     }
     return out;
   }
@@ -1132,6 +1178,13 @@ export class GameScene extends Phaser.Scene {
 
   /** Подойти к NPC и открыть его окно. */
   /** Дальность разговора: статую на кургане или постаменте осматривают с любой стороны подножия, а не из одной точки вплотную. */
+  /** Подсказка у входа в подземелье: уровень и состояние трофеев босса на сегодня («ещё 14:20» до новых). */
+  private dungeonHint(name: string): string {
+    const st = net.dungeon;
+    if (!st) return name;
+    const left = Math.max(0, st.leftMs - (Date.now() - st.at));
+    return st.looted && left > 0 ? `${name} · трофеи Повелителя Пепла уже получены, новые через ${fmtLeft(left)}` : `${name} · трофеи Повелителя Пепла сегодня доступны`;
+  }
   private talkRange(n: Npc) { return n.kind === "statue" ? STATUE_RANGE : TALK_RANGE; }
   talk(n: Npc) {
     const d = Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y);
@@ -1154,6 +1207,8 @@ export class GameScene extends Phaser.Scene {
     else if (n.kind === "quest") this.hud.quest.open(n.id!);
     else if (n.kind === "stone") this.hud.tp.open(this.pos);
     else if (n.kind === "door") net.send("door", { id: n.id });
+    else if (n.kind === "dgdoor") net.send("dungeon:enter", {});
+    else if (n.kind === "dgexit") net.send("dungeon:leave", {});
     else if (n.kind === "statue") this.hud.statue.open(n.id as StatueKey);
     else if (n.kind === "rumor") this.hud.rumor.open(n.id!, n.name!);
     else if (n.kind === "enc") this.hud.enc.open(n.id!);
@@ -1375,7 +1430,7 @@ export class GameScene extends Phaser.Scene {
       if (z === Zone.Arena) this.hud.showZone(T("ui.GameScene.762", { v1: MODE_NAMES[net.arena?.mode ?? "1v1"] }), T("ui.GameScene.763"));
       else {
         // фракции: спорная зона (PvP с противоположной фракцией) и нейтральный город (бой запрещён)
-        const place = net.kind === "world" ? pvpPlace(this.map, this.pos.x, this.pos.y) : "peace";
+        const place = net.kind === "world" || net.kind === "dungeon" ? pvpPlace(this.map, this.pos.x, this.pos.y) : "peace";
         // опасность (кольцо 40–80 — «Небезопасная зона», Поля — «Опасная зона») или земли фракции, затем уровни — как на карте мира и миникарте
         const lv = T("ui.GameScene.764", { levels: ZONES[z].levels[0], levels2: ZONES[z].levels[1] }), land = zoneLand(z);
         const tag = zoneDanger(z) ?? (land ? landLabel(land) : null);
@@ -1391,7 +1446,7 @@ export class GameScene extends Phaser.Scene {
     // ночь (общий цикл по часам): затемнение и синева на поверхности, не в подземельях/арене/под водой
     const zs = zoneStyle(z);
     const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
-    setLightMode(this.room || z === Zone.Arena ? "none" : z === Zone.Dungeon ? "torch" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
+    setLightMode(this.room || z === Zone.Arena || z === Zone.Dungeon ? "none" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
     const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5);
     this.interiors?.update(dt, night, this.room);

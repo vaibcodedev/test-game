@@ -12,6 +12,7 @@ import { services } from "./arena/registry";
 import { GameDB } from "./db";
 import { ArenaRoom } from "./rooms/ArenaRoom";
 import { RaidRoom } from "./rooms/RaidRoom";
+import { DungeonRoom } from "./rooms/DungeonRoom";
 import { homeCity } from "../../shared/cities";
 import { classFaction } from "../../shared/classes";
 import { WorldRoom } from "./rooms/WorldRoom";
@@ -70,10 +71,12 @@ if (backupsOn) {
 }
 gameServer.define("arena", ArenaRoom);
 gameServer.define("raid", RaidRoom);
+gameServer.define("dungeon", DungeonRoom);
 
 // HOST — только для десктопа (127.0.0.1, без запроса брандмауэра); без переменной слушаем все интерфейсы, как раньше
 await gameServer.listen(PORT, process.env.HOST || undefined);
 await matchMaker.createRoom(ROOM_NAME, {});
+await matchMaker.createRoom("dungeon", {}); // «Пепельные чертоги»: одна общая комната, живёт всегда
 console.log(`[server] Пепельный Предел: http://localhost:${PORT}  (ws на том же порту)`);
 if (!fs.existsSync(path.join(dist, "index.html"))) console.log("[server] Клиент в режиме разработки: http://localhost:5173");
 

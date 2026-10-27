@@ -167,6 +167,40 @@ for (const c of CARDS) {
       }
       continue;
     }
+    if (ab.doubles) {
+      // мираж-двойники: после замаха стоят по краю арены, гибнут от одного удара; кольцо повторяют только живые
+      mob.reset();
+      (w as unknown as { hazards: unknown[] }).hazards = [];
+      for (const a of boss.abilities) a.at = 1e9;
+      const p = hero("warrior", mob.x + 150, mob.y + 30, c.levels.boss);
+      mob.state = "chase";
+      mob.targetId = p.id;
+      mob.addThreat(p.id, 100);
+      mob.attackAt = w.time + 1e9;
+      log.length = 0;
+      boss.run(ab);
+      for (let t = 0; t < ab.windupMs + 600; t += 50) { p.unit.hp = p.unit.maxHp; w.update(50); }
+      const ds = [...w.mobs.values()].filter((m) => m.def.id === `${c.id}_mirage` && !m.dead);
+      const edge = ds.every((d) => Math.hypot(d.x - mob.home.x, d.y - mob.home.y) > 150 && Math.hypot(d.x - mob.home.x, d.y - mob.home.y) < 330);
+      check(`${c.id}.${ab.id}: ${ab.doubles.count} двойников встали по краю арены`, ds.length === ab.doubles.count && edge, `двойников ${ds.length}`);
+      check(`${c.id}.${ab.id}: двойник — от одного удара (здоровье < 1 % босса), без добычи`, ds.every((d) => d.unit.maxHp < mob.unit.maxHp * 0.01 && d.def.xp === 0 && d.def.gold === 0), `${ds[0]?.unit.maxHp} из ${mob.unit.maxHp}`);
+      const tw = c.abilities.find((x) => x.id === ab.doubles!.mirror)!;
+      const zbs = (id: string) => log.filter((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === id).length;
+      log.length = 0;
+      boss.run(tw);
+      w.update(100);
+      const all = zbs(`${tw.id}_mirage`);
+      for (let t = 0; t < tw.windupMs + 400; t += 50) { p.unit.hp = p.unit.maxHp; w.update(50); }
+      if (ds[0]) w.killMob(ds[0]);
+      mob.reset();
+      check(`${c.id}.${tw.id}: кольцо повторяет каждый живой двойник (${all} из ${ds.length})`, all === ds.length);
+      for (const a of boss.abilities) a.at = 1e9;
+      mob.state = "chase";
+      mob.targetId = p.id;
+      mob.addThreat(p.id, 100);
+      w.removePlayer(p.id);
+      continue;
+    }
     for (const mode of ["stand", "dodge"] as const) {
       // чистый бой: босс дома, полон, умения сами не идут, пятна прошлых прогонов убраны
       mob.reset();

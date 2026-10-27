@@ -4,6 +4,7 @@
  * для чужих ворота — отдельная проверка moveGated поверх moveWithCollision: свои (герои, стража, отряды фракции ворот) проходят, чужие
  * упираются; сломанные (GATE_BROKEN) пропускают всех. Сервер и клиент двигают героя одной функцией — предсказание не расходится с сервером.
  */
+import { gateAllows } from "./gates";
 import data from "../data/siege.json";
 import { CITIES, layoutOf } from "./cities";
 import { TILE } from "./constants";
@@ -57,7 +58,7 @@ export const GATE_BROKEN = new Set<string>();
 /** Упирается ли тело (как walkable: ±r по x, ±r/2 по y) в закрытые для этой фракции ворота. */
 export function gateBlocks(x: number, y: number, r: number, faction: string): boolean {
   for (const g of GATES) {
-    if (g.faction === faction || GATE_BROKEN.has(g.id)) continue;
+    if (gateAllows(g.faction, faction, GATE_BROKEN.has(g.id))) continue;
     if (x + r > g.x0 && x - r < g.x1 && y + r * 0.5 > g.y0 && y - r * 0.5 < g.y1) return true;
   }
   return false;
@@ -77,7 +78,7 @@ export function crossesGate(x0: number, y0: number, x1: number, y1: number, fact
   const d = Math.hypot(x1 - x0, y1 - y0);
   if (d < 1 || d > data.gates.dashTiles * TILE) return null;
   for (const g of GATES) {
-    if (g.faction === faction || GATE_BROKEN.has(g.id)) continue;
+    if (gateAllows(g.faction, faction, GATE_BROKEN.has(g.id))) continue;
     // ряд стены пересечён между точками и в пределах проёма
     const a = y0 < g.y0 ? -1 : y0 > g.y1 ? 1 : 0, b = y1 < g.y0 ? -1 : y1 > g.y1 ? 1 : 0;
     if (a === b || a === 0 || b === 0) continue;

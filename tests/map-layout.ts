@@ -17,7 +17,7 @@ import PATROLS from "../data/patrols.json";
 import { CITIES, cityById } from "../shared/cities";
 import { MAP_SEED, PLAYER_SPEED, TILE } from "../shared/constants";
 import { factionLandAt, landLabel } from "../shared/factions";
-import { BOSS_SPAWNS, ZONE_BOSS_SPAWNS, CELL_BLOCK, CELL_RESERVED, DUNGEON, DUNGEON_ROOMS, PLACES, ZONES, ZONE_COUNT, Zone, generateMap, isTownZone, riverX, zoneAtPx, zoneDanger } from "../shared/map";
+import { BOSS_SPAWNS, ZONE_BOSS_SPAWNS, CELL_BLOCK, CELL_RESERVED, DUNGEON_DOOR, DUNGEON_GATE, PLACES, ZONES, ZONE_COUNT, Zone, generateMap, isTownZone, riverX, zoneAtPx, zoneDanger } from "../shared/map";
 import { SETTLEMENTS } from "../shared/settlements";
 import { RAID_GATE } from "../shared/raid";
 import { TOWN } from "../shared/town";
@@ -133,7 +133,7 @@ console.log("2. зеркальность");
   // постройки мест (деревни, лагеря, руины) и указатели у перекрёстков у каждой стороны свои: у них проходимость не зеркалится
   const nearPlace = (x: number, y: number) => PLACES.some((p) => Math.abs(x - p.x) <= 14 && Math.abs(y - p.y) <= 14);
   const nearSign = (x: number, y: number) => world.signs.list.some((q) => Math.abs(x - q.x) <= 6 && Math.abs(y - q.y) <= 6);
-  const nearDungeon = (x: number, y: number) => Math.abs(x - AXIS) <= 40 && y >= DUNGEON.y0 - 14 && y <= DUNGEON.y1 + 14;
+  const nearDungeon = (x: number, y: number) => Math.abs(x - AXIS) <= 12 && Math.abs(y - DUNGEON_GATE.y) <= 10;
   // вершины у границ городов: целая x вершины относится к клетке справа от неё, зеркальная — к клетке слева, поэтому граница зон чуть не совпадает
   const nearCity = (x: number, y: number) => CITIES.some((c) => c.style && Math.abs(x - c.x - 0.5) <= c.half.x + 2.5 && Math.abs(y - c.y - 0.5) <= c.half.y + 2.5);
   for (let y = 0; y < H; y++) for (let x = 0; x < AXIS; x++) {
@@ -284,7 +284,7 @@ const targets: Tgt[] = [
   { name: "Форт запада | форт востока", a: [Math.floor(cityById("fort_solgard")!.spawn.x / TILE), Math.floor(cityById("fort_solgard")!.spawn.y / TILE)], b: [Math.floor(cityById("fort_umbrath")!.spawn.x / TILE), Math.floor(cityById("fort_umbrath")!.spawn.y / TILE)] },
   { name: "Ворота Эмберхолла (запад | восток)", a: emb.w, b: emb.e },
   { name: "Центр Полей (549 | 550)", a: [549, 180] },
-  { name: "Вход в данж (549 | 550)", a: [549, DUNGEON.y0 - 4] },
+  { name: "Вход в данж (549 | 550)", a: [549, DUNGEON_GATE.y + 5] },
   // врата рейда — одна точка на оси (клетка 549 или 550): путь к ним от обеих столиц равен
   { name: "Врата рейда (549 | 550)", a: [AXIS - 1, RAID_GATE ? Math.floor(RAID_GATE.y / TILE) : 345] },
   { name: "Босс кольца 50–60 (Энт | Ведьма)", a: [Math.floor(BOSS_SPAWNS.find((b) => b.id === "ent")!.x / TILE), Math.floor(BOSS_SPAWNS.find((b) => b.id === "ent")!.y / TILE)], b: [Math.floor(BOSS_SPAWNS.find((b) => b.id === "witch")!.x / TILE), Math.floor(BOSS_SPAWNS.find((b) => b.id === "witch")!.y / TILE)] },
@@ -396,10 +396,6 @@ console.log(`   максимальное расхождение путей: ${ma
     if (z === Zone.Dungeon) continue;
     (byZone.get(z) ?? byZone.set(z, []).get(z)!).push({ d: depth(z, x, y), lv: sp.level });
   }
-  // данж: от входа (север, ось) к залу босса — по расстоянию от входа
-  byZone.set(Zone.Dungeon, m.spawns
-    .filter((sp) => m.zone[Math.floor(sp.y / TILE) * W + Math.floor(sp.x / TILE)] === Zone.Dungeon)
-    .map((sp) => ({ d: Math.hypot(sp.x / TILE - AXIS, sp.y / TILE - DUNGEON.y0), lv: sp.level })));
   const rows: string[] = [];
   for (const [z, list] of byZone) {
     const [zlo, zhi] = ZONES[z].levels;
@@ -485,26 +481,13 @@ console.log("5. связность");
     check(!block(c % W, (c / W) | 0), `${n}: непроходимо`);
     check(reach(c), `${n}: недостижимо от столиц`);
   }
-  // все залы данжа — пешком (раньше зал Ашлорда был недостижим)
-  for (const [x0, y0, x1, y1] of DUNGEON_ROOMS) {
-    // в залах есть лавовые лужи и колонны: зал достижим, если пешком можно дойти почти до всех его свободных клеток
-    let free = 0, got = 0;
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (!block(x, y)) { free++; if (isFinite(rA.dist[y * W + x])) got++; }
-    check(free > 0 && got >= free * 0.95, `зал данжа [${x0},${y0},${x1},${y1}] недостижим пешком: ${got} из ${free} свободных клеток`);
-  }
-  const boss = BOSS_SPAWNS.find((b) => b.id === "ashlord")!;
-  check(isFinite(rA.dist[cellOfPx(boss.x, boss.y)]), "зал босса данжа (Повелитель Пепла) недостижим пешком");
-  // вход в данж — с севера, на оси: клетка перед входом проходима, западных ворот нет
-  const ent = cellOfPx(AXIS * TILE, (DUNGEON.y0 - 1) * TILE);
-  check(isFinite(rA.dist[ent]) && !block(AXIS, DUNGEON.y0) && !block(AXIS - 1, DUNGEON.y0), "вход в данж с севера на оси не открыт");
+  // вход в «Пепельные чертоги» (инстанс, shared/dungeon.ts): лестница 6×5 клеток стоит на оси, клетка у её основания проходима и достижима, сама лестница непроходима
   {
-    // один вход: по всему периметру прямоугольника данжа открыты только клетки северного входа (первый зал), других выходов нет
-    const [ex0, , ex1] = DUNGEON_ROOMS[0];
-    const open: string[] = [];
-    for (let x = DUNGEON.x0; x < DUNGEON.x1; x++) for (const y of [DUNGEON.y0, DUNGEON.y1 - 1]) if (!block(x, y) && !(y === DUNGEON.y0 && x >= ex0 && x < ex1)) open.push(`${x},${y}`);
-    for (let y = DUNGEON.y0; y < DUNGEON.y1; y++) for (const x of [DUNGEON.x0, DUNGEON.x1 - 1]) if (!block(x, y)) open.push(`${x},${y}`);
-    check(open.length === 0, `у данжа лишние выходы по периметру (${open.length}): ${open.slice(0, 6).join(" ")}`);
-    check([...Array(ex1 - ex0).keys()].every((i) => !block(ex0 + i, DUNGEON.y0)), "северный вход в данж закрыт");
+    const at = cellOfPx(DUNGEON_DOOR.x, DUNGEON_DOOR.y + 28);
+    check(!block(at % W, (at / W) | 0) && isFinite(rA.dist[at]), "клетка у лестницы входа в данж недоступна пешком");
+    let solid = 0;
+    for (let j = 0; j < DUNGEON_GATE.h; j++) for (let i = 0; i < DUNGEON_GATE.w; i++) if (block(DUNGEON_GATE.x + i, DUNGEON_GATE.y - j)) solid++;
+    check(solid === DUNGEON_GATE.w * DUNGEON_GATE.h, `лестница входа непроходима не целиком: ${solid} из ${DUNGEON_GATE.w * DUNGEON_GATE.h}`);
   }
   // мобы: проходимые клетки, достижимые от столиц; мало недостижимых «карманов»
   let lost = 0;
@@ -616,7 +599,7 @@ console.log("7. мобы и места");
   }
   console.log("   узлы добычи (запад|восток): " + nodeRows.join("; "));
   // бестиарий: место обитания боссов — зона, где они стоят на карте (тексты слухов в server/src/game/rumors.ts правятся вместе с ним)
-  for (const id of ["ent", "witch", "ashlord", ...ZONE_BOSS_SPAWNS.map((b) => b.id)]) {
+  for (const id of ["ent", "witch", ...ZONE_BOSS_SPAWNS.map((b) => b.id)]) {
     const b = BOSS_SPAWNS.find((q) => q.id === id)!, zone = ZONES[zoneAtPx(m, b.x, b.y)].name, hab = (bestiary as Record<string, { habitat?: string[] }>)[id]?.habitat ?? [];
     check(hab.includes(zone), `бестиарий: ${id} обитает в «${hab.join(", ")}», а на карте стоит в «${zone}»`);
   }

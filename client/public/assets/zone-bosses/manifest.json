@@ -2574,6 +2574,639 @@
      ]
     }
    }
+  },
+  "sol_mirage_sorcerer": {
+   "file": "sol_mirage_sorcerer.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 134,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "bladeWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "bladeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "bladeStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "vortexWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "vortexHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "vortexCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "mirageWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "mirageHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "mirageCast": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "twisterWind": {
+     "col": 84,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "twisterHold": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "twisterCast": {
+     "col": 92,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stun": {
+     "col": 100,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 108,
+     "n": 12,
+     "fps": 12,
+     "loop": false,
+     "hit": 5
+    },
+    "death": {
+     "col": 120,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "vortex": {
+     "file": "sol_mirage_sorcerer-vortex.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 46,
+     "rows": 2,
+     "anims": {
+      "vortexIn": {
+       "col": 0,
+       "n": 4,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      },
+      "vortexHold": {
+       "col": 4,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "vortexOut": {
+       "col": 8,
+       "n": 4,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    },
+    "mirage": {
+     "file": "sol_mirage_sorcerer-mirage.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 54,
+     "rows": 2,
+     "anims": {
+      "mirage": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    },
+    "twister": {
+     "file": "sol_mirage_sorcerer-twister.png",
+     "fw": 48,
+     "fh": 64,
+     "ax": 24,
+     "ay": 56,
+     "rows": 2,
+     "anims": {
+      "twister": {
+       "col": 0,
+       "n": 12,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    }
+   },
+   "skills": {
+    "flame_blade": {
+     "waves": [
+      {
+       "pre": [
+        "bladeWind",
+        "bladeHold"
+       ],
+       "strike": "bladeStrike"
+      }
+     ],
+     "fx": []
+    },
+    "quicksand_vortex": {
+     "waves": [
+      {
+       "pre": [
+        "vortexWind",
+        "vortexHold"
+       ],
+       "strike": "vortexCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "vortex",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "vortexIn",
+        "vortexHold",
+        "vortexOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "vortexHold": 2400
+       }
+      }
+     ]
+    },
+    "false_doubles": {
+     "waves": [
+      {
+       "pre": [
+        "mirageWind",
+        "mirageHold"
+       ],
+       "strike": "mirageCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "mirage",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "mirage"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "sand_twister": {
+     "waves": [
+      {
+       "pre": [
+        "twisterWind",
+        "twisterHold"
+       ],
+       "strike": "twisterCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "twister",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "twister"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 52
+      }
+     ]
+    },
+    "sand_twister_mirage": {
+     "waves": [],
+     "fx": [
+      {
+       "fx": "twister",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "twister"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 52
+      }
+     ]
+    }
+   }
+  },
+  "umb_crimson_vampire": {
+   "file": "umb_crimson_vampire.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 134,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "bladeWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "bladeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "bladeStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "vortexWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "vortexHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "vortexCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "mirageWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "mirageHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "mirageCast": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "twisterWind": {
+     "col": 84,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "twisterHold": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "twisterCast": {
+     "col": 92,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stun": {
+     "col": 100,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 108,
+     "n": 12,
+     "fps": 12,
+     "loop": false,
+     "hit": 5
+    },
+    "death": {
+     "col": 120,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "vortex": {
+     "file": "umb_crimson_vampire-vortex.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 46,
+     "rows": 2,
+     "anims": {
+      "vortexIn": {
+       "col": 0,
+       "n": 4,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      },
+      "vortexHold": {
+       "col": 4,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "vortexOut": {
+       "col": 8,
+       "n": 4,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    },
+    "mirage": {
+     "file": "umb_crimson_vampire-mirage.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 54,
+     "rows": 2,
+     "anims": {
+      "mirage": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    },
+    "twister": {
+     "file": "umb_crimson_vampire-twister.png",
+     "fw": 48,
+     "fh": 64,
+     "ax": 24,
+     "ay": 56,
+     "rows": 2,
+     "anims": {
+      "twister": {
+       "col": 0,
+       "n": 12,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    }
+   },
+   "skills": {
+    "blood_slash": {
+     "waves": [
+      {
+       "pre": [
+        "bladeWind",
+        "bladeHold"
+       ],
+       "strike": "bladeStrike"
+      }
+     ],
+     "fx": []
+    },
+    "bat_whirl": {
+     "waves": [
+      {
+       "pre": [
+        "vortexWind",
+        "vortexHold"
+       ],
+       "strike": "vortexCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "vortex",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "vortexIn",
+        "vortexHold",
+        "vortexOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "vortexHold": 2400
+       }
+      }
+     ]
+    },
+    "bat_split": {
+     "waves": [
+      {
+       "pre": [
+        "mirageWind",
+        "mirageHold"
+       ],
+       "strike": "mirageCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "mirage",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "mirage"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "wing_storm": {
+     "waves": [
+      {
+       "pre": [
+        "twisterWind",
+        "twisterHold"
+       ],
+       "strike": "twisterCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "twister",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "twister"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 52
+      }
+     ]
+    },
+    "wing_storm_mirage": {
+     "waves": [],
+     "fx": [
+      {
+       "fx": "twister",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "twister"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "ring",
+       "radius": "mid",
+       "spacing": 52
+      }
+     ]
+    }
+   }
+  }
+ },
+ "units": {
+  "umb_crown_lich": {
+   "frame": 80
+  },
+  "umb_ash_executioner": {
+   "frame": 64
+  },
+  "umb_ash_executioner_cage": {
+   "frame": 32
+  },
+  "sol_mirage_sorcerer": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_mirage_sorcerer_mirage": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "umb_crimson_vampire": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "umb_crimson_vampire_mirage": {
+   "frame": 64,
+   "frameH": 80
   }
  }
 }

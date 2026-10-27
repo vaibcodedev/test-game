@@ -4,7 +4,10 @@ import { CITIES, cityKnown } from "../../../shared/cities";
 import { RAID, RAID_GATE } from "../../../shared/raid";
 import { factionColor, landLabel, type FactionId } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
-import { DANGER_LABEL, PLACES, ZONES, type WorldMap } from "../../../shared/map";
+import { DANGER_LABEL, DUNGEON_DOOR, PLACES, ZONES, type WorldMap } from "../../../shared/map";
+import { DUNGEON_EXIT } from "../../../shared/dungeon";
+import { drawDgIcon } from "./dungeonIcon";
+import { net } from "../net";
 import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 import { buildZoneLabels, type Label } from "./worldmap-labels";
@@ -351,6 +354,18 @@ export class WorldMapView {
       g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
       label(RAID.map.gate, x, y - r - 6, P.boss, font(FS.base, true), FS.base);
       hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: T("ui.worldmap.738", { name: RAID.boss.name, minlevel: RAID.raid.minLevel }) });
+    }
+    // вход в подземелье «Пепельные чертоги» (задача 139): тёмный проём с красным огнём; внутри — лестница выхода
+    {
+      const d = big ? DUNGEON_DOOR : null, e = !big && this.map.w < 200 ? DUNGEON_EXIT : null, p = d ?? e;
+      if (p) {
+        const x = X(p.x / TILE), y = Y(p.y / TILE), r = 12, mp = this.mouse;
+        const hov = !!mp && Math.hypot(mp.x - x, mp.y - y) <= r + 4, taken = !!d && !!net.dungeon?.looted;
+        drawDgIcon(g, hov ? "hover" : taken ? "taken" : "normal", x, y, 1);
+        const title = d ? "Пепельные чертоги · вход" : "Выход из подземелья";
+        label(d ? "Пепельные чертоги" : "Выход", x, y + r + 8, "#ff9a5a", font(FS.base, true), FS.base);
+        hits.push({ x, y, r: r + 4, title, sub: d ? "Подземелье · ур. 85–95 · Повелитель Пепла" : "Лестница наверх, на карту мира" });
+      }
     }
     // земли фракций (приоритет после городов): одна подпись на сторону цветом фракции
     if (big) {

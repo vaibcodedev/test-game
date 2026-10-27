@@ -61,7 +61,12 @@ type Events = {
   kicked: string;
   /** Переподключиться нельзя (сессия истекла, герой недоступен): назад к входу. */
   lost: string;
-  switch: "world" | "arena" | "raid";
+  switch: "world" | "arena" | "raid" | "dungeon";
+  /** Подземелье «Пепельные чертоги»: затемнение перед переходом и статус трофеев босса на сегодня. */
+  "dungeon:fade": { ms?: number };
+  "dungeon:status": { looted: boolean; leftMs: number; at: number };
+  "dg:gate": { id: string; open: boolean };
+  "dg:gates": { open: string[] };
   "raid:muster": RaidMusterMsg;
   "raid:cast": RaidCastMsg;
   "raid:banner": RaidBannerMsg;
@@ -167,7 +172,9 @@ export class Net {
   id = "";
   seed = 0;
   /** Где сейчас игрок: в мире или на арене. */
-  kind: "world" | "arena" | "raid" = "world";
+  kind: "world" | "arena" | "raid" | "dungeon" = "world";
+  /** Трофеи Повелителя Пепла сегодня: взяты ли и сколько до новых (leftMs на момент at). */
+  dungeon: { looted: boolean; leftMs: number; at: number } | null = null;
   arena: ArenaWelcome | null = null;
   raid: RaidWelcome | null = null;
   self: SelfState | null = null;
@@ -351,8 +358,12 @@ export class Net {
     room.onMessage("pong", () => (this.pingAt = 0));
     room.onMessage("kicked", (m: { text?: string }) => (this.kickText = m?.text ?? ""));
     const welcome = new Promise<void>((resolve) => {
-      room.onMessage("welcome", (w: { seed?: number; arena?: boolean; raid?: boolean } & Partial<ArenaWelcome>) => {
-        if (w.raid) {
+      room.onMessage("welcome", (w: { seed?: number; arena?: boolean; raid?: boolean; dungeon?: boolean } & Partial<ArenaWelcome>) => {
+        if (w.dungeon) {
+          this.kind = "dungeon";
+          this.arena = null;
+          this.raid = null;
+        } else if (w.raid) {
           this.kind = "raid";
           this.arena = null;
           this.raid = w as unknown as RaidWelcome;
@@ -408,6 +419,12 @@ export class Net {
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("raid:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("raid:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
+    room.onMessage("dungeon:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
+    room.onMessage("dungeon:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
+    room.onMessage("dg:gate", (m: { id: string; open: boolean }) => this.emit("dg:gate", m));
+    room.onMessage("dg:gates", (m: { open: string[] }) => this.emit("dg:gates", m));
+    room.onMessage("dungeon:fade", (m: { ms?: number }) => this.emit("dungeon:fade", m));
+    room.onMessage("dungeon:status", (m: { looted: boolean; leftMs: number; at: number }) => { this.dungeon = m; this.emit("dungeon:status", m); });
     room.onMessage("logout:wait", (m: { ms: number }) => this.emit("logout:wait", m));
     room.onMessage("logout:cancel", (m: { reason: string }) => {
       this.logoutMode = null;

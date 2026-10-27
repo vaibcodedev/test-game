@@ -12,7 +12,10 @@ import { buySeal, stableBuy, stableCraft } from "../game/stable";
 import { bestArenaRating } from "../arena/gladiator";
 import { buyPet, selectPet, togglePet } from "../game/Pet";
 import { MAX_LEVEL, MERCHANT_RANGE, PLAYER_RADIUS } from "../../../shared/constants";
-import { MAP_VERSION, walkable } from "../../../shared/map";
+import { DUNGEON_DOOR, MAP_VERSION, walkable } from "../../../shared/map";
+import { DUNGEON_ENTRY, bossLootStatus } from "../../../shared/dungeon";
+import { DOOR_FADE_MS, DOOR_RANGE } from "../../../shared/interiors";
+import { DUNGEON_OUT } from "./DungeonRoom";
 import { makeItem, makeUnique, Rarity, SLOTS } from "../../../shared/items";
 import { makeLegendary } from "../../../shared/legendary";
 import { INSPECT_COOLDOWN_MS, INSPECT_RANGE } from "../../../shared/gearFx";
@@ -20,7 +23,7 @@ import type { InspectReply, JoinOptions } from "../../../shared/protocol";
 import { canLearn, SKILLS } from "../../../shared/skills";
 import { Parties } from "../arena/party";
 import { ArenaQueue, type PendingMatch } from "../arena/queue";
-import { inArena, inRaid, services, worldNews } from "../arena/registry";
+import { inArena, inDungeon, inRaid, services, worldNews } from "../arena/registry";
 import { deliverArenaRewards } from "../arena/rewards";
 import { RaidMuster, type MusterEntry } from "../raid/muster";
 import { deliverPending } from "../raid/rewards";
@@ -96,7 +99,7 @@ export class WorldRoom extends Room<WorldState> {
     const find = (key: string) => this.world.findByName(key);
     this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key) || inRaid.has(key));
     this.queue = new ArenaQueue(services.arena, find, (m) => void this.startMatch(m), (keys) => keys.forEach((k) => this.sendArenaInfo(k)));
-    const away = (p: Player) => p.goingToArena || inArena.has(p.name.toLowerCase()) || inRaid.has(p.name.toLowerCase());
+    const away = (p: Player) => p.goingToArena || inArena.has(p.name.toLowerCase()) || inRaid.has(p.name.toLowerCase()) || inDungeon.has(p.name.toLowerCase());
     this.trade = new TradeManager(() => this.world, () => WorldRoom.db, away, () => this.world.map.playerSpawn);
     this.clock.setInterval(guard(T("srv.WorldRoom.839"), () => this.trade.tick()), 1000);
     this.bank = new BankService(() => this.world, () => WorldRoom.db, () => this.world.map.playerSpawn, away, (p, i) => this.trade.locked(p, i));
@@ -140,7 +143,9 @@ export class WorldRoom extends Room<WorldState> {
     // на аккаунте одновременно играет один герой; герой аккаунта на арене — ждём конца матча
     for (const k of chars) if (inArena.has(k)) throw new ServerError(409, "На аккаунте другой герой сейчас на арене");
     if (inRaid.has(key)) throw new ServerError(409, "Этот герой сейчас в рейде");
+    if (inDungeon.has(key)) throw new ServerError(409, "Этот герой сейчас в подземелье «Пепельные чертоги»");
     for (const k of chars) if (inRaid.has(k)) throw new ServerError(409, "На аккаунте другой герой сейчас в рейде");
+    for (const k of chars) if (inDungeon.has(k)) throw new ServerError(409, "На аккаунте другой герой сейчас в подземелье");
     const ban = db.banOf(name);
     if (ban) throw new ServerError(403, `Герой заблокирован ${ban.until > 4e12 ? T("srv.WorldRoom.847") : "до " + new Date(ban.until).toLocaleString("ru-RU")}${ban.reason ? ": " + ban.reason : ""}`);
     // вход с другой вкладки: старая сессия (этого или другого героя аккаунта) закрывается с сообщением, герой сохраняется
@@ -185,6 +190,7 @@ export class WorldRoom extends Room<WorldState> {
     client.send("party", this.parties.state(key));
     for (const m of this.parties.members(key) ?? []) if (m.key !== key) this.world.findByName(m.key)?.send("party", this.parties.state(m.key));
     this.sendArenaInfo(key);
+    { const st = bossLootStatus(p.save.dgLoot?.ashlord, Date.now()); p.send("dungeon:status", { looted: st.looted, leftMs: st.leftMs, at: Date.now() }); }
   }
 
   /**
@@ -554,9 +560,44 @@ export class WorldRoom extends Room<WorldState> {
     }
   }
 
+  /** Спуск в подземелье «Пепельные чертоги»: у лестницы вплотную, вне боя; затемнение, сохранение, резервация места в общей комнате. */
+  private async enterDungeon(p: Player) {
+    const w = this.world, no = (text: string) => p.send("toast", { text, kind: "error" });
+    if (p.dead || p.goingToArena || p.team !== 0 || inDungeon.has(p.name.toLowerCase())) return;
+    if (w.dist(p, DUNGEON_DOOR) > DOOR_RANGE) return no("Подойдите к лестнице вплотную");
+    if (p.inCombat(w.time)) return no("В бою спуститься нельзя");
+    if (p.tele || p.mountCast || p.stunUntil > w.time) return no("Сейчас нельзя");
+    const key = p.name.toLowerCase();
+    p.goingToArena = true;
+    p.input = { mx: 0, my: 0 };
+    p.moveTo = null;
+    w.stopFollow(p, false);
+    p.send("dungeon:fade", { ms: DOOR_FADE_MS });
+    await new Promise<void>((res) => this.clock.setTimeout(res, DOOR_FADE_MS));
+    if (!w.players.has(p.id) || p.dead) { p.goingToArena = false; return; }
+    w.breakMount(p);
+    this.trade.leave(p);
+    try {
+      const sv = p.toSave(w.map.playerSpawn);
+      sv.x = DUNGEON_OUT.x;
+      sv.y = DUNGEON_OUT.y;
+      WorldRoom.db.save(p.name, sv);
+      inDungeon.add(key);
+      const room = (await matchMaker.query({ name: "dungeon" }))[0] ?? (await matchMaker.createRoom("dungeon", {}));
+      const res = await matchMaker.reserveSeatFor(room, {}, { name: p.name, save: JSON.parse(JSON.stringify(sv)) });
+      p.send("dungeon:go", { reservation: { sessionId: res.sessionId, room: { name: "dungeon", roomId: room.roomId, processId: room.processId } } });
+    } catch (e) {
+      console.error("[dungeon] вход:", e);
+      inDungeon.delete(key);
+      p.goingToArena = false;
+      no("Не удалось спуститься, попробуйте ещё раз");
+    }
+  }
+
   private registerMessages(on: On) {
     const w = () => this.world;
     on("respawn", (p) => w().respawn(p));
+    on("dungeon:enter", (p) => void this.enterDungeon(p));
     on("logout:request", (p) => this.requestLogout(p));
     on("logout:cancel", (p) => this.cancelLogout(p, ""));
     on<{ id: unknown }>("mount:select", (p, m) => {

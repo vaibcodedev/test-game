@@ -31,7 +31,7 @@ const BOSS = process.argv.find((a) => a.startsWith("--boss="))?.slice(7) ?? "umb
 const CARD = (ring.bosses as unknown as ZbCard[]).find((c) => c.id === BOSS)!;
 const FR = CARD.frame ?? 64;
 /** Префикс снимков: лич — как раньше, остальные — по короткому имени. */
-const PFX = BOSS === "umb_crown_lich" ? "" : BOSS === "umb_ash_executioner" ? "exec-" : `${BOSS}-`;
+const PFX = BOSS === "umb_crown_lich" ? "" : BOSS === "umb_ash_executioner" ? "exec-" : BOSS === "sol_mirage_sorcerer" ? "mir-" : `${BOSS}-`;
 
 let page: Page;
 const errors: string[] = [];
@@ -153,7 +153,7 @@ async function scenario() {
       await page.screenshot({ path: path.join(OUT, `${PFX}ingame-call-castbar.png`) });
     }
     // замах: снимок только у долгих замахов — часы сцены после паузы догоняют настоящее время, короткий удар успел бы пройти
-    if (ab.windupMs >= 1500) {
+    if (ab.windupMs >= 1500 && !(hasFx && ab.windupMs < 3000)) {
       await run("sc.scene.pause();");
       save(`${PFX}ingame-${ab.id}-wind.png`, await snap(bx, by - 10, 480, 340));
       await run("sc.scene.resume();");
@@ -195,6 +195,27 @@ async function scenario() {
     save(`${PFX}ingame-cage-broken.png`, await snap(bx, by + 10, 480, 340));
     await run("sc.scene.resume();");
     await sleep(cageAb.cage!.holdMs);
+  }
+
+  // двойники: после замаха стоят по краю арены (лист <босс>_mirage в игре), убитый исчезает
+  const dblAb = CARD.abilities.find((a) => a.doubles);
+  if (dblAb) {
+    for (const a of boss.abilities) a.at = 1e9;
+    mob.unit.hp = mob.unit.maxHp;
+    boss.run(dblAb);
+    await sleep(dblAb.windupMs + 900);
+    const ds = [...W().mobs.values()].filter((m) => m.def.id === `${CARD.id}_mirage` && !m.dead) as Mob[];
+    check(ds.length === dblAb.doubles!.count, `${CARD.id}: двойников на арене ${ds.length} из ${dblAb.doubles!.count}`);
+    const mt = await run<boolean>("return sc.textures.exists('u_' + a)", `${CARD.id}_mirage`);
+    const seen = await run<number>("let n = 0; for (const v of sc.units.values()) if (v.u.sprite === a) n++; return n;", `${CARD.id}_mirage`);
+    check(mt && seen === ds.length, `${CARD.id}: лист двойника в игре, на экране ${seen}`);
+    await run("sc.scene.pause();");
+    save(`${PFX}ingame-doubles.png`, await snap(bx, by - 10, 640, 460));
+    await run("sc.scene.resume();");
+    if (ds[0]) W().killMob(ds[0], H);
+    await sleep(900);
+    const left = [...W().mobs.values()].filter((m) => m.def.id === `${CARD.id}_mirage` && !m.dead).length;
+    check(left === ds.length - 1, `${CARD.id}: убитый двойник исчез (осталось ${left})`);
   }
 
   // зов сорван: группа сняла 6 % — оглушение
