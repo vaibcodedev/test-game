@@ -81,15 +81,44 @@ async function main() {
 
     await check("вступление: виньетка и баннер на отсчёте, «3 · 2 · 1», «В бой!»", async () => {
       await page.waitForFunction(() => (window as any).__net.room.state.phase === "countdown", { timeout: 20000 });
-      await sleep(900);
-      await shot(page, "intro-1-banner.png");
+      await sleep(600);
+      // проверка до снимка: снимок в безголовой вкладке идёт секунды, к его концу отсчёт может кончиться
       must(await page.$eval(".arena-intro", (e) => !(e as HTMLElement).hidden && !!e.querySelector(".ai-vs .ai-p")), "нет баннера соперников");
-      await page.waitForFunction(() => ["2", "1"].includes(document.querySelector(".arena-intro .ai-num")?.textContent ?? ""), { timeout: 8000, polling: 50 });
-      await sleep(250);
+      await shot(page, "intro-1-banner.png");
+      // безголовая вкладка (swiftshader) снимает кадр секундами — живой отсчёт проскакивает между снимками.
+      // Поэтому после старта боя те же моменты повторяются в этом же матче вызовом того же кода (ui/arena.ts intro, game/arenaIntro.ts burst),
+      // анимации ставятся на паузу на нужной фазе, снимок, затем всё возвращается
+      await page.waitForFunction(() => (window as any).__net.room.state.phase === "fight", { timeout: 30000 });
+      await sleep(2000);
+      const stage = (what: "count" | "go") => page.evaluate((what) => {
+        const sc = (window as any).__game.scene.getScene("game"), ui = sc.hud.arena;
+        clearTimeout(ui.introHide);
+        if (what === "count") { ui.lastPhase = "fight"; ui.introN = ""; ui.intro({ phase: "countdown", countdown: 2 }); }
+        else { ui.lastPhase = "countdown"; ui.intro({ phase: "fight", countdown: 0 }); ui.lastPhase = "fight"; clearTimeout(ui.introHide); sc.arenaIntro.burst(); }
+        // заморозить на выразительном кадре: время анимаций ставится явно (вкладка рисует редко — по таймеру они бы ещё не начались)
+        const at = what === "count" ? 500 : 320;
+        for (const a of document.getAnimations()) { a.pause(); a.currentTime = at; }
+        if (what === "go") {
+          const ring = sc.tweens.getTweens().at(-1);
+          ring?.seek(260, 16.6, true);
+          ring?.pause();
+        }
+      }, what);
+      const unfreeze = () => page.evaluate(() => {
+        for (const a of document.getAnimations()) a.play();
+        for (const t of (window as any).__game.scene.getScene("game").tweens.getTweens()) t.resume();
+      });
+      await stage("count");
+      await sleep(1300);
       await shot(page, "intro-2-count.png");
-      await page.waitForFunction(() => document.querySelector(".arena-intro.go") !== null, { timeout: 8000, polling: 50 });
-      await sleep(200);
+      must(await page.$eval(".arena-intro .ai-num", (e) => e.textContent === "2"), "отсчёт не показан");
+      await unfreeze();
+      await stage("go");
+      await sleep(900);
       await shot(page, "intro-3-fight.png");
+      must(await page.$eval(".arena-intro", (e) => e.classList.contains("go")), "нет «В бой!»");
+      await unfreeze();
+      await page.evaluate(() => { const ui = (window as any).__game.scene.getScene("game").hud.arena; ui.countdown.hidden = true; ui.countdown.classList.remove("go"); ui.introN = ""; });
     });
 
     await check("запрещённые слоты заблокированы: зелья серые с замком, подсказка «Недоступно на арене»", async () => {
@@ -114,6 +143,7 @@ async function main() {
     });
 
     await check("зелье на арене не перезагружает игру (клавиша, клик, прямые сообщения серверу)", async () => {
+      await page.evaluate(() => { (window as any).__ld = 0; }); // экран загрузки при входе на арену уже ушёл — считаем только после нажатий
       await page.mouse.move(800, 300);
       await sleep(400);
       await page.evaluate(() => (window as any).__game.scene.getScene("game").pressSlot(0, 9));
