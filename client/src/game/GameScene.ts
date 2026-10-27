@@ -292,7 +292,7 @@ export class GameScene extends Phaser.Scene {
         this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: T("ui.GameScene.754", { name: STATUES[key].name }), hit: { dy: 66, r: 44 }, glow: { tex: `o_${o.kind}`, x: o.x, y: o.y, ox: 0.5, oy: 1 } });
       }
       // вход в подземелье «Пепельные чертоги» (задача 139): большая лестница на карте мира, точка нажатия у основания
-      this.npcs.push({ sprite: this.add.sprite(DUNGEON_DOOR.x, DUNGEON_DOOR.y, "u_merchant", 0).setVisible(false), kind: "dgdoor", id: "dungeon", name: "Пепельные чертоги · вход", hit: { dy: 70, r: 96 }, glow: this.objGlow("dg_entrance") });
+      this.npcs.push({ sprite: this.add.sprite(DUNGEON_DOOR.x, DUNGEON_DOOR.y, "u_merchant", 0).setVisible(false), kind: "dgdoor", id: "dungeon", name: "Войти: Пепельные чертоги", hit: { dy: 70, r: 96 }, glow: this.objGlow("dg_entrance") });
       this.scenes = new Scenes(this, this.map);
       this.setupEncounters();
       // двери интерьеров (задача 144): снаружи — у двери здания, изнутри — в нижней стене зала; точки нажатия невидимы
@@ -1193,7 +1193,7 @@ export class GameScene extends Phaser.Scene {
     const st = net.dungeon;
     if (!st) return name;
     const left = Math.max(0, st.leftMs - (Date.now() - st.at));
-    return st.looted && left > 0 ? `${name} · трофеи Повелителя Пепла уже получены, новые через ${fmtLeft(left)}` : `${name} · трофеи Повелителя Пепла сегодня доступны`;
+    return st.looted && left > 0 ? `${name} · Трофеи Повелителя Пепла уже получены — новые через ${fmtLeft(left)}` : `${name} · Трофеи Повелителя Пепла доступны сегодня`;
   }
   private talkRange(n: Npc) { return n.kind === "statue" ? STATUE_RANGE : TALK_RANGE; }
   talk(n: Npc) {
