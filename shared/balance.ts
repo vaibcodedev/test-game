@@ -14,7 +14,7 @@ export interface Balance {
   /** Добыча с обычных мобов: шансы вещи, второй вещи и зелья (data/balance.json loot). */
   loot: { item: number; extra: number; potion: number; bossLevelGap: number; bossLevelFree: number; boss: { items: number; epic: number } };
   heal: { power: number[][] };
-  pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; mitigationCap: number; ccMult: number; class: Record<string, { dmg?: PvpK; taken?: PvpK }> };
+  pvp: { damage: number[][]; heal: number[][]; healWindowMs: number; plusShare: number; critChanceMax: number; critMultMax: number; hitCapHp: number; burstCapHp: number; capLevelGap: number; mitigationCap: number; ccMult: number; stunDr?: number[]; stunDrMs?: number; botPower?: number[][]; botTaken?: number[][]; botGearPlus?: number; botSkip?: number; botReactMs?: number[]; class: Record<string, { dmg?: PvpK; taken?: PvpK }> };
 }
 export const BAL = data as unknown as Balance;
 

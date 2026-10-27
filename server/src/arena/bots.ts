@@ -10,7 +10,8 @@ import { lineClear, walkable } from "../../../shared/map";
 import { findPath } from "../../../shared/path";
 import { SKILLS, activeSkills, skillMana } from "../../../shared/skills";
 import { PLAYER_RADIUS } from "../../../shared/constants";
-import { allocStats, learnSkills, pickGear, type GearMode } from "./botgear";
+import { allocStats, learnSkills, pickGear } from "./botgear";
+import { BAL } from "../../../shared/balance";
 import type { PlayerSave } from "../db";
 import { newSave, type Player } from "../game/Player";
 import { castSkill } from "../game/skills";
@@ -27,21 +28,34 @@ export interface BotSpec {
 
 const BOT_NAMES = ["Гром", "Вихрь", "Клык", "Тень", "Искра", "Буран", "Шип", "Ворон"];
 
+/** Сила бота против героев по рейтингу (data/balance.json pvp.botPower: [рейтинг, множитель], линейно). */
+export function botPower(rating: number, pts = BAL.pvp.botPower): number {
+  if (!pts?.length) return 1;
+  if (rating <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    const [r0, k0] = pts[i - 1], [r1, k1] = pts[i];
+    if (rating <= r1) return k0 + ((k1 - k0) * (rating - r0)) / (r1 - r0);
+  }
+  return pts[pts.length - 1][1];
+}
+
 /**
  * Сохранение бота: та же сборка, что у симулятора баланса (botgear.ts: allocStats, PvP-умения, pickGear — танк с одноручным
- * оружием и щитом), уровень — образца; экипировка «максимальная» (эпик/легендарки +10), если образец в улучшенной экипировке
- * (легендарка или средняя заточка от +5), иначе — редкая уровня. Раньше вещи копировались с образца: Храмовник брал двуручную
- * легендарку Потрошителя (урон вдвое выше, чем у танка в симуляторе), очки — 60/40 и все умения по кругу.
+ * оружием и щитом), уровень — образца, экипировка — на ступень ниже героя: герой в улучшенной (легендарка или средняя заточка
+ * от +5) → бот в эпической/легендарной экипировке уровня с заточкой pvp.botGearPlus вместо +10, иначе — в редкой уровня без заточки. Сила — botPower(рейтинг).
+ * Раньше вещи копировались с образца: Храмовник брал двуручную легендарку Потрошителя, бот в легендарках +10 был сильнее героя.
  */
-export function botSave(cls: ClassId, level: number, like?: PlayerSave): PlayerSave {
+export function botSave(cls: ClassId, level: number, like?: PlayerSave, rating?: number): PlayerSave {
   const s = newSave(cls, { x: 0, y: 0 });
   s.level = level;
   s.alloc = allocStats(cls, level);
   s.skills = learnSkills(cls, level, "pvp");
   const items = like ? (Object.values(like.equip).filter(Boolean) as Item[]) : [];
   const plus = items.length ? items.reduce((a, it) => a + (it.plus || 0), 0) / items.length : 0;
-  const gear: GearMode = items.some((it) => it.legendary) || plus >= 5 ? "max" : "level";
-  s.equip = pickGear(cls, level, s.alloc, s.skills, gear);
+  const strong = items.some((it) => it.legendary) || plus >= 5;
+  s.equip = pickGear(cls, level, s.alloc, s.skills, strong ? "max" : "level");
+  if (strong) for (const it of Object.values(s.equip)) if (it) it.plus = BAL.pvp.botGearPlus ?? 0;
+  if (rating !== undefined) { s.botPower = botPower(rating); s.botTaken = botPower(rating, BAL.pvp.botTaken); }
   return s;
 }
 
@@ -55,7 +69,7 @@ export function makeBots(count: number, level: number, rating: number, like: Pla
     taken.add(n);
     const name = `Бот ${n}`;
     const cls = pool[Math.floor(Math.random() * pool.length)];
-    out.push({ name, nameKey: name.toLowerCase(), cls, level, rating, save: botSave(cls, level, like) });
+    out.push({ name, nameKey: name.toLowerCase(), cls, level, rating, save: botSave(cls, level, like, rating) });
   }
   return out;
 }
@@ -84,8 +98,17 @@ function healerThink(w: World, bot: Player) {
 }
 
 /** Один шаг решения бота (вызывается несколько раз в секунду). */
+/** Следующее решение бота (реакция как у игрока: pvp.botReactMs) — по боту. */
+const nextThink = new WeakMap<Player, number>();
+/** Защитные умения бота — только когда своё здоровье ниже порога (как ИИ симулятора баланса). */
+const DEFENSIVE: Record<string, number> = { shieldblock: 0.92, dk_bone_armor: 0.92, mg_barrier: 0.75, dk_anti_magic: 0.65, tp_divine: 0.35, as_smoke: 0.5 };
+
 export function botThink(w: World, bot: Player, enemies: Player[]) {
   if (bot.dead || bot.frozenUntil > w.time) return;
+  // реакция: решение не чаще, чем раз в botReactMs (случайно в диапазоне), — не мгновенные цепочки умений
+  const [r0, r1] = BAL.pvp.botReactMs ?? [250, 250];
+  if ((nextThink.get(bot) ?? 0) > w.time) return;
+  nextThink.set(bot, w.time + r0 + Math.random() * (r1 - r0));
   let target: Player | undefined, best = Infinity;
   for (const e of enemies) {
     if (w.stealthed(e)) continue; // скрытного врага выбрать нельзя
@@ -105,9 +128,13 @@ export function botThink(w: World, bot: Player, enemies: Player[]) {
     }
   } else if (bot.moveTo && best >= KEEP_MIN) bot.moveTo = null;
   if (bot.cls === "healer") return healerThink(w, bot);
+  // неидеальная ротация: в часть решений бот только бьёт автоатакой
+  if (Math.random() < (BAL.pvp.botSkip ?? 0)) return;
+  const hpr = bot.unit.hp / Math.max(1, bot.unit.maxHp);
   // умения
   for (const s of activeSkills(bot.cls)) {
     const rank = bot.save.skills[s.id] || 0;
+    if (DEFENSIVE[s.id] !== undefined && hpr > DEFENSIVE[s.id]) continue;
     if (!rank || s.id === "stealth" || s.id === "dr_shadowmeld" || (bot.cds.get(s.id) || 0) > w.time || bot.unit.mp < skillMana(s, rank, bot.level)) continue;
     const reach = s.target === "self" ? Math.max(bot.attackRange(), 90) : (s.range ?? bot.attackRange()) + 20;
     if (best > reach) continue;

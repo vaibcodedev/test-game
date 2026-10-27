@@ -6,6 +6,7 @@ import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/c
 import { FACTIONS, FOE_COLOR, factionColor, landLabel, zoneLand } from "../../../shared/factions";
 import * as sfx from "../game/sfx";
 import { gearFxMode, overlay, setGearFxMode, setOverlay, type GearFxMode } from "../game/overlay";
+import { setShadowMode, shadowMode, type ShadowMode } from "../game/shadows";
 import { flashGear } from "../game/gearHooks";
 import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
 import { MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
@@ -18,7 +19,7 @@ import { MOBS } from "../../../shared/mobs";
 import { Anim, UnitKind, type Aura, type ChatLine, type SelfState, type ToastMsg } from "../../../shared/protocol";
 import { canLearn, classSkills, SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import type { Net, UnitState } from "../net";
-import { rankById } from "../../../shared/arena";
+import { ARENA_BLOCKED_TEXT, rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
 import { RaidHud } from "./raid";
 import { CastBar, castGlyph, type CastOpts, type CastVariant } from "./castbar";
@@ -578,6 +579,7 @@ export class Hud {
           ${checkRow("set-autoNames", "В толпе прятать уровень у ников", "Кроме цели, группы и раненых (авто)")}
           ${checkRow("set-crowdNums", "Чужие цифры урона в толпе приглушать")}
           ${segRow("set-gearfx", GEAR_FX.setting.label, GEAR_FX.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.setting.note)}
+          ${segRow("set-shadows", "Тени", [["off", "Выкл"], ["simple", "Простые"], ["dynamic", "Динамические"]], "m", "Динамические следуют за временем суток: утром длинные влево, в полдень короткие, вечером вправо")}
         </div>
       </section>
       <div class="sec" id="set-controls"></div>`;
@@ -611,6 +613,7 @@ export class Hud {
     }
     // режим эффектов — только свой #set-gearfx: у «Режима прицела» в controls.ts тоже data-m
     seg(q("#set-gearfx"), (m) => setGearFxMode(m as GearFxMode), "m").set(gearFxMode());
+    seg(q("#set-shadows"), (m) => setShadowMode(m as ShadowMode), "m").set(shadowMode());
     this.settingsBody = body;
   }
   private settingsBody: Element | null = null;
@@ -833,7 +836,7 @@ export class Hud {
       const b = el("button", `slot ${md ? "" : "empty"}`, `${md ? `<img src="${icon(mountSprite(mid))}" alt="" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;position:absolute;left:3px;top:3px;${mounted ? "opacity:.55" : ""}">` : `<span style="font-size:26px;line-height:50px;display:block;text-align:center">♞</span>`}<kbd>${keybinds.label("mount", 0)}</kbd>`);
       b.style.position = "relative";
       b.onclick = () => this.ctx.toggleMount?.();
-      this.tipFor(b, () => md ? `<div class="t">${md.name}</div><div class="d">${TX("ui.hud.570", { speed: md.speed, label: keybinds.label("mount", 0), label2: keybinds.label("mountNext", 0) })}</div>` : `<div class="t">${TX("ui.hotbar.521")}</div><div class="d">${TX("ui.hud.571")}</div>`);
+      this.tipFor(b, () => this.arenaLockTip() + (md ? `<div class="t">${md.name}</div><div class="d">${TX("ui.hud.570", { speed: md.speed, label: keybinds.label("mount", 0), label2: keybinds.label("mountNext", 0) })}</div>` : `<div class="t">${TX("ui.hotbar.521")}</div><div class="d">${TX("ui.hud.571")}</div>`));
       this.hotbar.mountHost.append(b);
     }
     {
@@ -842,9 +845,9 @@ export class Hud {
       const out = !!this.ctx.net.unit(petUnitId(s.id));
       const b = el("button", `slot ${pd ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${out ? "✕" : "🐾"}</span><kbd>${keybinds.label("pet", 0)}</kbd>`);
       b.onclick = () => this.ctx.togglePet?.();
-      this.tipFor(b, () => pd && rec
+      this.tipFor(b, () => this.arenaLockTip() + (pd && rec
         ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${TX("ui.hud.572", { label: keybinds.label("pet", 0), label2: keybinds.label("petNext", 0) })}</div>`
-        : `<div class="t">${TX("ui.hotbar.522")}</div><div class="d">${TX("ui.hud.573")}</div>`);
+        : `<div class="t">${TX("ui.hotbar.522")}</div><div class="d">${TX("ui.hud.573")}</div>`));
       this.hotbar.petHost.append(b);
     }
     if (!this.wins.char.hidden) this.renderChar(s);
@@ -852,6 +855,9 @@ export class Hud {
     if (!this.wins.skills.hidden) this.renderSkills(s);
     if (!this.wins.shop.hidden) this.renderShop(s);
   }
+
+  /** Маунт и питомец на арене запрещены (shared/arena.ts): строка-предупреждение над подсказкой кнопки. */
+  private arenaLockTip(): string { return this.ctx.net.kind === "arena" ? `<div class="warn">${ARENA_BLOCKED_TEXT}</div>` : ""; }
 
   // ---------- бафы и дебафы в рамке героя и в плашке цели ----------
   private static rowsOf(list: Aura[]): AuraRow[] {

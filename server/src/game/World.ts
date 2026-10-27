@@ -485,6 +485,7 @@ export class World {
       dst.pvpAt = this.time;
       const wp = src.save.equip.weapon?.plus || 0;
       pvpK = (pvpDamageMult(dst.level) * pvpClassMult(src.cls, dst.cls, src.level, dst.level) * (1 + PLUS_BONUS * wp * BAL.pvp.plusShare)) / (1 + PLUS_BONUS * wp);
+      pvpK *= (src.save.botPower ?? 1) * (dst.save.botTaken ?? 1); // бот арены: урон и получаемый — по рейтингу (pvp.botPower/botTaken)
       amount *= pvpK;
     }
     let reflect = 0;
@@ -612,7 +613,7 @@ export class World {
     if (p.dead || v <= 0) return 0;
     if (p.outlawUntil > this.time || p.intruder) v = Math.max(1, Math.round(v * OUTLAW.healMul)); // клеймо нарушителя режет лечение
     // PvP: лечение растёт с уровнем как урон (L²), здоровье — как L; на арене и после удара героя оно режется по кривой pvp.heal
-    if (this.pvpActive || this.time - p.pvpAt < BAL.pvp.healWindowMs) v = Math.max(1, Math.round(v * pvpHealMult(p.level)));
+    if (this.pvpActive || this.time - p.pvpAt < BAL.pvp.healWindowMs) v = Math.max(1, Math.round(v * pvpHealMult(p.level) * ((by ?? p).save.botPower ?? 1)));
     const before = p.unit.hp;
     p.unit.hp = Math.min(p.unit.maxHp, p.unit.hp + v);
     const got = p.unit.hp - before;

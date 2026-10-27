@@ -69,6 +69,11 @@
 .hud-bar .hb-slot:not(.filled) kbd { color: var(--dim); }
 .hb-slot.unlearned img, .hb-slot.none img { filter: grayscale(1) brightness(.4); }
 .hb-slot.unlearned::after { content: "🔒"; position: absolute; right: 1px; bottom: 0; font-size: var(--fs-2xs); }
+/* запрещено на арене (shared/arena.ts → arenaBlocked): серое, с замком по центру, без подсветки при наведении */
+.hud-bar .hb-slot.arenalock img, .hud-bar .hb-slot.arenalock .act, .hud-bar .hb-extras .slot.arenalock img, .hud-bar .hb-extras .slot.arenalock span { filter: grayscale(1) brightness(.4); }
+.hud-bar .hb-slot.arenalock::after, .hud-bar .hb-extras .slot.arenalock::after { content: "🔒"; position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--fs-md); z-index: 4; pointer-events: none; }
+.hud-bar .hb-slot.arenalock:hover, .hud-bar .hb-extras .slot.arenalock:hover { filter: none; cursor: not-allowed; }
+.hud-bar .hb-slot.arenalock .qty, .hud-bar .hb-slot.arenalock .cdt { opacity: .5; }
 
 /* перезарядка: шторка уходит по часовой стрелке, на краю — светлый луч; иконка приглушена */
 .hud-bar .hb-slot .cd { transform: none; inset: 0; border-radius: 2px; background: conic-gradient(transparent calc((1 - var(--p, 0)) * 360deg), rgba(4, 2, 6, .72) 0); }

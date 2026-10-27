@@ -1,5 +1,5 @@
 /** Процедурные звуки на WebAudio (без файлов). AudioContext стартует по первому действию игрока. */
-export type SfxName = "hit" | "crit" | "fire" | "frost" | "arrow" | "heal" | "shield" | "poison" | "explosion" | "slam" | "arcane" | "holy" | "shadow" | "step" | "clink" | "call" | "halt" | "bell" | "horn" | "tpgo" | "tparrive" | "tpfizzle" | "error" | "queue";
+export type SfxName = "hit" | "crit" | "fire" | "frost" | "arrow" | "heal" | "shield" | "poison" | "explosion" | "slam" | "arcane" | "holy" | "shadow" | "step" | "clink" | "call" | "halt" | "bell" | "horn" | "tpgo" | "tparrive" | "tpfizzle" | "error" | "queue" | "bom" | "gong";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -146,6 +146,9 @@ export function play(name: SfxName, gain = 1) {
       break;
     case "error": tone("triangle", 190, 120, 0.09, v * 0.22); break;
     case "queue": tone("sine", 880, 1175, 0.06, v * 0.12); break;
+    // отсчёт арены: мягкий низкий удар; «В бой!» — гонг с долгим хвостом (ui/arena.ts)
+    case "bom": tone("sine", 140, 70, 0.5, v * 0.9); tone("triangle", 280, 200, 0.25, v * 0.25); noise(0.12, v * 0.3, 500, 80, "lowpass"); break;
+    case "gong": tone("sine", 196, 180, 1.6, v * 0.8); tone("sine", 294, 285, 1.3, v * 0.45, 0.01); tone("triangle", 523, 510, 0.9, v * 0.25, 0.02); noise(0.35, v * 0.6, 3000, 200, "bandpass"); break;
     case "tpfizzle": noise(0.45, v * 0.9, 3500, 250, "bandpass"); tone("sawtooth", 520, 70, 0.35, v * 0.4); tone("sine", 1600, 300, 0.25, v * 0.3); break;
     case "shadow": tone("sawtooth", 300, 80, 0.2, v * 0.4); noise(0.18, v * 0.5, 1500, 200, "bandpass"); break;
   }

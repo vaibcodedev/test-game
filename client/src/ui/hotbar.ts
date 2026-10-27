@@ -16,6 +16,7 @@ import { mountSprite } from "../../../shared/mounts";
 import type { Net } from "../net";
 import { T } from "../../../shared/texts";
 import { GP } from "../../../shared/gameplay";
+import { ARENA_BLOCKED_TEXT, arenaBlocked } from "../../../shared/arena";
 
 const icon = (name: string) => `/assets/icons/${name}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -251,13 +252,17 @@ export class Hotbar {
         : st.includes("notarget") ? T("ui.hotbar.530") : "";
       return this.ctx.skillTip(SKILLS[ref.s], s) + (why ? `<div class="warn">${why}</div>` : "");
     }
+    const lock = this.arenaLock(ref) ? `<div class="warn">${ARENA_BLOCKED_TEXT}</div>` : "";
     if ("i" in ref) {
       const q = this.qtyFor.qty.get(ref.i) ?? 0;
-      return `<div class="t">${esc(BASE_ITEMS[ref.i].name)}</div><div class="d">${q} шт.${key ? ` · клавиша ${esc(key)}` : ""}</div>`;
+      return `<div class="t">${esc(BASE_ITEMS[ref.i].name)}</div><div class="d">${q} шт.${key ? ` · клавиша ${esc(key)}` : ""}</div>${lock}`;
     }
     const a = ACTION_INFO[ref.a];
-    return `<div class="t">${a.name}</div><div class="d">${a.tip}${key ? ` · клавиша ${esc(key)}` : ""}</div>`;
+    return `<div class="t">${a.name}</div><div class="d">${a.tip}${key ? ` · клавиша ${esc(key)}` : ""}</div>${lock}`;
   }
+
+  /** Слот запрещён на арене (shared/arena.ts → arenaBlocked): серый с замком, нажатие — только тост. */
+  arenaLock(ref: Slot): boolean { return this.ctx?.net.kind === "arena" && arenaBlocked(ref); }
 
   /** Количество предметов по base: пересчитывается, только когда пришло новое состояние. */
   private counts(s: SelfState) {
@@ -275,6 +280,9 @@ export class Hotbar {
     const now = performance.now();
     const cds = this.ctx.net.cooldowns;
     const qty = this.counts(s);
+    const arena = this.ctx.net.kind === "arena";
+    // кнопки маунта и питомца в ленте (hud.ts) — тот же замок, что у слотов
+    for (const h of [this.mountHost, this.petHost]) h.firstElementChild?.classList.toggle("arenalock", arena);
     for (let bar = 0; bar < BAR_COUNT; bar++) {
       for (let i = 0; i < BAR_SLOTS; i++) {
         const c = this.cells[bar][i], ref = c.ref;
@@ -315,6 +323,7 @@ export class Hotbar {
           if (!n) cls.push("none");
           if (ref.i === "hp_potion" || ref.i === "mp_potion") { cdId = "potion"; total = POTION_MS; }
         } else if (ref.a === "attack" && !f.target) cls.push("notarget");
+        if (arena && arenaBlocked(ref)) cls.push("arenalock");
         const left = cdId ? Math.max(0, (cds.get(cdId) ?? 0) - now) : 0;
         if (left > 0) cls.push("oncd");
         const cl = cls.join(" ");

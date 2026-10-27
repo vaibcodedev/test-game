@@ -1,0 +1,624 @@
+{
+ "_doc": "Сценки в фортах (задача 132, шаг 12; shared/fortScenes.ts считает позы по времени, client/src/game/fortScenes.ts рисует): петли из бойцов-декораций без сети, без боя; позиции — смещения в тайлах от центра форта (одинаковы у обоих фортов), time — секунды; period — длина петли, всё считается от Date.now(), у всех игроков одинаково. actors: role, look (ключ из looks фракции), dx/dy, dir (up/down/left/right), path — ключевые кадры {at, dx, dy, carry} (между ними боец идёт, до первого и после последнего стоит), carry — что несёт (ingot — слитки, stone — камень). beats: at + every × count повторов, who — id или role (stagger — сдвиг на каждого следующего), действие attack (кадры атаки), hop (подпрыгивание, сек), say (пул реплик scene.lines[фракция][сцена][пул], реплика живёт lineSec), fx (anvil — искры и звон, shot — холостой выстрел катапульты). lines — ключи data/texts.json. looks — набор из data/npc-gear.json: from = ранг:вид:номер варианта + переопределения полей набора (weapon/off/helm… пустая строка — убрать), либо set целиком. Бойцы спят, пока герой дальше nearRadius px от сценки; герой чужой фракции ближе pauseRadius px — сценка замирает (стража форта работает как обычно: её бойцы — отдельные юниты soldiers.ts).",
+ "nearRadius": 760,
+ "pauseRadius": 340,
+ "soundRadius": 520,
+ "fx": {
+  "anvil": {
+   "sparks": 7,
+   "sparkLife": 380,
+   "sparkSpeed": 46,
+   "sparkColor": "0xffb040",
+   "sparkColor2": "0xfff0b0",
+   "gain": 0.5
+  },
+  "shot": {
+   "from": [
+    3.5,
+    7.4
+   ],
+   "dir": {
+    "solgard": 1,
+    "umbrath": -1
+   },
+   "range": 19,
+   "dy": -1.5,
+   "flightMs": 1700,
+   "arc": 190,
+   "stone": "0x6a6258",
+   "stoneR": 4,
+   "dustMs": 900,
+   "dust": 7,
+   "dustColor": "0xb8a888",
+   "gain": 0.5
+  }
+ },
+ "looks": {
+  "solgard": {
+   "sergeant": {
+    "from": "strong:melee:0"
+   },
+   "recruit": {
+    "from": "weak:melee:1"
+   },
+   "recruitB": {
+    "from": "weak:melee:1",
+    "helm": "plate_helm_12"
+   },
+   "smith": {
+    "from": "weak:melee:0",
+    "weapon": "mace_6"
+   },
+   "apprentice": {
+    "from": "weak:melee:0",
+    "weapon": ""
+   },
+   "officer": {
+    "from": "mega:melee:0"
+   },
+   "runner": {
+    "from": "weak:ranged:0",
+    "weapon": ""
+   },
+   "crewA": {
+    "from": "weak:melee:0",
+    "weapon": ""
+   },
+   "crewB": {
+    "from": "weak:melee:1",
+    "weapon": "",
+    "off": ""
+   }
+  },
+  "umbrath": {
+   "sergeant": {
+    "set": {
+     "title": "Некромант-сержант",
+     "cls": "warlock",
+     "tabard": "narrow",
+     "helm": "cloth_helm_44",
+     "armor": "cloth_armor_44",
+     "boots": "cloth_boots_44",
+     "weapon": "staff_44"
+    }
+   },
+   "recruit": {
+    "from": "weak:melee:0"
+   },
+   "recruitB": {
+    "from": "weak:melee:1"
+   },
+   "smith": {
+    "from": "weak:melee:1",
+    "weapon": "mace_6"
+   },
+   "apprentice": {
+    "from": "weak:melee:0",
+    "weapon": ""
+   },
+   "officer": {
+    "from": "mega:melee:0"
+   },
+   "runner": {
+    "from": "weak:ranged:0",
+    "weapon": ""
+   },
+   "crewA": {
+    "from": "weak:melee:1",
+    "weapon": ""
+   },
+   "crewB": {
+    "from": "weak:melee:0",
+    "weapon": ""
+   }
+  }
+ },
+ "lines": {
+  "solgard": {
+   "drill": {
+    "cmd": [
+     "ui.fortScenes.1",
+     "ui.fortScenes.2",
+     "ui.fortScenes.3",
+     "ui.fortScenes.4",
+     "ui.fortScenes.5"
+    ],
+    "reply": [
+     "ui.fortScenes.6",
+     "ui.fortScenes.7",
+     "ui.fortScenes.8"
+    ]
+   },
+   "smith": {
+    "smith": [
+     "ui.fortScenes.9",
+     "ui.fortScenes.10",
+     "ui.fortScenes.11",
+     "ui.fortScenes.12"
+    ],
+    "app": [
+     "ui.fortScenes.13",
+     "ui.fortScenes.14",
+     "ui.fortScenes.15"
+    ]
+   },
+   "orders": {
+    "officer": [
+     "ui.fortScenes.16",
+     "ui.fortScenes.17",
+     "ui.fortScenes.18",
+     "ui.fortScenes.19",
+     "ui.fortScenes.20"
+    ],
+    "runner": [
+     "ui.fortScenes.21",
+     "ui.fortScenes.22",
+     "ui.fortScenes.23"
+    ]
+   },
+   "catapult": {
+    "cmd": [
+     "ui.fortScenes.24",
+     "ui.fortScenes.25",
+     "ui.fortScenes.26",
+     "ui.fortScenes.27",
+     "ui.fortScenes.28"
+    ],
+    "reply": [
+     "ui.fortScenes.29",
+     "ui.fortScenes.30",
+     "ui.fortScenes.31"
+    ]
+   }
+  },
+  "umbrath": {
+   "drill": {
+    "cmd": [
+     "ui.fortScenes.32",
+     "ui.fortScenes.33",
+     "ui.fortScenes.34",
+     "ui.fortScenes.35",
+     "ui.fortScenes.36"
+    ],
+    "reply": [
+     "ui.fortScenes.37",
+     "ui.fortScenes.38",
+     "ui.fortScenes.39"
+    ]
+   },
+   "smith": {
+    "smith": [
+     "ui.fortScenes.40",
+     "ui.fortScenes.41",
+     "ui.fortScenes.42",
+     "ui.fortScenes.43"
+    ],
+    "app": [
+     "ui.fortScenes.44",
+     "ui.fortScenes.45",
+     "ui.fortScenes.46"
+    ]
+   },
+   "orders": {
+    "officer": [
+     "ui.fortScenes.47",
+     "ui.fortScenes.48",
+     "ui.fortScenes.49",
+     "ui.fortScenes.50",
+     "ui.fortScenes.51"
+    ],
+    "runner": [
+     "ui.fortScenes.52",
+     "ui.fortScenes.53",
+     "ui.fortScenes.54"
+    ]
+   },
+   "catapult": {
+    "cmd": [
+     "ui.fortScenes.55",
+     "ui.fortScenes.56",
+     "ui.fortScenes.57",
+     "ui.fortScenes.58",
+     "ui.fortScenes.59"
+    ],
+    "reply": [
+     "ui.fortScenes.60",
+     "ui.fortScenes.61",
+     "ui.fortScenes.62"
+    ]
+   }
+  }
+ },
+ "scenes": {
+  "drill": {
+   "at": [
+    0,
+    0.6
+   ],
+   "period": 14,
+   "lineSec": 2.2,
+   "actors": [
+    {
+     "id": "sgt",
+     "role": "sergeant",
+     "look": "sergeant",
+     "dx": 0,
+     "dy": 2.4,
+     "dir": "up"
+    },
+    {
+     "id": "r0",
+     "role": "recruit",
+     "look": "recruit",
+     "dx": -2.4,
+     "dy": 0,
+     "dir": "down"
+    },
+    {
+     "id": "r1",
+     "role": "recruit",
+     "look": "recruitB",
+     "dx": -1.2,
+     "dy": 0,
+     "dir": "down"
+    },
+    {
+     "id": "r2",
+     "role": "recruit",
+     "look": "recruit",
+     "dx": 0,
+     "dy": 0,
+     "dir": "down"
+    },
+    {
+     "id": "r3",
+     "role": "recruit",
+     "look": "recruitB",
+     "dx": 1.2,
+     "dy": 0,
+     "dir": "down"
+    },
+    {
+     "id": "r4",
+     "role": "recruit",
+     "look": "recruit",
+     "dx": 2.4,
+     "dy": 0,
+     "dir": "down"
+    }
+   ],
+   "beats": [
+    {
+     "at": 0.4,
+     "who": "sgt",
+     "say": "cmd"
+    },
+    {
+     "at": 2,
+     "every": 1.1,
+     "count": 3,
+     "who": "recruit",
+     "stagger": 0.07,
+     "attack": true
+    },
+    {
+     "at": 3.4,
+     "who": "r2",
+     "say": "reply"
+    },
+    {
+     "at": 6.6,
+     "who": "sgt",
+     "say": "cmd"
+    },
+    {
+     "at": 7.6,
+     "who": "recruit",
+     "stagger": 0.05,
+     "hop": 0.9
+    },
+    {
+     "at": 8.6,
+     "who": "r0",
+     "say": "reply"
+    },
+    {
+     "at": 10.2,
+     "who": "sgt",
+     "say": "cmd"
+    },
+    {
+     "at": 11.2,
+     "every": 1,
+     "count": 2,
+     "who": "recruit",
+     "stagger": 0.07,
+     "attack": true
+    }
+   ]
+  },
+  "smith": {
+   "at": [
+    9,
+    -0.2
+   ],
+   "period": 10,
+   "lineSec": 2.2,
+   "actors": [
+    {
+     "id": "smith",
+     "role": "smith",
+     "look": "smith",
+     "dx": 8.5,
+     "dy": -1.4,
+     "dir": "up"
+    },
+    {
+     "id": "app",
+     "role": "apprentice",
+     "look": "apprentice",
+     "dx": 11.9,
+     "dy": 3,
+     "dir": "up",
+     "carry": "ingot",
+     "path": [
+      {
+       "at": 0,
+       "dx": 11.9,
+       "dy": 3,
+       "carry": true
+      },
+      {
+       "at": 4,
+       "dx": 9.9,
+       "dy": -0.7,
+       "carry": true
+      },
+      {
+       "at": 5,
+       "dx": 9.9,
+       "dy": -0.7,
+       "carry": false
+      },
+      {
+       "at": 9,
+       "dx": 11.9,
+       "dy": 3,
+       "carry": false
+      },
+      {
+       "at": 10,
+       "dx": 11.9,
+       "dy": 3,
+       "carry": true
+      }
+     ]
+    }
+   ],
+   "beats": [
+    {
+     "at": 0.3,
+     "every": 1.25,
+     "count": 8,
+     "who": "smith",
+     "attack": true
+    },
+    {
+     "at": 0.58,
+     "every": 1.25,
+     "count": 8,
+     "who": "smith",
+     "fx": "anvil",
+     "fxDx": 0,
+     "fxDy": -22
+    },
+    {
+     "at": 2.4,
+     "who": "smith",
+     "say": "smith"
+    },
+    {
+     "at": 4.2,
+     "who": "app",
+     "say": "app"
+    },
+    {
+     "at": 7,
+     "who": "smith",
+     "say": "smith"
+    }
+   ]
+  },
+  "orders": {
+   "at": [
+    -7,
+    3
+   ],
+   "period": 24,
+   "lineSec": 2.4,
+   "actors": [
+    {
+     "id": "officer",
+     "role": "officer",
+     "look": "officer",
+     "dx": -7.5,
+     "dy": 2.5,
+     "dir": "down"
+    },
+    {
+     "id": "runner",
+     "role": "runner",
+     "look": "runner",
+     "dx": -5.6,
+     "dy": 2.8,
+     "dir": "left",
+     "path": [
+      {
+       "at": 0,
+       "dx": -5.6,
+       "dy": 2.8
+      },
+      {
+       "at": 6,
+       "dx": -5.6,
+       "dy": 2.8
+      },
+      {
+       "at": 9.5,
+       "dx": 0,
+       "dy": 7
+      },
+      {
+       "at": 11,
+       "dx": 0,
+       "dy": 7
+      },
+      {
+       "at": 14.5,
+       "dx": -5.6,
+       "dy": 2.8
+      }
+     ]
+    }
+   ],
+   "beats": [
+    {
+     "at": 1,
+     "who": "officer",
+     "say": "officer"
+    },
+    {
+     "at": 4,
+     "who": "runner",
+     "say": "runner"
+    },
+    {
+     "at": 8,
+     "who": "officer",
+     "say": "officer"
+    },
+    {
+     "at": 15.2,
+     "who": "runner",
+     "say": "runner"
+    },
+    {
+     "at": 18,
+     "who": "officer",
+     "say": "officer"
+    }
+   ]
+  },
+  "catapult": {
+   "at": [
+    3.5,
+    8
+   ],
+   "period": 26,
+   "lineSec": 2.4,
+   "actors": [
+    {
+     "id": "c1",
+     "role": "crew",
+     "look": "crewA",
+     "dx": 1.9,
+     "dy": 7.7,
+     "dir": "right"
+    },
+    {
+     "id": "c2",
+     "role": "crew",
+     "look": "crewB",
+     "dx": 1.9,
+     "dy": 6.5,
+     "dir": "right",
+     "carry": "stone",
+     "path": [
+      {
+       "at": 0,
+       "dx": 1.9,
+       "dy": 6.5,
+       "carry": false
+      },
+      {
+       "at": 8,
+       "dx": 1.9,
+       "dy": 6.5,
+       "carry": false
+      },
+      {
+       "at": 10,
+       "dx": 3.5,
+       "dy": 5.4,
+       "carry": false
+      },
+      {
+       "at": 10.4,
+       "dx": 3.5,
+       "dy": 5.4,
+       "carry": true
+      },
+      {
+       "at": 12.4,
+       "dx": 1.9,
+       "dy": 6.5,
+       "carry": true
+      },
+      {
+       "at": 13,
+       "dx": 1.9,
+       "dy": 6.5,
+       "carry": false
+      },
+      {
+       "at": 26,
+       "dx": 1.9,
+       "dy": 6.5,
+       "carry": false
+      }
+     ]
+    }
+   ],
+   "beats": [
+    {
+     "at": 0.5,
+     "who": "c1",
+     "say": "cmd"
+    },
+    {
+     "at": 1,
+     "every": 1,
+     "count": 6,
+     "who": "crew",
+     "stagger": 0.45,
+     "attack": true
+    },
+    {
+     "at": 3,
+     "who": "c2",
+     "say": "reply"
+    },
+    {
+     "at": 13.4,
+     "who": "c1",
+     "say": "cmd"
+    },
+    {
+     "at": 14.4,
+     "who": "crew",
+     "attack": true
+    },
+    {
+     "at": 15,
+     "who": "c1",
+     "fx": "shot"
+    },
+    {
+     "at": 17,
+     "who": "c1",
+     "say": "cmd"
+    }
+   ]
+  }
+ }
+}

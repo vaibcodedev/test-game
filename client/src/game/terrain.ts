@@ -9,6 +9,7 @@ import { GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type Wo
 import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
 import { CHUNK, cellHash, chunkRect, chunkRows, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
+import { NO_SHADOW, Shadow, shadowTick } from "./shadows";
 
 export const DEPTH = { water: -1000, terrain: -900, walls: -800, overlay: -700, ground: -600, top: 1e6 };
 
@@ -130,6 +131,12 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const makeObject = (o: MapObject, objs: Phaser.GameObjects.GameObject[]) => {
     const img = makeImage(o);
     objs.push(img);
+    // динамическая тень из собственного кадра (game/shadows.ts): не для лежащего на земле, низкого и анимированного
+    if (img.type === "Image" && (img as Phaser.GameObjects.Image).height >= 20 && !NO_SHADOW.has(o.kind) && !GROUND_OBJECTS.has(o.kind)) {
+      const sh = new Shadow(scene, o.x, o.y);
+      sh.mirror(0, img as Phaser.GameObjects.Image, 0, 0);
+      objs.push(sh.box);
+    }
     if (o.kind === "lilypad" || GROUND_OBJECTS.has(o.kind)) img.setDepth(DEPTH.ground - (GROUND_OBJECTS.has(o.kind) ? 1 : 0));
     else if (o.kind === "flowers" || o.kind === "tallgrass" || o.kind === "bones" || o.kind === "ember_vent") img.setDepth(o.y - 20);
     else img.setDepth(o.y + (o.dz ?? 0));
@@ -264,6 +271,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   /** Запас вокруг кадра для отсечения, пиксели мира: worldView отстаёт на кадр, а камера за кадр сдвигается на несколько пикселей. */
   const PAD = 48;
   const update = (cam: Phaser.Cameras.Scene2D.Camera) => {
+    shadowTick();
     const v = cam.worldView;
     follow(v);
     const vx0 = v.x - PAD, vy0 = v.y - PAD, vx1 = v.right + PAD, vy1 = v.bottom + PAD;

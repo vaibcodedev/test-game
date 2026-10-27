@@ -1030,10 +1030,12 @@ function teamFight(teamA: ClassId[], teamB: ClassId[], level: number, rep: numbe
  * бот — server/src/arena/bots.ts botSave(класс, уровень, сохранение героя) и botThink каждые 250 мс (как ArenaRoom.tick).
  * Разбор: урон/с обеих сторон, лечение/с и щиты бота, промахи и неуязвимость.
  */
+/** Рейтинг бота арены (--bot-rating, по умолчанию стартовый 1000): сила бота pvp.botPower. */
+const BOT_RATING = Number(arg("bot-rating") ?? 1000);
 function botDuel(hero: ClassId, botCls: ClassId, level: number, rep: number, gear: GearMode, verbose = false) {
   const bH = build(hero, level, "pvp", gear);
   Math.random = localRand(`botsave|${hero}|${botCls}|${level}|${gear}`);
-  const bSave = botSave(botCls, level, bH.save);
+  const bSave = botSave(botCls, level, bH.save, BOT_RATING);
   Math.random = rng;
   seedRng("botduel", hero, botCls, level, rep, gear);
   const w = makeWorld(ARENA, false);
@@ -1328,10 +1330,10 @@ if (BOTDUEL) {
   process.exit(0);
 }
 if (ONLY.has("arenabots")) {
-  // матрица «герой против бота арены»: --only arenabots [--classes ...] [--pvp-levels 30,100] [--reps 2] [--bot-gear max]
+  // матрица «герой против бота арены»: --only arenabots [--hero reaver] [--classes ...] [--bot-rating 1000] [--pvp-levels 30,100] [--reps 2] [--bot-gear max]
   const g: GearMode = arg("bot-gear") === "max" ? "max" : "level";
   const rows: Record<string, unknown>[] = [];
-  for (const l of PVP_LEVELS) for (const a of CLS) for (const b of CLS) {
+  for (const l of PVP_LEVELS) for (const a of (arg("hero")?.split(",") as ClassId[] | undefined) ?? CLS) for (const b of CLS) {
     const rs: ReturnType<typeof botDuel>[] = [];
     for (let r = 0; r < PVP_REPS; r++) { const x = safe(`botduel ${a}-${b} L${l}`, () => botDuel(a, b, l, r, g)); if (x) rs.push(x); }
     const win = (rs.filter((x) => x.winner === 1).length + rs.filter((x) => x.winner === 0).length / 2) / Math.max(1, rs.length);

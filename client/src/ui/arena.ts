@@ -1,6 +1,6 @@
 /** Интерфейс арены: окно (рейтинг, очередь, группа, лидеры, история), подтверждение матча, табло боя, результаты. */
 import {
-  ACCEPT_MS, ARENA_MODES, BOT_RATING_MULT, MODE_NAMES, queueWindow, rankById, rankOf, RANKS, START_RATING,
+  ACCEPT_MS, ARENA_MODES, BOT_RATING_MULT, COUNTDOWN_MS, MODE_NAMES, queueWindow, rankById, rankOf, RANKS, START_RATING,
   type ArenaInfo, type ArenaMode, type ArenaResultMsg, type HistoryRow, type LeaderRow, type MatchFoundMsg,
 } from "../../../shared/arena";
 import { CLASSES, type ClassId } from "../../../shared/classes";
@@ -9,6 +9,7 @@ import type { Net, UnitState } from "../net";
 import { seg, setHidden, tabs, type TabsHandle } from "./kit";
 import { formatNumber } from "./gold";
 import { absorbApply } from "./absorb";
+import * as sfx from "../game/sfx";
 import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -50,7 +51,14 @@ export class ArenaUI {
   private tabsH!: TabsHandle;
   private drawn = ""; // вкладка, показанная при прошлой перерисовке: при смене прокрутка сбрасывается
   private board = el("div", "panel arena-board");
-  private countdown = el("div", "arena-countdown passthru");
+  // вступление боя: затемнение-виньетка, баннер «кто против кого», крупный отсчёт «3 · 2 · 1», вспышка на «В бой!» (мировая часть — game/arenaIntro.ts)
+  private countdown = el("div", "arena-intro passthru", `<div class="ai-vig"></div><div class="ai-flash"></div><div class="ai-vs"></div><div class="ai-num"></div>`);
+  private introVs = this.countdown.querySelector<HTMLElement>(".ai-vs")!;
+  private introNum = this.countdown.querySelector<HTMLElement>(".ai-num")!;
+  private introVig = this.countdown.querySelector<HTMLElement>(".ai-vig")!;
+  private introSig = "";
+  private introN = "";
+  private introHide = 0;
   private partyBox = el("div", "panel hud-party");
   private partySig = "";
   private tab: "rating" | "top" | "history" = "rating";
@@ -411,17 +419,47 @@ export class ArenaUI {
     }).join("");
     const timer = st.phase === "fight" || st.phase === "end" ? mmss(st.timeLeft * 1000) : st.phase === "countdown" ? T("ui.arena.361") : T("ui.arena.362");
     this.board.innerHTML = `<div class="side ally">${names(myTeam)}</div><div class="mid"><div class="mode">${MODE_NAMES[net.arena!.mode]}</div><div class="time">${timer}</div></div><div class="side enemy">${names(myTeam === 1 ? 2 : 1)}</div>`;
-    // отсчёт
-    if (st.phase === "countdown") {
-      this.countdown.hidden = false;
-      this.countdown.textContent = String(st.countdown || "");
-    } else if (st.phase === "fight" && this.lastPhase === "countdown") {
-      this.countdown.hidden = false;
-      this.countdown.textContent = T("ui.arena.271");
-      setTimeout(() => (this.countdown.hidden = true), 900);
-    } else if (st.phase !== "fight") setHidden(this.countdown, st.phase !== "waiting");
-    if (st.phase === "waiting") this.countdown.textContent = "…";
+    this.intro(st);
     this.lastPhase = st.phase;
+  }
+
+  /** Вступление: виньетка сжимается к центру с каждой секундой, «3 · 2 · 1» с пульсом и «бом», на «В бой!» — вспышка, виньетка уходит. */
+  private intro(st: { phase: string; countdown: number }) {
+    const box = this.countdown, net = this.net;
+    if (st.phase === "waiting" || st.phase === "countdown") {
+      clearTimeout(this.introHide);
+      box.hidden = false;
+      box.classList.remove("go");
+      // виньетка стягивается к центру за отсчёт: scale 1.25 → 0.8, переход плавный (arena.css)
+      const total = Math.ceil(COUNTDOWN_MS / 1000), n = st.phase === "countdown" ? st.countdown : total + 1;
+      const sq = Math.min(1, Math.max(0, (total + 1 - n) / total));
+      this.introVig.style.transform = `scale(${(1.25 - sq * 0.45).toFixed(3)})`;
+      const sig = JSON.stringify(net.arena!.teams);
+      if (sig !== this.introSig) {
+        this.introSig = sig;
+        const my = net.arena!.team;
+        const side = (t: number, cls: string) => `<div class="ai-side ${cls}">${net.arena!.teams[t - 1].map((p) => `<div class="ai-p"><b>${esc(p.name)}</b><span>${clsName(p.cls)} · ${p.rating}</span></div>`).join("")}</div>`;
+        this.introVs.innerHTML = `${side(my, "ally")}<div class="ai-x">VS</div>${side(my === 1 ? 2 : 1, "enemy")}`;
+      }
+      const txt = st.phase === "countdown" && st.countdown > 0 && st.countdown <= 3 ? String(st.countdown) : "";
+      if (txt !== this.introN) {
+        this.introN = txt;
+        this.introNum.textContent = txt;
+        this.introNum.classList.remove("pop");
+        void this.introNum.offsetWidth;
+        if (txt) { this.introNum.classList.add("pop"); sfx.play("bom"); }
+      }
+    } else if (st.phase === "fight" && this.lastPhase === "countdown") {
+      box.hidden = false;
+      this.introN = T("ui.arena.271");
+      this.introNum.textContent = this.introN;
+      this.introNum.classList.remove("pop");
+      void box.offsetWidth;
+      box.classList.add("go");
+      this.introNum.classList.add("pop");
+      sfx.play("gong");
+      this.introHide = window.setTimeout(() => { box.hidden = true; box.classList.remove("go"); this.introN = ""; }, 1500);
+    } else if (st.phase !== "fight") setHidden(box, true);
   }
 }
 

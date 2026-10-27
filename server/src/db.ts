@@ -11,6 +11,10 @@ import type { QuestSave } from "../../shared/quests";
 
 export interface PlayerSave {
   cls: ClassId;
+  /** Только у ботов арены (не сохраняется): сила бота против героев — урон и лечение ×, получаемый урон ÷ (data/gameplay.json arena.botPower). */
+  botPower?: number;
+  /** Только у ботов арены: множитель урона от героев (data/balance.json pvp.botTaken). */
+  botTaken?: number;
   /** Фракция (задача 38); в старых сохранениях нет — берётся из класса (Сольгард). */
   faction?: FactionId;
   level: number;

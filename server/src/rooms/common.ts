@@ -91,6 +91,12 @@ export function floodCheck(state: WeakMap<Client, Flood>, client: Client, type: 
 export function makeOn(room: Room<any>, world: () => World): On {
   // по объекту соединения: после переподключения счёт заново, закрытые соединения уходят сборщику мусора
   const flood = new WeakMap<Client, Flood>();
+  // сообщение без обработчика: Colyseus 0.16 по умолчанию отключает клиента (4002) — тот переподключается с экраном загрузки.
+  // Здесь его просто отбрасываем (с тем же лимитом): кнопка, которой нет в этой комнате, не должна ронять сессию
+  room.onMessage("*", (client: Client, type: string | number) => {
+    const p = world().players.get(client.sessionId);
+    if (!floodCheck(flood, client, String(type), Date.now(), MSG_LIMIT, p?.name) && p && flood.get(client)?.kicked) p.noReconnect = true;
+  });
   return <T>(type: string, fn: (p: Player, msg: T) => void) => {
     room.onMessage(type, (client: Client, msg: T) => {
       const p = world().players.get(client.sessionId);

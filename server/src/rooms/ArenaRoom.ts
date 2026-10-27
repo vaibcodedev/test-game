@@ -7,7 +7,7 @@ import { awardGladiators } from "../arena/gladiator";
 import { resetTargetAuras } from "../game/auras";
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
 import {
-  arenaSpawn, BOT_RATING_MULT, COUNTDOWN_MS, eloDelta, generateArenaMap, MATCH_MS,
+  ARENA_BLOCKED_MSGS, ARENA_BLOCKED_TEXT, arenaSpawn, BOT_RATING_MULT, COUNTDOWN_MS, eloDelta, generateArenaMap, MATCH_MS,
   type ArenaMode, type ArenaPlayerResult, type ArenaResultMsg,
 } from "../../../shared/arena";
 import type { ClassId } from "../../../shared/classes";
@@ -103,6 +103,8 @@ export class ArenaRoom extends Room<ArenaState> {
     };
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
+    // запреты арены (shared/arena.ts): предметы, маунт, питомец — короткий отказ, без отключения (регистрируется после registerCombat и заменяет mount:toggle)
+    for (const type of ARENA_BLOCKED_MSGS) on(type, (p) => p.send("toast", { text: ARENA_BLOCKED_TEXT, kind: "error" }));
     this.onMessage("ping", (c) => c.send("pong", 0)); // сторож связи клиента
     this.onMessage("arena:leave", (client) => void this.sendHome(client));
     this.parts.forEach((x, i) => {

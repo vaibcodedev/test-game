@@ -3,6 +3,7 @@ import { TILE } from "./constants";
 import type { ClassId } from "./classes";
 import { CELL_BLOCK, CELL_WALL, T, TOWN, Zone, type WorldMap } from "./map";
 import { GP } from "./gameplay";
+import { T as TX } from "./texts";
 
 /** Распорядитель арены в городе: у врат арены во дворе восточного квартала (shared/town.ts). */
 export const ARENA_NPC = {
@@ -17,6 +18,21 @@ export const MODE_NAMES: Record<ArenaMode, string> = {
   "2v2": "2×2",
 };
 export const TEAM_SIZE: Record<ArenaMode, number> = { "1v1": 1, "2v2": 2 };
+
+/**
+ * Запреты арены — единый источник для сервера и клиента. Сумка на арене не сохраняется (после боя герой берётся из базы),
+ * поэтому предметы (зелья, еда, печати) запрещены целиком; маунт и питомец — тоже. Сервер отвечает на эти сообщения
+ * тостом ARENA_BLOCKED_TEXT (ArenaRoom), клиент показывает такие слоты и кнопки серыми с замком (ui/hotbar.ts, ui/hud.ts).
+ */
+export const ARENA_BLOCKED_MSGS = ["use", "use:base", "equip", "unequip", "swap", "pickup", "mount:toggle", "mount:select", "pet:toggle", "pet:select"] as const;
+export const ARENA_BLOCKED_ACTIONS: readonly string[] = ["mount", "pet"];
+export const ARENA_BLOCKED_TEXT = TX("ui.arena.blocked");
+/** Слот панели запрещён на арене: любой предмет или действие из ARENA_BLOCKED_ACTIONS. */
+export function arenaBlocked(ref: object | null | undefined): boolean {
+  if (!ref) return false;
+  if ("i" in ref) return true;
+  return "a" in ref && ARENA_BLOCKED_ACTIONS.includes(String((ref as { a: unknown }).a));
+}
 
 /** Урон и лечение героя по герою — модель PvP в data/balance.json pvp (shared/balance.ts): устойчивость по уровню, потолки крита и удара. */
 export const START_RATING = GP.arena.startRating;

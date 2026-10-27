@@ -6,6 +6,7 @@ import { net, type UnitState } from "../net";
 import { emptyBox, hitUnit, silhouette, Trail, TRAIL_MS, unionBox, type Box, type Hit } from "./hit";
 import { rankById } from "../../../shared/arena";
 import { DEPTH } from "./terrain";
+import { Shadow } from "./shadows";
 import { nightLevel } from "../../../shared/daynight";
 import { MOUNTS, mountTex, type MountMeta } from "../../../shared/mounts";
 import { PLAYER_SPEED } from "../../../shared/constants";
@@ -109,6 +110,8 @@ export class UnitView {
   /** Обозначения бафов и дебафов на юните (задача 129): создаётся, когда у юнита появляется набор ключей Unit.fx. */
   private afxView?: UnitAuras;
   private shadowMounted = false;
+  /** Длинная динамическая тень из кадров тела и маунта (game/shadows.ts). */
+  private dyn?: Shadow;
   private dustAt = 0;
   /** Факел стражника ночью: пламя и мерцающее свечение. */
   private torchGfx?: Phaser.GameObjects.Graphics;
@@ -436,6 +439,7 @@ export class UnitView {
     this.shadowMounted = mounted;
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
+    this.syncDynShadow();
     // под курсором (вместо тинта спрайта): кольцо под ногами вдвое бледнее выбранного, красное у врага и зелёное у союзника; ник и полоска видны ниже
     const hov = this.hovered && !this.dead && !this.unseen;
     this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible((this.selected || hov) && !this.dead);
@@ -725,7 +729,19 @@ export class UnitView {
     if (showBar) { t.x0 = barX - 1; t.x1 = barX + barW + 1; t.y0 = barY - 1; t.y1 = barY + 3; unionBox(p, t); }
   }
 
+  /** Тень по кадрам тела и маунта; основание — точка юнита на земле. */
+  private syncDynShadow() {
+    if (!this.dyn) this.dyn = new Shadow(this.scene, this.x, this.y);
+    const bx = Math.round(this.x), by = Math.round(this.y);
+    this.dyn.box.setPosition(bx, by).setVisible(!this.dead && this.sprite.visible);
+    this.dyn.mirror(0, this.sprite, this.sprite.x - bx, this.sprite.y - by);
+    const m = this.mountSpr;
+    if (m && m.visible) this.dyn.mirror(1, m, m.x - bx, m.y - by);
+    else if (this.dyn.imgs[1]) this.dyn.imgs[1].setVisible(false);
+  }
+
   destroy() {
+    this.dyn?.destroy();
     if (zbViews.delete(this)) zbFx?.drop(this);
     this.sprite.destroy();
     this.mountSpr?.destroy();

@@ -176,6 +176,64 @@
     0 0 30px #000;
   pointer-events: none;
 }
+/* вступление боя (ui/arena.ts → intro): виньетка стягивается к центру (scale из ui/arena.ts), «3 · 2 · 1», баннер, вспышка на «В бой!» */
+.arena-intro { position: fixed; inset: 0; z-index: 50; pointer-events: none; overflow: hidden; }
+.arena-intro .ai-vig {
+  /* больше экрана: уменьшение (ui/arena.ts задаёт scale от 1.25 до 0.8) стягивает тёмное кольцо к центру */
+  position: absolute; inset: -25%;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(10, 5, 12, .12) 0%, rgba(10, 5, 12, .22) 38%, rgba(8, 4, 10, .7) 62%, rgba(4, 2, 6, .92) 80%);
+  transform: scale(1.25);
+  transition: transform 1s cubic-bezier(.22, .8, .3, 1), opacity .7s cubic-bezier(.3, .7, .3, 1);
+}
+.arena-intro .ai-flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 50%, rgba(255, 244, 200, .9), rgba(255, 190, 90, .45) 35%, transparent 70%); }
+.arena-intro .ai-vs {
+  position: absolute; top: 22%; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: var(--sp-4, 24px); white-space: nowrap;
+  font-family: var(--font-head); animation: ai-vs-in .7s cubic-bezier(.2, .8, .3, 1.2) both;
+  transition: opacity .5s ease, transform .5s ease;
+}
+.arena-intro .ai-side { display: flex; flex-direction: column; gap: 6px; }
+.arena-intro .ai-side.ally { align-items: flex-end; text-align: right; }
+.arena-intro .ai-p { display: flex; flex-direction: column; line-height: 1.15; text-shadow: 0 2px 0 #120a10, 0 0 12px #000; }
+.arena-intro .ai-p b { font-size: 26px; font-weight: var(--fw-b, 700); }
+.arena-intro .ai-p span { font-size: var(--fs, 14px); color: var(--fg); opacity: .85; }
+.arena-intro .ally b { color: var(--ally, #9ae07a); }
+.arena-intro .enemy b { color: #ff8a7a; }
+.arena-intro .ai-x { font-size: 40px; color: var(--gold); text-shadow: 0 3px 0 #5a2a10, 0 0 18px rgba(255, 190, 80, .7); animation: ai-x 1.4s ease-in-out infinite; }
+.arena-intro .ai-num {
+  position: absolute; top: 44%; left: 50%; transform: translate(-50%, -50%);
+  font-family: var(--font-head); font-size: 96px; line-height: 1; color: var(--gold); white-space: nowrap;
+  text-shadow: 3px 0 0 #1a0c06, -3px 0 0 #1a0c06, 0 3px 0 #1a0c06, 0 -3px 0 #1a0c06, 3px 3px 0 #1a0c06, -3px 3px 0 #1a0c06, 3px -3px 0 #1a0c06, -3px -3px 0 #1a0c06,
+    0 7px 0 #5a2a10, 0 0 24px rgba(255, 170, 60, .75), 0 0 52px rgba(0, 0, 0, .9);
+}
+.arena-intro .ai-num.pop { animation: ai-pop 1s cubic-bezier(.18, .9, .3, 1.25) both; }
+.arena-intro.go .ai-num { font-size: 72px; color: #ffd27a; }
+.arena-intro.go .ai-num.pop { animation: ai-go 1.4s cubic-bezier(.18, .9, .3, 1.2) both; }
+.arena-intro.go .ai-flash { animation: ai-flash .7s cubic-bezier(.2, .7, .3, 1) both; }
+.arena-intro.go .ai-vig { opacity: 0; }
+.arena-intro.go .ai-vs { opacity: 0; transform: translate(-50%, -14px); }
+@keyframes ai-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.9); filter: brightness(2); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(.94); filter: brightness(1.3); }
+  40% { transform: translate(-50%, -50%) scale(1.04); filter: brightness(1); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes ai-go {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  34% { transform: translate(-50%, -50%) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); }
+}
+@keyframes ai-flash { 0% { opacity: 0; } 15% { opacity: .85; } 100% { opacity: 0; } }
+@keyframes ai-vs-in { from { opacity: 0; transform: translate(-50%, -24px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes ai-x { 50% { transform: scale(1.12); text-shadow: 0 3px 0 #5a2a10, 0 0 26px rgba(255, 200, 90, .95); } }
+@media (max-width: 800px) {
+  .arena-intro .ai-num { font-size: 72px; }
+  .arena-intro.go .ai-num { font-size: 52px; }
+  .arena-intro .ai-p b { font-size: 18px; }
+  .arena-intro .ai-x { font-size: 28px; }
+}
 /* группа в мире: рамки .uf (kit.css), левая колонка — ширина и позиция в hud.css, высота столбика — ui/hud.ts stackLeftPanels */
 .hud-party { position: absolute; padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs); }
 .hud-party .uf { gap: var(--sp-1); padding: var(--sp-1) var(--sp-1h); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); }

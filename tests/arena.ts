@@ -45,7 +45,8 @@ async function quickDuel(strong: Bot, weak: Bot) {
 
 async function main() {
   console.log("Запуск тестового сервера…");
-  await startServer(true, { ARENA_MATCH_MS: String(MATCH_MS) });
+  // бой с ботом здесь не предлагается (по умолчанию arena.botWaitMs = 0 — сразу): иначе он перебивает подбор живых соперников и проверку повторов
+  await startServer(true, { ARENA_MATCH_MS: String(MATCH_MS), ARENA_BOT_WAIT_MS: "600000" });
   try {
     console.log("Арена 1×1");
     const A = await Bot.join("Гладиатор", "pass", "warrior");

@@ -11,7 +11,7 @@ import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, typ
 import { SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import { CITIES } from "../../../shared/cities";
 import { WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
-import { generateArenaMap, MODE_NAMES } from "../../../shared/arena";
+import { ARENA_BLOCKED_TEXT, arenaBlocked, generateArenaMap, MODE_NAMES } from "../../../shared/arena";
 import { MOUNTS } from "../../../shared/mounts";
 import { generateRaidMap } from "../../../shared/raid";
 import { net, type UnitState } from "../net";
@@ -22,8 +22,10 @@ import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
+import { setNoSun } from "./shadows";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { placeText, syncTextRes, worldText } from "./worldText";
+import { ArenaIntroFx } from "./arenaIntro";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
@@ -34,6 +36,7 @@ import { removeLoot, spawnLoot } from "./lootView";
 import { INTERIORS, interiorAt, type Interior } from "../../../shared/interiors";
 import { InteriorViews } from "./interiors";
 import { TowerArchers } from "./towerArchers";
+import { FortScenes } from "./fortScenes";
 import { STATUES, type StatueKey } from "../ui/statue";
 import { T } from "../../../shared/texts";
 
@@ -166,6 +169,8 @@ export class GameScene extends Phaser.Scene {
   private interiors: InteriorViews | null = null;
   /** Лучники на вышках стен у рек (задача 141): бойцы фракции без сети, см. towerArchers.ts. */
   private towerArchers: TowerArchers | null = null;
+  /** Сценки в фортах (задача 132, шаг 12): муштра, кузнецы, приказы, катапульта — см. fortScenes.ts. */
+  private fortScenes: FortScenes | null = null;
   private room: Interior | null = null;
   /** Переход через дверь: куда перенесён герой; кадр проявляется, когда позиция придёт в состоянии (патч идёт позже сообщения). */
   private arrive: { x: number; y: number; at: number } | null = null;
@@ -276,6 +281,8 @@ export class GameScene extends Phaser.Scene {
       this.interiors = new InteriorViews(this);
       this.towerArchers = new TowerArchers(this, this.map);
       this.cleanup.push(() => { this.towerArchers?.destroy(); this.towerArchers = null; });
+      this.fortScenes = new FortScenes(this, () => this.units.values());
+      this.cleanup.push(() => { this.fortScenes?.destroy(); this.fortScenes = null; });
       // выстрел башни (fx proj от точки башни, без юнита-стрелка): лучник на вышке поворачивается и стреляет
       this.cleanup.push(net.on("fx", (list) => { for (const f of list) if (f.t === "proj" && f.fx !== undefined && f.fy !== undefined) this.towerArchers?.shot(f.fx, f.fy, f.tx, f.ty); }));
       this.room = null;
@@ -297,6 +304,9 @@ export class GameScene extends Phaser.Scene {
 
     if (mouseOpts.chase) net.send("chase", { on: true });
     this.aim = new AimPreview(this);
+    // вступление боя арены: подсветка бойцов на отсчёте, кольца на «В бой!» (game/arenaIntro.ts)
+    this.arenaIntro = net.kind === "arena" ? new ArenaIntroFx(this, net) : null;
+    this.cleanup.push(() => { this.arenaIntro?.destroy(); this.arenaIntro = null; });
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
     this.takeGlow = this.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xffe6a0).setAlpha(0.8).setVisible(false);
 
@@ -851,13 +861,20 @@ export class GameScene extends Phaser.Scene {
     this.setTarget(list[i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length]);
   }
 
+  /** Запрещено на арене (shared/arena.ts): короткий тост вместо сообщения серверу. */
+  private arenaRefuse(ref: object | null | undefined): boolean {
+    if (net.kind !== "arena" || !arenaBlocked(ref)) return false;
+    this.hud.toast({ text: ARENA_BLOCKED_TEXT, kind: "error" });
+    return true;
+  }
+
   toggleMount() {
-    if (!this.me || this.me.dead) return;
+    if (!this.me || this.me.dead || this.arenaRefuse({ a: "mount" })) return;
     net.send("mount:toggle");
   }
 
   togglePet() {
-    if (!this.me || this.me.dead) return;
+    if (!this.me || this.me.dead || this.arenaRefuse({ a: "pet" })) return;
     net.send("pet:toggle");
   }
 
@@ -882,7 +899,7 @@ export class GameScene extends Phaser.Scene {
   /** Нажатие слота панели (клавиша или клик): умение, предмет (по base) или действие. */
   pressSlot(bar: number, i: number, code: string | null = null, alt = false) {
     const ref = net.self?.bars?.[bar]?.[i];
-    if (!ref) return;
+    if (!ref || this.arenaRefuse(ref)) return;
     this.hud.flashSlot(bar, i);
     if ("s" in ref) this.useSkillId(ref.s, code, alt);
     else if ("i" in ref) { if (net.self && !this.me?.dead) net.send("use:base", { base: ref.i }); }
@@ -892,6 +909,7 @@ export class GameScene extends Phaser.Scene {
     else this.interactNearest();
   }
 
+  private arenaIntro: ArenaIntroFx | null = null;
   private holdTimer = 0;
   private holdCode = "";
   /** Удержание клавиши умения в режиме «Быстрый» повторяет нажатие каждые 150 мс. */
@@ -1165,6 +1183,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateAim();
     this.updateHover();
+    this.arenaIntro?.update(this.units.values(), dt);
     this.world.update(this.cameras.main);
     // экран загрузки уходит, когда свой герой на месте и куски мира вокруг него построены (камера встаёт на героя кадром раньше)
     if (this.me && this.readyFrames < 3 && ++this.readyFrames === 3) loading.done();
@@ -1340,10 +1359,12 @@ export class GameScene extends Phaser.Scene {
     // ночь (общий цикл по часам): затемнение и синева на поверхности, не в подземельях/арене/под водой
     const zs = zoneStyle(z);
     const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
+    setNoSun(z === Zone.Dungeon || z === Zone.Arena || !!this.room); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
     const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5);
     this.interiors?.update(dt, night, this.room);
     this.towerArchers?.update(dt);
+    this.fortScenes?.update(dt, this.pos.x, this.pos.y);
     const dark = this.world.dark;
     const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
     // цвет дымки зоны (снежная синева, пустынный жар) меняется так же плавно, как её плотность, а не скачком на границе

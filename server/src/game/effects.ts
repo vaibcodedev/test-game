@@ -123,9 +123,22 @@ export function applyHaste(w: World, p: Player, pct: number, ms: number): boolea
   return !p.dead && put(w, p, "haste", pct, ms);
 }
 
-/** Оглушение a на ms (срок только продлевается, «Несгибаемый» режет). */
+/** PvP: убывающая длительность оглушений от героев (data/balance.json pvp.stunDr — доли по счёту в окне stunDrMs; 0 — иммунитет). */
+const stunDr = new WeakMap<Actor, { n: number; until: number }>();
+function stunDrK(w: World, by: Actor | null, a: Actor): number {
+  const ks = BAL.pvp.stunDr;
+  if (!ks?.length || !by || by === a || !w.isPlayer(a) || !w.isPlayer(by)) return 1;
+  let s = stunDr.get(a);
+  if (!s || s.until <= w.time) { s = { n: 0, until: 0 }; stunDr.set(a, s); }
+  const k = ks[Math.min(s.n, ks.length - 1)];
+  if (k > 0) { s.n++; s.until = w.time + (BAL.pvp.stunDrMs ?? 15000); }
+  return k;
+}
+
+/** Оглушение a на ms (срок только продлевается, «Несгибаемый» режет; от героя по герою — убывающая длительность stunDr). */
 export function applyStun(w: World, by: Actor | null, a: Actor, ms: number): boolean {
-  const until = w.time + ccMs(w, a, ms, by);
+  if (!allowed(w, by, a)) return false;
+  const until = w.time + ccMs(w, a, ms * stunDrK(w, by, a), by);
   if (!(until > w.time) || !allowed(w, by, a)) return false;
   a.stunUntil = Math.max(a.stunUntil, until);
   noteAuraSource(a, "stun", by, until);
