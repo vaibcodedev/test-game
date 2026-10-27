@@ -165,6 +165,21 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       const key = `vfx_statue-fire-${o.kind === "sun_statue" ? "sol" : "umb"}`;
       for (const [dx, dy] of [[-20, -25], [19, -26]]) { const f = scene.add.sprite(o.x + dx, o.y + dy, key).setOrigin(0.5, 1).setDepth(o.y + 1); f.play({ key, repeat: -1, startFrame: Math.floor(cellHash(o.x + dx, o.y) * 6) % 6 }); objs.push(f); }
     }
+    // данж (задача 139): свечи и алтарь собора, витражи, жаровни, решётки, лава в склепе, арки и ворота
+    if (o.kind.startsWith("dg_")) {
+      const k = o.kind;
+      if (k.startsWith("dg_candles")) glow(objs, o.x, o.y - 10, 0xffc060, 0.9, 0.5, true);
+      else if (k === "dg_altar_c") glow(objs, o.x, o.y - 40, 0xffb858, 2.2, 0.5, true);
+      else if (k.startsWith("dg_brazier")) glow(objs, o.x, o.y - 28, 0xff9a40, 2.4, 0.6, true);
+      else if (k === "dg_window_c_a") glow(objs, o.x, o.y - 14, 0xc04a8a, 1.2, 0.32);
+      else if (k === "dg_window_c_b") glow(objs, o.x, o.y - 14, 0x4a8ac0, 1.2, 0.32);
+      else if (k.startsWith("dg_grate")) glow(objs, o.x, o.y - 10, 0xff7a30, 1.2, 0.5, true);
+      else if (k === "dg_gate_a") glow(objs, o.x, o.y - 30, 0xff7a30, 2.2, 0.5, true);
+      else if (k === "dg_arch_t") glow(objs, o.x, o.y - 30, 0xff7a30, 1.8, 0.3, true);
+      else if (k === "dg_arch_c") glow(objs, o.x, o.y - 30, 0x4aa0c8, 2.0, 0.3);
+      else if (k === "dg_pillar_a_a" || k === "dg_pillar_a_b") glow(objs, o.x, o.y - 40, 0xff7a30, 1.3, 0.35, true);
+      else if (k === "dg_sarc_a_b" || k === "dg_sarc_t_a" || k === "dg_pillar_t_a" || k === "dg_pillar_t_b") glow(objs, o.x, o.y - 18, 0xff7a30, 1.2, 0.3, true);
+    }
     if (o.kind === "sun_statue") glow(objs, o.x - 15, o.y - 138, 0xffe08a, 1.0, 0.3, true);
     if (o.kind === "umb_statue") glow(objs, o.x, o.y - 146, 0xa060ff, 1.1, 0.3, true);
     // здания с входом (задача 141): купол и свет из двери храма Солнца, фиолетовый огонь вершины и портал зиккурата

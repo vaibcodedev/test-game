@@ -109,6 +109,36 @@ for (const c of CARDS) {
   const mob = mobOf(c.id);
   const boss = mob.boss as unknown as { abilities: { at: number }[]; run: (ab: unknown) => void; casting: boolean };
   for (const ab of c.abilities) {
+    if (ab.cage) {
+      // клетки: кол не сломан — через holdMs удар внутрь; сломан — урона нет; пока кол стоит, босс получает урон ×shield
+      for (const mode of ["stand", "break"] as const) {
+        mob.reset();
+        for (const a of boss.abilities) a.at = 1e9;
+        const p = hero("warrior", mob.x + 150, mob.y + 30, c.levels.boss);
+        mob.state = "chase";
+        mob.targetId = p.id;
+        mob.addThreat(p.id, 100);
+        log.length = 0;
+        hits = [];
+        boss.run(ab);
+        const t0 = w.time;
+        let shieldSeen = 1, after = 1;
+        for (let t = 0; t < ab.windupMs + ab.cage.holdMs + 800; t += 50) {
+          p.unit.hp = p.unit.maxHp;
+          mob.attackAt = w.time + 1e9;
+          w.update(50);
+          const stake = [...w.mobs.values()].find((m) => m.def.id === `${c.id}_cage` && !m.dead);
+          if (stake) shieldSeen = Math.min(shieldSeen, mob.dmgTakenMul);
+          if (mode === "break" && stake && t >= ab.windupMs + 1000) { w.killMob(stake, p); }
+          if (mode === "break" && t === ab.windupMs + 1500) after = mob.dmgTakenMul;
+        }
+        const mine = hits.filter((h) => h.dst === p && h.src === mob);
+        if (mode === "stand") check(`${c.id}.${ab.id}: кол цел — клетка бьёт внутрь через ${ab.cage.holdMs} мс, босс под щитом ×${ab.cage.shield}`, mine.length > 0 && mine[0].t - t0 >= ab.windupMs + ab.cage.holdMs - 60 && shieldSeen === ab.cage.shield, `удар через ${mine[0] ? mine[0].t - t0 : -1} мс, щит ${shieldSeen}`);
+        else check(`${c.id}.${ab.id}: кол сломан — урона нет, щит снят`, mine.length === 0 && after === 1 && log.some((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === "cage_break"), `урон ${mine.reduce((s, h) => s + h.v, 0)}, щит после ${after}`);
+        w.removePlayer(p.id);
+      }
+      continue;
+    }
     if (ab.break) {
       // прерываемый каст: не сорвали — бьёт всех на арене; сорвали (сняли pct здоровья) — урона нет, босс оглушён
       for (const mode of ["stand", "break"] as const) {
@@ -234,7 +264,7 @@ for (const c of CARDS.filter((q) => q.phases?.length || q.abilities.some((a) => 
     mob.unit.hp = Math.floor(mob.unit.maxHp * ph.at) - 1;
     const idx = c.abilities.map((a, i) => (ph.abilities.includes(a.id) ? i : -1)).filter((i) => i >= 0);
     let used = false;
-    for (let t = 0; t < (ph.pauseMs ?? 0) + 6000; t += 50) {
+    for (let t = 0; t < (ph.pauseMs ?? 0) + 12000; t += 50) {
       p.unit.hp = p.unit.maxHp;
       mob.attackAt = w.time + 1e9;
       w.update(50);
@@ -245,6 +275,26 @@ for (const c of CARDS.filter((q) => q.phases?.length || q.abilities.some((a) => 
     w.removePlayer(p.id);
     mob.reset();
   }
+}
+
+// ---------- 2г. кольцо: цепь подтягивает к боссу ----------
+for (const c of CARDS) for (const ab of c.abilities.filter((a) => a.after?.pull)) {
+  const mob = mobOf(c.id);
+  const boss = mob.boss as unknown as { abilities: { at: number }[]; run: (ab: unknown) => void };
+  mob.reset();
+  for (const a of boss.abilities) a.at = 1e9;
+  const tank = hero("warrior", mob.x + 40, mob.y, c.levels.boss), p = hero("ranger", mob.x + 200, mob.y + 40, c.levels.boss);
+  mob.state = "chase";
+  mob.targetId = tank.id;
+  mob.addThreat(tank.id, 100);
+  const d0 = Math.hypot(p.x - mob.x, p.y - mob.y);
+  boss.run(ab);
+  for (let t = 0; t < ab.windupMs + 300; t += 50) { p.unit.hp = p.unit.maxHp; tank.unit.hp = tank.unit.maxHp; mob.attackAt = w.time + 1e9; w.update(50); }
+  const d1 = Math.hypot(p.x - mob.x, p.y - mob.y);
+  check(`${c.id}.${ab.id}: дальнего подтянуло к боссу`, d1 < d0 - ab.after!.pull! * 0.6, `было ${d0.toFixed(0)}, стало ${d1.toFixed(0)} px`);
+  w.removePlayer(p.id);
+  w.removePlayer(tank.id);
+  mob.reset();
 }
 
 // ---------- 2б. уровень строго по полосе зоны: без подстройки под героя ----------

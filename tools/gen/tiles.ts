@@ -4,7 +4,7 @@
  * Раскладка: строка = индекс поверхности, столбец (mask-1) для масок 1..15, 15..17 — доп. варианты.
  * Строка TERRAIN_COUNT — стены данжа: 0–1 верх стены, 2–5 лицевая сторона.
  */
-import { PC, hash01, mix, pnoise, rng, shade, withA, type RGBA, type Ramp } from "./canvas";
+import { PC, hash01, mix, pnoise, ramp, rng, shade, withA, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
 import { TERRAIN_COUNT } from "../../shared/map";
 
@@ -224,6 +224,109 @@ function seabed(): Texel {
   };
 }
 
+// ---------- данж (задача 139): собор → переход → склеп ----------
+const MARB = ramp("#141a22", "#202b36", "#33414e", "#4c5d6c", "#6a7e8e", "#92a8b8");
+const MARBW = ramp("#10161e", "#1c2630", "#2c3a46", "#42525f", "#5d707e", "#7c92a2");
+const BAS = ramp("#0b0910", "#17131e", "#241e2d", "#352d40", "#4a4058", "#655a74");
+const BASW = ramp("#08060c", "#120e18", "#1e1826", "#2c2438", "#3e344c", "#54486a");
+const MOSSD: RGBA[] = [[28, 58, 32, 255], [44, 90, 48, 255], [74, 138, 64, 255]];
+const LAVAH: RGBA[] = [[160, 42, 16, 255], [224, 84, 18, 255], [255, 154, 42, 255], [255, 226, 122, 255]];
+const ASHT: RGBA[] = [[42, 36, 38, 255], [60, 52, 54, 255], [84, 74, 76, 255]];
+const tn = (r: Ramp, v: number): RGBA => r[Math.max(0, Math.min(r.length - 1, Math.round(v)))];
+/** Плиты 16×16 с фаской по четырём углам: v — вариант, base — рампа, shift(slab) — сдвиг тона плиты. */
+function slabs(r: Ramp, seed: number, shift: (slab: number) => number, x: number, y: number): number {
+  const lx = x % 16, ly = y % 16, slab = Math.floor(x / 16) + Math.floor(y / 16) * 2;
+  let v = 2.4 + shift(slab) + (pnoise(x, y, 8, S, seed + slab) - 0.5) * 0.7 + (pnoise(x, y, 4, S, seed + 3) - 0.5) * 0.45 + (hash01(x, y, seed + 7) - 0.5) * 0.25;
+  if (lx === 0 || ly === 0) v = 0.3; else if (lx === 1 || ly === 1) v += 0.8; else if (lx === 15 || ly === 15) v -= 0.7;
+  return Math.max(0, Math.min(r.length - 1, v));
+}
+/** Трещина-жила по шумовой полосе: возвращает глубину в трещине 0..1 или 0. */
+const crackAt = (x: number, y: number, seed: number, w = 0.022) => { const n = pnoise(x, y, 8, S, seed); return Math.abs(n - 0.5) < w ? 1 - Math.abs(n - 0.5) / w : 0; };
+
+/** Мрамор собора: шахматные плиты, прожилки, трещины, мох, подтёки воды (v: 0 чистый, 1 трещина, 2 мох, 3 лужа). */
+function marble(): Texel {
+  return (x, y, v) => {
+    const slab = Math.floor(x / 16) + Math.floor(y / 16) * 2;
+    let c = tn(MARB, slabs(MARB, 601, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.5 : -0.2), x, y));
+    if (v === 1 && crackAt(x, y, 640, 0.012) > 0 && slab === 1) c = MARB[0];
+    if (v === 2 && hash01(x, y, 650) < 0.18 && pnoise(x, y, 8, S, 651) > 0.55) c = MOSSD[hash01(x, y, 652) < 0.3 ? 2 : hash01(x, y, 653) < 0.6 ? 1 : 0];
+    if (v === 3) { const d = pnoise(x, y, 8, S, 660); if (d > 0.62) c = mix(c, [20, 64, 90, 255], 0.55 + (d - 0.62) * 1.2); }
+    return c;
+  };
+}
+/** Треснувший мрамор перехода: пепел, копоть и лава, сочащаяся из трещин (v: 0 пепел, 1 жилы, 2 жилы шире, 3 оплавленная плита). */
+function crackedMarble(): Texel {
+  return (x, y, v) => {
+    let c = tn(MARB, slabs(MARB, 701, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.1 : -0.5), x, y) - 0.4);
+    const ashN = pnoise(x, y, 8, S, 710);
+    if (ashN > 0.6 - v * 0.03) c = mix(c, ASHT[hash01(x, y, 711) < 0.3 ? 2 : 1], 0.65);
+    const ck = crackAt(x, y, 720 + v, v >= 2 ? 0.022 : 0.014);
+    if (ck > 0 && v >= 1 && v <= 2) c = ck > 0.7 ? LAVAH[3 - (hash01(x, y, 721) < 0.3 ? 1 : 0)] : ck > 0.4 ? LAVAH[2] : LAVAH[1];
+    else if (ck > 0) c = tn(MARB, 0.3);
+    else if (v >= 1 && v <= 2 && crackAt(x, y, 720 + v, 0.05) > 0) c = shade(c, 0.6);
+    if (v === 3 && hash01(x, y, 730) < 0.05) c = ASHT[0];
+    return c;
+  };
+}
+/** Базальт склепа: тёмные плиты, жилы лавы (v: 0 гладкий, 1 жилы, 2 крупные трещины, 3 скол и зола). */
+function basalt(): Texel {
+  return (x, y, v) => {
+    let c = tn(BAS, slabs(BAS, 801, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.25 : -0.25), x, y));
+    if (v >= 1) {
+      const ck = v === 3 ? 0 : crackAt(x, y, 820 + v, v === 2 ? 0.02 : 0.012);
+      if (ck > 0) c = ck > 0.7 ? LAVAH[3] : ck > 0.4 ? LAVAH[2] : LAVAH[1];
+      else if (v !== 3 && crackAt(x, y, 820 + v, 0.05) > 0) c = shade(c, 0.6);
+    }
+    if (v === 3 && pnoise(x, y, 8, S, 830) > 0.6) c = mix(c, ASHT[1], 0.6);
+    return c;
+  };
+}
+
+/** Стены данжа по стилю s (0 собор, 1 переход, 2 склеп): верх (v 0–1) и лицо (v 0–3). */
+function wallTopS(s: number, v: number): PC {
+  const out = new PC(S, S), R = s === 2 ? BAS : MARB;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    let k = 2.8 + (pnoise(x, y, 8, S, 300 + v + s * 20) - 0.5) * 1.4;
+    if (y < 2) k += 0.8; if (x === 0 || x === S - 1) k -= 0.8;
+    let c = tn(R, k);
+    if (s === 1 && crackAt(x, y, 340 + v, 0.018) > 0) c = LAVAH[2];
+    if (s === 2 && v === 1 && crackAt(x, y, 350, 0.016) > 0) c = LAVAH[1];
+    if (s === 0 && v === 1 && hash01(x, y, 360) < 0.06 && y > 20) c = MOSSD[1];
+    out.set(x, y, c);
+  }
+  return out;
+}
+function wallFaceS(s: number, v: number): PC {
+  const out = new PC(S, S), R = s === 2 ? BASW : MARBW;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    if (y < 6) { out.set(x, y, tn(s === 2 ? BAS : MARB, y === 5 ? 4.4 : y === 0 ? 3.6 : 3 + (hash01(x, y, 7) > 0.7 ? 0.5 : 0))); continue; }
+    const row = Math.floor((y - 6) / 7), off = row % 2 ? 8 : 0, bx = (x + off) % 16, by = (y - 6) % 7;
+    let k = 2.3 + (pnoise(x, y, 8, S, 400 + s * 9 + v) - 0.5) * 1.1 + (hash01(Math.floor((x + off) / 16), row, 31 + v + s * 5) > 0.5 ? 0.35 : -0.15);
+    if (by === 6 || bx === 0) k = 0.3; else if (by === 0) k += 0.9; else if (bx === 15) k -= 0.7;
+    if (y >= S - 3) k -= 0.7;
+    let c = tn(R, k);
+    if (s === 0) {
+      if (v === 1 && y > 21 && hash01(x, y, 40) < 0.5 * (y - 21) / 10) c = MOSSD[hash01(x, y, 41) < 0.3 ? 2 : hash01(x, y, 42) < 0.6 ? 1 : 0];
+      if (v === 2 && Math.abs(x - 12 - (y - 14) * 0.5) < 0.6 && y > 10 && y < 26) c = MARB[0];
+      if (v === 3 && (y === 10 || y === 12) && x % 4 < 3) c = tn(GLDW, y === 10 ? 3 : 1.4);
+    } else if (s === 1) {
+      if (y > 12) { const sm = pnoise(x, y, 4, S, 420); if (sm > 0.62) c = shade(c, 0.6); }
+      if (v >= 1 && crackAt(x, y, 440 + v, 0.03) > 0 && y > 8) c = LAVAH[v === 3 ? 3 : 2];
+      if (v === 2 && y > 24 && hash01(x, y, 445) < 0.5) c = ASHT[1];
+    } else {
+      if (v === 3 && (by === 3 || by === 4) && y > 12 && y < 26) c = tn(IRNW, by === 3 ? 4 : 1.2);
+      if (v === 3 && by === 3 && x % 8 === 4) c = tn(IRNW, 5);
+      if (v === 2 && crackAt(x, y, 460, 0.026) > 0 && y > 8) c = LAVAH[2];
+      if (v === 1 && hash01(x, y, 470) < 0.05) c = shade(c, 0.6);
+      if (pnoise(x, y, 4, S, 480) > 0.66 && y > 8) c = shade(c, 0.7);
+    }
+    out.set(x, y, c);
+  }
+  return out;
+}
+const GLDW = ramp("#3a2410", "#6e4a1c", "#b07a2a", "#e0b040", "#fff0a0");
+const IRNW = ramp("#0e0e14", "#1e1e28", "#34344a", "#50506c", "#74749a", "#a0a0c4");
+
 interface TerrainSpec {
   tex: Texel;
   rimIn?: number; // множитель яркости внутренней кромки
@@ -246,6 +349,9 @@ export const TERRAIN_SPECS: TerrainSpec[] = [
   { tex: obsidian(), rimIn: 0.7, rimOut: [10, 8, 14, 170] },
   { tex: dune(), rimIn: 0.82, rimOut: [90, 60, 30, 120] },
   { tex: seabed(), rimIn: 0.75, rimOut: [200, 240, 255, 150] },
+  { tex: marble(), rimIn: 0.6, rimOut: [12, 16, 22, 170] }, // данж: собор
+  { tex: crackedMarble(), rimIn: 0.6, rimOut: [20, 12, 12, 170] }, // данж: переход
+  { tex: basalt(), rimIn: 0.6, rimOut: [6, 4, 10, 190] }, // данж: склеп
 ];
 
 /** Покрытие тайла маской углов с шумной границей. */
@@ -317,9 +423,11 @@ export function buildTileset(): PC {
     for (let mask = 1; mask <= 15; mask++) out.blit(terrainTile(t, mask, 0), (mask - 1) * S, t * S);
     for (let v = 1; v <= 3; v++) out.blit(terrainTile(t, 15, v), (14 + v) * S, t * S);
   }
-  out.blit(wallTop(0), 0, TERRAIN_COUNT * S);
-  out.blit(wallTop(1), S, TERRAIN_COUNT * S);
-  for (let v = 0; v < 4; v++) out.blit(wallFace(v), (2 + v) * S, TERRAIN_COUNT * S);
+  // стены данжа по стилям: собор — столбцы 0–5, переход — 6–11, склеп — 12–17 (верх 0–1, лицо 2–5 в каждом)
+  for (let st = 0; st < 3; st++) {
+    for (let v = 0; v < 2; v++) out.blit(wallTopS(st, v), (st * 6 + v) * S, TERRAIN_COUNT * S);
+    for (let v = 0; v < 4; v++) out.blit(wallFaceS(st, v), (st * 6 + 2 + v) * S, TERRAIN_COUNT * S);
+  }
   return out;
 }
 

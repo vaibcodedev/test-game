@@ -7,8 +7,8 @@
  * /assets/zone-bosses/manifest.json, событие zb запускает связку, полоса каста видна, ошибок консоли нет.
  *
  * Запуск (строго по одному; перед прогоном mkdir tools/out/scenario.lock, после — rmdir; порты свободные):
- *   $env:TEST_PORT="2871"; $env:VITE_TEST_PORT="5271"; npx tsx tests/ring-bosses-ingame.ts
- * Выход — tools/out/bosses139/ingame-*.png и ingame-report.json. Chrome: CHROME_PATH.
+ *   $env:TEST_PORT="2871"; $env:VITE_TEST_PORT="5271"; npx tsx tests/ring-bosses-ingame.ts [--boss=umb_ash_executioner]
+ * Выход — tools/out/bosses139/<префикс>ingame-*.png и …ingame-report.json (лич — без префикса, палач — exec-). Chrome: CHROME_PATH.
  */
 import fs from "node:fs";
 import net from "node:net";
@@ -27,7 +27,11 @@ const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5271;
 const VIEW = { width: 1280, height: 800 };
 const OUT = path.resolve("tools/out/bosses139");
 const PASS = "secret";
-const CARD = (ring.bosses as unknown as ZbCard[]).find((c) => c.id === "umb_crown_lich")!;
+const BOSS = process.argv.find((a) => a.startsWith("--boss="))?.slice(7) ?? "umb_crown_lich";
+const CARD = (ring.bosses as unknown as ZbCard[]).find((c) => c.id === BOSS)!;
+const FR = CARD.frame ?? 64;
+/** Префикс снимков: лич — как раньше, остальные — по короткому имени. */
+const PFX = BOSS === "umb_crown_lich" ? "" : BOSS === "umb_ash_executioner" ? "exec-" : `${BOSS}-`;
 
 let page: Page;
 const errors: string[] = [];
@@ -72,7 +76,7 @@ async function enter(name: string, token: string) {
   try {
     await page.waitForFunction("window.__game && window.__game.scene.isActive('game')", { timeout: 90000, polling: 250 });
   } catch (e) {
-    await page.screenshot({ path: path.join(OUT, "ingame-fail-enter.png") });
+    await page.screenshot({ path: path.join(OUT, `${PFX}ingame-fail-enter.png`) });
     const st = await page.evaluate(() => ({ text: document.body.innerText.slice(0, 400), scenes: (window as any).__game ? (window as any).__game.scene.scenes.map((s: any) => `${s.sys.settings.key}:${s.sys.settings.status}`) : null }));
     lines.push(`вход: ${JSON.stringify(st)}`, ...allLog.slice(-40));
     throw e;
@@ -105,15 +109,15 @@ const colOf = (name: string) => run<{ col: number; anim: string } | null>(
 
 async function scenario() {
   fs.mkdirSync(OUT, { recursive: true });
-  for (const f of fs.readdirSync(OUT)) if (f.startsWith("ingame-")) fs.rmSync(path.join(OUT, f));
+  for (const f of fs.readdirSync(OUT)) if (f.startsWith(`${PFX}ingame-`)) fs.rmSync(path.join(OUT, f));
   const token = await ensureChar("rb_view", PASS, "Эйра", "warrior");
   const bot = await Bot.enter(await ensureChar("rb_far", PASS, "Торвин", "ranger"), "Торвин");
   await enter("Эйра", token);
   const H = heroOf("Эйра"), F = heroOf("Торвин");
   void bot;
   H.save.level = F.save.level = CARD.levels.boss;
-  const ok0 = await run<boolean>("const m = sc.cache.json.get('zbm'); return !!(m && m.bosses && m.bosses[a] && m.bosses[a].fw === 80)", CARD.id);
-  check(ok0, `${CARD.id}: в каталоге боссов, кадр 80`);
+  const ok0 = await run<boolean>("const m = sc.cache.json.get('zbm'); return !!(m && m.bosses && m.bosses[a.id] && m.bosses[a.id].fw === a.fr)", { id: CARD.id, fr: FR });
+  check(ok0, `${CARD.id}: в каталоге боссов, кадр ${FR}`);
   const mob = [...W().mobs.values()].find((m) => m.def.id === CARD.id) as Mob;
   check(!!mob, `${CARD.id}: стоит на карте (${mob ? `${Math.round(mob.home.x / 32)}, ${Math.round(mob.home.y / 32)}` : "нет"})`);
   if (!mob) return;
@@ -126,8 +130,8 @@ async function scenario() {
   await run("sc.cameras.main.stopFollow(); sc.cameras.main.centerOn(a.x, a.y);", { x: bx, y: by });
   await sleep(3000);
   const tex = await run<{ frame: number } | null>("for (const v of sc.units.values()) if (v.u.sprite === a) return { frame: v.sprite.frame.width }; return null", CARD.id);
-  check(!!tex && tex.frame === 80, `${CARD.id}: лист в игре, кадр ${tex?.frame}`);
-  save("ingame-idle.png", await snap(bx, by - 20, 440, 300));
+  check(!!tex && tex.frame === FR, `${CARD.id}: лист в игре, кадр ${tex?.frame}`);
+  save(`${PFX}ingame-idle.png`, await snap(bx, by - 20, 440, 300));
   mob.state = "chase"; mob.targetId = H.id; mob.addThreat(H.id, 1000);
   await sleep(500);
 
@@ -140,34 +144,63 @@ async function scenario() {
     const total = [ab, ...(ab.then ?? [])].reduce((s, wv) => s + wv.windupMs, 0);
     await sleep(Math.round(ab.windupMs * 0.6));
     const fr = await colOf(CARD.id);
-    check(!!fr && /Wind|Hold|^seal$|^wispCast$|^call$/.test(fr.anim), `${CARD.id}.${ab.id}: кадр из связки умения (${fr?.anim})`);
+    const chain = await run<string[]>("const s = sc.cache.json.get('zbm').bosses[a.id].skills[a.ab]; return s ? s.waves.flatMap((w) => [...(w.pre || []), w.strike]) : []", { id: CARD.id, ab: ab.id });
+    check(!!fr && chain.includes(fr.anim), `${CARD.id}.${ab.id}: кадр из связки умения (${fr?.anim})`);
+    const hasFx = await run<boolean>("const s = sc.cache.json.get('zbm').bosses[a.id].skills[a.ab]; return !!(s && s.fx.length)", { id: CARD.id, ab: ab.id });
     if (ab.break) {
       const vis = await run<boolean>("const el = document.querySelector('.zb-cast .cb'); return !!el && !el.hidden");
       check(vis, `${CARD.id}.${ab.id}: полоса каста видна`);
-      await page.screenshot({ path: path.join(OUT, "ingame-call-castbar.png") });
+      await page.screenshot({ path: path.join(OUT, `${PFX}ingame-call-castbar.png`) });
     }
-    // замах: сцена на паузе на время снимка (часы клиента стоят — связка и эффекты не убегают)
-    await run("sc.scene.pause();");
-    save(`ingame-${ab.id}-wind.png`, await snap(bx, by - 10, 480, 340));
-    await run("sc.scene.resume();");
+    // замах: снимок только у долгих замахов — часы сцены после паузы догоняют настоящее время, короткий удар успел бы пройти
+    if (ab.windupMs >= 1500) {
+      await run("sc.scene.pause();");
+      save(`${PFX}ingame-${ab.id}-wind.png`, await snap(bx, by - 10, 480, 340));
+      await run("sc.scene.resume();");
+    }
     // удар: эффект мира идёт ~1,2 с от конца предупреждения — снимок через 250 мс после него (снимок замаха под SwiftShader долгий)
     // удар: ждём, пока эффект мира станет виден, ставим сцену на паузу (кадр замирает) — снимок под SwiftShader долгий
     let vis = 0;
+    if (!hasFx) { await sleep(Math.max(0, ab.windupMs + 250 - (Date.now() - t0))); vis = -1; }
     for (let k = 0; k < 80 && !vis; k++) {
       vis = await run<number>("const z = sc.fx && sc.fx.zb; if (!z) return 0; const n = z.fxs.filter((e) => e.boss === a && e.spr.some((s) => s.visible)).length; if (n) sc.scene.pause(); return n;", CARD.id);
       if (!vis) await sleep(40);
     }
-    const dbg = vis ? "" : await run<string>("const z = sc.fx && sc.fx.zb; if (!z) return 'нет zb'; const mine = z.fxs.filter((e) => e.boss === a); const now = sc.time.now; return 'fx ' + z.fxs.length + ', свои ' + mine.length + ', текстуры ' + ['seal','wisp','pillar'].map((k) => sc.textures.exists('zbfx_' + a + '_' + k)).join('/') + ', сегменты ' + mine.slice(0, 2).map((e) => e.segs.map((g) => Math.round(g.t0 - now) + '..' + Math.round(g.t1 - now)).join(';') + ' спр ' + e.spr.length).join(' | ');", CARD.id);
-    check(vis > 0, `${CARD.id}.${ab.id}: эффект мира виден (${vis}) ${dbg}`);
-    save(`ingame-${ab.id}-hit.png`, await snap(bx, by - 10, 480, 340));
+    const dbg = vis !== 0 ? "" : await run<string>("const z = sc.fx && sc.fx.zb; if (!z) return 'нет zb'; const mine = z.fxs.filter((e) => e.boss === a); const now = sc.time.now; const fx = sc.cache.json.get('zbm').bosses[a].fx; return 'fx ' + z.fxs.length + ', свои ' + mine.length + ', текстуры ' + Object.keys(fx).map((k) => k + ':' + sc.textures.exists('zbfx_' + a + '_' + k)).join('/') + ', сегменты ' + mine.slice(0, 2).map((e) => e.segs.map((g) => g.a + ' ' + Math.round(g.t0 - now) + '..' + Math.round(g.t1 - now)).join(';') + ' спр ' + e.spr.length).join(' | ');", CARD.id);
+    if (vis >= 0) check(vis > 0, `${CARD.id}.${ab.id}: эффект мира виден (${vis}) ${dbg}`);
+    save(`${PFX}ingame-${ab.id}-hit.png`, await snap(bx, by - 10, 480, 340));
     await run("sc.scene.resume();");
     await sleep(Math.max(0, total - ab.windupMs) + 1600);
     mob.unit.x = mob.home.x; mob.unit.y = mob.home.y;
   }
 
+  // клетки: кол стоит — клетка видна и босс под щитом; кол сломан — клетка распадается
+  const cageAb = CARD.abilities.find((a) => a.cage);
+  if (cageAb) {
+    for (const a of boss.abilities) a.at = 1e9;
+    mob.unit.hp = mob.unit.maxHp;
+    boss.run(cageAb);
+    await sleep(cageAb.windupMs + 900);
+    const stake = [...W().mobs.values()].find((m) => m.def.id === `${CARD.id}_cage` && !m.dead) as Mob | undefined;
+    check(!!stake && mob.dmgTakenMul === cageAb.cage!.shield, `${CARD.id}: кандальный кол стоит, босс под щитом ×${mob.dmgTakenMul}`);
+    const stakeTex = await run<boolean>("for (const v of sc.units.values()) if (v.u.sprite === a) return sc.textures.exists('u_' + a); return false", `${CARD.id}_cage`);
+    check(stakeTex, `${CARD.id}: кол виден в игре (лист ${CARD.id}_cage)`);
+    // (снимок целой клетки — ingame-chain_cages-hit.png; пауза здесь сдвинула бы часы сцены и эффект клетки кончился бы)
+    // ломаем все колы (клеток две — щит снимается, когда сломаны все)
+    for (const m of [...W().mobs.values()]) if (m.def.id === `${CARD.id}_cage` && !m.dead) W().killMob(m, H);
+    await sleep(120);
+    const out = await run<string>("const z = sc.fx && sc.fx.zb; return z ? z.fxs.filter((e) => e.boss === a).map((e) => (e.segs[0] ? e.segs[0].a : '-') + '@' + Math.round(e.x) + ',' + Math.round(e.y)).join(' ') : 'нет zb'", CARD.id);
+    check(/cageOut/.test(out) && mob.dmgTakenMul === 1, `${CARD.id}: колы сломаны — клетки распадаются, щит снят (×${mob.dmgTakenMul}; эффекты: ${out})`);
+    await run("sc.scene.pause();");
+    save(`${PFX}ingame-cage-broken.png`, await snap(bx, by + 10, 480, 340));
+    await run("sc.scene.resume();");
+    await sleep(cageAb.cage!.holdMs);
+  }
+
   // зов сорван: группа сняла 6 % — оглушение
-  {
-    const ab = CARD.abilities.find((a) => a.break)!;
+  const brk = CARD.abilities.find((a) => a.break);
+  if (brk) {
+    const ab = brk;
     for (const a of boss.abilities) a.at = 1e9;
     mob.unit.hp = mob.unit.maxHp;
     boss.run(ab);
@@ -176,7 +209,7 @@ async function scenario() {
     await sleep(900);
     const fr = await colOf(CARD.id);
     check(fr?.anim === "stun", `${CARD.id}: зов сорван — оглушение (${fr?.anim})`);
-    save("ingame-call-broken-stun.png", await snap(bx, by - 20, 440, 300));
+    save(`${PFX}ingame-call-broken-stun.png`, await snap(bx, by - 20, 440, 300));
     await sleep(3000);
   }
 
@@ -189,7 +222,7 @@ async function scenario() {
     await sleep(700);
     const fr = await colOf(CARD.id);
     check(fr?.anim === "phase", `${CARD.id}: переход фазы (${fr?.anim})`);
-    save("ingame-phase.png", await snap(bx, by - 20, 440, 300));
+    save(`${PFX}ingame-phase.png`, await snap(bx, by - 20, 440, 300));
     await sleep(2500);
   }
 
@@ -203,7 +236,7 @@ async function scenario() {
     boss.abilities.forEach((a, i) => (a.at = 1 + i * 4));
     for (let k = 0; k < 4; k++) {
       await sleep(4500);
-      save(`ingame-fight-${k + 1}.png`, await snap(bx, by - 10, 480, 340));
+      save(`${PFX}ingame-fight-${k + 1}.png`, await snap(bx, by - 10, 480, 340));
     }
     off.emit = emit0;
     check(seen.size >= 2, `живой бой ${Math.round((Date.now() - t0) / 1000)} с: умения ${[...seen].join(", ")}`);
@@ -219,9 +252,9 @@ async function scenario() {
     await sleep(1400);
     const fr = await colOf(CARD.id);
     check(fr?.anim === "death", `${CARD.id}: гибель (${fr?.anim})`);
-    save("ingame-death-mid.png", await snap(bx, by - 20, 440, 300));
+    save(`${PFX}ingame-death-mid.png`, await snap(bx, by - 20, 440, 300));
     await sleep(1500);
-    save("ingame-death.png", await snap(bx, by - 20, 440, 300));
+    save(`${PFX}ingame-death.png`, await snap(bx, by - 20, 440, 300));
     check(H.bags.size === bags0 + 1, `добыча: мешок у героя (${H.bags.size - bags0})`);
   }
   clearInterval(keep);
@@ -256,7 +289,7 @@ async function main() {
     bad++;
   } finally {
     fs.mkdirSync(OUT, { recursive: true });
-    fs.writeFileSync(path.join(OUT, "ingame-report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
+    fs.writeFileSync(path.join(OUT, `${PFX}ingame-report.json`), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
     await browser.close().catch(() => {});
     await vite.close().catch(() => {});
   }

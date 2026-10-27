@@ -712,6 +712,12 @@
   "troll_brute_elite": {
    "frame": 48
   },
+  "umb_ash_executioner": {
+   "frame": 64
+  },
+  "umb_ash_executioner_cage": {
+   "frame": 32
+  },
   "umb_ash_minotaur": {
    "frame": 64
   },
@@ -30963,6 +30969,242 @@
    "w": 60,
    "h": 44
   },
+  "bf_horse_fallen_sol": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_sol_b": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_sol_c": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_sol_d": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_sol_e": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_fallen_umb": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_umb_b": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_umb_c": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_umb_d": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_umb_e": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_skel_a": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_skel_b": {
+   "w": 128,
+   "h": 64
+  },
+  "bf_horse_skel_c": {
+   "w": 128,
+   "h": 64
+  },
+  "dg_pillar_c_a": {
+   "w": 64,
+   "h": 128
+  },
+  "dg_pillar_c_b": {
+   "w": 64,
+   "h": 128
+  },
+  "dg_pillar_t_a": {
+   "w": 64,
+   "h": 128
+  },
+  "dg_pillar_t_b": {
+   "w": 64,
+   "h": 128
+  },
+  "dg_pillar_a_a": {
+   "w": 64,
+   "h": 96
+  },
+  "dg_pillar_a_b": {
+   "w": 64,
+   "h": 96
+  },
+  "dg_statue_c_a": {
+   "w": 64,
+   "h": 96
+  },
+  "dg_statue_c_b": {
+   "w": 64,
+   "h": 96
+  },
+  "dg_statue_c_c": {
+   "w": 64,
+   "h": 96
+  },
+  "dg_sarc_c_a": {
+   "w": 96,
+   "h": 64
+  },
+  "dg_sarc_c_b": {
+   "w": 96,
+   "h": 64
+  },
+  "dg_sarc_t_a": {
+   "w": 96,
+   "h": 64
+  },
+  "dg_sarc_a_a": {
+   "w": 96,
+   "h": 64
+  },
+  "dg_sarc_a_b": {
+   "w": 96,
+   "h": 64
+  },
+  "dg_altar_c": {
+   "w": 128,
+   "h": 64
+  },
+  "dg_brazier_a": {
+   "w": 32,
+   "h": 64
+  },
+  "dg_brazier_b": {
+   "w": 32,
+   "h": 64
+  },
+  "dg_candles_a": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_candles_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_candles_c": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_rubble_c_a": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_rubble_c_b": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_rubble_c_c": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_rubble_t_a": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_rubble_t_b": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_bones_a": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_bones_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_bones_c": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_puddle_a": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_puddle_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_ashpile_a": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_ashpile_b": {
+   "w": 64,
+   "h": 32
+  },
+  "dg_banner_c_a": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_banner_c_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_banner_c_c": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_banner_t_a": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_banner_t_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_window_c_a": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_window_c_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_grate_a": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_grate_b": {
+   "w": 32,
+   "h": 32
+  },
+  "dg_chains_a": {
+   "w": 32,
+   "h": 64
+  },
+  "dg_chains_b": {
+   "w": 32,
+   "h": 64
+  },
+  "dg_arch_c": {
+   "w": 160,
+   "h": 128
+  },
+  "dg_arch_t": {
+   "w": 160,
+   "h": 128
+  },
+  "dg_gate_a": {
+   "w": 160,
+   "h": 128
+  },
   "umb_statue": {
    "w": 64,
    "h": 152
@@ -30986,14 +31228,6 @@
   "bf_fallen_umb_b": {
    "w": 64,
    "h": 32
-  },
-  "bf_horse_fallen_sol": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_fallen_umb": {
-   "w": 128,
-   "h": 64
   },
   "bf_palisade_gate": {
    "w": 96,
@@ -31602,50 +31836,6 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
-  },
-  "bf_horse_sol_b": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_sol_c": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_sol_d": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_sol_e": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_umb_b": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_umb_c": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_umb_d": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_umb_e": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_skel_a": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_skel_b": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_skel_c": {
-   "w": 128,
-   "h": 64
   }
  },
  "icons": [
@@ -33391,6 +33581,9 @@
   "uq_zb_undying_staff",
   "uq_zb_banner_crown",
   "uq_zb_rib_lantern",
+  "uq_zb_verdict_greataxe",
+  "uq_zb_hangman_hood",
+  "uq_zb_condemned_chain",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",
@@ -33853,7 +34046,21 @@
   "mseal_yak",
   "ring",
   "staff",
-  "sword"
+  "sword",
+  "war_dungeon_sol",
+  "war_dungeon_umb",
+  "war_mats_sol",
+  "war_mats_umb",
+  "war_respawn_sol",
+  "war_respawn_umb",
+  "war_siege_sol",
+  "war_siege_umb",
+  "war_speed_sol",
+  "war_speed_umb",
+  "war_squads_sol",
+  "war_squads_umb",
+  "war_xpGold_sol",
+  "war_xpGold_umb"
  ],
  "fx": [
   "arrow",

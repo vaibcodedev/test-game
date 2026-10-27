@@ -157,12 +157,17 @@ export interface DeadOpt {
   neck: "flat" | "lift" | "back";
   /** смещение хвоста вбок */
   tail?: number;
+  /** опыт: наклон головы относительно шеи (по умолчанию по виду шеи) */
+  headP?: number;
+  neckP?: number;
   /** стрелы в боку и дышло — рисует bf-horses поверх кадра */
   bob?: number;
 }
 function deadPose(o: DeadOpt): Pose {
   const s = Math.sign(o.roll) || 1;
-  const neck = o.neck === "flat" ? { neckP: 1.25, headP: -0.9, neckY: 0.0 } : o.neck === "lift" ? { neckP: 0.9, headP: -0.7, neckY: 0.12 * s } : { neckP: 0.3, headP: -0.2, neckY: -0.25 * s };
+  const neck = o.neck === "flat" ? { neckP: 1.25, headP: -1.3, neckY: 0.0 } : o.neck === "lift" ? { neckP: 1.05, headP: -1.05, neckY: 0.1 * s } : { neckP: 0.8, headP: -0.75, neckY: -0.12 * s };
+  if (o.headP !== undefined) neck.headP = o.headP;
+  if (o.neckP !== undefined) neck.neckP = o.neckP;
   return {
     bob: o.bob ?? -13.5, pitch: 0, roll: o.roll, ...neck, headR: 0.15 * s,
     legs: stand(), maneSw: [0.6, 0.9, 1.1, 1.2, 1.3, 1.4].map((v) => v * s), maneBack: 0, maneDrop: 0.55,
@@ -172,14 +177,13 @@ function deadPose(o: DeadOpt): Pose {
 /** Копыто мёртвого коня: лёжа на боку ноги — вытянутые вдоль земли (stretch) или подогнутые (fold); hip — мировая точка бедра. */
 function deadLeg(o: DeadOpt, i: number, hip: V3): { foot: V3; fold: number; bend: V3 } {
   const out = Math.sign(o.roll) || 1, fr = i < 2, k = i % 2;
+  // ближняя пара (k=1, у брюха к камере) — вдоль земли параллельно; дальняя (k=0) — за брюхом, наполовину скрыта; копыта на земле
   if (o.legs === "stretch") {
-    // вытянуты веером: передние вперёд, задние назад, дальняя нога дальше в сторону — ноги не сливаются с корпусом
-    const dx = k ? 8.5 : 2.5, dy = fr ? (k ? 15 : 21) : -(k ? 14 : 20);
-    return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0, bend: [out * 0.2, 0, 1] };
+    const dx = k ? 4.5 : -2.0, dy = fr ? (k ? 16 : 13) : -(k ? 16 : 13);
+    return { foot: [hip[0] + out * dx, hip[1] + dy, 1.6], fold: 0, bend: [out * 0.15, 0, 0.6] };
   }
-  // подогнуты: копыта под брюхо, колени торчат в стороны веером
-  const dx = k ? 11 : 6, dy = fr ? (k ? -2 : -6) : (k ? 2 : 6);
-  return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0.9, bend: [out * 0.6, fr ? 0.9 : -0.9, 0.6] };
+  const dx = k ? 4.5 : -1.5, dy = fr ? (k ? -8 : -6) : (k ? 8 : 6);
+  return { foot: [hip[0] + out * dx, hip[1] + dy, 1.6], fold: 0.5, bend: [out * 0.3, fr ? 1 : -1, 0.9] };
 }
 
 // ---------------- сборка ----------------

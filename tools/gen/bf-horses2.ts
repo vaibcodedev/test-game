@@ -27,17 +27,18 @@ const WOODC = [hex("#3a2216"), hex("#5e3a22"), hex("#8a5a34"), hex("#b07e4c")];
 const BLOOD: RGBA = [86, 18, 24, 215];
 interface V { view: "side" | "left"; o: DeadOpt; ex?: "arrows" | "shaft" }
 const VARS: V[] = [
-  { view: "side", o: { roll: 1.45, legs: "stretch", neck: "flat" } },
-  { view: "left", o: { roll: 1.45, legs: "fold", neck: "flat", tail: -0.5 } },
-  { view: "side", o: { roll: 1.3, legs: "stretch", neck: "back", tail: 0.9 } },
-  { view: "left", o: { roll: 1.5, legs: "stretch", neck: "flat" }, ex: "arrows" },
-  { view: "side", o: { roll: 1.4, legs: "fold", neck: "lift" }, ex: "shaft" },
+  { view: "side", o: { roll: 1.45, legs: "stretch", neck: "flat", bob: -14 } },
+  { view: "left", o: { roll: 1.45, legs: "fold", neck: "flat", tail: -0.5, bob: -14 } },
+  { view: "side", o: { roll: 1.4, legs: "stretch", neck: "back", tail: 0.9, bob: -14 } },
+  { view: "left", o: { roll: 1.5, legs: "stretch", neck: "flat", bob: -14.5 }, ex: "arrows" },
+  { view: "side", o: { roll: 1.45, legs: "fold", neck: "lift", bob: -14 }, ex: "shaft" },
 ];
 /** Павший боевой конь: v 0..4 (на боку; зеркально, ноги подогнуты; голова запрокинута; со стрелами и кровью; со сломанным дышлом). */
 export function deadHorse(fac: Fac, v: number): PC {
   const V = VARS[v], raw = crop(deadHorseFrame(fac, V.o, V.view));
   const M = 12, pc = new PC(raw.w + M * 2, raw.h + 14);
   const cx = M + raw.w / 2, bot = 6 + raw.h;
+  pc.ellipse(cx + 2, bot - 5, raw.w * 0.5, 8, [10, 6, 18, 120]); pc.ellipse(cx + 1, bot - 6, raw.w * 0.42, 6, [10, 6, 18, 150]);
   shadowDisc(pc, cx, bot - 4, raw.w * 0.46, 5.5, 28);
   if (V.ex === "arrows") { pc.ellipse(cx, bot - 5, raw.w * 0.4, 4.5, BLOOD); pc.ellipse(cx - 3, bot - 5, raw.w * 0.26, 3, [64, 12, 18, 215]); }
   pc.blit(raw, M, 6);

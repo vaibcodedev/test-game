@@ -19,6 +19,7 @@ import { CITIES, cityHouseKind, FORT_HOUSES, fortDecor, STYLE, TEMPLE_KIND, isGa
 import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
+import { buildDungeonDecor, DG_FOOTPRINT } from "./dungeonDecor";
 import { assignArtVariants } from "./cityart";
 import { interiorAt, interiorCell } from "./interiors";
 import { WAR, WAR_BASES } from "./bannerWar";
@@ -43,9 +44,13 @@ export enum T {
   Obsidian,
   Dune,
   Seabed,
+  /** Данж (задача 139): мрамор собора, треснувший мрамор с лавой и пепельный базальт склепа. */
+  Marble,
+  CrackedMarble,
+  Basalt,
 }
-export const TERRAIN_COUNT = 15;
-export const TERRAIN_KEYS = ["water", "lava", "sand", "bog", "ash", "dirt", "grass", "forest", "cobble", "floor", "snow", "ice", "obsidian", "dune", "seabed"];
+export const TERRAIN_COUNT = 18;
+export const TERRAIN_KEYS = ["water", "lava", "sand", "bog", "ash", "dirt", "grass", "forest", "cobble", "floor", "snow", "ice", "obsidian", "dune", "seabed", "marble", "cracked", "basalt"];
 const BLOCKING = new Set<T>([T.Water, T.Lava]);
 
 /** Зоны мира. Порядок значений не меняется (номер зоны хранится в карте); новые — в конец. Названия и уровни — /data/world.json. */
@@ -132,7 +137,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 17; // 17 — павшие кони Полей в объёме (по 5 вариантов фракций, нейтральные, скелеты: shared/decor.ts, tools/gen/bf-horses.ts); 16 — воронки с рельефом, гарь с текстурой, сгоревшая катапульта дымит, варианты стойки щитов и стола с картой (форты — по фракции); 15 — декор Полей в объёме с вариантами (воткнутое оружие, щиты, воронки, обломки, повозки, шатры, катапульты: shared/decor.ts, tools/gen/bf-props.ts); 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 19; // 19 — данж по стилям: собор павших королей → переход → пепельный склеп (новые полы, стены, реквизит, арки и ворота; shared/dungeonDecor.ts); 18 — арена босса кольца r49s (Кассар, задача 139); 17 — павшие кони Полей в объёме (по 5 вариантов фракций, нейтральные, скелеты: shared/decor.ts, tools/gen/bf-horses.ts); 16 — воронки с рельефом, гарь с текстурой, сгоревшая катапульта дымит, варианты стойки щитов и стола с картой (форты — по фракции); 15 — декор Полей в объёме с вариантами (воткнутое оружие, щиты, воронки, обломки, повозки, шатры, катапульты: shared/decor.ts, tools/gen/bf-props.ts); 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -186,6 +191,7 @@ export interface WorldMap {
 
 /** Какие объекты непроходимы и сколько клеток занимают (от клетки привязки вправо и вверх). */
 export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefined> = {
+  ...DG_FOOTPRINT, // данж: колонны, статуи, саркофаги, алтарь, жаровни (shared/dungeonDecor.ts)
   ...D.BF_FOOTPRINT, // шатры, повозки, кузня, осадные машины, штандарты Полей (задача 132, шаг 10)
   ...D.VENDOR_FOOTPRINT, // деревья, заборы, обрывы, кладбище из паков (shared/decor.ts); наши oak, pine, dead_tree убраны
   rock: { w: 1, h: 1 },
@@ -374,6 +380,22 @@ const DUNGEON_DEPTH = (() => {
   }
   return { depth, dw, boss: Math.max(1, depth[(71 + DG.y - DUNGEON.y0) * dw + 168 + DG.x - DUNGEON.x0]) };
 })();
+/** Глубина клетки данжа 0..1 от входа к залу босса; у стен (вне залов) — по соседним залам; −1 — вне данжа. */
+export function dungeonDepthK(x: number, y: number): number {
+  const { depth, dw, boss } = DUNGEON_DEPTH;
+  const at = (cx: number, cy: number) => (cx < DUNGEON.x0 || cy < DUNGEON.y0 || cx >= DUNGEON.x1 || cy >= DUNGEON.y1 ? -1 : depth[(cy - DUNGEON.y0) * dw + cx - DUNGEON.x0]);
+  const cx = Math.floor(x), cy = Math.floor(y);
+  let d = at(cx, cy);
+  if (d < 0) for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) d = Math.max(d, at(cx + i, cy + j));
+  return d < 0 ? -1 : Math.min(1, d / boss);
+}
+/** Оформление данжа: 0 — затонувший собор павших королей (первые залы), 1 — переход (собор трескается, пепел и лава просачиваются), 2 — пепельный склеп (глубина и зал босса). */
+export type DungeonStyle = 0 | 1 | 2;
+export const DUNGEON_STYLE_AT = [0.34, 0.66] as const;
+export function dungeonStyle(x: number, y: number): DungeonStyle {
+  const k = dungeonDepthK(x, y);
+  return k < DUNGEON_STYLE_AT[0] ? 0 : k < DUNGEON_STYLE_AT[1] ? 1 : 2;
+}
 const MID_Y1 = MID.y + MID.h;
 const ROADS: Line[] = Object.values(world.roads).filter(isLine);
 
@@ -643,11 +665,13 @@ function terrainAt(x: number, y: number, seed: number, z = zoneAt(x, y, seed)): 
   if (z !== Zone.Dungeon && (rv < 0 || edge < 2.6)) return T.Water;
   if (z !== Zone.Dungeon && edge < 4.6) return st === Zone.Snow ? T.Ice : st === Zone.Volcano ? T.Obsidian : T.Sand;
   if (z === Zone.Dungeon) {
-    for (const [lx, ly, r] of LAVA_POOLS) {
+    // оформление по глубине: собор (мрамор) → переход (треснувший мрамор, лава сочится) → склеп (базальт); лужи лавы — с перехода
+    const st = dungeonStyle(Math.floor(x), Math.floor(y));
+    if (st > 0) for (const [lx, ly, r] of LAVA_POOLS) {
       const ddx = x - lx, ddy = y - ly;
       if (ddx * ddx + ddy * ddy < r * r * (0.8 + n * 0.4)) return T.Lava;
     }
-    return T.Floor;
+    return st === 0 ? T.Marble : st === 1 ? T.CrackedMarble : T.Basalt;
   }
   if (z === Zone.Town) {
     // вершина dual grid — мостовая, если хоть одна из 4 соседних клеток мощёная
@@ -1212,8 +1236,7 @@ export function generateMap(seed: number): WorldMap {
       else if (roll < 0.085) deco("dry_bush", x, y, jit);
       else if (roll < 0.0885) placeNode("node_pearl", x, y);
     } else if (z === Zone.Dungeon) {
-      if (roll < 0.012) objects.push({ kind: "bones", x: x * TILE + 16 + jit, y: y * TILE + 28 });
-      else if (roll < 0.018 && !bossNear(x, y, 2)) place("crate", x, y);
+      // оформление данжа — buildDungeonDecor (shared/dungeonDecor.ts)
     }
   }
   // Поля вечных битв (шаг 10 дорисует тела, караваны и штандарты): мёртвые деревья, камни, кости и черепа редко, поле остаётся открытым.
@@ -1293,15 +1316,8 @@ export function generateMap(seed: number): WorldMap {
       else if (r < 0.146 && scar > 0.62) pair(hash(x, y, seed + 441) < 0.5 ? "bf-fire-s" : "bf-fire-m", 31);
     }
   }
-  // Данж: колонны, факелы на стенах.
-  for (const [px, py] of [[142, 58], [149, 58], [142, 66], [149, 66], [142, 77], [149, 77], [142, 85], [149, 85], [159, 62], [172, 62], [159, 81], [172, 81]])
-    place("pillar", px + DG.x, py + DG.y);
-  for (let y = DUNGEON.y0; y < DUNGEON.y1 - 1; y++) for (let x = DUNGEON.x0; x < DUNGEON.x1; x++) {
-    const wall = at(x, y) & CELL_WALL, below = at(x, y + 1) & CELL_WALL;
-    if (wall && !below && hash(x, y, seed + 9) < 0.22) objects.push({ kind: "torch", x: x * TILE + 16, y: y * TILE + 26 });
-  }
-  // факелы по бокам входа с севера (старые, у западных ворот, убраны вместе с ними)
-  objects.push({ kind: "torch", x: (145 + DG.x) * TILE + 16, y: (54 + DG.y) * TILE + 26 }, { kind: "torch", x: (150 + DG.x) * TILE + 16, y: (54 + DG.y) * TILE + 26 });
+  // Данж (задача 139): собор павших королей → переход → пепельный склеп; колонны, статуи, саркофаги, свечи, жаровни, кости, знамёна, окна, решётки, арки и ворота
+  buildDungeonDecor({ seed, w, objects, at, place, hash, DG, DUNGEON, rooms: DUNGEON_ROOMS, style: dungeonStyle, TILE, CELL_WALL, CELL_BLOCK, arenaNear: (x, y, r) => !!bossNear(x, y, r) });
 
   // Точки появления мобов: три прохода (земли фракций, кольцо 40–80 между реками, Поля вечных битв с вулканом и данжем).
   const spawns: SpawnPoint[] = [];

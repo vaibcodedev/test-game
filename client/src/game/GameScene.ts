@@ -22,7 +22,7 @@ import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, zoneTint, type WorldView } from "./terrain";
-import { setNoSun } from "./shadows";
+import { setLightMode } from "./shadows";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { placeText, syncTextRes, worldText } from "./worldText";
 import { ArenaIntroFx } from "./arenaIntro";
@@ -290,7 +290,7 @@ export class GameScene extends Phaser.Scene {
       this.cleanup.push(() => { this.towerArchers?.destroy(); this.towerArchers = null; });
       this.fortScenes = new FortScenes(this, () => this.units.values());
       this.cleanup.push(() => { this.fortScenes?.destroy(); this.fortScenes = null; });
-      this.bannerBases = new BannerBases(this);
+      this.bannerBases = new BannerBases(this, () => this.units.values());
       this.cleanup.push(() => { this.bannerBases?.destroy(); this.bannerBases = null; });
       this.siegeView = new SiegeView(this, () => this.units);
       this.cleanup.push(() => { this.siegeView?.destroy(); this.siegeView = null; });
@@ -1373,7 +1373,7 @@ export class GameScene extends Phaser.Scene {
     // ночь (общий цикл по часам): затемнение и синева на поверхности, не в подземельях/арене/под водой
     const zs = zoneStyle(z);
     const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
-    setNoSun(z === Zone.Dungeon || z === Zone.Arena || !!this.room); // длинные тени (game/shadows.ts) только под открытым небом
+    setLightMode(this.room || z === Zone.Arena ? "none" : z === Zone.Dungeon ? "torch" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
     const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5);
     this.interiors?.update(dt, night, this.room);

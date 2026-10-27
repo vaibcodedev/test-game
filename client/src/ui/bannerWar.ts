@@ -12,6 +12,7 @@ import SIEGE_DATA from "../../../data/siege.json";
 import { WAR, WAR_BASES, WAR_FRONTS, WAR_RADIUS, nextWarStart, raiseSec, warBase, warFront, type WarBaseDef, type WarBaseView, type WarFaction, type WarResultMsg, type WarSayMsg, type WarStateMsg } from "../../../shared/bannerWar";
 import { net as NET, type Net } from "../net";
 import { openModal, type ModalHandle } from "./kit";
+import { barVariant, variantBody } from "./warBarVariants";
 
 /** Последнее состояние ивента и сдвиг часов сервера относительно performance.now(). */
 export const warView: { state: WarStateMsg | null; at: number; byId: Map<string, WarBaseView> } = { state: null, at: 0, byId: new Map() };
@@ -56,6 +57,11 @@ export class WarHud {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-war-tp]");
       if (b && !b.disabled && !this.inCombat && performance.now() >= this.tpUntil) this.net.send("war:tp", {});
       if ((e.target as HTMLElement).closest("[data-war-rules]")) openWarRules();
+      if ((e.target as HTMLElement).closest("[data-war-fold]")) {
+        this.collapsed = !this.collapsed;
+        try { sessionStorage.setItem("war:collapsed", this.collapsed ? "1" : "0"); } catch { /* приватное окно */ }
+        this.render();
+      }
     });
     net.on("combat", (m) => { this.inCombat = m.on; this.render(); });
     net.on("war:tpcd", (m) => { this.tpUntil = performance.now() + m.ms; this.render(); });
@@ -67,6 +73,13 @@ export class WarHud {
     });
     net.on("war:say", (m) => this.say(m));
     net.on("war:result", (r) => this.showResult(r));
+    // итог в полосе — минуту после конца (или до закрытия окна итогов)
+    net.on("war:say", (m) => {
+      if (m.kind !== "end") return;
+      const sc = warView.state?.score ?? [0, 0];
+      this.endLine = m.f ? T("ui.bannerWar.114", { faction: FACTIONS[m.f as WarFaction].name, a: sc[0], b: sc[1] }) : T("ui.bannerWar.115", { a: sc[0], b: sc[1] });
+      this.endUntil = performance.now() + 60000;
+    });
     net.on("switch", (kind) => { if (kind !== "world") { this.bar.hidden = true; this.banner.hidden = true; } });
   }
 
@@ -102,30 +115,59 @@ export class WarHud {
     this.introEl = c;
   }
 
+  /** Свёрнута ли полоса битвы в плашку (на сессию вкладки). */
+  private collapsed = (() => { try { return sessionStorage.getItem("war:collapsed") === "1"; } catch { return false; } })();
+  /** Итог битвы: строка для полосы и когда её снять (минута после конца или закрытие окна итогов). */
+  private endLine = "";
+  private endUntil = 0;
+  /**
+   * Жизненный цикл полосы: вне битвы — ничего; с −30 мин — плашка «Битва через …» (герои от minLevel; с −15 мин — «В форт»);
+   * в битве — полная полоса героям от minLevel (сворачивается в плашку, запоминается на сессию), остальным — плашка;
+   * после битвы — строка итога до минуты или до закрытия окна итогов. «?» (правила) — везде.
+   */
   private render() {
     const s = warView.state;
-    const show = !!s && s.ph !== "idle" && this.net.kind === "world";
-    if (this.bar.hidden === show) this.bar.hidden = !show;
-    if (!show || !s) return;
-    const fr = warFront(s.front);
-    const now = warNow();
-    const lvl = this.net.self?.level ?? 0;
-    const tpOpen = lvl >= WAR.minLevel && ((s.ph === "prep" && s.t0 - now <= WAR.schedule.teleportMin * 60000) || s.ph === "battle");
-    const time = s.ph === "prep" ? T("ui.bannerWar.1", { t: mmss(s.t0 - now) }) : s.ph === "battle" ? mmss(s.t1 - now) : T("ui.bannerWar.2");
-    const heartAt = s.t0 + WAR.schedule.heartOpenMin * 60000;
-    const note = s.ph === "battle" && !s.heart ? T("ui.bannerWar.3", { t: mmss(heartAt - now) }) : s.ph === "prep" && lvl < WAR.minLevel ? T("ui.bannerWar.4", { lvl: WAR.minLevel }) : "";
-    const pips = (fr?.bases ?? []).map((d) => {
-      const b = warView.byId.get(d.id);
-      const state = !b ? "" : b.lock ? T("ui.bannerWar.5", { min: WAR.schedule.heartOpenMin }) : b.c ? T("ui.bannerWar.6") : b.s > 0 ? T("ui.bannerWar.7") : b.o ? FACTIONS[b.o as WarFaction].name : T("ui.bannerWar.8");
-      const fill = b ? Math.round((b.b ? b.h : b.hp) * 100) : 0;
-      return `<span class="war-pip ${d.kind} o-${fcls(b?.o ?? "")} b-${fcls(b?.b || b?.hf || "")}${b?.c ? " contest" : ""}${b?.lock ? " lock" : ""}${b && b.s > 0 ? " seal" : ""}" title="${esc(d.name)} · ${esc(state)}"><i style="height:${fill}%"></i></span>`;
-    }).join("");
-    const hint = warHint();
-    const html = `<div class="war-head"><span class="war-front">${esc(fr?.name ?? "")}</span><span class="war-time">${esc(time)}</span></div>
-      <button class="x war-help" data-war-rules title="${esc(T("ui.bannerWar.41"))}" aria-label="${esc(T("ui.bannerWar.41"))}">?</button>
+    const lvl = this.net.self?.level ?? 0, ok = lvl >= WAR.minLevel;
+    const now = warNow(), fr = s ? warFront(s.front) : undefined;
+    let mode: "none" | "chip" | "full" | "result" = "none";
+    if (s && this.net.kind === "world") {
+      if (s.ph === "battle") mode = ok && !this.collapsed ? "full" : "chip";
+      else if (s.ph === "prep") mode = ok ? "chip" : "none";
+      else if (s.ph === "result" && this.endLine && performance.now() < this.endUntil) mode = "result";
+    }
+    this.bar.hidden = mode === "none";
+    this.bar.classList.toggle("war-mini", mode === "chip" || mode === "result");
+    if (mode === "none" || !s) { this.lastHtml = ""; return; }
+    const help = `<button class="x war-help" data-war-rules title="${esc(T("ui.bannerWar.41"))}" aria-label="${esc(T("ui.bannerWar.41"))}">?</button>`;
+    const tpOpen = ok && ((s.ph === "prep" && s.t0 - now <= WAR.schedule.teleportMin * 60000) || s.ph === "battle");
+    let html: string;
+    const bv = barVariant();
+    if (mode === "result" && bv) {
+      this.bar.classList.remove("war-mini");
+      html = variantBody(bv, s, T("ui.bannerWar.2"), help, `<div class="war-hint ok">${esc(this.endLine)}</div>`, warHero);
+    } else if (mode === "result") html = `<div class="war-head"><span class="war-front">${esc(this.endLine)}</span>${help}</div>`;
+    else if (mode === "chip") {
+      const text = s.ph === "prep" ? T("ui.bannerWar.110", { t: mmss(s.t0 - now) }) : fr?.name ?? ""; // в битве — коротко: имя фронта, рядом таймер
+      const expand = s.ph === "battle" && ok ? `<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.113"))}" aria-label="${esc(T("ui.bannerWar.113"))}">+</button>` : "";
+      html = `<div class="war-head"><span class="war-front">${esc(text)}</span>${s.ph === "battle" ? `<span class="war-time">${mmss(s.t1 - now)}</span>` : ""}${tpOpen ? this.tpButton() : ""}${expand}${help}</div>`;
+    } else {
+      const heartAt = s.t0 + WAR.schedule.heartOpenMin * 60000;
+      const note = !s.heart ? T("ui.bannerWar.3", { t: mmss(heartAt - now) }) : "";
+      const pips = (fr?.bases ?? []).map((d) => {
+        const b = warView.byId.get(d.id);
+        const state = !b ? "" : b.lock ? T("ui.bannerWar.5", { min: WAR.schedule.heartOpenMin }) : b.c ? T("ui.bannerWar.6") : b.s > 0 ? T("ui.bannerWar.7") : b.o ? FACTIONS[b.o as WarFaction].name : T("ui.bannerWar.8");
+        const fill = b ? Math.round((b.b ? b.h : b.hp) * 100) : 0;
+        return `<span class="war-pip ${d.kind} o-${fcls(b?.o ?? "")} b-${fcls(b?.b || b?.hf || "")}${b?.c ? " contest" : ""}${b?.lock ? " lock" : ""}${b && b.s > 0 ? " seal" : ""}" title="${esc(d.name)} · ${esc(state)}"><i style="height:${fill}%"></i></span>`;
+      }).join("");
+      const hint = warHint();
+      const tail = hint ? `<div class="war-hint ${hint.tone}">${esc(hint.text)}</div>` : note ? `<div class="war-note">${esc(note)}</div>` : "";
+      if (bv) html = variantBody(bv, s, mmss(s.t1 - now), `${tpOpen ? this.tpButton() : ""}<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.112"))}" aria-label="${esc(T("ui.bannerWar.112"))}">–</button>${help}`, tail, warHero);
+      else html = `<div class="war-head"><span class="war-front">${esc(fr?.name ?? "")}</span><span class="war-time">${esc(mmss(s.t1 - now))}</span>${tpOpen ? this.tpButton() : ""}<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.112"))}" aria-label="${esc(T("ui.bannerWar.112"))}">–</button>${help}</div>
       <div class="war-score"><b class="war-num sol" title="${esc(FACTIONS.solgard.name)}">${s.score[0]}</b><span class="war-pips">${pips}</span><b class="war-num umb" title="${esc(FACTIONS.umbrath.name)}">${s.score[1]}</b></div>
-      ${hint ? `<div class="war-hint ${hint.tone}">${esc(hint.text)}</div>` : ""}${note ? `<div class="war-note">${esc(note)}</div>` : ""}${tpOpen ? this.tpButton() : ""}`;
+      ${hint ? `<div class="war-hint ${hint.tone}">${esc(hint.text)}</div>` : note ? `<div class="war-note">${esc(note)}</div>` : ""}`;
+    }
     if (html !== this.lastHtml) { this.lastHtml = html; this.bar.innerHTML = html; }
+    if (!this.banner.hidden) this.placeBanner();
   }
 
   /** Кнопка «В форт»: в бою — серая с замком, на перезарядке — серая с отсчётом и шторкой, подсказка — почему. */
@@ -136,16 +178,34 @@ export class WarHud {
     return `<button class="btn war-tp" data-war-tp>${T("ui.bannerWar.9")}</button>`;
   }
 
+  /** Объявления — очередью в одном месте экрана: под полосой битвы, на тёмной полупрозрачной ленте, каждое ~3,4 с; не больше 3 в очереди. */
+  private queue: WarSayMsg[] = [];
+  private showing = false;
   private say(m: WarSayMsg) {
     if (this.net.kind !== "world") return;
+    this.queue.push(m);
+    if (this.queue.length > 3) this.queue.shift();
+    if (!this.showing) this.nextSay();
+  }
+  /** Слот объявлений: под полосой битвы (полоса может появиться позже объявления — тогда место берётся по её наибольшей высоте). */
+  private placeBanner() {
+    const bottom = this.bar.hidden ? 0 : this.bar.offsetTop + this.bar.offsetHeight;
+    this.banner.style.top = `${Math.max(bottom, 112) + 104}px`; // ниже названия зоны и подсказок HUD под полосой
+  }
+  private nextSay() {
+    const m = this.queue.shift();
+    if (!m) { this.showing = false; this.banner.hidden = true; return; }
+    this.showing = true;
     this.banner.className = `war-banner passthru ${m.kind} f-${fcls(m.f ?? "")}`;
     this.banner.innerHTML = `<div>${esc(m.text)}</div>${m.sub ? `<small>${esc(m.sub)}</small>` : ""}`;
+    // слот — сразу под полосой битвы (или под верхним краем, если полосы нет)
+    this.placeBanner();
     this.banner.hidden = false;
     this.banner.classList.remove("show");
     void this.banner.offsetWidth;
     this.banner.classList.add("show");
     clearTimeout(this.bannerTimer);
-    this.bannerTimer = window.setTimeout(() => (this.banner.hidden = true), m.kind === "end" || m.kind === "start" ? 3600 : 2800);
+    this.bannerTimer = window.setTimeout(() => this.nextSay(), 3400);
   }
 
   private showResult(r: WarResultMsg) {
@@ -173,7 +233,7 @@ export class WarHud {
         <p class="dim war-stats">${T("ui.bannerWar.28", { c: r.stats.captures, t: r.stats.tears, k: r.stats.kills })}</p>
       </div>
       <div class="dialog-foot"><button class="btn primary" data-x>${T("ui.bannerWar.27")}</button></div></section>`;
-    const m = openModal(html, { onClose: () => { if (this.result === m) this.result = null; } });
+    const m = openModal(html, { onClose: () => { if (this.result === m) this.result = null; this.endUntil = 0; this.render(); } });
     this.result = m;
     m.dialog.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest("[data-x]")) m.close(); });
   }

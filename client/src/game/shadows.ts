@@ -30,8 +30,10 @@ export function setShadowMode(m: ShadowMode) {
 const SHADOW_DEPTH = -600 + 2;
 const ALPHA = 0.46;
 /** Подземелья и залы без солнца. */
-let noSun = false;
-export function setNoSun(v: boolean) { if (v !== noSun) { noSun = v; lastKey = -1; } }
+/** Освещение: «sun» — солнце суток, «torch» — данж (тени от факелов и жаровен: фиксированный наклон вправо-вниз), «none» — залы и арена без теней. */
+export type LightMode = "sun" | "torch" | "none";
+let lightMode: LightMode = "sun";
+export function setLightMode(v: LightMode) { if (v !== lightMode) { lightMode = v; lastKey = -1; } }
 
 interface Params { phi: number; sx: number; sy: number; theta: number; alpha: number }
 /** Матрица тени для доли суток p (0 — утро, ~0,68 — вечер): k — сдвиг по x на пиксель высоты, sy — сжатие по вертикали. */
@@ -49,6 +51,7 @@ function decompose(m00: number, m01: number, m10: number, m11: number, alpha: nu
   return { phi: (a2 + a1) / 2, sx: Q + R, sy: Q - R, theta: (a2 - a1) / 2, alpha };
 }
 const SIMPLE: Params = decompose(1, -0.55, 0, -0.3, ALPHA);
+const TORCH: Params = decompose(1, -0.7, 0, -0.34, ALPHA * 0.9);
 
 /** Тень одного предмета: контейнер (поворот и масштаб) с картинками-копиями кадров. */
 export class Shadow {
@@ -69,7 +72,7 @@ export class Shadow {
     im.setOrigin(src.originX, src.originY).setPosition(dx, dy).setFlipX(src.flipX).setScale(src.scaleX, src.scaleY).setVisible(src.visible && src.alpha > 0.05);
   }
   apply(p: Params) {
-    this.box.setRotation(p.phi).setScale(p.sx, p.sy).setAlpha(mode === "off" || noSun ? 0 : Math.min(0.7, p.alpha * this.boost));
+    this.box.setRotation(p.phi).setScale(p.sx, p.sy).setAlpha(mode === "off" || lightMode === "none" ? 0 : Math.min(0.7, p.alpha * this.boost));
     for (const im of this.imgs) im.setRotation(p.theta);
   }
   destroy() { this.box.destroy(); }
@@ -80,10 +83,10 @@ let cur: Params = SIMPLE, lastKey = -1;
 /** Раз в кадр из мира: пересчёт общих параметров, только когда сменился 5-секундный шаг цикла, режим или зона. */
 export function shadowTick(): void {
   const ms = (window as unknown as { __shadowMs?: number }).__shadowMs ?? Date.now(), p = (((ms % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
-  const key = (mode === "dynamic" ? Math.floor(p * 240) : 0) + MODES.indexOf(mode) * 1000 + (noSun ? 10000 : 0);
+  const key = (mode === "dynamic" ? Math.floor(p * 240) : 0) + MODES.indexOf(mode) * 1000 + (lightMode === "none" ? 10000 : lightMode === "torch" ? 20000 : 0);
   if (key === lastKey) return;
   lastKey = key;
-  cur = mode === "dynamic" ? sunParams(p, ms) : SIMPLE;
+  cur = lightMode === "torch" ? TORCH : mode === "dynamic" ? sunParams(p, ms) : SIMPLE;
   for (const s of all) s.apply(cur);
 }
 export const shadowCount = () => all.size;

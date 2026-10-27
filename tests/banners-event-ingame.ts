@@ -456,6 +456,145 @@ async function scenarioUx() {
     clearInterval(keep);
   }
 }
+/** --start: миг начала битвы, герой с титулом стоит у постамента — объявление, полоса, подписи не налезают; 1366×768 и 1920×1080. */
+async function scenarioStart() {
+  fs.mkdirSync(OUT, { recursive: true });
+  const token = await ensureChar("war_start", PASS, "Ратоборец", "warrior");
+  const w = W(), war = w.war!;
+  war.debug("reset", {});
+  w.soldiers!.squadAt.solgard = w.soldiers!.squadAt.umbrath = 1e15;
+  const base = warBase("center_w")!;
+  for (const m of [...w.mobs.values()]) if (!m.faction && Math.hypot(m.x - base.x, m.y - base.y) < 2000) w.removeMob(m);
+  await enter("Ратоборец", token, 2);
+  const H = heroOf("Ратоборец");
+  H.save.level = 90; H.save.title = "Сокрушитель Хаоса"; H.applyCosmetics(); H.selfDirty = true;
+  const at = { x: base.x + 10, y: base.y + WAR_LOOK_DROP + 70 };
+  const keep = setInterval(() => { H.unit.x = at.x; H.unit.y = at.y; H.moveTo = null; H.inputAt = w.time; H.unit.hp = H.unit.maxHp; }, 50);
+  try {
+    for (const [name, vw, vh] of [["ux-start-1366.png", 1366, 768], ["ux-start-1920.png", 1920, 1080]] as const) {
+      await page.setViewport({ width: vw, height: vh, deviceScaleFactor: 1 });
+      await sleep(1500);
+      if (war.phase === "battle") war.debug("end", {});
+      await page.evaluate(() => document.querySelectorAll(".modal").forEach((m) => m.remove()));
+      war.debug("start", { front: "center" });
+      await page.waitForFunction(() => /Битва за знамёна/.test((document.querySelector(".war-banner:not([hidden])") as HTMLElement | null)?.textContent ?? ""), { timeout: 12000, polling: 100 }).catch(() => 0);
+      await sleep(500);
+      await page.screenshot({ path: path.join(OUT, name) });
+      const r = await page.evaluate(() => {
+        const box = (sel: string) => { const e = document.querySelector(sel) as HTMLElement | null; if (!e || e.hidden) return null; const q = e.getBoundingClientRect(); return { l: q.left, r: q.right, t: q.top, b: q.bottom }; };
+        return { bar: box(".war-bar"), banner: box(".war-banner"), mini: box(".hud-mini"), frame: box(".hud-frame, .hud-hero, #hero-frame") };
+      });
+      const hit = (a: typeof r.bar, b: typeof r.bar) => !!a && !!b && a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+      check(!!r.bar && !hit(r.bar, r.banner) && !hit(r.bar, r.mini) && !hit(r.banner, r.mini), `${vw}×${vh}: полоса, объявление и мини-карта не налезают (${JSON.stringify(r)})`);
+    }
+  } finally {
+    clearInterval(keep);
+  }
+}
+const START = process.argv.includes("--start");
+/**
+ * --life: жизненный цикл полосы (плашка до битвы, итог после и исчезновение по закрытию окна итогов) и три варианта полосы на выбор
+ * (localStorage war:barv): до захвата, подъём, спор, итог — ×1 и ×2. Выход: chip-before.png, bar-after-end.png, bar-v1..v3.png.
+ */
+async function scenarioLife() {
+  fs.mkdirSync(OUT, { recursive: true });
+  const token = await ensureChar("war_life", PASS, "Летописец", "warrior");
+  const w = W(), war = w.war!;
+  war.debug("reset", {});
+  w.soldiers!.squadAt.solgard = w.soldiers!.squadAt.umbrath = 1e15;
+  const base = warBase("center_w")!;
+  for (const m of [...w.mobs.values()]) if (!m.faction && Math.hypot(m.x - base.x, m.y - base.y) < 2000) w.removeMob(m);
+  await enter("Летописец", token, 2);
+  const H = heroOf("Летописец");
+  H.save.level = 90; H.selfDirty = true;
+  await page.evaluate(() => { try { localStorage.setItem("war:intro:v1", "1"); } catch {} });
+  const { Player: PlayerCls, newSave } = await import("../server/src/game/Player");
+  const mk = (f: "solgard" | "umbrath", i: number) => { const sv = newSave(f === "solgard" ? "healer" : "deathknight", { x: 0, y: 0 }); sv.level = 90; sv.faction = f; const p = new PlayerCls(`lf${f}${i}`, `${f === "solgard" ? "Соратник" : "Враг"}${i + 1}`, sv, () => {}); w.addPlayer(p); return p; };
+  const allies = [0, 1, 2, 3].map((i) => mk("solgard", i)), foes = [0, 1, 2, 3, 4].map((i) => mk("umbrath", i));
+  const inside = new Set<Player>();
+  const park = { x: base.x - 3000, y: base.y + 900 };
+  const keep = setInterval(() => {
+    [H, ...allies, ...foes].forEach((p, i) => {
+      if (p.dead) { p.dead = false; p.unit.anim = 0; }
+      p.unit.hp = p.unit.maxHp; p.inputAt = w.time; p.moveTo = null; p.targetId = null; p.combatAt = -1e9;
+      const q = inside.has(p) ? { x: base.x - 160 + (i % 6) * 64, y: base.y + 120 + Math.floor(i / 6) * 50 } : p === H ? { x: base.x + 40, y: base.y + 260 } : park;
+      p.unit.x = q.x; p.unit.y = q.y;
+    });
+  }, 50);
+  const barShot = async (file: string, scale = 1) => {
+    if (scale !== 1) await page.setViewport({ width: VIEW.width, height: VIEW.height, deviceScaleFactor: scale });
+    await sleep(600);
+    const el = await page.$(".war-bar:not([hidden])");
+    if (el) await el.screenshot({ path: file });
+    if (scale !== 1) { await page.setViewport({ width: VIEW.width, height: VIEW.height, deviceScaleFactor: 1 }); await sleep(400); }
+    return !!el;
+  };
+  /** Свернуть/развернуть полосу (клик в странице: полоса перерисовывается раз в 250 мс, ручка из puppeteer устаревает). */
+  const fold = () => page.evaluate(() => (document.querySelector("[data-war-fold]") as HTMLElement | null)?.click());
+  const closeModals = () => page.evaluate(() => document.querySelectorAll(".modal").forEach((m) => m.remove()));
+  try {
+    // 1. плашка до битвы (за 14:59, с «В форт»)
+    war.debug("prep", { ms: 899000 });
+    await sleep(1500);
+    const chip = await page.$eval(".war-bar", (e) => ({ chip: e.classList.contains("war-mini"), hidden: (e as HTMLElement).hidden, text: e.textContent ?? "" })).catch(() => null);
+    await barShot(path.join(OUT, "chip-before.png"));
+    check(!!chip && chip.chip && !chip.hidden && /Битва через/.test(chip.text) && /В форт/.test(chip.text), `до битвы — плашка: «${chip?.text?.trim()}»`);
+    // 2. варианты полосы: до захвата, подъём, спор, итог
+    const tmp = path.join(OUT, "tmp-bar");
+    fs.mkdirSync(tmp, { recursive: true });
+    for (const v of ["v1", "v2", "v3"]) {
+      await page.evaluate((x) => { try { localStorage.setItem("war:barv", x); } catch {} }, v);
+      await page.evaluate(() => { try { sessionStorage.setItem("war:collapsed", "0"); } catch {} });
+      inside.clear();
+      war.debug("reset", {});
+      war.debug("start", { front: "center" });
+      await sleep(1500);
+      const states: [string, () => Promise<void>][] = [
+        ["before", async () => { await sleep(500); }],
+        ["raising", async () => { inside.add(H); allies.forEach((p) => inside.add(p)); await waitFor(() => war.bases.get("center_w")!.h >= 0.4, 40000); }],
+        ["contest", async () => { foes.forEach((p) => inside.add(p)); await sleep(2500); }],
+        ["chip", async () => { await fold(); await sleep(500); }],
+        ["result", async () => { await fold(); war.debug("end", {}); await sleep(1500); await closeModals(); await sleep(300); }],
+      ];
+      for (const [st, go] of states) {
+        await go();
+        await barShot(path.join(tmp, `${v}-${st}-1.png`), 1);
+        await barShot(path.join(tmp, `${v}-${st}-2.png`), 2);
+      }
+      // склейка: строки — состояния, слева ×1, справа ×2
+      const imgs = states.map(([st]) => [1, 2].map((k) => { const f = path.join(tmp, `${v}-${st}-${k}.png`); return fs.existsSync(f) ? PNG.sync.read(fs.readFileSync(f)) : new PNG({ width: 1, height: 1 }); }));
+      const Wd = Math.max(...imgs.map(([a, b]) => a.width + b.width + 24)), Hd = imgs.reduce((h, [a, b]) => h + Math.max(a.height, b.height) + 12, 12);
+      const out = new PNG({ width: Wd + 12, height: Hd });
+      for (let i = 0; i < out.data.length; i += 4) { out.data[i] = 18; out.data[i + 1] = 15; out.data[i + 2] = 22; out.data[i + 3] = 255; }
+      let y = 12;
+      for (const [a, b] of imgs) { PNG.bitblt(a, out, 0, 0, a.width, a.height, 12, y); PNG.bitblt(b, out, 0, 0, b.width, b.height, 24 + a.width, y); y += Math.max(a.height, b.height) + 12; }
+      fs.writeFileSync(path.join(OUT, `bar-${v}.png`), PNG.sync.write(out));
+      check(imgs.every(([a]) => a.width > 10), `вариант ${v}: 4 состояния ×1 и ×2`);
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+    // 3. после битвы (вариант по умолчанию): строка итога, исчезает при закрытии окна итогов
+    await page.evaluate(() => { try { localStorage.removeItem("war:barv"); } catch {} });
+    inside.clear();
+    war.debug("reset", {});
+    war.debug("start", { front: "center" });
+    await sleep(1200);
+    war.debug("owner", { base: "center_h", f: "umbrath" });
+    await sleep(800);
+    war.debug("end", {});
+    await page.waitForSelector(".war-result", { timeout: 8000 }).catch(() => 0);
+    await sleep(800);
+    const endText = await page.$eval(".war-bar", (e) => e.textContent ?? "").catch(() => "");
+    await page.screenshot({ path: path.join(OUT, "bar-after-end.png"), clip: { x: 380, y: 0, width: 640, height: 140 } });
+    check(/Победа: Умбрат/.test(endText), `после битвы — итог в полосе: «${endText.trim()}»`);
+    await page.click(".war-result [data-x]").catch(() => 0);
+    await sleep(800);
+    const gone = await page.$eval(".war-bar", (e) => (e as HTMLElement).hidden).catch(() => true);
+    check(gone, "окно итогов закрыто — полосы нет");
+  } finally {
+    clearInterval(keep);
+  }
+}
+const LIFE = process.argv.includes("--life");
 const UX = process.argv.includes("--ux");
 import WARDATA from "../data/faction-war.json";
 const WAR_LOOK_DROP = WARDATA.look.plinthDrop;
@@ -478,12 +617,12 @@ async function main() {
       window.addEventListener("unhandledrejection", (e) => console.error("unhandledrejection: " + String((e.reason && e.reason.stack) || e.reason)));
     });
     // v2: вид осады (шаг 15, client/src/game/siegeView.ts) соседнего агента сейчас роняет кадр — на время снимков знамён он выключен
-    if ((V2 || RULES || UX) && !process.argv.includes("--with-siege")) await page.evaluateOnNewDocument(() => {
+    if ((V2 || RULES || UX || START || LIFE) && !process.argv.includes("--with-siege")) await page.evaluateOnNewDocument(() => {
       setInterval(() => { const sc = (window as any).__game?.scene?.getScene?.("game"); if (sc && sc.siegeView) { try { sc.siegeView.destroy?.(); } catch {} sc.siegeView = null; } }, 20);
     });
     page.on("console", (m) => { if (m.type() === "error" || m.type() === "warn") errors.push(`${m.type()}: ${m.text()}`); });
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e)}`));
-    await (V2 ? scenarioV2() : RULES ? scenarioRules() : UX ? scenarioUx() : scenario());
+    await (V2 ? scenarioV2() : RULES ? scenarioRules() : UX ? scenarioUx() : START ? scenarioStart() : LIFE ? scenarioLife() : scenario());
     const warn = errors.filter((e) => !/favicon|DevTools|WebGL|GPU stall|swiftshader|AudioContext|AnimationManager key already exists/i.test(e));
     check(warn.length === 0, `ошибок консоли нет${warn.length ? `: ${warn.slice(0, 5).join(" | ")}` : ""}`);
   } catch (e) {
@@ -496,7 +635,7 @@ async function main() {
     bad++;
   } finally {
     fs.mkdirSync(OUT, { recursive: true });
-    fs.writeFileSync(path.join(OUT, V2 ? "v2-report.json" : RULES ? "rules-report.json" : UX ? "ux-report.json" : "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
+    fs.writeFileSync(path.join(OUT, V2 ? "v2-report.json" : RULES ? "rules-report.json" : UX ? "ux-report.json" : START ? "start-report.json" : LIFE ? "life-report.json" : "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
     await browser.close().catch(() => {});
     await vite.close().catch(() => {});
   }

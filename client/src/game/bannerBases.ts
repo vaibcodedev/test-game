@@ -104,7 +104,7 @@ export class BannerBases {
   private plateAt: [number, number] = [37, 154];
   private has: (id: string) => boolean;
 
-  constructor(private sc: Phaser.Scene) {
+  constructor(private sc: Phaser.Scene, private unitsOf: () => Iterable<{ x: number; topY: number; dead?: boolean; unseen?: boolean; blockW(): number; blockH(): number }> = () => []) {
     const cat = (sc.cache.json.get("vfxm") ?? {}) as Record<string, { anchor: [number, number]; frameW: number; frameH: number; mast?: [number, number, number]; plate?: [number, number] }>;
     const m = cat["war-mast"], p = cat["war-plinth"];
     if (m) { this.mast = m.mast ?? this.mast; this.frame = { w: m.frameW, h: m.frameH, ax: m.anchor[0], ay: m.anchor[1] }; }
@@ -253,6 +253,18 @@ export class BannerBases {
     }
     this.drawArc(v, b, fx, fy, now, br);
     // подпись под постаментом: имя основания и владелец или ход захвата (как на карте мира)
+    // подпись основания уступает подписям юнитов (ник и титул героя важнее): сдвиг вниз на строку-две, иначе прячется
+    {
+      const lw = v.label.width, lh = v.label.height, y0 = v.d.y + L.arcR + L.arcW;
+      const blocks = [...this.unitsOf()].filter((u) => !u.dead && !u.unseen && Math.abs(u.x - v.d.x) < 200 && Math.abs(u.topY - y0) < 120)
+        .map((u) => ({ l: u.x - u.blockW() / 2, r: u.x + u.blockW() / 2, b: u.topY + 3, t: u.topY + 3 - u.blockH() }));
+      let ok = false;
+      for (const dy of [0, 10, 20, 30]) {
+        const l = v.d.x - lw / 2, r = v.d.x + lw / 2, t = y0 + dy, bt = t + lh;
+        if (!blocks.some((q) => l < q.r && r > q.l && t < q.b && bt > q.t)) { v.label.setY(y0 + dy); ok = true; break; }
+      }
+      v.label.setVisible(ok);
+    }
     const st = baseState(v.d.id), plate = inactivePlate(v.d), lk = `${st.owner}|${st.state}|${plate}`;
     if (lk !== v.labelKey) {
       v.labelKey = lk;

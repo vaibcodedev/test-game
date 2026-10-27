@@ -2361,6 +2361,219 @@
      ]
     }
    }
+  },
+  "umb_ash_executioner": {
+   "file": "umb_ash_executioner.png",
+   "fw": 64,
+   "cols": 108,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "execWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "execHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "execute": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "chainWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "chainHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "chainThrow": {
+     "col": 60,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "cageWind": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "cageHold": {
+     "col": 74,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "cageSlam": {
+     "col": 78,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "phase": {
+     "col": 86,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "death": {
+     "col": 96,
+     "n": 12,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "hook": {
+     "file": "umb_ash_executioner-hook.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 44,
+     "rows": 2,
+     "anims": {
+      "hook": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    },
+    "cage": {
+     "file": "umb_ash_executioner-cage.png",
+     "fw": 96,
+     "fh": 96,
+     "ax": 48,
+     "ay": 60,
+     "rows": 2,
+     "anims": {
+      "cageIn": {
+       "col": 0,
+       "n": 6,
+       "fps": 12,
+       "loop": false,
+       "hit": 5
+      },
+      "cageHold": {
+       "col": 6,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "cageOut": {
+       "col": 10,
+       "n": 6,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    }
+   },
+   "skills": {
+    "execution": {
+     "waves": [
+      {
+       "pre": [
+        "execWind",
+        "execHold"
+       ],
+       "strike": "execute"
+      }
+     ],
+     "fx": []
+    },
+    "chain_hook": {
+     "waves": [
+      {
+       "pre": [
+        "chainWind",
+        "chainHold"
+       ],
+       "strike": "chainThrow"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "hook",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "hook"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "chain_cages": {
+     "waves": [
+      {
+       "pre": [
+        "cageWind",
+        "cageHold"
+       ],
+       "strike": "cageSlam"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "cage",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "cageIn",
+        "cageHold",
+        "cageOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "cageHold": 5900
+       }
+      }
+     ]
+    }
+   }
   }
  }
 }
