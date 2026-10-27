@@ -101,13 +101,15 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
   const boss = !!m.def.boss;
   const group = contributors.length;
   for (const p of contributors) {
+    // «Знамёна Предела»: точки фракции дают опыт и золото, материалы на Полях и добычу в данже (bannerWar.ts mobBonus)
+    const wb = w.war?.mobBonus(p, m) ?? { xp: 1, gold: 1, mats: 1, loot: 1 };
     // групповой бонус: каждый получает 70% + 30%/участник, но не больше 100%
     const share = boss ? 1 : Math.min(1, GP.rewards.shareBase + GP.rewards.shareGroup / group);
-    const xp = Math.round(xpForKill(m.stats.xp, m.level, p.level) * share);
+    const xp = Math.round(xpForKill(m.stats.xp, m.level, p.level) * share * wb.xp);
     const [g0, g1] = m.stats.gold;
     const zt = boss ? ZB_LOOT[m.def.id] : undefined;
     const denied = bossLootDenied(m, p);
-    const gold = denied ? 0 : Math.round((g0 + Math.random() * (g1 - g0)) * (zt ? zt.gold.mult : boss ? GP.rewards.bossGoldMul : 1));
+    const gold = denied ? 0 : Math.round((g0 + Math.random() * (g1 - g0)) * (zt ? zt.gold.mult : boss ? GP.rewards.bossGoldMul : 1) * wb.gold);
     p.save.gold += gold;
     p.save.kills++;
     const mk = (p.save.mobKills ??= {});
@@ -146,13 +148,13 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
       items.push({ ...makeItem("hp_potion", 1, 0), qty: GP.rewards.bossPotionQty });
     } else {
       // шансы — data/balance.json loot (уменьшены по просьбе пользователя)
-      const chance = p.forceDrop ? 1 : BAL.loot.item;
+      const chance = p.forceDrop ? 1 : BAL.loot.item * wb.loot;
       if (Math.random() < chance) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
       if (Math.random() < (p.forceDrop ? 0 : BAL.loot.extra)) items.push(makeLoot(p.cls, m.level, rollRarity(Math.random)));
       if (Math.random() < BAL.loot.potion) items.push({ ...makeItem(Math.random() < GP.rewards.potionHpShare ? "hp_potion" : "mp_potion", 1, 0), qty: 1 });
     }
     // материалы кузнеца
-    const mat = (id: string, qty: number) => items.push({ ...makeItem(id, 1, 0), qty });
+    const mat = (id: string, qty: number) => { const q = qty * wb.mats, n = Math.floor(q) + (Math.random() < q - Math.floor(q) ? 1 : 0); if (n > 0) items.push({ ...makeItem(id, 1, 0), qty: n }); };
     if (boss) { mat("ash_ore", GP.rewards.bossOreMin + Math.floor(Math.random() * GP.rewards.bossOreVar)); mat("star_dust", GP.rewards.bossDustMin + Math.floor(Math.random() * GP.rewards.bossDustVar)); }
     else {
       if (Math.random() * 100 < MATERIALS.ash_ore.dropPct) mat("ash_ore", GP.rewards.oreMin + Math.floor(Math.random() * GP.rewards.oreVar));

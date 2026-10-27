@@ -1,0 +1,36 @@
+{
+  "_doc": "Ивент «Знамёна Предела» на Полях вечных битв (задача 132, шаг 14; дизайн — docs/faction-war.md, раздел «На новой карте»; сервер — server/src/game/bannerWar.ts, общее — shared/bannerWar.ts). minLevel — с какого уровня герой считается в круге и получает награду. schedule: «Час войны» ежедневно в daily, в субботу и воскресенье ещё в weekend (время сервера ЧЧ:ММ), durationMin минут; объявления за announceMin минут, с teleportMin минут до начала — телепорт в свой форт; итоговое окно — resultSec с; Сердце открывается на heartOpenMin-й минуте; фронты по кругу rotation; sundaySiege — воскресная битва в 20:00 уступает осаде форта (шаг 15; пока false). capture: круг radius тайлов вокруг основания (clearR — круг без декора и мобов на карте); вывесить знамя — hangMs мс стоя у пустого основания; подъём — raiseSec[вид][n−1] с при перевесе n (своих минус чужих, до maxEdge); спуск чужого — в lowerMul раз дольше; пустой круг emptyMs — недоподнятое сползает, взятое возвращается наверх; печать после захвата боковой — sealMs; Сердцу нужно heartMin своих для вывешивания и хотя бы одна своя боковая точка фронта; без ввода afkMs — не считается; такт tickMs. score: каждые everyMs очки владельцам — side за боковую, heart за Сердце; все три точки фронта routMs подряд — досрочный разгром, награда за итог ×(1 + routBonus). contrib — личный вклад: вывесить hang, каждые circleEvery мс в круге при подъёме, спуске или споре circle, сорвать вывешивание врага interrupt, захват capture и срыв tear — поровну на своих в круге, отстоять спор hold каждому, убийство на фронте kill (в круге своей точки ×killOwnCircleMul; та же жертва за repeatKillMs — доли repeatKill); повторная смена точки раньше noRepeatMs — без вклада. rewards — Знаки Полей (save.marks, ими платят у конюшего за боевых коней со знаменем): вклад 1:1 до perBattle, плюс итог win (первая победа недели — firstWin), draw или lose; ниже minContrib — ничего; за неделю не больше weekCap; сундук — материалы заточки по порогам вклада chest (at — порог, ore, dust). bonus — что дают точки фракции-владельцу между битвами (только на Полях, без урона, здоровья и брони): xpGold — опыт и золото с мобов, mats — материалы заточки, speed — скорость вне боя, squadMin — отряды из форта раз в столько минут, dungeonLoot — шанс добычи в данже. fronts — три фронта: side — что даёт боковая точка (xpGold | respawn | mats), heart — что даёт Сердце (speed | squads | dungeon); bases — основания: kind side | heart, x, y — центр (тайлы, непрерывные: px = x·32), восток — зеркало запада (x → 1100 − x), Сердце на оси.",
+  "minLevel": 80,
+  "schedule": { "daily": ["20:00"], "weekend": ["15:00"], "durationMin": 45, "announceMin": [30, 10, 1], "teleportMin": 15, "resultSec": 90, "heartOpenMin": 20, "rotation": ["center", "north", "south"], "sundaySiege": false },
+  "capture": { "radius": 6, "clearR": 9, "hangMs": 3000, "raiseSec": { "side": [90, 60, 45, 36, 30], "heart": [180, 120, 90, 72, 60] }, "maxEdge": 5, "lowerMul": 1.5, "emptyMs": 30000, "sealMs": 120000, "heartMin": 3, "afkMs": 60000, "tickMs": 250 },
+  "score": { "everyMs": 10000, "side": 1, "heart": 3, "routMs": 180000, "routBonus": 0.5 },
+  "contrib": { "hang": 10, "circleEvery": 10000, "circle": 2, "interrupt": 5, "capture": 60, "tear": 30, "hold": 15, "kill": 20, "killOwnCircleMul": 1.5, "repeatKillMs": 600000, "repeatKill": [1, 0.5, 0.25, 0], "noRepeatMs": 300000 },
+  "rewards": { "perBattle": 300, "weekCap": 1500, "win": 100, "firstWin": 200, "draw": 75, "lose": 50, "minContrib": 30, "chest": [{ "at": 30, "ore": 2, "dust": 0 }, { "at": 120, "ore": 4, "dust": 1 }, { "at": 250, "ore": 6, "dust": 2 }] },
+  "bonus": { "xpGold": 0.1, "mats": 0.2, "speed": 0.1, "squadMin": 7, "dungeonLoot": 0.1 },
+  "fronts": [
+    {
+      "id": "north", "name": "Северный фронт", "side": "xpGold", "heart": "speed",
+      "bases": [
+        { "id": "north_w", "name": "Западное святилище", "kind": "side", "x": 452, "y": 136 },
+        { "id": "north_e", "name": "Восточное святилище", "kind": "side", "x": 648, "y": 136 },
+        { "id": "north_h", "name": "Сердце Севера", "kind": "heart", "x": 550, "y": 118 }
+      ]
+    },
+    {
+      "id": "center", "name": "Центральный фронт", "side": "respawn", "heart": "squads",
+      "bases": [
+        { "id": "center_w", "name": "Западная застава", "kind": "side", "x": 456, "y": 186 },
+        { "id": "center_e", "name": "Восточная застава", "kind": "side", "x": 644, "y": 186 },
+        { "id": "center_h", "name": "Сердце Полей", "kind": "heart", "x": 550, "y": 184 }
+      ]
+    },
+    {
+      "id": "south", "name": "Южный фронт", "side": "mats", "heart": "dungeon",
+      "bases": [
+        { "id": "south_w", "name": "Западная копь", "kind": "side", "x": 452, "y": 234 },
+        { "id": "south_e", "name": "Восточная копь", "kind": "side", "x": 648, "y": 234 },
+        { "id": "south_h", "name": "Сердце Юга", "kind": "heart", "x": 550, "y": 272 }
+      ]
+    }
+  ]
+}

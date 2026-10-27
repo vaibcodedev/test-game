@@ -238,6 +238,8 @@ export class Soldiers {
   readonly squadAt: Record<Faction, number> = { solgard: 0, umbrath: 0 };
   /** Идёт битва за знамёна (шаг 14 ставит): отряды не выходят, вышедшие поворачивают домой. */
   bannerBattle = false;
+  /** Свой интервал выхода отрядов фракции, мин (Сердце центра «Знамён Предела» — bannerWar.ts); нет — squads.intervalMin. */
+  readonly squadEvery: Partial<Record<Faction, number>> = {};
   private squadScanAt = 0;
 
   constructor(private w: World) {
@@ -471,7 +473,7 @@ export class Soldiers {
     for (const f of ["solgard", "umbrath"] as Faction[]) {
       if (t < this.squadAt[f] || this.bannerBattle) continue;
       if (this.squads.filter((q) => q.faction === f).length >= SQ.max) continue;
-      if (this.spawnSquad(f)) this.squadAt[f] = t + SQ.intervalMin * 60000;
+      if (this.spawnSquad(f)) this.squadAt[f] = t + (this.squadEvery[f] ?? SQ.intervalMin) * 60000;
     }
     for (const q of this.squads) {
       if (this.bannerBattle) { this.squadBack(q); continue; }

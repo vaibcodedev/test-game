@@ -2121,6 +2121,246 @@
      ]
     }
    }
+  },
+  "umb_crown_lich": {
+   "file": "umb_crown_lich.png",
+   "fw": 80,
+   "cols": 123,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 11,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "sealWind": {
+     "col": 35,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "sealHold": {
+     "col": 39,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "seal": {
+     "col": 43,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "wispWind": {
+     "col": 53,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "wispHold": {
+     "col": 57,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "wispCast": {
+     "col": 61,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "callWind": {
+     "col": 69,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "callHold": {
+     "col": 73,
+     "n": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "call": {
+     "col": 79,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "stun": {
+     "col": 89,
+     "n": 8,
+     "fps": 10,
+     "loop": true
+    },
+    "phase": {
+     "col": 97,
+     "n": 12,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "death": {
+     "col": 109,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "seal": {
+     "file": "umb_crown_lich-seal.png",
+     "fw": 112,
+     "fh": 128,
+     "ax": 56,
+     "ay": 84,
+     "rows": 2,
+     "anims": {
+      "seal": {
+       "col": 0,
+       "n": 16,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    },
+    "wisp": {
+     "file": "umb_crown_lich-wisp.png",
+     "fw": 80,
+     "fh": 128,
+     "ax": 40,
+     "ay": 92,
+     "rows": 2,
+     "anims": {
+      "wisp": {
+       "col": 0,
+       "n": 14,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    },
+    "pillar": {
+     "file": "umb_crown_lich-pillar.png",
+     "fw": 64,
+     "fh": 140,
+     "ax": 32,
+     "ay": 112,
+     "rows": 2,
+     "anims": {
+      "pillar": {
+       "col": 0,
+       "n": 14,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    }
+   },
+   "skills": {
+    "crypt_seal": {
+     "waves": [
+      {
+       "pre": [
+        "sealWind",
+        "sealHold"
+       ],
+       "strike": "seal"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "seal",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "seal"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "wandering_fires": {
+     "waves": [
+      {
+       "pre": [
+        "wispWind",
+        "wispHold"
+       ],
+       "strike": "wispCast"
+      },
+      {
+       "pre": [
+        "wispHold"
+       ],
+       "strike": "wispCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "wisp",
+       "waves": [
+        0,
+        1
+       ],
+       "seq": [
+        "wisp"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "dead_crown_call": {
+     "waves": [
+      {
+       "pre": [
+        "callWind",
+        "callHold"
+       ],
+       "strike": "call"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "pillar",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "pillar"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    }
+   }
   }
  }
 }

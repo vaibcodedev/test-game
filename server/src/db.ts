@@ -63,6 +63,8 @@ export interface PlayerSave {
   raid?: { lootAt: Record<string, number>; wins: number; pity: number };
   /** Вещи, которые не поместились в сумку (рейд, награды): выдаются в мире, когда появится место. */
   pendingItems?: Item[];
+  /** «Знамёна Предела» (задача 132, шаг 14): неделя (ключ — дата понедельника), Знаков за неделю, побед и битв за неделю. */
+  war?: { week: string; marks: number; wins: number; battles: number };
 }
 
 export interface CharRow {

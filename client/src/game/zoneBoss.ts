@@ -11,6 +11,8 @@ import Phaser from "phaser";
 import { Anim, Dir, type Fx } from "../../../shared/protocol";
 import { MOVE_MUL } from "../../../shared/constants";
 import { DEPTH } from "./terrain";
+import { ZB_BY_ID } from "../../../shared/zoneBosses";
+import { CastBar } from "../ui/castbar";
 import type { UnitView } from "./UnitView";
 
 type A = { col: number; n: number; fps: number; loop: boolean; hit?: number };
@@ -20,6 +22,10 @@ type FxDef = { file: string; fw: number; fh: number; ax: number; ay: number; row
 type Orbit = { c: [number, number]; r: [number, number]; period: number; phase: number };
 export interface ZbDef {
   file: string;
+  /** Кадр листа (боссы кольца — 80; по умолчанию 64). */
+  fw?: number;
+  /** Лист перенесён по строкам (ширина текстуры ≤ 8192): столбцов в строке листа; вид занимает ceil(cols / wrap) строк. */
+  wrap?: number;
   cols: number;
   anims: Record<string, A>;
   skills: Record<string, { waves: Wave[]; fx: Use[] }>;
@@ -36,6 +42,11 @@ export type ZbManifest = { bosses: Record<string, ZbDef> };
 export const zbViews = new Set<UnitView>();
 let MAN: ZbManifest | null = null;
 export const zbDef = (sprite: string): ZbDef | undefined => MAN?.bosses[sprite];
+/** Номер кадра в листе: вид row, столбец анимаций col (с переносом по строкам, если лист широкий). */
+const frameIdx = (b: ZbDef, row: number, col: number) => {
+  const w = b.wrap ?? b.cols, per = Math.ceil(b.cols / w);
+  return (row * per + Math.floor(col / w)) * w + (col % w);
+};
 
 const fxKey = (boss: string, f: string) => `zbfx_${boss}_${f}`;
 
@@ -44,7 +55,7 @@ export function zbLoad(scene: Phaser.Scene, m: ZbManifest | undefined) {
   if (!m?.bosses) return;
   MAN = m;
   for (const [id, b] of Object.entries(m.bosses)) {
-    scene.load.spritesheet(`u_${id}`, `/assets/units/${b.file}`, { frameWidth: 64, frameHeight: 64 });
+    scene.load.spritesheet(`u_${id}`, `/assets/units/${b.file}`, { frameWidth: b.fw ?? 64, frameHeight: b.fw ?? 64 });
     for (const [k, f] of Object.entries(b.fx)) scene.load.image(fxKey(id, k), `/assets/zone-bosses/${f.file}`);
     if (b.motes) scene.load.image(fxKey(id, "_motes"), `/assets/zone-bosses/${b.motes.file}`);
     if (b.fog) scene.load.image(fxKey(id, "_fog"), `/assets/zone-bosses/${b.fog.file}`);
@@ -59,7 +70,8 @@ export function zbCreate(scene: Phaser.Scene) {
     for (let row = 0; row < 3; row++) {
       const mk = (key: string, a: A | undefined) => {
         if (!a || scene.anims.exists(`${id}-${key}-${row}`)) return;
-        scene.anims.create({ key: `${id}-${key}-${row}`, frames: scene.anims.generateFrameNumbers(`u_${id}`, { start: row * b.cols + a.col, end: row * b.cols + a.col + a.n - 1 }), frameRate: key === "walk" ? a.fps * MOVE_MUL : a.fps, repeat: a.loop ? -1 : 0 });
+        const frames = Array.from({ length: a.n }, (_, k) => frameIdx(b, row, a.col + k));
+        scene.anims.create({ key: `${id}-${key}-${row}`, frames: scene.anims.generateFrameNumbers(`u_${id}`, { frames }), frameRate: key === "walk" ? a.fps * MOVE_MUL : a.fps, repeat: a.loop ? -1 : 0 });
       };
       mk("walk", b.anims.walk);
       mk("attack", b.anims.attack);
@@ -161,8 +173,26 @@ export class ZoneBossFx {
       }
       return;
     }
+    // кольцо (задача 139): переход фазы, сорванный каст (оглушение), прерываемый каст — полоса каста над экраном
+    if (f.ab === "phase" || f.ab === "break") {
+      const key = f.ab === "phase" ? "phase" : "stun";
+      const a = def.anims[key];
+      if (a) this.tls.set(f.id, [{ segs: [{ a: key, t0: now, t1: now + (a.loop ? f.ms : Math.max(f.ms, (a.n / a.fps) * 1000)) }], cut: now + f.ms, end: now + f.ms, turn: false }]);
+      if (f.ab === "break") {
+        bossCast()?.end(false);
+        // сорван: эффекты удара, которые ещё не начались (столбы душ), снимаются
+        this.fxs = this.fxs.filter((e) => {
+          if (e.boss !== v.u.sprite || !e.segs.length || e.segs[0].t0 <= now) return true;
+          for (const sp of e.spr) sp.destroy();
+          return false;
+        });
+      }
+      return;
+    }
     const sk = def.skills[f.ab];
     if (!sk) return;
+    const card = ZB_BY_ID[v.u.sprite]?.abilities.find((x) => x.id === f.ab);
+    if (card?.break) bossCast()?.start(card.name, f.ms, { glyph: "☠", color: "#3dca46" });
     // связка босса: новая волна сменяет прошлую после её удара (кадр hit и ещё два)
     const wv = sk.waves[Math.min(f.w, sk.waves.length - 1)];
     if (wv && wv.strike) {
@@ -339,7 +369,7 @@ export class ZoneBossFx {
     }
     const a = def.anims[anim] ?? def.anims.idle;
     if (sp.anims.isPlaying) sp.anims.stop();
-    sp.setFrame(row * def.cols + a.col + i).setFlipX(flip);
+    sp.setFrame(frameIdx(def, row, a.col + i)).setFlipX(flip);
     this.ambient(v, def, now);
   }
 
@@ -388,6 +418,26 @@ export class ZoneBossFx {
     this.fxs = [];
     for (const v of [...this.parts.keys()]) this.drop(v);
   }
+}
+
+/** Полоса каста босса кольца (прерываемый каст): та же полоса, что у рейд-босса (ui/castbar.ts), над серединой экрана. */
+let castBox: { el: HTMLElement; bar: CastBar; t: number } | null = null;
+function bossCast(): { start: (name: string, ms: number, o: { glyph?: string; color?: string }) => void; end: (ok: boolean) => void } | null {
+  if (typeof document === "undefined") return null;
+  if (!castBox) {
+    const el = document.createElement("div");
+    el.className = "zb-cast";
+    el.style.cssText = "position:fixed;left:50%;top:92px;transform:translateX(-50%);width:min(360px,80vw);z-index:40;pointer-events:none";
+    const bar = new CastBar("a", true);
+    el.append(bar.el);
+    document.body.append(el);
+    castBox = { el, bar, t: 0 };
+  }
+  const box = castBox;
+  return {
+    start: (name, ms, o) => { clearTimeout(box.t); box.bar.start(name, ms, o); box.t = window.setTimeout(() => box.bar.end(true), ms); },
+    end: (ok) => { clearTimeout(box.t); box.bar.end(ok); },
+  };
 }
 
 /** Один на сцену: UnitView снимает частицы через него при уничтожении. */

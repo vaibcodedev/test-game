@@ -100,7 +100,7 @@ async function scenario() {
   await enter("Эйра", token);
   const H = heroOf("Эйра"), F = heroOf("Торвин");
   void bot;
-  const ok0 = await run<boolean>("const m = sc.cache.json.get('zbm'); return !!(m && m.bosses && Object.keys(m.bosses).length === 8)");
+  const ok0 = await run<boolean>("const m = sc.cache.json.get('zbm'); return !!(m && m.bosses && Object.keys(m.bosses).length >= 8)");
   check(ok0, "каталог боссов стартовых земель загружен (8 боссов)");
   for (const c of CARDS) {
     const mob = [...W().mobs.values()].find((m) => m.def.id === c.id) as Mob;

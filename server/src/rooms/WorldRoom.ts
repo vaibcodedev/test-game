@@ -43,6 +43,8 @@ import { Player } from "../game/Player";
 import { gainXp } from "../game/rewards";
 import { forgetRumors, rumorFor } from "../game/rumors";
 import { World } from "../game/World";
+import { fileWarStore } from "../game/bannerWar";
+import path from "node:path";
 import { TradeManager } from "../trade/TradeManager";
 import { BankService } from "../game/bank";
 import { expandBag } from "../game/bags";
@@ -89,7 +91,7 @@ export class WorldRoom extends Room<WorldState> {
     setMarketDb(WorldRoom.db);
     this.setState(new WorldState());
     this.setPatchRate(PATCH_MS);
-    this.world = new World(this.state, (type, msg) => this.broadcast(type, msg));
+    this.world = new World(this.state, (type, msg) => this.broadcast(type, msg), { warStore: fileWarStore(path.join(path.dirname(WorldRoom.db.file), path.basename(WorldRoom.db.file, ".sqlite") + "-war.json")) });
     this.setSimulationInterval(guard(T("srv.WorldRoom.838"), (dt: number) => this.world.update(dt)), TICK_MS);
     const find = (key: string) => this.world.findByName(key);
     this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key) || inRaid.has(key));
@@ -106,6 +108,7 @@ export class WorldRoom extends Room<WorldState> {
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
     this.onMessage("ping", (c) => c.send("pong", 0)); // сторож связи клиента
+    on("war:tp", (p) => this.world.war?.teleport(p)); // «Знамёна Предела»: в свой форт перед битвой и в битве
     this.registerMessages(on);
     this.registerArena(on);
     this.registerRaid(on);
@@ -699,6 +702,7 @@ export class WorldRoom extends Room<WorldState> {
         case "fight": p.combatAt = w().time; break;
         case "fill": for (let i = 0; i < p.save.inventory.length; i++) if (!p.save.inventory[i]) p.save.inventory[i] = makeItem("ring", 1, Rarity.Common); break;
         case "rating": services.arena.setRating(p.name.toLowerCase(), p.name, p.cls, m.mode as ArenaMode, Number(m.v)); this.sendArenaInfo(p.name.toLowerCase()); break;
+        case "war": w().war?.debug(String(m.act ?? ""), m); break; // «Знамёна Предела»: act start [front] | heart | end | skip ms | prep ms | owner base f | reset
         case "season:end": { const id = services.arena.closeSeasonIfDue(Date.now(), true); if (id !== null) this.onSeasonClosed(id); break; }
       }
       p.selfDirty = true;

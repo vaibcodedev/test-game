@@ -59,8 +59,9 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
   for (const c of ZB_CARDS) {
     MOBS[c.id] = {
       id: c.id, name: c.name, sprite: c.id, size: 2, boss: true, level: Math.max(1, Math.round(c.levels.boss * scale)), respawn: c.respawnMs / 1000,
-      hp: z.hp, dmg: z.dmg, armor: z.armor, xp: z.xp, gold: z.gold, speed: z.speed, aggro: z.aggro, range: z.range, attackCd: z.attackCd, radius: z.radius,
-      color: z.color[c.id] ?? "#c87a3a",
+      hp: c.mob?.hp ?? z.hp, dmg: c.mob?.dmg ?? z.dmg, armor: c.mob?.armor ?? z.armor, xp: c.mob?.xp ?? z.xp, gold: c.mob?.gold ?? z.gold, speed: c.mob?.speed ?? z.speed,
+      aggro: c.mob?.aggro ?? z.aggro, range: c.mob?.range ?? z.range, attackCd: c.mob?.attackCd ?? z.attackCd, radius: c.mob?.radius ?? z.radius,
+      color: (c.mob?.color as unknown as string | undefined) ?? z.color[c.id] ?? "#c87a3a",
     };
   }
 }

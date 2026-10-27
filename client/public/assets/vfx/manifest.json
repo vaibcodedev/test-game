@@ -2255,6 +2255,55 @@
    "tail": 250
   }
  },
+ "war-mast": {
+  "frameW": 72,
+  "frameH": 176,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.9773
+  ],
+  "blend": "normal",
+  "mast": [
+   36,
+   30,
+   78
+  ]
+ },
+ "war-plinth": {
+  "frameW": 72,
+  "frameH": 176,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.9773
+  ],
+  "blend": "normal"
+ },
+ "war-royal-sol": {
+  "frameW": 76,
+  "frameH": 120,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.2167
+  ],
+  "blend": "normal"
+ },
+ "war-royal-umb": {
+  "frameW": 81,
+  "frameH": 130,
+  "frames": 12,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   0.2231
+  ],
+  "blend": "normal"
+ },
  "ward-reveal-sol": {
   "frameW": 104,
   "frameH": 84,

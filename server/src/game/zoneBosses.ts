@@ -9,7 +9,7 @@ import { Anim, Dir, type FxKind } from "../../../shared/protocol";
 import { walkable } from "../../../shared/map";
 import { ZB_ARENA, ZB_BY_ID, ZB_LOW_HP, type ZbAbility, type ZbCard, type ZbWave } from "../../../shared/zoneBosses";
 import { Boss } from "./bosses";
-import { applyRoot } from "./effects";
+import { applyRoot, applyStun } from "./effects";
 import type { Mob } from "./Mob";
 import type { Player } from "./Player";
 import type { World } from "./World";
@@ -23,7 +23,8 @@ const pick = <T>(a: readonly T[] | undefined): T | undefined => (a?.length ? a[M
 interface Mark { shape: "circle" | "ring" | "cone"; x: number; y: number; r: number; r2?: number; a?: number; w?: number; delay: number }
 
 export class ZoneBoss extends Boss {
-  protected thresholds = [ZB_LOW_HP];
+  /** Пороги фаз: фазы карточки (кольцо, задача 139) и «мало здоровья» — по убыванию. */
+  protected thresholds: number[];
   /** Уровень — строго levels.boss карточки (10/20/30/40): герой 100 ур. видит в начальной зоне босса 10 ур. */
   protected override scales = false;
   private readonly card: ZbCard;
@@ -38,11 +39,36 @@ export class ZoneBoss extends Boss {
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
     this.card = ZB_BY_ID[m.def.id];
-    for (const ab of this.card.abilities) this.ability(ab.every, [0, 1], () => this.run(ab));
+    const phases = this.card.phases ?? [];
+    this.thresholds = [...phases.map((p) => p.at), ZB_LOW_HP].sort((a, b) => b - a);
+    // фаза Boss (сколько порогов пройдено) → фаза карточки (сколько её фаз пройдено)
+    const cardPhase = (i: number) => (i === 0 ? 0 : phases.filter((p) => p.at >= this.thresholds[i - 1]).length);
+    const all = this.thresholds.map((_, i) => i + 1).concat(0);
+    for (const ab of this.card.abilities) this.ability(ab.every, all.filter((i) => cardPhase(i) >= (ab.phase ?? 0)), () => this.run(ab));
   }
 
   protected onPhase(n: number) {
-    if (n === 1) this.line(this.card.lines.lowHp);
+    const at = this.thresholds[n - 1];
+    const ph = (this.card.phases ?? []).find((p) => p.at === at);
+    if (!ph) {
+      if (at === ZB_LOW_HP) this.line(this.card.lines.lowHp);
+      return;
+    }
+    // переход фазы кольца: пауза с анимацией, реплика, прежние умения чаще, новые — вскоре после паузы
+    const pause = ph.pauseMs ?? 0;
+    this.line(ph.yell);
+    if (pause > 0) {
+      this.casting = true;
+      this.busyUntil = Math.max(this.busyUntil, this.w.time + pause);
+      this.m.unit.anim = Anim.Cast;
+      this.w.emit({ t: "zb", id: this.m.id, ab: "phase", w: 0, ms: pause });
+    }
+    this.card.abilities.forEach((ab, i) => {
+      const a = this.abilities[i];
+      if (!a) return;
+      if (ph.abilities.includes(ab.id)) a.at = pause / 1000 + 3;
+      else if (ph.everyMul) a.every *= ph.everyMul;
+    });
   }
 
   private line(list: string[] | undefined, name?: string) {
@@ -78,6 +104,8 @@ export class ZoneBoss extends Boss {
     this.engaged = false;
     this.busyUntil = 0;
     super.reset();
+    // откаты — как в карточке (переход фазы их ускорял)
+    this.card.abilities.forEach((ab, i) => { if (this.abilities[i]) this.abilities[i].every = ab.every; });
   }
 
   override onDeath() {
@@ -109,6 +137,7 @@ export class ZoneBoss extends Boss {
   private run(ab: ZbAbility) {
     const tank = this.target() ?? this.far();
     if (!tank || !this.inArena().length) return;
+    if (ab.break) { this.channel(ab); return; }
     const waves: ZbWave[] = [ab, ...(ab.then ?? [])];
     // занятость: сумма волн (с рядами и травлей)
     let total = 0;
@@ -119,6 +148,50 @@ export class ZoneBoss extends Boss {
     this.face(tank.x, tank.y);
     if (Math.random() < 0.6) this.line(this.card.lines.abilities[ab.id]);
     this.wave(ab, waves, 0, null, this.epoch);
+  }
+
+  /**
+   * Прерываемый каст на всю арену (кольцо, break): полоса каста windupMs; кто за это время снял боссу pct здоровья — сорвал:
+   * босс оглушён stunMs (событие zb «break»). Иначе в конце — удар dmgPct по всем на арене и оглушение героев, столбы душ.
+   */
+  private channel(ab: ZbAbility) {
+    const w = this.w, m = this.m, b = ab.break!, epoch = this.epoch;
+    const hp0 = m.unit.hp, need = b.pct * m.unit.maxHp, end = w.time + ab.windupMs;
+    this.casting = true;
+    this.busyUntil = end;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
+    // точки столбов: по арене, на проходимой земле
+    const pts: number[] = [];
+    for (let k = 0, guard = 0; k < (b.pillars ?? 8) && guard < 200; guard++) {
+      const a = Math.random() * Math.PI * 2, d = 40 + Math.sqrt(Math.random()) * (this.arena - 50);
+      const x = m.home.x + Math.cos(a) * d, y = m.home.y + Math.sin(a) * d;
+      if (!walkable(w.map, x, y, 8)) continue;
+      pts.push(Math.round(x), Math.round(y));
+      k++;
+    }
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts, r: this.arena });
+    const tick = () => {
+      if (epoch !== this.epoch || m.dead) return;
+      if (hp0 - m.unit.hp >= need) {
+        // сорвали: оглушён, полоса каста — с трещиной
+        this.epoch++;
+        this.busyUntil = w.time + b.stunMs;
+        applyStun(w, null, m, b.stunMs);
+        w.emit({ t: "zb", id: m.id, ab: "break", w: 0, ms: b.stunMs });
+        this.line(this.card.lines.break);
+        return;
+      }
+      if (w.time < end) { w.later(100, tick); return; }
+      const k = kindOf(ab.k);
+      for (const p of this.inArena()) {
+        if (p.dead) continue;
+        const res = w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
+        if (res.landed && b.heroStunMs) applyStun(w, m, p, b.heroStunMs);
+        if (p.dead) this.killed(p);
+      }
+    };
+    w.later(100, tick);
   }
 
   /** Сколько волна бьёт после windupMs: ряд — (count − 1)·stepMs, травля — так же. */
@@ -251,7 +324,9 @@ export class ZoneBoss extends Boss {
     w.telegraph(m, mk.shape, mk.x, mk.y, mk.r, ms, (p) => {
       if (epoch !== this.epoch || hitSet.has(p.id)) return;
       hitSet.add(p.id);
-      const res = w.hitEx(m, p, { flat: Math.max(1, wv.dmgPct * p.unit.maxHp), kind: k });
+      // общая метка (share): урон делится на всех героев в круге в миг удара
+      const n = wv.share ? Math.max(1, this.inArena().filter((q) => !q.dead && Math.hypot(q.x - mk.x, q.y - mk.y) <= mk.r).length) : 1;
+      const res = w.hitEx(m, p, { flat: Math.max(1, (wv.dmgPct * p.unit.maxHp) / n), kind: k });
       if (res.landed) {
         const af = wv.after;
         if (af?.rootMs) applyRoot(w, m, p, af.rootMs);

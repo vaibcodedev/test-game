@@ -1,0 +1,48 @@
+/* «Знамёна Предела» (задача 132, шаг 14; client/src/ui/bannerWar.ts): полоса битвы сверху, объявления на экране, окно итогов.
+   Только токены tokens.css и компоненты kit.css (.panel, .btn, .dialog, .tbl, .kv); цвета фракций — --fac-sol и --fac-umb. */
+.war-bar { position: absolute; top: 12px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(360px, calc(100vw - var(--top-l) - var(--top-r)));
+  padding: var(--sp-1h) var(--sp-3) var(--sp-2); display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); }
+.war-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm); }
+.war-front { color: var(--gold); font-weight: var(--fw-b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.war-time { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: var(--fw-b); white-space: nowrap; }
+.war-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-3); }
+.war-num { font-size: var(--fs-h); font-weight: var(--fw-b); font-variant-numeric: tabular-nums; text-shadow: var(--shadow-text); }
+.war-num.sol { color: var(--fac-sol); text-align: right; }
+.war-num.umb { color: var(--fac-umb); text-align: left; }
+.war-pips { display: flex; gap: var(--sp-1h); align-items: flex-end; }
+/* основание: рамка — владелец, заливка снизу — высота знамени (цвет знамени); Сердце крупнее, спор мигает, печать — золотая рамка */
+.war-pip { position: relative; width: 16px; height: 20px; background: var(--well); border: 2px solid var(--line); border-radius: var(--r-1); overflow: hidden; }
+.war-pip.heart { width: 20px; height: 26px; }
+.war-pip > i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--dim); }
+.war-pip.o-sol { border-color: var(--fac-sol); }
+.war-pip.o-umb { border-color: var(--fac-umb); }
+.war-pip.b-sol > i { background: var(--fac-sol); }
+.war-pip.b-umb > i { background: var(--fac-umb); }
+.war-pip.seal { box-shadow: 0 0 0 1px var(--num-gold); }
+.war-pip.lock { opacity: 0.45; }
+.war-pip.contest { animation: war-contest 0.8s steps(2) infinite; }
+@keyframes war-contest { 50% { border-color: var(--warn); } }
+.war-note { font-size: var(--fs-xs); color: var(--dim); text-align: center; }
+.war-tp { align-self: center; min-height: 0; padding: var(--sp-0) var(--sp-3); font-size: var(--fs-sm); }
+
+.war-banner { position: absolute; top: 22%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 36px; font-weight: var(--fw-b); color: var(--fg); text-shadow: 0 3px 0 #000, 0 0 24px #000; white-space: nowrap; }
+.war-banner small { display: block; font-size: var(--fs-lg); font-weight: var(--fw); color: var(--dim); }
+.war-banner.f-sol { color: var(--fac-sol); }
+.war-banner.f-umb { color: var(--fac-umb); }
+.war-banner.alarm { color: var(--warn); font-size: 28px; }
+.war-banner.start, .war-banner.end.f-none { color: var(--num-gold); }
+.war-banner.show { animation: war-banner 3.4s ease-out forwards; }
+@keyframes war-banner { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 82% { opacity: 1; } 100% { opacity: 0; } }
+@media (max-width: 700px) { .war-banner { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { .war-banner.show, .war-pip.contest { animation: none; } }
+
+.war-result .dialog-title.war-win { color: var(--ok); }
+.war-result .dialog-title.war-loss { color: var(--bad); }
+.war-final { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-3); }
+.war-final .war-num { font-size: var(--fs-head-win); }
+.war-sides { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.war-side h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); }
+.war-side.sol h3 { color: var(--fac-sol); }
+.war-side.umb h3 { color: var(--fac-umb); }
+.war-stats { margin: 0; font-size: var(--fs-sm); }
+@media (max-width: 700px) { .war-sides { grid-template-columns: 1fr; } }

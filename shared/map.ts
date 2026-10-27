@@ -21,6 +21,7 @@ import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, set
 import * as D from "./decor";
 import { assignArtVariants } from "./cityart";
 import { interiorAt, interiorCell } from "./interiors";
+import { WAR, WAR_BASES } from "./bannerWar";
 
 export { TOWN } from "./town";
 export { CORE } from "./constants";
@@ -131,7 +132,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 13; // 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 14; // 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -399,12 +400,26 @@ const pondDist = (x: number, y: number) => {
 };
 /** Боссы стартовых земель (задача 136): запад и восток парами, пиксели. */
 export const ZONE_BOSS_SPAWNS: BossSpawn[] = zoneBossSpawns();
+/**
+ * Боссы кольца 40–80 (задача 139, layout.ringBosses): слот — запад в клетке x, y, восток — в зеркальной. Арены резервируются
+ * в обе стороны всегда (карта зеркальна), даже если босса стороны ещё нет (null): его арена — пустая площадка (id "").
+ */
+const RING_ARENAS: BossSpawn[] = ((LAYOUT as { ringBosses?: { west: string | null; east: string | null; x: number; y: number; arena: number }[] }).ringBosses ?? []).flatMap((b) => [
+  { id: b.west ?? "", x: (b.x + 0.5) * TILE, y: (b.y + 0.5) * TILE, arena: b.arena * TILE },
+  { id: b.east ?? "", x: (MAP_W - 1 - b.x + 0.5) * TILE, y: (b.y + 0.5) * TILE, arena: b.arena * TILE },
+]);
+export const RING_BOSS_SPAWNS: BossSpawn[] = RING_ARENAS.filter((b) => b.id);
+/** Пустые арены кольца (босса стороны ещё нет): резерв клеток без моба. */
+const RING_EMPTY: BossSpawn[] = RING_ARENAS.filter((b) => !b.id);
 /** Боссы (пары мест кольца и Полей, мировой босс на оси — layout.bossSlots; три прежних босса и боссы стартовых земель); пиксели. */
 export const BOSS_SPAWNS: BossSpawn[] = [
   ...LAYOUT.bosses.map((b) => ({ id: b.id, x: b.x * TILE, y: b.y * TILE, arena: b.arena * TILE })),
   { id: "ashlord", x: (168 + DG.x) * TILE, y: (71.5 + DG.y) * TILE, arena: 12 * TILE },
   ...ZONE_BOSS_SPAWNS,
+  ...RING_BOSS_SPAWNS,
 ];
+/** Резерв арен (ровная земля без декора и мобов): все боссы и пустые арены кольца. */
+const ARENA_RESERVE: BossSpawn[] = [...BOSS_SPAWNS, ...RING_EMPTY];
 /**
  * Боссы стартовых земель (задача 136, layout.zoneBosses): пара на полосу уровней — запад (Сольгард) в клетке x, y, восток (Умбрат) —
  * в зеркальной клетке MAP_W − 1 − x; босс стоит в центре клетки (+0,5), поэтому арены зеркальны и для поверхности, и для проходимости.
@@ -438,7 +453,11 @@ export const PLACES: Place[] = world.places.list as Place[];
 const PLACE_R = 8;
 const placeRadius = (p: Place) => (p.kind === "settlement" ? SETTLE_R : PLACE_R);
 /** Центры мест — центры их клеток (+0,5): зеркальные места (клетка i ↔ MAP_W − 1 − i) дают зеркальные круги и для вершин поверхности, и для центров клеток. */
-const PLACE_CENTERS = PLACES.map((p) => ({ x: p.x + 0.5, y: p.y + 0.5, r: placeRadius(p) }));
+const PLACE_CENTERS = [
+  ...PLACES.map((p) => ({ x: p.x + 0.5, y: p.y + 0.5, r: placeRadius(p) })),
+  // основания «Знамён Предела» (шаг 14, data/faction-war.json): круг захвата без декора, мобов и воды
+  ...WAR_BASES.map((b) => ({ x: b.tx, y: b.ty, r: WAR.capture.clearR })),
+];
 /** Корзины 16×16 тайлов: 1 — корзину задевает круг какого-нибудь места (остальные проверки пропускаются сразу). */
 const PB = 16, PBX = Math.ceil(MAP_W / PB), PBY = Math.ceil(MAP_H / PB);
 const PLACE_BUCKET = (() => {
@@ -558,7 +577,7 @@ function inRooms(cx: number, cy: number) {
   return false;
 }
 function bossNear(x: number, y: number, extra: number): BossSpawn | null {
-  for (const b of BOSS_SPAWNS) {
+  for (const b of ARENA_RESERVE) {
     const dx = x - b.x / TILE, dy = y - b.y / TILE, r = b.arena / TILE + extra;
     if (dx * dx + dy * dy < r * r) return b;
   }

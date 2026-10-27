@@ -1,0 +1,50 @@
+{
+  "_doc": "Особая добыча боссов кольца 40–80 (задача 139, docs/bosses-139.md 3.2). Формат — как data/zone-boss-loot.json (ZbLootTable и вещи по формату UNIQUES); сервер берёт таблицу той же веткой (shared/zoneBosses.ts сливает оба файла). Только редкое и выше; младшие (45, 55, 65, 75) — 3 редкие по 4 %, вещь по уровню 1 (эпическая 25 %), золото ×12, зелье 50 % 1–2, руда 2–4, звёздная пыль 60 % 1–2, легендарка 1 %, питомец ×6. Сила особых вещей — по правилам zone-boss-loot (≤ 1,4 у редкой), проверка — tests/zone-boss-loot.ts.",
+  "bosses": {
+    "umb_crown_lich": {
+      "name": "Ведрас Неугасимый",
+      "level": 75,
+      "band": [70, 80],
+      "special": [
+        { "item": "zb_undying_staff", "chance": 0.04 },
+        { "item": "zb_banner_crown", "chance": 0.04 },
+        { "item": "zb_rib_lantern", "chance": 0.04 }
+      ],
+      "gold": { "mult": 12 },
+      "loot": { "items": 1, "epic": 0.25 },
+      "potion": { "id": "hp_potion", "chance": 0.5, "qty": [1, 2] },
+      "mats": [
+        { "id": "ash_ore", "chance": 1, "qty": [2, 4] },
+        { "id": "star_dust", "chance": 0.6, "qty": [1, 2] }
+      ],
+      "legendary": 0.01,
+      "pet": 6
+    }
+  },
+  "items": {
+    "zb_undying_staff": {
+      "id": "zb_undying_staff", "name": "Посох Неугасимого", "base": "staff", "ilvl": 74, "rarity": 1, "fac": "umbrath",
+      "cls": ["mage", "warlock"], "affix": ["int", "crit"], "stats": { "int": 26, "crit": 1 },
+      "prop": "При крите над целью вспыхивает зелёный огонь: ещё 2 с она горит.",
+      "lore": "Клешня на навершии ещё держит искру чужой души.",
+      "look": { "shape": "cage", "mat": "blackiron", "trim": "bone", "cloth": "shroud", "haft": "deadwood", "fx": "fel", "guard": "claw", "pommel": "gem" },
+      "boss": "umb_crown_lich", "card": "r2"
+    },
+    "zb_banner_crown": {
+      "id": "zb_banner_crown", "name": "Венец сломанных знамён", "base": "cloth_helm", "ilvl": 73, "rarity": 1, "fac": "umbrath",
+      "cls": ["mage", "healer", "warlock", "bloodweaver"], "affix": ["int", "vit"], "stats": { "int": 20, "vit": 18 },
+      "prop": "Когда рядом гибнет союзник, носитель на 4 с видит, кто нанёс удар.",
+      "lore": "Шипы венца выкованы из древков знамён, павших на Полях.",
+      "look": { "shape": "horncrown", "rich": 1, "mat": "darksteel", "trim": "bone", "cloth": "shroud", "gem": "onyx", "haft": "deadwood", "deco": "chains", "fx": "fel", "guard": "claw", "pommel": "gem" },
+      "boss": "umb_crown_lich", "card": "r2"
+    },
+    "zb_rib_lantern": {
+      "id": "zb_rib_lantern", "name": "Светоч рёбер", "base": "amulet", "ilvl": 72, "rarity": 1, "fac": "umbrath",
+      "cls": ["healer", "bloodweaver", "mage", "warlock"], "affix": ["int", "hp"], "stats": { "int": 20, "hp": 200 },
+      "prop": "Ночью носитель светится слабым зелёным светом и чуть дальше видит врагов.",
+      "lore": "Четыре ребра лича, а между ними — тлеющий огонёк.",
+      "look": { "shape": "skull", "rich": 0, "mat": "bone", "trim": "iron", "cloth": "shroud", "gem": "onyx", "haft": "darkwood", "deco": "skull", "fx": "fel", "guard": "curved", "pommel": "ring" },
+      "boss": "umb_crown_lich", "card": "r2"
+    }
+  }
+}

@@ -22,6 +22,7 @@ import type { Net, UnitState } from "../net";
 import { ARENA_BLOCKED_TEXT, rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
 import { RaidHud } from "./raid";
+import { WarHud, drawWarMini } from "./bannerWar";
 import { CastBar, castGlyph, type CastOpts, type CastVariant } from "./castbar";
 import { absorbHtml } from "./absorb";
 import { TradeUI } from "./trade";
@@ -134,6 +135,8 @@ export class Hud {
   private tradeBound = false;
   readonly arena: ArenaUI;
   readonly raid: RaidHud;
+  /** «Знамёна Предела» (задача 132, шаг 14): полоса битвы, объявления, итоги. */
+  readonly war: WarHud;
   readonly trade: TradeUI;
   readonly bestiary: BestiaryUI;
   readonly admin: AdminUI;
@@ -249,6 +252,7 @@ export class Hud {
     setNpcGateToast((text) => this.toast({ text, kind: "error" }));
     this.arena = new ArenaUI(root, (text, kind) => this.toast({ text, kind }));
     this.raid = new RaidHud(root);
+    this.war = new WarHud(root);
     this.bestiary = new BestiaryUI(root, icon);
     this.admin = new AdminUI(root, (onPick, onCancel) => this.pickOnMap(onPick, onCancel));
     this.rumor = new RumorUI(root);
@@ -1474,6 +1478,7 @@ export class Hud {
       g.fillStyle = "#ff7a2a";
       g.fillRect(X(b.x) - 2, Y(b.y) - 2, 4, 4);
     }
+    if (big && this.ctx.net.kind === "world") drawWarMini(g, X, Y); // основания «Знамён Предела»
     for (const [, v] of info.units) {
       if (v.dead) continue;
       const near = Math.hypot(v.x - info.pos.x, v.y - info.pos.y) < 900;
@@ -1618,6 +1623,7 @@ export class Hud {
     }
     this.arena.frame(info.units);
     this.raid.frame(info.units);
+    this.war.frame();
     const now = performance.now();
     if (now - this.lastMini > 200) {
       this.lastMini = now;

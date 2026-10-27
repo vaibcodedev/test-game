@@ -1,4 +1,7 @@
-/** Добыча боссов стартовых земель (задача 136, шаг 5): data/zone-boss-loot.json против карточек data/zone-bosses.json. Офлайн, без сервера. */
+/**
+ * Добыча боссов стартовых земель (задача 136, шаг 5): data/zone-boss-loot.json против карточек data/zone-bosses.json; боссов кольца
+ * (задача 139): data/ring-boss-loot.json против data/ring-bosses.json — те же правила силы, свои материалы (docs/bosses-139.md 3.2). Офлайн.
+ */
 import { assert, check, passedCount } from "./harness";
 import { BASE_ITEMS, ITEM_MODELS, UNIQUES, type ItemStatKey } from "../shared/items";
 import { MOBS } from "../shared/mobs";
@@ -6,13 +9,19 @@ import { LEGENDARIES, LEGEND_TIERS } from "../shared/legendary";
 import { MATERIALS } from "../shared/upgrade";
 import zb from "../data/zone-bosses.json";
 import loot from "../data/zone-boss-loot.json";
+import ring from "../data/ring-bosses.json";
+import ringLoot from "../data/ring-boss-loot.json";
 import catalog from "../data/items.json";
 
 type Spec = { id: string; name: string; base: string; ilvl: number; rarity: number; fac: string; cls: string[]; affix: string[]; stats: Record<string, number>; prop: string; lore: string; look: Record<string, unknown>; boss: string; card: string };
 type Table = { name: string; level: number; band: [number, number]; special: { item: string; chance: number }[]; gold: { mult: number }; loot: { items: number; epic: number }; potion: { id: string; chance: number; qty: [number, number] }; mats: { id: string; chance: number; qty: [number, number] }[]; legendary: number; pet: number };
-const ITEMS = loot.items as unknown as Record<string, Spec>;
-const TABLES = loot.bosses as unknown as Record<string, Table>;
-const CARDS = zb.bosses as unknown as { id: string; name: string; levels: { band: [number, number]; boss: number }; loot: { name: string; cat: string; slot: string; rarity: string; lvl: number; affix: string[] }[] }[];
+type Card = { id: string; name: string; levels: { band: [number, number]; boss: number }; loot: { name: string; cat: string; slot: string; rarity: string; lvl: number; affix: string[] }[] };
+const ZONE_CARDS = zb.bosses as unknown as Card[];
+const RING_CARDS = ring.bosses as unknown as Card[];
+const RING_IDS = new Set(RING_CARDS.map((c) => c.id));
+const ITEMS = { ...(loot.items as unknown as Record<string, Spec>), ...(ringLoot.items as unknown as Record<string, Spec>) };
+const TABLES = { ...(loot.bosses as unknown as Record<string, Table>), ...(ringLoot.bosses as unknown as Record<string, Table>) };
+const CARDS = [...ZONE_CARDS, ...RING_CARDS];
 
 /** Аффикс своего уровня при mult 1 — та же формула, что affixValue в shared/items.ts (без округления). */
 const aff = (k: string, l: number) => (k === "hp" ? 8 + l * 4 : k === "crit" ? 1 + l * 0.025 : 1 + l * 0.4);
@@ -37,7 +46,7 @@ async function main() {
   console.log("Добыча боссов стартовых земель");
 
   await check("у каждой карточки — таблица, у таблицы — карточка", () => {
-    assert(CARDS.length === 8, `боссов ${CARDS.length}, нужно 8`);
+    assert(ZONE_CARDS.length === 8, `боссов стартовых земель ${ZONE_CARDS.length}, нужно 8`);
     for (const c of CARDS) assert(TABLES[c.id], `нет таблицы ${c.id}`);
     for (const id of Object.keys(TABLES)) assert(CARDS.some((c) => c.id === id), `таблица без карточки ${id}`);
   });
@@ -110,8 +119,10 @@ async function main() {
       for (const m of t.mats) {
         assert(MATERIALS[m.id], `${id}: нет материала ${m.id}`);
         assert(m.chance > 0 && m.chance <= 1 && m.qty[0] >= 1 && m.qty[0] <= m.qty[1], `${id}: ${m.id}`);
-        assert(m.id !== "ash_ore" || m.qty[1] < 4, `${id}: руды больше, чем с подземелий`);
-        assert(m.id !== "star_dust" || (t.level >= 12 && m.qty[1] < 2), `${id}: пыль`);
+        // кольцо (3.2): руда 2–4 у младших, 3–5 у старших, пыль 1–2; стартовые земли — меньше, чем с подземелий
+        const ringB = RING_IDS.has(id);
+        assert(m.id !== "ash_ore" || m.qty[1] < (ringB ? 6 : 4), `${id}: руды больше нормы`);
+        assert(m.id !== "star_dust" || (t.level >= 12 && m.qty[1] < (ringB ? 3 : 2)), `${id}: пыль`);
       }
       assert(t.legendary >= 0 && t.legendary < dr.boss, `${id}: легендарка ${t.legendary}`);
       assert(t.legendary === 0 || t.level >= TIER_MIN - dr.floor, `${id}: легендарка ниже младшего яруса`);

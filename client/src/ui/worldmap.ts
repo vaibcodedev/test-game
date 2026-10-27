@@ -9,6 +9,7 @@ import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 import { buildZoneLabels, type Label } from "./worldmap-labels";
 import { T } from "../../../shared/texts";
+import { drawWarMap } from "./bannerWar";
 
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
 /** Оформление подписей — как на схеме tools/map-plan.ts: Rubik, крупные числа уровней жирным, названия обычным, тёмная обводка ~3 px под заливкой.
@@ -423,6 +424,7 @@ export class WorldMapView {
       }
       g.globalAlpha = 1;
     }
+    if (big) drawWarMap(g, X, Y, s, hits); // основания «Знамён Предела» (задача 132, шаг 14) в цвете владельца
     this.hits = hits;
     this.drawHero(g, X, Y);
     if (this.pick) this.drawPickMark(g, X, Y);

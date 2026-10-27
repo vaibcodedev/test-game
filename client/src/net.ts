@@ -8,6 +8,7 @@ import type { TradeView } from "../../shared/trade";
 import type { BankView } from "../../shared/bank";
 import type { Aura, TargetAurasMsg, ChatLine, CooldownMsg, Fx, InspectReply, JoinOptions, LootBag, SelfState, ToastMsg } from "../../shared/protocol";
 import { ROOM_NAME } from "../../shared/protocol";
+import type { WarResultMsg, WarSayMsg, WarStateMsg } from "../../shared/bannerWar";
 import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, RECONNECT_SEC } from "../../shared/accounts";
 
 export type LogoutMode = "char" | "account";
@@ -96,6 +97,10 @@ type Events = {
   "admin:summoned": { id: string; name: string; level: number; hp: number; maxHp: number; boss: boolean; d: number }[];
   /** Итог выдачи предмета из админ-панели (server/src/game/admin.ts): ok / warn (выдано, но не всё) / error. */
   "admin:give:result": { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
+  /** «Знамёна Предела» (задача 132, шаг 14): состояние ивента, объявление на экране, итог битвы. */
+  war: WarStateMsg;
+  "war:say": WarSayMsg;
+  "war:result": WarResultMsg;
 };
 
 export interface ArenaWelcome {
@@ -390,7 +395,7 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

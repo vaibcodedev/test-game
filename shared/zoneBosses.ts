@@ -5,6 +5,8 @@
  */
 import data from "../data/zone-bosses.json";
 import loot from "../data/zone-boss-loot.json";
+import ring from "../data/ring-bosses.json";
+import ringLoot from "../data/ring-boss-loot.json";
 
 export type ZbShape = "circle" | "ring" | "cone";
 export type ZbAt = "self" | "tank" | "random" | "far" | "all" | "path" | "spots" | "scatter" | "hunt" | "same";
@@ -28,13 +30,21 @@ export interface ZbWave {
   k?: string;
   after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean };
   escape?: number;
+  /** Кольцо (задача 139): урон делится поровну на всех героев в круге. */
+  share?: boolean;
+  /** Кольцо: прерываемый каст на всю арену (data/ring-bosses.json _doc). */
+  break?: { pct: number; stunMs: number; heroStunMs: number; pillars?: number };
 }
 export interface ZbAbility extends ZbWave {
   id: string;
   name: string;
   every: number;
   then?: ZbWave[];
+  /** Кольцо: с какой фазы (0 — с начала боя). */
+  phase?: number;
 }
+/** Фаза босса кольца: порог здоровья, включаемые умения, ускорение прежних, пауза и реплика. */
+export interface ZbPhase { at: number; abilities: string[]; everyMul?: number; pauseMs?: number; yell?: string[] }
 export interface ZbCard {
   id: string;
   faction: "solgard" | "umbrath";
@@ -46,14 +56,22 @@ export interface ZbCard {
   lore: string;
   gimmick: string;
   abilities: ZbAbility[];
-  lines: { spawn: string[]; abilities: Record<string, string[]>; lowHp: string[]; death: string[]; kill: string[] };
+  lines: { spawn: string[]; abilities: Record<string, string[]>; lowHp: string[]; death: string[]; kill: string[]; break?: string[] };
+  /** Кольцо (задача 139): фазы, кадр листа, свои множители моба. */
+  phases?: ZbPhase[];
+  frame?: number;
+  mob?: Partial<ZbMob>;
+  /** Босс кольца (data/ring-bosses.json), а не стартовых земель. */
+  ring?: boolean;
 }
 /** Числа моба босса (множители к мобу своего уровня, как в shared/mobs.ts): data/zone-bosses.json mob. */
 export interface ZbMob { hp: number; dmg: number; armor: number; xp: number; gold: number; speed: number; aggro: number; range: number; attackCd: number; radius: number; color: Record<string, string> }
 
 const D = data as unknown as { lowHpAt: number; dodgeModel: { arenaR: number }; mob?: ZbMob; bosses: ZbCard[] };
-export const ZB_CARDS: ZbCard[] = D.bosses;
-export const ZB_BY_ID: Record<string, ZbCard> = Object.fromEntries(D.bosses.map((b) => [b.id, b]));
+/** Боссы кольца 40–80 (задача 139): тот же формат карточек и тот же ИИ (server/src/game/zoneBosses.ts). */
+export const RING_CARDS: ZbCard[] = (ring as unknown as { bosses: ZbCard[] }).bosses.map((c) => ({ ...c, ring: true }));
+export const ZB_CARDS: ZbCard[] = [...D.bosses, ...RING_CARDS];
+export const ZB_BY_ID: Record<string, ZbCard> = Object.fromEntries(ZB_CARDS.map((b) => [b.id, b]));
 export const ZB_LOW_HP = D.lowHpAt;
 /** Радиус арены (px мира): формы умений вокруг босса в него влезают (dodgeModel.arenaR). */
 export const ZB_ARENA = D.dodgeModel.arenaR;
@@ -74,5 +92,5 @@ export interface ZbLootTable {
 }
 /** Особая вещь (формат UNIQUES, data/zone-boss-loot.json items). */
 export interface ZbItemSpec { id: string; name: string; base: string; ilvl: number; rarity: number; stats: Record<string, number>; lore: string; prop: string; boss: string }
-export const ZB_LOOT = (loot as unknown as { bosses: Record<string, ZbLootTable> }).bosses;
-export const ZB_ITEMS = (loot as unknown as { items: Record<string, ZbItemSpec> }).items;
+export const ZB_LOOT: Record<string, ZbLootTable> = { ...(loot as unknown as { bosses: Record<string, ZbLootTable> }).bosses, ...(ringLoot as unknown as { bosses: Record<string, ZbLootTable> }).bosses };
+export const ZB_ITEMS: Record<string, ZbItemSpec> = { ...(loot as unknown as { items: Record<string, ZbItemSpec> }).items, ...(ringLoot as unknown as { items: Record<string, ZbItemSpec> }).items };

@@ -1,5 +1,6 @@
 /**
- * Боссы стартовых земель (задача 136, шаг 4): server/src/game/zoneBosses.ts, карточки data/zone-bosses.json, места layout.zoneBosses,
+ * Боссы стартовых земель (задача 136, шаг 4) и кольца (задача 139: data/ring-bosses.json, места layout.ringBosses, добыча
+ * data/ring-boss-loot.json): server/src/game/zoneBosses.ts, карточки data/zone-bosses.json, места layout.zoneBosses,
  * добыча data/zone-boss-loot.json. Без сервера: мир в памяти, такт 50 мс. Проверяет:
  *  1. каждый из 8 боссов стоит на своём месте — в зоне своей карточки, на своей стороне, пары зеркальны (x → 1099 − x по клеткам),
  *     арена проходима и не задевает дороги, поселения, места и города;
@@ -9,6 +10,7 @@
  *  4. добыча — по таблице: особая вещь не чаще шанса, не больше одной, только по классу, уровни вещей из таблицы, золото ×mult.
  */
 import cards from "../data/zone-bosses.json";
+import ringCards from "../data/ring-bosses.json";
 import world from "../data/world.json";
 import { TILE, MAP_W } from "../shared/constants";
 import { CITIES } from "../shared/cities";
@@ -28,7 +30,7 @@ import type { ClassId } from "../shared/classes";
 
 let bad = 0;
 const check = (name: string, ok: boolean, extra = "") => { if (!ok) bad++; console.log(`${ok ? "ok  " : "FAIL"} ${name}${extra ? ` — ${extra}` : ""}`); };
-const CARDS = cards.bosses as unknown as ZbCard[];
+const CARDS = [...(cards.bosses as unknown as ZbCard[]), ...(ringCards.bosses as unknown as ZbCard[])];
 
 const w = new World(new WorldState(), () => {});
 const log: { t: number; f: Fx }[] = [];
@@ -107,6 +109,34 @@ for (const c of CARDS) {
   const mob = mobOf(c.id);
   const boss = mob.boss as unknown as { abilities: { at: number }[]; run: (ab: unknown) => void; casting: boolean };
   for (const ab of c.abilities) {
+    if (ab.break) {
+      // прерываемый каст: не сорвали — бьёт всех на арене; сорвали (сняли pct здоровья) — урона нет, босс оглушён
+      for (const mode of ["stand", "break"] as const) {
+        mob.reset();
+        for (const a of boss.abilities) a.at = 1e9;
+        const p = hero("warrior", mob.x + 150, mob.y + 30, c.levels.boss);
+        mob.state = "chase";
+        mob.targetId = p.id;
+        mob.addThreat(p.id, 100);
+        log.length = 0;
+        hits = [];
+        boss.run(ab);
+        const t0 = w.time;
+        for (let t = 0; t < ab.windupMs + 1200; t += 50) {
+          if (mode === "break" && t === 1000) mob.unit.hp -= Math.ceil(ab.break.pct * mob.unit.maxHp) + 1;
+          p.unit.hp = p.unit.maxHp;
+          mob.attackAt = w.time + 1e9;
+          w.update(50);
+        }
+        const mine = hits.filter((h) => h.dst === p && h.src === mob);
+        const zb = log.find((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === ab.id);
+        const broke = log.some((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === "break");
+        if (mode === "stand") check(`${c.id}.${ab.id}: не сорван — удар по всей арене в конце каста`, !!zb && mine.length > 0 && mine[0].t - t0 >= ab.windupMs - 60 && !broke, `удар через ${mine[0] ? mine[0].t - t0 : -1} мс (каст ${ab.windupMs})`);
+        else check(`${c.id}.${ab.id}: сорван — урона нет, босс оглушён`, broke && mine.length === 0 && mob.stunUntil > t0 + 1000, `урон ${mine.reduce((s, h) => s + h.v, 0)}`);
+        w.removePlayer(p.id);
+      }
+      continue;
+    }
     for (const mode of ["stand", "dodge"] as const) {
       // чистый бой: босс дома, полон, умения сами не идут, пятна прошлых прогонов убраны
       mob.reset();
@@ -166,6 +196,57 @@ for (const c of CARDS) {
   mob.reset();
 }
 
+// ---------- 2в. кольцо: общая метка делится, фаза включает новые умения ----------
+console.log("2в. кольцо: share и фазы");
+for (const c of CARDS.filter((q) => q.phases?.length || q.abilities.some((a) => a.share))) {
+  const mob = mobOf(c.id);
+  const boss = mob.boss as unknown as { abilities: { at: number; every: number }[]; run: (ab: unknown) => void };
+  for (const ab of c.abilities.filter((a) => a.share)) {
+    const dmgOf = (n: number) => {
+      mob.reset();
+      for (const a of boss.abilities) a.at = 1e9;
+      const ps = Array.from({ length: n }, (_, i) => hero("warrior", mob.x + 150 + i * 4, mob.y + 30, c.levels.boss));
+      mob.state = "chase";
+      mob.targetId = ps[0].id;
+      mob.addThreat(ps[0].id, 100);
+      log.length = 0;
+      hits = [];
+      boss.run(ab);
+      for (let t = 0; t < ab.windupMs + 600; t += 50) {
+        for (const q of ps) { q.unit.hp = q.unit.maxHp; q.unit.x = ps[0].x + (q === ps[0] ? 0 : 4); q.unit.y = ps[0].y; }
+        mob.attackAt = w.time + 1e9;
+        w.update(50);
+      }
+      const v = hits.filter((h) => h.dst === ps[0] && h.src === mob).reduce((s, h) => s + h.v, 0);
+      for (const q of ps) w.removePlayer(q.id);
+      return v;
+    };
+    const one = dmgOf(1), four = dmgOf(4);
+    check(`${c.id}.${ab.id}: урон делится на всех в круге`, one > 0 && four > 0 && four < one * 0.4, `один ${one}, вчетвером каждому ${four}`);
+  }
+  for (const ph of c.phases ?? []) {
+    mob.reset();
+    const p = hero("warrior", mob.x + 60, mob.y, c.levels.boss);
+    mob.state = "chase";
+    mob.targetId = p.id;
+    mob.addThreat(p.id, 100);
+    log.length = 0;
+    mob.unit.hp = Math.floor(mob.unit.maxHp * ph.at) - 1;
+    const idx = c.abilities.map((a, i) => (ph.abilities.includes(a.id) ? i : -1)).filter((i) => i >= 0);
+    let used = false;
+    for (let t = 0; t < (ph.pauseMs ?? 0) + 6000; t += 50) {
+      p.unit.hp = p.unit.maxHp;
+      mob.attackAt = w.time + 1e9;
+      w.update(50);
+      if (log.some((e) => e.f.t === "zb" && idx.some((i) => (e.f as { ab: string }).ab === c.abilities[i].id))) used = true;
+    }
+    const paused = log.some((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === "phase");
+    check(`${c.id}: фаза < ${ph.at * 100}% — пауза перехода и ${ph.abilities.join(", ")} вскоре после неё`, paused && used, `пауза ${paused}, умение ${used}`);
+    w.removePlayer(p.id);
+    mob.reset();
+  }
+}
+
 // ---------- 2б. уровень строго по полосе зоны: без подстройки под героя ----------
 console.log("2б. уровень");
 for (const c of CARDS) {
@@ -189,13 +270,13 @@ for (const c of CARDS) {
   mob.reset();
   w.killMob(mob);
   const at = w.time;
-  const gap = mob.respawnAt - at;
-  w.time = at + 30 * 60 * 1000 - 1000;
+  const gap = mob.respawnAt - at, want = c.respawnMs;
+  w.time = at + want - 1000;
   w.update(50);
   const still = mob.dead;
-  w.time = at + 30 * 60 * 1000;
+  w.time = at + want;
   w.update(50);
-  check(`${c.id}: возрождение через 30 мин на своём месте`, gap === 30 * 60 * 1000 && still && !mob.dead && mob.unit.hp === mob.unit.maxHp && mob.x === mob.home.x && mob.y === mob.home.y, `через ${gap / 60000} мин`);
+  check(`${c.id}: возрождение через ${want / 60000} мин на своём месте`, gap === want && still && !mob.dead && mob.unit.hp === mob.unit.maxHp && mob.x === mob.home.x && mob.y === mob.home.y, `через ${gap / 60000} мин`);
 }
 
 // ---------- 4. добыча ----------

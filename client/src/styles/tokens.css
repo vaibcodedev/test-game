@@ -34,6 +34,9 @@
   /* команды арены: полоса в таблице и цвет врага на табло */
   --team-1: #6ac8ff;
   --team-2: #ff8a7a;
+  /* цвета фракций (data/factions.json color): «Знамёна Предела» — счёт, основания, итоги */
+  --fac-sol: #d6a84b;
+  --fac-umb: #8fd46a;
   /* светлый текст рейд-босса: реплика и метки на полосе */
   --boss-soft: #ffd0a0;
   --font: "Rubik", "Trebuchet MS", system-ui, sans-serif;

@@ -31,6 +31,7 @@ import {
   type Cam, type Mat, type RGBA, type Ramp, type Row, type Stamp, type V3, type View,
 } from "../mobs/lib";
 import { OUT, selout, outlineStats } from "../mobs/rig";
+import { pnoise } from "../canvas";
 
 export const ID = "umb_crown_lich";
 export const FRAME = 80;
@@ -79,7 +80,7 @@ function wm(m: Mat, w: number): Mat {
   const key = `${m.name}:${s}`;
   let q = WCACHE.get(key);
   if (!q) {
-    const k = (s / 3) * (m === M.gem ? 1 : m === M.robe || m === M.cloak ? 0.4 : 0.8);
+    const k = (s / 3) * (m === M.gem ? 1 : m === M.robe || m === M.cloak || m === M.bone ? 0.4 : 0.8);
     q = { ...m, ramp: m.ramp.map((c, i) => mix(c, DEAD[Math.min(i, 4)], k)), glow: m.glow && s < 2 };
     WCACHE.set(key, q);
   }
@@ -239,7 +240,7 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
   {
     const g = S.group(1.6);
     const topZ = lerp(pel[2] - 3, 2.2, col);
-    const rb = lerp(10, 12.2, col), ra = lerp(5.6, 8.5, col);
+    const rb = lerp(10, 10.8, col), ra = lerp(5.6, 8.5, col);
     const c0: V3 = [pel[0], pel[1], Math.max(topZ, 0.5)];
     // складки: тёмная впадина по углу вокруг оси (рисунок едет с телом — от опорной точки)
     const folds = (c: { l: V3; edge: boolean }) => {
@@ -248,12 +249,22 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
       const f = Math.sin(th * 9 + 0.6);
       return f > 0.82 ? -0.9 : f < -0.9 ? 0.4 : 0;
     };
-    S.cone(g, wm(M.robe, W), c0, ra, [pel[0], pel[1], 0], rb, { tex: folds, ref: [1, 0, 0], big: true });
+    if (col < 0.75) S.cone(g, wm(M.robe, W), c0, ra * (1 - 0.25 * col), [pel[0], pel[1], 0], rb, { tex: folds, ref: [1, 0, 0], big: true });
     if (col < 0.6) for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
       const k = p.kick[i];
       S.ball(g, wm(M.robe, W), [pel[0] + s * 3.6, pel[1] + 3.6 + 2.6 * k, 8.5 + 1.2 * k], 3.4 + 0.3 * k, { tex: folds, ref: [1, 0, 0] });
     }
-    if (col > 0.02) S.ell(g, wm(M.robe, W), [pel[0], pel[1] - 1, 0], [9.5 * col + 1, 7.5 * col + 1, 4.6 * col + 0.5], undefined, { tex: folds });
+    if (col > 0.02) {
+      // груда: ряса и плащ осели складками — несколько плоских валиков разной высоты
+      const lumps: [number, number, number, number, number, number, Mat][] = [
+        [0, 0, 8.5, 6.5, 3.4, 0.2, M.robe], [5.5, -2.5, 6, 4.5, 2.5, 0.6, M.cloak], [-6, 1, 5.5, 4.5, 2.7, -0.4, M.robe],
+        [2.5, 4.5, 5, 3.2, 2.1, 0.9, M.cloak], [-3.5, -4.5, 6.2, 3.6, 2.2, -0.8, M.cloak], [8.5, 2.5, 3.4, 2.4, 1.5, 0.3, M.robe],
+      ];
+      for (const [x, y, rx, ry, rz, yaw, m] of lumps) {
+        const c = col;
+        S.ell(g, wm(m, W), [pel[0] + x * c, pel[1] + y * c, 0], [rx * c + 0.5, ry * c + 0.5, rz * c + 0.3], [rot([1, 0, 0], 0, yaw), rot([0, 1, 0], 0, yaw), [0, 0, 1]], { tex: folds });
+      }
+    }
     // рваные клинья подола по бокам — ломают силуэт у земли
     const flaps: [number, number, number, number][] = [[1, 0.2, 3.2, 1.0], [-1, 0.2, 3.6, 1.2], [1, 4.5, 2.0, 0.6], [-1, 4.8, 2.4, 0.8]];
     for (const [s, y, l, w] of flaps) {
@@ -262,6 +273,27 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
     }
   }
   const alive = p.sink < 26;
+  // ---------- кости на груде: падают сверху по мере оседания (с ⅔ collapse), ложатся вразброс ----------
+  if (col > 0.55) {
+    const f = easeIn(clamp((col - 0.55) / 0.45, 0, 1));
+    const drop = (v: V3): V3 => [pel[0] - shift[0] + v[0], pel[1] - shift[1] + v[1], v[2] + 7 * (1 - f)];
+    const gb = S.group(0.4);
+    const bone = wm(M.bone, Math.min(W, 0.34));
+    // грудная клетка (рёбра погасли), таз, позвонки, кости рук, когтистая кисть
+    S.ell(gb, bone, drop([2.8, 1.2, 4.2]), [3.4, 2.4, 2.3], [rot([1, 0, 0], 0.3, 0.5), rot([0, 1, 0], 0.3, 0.5), rot([0, 0, 1], 0.3, 0.5)], { tone: -0.2 });
+    S.ell(gb, bone, drop([-1.5, -2.6, 3.5]), [2.5, 1.8, 1.3], undefined, { tone: -0.3, part: S.newPart() });
+    const sticks: [V3, V3, number][] = [[[-3, -0.5, 3.6], [4, -2, 3.0], 0.95], [[5.5, 3, 2.2], [11, 6.5, 0.9], 0.95], [[-5, 4, 2.4], [-10.5, 6.8, 0.9], 0.95], [[-2, -5, 2.6], [-8, -8, 0.9], 0.95], [[6.5, -4, 2.2], [11.5, -2.5, 0.9], 0.9], [[1, 6, 2.0], [-4, 8.2, 0.9], 0.9]];
+    for (const [a, b, r] of sticks) {
+      const pa = S.newPart();
+      S.cone(gb, bone, drop(a), r, drop(b), r * 0.8, { part: pa });
+      S.ball(gb, bone, drop(b), r * 1.3, { part: pa });
+    }
+    S.ell(gb, bone, drop([11.6, 6.9, 1.0]), [1.3, 1.0, 0.8], undefined, { part: S.newPart(), tone: 0.1 });
+    // наплечник скатился с груды
+    const gi = S.group(0.6);
+    S.ell(gi, wm(M.iron, W), drop([-8.5, -1.5, 2.2]), [3.6, 3.4, 2.0], [rot([1, 0, 0], 0, 0, 0.5), [0, 1, 0], rot([0, 0, 1], 0, 0, 0.5)]);
+    for (const [dx, l] of [[-1, 4], [1, 5]] as [number, number][]) S.cone(gi, wm(M.iron, W), drop([-8.5 + dx, -1.5, 3.6]), 0.6, drop([-9.5 + dx * 2.4, -2.5, 3.6 + l * 0.7]), 0.1, { part: S.newPart() });
+  }
   // ---------- нагрудная пластина-табард: от пояса к коленям, зелёные вставки ----------
   if (col < 0.3) {
     const g = S.group(0);
@@ -382,9 +414,9 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
     if (p.headOff <= 0) return Hraw(v);
     const e = easeIn(clamp(p.headOff, 0, 1));
     const from = Hraw(HC);
-    const to = add(fromView(view, [-1.2, 2.2, 0]), [pel[0] - shift[0], pel[1] - shift[1], 7.6]);
+    const to = add(fromView(view, [-0.8, 1.6, 0]), [pel[0] - shift[0], pel[1] - shift[1], 6.6]);
     const c = add(lerpV(from, to, e), [0, 0, 3.5 * Math.sin(Math.PI * Math.min(1, e * 1.1))]);
-    return add(c, rot(sub(v, HC), 0.3 * e, 0, 0.45 * e));
+    return add(c, rot(sub(v, HC), -0.12 * e, 0, 0.18 * e));
   };
   const headAx = (): [V3, V3, V3] => {
     const o = headTf([0, 0, 0]);
@@ -411,19 +443,22 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
       if (p.crownOff <= 0) return onHead(v);
       const e = easeIn(clamp(p.crownOff, 0, 1));
       const from = onHead(crownC);
-      const to = add(fromView(view, [10.5, 3.2, 0]), [pel[0] - shift[0], pel[1] - shift[1], 3.6]);
+      const skullTop = add(fromView(view, [-0.8, 1.6, 0]), [pel[0] - shift[0], pel[1] - shift[1], 6.6 + 3.2]);
+      const to = add(skullTop, [0, 0, 0]);
       const c = add(lerpV(from, to, e), [0, 0, 5 * Math.sin(Math.PI * Math.min(1, e * 1.15))]);
-      return add(c, rot(sub(v, crownC), 0.2 * e, 0.4 * e, -1.25 * e));
+      return add(c, rot(sub(v, crownC), -0.12 * e, 0, 0.22 * e));
     };
     if (alive || p.crownOff > 0) {
       const g = S.group(0.22);
       const o = tf(crownC);
       const ax: [V3, V3, V3] = [norm(sub(tf(add(crownC, [1, 0, 0])), o)), norm(sub(tf(add(crownC, [0, 1, 0])), o)), norm(sub(tf(add(crownC, [0, 0, 1])), o))];
-      S.ell(g, wm(M.iron, W), o, [3.7, 3.9, 0.75], ax);
+      S.ell(g, wm(M.iron, W), o, [3.7, 3.9, 1.0], ax);
+      // самоцветы обруча — светятся всегда (и на груде после гибели)
+      for (const a of [0, 1.15, -1.15, Math.PI]) S.ball(g, M.gem, tf(add(crownC, [Math.sin(a) * 3.85, Math.cos(a) * 4.05, 0.1])), 0.62, { part: S.newPart(), tone: 0.6 });
       // шипы: [угол от лба, длина, отгиб наружу, отросток]
       const spikes: [number, number, number, number][] = [
-        [0, 8.6, 0.5, 0], [0.8, 6.0, 2.2, 0], [-0.8, 6.0, 2.2, 0], [1.6, 7.6, 4.6, 1], [-1.6, 7.6, 4.6, 1],
-        [2.4, 5.4, 3.2, 0], [-2.4, 5.4, 3.2, 0], [Math.PI, 4.0, 1.4, 0],
+        [0, 8.4, 2.4, 1], [0.8, 6.2, 3.0, 0], [-0.8, 6.2, 3.0, 0], [1.6, 7.6, 4.4, 1], [-1.6, 7.6, 4.4, 1],
+        [2.4, 6.0, 3.6, 0], [-2.4, 6.0, 3.6, 0], [Math.PI, 6.6, 3.4, 1],
       ];
       const ps = S.newPart();
       for (const [a, l, lean, br] of spikes) {
@@ -615,7 +650,7 @@ function drawTrail(c: Ctx, pts: V3[]) {
     for (let s = 0; s <= steps; s++) {
       const u = (k + s / steps) / total;
       const x = lerp(x0, x1, s / steps), y = lerp(y0, y1, s / steps);
-      const w = 0.5 + 1.6 * u;
+      const w = 0.6 + 2.4 * Math.sin(Math.PI * Math.min(1, u * 0.7 + 0.15));
       const dz = lerp(depthOf(vp[k]), depthOf(vp[k + 1]), s / steps);
       for (let dy = -w; dy <= w + 0.01; dy += 0.5) for (let dx = -w; dx <= w + 0.01; dx += 0.5) {
         if (dx * dx + dy * dy > w * w) continue;
@@ -705,6 +740,13 @@ export function renderLich(view: View, pose: Pose): { img: PC; emis: PC } {
     if (!body) kill.push([x, y]);
   }
   for (const [x, y] of kill) { img.clear(x, y); emis.clear(x, y); }
+  // нижний ряд кадра — под линией ступней: выступившее вперёд у земли кончается контуром (как у мобов)
+  for (let x = 0; x < N; x++) {
+    if (!img.alpha(x, N - 1)) continue;
+    const q = img.get(x, N - 2)!;
+    if (q[3] > 120 && !isOut(q)) img.set(x, N - 1, OUT); else img.clear(x, N - 1);
+    emis.clear(x, N - 1);
+  }
   // маска свечения — только то, что светится сейчас (пламя и души поверх тела тоже)
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const q = img.get(x, y)!;
@@ -838,7 +880,7 @@ function sealKeys(view: View) {
   const side = view === "side";
   const wind: Partial<Pose> = {
     pitch: -0.07, hp: -0.18, bob: 1 * PXM,
-    stf: side ? staffAt([8.5, 4.5, 2.5], [0, 0.5, 1], 23) : staffAt([7.5, 2.3, 2.2], [0.58, 0.05, 1], 23), sg: 23,
+    stf: side ? staffAt([8.5, 4.5, 2.5], [0, 0.5, 1], 23) : staffAt([4, 2.3, 2.2], [0.42, 0.05, 1], 23), sg: 23,
     hand: [R0.hand[0], side ? [-6, 9, 37] : [-11, 6.5, 37.5]], charge: 1, crownFire: 0.4, glow: 1.3, flame: 0.7,
   };
   const hit: Partial<Pose> = {
@@ -978,7 +1020,7 @@ function deathPoses(view: View): Pose[] {
     { f: 7, p: { ...stagger, held: 0, stf: lying, flame: 0, glow: 0.15, sink: 28, collapse: 0.82, wither: 0.65, headOff: 0.8, crownOff: 0.85, wisps: 0.36 }, ease: linear },
     { f: 8, p: { ...stagger, held: 0, stf: lying, flame: 0, glow: 0.05, sink: 36, collapse: 0.95, wither: 0.75, headOff: 1, crownOff: 1, wisps: 0.5, dust: [0.8, 0.8] }, ease: linear },
     { f: 10, p: { ...stagger, held: 0, stf: lying, flame: 0, glow: 0, sink: 44, collapse: 1, wither: 0.9, headOff: 1, crownOff: 1, wisps: 0.78, dust: [0, 0] }, ease: easeOut },
-    { f: 13, p: { ...stagger, held: 0, stf: lying, flame: 0, glow: 0, sink: 44, collapse: 1, wither: 1, headOff: 1, crownOff: 1, wisps: 1, dust: [0, 0] }, ease: easeOut },
+    { f: 13, p: { ...stagger, held: 0, stf: lying, flame: 0, glow: 0, sink: 44, collapse: 1, wither: 1, headOff: 1, crownOff: 1, wisps: 1, dust: [0, 0], crownFire: 0.35 }, ease: easeOut },
   ];
   const poses = keyed(R0, keys, 14, 1300);
   for (let i = 3; i < 14; i++) { poses[i].held = 0; if (i >= 4) poses[i].stf = lying; }
@@ -1035,8 +1077,8 @@ const POSES: Record<LichAnim, (v: View) => Pose[]> = {
 interface FxDef { w: number; h: number; ax: number; ay: number; n: number; fps: number; hit: number }
 export const FX: Record<"seal" | "wisp" | "pillar", FxDef> = {
   seal: { w: 112, h: 128, ax: 56, ay: 84, n: 16, fps: 12, hit: 3 },
-  wisp: { w: 80, h: 112, ax: 40, ay: 92, n: 14, fps: 12, hit: 3 },
-  pillar: { w: 64, h: 128, ax: 32, ay: 112, n: 14, fps: 12, hit: 3 },
+  wisp: { w: 80, h: 128, ax: 40, ay: 92, n: 14, fps: 12, hit: 3 },
+  pillar: { w: 64, h: 140, ax: 32, ay: 112, n: 14, fps: 12, hit: 3 },
 };
 /** Знаки печати: 3×4. */
 const RUNES = [["#.#", "###", ".#.", ".#."], ["##.", "#.#", "##.", "#.."], [".#.", "###", "#.#", "#.#"], ["#..", "##.", "#.#", "###"], ["###", "#..", "##.", "#.."], ["#.#", ".#.", "#.#", "..#"]];
@@ -1069,6 +1111,50 @@ function ember(plot: Plot, x0: number, y0: number, t: number, seed: number, ramp
  * прочерчиваются по земле, сверху падает звезда душ; кадр hit (3) — столб бирюзового огня бьёт в печать; 4–7 — столб
  * сужается и уходит вверх, по кругу бежит стена огня, разлетаются искры; 8–15 — печать гаснет ступенями, тлеет и уходит.
  */
+/** Столб огня: полуширина w(v) (v 0 — низ, 1 — верх), края рвёт шум по времени, вверху — языки; тоны — ядро, середина, край, кайма. */
+function fireColumn(plot: Plot, cx: number, yTop: number, yBot: number, w: (v: number) => number, ph: number, seed: number, ramp: Ramp = FLAME, lift = 0) {
+  const H = Math.max(1, yBot - yTop);
+  for (let y = Math.floor(yTop - 6); y <= Math.ceil(yBot); y++) {
+    const v = (yBot - y) / H;
+    if (v < 0) continue;
+    const n = pnoise(y * 1.0 + 64, ph * 32, 8, 128, seed) - 0.5;
+    let ww = w(Math.min(v, 1)) * (1 + 0.45 * n) * (lift > 0 ? Math.min(1, 0.25 + v * 4 * (0.4 + lift)) : 1);
+    if (v > 1) ww *= Math.max(0, 1 - (v - 1) * 4);
+    const off = Math.sin(v * 7 - ph * TAU + seed) * (0.6 + 1.2 * v);
+    if (ww < 0.4) continue;
+    for (let x = Math.floor(cx - ww + off - 1); x <= Math.ceil(cx + ww + off + 1); x++) {
+      const u = Math.abs(x + 0.5 - cx - off) / ww;
+      if (u > 1) continue;
+      // языки вверху: просветы по шуму
+      if (v > 0.72 && pnoise(x * 3 + 7, y * 2 - ph * 64, 8, 128, seed + 3) > 0.62) continue;
+      plot(x, y, ramp[u < 0.32 ? 4 : u < 0.62 ? 3 : u < 0.86 ? 2 : 1]);
+    }
+  }
+}
+/** Комета: голова r, хвост длиной L по направлению (dx, dy) назад; хвост рвётся и сужается. */
+function comet(plot: Plot, x: number, y: number, r: number, dx: number, dy: number, L: number, ph: number, ramp: Ramp = FLAME) {
+  const d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+  for (let s = L; s >= 0; s -= 0.5) {
+    const u = s / L;
+    const w = r * (1 - u) * (0.85 + 0.3 * Math.sin(s * 0.7 - ph * TAU));
+    const px = x - ux * s + Math.sin(s * 0.5 + ph * TAU) * u * 1.2, py = y - uy * s;
+    if (w < 0.5) { if (hash01(Math.round(s * 2), 3, 17) < 0.5) plot(Math.round(px), Math.round(py), ramp[u < 0.85 ? 2 : 1]); continue; }
+    disc(plot, px, py, w, (q) => ramp[q < 0.4 && u < 0.4 ? 4 : q < 0.7 ? 3 : u > 0.6 ? 1 : 2]);
+  }
+  disc(plot, x, y, r + 1, (q) => (q > 0.8 ? ramp[2] : null));
+  disc(plot, x, y, r, (q) => ramp[q < 0.45 ? 4 : q < 0.8 ? 3 : 2]);
+}
+/** Кольцо-волна по земле (без сжатия): светлый гребень, кайма внутрь; рвётся по мере затухания k. */
+function shock(plot: Plot, cx: number, cy: number, r: number, k: number, ramp: Ramp = SOUL) {
+  const steps = Math.ceil(r * 8) + 8;
+  for (let s = 0; s < steps; s++) {
+    const a = (s / steps) * TAU;
+    if (Math.sin(a * 7 + r * 0.3) < -1.25 + 1.4 * (1 - k)) continue;
+    plot(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), ramp[k > 0.6 ? 4 : 3]);
+    plot(Math.round(cx + Math.cos(a) * (r - 1)), Math.round(cy + Math.sin(a) * (r - 1)), ramp[k > 0.4 ? 2 : 1]);
+    if (k > 0.6) plot(Math.round(cx + Math.cos(a) * (r - 2)), Math.round(cy + Math.sin(a) * (r - 2)), ramp[1]);
+  }
+}
 function buildSealFx(): PC {
   const F = FX.seal;
   const out = new PC(F.w * F.n, F.h * 2);
@@ -1077,72 +1163,63 @@ function buildSealFx(): PC {
     const back = new PC(F.w, F.h), front = new PC(F.w, F.h);
     const pb = plotOf(back), pf = plotOf(front);
     const cx = F.ax, cy = F.ay;
+    const ph = i / 8;
     // печать: круг прочерчивается (easeOut), знаки — по очереди; после удара гаснет ступенями
     const draw = i <= 2 ? easeOut((i + 1) / 3) : 1;
     const lvl = i <= 2 ? 2 : i <= 7 ? 3 : i <= 10 ? 2 : i <= 13 ? 1 : 0;
+    if (i >= 3 && i <= 14) disc(pb, cx, cy, R0 - 2, (d) => (d > 0.97 ? null : [8, 26, 20, Math.round((d < 0.35 ? 120 : 70) * Math.max(0, 1 - (i - 3) / 12))]));
     if (lvl > 0) {
       const a0 = -Math.PI / 2;
+      const rot0 = i * 0.035;
       ringArc(pb, cx, cy, R0, a0, a0 + TAU * draw, SOUL[lvl], 2);
-      ringArc(pb, cx, cy, R0 - 6, a0 + Math.PI, a0 + Math.PI - TAU * draw, SOUL[Math.max(1, lvl - 1)], 1);
-      ringArc(pb, cx, cy, 13, 0, TAU * draw, SOUL[lvl], 1);
+      ringArc(pb, cx, cy, R0 - 7, a0 + Math.PI, a0 + Math.PI - TAU * draw, SOUL[Math.max(1, lvl - 1)], 1);
+      ringArc(pb, cx, cy, 14, 0, TAU * draw, SOUL[lvl], 2);
       for (let k = 0; k < 6; k++) {
         if (k / 6 > draw * 1.05) continue;
-        const a = a0 + (k / 6) * TAU + (i > 2 ? (i - 3) * 0.03 : 0);
-        const rx = Math.round(cx + Math.cos(a) * (R0 - 3) - 1), ry = Math.round(cy + Math.sin(a) * (R0 - 3) - 2);
+        const a = a0 + (k / 6) * TAU + rot0;
+        const rx = Math.round(cx + Math.cos(a) * (R0 - 3.5) - 1), ry = Math.round(cy + Math.sin(a) * (R0 - 3.5) - 2);
+        RUNES[k].forEach((row, j) => [...row].forEach((ch, x) => { if (ch === "#") { pb(rx + x + 1, ry + j + 1, SOUL[Math.max(0, lvl - 2)]); } }));
         RUNES[k].forEach((row, j) => [...row].forEach((ch, x) => { if (ch === "#") pb(rx + x, ry + j, SOUL[Math.min(4, lvl + 1)]); }));
-        // лучи-спицы от малого круга к знакам
-        if (lvl >= 2) for (let s = 15; s < R0 - 8; s += 2) pb(Math.round(cx + Math.cos(a) * s), Math.round(cy + Math.sin(a) * s), SOUL[lvl - 1]);
+        if (lvl >= 2) for (let s = 16; s < R0 - 9; s += 2) pb(Math.round(cx + Math.cos(a + 0.52) * s), Math.round(cy + Math.sin(a + 0.52) * s), SOUL[lvl - 1]);
       }
     }
-    // выжженная земля под печатью после удара
-    if (i >= 3 && i <= 14) disc(pb, cx, cy, 11 + 2 * Math.min(1, (i - 3) / 3), (d) => (d > 0.85 ? null : [10, 22, 18, Math.round(150 * (1 - (i - 3) / 12))]));
-    // звезда душ падает (до удара)
+    // звезда душ падает (до удара) — комета с хвостом
     if (i <= 2) {
-      const y = lerp(6, cy - 10, easeIn((i + 1) / 3.2));
-      for (let s = 0; s < 14 + i * 6; s++) pf(cx, Math.round(y - 3 - s), FLAME[s < 4 ? 3 : s < 10 ? 2 : 1]);
-      disc(pf, cx, y, 2.5 + i * 0.8, (d) => (d < 0.45 ? FLAME[4] : FLAME[3]));
+      const e = easeIn((i + 1) / 3.4);
+      comet(pf, cx, lerp(16, cy - 18, e), 4.5 + 2 * e, 0, 1, 12 + 18 * e, ph);
+      disc(pb, cx, cy, 6 + 8 * e, (d) => [38, 199, 159, Math.round(d < 0.5 ? 90 : 45)]);
     }
-    // столб огня: кадр удара — во весь рост; затем сужается, низ уходит вверх
-    if (i >= 3 && i <= 8) {
-      const k = (i - 3) / 5;
-      const w = lerp(13, 2, easeIn(k)), bot = lerp(cy + 2, cy - 54, easeIn(k)), top = 3;
-      for (let y = top; y <= bot; y++) {
-        const v = (bot - y) / Math.max(1, bot - top);
-        const ww = w * (0.75 + 0.25 * Math.sin(v * 9 + i * 1.7)) * (y < top + 6 ? (y - top + 1) / 7 : 1);
-        for (let x = Math.floor(cx - ww); x <= cx + ww; x++) {
-          const u = Math.abs(x + 0.5 - cx) / Math.max(0.5, ww);
-          pf(x, y, FLAME[u < 0.35 ? 4 : u < 0.7 ? 3 : 2]);
-        }
-      }
-      if (i === 3) disc(pf, cx, cy, 15, (d) => (d < 0.4 ? FLAME[4] : d < 0.75 ? FLAME[3] : SOUL[3]));
+    // столб: кадр удара — во весь рост с расширением у земли; затем сужается и низ уходит вверх
+    if (i >= 3 && i <= 9) {
+      const k = (i - 3) / 6;
+      const w0 = lerp(12, 2.5, easeIn(k)), bot = lerp(cy + 2, cy - 60, easeIn(k));
+      fireColumn(pf, cx, 12, bot, (v) => w0 * (1 + 1.1 * (i <= 4 ? 1 : 0) * Math.pow(Math.max(0, 1 - v * 3), 2)) * (v > 0.8 ? 1 - (v - 0.8) * 3.5 : 1), ph, 11, FLAME, i >= 5 ? 1 : 0);
+      if (i === 3) disc(pf, cx, cy, 20, (d) => (d < 0.4 ? FLAME[4] : d < 0.7 ? FLAME[3] : d < 0.9 ? SOUL[3] : SOUL[2]));
+      if (i <= 6) shock(pb, cx, cy, lerp(16, R0 + 2, easeOut((i - 3) / 3.5)), 1 - (i - 3) / 4);
     }
-    // стена огня по кругу: языки бегут от центра к краю печати (easeOut), гаснут
-    if (i >= 3 && i <= 11) {
-      const k = (i - 3) / 8;
-      const r = lerp(14, R0, easeOut(Math.min(1, k * 1.6)));
-      const hgt = Math.max(0, 1 - k) * 1.2;
-      for (let s = 0; s < 18; s++) {
-        const a = (s / 18) * TAU + 0.2;
+    // стена огня по кругу печати: языки бегут от центра к краю и опадают
+    if (i >= 4 && i <= 12) {
+      const k = (i - 4) / 8;
+      const r = lerp(16, R0 - 1, easeOut(Math.min(1, k * 1.8)));
+      const hgt = Math.max(0, 1 - easeIn(k)) * 1.35;
+      for (let s = 0; s < 22; s++) {
+        const a = (s / 22) * TAU + 0.15;
         const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
-        if (hgt > 0.08) flamePx([x, y], hgt * (0.7 + 0.3 * hash01(s, 1, 5)), i / 4 + s * 0.13, s, FLAME, Math.sin(a) < 0 ? pb : pf);
+        if (hgt > 0.1) flamePx([x, y], hgt * (0.65 + 0.35 * hash01(s, 1, 5)), ph * 2 + s * 0.13, s, FLAME, Math.sin(a) < 0 ? pb : pf);
       }
     }
     // искры: от удара по дугам вверх
-    if (i >= 3) for (let s = 0; s < 14; s++) {
-      const t = (i - 3 - hash01(s, 2, 7) * 2) / 7;
-      const a = (s / 14) * TAU;
-      ember(pf, cx + Math.cos(a) * (8 + 26 * easeOut(clamp(t, 0, 1))), cy + Math.sin(a) * (6 + 20 * easeOut(clamp(t, 0, 1))), t, s, FLAME, 14);
+    if (i >= 3) for (let s = 0; s < 18; s++) {
+      const t = (i - 3 - hash01(s, 2, 7) * 2.5) / 7;
+      const a = (s / 18) * TAU;
+      const tt = clamp(t, 0, 1);
+      ember(Math.sin(a) < 0 ? pb : pf, cx + Math.cos(a) * (10 + 30 * easeOut(tt)), cy + Math.sin(a) * (8 + 26 * easeOut(tt)), t, s, FLAME, 16);
     }
     out.blit(back, i * F.w, 0);
     out.blit(front, i * F.w, F.h);
   }
   return out;
 }
-/**
- * «Блуждающий огонь» (метка на каждом, лист 80×112, центр — (40, 92)): кадры 0–2 — огненный шар падает сверху наискось
- * с хвостом, на земле растёт отсвет; кадр hit (3) — удар: вспышка, всплеск языков; 4–8 — языки опадают, волна по земле
- * расходится; 9–13 — искры, тлеющее пятно гаснет.
- */
 function buildWispFx(): PC {
   const F = FX.wisp;
   const out = new PC(F.w * F.n, F.h * 2);
@@ -1150,88 +1227,89 @@ function buildWispFx(): PC {
     const back = new PC(F.w, F.h), front = new PC(F.w, F.h);
     const pb = plotOf(back), pf = plotOf(front);
     const cx = F.ax, cy = F.ay;
+    const ph = i / 6;
     if (i <= 2) {
-      const e = easeIn((i + 1) / 3.3);
-      const x = lerp(cx + 26, cx + 3, e), y = lerp(8, cy - 6, e);
-      // отсвет на земле
-      disc(pb, cx, cy, 4 + 5 * e, (d) => (d < 0.5 ? [38, 199, 159, 90] : [38, 199, 159, 45]));
-      // хвост: вдоль пути, сужается
-      for (let s = 0; s < 22; s++) {
-        const u = s / 22;
-        const tx = x + (26 * u) * 0.9, ty = y - (cy - 14) * u * 0.32;
-        const w = 2.6 * (1 - u);
-        disc(pf, tx, ty, Math.max(0.6, w), () => FLAME[u < 0.25 ? 3 : u < 0.6 ? 2 : 1]);
-      }
-      disc(pf, x, y, 3.6 + e, (d) => (d < 0.4 ? FLAME[4] : d < 0.75 ? FLAME[3] : FLAME[2]));
+      const e = easeIn((i + 1) / 3.2);
+      const x = lerp(cx + 22, cx + 2, e), y = lerp(22, cy - 8, e);
+      disc(pb, cx, cy, 5 + 7 * e, (d) => [38, 199, 159, Math.round(d < 0.5 ? 100 : 50)]);
+      ringArc(pb, cx, cy, 6 + 6 * e, 0, TAU, SOUL[2], 1);
+      comet(pf, x, y, 4.6 + 2 * e, -0.55, 1, 12 + 16 * e, ph);
     }
     if (i === 3) {
-      disc(pf, cx, cy - 4, 12, (d) => (d < 0.35 ? FLAME[4] : d < 0.7 ? FLAME[3] : SOUL[3]));
-      disc(pb, cx, cy, 16, (d) => (d > 0.8 ? FLAME[2] : null));
+      disc(pf, cx, cy - 5, 13, (d) => (d < 0.35 ? FLAME[4] : d < 0.65 ? FLAME[3] : d < 0.9 ? SOUL[3] : SOUL[2]));
+      shock(pb, cx, cy, 12, 1);
     }
-    if (i >= 3 && i <= 9) {
-      const k = (i - 3) / 6;
-      const h = Math.max(0, 1.6 * (1 - easeOut(k)));
-      [-9, -4, 0, 5, 9].forEach((dx, s) => {
-        const hh = h * (s === 2 ? 1 : 0.6 + 0.2 * hash01(s, 3, 9));
-        if (hh > 0.08) flamePx([cx + dx, cy + Math.abs(dx) * 0.2], hh, i / 5 + s * 0.3, s * 2, FLAME, s === 2 ? pf : dx < 0 ? pb : pf);
+    if (i >= 3 && i <= 10) {
+      const k = (i - 3) / 7;
+      const h = 2.0 * (1 - easeOut(k));
+      [-10, -5, 0, 5, 10].forEach((dx, s) => {
+        const hh = h * (s === 2 ? 1 : 0.55 + 0.25 * hash01(s, 3, 9));
+        if (hh > 0.1) flamePx([cx + dx, cy + 1 + Math.abs(dx) * 0.15], hh, ph * 2 + s * 0.3, s * 2, FLAME, s === 2 || dx > 0 ? pf : pb);
       });
-      const r = lerp(8, 30, easeOut(k));
-      ringArc(pb, cx, cy, r, 0, TAU, SOUL[k < 0.4 ? 3 : k < 0.75 ? 2 : 1], k < 0.5 ? 2 : 1);
+      if (i >= 4) shock(pb, cx, cy, lerp(12, 30, easeOut((i - 4) / 6)), 1 - (i - 4) / 6.5);
     }
     if (i >= 3) {
-      disc(pb, cx, cy, 9, (d) => (d > 0.9 ? null : [10, 30, 26, Math.round(170 * Math.max(0, 1 - (i - 3) / 10))]));
-      for (let s = 0; s < 8; s++) ember(pf, cx - 10 + 20 * hash01(s, 1, 3), cy - 2, (i - 3 - s * 0.5) / 8, s, FLAME, 26);
+      disc(pb, cx, cy, 10, (d) => (d > 0.95 ? null : [8, 30, 24, Math.round(170 * Math.max(0, 1 - (i - 3) / 10))]));
+      for (let s = 0; s < 10; s++) ember(pf, cx - 12 + 24 * hash01(s, 1, 3), cy - 2, (i - 3 - s * 0.45) / 8, s, FLAME, 30);
     }
     out.blit(back, i * F.w, 0);
     out.blit(front, i * F.w, F.h);
   }
   return out;
 }
-/**
- * «Столб душ» (Зов Мёртвой Короны не сорван; лист 64×128, основание — (32, 112)): кадры 0–2 — трещина в земле
- * наливается светом; кадр hit (3) — столб бирюзового огня в рост вверх, на вершине — воющий череп; 4–8 — столб колышется,
- * череп поднимается и тает ступенями; 9–13 — столб тоньше, уходит снизу вверх, искры.
- */
 function buildPillarFx(): PC {
   const F = FX.pillar;
   const out = new PC(F.w * F.n, F.h * 2);
   const cracks: [number, number][][] = [];
-  for (let k = 0; k < 5; k++) {
-    const a = (k / 5) * TAU + 0.3;
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * TAU + 0.3;
     const pts: [number, number][] = [];
     let x = F.ax, y = F.ay, aa = a;
-    for (let s = 0; s < 9; s++) { pts.push([Math.round(x), Math.round(y)]); aa += (hash01(k, s, 3) - 0.5) * 0.7; x += Math.cos(aa) * 1.4; y += Math.sin(aa) * 0.7; }
+    for (let s = 0; s < 11; s++) { pts.push([Math.round(x), Math.round(y)]); aa += (hash01(k, s, 3) - 0.5) * 0.7; x += Math.cos(aa) * 1.5; y += Math.sin(aa) * 0.8; }
     cracks.push(pts);
   }
-  const SKULL = ["..####..", ".######.", "##..#..#", "##..#..#".replace(/#/g, "#"), ".######.", "..#.#.#.", "..######"];
+  // воющий череп 11×10: c — свет, d — глазницы и рот
+  const SKULL = [
+    "...ccccc...",
+    "..ccccccc..",
+    ".ccccccccc.",
+    ".cddcccddc.",
+    ".cddcccddc.",
+    "..ccc.ccc..",
+    "...cc.cc...",
+    "...cdddc...",
+    "....ddd....",
+    ".....d.....",
+  ];
   for (let i = 0; i < F.n; i++) {
     const back = new PC(F.w, F.h), front = new PC(F.w, F.h);
     const pb = plotOf(back), pf = plotOf(front);
     const cx = F.ax, cy = F.ay;
+    const ph = i / 7;
     const crk = i <= 2 ? (i + 1) / 3 : i <= 10 ? 1 : (13 - i) / 3;
     const lv = i <= 2 ? 1 + i : i <= 8 ? 3 : i <= 11 ? 2 : 1;
-    if (crk > 0) for (const pts of cracks) pts.slice(0, Math.ceil(pts.length * crk)).forEach(([x, y], s) => { pb(x, y, SOUL[Math.max(1, lv - (s > 5 ? 1 : 0))]); pb(x, y + 1, [12, 20, 16, 255]); });
+    if (crk > 0) for (const pts of cracks) pts.slice(0, Math.ceil(pts.length * crk)).forEach(([x, y], s) => { pb(x, y, SOUL[Math.max(1, lv - (s > 6 ? 1 : 0))]); pb(x, y + 1, [10, 18, 14, 255]); });
+    if (i <= 2) disc(pb, cx, cy, 4 + 3 * i, (d) => [38, 199, 159, Math.round(d < 0.5 ? 110 : 55)]);
     if (i >= 3 && i <= 12) {
       const k = (i - 3) / 9;
-      const top = Math.round(lerp(8, 30, easeIn(k))), bot = Math.round(lerp(cy, cy - 30, easeIn(Math.max(0, k - 0.45) / 0.55)));
-      const w0 = i === 3 ? 9 : lerp(7.5, 2.2, easeIn(k));
-      for (let y = top; y <= bot; y++) {
-        const v = (y - top) / Math.max(1, bot - top);
-        const ww = w0 * (0.8 + 0.2 * Math.sin(v * 11 - i * 1.3)) * (y < top + 5 ? (y - top + 1) / 6 : 1);
-        const off = Math.sin(v * 5 + i * 0.9) * 1.2;
-        for (let x = Math.floor(cx - ww + off); x <= cx + ww + off; x++) {
-          const u = Math.abs(x + 0.5 - cx - off) / Math.max(0.5, ww);
-          pf(x, y, FLAME[u < 0.3 ? 4 : u < 0.65 ? 3 : 2]);
-        }
-      }
-      // череп на вершине: поднимается и тает (тоны вниз), рот открыт
-      if (i <= 8) {
-        const sy = top - 10 - (i - 3) * 2, lvS = i <= 5 ? 4 : i <= 7 ? 3 : 2;
-        SKULL.forEach((row, j) => [...row].forEach((ch, x) => { if (ch === "#") pf(cx - 4 + x, sy + j, FLAME[lvS - (j > 4 ? 1 : 0)]); }));
+      const top = lerp(26, 44, easeIn(k)), bot = lerp(cy + 1, cy - 34, easeIn(Math.max(0, k - 0.4) / 0.6));
+      const w0 = i === 3 ? 9.5 : lerp(8, 2.6, easeIn(k));
+      fireColumn(pf, cx, top, bot, (v) => w0 * (1 + 0.9 * (k < 0.4 ? 1 : 0) * Math.pow(Math.max(0, 1 - v * 4), 2)) * (v > 0.8 ? 1 - (v - 0.8) * 2.5 : 1), ph, 23, FLAME, k >= 0.45 ? 1 : 0);
+      // череп над столбом: поднимается, рот раскрыт; тает шахматкой
+      if (i <= 9) {
+        const sy = Math.max(3, Math.round(top - 14 - (i - 3) * 1.8)), lvS = i <= 5 ? 4 : i <= 7 ? 3 : 2;
+        const fade = i >= 8 ? (i - 7) * 0.34 : 0;
+        SKULL.forEach((row, j) => [...row].forEach((ch, x) => {
+          if (ch === ".") return;
+          const X = cx - 5 + x, Y = sy + j;
+          if (fade > 0 && ((X + Y) & 1) && hash01(X, Y, i) < fade * 1.6) return;
+          pf(X, Y, ch === "d" ? FLAME[1] : FLAME[lvS - (j > 6 ? 1 : 0)]);
+        }));
       }
     }
-    if (i === 3) disc(pf, cx, cy - 2, 10, (d) => (d < 0.45 ? FLAME[4] : FLAME[3]));
-    if (i >= 3) for (let s = 0; s < 10; s++) ember(pf, cx - 6 + 12 * hash01(s, 4, 4), cy - 10 - 40 * hash01(s, 5, 4), (i - 3 - s * 0.4) / 7, s, FLAME, 22);
+    if (i === 3) { disc(pf, cx, cy - 2, 12, (d) => (d < 0.4 ? FLAME[4] : d < 0.75 ? FLAME[3] : SOUL[3])); shock(pb, cx, cy, 14, 1); }
+    if (i === 4) shock(pb, cx, cy, 20, 0.6);
+    if (i >= 3) for (let s = 0; s < 12; s++) ember(pf, cx - 7 + 14 * hash01(s, 4, 4), cy - 8 - 46 * hash01(s, 5, 4), (i - 3 - s * 0.4) / 7, s, FLAME, 24);
     out.blit(back, i * F.w, 0);
     out.blit(front, i * F.w, F.h);
   }
@@ -1571,6 +1649,14 @@ export function writeLichArt(root: string, outDir: string): string[] {
     ...frameEdgeCuts(sheet, N, OUT, "лист", rows),
     ...frameHoles(sheet, N, "лист", rows, 3),
   ];
+  for (const [name, F] of Object.entries(FX)) {
+    const c = fx[name as keyof typeof fx];
+    for (let r = 0; r < 2; r++) for (let i = 0; i < F.n; i++) {
+      let hits = 0;
+      for (let y = 0; y < F.h; y++) for (let x = 0; x < F.w; x++) if ((x === 0 || y === 0 || x === F.w - 1 || y === F.h - 1) && c.alpha(i * F.w + x, r * F.h + y)) hits++;
+      if (hits) bad.push(`эффект ${name}, слой ${r}, кадр ${i + 1}: ${hits} px на краю`);
+    }
+  }
   const st = outlineStats(sheet, N);
   console.log(`  ${ID}: ${LICH_COLS} кадров × 3 вида; контур — до ${(st.worstRatio * 100).toFixed(1)} % кадра, толще 1 px: ${st.thick}`);
   if (bad.length) { console.warn(`  проверки: ${bad.length}\n${bad.slice(0, 30).map((s) => "    " + s).join("\n")}`); process.exitCode = 1; }

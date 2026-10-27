@@ -35,6 +35,7 @@ import { tickEncounters } from "./encounters";
 import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
 import { Soldiers } from "./soldiers";
+import { BannerWar, type WarStore } from "./bannerWar";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
 import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack, targetAuras } from "./auras";
@@ -86,6 +87,8 @@ export interface WorldOptions {
   mobs?: boolean;
   /** Не писать в чат о входе и выходе игроков. */
   quiet?: boolean;
+  /** Хранилище владельцев оснований «Знамён Предела» (WorldRoom — файл рядом с базой). */
+  warStore?: WarStore;
 }
 
 const FOLLOW_NEAR = 48, FOLLOW_FAR = 60, FOLLOW_BREAK = 600;
@@ -117,6 +120,8 @@ export class World {
   town: Townfolk | null = null;
   /** Бойцы фракций: патрули, посты, стража поселений и городов, лучники на башнях (только в мире). */
   soldiers: Soldiers | null = null;
+  /** «Знамёна Предела» (задача 132, шаг 14; bannerWar.ts): только в мире. */
+  war: BannerWar | null = null;
   hazards: { id: string; x: number; y: number; r: number; until: number; dps: number; kind: FxKind; owner: Mob; tickAt: number }[] = [];
 
   constructor(
@@ -129,6 +134,7 @@ export class World {
     if (opts.mobs !== false && !opts.map) {
       this.town = new Townfolk(this);
       this.soldiers = new Soldiers(this);
+      this.war = new BannerWar(this, opts.warStore);
     }
   }
 
@@ -314,6 +320,7 @@ export class World {
     for (const pet of [...this.pets.values()]) updatePet(this, pet, dt);
     this.town?.update(dt);
     this.soldiers?.update(dt);
+    this.war?.update();
     this.updateHazards();
     if (this.opts.mobs !== false) tickEncounters(this);
     this.flush();
@@ -682,16 +689,19 @@ export class World {
       if (m.targetId === p.id) m.targetId = null;
     }
     p.send("toast", { text: T("srv.World.178"), kind: "error" });
+    this.war?.onKill(p, killer);
     this.onPlayerKilled?.(p, killer);
   }
 
   respawn(p: Player) {
     if (!p.dead || this.time - p.deadAt < RESPAWN_DELAY_MS) return;
-    const lost = Math.floor(p.save.gold * 0.1);
+    // «Знамёна Предела»: павший на Полях в битве — в своём форте без потери золота; вне битвы — у взятой своей заставы центра
+    const ws = this.opts.mobs === false ? null : this.war?.respawnAt(p) ?? null;
+    const lost = ws?.free ? 0 : Math.floor(p.save.gold * 0.1);
     p.save.gold -= lost;
     p.dead = false;
     // возрождение в ближайшем открытом городе своей фракции: своя столица всегда, чужая — никогда (на арене — у фонтана)
-    const sp = this.opts.mobs === false ? this.map.playerSpawn : nearestCity(p.save.cities, p.x, p.y, p.faction).spawn;
+    const sp = this.opts.mobs === false ? this.map.playerSpawn : ws ?? nearestCity(p.save.cities, p.x, p.y, p.faction).spawn;
     p.unit.x = sp.x;
     p.unit.y = sp.y;
     p.unit.hp = p.unit.maxHp;
@@ -743,6 +753,7 @@ export class World {
     let s = PLAYER_SPEED * (MOUNTS[p.unit.mount]?.speed ?? 1);
     if (p.slowUntil > this.time) s *= 1 - p.slowPct / 100;
     if (p.stealthUntil > this.time) s *= 0.7;
+    if (this.war) s *= this.war.speedMul(p);
     return s * terrainSpeedMul(this.map, p.unit.x, p.unit.y);
   }
 

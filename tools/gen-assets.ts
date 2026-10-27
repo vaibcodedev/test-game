@@ -21,6 +21,7 @@ import { writeWardsGame } from "./gen/wards";
 import { writeStatueFire } from "./gen/statues";
 import { writeAshBodiesGame } from "./gen/ashborn-body";
 import { writeEmberBannersGame } from "./gen/ember-banners";
+import { writeWarBasesGame } from "./gen/war-bases";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
@@ -105,6 +106,8 @@ writeStatueFire(OUT);
 // стража Эмберхолла — Пепельнорождённые (задача 132, шаг 8): тела из шлака и знамёна «Жаровня» (data/ember-guard.json)
 for (const id of writeAshBodiesGame(OUT)) manifest.units[id] = { frame: 32 };
 writeEmberBannersGame(OUT);
+// основания «Знамён Предела» (задача 132, шаг 14): мачта, тумба и королевские знамёна захвата (tools/gen/war-bases.ts)
+writeWarBasesGame(OUT);
 
 // Ручные PNG (не из генератора) тоже попадают в манифест: можно просто положить файл в папку.
 const pngSize = (f: string) => {

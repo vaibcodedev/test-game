@@ -105,6 +105,7 @@ export function makeOn(room: Room<any>, world: () => World): On {
         return;
       }
       if (!p || msg === null || typeof msg !== "object") return;
+      p.inputAt = world().time; // последний ввод героя (AFK в круге «Знамён Предела»)
       try {
         fn(p, msg);
       } catch (e) {
