@@ -1,5 +1,5 @@
-/** Значки служб NPC 11×11 (атлас-лента client/public/assets/ui/npc-icons-11.png, tools/gen/npc-icons.ts): стоят слева от имени. */
-export const NPC_ICON_SIZE = 11;
+/** Значки служб NPC 9×9 (атлас-лента client/public/assets/ui/npc-icons-9.png, tools/gen/npc-icons.ts): стоят слева от имени. */
+export const NPC_ICON_SIZE = 9;
 export const NPC_ICON_TEX = "npc_icons";
 
 /** Порядок кадров в ленте. */
