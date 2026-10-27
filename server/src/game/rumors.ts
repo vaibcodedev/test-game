@@ -24,13 +24,13 @@ function bossState(w: World, id: string): string {
 
 const last = new Map<string, { at: number; npc: string; i: number }>();
 
-/** null — слишком часто (не чаще 1 раза в секунду на игрока). */
+/** null — слишком часто (не чаще 4 раз в секунду на игрока). */
 export function rumorFor(w: World, p: Player, npcId: unknown): RumorMsg | null {
   const npc = RUMOR_NPCS.find((n) => n.id === npcId);
   if (!npc) return null;
   const prev = last.get(p.id);
   const now = Date.now();
-  if (prev && now - prev.at < 1000) return null;
+  if (prev && now - prev.at < 250) return null; // защита от потока; 1 с задерживала «Ещё слух» и могла оставить окно без ответа
   const no = npcRefusal({ kind: "rumor", name: npc.name, x: npc.x, y: npc.y }, p.faction);
   if (no) { last.set(p.id, { at: now, npc: npc.id, i: -1 }); return { npc: npc.id, name: npc.name, text: no }; }
   const top = services.arena.top("1v1", 1)[0];

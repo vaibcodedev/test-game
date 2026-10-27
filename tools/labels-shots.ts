@@ -56,7 +56,8 @@ async function main() {
         await sleep(4000);
         await page.screenshot({ path: path.join(OUT, `${v}-${w}.png`) });
         if (w === 1366) {
-          await page.screenshot({ path: path.join(OUT, `${v}-icons.png`), clip: { x: 90, y: 60, width: 900, height: 600 } });
+          await dbg({ op: "tp", x: 64 * 32, y: 182 * 32 }); await sleep(4500);
+          await page.screenshot({ path: path.join(OUT, "icons9.png"), clip: { x: 380, y: 60, width: 640, height: 600 } });
           await dbg({ op: "tp", x: 50 * 32, y: 182 * 32 });
           await sleep(5500);
           const clip = await page.screenshot({ clip: { x: 380, y: 90, width: 380, height: 440 } });

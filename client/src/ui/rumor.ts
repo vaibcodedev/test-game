@@ -8,7 +8,11 @@ export class RumorUI {
   private net!: Net;
   private npc = "";
   private name = "";
-  private coolUntil = 0;
+  /** Запрос в пути: повторное нажатие не шлётся (кнопка занята), но отклик на нажатие мгновенный — старый слух сразу уходит. */
+  private pending = false;
+  private askedAt = 0;
+  private timer = 0;
+  private more: HTMLButtonElement;
   private title: HTMLElement;
   private say: HTMLElement;
 
@@ -23,18 +27,15 @@ export class RumorUI {
     this.say = this.win.querySelector<HTMLElement>(".npc-say")!;
     this.win.querySelector<HTMLButtonElement>(".x")!.onclick = () => this.close();
     this.win.querySelector<HTMLButtonElement>(".bye")!.onclick = () => this.close();
-    this.win.querySelector<HTMLButtonElement>(".more")!.onclick = () => {
-      if (performance.now() < this.coolUntil) return;
-      this.render(null);
-      this.ask();
-    };
+    this.more = this.win.querySelector<HTMLButtonElement>(".more")!;
+    this.more.onclick = () => { if (!this.pending) this.ask(); };
     root.append(this.win);
   }
 
   bind(net: Net) {
     this.net = net;
     net.on("rumor", (m) => {
-      if (m.npc === this.npc) this.render(m);
+      if (m.npc === this.npc && this.pending) this.settle(m);
     });
   }
 
@@ -42,7 +43,9 @@ export class RumorUI {
     this.npc = npc;
     this.name = name;
     this.win.hidden = false;
-    this.render(null);
+    this.title.textContent = this.name;
+    this.say.textContent = "…";
+    this.say.classList.add("c-dim");
     this.ask();
   }
   close(): boolean {
@@ -51,15 +54,25 @@ export class RumorUI {
     return was;
   }
 
+  /** Сразу: старый слух уходит (fade-out), кнопка занята; ответ проявляется не раньше конца ухода. Нет ответа 2,5 с — слух возвращается, кнопка свободна. */
   private ask() {
-    this.coolUntil = performance.now() + 1000;
+    this.pending = true;
+    this.askedAt = performance.now();
+    this.more.disabled = true;
+    this.say.classList.add("swap-out");
+    clearTimeout(this.timer);
+    this.timer = window.setTimeout(() => this.settle(null), 2500);
     this.net.send("rumor", { npc: this.npc });
   }
 
-  /** null — слух ещё в пути: вместо текста многоточие. */
-  private render(m: RumorMsg | null) {
-    this.title.textContent = this.name;
-    this.say.textContent = m ? m.text : "…";
-    this.say.classList.toggle("c-dim", !m);
+  private settle(m: RumorMsg | null) {
+    clearTimeout(this.timer);
+    const wait = Math.max(0, 180 - (performance.now() - this.askedAt));
+    this.timer = window.setTimeout(() => {
+      this.pending = false;
+      this.more.disabled = false;
+      if (m) { this.say.textContent = m.text; this.say.classList.remove("c-dim"); }
+      this.say.classList.remove("swap-out");
+    }, wait);
   }
 }

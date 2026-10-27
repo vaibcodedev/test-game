@@ -28,6 +28,7 @@ export class BootScene extends Phaser.Scene {
     this.load.once("filecomplete-json-manifest", () => {
       const m = this.cache.json.get("manifest") as Manifest;
       this.load.image("coin_icon", "/assets/icons/coin.png");
+      this.load.spritesheet("note_icons", "/assets/ui/notes.png", { frameWidth: 9, frameHeight: 11 });
       this.load.spritesheet("npc_icons", "/assets/ui/npc-icons-9.png", { frameWidth: 9, frameHeight: 9 });
       this.load.image("terrain", "/assets/tiles/terrain.png");
       this.load.image("water", "/assets/tiles/water.png");

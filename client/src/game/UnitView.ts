@@ -158,6 +158,12 @@ export class UnitView {
   private offX = 0;
   private offY = 0;
   nameOk = true;
+  /** Горожанин: ник показан по близости (гистерезис 5 / 5,5 тайла) и плавность появления/ухода (0..1). */
+  private nearName = false;
+  /** Горожанин хочет показать имя (близко или под курсором): разводка подписей (labelLayout) ставит его наравне с остальными. */
+  wantNear = false;
+  get nameShown() { return this.nameF > 0.01; }
+  private nameF = 0;
   /** В толпе (режим «авто») у героев без уровня: имя остаётся, прячется только « · 100». */
   shortName = false;
   topY = 0;
@@ -468,7 +474,9 @@ export class UnitView {
     const gapTo = barsOn || (hov && !this.npc) ? 4 : 0;
     this.barGap = this.barGap < 0 ? gapTo : this.barGap + (gapTo - this.barGap) * sk;
     const nameY = Math.round(top - this.barGap);
-    const left = lx - Math.round(this.label.width / 2);
+    // у стражи щит-значок слева от ника (10 px вместе с зазором): блок «щит + ник» стоит по центру юнита, как и полоска под ним
+    const badged = (u.kind === UnitKind.Guard || u.kind === UnitKind.Soldier);
+    const left = lx - Math.round(this.label.width / 2) + (badged ? 5 : 0);
     this.label.setPosition(left, nameY);
     // на арене: союзники зелёные, враги красные; в нейтральном городе враг — цвет своей фракции, в PvP-зоне — красный
     if (u.kind === UnitKind.Player) {
@@ -496,9 +504,24 @@ export class UnitView {
     }
     // ник считается заново каждый кадр (а не прячется один раз): после выключения и включения «Имена» он возвращается сам;
     // под курсором ник виден всегда, даже при выключенных «Имена»; на блок разводки (blockW, blockH) такой ник не влияет
-    const nameOn = !this.dead && !this.unseen && (this.isSelf ? overlay.selfNames : overlay.names) && (this.isSelf || this.nameOk) && !(u.kind === UnitKind.Citizen && !hov && Math.hypot(this.x - ((this.scene as unknown as { pos?: { x: number; y: number } }).pos?.x ?? 0), this.y - ((this.scene as unknown as { pos?: { x: number; y: number } }).pos?.y ?? 0)) > 5 * 32);
+    const base = !this.dead && !this.unseen && (this.isSelf ? overlay.selfNames : overlay.names) && (this.isSelf || this.nameOk);
+    // горожане: имя по близости к герою с гистерезисом (показ с 5 тайлов, уход после 5,5 — без мигания на границе) и плавностью
+    const citizen = u.kind === UnitKind.Citizen;
+    if (citizen) {
+      const sc = this.scene as unknown as { pos?: { x: number; y: number } }, d = Math.hypot(this.x - (sc.pos?.x ?? 0), this.y - (sc.pos?.y ?? 0));
+      if (d < 5 * 32) this.nearName = true; else if (d > 5.5 * 32) this.nearName = false;
+    }
+    this.wantNear = citizen && (this.nearName || hov);
+    const nameOn = base && !(citizen && !hov && !this.nearName);
     this.nameHover = hov && !nameOn;
-    this.label.setVisible(nameOn || hov);
+    const wantName = nameOn || hov;
+    if (citizen) this.nameF = Math.max(0, Math.min(1, this.nameF + (wantName ? dt * 1000 / 180 : -dt * 1000 / 150)));
+    else this.nameF = wantName ? 1 : 0;
+    this.label.setVisible(this.nameF > 0.01);
+    if (citizen) {
+      const e = 1 - (1 - this.nameF) * (1 - this.nameF); // ease-out
+      this.label.setAlpha(e).setY(this.label.y + Math.round((1 - e) * 2));
+    }
     const showName = !this.dead && this.label.visible;
     const rank = u.frame ? rankById(u.frame) : undefined;
     // Рамка (элита, ранг арены) — вокруг самого ника, а не вокруг его блока: блок несимметричен (сверху запас под акценты, снизу под хвосты
@@ -576,7 +599,7 @@ export class UnitView {
     if (!showBar) { if (this.hpPlate.sig) { this.bar.clear(); this.hpPlate.sig = ""; this.hpPlate.barK = -1; } }
     else {
       this.lastHp = u.hp;
-      const w = (this.frame > 32 ? 40 : 20) + (u.elite ? 8 : 0);
+      const w = badged ? 24 : (this.frame > 32 ? 40 : 20) + (u.elite ? 8 : 0); // у стражи одна ширина для всех (капитан и рядовой)
       const bx = Math.round(lx - w / 2), by = Math.round(top - 2);
       barX = bx; barY = by; barW = w;
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));

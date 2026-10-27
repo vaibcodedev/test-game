@@ -98,7 +98,7 @@
     "trailMs": 120,
     "platePad": 2,
     "labelCrowd": 8,
-    "labelRow": 8,
+    "labelRow": 9,
     "textCapRatio": 0.7,
     "vfxMax": 160,
     "vfxLateMs": 250,

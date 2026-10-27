@@ -42,6 +42,7 @@ import { INTERIORS, interiorAt, type Interior } from "../../../shared/interiors"
 import { InteriorViews } from "./interiors";
 import { TowerArchers } from "./towerArchers";
 import { FortScenes } from "./fortScenes";
+import { Bubble, setBubbleObstacles, type LabelRect } from "./bubble";
 import { BannerBases } from "./bannerBases";
 import { SiegeView } from "./siegeView";
 import { moveGated } from "../../../shared/siege";
@@ -136,7 +137,9 @@ export class GameScene extends Phaser.Scene {
   pendingGather: number | null = null;
   private npcExtras: Phaser.GameObjects.GameObject[] = [];
   private cleanup: (() => void)[] = [];
-  bubbles: { t: Phaser.GameObjects.Text; id: string; until: number }[] = [];
+  /** Имена NPC-служб (имя + роль) — рамки для разводки реплик. */
+  private npcLabels: { name: Phaser.GameObjects.Text; role?: Phaser.GameObjects.Text }[] = [];
+  bubbles: { b: Bubble; id: string; until: number }[] = [];
   zone: Zone = Zone.Town;
   clickMark!: Phaser.GameObjects.Image;
   hoverId: string | null = null;
@@ -201,6 +204,8 @@ export class GameScene extends Phaser.Scene {
     this.pendingPickup = null;
     this.pendingNpc = null;
     this.bubbles = [];
+    this.npcLabels = [];
+    setBubbleObstacles(() => this.labelRects());
     this.held.clear();
     this.ambient = {};
     this.dustAt = new Map();
@@ -381,11 +386,14 @@ export class GameScene extends Phaser.Scene {
     const words = name.split(" "), split = kind !== "enc" && kind !== "raid" && kind !== "arena" && words.length > 1;
     const nameT = placeText(worldText(this, 0, 0, split ? words[words.length - 1] : name, "plain", shadowed).setDepth(DEPTH.top - 5), at.x, at.y - 31, 0.5, 1);
     const extras: Phaser.GameObjects.GameObject[] = [];
+    let roleT: Phaser.GameObjects.Text | undefined;
     if (split) {
       const role = worldText(this, 0, 0, `«${words.slice(0, -1).join(" ")}»`, "plain", { ...shadowed, fontSize: "6px", color: "#e2d4b8" }).setDepth(DEPTH.top - 5);
       placeText(role, at.x, at.y - 31 - Math.round(nameT.height) + 2, 0.5, 1);
       extras.push(role);
+      roleT = role;
     }
+    this.npcLabels.push({ name: nameT, role: roleT });
     if (npcIconFrame(kind) >= 0) {
       const { base, cap } = capBand(nameT);
       extras.push(this.add.image(Math.round(nameT.x) - NPC_ICON_SIZE - 1, Math.round(nameT.y + (base + cap) / 2 - NPC_ICON_SIZE / 2), NPC_ICON_TEX, npcIconFrame(kind)).setOrigin(0, 0).setDepth(DEPTH.top - 5));
@@ -419,8 +427,10 @@ export class GameScene extends Phaser.Scene {
       net.on("enc:say", (m) => {
         const n = find(m.id);
         if (!n) return;
-        const t = placeText(worldText(this, 0, 0, m.text, "plain", { fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, align: "center", wordWrap: { width: 160 } }).setDepth(DEPTH.top), n.sprite.x, n.sprite.y - 52, 0.5, 1);
-        this.time.delayedCall(3500, () => t.destroy());
+        // над подписью NPC: имя 8 px + роль 6 px + значок → плашка выше на ~24 px от ног
+        const bb = new Bubble(this);
+        bb.at(n.sprite.x, n.sprite.y - 56);
+        bb.say(m.text, 3500);
         this.hud.chatLine({ from: n.name ?? "", text: m.text, sys: false });
       }),
       net.on("enc:move", (m) => {
@@ -1249,11 +1259,31 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Рамки подписей для разводки реплик: ники героев, горожан, стражи, мобов и имена NPC-служб; реплика их не закрывает. */
+  private labelRects(): LabelRect[] {
+    const out: LabelRect[] = [];
+    for (const [id, v] of this.units) {
+      if (!v.label.visible || v.dead) continue;
+      const l = v.label, x0 = Math.min(l.x - 10, v.x - 10), x1 = Math.max(l.x + l.width, v.x + 10);
+      out.push({ x0, x1, y0: v.topY - v.blockH(), y1: v.topY + 3, id });
+    }
+    this.npcLabels = this.npcLabels.filter((n) => n.name.active);
+    for (const n of this.npcLabels) {
+      const top = n.role?.active ? n.role : n.name;
+      out.push({ x0: n.name.x - 11, x1: Math.max(n.name.x + n.name.width, n.role?.active ? n.role.x + n.role.width : 0), y0: top.y, y1: n.name.y + n.name.height });
+    }
+    return out;
+  }
+
   say(id: string, text: string) {
     const v = this.units.get(id);
     if (!v) return;
-    const t = placeText(worldText(this, 0, 0, text, "plain", { fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, align: "center", wordWrap: { width: 160 } }).setDepth(DEPTH.top), v.x, v.y - 70, 0.5, 1);
-    this.bubbles.push({ t, id, until: this.time.now + 3500 });
+    const old = this.bubbles.find((x) => x.id === id);
+    const b = old?.b ?? new Bubble(this);
+    b.owner = id;
+    b.set(text);
+    b.at(v.x, v.topY - v.blockH() - 2);
+    if (old) old.until = this.time.now + 3500; else this.bubbles.push({ b, id, until: this.time.now + 3500 });
     this.hud.chatLine({ from: v.u.name, text, sys: false });
   }
 
@@ -1407,8 +1437,8 @@ export class GameScene extends Phaser.Scene {
     // реплики
     this.bubbles = this.bubbles.filter((b) => {
       const v = this.units.get(b.id);
-      if (!v || now > b.until) { b.t.destroy(); return false; }
-      placeText(b.t, v.x, v.y - (v.frame > 32 ? 76 : 44), 0.5, 1); // каждый кадр, в целые пиксели: юнит движется
+      if (!v || now > b.until) { b.b.close(); return false; }
+      b.b.at(v.x, v.topY - v.blockH() - 2); // каждый кадр: юнит движется
       return true;
     });
 

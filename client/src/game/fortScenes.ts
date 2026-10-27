@@ -12,9 +12,9 @@ import type { UnitState } from "../net";
 import * as sfx from "./sfx";
 import { DEPTH } from "./terrain";
 import { UnitView } from "./UnitView";
-import { placeText, worldText } from "./worldText";
+import { Bubble } from "./bubble";
 
-type Actor = { id: string; v: UnitView; u: UnitState; txt: Phaser.GameObjects.Text; carry: Phaser.GameObjects.Container; carryKind: string; said: string };
+type Actor = { id: string; v: UnitView; u: UnitState; txt: Bubble; carry: Phaser.GameObjects.Container; carryKind: string; said: string };
 type Live = { scene: FortScene; actors: Actor[]; frozen: boolean };
 const num = (v: unknown) => Number(v);
 
@@ -39,7 +39,7 @@ export class FortScenes {
       const p = poseAt(s, Date.now()).find((q) => q.id === a.id)!;
       u.x = p.x; u.y = p.y; u.dir = p.dir; u.aseq = p.attacks % 65535; // кадры атаки только на смену, не при пробуждении
       const v = new UnitView(this.sc, `fort-${s.id}-${a.id}`, u, false);
-      const txt = worldText(this.sc, 0, 0, "", "plain", { fontSize: "10px", color: "#ffe0b0", stroke: "#200a0a", strokeThickness: 4, align: "center", wordWrap: { width: 160 } }).setDepth(DEPTH.top).setVisible(false);
+      const txt = new Bubble(this.sc);
       const carry = this.sc.add.container(p.x, p.y).setVisible(false);
       if (a.carry === "ingot") carry.add([this.sc.add.rectangle(-3, 0, 9, 4, 0xc0c8d4).setStrokeStyle(1, 0x30343c), this.sc.add.rectangle(3, -4, 9, 4, 0xa8b0bc).setStrokeStyle(1, 0x30343c)]);
       else if (a.carry === "stone") carry.add(this.sc.add.circle(0, 0, 5, num(FORT_SCENE_CFG.fx.shot.stone)).setStrokeStyle(1, 0x2a2620));
@@ -90,9 +90,8 @@ export class FortScenes {
         // декорация: ни ника, ни полоски, ни кольца выбора
         const r = a.v as unknown as Record<string, { setVisible?(v: boolean): unknown } | undefined>;
         for (const k of ["label", "bar", "titleText", "frameGfx", "ring"]) r[k]?.setVisible?.(false);
-        if (a.txt.text !== a.said) a.txt.setText(a.said);
-        a.txt.setVisible(!!a.said);
-        if (a.said) placeText(a.txt, a.u.x, a.u.y - hop - (a.v.frame > 32 ? 76 : 44), 0.5, 1);
+        a.txt.set(a.said);
+        a.txt.at(a.u.x, a.u.y - hop - (a.v.frame > 32 ? 52 : 36));
       }
       if (!l.frozen) for (const f of fxBetween(s, t0, now)) this.fx(f);
     }

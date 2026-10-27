@@ -11,7 +11,11 @@
 /* высота реплики не прыгает, когда многоточие сменяется текстом слуха: запас на три строки */
 .win-rumor .npc-say {
   min-height: calc(3 * 1.45em + 2 * var(--sp-2));
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
+/* смена слуха: старый уходит вверх и гаснет, новый проявляется с лёгким опусканием */
+.win-rumor .npc-say.swap-out { opacity: 0; transform: translateY(-3px); }
+@media (prefers-reduced-motion: reduce) { .win-rumor .npc-say { transition: none; } }
 .win-cook,
 .win-enc {
   left: 50%;

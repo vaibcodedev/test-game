@@ -20,16 +20,19 @@ export function layoutLabels(units: Map<string, UnitView>, selfId: string, targe
   }
   const crowd = overlay.autoNames && heroes > CROWD;
   for (const v of vis) {
+    if (v.u.kind === UnitKind.Citizen) { v.nameOk = true; continue; } // ниже: нет места — имя горожанина прячется
     if (v.u.kind !== UnitKind.Player || v.isSelf) { v.nameOk = true; continue; }
     v.nameOk = true;
     v.shortName = crowd && !(v.id === targetId || v.hovered || partyNames.has(v.u.name) || v.u.hp < v.u.maxHp);
   }
   // приоритет: свой, цель, остальные снизу вверх (нижние ближе к зрителю)
-  const rank = (v: UnitView) => (v.isSelf ? 0 : v.id === targetId ? 1 : 2);
+  const rank = (v: UnitView) => (v.isSelf ? 0 : v.id === targetId || v.hovered ? 1 : 2);
   vis.sort((a, b) => rank(a) - rank(b) || b.y - a.y);
   const placed: { l: number; r: number; t: number; b: number }[] = [];
   for (const v of vis) {
-    if (v.npc || v.u.kind === UnitKind.Pet && !v.nameOk) continue;
+    const cit = v.u.kind === UnitKind.Citizen;
+    // горожане участвуют, пока имя показано или проявляется (близко/под курсором); стража и прочие NPC — вне разводки
+    if (cit ? !(v.wantNear || v.nameShown) : v.npc || v.u.kind === UnitKind.Pet && !v.nameOk) continue;
     const w = v.blockW(), h = v.blockH();
     const bx = v.x, by = v.topY;
     const fits = (dx: number, dy: number) => {
@@ -40,7 +43,11 @@ export function layoutLabels(units: Map<string, UnitView>, selfId: string, targe
     let pick: [number, number] | undefined;
     if (rank(v) === 2 && fits(v.tgtX, v.tgtY)) pick = [v.tgtX, v.tgtY]; // не дёргаем уже устроившееся место
     else if (rank(v) < 2) pick = [0, 0];
-    else pick = CANDS.find(([dx, dy]) => fits(dx, dy)) ?? [0, 0];
+    else {
+      const free = CANDS.find(([dx, dy]) => fits(dx, dy));
+      pick = free ?? [0, 0];
+      if (!free && cit) { v.nameOk = false; v.tgtX = 0; v.tgtY = 0; continue; } // места нет: дальний горожанин прячет имя, а не налезает
+    }
     v.tgtX = pick[0];
     v.tgtY = pick[1];
     const l = bx + pick[0] - w / 2, b = by + pick[1] + 3;

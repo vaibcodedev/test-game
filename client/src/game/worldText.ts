@@ -20,14 +20,14 @@ type TextStyle = Phaser.Types.GameObjects.Text.TextStyle;
  * толще слепляет буквы и раздувает «·».
  */
 const PRESETS = {
-  /** Ник героя, моба, стражника. */
-  name: { fontSize: "7px", fontStyle: "600", strokeThickness: 2 },
+  /** Ник героя, моба, стражника: 8 px, как имя NPC-службы (иерархия: герой ≥ NPC ≥ горожанин, 2026-10-27). */
+  name: { fontSize: "8px", fontStyle: "600", strokeThickness: 2 },
   /** Титул над ником: мельче и темнее ника — второй уровень иерархии. */
   title: { fontSize: "6px", fontStyle: "600", strokeThickness: 1.5, color: P.gold },
   /** Имя босса. */
   boss: { fontSize: "9px", fontStyle: "600", strokeThickness: 2 },
-  /** Питомцы и горожане. */
-  small: { fontSize: "6px", fontStyle: "600", strokeThickness: 1.5 },
+  /** Питомцы и горожане: на ступень ниже ника героя (было 6 px — на дальнем зуме 1,75 не читались). */
+  small: { fontSize: "7px", fontStyle: "600", strokeThickness: 1.5 },
   /** Свой стиль целиком в extra (цифры урона, реплики, таблички): кегль, цвет и обводка остаются прежними, меняется только чёткость. */
   plain: {},
 } satisfies Record<string, TextStyle>;

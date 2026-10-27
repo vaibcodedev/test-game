@@ -4,7 +4,7 @@ import data from "../../../data/scenes.json";
 import { TILE } from "../../../shared/constants";
 import { TOWN, walkable, type WorldMap } from "../../../shared/map";
 import { DEPTH } from "./terrain";
-import { placeText, scaleText, worldText } from "./worldText";
+import { Bubble } from "./bubble";
 
 const cx = (o: number) => (TOWN.x + o) * TILE + 16;
 const cy = (o: number) => (TOWN.y + o) * TILE + 16;
@@ -13,15 +13,12 @@ const R = 6;
 interface Actor {
   s: Phaser.GameObjects.Sprite;
   shadow: Phaser.GameObjects.Image;
-  bubble: Phaser.GameObjects.Container;
-  txt: Phaser.GameObjects.Text;
-  bg: Phaser.GameObjects.Graphics;
+  bub: Bubble;
   tex: string;
   x: number;
   y: number;
-  shown: string;
 }
-interface Notes { x: number; y: number; every: number; pool: Phaser.GameObjects.Text[] }
+interface Notes { x: number; y: number; every: number; pool: Phaser.GameObjects.Image[] }
 
 export class Scenes {
   private actors: Actor[] = [];
@@ -62,18 +59,15 @@ export class Scenes {
     const tex = sc.textures.exists(`u_${sprite}`) ? sprite : "merchant";
     const s = sc.add.sprite(x, y, `u_${tex}`, 0).setOrigin(0.5, 30 / 32).setScale(scale).setTint(tint);
     const shadow = sc.add.image(x, y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5).setScale(scale);
-    const bg = sc.add.graphics();
-    const txt = worldText(sc, 0, 0, "", "plain", { fontSize: "9px", fontStyle: "600", color: "#2a1a10", stroke: "#fff4dc", strokeThickness: 1, align: "center" });
-    const bubble = sc.add.container(x, y, [bg, txt]).setDepth(DEPTH.top - 4).setVisible(false);
-    const a: Actor = { s, shadow, bubble, txt, bg, tex, x, y, shown: "" };
+    const a: Actor = { s, shadow, bub: new Bubble(sc), tex, x, y };
     this.actors.push(a);
     return a;
   }
 
   private mkNotes(x: number, y: number, every: number): Notes {
-    const n = Math.ceil(2.4 / every) + 1;
-    const pool = Array.from({ length: n }, () =>
-      worldText(this.sc, 0, 0, "♪", "plain", { fontSize: "11px", fontStyle: "700", color: "#ffe9a0", stroke: "#120a10", strokeThickness: 3 }).setDepth(DEPTH.top - 6));
+    const n = Math.ceil(2.4 / every) + 1, sc_ = this.sc;
+    // пиксельные ноты 9×11 из атласа (tools/gen/npc-icons.ts): золото, 4 тона
+    const pool = Array.from({ length: n }, () => sc_.add.image(0, 0, "note_icons", 0).setOrigin(0.5, 0.5).setDepth(DEPTH.top - 6));
     return { x, y, every, pool };
   }
 
@@ -82,7 +76,7 @@ export class Scenes {
     for (const a of this.actors) {
       a.s.setVisible(on);
       a.shadow.setVisible(on);
-      if (!on) a.bubble.setVisible(false);
+      if (!on) a.bub.set("");
     }
     for (const n of this.notes) for (const t of n.pool) t.setVisible(false);
   }
@@ -110,21 +104,8 @@ export class Scenes {
   }
 
   private speak(a: Actor, text: string) {
-    if (!text) {
-      a.bubble.setVisible(false);
-      a.shown = "";
-      return;
-    }
-    if (a.shown !== text) {
-      a.shown = text;
-      a.txt.setText(text);
-      // облако и текст в целых пикселях: левый край облака — целое, текст на 5 px правее, низ текста на 6 px выше нижнего края
-      const w = a.txt.width + 10, h = a.txt.height + 6, x0 = -Math.round(w / 2);
-      a.bg.clear().fillStyle(0xfff4dc, 0.95).lineStyle(1.5, 0x3a2418, 1).fillRoundedRect(x0, -h - 3, w, h, 4).strokeRoundedRect(x0, -h - 3, w, h, 4);
-      a.bg.fillTriangle(-3, -3, 3, -3, 0, 2);
-      a.txt.setPosition(x0 + 5, -6 - a.txt.height);
-    }
-    a.bubble.setPosition(Math.round(a.x), Math.round(a.y - (34 * a.s.scaleY + 2))).setVisible(true);
+    a.bub.set(text);
+    a.bub.at(a.x, a.y - (34 * a.s.scaleY + 2));
   }
 
   private emit(n: Notes, t: number) {
@@ -140,9 +121,10 @@ export class Scenes {
       const h = Math.sin(slot * 12.9898) * 43758.5453;
       const r = h - Math.floor(h);
       const k = age / life;
-      o.setVisible(true).setAlpha(1 - k * k).setText(r > 0.5 ? "♪" : "♫");
-      scaleText(o, 0.9 + r * 0.4);
-      placeText(o, n.x + (r - 0.5) * 22 + Math.sin(age * 3 + r * 6) * 4, n.y - age * 14, 0.5, 0.5); // каждый кадр, в целые пиксели
+      // плавно: проявление за первые 15% жизни, затем таяние; лёгкое покачивание
+      const fin = Math.min(1, k / 0.15), a = fin * fin * (3 - 2 * fin) * (1 - k) * (1 - k * 0.4);
+      o.setVisible(true).setFrame(r > 0.5 ? 0 : 1).setAlpha(a);
+      o.setPosition(Math.round(n.x + (r - 0.5) * 22 + Math.sin(age * 3 + r * 6) * 4), Math.round(n.y - age * 14));
     });
   }
 
@@ -172,22 +154,22 @@ export class Scenes {
       const i = Math.floor(t / 2);
       const [on, off] = i % 2 ? [a, c] : [c, a];
       this.speak(on, b.fightLines[i % b.fightLines.length]);
-      off.bubble.setVisible(false);
-      m.bubble.setVisible(false);
+      off.bub.set("");
+      m.bub.set("");
     } else if (ph < b.fightSec + b.breakupSec) {
       const k = Math.min(1, (ph - b.fightSec) / 1.2);
       const away = k * 12;
       this.pose(m, cx(bx + b.barmaid.dx) - k * b.barmaid.dx * TILE, cy(by) + 14 * (1 - k), k < 1 ? "walk" : "idle", k < 1);
       this.pose(a, cx(bx - b.gap) - away, cy(by), "idle", false);
       this.pose(c, cx(bx + b.gap) + away, cy(by), "idle", true);
-      a.bubble.setVisible(false);
-      c.bubble.setVisible(false);
+      a.bub.set("");
+      c.bub.set("");
       this.speak(m, b.barmaidLines[Math.floor(t / b.period) % b.barmaidLines.length]);
     } else {
       this.pose(a, cx(bx - b.gap) - 12 + sway(0), cy(by), "idle", false);
       this.pose(c, cx(bx + b.gap) + 12 + sway(2), cy(by), "idle", true);
       this.pose(m, cx(bx + b.barmaid.dx), cy(by) + 14, "idle", true);
-      m.bubble.setVisible(false);
+      m.bub.set("");
       this.say(a, t, 5, 2, 0, b.idleLines);
       this.say(c, t, 5, 2, 2.5, b.idleLines.slice().reverse());
     }
@@ -206,7 +188,7 @@ export class Scenes {
       this.pose(this.mus[i], cx(m.at[0] + p.dx), cy(m.at[1]), "idle", i === 1, Math.max(0, Math.sin(t * (i ? 6 : 4) + i)) * 1.5);
     });
     this.say(this.mus[0], t, m.lineEvery, m.lineSec, 0, m.lines);
-    this.mus[1].bubble.setVisible(false);
+    this.mus[1].bub.set("");
     this.pose(this.crowd, cx(m.at[0] + m.crowd.dx), cy(m.at[1] + m.crowd.dy), "idle", false, Math.abs(Math.sin(t * 5)) * 2.5);
     this.say(this.crowd, t, m.lineEvery, m.lineSec, 4, m.crowdLines);
     this.emit(this.notes[1], t);
