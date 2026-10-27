@@ -494,7 +494,7 @@ export class UnitView {
     }
     // ник считается заново каждый кадр (а не прячется один раз): после выключения и включения «Имена» он возвращается сам;
     // под курсором ник виден всегда, даже при выключенных «Имена»; на блок разводки (blockW, blockH) такой ник не влияет
-    const nameOn = !this.dead && !this.unseen && (this.isSelf ? overlay.selfNames : overlay.names) && (this.isSelf || this.nameOk);
+    const nameOn = !this.dead && !this.unseen && (this.isSelf ? overlay.selfNames : overlay.names) && (this.isSelf || this.nameOk) && !(u.kind === UnitKind.Citizen && !hov && Math.hypot(this.x - ((this.scene as unknown as { pos?: { x: number; y: number } }).pos?.x ?? 0), this.y - ((this.scene as unknown as { pos?: { x: number; y: number } }).pos?.y ?? 0)) > 5 * 32);
     this.nameHover = hov && !nameOn;
     this.label.setVisible(nameOn || hov);
     const showName = !this.dead && this.label.visible;
