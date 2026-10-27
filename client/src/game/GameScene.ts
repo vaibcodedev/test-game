@@ -14,7 +14,7 @@ import { WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
 import { ARENA_BLOCKED_TEXT, arenaBlocked, generateArenaMap, MODE_NAMES } from "../../../shared/arena";
 import { MOUNTS } from "../../../shared/mounts";
 import { generateRaidMap } from "../../../shared/raid";
-import { DUNGEON_EXIT, DUNGEON_GATES, generateDungeonMap } from "../../../shared/dungeon";
+import { DUNGEON_EXIT, DUNGEON_EXIT_LABEL, DUNGEON_GATES, generateDungeonMap } from "../../../shared/dungeon";
 import { CELL_BLOCK, DUNGEON_DOOR } from "../../../shared/map";
 import { fmtLeft } from "../../../shared/dungeon";
 import { net, type UnitState } from "../net";
@@ -330,7 +330,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.scenes = null; this.interiors = null; this.room = null;
       // подземелье: лестница выхода у входа
-      if (net.kind === "dungeon") this.npcs.push({ sprite: this.add.sprite(DUNGEON_EXIT.x, DUNGEON_EXIT.y, "u_merchant", 0).setVisible(false), kind: "dgexit", id: "exit", name: "Выход из подземелья", hit: { dy: 30, r: 48 }, glow: this.objGlow("dg_exit") });
+      if (net.kind === "dungeon") this.npcs.push({ sprite: this.add.sprite(DUNGEON_EXIT.x, DUNGEON_EXIT.y, "u_merchant", 0).setVisible(false), kind: "dgexit", id: "exit", name: DUNGEON_EXIT_LABEL, hit: { dy: 30, r: 48 }, glow: this.objGlow("dg_exit") });
     }
     // ворота подземелья: сервер шлёт состояние; клиент зеркалит проходимость клеток просвета (клик-ход и расчёт пути)
     if (net.kind === "dungeon") {

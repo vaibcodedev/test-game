@@ -185,7 +185,19 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       else if (k === "dg_window_c_b") glow(objs, o.x, o.y - 14, 0x4a8ac0, 1.2, 0.32);
       else if (k.startsWith("dg_grate")) glow(objs, o.x, o.y - 10, 0xff7a30, 1.2, 0.5, true);
       else if (k === "dg_entrance") { glow(objs, o.x, o.y - 40, 0xff5a20, 3.2, 0.5, true); glow(objs, o.x - 66, o.y - 40, 0xff7a30, 1.6, 0.4, true); glow(objs, o.x + 66, o.y - 40, 0xff7a30, 1.6, 0.4, true); }
-      else if (k === "dg_exit") glow(objs, o.x, o.y - 56, 0xaad0ff, 2.2, 0.4);
+      else if (k === "dg_exit") {
+        // свой источник света (аддитивное свечение выше ночного затемнения): проём и конус на ступенях не гаснут ночью
+        glow(objs, o.x, o.y - 118, 0xffe2a0, 3.6, 0.65);
+        glow(objs, o.x, o.y - 60, 0xffd890, 3.0, 0.4);
+        glow(objs, o.x, o.y - 18, 0xffcc80, 2.2, 0.26);
+        // пылинки в луче дневного света из проёма: медленно плывут вниз по конусу, мерцают (твины на кадр, ≥12 fps)
+        for (let i = 0; i < 16; i++) {
+          const h = cellHash(o.x + i * 7, o.y + i * 13), x0 = o.x + (h - 0.5) * 70, y0 = o.y - 110 + cellHash(i, o.x) * 70;
+          const d = scene.add.rectangle(Math.round(x0), Math.round(y0), 2, 2, 0xffecc0, 0).setDepth(o.y + 2);
+          tween({ targets: d, y: Math.round(y0 + 36 + h * 20), x: Math.round(x0 + (h - 0.5) * 16), alpha: { from: 0, to: 0.38 }, duration: 4200 + h * 4000, delay: h * 3000, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+          objs.push(d);
+        }
+      }
       else if (k === "dg_door_w" || k === "dg_port") {
         if (k === "dg_port") glow(objs, o.x, o.y - 22, 0xff7a30, 2.0, 0.35, true);
         const gate = DUNGEON_GATES.find((q) => Math.abs(q.cx - o.x) < 2 && Math.abs(q.cy + 16 - o.y) < 40);

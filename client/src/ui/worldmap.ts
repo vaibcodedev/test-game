@@ -5,7 +5,7 @@ import { RAID, RAID_GATE } from "../../../shared/raid";
 import { factionColor, landLabel, type FactionId } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
 import { DANGER_LABEL, DUNGEON_DOOR, PLACES, ZONES, type WorldMap } from "../../../shared/map";
-import { DUNGEON_EXIT } from "../../../shared/dungeon";
+import { DUNGEON_EXIT, DUNGEON_EXIT_LABEL } from "../../../shared/dungeon";
 import { drawDgIcon } from "./dungeonIcon";
 import { net } from "../net";
 import world from "../../../data/world.json";
@@ -362,7 +362,7 @@ export class WorldMapView {
         const x = X(p.x / TILE), y = Y(p.y / TILE), r = 12, mp = this.mouse;
         const hov = !!mp && Math.hypot(mp.x - x, mp.y - y) <= r + 4, taken = !!d && !!net.dungeon?.looted;
         drawDgIcon(g, hov ? "hover" : taken ? "taken" : "normal", x, y, 1);
-        const title = d ? "Пепельные чертоги · вход" : "Выход из подземелья";
+        const title = d ? "Пепельные чертоги · вход" : DUNGEON_EXIT_LABEL;
         label(d ? "Пепельные чертоги" : "Выход", x, y + r + 8, "#ff9a5a", font(FS.base, true), FS.base);
         hits.push({ x, y, r: r + 4, title, sub: d ? "Подземелье · ур. 85–95 · Повелитель Пепла" : "Лестница наверх, на карту мира" });
       }

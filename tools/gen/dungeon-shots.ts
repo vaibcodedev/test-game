@@ -51,7 +51,7 @@ async function main() {
     await login(page, "Данж");
     const dbg = (m: Record<string, unknown>) => page.evaluate((x) => (window as any).__net.send("dbg", x), m);
     /** Камера на точку (wx, wy) с зумом z, закреплена на каждом кадре; clip-снимок вокруг центра экрана размером w×h px. */
-    const camLock = (wx: number, wy: number, z: number) => page.evaluate(`(() => { const s = window.__game.scene.getScene("game"), c = s.cameras.main; c.stopFollow(); c.setZoom(${z}); window.__lock = [${wx}, ${wy}]; if (!window.__lockOn) { window.__lockOn = true; s.events.on("postupdate", () => { if (window.__lock) { c.stopFollow(); c.centerOn(window.__lock[0], window.__lock[1]); } }); } })()`);
+    const camLock = (wx: number, wy: number, z: number) => page.evaluate(`(() => { const s = window.__game.scene.getScene("game"), c = s.cameras.main; c.stopFollow(); c.setZoom(${z}); window.__lock = [${wx}, ${wy}]; if (window.__lockFn && window.__lockScene) window.__lockScene.events.off("postupdate", window.__lockFn); window.__lockScene = s; window.__lockFn = () => { try { if (window.__lock && s.cameras && s.cameras.main) { s.cameras.main.stopFollow(); s.cameras.main.centerOn(window.__lock[0], window.__lock[1]); } } catch (e) {} }; s.events.on("postupdate", window.__lockFn); })()`);
     const clipShot = async (w: number, h: number) => {
       const r = (await page.evaluate(`(() => { const b = document.querySelector("canvas").getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; })()`)) as { x: number; y: number; w: number; h: number };
       return (await page.screenshot({ clip: { x: Math.round(r.x + r.w / 2 - w / 2), y: Math.round(r.y + r.h / 2 - h / 2), width: w, height: h } })) as Buffer;
@@ -100,6 +100,12 @@ async function main() {
       await sheetOf(items, 5, [360, 300], city ? "city-gate-sheet.png" : "fort-gate-sheet.png");
       return;
     }
+    let exit2Entr: Buffer | null = null;
+    if (process.env.EXIT2) {
+      await camLock(DUNGEON_DOOR.x, DUNGEON_DOOR.y - 60, 2);
+      await dbg({ op: "tp", x: DUNGEON_DOOR.x, y: DUNGEON_DOOR.y + 44 }); await sleep(3500);
+      exit2Entr = await clipShot(520, 440);
+    }
     await dbg({ op: "god" });
     // спуск по лестнице входа (общая комната подземелья), затем снимки внутри
     await dbg({ op: "tp", x: DUNGEON_DOOR.x, y: DUNGEON_DOOR.y + 28 });
@@ -108,6 +114,32 @@ async function main() {
     await page.waitForFunction(`window.__net.kind === "dungeon"`, { timeout: 30000 });
     await sleep(2500);
     await dbg({ op: "god" });
+    if (process.env.EXIT2) {
+      await page.evaluate(`window.__lock = null`);
+      await camLock(1040, 138, 2);
+      await dbg({ op: "tp", x: 1040, y: 7 * 32 + 8 }); await sleep(3000);
+      const cv = (await page.evaluate(`(() => { const b = document.querySelector("canvas").getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; })()`)) as { x: number; y: number; w: number; h: number };
+      const exitBuf = (await page.screenshot({ clip: { x: Math.round(cv.x + cv.w / 2 - 260), y: Math.round(cv.y), width: 520, height: 640 } })) as Buffer; // камера упирается в верх карты: берём от верха кадра
+      const sprite = fs.readFileSync(path.resolve("client/public/assets/objects/dg_exit.png"));
+      const p2 = await browser.newPage();
+      const im = (b: Buffer, w: number, label: string, pix = true) => `<figure style="margin:0 6px 0 0"><img src="data:image/png;base64,${b.toString("base64")}" style="${pix ? "image-rendering:pixelated;" : ""}width:${w}px;display:block"><figcaption style="font:13px monospace;color:#ddd;background:#222;padding:3px">${label}</figcaption></figure>`;
+      await p2.setViewport({ width: 520 * 2 + 600 + 40, height: 700 });
+      await p2.setContent(`<body style="margin:4px;background:#000;display:flex;align-items:flex-start">${im(exit2Entr!, 520, "вход C снаружи, зум 2", false)}${im(exitBuf, 520, "выход, зум 2, герой у подножия", false)}${im(sprite, 600, "выход ×3 (спрайт)")}</body>`);
+      await sleep(700);
+      await p2.screenshot({ path: path.join(OUT, "exit5.png") });
+      await p2.close();
+      return;
+    }
+    if (process.env.EXIT3) {
+      // три варианта выхода в движке рядом внутри подземелья (зум 2, герой рядом): exit-variants.png
+      await page.setViewport({ width: 1920, height: 1080 }); await sleep(1500);
+      await dbg({ op: "tp", x: 944, y: 18 * 32 });
+      await camLock(944, 14 * 32 + 8, 2); await sleep(2500);
+      await page.evaluate(`(() => { const s = window.__game.scene.getScene("game"); s.children.list.filter((o) => o.texture && o.texture.key === "o_dg_exit").forEach((o) => o.setVisible(false)); ["a", "b", "c"].forEach((v, i) => { const x = 944 + (i - 1) * 300, y = 17 * 32; s.add.image(x, y, "o_dg_exit_" + v).setOrigin(0.5, 1).setDepth(y); s.add.text(x - 6, y - 150, v.toUpperCase(), { fontSize: "22px", color: "#ffe08a" }).setDepth(1e6); }); })()`);
+      await sleep(700);
+      await page.screenshot({ path: path.join(OUT, "exit-variants.png") });
+      return;
+    }
     if (process.env.GATES) {
       // ворота данжа: все 8 кадров створок (принудительно), герой под перемычкой и за ней; камера на воротах, зум 2, один ракурс
       const items: { buf: Buffer; label: string }[] = [];

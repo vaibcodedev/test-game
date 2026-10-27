@@ -8,6 +8,7 @@ import { frame32, cylV, ellipseFace, log, box, fillPoly, litC, grain, planksH, C
 import { shadowDisc, shadowBox } from "./shadow";
 import { DOOR_ART2 } from "./dungeon-doors2";
 import { entrance } from "./dungeon-entrance";
+import { exitStairs } from "./dungeon-exit";
 import {
   type Scene, MAR, MARW, GLD, MOSS, WAT, CAND, FIRE, LAVA, BAS, BASW, IRN, ASH,
   flame, braziA, sarcA, bonesA, pillarA, pillarB, statueB, sarcB, candles, altarB, rubbleB, chainHang,
@@ -225,24 +226,6 @@ export function entranceV1(): PC {
   emberDots(pc, 30, 8);
   return frame32(pc.outline(hex("#0c0a12")));
 }
-/** Выход: каменные ступени вверх из подземелья, сверху бледный дневной свет, по бокам два столбика с факелами. Опора — нижняя середина. */
-function exitStairs(): PC {
-  const W = 112, H = 84, pc = new PC(W, H), cx = W / 2, yb = H - 4, S = stub(pc);
-  const STONE = ramp("#1c1a20", "#2c2a32", "#403c46", "#5a5560", "#7a747c", "#a09aa0");
-  shadowBox(pc, 10, W - 10, yb, [6, -3], 40);
-  for (let i = 0; i < 6; i++) {
-    const t = i / 5, y1 = yb - i * 8, hw = 40 - t * 10;
-    for (let y = y1 - 8; y < y1; y++) for (let x = Math.round(cx - hw); x <= cx + hw; x++) {
-      const edge = y === y1 - 8, v = 2.0 + t * 1.8 + (edge ? 1.0 : -0.3) + (hash01(x, y, 99) - 0.5) * 0.4;
-      pc.set(x, y, mix(tone(STONE, v), hex("#bcd8f0"), t * 0.35));
-    }
-  }
-  for (let y = 4; y < 22; y++) for (let x = cx - 24; x <= cx + 24; x++) pc.set(x, y, mix(hex("#e8f2ff"), hex("#7aa0c8"), (y - 4) / 18 + (hash01(x, y, 3) - 0.5) * 0.1));
-  for (const sx of [-1, 1]) { pc.rect(cx + sx * 46 - 4, yb - 30, 8, 30, tone(STONE, 3)); pc.rect(cx + sx * 46 - 4, yb - 30, 8, 3, tone(STONE, 4.6)); }
-  braziA(S, cx - 46, yb - 30, 0.7); braziA(S, cx + 46, yb - 30, 0.7);
-  return frame32(pc.outline(hex("#0c0a12")));
-}
-
 export const DUNGEON_ART: Record<string, () => PC> = {
   dg_pillar_c_a: pillarCA, dg_pillar_c_b: pillarCB, dg_pillar_t_a: pillarTA, dg_pillar_t_b: pillarTB, dg_pillar_a_a: pillarAA, dg_pillar_a_b: pillarAB, dg_pillar_a_c: pillarAC, dg_pillar_a_d: pillarAD, dg_dais: dais,
   dg_statue_c_a: statue(0), dg_statue_c_b: statue(1), dg_statue_c_c: statue(2),

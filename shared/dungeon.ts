@@ -5,6 +5,7 @@
  * Раскладка залов — прежняя (бывший прямоугольник DUNGEON в мире), сдвинута в начало карты: локальные тайлы = прежние − (OX, OY).
  */
 import { TILE } from "./constants";
+import dungeons from "../data/dungeons.json";
 import { buildDungeonDecor, PASSAGES } from "./dungeonDecor";
 import { CELL_BLOCK, CELL_WALL, OBJECT_FOOTPRINT, T, ZONES, Zone, rng, type MapObject, type SpawnPoint, type WorldMap } from "./map";
 
@@ -28,7 +29,15 @@ const DESIGN_POOLS: [number, number, number][] = [[143.5, 62.5, 2.6], [146, 81.5
 export const DUNGEON_BOSS = { id: "ashlord", x: 168 - OX, y: 71.5 - OY, arena: 12 };
 /** Где встаёт вошедший (клетка перед лестницей выхода) и точка нажатия выхода (пиксели). */
 export const DUNGEON_ENTRY = { x: (148 - OX) * TILE + 16, y: (55 - OY) * TILE + 16 };
-export const DUNGEON_EXIT = { x: (148 - OX) * TILE + 16, y: (53 - OY) * TILE + 30 };
+/** Клетки под лестницей выхода (локальные тайлы): непроходимы. */
+/** Общая запись выхода из подземелья (data/dungeons.json): объект kind, ряд основания лестницы (x, y — тайлы), размер непроходимой постройки w×h клеток, куда выводит (outside — название зоны для подписи «Выйти: …»). Новое подземелье подключает выход одной записью в данных. */
+export interface DungeonExitDef { kind: string; x: number; y: number; w: number; h: number; outside: string }
+export const DUNGEON_DEF = dungeons.ashen as { name: string; exit: DungeonExitDef };
+const EX = DUNGEON_DEF.exit;
+export const DUNGEON_EXIT_CELLS = { x0: EX.x - EX.w / 2, x1: EX.x + EX.w / 2 - 1, y0: EX.y - EX.h + 1, y1: EX.y };
+export const DUNGEON_EXIT = { x: EX.x * TILE + 16, y: EX.y * TILE + 30 };
+/** Подпись у выхода («Выйти: Поля вечных битв»). */
+export const DUNGEON_EXIT_LABEL = `Выйти: ${EX.outside}`;
 /** Ворота данжа: просвет закрыт створками, пока рядом нет героя (сервер: DungeonRoom; клиент зеркалит состояние). cells — клетки просвета (локальные), cx и y — центр и низ ряда, пиксели. */
 export interface DungeonGate { id: string; kind: "wood" | "port"; cells: [number, number][]; cx: number; cy: number }
 export const DUNGEON_GATES: DungeonGate[] = PASSAGES.filter((p) => p.gate).map((p) => ({
@@ -160,8 +169,10 @@ export function generateDungeonMap(): WorldMap {
     seed: 0, w, objects, at, place, hash, DG: { x: -OX, y: -OY }, DUNGEON: DUNGEON_RECT, rooms: DUNGEON_ROOMS, style: dungeonStyle, TILE, CELL_WALL, CELL_BLOCK,
     arenaNear: (x, y, r) => Math.hypot(x - DUNGEON_BOSS.x, y - DUNGEON_BOSS.y) < DUNGEON_BOSS.arena + r, boss: DUNGEON_BOSS,
   });
+  // лестница выхода занимает клетки у северной стены входного зала (4×2): стоять в картинке нельзя
+  for (let y = DUNGEON_EXIT_CELLS.y0; y <= DUNGEON_EXIT_CELLS.y1; y++) for (let x = DUNGEON_EXIT_CELLS.x0; x <= DUNGEON_EXIT_CELLS.x1; x++) cell[y * w + x] |= CELL_BLOCK;
   // лестница выхода у входа: нажатие — клиент ставит «дверь» в этой точке
-  objects.push({ kind: "dg_exit", x: DUNGEON_EXIT.x, y: DUNGEON_EXIT.y + 4 });
+  objects.push({ kind: EX.kind, x: DUNGEON_EXIT.x, y: DUNGEON_EXIT.y + 4 });
   // мобы по глубине: уровень растёт от входа к залу босса
   const spawns: SpawnPoint[] = [];
   const taken: { x: number; y: number }[] = [];
