@@ -44,6 +44,8 @@ export const PICKUP_RANGE = GP.ranges.pickup;
 export const MERCHANT_RANGE = GP.ranges.merchant;
 /** Клиент: на каком расстоянии от NPC или двери открывать окно (подходит вплотную; сервер допускает MERCHANT_RANGE). */
 export const TALK_RANGE = GP.ranges.talk;
+/** Клиент: осмотр статуи правителя — с любой стороны подножия (курган Морта 4×4 непроходим), а не из одной точки. */
+export const STATUE_RANGE = TALK_RANGE * 4;
 export const RESPAWN_DELAY_MS = GP.timers.respawnDelayMs;
 export const SAVE_INTERVAL_MS = GP.timers.saveIntervalMs;
 export const CHAT_MAX_LEN = GP.player.chatMaxLen;

@@ -1,7 +1,7 @@
 import { layoutLabels } from "./labelLayout";
 import { PickBest } from "./hit";
 import Phaser from "phaser";
-import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, TALK_RANGE, TILE } from "../../../shared/constants";
+import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, STATUE_RANGE, TALK_RANGE, TILE } from "../../../shared/constants";
 import { Nav } from "../../../shared/path";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneDanger, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
 import { ENV, RESOURCES } from "../../../shared/biomes";
@@ -1113,9 +1113,11 @@ export class GameScene extends Phaser.Scene {
   private npcStill = 0;
 
   /** Подойти к NPC и открыть его окно. */
+  /** Дальность разговора: статую на кургане или постаменте осматривают с любой стороны подножия, а не из одной точки вплотную. */
+  private talkRange(n: Npc) { return n.kind === "statue" ? STATUE_RANGE : TALK_RANGE; }
   talk(n: Npc) {
     const d = Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y);
-    if (d < TALK_RANGE) {
+    if (d < this.talkRange(n)) {
       this.pendingNpc = null;
       this.openNpc(n);
     } else {
@@ -1323,7 +1325,7 @@ export class GameScene extends Phaser.Scene {
       const still = Math.hypot(this.pos.x - this.npcLast.x, this.pos.y - this.npcLast.y) < 0.5;
       this.npcStill = still ? this.npcStill + 1 : 0;
       this.npcLast = { x: this.pos.x, y: this.pos.y };
-      if (d < TALK_RANGE || (this.npcStill > 20 && d < MERCHANT_RANGE - 10)) {
+      if (d < this.talkRange(n) || (this.npcStill > 20 && d < MERCHANT_RANGE - 10)) {
         this.pendingNpc = null;
         this.openNpc(n);
       }
