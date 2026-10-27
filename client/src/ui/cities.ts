@@ -31,10 +31,12 @@ const stateOf = (d: QuestDef, have: number | undefined, done: boolean, level: nu
 /** Шапка карточки: название, уровень и метка состояния справа. */
 const head = (d: QuestDef, chip = "") =>
   `<div class="card-head"><div class="card-titles"><h3 class="card-title">${esc(d.name)}<span class="meta">ур. ${d.level}+</span></h3></div>${chip}</div>`;
-/** Цель с полосой прогресса: «Убить: Слизень — 3/6». */
-const goal = (d: QuestDef, have: number) => {
+/** Цель: «Убить: Слизень — 3/6»; полоса прогресса — только у взятого задания (у невзятого пустая полоса читалась как лишняя линия), вместо «0/6» — «×6». */
+const goal = (d: QuestDef, have: number | undefined) => {
+  const what = `<span>${verb(d.kind)}: ${esc(targetName(d.kind, d.target))}</span>`;
+  if (have === undefined) return `<div class="progress">${what}<b>×${d.n}</b></div>`;
   const n = Math.min(have, d.n);
-  return `<div class="progress"><span>${verb(d.kind)}: ${esc(targetName(d.kind, d.target))}</span><b>${n}/${d.n}</b><div class="bar sm"><i style="width:${Math.round((n / d.n) * 100)}%"></i></div></div>`;
+  return `<div class="progress">${what}<b>${n}/${d.n}</b><div class="bar sm"><i style="width:${Math.round((n / d.n) * 100)}%"></i></div></div>`;
 };
 /** Награда чипами: золото, опыт, зелья. */
 const reward = (d: QuestDef) => {
@@ -160,7 +162,7 @@ export class QuestUI {
       : st === "avail" ? `<button class="btn small primary" data-act="accept" data-id="${id}"${full ? ` disabled title="Слишком много активных заданий"` : ""}>${T("ui.arena.351")}</button>`
       : st === "locked" ? `<button class="btn small" disabled title="Нужен ${d.level} уровень">${T("ui.arena.351")}</button>`
       : `<button class="btn small" disabled>${T("ui.cities.422")}</button>`;
-    return `<div class="${cls}">${head(d, chip)}<p class="note">${esc(d.text)}</p>${goal(d, have ?? 0)}${reward(d)}<div class="card-actions">${btn}</div></div>`;
+    return `<div class="${cls}">${head(d, chip)}<p class="note">${esc(d.text)}</p>${goal(d, have)}${reward(d)}<div class="card-actions">${btn}</div></div>`;
   }
 }
 
