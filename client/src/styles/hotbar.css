@@ -217,6 +217,7 @@
 
 .toasts {
   position: absolute;
+  z-index: 9500; /* поверх окон (торговец, сумка), ниже модальных */
   top: 142px;
   left: 50%;
   transform: translateX(-50%);

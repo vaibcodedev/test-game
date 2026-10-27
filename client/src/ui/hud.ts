@@ -1351,8 +1351,17 @@ export class Hud {
     });
     const mounts = MOUNT_IDS.filter((id) => MOUNTS[id].source === "vendor" && MOUNTS[id].price > 0 && !s.mounts?.includes(id) && (!MOUNTS[id].faction || MOUNTS[id].faction === s.faction)).map((id) => {
       const m = MOUNTS[id];
-      return row(mountSprite(id), m.name, TX("ui.hud.596", { tier: MOUNT_TIERS[m.tier], speed: m.speed, flying: m.flying ? " · летающий" : "" }),
-        [{ q: TX("ui.bank.378"), price: m.price, need: m.level, go: () => this.ctx.net.send("mount:buy", { id }) }], lv(m.level));
+      // печать уже куплена и лежит в сумке — вместо «Купить» сразу «Изучить» (клик по печати в сумке делает то же)
+      const seal = s.inventory.findIndex((it) => !!it && sealMount(it.base) === id);
+      const r = row(mountSprite(id), m.name, TX("ui.hud.596", { tier: MOUNT_TIERS[m.tier], speed: m.speed, flying: m.flying ? " · летающий" : "" }),
+        seal >= 0 ? [] : [{ q: TX("ui.bank.378"), price: m.price, need: m.level, go: () => this.ctx.net.send("mount:buy", { id }) }], lv(m.level));
+      if (seal >= 0) {
+        const b = el("button", "btn small primary", "Изучить печать");
+        b.title = "Печать уже в сумке: изучите её — маунт навсегда войдёт в коллекцию";
+        b.onclick = () => this.ctx.net.send("use", { index: seal });
+        r.querySelector(".price-stack")!.append(b);
+      }
+      return r;
     });
     const pets = PET_IDS.filter((id) => PETS[id].price > 0 && !s.pets?.[id]).map((id) => {
       const d = PETS[id];
