@@ -28,7 +28,7 @@ export function setShadowMode(m: ShadowMode) {
 
 /** Глубина теней: над землёй и землёй-декором, под пятном юнита (DEPTH.ground + 5) и всеми объектами. */
 const SHADOW_DEPTH = -600 + 2;
-const ALPHA = 0.36;
+const ALPHA = 0.46;
 /** Подземелья и залы без солнца. */
 let noSun = false;
 export function setNoSun(v: boolean) { if (v !== noSun) { noSun = v; lastKey = -1; } }
@@ -39,7 +39,7 @@ export function sunParams(p: number, ms: number): Params {
   const day = Math.max(0, Math.min(1, p / 0.68)), e = Math.sin(Math.PI * day);
   const L = 0.32 + 1.5 * Math.pow(1 - e, 1.6);
   const phi = (-1 + 2 * day) * 1.25;
-  const k = L * Math.sin(phi), sy = Math.max(0.22, L * Math.cos(phi) * 0.55 + 0.1);
+  const k = L * Math.sin(phi), sy = Math.max(0.32, L * Math.cos(phi) * 0.55 + 0.14);
   return decompose(1, -k, 0, -sy, ALPHA * (1 - 0.9 * nightLevel(ms)));
 }
 function decompose(m00: number, m01: number, m10: number, m11: number, alpha: number): Params {
@@ -54,7 +54,8 @@ const SIMPLE: Params = decompose(1, -0.55, 0, -0.3, ALPHA);
 export class Shadow {
   readonly box: Phaser.GameObjects.Container;
   readonly imgs: Phaser.GameObjects.Image[] = [];
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  /** boost — множитель плотности: у юнитов и маунтов тень гуще (мелкие силуэты). */
+  constructor(scene: Phaser.Scene, x: number, y: number, private readonly boost = 1) {
     this.box = scene.add.container(x, y).setDepth(SHADOW_DEPTH);
     all.add(this);
     this.box.once("destroy", () => all.delete(this));
@@ -68,7 +69,7 @@ export class Shadow {
     im.setOrigin(src.originX, src.originY).setPosition(dx, dy).setFlipX(src.flipX).setScale(src.scaleX, src.scaleY).setVisible(src.visible && src.alpha > 0.05);
   }
   apply(p: Params) {
-    this.box.setRotation(p.phi).setScale(p.sx, p.sy).setAlpha(mode === "off" || noSun ? 0 : p.alpha);
+    this.box.setRotation(p.phi).setScale(p.sx, p.sy).setAlpha(mode === "off" || noSun ? 0 : Math.min(0.7, p.alpha * this.boost));
     for (const im of this.imgs) im.setRotation(p.theta);
   }
   destroy() { this.box.destroy(); }

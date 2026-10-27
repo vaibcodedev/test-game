@@ -731,7 +731,7 @@ export class UnitView {
 
   /** Тень по кадрам тела и маунта; основание — точка юнита на земле. */
   private syncDynShadow() {
-    if (!this.dyn) this.dyn = new Shadow(this.scene, this.x, this.y);
+    if (!this.dyn) this.dyn = new Shadow(this.scene, this.x, this.y, 1.35);
     const bx = Math.round(this.x), by = Math.round(this.y);
     this.dyn.box.setPosition(bx, by).setVisible(!this.dead && this.sprite.visible);
     this.dyn.mirror(0, this.sprite, this.sprite.x - bx, this.sprite.y - by);
