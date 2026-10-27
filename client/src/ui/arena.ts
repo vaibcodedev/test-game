@@ -405,6 +405,8 @@ export class ArenaUI {
     // табло матча
     const inArena = net.kind === "arena" && !!net.arena;
     setHidden(this.board, !inArena);
+    // табло сверху: баннер зоны («Арена · 2×2») встаёт под ним, а не под ним внахлёст (как у полосы «Знамён», war.css)
+    document.body.classList.toggle("arena-board-on", inArena);
     if (!inArena) {
       setHidden(this.countdown, true);
       return;
@@ -419,6 +421,7 @@ export class ArenaUI {
     }).join("");
     const timer = st.phase === "fight" || st.phase === "end" ? mmss(st.timeLeft * 1000) : st.phase === "countdown" ? T("ui.arena.361") : T("ui.arena.362");
     this.board.innerHTML = `<div class="side ally">${names(myTeam)}</div><div class="mid"><div class="mode">${MODE_NAMES[net.arena!.mode]}</div><div class="time">${timer}</div></div><div class="side enemy">${names(myTeam === 1 ? 2 : 1)}</div>`;
+    document.documentElement.style.setProperty("--arena-board-b", `${this.board.offsetTop + this.board.offsetHeight}px`);
     this.intro(st);
     this.lastPhase = st.phase;
   }

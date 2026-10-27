@@ -176,6 +176,9 @@
     0 0 30px #000;
   pointer-events: none;
 }
+/* баннер зоны под табло матча; во время вступления он не нужен — режим и так написан в «VS» */
+body.arena-board-on .hud-zone { top: calc(var(--arena-board-b, 110px) + 6px); }
+body:has(.arena-intro:not([hidden])) .hud-zone { opacity: 0; }
 /* вступление боя (ui/arena.ts → intro): виньетка стягивается к центру (scale из ui/arena.ts), «3 · 2 · 1», баннер, вспышка на «В бой!» */
 .arena-intro { position: fixed; inset: 0; z-index: var(--z-announce); pointer-events: none; overflow: hidden; }
 .arena-intro .ai-vig {
@@ -187,7 +190,7 @@
 }
 .arena-intro .ai-flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 50%, rgba(255, 244, 200, .9), rgba(255, 190, 90, .45) 35%, transparent 70%); }
 .arena-intro .ai-vs {
-  position: absolute; top: 22%; left: 50%; transform: translateX(-50%);
+  position: absolute; top: max(22%, calc(var(--arena-board-b, 110px) + 24px)); /* не под табло матча на низких экранах */ left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: var(--sp-4, 24px); white-space: nowrap;
   font-family: var(--font-head); animation: ai-vs-in .7s cubic-bezier(.2, .8, .3, 1.2) both;
   transition: opacity .5s ease, transform .5s ease;

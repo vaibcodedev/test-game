@@ -112,6 +112,25 @@ async function main() {
       await sleep(1300);
       await shot(page, "intro-2-count.png");
       must(await page.$eval(".arena-intro .ai-num", (e) => e.textContent === "2"), "отсчёт не показан");
+      // ничего не налезает: табло матча, баннер зоны (если виден), «VS» и цифра отсчёта — на разных размерах окна
+      const vp0 = page.viewport()!;
+      for (const [w, h] of [[1920, 1080], [1366, 768], [1280, 720], [1024, 600]]) {
+        await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+        await sleep(400);
+        const hits = await page.evaluate(() => {
+          const box = (s: string) => { const e = document.querySelector(s) as HTMLElement | null; if (!e || e.hidden || Number(getComputedStyle(e).opacity) < 0.05) return null; const r = e.getBoundingClientRect(); return r.width ? { s, r } : null; };
+          const els = [".arena-board", ".hud-zone.show", ".arena-intro .ai-vs", ".arena-intro .ai-num"].map(box).filter(Boolean) as { s: string; r: DOMRect }[];
+          const out: string[] = [];
+          for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) {
+            const a = els[i].r, b = els[j].r;
+            if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.push(`${els[i].s} × ${els[j].s}`);
+          }
+          return out;
+        });
+        if (w === 1024) await shot(page, "intro-1024x600.png");
+        must(hits.length === 0, `${w}×${h}: налезают ${hits.join(", ")}`);
+      }
+      await page.setViewport(vp0);
       await unfreeze();
       await stage("go");
       await sleep(900);
