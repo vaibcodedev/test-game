@@ -345,7 +345,8 @@ export class GameScene extends Phaser.Scene {
     const s = this.add.sprite(at.x, at.y, tex, 0).setOrigin(0.5, 30 / 32).setDepth(at.y);
     if (tint) s.setTint(tint);
     const shadow = this.add.image(at.x, at.y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5);
-    const label = { fontSize: "9px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 4 };
+    // имена NPC-служб: на ступень крупнее ника героя (7 px), обводка как у ников — тонкая, не «жирная» (просьба пользователя 2026-10-27)
+    const label = { fontSize: "8px", fontStyle: "600", color, stroke: "#120a10", strokeThickness: 2 };
     const nameT = placeText(worldText(this, 0, 0, name, "plain", label).setDepth(DEPTH.top - 5), at.x, at.y - 31, 0.5, 1);
     const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : kind === "arena" ? "⚔" : kind === "raid" ? "☀" : kind === "rumor" ? "…" : kind === "cook" ? "♨" : kind === "smith" ? "⚒" : kind === "bank" ? "$" : kind === "bags" ? "▣" : kind === "stable" ? "♞" : "!", "plain", { ...label, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, at.y - 40, 0.5, 1);
     this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
