@@ -55,7 +55,7 @@ async function startServer() {
 
 async function enter(name: string, token: string, zoom: number) {
   await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-  await page.evaluate((t: string, z: number) => { sessionStorage.setItem("emberfall-token", t); localStorage.setItem("zoom:v1", String(z)); }, token, zoom);
+  await page.evaluate((t: string, z: number) => { sessionStorage.setItem("emberfall-token", t); localStorage.setItem("zoom:v2", String(z)); }, token, zoom);
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 20000 });
   await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());

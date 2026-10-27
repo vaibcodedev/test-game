@@ -17,7 +17,7 @@
  *
  * Запуск (строго по одному, порты свободные):
  *   $env:TEST_PORT="2801"; $env:VITE_TEST_PORT="5399"; npx tsx tests/perf-run.ts [--label=before] [--dpr=1.25] [--zoom=2.25] [--secs=20] [--gpu] [--no-trace] [--inval] [--only=forest,trek,shots]
- * --dpr — эмуляция масштаба экрана (deviceScaleFactor), --zoom — масштаб в пикселях CSS, как выставленный колесом (zoom:v1),
+ * --dpr — эмуляция масштаба экрана (deviceScaleFactor), --zoom — масштаб в пикселях CSS, как выставленный колесом (zoom:v2),
  * --gpu — WebGL на видеокарте вместо программного SwiftShader (на SwiftShader кадр упирается в растеризацию и замер не показателен).
  * Выход — tools/out/perf/<label>/: report.json (всё собранное), trace-<сегмент>.json, shots/*.png.
  */
@@ -473,7 +473,7 @@ async function main() {
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-    await page.evaluate((z) => { try { if (z) localStorage.setItem("zoom:v1", String(z)); else localStorage.removeItem("zoom:v1"); } catch {} }, ZOOM);
+    await page.evaluate((z) => { try { if (z) localStorage.setItem("zoom:v2", String(z)); else localStorage.removeItem("zoom:v2"); } catch {} }, ZOOM);
     await page.waitForSelector("#login-name", { visible: true, timeout: 20000 });
     await page.type("#login-name", LOGIN);
     await page.type("#login-pass", PASS);

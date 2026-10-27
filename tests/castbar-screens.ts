@@ -24,7 +24,7 @@ function chromePath() {
 const must = (c: unknown, m: string) => { if (!c) throw new Error(m); };
 
 async function enter(page: Page, name: string) {
-  await page.evaluateOnNewDocument(() => { try { localStorage.setItem("zoom:v1", "2"); } catch {} });
+  await page.evaluateOnNewDocument(() => { try { localStorage.setItem("zoom:v2", "2"); } catch {} });
   await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#login-name", { visible: true, timeout: 10000 });
   await page.type("#login-name", name);

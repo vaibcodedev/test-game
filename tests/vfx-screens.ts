@@ -124,7 +124,7 @@ async function enterAs(cls: ClassId) {
   const name = `vfx_${cls}`;
   const token = await ensureChar(name, PASS, name, cls, 0);
   await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-  await page.evaluate((t, z) => { sessionStorage.setItem("emberfall-token", t); if (z) localStorage.setItem("zoom:v1", String(z)); else localStorage.removeItem("zoom:v1"); }, token, ZOOM);
+  await page.evaluate((t, z) => { sessionStorage.setItem("emberfall-token", t); if (z) localStorage.setItem("zoom:v2", String(z)); else localStorage.removeItem("zoom:v2"); }, token, ZOOM);
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 20000 });
   await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());

@@ -71,7 +71,7 @@ async function enter(page: Page, name: string, token: string) {
 async function enterOnce(page: Page, name: string, token: string) {
   console.log(`вход: ${name}`);
   await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-  await page.evaluate((t: string) => { sessionStorage.setItem("emberfall-token", t); localStorage.setItem("zoom:v1", "2"); }, token);
+  await page.evaluate((t: string) => { sessionStorage.setItem("emberfall-token", t); localStorage.setItem("zoom:v2", "2"); }, token);
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 20000 });
   await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());

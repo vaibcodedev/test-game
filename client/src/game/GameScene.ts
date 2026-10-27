@@ -221,10 +221,12 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
     /** Масштаб в пикселях CSS на пиксель мира: выбранный колесом или по размеру окна (2–3). Камера получает целый масштаб холста (fitCanvas). */
-    const cssZoom = () => userZoom ?? Math.max(2, Math.min(3, Math.round(Math.min(window.innerWidth / 640, window.innerHeight / 400))));
+    // камера чуть дальше (просьба пользователя 2026-10-27): по умолчанию шаг 0,25 от размера окна, 1,75–3; колесо — так же
+    const ZMIN = 1.75, ZMAX = 3;
+    const cssZoom = () => userZoom ?? Math.max(ZMIN, Math.min(ZMAX, Math.round(Math.min(window.innerWidth / 760, window.innerHeight / 450) * 4) / 4));
     const fitZoom = () => { this.css = cssZoom(); cam.setZoom(fitCanvas(this.game, this.css)); };
     let userZoom: number | null = null;
-    try { const z = Number(localStorage.getItem("zoom:v1")); if (z >= 2 && z <= 3) userZoom = z; } catch {}
+    try { const z = Number(localStorage.getItem("zoom:v2")); if (z >= ZMIN && z <= ZMAX) userZoom = z; } catch {}
     // размер холста ведёт fitCanvas, а не Phaser: в режиме RESIZE он при каждом изменении окна возвращал бы холст к размеру в пикселях CSS
     this.scale.scaleMode = Phaser.Scale.NONE;
     fitZoom();
@@ -235,8 +237,8 @@ export class GameScene extends Phaser.Scene {
     const onWheel = (e: WheelEvent) => {
       if (!mouseOpts.zoomWheel || e.target !== this.game.canvas) return;
       e.preventDefault();
-      userZoom = Math.min(3, Math.max(2, Math.round((cssZoom() - Math.sign(e.deltaY) * 0.25) * 4) / 4));
-      try { localStorage.setItem("zoom:v1", String(userZoom)); } catch {}
+      userZoom = Math.min(ZMAX, Math.max(ZMIN, Math.round((cssZoom() - Math.sign(e.deltaY) * 0.25) * 4) / 4));
+      try { localStorage.setItem("zoom:v2", String(userZoom)); } catch {}
       fitZoom();
     };
     window.addEventListener("wheel", onWheel, { passive: false });
