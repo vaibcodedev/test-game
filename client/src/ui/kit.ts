@@ -121,7 +121,7 @@ export function seg(root: HTMLElement, onSelect?: (value: string, btn: HTMLButto
 export interface ModalOpts {
   /** Куда вставить подложку; по умолчанию document.body (вне масштаба интерфейса). */
   parent?: HTMLElement;
-  /** Системное окно поверх всего (z-index 20000): переподключение, ошибка соединения. */
+  /** Системное окно поверх всего (слой --z-modal-sys): переподключение, ошибка соединения. */
   sys?: boolean;
   /** Закрывать по Esc (по умолчанию да). */
   esc?: boolean;

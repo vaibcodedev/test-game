@@ -1,7 +1,7 @@
 /* ---------- Рейд (задача 114) ---------- */
 /* Окно сбора у Вестника — .modal и .dialog из kit.css (.raid-modal / .raid-dialog — метки для tests/): реплика .npc-say, разделы .sec, строки .kv, список .list.boxed, подвал .dialog-foot.
    Итоги рейда (.raid-res) пока на старой разметке: правила подложки, диалога и .raid-btns сужены :not(); удалить, когда итоги перейдут на .modal / .dialog. */
-.raid-modal:not(.modal) { position: absolute; inset: 0; display: grid; place-items: center; background: var(--overlay); z-index: 5; padding: var(--sp-4); }
+.raid-modal:not(.modal) { position: absolute; inset: 0; display: grid; place-items: center; background: var(--overlay); z-index: var(--z-l5); padding: var(--sp-4); }
 .raid-dialog:not(.dialog) { padding: var(--sp-4) var(--sp-5); width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
 .raid-dialog:not(.dialog) h2 { margin: 0; display: flex; justify-content: space-between; align-items: center; color: var(--boss); font-size: var(--fs-lg); }
 .raid-dialog:not(.dialog) p { margin: 0; }

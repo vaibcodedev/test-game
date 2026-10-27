@@ -5,7 +5,7 @@
   left: 50%;
   top: 90px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 /* две колонки, между ними вертикальная линия */
 .trade-cols {
@@ -51,7 +51,7 @@
 /* меню игрока по правому клику: имя и пункты .btn.opt; линия под именем отстоит от кнопок на 8px */
 .ctx-menu {
   position: absolute;
-  z-index: 6;
+  z-index: var(--z-window-pinned);
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);

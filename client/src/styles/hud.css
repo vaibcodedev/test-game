@@ -276,7 +276,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 2;
+  z-index: var(--z-l2);
   width: 20px;
   height: 20px;
   padding: 0;

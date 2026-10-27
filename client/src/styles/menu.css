@@ -38,7 +38,7 @@
   left: 50%;
   top: 80px;
   transform: translateX(-50%);
-  z-index: 5;
+  z-index: var(--z-window);
 }
 .cell img.ghost {
   opacity: 0.22;

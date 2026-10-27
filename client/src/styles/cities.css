@@ -25,7 +25,7 @@
   left: 50%;
   top: 90px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 .win-qlog {
   left: 50%;

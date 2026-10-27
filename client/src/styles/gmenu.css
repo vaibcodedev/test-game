@@ -2,7 +2,7 @@
 .gmenu-back {
   position: absolute;
   inset: 0;
-  z-index: 9000;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   background: var(--overlay);
@@ -60,7 +60,7 @@
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  z-index: 5;
+  z-index: var(--z-window);
 }
 /* все разделы клавиш лежат в одном .keys и делят колонку клавиш (dl и .keys-row — display: contents); заголовок раздела — на всю ширину, между разделами линия */
 .win-help .keys > dl {
@@ -110,7 +110,7 @@
   width: min(1500px, calc(100vw - 24px));
   max-height: none;
   overflow: visible;
-  z-index: 5;
+  z-index: var(--z-window);
 }
 .wm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1h); margin-bottom: var(--sp-2); }
 .wm-btn { min-width: 36px; padding: var(--sp-1) var(--sp-2); }
@@ -123,7 +123,9 @@
 .wm-view canvas:active { cursor: var(--cur-grabbing); }
 .wm.picking .wm-view canvas { cursor: none; } /* выбор точки (телепорт админа): курсор — золотая рамка на тайле, её рисует карта (worldmap.ts, drawPickMark); второй курсор поверх не нужен */
 .wm.picking .wm-view canvas:active { cursor: var(--cur-grabbing); } /* пока тащат карту, рамки нет — видна сжатая рука */
-.wm-tip { position: absolute; pointer-events: none; background: rgba(20,14,24,0.96); border: 1px solid var(--line-hi); border-radius: var(--r-2); padding: var(--sp-1h) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-0); max-width: 280px; z-index: 2; }
+.wm-tip { position: absolute; pointer-events: none; background: rgba(20,14,24,0.96); border: 1px solid var(--line-hi); border-radius: var(--r-2); padding: var(--sp-1h) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-0); max-width: 280px; z-index: var(--z-l2); }
 .wm-tip b { color: var(--gold); font-weight: var(--fw-b); font-size: var(--fs-md); }
 .wm-tip span { font-size: var(--fs); color: var(--fg); }
 /* .combat-badge, .gold-amt и img.coin — в kit.css */
+/* карта мира в режиме выбора точки — над остальными окнами (слой --z-window-pinned) */
+.win:has(.wm.picking) { z-index: var(--z-window-pinned) !important; }

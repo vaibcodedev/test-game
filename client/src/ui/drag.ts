@@ -1,5 +1,11 @@
 /** Перетаскивание окон за заголовок. Один модуль на все .win (делегирование + MutationObserver). */
-let zTop = 10;
+/** Слой окон: границы — токены --z-window..--z-window-max (styles/tokens.css). */
+let zTop = 0;
+function zRange(): [number, number] {
+  const cs = getComputedStyle(document.documentElement);
+  const lo = parseInt(cs.getPropertyValue("--z-window"), 10) || 1000, hi = parseInt(cs.getPropertyValue("--z-window-max"), 10) || 1999;
+  return [lo, hi];
+}
 let getName: () => string = () => "";
 const known = new Set<HTMLElement>();
 const key = () => `winpos:${getName()}`;
@@ -34,7 +40,19 @@ function restore(w: HTMLElement) {
   if (p) place(w, p[0], p[1]); else if (w.dataset.moved) place(w, ...localPos(w));
 }
 
-export function bringToFront(w: HTMLElement) { w.style.zIndex = String(++zTop); }
+/** Окно наверх своего слоя. Счётчик не выходит за --z-window-max: при исчерпании окна перенумеровываются с сохранением порядка. */
+export function bringToFront(w: HTMLElement) {
+  const [lo, hi] = zRange();
+  if (zTop < lo) zTop = lo;
+  if (w.style.zIndex === String(zTop)) return;
+  if (zTop >= hi) {
+    const all = [...document.querySelectorAll<HTMLElement>(".win")].filter((x) => x !== w);
+    all.sort((a, b) => (parseInt(a.style.zIndex, 10) || 0) - (parseInt(b.style.zIndex, 10) || 0));
+    zTop = lo;
+    for (const x of all) if (x.style.zIndex) x.style.zIndex = String(++zTop);
+  }
+  w.style.zIndex = String(++zTop);
+}
 
 export function makeDraggable(win: HTMLElement, _id?: string) {
   if (known.has(win)) return;
@@ -74,7 +92,7 @@ export function initWindowDrag(root: HTMLElement, nameFn: () => string) {
     }
   }).observe(root, { childList: true, subtree: false });
   // hidden-атрибут следим на самих окнах
-  const obs = new MutationObserver((muts) => { for (const m of muts) { const w = m.target as HTMLElement; if (!w.hidden) requestAnimationFrame(() => restore(w)); } });
+  const obs = new MutationObserver((muts) => { for (const m of muts) { const w = m.target as HTMLElement; if (!w.hidden) { bringToFront(w); requestAnimationFrame(() => restore(w)); } } });
   const watch = (w: HTMLElement) => obs.observe(w, { attributes: true, attributeFilter: ["hidden"] });
   root.querySelectorAll<HTMLElement>(".win").forEach(watch);
   new MutationObserver((muts) => muts.forEach((m) => m.addedNodes.forEach((n) => n instanceof HTMLElement && n.classList.contains("win") && watch(n)))).observe(root, { childList: true });

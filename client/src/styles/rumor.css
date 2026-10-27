@@ -6,7 +6,7 @@
   bottom: 150px;
   top: auto;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 /* высота реплики не прыгает, когда многоточие сменяется текстом слуха: запас на три строки */
 .win-rumor .npc-say {
@@ -17,7 +17,7 @@
   left: 50%;
   top: 90px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 /* блюдо: иконка, текст и цены прижаты к верху строки; баффы — чипами отдельной строкой */
 .dish {
@@ -45,7 +45,7 @@
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
   max-height: calc(100vh - 100px);
 }
 /* выбор вещи: «Надето» и «В сумке» — две группы ячеек по 8 в ряд, без вложенной прокрутки */

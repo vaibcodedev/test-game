@@ -8,13 +8,13 @@
   left: 50%;
   top: 90px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 .win-bank {
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 
 /* торговка: «Купить 25 000» с монетой шире стандартных 112px столбика цен */
@@ -52,7 +52,7 @@
 .win-stable {
   left: max(var(--sp-4), calc(50% - 660px));
   top: 90px;
-  z-index: 4;
+  z-index: var(--z-window);
 }
 /* узкий экран: окно начинается под рамкой героя (она слева сверху) */
 @media (max-width: 1700px) {

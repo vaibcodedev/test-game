@@ -34,7 +34,7 @@
   position: absolute;
   top: 120px;
   left: 50%;
-  z-index: 50;
+  z-index: var(--z-announce);
   box-sizing: border-box;
   width: max-content;
   max-width: min(560px, calc(100vw - 2 * var(--sp-4)));

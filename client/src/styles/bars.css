@@ -2,7 +2,7 @@
 .bar.hp, .bar.mp { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
 
 /* air bar (under water) */
-.air-bar-box { position: fixed; left: 50%; bottom: 150px; width: 200px; transform: translateX(-50%); z-index: 20; pointer-events: none; }
+.air-bar-box { position: fixed; left: 50%; bottom: 150px; width: 200px; transform: translateX(-50%); z-index: var(--z-castbar); pointer-events: none; }
 .air-bar-label { font-size: var(--fs-sm); color: #cfeaff; text-shadow: var(--shadow-text); text-align: center; }
 .air-bar-track { height: 8px; background: #06121c; border: 1px solid #4a7a9a; margin-top: var(--sp-0); }
 .air-bar-fill { display: block; height: 100%; width: var(--p, 100%); background: #4ab8ff; transition: width .4s linear; }

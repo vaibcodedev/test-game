@@ -177,7 +177,7 @@
   pointer-events: none;
 }
 /* вступление боя (ui/arena.ts → intro): виньетка стягивается к центру (scale из ui/arena.ts), «3 · 2 · 1», баннер, вспышка на «В бой!» */
-.arena-intro { position: fixed; inset: 0; z-index: 50; pointer-events: none; overflow: hidden; }
+.arena-intro { position: fixed; inset: 0; z-index: var(--z-announce); pointer-events: none; overflow: hidden; }
 .arena-intro .ai-vig {
   /* больше экрана: уменьшение (ui/arena.ts задаёт scale от 1.25 до 0.8) стягивает тёмное кольцо к центру */
   position: absolute; inset: -25%;

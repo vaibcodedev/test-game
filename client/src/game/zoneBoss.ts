@@ -439,7 +439,7 @@ function bossCast(): { start: (name: string, ms: number, o: { glyph?: string; co
   if (!castBox) {
     const el = document.createElement("div");
     el.className = "zb-cast";
-    el.style.cssText = "position:fixed;left:50%;top:92px;transform:translateX(-50%);width:min(360px,80vw);z-index:40;pointer-events:none";
+    el.style.cssText = "position:fixed;left:50%;top:92px;transform:translateX(-50%);width:min(360px,80vw);z-index:var(--z-hud-event);pointer-events:none";
     const bar = new CastBar("a", true);
     el.append(bar.el);
     document.body.append(el);

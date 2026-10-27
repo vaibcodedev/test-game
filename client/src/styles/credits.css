@@ -5,7 +5,7 @@
   left: 50%;
   top: 70px;
   transform: translateX(-50%);
-  z-index: 5;
+  z-index: var(--z-window);
 }
 /* ссылки золотые с подчёркиванием; рука вместо системного курсора — base.css */
 .win-credits a:not(.chip) {

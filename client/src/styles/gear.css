@@ -3,7 +3,7 @@
   left: 50%;
   top: 80px;
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: var(--z-window);
 }
 /* строки снаряжения: .list > .row из kit.css, ячейка .cell.md (40px). Имя цветом редкости в одну строку, под ним слот и эффект на герое — не больше двух строк */
 .gear-row:hover {

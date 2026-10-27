@@ -20,7 +20,7 @@
 .bst-sec {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: var(--z-l1);
   padding: var(--sp-1) var(--sp-2);
   background: var(--card);
   border-bottom: 1px solid var(--line);
