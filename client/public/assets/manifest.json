@@ -30695,17 +30695,141 @@
    "w": 36,
    "h": 50
   },
-  "umb_statue": {
-   "w": 64,
-   "h": 152
+  "bf_sword_planted": {
+   "w": 32,
+   "h": 64
   },
-  "umb_barrow": {
-   "w": 128,
-   "h": 152
+  "bf_sword_sol_b": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_sword_sol_c": {
+   "w": 40,
+   "h": 56
+  },
+  "bf_sword_sol_d": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_sword_planted_dark": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_sword_umb_b": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_sword_umb_c": {
+   "w": 40,
+   "h": 56
+  },
+  "bf_sword_umb_d": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_spear_sol_a": {
+   "w": 32,
+   "h": 96
+  },
+  "bf_spear_sol_b": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_spear_sol_c": {
+   "w": 32,
+   "h": 96
+  },
+  "bf_spear_umb_a": {
+   "w": 32,
+   "h": 96
+  },
+  "bf_spear_umb_b": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_spear_umb_c": {
+   "w": 32,
+   "h": 96
+  },
+  "bf_shield_sol_a": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_shield_sol_b": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_shield_sol_c": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_shield_umb_a": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_shield_umb_b": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_shield_umb_c": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_axe_a": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_axe_b": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_hammer_a": {
+   "w": 32,
+   "h": 64
   },
   "bf_arrows_planted": {
    "w": 64,
    "h": 64
+  },
+  "bf_arrows_b": {
+   "w": 64,
+   "h": 64
+  },
+  "bf_arrows_c": {
+   "w": 32,
+   "h": 64
+  },
+  "bf_arrows_d": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_crater_a": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_crater_b": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_crater_c": {
+   "w": 96,
+   "h": 64
+  },
+  "bf_crater_d": {
+   "w": 96,
+   "h": 32
+  },
+  "bf_debris_a": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_debris_b": {
+   "w": 64,
+   "h": 32
+  },
+  "bf_debris_c": {
+   "w": 64,
+   "h": 32
   },
   "bf_blood_a": {
    "w": 32,
@@ -30714,6 +30838,138 @@
   "bf_blood_b": {
    "w": 64,
    "h": 32
+  },
+  "bf_blood_c": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_blood_d": {
+   "w": 32,
+   "h": 32
+  },
+  "bf_scorch": {
+   "w": 96,
+   "h": 32
+  },
+  "bf_scorch_b": {
+   "w": 96,
+   "h": 32
+  },
+  "bf_scorch_c": {
+   "w": 96,
+   "h": 32
+  },
+  "bf_spike_barrier": {
+   "w": 60,
+   "h": 40
+  },
+  "bf_spike_barrier_b": {
+   "w": 60,
+   "h": 40
+  },
+  "bf_spike_barrier_c": {
+   "w": 60,
+   "h": 40
+  },
+  "bf_spike_barrier_d": {
+   "w": 60,
+   "h": 40
+  },
+  "bf_wagon_broken_a": {
+   "w": 104,
+   "h": 66
+  },
+  "bf_wagon_broken_b": {
+   "w": 104,
+   "h": 66
+  },
+  "bf_wagon_broken_c": {
+   "w": 104,
+   "h": 66
+  },
+  "bf_wagon_broken_d": {
+   "w": 104,
+   "h": 66
+  },
+  "bf_wagon_broken_e": {
+   "w": 104,
+   "h": 66
+  },
+  "bf_tent_torn": {
+   "w": 100,
+   "h": 94
+  },
+  "bf_tent_torn_b": {
+   "w": 100,
+   "h": 94
+  },
+  "bf_tent_torn_c": {
+   "w": 100,
+   "h": 94
+  },
+  "bf_tent_burnt": {
+   "w": 100,
+   "h": 94
+  },
+  "bf_tent_burnt_b": {
+   "w": 106,
+   "h": 96
+  },
+  "bf_tent_burnt_c": {
+   "w": 100,
+   "h": 94
+  },
+  "bf_catapult_wreck_a": {
+   "w": 124,
+   "h": 70
+  },
+  "bf_catapult_wreck_b": {
+   "w": 124,
+   "h": 70
+  },
+  "bf_catapult_wreck_c": {
+   "w": 124,
+   "h": 70
+  },
+  "bf_shield_stand": {
+   "w": 60,
+   "h": 46
+  },
+  "bf_shield_stand_sol": {
+   "w": 60,
+   "h": 46
+  },
+  "bf_shield_stand_umb": {
+   "w": 60,
+   "h": 46
+  },
+  "bf_shield_stand_b": {
+   "w": 60,
+   "h": 46
+  },
+  "bf_map_table": {
+   "w": 60,
+   "h": 44
+  },
+  "bf_map_table_umb": {
+   "w": 60,
+   "h": 44
+  },
+  "bf_map_table_b": {
+   "w": 60,
+   "h": 44
+  },
+  "bf_map_table_c": {
+   "w": 60,
+   "h": 44
+  },
+  "umb_statue": {
+   "w": 64,
+   "h": 152
+  },
+  "umb_barrow": {
+   "w": 128,
+   "h": 152
   },
   "bf_fallen_sol_a": {
    "w": 64,
@@ -30739,10 +30995,6 @@
    "w": 96,
    "h": 64
   },
-  "bf_map_table": {
-   "w": 64,
-   "h": 64
-  },
   "bf_palisade_gate": {
    "w": 96,
    "h": 96
@@ -30750,14 +31002,6 @@
   "bf_ram": {
    "w": 128,
    "h": 96
-  },
-  "bf_scorch": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_shield_stand": {
-   "w": 64,
-   "h": 64
   },
   "bf_siege_tower": {
    "w": 96,
@@ -30767,22 +31011,6 @@
    "w": 64,
    "h": 32
   },
-  "bf_spike_barrier": {
-   "w": 60,
-   "h": 40
-  },
-  "bf_sword_planted": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_sword_planted_dark": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_tent_burnt": {
-   "w": 100,
-   "h": 94
-  },
   "bf_tent_sol": {
    "w": 96,
    "h": 96
@@ -30791,10 +31019,6 @@
    "w": 128,
    "h": 128
   },
-  "bf_tent_torn": {
-   "w": 100,
-   "h": 94
-  },
   "bf_tent_umb": {
    "w": 96,
    "h": 96
@@ -30802,14 +31026,6 @@
   "bf_tent_umb_cmd": {
    "w": 128,
    "h": 128
-  },
-  "bf_wagon_broken_a": {
-   "w": 104,
-   "h": 66
-  },
-  "bf_wagon_broken_b": {
-   "w": 104,
-   "h": 66
   },
   "v_basic_bush": {
    "w": 64,
@@ -31386,194 +31602,6 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
-  },
-  "bf_sword_sol_b": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_sword_sol_c": {
-   "w": 40,
-   "h": 56
-  },
-  "bf_sword_sol_d": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_sword_umb_b": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_sword_umb_c": {
-   "w": 40,
-   "h": 56
-  },
-  "bf_sword_umb_d": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_spear_sol_a": {
-   "w": 32,
-   "h": 96
-  },
-  "bf_spear_sol_b": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_spear_sol_c": {
-   "w": 32,
-   "h": 96
-  },
-  "bf_spear_umb_a": {
-   "w": 32,
-   "h": 96
-  },
-  "bf_spear_umb_b": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_spear_umb_c": {
-   "w": 32,
-   "h": 96
-  },
-  "bf_shield_sol_a": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_shield_sol_b": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_shield_sol_c": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_shield_umb_a": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_shield_umb_b": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_shield_umb_c": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_axe_a": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_axe_b": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_hammer_a": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_arrows_b": {
-   "w": 64,
-   "h": 64
-  },
-  "bf_arrows_c": {
-   "w": 32,
-   "h": 64
-  },
-  "bf_arrows_d": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_crater_a": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_crater_b": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_crater_c": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_debris_a": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_debris_b": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_debris_c": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_blood_c": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_blood_d": {
-   "w": 32,
-   "h": 32
-  },
-  "bf_scorch_b": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_scorch_c": {
-   "w": 64,
-   "h": 32
-  },
-  "bf_spike_barrier_b": {
-   "w": 60,
-   "h": 40
-  },
-  "bf_spike_barrier_c": {
-   "w": 60,
-   "h": 40
-  },
-  "bf_spike_barrier_d": {
-   "w": 60,
-   "h": 40
-  },
-  "bf_wagon_broken_c": {
-   "w": 104,
-   "h": 66
-  },
-  "bf_wagon_broken_d": {
-   "w": 104,
-   "h": 66
-  },
-  "bf_wagon_broken_e": {
-   "w": 104,
-   "h": 66
-  },
-  "bf_tent_torn_b": {
-   "w": 100,
-   "h": 94
-  },
-  "bf_tent_torn_c": {
-   "w": 100,
-   "h": 94
-  },
-  "bf_tent_burnt_b": {
-   "w": 106,
-   "h": 96
-  },
-  "bf_tent_burnt_c": {
-   "w": 100,
-   "h": 94
-  },
-  "bf_catapult_wreck_a": {
-   "w": 124,
-   "h": 70
-  },
-  "bf_catapult_wreck_b": {
-   "w": 124,
-   "h": 70
-  },
-  "bf_catapult_wreck_c": {
-   "w": 124,
-   "h": 70
   }
  },
  "icons": [

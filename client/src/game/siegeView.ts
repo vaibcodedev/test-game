@@ -27,6 +27,8 @@ const ARCH = { cx: 48, aw: 30, top: 70, by: 146 };
 const ROYAL = { solgard: "war-royal-sol", umbrath: "war-royal-umb" } as const;
 const DRAPE = { solgard: "std-drape-sol", umbrath: "std-drape-umb" } as const;
 const FOOT = 18;
+/** Дым и угли над проломом — столько мс, затем гаснут. */
+const SMOKE_MS = SIEGE.gates.smokeMs;
 
 interface GateVis {
   g: GateDef;
@@ -40,12 +42,18 @@ interface GateVis {
   repairT0: number;
   over: Phaser.GameObjects.Image | null;
   shakeT0: number;
+  /** Обломки пролома: створки (висит на петле, лежит в проёме), трещины свода, щебень и доски, копоть, дым; когда ворота пали. */
+  wreck: Phaser.GameObjects.GameObject[] | null;
+  smoke: Phaser.GameObjects.Sprite[];
+  brokenAt: number;
+  emberAcc: number;
 }
 interface Anim { t0: number; ms: number; step: (k: number) => void; end: () => void }
 
 export class SiegeView {
-  private gates: GateVis[] = GATES.map((g) => ({ g, img: null, prefix: "", k: 0, leafL: null, leafR: null, drape: null, drapeF: "", repairT0: 0, over: null, shakeT0: 0 }));
+  private gates: GateVis[] = GATES.map((g) => ({ g, img: null, prefix: "", k: 0, leafL: null, leafR: null, drape: null, drapeF: "", repairT0: 0, over: null, shakeT0: 0, wreck: null, smoke: [], brokenAt: 0, emberAcc: 0 }));
   private scanAt = 0;
+  private quiet = new Set<UnitView>();
   private hp: Phaser.GameObjects.Graphics;
   private engines = new Map<string, Phaser.GameObjects.Sprite>();
   private anims: Anim[] = [];
@@ -166,6 +174,7 @@ export class SiegeView {
         v.leafR.setVisible(v.k < 1).setPosition(right, top).setScale(sx, 1).setTint(tint).setDepth(im.depth + 0.01);
       }
     } else { v.leafL?.setVisible(false); v.leafR?.setVisible(false); }
+    this.updateWreck(v, im, broken && near, dt, now);
     // починка: кадр «закрыто» проявляется поверх пролома
     if (v.repairT0) {
       const k = (now - v.repairT0) / 1400;
@@ -186,6 +195,101 @@ export class SiegeView {
     }
   }
 
+  // ---------- пролом ----------
+  /** Сломанные ворота: строится один раз, пока ворота лежат; дым и угли — первые SMOKE_MS после пролома, затем гаснут. */
+  private updateWreck(v: GateVis, im: Phaser.GameObjects.Image, show: boolean, dt: number, now: number) {
+    if (!show) { if (v.wreck) this.clearWreck(v); if (!GATE_BROKEN.has(v.g.id)) v.brokenAt = 0; return; }
+    if (!v.brokenAt) v.brokenAt = now;
+    if (!v.wreck) this.buildWreck(v, im);
+    const age = now - v.brokenAt, fade = age < SMOKE_MS ? 1 : Math.max(0, 1 - (age - SMOKE_MS) / 12000);
+    for (const s of v.smoke) s.setAlpha(0.75 * fade);
+    if (fade <= 0) return;
+    // угли: искры поднимаются из пролома и гаснут (свой ход, плавно)
+    v.emberAcc += dt * 9 * fade;
+    while (v.emberAcc >= 1) {
+      v.emberAcc -= 1;
+      const x = v.g.x + (Math.random() - 0.5) * 50, y = v.g.objY - 6 - Math.random() * 30;
+      const o = this.sc.add.rectangle(x, y, 2, 2, Math.random() < 0.5 ? 0xffa040 : 0xff6a20).setBlendMode(Phaser.BlendModes.ADD).setDepth(v.g.objY + 1);
+      const vx = (Math.random() - 0.5) * 18, vy = -18 - Math.random() * 26, life = 900 + Math.random() * 900;
+      this.add(life, (k) => { const t = (k * life) / 1000; o.setPosition(x + vx * t + Math.sin(t * 5) * 3, y + vy * t).setAlpha((k < 0.15 ? k / 0.15 : 1 - easeInOutSine((k - 0.15) / 0.85)) * fade); }, () => o.destroy());
+    }
+  }
+  private buildWreck(v: GateVis, im: Phaser.GameObjects.Image) {
+    const sc = this.sc, g = v.g, out: Phaser.GameObjects.GameObject[] = [], base = g.objY, top = base - 146;
+    const r = (i: number) => { const s = Math.sin(i * 12.9898 + g.x * 0.013) * 43758.5453; return s - Math.floor(s); };
+    // копоть на земле под проёмом
+    const soot = sc.add.graphics().setDepth(DEPTH.ground + 2);
+    soot.fillStyle(0x0c0806, 0.42).fillEllipse(g.x, base + 6, 104, 26).fillStyle(0x0c0806, 0.3).fillEllipse(g.x - 8, base + 14, 70, 16);
+    out.push(soot);
+    const lv = v.prefix ? this.leaves(v.prefix) : null;
+    if (lv) {
+      // левая створка сорвана и лежит в проёме (плашмя, в ракурсе), правая висит на верхней петле, перекошена
+      out.push(sc.add.image(g.x - 34, base + 16, lv[0]).setOrigin(0, 1).setScale(1.05, 0.34).setRotation(-0.12).setTint(0x8a6a58).setDepth(DEPTH.ground + 3));
+      out.push(sc.add.image(g.x + ARCH.aw, top + ARCH.top + 2, lv[1]).setOrigin(1, 0).setScale(0.82, 0.86).setRotation(0.32).setTint(0x6e5446).setDepth(base + 0.03));
+    }
+    // трещины свода: от замкового камня вниз-в стороны, тёмная щель и светлая кромка
+    const cr = sc.add.graphics().setDepth(base + 0.04);
+    const crack = (x0: number, y0: number, dx: number, n: number, seed: number) => {
+      let x = x0, y = y0;
+      for (let i = 0; i < n; i++) {
+        const nx = x + dx * (2 + r(seed + i) * 3), ny = y + 2 + r(seed + i + 50) * 3;
+        cr.lineStyle(2, 0x0a0608, 0.95).lineBetween(x, y, nx, ny).lineStyle(1, 0xb8b0a8, 0.35).lineBetween(x + 1, y + 1, nx + 1, ny + 1);
+        x = nx; y = ny;
+        if (i === 3) { const bx = x, by = y; for (let j = 0; j < 3; j++) cr.lineStyle(1, 0x0a0608, 0.9).lineBetween(bx, by, bx + dx * 4 * (j + 1) * 0.6, by - 3 + j * 2); }
+      }
+    };
+    crack(g.x - 2, top + 48, -1, 7, 1);
+    crack(g.x + 3, top + 50, 1, 6, 9);
+    crack(g.x - 40, top + 60, 0.4, 5, 17);
+    out.push(cr);
+    // щебень (лист rocks) и доски на земле у проёма — проходимо, лежит под ногами
+    const rocks = sc.textures.exists("vfx_rocks");
+    for (let i = 0; i < 6; i++) {
+      const x = g.x + (r(i + 3) - 0.5) * 110, y = base + 4 + r(i + 7) * 22;
+      if (rocks) out.push(sc.add.image(x, y, "vfx_rocks", i % 5).setScale(0.45 + r(i) * 0.3).setDepth(DEPTH.ground + 3).setFlipX(r(i + 11) > 0.5));
+    }
+    for (let i = 0; i < 9; i++) {
+      const x = g.x + (r(i + 21) - 0.5) * 100, y = base + 2 + r(i + 31) * 26;
+      out.push(sc.add.rectangle(x, y, 10 + r(i + 41) * 10, 3, i % 3 ? 0x6a4428 : 0x3a2414).setStrokeStyle(1, 0x140c08).setRotation((r(i + 51) - 0.5) * 2.4).setDepth(DEPTH.ground + 3));
+    }
+    // щепа торчит из проёма у петель
+    const sp = sc.add.graphics().setDepth(base + 0.035);
+    for (let i = 0; i < 8; i++) {
+      const side = i % 2 ? 1 : -1, x = g.x + side * (ARCH.aw - 2), y = top + ARCH.top + 20 + r(i + 61) * 50, len = 5 + r(i + 71) * 7;
+      sp.lineStyle(2, 0x8a5a30, 1).lineBetween(x, y, x - side * len, y + (r(i + 81) - 0.5) * 6);
+    }
+    out.push(sp);
+    // дым из пролома
+    if (sc.anims.exists("vfx_bf-smoke")) for (const [dx, dy, s] of [[-16, -4, 0.9], [18, 4, 0.75]] as const) {
+      const sm = sc.add.sprite(g.x + dx, base + dy, "vfx_bf-smoke").setOrigin(0.5, 1).setScale(s).setDepth(base + 2);
+      sm.play({ key: "vfx_bf-smoke", repeat: -1, startFrame: Math.floor(r(dx + 100) * 12) });
+      v.smoke.push(sm);
+    }
+    v.wreck = out;
+    void im;
+  }
+  private clearWreck(v: GateVis) {
+    for (const o of v.wreck ?? []) o.destroy();
+    for (const s of v.smoke) s.destroy();
+    v.wreck = null; v.smoke = []; v.emberAcc = 0;
+  }
+
+  /** Стража и бойцы у ворот фортов и столиц: ник, полоска и титул — только под курсором или у выбранного (иначе у ворот каша из подписей). */
+  private quietGuards(units: Map<string, UnitView>) {
+    const R = SIEGE.gates.guardQuietTiles * TILE;
+    const now = new Set<UnitView>();
+    for (const v of units.values()) {
+      const k = v.u.kind;
+      if ((k !== 4 && k !== 6) || v.u.sprite.startsWith("siege_") || v.ring.visible) continue;
+      if (!GATES.some((g) => Math.abs(v.x - g.x) < R && Math.abs(v.y - g.y) < R)) continue;
+      v.label.setVisible(false); v.bar.setVisible(false); v.titleText.setVisible(false); v.frameGfx.setVisible(false);
+      now.add(v);
+    }
+    // ушёл от ворот или под курсором: полоска и рамка ника (их UnitView сам не включает) — обратно
+    for (const v of this.quiet) if (!now.has(v)) { v.bar.setVisible(true); v.frameGfx.setVisible(true); }
+    this.quiet = now;
+  }
+
   // ---------- кадр ----------
   update(dt: number, camX: number, camY: number) {
     const now = performance.now();
@@ -193,6 +297,7 @@ export class SiegeView {
     const units = this.units();
     for (const v of this.gates) this.updateGate(v, dt, now, units, camX, camY);
     this.updateEngines(units, now);
+    this.quietGuards(units);
     this.updateBanner(dt, camX, camY);
     for (let i = this.anims.length - 1; i >= 0; i--) {
       const a = this.anims[i], k = (now - a.t0) / a.ms;
@@ -383,7 +488,7 @@ export class SiegeView {
     for (const f of this.off) f();
     for (const a of this.anims) a.end();
     this.anims = [];
-    for (const v of this.gates) { v.leafL?.destroy(); v.leafR?.destroy(); v.over?.destroy(); }
+    for (const v of this.gates) { v.leafL?.destroy(); v.leafR?.destroy(); v.over?.destroy(); this.clearWreck(v); }
     for (const s of this.engines.values()) s.destroy();
     this.engines.clear();
     this.hp.destroy(); this.ring.destroy(); this.mast?.destroy(); this.plinth?.destroy(); this.flag?.destroy();

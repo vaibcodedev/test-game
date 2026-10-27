@@ -246,27 +246,89 @@ function arrowsPlanted(v: number): PC {
 }
 
 // ---------------- воронки, обломки, пятна ----------------
-/** Воронка: вал по краю, чёрная гарь в центре. v: a — тлеющая (угли), b — сухая растрескавшаяся, c — с обломком щита. */
+/** Воронка с рельефом: карта высот (вал с неровным гребнем, ступенчатые стенки ямы, дно), тон по нормали при свете сверху слева,
+ *  комья земли и камни на валу с тенями, лучи выброса, внутри — зола. v: a — тлеющая (угли), b — сухая, растрескавшаяся, c — с щитом и стрелами, d — с половиной колеса. */
 function crater(v: number): PC {
-  const pc = new PC(72, 40), cx = 36, cy = 22, rx = 28, ry = 11;
-  for (let y = 0; y < pc.h; y++) for (let x = 0; x < pc.w; x++) {
-    const u = (x + 0.5 - cx) / rx, w = (y + 0.5 - cy) / ry, r = Math.hypot(u, w);
-    if (r > 1.0) continue;
-    // профиль высоты: вал при r≈0.78, яма внутри
-    const h = r < 0.78 ? -0.7 * (1 - r / 0.78) ** 0.8 + 0.2 : 0.2 * (1 - (r - 0.78) / 0.22);
-    const slope = r < 0.78 ? 0.7 * 0.8 * (1 - r / 0.78) ** -0.2 / 0.78 : -0.2 / 0.22;
-    const ux = r > 0 ? u / r : 0, uz = r > 0 ? w / r : 0;
-    const n: N3 = [-slope * ux * 0.35, 1, -slope * uz * 0.5];
-    const burnt = r < 0.7;
-    const col = burnt ? litC(ASH, n, (pnoise(x, y, 3, 256, 5 + v) - 0.5) * 0.9) : litC(DIRT, n, (pnoise(x, y, 3, 256, 7) - 0.5) * 0.8 + (r > 0.93 ? -0.6 : 0));
-    pc.set(x, y, burnt && r > 0.62 ? mix(col, DIRT[1] as RGBA, 0.3) : col);
-    void h;
+  const W = 88, H = 52, pc = new PC(W, H), cx = 44, cy = 28, rx = 36, ry = 14;
+  const rnd = (i: number, s = 0) => hash01(i, v * 7 + s, 29);
+  const field = (u: number, w: number) => {
+    const r = Math.hypot(u, w), a = Math.atan2(w, u);
+    const wob = 1 + 0.07 * Math.sin(a * 3 + v) + 0.05 * Math.sin(a * 7 + v * 2) + (pnoise(Math.cos(a) * 9 + 20, Math.sin(a) * 9 + 20, 3, 256, 5 + v) - 0.5) * 0.12;
+    const rr = r / wob;
+    // вал: гребень при 0.8, наружу плавно спадает; яма: стенка со ступенями и дно
+    let h: number;
+    if (rr > 1.08) h = 0;
+    else if (rr > 0.8) h = 5 * Math.pow(1 - (rr - 0.8) / 0.28, 1.4) * (0.8 + 0.4 * pnoise(a * 4 + 9, 3, 2, 256, 11 + v));
+    else { const t = rr / 0.8; h = 5 - 12 * Math.pow(1 - t, 0.7); h -= Math.floor((1 - t) * 4) * 0.6; }
+    return { h, rr, a };
+  };
+  const ZH = 1.6; // экранный подъём высоты
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const u = (x + 0.5 - cx) / rx, w = (y + 0.5 - cy) / ry;
+    const f = field(u, w);
+    if (f.rr > 1.1) continue;
+    const e = 0.5 / rx, e2 = 0.5 / ry;
+    const hx = (field(u + e, w).h - field(u - e, w).h) / (2 * e * rx), hz = (field(u, w + e2).h - field(u, w - e2).h) / (2 * e2 * ry * 2.2);
+    const n: N3 = [-hx * 0.9, 1, -hz * 0.9];
+    const inner = f.rr < 0.74;
+    const grain = (pnoise(x, y, 3, 256, 7 + v) - 0.5) * 0.8 + (hash01(x, y, 3 + v) < 0.05 ? -0.7 : 0);
+    let col: RGBA;
+    if (inner) {
+      const t = f.rr / 0.74;
+      col = litC(ASH, n, grain + (1 - t) * -0.5 + 0.35);
+      col = mix(col, DIRT[2], Math.max(0, t - 0.55) * 1.1);
+    } else col = litC(DIRT, n, grain + (f.h > 3.5 ? 0.35 : 0) + (f.rr > 1.0 ? -0.5 : 0));
+    // край воронки снаружи — мягкий переход в траву
+    const al = f.rr > 1.02 ? Math.round(255 * (1 - (f.rr - 1.02) / 0.08)) : 255;
+    pc.set(x, y, withA(col, Math.max(0, al)));
   }
-  const rnd = (i: number) => hash01(i, v, 17);
-  if (v === 0) for (let i = 0; i < 14; i++) { const a = rnd(i) * 6.28, rr = rnd(i + 30) * 0.55; pc.set(Math.round(cx + Math.cos(a) * rr * rx), Math.round(cy + Math.sin(a) * rr * ry), i % 3 ? hex("#c8501a") : hex("#ffa030")); }
-  if (v === 1) for (let i = 0; i < 6; i++) { let x = cx + (rnd(i) - 0.5) * 30, y = cy + (rnd(i + 9) - 0.5) * 9; for (let k = 0; k < 7; k++) { pc.set(Math.round(x), Math.round(y), ASH[0]); x += (rnd(i * 7 + k) - 0.3) * 3; y += (rnd(i * 5 + k) - 0.5) * 1.6; } }
-  if (v === 2) { shieldBody(pc, UMB, 26, 22, 7, 6, false, 5); for (let k = 0; k < 6; k++) arrowStuck(pc, 40 + k * 2, 24 + (k % 2), -0.5 + k * 0.2, 8); }
-  for (let i = 0; i < 10; i++) { const a = rnd(i + 50) * 6.28; ellipseFace(pc, cx + Math.cos(a) * rx * 0.86, cy + Math.sin(a) * ry * 0.86, 1.6, 1.1, STONE, [-0.3, 0.7, 0.5]); }
+  // комья и камни по валу: светлый верх, тень вправо-вниз
+  for (let i = 0; i < 16; i++) {
+    const a = rnd(i) * Math.PI * 2, rr = 0.84 + rnd(i, 2) * 0.28, sx = cx + Math.cos(a) * rx * rr, sy = cy + Math.sin(a) * ry * rr;
+    const big = i % 4 === 0, s = big ? 2.4 : 1.4 + rnd(i, 3);
+    ellipseFace(pc, sx + 1, sy + 0.8, s * 1.2, s * 0.7, DIRT, [0.5, 0.2, 0.4], () => -1.2); // тень
+    if (i % 3 === 0) ellipseFace(pc, sx, sy - 0.4, s, s * 0.75, STONE, [-0.35, 0.8, 0.5], () => (hash01(i, 1, 2) - 0.5) * 0.8);
+    else ellipseFace(pc, sx, sy - 0.4, s, s * 0.7, DIRT, [-0.3, 0.8, 0.5], () => (hash01(i, 2, 3) - 0.5) * 0.8);
+  }
+  // лучи выброса: тёмные и светлые мазки наружу от гребня
+  for (let k = 0; k < 14; k++) { const a = rnd(k, 8) * Math.PI * 2, r0 = 1.0, r1 = 1.0 + 0.1 + rnd(k, 9) * 0.1; for (let t = 0; t <= 1; t += 0.2) { const rr = r0 + (r1 - r0) * t, x = Math.round(cx + Math.cos(a) * rx * rr), y = Math.round(cy + Math.sin(a) * ry * rr); const p = pc.get(x, y); if (p && p[3] > 100) pc.set(x, y, mix(p, k % 2 ? ASH[2] : DIRT[4], 0.5)); } }
+  if (v === 0) for (let i = 0; i < 18; i++) { const a = rnd(i, 4) * 6.28, rr = rnd(i, 5) * 0.62; const x = Math.round(cx + Math.cos(a) * rr * rx), y = Math.round(cy + Math.sin(a) * rr * ry); pc.set(x, y, i % 3 ? hex("#c8501a") : hex("#ffb040")); if (i % 4 === 0) pc.set(x + 1, y, hex("#7a2a10")); }
+  if (v === 1) for (let i = 0; i < 7; i++) { let x = cx + (rnd(i, 6) - 0.5) * 34, y = cy + (rnd(i, 7) - 0.5) * 10; for (let k = 0; k < 8; k++) { pc.set(Math.round(x), Math.round(y), ASH[0]); x += (rnd(i * 9 + k) - 0.25) * 3; y += (rnd(i * 5 + k, 1) - 0.5) * 1.6; } }
+  if (v === 2) { shieldBody(pc, UMB, 31, 28, 8, 6.5, false, 5); for (let k = 0; k < 6; k++) arrowStuck(pc, 46 + k * 2, 30 + (k % 2), -0.5 + k * 0.2, 9); }
+  if (v === 3) { for (let a = 0; a < 3.3; a += 0.06) ellipseFace(pc, 34 + Math.cos(a) * 12, 31 + Math.sin(a) * 5, 1.6, 1.3, IRON, [Math.cos(a) * 0.5, 0.5, 0.7]); for (let k = 0; k < 3; k++) log(pc, 34, 31, 34 + Math.cos(k * 1.1) * 10, 31 + Math.sin(k * 1.1) * 4.5, 0.9, WOOD, { end: null }); log(pc, 52, 34, 62, 28, 1.2, WOOD, { end: WOOD }); }
+  return frame32(pc);
+}
+
+/** Гарь с текстурой: мягкий край-зола, копоть градиентом, обугленная середина с зерном, угли; v: a — костровище с углями, b — выгоревшее пятно с головнями, c — круг гари с трещинами. */
+function scorch(v: number): PC {
+  const W = 72, H = 40, pc = new PC(W, H), cx = W / 2, cy = H / 2, rx = 30, ry = 12;
+  const rnd = (i: number, s = 0) => hash01(i, v * 11 + s, 31);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const u = (x + 0.5 - cx) / rx, w = (y + 0.5 - cy) / ry, a = Math.atan2(w, u);
+    const wob = 1 + 0.13 * Math.sin(a * 2 + v) + 0.1 * Math.sin(a * 5 + v * 3) + (pnoise(x * 0.8, y * 1.6, 4, 256, 13 + v) - 0.5) * 0.4;
+    const r = Math.hypot(u, w) / wob;
+    if (r > 1) continue;
+    const g = pnoise(x, y, 2, 256, 3 + v), g2 = pnoise(x * 2, y * 2, 3, 256, 9);
+    // зола по краю → копоть → уголь в центре
+    let col: RGBA;
+    if (r > 0.72) col = mix(hex("#4a4038"), hex("#2c2622"), (1 - r) / 0.28 * 0.0 + (r - 0.72) / 0.28 * -1 + 1);
+    else if (r > 0.4) col = mix(hex("#1c1816"), hex("#34302c"), g * 0.8);
+    else col = mix(hex("#0c0a0b"), hex("#221d1e"), g2);
+    // зерно: светлые чешуйки золы, тёмные трещинки
+    if (hash01(x, y, 5 + v) < 0.07) col = mix(col, hex("#6a6058"), 0.5);
+    if (hash01(x, y, 6 + v) < 0.05) col = mix(col, hex("#050405"), 0.7);
+    const al = r > 0.82 ? Math.round(235 * (1 - (r - 0.82) / 0.18) ** 0.8 + 18) : 235;
+    pc.set(x, y, withA(col, al));
+  }
+  if (v === 0) for (let i = 0; i < 22; i++) { const a = rnd(i) * 6.28, rr = rnd(i, 2) * 0.5; const x = Math.round(cx + Math.cos(a) * rr * rx), y = Math.round(cy + Math.sin(a) * rr * ry); pc.set(x, y, i % 3 ? hex("#b8481a") : hex("#ffa838")); if (i % 3 === 0) pc.set(x + 1, y, hex("#6a2410")); }
+  if (v === 1) {
+    for (let i = 0; i < 4; i++) { const x = cx - 14 + i * 9 + (rnd(i, 3) - 0.5) * 4, y = cy + (rnd(i, 4) - 0.5) * 8; log(pc, x, y, x + 9 + rnd(i, 5) * 3, y - 2 + rnd(i, 6) * 4, 1.2, ramp("#0a0808", "#1a1412", "#2a201a", "#40322a", "#5a4838"), { end: null }); }
+    for (let i = 0; i < 10; i++) pc.set(Math.round(cx - 16 + rnd(i, 7) * 32), Math.round(cy - 3 + rnd(i, 8) * 6), i % 2 ? hex("#c8501a") : hex("#ff9a2a"));
+  }
+  if (v === 2) {
+    for (let k = 0; k < 7; k++) { let x = cx, y = cy; const a0 = k * 0.9 + rnd(k) * 0.6; for (let t = 0; t < 11; t++) { x += Math.cos(a0) * 2.4 + (rnd(k * 9 + t, 1) - 0.5) * 1.5; y += Math.sin(a0) * 1.0 + (rnd(k * 7 + t, 2) - 0.5) * 0.8; const p = pc.get(Math.round(x), Math.round(y)); if (p && p[3] > 120) pc.set(Math.round(x), Math.round(y), withA(hex("#050404"), 255)); } }
+    for (let i = 0; i < 8; i++) { const a = rnd(i, 9) * 6.28, rr = 0.15 + rnd(i, 10) * 0.45; const x = Math.round(cx + Math.cos(a) * rr * rx), y = Math.round(cy + Math.sin(a) * rr * ry); pc.set(x, y, hex("#a83c16")); }
+  }
   return frame32(pc);
 }
 /** Обломки: доски, дуги бочки, колесо, стрелы. v: a — доски и бочка, b — разбитый ящик и мешки, c — щепа и обод колеса. */
@@ -325,9 +387,9 @@ export const BF_PROPS: Record<string, () => PC> = {
   // стрелы
   bf_arrows_planted: () => arrowsPlanted(0), bf_arrows_b: () => arrowsPlanted(1), bf_arrows_c: () => arrowsPlanted(2), bf_arrows_d: () => arrowsPlanted(3),
   // воронки и обломки
-  bf_crater_a: () => crater(0), bf_crater_b: () => crater(1), bf_crater_c: () => crater(2),
+  bf_crater_a: () => crater(0), bf_crater_b: () => crater(1), bf_crater_c: () => crater(2), bf_crater_d: () => crater(3),
   bf_debris_a: () => debris(0), bf_debris_b: () => debris(1), bf_debris_c: () => debris(2),
   // пятна (плоские): кровь a–d, гарь a–c
   bf_blood_a: () => stain("blood", 0), bf_blood_b: () => stain("blood", 1), bf_blood_c: () => stain("blood", 2), bf_blood_d: () => stain("blood", 0),
-  bf_scorch: () => stain("scorch", 0), bf_scorch_b: () => stain("scorch", 1), bf_scorch_c: () => stain("scorch", 2),
+  bf_scorch: () => scorch(0), bf_scorch_b: () => scorch(1), bf_scorch_c: () => scorch(2),
 };

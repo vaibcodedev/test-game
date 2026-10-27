@@ -106,13 +106,13 @@ export const BF_PLANTED = [
 /** Пятна, воронки и обломки (лежат на земле). */
 export const BF_STAINS = [
   "bf_blood_a", "bf_blood_b", "bf_blood_c", "bf_blood_d", "bf_scorch", "bf_scorch_b", "bf_scorch_c",
-  "bf_crater_a", "bf_crater_b", "bf_crater_c", "bf_debris_a", "bf_debris_b", "bf_debris_c",
+  "bf_crater_a", "bf_crater_b", "bf_crater_c", "bf_crater_d", "bf_debris_a", "bf_debris_b", "bf_debris_c",
 ];
 export const BF_BONES = ["v_undead_bones_a", "v_undead_bones_b", "v_undead_bones_c", "v_undead_ribs", "v_undead_jaw", "v_undead_skull_trio", "v_undead_bird_skull"];
 export const BF_WAGONS = ["bf_wagon_broken_a", "bf_wagon_broken_b", "bf_wagon_broken_c", "bf_wagon_broken_d", "bf_wagon_broken_e"];
 export const BF_TENTS_RUINED = ["bf_tent_torn", "bf_tent_burnt", "bf_tent_torn_b", "bf_tent_burnt_b", "bf_tent_torn_c", "bf_tent_burnt_c"];
 /** Рогатки (варианты: прямые, встречные, с обломанным колом, двойной ряд). */
-export const BF_BARRIERS = ["bf_spike_barrier", "bf_spike_barrier_b", "bf_spike_barrier_c", "bf_spike_barrier_d"];
+export const BF_BARRIERS = ["bf_spike_barrier", "bf_spike_barrier_b", "bf_spike_barrier_c", "bf_spike_barrier_d", "bf_shield_stand_b", "bf_map_table_b", "bf_map_table_c"];
 export const BF_WRECKS = ["bf_ram", "v_undead_giant_skeleton", "bf_siege_tower", "bf_catapult_wreck_a", "bf_catapult_wreck_b", "bf_catapult_wreck_c"];
 /** Пары фракций для зеркальной копии на Полях (восток — та же сцена с переменой сторон, чтобы обе половины были равны). */
 const BF_SWAP: Record<string, string> = {
@@ -127,7 +127,7 @@ export const bfSwap = (kind: string) => BF_SWAP[kind] ?? kind;
 export const BF_FOOTPRINT: Record<string, { w: number; h: number }> = {
   bf_tent_sol: { w: 3, h: 2 }, bf_tent_umb: { w: 3, h: 2 }, bf_tent_torn: { w: 3, h: 2 }, bf_tent_burnt: { w: 3, h: 2 },
   bf_tent_sol_cmd: { w: 4, h: 2 }, bf_tent_umb_cmd: { w: 4, h: 2 },
-  bf_map_table: { w: 2, h: 1 }, bf_shield_stand: { w: 2, h: 1 }, bf_spike_barrier: { w: 2, h: 1 }, bf_spike_barrier_b: { w: 2, h: 1 }, bf_spike_barrier_c: { w: 2, h: 1 }, bf_spike_barrier_d: { w: 2, h: 1 },
+  bf_map_table: { w: 2, h: 1 }, bf_shield_stand: { w: 2, h: 1 }, bf_map_table_umb: { w: 2, h: 1 }, bf_map_table_b: { w: 2, h: 1 }, bf_map_table_c: { w: 2, h: 1 }, bf_shield_stand_sol: { w: 2, h: 1 }, bf_shield_stand_umb: { w: 2, h: 1 }, bf_shield_stand_b: { w: 2, h: 1 }, bf_spike_barrier: { w: 2, h: 1 }, bf_spike_barrier_b: { w: 2, h: 1 }, bf_spike_barrier_c: { w: 2, h: 1 }, bf_spike_barrier_d: { w: 2, h: 1 },
   bf_tent_torn_b: { w: 3, h: 2 }, bf_tent_torn_c: { w: 3, h: 2 }, bf_tent_burnt_b: { w: 3, h: 2 }, bf_tent_burnt_c: { w: 3, h: 2 },
   bf_wagon_broken_c: { w: 3, h: 1 }, bf_wagon_broken_d: { w: 3, h: 1 }, bf_wagon_broken_e: { w: 3, h: 1 }, bf_catapult_wreck_a: { w: 3, h: 1 }, bf_catapult_wreck_b: { w: 3, h: 1 }, bf_catapult_wreck_c: { w: 3, h: 1 },
   bf_wagon_broken_a: { w: 3, h: 1 }, bf_wagon_broken_b: { w: 3, h: 1 }, bf_ram: { w: 4, h: 1 }, bf_siege_tower: { w: 3, h: 2 }, v_undead_giant_skeleton: { w: 3, h: 1 },

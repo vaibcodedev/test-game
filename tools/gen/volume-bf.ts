@@ -284,7 +284,7 @@ function spikeBarrier3(v = 0): PC {
 }
 
 // ---------------- стойка щитов (2×1) ----------------
-function shieldStand3(): PC {
+function shieldStand3(v = 0): PC {
   const pc = new PC(60, 46), D = depth(8);
   shadowBox(pc, 3, 50, 42, D, 22);
   // задние ноги-козлы и верхний брус с глубиной
@@ -310,16 +310,28 @@ function shieldStand3(): PC {
     }
     ellipseFace(pc, cx, kite ? cy - 2 : cy, 2.2, 2.2, IRON, [-0.5, 0.5, 0.7]);
   };
-  shield(16, 25, 9, 9.5, CLOTH.white, CLOTH.gold);
-  shield(30, 25, 8, 10.5, CLOTH.purple, IRON, true);
-  shield(44, 25, 9, 9.5, CLOTH.blue, CLOTH.gold);
+  const sets: [Ramp, Ramp][][] = [
+    [[CLOTH.white, CLOTH.gold], [CLOTH.purple, IRON], [CLOTH.blue, CLOTH.gold]],
+    [[CLOTH.white, CLOTH.gold], [CLOTH.blue, CLOTH.gold], [CLOTH.white, CLOTH.gold]],
+    [[CLOTH.black, IRON], [CLOTH.purple, IRON], [CLOTH.black, CLOTH.purple]],
+    [[CLOTH.blue, CLOTH.gold], [CLOTH.white, CLOTH.gold], [CLOTH.blue, CLOTH.gold]],
+  ];
+  const S = sets[Math.min(v, 3)];
+  shield(16, 25, 9, 9.5, S[0][0], S[0][1]);
+  if (v !== 3) shield(30, 25, 8, 10.5, S[1][0], S[1][1], true);
+  shield(44, 25, 9, 9.5, S[2][0], S[2][1]);
+  if (v === 3) { // стойка завалена: средний щит упал на землю, в нём стрелы
+    ellipseFace(pc, 30, 38, 9, 3.2, S[1][0], TOP); ellipseFace(pc, 30, 37.5, 2.4, 1.2, IRON, TOP); for (const dx of [-3, 0, 3]) fillLineD(pc, 30 + dx, 36, 28 + dx * 2, 28, WOOD[3], 1);
+  }
   // передние ноги
   for (const x of [4, 48]) log(pc, x - 1, 42, x + 2, 16, 1.5, WOOD, { end: null });
   return finish(pc);
 }
 
 // ---------------- стол с картой (2×1) ----------------
-function mapTable3(): PC {
+function mapTable3(v = 0): PC {
+  const pcFinal = v === 2 ? mapTableOver() : null;
+  if (pcFinal) return pcFinal;
   const pc = new PC(60, 44), x = 6, y = 20, w = 42, d = 18, D = depth(d);
   shadowBox(pc, x, x + w, 41, D, 22);
   // ноги: задние, потом передние
@@ -329,17 +341,34 @@ function mapTable3(): PC {
   // карта на столешнице: параллелограмм, загнутый угол, дороги и фишки
   const o: Pt = [x + 5, y - 2], e: Pt = [w - 12, 0], f: Pt = [D[0] * 0.8, D[1] * 0.8];
   const map = [o, add(o, e), add(add(o, e), f), add(o, f)];
-  fillPoly(pc, map, (px, py) => litC(CLOTH.cream, TOP, (hash01(px, py, 7) - 0.5) * 0.3 - 0.4));
+  fillPoly(pc, map, (px, py) => litC(v === 1 ? CLOTH.rag : CLOTH.cream, TOP, (hash01(px, py, 7) - 0.5) * 0.3 - 0.4));
   const P2 = (s: number, t: number): Pt => add(o, add([e[0] * s, e[1] * s], [f[0] * t, f[1] * t]));
   const path = (pts: [number, number][], c: RGBA) => { for (let i = 0; i + 1 < pts.length; i++) { const a = P2(...pts[i]), b = P2(...pts[i + 1]); fillLine(pc, Math.round(a[0]), Math.round(a[1]), Math.round(b[0]), Math.round(b[1]), c); } };
   path([[0.05, 0.2], [0.4, 0.5], [0.7, 0.35], [0.95, 0.7]], CLOTH.red[2]);
   path([[0.1, 0.85], [0.45, 0.7], [0.8, 0.9]], CLOTH.blue[2]);
   fillPoly(pc, [P2(0.85, 0.02), P2(1, 0.02), P2(1, 0.3)], () => litC(CLOTH.cream, FRONT, -0.6)); // загнутый угол
   const piece = (s: number, t: number, r: Ramp) => { const p = P2(s, t); cylV(pc, Math.round(p[0]), Math.round(p[1]) - 3, Math.round(p[1]), 1.6, r, { k: 0.5 }); };
-  piece(0.3, 0.45, CLOTH.blue); piece(0.62, 0.3, CLOTH.purple); piece(0.75, 0.75, CLOTH.blue); piece(0.2, 0.75, CLOTH.purple);
+  if (v === 1) { piece(0.3, 0.45, CLOTH.purple); piece(0.62, 0.3, CLOTH.black); piece(0.75, 0.75, CLOTH.purple); piece(0.2, 0.75, CLOTH.black); }
+  else if (v === 3) { piece(0.3, 0.45, CLOTH.blue); piece(0.5, 0.6, CLOTH.blue); piece(0.62, 0.3, CLOTH.red); piece(0.75, 0.75, CLOTH.blue); piece(0.2, 0.75, CLOTH.red); piece(0.45, 0.2, CLOTH.red); }
+  else { piece(0.3, 0.45, CLOTH.blue); piece(0.62, 0.3, CLOTH.purple); piece(0.75, 0.75, CLOTH.blue); piece(0.2, 0.75, CLOTH.purple); }
   // свеча и камень-пресс
   const c = P2(1.05, 0.85); cylV(pc, Math.round(c[0]), Math.round(c[1]) - 5, Math.round(c[1]), 1.5, CLOTH.cream, { k: 0.5 }); pc.set(Math.round(c[0]), Math.round(c[1]) - 7, hex("#ffd27a")); pc.set(Math.round(c[0]), Math.round(c[1]) - 8, hex("#fff2b8"));
   const s = P2(-0.08, 0.1); ellipseFace(pc, s[0], s[1] - 1, 3, 2.2, STONE, [-0.3, 0.8, 0.5]);
+  return finish(pc);
+}
+
+/** Стол опрокинут: столешница стоймя, ножки вбок, карта и фишки на земле. */
+function mapTableOver(): PC {
+  const pc = new PC(60, 44);
+  shadowBox(pc, 4, 54, 40, [8, -6], 18);
+  const top = new PC(60, 44);
+  box(top, 6, 14, 40, 4, 16, { r: WOOD, tex: grain(3, 0.2) }, { r: WOOD }, { r: WOOD, tex: planksH(4, 5) });
+  for (const lx of [10, 38]) box(top, lx, 18, 3, 16, 2, { r: WOOD, tex: grain(lx, 0.2) }, { r: WOOD }, { r: WOOD });
+  pc.blit(top.rotated(1.2, 30, 40, 4, 0), 0, 0);
+  fillPoly(pc, [[4, 40], [26, 38], [30, 43], [8, 43]], (px, py) => litC(CLOTH.cream, TOP, (hash01(px, py, 7) - 0.5) * 0.3 - 0.3));
+  fillLine(pc, 8, 41, 24, 40, CLOTH.red[2], 1);
+  for (const [x, y, r] of [[34, 41, CLOTH.blue], [38, 42, CLOTH.purple], [31, 43, CLOTH.blue]] as const) cylV(pc, x, y - 3, y, 1.6, r, { k: 0.5 });
+  ellipseFace(pc, 46, 41, 3, 1.4, STONE, TOP);
   return finish(pc);
 }
 
@@ -434,11 +463,23 @@ const barrel3 = (pc: PC, cx: number, yb: number, r = 6) => {
   for (const y of [yb - r * 1.6, yb - r * 0.7]) for (let x = Math.round(cx - r); x <= Math.round(cx + r); x++) { const u = (x - cx) / r; if (Math.abs(u) <= 1) pc.set(x, Math.round(y), litC(IRON, [u, 0, Math.sqrt(1 - u * u)], 0)); }
 };
 const hay3 = (pc: PC, cx: number, cy: number, s: number) => { ellipseFace(pc, cx, cy, 6 * s, 3.2 * s, STRAW_R, TOP); for (let k = 0; k < 5; k++) pc.set(Math.round(cx - 5 * s + k * 2.4 * s), Math.round(cy + 3.5 * s), STRAW_R[2]); };
+const CHARB = [hex("#0c0a0a"), hex("#1e1816"), hex("#342923"), hex("#4e4034"), hex("#6e5a46"), hex("#8e7a60")];
+const ASHP = [hex("#1a1614"), hex("#2a2422"), hex("#3c3430"), hex("#544a42"), hex("#6e625a"), hex("#8a7e74")];
+/** Сгоревшее дерево: трещины-«чешуя» и красное свечение в трещинах, светлая кромка балок. */
+function charDetail(pc: PC) {
+  for (let y = 0; y < pc.h; y++) for (let x = 0; x < pc.w; x++) {
+    const p = pc.get(x, y)!; if (!p[3] || p[0] > 110 && p[1] > 110) continue;
+    const h = hash01(x >> 1, y, 77);
+    if (h < 0.08) pc.set(x, y, [p[0] * 0.5, p[1] * 0.5, p[2] * 0.5, p[3]]);
+    else if (h > 0.985 && p[0] < 100) pc.set(x, y, EMBER[1 + (x + y) % 2]);
+  }
+}
 /** Разбитая катапульта (3×1): a — рычаг сломан, колесо сорвано; b — сгоревший остов с углями; c — опрокинута на бок, колесо торчит вверх. */
 function catapultWreck(v: number): PC {
   const pc = new PC(124, 70), B = 64;
-  const frame = WOOD;
+  const frame = v === 1 ? CHARB : WOOD;
   shadowBox(pc, 8, 102, B, [14, -10], 36);
+  if (v === 1) { ellipseFace(pc, 60, B - 1, 52, 8, ASHP, TOP, (x, y) => (hash01(x, y, 4) - 0.5) * 0.9); ellipseFace(pc, 90, B - 3, 18, 5, ASHP, TOP, (x, y) => (hash01(x, y, 5) - 0.5) * 0.9); }
   if (v === 2) {
     box(pc, 22, B - 30, 12, 30, 10, { r: frame, tex: planksV(4, 3) }, { r: frame }, { r: frame, tex: planksH(3, 4) });
     box(pc, 60, B - 26, 12, 26, 10, { r: frame, tex: planksV(4, 5) }, { r: frame }, { r: frame, tex: planksH(3, 6) });
@@ -459,7 +500,7 @@ function catapultWreck(v: number): PC {
   for (const [dx, dy] of [[-1, 1], [1, 0], [0, -1]] as const) log(pc, x0 + 34 + dx, B - 32 + dy, x0 + 32 + dx, B - 38 + dy, 1.2, frame, { end: null });
   ellipseFace(pc, x0 + 62, B - 4, 7, 3, frame, TOP); log(pc, x0 + 56, B - 2, x0 + 68, B - 2, 1.4, ROPE, { end: null });
   if (v === 0) { wheel3(pc, x0 + 8, B - 6, 11, frame, IRON, { thick: 4, rot: 0.2 }); wheel3(pc, x0 + 66 + D[0], B - 6 + D[1], 11, frame, IRON, { thick: 4, rot: 0.9, broken: true }); flatWheel(pc, 100, B - 2, 10); ellipseFace(pc, 92, B - 9, 5, 4, STONE, [-0.3, 0.8, 0.5]); }
-  else { wheel3(pc, x0 + 10, B - 6, 11, frame, IRON, { thick: 4, rot: 0.5, broken: true }); flatWheel(pc, 96, B - 2, 10); charPass(pc); embers(pc, 26, 5); }
+  else { wheel3(pc, x0 + 10, B - 6, 11, frame, IRON, { thick: 4, rot: 0.5, broken: true }); flatWheel(pc, 96, B - 2, 10); charDetail(pc); embers(pc, 34, 5); }
   return finish(pc);
 }
 const SOL_T = { a: SOL_A, b: SOL_B, trim: CLOTH.gold }, UMB_T = { a: UMB_A, b: UMB_B, trim: CLOTH.purple };
@@ -470,8 +511,8 @@ export const BF_VOLUME: Record<string, () => PC> = {
   bf_siege_tower: siegeTower3,
   bf_ram: ram3,
   bf_spike_barrier: () => spikeBarrier3(0), bf_spike_barrier_b: () => spikeBarrier3(1), bf_spike_barrier_c: () => spikeBarrier3(2), bf_spike_barrier_d: () => spikeBarrier3(3),
-  bf_shield_stand: shieldStand3,
-  bf_map_table: mapTable3,
+  bf_shield_stand: () => shieldStand3(0), bf_shield_stand_sol: () => shieldStand3(1), bf_shield_stand_umb: () => shieldStand3(2), bf_shield_stand_b: () => shieldStand3(3),
+  bf_map_table: () => mapTable3(0), bf_map_table_umb: () => mapTable3(1), bf_map_table_b: () => mapTable3(2), bf_map_table_c: () => mapTable3(3),
   bf_wagon_broken_a: () => wagon3("a"),
   bf_wagon_broken_b: () => wagon3("b"),
   bf_wagon_broken_c: () => wagon3("a", (pc) => { charPass(pc); embers(pc, 22, 3); }),

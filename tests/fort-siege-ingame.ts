@@ -91,7 +91,7 @@ const shotEl = async (sel: string, name: string) => {
 const waitFor = async (ok: () => boolean, ms: number) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await sleep(100); return ok(); };
 
 async function scenario() {
-  fs.rmSync(OUT, { recursive: true, force: true });
+  for (const f of fs.existsSync(OUT) ? fs.readdirSync(OUT) : []) if (f.startsWith("v2-")) fs.rmSync(path.join(OUT, f));
   fs.mkdirSync(OUT, { recursive: true });
   const token = await ensureChar("siege_view", PASS, "Осадник", "warrior");
   const w = W(), siege = w.siege!, war = w.war!;
@@ -132,7 +132,9 @@ async function scenario() {
     H.input = { mx: 0, my: 0 };
     check(H.y > UG.y1, `чужие ворота закрыты: герой у ворот (y ${Math.round(H.y)} > ${UG.y1})`);
     await sleep(600);
-    save("gate-closed.png", await snap(UG.x, UG.objY - 50, 340, 240));
+    save("v2-gate-closed.png", await snap(UG.x, UG.objY - 50, 340, 240));
+    const loud = await run<number>(`let n = 0; for (const v of sc.units.values()) if ((v.u.kind === 4 || v.u.kind === 6) && !v.u.sprite.startsWith('siege_') && Math.abs(v.x - a.x) < 200 && Math.abs(v.y - a.y) < 200 && v.label.visible) n++; return n;`, { x: UG.x, y: UG.y });
+    check(loud === 0, `у ворот ники стражи только под курсором (видно ${loud})`);
     // 2. свои ворота открываются: герой Сольгарда проходит в свой форт
     at(SG.ox, SG.oy + 90);
     await sleep(2500);
@@ -140,7 +142,7 @@ async function scenario() {
     H.moveTo = { x: SG.x, y: SG.y - 4 * 32 };
     await waitFor(() => H.y < SG.y + 20, 15000);
     await sleep(250);
-    save("gate-ally-open.png", await snap(SG.x, SG.objY - 50, 340, 240));
+    save("v2-gate-ally-open.png", await snap(SG.x, SG.objY - 50, 340, 240));
     const passed = await waitFor(() => H.y < SG.y0 - 20, 10000);
     check(passed, `свой герой прошёл ворота своего форта (y ${Math.round(H.y)})`);
     const open = await run<number>(`const v = sc.siegeView.gates.find((x) => x.g.id === a); return v ? v.k : -1;`, SG.id);
@@ -154,14 +156,18 @@ async function scenario() {
     const hp0 = gate.mob!.unit.hp;
     const hit = await waitFor(() => gate.mob!.unit.hp < hp0, 60000);
     await sleep(160);
-    save("ram-hit.png", await snap(UG.x, UG.objY - 30, 380, 300));
+    save("v2-ram-hit.png", await snap(UG.x, UG.objY - 30, 380, 300));
     check(hit, `таран бьёт ворота (здоровье ${Math.round((100 * gate.mob!.unit.hp) / gate.mob!.unit.maxHp)}%)`);
     await sleep(1200);
-    check(await shotEl(".siege-bar", "siege-bar.png"), "полоса осады: форт, таймер, стороны, ворота, знамя двора");
+    check(await shotEl(".siege-bar", "v2-siege-bar.png"), "полоса осады: форт, таймер, стороны, ворота, знамя двора");
     // 4. пролом
     siege.debug("breach", { gate: "s" });
-    await sleep(1800);
-    save("gate-broken.png", await snap(UG.x, UG.objY - 50, 340, 240));
+    // таран и эскорт отходят — пролом виден целиком
+    allyAt = null;
+    if (ram.mob) ram.mob.unit.y += 300;
+    at(UG.ox + 150, UG.oy + 170);
+    await sleep(2600);
+    save("v2-gate-broken.png", await snap(UG.x, UG.objY - 50, 340, 240));
     const cliBroken = await run<boolean>(`const s = (await import('/src/ui/siege.ts')).siegeView.state; return !!s && s.broken.includes(a);`, UG.id).catch(() => false);
     check(gate.broken, `ворота пали${cliBroken ? ", клиент знает о проломе" : ""}`);
     // 5. королевское знамя во дворе: нападающие спускают знамя обороны
@@ -170,13 +176,13 @@ async function scenario() {
     at(B.x + 30, B.y + 50);
     await waitFor(() => siege.banner.h < 0.7, 90000);
     await sleep(500);
-    save("banner-yard.png", await snap(B.x, B.y - 60, 420, 320));
+    save("v2-banner-yard.png", await snap(B.x, B.y - 60, 420, 320));
     check(siege.banner.h < 1 && siege.banner.banner === "umbrath", `знамя обороны спускается (высота ${siege.banner.h.toFixed(2)})`);
     // 6. итоги
     siege.debug("end", { win: "solgard" });
     await page.waitForSelector(".siege-result", { timeout: 10000 });
     await sleep(800);
-    check(await shotEl(".siege-result", "result.png"), "окно итогов осады");
+    check(await shotEl(".siege-result", "v2-result.png"), "окно итогов осады");
     const res = await page.$eval(".siege-result", (e) => e.textContent ?? "");
     check(/взят/.test(res) && /Победа/.test(res), "итог: форт взят, победа");
   } finally {
@@ -214,7 +220,7 @@ async function main() {
     bad++;
   } finally {
     fs.mkdirSync(OUT, { recursive: true });
-    fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
+    fs.writeFileSync(path.join(OUT, "v2-report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
     await browser.close().catch(() => {});
     await vite.close().catch(() => {});
   }

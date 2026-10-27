@@ -157,7 +157,8 @@ async function scenario() {
       vis = await run<number>("const z = sc.fx && sc.fx.zb; if (!z) return 0; const n = z.fxs.filter((e) => e.boss === a && e.spr.some((s) => s.visible)).length; if (n) sc.scene.pause(); return n;", CARD.id);
       if (!vis) await sleep(40);
     }
-    check(vis > 0, `${CARD.id}.${ab.id}: эффект мира виден (${vis})`);
+    const dbg = vis ? "" : await run<string>("const z = sc.fx && sc.fx.zb; if (!z) return 'нет zb'; const mine = z.fxs.filter((e) => e.boss === a); const now = sc.time.now; return 'fx ' + z.fxs.length + ', свои ' + mine.length + ', текстуры ' + ['seal','wisp','pillar'].map((k) => sc.textures.exists('zbfx_' + a + '_' + k)).join('/') + ', сегменты ' + mine.slice(0, 2).map((e) => e.segs.map((g) => Math.round(g.t0 - now) + '..' + Math.round(g.t1 - now)).join(';') + ' спр ' + e.spr.length).join(' | ');", CARD.id);
+    check(vis > 0, `${CARD.id}.${ab.id}: эффект мира виден (${vis}) ${dbg}`);
     save(`ingame-${ab.id}-hit.png`, await snap(bx, by - 10, 480, 340));
     await run("sc.scene.resume();");
     await sleep(Math.max(0, total - ab.windupMs) + 1600);

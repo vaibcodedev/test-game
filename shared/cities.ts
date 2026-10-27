@@ -92,11 +92,11 @@ export function cityDecor(style: CityStyle): [string, number, number][] {
 export const FORT_HOUSES: [number, number][] = [[-11, -6], [-6, -6], [3, -6], [8, -6]];
 const FORT_BANNERS: [number, number][] = CITY_ENTRANCE;
 const FORT_KIND: Record<CityStyle, Record<string, string>> = {
-  solgard: { "~tent": "bf_tent_sol", "~cmd": "bf_tent_sol_cmd" },
-  umbrath: { "~tent": "bf_tent_umb", "~cmd": "bf_tent_umb_cmd" },
+  solgard: { "~tent": "bf_tent_sol", "~cmd": "bf_tent_sol_cmd", "~table": "bf_map_table", "~stand": "bf_shield_stand_sol" },
+  umbrath: { "~tent": "bf_tent_umb", "~cmd": "bf_tent_umb_cmd", "~table": "bf_map_table_umb", "~stand": "bf_shield_stand_umb" },
 };
 const FORT_CAMP: [string, number, number][] = [
-  ["~cmd", -11, 8], ["~cmd", 8, 8], ["~tent", -11, -2], ["~tent", -11, 5], ["bf_map_table", -8, 3], ["bf_shield_stand", -8, -2],
+  ["~cmd", -11, 8], ["~cmd", 8, 8], ["~tent", -11, -2], ["~tent", -11, 5], ["~table", -8, 3], ["~stand", -8, -2],
 ];
 const FORT_PLAZA: [string, number, number][] = [
   ["bf-dummy-0", -5, -1], ["bf-dummy-2", -3, -1], ["weapon_rack", 5, -1], ["weapon_rack", 4, -1], ["bf-dummy-1", 5, 1], ["bf-dummy-0", -5, 1],
