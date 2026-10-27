@@ -71,6 +71,12 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
       id: `${c.id}_mirage`, name: dbl.name ?? "Мираж", sprite: `${c.id}_mirage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: dbl.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 14, color: "#d8c08a",
     };
+    // приспешники роя (кольцо): моб-образец с множителем здоровья, уровнем босса и без добычи
+    const swm = c.abilities.find((a) => a.swarm)?.swarm;
+    if (swm && MOBS[swm.mob]) MOBS[`${c.id}_swarm`] = {
+      ...MOBS[swm.mob], id: `${c.id}_swarm`, eliteSprite: undefined, eliteName: undefined, level: Math.max(1, Math.round(c.levels.boss * scale)),
+      hp: MOBS[swm.mob].hp * swm.hp, xp: 0, gold: 0,
+    };
     if (cage) MOBS[`${c.id}_cage`] = {
       id: `${c.id}_cage`, name: "Кандальный кол", sprite: `${c.id}_cage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: cage.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 10, color: "#8a2a08",

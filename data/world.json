@@ -64,7 +64,7 @@
     "_ringBossesDoc": "Боссы кольца 40–80 (задача 139, карточки — data/ring-bosses.json, места — docs/bosses-139.md раздел 2): слот, west — босс запада в клетке x, y (null — ещё нет), east — восток в зеркальной клетке 1099 − x; центр клетки +0,5; arena — радиус, тайлы.",
     "ringBosses": [
       { "slot": "r45n", "west": "sol_mirage_sorcerer", "east": "umb_crimson_vampire", "x": 238, "y": 94, "arena": 10 },
-      { "slot": "r49s", "west": null, "east": "umb_ash_executioner", "x": 234, "y": 240, "arena": 10 },
+      { "slot": "r49s", "west": "sol_goblin_warlord", "east": "umb_ash_executioner", "x": 234, "y": 240, "arena": 10 },
       { "slot": "r75n", "west": null, "east": "umb_crown_lich", "x": 378, "y": 98, "arena": 10 }
     ],
     "settlements": [

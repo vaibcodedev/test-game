@@ -167,6 +167,65 @@ for (const c of CARDS) {
       }
       continue;
     }
+    if (ab.swarm) {
+      // рой: после замаха у босса count приспешников без добычи, здоровье — доля скорпиона; гибнут вместе с боссом
+      mob.reset();
+      for (const a of boss.abilities) a.at = 1e9;
+      const p = hero("warrior", mob.x + 150, mob.y + 30, c.levels.boss);
+      mob.state = "chase";
+      mob.targetId = p.id;
+      mob.addThreat(p.id, 100);
+      mob.attackAt = w.time + 1e9;
+      boss.run(ab);
+      for (let t = 0; t < ab.windupMs + 600; t += 50) { p.unit.hp = p.unit.maxHp; mob.attackAt = w.time + 1e9; w.update(50); }
+      const sw = [...w.mobs.values()].filter((m) => m.def.id === `${c.id}_swarm` && !m.dead);
+      check(`${c.id}.${ab.id}: ${ab.swarm.count} приспешников вылезли после замаха`, sw.length === ab.swarm.count, `приспешников ${sw.length}`);
+      check(`${c.id}.${ab.id}: приспешник — без добычи (опыт 0, золото 0), слабее босса`, sw.every((d) => d.def.xp === 0 && d.def.gold === 0 && d.unit.maxHp < mob.unit.maxHp * 0.2), `${sw[0]?.unit.maxHp} из ${mob.unit.maxHp}`);
+      mob.reset();
+      w.update(100);
+      check(`${c.id}.${ab.id}: при сбросе боя приспешники убраны`, ![...w.mobs.values()].some((m) => m.def.id === `${c.id}_swarm` && !m.dead));
+      w.removePlayer(p.id);
+      continue;
+    }
+    if (ab.safe) {
+      // укрытия: в миг удара урон получает только тот, кто вне всех столбов
+      for (const mode of ["open", "cover"] as const) {
+        mob.reset();
+        for (const a of boss.abilities) a.at = 1e9;
+        const p = hero("warrior", mob.x + 150, mob.y + 30, c.levels.boss);
+        mob.state = "chase";
+        mob.targetId = p.id;
+        mob.addThreat(p.id, 100);
+        log.length = 0;
+        hits = [];
+        boss.run(ab);
+        const zb = log.find((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === ab.id)?.f as { pts: number[]; r: number } | undefined;
+        check(`${c.id}.${ab.id}: ${ab.safe.count} укрытий помечены событием`, !!zb && zb.pts.length === ab.safe.count * 2 && zb.r === ab.safe.r, `точек ${zb?.pts.length}`);
+        if (mode === "cover" && zb) { p.unit.x = zb.pts[0]; p.unit.y = zb.pts[1]; }
+        for (let t = 0; t < ab.windupMs + 500; t += 50) { mob.attackAt = w.time + 1e9; w.update(50); }
+        const mine = hits.filter((h) => h.dst === p && h.src === mob);
+        check(`${c.id}.${ab.id}: ${mode === "cover" ? "в укрытии урона нет" : "вне укрытий — удар"}`, mode === "cover" ? mine.length === 0 : mine.length > 0, `ударов ${mine.length}`);
+        w.removePlayer(p.id);
+      }
+      continue;
+    }
+    if (ab.burrow) {
+      // подкоп: от начала замаха и до выхода босс неуязвим (урон ×0), потом снова бьётся
+      mob.reset();
+      for (const a of boss.abilities) a.at = 1e9;
+      const p = hero("warrior", mob.x + 150, mob.y + 30, c.levels.boss);
+      mob.state = "chase";
+      mob.targetId = p.id;
+      mob.addThreat(p.id, 100);
+      boss.run(ab);
+      w.update(100);
+      const under = mob.dmgTakenMul;
+      for (let t = 0; t < ab.burrow.invulnMs + 400; t += 50) { p.unit.hp = p.unit.maxHp; mob.attackAt = w.time + 1e9; w.update(50); }
+      check(`${c.id}.${ab.id}: под песком неуязвим (×${under}), после выхода — снова ×${mob.dmgTakenMul}`, under === 0 && mob.dmgTakenMul === 1, `${under} → ${mob.dmgTakenMul}`);
+      mob.reset();
+      check(`${c.id}.${ab.id}: сброс боя снимает неуязвимость`, mob.dmgTakenMul === 1);
+      w.removePlayer(p.id);
+    }
     if (ab.doubles) {
       // мираж-двойники: после замаха стоят по краю арены, гибнут от одного удара; кольцо повторяют только живые
       mob.reset();

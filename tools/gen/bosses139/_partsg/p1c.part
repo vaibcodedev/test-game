@@ -1,0 +1,105 @@
+
+  // ---------- копьё: тёмное древко с медными рёбрами-кольцами, широкий наконечник-лист с зубцами, шип на пятке ----------
+  const held = p.held >= 0.5;
+  const ad = norm(p.staff[1]);
+  const butt: V3 = add(p.staff[0], held ? shift : [0, 0, 0]);
+  const flat = norm(perp(ad, p.flat));
+  const e = norm(cross(ad, flat));
+  const top = add(butt, mul(ad, STAFF_L));
+  const grip0 = add(butt, mul(ad, SG));
+  const pearl: V3 = top;
+  {
+    const g = S.group(0.5);
+    const shine = (q: { l: V3; edge: boolean }) => (q.edge ? 0 : q.l[0] < -0.35 ? 0.9 : q.l[0] > 0.5 ? -0.7 : 0);
+    S.cone(g, wm(M.leath, W), butt, 0.95, top, 1.05, { tex: shine as never, ref: norm(perp(ad, [-1, 0.2, 0.6])), big: true });
+    // рёбра: медные кольца с острыми зубцами, чем выше — тем чаще (как на референсе)
+    for (let i = 0; i < 11; i++) {
+      const u = 0.2 + i * 0.065;
+      const c = add(butt, mul(ad, STAFF_L * u));
+      const wd = 1.2 + 0.3 * (i % 2);
+      S.cone(g, wm(M.copper, W), sub(c, mul(ad, 0.5)), wd, add(c, mul(ad, 0.9)), 1.05, { part: S.newPart(), tone: 0.25 });
+    }
+    // пятка: шип
+    S.cone(g, wm(M.copper, W), butt, 1.1, sub(butt, mul(ad, 4.0)), 0.1, { part: S.newPart(), tone: -0.1 });
+    // наконечник: широкий лист и два боковых зубца
+    const hd = sub(top, mul(ad, 9.0));
+    const hp = S.newPart();
+    S.cone(g, wm(M.slate, W), hd, 1.2, add(hd, mul(ad, 3.0)), 2.7, { part: hp, tone: 0.2 });
+    S.cone(g, wm(M.slate, W), add(hd, mul(ad, 3.0)), 2.7, add(top, mul(ad, 4.0)), 0.1, { part: hp, tone: 0.35 });
+    for (const s of [1, -1]) for (const [u0, u1, w] of [[1.0, 4.8, 3.2], [3.2, 7.4, 3.8]] as [number, number, number][]) S.cone(g, wm(M.slate, W), add(hd, mul(ad, u0)), 0.8, add(add(hd, mul(ad, u1)), mul(e, s * w)), 0.1, { part: S.newPart(), tone: 0.5 });
+    X.glints.push(add(top, mul(ad, 4.0)));
+  }
+
+  // ---------- руки: правая держит копьё (латная перчатка), левая вынесена в сторону — огромный коготь ----------
+  {
+    const g = S.group(1.0);
+    const lift = pxM(view, 0, -p.armLift[0]);
+    const sh = add(T([9.0, 0.4, 36.0]), lift);
+    const fist: V3 = held ? grip0 : add(add(p.hand[0], shift), lift);
+    const el = ik(sh, fist, ARM[0], ARM[1], p.pole[0]);
+    S.cone(g, wm(M.slate, W), sh, 3.2, el, 2.8, { tone: 0.1 });
+    const fd = norm(sub(fist, el));
+    S.cone(g, wm(M.slate, W), add(el, mul(fd, 0.8)), 2.6, sub(fist, mul(fd, 1.2)), 2.9, { part: S.newPart(), tone: 0.3 });
+    S.cone(g, wm(M.slate, W), el, 3.1, add(el, mul(fd, 1.6)), 2.8, { part: S.newPart(), tone: -0.1 });
+    const e0 = perp(fd, [0, 0, 1]);
+    S.ell(g, wm(M.slate, W), fist, [2.6, 2.4, 2.8], [e0, cross(fd, e0), fd], { part: S.newPart(), tone: 0.15 });
+    // левая: рука отведена, пальцы-когти длинные и загнутые
+    const g2 = S.group(1.0);
+    const lift2 = pxM(view, 0, -p.armLift[1]);
+    const sh2 = add(T([-9.0, 0.4, 36.0]), lift2);
+    const fist2 = add(add(p.hand[1], shift), lift2);
+    const el2 = ik(sh2, fist2, ARM[0], ARM[1], p.pole[1]);
+    S.cone(g2, wm(M.slate, W), sh2, 3.2, el2, 2.8, { tone: 0.1 });
+    const fd2 = norm(sub(fist2, el2));
+    S.cone(g2, wm(M.slate, W), add(el2, mul(fd2, 0.8)), 2.7, sub(fist2, mul(fd2, 1.2)), 3.0, { part: S.newPart(), tone: 0.3 });
+    for (const q of [0.35, 0.62]) { const b = add(el2, mul(sub(fist2, el2), q)); S.cone(g2, wm(M.slate, W), b, 1.0, add(b, [-3, -1.2, 2.6]), 0.1, { part: S.newPart(), tone: 0.4 }); }
+    const e1 = perp(fd2, [0, 0, 1]);
+    S.ell(g2, wm(M.slate, W), fist2, [2.4, 2.2, 2.6], [e1, cross(fd2, e1), fd2], { part: S.newPart() });
+    const sp = 0.7 + 0.4 * clamp(p.book, 0, 1);
+    for (let i = -1; i <= 1; i++) {
+      const dir = norm(add(add(mul(fd2, 0.7), mul(e1, i * sp)), [0, 0.3, -0.7]));
+      const m = add(fist2, mul(dir, 4.6));
+      S.cone(g2, wm(M.slate, W), add(fist2, mul(dir, 1.2)), 1.0, m, 0.75, { part: S.newPart(), tone: 0.3 });
+      S.cone(g2, wm(M.slate, W), m, 0.75, add(add(m, mul(dir, 3.8)), [0, 0.4, -1.6]), 0.1, { part: S.newPart(), tone: 0.55 });
+    }
+  }
+  // ---------- плечи: огромные веерные наплечья с медной каймой и рогами-шипами вверх ----------
+  {
+    const g = S.group(0.9);
+    const carve = (c: { l: V3; edge: boolean }) => {
+      if (c.edge) return { mat: M.copper, d: 1.2 };
+      const r = Math.hypot(c.l[0] * 1.1, c.l[1] * 1.5);
+      return Math.sin(r * 2.4) > 0.8 ? { mat: M.copper, d: -0.1 } : 0;
+    };
+    for (const s of [1, -1]) {
+      S.ell(g, wm(M.slate, W), T([s * 10.4, -0.4, 38.4]), [7.4, 5.8, 4.2], axes(TV, s * 0.5), { tex: carve as never, big: true, part: S.newPart() });
+      S.ell(g, wm(M.slate, W), T([s * 11.6, -0.2, 35.0]), [5.2, 4.6, 2.4], axes(TV, s * 0.75), { part: S.newPart(), tone: -0.1 });
+      S.ell(g, wm(M.slate, W), T([s * 10.8, -0.2, 41.4]), [4.6, 3.6, 1.2], axes(TV, s * 0.5), { part: S.newPart(), tone: 0.55 });
+      // рог: загнутый кверху и наружу
+      for (const [ox, oz, lx, lz] of [[7.0, 41.0, 9.4, 47.0], [10.4, 41.6, 14.6, 45.6], [13.4, 40.0, 18.0, 41.8]] as [number, number, number, number][]) S.cone(g, wm(M.slate, W), T([s * ox, -1.0, oz]), 1.5, T([s * lx, -2.0, lz]), 0.12, { part: S.newPart(), tone: 0.5 });
+    }
+  }
+
+  // ---------- голова: массивный рогатый шлем-череп с оскаленной пастью, горящие глаза, широкие уши-щитки ----------
+  {
+    const g = S.group(1.2);
+    const HC = 43.0;
+    S.cone(g, wm(M.slate, W), T([0, 1.4, 36.6], true), 3.0, H([0, 1.4, 40.6]), 2.8, { part: S.newPart(), tone: -0.2 });
+    // шлем: череп + гребень, морда выдвинута вперёд
+    S.ell(g, wm(M.slate, W), H([0, 0.8, HC]), [4.0, 4.2, 4.4], axes(HV), { big: true });
+    S.ell(g, wm(M.slate, W), H([0, 3.2, HC - 1.6]), [3.0, 3.2, 2.6], axes(HV), { part: S.newPart(), tone: 0.1 });
+    S.cone(g, wm(M.slate, W), H([0, 5.0, HC - 1.0]), 1.6, H([0, 7.4, HC - 3.0]), 0.6, { part: S.newPart(), tone: 0.2 });
+    S.ell(g, wm(M.skin, W), H([0, 4.4, HC - 3.8]), [2.8, 2.2, 1.4], axes(HV), { part: S.newPart(), tone: -0.2 });
+    S.cone(g, wm(M.slate, W), H([0, -1.4, HC + 3.8]), 1.0, H([0, 3.6, HC + 2.8]), 0.5, { part: S.newPart(), tone: 0.5 });
+    for (const s of [1, -1]) S.ell(g, wm(M.slate, W), H([s * 4.2, 0.4, HC - 0.6]), [1.2, 2.6, 2.6], axes(HV, s * 0.3), { part: S.newPart(), tone: 0.1 });
+    S.stamps.push({ at: H([0, 6.3, HC - 0.6]), n: HV([0, 1, 0]), px: ST_EYES, colors: keys, glow: GLOW_KEYS, halo: GLOWC[2], depthTol: 2.4, minFacing: 0.2 });
+    S.stamps.push({ at: H([0, 6.5, HC - 3.4]), n: HV([0, 1, 0.1]), px: ST_TEETH, colors: keys, depthTol: 2.4, minFacing: 0.1 });
+    // рога шлема: белая кость, загнуты назад и вверх
+    for (const s of [1, -1]) {
+      const path: V3[] = [[s * 3.8, 0.4, HC + 1.6], [s * 6.0, -1.8, HC + 3.2], [s * 6.2, -5.2, HC + 4.0], [s * 4.2, -8.2, HC + 3.0]];
+      const rad = [1.7, 1.4, 1.0, 0.12];
+      const pp = S.newPart();
+      for (let i = 0; i < path.length - 1; i++) S.cone(g, wm(M.horn, W), H(path[i]), rad[i], H(path[i + 1]), rad[i + 1], { part: pp, tone: i % 2 ? -0.2 : 0.35, big: true });
+    }
+  }
+

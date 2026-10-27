@@ -1,0 +1,54 @@
+  // ---------- рваный плащ-накидка за спиной (короткая), хвост набедренной повязки ----------
+  {
+    const g = S.group(1.2);
+    const cx = pel[0] + sw * 0.3, cy = pel[1] - 4.6;
+    const folds = (c: { l: V3; edge: boolean }) => (c.edge ? 0 : Math.sin(c.l[0] * 1.3 + 0.6) > 0.8 ? -0.8 : 0.1);
+    S.ell(g, wm(M.crim, W), [cx, cy, 24.0 - kn * 4], [5.0, 1.3, 9.0], axes(PR), { tex: folds as never, part: S.newPart() });
+    for (let i = 0; i < 5; i++) {
+      const x = cx + (i - 2) * 2.0, lift = Math.round(p.waveAmp * (0.5 + 0.5 * Math.sin(TAU * (p.wave + i * 0.23)))) * PXM;
+      S.cone(g, wm(M.crim, W), [x, cy + 0.3, 17], 1.5, [x, cy + 0.1, Math.max(8, 11 + lift - (i % 2) * 2)], 0.2, { part: S.newPart(), tone: i % 2 ? -0.2 : 0.1 });
+    }
+  }
+  // ---------- ноги: приземистая широкая стойка, колени вперёд с шипами, бронебойные сапоги с когтями ----------
+  {
+    const g = S.group(0.9);
+    // стыки пластин: тёмные поперечные швы по поножам
+    const seam = (c: { l: V3; edge: boolean }) => (c.edge ? 0 : (((c.l[2] / 3.6) % 1) + 1) % 1 < 0.13 ? -1.3 : 0);
+    for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
+      const k = p.kick[i];
+      const ft: V3 = [pel[0] + s * 7.4, pel[1] + 2.4 + 3.4 * k, Math.max(0, 3.2 + 2.6 * Math.max(0, k)) - kn * 2.4];
+      const hip: V3 = [pel[0] + s * 3.6, pel[1], HIP0 - 2 + shift[2]];
+      const knee = ik(hip, add(ft, [0, 0, 2]), 9.8, 9.8, [s * 0.4, 1, 0.1]);
+      S.cone(g, wm(M.slate, W), hip, 3.6, knee, 3.0, { tone: 0.05, big: true, tex: seam as never });
+      S.cone(g, wm(M.slate, W), knee, 3.0, add(ft, [0, 0, 2.6]), 2.2, { tone: 0.1, big: true, tex: seam as never });
+      // наколенник с шипом и медной каймой
+      S.ell(g, wm(M.slate, W), add(knee, [0, 2.2, 0]), [3.0, 1.5, 2.6], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], { part: S.newPart(), tone: 0.4 });
+      S.cone(g, wm(M.slate, W), add(knee, [0, 3.0, 0.2]), 1.3, add(knee, [0, 7.0, 1.6]), 0.1, { part: S.newPart(), tone: 0.25 });
+      // бедро: медные линии по бронзе
+      S.cone(g, wm(M.copper, W), add(hip, [s * 1.8, 1.8, -1]), 0.32, add(knee, [s * 1.6, 2.0, 2]), 0.32, { part: S.newPart() });
+      // сапог: широкий, носок с тремя когтями, шип на пятке
+      S.cone(g, wm(M.slate, W), add(ft, [0, 0, 6.0]), 2.8, add(ft, [0, 0, 1.6]), 2.5, { part: S.newPart(), tone: 0.15, tex: seam as never });
+      S.ell(g, wm(M.slate, W), add(ft, [0, 2.8, 0.9]), [2.6, 4.2, 1.7], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], { part: S.newPart() });
+      for (const q of [-1.6, 0, 1.6]) S.cone(g, wm(M.slate, W), add(ft, [q, 5.6, 0.9]), 0.9, add(ft, [q * 1.6, 9.6, 0.4]), 0.1, { part: S.newPart(), tone: 0.45 });
+      S.cone(g, wm(M.slate, W), add(ft, [0, -2.6, 1.6]), 1.0, add(ft, [0, -5.0, 3.6]), 0.1, { part: S.newPart(), tone: 0.4 });
+    }
+  }
+  // ---------- торс: тяжёлый нагрудник с медными линиями, набедренная юбка-фаулд с шипастым хвостом, пояс ----------
+  {
+    const g = S.group(1.8);
+    const trim = (c: { l: V3; edge: boolean }) => (c.edge ? 0.5 : (((c.l[2] / 3.4) % 1) + 1) % 1 < 0.12 ? -1.3 : Math.abs(Math.abs(c.l[0]) - 2.2) < 0.22 || Math.abs(c.l[0]) < 0.22 ? { mat: M.copper, d: 0.25 } : 0);
+    S.ell(g, wm(M.slate, W), T([0, 0.8, 32.2]), [6.6, 4.8, 6.4], axes(TV), { tex: trim as never, big: true });
+    S.ell(g, wm(M.slate, W), T([0, 1.6, 29.0]), [5.4, 4.2, 4.0], axes(TV), { part: S.newPart(), tone: -0.1 });
+    S.cone(g, wm(M.slate, W), PV([0, 0.4, 21]), 5.2, T([0, 0.5, 28]), 5.8, { tone: -0.1 });
+    S.ell(g, wm(M.slate, W), T([0, 4.8, 34.6]), [1.6, 0.9, 4.0], axes(TV), { part: S.newPart(), tone: 0.45 });
+    // пояс и фаулд: три пластины, средняя длиннее и с зубцами
+    S.ell(g, wm(M.leath, W), PV([0, 0.6, 24.6]), [5.6, 4.6, 1.2], axes(PR), { part: S.newPart() });
+    const fw = norm(PR([0, 1, 0.1])), sd = PR([1, 0, 0]), upV = norm(PR([0, -0.2, 1]));
+    for (const [dx, len, w] of [[-3.6, 5.2, 2.0], [0, 8.4, 2.6], [3.6, 5.2, 2.0]] as [number, number, number][]) {
+      const c = PV([dx, 5.0, 22.4 + kn * 2 - (len - 5) * 0.5]);
+      S.box(g, wm(M.slate, W), c, [w, 0.6, len / 2], [sd, fw, upV], 0.3, { part: S.newPart(), tone: 0.1 });
+      for (let q = 0; q < 3; q++) S.cone(g, wm(M.slate, W), add(c, add(mul(upV, -len / 2), mul(sd, (q - 1) * w * 0.6))), 0.7, add(c, add(mul(upV, -len / 2 - 2.2), mul(sd, (q - 1) * w * 0.6))), 0.1, { part: S.newPart() });
+    }
+    S.ball(g, M.glow, PV([0, 5.4, 25.2]), 0.6, { part: S.newPart() });
+  }
+

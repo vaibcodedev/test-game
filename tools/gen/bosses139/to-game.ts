@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -13,6 +13,7 @@ import * as lich from "./umb_crown_lich";
 import * as exec from "./umb_ash_executioner";
 import * as mir from "./sol_mirage_sorcerer";
 import * as vam from "./umb_crimson_vampire";
+import * as gob from "./sol_goblin_warlord";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -83,6 +84,19 @@ BOSSES.push({
     wing_storm_mirage: { waves: [], fx: [{ fx: "twister", waves: [0], seq: ["twister"], pin: 0, timing: "strike", place: "ring", radius: "mid", spacing: 52 }] },
   },
   units: [{ src: "vam-unit-mirage.png", id: `${vam.ID}_mirage`, frame: vam.FRAME, frameH: vam.FRAME_H }],
+});
+
+BOSSES.push({
+  id: gob.ID, sheet: "gob-sheet.png", frame: gob.FRAME, frameH: gob.FRAME_H, cols: gob.MIR_COLS, wrap: 64, anims: anims(gob.MIR_ANIMS),
+  fx: Object.fromEntries((["vortex", "mirage", "twister"] as const).map((k) => [k, { src: `gob-fx-${k}.png`, def: fxDef(gob.ID, k, gob.FX[k] as FxIn) }])),
+  skills: {
+    // подкоп: песчаная воронка на метке с начала замаха (след), удар — когда босс выныривает (анимация «в песок и обратно»)
+    burrow: { waves: [{ pre: ["mirageWind", "mirageHold"], strike: "mirageCast" }], fx: [{ fx: "vortex", waves: [0], seq: ["vortexIn", "vortexHold", "vortexOut"], pin: 0, timing: "wind", place: "marks", holds: { vortexHold: 1200 } }] },
+    chitin_wall: { waves: [{ pre: ["bladeWind", "bladeHold"], strike: "bladeStrike" }], fx: [] },
+    scorpion_swarm: { waves: [{ pre: ["twisterWind", "twisterHold"], strike: "twisterCast" }], fx: [] },
+    // укрытия: на метках встают песчаные столбы
+    sand_storm: { waves: [{ pre: ["vortexWind", "vortexHold"], strike: "vortexCast" }], fx: [{ fx: "mirage", waves: [0], seq: ["mirage"], pin: 0, timing: "wind", place: "marks" }] },
+  },
 });
 
 const only = process.argv[2];

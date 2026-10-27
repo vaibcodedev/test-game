@@ -41,6 +41,12 @@ export interface ZbWave {
   doubles?: { count: number; hp: number; holdMs: number; mirror: string; name?: string };
   /** Умение повторяют двойники босса (кольцо «Песчаный смерч»). */
   mirror?: boolean;
+  /** Кольцо: подкоп — босс уходит под песок: invulnMs неуязвим (урон по нему 0), затем выныривает по after.leap в центре метки. */
+  burrow?: { invulnMs: number };
+  /** Кольцо: рой — count приспешников (моб <босс>_swarm по образцу mob, здоровье — hp× от него, без добычи) у босса. */
+  swarm?: { mob: string; count: number; hp: number };
+  /** Кольцо: укрытия — count столбов радиуса r на арене; в миг удара урон получают только те, кто стоит вне всех столбов. */
+  safe?: { count: number; r: number };
 }
 export interface ZbAbility extends ZbWave {
   id: string;

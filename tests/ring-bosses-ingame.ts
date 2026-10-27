@@ -218,6 +218,27 @@ async function scenario() {
     check(left === ds.length - 1, `${CARD.id}: убитый двойник исчез (осталось ${left})`);
   }
 
+  // рой: после замаха приспешники на арене (лист скорпиона в игре), без добычи
+  const swAb = CARD.abilities.find((a) => a.swarm);
+  if (swAb) {
+    mob.reset();
+    for (const a of boss.abilities) a.at = 1e9;
+    mob.state = "chase"; mob.targetId = H.id; mob.addThreat(H.id, 1000);
+    boss.run(swAb);
+    await sleep(swAb.windupMs + 1100);
+    const sw = [...W().mobs.values()].filter((m) => m.def.id === `${CARD.id}_swarm` && !m.dead) as Mob[];
+    check(sw.length === swAb.swarm!.count, `${CARD.id}: приспешников роя ${sw.length} из ${swAb.swarm!.count}`);
+    const spr = sw[0]?.def.sprite ?? "";
+    const seen = await run<number>("let n = 0; for (const [id, v] of sc.units) if (a.ids.includes(id) && v.u.sprite === a.spr) n++; return n;", { ids: sw.map((m) => m.id), spr });
+    check(!!spr && seen === sw.length && sw.every((m) => m.def.xp === 0 && m.def.gold === 0), `${CARD.id}: приспешники видны в игре (${spr}, на экране ${seen}), без добычи`);
+    await run("sc.scene.pause();");
+    save(`${PFX}ingame-swarm.png`, await snap(bx, by - 10, 640, 460));
+    await run("sc.scene.resume();");
+    for (const m of sw) W().killMob(m, H);
+    mob.reset();
+    mob.unit.x = mob.home.x; mob.unit.y = mob.home.y;
+  }
+
   // зов сорван: группа сняла 6 % — оглушение
   const brk = CARD.abilities.find((a) => a.break);
   if (brk) {

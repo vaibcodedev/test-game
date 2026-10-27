@@ -1,5 +1,9 @@
 {
  "units": {
+  "sol_goblin_warlord": {
+   "frame": 64,
+   "frameH": 80
+  },
   "pet_wolf": {
    "frame": 32
   },
@@ -33750,6 +33754,9 @@
   "uq_zb_scarlet_blade",
   "uq_zb_count_collar",
   "uq_zb_flock_fang",
+  "uq_zb_burrow_spear",
+  "uq_zb_grazg_skullhelm",
+  "uq_zb_digger_claw",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",

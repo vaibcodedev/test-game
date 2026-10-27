@@ -3180,6 +3180,275 @@
      ]
     }
    }
+  },
+  "sol_goblin_warlord": {
+   "file": "sol_goblin_warlord.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 134,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "bladeWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "bladeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "bladeStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "vortexWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "vortexHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "vortexCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "mirageWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "mirageHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "mirageCast": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "twisterWind": {
+     "col": 84,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "twisterHold": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "twisterCast": {
+     "col": 92,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stun": {
+     "col": 100,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 108,
+     "n": 12,
+     "fps": 12,
+     "loop": false,
+     "hit": 5
+    },
+    "death": {
+     "col": 120,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "vortex": {
+     "file": "sol_goblin_warlord-vortex.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 46,
+     "rows": 2,
+     "anims": {
+      "vortexIn": {
+       "col": 0,
+       "n": 4,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      },
+      "vortexHold": {
+       "col": 4,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "vortexOut": {
+       "col": 8,
+       "n": 4,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    },
+    "mirage": {
+     "file": "sol_goblin_warlord-mirage.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 54,
+     "rows": 2,
+     "anims": {
+      "mirage": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    },
+    "twister": {
+     "file": "sol_goblin_warlord-twister.png",
+     "fw": 48,
+     "fh": 64,
+     "ax": 24,
+     "ay": 56,
+     "rows": 2,
+     "anims": {
+      "twister": {
+       "col": 0,
+       "n": 12,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    }
+   },
+   "skills": {
+    "burrow": {
+     "waves": [
+      {
+       "pre": [
+        "mirageWind",
+        "mirageHold"
+       ],
+       "strike": "mirageCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "vortex",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "vortexIn",
+        "vortexHold",
+        "vortexOut"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "marks",
+       "holds": {
+        "vortexHold": 1200
+       }
+      }
+     ]
+    },
+    "chitin_wall": {
+     "waves": [
+      {
+       "pre": [
+        "bladeWind",
+        "bladeHold"
+       ],
+       "strike": "bladeStrike"
+      }
+     ],
+     "fx": []
+    },
+    "scorpion_swarm": {
+     "waves": [
+      {
+       "pre": [
+        "twisterWind",
+        "twisterHold"
+       ],
+       "strike": "twisterCast"
+      }
+     ],
+     "fx": []
+    },
+    "sand_storm": {
+     "waves": [
+      {
+       "pre": [
+        "vortexWind",
+        "vortexHold"
+       ],
+       "strike": "vortexCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "mirage",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "mirage"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "marks"
+      }
+     ]
+    }
+   }
   }
  },
  "units": {
@@ -3205,6 +3474,10 @@
    "frameH": 80
   },
   "umb_crimson_vampire_mirage": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_goblin_warlord": {
    "frame": 64,
    "frameH": 80
   }

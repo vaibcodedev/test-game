@@ -228,6 +228,63 @@
       ],
       "legendary": 0.01,
       "pet": 6
+    },
+    "sol_goblin_warlord": {
+      "name": "Гразг Подкопщик",
+      "level": 49,
+      "band": [
+        40,
+        50
+      ],
+      "special": [
+        {
+          "item": "zb_burrow_spear",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_grazg_skullhelm",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_digger_claw",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -674,6 +731,116 @@
         "pommel": "ring"
       },
       "boss": "umb_crimson_vampire",
+      "card": "r2"
+    },
+    "zb_burrow_spear": {
+      "id": "zb_burrow_spear",
+      "name": "Копьё Подкопщика",
+      "base": "spear",
+      "ilvl": 49,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 30,
+        "crit": 1
+      },
+      "prop": "Удар по цели, что стоит в песке или на земле под ногами, рвёт броню: следующие 3 удара по ней проходят на 8% легче.",
+      "lore": "Древко обмотано медью с чужих колодцев. Наконечник каждый раз находит дорогу снизу.",
+      "look": {
+        "shape": "pike",
+        "mat": "darksteel",
+        "trim": "bronze",
+        "cloth": "red",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "sun",
+        "guard": "bar",
+        "pommel": "spike"
+      },
+      "boss": "sol_goblin_warlord",
+      "card": "r3"
+    },
+    "zb_grazg_skullhelm": {
+      "id": "zb_grazg_skullhelm",
+      "name": "Шлем-череп Гразга",
+      "base": "plate_helm",
+      "ilvl": 47,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "vit"
+      ],
+      "stats": {
+        "str": 12,
+        "vit": 12
+      },
+      "prop": "Носитель слышит шаги под землёй: подкоп врага виден за миг до выхода.",
+      "lore": "Два рога — спиленные кирки. Оскал выбит так, что смеётся сам.",
+      "look": {
+        "shape": "horned",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bronze",
+        "cloth": "red",
+        "gem": "ruby",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "ruby",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "sol_goblin_warlord",
+      "card": "r2"
+    },
+    "zb_digger_claw": {
+      "id": "zb_digger_claw",
+      "name": "Коготь копателя",
+      "base": "amulet",
+      "ilvl": 48,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "rogue",
+        "ranger",
+        "warrior"
+      ],
+      "affix": [
+        "agi",
+        "hp"
+      ],
+      "stats": {
+        "agi": 12,
+        "hp": 140
+      },
+      "prop": "Песок под ногами носителя не вязнет: замедления на песке действуют вполовину слабее.",
+      "lore": "Коготь оставлен в мёртвом колодце. Медь на нём ещё тёплая, а оправа — чужая.",
+      "look": {
+        "shape": "skull",
+        "rich": 1,
+        "mat": "bronze",
+        "trim": "bronze",
+        "cloth": "red",
+        "gem": "sun",
+        "haft": "yew",
+        "deco": "skull",
+        "fx": "sun",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "sol_goblin_warlord",
       "card": "r2"
     }
   }

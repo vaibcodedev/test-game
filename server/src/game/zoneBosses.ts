@@ -147,6 +147,8 @@ export class ZoneBoss extends Boss {
     if (ab.break) { this.channel(ab); return; }
     if (ab.cage) { this.cages(ab); return; }
     if (ab.doubles) { this.doubles(ab); return; }
+    if (ab.swarm) { this.swarmCall(ab); return; }
+    if (ab.safe) { this.storm(ab); return; }
     const waves: ZbWave[] = [ab, ...(ab.then ?? [])];
     // занятость: сумма волн (с рядами и травлей)
     let total = 0;
@@ -156,8 +158,54 @@ export class ZoneBoss extends Boss {
     this.m.unit.anim = Anim.Cast;
     this.face(tank.x, tank.y);
     if (Math.random() < 0.6) this.line(this.card.lines.abilities[ab.id]);
+    // подкоп: до выхода из-под земли босс неуязвим (урон ×0); сбрасывается по сроку, при сбросе боя и гибели
+    if (ab.burrow) {
+      const epoch = this.epoch;
+      this.m.dmgTakenMul = 0;
+      this.w.later(ab.burrow.invulnMs, () => { if (epoch === this.epoch) this.refreshShield(); });
+    }
     this.wave(ab, waves, 0, null, this.epoch);
     if (ab.mirror) this.mirrorWave(ab);
+  }
+
+  /** Рой (кольцо, swarm): после замаха у босса вылезают приспешники и бегут на цель; убиваются с боссом и при сбросе. */
+  private swarmCall(ab: ZbAbility) {
+    const w = this.w, m = this.m, sw = ab.swarm!, epoch = this.epoch;
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: [Math.round(m.x), Math.round(m.y)], r: ab.r });
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead || !MOBS[`${m.def.id}_swarm`]) return;
+      this.summon(`${m.def.id}_swarm`, sw.count, Math.min(this.arena * 0.7, 130));
+    });
+  }
+  /** Песчаная буря (кольцо, safe): столбы-укрытия встают на арене; в конце замаха бьёт всех вне столбов. */
+  private storm(ab: ZbAbility) {
+    const w = this.w, m = this.m, sf = ab.safe!, epoch = this.epoch, k = kindOf(ab.k);
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
+    const rocks: { x: number; y: number }[] = [];
+    const a0 = Math.random() * Math.PI * 2;
+    for (let i = 0; i < sf.count; i++) {
+      for (let rr = this.arena * 0.6; rr > 40; rr -= 15) {
+        const a = a0 + (i / sf.count) * Math.PI * 2;
+        const x = Math.round(m.home.x + Math.cos(a) * rr), y = Math.round(m.home.y + Math.sin(a) * rr);
+        if (walkable(w.map, x, y, 12)) { rocks.push({ x, y }); break; }
+      }
+    }
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: rocks.flatMap((s) => [s.x, s.y]), r: sf.r });
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead) return;
+      for (const p of this.inArena()) {
+        if (p.dead || rocks.some((s) => Math.hypot(p.x - s.x, p.y - s.y) <= sf.r)) continue;
+        w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
+        if (p.dead) this.killed(p);
+      }
+    });
   }
 
   /** Мираж-двойники (кольцо, doubles). */
