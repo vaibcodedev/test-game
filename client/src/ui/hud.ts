@@ -65,7 +65,7 @@ const CLASS_COLOR: Record<string, string> = {
   warrior: "#ff9a7a", mage: "#c8a0ff", ranger: "#9ae07a", healer: "#ffe9a0", rogue: "#b8a0e0",
   deathknight: "#8ad8ff", bloodweaver: "#ff6a7a", darkranger: "#9a8aff", warlock: "#9aff6a", reaver: "#e06a4a",
 };
-const TERRAIN_COLORS = ["#2a5a9e", "#e05412", "#d0b07e", "#3c432c", "#463e40", "#86593a", "#4f873c", "#2f5336", "#746e7a", "#3a3444", "#e8eef4", "#a8d4ec", "#2a2230", "#d8b878", "#3a6a7a"];
+const TERRAIN_COLORS = ["#2a5a9e", "#e05412", "#d0b07e", "#3c432c", "#463e40", "#86593a", "#4f873c", "#2f5336", "#746e7a", "#3a3444", "#e8eef4", "#a8d4ec", "#2a2230", "#d8b878", "#3a6a7a", "#5a6c7e", "#4c4c5a", "#2c2634", "#4a405a"];
 
 export interface HudCtx {
   net: Net;
@@ -124,6 +124,7 @@ export class Hud {
   /** Строка ошибок над панелью (docs/controls.md, раздел 10). */
   private errLine = el("div", "errline");
   private itip = el("div", "interact-tip");
+  private itipText = "";
   private errAt = new Map<string, number>();
   private errHide = 0;
   private lastCast: { id: string; at: number } | null = null;
@@ -399,9 +400,19 @@ export class Hud {
 
   // ---------- сообщения ----------
   /** Подсказка взаимодействия над панелью: «[F] Поговорить: Торговка Марфа». */
+  /**
+   * Подсказка взаимодействия над панелью: клавиша плашкой, главное — золотом, детали после « · » — второй строкой.
+   * Появляется и прячется плавно (errline.css, .show); при уходе текст остаётся до конца затухания.
+   */
   setInteractTip(text: string | null) {
     const t = text ?? "";
-    if (this.itip.textContent !== t) this.itip.textContent = t;
+    if (t === this.itipText) return;
+    this.itipText = t;
+    if (!t) return void this.itip.classList.remove("show");
+    const m = /^\[(.+?)\] ([\s\S]*)$/.exec(t), key = m?.[1] ?? "", body = m ? m[2] : t;
+    const [main, ...rest] = body.split(/ [·•] /);
+    this.itip.innerHTML = `${key ? `<kbd class="kbd">${esc(key)}</kbd>` : ""}<span class="it-text"><b>${esc(main)}</b>${rest.length ? `<small>${esc(rest.join(" · "))}</small>` : ""}</span>`;
+    this.itip.classList.add("show");
   }
   /** Запомнить последнее нажатое умение: отказ с кодом подсветит его слот. */
   notePress(skillId: string) { this.lastCast = { id: skillId, at: performance.now() }; }
@@ -1453,9 +1464,11 @@ export class Hud {
     const g = c.getContext("2d")!;
     const img = g.createImageData(m.w, m.h);
     for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
-      let col = TERRAIN_COLORS[m.vtx[y * (m.w + 1) + x]] ?? "#4f873c";
+      const dg = !!m.dgStyle; // подземелье: свои цвета — тёмный камень пола, стены темнее, лава оранжевая, вода холодная
+      let col = TERRAIN_COLORS[m.vtx[y * (m.w + 1) + x]] ?? (dg ? "#2e2838" : "#4f873c");
       const blocked = m.cell[y * m.w + x] & 1 && m.vtx[y * (m.w + 1) + x] !== T.Water && m.vtx[y * (m.w + 1) + x] !== T.Lava;
-      if (m.cell[y * m.w + x] & 2) col = "#1c1822";
+      if (m.cell[y * m.w + x] & 2) col = dg ? "#0c0910" : "#1c1822";
+      else if (dg && blocked) col = "#6a5a78"; // колонны, саркофаги, статуи
       else if (blocked && isTownZone(m.zone[y * m.w + x])) {
         const c = CITIES.find((k) => k.style && Math.abs(x - k.x) <= k.half.x && Math.abs(y - k.y) <= k.half.y);
         if (c) {

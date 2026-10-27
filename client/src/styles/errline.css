@@ -5,5 +5,21 @@
 .hb-slot.queued { border-color: var(--gold); box-shadow: 0 0 8px 1px rgba(240, 192, 80, 0.85), inset 0 0 6px rgba(240, 192, 80, 0.6); }
 .hb-slot.errflash { animation: hb-err 0.3s ease-out; }
 @keyframes hb-err { from { box-shadow: 0 0 10px 2px rgba(255, 50, 40, 0.9); background: rgba(160, 20, 20, 0.6); } to { box-shadow: none; } }
-.interact-tip { position: absolute; left: 50%; bottom: calc(var(--bar-top, 92px) + 68px); transform: translateX(-50%); padding: var(--sp-1) var(--sp-3); border-radius: var(--r-2); background: var(--panel); border: 1px solid var(--line-hi); color: var(--gold); text-shadow: var(--shadow-text); pointer-events: none; white-space: nowrap; z-index: var(--z-hud-event); }
-.interact-tip:empty { display: none; }
+/* подсказка взаимодействия (hud.ts setInteractTip): клавиша плашкой, название золотом, детали второй строкой; плавно появляется и тает */
+.interact-tip {
+  position: absolute; left: 50%; bottom: calc(var(--bar-top, 92px) + 68px); transform: translate(-50%, 4px);
+  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1h, 6px) var(--sp-3) var(--sp-1h, 6px) var(--sp-2);
+  border-radius: var(--r-2); background: var(--panel); border: 1px solid var(--line-hi); box-shadow: 0 4px 14px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 230, 170, .06);
+  color: var(--fg); text-shadow: var(--shadow-text); pointer-events: none; white-space: nowrap; z-index: var(--z-hud-event);
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--dur-win-out, 110ms) var(--ease-in-soft, ease-in), transform var(--dur-win-out, 110ms) var(--ease-in-soft, ease-in), visibility 0s linear var(--dur-win-out, 110ms);
+}
+.interact-tip.show {
+  opacity: 1; visibility: visible; transform: translate(-50%, 0);
+  transition: opacity var(--dur-win-in, 160ms) var(--ease-out-soft, ease-out), transform var(--dur-win-in, 160ms) var(--ease-out-soft, ease-out), visibility 0s;
+}
+.interact-tip .kbd { flex: none; }
+.interact-tip .it-text { display: flex; flex-direction: column; line-height: 1.25; }
+.interact-tip .it-text b { color: var(--gold); font-weight: var(--fw-b, 700); }
+.interact-tip .it-text small { color: var(--dim); font-size: var(--fs-xs); }
+@media (prefers-reduced-motion: reduce) { .interact-tip, .interact-tip.show { transition: none; } }
