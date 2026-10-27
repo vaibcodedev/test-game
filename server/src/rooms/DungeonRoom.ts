@@ -66,11 +66,13 @@ export class DungeonRoom extends Room<WorldState> {
     this.onMessage("ping", (c) => c.send("pong", 0));
     on("respawn", (p) => this.world.respawn(p));
     on("dungeon:leave", (p) => this.leave(p));
+    this.onMessage("dg:sync", (c) => this.sendGates(c));
     if (process.env.TEST_MODE === "1") {
       on<{ op: string; v?: unknown; x?: unknown; y?: unknown }>("dbg", (p, m) => {
         if (m.op === "god") { p.unit.maxHp = 999_999; p.unit.hp = 999_999; }
         else if (m.op === "tp" && typeof m.x === "number" && typeof m.y === "number") { p.unit.x = m.x; p.unit.y = m.y; p.moveTo = null; p.selfDirty = true; }
         else if (m.op === "kill") { p.unit.hp = 0; }
+        else if (m.op === "gatecell") { const g = DUNGEON_GATES.find((q) => q.id === m.v), mp = this.world.map; if (g) p.send("dbg:gatecell", { id: g.id, blocked: g.cells.every(([cx, cy]) => !!(mp.cell[cy * mp.w + cx] & CELL_BLOCK)), free: g.cells.every(([cx, cy]) => !(mp.cell[cy * mp.w + cx] & CELL_BLOCK)) }); }
         else if (m.op === "bosshp") { for (const mob of this.world.mobs.values()) if (mob.def.boss) mob.unit.hp = Math.max(1, Math.round(mob.unit.maxHp * Number(m.v))); }
         else if (m.op === "dayshift" && typeof m.v === "number") { p.save.dgLoot = Object.fromEntries(Object.entries(p.save.dgLoot ?? {}).map(([k, t]) => [k, t + (m.v as number)])); }
       });

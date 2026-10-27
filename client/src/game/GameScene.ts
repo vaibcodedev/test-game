@@ -340,7 +340,8 @@ export class GameScene extends Phaser.Scene {
         if (g) for (const [cx, cy] of g.cells) { const i = cy * this.map.w + cx; if (open) this.map.cell[i] &= ~CELL_BLOCK; else this.map.cell[i] |= CELL_BLOCK; }
       };
       dgGateOpen.clear();
-      for (const g of DUNGEON_GATES) apply(g.id, false);
+      for (const g of DUNGEON_GATES) apply(g.id, net.dgGates.get(g.id) ?? false); // то, что сервер уже прислал, пока сцена создавалась
+      net.send("dg:sync", {}); // и на всякий случай запросить состояние заново: ответ придёт dg:gates
       this.cleanup.push(net.on("dg:gate", (m) => apply(m.id, m.open)));
       this.cleanup.push(net.on("dg:gates", (m) => { for (const g of DUNGEON_GATES) apply(g.id, m.open.includes(g.id)); }));
     }

@@ -175,6 +175,9 @@ export class Net {
   kind: "world" | "arena" | "raid" | "dungeon" = "world";
   /** Трофеи Повелителя Пепла сегодня: взяты ли и сколько до новых (leftMs на момент at). */
   dungeon: { looted: boolean; leftMs: number; at: number } | null = null;
+  /** Ворота подземелья: id → открыты (по последнему сообщению сервера), и приходил ли полный список. */
+  dgGates = new Map<string, boolean>();
+  dgGatesKnown = false;
   arena: ArenaWelcome | null = null;
   raid: RaidWelcome | null = null;
   self: SelfState | null = null;
@@ -421,8 +424,9 @@ export class Net {
     room.onMessage("raid:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("dungeon:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("dungeon:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
-    room.onMessage("dg:gate", (m: { id: string; open: boolean }) => this.emit("dg:gate", m));
-    room.onMessage("dg:gates", (m: { open: string[] }) => this.emit("dg:gates", m));
+    // состояние ворот подземелья хранит сам Net: сообщения приходят сразу после welcome, раньше, чем сцена успевает подписаться; источник правды — сервер
+    room.onMessage("dg:gate", (m: { id: string; open: boolean }) => { this.dgGates.set(m.id, m.open); this.emit("dg:gate", m); });
+    room.onMessage("dg:gates", (m: { open: string[] }) => { this.dgGates.clear(); for (const id of m.open) this.dgGates.set(id, true); this.dgGatesKnown = true; this.emit("dg:gates", m); });
     room.onMessage("dungeon:fade", (m: { ms?: number }) => this.emit("dungeon:fade", m));
     room.onMessage("dungeon:status", (m: { looted: boolean; leftMs: number; at: number }) => { this.dungeon = m; this.emit("dungeon:status", m); });
     room.onMessage("logout:wait", (m: { ms: number }) => this.emit("logout:wait", m));

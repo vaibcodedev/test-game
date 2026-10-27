@@ -90,6 +90,55 @@ async function main() {
       assert(A.welcome?.dungeon === true, "не вошёл после сдвига суток");
       void st3;
     });
+    // ---- ворота: источник правды — сервер; клиент получает список при входе (dg:gates), на запрос (dg:sync) и каждое изменение (dg:gate); проходимость = картинка ----
+    const G56 = { id: "g56", cx: 1024, row: 8 };
+    const gateBox = (b: Bot) => {
+      const box: { open: string[] | null; ev: { id: string; open: boolean }[]; cell: { blocked: boolean; free: boolean } | null } = { open: null, ev: [], cell: null };
+      b.room.onMessage("dg:gates", (m: any) => { box.open = m.open; });
+      b.room.onMessage("dg:gate", (m: any) => { box.ev.push(m); });
+      b.room.onMessage("dbg:gatecell", (m: any) => { box.cell = m; });
+      return box;
+    };
+    const sync = async (b: Bot, box: ReturnType<typeof gateBox>) => { box.open = null; b.send("dg:sync", {}); await b.until(() => box.open !== null, 3000, "dg:gates"); return box.open!; };
+    const probe = async (b: Bot, box: ReturnType<typeof gateBox>, id: string) => { box.cell = null; b.send("dbg", { op: "gatecell", v: id }); await b.until(() => box.cell !== null, 3000, "dbg:gatecell"); return box.cell!; };
+    await check("ворота при входе: список и проходимость совпадают (вход рядом с дверями собора — они открыты, решётка склепа закрыта)", async () => {
+      const box = gateBox(A); // герой уже внутри после предыдущей проверки, стоит у входа рядом с дверями собора
+      await sleep(1200);
+      const open = await sync(A, box);
+      assert(open.includes(G56.id), "двери у входа должны быть открыты");
+      assert(!open.includes("g75"), "решётка склепа далеко, должна быть закрыта");
+      assert((await probe(A, box, G56.id)).free, "открытый проём непроходим");
+      assert((await probe(A, box, "g75")).blocked, "закрытая решётка проходима");
+      A.send("dbg", { op: "tp", x: 1040, y: 17 * 32 }); // в зале, вдали от всех ворот
+      await A.until(() => box.ev.some((e) => e.id === G56.id && !e.open), 8000, "двери собора закрылись");
+      await sleep(1500);
+      assert((await sync(A, box)).length === 0, "после ухода ворота открыты");
+      assert((await probe(A, box, G56.id)).blocked, "закрытые двери проходимы");
+    });
+    await check("герой подошёл — dg:gate open, проём проходим и в списке; ушёл — закрылись", async () => {
+      const box = gateBox(A);
+      A.send("dbg", { op: "tp", x: G56.cx, y: (G56.row + 2) * 32 + 8 });
+      await A.until(() => box.ev.some((e) => e.id === G56.id && e.open), 4000, "dg:gate open");
+      await sleep(900);
+      assert((await sync(A, box)).includes(G56.id), "открытые ворота не в списке");
+      assert((await probe(A, box, G56.id)).free, "открытый проём непроходим");
+      A.send("dbg", { op: "tp", x: 1040, y: 17 * 32 });
+      await A.until(() => box.ev.some((e) => e.id === G56.id && !e.open), 8000, "dg:gate close");
+      await sleep(1500);
+      assert(!(await sync(A, box)).includes(G56.id), "закрытые ворота в списке");
+      assert((await probe(A, box, G56.id)).blocked, "закрытый проём проходим");
+    });
+    await check("поздний вход: второй герой входит, пока ворота открыты, и сразу видит их открытыми", async () => {
+      const box = gateBox(A);
+      A.send("dbg", { op: "tp", x: G56.cx, y: (G56.row + 2) * 32 + 8 });
+      await A.until(() => box.ev.filter((e) => e.id === G56.id && e.open).length >= 1, 4000, "ворота снова открылись");
+      const B = await Bot.join("Дангер3", "pass", "warrior");
+      await intoDungeon(B);
+      const bb = gateBox(B);
+      assert((await sync(B, bb)).includes(G56.id), "поздно вошедший не получил открытые ворота");
+      await outOfDungeon(B);
+      await B.leave();
+    });
     console.log(`\nВсе проверки пройдены: ${passedCount()}`);
   } finally {
     await stopServer();
