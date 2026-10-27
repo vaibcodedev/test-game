@@ -540,15 +540,20 @@ export class BannerWar {
   respawnAt(p: Player): { x: number; y: number; free: boolean } | null {
     const sr = this.w.siege?.respawnAt(p); // осада форта: нападающие — в лагере у ворот, оборона — в форте
     if (sr) return sr;
-    if (!isWarFaction(p.faction) || zoneAtPx(this.w.map, p.x, p.y) !== Zone.Fields) return null;
-    if (this.phase === "battle" && p.level >= WAR.minLevel) {
-      const fort = CITIES.find((c) => c.id === `fort_${p.faction}`);
-      if (fort) return { x: fort.spawn.x, y: fort.spawn.y, free: true };
-    }
-    const list = this.bonus[p.faction].respawn;
-    if (!list.length) return null;
+    if (!isWarFaction(p.faction)) return null;
+    // павший на Полях или в своём форте (и у его стен) поднимается в своём форте — открыт он герою или нет (раньше без «открытого» форта кидало в столицу)
+    const z = zoneAtPx(this.w.map, p.x, p.y), fort = CITIES.find((c) => c.id === `fort_${p.faction}`);
+    const ownFortZone = z === (p.faction === "solgard" ? Zone.FortSolgard : Zone.FortUmbrath);
+    const nearFort = !!fort && Math.hypot(fort.spawn.x - p.x, fort.spawn.y - p.y) < 40 * TILE;
+    if (z !== Zone.Fields && !ownFortZone && !nearFort) return null;
+    if (!fort) return null;
+    // в битве — без потери золота
+    if (this.phase === "battle" && p.level >= WAR.minLevel) return { x: fort.spawn.x, y: fort.spawn.y, free: true };
+    // вне битвы на Полях: взятая своя застава Центра, если она ближе форта
+    const list = z === Zone.Fields ? this.bonus[p.faction].respawn : [];
     const d = [...list].sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
-    return { x: d.x, y: d.y + 2 * TILE, free: false };
+    if (d && Math.hypot(d.x - p.x, d.y - p.y) < Math.hypot(fort.spawn.x - p.x, fort.spawn.y - p.y)) return { x: d.x, y: d.y + (WAR.look.plinthDrop + 2 * TILE), free: false };
+    return { x: fort.spawn.x, y: fort.spawn.y, free: false };
   }
 
   /** Телепорт в свой форт: за teleportMin минут до битвы и во время неё. */

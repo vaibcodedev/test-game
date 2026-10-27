@@ -542,7 +542,7 @@ async function scenarioLife() {
     // 2. варианты полосы: до захвата, подъём, спор, итог
     const tmp = path.join(OUT, "tmp-bar");
     fs.mkdirSync(tmp, { recursive: true });
-    for (const v of ["v1", "v2", "v3"]) {
+    for (const v of ["final"]) {
       await page.evaluate((x) => { try { localStorage.setItem("war:barv", x); } catch {} }, v);
       await page.evaluate(() => { try { sessionStorage.setItem("war:collapsed", "0"); } catch {} });
       inside.clear();

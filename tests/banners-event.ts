@@ -260,6 +260,20 @@ war.debug("owner", { base: "center_e", f: "solgard" });
     check("бафы земли: у Умбрата — свои значки (Север: добыча, Юг: копь), у Сольгарда их нет", ku.includes("war_xpGold_umb") && ku.includes("war_mats_umb") && !ks.some((k) => k.endsWith("_umb")) && ks.includes("war_squads_sol"), `${ku.join(",")} | ${ks.join(",")}`);
   }
   check("северная боковая: +10% опыта и золота, южная: +20% материалов на Полях", near(mb.xp, 1 + D.bonus.xpGold, 1e-9) && near(mb.mats, 1 + D.bonus.mats, 1e-9) && mbs.xp === 1);
+  {
+    // смерть в своём форте или на Полях — подъём в своём форте (а не в столице), даже если форт герою не открыт
+    const fort = CITIES.find((c) => c.id === "fort_solgard")!;
+    const t = hero("solgard", fort.spawn.x + 3 * TILE, fort.spawn.y + 2 * TILE);
+    t.save.cities = [];
+    const a = war.respawnAt(t);
+    t.unit.x = 420 * TILE; t.unit.y = 250 * TILE;
+    const b = war.respawnAt(t);
+    check("павший в своём форте и на Полях (вне битвы) — в своём форте", !!a && a.x === fort.spawn.x && a.y === fort.spawn.y && !!b && b.x === fort.spawn.x, `${JSON.stringify(a)} ${JSON.stringify(b)}`);
+    t.dead = true; t.deadAt = -1e9; t.unit.x = fort.spawn.x; t.unit.y = fort.spawn.y + 64;
+    w.respawn(t);
+    check("World.respawn: из форта — снова в форт, не в столицу", t.x === fort.spawn.x && t.y === fort.spawn.y, `${t.x},${t.y}`);
+    park(t);
+  }
   check("заставы центра: возрождение у своей заставы вне битвы", (() => { u1.unit.x = 470 * TILE; u1.unit.y = 190 * TILE; const sp = war.respawnAt(u1); return !!sp && !sp.free && near(sp.x, warBase("center_w")!.x, 1); })());
   const owners = Object.fromEntries([...war.bases.values()].map((r) => [r.def.id, r.owner ?? ""]));
   const again = new BannerWar(w, store);

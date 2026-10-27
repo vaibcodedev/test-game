@@ -12,7 +12,6 @@ import SIEGE_DATA from "../../../data/siege.json";
 import { WAR, WAR_BASES, WAR_FRONTS, WAR_RADIUS, nextWarStart, raiseSec, warBase, warFront, type WarBaseDef, type WarBaseView, type WarFaction, type WarResultMsg, type WarSayMsg, type WarStateMsg } from "../../../shared/bannerWar";
 import { net as NET, type Net } from "../net";
 import { openModal, type ModalHandle } from "./kit";
-import { barVariant, variantBody } from "./warBarVariants";
 
 /** Последнее состояние ивента и сдвиг часов сервера относительно performance.now(). */
 export const warView: { state: WarStateMsg | null; at: number; byId: Map<string, WarBaseView> } = { state: null, at: 0, byId: new Map() };
@@ -136,37 +135,38 @@ export class WarHud {
       else if (s.ph === "result" && this.endLine && performance.now() < this.endUntil) mode = "result";
     }
     this.bar.hidden = mode === "none";
+    if (this.bar.hidden) document.body.classList.remove("war-bar-on");
     this.bar.classList.toggle("war-mini", mode === "chip" || mode === "result");
     if (mode === "none" || !s) { this.lastHtml = ""; return; }
     const help = `<button class="x war-help" data-war-rules title="${esc(T("ui.bannerWar.41"))}" aria-label="${esc(T("ui.bannerWar.41"))}">?</button>`;
     const tpOpen = ok && ((s.ph === "prep" && s.t0 - now <= WAR.schedule.teleportMin * 60000) || s.ph === "battle");
     let html: string;
-    const bv = barVariant();
-    if (mode === "result" && bv) {
-      this.bar.classList.remove("war-mini");
-      html = variantBody(bv, s, T("ui.bannerWar.2"), help, `<div class="war-hint ok">${esc(this.endLine)}</div>`, warHero);
-    } else if (mode === "result") html = `<div class="war-head"><span class="war-front">${esc(this.endLine)}</span>${help}</div>`;
+    if (mode === "result") html = `<div class="war-head"><span class="war-front">${esc(this.endLine)}</span>${help}</div>`;
     else if (mode === "chip") {
       const text = s.ph === "prep" ? T("ui.bannerWar.110", { t: mmss(s.t0 - now) }) : fr?.name ?? ""; // в битве — коротко: имя фронта, рядом таймер
       const expand = s.ph === "battle" && ok ? `<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.113"))}" aria-label="${esc(T("ui.bannerWar.113"))}">+</button>` : "";
       html = `<div class="war-head"><span class="war-front">${esc(text)}</span>${s.ph === "battle" ? `<span class="war-time">${mmss(s.t1 - now)}</span>` : ""}${tpOpen ? this.tpButton() : ""}${expand}${help}</div>`;
     } else {
-      const heartAt = s.t0 + WAR.schedule.heartOpenMin * 60000;
-      const note = !s.heart ? T("ui.bannerWar.3", { t: mmss(heartAt - now) }) : "";
-      const pips = (fr?.bases ?? []).map((d) => {
-        const b = warView.byId.get(d.id);
-        const state = !b ? "" : b.lock ? T("ui.bannerWar.5", { min: WAR.schedule.heartOpenMin }) : b.c ? T("ui.bannerWar.6") : b.s > 0 ? T("ui.bannerWar.7") : b.o ? FACTIONS[b.o as WarFaction].name : T("ui.bannerWar.8");
-        const fill = b ? Math.round((b.b ? b.h : b.hp) * 100) : 0;
-        return `<span class="war-pip ${d.kind} o-${fcls(b?.o ?? "")} b-${fcls(b?.b || b?.hf || "")}${b?.c ? " contest" : ""}${b?.lock ? " lock" : ""}${b && b.s > 0 ? " seal" : ""}" title="${esc(d.name)} · ${esc(state)}"><i style="height:${fill}%"></i></span>`;
-      }).join("");
+      // одна строка: фронт · таймер · кнопки; ниже — лента с тремя плитками оснований и счётом с гербами; подсказка — только когда герой при деле
+      const [a, b] = s.score, share = a + b ? a / (a + b) : 0.5;
+      const tiles = (fr?.bases ?? []).map((d) => {
+        const x = warView.byId.get(d.id);
+        const owner = x?.o ?? "", ban = x?.b || x?.hf || "", capturing = !!x && !x.c && !!ban && (ban !== owner || x.h < 1);
+        const fill = capturing ? Math.round((x!.b ? x!.h : x!.hp * 0.15) * 100) : 0;
+        const state = !x ? "" : x.lock ? T("ui.bannerWar.5", { min: WAR.schedule.heartOpenMin }) : x.c ? T("ui.bannerWar.6") : x.s > 0 ? T("ui.bannerWar.7") : owner ? T("ui.bannerWar.32", { of: WAR.look.of[owner as WarFaction] }) : T("ui.bannerWar.8");
+        const emb = owner ? `<img src="/assets/vfx/war-emb-${fcls(owner)}.png" alt="">` : "";
+        return `<span class="war-tile ${d.kind} o-${fcls(owner)}${capturing ? ` cap c-${fcls(ban)}` : ""}${x?.c ? " contest" : ""}${x?.lock ? " lock" : ""}${x && x.s > 0 ? " seal" : ""}" title="${esc(d.name)} · ${esc(state)}">${capturing ? `<i style="height:${fill}%"></i>` : ""}${emb}</span>`;
+      }).join('<span class="war-div"></span>');
       const hint = warHint();
-      const tail = hint ? `<div class="war-hint ${hint.tone}">${esc(hint.text)}</div>` : note ? `<div class="war-note">${esc(note)}</div>` : "";
-      if (bv) html = variantBody(bv, s, mmss(s.t1 - now), `${tpOpen ? this.tpButton() : ""}<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.112"))}" aria-label="${esc(T("ui.bannerWar.112"))}">–</button>${help}`, tail, warHero);
-      else html = `<div class="war-head"><span class="war-front">${esc(fr?.name ?? "")}</span><span class="war-time">${esc(mmss(s.t1 - now))}</span>${tpOpen ? this.tpButton() : ""}<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.112"))}" aria-label="${esc(T("ui.bannerWar.112"))}">–</button>${help}</div>
-      <div class="war-score"><b class="war-num sol" title="${esc(FACTIONS.solgard.name)}">${s.score[0]}</b><span class="war-pips">${pips}</span><b class="war-num umb" title="${esc(FACTIONS.umbrath.name)}">${s.score[1]}</b></div>
-      ${hint ? `<div class="war-hint ${hint.tone}">${esc(hint.text)}</div>` : note ? `<div class="war-note">${esc(note)}</div>` : ""}`;
+      const showHint = !!hint && (hint.tone !== "go" || !!hint.inactive || hint.target !== null);
+      html = `<div class="war-head"><span class="war-front">${esc(fr?.name ?? "")}</span><span class="war-time">${esc(mmss(s.t1 - now))}</span>${tpOpen ? this.tpButton() : ""}<button class="x war-fold" data-war-fold title="${esc(T("ui.bannerWar.112"))}" aria-label="${esc(T("ui.bannerWar.112"))}">–</button>${help}</div>
+      <div class="war-tug"><span class="war-num sol${a > b ? " lead" : ""}"><img src="/assets/vfx/war-emb-sol.png" alt="">${a}</span><span class="war-track" style="--share:${(share * 100).toFixed(1)}%">${tiles}</span><span class="war-num umb${b > a ? " lead" : ""}">${b}<img src="/assets/vfx/war-emb-umb.png" alt=""></span></div>
+      ${showHint ? `<div class="war-hint ${hint!.tone}">${esc(hint!.text)}</div>` : ""}`;
     }
     if (html !== this.lastHtml) { this.lastHtml = html; this.bar.innerHTML = html; }
+    // название зоны при входе (HUD .hud-zone) — под полосой, а не под ней
+    document.body.classList.toggle("war-bar-on", !this.bar.hidden);
+    if (!this.bar.hidden) document.documentElement.style.setProperty("--war-bar-b", `${this.bar.offsetTop + this.bar.offsetHeight}px`);
     if (!this.banner.hidden) this.placeBanner();
   }
 
