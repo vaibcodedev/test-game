@@ -270,6 +270,29 @@ async function scenarioV2() {
     clearInterval(keep);
   }
 }
+/** --rules: окно правил «Знамён Предела» — кнопка «?» на полосе битвы; снимок tools/out/banners-event/rules.png (окно целиком). */
+async function scenarioRules() {
+  fs.mkdirSync(OUT, { recursive: true });
+  const token = await ensureChar("war_view", PASS, "Знаменосец", "warrior");
+  const w = W();
+  w.war!.debug("reset", {});
+  await enter("Знаменосец", token, 2);
+  w.war!.debug("start", { front: "center" });
+  await page.waitForFunction("document.querySelector('.war-bar') && !document.querySelector('.war-bar').hidden", { timeout: 20000, polling: 250 });
+  await sleep(1000);
+  await page.click("[data-war-rules]");
+  await page.waitForSelector(".war-rules", { timeout: 5000 });
+  await sleep(800);
+  // окно целиком: снять ограничение высоты на время снимка
+  await page.evaluate(() => { const d = document.querySelector(".war-rules") as HTMLElement; d.style.maxHeight = "none"; (d.querySelector(".dialog-body") as HTMLElement).style.overflow = "visible"; const m = d.parentElement as HTMLElement; m.style.position = "absolute"; m.style.height = "auto"; });
+  await page.setViewport({ width: VIEW.width, height: 2200, deviceScaleFactor: 1 });
+  await sleep(600);
+  const el = await page.$(".war-rules");
+  if (el) await el.screenshot({ path: path.join(OUT, "rules.png") });
+  const text = await page.$eval(".war-rules", (e) => e.textContent ?? "");
+  check(!!el && /Идёт битва/.test(text) && /Осада/.test(text) && /Перемирие/.test(text) && /Свободно/.test(text), "окно правил: живая строка, все разделы, знаки карты");
+}
+const RULES = process.argv.includes("--rules");
 const V2 = process.argv.includes("--v2");
 
 async function main() {
@@ -288,12 +311,12 @@ async function main() {
       window.addEventListener("unhandledrejection", (e) => console.error("unhandledrejection: " + String((e.reason && e.reason.stack) || e.reason)));
     });
     // v2: вид осады (шаг 15, client/src/game/siegeView.ts) соседнего агента сейчас роняет кадр — на время снимков знамён он выключен
-    if (V2 && !process.argv.includes("--with-siege")) await page.evaluateOnNewDocument(() => {
+    if ((V2 || RULES) && !process.argv.includes("--with-siege")) await page.evaluateOnNewDocument(() => {
       setInterval(() => { const sc = (window as any).__game?.scene?.getScene?.("game"); if (sc && sc.siegeView) { try { sc.siegeView.destroy?.(); } catch {} sc.siegeView = null; } }, 20);
     });
     page.on("console", (m) => { if (m.type() === "error" || m.type() === "warn") errors.push(`${m.type()}: ${m.text()}`); });
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e)}`));
-    await (V2 ? scenarioV2() : scenario());
+    await (V2 ? scenarioV2() : RULES ? scenarioRules() : scenario());
     const warn = errors.filter((e) => !/favicon|DevTools|WebGL|GPU stall|swiftshader|AudioContext|AnimationManager key already exists/i.test(e));
     check(warn.length === 0, `ошибок консоли нет${warn.length ? `: ${warn.slice(0, 5).join(" | ")}` : ""}`);
   } catch (e) {
@@ -306,7 +329,7 @@ async function main() {
     bad++;
   } finally {
     fs.mkdirSync(OUT, { recursive: true });
-    fs.writeFileSync(path.join(OUT, V2 ? "v2-report.json" : "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
+    fs.writeFileSync(path.join(OUT, V2 ? "v2-report.json" : RULES ? "rules-report.json" : "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
     await browser.close().catch(() => {});
     await vite.close().catch(() => {});
   }
