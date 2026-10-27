@@ -127,6 +127,8 @@ export class AdminUI {
         ${this.summonedSec()}
         <section class="sec"><h3 class="sec-h">Объявление</h3>
         <label class="field"><span class="field-label">Текст</span><span class="input-group"><input id="w-text" class="input" maxlength="140"><button class="btn" data-act="announce">Объявить</button></span></label></section>
+        <section class="sec"><h3 class="sec-h">Ивент «Знамёна Предела»</h3>
+        <div class="adm-row"><button class="btn primary" data-act="war-start">Начать сейчас</button><button class="btn" data-act="war-heart">Открыть Сердца</button><button class="btn" data-act="war-end">Завершить</button><button class="btn danger" data-act="war-reset">Сбросить владельцев</button></div></section>
         <section class="sec"><div class="sec-head"><h3 class="sec-h">Телепорт</h3><button class="btn small" data-act="tp-map" title="Выбрать точку кликом по карте мира">Карта</button></div>
         <label class="field"><span class="field-label">К игроку</span><span class="input-group"><input id="w-tp-name" class="input"><button class="btn" data-act="tp-name">Телепорт</button></span></label>
         <div class="adm-row"><label class="field"><span class="field-label">x</span><input id="w-x" class="input num" type="number"></label>
@@ -196,6 +198,7 @@ export class AdminUI {
         case "despawn-all": return send("admin:despawn", { all: true });
         case "kill-target": return send("admin:kill-target");
         case "announce": return send("admin:announce", { text: val("w-text") });
+        case "war-start": case "war-heart": case "war-end": case "war-reset": return send("admin:war", { act: (b.dataset.act ?? "").slice(4) });
         case "tp-name": return send("admin:tp", { name: val("w-tp-name") });
         case "tp-xy": return send("admin:tp", { x: nv("w-x"), y: nv("w-y") });
         case "tp-map": return this.pickTeleport();

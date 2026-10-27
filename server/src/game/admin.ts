@@ -302,6 +302,15 @@ export function registerAdmin(room: WorldRoom, on: On) {
     log(p, "announce", "", { text });
   });
 
+  /** Ивент «Знамёна Предела» вручную: start — начать сейчас, heart — открыть Сердца, end — завершить, reset — сбросить владельцев. */
+  adm<{ act: unknown }>("admin:war", (p, m) => {
+    const act = str(m.act, 16);
+    if (!["start", "heart", "end", "reset"].includes(act)) return;
+    w().war?.debug(act, {});
+    log(p, "war", "", { act });
+    toast(p, `Знамёна Предела: ${act}`, "info");
+  });
+
   adm<{ kind: unknown; name: unknown }>("admin:logs", (p, m) => {
     const name = str(m.name, 16);
     if (m.kind === "trades") p.send("admin:logs", { kind: "trades", rows: db().tradeLogRows(name) });
