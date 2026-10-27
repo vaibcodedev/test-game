@@ -99,7 +99,8 @@ for (const f of store.list().filter((x) => !x.readonly)) {
 {
   const b: any = balance.data;
   const ctx = (p: string[]) => liveText("balance", p, p.reduce((o: any, k) => o[k], b), b, b, p.slice(0, -1).reduce((o: any, k) => o[k], b));
-  assert.match(ctx(["aggroMul"]), /3,75 клетки/, "aggro 150 с множителем 0,8 → 3,75 клетки");
+  // считаем от текущего множителя: его меняют в редакторе (было 0,8 → 3,75 клетки, 0,7 → 3,28)
+  { const cells = (150 * b.aggroMul / 32).toFixed(2).replace(/0$/, "").replace(".", ","); assert.ok(ctx(["aggroMul"]).includes(cells), `aggro 150 × ${b.aggroMul} → ${cells} клетки`); }
   assert.match(ctx(["moveMul"]), /3,5/, "герой 150 × 0,75 → 3,5 клетки/с");
   assert.match(ctx(["pvp", "class", "healer", "dmg"]), /Клирик/);
   assert.ok(resolve("balance", ["pvp", "class", "healer", "dmg"], 1.57).doc.live!(1.57, { bal: b, root: b, parent: b.pvp.class.healer, path: ["pvp", "class", "healer", "dmg"] }).includes("57 % сильнее"));
