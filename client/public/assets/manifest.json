@@ -30988,11 +30988,11 @@
    "h": 32
   },
   "bf_horse_fallen_sol": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_horse_fallen_umb": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_palisade_gate": {
@@ -31604,44 +31604,36 @@
    "h": 32
   },
   "bf_horse_sol_b": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_horse_sol_c": {
-   "w": 128,
-   "h": 96
+   "w": 96,
+   "h": 64
   },
   "bf_horse_sol_d": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_horse_sol_e": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_horse_umb_b": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_horse_umb_c": {
-   "w": 128,
-   "h": 96
+   "w": 96,
+   "h": 64
   },
   "bf_horse_umb_d": {
-   "w": 128,
+   "w": 96,
    "h": 64
   },
   "bf_horse_umb_e": {
-   "w": 128,
+   "w": 96,
    "h": 64
-  },
-  "bf_horse_n_a": {
-   "w": 128,
-   "h": 64
-  },
-  "bf_horse_n_b": {
-   "w": 128,
-   "h": 96
   },
   "bf_horse_skel_a": {
    "w": 128,

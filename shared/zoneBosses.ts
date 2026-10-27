@@ -28,12 +28,15 @@ export interface ZbWave {
   windupMs: number;
   dmgPct: number;
   k?: string;
-  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean };
+  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number };
   escape?: number;
   /** Кольцо (задача 139): урон делится поровну на всех героев в круге. */
   share?: boolean;
   /** Кольцо: прерываемый каст на всю арену (data/ring-bosses.json _doc). */
   break?: { pct: number; stunMs: number; heroStunMs: number; pillars?: number };
+  /** Кольцо: клетка вокруг героя с кандальным колом в центре (моб <босс>_cage): пока кол стоит, босс получает урон ×shield;
+   *  через holdMs клетка с целым колом бьёт внутрь (dmgPct). hp — множитель здоровья кола к мобу уровня босса. */
+  cage?: { holdMs: number; hp: number; shield: number };
 }
 export interface ZbAbility extends ZbWave {
   id: string;

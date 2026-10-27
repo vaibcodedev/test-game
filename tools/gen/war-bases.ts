@@ -14,13 +14,13 @@ import { factionEmblem } from "./heraldry";
 import { mix, type RGBA } from "./canvas";
 import { writeWarRingsGame } from "./war-rings";
 
-const FW = 112, FH = 216, GY = 208;
+const FW = 112, FH = 296, GY = 288; // мачта на 80 px выше постамента: знамя при подъёме целиком над шапкой
 /** Центр следа нижней ступени (x 8…90, глубина 24 → сдвиг (14, −13)): середина фасада плюс половина глубины. */
 const FOOT_C: [number, number] = [8 + 82 / 2 + 7, GY - 6.5];
 /** Ось мачты, верх (знамя поднято) и низ (вывешено: низ полотнища за постаментом у земли). */
-const MAST_X = 56, MAST_TOP = 30, MAST_LOW = 110;
+const MAST_X = 56, MAST_TOP = 30, MAST_LOW = GY - 166;
 /** Щиток с гербом: левый верх на постаменте. */
-const PLATE: [number, number] = [37, 154];
+const PLATE: [number, number] = [37, GY - 54];
 const GOLD = ["#3a2408", "#6a4210", "#a8681c", "#e0a630", "#ffd864", "#fff2b0"].map((c) => hex(c));
 
 /** Тёсаный камень: ряды по 6 px, перевязка швов по 13 px; швы темнее, редкие сколы. */
@@ -353,6 +353,11 @@ export function writeWarBasesGame(assetsRoot: string): string[] {
   one("war-dot", softDot(32), [0.5, 0.5]);
   one("war-beam", beam(), [0.5, 1]);
   one("war-swords", swords(), [0.5, 0.5]);
+  // табличка счёта в круге: мини-гербы сторон и значок «верхом» (8×8, контур)
+  const mini = (rows: string[], pal: Record<string, RGBA>) => { const pc = new PC(10, 10); rows.forEach((r, j) => [...r].forEach((ch, i) => { const c = pal[ch]; if (c) pc.set(i + 1, j + 1, c); })); pc.outline(OUT); return pc; };
+  one("war-emb-sol", mini(["...a....", ".a.b.a..", "..bcb...", "abcccba.", "..bcb...", ".a.b.a..", "...a....", "........"], { a: GOLD[3], b: GOLD[4], c: GOLD[5] }), [0.5, 0.5]);
+  one("war-emb-umb", mini(["a.a.a...", "aaaaa...", ".www....", ".kwk....", ".www....", "..w.....", "........", "........"].map((r) => " " + r.slice(0, 7)), { a: hex("#b890ff"), w: hex("#ece6f4"), k: hex("#0c0810") }), [0.5, 0.5]);
+  one("war-ico-mount", mini(["..aa....", ".abba...", "abbbba..", "...bba..", "...bbba.", "..bbbbb.", "..b..b..", "..c..c.."], { a: WOOD[1], b: WOOD[3], c: IRON[1] }), [0.5, 0.5]);
   const anim = (id: string, a: Anim) => {
     strip(a.frames).save(path.join(dir, `${id}.png`));
     m[id] = { frameW: a.w, frameH: a.h, frames: a.frames.length, fps: a.fps || 1, anchor: [+a.anchor[0].toFixed(4), +a.anchor[1].toFixed(4)], blend: "normal" };

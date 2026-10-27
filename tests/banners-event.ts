@@ -33,7 +33,7 @@ for (const f of D.fronts) {
     let blocked = 0, total = 0;
     for (let dy = -D.capture.radius; dy <= D.capture.radius; dy++) for (let dx = -D.capture.radius; dx <= D.capture.radius; dx++) {
       if (dx * dx + dy * dy > D.capture.radius ** 2) continue;
-      if (dy >= -1 && dy <= 2 && dx >= -3 && dx <= 2) continue; // постамент и его край
+      if (dy >= 0 && dy <= 1 && dx >= -2 && dx <= 1) continue; // каменное ядро постамента и его край
       total++;
       if (!walkable(w.map, (d.tx + dx) * TILE, (d.ty + dy) * TILE, 10)) blocked++;
     }

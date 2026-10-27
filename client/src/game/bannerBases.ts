@@ -84,8 +84,13 @@ interface View {
   phase: number;
   arcKey: string;
   label: Phaser.GameObjects.Text;
-  /** Над постаментом: счёт «свои : чужие» в круге и причина, если герой в этом круге. */
-  counter: Phaser.GameObjects.Text;
+  /** Табличка на шапке постамента: [солнце] Сольгард · Умбрат [череп] — пока в круге кто-то есть; справа — причина остановки (мечи — спор, конь — верхом). */
+  counter: Phaser.GameObjects.Container;
+  cBg: Phaser.GameObjects.Graphics;
+  cSol: Phaser.GameObjects.Text;
+  cUmb: Phaser.GameObjects.Text;
+  cWhy: Phaser.GameObjects.Image | null;
+  cKey: string;
   labelKey: string;
 }
 
@@ -123,14 +128,26 @@ export class BannerBases {
       const top = this.frameTop(fx, fy);
       // подпись под постаментом, за дугой прогресса
       void top;
-      const label = worldText(sc, fx, d.y + L.arcR + L.arcW, "", "plain", { fontSize: "11px", align: "center", strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(fy + 6);
-      // счёт «свои : чужие» и что делать — справа от дуги, на уровне постамента: виден, пока герой стоит в круге
-      const counter = worldText(sc, fx + L.arcR + 16, d.y, "", "plain", { fontSize: "13px", align: "left", strokeThickness: 3 }).setOrigin(0, 0.5).setDepth(fy + 7).setVisible(false);
-      this.views.push({ d, fill, ring, glow, sheen, arc, head, swords, mast, plinth, plate: null, plateF: "", flag: null, flagF: "", fallen: null, fallenF: "", h: -1, owner: null, fillKey: "", emitAcc: 0, phase: i * 0.37, arcKey: "", label, labelKey: "", counter });
+      const label = worldText(sc, fx, d.y + L.arcR + L.arcW, "", "name", { align: "center" }).setOrigin(0.5, 0).setDepth(fy + 6);
+      // табличка счёта на шапке постамента (стиль плашки имени: тёмная панель, золотая рамка 1 px), цифры — кеглем ника
+      const cBg = sc.add.graphics();
+      const num = (c: string) => worldText(sc, 0, 0, "0", "name", { color: c }).setOrigin(0.5, 0.5);
+      const cSol = num(L.color.solgard), cUmb = num(L.color.umbrath);
+      const parts: Phaser.GameObjects.GameObject[] = [cBg, cSol, cUmb];
+      const eS = this.has("war-emb-sol") ? sc.add.image(-17, 0, "vfx_war-emb-sol") : null, eU = this.has("war-emb-umb") ? sc.add.image(17, 0, "vfx_war-emb-umb") : null;
+      if (eS) parts.push(eS); if (eU) parts.push(eU);
+      const cWhy = this.has("war-swords") ? sc.add.image(30, 0, "vfx_war-swords").setScale(0.5) : null;
+      if (cWhy) parts.push(cWhy);
+      cSol.setPosition(-7, 0); cUmb.setPosition(7, 0);
+      const dot = worldText(sc, 0, 0, "·", "name", { color: "#bdb09c" }).setOrigin(0.5, 0.5);
+      parts.push(dot);
+      cBg.fillStyle(0x18131c, 0.92).fillRoundedRect(-24, -6, 48, 12, 2).lineStyle(1, 0xd6a84b, 0.9).strokeRoundedRect(-24, -6, 48, 12, 2);
+      const counter = sc.add.container(fx, top.y + this.frame.h * this.frame.ay - 80, parts).setDepth(fy + 8).setVisible(false);
+      this.views.push({ d, fill, ring, glow, sheen, arc, head, swords, mast, plinth, plate: null, plateF: "", flag: null, flagF: "", fallen: null, fallenF: "", h: -1, owner: null, fillKey: "", emitAcc: 0, phase: i * 0.37, arcKey: "", label, labelKey: "", counter, cBg, cSol, cUmb, cWhy, cKey: "" });
     });
     // стрелка у края экрана к знамени фронта битвы, когда оно за краем (подсказка «что делать сейчас»)
     this.arrow = sc.add.graphics().setScrollFactor(0).setDepth(DEPTH.top - 2).setVisible(false);
-    this.arrowText = worldText(sc, 0, 0, "", "plain", { fontSize: "12px", align: "center", strokeThickness: 3 }).setScrollFactor(0).setDepth(DEPTH.top - 2).setOrigin(0.5).setVisible(false);
+    this.arrowText = worldText(sc, 0, 0, "", "plain", { fontSize: "13px", fontStyle: "600", align: "center", strokeThickness: 3 }).setScrollFactor(0).setDepth(DEPTH.top - 2).setOrigin(0.5).setVisible(false);
 
   }
 
@@ -244,13 +261,18 @@ export class BannerBases {
     // над постаментом: «свои : чужие» в круге фронта битвы; если герой в этом круге — ещё и что делать (та же строка, что в полосе)
     const me = NET_SELF_FACTION(), live = warActive(v.d) && b && b.n[0] + b.n[1] > 0;
     if (live && me) {
-      const own = b!.n[me === "solgard" ? 0 : 1], en = b!.n[me === "solgard" ? 1 : 0], h = warHint();
-      const why = h?.inside?.id === v.d.id ? `\n${h.text}` : "";
-      const ck = `${own}:${en}${why}`;
-      if (v.counter.text !== `${own} : ${en}${why}`) v.counter.setText(`${own} : ${en}${why}`).setColor(own > en ? "#7ad05a" : own < en ? "#ff6a5a" : "#ffb35a");
-      void ck;
+      const [ns, nu] = b!.n, heroIn = warHint()?.inside?.id === v.d.id;
+      const why = b!.c && ns === nu ? "contest" : heroIn && warHero.mount ? "mount" : "";
+      const ck = `${ns}:${nu}:${why}`;
+      if (ck !== v.cKey) {
+        v.cKey = ck;
+        v.cSol.setText(String(ns)).setAlpha(ns >= nu ? 1 : 0.7);
+        v.cUmb.setText(String(nu)).setAlpha(nu >= ns ? 1 : 0.7);
+        if (v.cWhy) { v.cWhy.setVisible(!!why); if (why === "mount" && this.has("war-ico-mount")) v.cWhy.setTexture("vfx_war-ico-mount").setScale(1); else if (why === "contest") v.cWhy.setTexture("vfx_war-swords").setScale(0.5); }
+      }
       v.counter.setVisible(true);
     } else v.counter.setVisible(false);
+    void me;
     // искры у кольца: владелец — его цвет, ничья — редкая серая пыль, спор — оба цвета
     v.emitAcc += asleep ? 0 : dt * L.embersPerSec * (owner ? 1 : 0.45) * (contest ? 2 : 1);
     while (v.emitAcc >= 1) {
@@ -279,31 +301,30 @@ export class BannerBases {
     g.lineStyle(W + 6, 0x000000, 0.5).strokeCircle(cx, cy, R);
     g.lineStyle(1, colOf(b.o), 0.35 + 0.2 * br).strokeCircle(cx, cy, R + W / 2 + 3);
     const h = b.b ? Math.max(0, Math.min(1, v.h < 0 ? b.h : v.h)) : 0;
-    if (b.b && h > 0.002) {
-      const col = seal ? num("#ffd84a") : colOf(b.b), N = Math.max(4, Math.round(36 * h)), span = Math.PI * 2 * h;
-      const flick = Math.floor(now / 110);
-      for (let i = 0; i < N; i++) {
-        const t = (i + 1) / N;
-        let c = lerpCol(lerpCol(col, 0x000000, 0.55), col, Math.min(1, t * 1.4));
-        if (t > 0.85) c = lerpCol(col, 0xffffff, (t - 0.85) * 2.2);
-        if (contest) c = (i + flick) % 2 ? COL.solgard : COL.umbrath;
-        const alpha = seal ? 0.65 + 0.35 * br : contest ? 0.65 + 0.35 * ((i * 7 + flick) % 3) / 2 : 1;
-        g.lineStyle(W, c, alpha);
-        g.beginPath(); g.arc(cx, cy, R, a0 + (span * i) / N, a0 + (span * (i + 1)) / N + 0.004, false); g.strokePath();
-      }
-      if (v.head) {
-        const ae = a0 + span;
-        v.head.setVisible(true).setPosition(cx + Math.cos(ae) * R, cy + Math.sin(ae) * R).setTint(contest ? (flick % 2 ? COL.solgard : COL.umbrath) : col)
-          .setScale(0.9 + 0.35 * br).setAlpha(0.95);
-      }
+    if (b.b && h > 0.002) this.stroke(g, cx, cy, R, W, Math.PI * 2 * h, seal ? num("#ffd84a") : colOf(b.b), contest, now, seal ? 0.65 + 0.35 * br : 1, v.head, br);
+    if (b.hf) this.stroke(g, cx, cy, R - W - 3, 5, Math.PI * 2 * Math.max(0.01, b.hp), colOf(b.hf), false, now, 1, b.b ? null : v.head, br);
+    // причина остановки (мечи спора) — на табличке счёта на шапке постамента, отдельный крупный значок не нужен
+  }
+
+  /**
+   * Дуга прогресса: мягкое свечение под ней, градиент от тёмного тона к цвету и к белому у конца, светлая кромка изнутри,
+   * светящаяся головка на конце (head). Спор — сегменты мерцают двумя цветами.
+   */
+  private stroke(g: Phaser.GameObjects.Graphics, cx: number, cy: number, R: number, W: number, span: number, col: number, contest: boolean, now: number, alpha: number, head: Phaser.GameObjects.Image | null, br: number) {
+    const a0 = -Math.PI / 2, N = Math.max(4, Math.round(40 * span / (Math.PI * 2))), flick = Math.floor(now / 110);
+    g.lineStyle(W + 8, col, 0.16 * alpha); g.beginPath(); g.arc(cx, cy, R, a0, a0 + span, false); g.strokePath();
+    for (let i = 0; i < N; i++) {
+      const t = (i + 1) / N;
+      let c = lerpCol(lerpCol(col, 0x000000, 0.5), col, Math.min(1, t * 1.6));
+      if (t > 0.8) c = lerpCol(col, 0xffffff, (t - 0.8) * 2);
+      if (contest) c = (i + flick) % 2 ? COL.solgard : COL.umbrath;
+      g.lineStyle(W, c, alpha);
+      g.beginPath(); g.arc(cx, cy, R, a0 + (span * i) / N, a0 + (span * (i + 1)) / N + 0.004, false); g.strokePath();
     }
-    if (b.hf) {
-      g.lineStyle(4, colOf(b.hf), 0.95);
-      g.beginPath(); g.arc(cx, cy, R - W - 2, a0, a0 + Math.PI * 2 * Math.max(0.01, b.hp), false); g.strokePath();
-    }
-    if (contest && v.swords) {
-      const top = this.frameTop(fx, fy);
-      v.swords.setVisible(true).setPosition(top.x + this.mast[0], top.y + this.frame.h * this.frame.ay - 92 + Math.sin(now / 260) * 3).setScale(1.5);
+    g.lineStyle(1, lerpCol(col, 0xffffff, 0.55), 0.8 * alpha); g.beginPath(); g.arc(cx, cy, R - W / 2 + 1, a0, a0 + span, false); g.strokePath();
+    if (head) {
+      const ae = a0 + span;
+      head.setVisible(true).setPosition(cx + Math.cos(ae) * R, cy + Math.sin(ae) * R).setTint(contest ? (flick % 2 ? COL.solgard : COL.umbrath) : col).setScale(0.8 + 0.35 * br).setAlpha(0.95);
     }
   }
 

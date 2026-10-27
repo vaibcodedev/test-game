@@ -91,6 +91,8 @@ function dropBag(w: World, p: Player, x: number, y: number, items: Item[], boss 
 }
 
 export function grantKillRewards(w: World, m: Mob, killer?: Player) {
+  // призванные предметы боссов без опыта (кандальный кол клеток, задача 139) — без награды и добычи
+  if (m.summoned && !m.def.xp) return;
   const contributors: Player[] = [];
   for (const pid of m.damageBy.keys()) {
     const p = w.players.get(pid);

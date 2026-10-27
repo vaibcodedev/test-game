@@ -380,6 +380,13 @@ async function scenarioUx() {
     check(re.test(h), `${what}: «${h}»`);
   };
   /** Цель подсказки (куда ведут полоса и стрелка) — с клиента. */
+  /** Крупно у постамента (×1, как в игре): камера на основании, вырезка вокруг него. */
+  const close = async (name: string, b: { x: number; y: number }) => {
+    await run(`const cam = sc.cameras.main; cam.stopFollow(); cam.centerOn(a.x, a.y - 40); return 0;`, { x: b.x, y: b.y });
+    await sleep(900);
+    await page.screenshot({ path: path.join(OUT, name), clip: { x: 320, y: 120, width: 640, height: 560 } });
+    await run(`const cam = sc.cameras.main, u = sc.units.get(window.__net.id); if (u && u.sprite) cam.startFollow(u.sprite, true); return 0;`).catch(() => 0);
+  };
   const target = () => run<{ id: string; x: number; y: number } | null>(`const m = await import('/src/ui/bannerWar.ts'); const h = m.warHint(); return h && h.target ? { id: h.target.id, x: h.target.x, y: h.target.y } : null;`);
   try {
     put(ally, null); foes.forEach((f) => put(f, null));
@@ -405,23 +412,42 @@ async function scenarioUx() {
     // в круг цели верхом
     const t2 = (await target())!, tb = warBase(t2.id)!;
     put(H, { x: tb.x + 70, y: tb.y + 140 });
+    put(ally, { x: tb.x - 90, y: tb.y + 120 });
     await run(`window.__net.send("dbg", { op: "mount", id: "horse" }); return 0;`);
     await shot("ux-mounted.png", /Слезьте с маунта/, "верхом в круге");
+    await close("ux-counter-mount.png", tb);
     await run(`window.__net.send("dbg", { op: "mount", id: "" }); return 0;`);
     // 2 против 3: перевес нужен
     put(ally, { x: tb.x - 90, y: tb.y + 120 });
     foes.forEach((f, i) => put(f, { x: tb.x - 120 + i * 120, y: tb.y - 150 }));
     await shot("ux-outnumbered.png", /Нужен перевес: в круге 2 против 3/, "2 против 3");
+    await close("ux-counter-outnumbered.png", tb);
     // враги ушли: вывешиваем и поднимаем
     foes.forEach((f) => put(f, null));
     await waitFor(() => (war.bases.get(tb.id)!.h ?? 0) > 0.12, 40000);
     await shot("ux-raising.png", /Поднимаете знамя · \d+ %/, "подъём знамени");
+    await close("ux-counter-raising.png", tb);
     // поровну — спор
     put(foes[0], { x: tb.x - 120, y: tb.y - 150 }); put(foes[1], { x: tb.x + 120, y: tb.y - 150 });
     await shot("ux-contest.png", /Спор: в круге 2 против 2/, "спор 2 на 2");
+    await close("ux-counter-contest.png", tb);
     foes.forEach((f) => put(f, null));
     await waitFor(() => war.bases.get(tb.id)!.owner === "solgard", 90000);
     await shot("ux-captured.png", /Печать|Точка ваша/, "точка взята");
+    // толпа из 8 героев вплотную к постаменту: места хватает (непроходимо только каменное ядро 2×1)
+    {
+      const { walkable } = await import("../shared/map");
+      const crowd = [ally, ...foes, ...[0, 1, 2, 3].map((i) => mk("solgard", 10 + i))];
+      const drop = WAR_LOOK_DROP;
+      const spots = crowd.map((_, i) => { const a = (i / crowd.length) * Math.PI * 2; return { x: tb.x + Math.cos(a) * 62, y: tb.y + drop + Math.sin(a) * 34 }; });
+      const okSpots = spots.filter((q) => walkable(w.map, q.x, q.y, 10)).length;
+      crowd.forEach((p, i) => put(p, spots[i]));
+      put(H, { x: tb.x + 20, y: tb.y + drop + 46 });
+      await sleep(1500);
+      await close("ux-hitbox.png", tb);
+      check(okSpots >= 7, `8 героев вплотную к постаменту: проходимо ${okSpots} из 8 мест`);
+      crowd.forEach((p) => put(p, null));
+    }
     // Сердце закрыто
     const heart = warBase("center_h")!;
     put(H, { x: heart.x + 60, y: heart.y + 130 }); put(ally, null);
@@ -431,6 +457,8 @@ async function scenarioUx() {
   }
 }
 const UX = process.argv.includes("--ux");
+import WARDATA from "../data/faction-war.json";
+const WAR_LOOK_DROP = WARDATA.look.plinthDrop;
 const RULES = process.argv.includes("--rules");
 const V2 = process.argv.includes("--v2");
 

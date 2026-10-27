@@ -2277,20 +2277,53 @@
   ],
   "blend": "normal"
  },
- "war-mast": {
-  "frameW": 112,
-  "frameH": 216,
+ "war-emb-sol": {
+  "frameW": 10,
+  "frameH": 10,
   "frames": 1,
   "fps": 1,
   "anchor": [
    0.5,
-   0.9329
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "war-emb-umb": {
+  "frameW": 10,
+  "frameH": 10,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "war-ico-mount": {
+  "frameW": 10,
+  "frameH": 10,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.5
+  ],
+  "blend": "normal"
+ },
+ "war-mast": {
+  "frameW": 112,
+  "frameH": 296,
+  "frames": 1,
+  "fps": 1,
+  "anchor": [
+   0.5,
+   0.951
   ],
   "blend": "normal",
   "mast": [
    56,
    30,
-   110
+   122
   ]
  },
  "war-plate-sol": {
@@ -2317,17 +2350,17 @@
  },
  "war-plinth": {
   "frameW": 112,
-  "frameH": 216,
+  "frameH": 296,
   "frames": 1,
   "fps": 1,
   "anchor": [
    0.5,
-   0.9329
+   0.951
   ],
   "blend": "normal",
   "plate": [
    37,
-   154
+   234
   ]
  },
  "war-ring": {

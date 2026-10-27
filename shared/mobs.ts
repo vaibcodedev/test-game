@@ -63,6 +63,12 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
       aggro: c.mob?.aggro ?? z.aggro, range: c.mob?.range ?? z.range, attackCd: c.mob?.attackCd ?? z.attackCd, radius: c.mob?.radius ?? z.radius,
       color: (c.mob?.color as unknown as string | undefined) ?? z.color[c.id] ?? "#c87a3a",
     };
+    // кандальный кол клеток (кольцо, задача 139): стоит на месте, не бьёт, ломается
+    const cage = c.abilities.find((a) => a.cage)?.cage;
+    if (cage) MOBS[`${c.id}_cage`] = {
+      id: `${c.id}_cage`, name: "Кандальный кол", sprite: `${c.id}_cage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
+      hp: cage.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 10, color: "#8a2a08",
+    };
   }
 }
 

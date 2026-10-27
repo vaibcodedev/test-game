@@ -1365,7 +1365,8 @@ export function generateMap(seed: number): WorldMap {
   assignArtVariants(objects);
   // постаменты «Знамён Предела» (шаг 14): след 4×2 клетки под постаментом непроходим (круг захвата вокруг — проходим); зеркально (i ↔ 1099 − i).
   // Постамент стоит на look.plinthDrop px ниже центра круга (середина тела — в центре кольца): след — ряды под ним
-  for (const b of WAR_BASES) for (let y = Math.floor(b.ty + (WAR.look.plinthDrop - 7) / TILE); y <= Math.floor(b.ty + (WAR.look.plinthDrop + 7) / TILE); y++) for (let x = Math.round(b.tx) - 2; x <= Math.round(b.tx) + 1; x++) cell[y * w + x] |= CELL_BLOCK;
+  // только каменное ядро: 2×1 клетки под фасадом постамента (ступени и место знамени проходимы, за постаментом встать можно — сортировка по глубине)
+  for (const b of WAR_BASES) { const y = Math.floor(b.ty + WAR.look.plinthDrop / TILE); for (let x = Math.round(b.tx) - 1; x <= Math.round(b.tx); x++) cell[y * w + x] |= CELL_BLOCK; }
 
   return {
     w,

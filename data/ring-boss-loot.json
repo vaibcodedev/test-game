@@ -4,47 +4,340 @@
     "umb_crown_lich": {
       "name": "Ведрас Неугасимый",
       "level": 75,
-      "band": [70, 80],
-      "special": [
-        { "item": "zb_undying_staff", "chance": 0.04 },
-        { "item": "zb_banner_crown", "chance": 0.04 },
-        { "item": "zb_rib_lantern", "chance": 0.04 }
+      "band": [
+        70,
+        80
       ],
-      "gold": { "mult": 12 },
-      "loot": { "items": 1, "epic": 0.25 },
-      "potion": { "id": "hp_potion", "chance": 0.5, "qty": [1, 2] },
+      "special": [
+        {
+          "item": "zb_undying_staff",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_banner_crown",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_rib_lantern",
+          "chance": 0.04
+        }
+      ],
+      "gold": {
+        "mult": 12
+      },
+      "loot": {
+        "items": 1,
+        "epic": 0.25
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
       "mats": [
-        { "id": "ash_ore", "chance": 1, "qty": [2, 4] },
-        { "id": "star_dust", "chance": 0.6, "qty": [1, 2] }
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            2,
+            4
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.6,
+          "qty": [
+            1,
+            2
+          ]
+        }
       ],
       "legendary": 0.01,
       "pet": 6
+    },
+    "umb_ash_executioner": {
+      "name": "Кассар Безликий",
+      "level": 49,
+      "band": [
+        40,
+        50
+      ],
+      "special": [
+        {
+          "item": "zb_verdict_greataxe",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_hangman_hood",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_condemned_chain",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
     "zb_undying_staff": {
-      "id": "zb_undying_staff", "name": "Посох Неугасимого", "base": "staff", "ilvl": 74, "rarity": 1, "fac": "umbrath",
-      "cls": ["mage", "warlock"], "affix": ["int", "crit"], "stats": { "int": 26, "crit": 1 },
+      "id": "zb_undying_staff",
+      "name": "Посох Неугасимого",
+      "base": "staff",
+      "ilvl": 74,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 26,
+        "crit": 1
+      },
       "prop": "При крите над целью вспыхивает зелёный огонь: ещё 2 с она горит.",
       "lore": "Клешня на навершии ещё держит искру чужой души.",
-      "look": { "shape": "cage", "mat": "blackiron", "trim": "bone", "cloth": "shroud", "haft": "deadwood", "fx": "fel", "guard": "claw", "pommel": "gem" },
-      "boss": "umb_crown_lich", "card": "r2"
+      "look": {
+        "shape": "cage",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "haft": "deadwood",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_crown_lich",
+      "card": "r2"
     },
     "zb_banner_crown": {
-      "id": "zb_banner_crown", "name": "Венец сломанных знамён", "base": "cloth_helm", "ilvl": 73, "rarity": 1, "fac": "umbrath",
-      "cls": ["mage", "healer", "warlock", "bloodweaver"], "affix": ["int", "vit"], "stats": { "int": 20, "vit": 18 },
+      "id": "zb_banner_crown",
+      "name": "Венец сломанных знамён",
+      "base": "cloth_helm",
+      "ilvl": 73,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "healer",
+        "warlock",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 20,
+        "vit": 18
+      },
       "prop": "Когда рядом гибнет союзник, носитель на 4 с видит, кто нанёс удар.",
       "lore": "Шипы венца выкованы из древков знамён, павших на Полях.",
-      "look": { "shape": "horncrown", "rich": 1, "mat": "darksteel", "trim": "bone", "cloth": "shroud", "gem": "onyx", "haft": "deadwood", "deco": "chains", "fx": "fel", "guard": "claw", "pommel": "gem" },
-      "boss": "umb_crown_lich", "card": "r2"
+      "look": {
+        "shape": "horncrown",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_crown_lich",
+      "card": "r2"
     },
     "zb_rib_lantern": {
-      "id": "zb_rib_lantern", "name": "Светоч рёбер", "base": "amulet", "ilvl": 72, "rarity": 1, "fac": "umbrath",
-      "cls": ["healer", "bloodweaver", "mage", "warlock"], "affix": ["int", "hp"], "stats": { "int": 20, "hp": 200 },
+      "id": "zb_rib_lantern",
+      "name": "Светоч рёбер",
+      "base": "amulet",
+      "ilvl": 72,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "healer",
+        "bloodweaver",
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "hp"
+      ],
+      "stats": {
+        "int": 20,
+        "hp": 200
+      },
       "prop": "Ночью носитель светится слабым зелёным светом и чуть дальше видит врагов.",
       "lore": "Четыре ребра лича, а между ними — тлеющий огонёк.",
-      "look": { "shape": "skull", "rich": 0, "mat": "bone", "trim": "iron", "cloth": "shroud", "gem": "onyx", "haft": "darkwood", "deco": "skull", "fx": "fel", "guard": "curved", "pommel": "ring" },
-      "boss": "umb_crown_lich", "card": "r2"
+      "look": {
+        "shape": "skull",
+        "rich": 0,
+        "mat": "bone",
+        "trim": "iron",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "darkwood",
+        "deco": "skull",
+        "fx": "fel",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "umb_crown_lich",
+      "card": "r2"
+    },
+    "zb_verdict_greataxe": {
+      "id": "zb_verdict_greataxe",
+      "name": "Секира Приговора",
+      "base": "greataxe",
+      "ilvl": 49,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 30,
+        "crit": 1
+      },
+      "prop": "Удар по цели ниже 20% здоровья рубит на 15% сильнее.",
+      "lore": "На древке — зарубки. Кассар перестал их считать на второй сотне.",
+      "look": {
+        "shape": "executioner",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "moss",
+        "haft": "deadwood",
+        "fx": "fel",
+        "guard": "curved",
+        "pommel": "gem"
+      },
+      "boss": "umb_ash_executioner",
+      "card": "r3"
+    },
+    "zb_hangman_hood": {
+      "id": "zb_hangman_hood",
+      "name": "Колпак палача",
+      "base": "leather_helm",
+      "ilvl": 47,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 12,
+        "vit": 12
+      },
+      "prop": "Враги рядом не видят выражения лица — и хуже угадывают следующий удар.",
+      "lore": "Изнутри пахнет гарью. Снаружи — тоже.",
+      "look": {
+        "shape": "mask",
+        "rich": 0,
+        "mat": "bone",
+        "trim": "bone",
+        "cloth": "black",
+        "hide": "darkleather",
+        "haft": "darkwood",
+        "fx": "onyx",
+        "guard": "cross",
+        "pommel": "gem"
+      },
+      "boss": "umb_ash_executioner",
+      "card": "r2"
+    },
+    "zb_condemned_chain": {
+      "id": "zb_condemned_chain",
+      "name": "Цепь осуждённых",
+      "base": "amulet",
+      "ilvl": 48,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "hp"
+      ],
+      "stats": {
+        "str": 12,
+        "hp": 140
+      },
+      "prop": "Каждое звено звенит, когда рядом проходит враг.",
+      "lore": "Звенья сняты с осуждённых. Одно — ещё тёплое.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "iron",
+        "trim": "gold",
+        "cloth": "azure",
+        "gem": "sun",
+        "haft": "yew",
+        "deco": "chains",
+        "fx": "sun",
+        "guard": "ornate",
+        "pommel": "spike"
+      },
+      "boss": "umb_ash_executioner",
+      "card": "r2"
     }
   }
 }

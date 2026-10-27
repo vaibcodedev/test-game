@@ -189,6 +189,18 @@ export class ZoneBossFx {
       }
       return;
     }
+    // клетка сломана (кольцо, кандальный кол): эффект клетки в этой точке сразу переходит к разлому
+    if (f.ab === "cage_break") {
+      const [x, y] = [f.pts?.[0] ?? 0, f.pts?.[1] ?? 0];
+      for (const e of this.fxs) {
+        if (e.boss !== v.u.sprite || Math.hypot(e.x - x, e.y - y) > 6) continue;
+        const out = e.f.anims.cageOut;
+        if (!out) continue;
+        e.segs = [{ a: "cageOut", t0: now, t1: now + (out.n / out.fps) * 1000 }];
+        e.end = now + (out.n / out.fps) * 1000;
+      }
+      return;
+    }
     const sk = def.skills[f.ab];
     if (!sk) return;
     const card = ZB_BY_ID[v.u.sprite]?.abilities.find((x) => x.id === f.ab);

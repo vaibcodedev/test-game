@@ -15,7 +15,7 @@
     "mats": { "name": "Знамя Юга: копь", "desc": "Материалы заточки с мобов на Полях вечных битв: +{v}%." },
     "dungeon": { "name": "Сердце Юга: трофеи", "desc": "Шанс добычи в подземелье: +{v}%." },
     "siege": { "name": "Победа у ворот", "desc": "Опыт и золото с мобов на Полях вечных битв: +{v}% — неделя после взятой или отстоянной осады форта." }
-  }, "plinthDrop": 30, "of": { "solgard": "Сольгарда", "umbrath": "Умбрата" }, "color": { "solgard": "#ffc850", "umbrath": "#b890ff", "neutral": "#a8a0b0" }, "breathMs": 3600, "sheenMs": 9000, "fill": 0.07, "arcR": 86, "arcW": 10, "embersPerSec": 8, "emberLifeMs": [1400, 2400], "maxParticles": 160, "burstMs": 1100, "waveMs": 1300 },
+  }, "plinthDrop": 30, "of": { "solgard": "Сольгарда", "umbrath": "Умбрата" }, "color": { "solgard": "#ffc850", "umbrath": "#b890ff", "neutral": "#a8a0b0" }, "breathMs": 3600, "sheenMs": 9000, "fill": 0.07, "arcR": 80, "arcW": 10, "embersPerSec": 8, "emberLifeMs": [1400, 2400], "maxParticles": 160, "burstMs": 1100, "waveMs": 1300 },
   "fronts": [
     {
       "id": "north", "name": "Северный фронт", "side": "xpGold", "heart": "speed",

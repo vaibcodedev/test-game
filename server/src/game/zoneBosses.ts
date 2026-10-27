@@ -10,7 +10,8 @@ import { walkable } from "../../../shared/map";
 import { ZB_ARENA, ZB_BY_ID, ZB_LOW_HP, type ZbAbility, type ZbCard, type ZbWave } from "../../../shared/zoneBosses";
 import { Boss } from "./bosses";
 import { applyRoot, applyStun } from "./effects";
-import type { Mob } from "./Mob";
+import { Mob } from "./Mob";
+import { MOBS } from "../../../shared/mobs";
 import type { Player } from "./Player";
 import type { World } from "./World";
 
@@ -86,6 +87,8 @@ export class ZoneBoss extends Boss {
     const t = this.lastTarget ? this.w.players.get(this.lastTarget) : undefined;
     if (t?.dead) this.killed(t);
     this.lastTarget = m.targetId ?? "";
+    // сломанный кандальный кол: щит снят, клетка распадается
+    for (const st of this.stakes) if (st.dead) this.stakeDied(st);
     if (this.casting && this.w.time >= this.busyUntil) {
       this.casting = false;
       if (!m.dead) m.unit.anim = Anim.Idle;
@@ -103,12 +106,16 @@ export class ZoneBoss extends Boss {
     this.epoch++;
     this.engaged = false;
     this.busyUntil = 0;
+    this.stakes.clear();
+    this.m.dmgTakenMul = 1;
     super.reset();
     // откаты — как в карточке (переход фазы их ускорял)
     this.card.abilities.forEach((ab, i) => { if (this.abilities[i]) this.abilities[i].every = ab.every; });
   }
 
   override onDeath() {
+    this.stakes.clear();
+    this.m.dmgTakenMul = 1;
     this.epoch++;
     this.busyUntil = 0;
     this.casting = false;
@@ -138,6 +145,7 @@ export class ZoneBoss extends Boss {
     const tank = this.target() ?? this.far();
     if (!tank || !this.inArena().length) return;
     if (ab.break) { this.channel(ab); return; }
+    if (ab.cage) { this.cages(ab); return; }
     const waves: ZbWave[] = [ab, ...(ab.then ?? [])];
     // занятость: сумма волн (с рядами и травлей)
     let total = 0;
@@ -192,6 +200,64 @@ export class ZoneBoss extends Boss {
       }
     };
     w.later(100, tick);
+  }
+
+  /** Кандальные колы на арене (клетки): пока хоть один стоит, босс получает урон ×shield. */
+  private stakes = new Set<Mob>();
+  private shieldMul = 1;
+  private refreshShield() {
+    for (const s of this.stakes) if (s.dead) this.stakes.delete(s);
+    this.m.dmgTakenMul = this.stakes.size ? this.shieldMul : 1;
+  }
+  /**
+   * Клетки (кольцо, cage): удар оземь (windupMs) — у count случайных героев встаёт клетка с кандальным колом в центре (моб
+   * <босс>_cage). Пока кол стоит, босс получает урон ×shield. Через holdMs клетка с целым колом бьёт всех внутри круга r.
+   * Сломанный кол — клетка распадается (событие zb «cage_break»).
+   */
+  private cages(ab: ZbAbility) {
+    const w = this.w, m = this.m, c = ab.cage!, epoch = this.epoch;
+    const ps = this.randomPlayers(ab.count ?? 1);
+    if (!ps.length) return;
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.7) this.line(this.card.lines.abilities[ab.id]);
+    const spots = ps.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: spots.flatMap((s) => [s.x, s.y]), r: ab.r });
+    const k = kindOf(ab.k);
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead) return;
+      const def = MOBS[`${m.def.id}_cage`];
+      if (!def) return;
+      this.shieldMul = c.shield;
+      for (const s of spots) {
+        const stake = new Mob(w.uid("s"), def, m.level, { x: s.x, y: s.y });
+        stake.summoned = true;
+        w.addMob(stake);
+        this.adds.add(stake);
+        this.stakes.add(stake);
+        this.refreshShield();
+        // удар внутрь клетки, если кол ещё цел; клетка распадается в любом случае
+        w.telegraph(m, "circle", s.x, s.y, ab.r, c.holdMs, (p) => {
+          if (epoch !== this.epoch || stake.dead) return;
+          const res = w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
+          void res;
+          if (p.dead) this.killed(p);
+        }, { k });
+        w.later(c.holdMs + 60, () => {
+          if (!stake.dead) w.removeMob(stake);
+          this.stakes.delete(stake);
+          this.refreshShield();
+          w.emit({ t: "zb", id: m.id, ab: "cage_break", w: 0, ms: 0, pts: [s.x, s.y] });
+        });
+      }
+    });
+  }
+  /** Кол сломан (замечает update): щит снят, клетка распадается. */
+  stakeDied(stake: Mob) {
+    if (!this.stakes.delete(stake)) return;
+    this.refreshShield();
+    this.w.emit({ t: "zb", id: this.m.id, ab: "cage_break", w: 0, ms: 0, pts: [Math.round(stake.home.x), Math.round(stake.home.y)] });
   }
 
   /** Сколько волна бьёт после windupMs: ряд — (count − 1)·stepMs, травля — так же. */
@@ -332,6 +398,20 @@ export class ZoneBoss extends Boss {
         if (af?.rootMs) applyRoot(w, m, p, af.rootMs);
         if (af?.burnMs) { p.burnUntil = w.time + af.burnMs; w.emit({ t: "zb", id: m.id, ab: "burn", w: 0, ms: af.burnMs, tgt: p.id }); }
         if (af?.poisonMs) p.poisonUntil = w.time + af.poisonMs;
+        // цепь: рывок к боссу на pull px (не ближе 48 px к нему, только на проходимое место)
+        if (af?.pull && !p.dead) {
+          const dx = m.x - p.x, dy = m.y - p.y, d = Math.hypot(dx, dy);
+          const go = Math.min(af.pull, Math.max(0, d - 48));
+          if (go > 4) {
+            const x = p.x + (dx / d) * go, y = p.y + (dy / d) * go;
+            w.emit({ t: "chain", pts: [Math.round(m.x), Math.round(m.y - 26), Math.round(p.x), Math.round(p.y - 12)], k: "phys" });
+            if (walkable(w.map, x, y, 10)) {
+              w.emit({ t: "blink", id: p.id, x0: p.x, y0: p.y, x1: x, y1: y, k: "charge" });
+              p.unit.x = x;
+              p.unit.y = y;
+            }
+          }
+        }
       }
       if (p.dead) this.killed(p);
     }, { r2: mk.r2, a: mk.a, w: mk.w, k });
