@@ -138,7 +138,7 @@ export const BF_FOOTPRINT: Record<string, { w: number; h: number }> = {
   bf_wagon_broken_a: { w: 3, h: 1 }, bf_wagon_broken_b: { w: 3, h: 1 }, bf_ram: { w: 4, h: 1 }, bf_siege_tower: { w: 3, h: 2 }, v_undead_giant_skeleton: { w: 3, h: 1 },
   bf_wall_tower_sol: { w: 2, h: 2 }, bf_wall_tower_umb: { w: 2, h: 2 },
   v_smith_anvil_a: { w: 2, h: 1 }, v_smith_anvil_b: { w: 1, h: 1 }, v_smith_tub_a: { w: 1, h: 1 }, v_smith_tub_b: { w: 1, h: 1 }, v_deco_spear_rack: { w: 2, h: 1 }, v_deco_target: { w: 2, h: 1 },
-  "bf-forge-small": { w: 2, h: 1 }, "bf-forge-cone": { w: 3, h: 2 }, "bf-dummy-0": { w: 1, h: 1 }, "bf-dummy-1": { w: 1, h: 1 }, "bf-dummy-2": { w: 1, h: 1 },
+  "bf-forge-small": { w: 2, h: 1 }, "bf-forge-cone": { w: 3, h: 2 },
   "bf-catapult-s": { w: 2, h: 1 }, "bf-catapult-n": { w: 2, h: 1 }, "bf-ballista-s": { w: 3, h: 1 }, "bf-ballista-n": { w: 3, h: 1 }, "bf-trebuchet": { w: 4, h: 2 },
   "std-torn-sol": { w: 1, h: 1 }, "std-torn-umb": { w: 1, h: 1 }, "std-burned-sol": { w: 1, h: 1 }, "std-burned-umb": { w: 1, h: 1 },
 };

@@ -75,7 +75,7 @@ const PATROL: Cell[] = [[-6.5, -0.5], [6.5, -0.5], [6.5, 1.5], [-6.5, 1.5]];
 const SPOTS: Cell[] = [[-5, 0], [5, 0], [0, -3], [0, 3], [-3, -1], [3, 1]];
 
 /** Роли объектов плана: вид выбирается по стилю (KINDS). */
-type Role = "house" | "tent" | "stallM" | "stallC" | "light" | "fire" | "cauldron" | "barrel" | "crate" | "rack" | "hay" | "dummy" | "logs" | "well" | "tree";
+type Role = "house" | "tent" | "stallM" | "stallC" | "light" | "fire" | "cauldron" | "barrel" | "crate" | "rack" | "hay" | "logs" | "well" | "tree";
 /** Объекты плана для запада: роль и клетка привязки (левая нижняя, как place() в map.ts). Улицы |dx| ≤ 1, |dy| ≤ 1, посты у ворот и места камня свободны. */
 const COMMON: [Role, number, number][] = [["stallM", -5, 2], ["stallC", 4, 2], ["cauldron", 6, 2]];
 const PLANS: Record<SettlePlan, [Role, number, number][]> = {
@@ -89,19 +89,19 @@ const PLANS: Record<SettlePlan, [Role, number, number][]> = {
   camp: [
     ["tent", -7, -2], ["tent", 4, -2], ["tent", -5, -4], ["tent", 3, -4], ["light", -3, -2], ["light", 3, -2],
     ["rack", -7, -4], ["barrel", -6, -5], ["barrel", -7, -5], ["crate", -6, -4], ["rack", 7, -4], ["crate", 6, -5], ["barrel", 7, -5], ["crate", 6, -4],
-    ["fire", -6, 4], ["logs", -7, 5], ["hay", -4, 5], ["dummy", 6, 4], ["dummy", 7, 4], ["rack", 7, 5],
+    ["fire", -6, 4], ["logs", -7, 5], ["hay", -4, 5], ["rack", 7, 5],
   ],
 };
-/** Виды по стилю (шаг 10 задачи 132): у Сольгарда шатры бело-золотые (bf_tent_sol), на месте дома — хижина hut_sol (задача 141), чучела учебного двора — манекены
- *  (анимированные листы bf-dummy-*); у Умбрата шатры тёмные (bf_tent_umb), первый дом — развалины дома (ruin_house), второй — склеп. */
+/** Виды по стилю (шаг 10 задачи 132): у Сольгарда шатры бело-золотые (bf_tent_sol), на месте дома — хижина hut_sol (задача 141)
+ *  у Умбрата шатры тёмные (bf_tent_umb), первый дом — развалины дома (ruin_house), второй — склеп. */
 const KINDS: Record<SettleLook, Record<Role, string[]>> = {
   sol: {
     house: ["hut_sol"], tent: ["bf_tent_sol"], stallM: ["stall_gold"], stallC: ["stall_blue"], light: ["lamp"], fire: ["campfire"], cauldron: ["cauldron"],
-    barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["hay"], dummy: ["bf-dummy-0", "bf-dummy-2"], logs: ["v_basic_log_pile"], well: ["well"], tree: ["v_basic_oak_small"],
+    barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["hay"], logs: ["v_basic_log_pile"], well: ["well"], tree: ["v_basic_oak_small"],
   },
   umb: {
     house: ["ruin_house", "umb_crypt"], tent: ["bf_tent_umb"], stallM: ["stall_purple"], stallC: ["stall_purple"], light: ["soul_brazier"], fire: ["soul_brazier"], cauldron: ["cauldron"],
-    barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["bone_pile"], dummy: ["v_graveyard_sword_grave"], logs: ["v_graveyard_coffin_closed"], well: ["well"],
+    barrel: ["barrel"], crate: ["crate"], rack: ["weapon_rack"], hay: ["bone_pile"], logs: ["v_graveyard_coffin_closed"], well: ["well"],
     tree: ["v_graveyard_dead_tree_a"],
   },
 };
@@ -238,10 +238,10 @@ export function buildSettlement(s: Settlement, b: SettleBuild, seed: number) {
   // ворота частокола над проёмом с севера или юга — без следа, проём остаётся проходимым (шаг 10)
   if (s.gate === "n" || s.gate === "s") b.deco(`pal_gate_${L}`, s.x, s.gate === "n" ? y0 : y1, 30);
   // объекты плана: дома чередуются, у Умбрата шатёр и первый дом — развалины
-  let houses = 0, dummies = 0;
+  let houses = 0;
   for (const [role, ax, ay] of [...COMMON, ...PLANS[s.plan]]) {
     const kinds = K[role];
-    const kind = role === "house" ? kinds[houses++ % kinds.length] : role === "dummy" ? kinds[dummies++ % kinds.length] : kinds[0];
+    const kind = role === "house" ? kinds[houses++ % kinds.length] : kinds[0];
     const ruin = RUINS[kind];
     if (ruin) for (const [k, dx, dy] of ruin) putW(k, ax + dx, ay + dy);
     else putW(kind, ax, ay);
