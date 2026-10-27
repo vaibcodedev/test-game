@@ -8,7 +8,7 @@
 import type { MapObject } from "./map";
 
 export const DG_FOOTPRINT: Record<string, { w: number; h: number }> = {
-  dg_pillar_c_a: { w: 1, h: 1 }, dg_pillar_c_b: { w: 1, h: 1 }, dg_pillar_t_a: { w: 1, h: 1 }, dg_pillar_t_b: { w: 1, h: 1 }, dg_pillar_a_a: { w: 1, h: 1 }, dg_pillar_a_b: { w: 1, h: 1 },
+  dg_pillar_c_a: { w: 1, h: 1 }, dg_pillar_c_b: { w: 1, h: 1 }, dg_pillar_t_a: { w: 1, h: 1 }, dg_pillar_t_b: { w: 1, h: 1 }, dg_pillar_a_a: { w: 1, h: 1 }, dg_pillar_a_b: { w: 1, h: 1 }, dg_pillar_a_c: { w: 1, h: 1 }, dg_pillar_a_d: { w: 1, h: 1 },
   dg_statue_c_a: { w: 1, h: 1 }, dg_statue_c_b: { w: 1, h: 1 }, dg_statue_c_c: { w: 1, h: 1 },
   dg_sarc_c_a: { w: 2, h: 1 }, dg_sarc_c_b: { w: 2, h: 1 }, dg_sarc_t_a: { w: 2, h: 1 }, dg_sarc_a_a: { w: 2, h: 1 }, dg_sarc_a_b: { w: 2, h: 1 },
   dg_altar_c: { w: 3, h: 1 },
@@ -31,12 +31,15 @@ export interface DgCtx {
   style: (x: number, y: number) => 0 | 1 | 2;
   TILE: number; CELL_WALL: number; CELL_BLOCK: number;
   arenaNear: (x: number, y: number, r: number) => boolean;
+  /** Центр зала босса (тайлы): помост-ритуальный круг, вокруг — чистая арена. */
+  boss: { x: number; y: number };
 }
 
 const pickK = (list: readonly string[], r: number) => list[Math.min(list.length - 1, Math.floor(r * list.length))];
 
 export function buildDungeonDecor(c: DgCtx) {
-  const { objects, at, place, hash, DG, DUNGEON, rooms, style, TILE, CELL_WALL, CELL_BLOCK, seed } = c;
+  const { objects, at, place, hash, DG, DUNGEON, rooms, style, TILE, CELL_WALL, CELL_BLOCK, seed, boss } = c;
+  const inBossHall = (x: number) => x >= 156 + DG.x;
   const inRoom = (x: number, y: number) => rooms.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1);
   const free = (x: number, y: number, fw = 1) => { for (let i = 0; i < fw; i++) if (!inRoom(x + i, y) || at(x + i, y) & CELL_BLOCK) return false; return true; };
   const doorCells = DOORS.map(([, x, y]) => [x + DG.x, y + DG.y] as [number, number]);
@@ -46,7 +49,7 @@ export function buildDungeonDecor(c: DgCtx) {
   // колонны: вид по стилю клетки
   PILLARS.forEach(([px, py], i) => {
     const x = px + DG.x, y = py + DG.y, st = style(x, y);
-    place(st === 0 ? (i % 3 === 0 ? "dg_pillar_c_b" : "dg_pillar_c_a") : st === 1 ? (i % 2 ? "dg_pillar_t_b" : "dg_pillar_t_a") : (i % 2 ? "dg_pillar_a_b" : "dg_pillar_a_a"), x, y);
+    place(st === 0 ? (i % 3 === 0 ? "dg_pillar_c_b" : "dg_pillar_c_a") : st === 1 ? (i % 2 ? "dg_pillar_t_b" : "dg_pillar_t_a") : inBossHall(x) ? (i % 2 ? "dg_pillar_a_d" : "dg_pillar_a_c") : (i % 2 ? "dg_pillar_a_b" : "dg_pillar_a_a"), x, y);
   });
 
   // двери: арка собора, треснувшая арка, железные ворота с черепом (проходимы: без следа)
@@ -55,13 +58,14 @@ export function buildDungeonDecor(c: DgCtx) {
   // стены: знамёна, витражи, бра; решётки, цепи и факелы в склепе. Лицевые клетки стен над залом, через 4 клетки
   const WALL_C = ["dg_banner_c_a", "dg_banner_c_b", "dg_banner_c_c", "dg_window_c_a", "dg_window_c_b", "dg_banner_c_a", "dg_window_c_a", "torch"];
   const WALL_T = ["dg_banner_t_a", "dg_banner_t_b", "torch", "dg_banner_t_a", "dg_window_c_b", "torch"];
+  const WALL_B = ["dg_grate_a", "dg_grate_b", "dg_chains_a", "dg_grate_a", "dg_chains_b", "torch", "dg_grate_b"];
   const WALL_A = ["dg_grate_a", "dg_chains_a", "dg_grate_b", "torch", "dg_chains_b", "dg_grate_a", "torch"];
   for (let y = DUNGEON.y0; y < DUNGEON.y1 - 1; y++) for (let x = DUNGEON.x0; x < DUNGEON.x1; x++) {
     if (!(at(x, y) & CELL_WALL) || at(x, y + 1) & CELL_WALL || !inRoom(x, y + 1)) continue;
     if ((x + 2 * (y & 1)) % 4 !== 0 || nearDoor(x, y + 1, 2)) continue;
     const st = style(x, y + 1), r = hash(x, y, seed + 901);
     if (r < 0.18) continue;
-    const kind = pickK(st === 0 ? WALL_C : st === 1 ? WALL_T : WALL_A, hash(x, y, seed + 902));
+    const kind = pickK(st === 0 ? WALL_C : st === 1 ? WALL_T : inBossHall(x) ? WALL_B : WALL_A, hash(x, y, seed + 902));
     objects.push({ kind, x: x * TILE + 16, y: y * TILE + (kind === "torch" ? 26 : 30) });
   }
 
@@ -69,10 +73,18 @@ export function buildDungeonDecor(c: DgCtx) {
   const ax = 144 + DG.x, ay = 65 + DG.y;
   if (free(ax, ay, 3)) place("dg_altar_c", ax, ay);
 
+  // зал босса: помост-ритуальный круг под точкой появления (на земле, проходим), жаровни и саркофаги вдоль стен (не ближе 11 тайлов к центру арены), кости по углам
+  objects.push({ kind: "dg_dais", x: Math.round(boss.x * TILE), y: Math.round(boss.y * TILE) + 85 });
+  const standHall = (kind: string, x: number, y: number, fw = 1) => { if (free(x + DG.x, y + DG.y, fw)) place(kind, x + DG.x, y + DG.y); };
+  for (const y of [60, 83]) {
+    standHall("dg_brazier_a", 158, y); standHall("dg_sarc_a_a", 160, y, 2); standHall("dg_brazier_b", 164, y); standHall("dg_sarc_a_b", 167, y, 2); standHall("dg_brazier_a", 171, y); standHall("dg_sarc_a_a", 173, y, 2);
+  }
+  standHall("dg_brazier_b", 157, 64); standHall("dg_brazier_b", 157, 79);
+  [[157, 60, "dg_bones_a"], [174, 60, "dg_bones_b"], [157, 83, "dg_bones_c"], [174, 83, "dg_bones_a"], [157, 70, "dg_ashpile_a"], [174, 74, "dg_ashpile_b"]].forEach(([x, y, k]) => push(k as string, (x as number) + DG.x, (y as number) + DG.y, 0, 28));
   // пол: реквизит по стилю клетки; у стен — статуи, саркофаги, жаровни; по залу — свечи, обломки, лужи, кости, пепел
   const stand = (kind: string, x: number, y: number, fw = 1) => { if (free(x, y, fw) && (fw < 2 || free(x, y, fw))) place(kind, x, y); };
   for (const [x0, y0, x1, y1] of rooms) for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-    if (at(x, y) & CELL_BLOCK || c.arenaNear(x, y, 2) || nearDoor(x, y, 2)) continue;
+    if (at(x, y) & CELL_BLOCK || c.arenaNear(x, y, 2) || nearDoor(x, y, 2) || inBossHall(x)) continue;
     const st = style(x, y), r = hash(x, y, seed + 910), r2 = hash(x, y, seed + 911), wallN = !!(at(x, y - 1) & CELL_WALL);
     if (st === 0) {
       if (wallN && r < 0.12 && y > y0) stand(pickK(["dg_statue_c_a", "dg_statue_c_b", "dg_statue_c_c"], r2), x, y);

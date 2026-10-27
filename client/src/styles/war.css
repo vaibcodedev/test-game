@@ -132,3 +132,25 @@
 .wv-foot { display: flex; align-items: center; gap: var(--sp-1h); margin-top: var(--sp-1); }
 .wv-foot > .war-hint, .wv-foot > .war-note, .wv-foot > span:first-child { flex: 1 1 auto; min-width: 0; }
 .wv-foot .wv-tools { margin-top: 0; flex: none; }
+
+/* знамя-индикатор основания (варианты полосы): древко, навершие или корона, полотнище ползёт по древку на --h */
+.wflag { --mh: 30px; --pw: 15px; --ph: 12px; position: relative; display: inline-block; width: calc(var(--pw) + 6px); height: calc(var(--mh) + 6px); vertical-align: bottom; --fc: var(--dim); --fe: #3a3540; }
+.wflag.s { --mh: 20px; --pw: 11px; --ph: 9px; }
+.wflag.l { --mh: 36px; --pw: 18px; --ph: 14px; }
+.wflag.f-sol { --fc: var(--fac-sol); --fe: #6a4210; }
+.wflag.f-umb { --fc: var(--fac-umb); --fe: #24163a; }
+.wflag .m { position: absolute; left: 2px; bottom: 0; width: 2px; height: var(--mh); background: linear-gradient(90deg, #c69660, #5e3a20); box-shadow: 0 0 0 1px #000; }
+.wflag .fin { position: absolute; left: 1px; bottom: calc(var(--mh) - 1px); width: 4px; height: 4px; background: var(--num-gold); box-shadow: 0 0 0 1px #000; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.wflag .crown { position: absolute; left: -3px; bottom: calc(var(--mh) - 1px); width: 10px; height: 6px; background: var(--num-gold); clip-path: polygon(0 100%, 0 20%, 25% 60%, 50% 0, 75% 60%, 100% 20%, 100% 100%); filter: drop-shadow(0 0 1px #000); }
+.wflag .p { position: absolute; left: 4px; bottom: calc(2px + var(--h) * (var(--mh) - var(--ph) - 4px)); width: var(--pw); height: var(--ph); background: linear-gradient(180deg, color-mix(in srgb, var(--fc) 100%, #fff 18%), var(--fc)); border: 1px solid var(--fe); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); display: grid; place-items: start center; transition: bottom 0.4s ease-out; }
+.wflag .p img { width: 8px; height: 8px; margin-top: 1px; image-rendering: pixelated; }
+.wflag.s .p img { width: 6px; height: 6px; }
+.wflag.f-none .p { filter: grayscale(1) brightness(0.8); }
+.wflag.contest .p { animation: wflag-contest 0.5s steps(2) infinite; }
+@keyframes wflag-contest { 50% { background: var(--fac-umb); } }
+.wflag.lock { opacity: 0.45; }
+/* V1 — крупнее и наряднее: знамёна в ряд с подписью процента под каждым */
+.wv1-flags { align-items: flex-end; }
+.wv1-flag { flex-direction: column; align-items: center; gap: 1px; }
+.wv1-flag small { font-size: var(--fs-2xs); color: var(--dim); font-variant-numeric: tabular-nums; line-height: 1; }
+.wv2-seg .wflag { position: relative; margin-top: -14px; }

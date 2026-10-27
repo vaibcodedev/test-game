@@ -42,16 +42,16 @@ const pxM = (view: View, dx: number, dy: number): V3 => fromView(view, [dx / K, 
 
 // ---------------- палитра ----------------
 /** Тёмная кожа сбруи и нагрудника: тени коричнево-красные, свет пыльный. */
-const LEATHER = R("#170d09", "#301b12", "#4b2c1c", "#6a412a", "#8c5a3b");
+const LEATHER = R("#0f0c0b", "#1d1817", "#2d2624", "#413835", "#594d48");
 /** Колпак — рыжеватая выделанная кожа, светлее сбруи: голова читается. */
-const HOOD = R("#211008", "#43220f", "#6a3816", "#8f5121", "#b46f33");
+const HOOD = R("#15110e", "#29221d", "#3d332c", "#54473d", "#6d5e51");
 /** Подол — запёкшийся тёмно-красный холст. */
-const ROBE = R("#140806", "#2b100c", "#441b14", "#5e281d", "#7b3a2a");
+const ROBE = R("#060404", "#0e0807", "#180d0b", "#241411", "#321c17");
 /** Железо — чернёное с ржавым отливом. */
-const IRON = R("#121114", "#27242a", "#413c40", "#625a58", "#8d8379");
-const WOOD = R("#140d09", "#2a1b12", "#43301f", "#5d452d", "#7b5e3e");
+const IRON = R("#0d0d0f", "#1c1b1e", "#2e2c30", "#474346", "#6b6561");
+const WOOD = R("#22150c", "#432a16", "#6a4321", "#92602f", "#c08a4c");
 /** Лезвие — светлая сталь; кромка — самый светлый тон, пятна запёкшейся крови. */
-const BLADE = R("#22262b", "#4c535a", "#848b8f", "#bfc3c1", "#eef0ea");
+const BLADE = R("#121518", "#262b30", "#3d444a", "#5a6268", "#e8eae2");
 const BLOOD = R("#1e0606", "#3e0c0a", "#5e1510", "#7e2016", "#9a2c1e");
 /** Угли: глаза в прорезях, раскалённые звенья (светится). */
 const EMBER = R("#3a0e05", "#8a2a08", "#e0601a", "#ffb347", "#fff0c8");
@@ -65,8 +65,10 @@ const M = {
   hood: mat("колпак", HOOD, { base: 1.7, gain: 2.3 }),
   robe: mat("подол", ROBE, { base: 1.6, gain: 2.3 }),
   iron: mat("железо", IRON, { base: 1.6, gain: 2.6 }),
-  wood: mat("древко", WOOD, { base: 1.7, gain: 2.3 }),
-  blade: mat("сталь", BLADE, { base: 2.1, gain: 2.0 }),
+  wood: mat("древко", WOOD, { base: 2.0, gain: 2.0 }),
+  blade: mat("сталь", BLADE, { base: 1.8, gain: 1.6, hi: 3 }),
+  /** кромка лезвия: светлая полоса, тон по правилу (не по свету) */
+  edge: mat("кромка", BLADE, { base: 3.6, gain: 0.6, crisp: true }),
   blood: mat("кровь", BLOOD, { base: 1.8, gain: 1.8 }),
   ember: mat("угли", EMBER, { base: 2.6, gain: 1.0, glow: true, crisp: true }),
   skin: mat("кожа рук", SKIN, { base: 1.7, gain: 2.3 }),
@@ -115,20 +117,24 @@ const NECK: V3 = [0, 0.4, 38.4];
 const ARM: [number, number] = [8.6, 8.8];
 /** Древко: от пятки до середины головы секиры; лезвие — полукруг по обе стороны (двусторонняя секира). */
 const SHAFT = 40;
-const BLADE_R: V3 = [8.0, 0.5, 6.4];
+/** Хвост древка за нижним хватом (до шара и шипа): древко длиннее и торчит из силуэта внизу. */
+const TAIL = 7;
+const BLADE_R: V3 = [6.8, 0.5, 7.6];
 
 const axeAt = (butt: V3, head: V3): [V3, V3] => [butt, norm(sub(head, butt))];
-const AXE_FRONT = axeAt([-13.5, 7.5, 9.5], [12.5, 4, 43.5]);
+/** Секира по точке головы и направлению от пятки к голове (голова — где задано, пятка — на SHAFT ниже по древку). */
+const axeH = (head: V3, dir: V3): [V3, V3] => { const d = norm(dir); return [sub(head, mul(d, SHAFT)), d]; };
+const AXE_FRONT = axeH([17, 9.5, 45], [28, -1.5, 35.5]);
 const REST_FRONT: Pose = {
   root: [0, 0, 0], bob: 0, chest: 0, headZ: 0, pitch: 0.05, yaw: 0, roll: 0, hp: 0.04, hy: 0, hr: 0,
   hand: [[0, 0, 0], [0, 0, 0]], pole: [[1, -0.2, -0.9], [-1, -0.3, -0.8]],
-  axe: AXE_FRONT, rg: 30, lg: 13, flat: [0, 1, 0.1], held: 1, armLift: [0, 0],
+  axe: AXE_FRONT, rg: 25, lg: 12, flat: [0, 1, 0.1], held: 1, armLift: [0, 0],
   wave: 0, waveAmp: 0, kick: [0, 0], sway: 0,
   glow: 1, rage: 0, wither: 0, kneel: 0,
   spin: 0, spinPh: 0, out: 0, outDir: [0, 1, 0],
   ring: 0, flash: 0, dust: [0, 0], cracks: 0, t: 0, seed: 1,
 };
-const AXE_SIDE = axeAt([7, -11, 9.5], [7.5, 15, 43]);
+const AXE_SIDE = axeH([10.5, 13, 44], [0, 26, 35]);
 const REST_SIDE: Pose = { ...REST_FRONT, axe: AXE_SIDE, flat: [1, 0, 0.05], pole: [[1, -0.3, -0.8], [-1, -0.2, -0.8]] };
 const restOf = (view: View): Pose => (view === "side" ? REST_SIDE : REST_FRONT);
 const bodyShift = (view: View, p: Pose): V3 => snapM(view, [p.root[0], p.root[1], p.bob + p.root[2] - p.kneel * 7]);
@@ -139,6 +145,12 @@ type Keys = Record<string, RGBA>;
 const ST_EYES: Partial<Record<View, ReturnType<typeof stampRows>>> = {
   down: stampRows(["..k..", "dd.dd", "32.23", "..k.."], -2, -2),
   side: stampRows([".k..", "ddd.", "232.", ".k.."], -2, -2),
+};
+/** Шов колпака над маской: стежки поперёк шва. */
+const ST_STITCH: Partial<Record<View, ReturnType<typeof stampRows>>> = {
+  down: stampRows([".s.", "tst", ".s.", "tst", ".s."], -1, -4),
+  side: stampRows(["s.", "ts", "s.", "ts"], 0, -3),
+  up: stampRows([".s.", ".s.", ".s.", ".s."], -1, -3),
 };
 /** Кольцо на груди (железо): светлый блик сверху слева. */
 const ST_RING: Partial<Record<View, ReturnType<typeof stampRows>>> = {
@@ -151,7 +163,7 @@ function stampKeys(glow: number): Keys {
     const v = k - Math.round((1 - Math.min(1, g)) * 3) + (g > 1.25 ? 1 : 0);
     return v < 0 ? VOID : EMBER[clamp(v, 0, 4)];
   };
-  return { d: VOID, "1": lv(1), "2": lv(2), "3": lv(3), k: HOOD[0], i: IRON[4], o: IRON[1] };
+  return { d: VOID, "1": lv(1), "2": lv(2), "3": lv(3), k: HOOD[0], i: IRON[4], o: IRON[1], s: HOOD[0], t: HOOD[3] };
 }
 const GLOW_KEYS = ["1", "2", "3"];
 
@@ -223,10 +235,24 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
     }
     // рваные клинья у земли: по бокам и спереди, качаются по пикселю
     const lift = (i: number) => Math.round(p.waveAmp * (0.5 + 0.5 * Math.sin(TAU * (p.wave + i * 0.21)))) * PXM;
-    const flaps: [number, number, number, number][] = [[1, 0.5, 3.4, 0], [-1, 0.5, 3.8, 1], [1, 5.5, 2.2, 2], [-1, 5.8, 2.6, 3], [1, -5, 2.6, 4], [-1, -5, 3.0, 5]];
-    for (const [s, y, l, i] of flaps) {
-      const a: V3 = [pel[0] + s * (rb - 1.4), pel[1] + y, 3.6], b: V3 = [pel[0] + s * (rb + l), pel[1] + y * 1.15 - 0.6, 0.2 + lift(i)];
-      S.cone(g, wm(M.robe, W), a, 1.6, b, 0.35, { ref: [1, 0, 0] });
+    // рваные полосы поверх подола: от бедра до земли и ниже, с просветами; у низа — запёкшаяся кровь
+    for (let i = 0; i < 9; i++) {
+      const th = (i / 9) * TAU + 0.5 + 0.2 * hash01(i, 8, 13);
+      const cx = Math.cos(th), cy = Math.sin(th);
+      const z0 = 14 + 4 * hash01(i, 1, 13), r0 = lerp(rb, 7.0, z0 / Math.max(1, top[2])) + 0.5;
+      const a: V3 = [pel[0] + cx * r0, pel[1] + cy * r0, z0];
+      const b: V3 = [pel[0] + cx * (rb + 1.2 + 1.8 * hash01(i, 4, 13)), pel[1] + cy * (rb + 1.2) * 0.92, -0.5 + lift(i + 3)];
+      const blood = (q: { u: number; l: V3 }) => (q.u > 0.7 && hash01(i, Math.round(q.l[2] * 1.5), 19) < 0.3 ? { mat: M.blood, d: -0.6 } : q.u > 0.55 ? -0.3 : 0.2);
+      S.cone(g, wm(M.robe, W), a, 1.1, b, 0.9, { ref: [1, 0, 0], tex: blood as never, part: S.newPart() });
+    }
+    // лохмотья по всему подолу: разной длины, острые, наружу и вниз
+    for (let i = 0; i < 14; i++) {
+      const th = (i / 14) * TAU + 0.2;
+      const l = 1.6 + 2.6 * hash01(i, 5, 31);
+      const cx = Math.cos(th), cy = Math.sin(th);
+      const a: V3 = [pel[0] + cx * (rb - 1.6), pel[1] + cy * (rb - 1.6), 4.2 + 1.5 * hash01(i, 2, 31)];
+      const b: V3 = [pel[0] + cx * (rb + l), pel[1] + cy * (rb + l) * 0.9, 0.2 + lift(i)];
+      S.cone(g, wm(M.robe, W), a, 1.5, b, 0.3, { ref: [1, 0, 0], tone: hash01(i, 3, 31) < 0.4 ? -0.4 : 0 });
     }
   }
   // ---------- кожаный фартук спереди: от пояса до колен, рваный низ ----------
@@ -246,6 +272,15 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
     S.stamps.push({ at: T([0, 6.1, 32.4]), n: TV([0, 1, 0]), px: ST_RING, colors: keys, depthTol: 2.5 });
   }
   {
+    // железные пластины на груди поверх кожи: два щитка с шипами у ворота
+    const g = S.group(0.4);
+    for (const s of [1, -1]) {
+      S.ell(g, wm(M.iron, W), T([s * 4.0, 4.4, 34.0]), [3.4, 1.6, 2.6], axes(TV, s * 0.25, 0.2), { part: S.newPart(), tone: -0.2 });
+      const b = T([s * 5.2, 4.6, 36.0]);
+      S.cone(g, wm(M.iron, W), b, 0.6, add(b, TV([s * 1.2, 1.4, 2.4])), 0.1, { part: S.newPart() });
+    }
+  }
+  {
     const g = S.group(0.3);
     for (const [k, z] of [[0, 21.4], [1, 23.0], [2, 24.6]] as [number, number][]) {
       S.ell(g, wm(M.iron, W), PV([0, 0.2, z]), [7.6 - k * 0.2, 6.6 - k * 0.2, 0.95], axes(PR, 0, 0, k * 0.4), { tex: linkTex(1, true, p.rage) as never, part: S.newPart() });
@@ -255,11 +290,11 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
   {
     const g = S.group(0);
     const sw = p.sway * PXM;
-    const hang: [V3, V3][] = [[[-6.4, 3.5, 21], [-7.6 + sw, 5.5, 8.5]], [[-4.8, 5.4, 21], [-5.6 + sw, 7.8, 11]], [[6.6, 3.0, 21], [7.8 + sw, 5.2, 10]]];
-    for (const [a, b] of hang) {
-      if (kn > 0.6) continue;
-      S.cone(g, wm(M.iron, W), PV(a), 0.62, add(PV(a), sub(b, a)), 0.55, { tex: linkTex(1.1, false, p.rage) as never, part: S.newPart() });
-    }
+    void g;
+    const hang: [V3, V3][] = [[[-6.6, 4.0, 21], [-7.8 + sw, 6.2, 7.5]], [[-4.6, 6.0, 21], [-5.2 + sw, 8.4, 10.5]], [[6.8, 3.6, 21], [8.0 + sw, 5.8, 9]]];
+    if (kn < 0.6) for (const [a, b] of hang) X.chain.push({ from: PV(a), to: add(PV(a), sub(b, a)), hook: false, slack: 0.3 });
+    // цепь с левого наплечника к локтю
+    X.chain.push({ from: T([-12.6, 2.4, 34.5]), to: T([-13.5 + sw, 3.6, 25.5]), hook: false, slack: 0.4 });
   }
 
   // ---------- секира: древко, шар с шипами на пятке, двусторонняя голова, шип сверху ----------
@@ -271,42 +306,62 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
   const e = norm(cross(ad, flat));
   {
     const g = S.group(0.3);
-    S.cone(g, wm(M.wood, W), butt, 0.8, head, 0.85);
-    for (const u of [0.25, 0.5]) S.cone(g, wm(M.iron, W), add(butt, mul(ad, SHAFT * u - 0.8)), 1.0, add(butt, mul(ad, SHAFT * u + 0.8)), 1.0, { part: S.newPart() });
+    // древко толще и светлее брони, ребро к свету — светлой полосой (читается на тёмном торсе)
+    const shine = (q: { l: V3; edge: boolean }) => (q.edge ? 0 : q.l[0] < -0.35 ? 0.9 : q.l[0] > 0.5 ? -0.7 : 0);
+    // хвост с шипом не выходит за кадр: в замахах укорачивается
+    const off = (q: V3) => { const [x, y] = scr(CAM, toView(view, mul(q, K))); return x < 3 || x > N - 4 || y < 3; };
+    let tl = TAIL;
+    while (tl > 0 && off(sub(butt, mul(ad, tl + 6)))) tl -= 1;
+    const tail = sub(butt, mul(ad, tl));
+    S.cone(g, wm(M.wood, W), tail, 1.05, head, 1.1, { tex: shine as never, ref: norm(perp(ad, [-1, 0.2, 0.6])), big: true });
+    for (const u of [0.25, 0.5]) S.cone(g, wm(M.iron, W), add(butt, mul(ad, SHAFT * u - 0.8)), 1.2, add(butt, mul(ad, SHAFT * u + 0.8)), 1.2, { part: S.newPart() });
     const pb = S.newPart();
-    S.ball(g, wm(M.iron, W), sub(butt, mul(ad, 1.0)), 1.9, { part: pb });
-    for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) {
-      const dir = norm(add(add(mul(e, d[0]), mul(flat, d[1])), mul(ad, -0.35)));
-      S.cone(g, wm(M.iron, W), sub(butt, mul(ad, 1.0)), 0.7, add(sub(butt, mul(ad, 1.0)), mul(dir, 3.6)), 0.1, { part: pb });
-    }
+    S.ball(g, wm(M.iron, W), tail, 1.35, { part: pb });
+    S.cone(g, wm(M.iron, W), tail, 0.95, sub(tail, mul(ad, 5.0)), 0.1, { part: pb });
     S.cone(g, wm(M.iron, W), sub(head, mul(ad, 3.2)), 1.25, add(head, mul(ad, 2.6)), 1.15, { part: S.newPart() });
-    // лезвия: полуэллипсы по обе стороны древка, светлая кромка, пятна крови у кромки
+    // лезвия-полумесяцы по обе стороны: веер узких пластин от втулки, концы длиннее (рога вверх и вниз), кромка — светлая
+    // полоса, у кромки — запёкшаяся кровь; сталь тёмная
+    const gb = S.group(0.7);
     for (const s of [1, -1]) {
       const pa = S.newPart();
       const c = sub(head, mul(ad, 1.0));
-      const tex = (q: { l: V3; edge: boolean }) => {
-        const r = Math.hypot(q.l[0] / BLADE_R[0], q.l[2] / BLADE_R[2]);
-        if (r > 0.86) return { mat: M.blade, d: 1.6 };
-        if (r > 0.55 && hash01(Math.round(q.l[0] * 2 + s * 9), Math.round(q.l[2] * 2), 77) < 0.16) return { mat: M.blood, d: 0 };
-        return r < 0.3 ? -0.5 : 0;
-      };
-      S.ell(g, wm(M.blade, W), c, BLADE_R, [mul(e, s), flat, ad], { part: pa, cut: { n: [-1, 0, 0], d: 0.4 }, tex: tex as never, big: true });
+      const NS = 9;
+      for (let k = 0; k < NS; k++) {
+        const th = lerp(-1.4, 1.4, k / (NS - 1));
+        const dir = norm(add(mul(e, s * Math.cos(th)), mul(ad, Math.sin(th))));
+        // в замахах над головой лезвие не выходит за кадр: пластина короче
+        let L = 4.6 + 4.0 * Math.pow(Math.abs(th) / 1.4, 2.2);
+        while (L > 3 && off(add(c, mul(dir, 1.3 + L + 1.6)))) L -= 0.5;
+        const side = norm(cross(dir, flat));
+        const tex = (q: { l: V3 }) => {
+          if (q.l[0] > L / 2 - 0.9) return { mat: M.edge, d: 2.3 };
+          if (q.l[0] > L / 2 - 3.2 && q.l[0] < L / 2 - 0.9 && hash01(k * 7 + (s > 0 ? 1 : 0), Math.round(q.l[0] * 0.8), 77) < 0.3) return { mat: M.blood, d: 0.3 };
+          return q.l[0] < -L / 2 + 1.6 ? -0.6 : 0;
+        };
+        S.box(gb, wm(M.blade, W), add(c, mul(dir, 1.3 + L / 2)), [L / 2, 0.5, 1.15 + 0.3 * (1 - Math.abs(th) / 1.4)], [dir, flat, side], 0.2, { part: pa, tex: tex as never, big: true });
+        // рога загнуты назад, к древку: крючок на концах полумесяца
+        if (k === 0 || k === NS - 1) {
+          const tip = add(c, mul(dir, 1.3 + L - 0.4));
+          const back = norm(add(mul(e, -s * 0.8), mul(ad, Math.sign(th) * 0.6)));
+          S.box(gb, wm(M.blade, W), add(tip, mul(back, 1.2)), [1.3, 0.38, 0.55], [back, flat, norm(cross(back, flat))], 0.15, { part: pa, tex: (() => ({ mat: M.edge, d: 2.3 })) as never });
+        }
+      }
     }
     S.cone(g, wm(M.iron, W), add(head, mul(ad, 2.4)), 0.9, add(head, mul(ad, 8.0)), 0.1, { part: S.newPart() });
-    if (p.flash > 0.5 || p.trail) X.glints.push(add(head, mul(e, 7.2)));
+    if (p.flash > 0.5 || p.trail) X.glints.push(add(head, mul(e, 8.0)));
   }
 
   // ---------- руки: кожа плеча, железный наруч с шипами, перчатки; кулаки — на древке ----------
   for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
     const g = S.group(1.0);
     const lift = pxM(view, 0, -p.armLift[i]);
-    const sh = add(T([s * 9.8, 0.2, 34.6]), lift);
+    const sh = add(T([s * 10.4, 0.2, 34.6]), lift);
     let fist: V3;
     if (held && i === 0) fist = add(butt, mul(ad, p.rg));
     else if (held && i === 1 && p.lg >= 0) fist = add(butt, mul(ad, p.lg));
     else fist = add(add(p.hand[i], shift), lift);
     const el = ik(sh, fist, ARM[0], ARM[1], p.pole[i]);
-    S.cone(g, wm(M.skin, W), sh, 3.0, el, 2.5, { tone: -0.1 });
+    S.cone(g, wm(M.leather, W), sh, 3.0, el, 2.5, { tone: 0.2 });
     const fd = norm(sub(fist, el));
     const pv = S.newPart();
     S.cone(g, wm(M.iron, W), add(el, mul(fd, 0.6)), 2.4, sub(fist, mul(fd, 1.6)), 2.8, { part: pv });
@@ -316,7 +371,7 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
     }
     const e0 = perp(fd, [0, 0, 1]);
     S.ell(g, wm(M.leather, W), fist, [2.3, 2.1, 2.5], [e0, cross(fd, e0), fd], { part: S.newPart(), tone: -0.2 });
-    if (i === 1 && p.spin > 0.02) X.loop = { c: add(fist, [0, 0, 5]), r: 5 + 2 * p.spin, ph: p.spinPh };
+    if (i === 1 && p.spin > 0.02) X.loop = { c: add(fist, [0, 0, 5]), r: 6 + 3 * p.spin, ph: p.spinPh };
     if (i === 1 && p.out > 0.02) {
       const L = 30 * p.out;
       X.chain.push({ from: fist, to: add(fist, mul(norm(p.outDir), L)), hook: true, slack: 1.5 * (1 - p.out) });
@@ -326,10 +381,10 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
   // ---------- наплечники: пластина, лама, четыре шипа ----------
   for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
     const g = S.group(0.7);
-    S.ell(g, wm(M.iron, W), T([s * 10.6, -0.3, 37.0]), [5.4, 5.1, 3.4], axes(TV, s * 0.42));
+    S.ell(g, wm(M.iron, W), T([s * 11.8, -0.3, 37.0]), [6.4, 5.6, 3.7], axes(TV, s * 0.42));
     S.ell(g, wm(M.iron, W), T([s * 12.7, -0.2, 34.0]), [3.8, 4.4, 1.8], axes(TV, s * 0.7), { part: S.newPart() });
     const ps = S.newPart();
-    [[-1.6, 5.5, 0.5], [0.6, 7.0, 0.7], [2.6, 6.2, 0.9], [4.2, 4.6, 1.1]].forEach(([dx, l, out], k) => {
+    [[-1.2, 6.4, 0.5], [1.0, 8.2, 0.75], [3.2, 7.2, 0.95], [5.0, 5.4, 1.15]].forEach(([dx, l, out], k) => {
       const b = T([s * (10.2 + dx), -0.8 + k * 0.4, 39.4 - Math.max(0, dx) * 0.6]);
       const m = add(b, TV([s * out * l * 0.4, -0.3, l * 0.5]));
       const t = add(m, TV([s * out * l * 0.55, -0.3, l * 0.38]));
@@ -344,13 +399,16 @@ function build(p0: Pose, view: View): { S: Scene; X: Extra } {
     const g = S.group(1.2);
     S.cone(g, wm(M.hood, W), T([0, -0.4, 35.6], true), 7.2, H([0, 0.1, 39.6]), 5.0, { big: true });
     S.ell(g, wm(M.hood, W), H([0, 0.6, 42.6]), [4.7, 4.9, 4.4], axes(HV), { big: true });
-    S.cone(g, wm(M.hood, W), H([0, 0.3, 44]), 4.2, H([0, -1.4, 53.5]), 0.35, { big: true });
+    S.cone(g, wm(M.hood, W), H([0, 0.2, 44]), 4.4, H([0, -1.4, 48.6]), 1.5, { big: true });
+    S.stamps.push({ at: H([0, 4.7, 46.2]), n: HV([0, 1, 0.3]), px: ST_STITCH, colors: keys, depthTol: 2.4, minFacing: 0.2 });
+    // маска: тёмная кожа поверх лица, на ней прорези (штамп)
+    S.box(g, wm(M.leather, W), H([0, 4.2, 42.8]), [2.9, 0.7, 3.0], axes(HV), 0.5, { part: S.newPart(), tone: -0.3 });
     const pn = S.newPart();
     for (const [a, z, l] of [[0.5, 46, 2.6], [-0.6, 44.5, 2.2], [2.4, 47, 2.4]] as [number, number, number][]) {
       const b = H([Math.sin(a) * 3.6, Math.cos(a) * 3.8, z]), d = HV([Math.sin(a) * 0.8, Math.cos(a) * 0.8, 0.6]);
       S.cone(g, wm(M.iron, W), b, 0.4, add(b, mul(norm(d), l)), 0.15, { part: pn });
     }
-    S.stamps.push({ at: H([0, 5.0, 43.6]), n: HV([0, 1, 0]), px: ST_EYES, colors: keys, glow: GLOW_KEYS, halo: EMBER[2], depthTol: 2.4, minFacing: 0.2 });
+    S.stamps.push({ at: H([0, 5.0, 43.8]), n: HV([0, 1, 0]), px: ST_EYES, colors: keys, glow: GLOW_KEYS, halo: EMBER[2], depthTol: 2.4, minFacing: 0.2 });
   }
 
   // ---------- частицы и эффекты ----------
@@ -402,9 +460,11 @@ function drawChain(c: Ctx, ch: { from: V3; to: V3; hook: boolean; slack: number 
     const u = s / n;
     const x = lerp(ax, bx, u), y = lerp(ay, by, u) + Math.sin(Math.PI * u) * ch.slack * 3;
     const dz = lerp(depthOf(a), depthOf(b), u);
-    const lit = Math.floor(s / 1.6) % 2 === 0;
-    put(c, x, y, hot ? EMBER[lit ? 3 : 1] : IRON[lit ? 4 : 1], dz, hot);
-    put(c, x, y + 1, hot ? EMBER[0] : IRON[0], dz, hot);
+    // звенья поочерёдно «плашмя» (2 px) и «ребром» (1 px), под цепью — тёмная кайма
+    const flatL = Math.floor(s / 2) % 2 === 0;
+    put(c, x, y - 1, hot ? EMBER[3] : flatL ? IRON[4] : IRON[3], dz, hot);
+    put(c, x, y, hot ? EMBER[2] : flatL ? IRON[2] : IRON[4], dz, hot);
+    put(c, x, y + 1, hot ? EMBER[0] : OUT, dz, hot);
   }
   if (ch.hook) {
     const dx = (bx - ax) / L, dy = (by - ay) / L;
@@ -426,7 +486,9 @@ function drawLoop(c: Ctx, lp: { c: V3; r: number; ph: number }, rage: number) {
     const v = toView(c.view, w);
     const [x, y] = scr(CAM, v);
     const lit = s % 3 !== 0;
-    put(c, x, y, hot ? EMBER[lit ? 3 : 1] : IRON[lit ? 4 : 1], depthOf(v), hot);
+    put(c, x, y - 1, hot ? EMBER[lit ? 3 : 1] : IRON[lit ? 4 : 2], depthOf(v), hot);
+    put(c, x, y, hot ? EMBER[1] : IRON[lit ? 2 : 3], depthOf(v), hot);
+    put(c, x, y + 1, hot ? EMBER[0] : OUT, depthOf(v), hot);
   }
   // размытые «следы» по ходу вращения — дуга светлее
   for (let s = 0; s < 6; s++) {
@@ -482,12 +544,12 @@ function drawTrail(c: Ctx, pts: V3[]) {
     for (let s = 0; s <= steps; s++) {
       const u = (k + s / steps) / total;
       const x = lerp(x0, x1, s / steps), y = lerp(y0, y1, s / steps);
-      const w = 0.6 + 2.2 * Math.sin(Math.PI * Math.min(1, u * 0.7 + 0.15));
+      const w = 0.3 + 1.0 * Math.sin(Math.PI * Math.min(1, u * 0.7 + 0.15));
       const dz = lerp(depthOf(vp[k]), depthOf(vp[k + 1]), s / steps);
       for (let dy = -w; dy <= w + 0.01; dy += 0.5) for (let dx = -w; dx <= w + 0.01; dx += 0.5) {
         if (dx * dx + dy * dy > w * w) continue;
         const e = Math.hypot(dx, dy) / Math.max(0.5, w);
-        put(c, x + dx, y + dy, BLADE[u > 0.7 && e < 0.5 ? 4 : e < 0.6 ? 3 : u < 0.35 ? 1 : 2], dz);
+        put(c, x + dx, y + dy, u < 0.3 ? BLADE[3] : e < 0.55 ? BLADE[4] : mix(BLADE[4], EMBER[3], 0.25), dz);
       }
     }
   }
@@ -610,7 +672,7 @@ function edgeW(p: Pose, view: View): V3 {
   const sh = p.held >= 0.5 ? bodyShift(view, p) : [0, 0, 0] as V3;
   const head = add(add(p.axe[0], sh), mul(ad, SHAFT));
   const e = norm(cross(ad, norm(perp(ad, p.flat))));
-  return add(head, mul(e, 7.2));
+  return add(head, mul(e, 6.6));
 }
 const trailOf = (base: Pose, keys: Key[], view: View, f0: number, f1: number, n = 7): V3[] =>
   Array.from({ length: n }, (_, k) => edgeW(poseAt(base, keys, lerp(f0, f1, k / (n - 1))), view));
@@ -651,14 +713,17 @@ function attackPoses(view: View): Pose[] {
   const R0 = restOf(view);
   const side = view === "side";
   const wind: Partial<Pose> = side
-    ? { yaw: 0.15, pitch: -0.08, hp: -0.1, axe: axeBH([8, 6, 22], [8, -14, 50]), rg: 28, lg: 15, glow: 1.3 }
-    : { yaw: -0.3, pitch: -0.06, hp: -0.08, axe: axeBH([-4, 9, 24], [16, -6, 52]), rg: 28, lg: 15, glow: 1.3 };
+    ? { yaw: 0.15, pitch: -0.08, hp: -0.1, axe: axeBH([8, 8, 24], [8, -10, 46]), rg: 28, lg: 15, glow: 1.3 }
+    : { yaw: -0.3, pitch: -0.06, hp: -0.08, axe: axeBH([-4, 10, 26], [17, -9, 45]), rg: 28, lg: 15, glow: 1.3 };
   const hit: Partial<Pose> = side
-    ? { yaw: -0.05, pitch: 0.24, hp: 0.1, bob: -2 * PXM, axe: axeBH([8, -4, 34], [8, 22, 10]), rg: 24, lg: 12, glow: 1.4, flash: 1 }
+    ? { yaw: -0.05, pitch: 0.24, hp: 0.1, bob: -2 * PXM, axe: axeBH([8, -4, 34], [8, 17, 10]), rg: 24, lg: 12, glow: 1.4, flash: 1 }
     : { yaw: 0.22, pitch: 0.22, hp: 0.08, bob: -2 * PXM, axe: axeBH([12, -2, 33], [-12, 16, 12]), rg: 24, lg: 12, glow: 1.4, flash: 1 };
   const keys: Key[] = [
-    { f: 0, p: {} }, { f: 3, p: wind, ease: easeInOut }, { f: 4, p: { ...wind, armLift: [1, 1] }, ease: linear },
+    { f: 0, p: {} }, { f: 1.5, p: { axe: side ? axeBH([8, 14, 10], [8, 0, 46]) : axeBH([-8, 12, 12], [10, 0, 44]) }, ease: easeInOut },
+    { f: 3, p: wind, ease: easeInOut }, { f: 4, p: { ...wind, armLift: [1, 1] }, ease: linear },
     { f: 5, p: { ...hit, flash: 0 }, ease: easeIn }, { f: 6, p: hit, ease: easeOut }, { f: 7, p: { ...hit, flash: 0, bob: -1 * PXM }, ease: easeOut },
+    // возврат: секира поднимается у бока (не проходит горизонтально вперёд — не за кадр)
+    { f: 8, p: { axe: side ? axeBH([8, -3, 10], [8, 9, 47]) : axeBH([-8, 8, 10], [8, 6, 46]) }, ease: easeInOut },
     { f: 9, p: {}, ease: easeInOut },
   ];
   const poses = keyed(R0, keys, 10, 400);
@@ -674,14 +739,17 @@ function execKeys(view: View) {
   const R0 = restOf(view);
   const side = view === "side";
   const wind: Partial<Pose> = side
-    ? { pitch: -0.14, hp: -0.18, bob: 1 * PXM, axe: axeBH([7, 4, 30], [7, -12, 52]), rg: 23, lg: 18, glow: 1.4, pole: [[1, 0.2, -0.6], [-1, 0.2, -0.6]] }
-    : { pitch: -0.12, hp: -0.18, bob: 1 * PXM, axe: axeBH([1, 6, 30], [3, -10, 53]), rg: 23, lg: 18, flat: [1, 0, 0], glow: 1.4, pole: [[1, 0.3, -0.5], [-1, 0.3, -0.5]] };
+    ? { pitch: -0.14, hp: -0.18, bob: 1 * PXM, axe: axeBH([7, 18, 31], [7.3, -18.8, 46.6]), rg: 13, lg: 6, glow: 1.4, pole: [[1, 0.2, -0.6], [-1, 0.2, -0.6]] }
+    : { pitch: -0.12, hp: -0.18, bob: 1 * PXM, axe: axeBH([1, 18, 31], [2.2, -18.8, 46.6]), rg: 13, lg: 6, flat: [1, 0, 0], glow: 1.4, pole: [[1, 0.3, -0.5], [-1, 0.3, -0.5]] };
   const hit: Partial<Pose> = side
-    ? { pitch: 0.32, hp: 0.14, bob: -3 * PXM, axe: axeBH([7, 2, 30], [7, 26, 4]), rg: 23, lg: 18, glow: 1.6, flash: 1, dust: [1, 0], cracks: 1 }
-    : { pitch: 0.3, hp: 0.12, bob: -3 * PXM, axe: axeBH([1, -3, 31], [3, 22, 4.5]), rg: 23, lg: 18, flat: [1, 0, 0], glow: 1.6, flash: 1, dust: [1, 0], cracks: 1 };
+    ? { pitch: 0.32, hp: 0.14, bob: -3 * PXM, axe: axeBH([7, -4, 30], [7, 18, 3]), rg: 15, lg: 8, glow: 1.6, flash: 1, dust: [1, 0], cracks: 1 }
+    : { pitch: 0.3, hp: 0.12, bob: -3 * PXM, axe: axeBH([1, -4, 31], [2.5, 20, 3.5]), rg: 15, lg: 8, flat: [1, 0, 0], glow: 1.6, flash: 1, dust: [1, 0], cracks: 1 };
   const keys: Key[] = [
-    { f: 0, p: wind }, { f: 2, p: { ...hit, flash: 0, dust: [0, 0], cracks: 0 }, ease: easeIn }, { f: 3, p: hit, ease: easeOut },
+    // через верх: секира проходит над головой наклонно вперёд (не отвесно — в кадре)
+    { f: 0, p: wind }, { f: 1, p: { ...wind, axe: side ? axeBH([7, -4, 11], [7, 10, 41]) : axeBH([1, -4, 11], [2, 10, 41]), rg: 14, lg: 7 }, ease: easeIn },
+    { f: 2, p: { ...hit, flash: 0, dust: [0, 0], cracks: 0 }, ease: linear }, { f: 3, p: hit, ease: easeOut },
     { f: 4, p: { ...hit, flash: 0, dust: [0.6, 0], cracks: 1 }, ease: linear }, { f: 6, p: { ...hit, flash: 0, dust: [0.2, 0], cracks: 0.8, bob: -2 * PXM }, ease: linear },
+    { f: 7.5, p: { axe: side ? axeBH([7, -6, 8], [7, 4, 46]) : axeBH([-8, 8, 9], [6, 5, 45]), cracks: 0.5 }, ease: easeInOut },
     { f: 9, p: {}, ease: easeInOut },
   ];
   return { R0, wind, keys };
@@ -719,9 +787,9 @@ function cageKeys(view: View) {
   const R0 = restOf(view);
   const side = view === "side";
   const wind: Partial<Pose> = side
-    ? { pitch: -0.1, hp: -0.2, bob: 1 * PXM, axe: axeBH([8, 8, 22], [8, 6, 60]), rg: 26, lg: 17, rage: 1, glow: 1.5 }
-    : { pitch: -0.1, hp: -0.2, bob: 1 * PXM, axe: axeBH([4, 7, 21], [6, 5, 59]), rg: 26, lg: 17, rage: 1, glow: 1.5 };
-  const hit: Partial<Pose> = { ...wind, pitch: 0.16, hp: 0.1, bob: -2 * PXM, axe: side ? axeBH([8, 9, -2], [8, 7, 37]) : axeBH([4, 8, -2], [6, 6, 37]), ring: 0.08, ringAt: undefined, dust: [1, 1], flash: 1 };
+    ? { pitch: -0.1, hp: -0.2, bob: 1 * PXM, axe: axeBH([8, 7, 9], [8, 16, 47]), rg: 26, lg: 17, rage: 1, glow: 1.5 }
+    : { pitch: -0.1, hp: -0.2, bob: 1 * PXM, axe: axeBH([4, 7, 9], [13, 7, 47]), rg: 26, lg: 17, flat: [0, 1, 0], rage: 1, glow: 1.5 };
+  const hit: Partial<Pose> = { ...wind, pitch: 0.16, hp: 0.1, bob: -2 * PXM, axe: side ? axeBH([8, 9, -2], [8, 13, 37]) : axeBH([4, 8, -2], [9, 7, 37]), ring: 0.08, ringAt: undefined, dust: [1, 1], flash: 1 };
   const keys: Key[] = [
     { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 2 * PXM }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
     { f: 3, p: { ...hit, flash: 0, ring: 0.4, dust: [0.6, 0.6] }, ease: linear }, { f: 4, p: { ...hit, flash: 0, ring: 0.75, dust: [0.3, 0.3] }, ease: linear },
@@ -746,8 +814,8 @@ function phasePoses(view: View): Pose[] {
   const R0 = restOf(view);
   const side = view === "side";
   const roar: Partial<Pose> = {
-    pitch: -0.16, hp: -0.34, bob: 2 * PXM, lg: -1, hand: [[0, 0, 0], side ? [-8, 6, 26] : [-13, 5, 27]], pole: [R0.pole[0], [-1, -0.2, -0.6]],
-    axe: side ? axeBH([8, 2, 26], [8, 4, 62]) : axeBH([8, 4, 25], [11, 3, 61]), rg: 12, rage: 1, glow: 1.6, ring: 0.06, ringAt: [0, 0, 0], dust: [1, 1],
+    pitch: -0.16, hp: -0.34, bob: 2 * PXM, pole: [[1, -0.2, -0.6], [-1, -0.2, -0.6]],
+    axe: side ? axeBH([7, -19, 42], [7, 21, 47]) : axeBH([-19, 3, 42], [21, 3, 47]), rg: 29, lg: 11, flat: side ? [1, 0, 0] : [0, 1, 0], rage: 1, glow: 1.6, ring: 0.06, ringAt: [0, 0, 0], dust: [1, 1],
   };
   const keys: Key[] = [
     { f: 0, p: {} }, { f: 2, p: { pitch: 0.12, hp: 0.1, bob: -1 * PXM, glow: 0.7 }, ease: easeInOut }, { f: 4, p: roar, ease: easeOut },
@@ -826,9 +894,9 @@ const POSES: Record<ExecAnim, (v: View) => Pose[]> = {
 
 // ---------------- эффекты мира ----------------
 interface FxDef { w: number; h: number; ax: number; ay: number; n: number; fps: number; hit: number }
-export const FX: Record<"hook" | "cage", FxDef & { anims?: Record<string, { col: number; n: number; loop: boolean; hit?: number }> }> = {
+export const FX: Record<"hook" | "cage", FxDef & { anims?: Record<string, { col: number; n: number; loop: boolean; hit?: number; fps?: number }> }> = {
   hook: { w: 64, h: 64, ax: 32, ay: 44, n: 10, fps: 12, hit: 2 },
-  cage: { w: 96, h: 96, ax: 48, ay: 60, n: 16, fps: 12, hit: 5, anims: { cageIn: { col: 0, n: 6, loop: false, hit: 5 }, cageHold: { col: 6, n: 4, loop: true }, cageOut: { col: 10, n: 6, loop: false } } },
+  cage: { w: 96, h: 96, ax: 48, ay: 60, n: 16, fps: 12, hit: 5, anims: { cageIn: { col: 0, n: 6, loop: false, hit: 5, fps: 12 }, cageHold: { col: 6, n: 4, loop: true, fps: 12 }, cageOut: { col: 10, n: 6, loop: false, fps: 12 } } },
 };
 type Plot = (x: number, y: number, c: RGBA) => void;
 const plotOf = (c: PC): Plot => (x, y, col) => c.set(x, y, col);
@@ -846,9 +914,12 @@ function chainPx(plot: Plot, x0: number, y0: number, x1: number, y1: number, sag
   for (let s = 0; s <= n; s++) {
     const u = s / n;
     const x = lerp(x0, x1, u), y = lerp(y0, y1, u) + Math.sin(Math.PI * u) * sag;
+    // толстая тёмная цепь: звенья в 2 px, блик на каждом втором, тёмная кайма снизу
     const lit = Math.floor(s / 1.7 + ph * 2) % 2 === 0;
-    plot(Math.round(x), Math.round(y), hot > 0.5 ? EMBER[lit ? 3 : 1] : IRON[lit ? 4 : 1]);
-    plot(Math.round(x), Math.round(y) + 1, hot > 0.5 ? EMBER[0] : IRON[0]);
+    const X = Math.round(x), Y = Math.round(y);
+    plot(X, Y - 1, hot > 0.5 ? EMBER[lit ? 3 : 2] : IRON[lit ? 4 : 2]);
+    plot(X, Y, hot > 0.5 ? EMBER[1] : IRON[1]);
+    plot(X, Y + 1, hot > 0.5 ? EMBER[0] : OUT);
   }
 }
 /** Кол клетки: железный столб с остриём, тень справа, светлая грань слева. */
@@ -880,10 +951,11 @@ function buildHookFx(): PC {
     else if (i >= 4 && i <= 6) { const e = easeIn((i - 3) / 3); hx = lerp(cx, cx + 22, e); hy = lerp(cy, cy - 18, e); }
     const shown = i <= 6;
     if (shown) {
-      chainPx(pf, hx, hy - 2, i <= 1 ? hx + 14 : i <= 3 ? cx + 26 : hx + 12, i <= 1 ? hy - 20 : 4, i >= 2 && i <= 3 ? 3 : 1, 0, i / 4);
+      chainPx(pf, hx, hy - 2, Math.min(F.w - 4, i <= 1 ? hx + 14 : i <= 3 ? cx + 26 : hx + 12), Math.max(4, i <= 1 ? hy - 20 : 5), i >= 2 && i <= 3 ? 3 : 1, 0, i / 4);
       // крюк: остриё вниз, загиб — тёмная тень
-      const hook: [number, number, number][] = [[0, -3, 4], [0, -2, 4], [0, -1, 3], [0, 0, 3], [1, 1, 2], [2, 1, 2], [3, 0, 3], [3, -1, 4], [-1, 1, 1]];
-      for (const [dx, dy, t] of hook) pf(hx + dx, hy + dy, IRON[t]);
+      // крюк: светлая сталь с тёмным контуром, остриё загнуто вверх
+      const HK = ["..o..", ".oxo.", ".oxo.", ".oxo.", "oxyo.", "oxyoo", "oyxxo", ".ooxo", "...o."];
+      HK.forEach((row, j) => [...row].forEach((ch, k) => { if (ch !== ".") pf(hx - 2 + k, hy - 6 + j, ch === "o" ? OUT : ch === "x" ? BLADE[4] : BLADE[3]); }));
     }
     if (i >= 2 && i <= 3) for (const [dx, dy] of [[-3, -2], [3, -3], [-2, 1], [4, 0]]) pf(cx + dx * (i - 1), cy + dy * (i - 1) - 2, EMBER[i === 2 ? 4 : 3]);
     if (i >= 2) {
@@ -967,6 +1039,50 @@ function buildCageFx(): PC {
   return out;
 }
 
+/**
+ * Кандальный кол (моб клетки, 32×32, как мобы: 12 столбцов × 3 вида — «ходьба» 0–3 и «атака» 4–7 — покой с мерцанием
+ * углей на замке, 8–11 — гибель: кол трескается, верх с замком падает, цепь осыпается). Ступни на y = 30.
+ */
+export const CAGE_UNIT = { frame: 32, cols: 12 };
+export function buildStakeSheet(): PC {
+  const n = 32, out = new PC(n * 12, n * 3);
+  for (let row = 0; row < 3; row++) for (let i = 0; i < 12; i++) {
+    const c = new PC(n, n);
+    const pl = plotOf(c);
+    const dying = i >= 8, k = dying ? (i - 8) / 3 : 0;
+    const ph = (i % 4) / 4;
+    const x0 = 16, yb = 30, h = 20;
+    const lean = dying ? Math.round(5 * easeIn(k)) : 0;
+    // столб: светлая грань слева, тень справа; при гибели верхняя часть отламывается и падает вбок
+    for (let y = 0; y < h; y++) {
+      const broken = dying && y > 9;
+      const sx = broken ? lean * ((y - 9) / 10) : 0, sy = broken ? Math.round(lean * 0.8) : 0;
+      if (dying && y > 9 && k > 0.9) continue;
+      const X = Math.round(x0 + sx), Y = yb - y + sy;
+      pl(X - 1, Y, IRON[3]); pl(X, Y, IRON[2]); pl(X + 1, Y, IRON[1]);
+    }
+    if (!(dying && k > 0.9)) { pl(x0 + (dying ? lean : 0), yb - h - 1 + (dying ? Math.round(lean * 0.8) : 0), IRON[4]); }
+    // цепь, обмотанная вокруг кола (2 витка), звенья через пиксель
+    for (const [yy, w] of [[yb - 6, 4], [yb - 12, 4]] as [number, number][]) {
+      if (dying && yy < yb - 9 && k > 0.4) continue;
+      for (let dx = -w; dx <= w; dx++) pl(x0 + dx, yy + (Math.abs(dx) > 2 ? 1 : 0), (dx + Math.round(ph * 4)) % 2 ? IRON[4] : IRON[1]);
+    }
+    // замок с углями у верха: мерцает (2 ступени)
+    const lx = x0 + (dying ? lean : 0), ly = yb - 15 + (dying ? Math.round(lean * 0.8) : 0);
+    if (!(dying && k > 0.66)) {
+      pl(lx - 1, ly, IRON[1]); pl(lx + 2, ly, IRON[1]); pl(lx - 1, ly + 1, IRON[1]); pl(lx + 2, ly + 1, IRON[1]);
+      pl(lx, ly, EMBER[ph < 0.5 ? 3 : 2]); pl(lx + 1, ly, EMBER[ph < 0.5 ? 2 : 3]); pl(lx, ly + 1, EMBER[1]); pl(lx + 1, ly + 1, EMBER[1]);
+    }
+    // осколки при гибели
+    if (dying) for (let q = 0; q < 5; q++) { const t = k; pl(x0 - 6 + q * 3, yb - 2 - Math.round(6 * Math.sin(Math.PI * t) * (0.5 + 0.1 * q)), q % 2 ? IRON[3] : DUST[2]); }
+    // земля у основания
+    for (const dx of [-3, -2, 2, 3]) pl(x0 + dx, yb, DUST[1]);
+    c.outline(OUT);
+    out.blit(c, i * n, row * n);
+  }
+  return out;
+}
+
 // ---------------- листы, проверки, монтажи ----------------
 function animSheets(): { img: Record<ExecAnim, PC>; emis: Record<ExecAnim, PC> } {
   const img = {} as Record<ExecAnim, PC>, emis = {} as Record<ExecAnim, PC>;
@@ -997,7 +1113,7 @@ function relight(c: PC, emis: PC, x: number, y: number, k: number, flip = false)
     }
   }
 }
-interface Assets { hero: PC; terrain: PC; golem: PC; ref: PC | null }
+interface Assets { hero: PC; terrain: PC; golem: PC; ref: PC | null; lich?: PC | null }
 const GOLEM_N = 64;
 const heroAt = (A: Assets, row: number) => crop(A.hero, 0, row * 32, 32, 32);
 type Sheets = { img: Record<ExecAnim, PC>; emis: Record<ExecAnim, PC> };
@@ -1089,15 +1205,32 @@ function fxRow(title: string, fx: PC, F: FxDef, A: Assets, W: number, step: numb
     },
   };
 }
-/** «Наш | референс»: палач вниз и вбок ×6 (покой, кадр 1), рядом образец 06 той же высоты; ниже — то же ночью. */
+/**
+ * «Наш | референс»: сверху — ×1 и ×3 рядом с героем и личем на траве (как в игре), ниже — палач вниз и вбок ×6 (покой,
+ * кадр 1) и образец 06 той же высоты, днём и ночью.
+ */
 function buildCompare(sheets: Sheets, A: Assets): PC {
   const k = 6;
   const H = N * k;
-  const W = 24 + 2 * N * k + 16 + 40 + H + 24;
-  const c = new PC(W, 2 * (H + 60) + 20);
+  const W = Math.max(24 + 2 * N * k + 16 + 40 + H + 24, 1500);
+  const TOP = 90 + 90 + 3 * 84 + 40;
+  const c = new PC(W, TOP + 2 * (H + 60) + 20);
   fill(c, 0, 0, c.w, c.h, [30, 28, 34, 255]);
+  // ×1 и ×3: герой 32, лич 80, палач 64 (вниз, вбок) — ступни на одной линии
+  const lich = A.lich ? crop(A.lich, 0, 0, 80, 80) : null;
+  for (const [kk, y0] of [[1, 12], [3, 120]] as [number, number][]) {
+    text(c, `×${kk} · ГЕРОЙ · ЛИЧ ВЕДРАС · ПАЛАЧ КАССАР ВНИЗ И ВБОК`, 24, y0, 2);
+    const yb = y0 + 22 + 84 * kk;
+    groundBg(c, A.terrain, 24, y0 + 20, Math.min(W - 48, (32 + 84 + 66 * 2 + 40) * kk + 40), 86 * kk, kk, "grass");
+    let x = 40;
+    const put1 = (img: PC, feet: number, w: number) => { shadowBlob(c, x + (img.w / 2) * kk, yb - 0.5 * kk, Math.min(16, (img.w / 32) * 6.5) * kk, 2.4 * kk); c.blit(scaleNN(img, kk), x, Math.round(yb - feet * kk)); x += w * kk; };
+    put1(heroAt(A, 0), 30.4, 34);
+    if (lich) put1(lich, 75.4, 84);
+    put1(crop(sheets.img.idle, 0, 0, N, N), CAM.GY, 66);
+    put1(crop(sheets.img.idle, 0, 2 * N, N, N), CAM.GY, 66);
+  }
   for (const night of [false, true]) {
-    const y = 48 + (night ? H + 70 : 0);
+    const y = TOP + 48 + (night ? H + 70 : 0);
     text(c, night ? "НАШ · НОЧЬ" : "НАШ · ДЕНЬ", 24, y - 36, 3);
     text(c, "РЕФЕРЕНС 06", 24 + 2 * N * k + 56, y - 36, 3);
     fill(c, 24, y, 2 * N * k + 16, H, [150, 156, 140, 255]);
@@ -1131,6 +1264,7 @@ export function writeExecArt(root: string, outDir: string): string[] {
   save(sheet, "exec-sheet.png");
   save(glow, "exec-glow.png");
   const fx = { hook: save(buildHookFx(), "exec-fx-hook.png"), cage: save(buildCageFx(), "exec-fx-cage.png") };
+  save(buildStakeSheet(), "exec-cage-unit.png");
   const rows = ["вниз", "вверх", "вбок"];
   const bad = [...frameEdgeCuts(sheet, N, OUT, "лист", rows), ...frameHoles(sheet, N, "лист", rows, 3)];
   for (const [name, F] of Object.entries(FX)) {
@@ -1150,6 +1284,7 @@ export function writeExecArt(root: string, outDir: string): string[] {
     terrain: loadPC(path.join(root, "client", "public", "assets", "tiles", "terrain.png")),
     golem: loadPC(path.join(root, "client", "public", "assets", "units", "sol_rune_golem.png")),
     ref: ensureRef(root),
+    lich: fs.existsSync(path.join(root, "client", "public", "assets", "units", "umb_crown_lich.png")) ? loadPC(path.join(root, "client", "public", "assets", "units", "umb_crown_lich.png")) : null,
   };
   const W = 2000;
   const rowsP: Row[] = [sceneRow(A, sheets, false, 3), sceneRow(A, sheets, true, 3)];

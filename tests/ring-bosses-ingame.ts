@@ -219,8 +219,9 @@ async function scenario() {
     mob.reset();
     mob.state = "chase"; mob.targetId = H.id; mob.addThreat(H.id, 1000);
     mob.unit.hp = Math.floor(mob.unit.maxHp * 0.49);
-    await sleep(700);
-    const fr = await colOf(CARD.id);
+    // кадр перехода ловим опросом (связка ~0,8 с, приход события зависит от нагрузки)
+    let fr = await colOf(CARD.id);
+    for (let k = 0; k < 40 && fr?.anim !== "phase"; k++) { await sleep(60); fr = await colOf(CARD.id); }
     check(fr?.anim === "phase", `${CARD.id}: переход фазы (${fr?.anim})`);
     save(`${PFX}ingame-phase.png`, await snap(bx, by - 20, 440, 300));
     await sleep(2500);

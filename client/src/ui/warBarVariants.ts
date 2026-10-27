@@ -17,6 +17,18 @@ const fcls = (f: string) => (f === "solgard" ? "sol" : f === "umbrath" ? "umb" :
 const col = (f: string) => (f === "solgard" ? WAR.look.color.solgard : f === "umbrath" ? WAR.look.color.umbrath : WAR.look.color.neutral);
 const emb = (f: "sol" | "umb") => `<img class="wv-emb" src="/assets/vfx/war-emb-${f}.png" alt="">`;
 
+
+/**
+ * Знамя-индикатор основания: древко с навершием (у Сердца — корона), полотнище цветом своего знамени ползёт по древку на высоту подъёма;
+ * ничьё и пустое — серое внизу; взятое — цветом владельца наверху с гербом; спор — мерцает двумя цветами; закрытое Сердце — тусклое.
+ */
+function flagMini(kind: "side" | "heart", x: { o: string; b: string; hf: string; h: number; hp: number; c: boolean; lock: boolean } | undefined, size: "s" | "m" | "l" = "m"): string {
+  const ban = x?.b || x?.hf || "", owner = x?.o ?? "", f = ban || owner;
+  const h = x ? (x.b ? x.h : x.hf ? x.hp * 0.15 : owner ? 1 : 0) : 0;
+  const emb = f === "solgard" || f === "umbrath" ? `<img src="/assets/vfx/war-emb-${fcls(f)}.png" alt="">` : "";
+  return `<span class="wflag ${size} ${kind} f-${fcls(f)}${x?.c ? " contest" : ""}${x?.lock ? " lock" : ""}" style="--h:${h.toFixed(3)}"><i class="m"></i>${kind === "heart" ? '<i class="crown"></i>' : '<i class="fin"></i>'}<i class="p">${emb}</i></span>`;
+}
+
 /** Полная полоса в выбранном варианте: голова (время, кнопки) уже собрана снаружи — сюда идёт счёт и основания; tail — строка подсказки. */
 export function variantBody(v: BarVariant, s: WarStateMsg, time: string, tools: string, tail: string, hero: { x: number; y: number }): string {
   const fr = warFront(s.front);
@@ -26,7 +38,7 @@ export function variantBody(v: BarVariant, s: WarStateMsg, time: string, tools: 
     const flags = bases.map(({ d, b: x }) => {
       const owner = x?.o ?? "", ban = x?.b || x?.hf || "", h = x ? (x.b ? x.h : x.hp) : 0;
       return `<div class="wv1-flag ${d.kind}${x?.c ? " contest" : ""}${x?.lock ? " lock" : ""}" title="${esc(d.name)}">
-        <img src="/ui/war/icon-${fcls(owner)}${d.kind === "heart" ? "-heart" : ""}.png" alt=""><span class="wv1-mast"><i style="height:${Math.round(h * 100)}%;background:${col(ban)}"></i></span></div>`;
+        ${flagMini(d.kind, x, d.kind === "heart" ? "l" : "m")}<small>${Math.round((x?.b ? x.h : owner ? 1 : 0) * 100)}%</small></div>`;
     }).join("");
     return `<div class="wv1">
       <div class="wv1-top"><span class="wv-score sol${lead === "sol" ? " lead" : ""}">${emb("sol")}${a}</span><span class="wv1-cart"><b>${esc(time)}</b><small>${esc(fr?.name ?? "")}</small></span><span class="wv-score umb${lead === "umb" ? " lead" : ""}">${b}${emb("umb")}</span></div>
@@ -36,7 +48,7 @@ export function variantBody(v: BarVariant, s: WarStateMsg, time: string, tools: 
     const segs = bases.map(({ d, b: x }) => {
       const owner = x?.o ?? "", ban = x?.b || x?.hf || "", h = x ? (x.b ? x.h : x.hp) : 0;
       const fill = ban ? `<i class="${fcls(ban)}" style="width:${Math.round(h * 100)}%"></i>` : "";
-      return `<div class="wv2-seg o-${fcls(owner)}${x?.c ? " contest" : ""}${x?.lock ? " lock" : ""}" title="${esc(d.name)}">${fill}<img src="/ui/war/mini-${fcls(owner)}${d.kind === "heart" ? "-heart" : ""}.png" alt=""></div>`;
+      return `<div class="wv2-seg o-${fcls(owner)}${x?.c ? " contest" : ""}${x?.lock ? " lock" : ""}" title="${esc(d.name)}">${fill}${flagMini(d.kind, x, "s")}</div>`;
     }).join('<span class="wv2-div"></span>');
     return `<div class="wv2">
       <div class="wv2-ribbon"><span>${esc(fr?.name ?? "")}</span><b>${esc(time)}</b></div>
@@ -55,7 +67,7 @@ export function variantBody(v: BarVariant, s: WarStateMsg, time: string, tools: 
     return `<g class="wv3-node${x?.c ? " contest" : ""}${x?.lock ? " lock" : ""}"><title>${esc(d.name)}</title>
       <circle cx="${cx}" cy="${cy}" r="${r + 3}" class="wv3-track"/>
       ${ban ? `<circle cx="${cx}" cy="${cy}" r="${r + 3}" class="wv3-prog" style="stroke:${col(ban)}" stroke-dasharray="${(len * h).toFixed(1)} ${len.toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>` : ""}
-      <image href="/ui/war/mini-${fcls(owner)}${d.kind === "heart" ? "-heart" : ""}.png" x="${cx - 6.5}" y="${cy - 9}" width="13" height="${d.kind === "heart" ? 19 : 16}"/></g>`;
+      <foreignObject x="${cx - 9}" y="${cy - 15}" width="18" height="26">${flagMini(d.kind, x, "s")}</foreignObject></g>`;
   }).join("");
   const hx = (hero.x / 32 - x0) / (x1 - x0), me = hx >= -0.05 && hx <= 1.05 ? `<circle cx="${X(hero.x / 32)}" cy="${Y(hero.y / 32)}" r="2.5" class="wv3-me"/>` : "";
   return `<div class="wv3">

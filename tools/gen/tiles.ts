@@ -270,15 +270,23 @@ function crackedMarble(): Texel {
 }
 /** Базальт склепа: тёмные плиты, жилы лавы (v: 0 гладкий, 1 жилы, 2 крупные трещины, 3 скол и зола). */
 function basalt(): Texel {
+  // спокойный пол: крупные ровные плиты, лава — редкая волосяная жила только у варианта 3, у варианта 2 — слабая трещина без свечения
   return (x, y, v) => {
-    let c = tn(BAS, slabs(BAS, 801, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.25 : -0.25), x, y));
-    if (v >= 1) {
-      const ck = v === 3 ? 0 : crackAt(x, y, 820 + v, v === 2 ? 0.02 : 0.012);
-      if (ck > 0) c = ck > 0.7 ? LAVAH[3] : ck > 0.4 ? LAVAH[2] : LAVAH[1];
-      else if (v !== 3 && crackAt(x, y, 820 + v, 0.05) > 0) c = shade(c, 0.6);
-    }
-    if (v === 3 && pnoise(x, y, 8, S, 830) > 0.6) c = mix(c, ASHT[1], 0.6);
+    let c = tn(BAS, slabs(BAS, 801, (sl) => ((sl + Math.floor(sl / 2)) % 2 ? 0.2 : -0.2), x, y) - 0.2);
+    if (v === 1 && hash01(x, y, 810) < 0.03) c = shade(c, 0.7);
+    if (v === 2 && crackAt(x, y, 822, 0.012) > 0) c = BAS[0];
+    if (v === 3) { const ck = crackAt(x, y, 823, 0.01); if (ck > 0) c = ck > 0.6 ? LAVAH[2] : LAVAH[1]; else if (crackAt(x, y, 823, 0.045) > 0) c = shade(c, 0.65); }
     return c;
+  };
+}
+/** Вытертая дорожка: гладкие светлее плиты, потёртости, без трещин. */
+function worn(): Texel {
+  return (x, y, v) => {
+    const lx = x % 16, ly = y % 16, slab = Math.floor(x / 16) + Math.floor(y / 16) * 2;
+    let k = 2.9 + ((slab + Math.floor(slab / 2)) % 2 ? 0.15 : -0.1) + (pnoise(x, y, 8, S, 840 + slab) - 0.5) * 0.5 + (pnoise(x, y, 4, S, 843) - 0.5) * 0.3;
+    if (lx === 0 || ly === 0) k = 0.9; else if (lx === 15 || ly === 15) k -= 0.5; else if (lx === 1 || ly === 1) k += 0.4;
+    if (v === 3 && hash01(x, y, 845) < 0.04) k -= 0.8;
+    return tn(BAS, k);
   };
 }
 
@@ -352,6 +360,7 @@ export const TERRAIN_SPECS: TerrainSpec[] = [
   { tex: marble(), rimIn: 0.6, rimOut: [12, 16, 22, 170] }, // данж: собор
   { tex: crackedMarble(), rimIn: 0.6, rimOut: [20, 12, 12, 170] }, // данж: переход
   { tex: basalt(), rimIn: 0.6, rimOut: [6, 4, 10, 190] }, // данж: склеп
+  { tex: worn(), rimIn: 0.7, rimOut: [6, 4, 10, 120] }, // данж: вытертая дорожка зала босса
 ];
 
 /** Покрытие тайла маской углов с шумной границей. */

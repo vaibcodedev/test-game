@@ -177,7 +177,12 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       else if (k === "dg_gate_a") glow(objs, o.x, o.y - 30, 0xff7a30, 2.2, 0.5, true);
       else if (k === "dg_arch_t") glow(objs, o.x, o.y - 30, 0xff7a30, 1.8, 0.3, true);
       else if (k === "dg_arch_c") glow(objs, o.x, o.y - 30, 0x4aa0c8, 2.0, 0.3);
-      else if (k === "dg_pillar_a_a" || k === "dg_pillar_a_b") glow(objs, o.x, o.y - 40, 0xff7a30, 1.3, 0.35, true);
+      else if (k === "dg_dais") {
+        // помост под боссом: мягкое свечение круга и тёплые световые пятна вокруг — контраст вместо тёмной плоскости
+        glow(objs, o.x, o.y - 85, 0xff7a30, 4.2, 0.4, true);
+        for (const [dx, dy] of [[-150, -70], [150, -70], [-110, -120], [110, -120]]) glow(objs, o.x + dx, o.y + dy, 0xff9a40, 2.2, 0.16);
+      }
+      else if (k === "dg_pillar_a_a" || k === "dg_pillar_a_b" || k === "dg_pillar_a_c" || k === "dg_pillar_a_d") glow(objs, o.x, o.y - 40, 0xff7a30, 1.3, 0.35, true);
       else if (k === "dg_sarc_a_b" || k === "dg_sarc_t_a" || k === "dg_pillar_t_a" || k === "dg_pillar_t_b") glow(objs, o.x, o.y - 18, 0xff7a30, 1.2, 0.3, true);
     }
     if (o.kind === "sun_statue") glow(objs, o.x - 15, o.y - 138, 0xffe08a, 1.0, 0.3, true);

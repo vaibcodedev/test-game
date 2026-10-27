@@ -128,8 +128,53 @@ const gateA = mk(176, 112, (S, pc) => {
   emberDots(pc, 10, 2);
 });
 
+
+// ---------- зал босса: помост-ритуальный круг и колонны с цепями ----------
+function chainDrape(pc: PC, x0: number, y0: number, x1: number, y1: number, sag: number) {
+  const n = Math.round(Math.hypot(x1 - x0, y1 - y0) * 0.55);
+  for (let i = 0; i <= n; i++) { const t = i / n, x = Math.round(x0 + (x1 - x0) * t), y = Math.round(y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * sag); pc.rect(x, y, i % 2 ? 2 : 3, 2, tone(IRN, i % 2 ? 2 : 4.4)); pc.set(x + 1, y + 2, tone(IRN, 0.6)); }
+}
+const pillarAC = mk(64, 108, (S, pc) => { shadowBox(pc, 12, 44, 100, [8, -5], 70); pillarA(S, 28, 100); chainDrape(pc, 20, 28, 38, 60, 6); chainDrape(pc, 38, 30, 20, 66, 7); pc.rect(19, 59, 4, 4, tone(IRN, 3)); lavaCrack(pc, 26, 30, 12, 61); });
+const pillarAD = mk(64, 108, (S, pc) => { shadowBox(pc, 12, 44, 100, [8, -5], 70); pillarA(S, 28, 100); chainDrape(pc, 18, 40, 40, 44, 8); chainDrape(pc, 18, 56, 40, 60, 8); for (let k = 0; k < 3; k++) { pc.rect(36 + k, 63 + k * 5, 3, 5, tone(IRN, 3)); } emberDots(pc, 8, 5); });
+/** Помост под точкой появления босса: три ступени базальта, на верхней — ритуальный круг с пентаграммой и рунами, жилы лавы по ступеням. Опора — низ кадра; центр круга — на 52 px выше. */
+function dais(): PC {
+  const W = 320, H = 192, pc = new PC(W, H), cx = W / 2, cy = 96;
+  const steps: [number, number, number][] = [[140, 58, cy + 16], [114, 47, cy + 6], [88, 37, cy - 4]];
+  pc.ellipse(cx + 8, cy + 30, 150, 52, withA(hex("#06040a"), 90)); // тень под помостом
+  steps.forEach(([rx, ry, topY], i) => {
+    // боковая стенка 10 px: тёмная, слева светлее
+    for (let y = Math.floor(topY - ry); y <= topY + ry + 10; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+      const u = (x + 0.5 - cx) / rx, a = ((y + 0.5 - topY) / ry) ** 2 + u * u, b = ((y + 0.5 - topY - 10) / ry) ** 2 + u * u;
+      if (a > 1 && b <= 1) { const v = 2.0 + (-u * 0.9) * 0.9 + (hash01(x, y, 3) - 0.5) * 0.4 - ((y - topY) % 5 === 4 ? 0.4 : 0); pc.set(x, y, tone(BAS, v)); }
+    }
+    // верхняя грань: плиты, светлая фаска у дальнего края
+    for (let y = Math.floor(topY - ry); y <= topY + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+      const u = (x + 0.5 - cx) / rx, w = (y + 0.5 - topY) / ry, d = u * u + w * w;
+      if (d > 1) continue;
+      let v = 3.4 + (i === 2 ? 0.3 : 0) + (hash01(Math.floor(x / 12), Math.floor(y / 8), 7 + i) - 0.5) * 0.6 + (hash01(x, y, 9) - 0.5) * 0.3;
+      if (d > 0.9) v += w < 0 ? 1.0 : -0.5;
+      if ((x + Math.floor(y / 8) * 6) % 12 === 0 && d < 0.88) v -= 0.5;
+      pc.set(x, y, tone(BAS, v));
+    }
+    // жилы лавы по краю ступеней
+    for (let k = 0; k < 7; k++) { const a = rnd(k, i, 120) * 6.283, x = cx + Math.cos(a) * rx * 0.97, y = topY + Math.sin(a) * ry * 0.97; if (Math.sin(a) > -0.2) for (let t = 0; t < 7; t++) pc.set(Math.round(x + Math.cos(a + 1.5708) * t), Math.round(y + Math.sin(a + 1.5708) * t * 0.4), t % 3 === 1 ? LAVA[4] : LAVA[3]); }
+  });
+  // ритуальный круг на верхней ступени
+  const [rx, ry, ty] = steps[2], R = 0.8;
+  const ring = (k: number, col: RGBA) => { for (let a = 0; a < 6.3; a += 0.012) pc.set(Math.round(cx + Math.cos(a) * rx * k), Math.round(ty + Math.sin(a) * ry * k), col); };
+  ring(R, LAVA[3]); ring(R - 0.04, LAVA[2]); ring(0.58, LAVA[3]);
+  const pts: [number, number][] = Array.from({ length: 5 }, (_, i) => [cx + Math.cos(-1.5708 + (i * 6.283) / 5) * rx * R, ty + Math.sin(-1.5708 + (i * 6.283) / 5) * ry * R]);
+  for (let i = 0; i < 5; i++) { const a = pts[i], b = pts[(i + 2) % 5], n = Math.round(Math.hypot(b[0] - a[0], (b[1] - a[1]) * 2.2)); for (let t = 0; t <= n; t++) { const f = t / n, x = Math.round(a[0] + (b[0] - a[0]) * f), y = Math.round(a[1] + (b[1] - a[1]) * f); pc.set(x, y, LAVA[3]); if (t % 3 === 0) pc.set(x, y + 1, LAVA[1]); } }
+  // руны между кругами: короткие штрихи
+  for (let k = 0; k < 28; k++) { const a = (k / 28) * 6.283, r0 = 0.66, x = cx + Math.cos(a) * rx * r0, y = ty + Math.sin(a) * ry * r0; pc.rect(Math.round(x), Math.round(y), 2, k % 3 === 0 ? 3 : 1, LAVA[k % 2 ? 2 : 3]); }
+  for (let k = 0; k < 5; k++) { const [x, y] = pts[k]; pc.rect(Math.round(x) - 1, Math.round(y) - 1, 3, 3, LAVA[4]); }
+  pc.ellipse(cx, ty, 9, 3.6, hex("#1a0808")); pc.ellipse(cx, ty, 6, 2.4, LAVA[2]); pc.ellipse(cx, ty - 0.5, 3, 1.2, LAVA[4]);
+  const out = frame32(pc);
+  return out;
+}
+
 export const DUNGEON_ART: Record<string, () => PC> = {
-  dg_pillar_c_a: pillarCA, dg_pillar_c_b: pillarCB, dg_pillar_t_a: pillarTA, dg_pillar_t_b: pillarTB, dg_pillar_a_a: pillarAA, dg_pillar_a_b: pillarAB,
+  dg_pillar_c_a: pillarCA, dg_pillar_c_b: pillarCB, dg_pillar_t_a: pillarTA, dg_pillar_t_b: pillarTB, dg_pillar_a_a: pillarAA, dg_pillar_a_b: pillarAB, dg_pillar_a_c: pillarAC, dg_pillar_a_d: pillarAD, dg_dais: dais,
   dg_statue_c_a: statue(0), dg_statue_c_b: statue(1), dg_statue_c_c: statue(2),
   dg_sarc_c_a: sarcCA, dg_sarc_c_b: sarcCB, dg_sarc_t_a: sarcTA, dg_sarc_a_a: sarcAA, dg_sarc_a_b: sarcAB,
   dg_altar_c: altarC, dg_brazier_a: brazier(1), dg_brazier_b: brazier(1.25),
