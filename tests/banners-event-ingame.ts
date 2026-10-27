@@ -172,7 +172,7 @@ async function scenario() {
  */
 async function scenarioV2() {
   fs.mkdirSync(OUT, { recursive: true });
-  for (const f of fs.readdirSync(OUT)) if (/^v2-(neutral|crowd|contest|capture|map)\.png$/.test(f)) fs.rmSync(path.join(OUT, f));
+  for (const f of fs.readdirSync(OUT)) if (/^v[23]-(neutral|crowd|contest|capture|map.png|centre|minimap)/.test(f) && f.endsWith(".png")) fs.rmSync(path.join(OUT, f));
   const token = await ensureChar("war_view", PASS, "Знаменосец", "warrior");
   const w = W(), war = w.war!;
   war.debug("reset", {});
@@ -241,6 +241,14 @@ async function scenarioV2() {
       const out = new PNG({ width: ww, height: hh }); PNG.bitblt(src, out, x0, y0, ww, hh, 0, 0); save("v2-capture.png", out);
     }
     check(war.bases.get("center_w")!.owner === "solgard", "миг захвата: снимок");
+    // v3: постамент по центру кольца — крупно (zoom 2) и общим планом (zoom 1), после вспышки
+    await sleep(2500);
+    save("v3-centre.png", await snap(base.x, base.y - 30, 560, 360, 2));
+    save("v3-centre-wide.png", await snap(base.x, base.y, 1240, 780, 1));
+    await run(`sc.cameras.main.setZoom(2); sc.cameras.main.centerOn(a.x, a.y); return 0;`, { x: base.x, y: base.y });
+    await sleep(800);
+    const mini = await page.$(".hud-mini");
+    if (mini) await mini.screenshot({ path: path.join(OUT, "v3-minimap.png") });
     sol.forEach((p) => inside.add(p));
     await sleep(2500);
     const fps = (cx: number, cy: number) => run<number>(`const cam = sc.cameras.main; cam.stopFollow(); cam.centerOn(a.cx, a.cy); await new Promise((r) => setTimeout(r, 1500)); let n = 0; const t0 = performance.now(); await new Promise((r) => { const f = () => { n++; if (performance.now() - t0 < 5000) requestAnimationFrame(f); else r(0); }; requestAnimationFrame(f); }); return n / ((performance.now() - t0) / 1000);`, { cx, cy });

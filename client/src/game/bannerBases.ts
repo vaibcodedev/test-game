@@ -17,8 +17,8 @@ const L = WAR.look;
 const num = (c: string) => parseInt(c.replace("#", ""), 16);
 const COL = { solgard: num(L.color.solgard), umbrath: num(L.color.umbrath), neutral: num(L.color.neutral) };
 const colOf = (f: string) => (f === "solgard" ? COL.solgard : f === "umbrath" ? COL.umbrath : COL.neutral);
-/** Подножие постамента ниже центра круга (px). */
-const FOOT = 18;
+/** Якорь постамента (центр следа на земле) — в центре круга: подножие = центр круга. */
+const FOOT = 0;
 const ROYAL = { solgard: "war-royal-sol", umbrath: "war-royal-umb" } as const;
 const PLATE = { solgard: "war-plate-sol", umbrath: "war-plate-umb" } as const;
 const FALLEN = { solgard: "std-fallen-sol", umbrath: "std-fallen-umb" } as const;
@@ -117,9 +117,9 @@ export class BannerBases {
       const mast = img("war-mast", fx, fy)?.setOrigin(this.frame.ax, this.frame.ay).setDepth(fy - 0.3) ?? null;
       const plinth = img("war-plinth", fx, fy)?.setOrigin(this.frame.ax, this.frame.ay).setDepth(fy) ?? null;
       const top = this.frameTop(fx, fy);
-      // подпись под постаментом (над навершием её срезает край экрана при обычном масштабе)
+      // подпись под постаментом, за дугой прогресса
       void top;
-      const label = worldText(sc, fx - 4, fy + 6, "", "plain", { fontSize: "11px", align: "center", strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(fy + 6);
+      const label = worldText(sc, fx, fy + L.arcR + L.arcW, "", "plain", { fontSize: "11px", align: "center", strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(fy + 6);
       this.views.push({ d, fill, ring, glow, sheen, arc, head, swords, mast, plinth, plate: null, plateF: "", flag: null, flagF: "", fallen: null, fallenF: "", h: -1, owner: null, fillKey: "", emitAcc: 0, phase: i * 0.37, arcKey: "", label, labelKey: "" });
     });
   }
@@ -228,7 +228,7 @@ ${st.state || st.owner}`).setColor(st.state ? "#ffb35a" : owner ? L.color[owner 
     v.head?.setVisible(false);
     v.swords?.setVisible(false);
     if (!b || b.lock) return;
-    const cx = fx, cy = fy - 8, R = L.arcR, W = L.arcW, a0 = -Math.PI / 2;
+    const cx = fx, cy = fy, R = L.arcR, W = L.arcW, a0 = -Math.PI / 2;
     const contest = b.c, seal = b.s > 0;
     // дорожка и тонкий обод
     g.lineStyle(W + 6, 0x000000, 0.5).strokeCircle(cx, cy, R);

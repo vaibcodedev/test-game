@@ -176,18 +176,20 @@ export function baseState(id: string): { owner: string; state: string } {
   return { owner, state: "" };
 }
 
-/** Мини-карта: маленькая плашка в цвете владельца (Сердце — с золотой точкой-короной), спор — мигающий обод. */
+/** Мини-карта: тот же значок «постамент со знаменем», маленький (ui/war/mini-*.png); ход захвата — дуга цветом знамени, спор — мигающий обод. */
+const MINI = new Map<string, HTMLImageElement>();
+for (const f of ["sol", "umb", "none"]) for (const h of ["", "-heart"]) { const im = new Image(); im.src = `/ui/war/mini-${f}${h}.png`; MINI.set(`${f}${h}`, im); }
 export function drawWarMini(g: CanvasRenderingContext2D, X: (px: number) => number, Y: (py: number) => number) {
   const s = warView.state, blink = Math.floor(performance.now() / 400) % 2 === 0;
+  g.imageSmoothingEnabled = false;
   for (const d of WAR_BASES) {
     const b = warView.byId.get(d.id), on = !!s && s.ph !== "idle" && s.front === d.front, heart = d.kind === "heart";
-    const r = heart ? 5 : 4, x = Math.round(X(d.x)), y = Math.round(Y(d.y));
-    g.beginPath(); g.arc(x, y, r + 1, 0, Math.PI * 2); g.fillStyle = "#000"; g.fill();
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = b?.c && blink ? P.warn : lookCol(b?.o ?? ""); g.fill();
-    g.beginPath(); g.arc(x, y, r - 1.6, 0, Math.PI * 2); g.fillStyle = "#1a141e"; g.fill();
-    g.fillStyle = lookCol(b?.b || b?.o || ""); g.fillRect(x - 1, y - 2, 3, 4);
-    if (heart) { g.fillStyle = WAR.look.color.solgard; g.fillRect(x - 1, y - r - 3, 3, 2); }
-    if (on && b?.b && b.o !== b.b) { g.strokeStyle = lookCol(b.b); g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r + 2.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * b.h); g.stroke(); }
+    const x = Math.round(X(d.x)), y = Math.round(Y(d.y)), im = MINI.get(`${fcls(b?.o ?? "")}${heart ? "-heart" : ""}`);
+    if (on && b && (b.c || (b.b && b.h < 1))) {
+      g.lineWidth = 2; g.strokeStyle = b.c ? (blink ? WAR.look.color.solgard : WAR.look.color.umbrath) : lookCol(b.b);
+      g.beginPath(); g.arc(x, y - 2, 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (b.c ? 1 : b.h)); g.stroke();
+    }
+    if (im?.complete && im.naturalWidth) g.drawImage(im, x - Math.floor(im.naturalWidth / 2), y - im.naturalHeight + 4);
   }
 }
 
@@ -206,22 +208,23 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
     const b = warView.byId.get(d.id), on = !!st && st.ph !== "idle" && st.front === d.front, heart = d.kind === "heart";
     const im = iconOf(b?.o ?? "", heart);
     const x = Math.round(X(d.x / TILE)), y = Math.round(Y(d.y / TILE));
-    const iw = (im?.naturalWidth || 24) * k, ih = (im?.naturalHeight || 24) * k;
+    const iw = (im?.naturalWidth || 22) * k, ih = (im?.naturalHeight || 30) * k, foot = 3 * k, mid = y - ih / 2 + foot;
     // прогресс захвата — дуга вокруг значка цветом знамени; спор — мигающий обод
     if (on && b && (b.c || (b.b && b.h < 1))) {
       g.lineWidth = 3;
-      g.strokeStyle = "#000"; g.beginPath(); g.arc(x, y, iw / 2 + 3, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = "#000"; g.beginPath(); g.arc(x, mid, ih / 2 + 3, 0, Math.PI * 2); g.stroke();
       g.strokeStyle = b.c ? (blink ? WAR.look.color.solgard : WAR.look.color.umbrath) : lookCol(b.b);
-      g.beginPath(); g.arc(x, y, iw / 2 + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (b.c ? 1 : b.h)); g.stroke();
+      g.beginPath(); g.arc(x, mid, ih / 2 + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (b.c ? 1 : b.h)); g.stroke();
     }
-    if (im?.complete && im.naturalWidth) g.drawImage(im, Math.round(x - iw / 2), Math.round(y - ih / 2 - (heart ? 2 * k : 0)), iw, ih);
-    const rIcon = { x0: x - iw / 2, y0: y - ih / 2, x1: x + iw / 2, y1: y + ih / 2 };
+    // значок стоит подножием на точке основания
+    if (im?.complete && im.naturalWidth) g.drawImage(im, Math.round(x - iw / 2), Math.round(y - ih + foot), iw, ih);
+    const rIcon = { x0: x - iw / 2, y0: y - ih + foot, x1: x + iw / 2, y1: y + foot };
     placed.push(rIcon);
     // подпись
     const { owner, state } = baseState(d.id);
     const lines = [{ text: d.name, font: `600 13px ${TEXT}`, fill: P.fg }, { text: state || owner, font: `400 12px ${TEXT}`, fill: state ? P.warn : b?.o ? lookCol(b.o) : P.dim }];
     const ws = lines.map((l) => { g.font = l.font; return Math.ceil(g.measureText(l.text).width); }), bw = Math.max(...ws) + 4, bh = 30;
-    const spots = [[x, y + ih / 2 + 2], [x, y - ih / 2 - bh - 2], [x + iw / 2 + bw / 2 + 4, y - bh / 2], [x - iw / 2 - bw / 2 - 4, y - bh / 2]];
+    const spots = [[x, y + foot + 2], [x, y - ih + foot - bh - 2], [x + iw / 2 + bw / 2 + 4, mid - bh / 2], [x - iw / 2 - bw / 2 - 4, mid - bh / 2]];
     for (const [cx, top] of spots) {
       const r = { x0: cx - bw / 2, y0: top, x1: cx + bw / 2, y1: top + bh };
       if (placed.some((p) => p !== rIcon && r.x0 - 4 < p.x1 && r.x1 + 4 > p.x0 && r.y0 - 4 < p.y1 && r.y1 + 4 > p.y0)) continue;
@@ -233,6 +236,6 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
       });
       break;
     }
-    hits.push({ x, y, r: iw / 2 + 4, title: d.name, sub: `${warFront(d.front)?.name ?? ""} · ${owner}${state ? ` · ${state}` : ""} — ${bonusText(d.id)}` });
+    hits.push({ x, y: mid, r: ih / 2 + 2, title: d.name, sub: `${warFront(d.front)?.name ?? ""} · ${owner}${state ? ` · ${state}` : ""} — ${bonusText(d.id)}` });
   }
 }

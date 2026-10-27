@@ -15,6 +15,8 @@ import { mix, type RGBA } from "./canvas";
 import { writeWarRingsGame } from "./war-rings";
 
 const FW = 112, FH = 216, GY = 208;
+/** Центр следа нижней ступени (x 8…90, глубина 24 → сдвиг (14, −13)): середина фасада плюс половина глубины. */
+const FOOT_C: [number, number] = [8 + 82 / 2 + 7, GY - 6.5];
 /** Ось мачты, верх (знамя поднято) и низ (вывешено: низ полотнища за постаментом у земли). */
 const MAST_X = 56, MAST_TOP = 30, MAST_LOW = 110;
 /** Щиток с гербом: левый верх на постаменте. */
@@ -250,7 +252,7 @@ function iconD(f: IconF, heart: boolean): PC {
 }
 /** Лист вариантов: строки A–D, в каждой ничья / Сольгард / Умбрат и те же Сердца — ×1 на подложке карты, затем ×3. */
 function iconVariants(file: string) {
-  const V: [string, (f: IconF, h: boolean) => PC][] = [["1 ВЫМПЕЛ НА ДРЕВКЕ", iconA], ["2 ГЕРАЛЬДИЧЕСКИЙ ЩИТ", iconB], ["3 ПЕЧАТЬ-МЕДАЛЬОН, СЕЙЧАС В ИГРЕ", mapIcon], ["4 ПОСТАМЕНТ СО ЗНАМЕНЕМ", iconD]];
+  const V: [string, (f: IconF, h: boolean) => PC][] = [["1 ВЫМПЕЛ НА ДРЕВКЕ", iconA], ["2 ГЕРАЛЬДИЧЕСКИЙ ЩИТ", iconB], ["3 ПЕЧАТЬ-МЕДАЛЬОН, СЕЙЧАС В ИГРЕ", mapIcon], ["4 ПОСТАМЕНТ СО ЗНАМЕНЕМ", iconD], ["4+ ВЫБРАН: КРУПНОЕ ЗНАМЯ С ГЕРБОМ", (f: IconF, h: boolean) => iconMap(f, h, false)], ["4+ МИНИ-КАРТА", (f: IconF, h: boolean) => iconMap(f, h, true)]];
   const cells: [IconF, boolean][] = [["none", false], ["sol", false], ["umb", false], ["none", true], ["sol", true], ["umb", true]];
   const RW = 6 * 40 + 20, ZW = 6 * 110, rowH = 120, W = 20 + RW + ZW + 20;
   const out = new PC(W, 50 + V.length * rowH);
@@ -269,13 +271,65 @@ function iconVariants(file: string) {
   out.save(file);
 }
 
+/**
+ * Значок карты (выбор пользователя — вариант 4, «постамент со знаменем», крупнее): знамя ~60% высоты с гербом на полотнище
+ * (солнце / череп в короне / чистое у ничьей), под ним постамент 3/4, тёмный контур всего значка; у Сердца — корона над навершием.
+ * mini — для мини-карты: то же, меньше.
+ */
+function iconMap(f: IconF, heart: boolean, mini: boolean): PC {
+  const H = mini ? (heart ? 19 : 16) : heart ? 34 : 30, W = mini ? 13 : heart ? 26 : 22, pc = new PC(W, H);
+  const [cl, ed] = clothOf(f), cx = Math.floor(W / 2);
+  const crownH = heart ? (mini ? 3 : 5) : 0;
+  // постамент: две ступени в 3/4
+  const st: Mat = { r: STONE }, gy = H - 1;
+  if (mini) { box(pc, cx - 5, gy - 3, 9, 3, 3, st, st, st); }
+  else { box(pc, cx - 8, gy - 4, 14, 4, 6, st, st, st); box(pc, cx - 5, gy - 8, 8, 4, 4, st, st, st); }
+  const top = crownH + (mini ? 1 : 2);                         // навершие
+  const barY = top + (mini ? 1 : 2), cw = mini ? 9 : heart ? 16 : 14, ch = mini ? 9 : heart ? 18 : 16;
+  const x0 = cx - Math.floor(cw / 2);
+  const poleBot = gy - (mini ? 3 : 8);
+  for (let y = top; y <= poleBot; y++) { pc.set(cx, y, WOOD[3]); if (!mini) pc.set(cx + 1, y, WOOD[1]); }
+  pc.set(cx, top - 1, GOLD[5]); if (!mini) { pc.set(cx + 1, top - 1, GOLD[3]); pc.set(cx, top - 2, GOLD[4]); }
+  for (let x = x0 - 1; x <= x0 + cw; x++) pc.set(x, barY, GOLD[x < cx ? 4 : 2]);
+  for (let y = barY + 1; y <= barY + ch; y++) for (let x = x0; x < x0 + cw; x++) {
+    const tail = y > barY + ch - (mini ? 2 : 4) && Math.abs(x + 0.5 - (x0 + cw / 2)) < (y - (barY + ch - (mini ? 2 : 4))) * 1.4;
+    if (tail) continue;
+    const edge = x === x0 || x === x0 + cw - 1 || (!mini && y === barY + 1);
+    pc.set(x, y, edge ? ed : x < x0 + cw / 2 ? mix(cl, hex("#ffffff"), 0.08) : cl);
+  }
+  // герб на полотнище
+  const ex = x0 + Math.floor(cw / 2), ey = barY + Math.round(ch * 0.45);
+  if (f === "sol") {
+    const r = mini ? 1 : 2;
+    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (i * i + j * j <= r * r + 1) pc.set(ex + i - (mini ? 0 : 1), ey + j, GOLD[i + j < 0 ? 5 : 4]);
+    if (!mini) for (const [i, j] of [[-4, 0], [3, 0], [-1, -4], [-1, 4], [-3, -3], [1, -3], [-3, 3], [1, 3]]) pc.set(ex + i, ey + j, GOLD[3]);
+  } else if (f === "umb") {
+    const Wt: RGBA = hex("#ece6f4"), K: RGBA = hex("#0c0810"), Cr: RGBA = hex("#9a96a8");
+    if (mini) { pc.set(ex - 1, ey, Wt); pc.set(ex, ey, Wt); pc.set(ex - 1, ey + 1, Wt); pc.set(ex, ey + 1, Wt); pc.set(ex - 1, ey - 1, Cr); pc.set(ex, ey - 1, Cr); }
+    else {
+      for (let j = 0; j <= 4; j++) for (let i = -2; i <= 2; i++) if (!(j === 4 && Math.abs(i) === 2)) pc.set(ex + i - 1 + 1, ey + j - 1, Wt);
+      pc.set(ex - 1, ey + 1, K); pc.set(ex + 1, ey + 1, K); pc.set(ex, ey + 3, K);
+      for (const i of [-2, 0, 2]) { pc.set(ex + i, ey - 3, Cr); pc.set(ex + i, ey - 4, Cr); }
+      for (let i = -2; i <= 2; i++) pc.set(ex + i, ey - 2, hex("#6a6678"));
+    }
+  }
+  if (heart) { // корона над навершием
+    const C = f === "umb" ? IRON : GOLD, w2 = mini ? 2 : 4;
+    for (let i = -w2; i <= w2; i++) pc.set(cx + i, crownH - 1, C[3]);
+    for (const k of mini ? [-2, 0, 2] : [-4, -2, 0, 2, 4]) for (let j = 1; j < (k === 0 ? crownH : crownH - 1); j++) pc.set(cx + k, crownH - 1 - j, C[4]);
+  }
+  pc.outline(OUT);
+  return pc;
+}
+
 export function writeWarIcons(uiRoot: string): string[] {
   const dir = path.join(uiRoot, "war");
   fs.mkdirSync(dir, { recursive: true });
   const ids: string[] = [];
   for (const f of ["sol", "umb", "none"] as IconF[]) for (const heart of [false, true]) {
     const id = `icon-${f}${heart ? "-heart" : ""}`;
-    mapIcon(f, heart).save(path.join(dir, `${id}.png`));
+    iconMap(f, heart, false).save(path.join(dir, `${id}.png`));
+    iconMap(f, heart, true).save(path.join(dir, `mini-${f}${heart ? "-heart" : ""}.png`));
     ids.push(id);
   }
   return ids;
@@ -290,7 +344,8 @@ export function writeWarBasesGame(assetsRoot: string): string[] {
     pc.save(path.join(dir, `${id}.png`));
     m[id] = { frameW: pc.w, frameH: pc.h, frames: 1, fps: 1, anchor, blend: "normal", ...extra };
   };
-  const anc: [number, number] = [+(MAST_X / FW).toFixed(4), +(GY / FH).toFixed(4)];
+  // якорь — центр следа постамента на земле (середина нижней ступени с учётом глубины 3/4): он ставится в центр круга захвата
+  const anc: [number, number] = [+(FOOT_C[0] / FW).toFixed(4), +(FOOT_C[1] / FH).toFixed(4)];
   one("war-plinth", plinthLayer(), anc, { plate: PLATE });
   one("war-mast", mastLayer(), anc, { mast: [MAST_X, MAST_TOP, MAST_LOW] });
   one("war-plate-sol", plate("solgard"), [0, 0]);
