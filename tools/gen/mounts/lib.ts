@@ -41,7 +41,9 @@ export const OUT_COL = hex("#170f0a");
 // ---------------- камера маунта ----------------
 /** Дополнительный наклон камеры маунта: 14° моба + 22° = 36°. */
 export const TILT = rad(22);
-const TC = Math.cos(TILT), TS = Math.sin(TILT);
+let TC = Math.cos(TILT), TS = Math.sin(TILT);
+/** Временно сменить наклон камеры (кадры павших коней Полей смотрятся сверху круче маунта): setTilt(TILT) возвращает прежний. */
+export const setTilt = (a: number) => { TC = Math.cos(a); TS = Math.sin(a); };
 /** Подъём сцены после поворота: ближние к зрителю копыта не уходят под срез земли библиотеки (z < 0). */
 const LIFT = 20;
 const tv = (view: View, p: V3): V3 => {

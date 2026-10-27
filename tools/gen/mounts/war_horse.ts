@@ -69,7 +69,7 @@ const rimTex = (trim: Mat, k = 0.72): TexFn => (c) => {
 // ---------------- поза ----------------
 interface Leg { foot: V3; fold: number }
 interface Pose {
-  bob: number; pitch: number;
+  bob: number; pitch: number; roll: number;
   neckP: number; neckY: number; headP: number; headR: number;
   legs: Leg[]; // 0 перед-лев, 1 перед-прав, 2 зад-лев, 3 зад-прав
   maneSw: number[]; maneBack: number; maneDrop: number;
@@ -100,7 +100,7 @@ function runPose(t: number): Pose {
   });
   const w = TAU * t;
   return {
-    bob: 1.3 * Math.sin(w + 2.2), pitch: 0.075 * Math.sin(w + 0.4),
+    bob: 1.3 * Math.sin(w + 2.2), pitch: 0.075 * Math.sin(w + 0.4), roll: 0,
     neckP: 0.12 + 0.1 * Math.sin(w - 0.6), neckY: 0, headP: 0.05 * Math.sin(w - 1), headR: 0,
     legs, maneSw: [0, 1, 2, 3, 4, 5].map((k) => 0.6 * Math.sin(w * 2 - k * 0.9)), maneBack: 3.2, maneDrop: 0.9,
     tailY: 0, tailLift: 0.75, tailWave: 1, tailPh: w * 2, ear: -0.5, run: true,
@@ -141,15 +141,54 @@ function idlePose(i: number, n: number): Pose {
   const ear = u < 3 / 24 ? Math.sin((Math.PI * u * 24) / 3) : 0;
   const ts = win(u, 8 / 24, 15 / 24);
   return {
-    bob: 0, pitch: 0, neckP: neckP - 0.08 * Math.sin(Math.PI * ss), neckY, headP: 0, headR: 0.25 * shake(win(u - 0.6 / 24, 14 / 24, 22 / 24)),
+    bob: 0, pitch: 0, roll: 0, neckP: neckP - 0.08 * Math.sin(Math.PI * ss), neckY, headP: 0, headR: 0.25 * shake(win(u - 0.6 / 24, 14 / 24, 22 / 24)),
     legs, maneSw, maneBack: 0, maneDrop: 1,
     tailY: 0.5 * Math.sin(TAU * ts) * Math.sin(Math.PI * ts), tailLift: 0, tailWave: 0.25, tailPh: 0, ear, run: false,
   };
 }
 
+
+// ---------------- павший конь (объекты Полей: tools/gen/bf-horses.ts) ----------------
+/** Поза павшего коня: корпус опрокинут на бок (roll), ноги вытянуты вдоль земли или подогнуты, шея и голова лежат. */
+export interface DeadOpt {
+  /** крен корпуса, рад: знак — на какой бок лёг (верхний бок — к камере у +), 1.1 ≈ 63° */
+  roll: number;
+  legs: "stretch" | "fold";
+  neck: "flat" | "lift" | "back";
+  /** смещение хвоста вбок */
+  tail?: number;
+  /** стрелы в боку и дышло — рисует bf-horses поверх кадра */
+  bob?: number;
+}
+function deadPose(o: DeadOpt): Pose {
+  const s = Math.sign(o.roll) || 1;
+  const neck = o.neck === "flat" ? { neckP: 1.25, headP: -0.9, neckY: 0.0 } : o.neck === "lift" ? { neckP: 0.9, headP: -0.7, neckY: 0.12 * s } : { neckP: 0.3, headP: -0.2, neckY: -0.25 * s };
+  return {
+    bob: o.bob ?? -13.5, pitch: 0, roll: o.roll, ...neck, headR: 0.15 * s,
+    legs: stand(), maneSw: [0.6, 0.9, 1.1, 1.2, 1.3, 1.4].map((v) => v * s), maneBack: 0, maneDrop: 0.55,
+    tailY: (o.tail ?? 0.6) * s, tailLift: 0, tailWave: 0.1, tailPh: 0.5, ear: -0.6, run: false,
+  };
+}
+/** Копыто мёртвого коня: лёжа на боку ноги — вытянутые вдоль земли (stretch) или подогнутые (fold); hip — мировая точка бедра. */
+function deadLeg(o: DeadOpt, i: number, hip: V3): { foot: V3; fold: number; bend: V3 } {
+  const out = Math.sign(o.roll) || 1, fr = i < 2, k = i % 2;
+  if (o.legs === "stretch") {
+    // вытянуты вдоль земли: передние вперёд, задние назад, чуть в сторону
+    const dx = 1.5 + k * 2.2, dy = fr ? 14.5 - k * 3.0 : -(13.0 - k * 2.5);
+    return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0, bend: [out * 0.2, 0, 1] };
+  }
+  // подогнуты: копыта под брюхо — передние назад, задние вперёд, колени торчат в сторону
+  const dx = 6.0 + k * 1.8, dy = fr ? -3.5 + k * 2.0 : 3.8 - k * 2.0;
+  return { foot: [hip[0] + out * dx, hip[1] + dy, 1.8], fold: 0.9, bend: [out * 0.5, fr ? 0.9 : -0.9, 0.6] };
+}
+
 // ---------------- сборка ----------------
 const X: V3 = [1, 0, 0], Y: V3 = [0, 1, 0], Z: V3 = [0, 0, 1];
-export function warHorse(fac: Fac): MountSpec {
+const cross3 = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+export function warHorse(fac: Fac): MountSpec { return makeHorse(fac); }
+/** Павший конь той же модели (броня, попона, седло, голова — как у живого): поза deadPose, без знамени. */
+export function warHorseDead(fac: Fac, dead: DeadOpt): MountSpec { return makeHorse(fac, dead); }
+function makeHorse(fac: Fac, dead?: DeadOpt): MountSpec {
   const K = kitOf(fac);
   const em = pcStamp(factionEmblem(fac, "s16"));
   const sol = fac === "solgard";
@@ -161,17 +200,18 @@ export function warHorse(fac: Fac): MountSpec {
         colors: { p: hex("#6a3c8a"), P: hex("#9a62b8"), B: hex("#c8bc9c"), b: hex("#8f8468"), k: hex("#7aff6a") } };
   const build = (f: Frame, view: MView): Built => {
     void view;
-    const p = f.anim === "run" ? runPose(f.i / f.n) : idlePose(f.i, f.n);
+    const p = dead ? deadPose(dead) : f.anim === "run" ? runPose(f.i / f.n) : idlePose(f.i, f.n);
     const sc = new Scene();
     const b = { sc, bits: new Map<Prim, number>() };
     // корпус: наклон вокруг центра и подъём
     const PIV: V3 = [0, 0, 22];
+    const cr = Math.cos(p.roll), sr = Math.sin(p.roll);
     const T = (q: V3): V3 => {
-      const y = q[1], z = q[2] - PIV[2];
+      const x = q[0] * cr - (q[2] - PIV[2]) * sr, y = q[1], z = q[0] * sr + (q[2] - PIV[2]) * cr;
       const c = Math.cos(p.pitch), s = Math.sin(p.pitch);
-      return [q[0], y * c - z * s, PIV[2] + z * c + y * s + p.bob];
+      return [x, y * c - z * s, PIV[2] + z * c + y * s + p.bob];
     };
-    const TD = (d: V3): V3 => { const c = Math.cos(p.pitch), s = Math.sin(p.pitch); return [d[0], d[1] * c - d[2] * s, d[2] * c + d[1] * s]; };
+    const TD = (d: V3): V3 => { const x = d[0] * cr - d[2] * sr, z0 = d[0] * sr + d[2] * cr; const c = Math.cos(p.pitch), s = Math.sin(p.pitch); return [x, d[1] * c - z0 * s, z0 * c + d[1] * s]; };
     const ax = (a: V3, b2: V3, c: V3): [V3, V3, V3] => [TD(a), TD(b2), TD(c)];
 
     // ---- ноги ----
@@ -180,14 +220,16 @@ export function warHorse(fac: Fac): MountSpec {
       const fr = i < 2, sx = i % 2 === 0 ? -1 : 1;
       const g = sc.group(0.7);
       legG.push(g);
-      const L = p.legs[i];
+      let L = p.legs[i];
       const hip = T(fr ? [sx * FX, 11.4, 19.6] : [sx * HX, -11.4, 20.6]);
+      let bendV: V3 = fr ? [0, 1, -0.2] : [0, -1, -0.2];
+      if (dead) { const d = deadLeg(dead, i, hip); L = { foot: d.foot, fold: d.fold }; bendV = d.bend; }
       // путовая кость: от копыта к щётке; в махе подгибается назад
-      const pd = rotAxis([0, -0.9, 3.2], X, -L.fold);
+      const pd = dead ? mul(norm(add(hip, mul(L.foot, -1))), 3.3) : rotAxis([0, -0.9, 3.2], X, -L.fold);
       const hoof = L.foot;
       const fet = add(hoof, pd);
       const l1 = fr ? 9.3 : 11.4, l2 = fr ? 7.3 : 8.2;
-      const knee = ik(hip, fet, l1, l2, fr ? [0, 1, -0.2] : [0, -1, -0.2]);
+      const knee = ik(hip, fet, l1, l2, bendV);
       const m = sx > 0 ? K.coat : K.coatDk;
       const mk = (q: Prim) => q;
       if (fr) {
@@ -214,7 +256,8 @@ export function warHorse(fac: Fac): MountSpec {
       sc.cone(g, m, fet, 1.6, hc, 1.75);
       const hd = norm(pd);
       const hs = norm([1, 0, 0]);
-      sc.box(sc.group(0), K.hoof, add(hoof, mul(hd, 0.9)), [1.95, 2.25, 1.0], [hs, norm(rotAxis(Y, X, -L.fold)), hd], 0.45, { big: false });
+      const hs2: V3 = dead ? norm([-hd[1], hd[0], 0.001]) : hs;
+      sc.box(sc.group(0), K.hoof, add(hoof, mul(hd, 0.9)), [1.95, 2.25, 1.0], dead ? [hs2, norm(cross3(hd, hs2)), hd] : [hs, norm(rotAxis(Y, X, -L.fold)), hd], 0.45, { big: false });
     }
 
     // ---- корпус ----
@@ -388,16 +431,18 @@ export function warHorse(fac: Fac): MountSpec {
     }
     // гнездо древка за седлом
     const sock = T([3.6, -7.6, 29.0]);
-    sc.cone(sc.group(0.2), K.leather, sock, 1.3, add(sock, [0, 0, 2.6]), 1.2);
-    sc.ball(sc.group(0), K.trim, add(sock, [0, 0, 2.6]), 1.1);
+    if (!dead) {
+      sc.cone(sc.group(0.2), K.leather, sock, 1.3, add(sock, [0, 0, 2.6]), 1.2);
+      sc.ball(sc.group(0), K.trim, add(sock, [0, 0, 2.6]), 1.1);
+    }
     return {
       sc: b.sc, bits: b.bits,
       seat: T([0, -0.8, 31.4]),
       stride: (2 * 7.2 * 1.3) / (0.42 * 0.85),
-      banner: { fac, base: add(sock, [0, 0, 2]), top: T([3.6, -7.6, 56]), t: Math.round((f.i * 12) / f.n) % 12, run: f.anim === "run", hang: { down: -1, up: 1, side: -1, left: 1 } },
+      ...(dead ? {} : { banner: { fac, base: add(sock, [0, 0, 2]), top: T([3.6, -7.6, 56]), t: Math.round((f.i * 12) / f.n) % 12, run: f.anim === "run", hang: { down: -1, up: 1, side: -1, left: 1 } } }),
     };
   };
-  return { id: `war_horse_${fac}`, ru: sol ? "Боевой конь Сольгарда" : "Боевой конь Умбрата", N: 120, GY: 98, scale: 1.15, build };
+  return { id: `war_horse_${fac}`, ru: sol ? "Боевой конь Сольгарда" : "Боевой конь Умбрата", N: 120, GY: 98, scale: dead ? 1.45 : 1.15, build };
 }
 function rowsPx(rows: string[]): [number, number, string][] {
   const out: [number, number, string][] = [];
