@@ -1,6 +1,7 @@
 /** Подписи эффектов в рамке героя: боевые — из data/auras.json, еда — из data/food.json (ключ food_<id>). Общий для сервера (порядок, вид) и клиента (текст). */
 import data from "../data/auras.json";
 import { FOOD } from "./food";
+import WAR from "../data/faction-war.json";
 
 export interface AuraDef {
   name: string;
@@ -22,6 +23,13 @@ export const AURAS: Record<string, AuraDef> = Object.fromEntries(Object.entries(
 for (const d of Object.values(FOOD)) {
   AURAS[foodAuraKey(d.id)] = { name: d.name, desc: "Бонусы еды действуют, пока не истечёт время.", kind: "buff", icon: d.icon };
 }
+
+// бафы земли «Знамён Предела» (задача 132, шаг 14): по бонусу и фракции — своя рамка значка; источник — server/src/game/bannerWar.ts
+/** Ключ ауры бафа земли: war_<бонус>_<sol|umb>. */
+export const warAuraKey = (bonus: string, faction: string) => `war_${bonus}_${faction === "solgard" ? "sol" : "umb"}`;
+/** Бонус по ключу ауры (undefined — не баф земли). */
+export const warOfAura = (k: string): string | undefined => (k.startsWith("war_") ? k.split("_")[1] : undefined);
+for (const [b, d] of Object.entries(WAR.look.buffs)) for (const f of ["solgard", "umbrath"]) AURAS[warAuraKey(b, f)] = { name: d.name, desc: d.desc, kind: "buff", icon: warAuraKey(b, f) };
 
 /** Место ключа в списке: бафы и дебафы выстраиваются по порядку записей в data/auras.json, блюда — в конце. */
 export const AURA_INDEX: Record<string, number> = Object.fromEntries(Object.keys(AURAS).map((k, i) => [k, i]));

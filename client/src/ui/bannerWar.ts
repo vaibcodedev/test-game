@@ -8,7 +8,8 @@ import { FACTIONS } from "../../../shared/factions";
 import { TILE } from "../../../shared/constants";
 import { P } from "../../../shared/palette";
 import { T } from "../../../shared/texts";
-import { WAR, WAR_BASES, warBase, warFront, type WarBaseView, type WarFaction, type WarResultMsg, type WarSayMsg, type WarStateMsg } from "../../../shared/bannerWar";
+import SIEGE_DATA from "../../../data/siege.json";
+import { WAR, WAR_BASES, WAR_FRONTS, WAR_RADIUS, nextWarStart, raiseSec, warBase, warFront, type WarBaseDef, type WarBaseView, type WarFaction, type WarResultMsg, type WarSayMsg, type WarStateMsg } from "../../../shared/bannerWar";
 import { net as NET, type Net } from "../net";
 import { openModal, type ModalHandle } from "./kit";
 
@@ -54,6 +55,7 @@ export class WarHud {
     this.bar.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-war-tp]");
       if (b && !b.disabled && !this.inCombat && performance.now() >= this.tpUntil) this.net.send("war:tp", {});
+      if ((e.target as HTMLElement).closest("[data-war-rules]")) openWarRules();
     });
     net.on("combat", (m) => { this.inCombat = m.on; this.render(); });
     net.on("war:tpcd", (m) => { this.tpUntil = performance.now() + m.ms; this.render(); });
@@ -69,11 +71,35 @@ export class WarHud {
   }
 
   /** Раз в кадр: таймер тикает без сообщений сервера (перерисовка не чаще 4 раз в секунду). */
-  frame() {
+  frame(pos?: { x: number; y: number }, mount = "") {
+    if (pos) { warHero.x = pos.x; warHero.y = pos.y; warHero.mount = mount; warHero.at = performance.now(); }
     const now = performance.now();
     if (now - this.lastTick < 250) return;
     this.lastTick = now;
     this.render();
+    // вошли в круг не воюющего фронта — один раз объявление, куда идти
+    const h = warHint();
+    const id = h?.inactive?.id ?? "";
+    if (id && id !== this.inactiveSeen) this.say({ text: T("ui.bannerWar.96", { front: warFront(warView.state!.front)?.name ?? "" }), kind: "info" });
+    this.inactiveSeen = id;
+    this.intro();
+  }
+  private inactiveSeen = "";
+  private introEl: HTMLElement | null = null;
+  /** Карточка первого знакомства: при первой битве или сборе — три строки и «Подробнее» (окно правил); один раз на браузер. */
+  private intro() {
+    const s = warView.state;
+    if (this.introEl || !s || (s.ph !== "battle" && s.ph !== "prep") || (this.net.self?.level ?? 0) < WAR.minLevel || this.net.kind !== "world") return;
+    try { if (localStorage.getItem("war:intro:v1")) return; } catch { return; }
+    const c = document.createElement("section");
+    c.className = "panel war-intro";
+    c.innerHTML = `<h3>${esc(T("ui.bannerWar.40"))}</h3><ol>${[97, 98, 99].map((k) => `<li>${esc(T(`ui.bannerWar.${k}`))}</li>`).join("")}</ol>
+      <div class="war-intro-btns"><button class="btn" data-more>${T("ui.bannerWar.100")}</button><button class="btn primary" data-ok>${T("ui.bannerWar.101")}</button></div>`;
+    const done = () => { try { localStorage.setItem("war:intro:v1", "1"); } catch { /* приватное окно */ } c.remove(); };
+    c.querySelector<HTMLButtonElement>("[data-more]")!.onclick = () => { done(); openWarRules(); };
+    c.querySelector<HTMLButtonElement>("[data-ok]")!.onclick = done;
+    this.bar.parentElement?.append(c);
+    this.introEl = c;
   }
 
   private render() {
@@ -94,9 +120,11 @@ export class WarHud {
       const fill = b ? Math.round((b.b ? b.h : b.hp) * 100) : 0;
       return `<span class="war-pip ${d.kind} o-${fcls(b?.o ?? "")} b-${fcls(b?.b || b?.hf || "")}${b?.c ? " contest" : ""}${b?.lock ? " lock" : ""}${b && b.s > 0 ? " seal" : ""}" title="${esc(d.name)} · ${esc(state)}"><i style="height:${fill}%"></i></span>`;
     }).join("");
+    const hint = warHint();
     const html = `<div class="war-head"><span class="war-front">${esc(fr?.name ?? "")}</span><span class="war-time">${esc(time)}</span></div>
+      <button class="x war-help" data-war-rules title="${esc(T("ui.bannerWar.41"))}" aria-label="${esc(T("ui.bannerWar.41"))}">?</button>
       <div class="war-score"><b class="war-num sol" title="${esc(FACTIONS.solgard.name)}">${s.score[0]}</b><span class="war-pips">${pips}</span><b class="war-num umb" title="${esc(FACTIONS.umbrath.name)}">${s.score[1]}</b></div>
-      ${note ? `<div class="war-note">${esc(note)}</div>` : ""}${tpOpen ? this.tpButton() : ""}`;
+      ${hint ? `<div class="war-hint ${hint.tone}">${esc(hint.text)}</div>` : ""}${note ? `<div class="war-note">${esc(note)}</div>` : ""}${tpOpen ? this.tpButton() : ""}`;
     if (html !== this.lastHtml) { this.lastHtml = html; this.bar.innerHTML = html; }
   }
 
@@ -191,6 +219,18 @@ export function drawWarMini(g: CanvasRenderingContext2D, X: (px: number) => numb
     }
     if (im?.complete && im.naturalWidth) g.drawImage(im, x - Math.floor(im.naturalWidth / 2), y - im.naturalHeight + 4);
   }
+  // стрелка у края мини-карты к знамени фронта битвы, если оно за краем
+  const h = warHint();
+  if (h?.target && !h.inside) {
+    const W = g.canvas.width, H = g.canvas.height, tx = X(h.target.x), ty = Y(h.target.y);
+    if (tx < 4 || ty < 4 || tx > W - 4 || ty > H - 4) {
+      const cx = W / 2, cy = H / 2, a = Math.atan2(ty - cy, tx - cx), k = Math.min((W / 2 - 8) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - 8) / Math.abs(Math.sin(a) || 1e-6));
+      const ax = cx + Math.cos(a) * k, ay = cy + Math.sin(a) * k;
+      g.save(); g.translate(ax, ay); g.rotate(a);
+      g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -5); g.lineTo(-2, 0); g.lineTo(-5, 5); g.closePath();
+      g.fillStyle = WAR.look.color.solgard; g.strokeStyle = "#000"; g.lineWidth = 1.5; g.fill(); g.stroke(); g.restore();
+    }
+  }
 }
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
@@ -199,12 +239,15 @@ type Rect = { x0: number; y0: number; x1: number; y1: number };
  * имя и строка владельца или хода захвата; подпись не ложится на подписи зон и городов (placed), иначе пробует сверху и сбоку.
  * Подсказка по наведению — имя, фронт, владелец, что даёт точка и ход захвата.
  */
-export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => number, Y: (ty: number) => number, s: number, hits: { x: number; y: number; r: number; title: string; sub: string }[], placed: Rect[] = []) {
+export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => number, Y: (ty: number) => number, s: number, hits: { x: number; y: number; r: number; title: string; sub: string }[], placed: Rect[] = [], avoid: Rect[] = []) {
   const st = warView.state, blink = Math.floor(performance.now() / 400) % 2 === 0;
   const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
   const k = s >= 5 ? 2 : 1;
   g.imageSmoothingEnabled = false;
-  for (const d of WAR_BASES) {
+  // подписи — строго под своим значком (пересчёт каждый кадр, при любом масштабе); не влезла — только значок. Сердца — первыми, метка «Вы» — важнее
+  const icons: Rect[] = [];
+  const order = [...WAR_BASES].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "heart" ? -1 : 1));
+  for (const d of order) {
     const b = warView.byId.get(d.id), on = !!st && st.ph !== "idle" && st.front === d.front, heart = d.kind === "heart";
     const im = iconOf(b?.o ?? "", heart);
     const x = Math.round(X(d.x / TILE)), y = Math.round(Y(d.y / TILE));
@@ -216,18 +259,23 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
       g.strokeStyle = b.c ? (blink ? WAR.look.color.solgard : WAR.look.color.umbrath) : lookCol(b.b);
       g.beginPath(); g.arc(x, mid, ih / 2 + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (b.c ? 1 : b.h)); g.stroke();
     }
-    // значок стоит подножием на точке основания
+    // значок стоит подножием на точке основания; фронт битвы — пульсирующий обод, остальные — бледнее
+    const act = warActive(d);
+    if (act) { const pu = 0.5 + 0.5 * Math.sin(performance.now() / 300); g.lineWidth = 2; g.strokeStyle = `rgba(255, 216, 74, ${0.35 + 0.55 * pu})`; g.beginPath(); g.arc(x, mid, ih / 2 + 6 + pu * 2, 0, Math.PI * 2); g.stroke(); }
+    g.globalAlpha = st?.ph === "battle" && !act ? 0.55 : 1;
     if (im?.complete && im.naturalWidth) g.drawImage(im, Math.round(x - iw / 2), Math.round(y - ih + foot), iw, ih);
+    g.globalAlpha = 1;
     const rIcon = { x0: x - iw / 2, y0: y - ih + foot, x1: x + iw / 2, y1: y + foot };
     placed.push(rIcon);
     // подпись
     const { owner, state } = baseState(d.id);
     const lines = [{ text: d.name, font: `600 13px ${TEXT}`, fill: P.fg }, { text: state || owner, font: `400 12px ${TEXT}`, fill: state ? P.warn : b?.o ? lookCol(b.o) : P.dim }];
     const ws = lines.map((l) => { g.font = l.font; return Math.ceil(g.measureText(l.text).width); }), bw = Math.max(...ws) + 4, bh = 30;
-    const spots = [[x, y + foot + 2], [x, y - ih + foot - bh - 2], [x + iw / 2 + bw / 2 + 4, mid - bh / 2], [x - iw / 2 - bw / 2 - 4, mid - bh / 2]];
-    for (const [cx, top] of spots) {
+    icons.push(rIcon);
+    for (const [cx, top] of [[x, y + foot + 2]]) {
       const r = { x0: cx - bw / 2, y0: top, x1: cx + bw / 2, y1: top + bh };
-      if (placed.some((p) => p !== rIcon && r.x0 - 4 < p.x1 && r.x1 + 4 > p.x0 && r.y0 - 4 < p.y1 && r.y1 + 4 > p.y0)) continue;
+      const hit = (p: Rect) => p !== rIcon && r.x0 - 3 < p.x1 && r.x1 + 3 > p.x0 && r.y0 - 3 < p.y1 && r.y1 + 3 > p.y0;
+      if (placed.some(hit) || avoid.some(hit) || icons.some(hit)) continue;
       placed.push(r);
       lines.forEach((l, i) => {
         g.font = l.font; g.lineWidth = 3; g.lineJoin = "round"; g.strokeStyle = P.well;
@@ -236,6 +284,141 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
       });
       break;
     }
-    hits.push({ x, y: mid, r: ih / 2 + 2, title: d.name, sub: `${warFront(d.front)?.name ?? ""} · ${owner}${state ? ` · ${state}` : ""} — ${bonusText(d.id)}` });
+    hits.push({ x, y: mid, r: ih / 2 + 2, title: d.name, sub: `${warFront(d.front)?.name ?? ""} · ${owner}${state ? ` · ${state}` : ""} — ${bonusText(d.id)}. ${T("ui.bannerWar.66")}` });
   }
 }
+
+// ---------- окно правил ----------
+/** Имена оснований — по ним карта мира понимает, что щёлкнули по основанию (открыть правила). */
+export const WAR_BASE_NAMES = new Set(WAR_BASES.map((d) => d.name));
+let rules: ModalHandle | null = null;
+/**
+ * Правила «Знамён Предела» для игрока (кнопка «?» на полосе битвы, щелчок по основанию на карте, меню игры): когда, как захватить,
+ * очки, что дают точки, награды, осада, перемирие и знаки карты. Все числа — из data/faction-war.json и data/siege.json; сверху — живая строка.
+ */
+export function openWarRules() {
+  if (rules) return;
+  const S = WAR.schedule, C = WAR.capture, SC = WAR.score, R = WAR.rewards, SG = SIEGE_DATA;
+  const list = (a: (string | number)[]) => a.join(", ");
+  const sec = (title: string, ...ps: string[]) => `<section class="war-rule"><h3>${esc(title)}</h3>${ps.map((p) => `<p>${esc(p)}</p>`).join("")}</section>`;
+  const icon = (id: string) => `<img class="war-legend-ic" src="/ui/war/${id}.png" alt="">`;
+  const fronts = WAR_FRONTS.map((f) => {
+    const side = f.bases.find((b) => b.kind === "side")!, heart = f.bases.find((b) => b.kind === "heart")!;
+    const fc = NET.self?.faction === "umbrath" ? "umb" : "sol", bi = (b: string) => `<img class="war-buff-ic" src="/assets/icons/war_${b}_${fc}.png" alt="">`;
+    return `<li class="war-front-li">${bi(f.side)}${bi(f.heart)}<span>${esc(T("ui.bannerWar.54", { front: f.name, side: bonusText(side.id), heart: bonusText(heart.id) }))}</span></li>`;
+  }).join("");
+  const legend = [
+    [icon("icon-none"), T("ui.bannerWar.8"), T("ui.bannerWar.62")],
+    [icon("icon-sol") + icon("icon-umb"), `${T("ui.bannerWar.32", { of: WAR.look.of.solgard })} / ${T("ui.bannerWar.32", { of: WAR.look.of.umbrath })}`, T("ui.bannerWar.63")],
+    [icon("icon-none-heart"), T("ui.bannerWar.5", { min: S.heartOpenMin }), T("ui.bannerWar.64", { heart: S.heartOpenMin })],
+    ["", `${T("ui.bannerWar.30", { faction: FACTIONS.umbrath.name, pct: 45 })} · ${T("ui.bannerWar.6")}`, T("ui.bannerWar.65")],
+  ].map(([ic, name, what]) => `<div class="war-legend-row"><span class="war-legend-ics">${ic}</span><span><b>${esc(name)}</b> — ${esc(what)}</span></div>`).join("");
+  const html = `<section class="panel dialog lg war-rules" role="dialog" aria-modal="true" aria-labelledby="war-rules-title">
+    <div class="dialog-head"><h2 class="dialog-title" id="war-rules-title">${T("ui.bannerWar.40")}</h2><button class="x" data-x aria-label="${T("ui.bannerWar.27")}">×</button></div>
+    <div class="dialog-body">
+      <p class="war-now" data-now></p>
+      ${sec(T("ui.bannerWar.45"), T("ui.bannerWar.46", { daily: list(S.daily), weekend: list(S.weekend), dur: S.durationMin, fronts: S.rotation.map((id) => warFront(id)?.name ?? id).join(" → "), ann: list(S.announceMin), tp: S.teleportMin, cd: S.teleportCdSec }))}
+      ${sec(T("ui.bannerWar.47"),
+        T("ui.bannerWar.48", { lvl: WAR.minLevel, hang: C.hangMs / 1000, solo: raiseSec("side", 1), edge: C.maxEdge, fast: raiseSec("side", C.maxEdge), lower: C.lowerMul, seal: C.sealMs / 1000 }),
+        T("ui.bannerWar.49", { heart: S.heartOpenMin, hmin: C.heartMin, hslow: raiseSec("heart", 1), hfast: raiseSec("heart", C.maxEdge) }))}
+      ${sec(T("ui.bannerWar.50"), T("ui.bannerWar.51", { every: SC.everyMs / 1000, side: SC.side, heart: SC.heart, rout: SC.routMs / 60000 }))}
+      <section class="war-rule"><h3>${esc(T("ui.bannerWar.52"))}</h3><p>${esc(T("ui.bannerWar.53"))}</p><ul>${fronts}</ul></section>
+      ${sec(T("ui.bannerWar.55"), T("ui.bannerWar.56", { per: R.perBattle, win: R.win, first: R.firstWin, draw: R.draw, lose: R.lose, min: R.minContrib, cap: R.weekCap, c1: R.chest[0].at, c2: R.chest[1].at, c3: R.chest[2].at }))}
+      ${sec(T("ui.bannerWar.57"), T("ui.bannerWar.58", { time: SG.schedule.time, dur: SG.schedule.durationMin, breach: SG.schedule.breachMin, days: SG.reward.days, pct: pct(SG.reward.xpGold) }))}
+      ${sec(T("ui.bannerWar.59"), T("ui.bannerWar.60"))}
+      <section class="war-rule"><h3>${esc(T("ui.bannerWar.61"))}</h3>${legend}</section>
+    </div>
+    <div class="dialog-foot"><button class="btn primary" data-x>${T("ui.bannerWar.27")}</button></div></section>`;
+  let timer = 0;
+  const m = openModal(html, { onClose: () => { clearInterval(timer); rules = null; } });
+  rules = m;
+  m.dialog.addEventListener("click", (e) => { if ((e.target as HTMLElement).closest("[data-x]")) m.close(); });
+  const nowEl = m.dialog.querySelector<HTMLElement>("[data-now]")!;
+  const tick = () => {
+    const st = warView.state, now = warNow(), fr = warFront(st?.front ?? "")?.name ?? "";
+    let text: string;
+    if (st?.ph === "battle") text = T("ui.bannerWar.42", { front: fr, t: mmss(st.t1 - now) });
+    else if (st?.ph === "prep") text = T("ui.bannerWar.43", { front: fr, t: mmss(st.t0 - now) });
+    else text = T("ui.bannerWar.44", { front: fr, when: new Date(nextWarStart(now)).toLocaleString("ru-RU", { weekday: "long", hour: "2-digit", minute: "2-digit" }) });
+    if (nowEl.textContent !== text) nowEl.textContent = text;
+  };
+  tick();
+  timer = window.setInterval(tick, 500);
+}
+
+/** Подсказка бафа земли (рамка героя): до когда — фронт и время следующей его битвы (срок присылает сервер). */
+export function warBuffUntil(bonus: string, leftMs: number): string {
+  const when = new Date(Date.now() + leftMs).toLocaleString("ru-RU", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  if (bonus === "siege") return T("ui.bannerWar.71", { when });
+  const fr = WAR_FRONTS.find((f) => f.side === bonus || f.heart === bonus);
+  return T("ui.bannerWar.70", { front: fr?.name ?? "", when });
+}
+
+// ---------- «что делать сейчас» ----------
+/** Где герой (HUD каждый кадр): строка подсказки, стрелка к знамени, объявление о не воюющем фронте. */
+export const warHero = { x: 0, y: 0, mount: "", at: 0 };
+export interface WarHint {
+  text: string;
+  tone: "go" | "act" | "warn" | "ok";
+  /** Куда идти (ближнее основание фронта битвы), в каком круге герой, круг не воюющего фронта. */
+  target: WarBaseDef | null;
+  inside: WarBaseDef | null;
+  inactive: WarBaseDef | null;
+}
+const dist = (d: WarBaseDef) => Math.hypot(d.x - warHero.x, d.y - warHero.y);
+/**
+ * Одна строка «что делать сейчас» для полосы, таблички над постаментом и стрелки: уровень, сбор, куда идти, в круге — маунт, спор,
+ * перевес, вывешивание, подъём, спуск, печать, Сердце. Те же слова, что в правилах и на карте.
+ */
+export function warHint(): WarHint | null {
+  const s = warView.state, me = NET.self?.faction as WarFaction | undefined;
+  if (!s || !me || NET.kind !== "world" || !warHero.at) return null;
+  const now = warNow(), none = { target: null, inside: null, inactive: null };
+  if ((NET.self?.level ?? 0) < WAR.minLevel) return s.ph === "idle" ? null : { text: T("ui.bannerWar.92", { lvl: WAR.minLevel }), tone: "warn", ...none };
+  if (s.ph === "prep") return { text: T("ui.bannerWar.93", { t: mmss(s.t0 - now) }), tone: "go", ...none };
+  if (s.ph !== "battle") return null;
+  const front = warFront(s.front)!, foe: WarFaction = me === "solgard" ? "umbrath" : "solgard";
+  const inside = front.bases.find((d) => dist(d) <= WAR_RADIUS) ?? null;
+  const inactive = inside ? null : WAR_BASES.find((d) => d.front !== s.front && dist(d) <= WAR_RADIUS) ?? null;
+  // цель: Сердце, если оно открыто и у нас есть боковая; иначе ближнее боковое, что не наше (или любое ближнее)
+  const ownSide = front.bases.some((d) => d.kind === "side" && warView.byId.get(d.id)?.o === me);
+  const heart = front.bases.find((d) => d.kind === "heart")!;
+  const sides = front.bases.filter((d) => d.kind === "side").sort((a, b) => dist(a) - dist(b));
+  const target = s.heart && ownSide ? heart : sides.find((d) => warView.byId.get(d.id)?.o !== me) ?? sides[0];
+  if (inactive) return { text: T("ui.bannerWar.91", { front: front.name }), tone: "warn", target, inside: null, inactive };
+  if (!inside) {
+    const far = dist(target) > 40 * TILE;
+    return { text: far ? T("ui.bannerWar.80", { front: front.name }) : T("ui.bannerWar.81", { base: target.name }), tone: "go", target, inside: null, inactive: null };
+  }
+  const b = warView.byId.get(inside.id), r = { target, inside, inactive: null };
+  if (!b) return null;
+  const own = b.n[me === "solgard" ? 0 : 1], en = b.n[me === "solgard" ? 1 : 0], p = (v: number) => Math.round(v * 100);
+  if (warHero.mount) return { text: T("ui.bannerWar.82"), tone: "warn", ...r };
+  if (b.lock) return { text: T("ui.bannerWar.83", { t: mmss(s.t0 + WAR.schedule.heartOpenMin * 60000 - now) }), tone: "warn", ...r };
+  if (inside.kind === "heart" && !ownSide && b.b !== me) return { text: T("ui.bannerWar.84"), tone: "warn", ...r };
+  if (b.s > 0 && b.o === me) return { text: T("ui.bannerWar.103", { t: mmss(b.s) }), tone: "ok", ...r };
+  if (b.c && own === en) return { text: T("ui.bannerWar.86", { own, foe: en }), tone: "warn", ...r }; // спор — поровну; неравно — ниже: перевес или «нужен перевес»
+  if (b.hf === me) return { text: T("ui.bannerWar.85", { pct: p(b.hp) }), tone: "act", ...r };
+  if (b.b === me && b.o !== me) return own > en ? { text: T("ui.bannerWar.87", { pct: p(b.h) }), tone: "act", ...r } : { text: T("ui.bannerWar.90", { own, foe: en }), tone: "warn", ...r };
+  if (b.o === me) return b.h < 1 ? { text: T("ui.bannerWar.102", { pct: p(b.h) }), tone: own > en ? "act" : "warn", ...r } : { text: T("ui.bannerWar.88"), tone: "ok", ...r };
+  if (b.b === foe) return own > en ? { text: T("ui.bannerWar.89", { pct: p(b.h) }), tone: "act", ...r } : { text: T("ui.bannerWar.90", { own, foe: en }), tone: "warn", ...r };
+  return own > en ? { text: T("ui.bannerWar.85", { pct: p(b.hp) }), tone: "act", ...r } : { text: T("ui.bannerWar.90", { own, foe: en }), tone: "warn", ...r };
+}
+/** Табличка под постаментом основания не воюющего фронта: где битва сейчас или когда она будет здесь. */
+export function inactivePlate(d: WarBaseDef): string {
+  const s = warView.state;
+  if (!s) return "";
+  if (s.ph === "battle" && s.front !== d.front) return T("ui.bannerWar.94", { front: warFront(s.front)?.name ?? "" });
+  if (s.ph === "battle") return "";
+  // вне битвы: когда этот фронт воюет следующим (по кругу фронтов от нынешнего «следующего»)
+  const rot = WAR.schedule.rotation, L = rot.length;
+  let t = s.ph === "prep" ? s.t0 - 1 : warNow(), i = Math.max(0, rot.indexOf(s.front));
+  for (let k = 0; k < L * 3; k++, i++) {
+    const st = s.ph === "prep" && k === 0 ? s.t0 : nextWarStart(t);
+    if (rot[i % L] === d.front) return T("ui.bannerWar.95", { when: new Date(st).toLocaleString("ru-RU", { weekday: "short", hour: "2-digit", minute: "2-digit" }) });
+    t = st;
+  }
+  return "";
+}
+/** Основание на фронте идущей битвы. */
+export const warActive = (d: WarBaseDef) => warView.state?.ph === "battle" && warView.state.front === d.front;

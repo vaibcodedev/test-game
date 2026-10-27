@@ -3,6 +3,7 @@ import type { LogoutMode, Net } from "../net";
 import { hotkeySections, keybinds, mouseOpts, type ActionId, type HelpKey } from "../game/keybinds";
 import { CreditsUI } from "./credits";
 import { T } from "../../../shared/texts";
+import { openWarRules } from "./bannerWar";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 /** Подпись клавиши действия. */
@@ -94,6 +95,7 @@ export class GameMenu {
       [T("ui.gamemenu.498"), "", () => a.toggle("settings")],
       [T("ui.gamemenu.499"), "", () => this.credits.toggle()],
       [T("ui.gamemenu.500"), "", () => a.openHelp()],
+      [T("ui.bannerWar.40"), "", () => openWarRules()], // правила «Знамён Предела»
       [T("ui.gamemenu.501"), "", () => void window.dispatchEvent(new CustomEvent("emberfall:reconnect"))],
       [T("ui.gamemenu.502"), "", a.net().kind === "arena" ? null : () => this.confirmLogout("char")],
       [T("ui.gamemenu.503"), "", a.net().kind === "arena" ? null : () => this.confirmLogout("account")],

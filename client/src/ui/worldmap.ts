@@ -9,7 +9,7 @@ import world from "../../../data/world.json";
 import { P } from "../../../shared/palette";
 import { buildZoneLabels, type Label } from "./worldmap-labels";
 import { T } from "../../../shared/texts";
-import { drawWarMap } from "./bannerWar";
+import { drawWarMap, openWarRules, WAR_BASE_NAMES } from "./bannerWar";
 import { drawSiegeMap } from "./siege";
 
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
@@ -125,6 +125,11 @@ export class WorldMapView {
       if (this.pick && d && !d.moved && e.button === 0) {
         const r = cv.getBoundingClientRect();
         this.commitPick(e.clientX - r.left, e.clientY - r.top);
+      }
+      // щелчок по основанию «Знамён Предела» — окно правил битвы
+      else if (!this.pick && d && !d.moved && e.button === 0) {
+        const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+        if (this.hits.some((h) => WAR_BASE_NAMES.has(h.title) && Math.hypot(h.x - mx, h.y - my) <= h.r)) openWarRules();
       }
     });
     cv.addEventListener("pointercancel", () => (this.drag = null));
@@ -426,7 +431,7 @@ export class WorldMapView {
       g.globalAlpha = 1;
     }
     if (big) drawSiegeMap(g, X, Y, s, hits); // ворота осаждаемого форта и знамя недели (шаг 15)
-    if (big) drawWarMap(g, X, Y, s, hits, placed); // основания «Знамён Предела» (задача 132, шаг 14) в цвете владельца
+    if (big) { const hp = this.getPos(), hx = X(hp.x / TILE), hy = Y(hp.y / TILE); drawWarMap(g, X, Y, s, hits, placed, [{ x0: hx - 22, y0: hy - 22, x1: hx + 22, y1: hy + 22 }]); } // основания «Знамён Предела» (задача 132, шаг 14) в цвете владельца
     this.hits = hits;
     this.drawHero(g, X, Y);
     if (this.pick) this.drawPickMark(g, X, Y);

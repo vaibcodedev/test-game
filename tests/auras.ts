@@ -436,6 +436,8 @@ for (const [k, u] of used) {
   assert.equal(d.desc.includes("{v}"), u.v, `${k}: {v} в тексте ⇔ сервер присылает величину`);
   assert.equal(d.desc.includes("{n}"), u.n, `${k}: {n} в тексте ⇔ сервер присылает стаки`);
 }
-for (const k of Object.keys(AURAS)) if (!foodOfAura(k)) assert.ok(used.has(k), `${k}: подпись есть, источника эффекта нет`);
+// бафы земли «Знамён Предела» шлёт bannerWar.ts по ключу warAuraKey(бонус, фракция) — источник один на все ключи war_*
+assert.ok(/warAuraKey\(/.test(fs.readFileSync(path.join(gameDir, "bannerWar.ts"), "utf8")), "бафы земли: источник в bannerWar.ts");
+for (const k of Object.keys(AURAS)) if (!foodOfAura(k) && !k.startsWith("war_")) assert.ok(used.has(k), `${k}: подпись есть, источника эффекта нет`);
 
 console.log("  ok   auras");

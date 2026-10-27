@@ -291,7 +291,146 @@ async function scenarioRules() {
   if (el) await el.screenshot({ path: path.join(OUT, "rules.png") });
   const text = await page.$eval(".war-rules", (e) => e.textContent ?? "");
   check(!!el && /Идёт битва/.test(text) && /Осада/.test(text) && /Перемирие/.test(text) && /Свободно/.test(text), "окно правил: живая строка, все разделы, знаки карты");
+  await page.setViewport({ width: VIEW.width, height: VIEW.height, deviceScaleFactor: 1 });
+  await page.keyboard.press("Escape");
+  await sleep(500);
+  // бафы земли: раскладка владельцев на всех фронтах
+  for (const [id, f] of [["north_w", "solgard"], ["north_h", "solgard"], ["center_e", "solgard"], ["south_w", "solgard"], ["north_e", "umbrath"], ["center_h", "umbrath"], ["south_e", "umbrath"], ["south_h", "umbrath"]] as const) w.war!.debug("owner", { base: id, f });
+  const buffShot = async (name: string) => {
+    await sleep(2500);
+    const cell = await page.$('.auras .cell img[src*="war_"]');
+    if (cell) { await cell.hover(); await sleep(500); }
+    const box = await page.evaluate(() => {
+      const r = [...document.querySelectorAll(".auras")].map((e) => e.getBoundingClientRect()).find((q) => q.width > 0);
+      const t = [...document.querySelectorAll(".tip, .tooltip, #tip")].map((e) => e.getBoundingClientRect()).find((q) => q.width > 0);
+      const all = [r, t].filter(Boolean) as DOMRect[];
+      const x0 = Math.min(...all.map((q) => q.left)) - 8, y0 = Math.min(...all.map((q) => q.top)) - 8, x1 = Math.max(...all.map((q) => q.right)) + 8, y1 = Math.max(...all.map((q) => q.bottom)) + 8;
+      return { x: Math.max(0, x0), y: Math.max(0, y0), width: Math.min(1280, x1) - Math.max(0, x0), height: Math.min(800, y1) - Math.max(0, y0), n: document.querySelectorAll('.auras .cell img[src*="war_"]').length };
+    });
+    await page.screenshot({ path: path.join(OUT, name), clip: { x: box.x, y: box.y, width: box.width, height: box.height } });
+    return box.n;
+  };
+  const nSol = await buffShot("buffs-sol.png");
+  check(nSol >= 3, `бафы земли Сольгарда в рамке героя: ${nSol}`);
+  // карта мира: три масштаба, подписи под своими значками
+  await page.mouse.move(5, 795);
+  await run(`window.__game.registry.get("hud").openWorldMap(); return 0;`);
+  await sleep(1000);
+  for (const [name, k] of [["map-zoom-min.png", 1], ["map-zoom-mid.png", 3], ["map-zoom-max.png", 7]] as const) {
+    await run(`const v = window.__game.registry.get("hud").wmView; v.s = Math.max(v.fit, Math.min(14, v.fit * a.k)); v.cx = 550; v.cy = 192; v.clamp(); return 0;`, { k });
+    await sleep(700);
+    await page.screenshot({ path: path.join(OUT, name) });
+  }
+  await page.keyboard.press("m").catch(() => {});
+  await run(`const h = window.__game.registry.get("hud"); document.querySelector(".win-worldmap") && (document.querySelector(".win-worldmap").hidden = true); return 0;`).catch(() => 0);
+  // герой Умбрата: свои бафы
+  const tokU = await ensureChar("war_view_u", PASS, "Костяной", "deathknight");
+  await enter("Костяной", tokU, 2);
+  const HU = heroOf("Костяной");
+  HU.save.level = 90; HU.selfDirty = true;
+  const nUmb = await buffShot("buffs-umb.png");
+  check(nUmb >= 3, `бафы земли Умбрата в рамке героя: ${nUmb}`);
+  // склейка: Сольгард | Умбрат
+  const a = PNG.sync.read(fs.readFileSync(path.join(OUT, "buffs-sol.png"))), b = PNG.sync.read(fs.readFileSync(path.join(OUT, "buffs-umb.png")));
+  const outp = new PNG({ width: a.width + b.width + 16, height: Math.max(a.height, b.height) });
+  for (let i = 0; i < outp.data.length; i += 4) { outp.data[i] = 18; outp.data[i + 1] = 15; outp.data[i + 2] = 22; outp.data[i + 3] = 255; }
+  PNG.bitblt(a, outp, 0, 0, a.width, a.height, 0, 0);
+  PNG.bitblt(b, outp, 0, 0, b.width, b.height, a.width + 16, 0);
+  fs.writeFileSync(path.join(OUT, "buffs.png"), PNG.sync.write(outp));
+  for (const f of ["buffs-sol.png", "buffs-umb.png"]) fs.rmSync(path.join(OUT, f), { force: true });
 }
+/**
+ * --ux: новичок 80 ур. входит во время битвы и идёт только по подсказкам полосы и стрелке: карточка знакомства, «Идите на фронт»,
+ * «Встаньте в круг», не воюющий фронт, маунт, «нужен перевес 2 против 3», подъём, спор, захват и печать, закрытое Сердце.
+ * Снимки — tools/out/banners-event/ux-*.png; каждая подсказка проверяется по тексту полосы.
+ */
+async function scenarioUx() {
+  fs.mkdirSync(OUT, { recursive: true });
+  for (const f of fs.readdirSync(OUT)) if (f.startsWith("ux-")) fs.rmSync(path.join(OUT, f));
+  const token = await ensureChar("war_newbie", PASS, "Новобранец", "warrior");
+  const w = W(), war = w.war!;
+  war.debug("reset", {});
+  w.soldiers!.squadAt.solgard = w.soldiers!.squadAt.umbrath = 1e15;
+  const base = warBase("center_w")!;
+  for (const m of [...w.mobs.values()]) if (!m.faction && Math.hypot(m.x - base.x, m.y - base.y) < 3000) w.removeMob(m);
+  await enter("Новобранец", token, 2);
+  const H = heroOf("Новобранец");
+  H.save.level = 80; H.selfDirty = true;
+  const { Player: PlayerCls, newSave } = await import("../server/src/game/Player");
+  const mk = (f: "solgard" | "umbrath", i: number) => {
+    const sv = newSave(f === "solgard" ? "healer" : "deathknight", { x: 0, y: 0 });
+    sv.level = 90; sv.faction = f;
+    const p = new PlayerCls(`ux${f}${i}`, `${f === "solgard" ? "Соратник" : "Враг"}${i + 1}`, sv, () => {});
+    w.addPlayer(p);
+    return p;
+  };
+  const ally = mk("solgard", 0), foes = [0, 1, 2].map((i) => mk("umbrath", i));
+  const where = new Map<Player, { x: number; y: number } | null>();
+  const park = { x: base.x - 3000, y: base.y + 900 };
+  const keep = setInterval(() => {
+    for (const p of [H, ally, ...foes]) { if (p.dead) { p.dead = false; p.unit.anim = 0; } p.unit.hp = p.unit.maxHp; p.inputAt = w.time; p.moveTo = null; p.targetId = null; p.combatAt = -1e9; }
+    for (const [p, q] of where) { const t = q ?? park; p.unit.x = t.x; p.unit.y = t.y; }
+  }, 50);
+  const put = (p: Player, q: { x: number; y: number } | null) => where.set(p, q);
+  const hint = () => page.$eval(".war-bar", (e) => e.querySelector(".war-hint")?.textContent ?? "").catch(() => "");
+  const shot = async (name: string, re: RegExp, what: string) => {
+    await sleep(1200);
+    const h = await hint();
+    await page.screenshot({ path: path.join(OUT, name) });
+    check(re.test(h), `${what}: «${h}»`);
+  };
+  /** Цель подсказки (куда ведут полоса и стрелка) — с клиента. */
+  const target = () => run<{ id: string; x: number; y: number } | null>(`const m = await import('/src/ui/bannerWar.ts'); const h = m.warHint(); return h && h.target ? { id: h.target.id, x: h.target.x, y: h.target.y } : null;`);
+  try {
+    put(ally, null); foes.forEach((f) => put(f, null));
+    put(H, { x: H.x, y: H.y });
+    war.debug("start", { front: "center" });
+    await page.waitForSelector(".war-intro", { timeout: 15000 });
+    await shot("ux-intro.png", /Идите на/, "карточка знакомства и первая подсказка");
+    await page.click(".war-intro [data-ok]");
+    // идём по стрелке: сначала далеко — «Идите на фронт», стрелка у края экрана
+    const t0 = await target();
+    check(!!t0, `цель подсказки есть (${t0?.id})`);
+    await shot("ux-go-front.png", /Идите на Центральный фронт/, "далеко от фронта");
+    const arrow = await run<boolean>(`return !!sc.bannerBases && sc.bannerBases.arrow.visible;`);
+    check(arrow, "стрелка у края экрана к знамени");
+    // ближе: «Встаньте в круг»
+    const t1 = (await target())!;
+    put(H, { x: t1.x - 30 * 32, y: t1.y + 4 * 32 });
+    await shot("ux-step-in.png", /Встаньте в круг/, "рядом с фронтом");
+    // забрёл в круг не воюющего фронта
+    const north = warBase("north_e")!;
+    put(H, { x: north.x + 60, y: north.y + 120 });
+    await shot("ux-inactive.png", /не воюет/, "круг не воюющего фронта: серое кольцо и объявление");
+    // в круг цели верхом
+    const t2 = (await target())!, tb = warBase(t2.id)!;
+    put(H, { x: tb.x + 70, y: tb.y + 140 });
+    await run(`window.__net.send("dbg", { op: "mount", id: "horse" }); return 0;`);
+    await shot("ux-mounted.png", /Слезьте с маунта/, "верхом в круге");
+    await run(`window.__net.send("dbg", { op: "mount", id: "" }); return 0;`);
+    // 2 против 3: перевес нужен
+    put(ally, { x: tb.x - 90, y: tb.y + 120 });
+    foes.forEach((f, i) => put(f, { x: tb.x - 120 + i * 120, y: tb.y - 150 }));
+    await shot("ux-outnumbered.png", /Нужен перевес: в круге 2 против 3/, "2 против 3");
+    // враги ушли: вывешиваем и поднимаем
+    foes.forEach((f) => put(f, null));
+    await waitFor(() => (war.bases.get(tb.id)!.h ?? 0) > 0.12, 40000);
+    await shot("ux-raising.png", /Поднимаете знамя · \d+ %/, "подъём знамени");
+    // поровну — спор
+    put(foes[0], { x: tb.x - 120, y: tb.y - 150 }); put(foes[1], { x: tb.x + 120, y: tb.y - 150 });
+    await shot("ux-contest.png", /Спор: в круге 2 против 2/, "спор 2 на 2");
+    foes.forEach((f) => put(f, null));
+    await waitFor(() => war.bases.get(tb.id)!.owner === "solgard", 90000);
+    await shot("ux-captured.png", /Печать|Точка ваша/, "точка взята");
+    // Сердце закрыто
+    const heart = warBase("center_h")!;
+    put(H, { x: heart.x + 60, y: heart.y + 130 }); put(ally, null);
+    await shot("ux-heart.png", /Сердце откроется через/, "Сердце закрыто до 20-й минуты");
+  } finally {
+    clearInterval(keep);
+  }
+}
+const UX = process.argv.includes("--ux");
 const RULES = process.argv.includes("--rules");
 const V2 = process.argv.includes("--v2");
 
@@ -311,12 +450,12 @@ async function main() {
       window.addEventListener("unhandledrejection", (e) => console.error("unhandledrejection: " + String((e.reason && e.reason.stack) || e.reason)));
     });
     // v2: вид осады (шаг 15, client/src/game/siegeView.ts) соседнего агента сейчас роняет кадр — на время снимков знамён он выключен
-    if ((V2 || RULES) && !process.argv.includes("--with-siege")) await page.evaluateOnNewDocument(() => {
+    if ((V2 || RULES || UX) && !process.argv.includes("--with-siege")) await page.evaluateOnNewDocument(() => {
       setInterval(() => { const sc = (window as any).__game?.scene?.getScene?.("game"); if (sc && sc.siegeView) { try { sc.siegeView.destroy?.(); } catch {} sc.siegeView = null; } }, 20);
     });
     page.on("console", (m) => { if (m.type() === "error" || m.type() === "warn") errors.push(`${m.type()}: ${m.text()}`); });
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e)}`));
-    await (V2 ? scenarioV2() : RULES ? scenarioRules() : scenario());
+    await (V2 ? scenarioV2() : RULES ? scenarioRules() : UX ? scenarioUx() : scenario());
     const warn = errors.filter((e) => !/favicon|DevTools|WebGL|GPU stall|swiftshader|AudioContext|AnimationManager key already exists/i.test(e));
     check(warn.length === 0, `ошибок консоли нет${warn.length ? `: ${warn.slice(0, 5).join(" | ")}` : ""}`);
   } catch (e) {
@@ -329,7 +468,7 @@ async function main() {
     bad++;
   } finally {
     fs.mkdirSync(OUT, { recursive: true });
-    fs.writeFileSync(path.join(OUT, V2 ? "v2-report.json" : RULES ? "rules-report.json" : "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
+    fs.writeFileSync(path.join(OUT, V2 ? "v2-report.json" : RULES ? "rules-report.json" : UX ? "ux-report.json" : "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));
     await browser.close().catch(() => {});
     await vite.close().catch(() => {});
   }

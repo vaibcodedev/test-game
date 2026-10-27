@@ -254,6 +254,11 @@ war.debug("owner", { base: "center_e", f: "solgard" });
   war.debug("owner", { base: "south_e", f: "umbrath" });
   const fields = { x: 520 * TILE, y: 200 * TILE };
   const mb = war.mobBonus(u1, fields), mbs = war.mobBonus(s1, fields);
+  {
+    const { auraList } = await import("../server/src/game/auras");
+    const ku = auraList(u1, w.time).map((a) => a.k), ks = auraList(s1, w.time).map((a) => a.k);
+    check("бафы земли: у Умбрата — свои значки (Север: добыча, Юг: копь), у Сольгарда их нет", ku.includes("war_xpGold_umb") && ku.includes("war_mats_umb") && !ks.some((k) => k.endsWith("_umb")) && ks.includes("war_squads_sol"), `${ku.join(",")} | ${ks.join(",")}`);
+  }
   check("северная боковая: +10% опыта и золота, южная: +20% материалов на Полях", near(mb.xp, 1 + D.bonus.xpGold, 1e-9) && near(mb.mats, 1 + D.bonus.mats, 1e-9) && mbs.xp === 1);
   check("заставы центра: возрождение у своей заставы вне битвы", (() => { u1.unit.x = 470 * TILE; u1.unit.y = 190 * TILE; const sp = war.respawnAt(u1); return !!sp && !sp.free && near(sp.x, warBase("center_w")!.x, 1); })());
   const owners = Object.fromEntries([...war.bases.values()].map((r) => [r.def.id, r.owner ?? ""]));

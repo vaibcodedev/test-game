@@ -17,6 +17,8 @@ import { MATERIALS } from "../../../shared/upgrade";
 import { TILE } from "../../../shared/constants";
 import { T } from "../../../shared/texts";
 import { addItem } from "./inventory";
+import { registerAuraHook } from "./auras";
+import { warAuraKey } from "../../../shared/auras";
 import { SIEGE, siegeAttacker } from "../../../shared/siege";
 import type { Player } from "./Player";
 import type { Actor, World } from "./World";
@@ -69,6 +71,16 @@ interface Contrib { name: string; cls: string; faction: WarFaction; v: number; a
 /** Бонусы фракции от удержанных точек (между битвами и в битве). */
 export interface WarBonus { xpGold: number; mats: number; speed: number; squads: boolean; dungeon: number; respawn: WarBaseDef[] }
 
+/** Мир, чьи точки дают бафы земли (основной мир; арена и рейд своих BannerWar не создают). */
+let LIVE: BannerWar | null = null;
+/** Бафы земли в рамке героя: каждый удержанный бонус его фракции — значок war_<бонус>_<sol|umb> со сроком до следующей битвы фронта. */
+registerAuraHook((a, now, aura) => {
+  const w = LIVE, p = a as Player;
+  if (!w || !p.save || p.team || !isWarFaction(p.faction)) return;
+  const wall = w.now();
+  for (const b of w.buffsOf(p.faction)) aura(b.k, now + Math.max(1000, b.until - wall), b.v ? { v: b.v } : undefined);
+});
+
 export class BannerWar {
   /** Сдвиг часов (отладка: перемотка), мс. */
   offset = 0;
@@ -109,6 +121,44 @@ export class BannerWar {
     }
     this.front = this.frontByIdx();
     this.applyBonuses();
+    LIVE ??= this;
+  }
+
+  /** Срок бонуса фронта (часы ивента): в битве этого фронта — её конец, иначе — начало его следующей битвы по кругу фронтов. */
+  frontUntil(front: string): number {
+    if (this.phase === "battle" && this.front.id === front) return this.t1;
+    const rot = S.rotation, L = rot.length;
+    let base = this.phase === "battle" ? this.t1 : this.phase === "prep" ? this.t0 - 1 : this.now();
+    let i = this.phase === "battle" ? rot.indexOf(this.front.id) + 1 : this.saved.frontIdx;
+    for (let k = 0; k < L * 3; k++, i++) {
+      const s = this.phase === "prep" && k === 0 ? this.t0 : nextWarStart(base);
+      if (rot[((i % L) + L) % L] === front) return s;
+      base = s;
+    }
+    return this.now() + 7 * 86400000;
+  }
+  private buffCache: { at: number; f: Record<string, { k: string; until: number; v: number }[]> } = { at: 0, f: {} };
+  /** Бафы земли фракции (пересчёт раз в секунду): удержанные бонусы фронтов и неделя после осады. */
+  buffsOf(f: WarFaction): { k: string; until: number; v: number }[] {
+    const now = this.now();
+    if (now - this.buffCache.at > 1000) {
+      this.buffCache = { at: now, f: {} };
+      for (const g of WAR_FACTIONS) {
+        const b = this.bonus[g], out: { k: string; until: number; v: number }[] = [];
+        for (const fr of WAR_FRONTS) {
+          const until = this.frontUntil(fr.id);
+          const side = fr.bases.some((d) => d.kind === "side" && this.bases.get(d.id)?.owner === g);
+          const heart = fr.bases.some((d) => d.kind === "heart" && this.bases.get(d.id)?.owner === g);
+          const val: Record<string, number> = { xpGold: b.xpGold * 100, mats: b.mats * 100, speed: b.speed * 100, dungeon: b.dungeon * 100, squads: B.squadMin, respawn: 0 };
+          if (side) out.push({ k: warAuraKey(fr.side, g), until, v: Math.round(val[fr.side]) });
+          if (heart) out.push({ k: warAuraKey(fr.heart, g), until, v: Math.round(val[fr.heart]) });
+        }
+        const sw = this.saved.siege;
+        if (sw && sw.bonus === g && now < sw.until) out.push({ k: warAuraKey("siege", g), until: sw.until, v: Math.round(SIEGE.reward.xpGold * 100) });
+        this.buffCache.f[g] = out;
+      }
+    }
+    return this.buffCache.f[f] ?? [];
   }
 
   private frontByIdx(): WarFrontDef {
@@ -125,6 +175,7 @@ export class BannerWar {
 
   // ---------- такт ----------
   update() {
+    LIVE = this; // мир, который тикает этот ивент, — источник бафов земли
     const now = this.now();
     for (const p of this.w.players.values()) {
       if (!this.known.has(p.id)) { this.known.add(p.id); p.send("war", this.view(now)); }
@@ -449,6 +500,7 @@ export class BannerWar {
   bonus: Record<WarFaction, WarBonus> = { solgard: this.noBonus(), umbrath: this.noBonus() };
   private noBonus(): WarBonus { return { xpGold: 0, mats: 0, speed: 0, squads: false, dungeon: 0, respawn: [] }; }
   private applyBonuses() {
+    this.buffCache.at = 0; // бафы земли — сразу по новой раскладке
     for (const f of WAR_FACTIONS) {
       const b = this.noBonus();
       for (const fr of WAR_FRONTS) {

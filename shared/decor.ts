@@ -95,7 +95,12 @@ export const BF_STANDARDS = ["std-torn-sol", "std-burned-sol", "std-torn-umb", "
 /** Сломанный в грязи с павшим (лежит). */
 export const BF_STANDARDS_FALLEN = ["std-fallen-sol", "std-fallen-umb"];
 export const BF_BODIES = ["bf_fallen_sol_a", "bf_fallen_umb_a", "bf_fallen_sol_b", "bf_fallen_umb_b", "bf_skeleton_armor"];
-export const BF_HORSES = ["bf_horse_fallen_sol", "bf_horse_fallen_umb"];
+/** Павшие кони (в объёме, tools/gen/bf-horses.ts): Сольгард и Умбрат по 5 вариантов, 2 нейтральных и 3 скелета; без всадников. */
+export const BF_HORSES = [
+  "bf_horse_fallen_sol", "bf_horse_sol_b", "bf_horse_sol_c", "bf_horse_sol_d", "bf_horse_sol_e",
+  "bf_horse_fallen_umb", "bf_horse_umb_b", "bf_horse_umb_c", "bf_horse_umb_d", "bf_horse_umb_e",
+  "bf_horse_n_a", "bf_horse_n_b", "bf_horse_skel_a", "bf_horse_skel_b", "bf_horse_skel_c",
+];
 /** Воткнутое оружие и щиты, стрелы (объёмные, с вариантами: tools/gen/bf-props.ts): у Сольгарда и Умбрата парные виды, нейтральные — общие. */
 export const BF_PLANTED = [
   "bf_sword_planted", "bf_sword_sol_b", "bf_sword_sol_c", "bf_sword_sol_d", "bf_sword_planted_dark", "bf_sword_umb_b", "bf_sword_umb_c", "bf_sword_umb_d",
@@ -117,7 +122,7 @@ export const BF_WRECKS = ["bf_ram", "v_undead_giant_skeleton", "bf_siege_tower",
 /** Пары фракций для зеркальной копии на Полях (восток — та же сцена с переменой сторон, чтобы обе половины были равны). */
 const BF_SWAP: Record<string, string> = {
   "std-torn-sol": "std-torn-umb", "std-burned-sol": "std-burned-umb", "std-fallen-sol": "std-fallen-umb",
-  bf_fallen_sol_a: "bf_fallen_umb_a", bf_fallen_sol_b: "bf_fallen_umb_b", bf_horse_fallen_sol: "bf_horse_fallen_umb", bf_sword_planted: "bf_sword_planted_dark", bf_sword_sol_b: "bf_sword_umb_b", bf_sword_sol_c: "bf_sword_umb_c", bf_sword_sol_d: "bf_sword_umb_d",
+  bf_fallen_sol_a: "bf_fallen_umb_a", bf_fallen_sol_b: "bf_fallen_umb_b", bf_horse_fallen_sol: "bf_horse_fallen_umb", bf_horse_sol_b: "bf_horse_umb_b", bf_horse_sol_c: "bf_horse_umb_c", bf_horse_sol_d: "bf_horse_umb_d", bf_horse_sol_e: "bf_horse_umb_e", bf_sword_planted: "bf_sword_planted_dark", bf_sword_sol_b: "bf_sword_umb_b", bf_sword_sol_c: "bf_sword_umb_c", bf_sword_sol_d: "bf_sword_umb_d",
   bf_spear_sol_a: "bf_spear_umb_a", bf_spear_sol_b: "bf_spear_umb_b", bf_spear_sol_c: "bf_spear_umb_c", bf_shield_sol_a: "bf_shield_umb_a", bf_shield_sol_b: "bf_shield_umb_b", bf_shield_sol_c: "bf_shield_umb_c",
   bf_tent_torn_b: "bf_tent_torn_c", bf_tent_burnt_b: "bf_tent_burnt_c",
 };

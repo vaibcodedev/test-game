@@ -2,7 +2,8 @@
    Только токены tokens.css и компоненты kit.css (.panel, .btn, .dialog, .tbl, .kv); цвета фракций — --fac-sol и --fac-umb. */
 .war-bar { position: absolute; top: 12px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(360px, calc(100vw - var(--top-l) - var(--top-r)));
   padding: var(--sp-1h) var(--sp-3) var(--sp-2); display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); }
-.war-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm); }
+.war-help { position: absolute; top: var(--sp-1); right: var(--sp-1); width: 20px; height: 20px; min-height: 0; padding: 0; font-size: var(--fs-xs); }
+.war-head { padding-right: 24px; display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm); }
 .war-front { color: var(--gold); font-weight: var(--fw-b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .war-time { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: var(--fw-b); white-space: nowrap; }
 .war-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-3); }
@@ -49,3 +50,25 @@
 .war-side.umb h3 { color: var(--fac-umb); }
 .war-stats { margin: 0; font-size: var(--fs-sm); }
 @media (max-width: 700px) { .war-sides { grid-template-columns: 1fr; } }
+
+/* окно правил (openWarRules): разделы, живая строка сверху, знаки карты */
+.war-rules .war-now { margin: 0; padding: var(--sp-2) var(--sp-3); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); color: var(--gold); font-weight: var(--fw-b); }
+.war-rule h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); color: var(--gold); }
+.war-rule p { margin: 0 0 var(--sp-1h); line-height: 1.45; }
+.war-rule ul { margin: 0; padding-left: var(--sp-4); line-height: 1.45; }
+.war-legend-row { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) 0; border-bottom: 1px solid var(--line); line-height: 1.35; }
+.war-legend-row:last-child { border-bottom: 0; }
+.war-legend-ics { flex: none; display: flex; gap: var(--sp-0); min-width: 48px; justify-content: center; }
+.war-legend-ic { image-rendering: pixelated; height: 30px; }
+.war-front-li { display: flex; align-items: center; gap: var(--sp-1h); list-style: none; margin-left: calc(-1 * var(--sp-4)); padding: var(--sp-0) 0; }
+.war-buff-ic { flex: none; width: 24px; height: 24px; image-rendering: pixelated; }
+/* строка «что делать сейчас» и карточка первого знакомства */
+.war-hint { font-size: var(--fs-sm); font-weight: var(--fw-b); text-align: center; padding: var(--sp-0) var(--sp-2); border-radius: var(--r-1); background: var(--well); }
+.war-hint.go { color: var(--gold); }
+.war-hint.act { color: var(--ok); }
+.war-hint.warn { color: var(--warn); }
+.war-hint.ok { color: var(--fg); }
+.war-intro { position: absolute; top: 150px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(400px, calc(100vw - var(--top-l) - var(--top-r))); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-1h); }
+.war-intro h3 { margin: 0; color: var(--gold); font-size: var(--fs-md); }
+.war-intro ol { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-sm); line-height: 1.45; }
+.war-intro-btns { display: flex; justify-content: flex-end; gap: var(--sp-2); }

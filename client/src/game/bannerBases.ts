@@ -9,7 +9,9 @@
  */
 import Phaser from "phaser";
 import { WAR, WAR_BASES, WAR_RADIUS, type WarBaseDef, type WarFaction } from "../../../shared/bannerWar";
-import { baseState, warView } from "../ui/bannerWar";
+import { baseState, inactivePlate, warActive, warHero, warHint, warView } from "../ui/bannerWar";
+import { net } from "../net";
+const NET_SELF_FACTION = () => net.self?.faction as WarFaction | undefined;
 import { worldText } from "./worldText";
 import { DEPTH } from "./terrain";
 
@@ -82,6 +84,8 @@ interface View {
   phase: number;
   arcKey: string;
   label: Phaser.GameObjects.Text;
+  /** Над постаментом: счёт «свои : чужие» в круге и причина, если герой в этом круге. */
+  counter: Phaser.GameObjects.Text;
   labelKey: string;
 }
 
@@ -120,19 +124,48 @@ export class BannerBases {
       // подпись под постаментом, за дугой прогресса
       void top;
       const label = worldText(sc, fx, d.y + L.arcR + L.arcW, "", "plain", { fontSize: "11px", align: "center", strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(fy + 6);
-      this.views.push({ d, fill, ring, glow, sheen, arc, head, swords, mast, plinth, plate: null, plateF: "", flag: null, flagF: "", fallen: null, fallenF: "", h: -1, owner: null, fillKey: "", emitAcc: 0, phase: i * 0.37, arcKey: "", label, labelKey: "" });
+      // счёт «свои : чужие» и что делать — справа от дуги, на уровне постамента: виден, пока герой стоит в круге
+      const counter = worldText(sc, fx + L.arcR + 16, d.y, "", "plain", { fontSize: "13px", align: "left", strokeThickness: 3 }).setOrigin(0, 0.5).setDepth(fy + 7).setVisible(false);
+      this.views.push({ d, fill, ring, glow, sheen, arc, head, swords, mast, plinth, plate: null, plateF: "", flag: null, flagF: "", fallen: null, fallenF: "", h: -1, owner: null, fillKey: "", emitAcc: 0, phase: i * 0.37, arcKey: "", label, labelKey: "", counter });
     });
+    // стрелка у края экрана к знамени фронта битвы, когда оно за краем (подсказка «что делать сейчас»)
+    this.arrow = sc.add.graphics().setScrollFactor(0).setDepth(DEPTH.top - 2).setVisible(false);
+    this.arrowText = worldText(sc, 0, 0, "", "plain", { fontSize: "12px", align: "center", strokeThickness: 3 }).setScrollFactor(0).setDepth(DEPTH.top - 2).setOrigin(0.5).setVisible(false);
+
   }
 
   /** Левый верх кадра постамента (px мира). */
   private frameTop(fx: number, fy: number) { return { x: fx - this.frame.w * this.frame.ax, y: fy - this.frame.h * this.frame.ay }; }
 
+  private arrow!: Phaser.GameObjects.Graphics;
+  private arrowText!: Phaser.GameObjects.Text;
+  /** Стрелка у края экрана: к цели подсказки, если она вне вида камеры (в битве, не в круге). */
+  private updateArrow(now: number) {
+    const h = warHint(), cam = this.sc.cameras.main, t = h?.target;
+    const show = !!t && !h!.inside && !cam.worldView.contains(t.x, t.y);
+    this.arrow.setVisible(show); this.arrowText.setVisible(show);
+    if (!show || !t) return;
+    const W = cam.width, H = cam.height, cx = W / 2, cy = H / 2;
+    const sx = (t.x - cam.worldView.x) * cam.zoom, sy = (t.y - cam.worldView.y) * cam.zoom, a = Math.atan2(sy - cy, sx - cx);
+    const k = Math.min((W / 2 - 46) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - 70) / Math.abs(Math.sin(a) || 1e-6));
+    const ax = cx + Math.cos(a) * k, ay = cy + Math.sin(a) * k, pulse = 1 + 0.12 * Math.sin(now / 200);
+    // объекты без прокрутки камера всё равно масштабирует вокруг центра: переводим экранные px в её систему
+    const z = cam.zoom, ux = (x: number) => cx + (x - cx) / z, uy = (y: number) => cy + (y - cy) / z;
+    const g = this.arrow.clear();
+    g.setPosition(ux(ax), uy(ay)).setRotation(a).setScale(pulse / z);
+    g.fillStyle(COL.solgard, 1).lineStyle(2, 0x000000, 1);
+    g.beginPath(); g.moveTo(18, 0); g.lineTo(-10, -13); g.lineTo(-3, 0); g.lineTo(-10, 13); g.closePath(); g.fillPath(); g.strokePath();
+    const d = Math.round(Math.hypot(t.x - warHero.x, t.y - warHero.y) / 32);
+    this.arrowText.setText(`${t.name}\n${d} м`).setPosition(ux(ax - Math.cos(a) * 44), uy(ay - Math.sin(a) * 34)).setScale(1 / z).setColor(L.color.solgard);
+  }
+
   update(dt: number, camX: number, camY: number) {
     const now = performance.now();
+    this.updateArrow(now);
     for (const v of this.views) {
       const near = Math.abs(v.d.x - camX) < 1500 && Math.abs(v.d.y - camY) < 1100;
       for (const o of [v.fill, v.ring, v.glow, v.sheen, v.arc, v.mast, v.plinth, v.plate, v.flag, v.fallen, v.label]) o?.setVisible(near);
-      if (!near) { v.head?.setVisible(false); v.swords?.setVisible(false); continue; }
+      if (!near) { v.head?.setVisible(false); v.swords?.setVisible(false); v.counter.setVisible(false); continue; }
       this.updateBase(v, dt, now);
     }
     this.updateFx(now);
@@ -156,8 +189,11 @@ export class BannerBases {
     // дыхание свечения и блик
     const br = easeInOutSine(((now / L.breathMs + v.phase) % 1) < 0.5 ? ((now / L.breathMs + v.phase) % 1) * 2 : 2 - ((now / L.breathMs + v.phase) % 1) * 2);
     const contest = !!b?.c;
-    if (v.glow) v.glow.setTint(contest ? (Math.floor(now / 140) % 2 ? COL.solgard : COL.umbrath) : col).setAlpha(owner ? 0.55 + 0.4 * br : 0.22 + 0.16 * br);
-    if (v.sheen) v.sheen.setTint(col).setAlpha(owner ? 0.75 : 0.3).setRotation(((now / L.sheenMs + v.phase) % 1) * Math.PI * 2);
+    // не воюющий фронт в битве: кольцо серое и тусклое, руны не горят, блика и искр нет
+    const asleep = warView.state?.ph === "battle" && !warActive(v.d);
+    v.ring?.setTint(asleep ? 0x8a8690 : 0xffffff).setAlpha(asleep ? 0.6 : 1);
+    if (v.glow) v.glow.setTint(contest ? (Math.floor(now / 140) % 2 ? COL.solgard : COL.umbrath) : asleep ? COL.neutral : col).setAlpha(asleep ? 0.06 : owner ? 0.55 + 0.4 * br : 0.22 + 0.16 * br);
+    if (v.sheen) v.sheen.setVisible(!asleep).setTint(col).setAlpha(owner ? 0.75 : 0.3).setRotation(((now / L.sheenMs + v.phase) % 1) * Math.PI * 2);
     // знамя на мачте
     const bf = b?.b ?? "";
     if (bf !== v.flagF) {
@@ -200,14 +236,23 @@ export class BannerBases {
     }
     this.drawArc(v, b, fx, fy, now, br);
     // подпись под постаментом: имя основания и владелец или ход захвата (как на карте мира)
-    const st = baseState(v.d.id), lk = `${st.owner}|${st.state}`;
+    const st = baseState(v.d.id), plate = inactivePlate(v.d), lk = `${st.owner}|${st.state}|${plate}`;
     if (lk !== v.labelKey) {
       v.labelKey = lk;
-      v.label.setText(`${v.d.name}
-${st.state || st.owner}`).setColor(st.state ? "#ffb35a" : owner ? L.color[owner as WarFaction] : "#efe6d2");
+      v.label.setText(`${v.d.name}\n${st.state || st.owner}${plate ? `\n${plate}` : ""}`).setColor(st.state ? "#ffb35a" : owner ? L.color[owner as WarFaction] : "#efe6d2");
     }
+    // над постаментом: «свои : чужие» в круге фронта битвы; если герой в этом круге — ещё и что делать (та же строка, что в полосе)
+    const me = NET_SELF_FACTION(), live = warActive(v.d) && b && b.n[0] + b.n[1] > 0;
+    if (live && me) {
+      const own = b!.n[me === "solgard" ? 0 : 1], en = b!.n[me === "solgard" ? 1 : 0], h = warHint();
+      const why = h?.inside?.id === v.d.id ? `\n${h.text}` : "";
+      const ck = `${own}:${en}${why}`;
+      if (v.counter.text !== `${own} : ${en}${why}`) v.counter.setText(`${own} : ${en}${why}`).setColor(own > en ? "#7ad05a" : own < en ? "#ff6a5a" : "#ffb35a");
+      void ck;
+      v.counter.setVisible(true);
+    } else v.counter.setVisible(false);
     // искры у кольца: владелец — его цвет, ничья — редкая серая пыль, спор — оба цвета
-    v.emitAcc += dt * L.embersPerSec * (owner ? 1 : 0.45) * (contest ? 2 : 1);
+    v.emitAcc += asleep ? 0 : dt * L.embersPerSec * (owner ? 1 : 0.45) * (contest ? 2 : 1);
     while (v.emitAcc >= 1) {
       v.emitAcc -= 1;
       const a = Math.random() * Math.PI * 2, r = WAR_RADIUS + (Math.random() - 0.5) * 18;
@@ -324,7 +369,8 @@ ${st.state || st.owner}`).setColor(st.state ? "#ffb35a" : owner ? L.color[owner 
   }
 
   destroy() {
-    for (const v of this.views) for (const o of [v.fill, v.ring, v.glow, v.sheen, v.arc, v.head, v.swords, v.mast, v.plinth, v.plate, v.flag, v.fallen, v.label]) o?.destroy();
+    for (const v of this.views) for (const o of [v.fill, v.ring, v.glow, v.sheen, v.arc, v.head, v.swords, v.mast, v.plinth, v.plate, v.flag, v.fallen, v.label, v.counter]) o?.destroy();
+    this.arrow?.destroy(); this.arrowText?.destroy();
     for (const f of this.fx) f.o.destroy();
     for (const p of this.sparks) p.o.destroy();
     for (const o of this.pool) o.destroy();

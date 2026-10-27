@@ -22,7 +22,7 @@ import type { Net, UnitState } from "../net";
 import { ARENA_BLOCKED_TEXT, rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
 import { RaidHud } from "./raid";
-import { WarHud, drawWarMini } from "./bannerWar";
+import { WarHud, drawWarMini, warBuffUntil } from "./bannerWar";
 import { SiegeHud, drawSiegeMini } from "./siege";
 import { CastBar, castGlyph, type CastOpts, type CastVariant } from "./castbar";
 import { absorbHtml } from "./absorb";
@@ -52,7 +52,7 @@ import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
 import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
-import { AURAS, auraCompare, auraText, auraTimeLabel, auraTimeWords, foodOfAura } from "../../../shared/auras";
+import { AURAS, auraCompare, auraText, auraTimeLabel, auraTimeWords, foodOfAura, warOfAura } from "../../../shared/auras";
 import { DODGE_CAP, STAT_K } from "../../../shared/formulas";
 import { P } from "../../../shared/palette";
 import { T as TX } from "../../../shared/texts";
@@ -935,6 +935,7 @@ export class Hud {
       `<div class="t${bad ? " warn" : ""}">${esc(d.name)}</div>`,
       `<div class="d">${bad ? "Дебафф" : "Бафф"}${a.m ? " · ваш" : ""} · ${a.end ? `осталось ${auraTimeWords(left)}` : "без срока"}</div>`,
       `<div>${esc(auraText(d.desc, a.v, a.n, formatNumber))}</div>`,
+      warOfAura(a.k) ? `<div class="d">${esc(warBuffUntil(warOfAura(a.k)!, left))}</div>` : "", // баф земли «Знамён Предела»: до когда
     ].join("");
   }
 
@@ -1627,7 +1628,7 @@ export class Hud {
     }
     this.arena.frame(info.units);
     this.raid.frame(info.units);
-    this.war.frame();
+    this.war.frame(info.pos, me?.mount ?? "");
     this.siege.frame();
     const now = performance.now();
     if (now - this.lastMini > 200) {
