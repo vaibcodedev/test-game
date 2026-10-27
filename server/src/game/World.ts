@@ -875,7 +875,7 @@ export class World {
     const d = p.derived;
     p.regenAcc += d.hpRegen * dt * (town ? 8 : calm ? 3 : 1);
     p.manaAcc += d.mpRegen * dt * (town ? 4 : 1);
-    if (p.regenAcc >= 1) { const w = Math.floor(p.regenAcc); p.regenAcc -= w; u.hp = Math.min(u.maxHp, u.hp + w); }
+    if (p.regenAcc >= 1) { const w = Math.floor(p.regenAcc); p.regenAcc -= w; const hp0 = u.hp; u.hp = Math.min(u.maxHp, u.hp + w); p.regenShow = p.regenShow + (u.hp - hp0); if (p.regenShow >= Math.max(2, u.maxHp * 0.03)) { this.emit({ t: "dmg", id: p.id, v: p.regenShow, heal: true }); p.regenShow = 0; } }
     if (p.manaAcc >= 1) { const w = Math.floor(p.manaAcc); p.manaAcc -= w; u.mp = Math.min(u.maxMp, u.mp + w); }
 
     const frozen = p.frozenUntil > t;
@@ -1170,7 +1170,9 @@ export class World {
     this.emit({ t: "proj", k: "holy", from: m.id, to: ally.id, tx: ally.x, ty: ally.y, ms });
     this.later(ms, () => {
       if (m.dead || ally.dead) return;
+      const hp0 = ally.unit.hp;
       ally.unit.hp = Math.min(ally.unit.maxHp, ally.unit.hp + Math.round(ally.unit.maxHp * h.pct));
+      if (ally.unit.hp > hp0) this.emit({ t: "dmg", id: ally.id, v: ally.unit.hp - hp0, heal: true });
       this.emit({ t: "buff", id: ally.id, k: "heal", ms: 600 });
     });
   }

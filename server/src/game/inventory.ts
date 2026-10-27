@@ -100,7 +100,7 @@ export function useItem(w: World, p: Player, index: unknown) {
   if (sealMount(it.base)) return learnSeal(p, index);
   if (MATERIALS[it.base] || RESOURCES[it.base] || isPart(it.base)) return;
   const dish = foodOf(it.base);
-  if (dish) return eat(p, index, dish);
+  if (dish) return eat(w, p, index, dish);
   const now = w.time;
   if (now < p.potionAt) return err(p, T("srv.inventory.106", { replace: (Math.max(0, p.potionAt - now) / 1000).toFixed(1).replace(".", ",") }), "cd");
   const u = p.unit;
@@ -128,14 +128,16 @@ export function useBase(w: World, p: Player, base: unknown, locked: (i: number) 
 }
 
 /** Съесть блюдо: мгновенное лечение и бафф; новый бафф заменяет старый. На арене нельзя. */
-function eat(p: Player, index: number, dish: Dish) {
+function eat(w: World, p: Player, index: number, dish: Dish) {
   if (p.team !== 0) return err(p, T("srv.inventory.109"));
   if (p.level < dish.req) return err(p, T("srv.inventory.110", { req: dish.req }));
   const it = p.save.inventory[index]!;
   const u = p.unit;
   p.save.food = { id: dish.id, until: Date.now() + dish.minutes * 60000 };
   p.recalc();
+  const hp0 = u.hp;
   u.hp = Math.min(u.maxHp, u.hp + Math.round((u.maxHp * dish.hpPct) / 100));
+  if (u.hp > hp0) w.emit({ t: "dmg", id: p.id, v: u.hp - hp0, heal: true });
   u.mp = Math.min(u.maxMp, u.mp + Math.round((u.maxMp * dish.mpPct) / 100));
   it.qty = (it.qty ?? 1) - 1;
   if (it.qty <= 0) p.save.inventory[index] = null;

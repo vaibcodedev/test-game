@@ -14,3 +14,8 @@
 .raid-title-gold { color: var(--gold); }
 /* след потерянного здоровья под полосой героя: жёлто-оранжевый кусок держится 0,4 с и тает (ширину ведёт ui/hud.ts hpLag); пустая часть — тёмный жёлоб --hp-track */
 .bar.hp .hp-lag { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ffd27a, #e8902a); text-decoration: none; }
+
+/* зелёный кусок прибавленного здоровья (рамка героя и цели): встаёт сразу на новое значение, красная заливка догоняет; жёлтый хвост убывания тает по ширине */
+.bar.hp .hp-lag { width: 0; transition: width .3s ease-out; }
+.bar.hp .hp-lag.gain { background: linear-gradient(var(--heal), color-mix(in srgb, var(--heal) 60%, #000)); transition: none; }
+@media (prefers-reduced-motion: reduce) { .bar.hp .hp-lag { transition: none; } }

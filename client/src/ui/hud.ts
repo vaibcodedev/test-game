@@ -1550,18 +1550,44 @@ export class Hud {
    *  при лечении и регенерации сразу равен здоровью — поэтому постоянная регенерация не «замораживает» след. */
   private lagK = -1;
   private lagHold = 0;
-  private hpLag(k: number) {
+  private hpDisp = -1;
+  private hpAt = 0;
+  /** Возвращает ширину красной заливки: при росте здоровья зелёный кусок (hp-lag.gain) сразу стоит на новом значении, заливка догоняет его ~0,35 с. */
+  private hpLag(k: number): number {
     const lag = document.getElementById("hp-lag");
-    if (!lag) return;
-    const now = performance.now();
+    const now = performance.now(), dt = Math.min(0.1, (now - (this.hpAt || now)) / 1000);
+    this.hpAt = now;
+    if (this.hpDisp < 0 || k < this.hpDisp) this.hpDisp = k;
+    else this.hpDisp += (k - this.hpDisp) * Math.min(1, dt * 8);
+    if (k - this.hpDisp < 0.002) this.hpDisp = k;
+    if (!lag) return k;
+    const gain = k > this.hpDisp;
+    lag.classList.toggle("gain", gain);
     if (this.lagK < 0 || k >= this.lagK) this.lagK = k;
     else if (k < this.lagK - 0.001 && now > this.lagHold && this.lagHold === 0) this.lagHold = now + 400;
     if (this.lagHold && now > this.lagHold) {
       this.lagK = Math.max(k, this.lagK - 0.012);
       if (this.lagK <= k) this.lagHold = 0;
     }
-    const w = `${this.lagK * 100}%`;
+    const w = `${(gain ? k : this.lagK) * 100}%`;
     if (lag.style.width !== w) lag.style.width = w;
+    return this.hpDisp;
+  }
+  private trailK = new Map<string, number>();
+  /** Полоска, которую перерисовывают целиком: убыло — жёлтый хвост тает после 0,4 с; прибавилось — зелёный кусок сразу на новом значении, красная заливка догоняет за ~0,35 с. */
+  private trailBar(bar: HTMLElement | null, key: string, k: number) {
+    const prev = this.trailK.get(key);
+    this.trailK.clear(); this.trailK.set(key, k);
+    const fill = bar?.querySelector<HTMLElement>(":scope > i"), lag = bar?.querySelector<HTMLElement>(":scope > .hp-lag");
+    if (!fill || !lag || prev === undefined || Math.abs(prev - k) < 0.001) { if (lag) lag.style.width = "0"; return; }
+    const pc = (v: number) => `${v * 100}%`;
+    if (k > prev) {
+      lag.classList.add("gain"); lag.style.width = pc(k); fill.style.width = pc(prev); fill.style.transitionDuration = ".35s";
+      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = pc(k); }));
+    } else {
+      lag.style.width = pc(prev);
+      setTimeout(() => { lag.style.width = pc(k); }, 400);
+    }
   }
   frame(info: FrameInfo) {
     const me = info.me;
@@ -1570,7 +1596,7 @@ export class Hud {
       const hp = document.getElementById("hp-fill"), mp = document.getElementById("mp-fill");
       // числа с разделителем разрядов, как у золота; текст пишется только при изменении
       const put = (id: string, t: string) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
-      if (hp) { hp.style.width = `${(me.hp / Math.max(1, me.maxHp)) * 100}%`; this.hpLag(me.hp / Math.max(1, me.maxHp)); put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
+      if (hp) { hp.style.width = `${this.hpLag(me.hp / Math.max(1, me.maxHp)) * 100}%`; put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
       // щит-поглощение поверх HP (как в WoW): от конца здоровья вправо; не помещается — заходит на здоровье с правого края
       const abs = document.getElementById("hp-abs");
       if (abs) {
@@ -1618,7 +1644,8 @@ export class Hud {
       const sig = `${t.name}|${t.level}|${t.hp}|${t.maxHp}|${t.phase}|${shield}`;
       if (this.targetBox.dataset.sig !== sig) {
         this.targetBox.dataset.sig = sig;
-        this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i>${absorbHtml(t.hp, t.maxHp, shield)}<span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
+        this.targetBox.innerHTML = `<div class="nm">${esc(t.name)} ${t.kind === UnitKind.Player ? "" : `<span class="muted">ур. ${t.level}</span>`}</div><div class="bar hp"><s class="hp-lag"></s><i style="width:${(t.hp / Math.max(1, t.maxHp)) * 100}%"></i>${absorbHtml(t.hp, t.maxHp, shield)}<span>${Math.round((t.hp / Math.max(1, t.maxHp)) * 100)}%</span></div>${phase}`;
+        this.trailBar(this.targetBox.querySelector<HTMLElement>(".bar.hp"), `${t.name}|${info.targetId ?? ""}`, t.hp / Math.max(1, t.maxHp));
         this.targetBox.append(this.tgtAuras.el); // один и тот же элемент: значки и подсказки переживают перерисовку
       }
       // эффекты цели: список от сервера только для этой цели; на враге сначала дебафы, на союзнике — бафы, внутри вида мои — первыми

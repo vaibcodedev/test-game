@@ -42,6 +42,7 @@
   --foe: #ff3030;
   --ally: #9ae07a;
   --self: #5ad04a;
+  --dur-win-in: 160ms; --dur-win-out: 110ms; --ease-out-soft: cubic-bezier(.22, .61, .36, 1); --ease-in-soft: cubic-bezier(.4, 0, 1, 1); /* окна: мягкое появление и закрытие */
   --heal: #7aff7a;
   --num-gold: #ffd84a;
   --boss: #ff6a2a;

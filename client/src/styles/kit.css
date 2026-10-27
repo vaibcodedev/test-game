@@ -6,7 +6,18 @@
    Цветовые утилиты .c-* стоят в самом конце файла, чтобы перебивать цвета компонентов. */
 
 /* ---------- служебное (перенесено из adm.css и base.css) ---------- */
-[hidden] { display: none !important; }
+[hidden]:not(.win, .dialog, .modal, .gmenu, .gmenu-back) { display: none !important; }
+/* мягкое появление и закрытие окон: hidden снимается сразу, плавно меняются только opacity и translate (display — discrete-переход) */
+.win, .dialog, .modal, .gmenu, .gmenu-back {
+  opacity: 1; translate: 0 0;
+  transition: opacity var(--dur-win-in) var(--ease-out-soft), translate var(--dur-win-in) var(--ease-out-soft), display var(--dur-win-in) allow-discrete;
+}
+.win[hidden], .dialog[hidden], .modal[hidden], .gmenu[hidden], .gmenu-back[hidden] {
+  display: none; opacity: 0; translate: 0 4px;
+  transition: opacity var(--dur-win-out) var(--ease-in-soft), translate var(--dur-win-out) var(--ease-in-soft), display var(--dur-win-out) allow-discrete;
+}
+@starting-style { .win, .dialog, .modal, .gmenu, .gmenu-back { opacity: 0; translate: 0 4px; } }
+@media (prefers-reduced-motion: reduce) { .win, .dialog, .modal, .gmenu, .gmenu-back, .win[hidden], .dialog[hidden], .modal[hidden], .gmenu[hidden], .gmenu-back[hidden] { transition: none; } }
 .panel { background: var(--panel); border: 2px solid var(--line); border-radius: var(--r-3); box-shadow: var(--shadow-panel); }
 
 /* ---------- каркас окна: h2 (не прокручивается) → .body (единственная прокрутка) → .win-foot ----------

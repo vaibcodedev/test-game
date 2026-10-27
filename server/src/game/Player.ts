@@ -157,6 +157,7 @@ export class Player {
   venomUntil = 0;
   venomStacks = 0;
   regenAcc = 0;
+  regenShow = 0;
   manaAcc = 0;
   bags = new Map<string, LootBag>();
   bagsDirty = false;
