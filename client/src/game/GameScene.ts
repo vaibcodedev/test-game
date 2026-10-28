@@ -1540,7 +1540,7 @@ export class GameScene extends Phaser.Scene {
     this.wow?.update(deltaMs, { zone: zs, indoor: !!this.room, night: lit ? 0 : night });
     this.postfx.update(dt, me && me.u.maxHp > 0 && !me.dead ? me.u.hp / me.u.maxHp : 1, lit ? 0 : night, zs, !!me?.dead);
     // ночь вырезается светом факелов (lights.ts); на «Простых» остаётся плоское затемнение
-    this.nightMask.update(dark.alpha, this.pos, 170, 0.8);
+    this.nightMask.update(dark.alpha, this.pos, 240, 0.9); // круг вокруг героя шире
     dark.setVisible(!this.nightMask.active);
     this.hud.frame({
       me: me?.u ?? null,

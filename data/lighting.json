@@ -4,7 +4,7 @@
  "lights": {
   "alphaBoost": 1.6,
   "scaleBoost": 1.35,
-  "cutScale": 1.5,
+  "cutScale": 2.3,
   "cutAlpha": 1.6,
   "dayMin": 0.12,
   "flickerAmp": 0.16,
