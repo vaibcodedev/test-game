@@ -4129,6 +4129,311 @@
      "fx": []
     }
    }
+  },
+  "plg_drowned_bellringer": {
+   "file": "plg_drowned_bellringer.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 96,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 74,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 5
+    },
+    "waveWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "waveHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "waveCast": {
+     "col": 42,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "embraceWind": {
+     "col": 50,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "embraceHold": {
+     "col": 54,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "embraceCast": {
+     "col": 58,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "tideWind": {
+     "col": 66,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "tideHold": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "tideCast": {
+     "col": 74,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 82,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "wave": {
+     "file": "plg_drowned_bellringer-wave.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 6,
+     "ay": 32,
+     "rows": 2,
+     "anims": {
+      "wave": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    },
+    "roots": {
+     "file": "plg_drowned_bellringer-roots.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 50,
+     "rows": 2,
+     "anims": {
+      "markIn": {
+       "col": 0,
+       "n": 4,
+       "fps": 12,
+       "loop": false
+      },
+      "markHold": {
+       "col": 4,
+       "n": 4,
+       "fps": 12,
+       "loop": true
+      },
+      "rootsOut": {
+       "col": 8,
+       "n": 4,
+       "fps": 12,
+       "loop": false,
+       "hit": 0
+      }
+     }
+    },
+    "tide": {
+     "file": "plg_drowned_bellringer-tide.png",
+     "fw": 64,
+     "fh": 48,
+     "ax": 32,
+     "ay": 28,
+     "rows": 2,
+     "anims": {
+      "tide": {
+       "col": 0,
+       "n": 8,
+       "fps": 8,
+       "loop": true,
+       "hit": 0
+      }
+     }
+    },
+    "mound": {
+     "file": "plg_drowned_bellringer-mound.png",
+     "fw": 48,
+     "fh": 40,
+     "ax": 24,
+     "ay": 30,
+     "rows": 2,
+     "anims": {
+      "mound": {
+       "col": 0,
+       "n": 6,
+       "fps": 8,
+       "loop": true,
+       "hit": 0
+      }
+     }
+    }
+   },
+   "skills": {
+    "bell_wave": {
+     "waves": [
+      {
+       "pre": [
+        "waveWind",
+        "waveHold"
+       ],
+       "strike": "waveCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "wave",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "wave"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "swamp_embrace": {
+     "waves": [
+      {
+       "pre": [
+        "embraceWind",
+        "embraceHold"
+       ],
+       "strike": "embraceCast"
+      },
+      {
+       "pre": [
+        "embraceHold"
+       ],
+       "strike": "embraceCast"
+      },
+      {
+       "pre": [
+        "embraceHold"
+       ],
+       "strike": "embraceCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "roots",
+       "waves": [
+        0,
+        1,
+        2
+       ],
+       "seq": [
+        "markIn",
+        "markHold",
+        "rootsOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "markHold": 700
+       }
+      }
+     ]
+    },
+    "high_tide": {
+     "waves": [
+      {
+       "pre": [
+        "tideWind",
+        "tideHold"
+       ],
+       "strike": "tideCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "tide",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "tide"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "self",
+       "holds": {
+        "tide": 2800
+       }
+      },
+      {
+       "fx": "mound",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "mound"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "marks",
+       "holds": {
+        "mound": 2800
+       }
+      }
+     ]
+    },
+    "drowned_call": {
+     "waves": [
+      {
+       "pre": [
+        "embraceWind",
+        "embraceHold"
+       ],
+       "strike": "embraceCast"
+      }
+     ],
+     "fx": []
+    }
+   }
   }
  },
  "units": {
@@ -4174,6 +4479,10 @@
    "frameH": 80
   },
   "sol_fallen_chaplain_banner": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "plg_drowned_bellringer": {
    "frame": 64,
    "frameH": 80
   }

@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -17,6 +17,7 @@ import * as gob from "./sol_goblin_warlord";
 import * as plg from "./umb_plague_priestess";
 import * as rav from "./sol_plague_raven";
 import * as chp from "./sol_fallen_chaplain";
+import * as bel from "./plg_drowned_bellringer";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -161,6 +162,27 @@ BOSSES.push({
     last_charge: { waves: [{ pre: ["rushWind", "rushHold"], strike: "rushDash" }, { pre: ["rushHold"], strike: "rushStrike" }], fx: [] },
   },
   units: [{ src: "chap-unit-banner.png", id: `${chp.ID}_banner`, frame: chp.BANNER_UNIT.frame, frameH: chp.BANNER_UNIT.frameH }],
+});
+
+const belFx = Object.fromEntries((["wave", "roots", "tide", "mound"] as const).map((k) => [k, { src: `bel-fx-${k}.png`, def: fxDef(bel.ID, k, bel.FX[k] as FxIn) }]));
+// вода и кочки «Прилива» держатся по кругу, пока идёт замах
+belFx.tide.def.anims.tide.loop = true;
+belFx.mound.def.anims.mound.loop = true;
+BOSSES.push({
+  id: bel.ID, sheet: "bel-sheet.png", frame: bel.FRAME, frameH: bel.FRAME_H, cols: bel.BEL_COLS, wrap: 64,
+  // phase (переход фазы 50 %) — зов прилива: кадры листа общие; стоит раньше tideCast: тест кадра по столбцу берёт первое совпадение
+  anims: { ...anims({ idle: bel.BEL_ANIMS.idle, walk: bel.BEL_ANIMS.walk }), phase: { col: bel.BEL_ANIMS.tideCast.col, n: 8, fps: 12, loop: false, hit: 2 }, ...anims(Object.fromEntries(Object.entries(bel.BEL_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))) },
+  fx: belFx,
+  skills: {
+    // волна: кистень бьёт в колокол, звуковой конус с отбрасыванием
+    bell_wave: { waves: [{ pre: ["waveWind", "waveHold"], strike: "waveCast" }], fx: [{ fx: "wave", waves: [0], seq: ["wave"], pin: 0, timing: "strike", place: "marks" }] },
+    // объятие трясины: три метки по очереди, на каждой корни (метка — держится — рывок корней)
+    swamp_embrace: { waves: [{ pre: ["embraceWind", "embraceHold"], strike: "embraceCast" }, { pre: ["embraceHold"], strike: "embraceCast" }, { pre: ["embraceHold"], strike: "embraceCast" }], fx: [{ fx: "roots", waves: [0, 1, 2], seq: ["markIn", "markHold", "rootsOut"], pin: 0, timing: "strike", place: "marks", holds: { markHold: 700 } }] },
+    // прилив: вода под боссом и три сухие кочки (метки safe) держатся весь замах (2,8 с)
+    high_tide: { waves: [{ pre: ["tideWind", "tideHold"], strike: "tideCast" }], fx: [{ fx: "tide", waves: [0], seq: ["tide"], pin: 0, timing: "wind", place: "self", holds: { tide: 2800 } }, { fx: "mound", waves: [0], seq: ["mound"], pin: 0, timing: "wind", place: "marks", holds: { mound: 2800 } }] },
+    // утопленники: зов — тот же замах, что у трясины; сами утопленники — мобы зоны
+    drowned_call: { waves: [{ pre: ["embraceWind", "embraceHold"], strike: "embraceCast" }], fx: [] },
+  },
 });
 
 const only = process.argv[2];

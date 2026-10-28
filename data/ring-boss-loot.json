@@ -456,6 +456,63 @@
       ],
       "legendary": 0.015,
       "pet": 8
+    },
+    "plg_drowned_bellringer": {
+      "name": "Орвен Звонарь",
+      "level": 59,
+      "band": [
+        50,
+        60
+      ],
+      "special": [
+        {
+          "item": "zb_bell_flail",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_thorn_halo",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_drowned_bell",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -1343,6 +1400,120 @@
         "pommel": "ring"
       },
       "boss": "sol_fallen_chaplain",
+      "card": "r2"
+    },
+    "zb_bell_flail": {
+      "id": "zb_bell_flail",
+      "name": "Кистень-колокол звонаря",
+      "base": "hammer",
+      "ilvl": 59,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 36,
+        "crit": 1
+      },
+      "prop": "Каждый двенадцатый удар носителя гудит: цели рядом отступают на шаг.",
+      "lore": "Колокол ещё тёплый от последнего набата. На шипах губы — ил и водоросли.",
+      "look": {
+        "shape": "spiked",
+        "rich": 1,
+        "mat": "bronze",
+        "trim": "bone",
+        "cloth": "moss",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "spike"
+      },
+      "boss": "plg_drowned_bellringer",
+      "card": "r3"
+    },
+    "zb_thorn_halo": {
+      "id": "zb_thorn_halo",
+      "name": "Терновый нимб звонаря",
+      "base": "cloth_helm",
+      "ilvl": 58,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "healer",
+        "warlock",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 16,
+        "vit": 15
+      },
+      "prop": "Носитель не тонет в трясине: корни держат его на четверть короче.",
+      "lore": "Терновый обруч с тремя крошечными колокольцами на цепочках. Они звенят, когда рядом вода.",
+      "look": {
+        "shape": "horncrown",
+        "rich": 1,
+        "mat": "bronze",
+        "trim": "bone",
+        "cloth": "moss",
+        "gem": "onyx",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "plg_drowned_bellringer",
+      "card": "r2"
+    },
+    "zb_drowned_bell": {
+      "id": "zb_drowned_bell",
+      "name": "Колокольчик утопленника",
+      "base": "amulet",
+      "ilvl": 57,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "hp"
+      ],
+      "stats": {
+        "str": 15,
+        "hp": 190
+      },
+      "prop": "Когда носитель падает ниже трети здоровья, колокольчик звякает: ближайший враг на 2 с теряет цель.",
+      "lore": "Бронзовый, зелёный от тины. Если потрясти, звон идёт будто из-под воды.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "bronze",
+        "trim": "iron",
+        "cloth": "moss",
+        "gem": "sun",
+        "haft": "yew",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "ornate",
+        "pommel": "ring"
+      },
+      "boss": "plg_drowned_bellringer",
       "card": "r2"
     }
   }

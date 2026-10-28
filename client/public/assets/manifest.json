@@ -1,5 +1,9 @@
 {
  "units": {
+  "plg_drowned_bellringer": {
+   "frame": 64,
+   "frameH": 80
+  },
   "sol_fallen_chaplain_banner": {
    "frame": 64,
    "frameH": 80
@@ -33782,6 +33786,9 @@
   "uq_zb_apostate_blade",
   "uq_zb_chaplain_mask",
   "uq_zb_standard_cross",
+  "uq_zb_bell_flail",
+  "uq_zb_thorn_halo",
+  "uq_zb_drowned_bell",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",

@@ -62,7 +62,7 @@
       { "slot": "r45n", "west": "sol_mirage_sorcerer", "east": "umb_crimson_vampire", "x": 238, "y": 94, "arena": 10 },
       { "slot": "r49s", "west": "sol_goblin_warlord", "east": "umb_ash_executioner", "x": 234, "y": 240, "arena": 10 },
       { "slot": "r55n", "west": "sol_fallen_chaplain", "east": "umb_plague_priestess", "x": 282, "y": 110, "arena": 10 },
-      { "slot": "r59s", "west": "sol_plague_raven", "east": null, "x": 278, "y": 252, "arena": 10 },
+      { "slot": "r59s", "west": "sol_plague_raven", "east": "plg_drowned_bellringer", "x": 278, "y": 252, "arena": 10 },
       { "slot": "r75n", "west": null, "east": "umb_crown_lich", "x": 378, "y": 98, "arena": 10 }
     ],
     "settlements": [

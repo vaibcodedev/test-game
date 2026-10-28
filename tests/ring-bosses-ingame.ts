@@ -351,7 +351,7 @@ async function main() {
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e)}`));
     await scenario();
     // «AnimationManager key already exists» у боссов стартовых земель — давнее: лист босса и в units/manifest.json, и в каталоге боссов (zbCreate создаёт свои раньше BootScene)
-    const warn = errors.filter((e) => !/favicon|DevTools|GPU stall|swiftshader|AudioContext/i.test(e) && !/key already exists: (sol|umb)_/.test(e));
+    const warn = errors.filter((e) => !/favicon|DevTools|GPU stall|swiftshader|AudioContext/i.test(e) && !/key already exists: (sol|umb|plg)_/.test(e));
     check(warn.length === 0, `ошибок консоли нет${warn.length ? `: ${warn.slice(0, 5).join(" | ")}` : ""}`);
   } catch (e) {
     lines.push(`EXC ${String((e as Error)?.stack ?? e).slice(0, 1200)}`);
