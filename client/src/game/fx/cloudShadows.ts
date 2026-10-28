@@ -13,15 +13,15 @@ function makeTex(scene: Phaser.Scene) {
   for (let v = 0; v < 3; v++) {
     const key = "wow_cloud" + v;
     if (scene.textures.exists(key)) continue;
-    const W = 64, H = 40, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const W = 128, H = 80, c = document.createElement("canvas"); c.width = W; c.height = H;
     const g = c.getContext("2d")!;
     // 4–6 пересекающихся радиальных пятен: неровный, но очень мягкий край
     let seed = 7 + v * 31; const r = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-    const n = 4 + v;
+    const n = 7 + v * 2;
     for (let i = 0; i < n; i++) {
       const x = W * (0.25 + 0.5 * r()), y = H * (0.3 + 0.4 * r()), rad = H * (0.32 + 0.22 * r());
       const gr = g.createRadialGradient(x, y, 0, x, y, rad);
-      gr.addColorStop(0, "rgba(255,255,255,0.55)"); gr.addColorStop(0.6, "rgba(255,255,255,0.18)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+      gr.addColorStop(0, "rgba(255,255,255,0.42)"); gr.addColorStop(0.35, "rgba(255,255,255,0.26)"); gr.addColorStop(0.7, "rgba(255,255,255,0.08)"); gr.addColorStop(1, "rgba(255,255,255,0)");
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
     }
     const t = scene.textures.addCanvas(key, c)!;
@@ -64,7 +64,7 @@ export class CloudShadows {
     const w = 130 + Math.random() * 130, h = w * 0.6;
     const x = v.x - w * 0.6 + Math.random() * (v.w + w), y = v.y + Math.random() * v.h;
     const img = this.scene.add.image(x, y, "wow_cloud" + Math.floor(Math.random() * 3)).setTint(0x04060c).setAlpha(0).setDisplaySize(w, h).setDepth(this.o.depth ?? 5);
-    this.clouds.push({ img, x, y, vx: 7 + Math.random() * 5, vy: 1.5 + Math.random() * 1.5, w, a: Math.min(amax, 0.06 + Math.random() * 0.03 + rain * 0.03), age: 0, life: 70000 + Math.random() * 40000 });
+    this.clouds.push({ img, x, y, vx: 4 + Math.random() * 3, vy: 1.5 + Math.random() * 1.5, w, a: Math.min(amax, 0.06 + Math.random() * 0.03 + rain * 0.03), age: 0, life: 70000 + Math.random() * 40000 });
   }
   /** Для превью: сразу расставить n пятен по экрану. */
   fill(n: number, rain = 0) {

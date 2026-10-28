@@ -1,0 +1,56 @@
+/* Вступление босса (fx/bossBanner.ts, fx/bossIntro.ts): кинополосы с гравировкой, плашка-объявление, имя по буквам.
+   Только токены tokens.css и приёмы kit.css / adm.css (рамка frame-b, разделитель с крюками, шрифт заголовков, тени). Цвет босса — --c (динамика).
+   Всё на keyframes с общей длиной --bi-dur (2.9 s): кадры превью ставятся через document.getAnimations(). */
+.bi-root { position: fixed; inset: 0; z-index: var(--z-announce); pointer-events: none; --bi-dur: 2.9s; --c: var(--gold); overflow: hidden; }
+.bi-root.out { animation: bi-out 0.22s ease-in forwards; }
+@keyframes bi-out { to { opacity: 0; } }
+
+/* затемнение краёв и вспышка цвета босса */
+.bi-vig { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 46%, transparent 38%, rgba(8, 4, 10, 0.55) 100%); opacity: 0; animation: bi-vig var(--bi-dur) ease-in-out both; }
+@keyframes bi-vig { 0% { opacity: 0; } 22% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
+.bi-flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 54%, color-mix(in srgb, var(--c) 55%, transparent), transparent 62%); opacity: 0; mix-blend-mode: screen; animation: bi-flash var(--bi-dur) ease-out both; }
+@keyframes bi-flash { 0%, 36% { opacity: 0; } 41% { opacity: 1; } 62% { opacity: 0; } 100% { opacity: 0; } }
+
+/* кинополосы: фон --well, золотая кромка, гравированный разделитель по внутреннему краю */
+.bi-bar { position: absolute; left: 0; right: 0; height: 12vh; min-height: 56px; background: var(--well); box-shadow: 0 0 24px 8px rgba(0, 0, 0, 0.55); animation: bi-bar var(--bi-dur) both; }
+.bi-bar.top { top: 0; border-bottom: 2px solid var(--gold); --y: -100%; }
+.bi-bar.bot { bottom: 0; border-top: 2px solid var(--gold); --y: 100%; }
+@keyframes bi-bar { 0% { transform: translateY(var(--y)); animation-timing-function: cubic-bezier(0.16, 0.84, 0.3, 1); } 13% { transform: none; } 86% { transform: none; animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.4); } 100% { transform: translateY(var(--y)); } }
+.bi-bar::before { content: ""; position: absolute; left: var(--sp-4); right: var(--sp-4); height: var(--div-h); background: url("/ui/divider-b-line.png") left center / 80px var(--div-h) repeat-x; image-rendering: pixelated; opacity: 0.85; }
+.bi-bar.top::before { bottom: var(--sp-1h); }
+.bi-bar.bot::before { top: var(--sp-1h); transform: scaleY(-1); }
+
+/* плашка: широкая полоса-объявление (как .war-banner, но с гравировкой и шрифтом заголовков) */
+.bi-plate { position: absolute; left: 50%; top: 58%; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; width: max-content; max-width: min(720px, calc(100vw - 2 * var(--sp-4))); text-align: center;
+  transform: translate(-50%, -50%); opacity: 0; animation: bi-plate var(--bi-dur) both; }
+@keyframes bi-plate {
+  0%, 30% { opacity: 0; transform: translate(-50%, -50%) scale(0.88); clip-path: inset(0 50% 0 50%); animation-timing-function: cubic-bezier(0.16, 0.84, 0.3, 1); }
+  45% { opacity: 1; transform: translate(-50%, -50%) scale(1); clip-path: inset(-20px -20px); }
+  74% { opacity: 1; transform: translate(-50%, -50%) scale(1); clip-path: inset(-20px -20px); animation-timing-function: ease-in; }
+  86%, 100% { opacity: 0; transform: translate(-50%, -54%) scale(1.02); clip-path: inset(-20px -20px); }
+}
+.bi-plate { width: 100vw; max-width: none; padding: var(--sp-4) 0 var(--sp-5); background: linear-gradient(90deg, transparent, var(--overlay) 14%, var(--overlay) 86%, transparent); border-block: 1px solid var(--line-hi); box-shadow: 0 0 0 1px #000; }
+
+.bi-k { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); font-weight: var(--fw-b); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); opacity: 0; animation: bi-fade 0.4s ease-out calc(var(--bi-dur) * 0.4) both; }
+.bi-k img { width: 11px; height: 15px; image-rendering: pixelated; }
+.bi-k .bi-c { color: var(--c); }
+@keyframes bi-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.bi-rule { display: flex; align-self: stretch; min-width: 260px; height: var(--div-h); margin: var(--sp-1) 0 var(--sp-1h); }
+.bi-rule::before, .bi-rule::after { content: ""; flex: 1; background: url("/ui/divider-b-cap.png") right bottom / var(--div-cap) var(--div-h) no-repeat, url("/ui/divider-b-line.png") left bottom / calc(100% - var(--div-cap)) var(--div-h) no-repeat; image-rendering: pixelated; animation: bi-rule 0.55s cubic-bezier(0.16, 0.84, 0.3, 1) calc(var(--bi-dur) * 0.36) both; }
+.bi-rule::before { transform: scaleX(-1); }
+@keyframes bi-rule { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+.bi-rule.bottom { margin: var(--sp-1h) 0 0; transform: scaleY(-1); }
+
+/* имя по буквам: каждая появляется снизу со вспышкой цвета босса, к концу — тиснение шрифтом заголовков */
+.bi-name { margin: 0; font-family: var(--font-head); font-size: round(nearest, var(--fs-head-screen), var(--hu)); font-weight: var(--fw); word-spacing: var(--head-ws); line-height: 1.15; color: var(--fg); letter-spacing: 0.04em; text-wrap: balance; padding-inline: var(--sp-4); text-shadow: var(--shadow-head); }
+.bi-plate .bi-name { font-size: round(nearest, var(--fs-head-logo), var(--hu)); }
+.bi-l { display: inline-block; opacity: 0; animation: bi-letter 0.34s ease-out calc(var(--bi-dur) * 0.37 + var(--i) * 0.05s) both; }
+@keyframes bi-letter { 0% { opacity: 0; transform: translateY(0.3em) scale(1.15); color: #fff; text-shadow: 0 0 0.5em var(--c), 0 0 1.1em var(--c); } 60% { opacity: 1; color: var(--c); text-shadow: 0 0 0.35em var(--c), var(--shadow-head); } 100% { opacity: 1; transform: none; color: var(--fg); text-shadow: var(--shadow-head); } }
+.bi-name .bi-sp { display: inline-block; width: 0.5em; }
+.bi-t { margin: var(--sp-1h) 0 0; font-size: var(--fs-md); font-style: italic; font-weight: var(--fw); color: var(--dim); text-shadow: var(--shadow-text); opacity: 0; animation: bi-fade 0.45s ease-out calc(var(--bi-dur) * 0.5) both; }
+.bi-sub { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); font-weight: var(--fw-b); letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); opacity: 0; animation: bi-fade 0.45s ease-out calc(var(--bi-dur) * 0.56) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bi-bar, .bi-plate, .bi-l, .bi-rule::before, .bi-rule::after { animation-duration: 0.01s; }
+  .bi-flash, .bi-vig { display: none; }
+}

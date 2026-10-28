@@ -16,10 +16,10 @@ import { wowCfg, wowOn } from "./config";
 import { Birds, type Species } from "./birds";
 import { DmgNumbers, DMG_TEXT_OK } from "./dmgFont";
 import { BossIntro } from "./bossIntro";
-import { warpIn, warpOut, warpClear } from "./portalWarp";
+import { warpIn, warpOut, warpClear, warpFrame } from "./portalWarp";
 import { CloudShadows } from "./cloudShadows";
 import { Decals } from "./decals";
-import { RopeCloth } from "./ropeCloth";
+import { RopeCloth, chainTexture } from "./ropeCloth";
 import { PickupFly } from "./pickupFly";
 import { wowHooks } from "./hooks";
 
@@ -48,13 +48,15 @@ export class WowHost {
   private lastDeath = { x: 0, y: 0, t: -1e9 };
   private scanAcc = 0; private bossAcc = 0; private last = { x: NaN, y: 0 }; private foot = 0; private walked = 0;
   private bloodAt = new Map<string, number>();
+  private sndAt = 0;
   private warpGuard?: Phaser.Time.TimerEvent;
+  private chains: { rope: Phaser.GameObjects.Rope; id: string; dx: number; dy: number; len: number }[] = [];
 
   constructor(private scene: Phaser.Scene, private o: HostOpts) {
     if (wowOn("dmgFont")) this.nums = new DmgNumbers(scene, DEPTH.top - 10);
     if (wowOn("decals")) this.decals = new Decals(scene, { depth: DEPTH.ground + 1 });
     if (wowOn("pickupFly")) {
-      this.pick = new PickupFly(scene, () => { const h = o.hero(); return { x: h.x, y: h.y }; });
+      this.pick = new PickupFly(scene, () => { const h = o.hero(); return { x: h.x, y: h.y }; }, DEPTH.top - 20, (kind) => { const t = scene.time.now; if (t - this.sndAt > 90) { this.sndAt = t; sfx.play(kind === "coin" ? "clink" : "arcane", kind === "coin" ? 0.5 : 0.25); } });
       wowHooks.death = (v) => this.onDeath(v);
     }
     if (pendingWarpIn) { pendingWarpIn = false; if (wowOn("portalWarp") && vfxMode() === "full") warpIn(scene, { color: 0xc4a4ff, color2: 0x8fd0ff }); }
@@ -72,10 +74,10 @@ export class WowHost {
     if (wowOn("cloudShadows") && full && !this.clouds) this.clouds = new CloudShadows(s, { view: () => ({ x: cam.worldView.x, y: cam.worldView.y, w: cam.worldView.width, h: cam.worldView.height }), isDay: () => 1 - this.night, isOpen: () => open, rain: () => weatherAt(Date.now()).rain, density: () => wowCfg("cloudShadows").density as "sparse" | "denser", depth: DEPTH.ground + 2 });
     if ((!wowOn("cloudShadows") || !full) && this.clouds) { this.clouds.destroy(); this.clouds = undefined; }
     if (wowOn("ropeCloth") && full && !this.ropes) this.ropes = new RopeCloth(s);
-    if ((!wowOn("ropeCloth") || !full) && this.ropes) { this.ropes.destroy(); this.ropes = undefined; }
+    if ((!wowOn("ropeCloth") || !full) && this.ropes) { this.ropes.destroy(); this.ropes = undefined; this.chains = []; }
 
     this.birds?.update(dt); this.clouds?.update(dt); this.nums?.update(dt); this.decals?.update(dt); this.pick?.update(dt);
-    if (this.ropes) { this.scanAcc += dt; if (this.scanAcc > 1200) { this.scanAcc = 0; this.scanStandards(); } this.ropes.update(dt); }
+    if (this.ropes) { this.scanAcc += dt; if (this.scanAcc > 1200) { this.scanAcc = 0; this.scanStandards(); } this.ropes.update(dt); this.followChains(); }
     this.footsteps();
     if (wowOn("bossIntro")) { this.bossAcc += dt; if (this.bossAcc > 250) { this.bossAcc = 0; this.watchBosses(); } }
   }
@@ -113,12 +115,15 @@ export class WowHost {
   }
   /** Телепорт героя: на go экран схлопывается, на arrive раскрывается (страховка 1,6 с). */
   tp(f: Extract<Fx, { t: "tp" }>) {
+    if ((window as unknown as { __wowDbg?: boolean }).__wowDbg) console.log("[wow] tp", f.ph, f.id === this.o.selfId, wowOn("portalWarp"), vfxMode());
     if (!wowOn("portalWarp") || vfxMode() !== "full" || f.id !== this.o.selfId) return;
     const o = { color: 0x8fd0ff, color2: 0xc4a4ff };
     if (f.ph === "go") { warpOut(this.scene, undefined, o); this.warpGuard?.remove(); this.warpGuard = this.scene.time.delayedCall(wowCfg("portalWarp").outMs + 1200, () => warpIn(this.scene, o)); }
     else if (f.ph === "arrive") { this.warpGuard?.remove(); warpIn(this.scene, o); }
     else if (f.ph === "cancel") { this.warpGuard?.remove(); warpClear(this.scene); }
   }
+  /** Для проверки вручную: застывший кадр перехода k 0..1 (k < 0 — снять). */
+  debugWarp(k: number) { if (k < 0) warpClear(this.scene); else warpFrame(this.scene, k); }
   /** Вход в подземелье и выход: линза до закрытия экрана, раскрытие в новой сцене. */
   dungeonFade(ms: number) {
     if (!wowOn("portalWarp") || vfxMode() !== "full") return;
@@ -144,7 +149,32 @@ export class WowHost {
       if (sp.x < v.x - 200 || sp.x > v.right + 200 || sp.y < v.y - 200 || sp.y > v.bottom + 200) continue;
       r.mirror(sp);
     }
+    this.scanChains();
   }
+  /** Терновые цепи Гнашеры (umb_plague_priestess): четыре Rope-цепи свисают с рук босса и качаются на общем ветру. */
+  private scanChains() {
+    const r = this.ropes!, links = 6;
+    chainTexture(this.scene, "wow_gn_chain", links, true);
+    for (const [id, v] of this.o.units()) {
+      if (v.u.sprite !== "umb_plague_priestess" || v.dead || this.chains.some((c) => c.id === id)) continue;
+      [[-19, -34], [-9, -28], [9, -28], [19, -34]].forEach(([dx, dy]) => this.chains.push({ rope: r.chain(v.x + dx, v.y + dy, "wow_gn_chain", links, { amp: 4, depth: 0 }), id, dx, dy, len: links * 4 }));
+    }
+  }
+  private followChains() {
+    const units = this.o.units();
+    for (let i = this.chains.length - 1; i >= 0; i--) {
+      const c = this.chains[i], v = units.get(c.id);
+      if (!v || v.dead || !v.sprite.active) { c.rope.setVisible(false); if (!v || !units.has(c.id)) { c.rope.destroy(); this.chains.splice(i, 1); } continue; }
+      c.rope.setVisible(true).setPosition(Math.round(v.x + c.dx), Math.round(v.y + c.dy + c.len / 2)).setDepth(v.sprite.depth + 1);
+    }
+  }
+  /** Для проверки вручную: цепи на героя (__wow.debugChains()). */
+  debugChains() {
+    const me = this.o.units().get(this.o.selfId); if (!me || !this.ropes) return;
+    chainTexture(this.scene, "wow_gn_chain", 6, true);
+    [-19, -9, 9, 19].forEach((dx) => this.ropes!.chain(me.x + dx, me.y - 34, "wow_gn_chain", 6, { amp: 4, depth: me.sprite.depth + 1 }));
+  }
+
   private footsteps() {
     if (!this.decals || this.indoor) return;
     const h = this.o.hero();
@@ -169,17 +199,17 @@ export class WowHost {
       const card = ZB_BY_ID[v.u.sprite];
       if (!card || v.dead || this.seen.has(id) || Math.hypot(v.x - h.x, v.y - h.y) > 300) continue;
       this.seen.add(id);
-      this.startIntro(v.x, v.y, v.u.name || card.name || "", v.u.title || card.title || "", BOSS_COL[v.u.sprite.slice(0, 3)] ?? 0xe0a050, () => { v.flash(); });
+      this.startIntro(v.x, v.y, v.u.name || card.name || "", v.u.title || card.title || "", BOSS_COL[v.u.sprite.slice(0, 3)] ?? 0xe0a050, () => { v.flash(); }, v.u.sprite.startsWith("sol") ? "sol" : v.u.sprite.startsWith("umb") ? "umb" : "none");
       return;
     }
   }
   /** Запуск вступления (и для проверки вручную: __wow.startIntro). */
-  startIntro(x: number, y: number, name: string, title: string, col: number, gesture?: () => void) {
+  startIntro(x: number, y: number, name: string, title: string, col: number, gesture?: () => void, crest: "sol" | "umb" | "none" = "none") {
     if (this.intro?.active) return;
-    this.intro = new BossIntro(this.scene, { boss: { x, y }, name, title, color: col, followTarget: this.o.followTarget(), followOffY: 12, onLock: (l) => { this.locked = l; const ui = document.getElementById("ui"); if (ui) ui.style.visibility = l ? "hidden" : ""; }, onGesture: () => { gesture?.(); sfx.play("gong", 0.8); } }).play();
+    this.intro = new BossIntro(this.scene, { boss: { x, y }, name, title, kicker: "Босс кольца", crest, color: col, followTarget: this.o.followTarget(), followOffY: 12, onLock: (l) => { this.locked = l; }, onGesture: () => { gesture?.(); sfx.play("gong", 0.8); } }).play();
   }
   destroy() {
     this.birds?.destroy(); this.clouds?.destroy(); this.ropes?.destroy(); this.nums?.destroy(); this.decals?.destroy(); this.pick?.destroy();
-    this.birds = this.clouds = this.ropes = undefined; if (wowHooks.death) wowHooks.death = undefined; this.locked = false; const ui = document.getElementById("ui"); if (ui) ui.style.visibility = "";
+    this.birds = this.clouds = this.ropes = undefined; this.chains = []; if (wowHooks.death) wowHooks.death = undefined; this.locked = false;
   }
 }

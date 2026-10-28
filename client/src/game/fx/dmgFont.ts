@@ -20,12 +20,13 @@ const CHARS = Object.keys(G).join("");
 /** scale — 1 для обычных, 1.5 для критов (ближайший сосед при рисовании: пиксели неравные, как в старых играх). */
 function build(scene: Phaser.Scene, key: string, scale: number, outline: string) {
   if (scene.cache.bitmapFont.exists(key)) return;
-  const gw = Math.round(5 * scale), gh = Math.round(7 * scale), cw = gw + 3, ch = gh + 3;
+  const gw = Math.round(5 * scale), gh = Math.round(7 * scale), cw = gw + 4, ch = gh + 4;
   const per = CHARS.length, c = document.createElement("canvas"); c.width = cw * per; c.height = ch;
   const g = c.getContext("2d")!;
   const px = (x: number, y: number, col: string) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
   [...CHARS].forEach((chr, i) => {
     const rows = G[chr].split(" "), ox = i * cw + 1, on = (x: number, y: number) => x >= 0 && y >= 0 && x < gw && y < gh && rows[Math.min(6, Math.floor(y / scale))][Math.min(4, Math.floor(x / scale))] === "1";
+    for (let y = 0; y <= gh + 1; y++) for (let x = 0; x <= gw + 1; x++) if (!on(x, y) && on(x - 1, y - 1)) px(ox + x, 1 + y, "rgba(0,0,0,0.55)"); // мягкая тень вниз-вправо
     for (let y = -1; y <= gh + 1; y++) for (let x = -1; x <= gw; x++) {
       if (on(x, y)) continue;
       // обводка вокруг + тень на 1 px вниз
@@ -35,7 +36,7 @@ function build(scene: Phaser.Scene, key: string, scale: number, outline: string)
   });
   scene.textures.addCanvas(key, c);
   const entry = Phaser.GameObjects.RetroFont.Parse(scene, { image: key, width: cw, height: ch, chars: CHARS, charsPerRow: per, "offset.x": 0, "offset.y": 0, "spacing.x": 0, "spacing.y": 0, lineSpacing: 0 } as never) as unknown as { data: { chars: Record<string, { xAdvance: number }> } };
-  for (const k of Object.keys(entry.data.chars)) entry.data.chars[k].xAdvance = gw + 1;
+  for (const k of Object.keys(entry.data.chars)) entry.data.chars[k].xAdvance = gw + 2;
   scene.cache.bitmapFont.add(key, entry as never);
 }
 export function makeDmgFonts(scene: Phaser.Scene) {

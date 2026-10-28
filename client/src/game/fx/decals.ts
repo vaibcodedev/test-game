@@ -33,17 +33,17 @@ function makeTex(scene: Phaser.Scene) {
   }
   mk("wow_dc_ember", 26, 18, (g) => { for (let i = 0; i < 14; i++) { const a = r() * 6.28, d = 2 + r() * 8; g.fillStyle = r() < 0.5 ? "#ff8a2a" : "#ffc060"; g.fillRect(Math.round(13 + Math.cos(a) * d), Math.round(9 + Math.sin(a) * d * 0.68), 1, 1); } });
   // подошва 5x8: носок шире, пятка отдельно, каблук глубже
-  const boot = (key: string, base: string, deep: string, edge: string) => mk(key, 7, 10, (g) => {
-    g.fillStyle = edge; g.fillRect(1, 0, 5, 5); g.fillRect(1, 7, 4, 3);
-    g.fillStyle = base; g.fillRect(2, 1, 3, 4); g.fillRect(2, 8, 2, 2); g.fillRect(1, 2, 1, 2); g.fillRect(5, 1, 1, 3);
-    g.fillStyle = deep; g.fillRect(2, 4, 3, 1); g.fillRect(2, 9, 2, 1); g.fillRect(3, 1, 1, 1);
-  });
-  boot("wow_dc_snow", "#a8bdd2", "#7f98b4", "#eef4fa"); boot("wow_dc_sand", "#b8935a", "#8f6e3a", "#dcc089");
+  const boot = (key: string, base: string, deep: string, edge: string) => { for (let v = 0; v < 3; v++) mk(key + v, 7, 10, (g) => {
+    g.fillStyle = edge; g.fillRect(1, 0, 5, 5); g.fillRect(1, 7, 4, 3); if (v === 1) g.fillRect(0, 2, 1, 2); if (v === 2) g.fillRect(6, 3, 1, 1);
+    g.fillStyle = base; g.fillRect(2, 1, 3, 4); g.fillRect(2, 8, 2, 2); g.fillRect(1, 2, 1, 2); g.fillRect(5, 1, 1, 3); if (v === 1) g.fillRect(1, 8, 1, 1);
+    g.fillStyle = deep; g.fillRect(2, 4, 3, 1); g.fillRect(2, 9, 2, 1); g.fillRect(3, 1, 1, 1); g.fillRect(2, 2 + v % 2, 3, 1); if (v === 2) g.fillRect(3, 8, 1, 1);
+  }); };
+  boot("wow_dc_snow", "#5f7ca0", "#3c5679", "#f6fbff"); boot("wow_dc_sand", "#86642e", "#5f4219", "#ecd39b");
   // копыто: пара полумесяцев 9x6
   const hoof = (key: string, base: string, deep: string, edge: string) => mk(key, 11, 7, (g) => {
     for (const ox of [0, 6]) { g.fillStyle = edge; g.fillRect(ox + 1, 0, 4, 1); g.fillRect(ox, 1, 1, 4); g.fillRect(ox + 4, 1, 1, 4); g.fillStyle = base; g.fillRect(ox + 1, 1, 3, 3); g.fillStyle = deep; g.fillRect(ox + 1, 3, 1, 2); g.fillRect(ox + 3, 3, 1, 2); g.fillRect(ox + 1, 5, 3, 1); }
   });
-  hoof("wow_dc_hoofsnow", "#a8bdd2", "#7f98b4", "#eef4fa"); hoof("wow_dc_hoofsand", "#b8935a", "#8f6e3a", "#dcc089");
+  hoof("wow_dc_hoofsnow", "#5f7ca0", "#3c5679", "#f6fbff"); hoof("wow_dc_hoofsand", "#86642e", "#5f4219", "#ecd39b");
 }
 
 export class Decals {
@@ -64,7 +64,7 @@ export class Decals {
       if (this.chunks.size >= 9) { let old: string | null = null, ot = Infinity; for (const [k, ch] of this.chunks) { const t = ch.list[ch.list.length - 1]?.t0 ?? 0; if (t < ot) { ot = t; old = k; } } if (old) { this.chunks.get(old)!.rt.destroy(); this.chunks.delete(old); } }
       c = { rt: this.scene.add.renderTexture(cx * CH, cy * CH, CH, CH).setOrigin(0).setDepth(this.o.depth ?? -695), list: [] }; this.chunks.set(key, c);
     }
-    c.list.push({ kind, v: Math.floor(Math.random() * 4), x: x - cx * CH, y: y - cy * CH, rot, sc, t0: now, life, a0: kind === "blood" ? 0.9 : kind === "scorch" ? 0.85 : 0.75 });
+    c.list.push({ kind, v: Math.floor(Math.random() * 4), x: x - cx * CH, y: y - cy * CH, rot, sc, t0: now, life, a0: kind === "blood" ? 0.9 : kind === "scorch" ? 0.85 : 0.97 });
     if (c.list.length > cap) c.list.splice(0, c.list.length - cap);
   }
   /** Шаг: ступня (левая/правая со смещением) по направлению движения; mount — пара копыт. */
@@ -88,8 +88,8 @@ export class Decals {
     c.rt.clear();
     c.rt.beginDraw();
     for (const d of c.list) {
-      const age = now - d.t0, k = age / d.life, a = d.a0 * (k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3) * (d.kind === "scorch" ? 1 - 0.35 * k : 1);
-      const key = d.kind === "blood" ? "wow_dc_blood" + d.v : d.kind === "scorch" ? "wow_dc_scorch" + (d.v % 4) : "wow_dc_" + d.kind;
+      const age = now - d.t0, k = age / d.life, fk = clamp01((k - 0.35) / 0.65), a = d.a0 * (1 - fk * fk * (3 - 2 * fk)) * (d.kind === "scorch" ? 1 - 0.35 * k : 1);
+      const key = d.kind === "blood" ? "wow_dc_blood" + d.v : d.kind === "scorch" ? "wow_dc_scorch" + (d.v % 4) : FOOT.has(d.kind) && !d.kind.startsWith("hoof") ? "wow_dc_" + d.kind + (d.v % 3) : "wow_dc_" + d.kind;
       const img = this.stamp.setTexture(key).setAngle(FOOT.has(d.kind) ? Phaser.Math.RadToDeg(d.rot) : 0).setAlpha(clamp01(a)).setScale(d.sc).setBlendMode(Phaser.BlendModes.NORMAL);
       if (d.kind === "blood") { const dry = clamp01(age / 10000), g = Math.round(255 * (1 - 0.5 * dry)); img.setTint((g << 16) | (Math.round(g * 0.82) << 8) | Math.round(g * 0.82)); } else img.clearTint();
       c.rt.batchDraw(img, Math.round(d.x), Math.round(d.y));

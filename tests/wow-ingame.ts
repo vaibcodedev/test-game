@@ -31,6 +31,15 @@ async function login(page: Page, name: string) {
   await sleep(1500);
 }
 
+/** Ждёт, пока камера встанет: scroll не меняется ~0,8 с подряд. */
+async function settle(page: Page) {
+  let prev = "", same = 0;
+  for (let i = 0; i < 80 && same < 3; i++) {
+    const cur = await page.evaluate(() => { const c = (window as any).__game.scene.getScene("game").cameras.main; return `${c.scrollX.toFixed(1)},${c.scrollY.toFixed(1)}`; });
+    same = cur === prev ? same + 1 : 0; prev = cur; await sleep(300);
+  }
+}
+
 async function main() {
   process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
   await startServer(true);
@@ -41,12 +50,13 @@ async function main() {
   try {
     const page = await browser.newPage();
     page.on("pageerror", (e) => console.error("pageerror", String(e)));
-    await page.evaluateOnNewDocument(() => { try { localStorage.setItem("vfxMode", "full"); localStorage.setItem("wowFx", "1"); } catch {} });
+    page.on("console", (m) => { if (m.text().startsWith("[wow]")) console.log(m.text()); });
+    await page.evaluateOnNewDocument(() => { (window as any).__name = (f: unknown) => f; try { localStorage.setItem("vfxMode", "full"); localStorage.setItem("wowFx", "1"); } catch {} });
     await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
     await login(page, `Wow${process.pid % 1000}`);
     const dbg = (m: Record<string, unknown>) => page.evaluate((x) => (window as any).__net.send("dbg", x), m);
     await dbg({ op: "god" });
-    await page.evaluate((target) => { const real = Date.now.bind(Date), off = target - real(); (Date as any).now = () => real() + off; (window as any).__fx.debugFx.rain = 0; }, dayMs);
+    await page.evaluate((C) => { const D = Date.now.bind(Date); (Date as any).now = () => Math.floor(D() / C) * C + Math.round(C * 0.3); (window as any).__fx.debugFx.rain = 0; }, DAY_CYCLE_MS);
     const goto = async (x: number, y: number) => {
       await dbg({ op: "tp", x, y });
       await page.waitForFunction((tx: number, ty: number) => { const sc = (window as any).__game.scene.getScene("game"); return Math.hypot(sc.pos.x - tx, sc.pos.y - ty) < 120; }, { timeout: 30000 }, x, y).catch(() => console.log("tp не дошёл", x, y));
@@ -74,78 +84,106 @@ async function main() {
 
     await sleep(1500);
     console.log("diag", JSON.stringify(await page.evaluate(() => { const w = (window as any).__wow; return { has: !!w, ls: localStorage.getItem("wowFx"), birds: !!w?.birds, clouds: !!w?.clouds, nums: !!w?.nums, decals: !!w?.decals, pick: !!w?.pick, ropes: !!w?.ropes, tts: (window as any).__game.scene.getScene("game").tweens.timeScale, tms: (window as any).__game.scene.getScene("game").time.timeScale, tw: (window as any).__game.scene.getScene("game").tweens.getTweens().length }; })));
-    // 1. город: стайка над городом и стайка на крыше
-    const city = await zonePt(14) ?? await zonePt(0);
-    if (city) {
-      const h = await houseNear(city.x, city.y); const at = h ?? city; console.log("город", JSON.stringify(h));
-      await goto(at.x, at.y + 24);
-      await page.evaluate(() => {
-        const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"), hx = sc.pos.x, hy = sc.pos.y;
-        w.birds?.spawn(hx - 175, hy - 62, 1, 6, undefined, "gull");
-        const roofs = w.roofs().sort((a: any, b: any) => Math.hypot(a.x - hx, a.y - hy) - Math.hypot(b.x - hx, b.y - hy));
-        if (roofs[0]) w.birds?.spawn(roofs[0].x - 80, roofs[0].y - 12, 1, 5, roofs[0], "raven");
-      });
-      await sleep(3000);
-      console.log("birds", JSON.stringify(await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"), v = sc.cameras.main.worldView, f = w.birds.flocks; return { n: f.length, view: [v.x, v.y, v.width, v.height], zoom: sc.cameras.main.zoom, fps: (window as any).__game.loop.actualFps, b: f.map((q: any) => ({ x: q.x, y: q.y, st: q.state, img: q.birds[0] && [q.birds[0].img.x, q.birds[0].img.y, q.birds[0].img.visible, q.birds[0].img.depth, q.birds[0].img.frame.name] })) }; })));
-      await snap("Город: птицы над крышами, тень на земле", 0);
-      await snap("Город: стайка села на конёк", 4500);
-      await page.evaluate(() => { const w = (window as any).__wow; for (const [, v] of w.o.units()) void v; }); // прогон
-    }
-    // 2. Поля: тени облаков + знамёна (если рядом)
-    const field = await zonePt(16) ?? await zonePt(1);
-    if (field) {
-      await goto(field.x, field.y);
-      await page.evaluate(() => { const w = (window as any).__wow; w.clouds?.fill(2, 0); });
-      await snap("Поля: редкие мягкие тени облаков", 1500);
-    }
-    // 3. пустошь: вороны, бой (цифры, кровь, ожог), души и золото
+    const zoomTo = (z: number) => page.evaluate((zz) => { (window as any).__game.scene.getScene("game").cameras.main.setZoom(zz); }, z);
+    const evalHero = <T>(fn: string) => page.evaluate(fn) as Promise<T>;
+    void evalHero;
+    const fpsNow = async () => { await sleep(2500); const a: number[] = []; for (let i = 0; i < 6; i++) { a.push(await page.evaluate(() => (window as any).__game.loop.actualFps as number)); await sleep(500); } return a.reduce((x, y) => x + y, 0) / a.length; };
+    // точка с поверхностью: ближайшая к центру тяжести клеток, где углы тайла — нужные типы
+    const surfPt = (types: number[]) => page.evaluate((ts) => {
+      const m = (window as any).__game.scene.getScene("game").map; let sx = 0, sy = 0, n = 0; const ok = (x: number, y: number) => ts.includes(m.vtx[y * (m.w + 1) + x]) && ts.includes(m.vtx[(y + 3) * (m.w + 1) + x + 3]) && ts.includes(m.vtx[(y + 6) * (m.w + 1) + x + 6]);
+      for (let y = 0; y < m.h - 8; y += 3) for (let x = 0; x < m.w - 8; x += 3) if (ok(x, y)) { sx += x; sy += y; n++; }
+      if (!n) return null; const north = ts.includes(10); const cx = sx / n, cy = north ? 0 : sy / n; let best: any = null, bd = 1e9;
+      for (let y = 0; y < m.h - 8; y += 3) for (let x = 0; x < m.w - 8; x += 3) if (ok(x, y)) { const d = north ? Math.abs(x - cx) * 0.3 + y : Math.hypot(x - cx, y - cy); if (d < bd) { bd = d; best = { x: x * 32 + 48, y: y * 32 + 48, n }; } }
+      return best as { x: number; y: number; n: number } | null;
+    }, types);
+    const heroEval = (code: string) => page.evaluate(code);
+    void heroEval;
+    // 1. пустошь: вороны (тёмная зона, поэтому крупно)
     const ash = await zonePt(4);
     if (ash) {
       await goto(ash.x, ash.y);
-      await page.evaluate(() => { const w = (window as any).__wow, v = (window as any).__game.scene.getScene("game").cameras.main.worldView; const sc = (window as any).__game.scene.getScene("game"); w.birds?.spawn(sc.pos.x - 175, sc.pos.y - 50, 1, 5, undefined, "raven"); void v; });
-      await snap("Пустошь: вороны", 2600);
+      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"); for (let i = 0; i < 3; i++) w.birds?.spawn(sc.pos.x - 180 - i * 60, sc.pos.y - 50 + i * 15, 1, 6, undefined, "raven"); w.clouds?.fill(2, 0); });
+      const fFull = await fpsNow();
+      await page.evaluate(() => (window as any).__fx.setVfxMode("simple")); const fSimple = await fpsNow();
+      await page.evaluate(() => (window as any).__fx.setVfxMode("full")); await sleep(1500);
+      console.log(`FPS пустошь: полные ${fFull.toFixed(1)} | простые ${fSimple.toFixed(1)}`);
+      await zoomTo(3);
+      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"); w.birds?.spawn(sc.pos.x - 95, sc.pos.y - 40, 1, 7, undefined, "raven"); w.birds?.spawn(sc.pos.x - 130, sc.pos.y - 18, 1, 5, undefined, "raven"); });
+      await snap("Птицы: вороны над пустошью, тени на земле (зум 3)", 2200);
+      await zoomTo(2);
+    }
+    // 2. Поля (светлая трава): цифры, золото и души, кровь и ожог, облака, знамёна
+    const field = await zonePt(16) ?? await zonePt(1);
+    if (field) {
+      await goto(field.x, field.y);
+      await zoomTo(4);
       await page.evaluate(() => {
-        const sc = (window as any).__game.scene.getScene("game"), me = sc.units.get((window as any).__net.id);
-        const mob = [...sc.units.values()].filter((u: any) => u.u.kind === 1 && Math.hypot(u.x - me.x, u.y - me.y) < 150).sort((a: any, b: any) => Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(b.x - me.x, b.y - me.y))[0] ?? me; const id = mob.id;
-        sc.fx.play([{ t: "dmg", id, v: 124, k: "phys" }, { t: "dmg", id, v: 387, crit: true, k: "phys" }, { t: "dmg", id, v: 61, k: "fire" }]);
-        const w = (window as any).__wow; w.decals?.add("scorch", mob.x + 24, mob.y + 6, 0, undefined, 1.3); w.decals?.add("blood", mob.x - 20, mob.y + 8, 0, undefined, 1.4);
-        sc.fx.play([{ t: "dmg", id: me.id, v: 45, heal: true }]);
+        const sc = (window as any).__game.scene.getScene("game"), w = (window as any).__wow, hx = sc.pos.x, hy = sc.pos.y - 30, saved = w.nums;
+        for (const dx of [-40, 40]) {
+          if (dx < 0) w.nums = undefined; else w.nums = saved;
+          sc.fx.number(hx + dx, hy, "124", "#ffe060", false, 1, "", false, 1, false); sc.fx.number(hx + dx, hy - 14, "387!", "#ffd84a", true, 1, "", false, 1, false); sc.fx.number(hx + dx, hy + 12, "+45", "#7aff7a", false, 1, "", false, 1, false);
+        }
       });
-      await snap("Бой: цифры (BitmapText), кровь, ожог", 260);
-      await page.evaluate(() => { const sc = (window as any).__game.scene.getScene("game"), w = (window as any).__wow, me = sc.units.get((window as any).__net.id); const mob = me; w.pick?.gold(mob.x, mob.y - 10, 7); w.pick?.souls(mob.x, mob.y - 14, 6); });
-      await snap("Золото и души летят к герою", 520);
+      await snap("Цифры урона: слева было (Text), справа стало (BitmapText); зум 4", 330);
+      await page.evaluate(() => { const sc = (window as any).__game.scene.getScene("game"), w = (window as any).__wow; sc.fx.number(sc.pos.x - 30, sc.pos.y - 30, "62", "#ffe060", false, 1, "", false, 1, false); sc.fx.number(sc.pos.x + 30, sc.pos.y - 30, "1204!", "#ffd84a", true, 1, "", false, 1, false); void w; });
+      await snap("Цифры урона: крит с блеском и тряской (зум 4)", 120);
+      await zoomTo(3);
+      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"); w.pick?.gold(sc.pos.x - 110, sc.pos.y - 10, 8); w.pick?.souls(sc.pos.x - 100, sc.pos.y - 30, 7); });
+      await snap("Золото (иконка игры) и души летят к герою (зум 3)", 650);
+      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"); w.pick?.souls(sc.pos.x - 90, sc.pos.y - 25, 9); });
+      await snap("Души: янтарное свечение и шлейф (зум 3)", 480);
+      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"), hx = sc.pos.x, hy = sc.pos.y; for (let i = 0; i < 6; i++) w.decals.add("blood", hx - 60 + i * 9, hy - 10 + (i % 3) * 7, 0, undefined, 0.9 + (i % 3) * 0.2); w.decals.add("blood", hx - 40, hy + 24, 0, undefined, 1.5); w.decals.add("scorch", hx + 40, hy - 5, 0, undefined, 1.3); w.decals.add("scorch", hx + 70, hy + 25, 0, undefined, 1); });
+      await snap("Кровь и ожог с тлеющими искрами на земле (зум 3)", 700);
+      await zoomTo(2);
+      await page.evaluate(() => { (window as any).__wow.clouds?.fill(2, 0); });
+      await snap("Поля: редкие мягкие тени облаков, знамёна на ветру (зум 2)", 1500);
     }
-    // 4. снег и песок: следы шагов
-    for (const [zn, nm] of [[9, "снегу"], [8, "песке"]] as [number, string][]) {
-      const pt = await zonePt(zn);
-      if (!pt) continue;
+    // 3. следы: песок и реальный снег
+    for (const [types, nm] of [[[2, 13], "песке"], [[10, 11], "снегу"]] as [number[], string][]) {
+      const pt = await surfPt(types);
+      if (!pt) { console.log("нет поверхности", nm); continue; }
+      console.log("поверхность", nm, JSON.stringify(pt));
       await goto(pt.x, pt.y);
-      await page.evaluate(() => (window as any).__net.send("dbg", { op: "god" }));
-      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"), hx = sc.pos.x, hy = sc.pos.y;
-        for (let k = 0; k < 9; k++) w.decals.step("sand", hx - 130 + k * 13, hy - 36 + Math.sin(k / 2) * 8, 1, Math.cos(k / 2) * 0.5, k, false);
-        for (let k = 0; k < 8; k++) w.decals.step("sand", hx - 120 + k * 17, hy + 30 - Math.sin(k / 2) * 8, 1, -Math.cos(k / 2) * 0.5, k, true); });
-      await snap(`Шаги на ${nm}`, 100);
+      for (let k = 1; k <= 26; k++) { await dbg({ op: "tp", x: pt.x + k * 11, y: pt.y + Math.sin(k / 4) * 14 }); await sleep(130); }
+      await sleep(300);
+      await zoomTo(3);
+      await snap(`Шаги на ${nm} (зум 3)`, 200);
+      await zoomTo(2);
     }
-    await page.evaluate(async () => { const u = "/src/game/fx/config.ts"; const c = await import(/* @vite-ignore */ u); (c.wowCfg("bossIntro") as any).totalMs = 8000; (c.wowCfg("portalWarp") as any).outMs = 3000; });
-    // 5. вход к боссу: найти босса кольца среди юнитов или в map.bosses
-    const bossPt = await page.evaluate(() => {
-      const sc = (window as any).__game.scene.getScene("game"); const b = sc.map.bosses?.[0]; return b ? { x: b.x as number, y: b.y as number } : null;
-    });
-    if (bossPt) {
-      await goto(bossPt.x - 360, bossPt.y);
-      await page.evaluate((bx, by) => { (window as any).__net.send("dbg", { op: "tp", x: bx - 200, y: by }); }, bossPt.x, bossPt.y);
-      await sleep(1700);
-      const started = await page.evaluate(() => !!(window as any).__wow.intro?.active);
-      if (!started) await page.evaluate((bx, by) => { const sc = (window as any).__game.scene.getScene("game"); (window as any).__wow.startIntro(bx, by, "Гнашера", "Жрица котла", 0x8adf6a); void sc; }, bossPt.x, bossPt.y);
-      await sleep(600);
-      console.log("intro", JSON.stringify(await page.evaluate(() => { const i = (window as any).__wow.intro; return { active: i?.active, objs: i?.objs?.map((o: any) => [o.type, o.x, o.y, o.alpha, o.visible]) }; })));
-      await snap("Вход к боссу: полосы, камера, имя", 0, true);
-      await snap("Вступление босса: имя и титул", 500, true);
-    } else console.log("боссов в map.bosses нет");
-    // 6. телепорт: схлопывание экрана
-    await page.evaluate(() => { const w = (window as any).__wow; w.tp({ t: "tp", id: (window as any).__net.id, ph: "go", x: 0, y: 0 }); });
-    await snap("Телепорт: линза, пиксели и вихрь", 0, true);
-    void view;
+    // 4. город: чайки на конёк
+    const city = await zonePt(14) ?? await zonePt(0);
+    if (city) {
+      const h = await houseNear(city.x, city.y); const at = h ?? city;
+      await goto(at.x, at.y + 24);
+      await page.evaluate(() => { const w = (window as any).__wow, sc = (window as any).__game.scene.getScene("game"); w.birds?.spawn(sc.pos.x - 150, sc.pos.y - 60, 1, 6, undefined, "gull"); const roofs = w.roofs().sort((a: any, b: any) => Math.hypot(a.x - sc.pos.x, a.y - sc.pos.y) - Math.hypot(b.x - sc.pos.x, b.y - sc.pos.y)); if (roofs[0]) w.birds?.spawn(roofs[0].x - 70, roofs[0].y - 10, 1, 5, roofs[0], "gull"); });
+      await zoomTo(3);
+      await snap("Город: чайки пролетают и садятся на конёк (зум 3)", 3800);
+      await zoomTo(2);
+    }
+    // 5. настоящий босс Гнашера (слот r55n, восток: клетка 1099-282, 110): вступление B и цепи на нём
+    const GN = { x: (1099 - 282 + 0.5) * 32, y: 110.5 * 32 };
+    await page.evaluate(async () => { const u = "/src/game/fx/config.ts"; const c = await import(/* @vite-ignore */ u); (c.wowCfg("bossIntro") as any).totalMs = 9000; });
+    await dbg({ op: "tp", x: GN.x - 520, y: GN.y }); await sleep(2500);
+    await dbg({ op: "tp", x: GN.x - 250, y: GN.y });
+    await page.waitForFunction(() => !!(window as any).__wow.intro?.active, { timeout: 30000 }).then(() => console.log("вступление запущено настоящим боссом")).catch(() => console.log("вступление само не запустилось"));
+    const real = await page.evaluate(() => { const sc = (window as any).__game.scene.getScene("game"); return [...sc.units.values()].some((u: any) => u.u.sprite === "umb_plague_priestess"); });
+    console.log("Гнашера в юнитах:", real);
+    await sleep(3000);
+    await snap("Вступление B на настоящем боссе: полосы, плашка, имя", 600, true);
+    await sleep(2500);
+    await snap("Вступление B: титул, подпись, искры цвета босса", 0, true);
+    await page.waitForFunction(() => !(window as any).__wow.intro?.active, { timeout: 30000 }).catch(() => {});
+    await dbg({ op: "tp", x: GN.x - 80, y: GN.y + 20 }); await sleep(2500); await settle(page);
+    await zoomTo(4);
+    await snap("Цепи на настоящей Гнашере: Rope качается на ветру (зум 4)", 600);
+    await zoomTo(2);
+    // 6. портал: полная последовательность (застывшие кадры: схлопывание, вспышка, раскрытие)
+    for (const [k, nm] of [[0.3, "вход 0,3: линза"], [0.6, "вход 0,6: пиксели и вихрь"], [0.92, "вспышка, экран закрыт"], [0.55, "выход 0,55: раскрывается"], [0.2, "выход 0,2: почти обычный"]] as [number, string][]) {
+      await page.evaluate((kk) => (window as any).__wow.debugWarp(kk), k);
+      await sleep(250);
+      await snap(`Телепорт, ${nm}`, 0, true);
+    }
+    await page.evaluate(() => (window as any).__wow.debugWarp(-1));
     await page.close();
   } finally {
     await browser.close(); await vite.close(); await stopServer();

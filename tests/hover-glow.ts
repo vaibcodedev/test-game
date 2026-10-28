@@ -28,6 +28,15 @@ async function login(page: Page, name: string) {
   await sleep(1500);
 }
 
+/** Ждёт, пока камера встанет: scroll не меняется ~0,8 с подряд. */
+async function settle(page: Page) {
+  let prev = "", same = 0;
+  for (let i = 0; i < 80 && same < 3; i++) {
+    const cur = await page.evaluate(() => { const c = (window as any).__game.scene.getScene("game").cameras.main; return `${c.scrollX.toFixed(1)},${c.scrollY.toFixed(1)}`; });
+    same = cur === prev ? same + 1 : 0; prev = cur; await sleep(300);
+  }
+}
+
 const glowState = (page: Page) => page.evaluate(() => { const g = (window as any).__game.scene.getScene("game").hoverGlow.img; return { vis: g.visible as boolean, a: (g.visible ? g.alpha : 0) as number }; });
 
 async function main() {
@@ -71,7 +80,8 @@ async function main() {
       const t = await pick(kind);
       await check(`цель ${kind} найдена`, () => assert(t, kind));
       if (!t) continue;
-      await dbg({ op: "tp", x: t.x, y: t.y + 70 }); await page.evaluate(() => (window as any).__game.scene.getScene("game").cameras.main.setZoom(1.75)); await sleep(3500);
+      await dbg({ op: "tp", x: t.x, y: t.y + 70 }); await page.evaluate(() => (window as any).__game.scene.getScene("game").cameras.main.setZoom(1.75)); await sleep(1500);
+      await settle(page); // камера доезжает до героя (на медленной видеокарте lerp идёт десятки кадров): ждём, пока scroll перестанет меняться
       const p = await toScreen(t.x, t.y - t.dy);
       await page.mouse.move(p.x - 40, p.y - 40); await sleep(300);
       await page.mouse.move(p.x, p.y, { steps: 4 });

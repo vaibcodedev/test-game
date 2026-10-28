@@ -66,7 +66,7 @@ export class RopeCloth {
   /** Rope поверх готового штандарта: кадр 0 его листа vfx_std-*, привязка и глубина как у спрайта. Сам спрайт гасится альфой (видимость решает его владелец). */
   mirror(sp: Phaser.GameObjects.Sprite) {
     const key = sp.texture.key, shape = key.includes("pennant") ? "pennant" : "drape", fw = sp.width, fh = sp.height;
-    const n = shape === "pennant" ? 10 : 14;
+    const n = shape === "pennant" ? 22 : 26;
     const rope = this.scene.add.rope(sp.x, sp.y, key, 0, n as never, shape === "drape").setDepth(sp.depth);
     rope.setColors(new Array(n * 2).fill(0xffffff));
     const it: Item = { rope, n, kind: "flag", phase: Math.random() * 6, amp: 1, len: shape === "pennant" ? fh : fw, lean: 0, spr: sp, key, shape };
@@ -94,11 +94,11 @@ export class RopeCloth {
         for (let i = 0; i < pts.length; i++) {
           const k = i / (pts.length - 1);
           if (it.shape === "pennant") { // вымпел: подвешен за верх, низ качается по ветру и чуть закручивается
-            const sw = Math.sin(th * (2.2 + 1.6 * w.s) - k * 2.4 + it.phase);
+            const sw = Math.sin(th * (2.2 + 1.6 * w.s) - k * 2.4 + it.phase) * 0.8 + Math.sin(th * (3.9 + 2.2 * w.s) - k * 4.6 + it.phase * 1.7) * 0.2 * k;
             pts[i].x = sw * (1 + 3.2 * w.s) * k * k * 1.1 + w.gust * 1.3 * k * k; pts[i].y = -fh / 2 + k * fh * (1 - 0.03 * w.s * Math.abs(sw) * k);
             const sh = 0.86 + 0.14 * Math.cos(th * (2.2 + 1.6 * w.s) - k * 2.4 + it.phase + 0.8), c = Math.round(255 * Math.min(1, sh + 0.06)); colors.push((c << 16) | (c << 8) | c, (c << 16) | (c << 8) | c);
           } else { // драпировка над воротами: прут неподвижен, полотно мягко дышит волной вдоль
-            const wv = Math.sin(th * (1.8 + 1.4 * w.s) + k * 7 + it.phase);
+            const wv = Math.sin(th * (1.8 + 1.4 * w.s) + k * 7 + it.phase) * 0.75 + Math.sin(th * (3.1 + 1.9 * w.s) + k * 13 + it.phase * 1.3) * 0.25;
             pts[i].x = -fw / 2 + k * fw; pts[i].y = wv * (0.5 + 1.2 * w.s);
             const sh = 0.88 + 0.12 * Math.cos(th * (1.8 + 1.4 * w.s) + k * 7 + it.phase + 0.7), c = Math.round(255 * Math.min(1, sh + 0.05)); colors.push((c << 16) | (c << 8) | c, (c << 16) | (c << 8) | c);
           }

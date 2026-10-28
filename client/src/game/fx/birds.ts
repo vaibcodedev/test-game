@@ -48,7 +48,7 @@ function makeTex(scene: Phaser.Scene, sp: Species) {
       if (i < 5) px(f, x, y + (deg < 0 ? 1 : -1) * (i < 4 ? 1 : 0), P.wing);
     }
     for (let dx = -1; dx <= 1; dx++) px(f, cx + dx, cy, P.body); px(f, cx, cy + 1, P.body); px(f, cx, cy + 2, P.tip); px(f, cx, cy - 1, P.hi);
-    px(f, cx + 2, cy - 1, P.body); px(f, cx + 3, cy - 1, P.beak); // голова справа (флип зеркалит)
+    px(f, cx + 2, cy - 1, P.body); px(f, cx + 3, cy - 1, P.beak); px(f, cx + 2, cy - 2, P.hi); px(f, cx - 1, cy + 3, P.tip); px(f, cx, cy + 3, P.wing); px(f, cx + 1, cy + 3, P.tip); // голова справа (флип зеркалит), хвост веером
   });
   const f = ANG.length; // сидит: компактное тело, сложенные крылья, хвост
   for (let dx = -2; dx <= 2; dx++) { px(f, 5 + dx, 5, P.wing); px(f, 5 + dx, 6, P.body); }
@@ -117,7 +117,8 @@ export class Birds {
       f.birds.forEach((b, j) => {
         const bx = sitting ? f.x + (j - f.birds.length / 2) * 6 : f.x + b.ox, by = sitting ? f.y : f.y + b.oy;
         const h = sitting ? 0 : f.h + b.hOff + Math.sin((this.t + j * 200) / 600) * 1.2;
-        const fr = sitting ? SIT : (Math.floor(this.t / 1000 * 12) + b.ph) % ANG.length;
+        const glide = !sitting && ((this.t / 3500 + b.ph * 0.31) % 1) < 0.2; // изредка парят с раскрытыми крыльями
+        const fr = sitting ? SIT : glide ? 2 : (Math.floor(this.t / 1000 * 12) + b.ph) % ANG.length;
         const flip = (sitting ? (j % 2 ? -1 : 1) : Math.sign(f.vx || 1)) < 0;
         b.img.setFrame(fr).setPosition(Math.round(bx), Math.round(by - h)).setFlipX(flip);
         b.sh.setPosition(Math.round(bx + h * 0.15), Math.round(by + 2)).setScale(fr === SIT ? 0.6 : 1 - Math.min(0.3, h / 100)).setAlpha(sitting ? 0.12 : PAL[b.sp].sh);

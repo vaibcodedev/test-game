@@ -8,7 +8,7 @@ import Phaser from "phaser";
 import { clamp01, easeInOut, easeOut, wowCfg } from "./config";
 
 export interface WarpOpts { color?: number; color2?: number; sound?: () => void; ms?: number }
-const N = 34;
+const N = 64;
 interface St { barrel?: Phaser.FX.Barrel; pix?: Phaser.FX.Pixelate; flash?: Phaser.GameObjects.Rectangle; sparks: Phaser.GameObjects.Image[]; ph: number[]; k: number; col: number; col2: number }
 const states = new WeakMap<Phaser.Scene, St>();
 
@@ -48,7 +48,7 @@ function apply(scene: Phaser.Scene, st: St, k: number) {
     const ang = arm * Math.PI * 2 + k * 9 + ph * 6.28 + t * 1.5;
     const vis = k > 0.03;
     sp.setVisible(vis).setPosition(cx + Math.cos(ang) * rr * 1.1, cy + Math.sin(ang) * rr * 0.8)
-      .setTint(i % 2 ? st.col : st.col2).setScale((0.7 + 0.9 * (1 - ph)) * (0.8 + 0.5 * Math.sin(t * 8 + i))).setAlpha(Math.min(1, k * 3) * (1 - clamp01((k - 0.85) / 0.15)));
+      .setTint(i % 2 ? st.col : st.col2).setRotation(ang + Math.PI / 2 + 0.4).setScale((0.5 + 0.7 * (1 - ph)) * (0.8 + 0.5 * Math.sin(t * 8 + i)) * 2.4, (0.5 + 0.7 * (1 - ph)) * (i % 3 === 0 ? 7 : 2.6)).setAlpha(Math.min(1, k * 3) * (1 - clamp01((k - 0.85) / 0.15)));
   });
 }
 function clear(scene: Phaser.Scene) {

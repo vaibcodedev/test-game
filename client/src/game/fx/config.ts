@@ -3,7 +3,7 @@ import tune from "../../../../data/wow-fx.json";
 
 type Tune = typeof tune;
 export type WowKey = Exclude<keyof Tune, "$about">;
-/** Подмена из превью (tools/wow-preview.ts): включает модули без правки json. */
+/** Подмена для проверки (localStorage wowFx=1, tests/wow-ingame.ts): включает модули без правки json. */
 let force = (() => { try { return localStorage.getItem("wowFx") === "1"; } catch { return false; } })(); // localStorage wowFx=1 — включить всё без правки json (снимки, проверка)
 export const wowForce = (v: boolean) => { force = v; };
 export const wowOn = (k: WowKey) => force || (tune[k] as { on: boolean }).on;
