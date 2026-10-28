@@ -56,6 +56,8 @@ import { T } from "../../../shared/texts";
 import { objHas, objTex } from "./objTex";
 
 type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue" | "dgdoor" | "dgexit";
+/** Дистанция, на которой цель сбрасывается (≈ 25 тайлов — дальше края экрана на любом зуме). */
+const TARGET_DROP_PX = 800;
 /** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number }; glow?: Omit<GlowSrc, "depth"> };
 
@@ -1441,6 +1443,11 @@ export class GameScene extends Phaser.Scene {
       this.tipAt = now + 100;
       const it = alive ? this.interactPick() : null;
       const key = keybinds.label("talk", 0) || keybinds.label("interact", 0);
+    // далеко убежал от цели (за пределы экрана с запасом) — цель сбрасывается, как в MMO; свою цель (себя) не трогаем
+    if (this.targetId && this.targetId !== net.id) {
+      const tv = this.units.get(this.targetId);
+      if (tv && Math.hypot(tv.x - this.pos.x, tv.y - this.pos.y) > TARGET_DROP_PX) this.setTarget(null);
+    }
       this.hud.setInteractTip(it && (it.d <= 110 || it.under) ? `${key ? `[${key}] ` : ""}${it.text}` : null);
     }
 
