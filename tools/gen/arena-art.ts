@@ -195,13 +195,12 @@ function weapon(kind: number, th: Theme): PC {
 }
 
 /** Южные ворота — вомиторий в ближних рядах (вид сверху-спереди): парапеты по бокам, пол прохода (песок заметает вход),
- * тень левого парапета, тёмный провал под трибуны и кромка свода с замковым камнем, низ поднятой решётки. Ряды обрываются ровно. */
+ * тень левого парапета, тёмный провал под трибуны и кромка свода с замковым камнем. Ряды обрываются ровно. */
 function vomitorium(bg: PC, th: Theme, cx: number, hw: number, y0: number, y1: number) {
   const wood = th.id === "pit", st = stoneOf(th), cap = th.cap, out = shade(th.face[0], 0.55), x0 = Math.round(cx - hw);
   const deep: RGBA = th.id === "ash" ? H("#08040a") : th.id === "frost" ? H("#081a36") : wood ? H("#0a0604") : H("#1a1822");
   const logs = R("#3e2414", "#6a4226", "#9a6a3a", "#c8965a");
-  const bar = th.id === "sun" ? R("#5a3c10", "#9a6c20", "#dcb044", "#fff0a0") : th.id === "frost" ? R("#2a6aa8", "#62b4ec", "#b4ecff", "#ffffff") : wood ? logs : R("#14121a", "#34323e", "#5e5c6c", "#9a98aa");
-  const PW = 6, bandH = 6, W2 = hw * 2, trim = th.id === "ash" ? th.accent : th.trim;
+  const PW = 6, bandH = 7, W2 = hw * 2, trim = th.id === "ash" ? th.accent : th.trim;
   for (let y = y0; y < y1; y++) for (let i = 0; i < W2; i++) {
     const x = x0 + i, u = i + 0.5 - hw, au = Math.abs(u), left = u < 0;
     let c: RGBA;
@@ -212,28 +211,26 @@ function vomitorium(bg: PC, th: Theme, cx: number, hw: number, y0: number, y1: n
       if (y === y0) c = wood ? logs[3] : cap[3];
       if (j === 0 || j === PW - 1) c = out;
     } else {
-      const bandTop = y1 - bandH - Math.round(2.4 * (1 - (u / (hw - PW)) ** 2)); // свод: замок выше пят
+      const bandTop = y1 - bandH - Math.round(4 * (1 - (u / (hw - PW)) ** 2)); // свод: замок выше пят
       if (y >= bandTop) { // кромка свода сверху: клинья, замковый камень, нижний край в тени ряда
-        const seg = Math.floor((i - PW) / 5), key = au < 3.2;
+        const seg = Math.floor((i - PW) / 4), key = au < 2.6;
         c = wood ? logs[seg % 2 ? 2 : 1] : key ? cap[3] : cap[seg % 2 ? 2 : 1];
-        if (!wood && (i - PW) % 5 === 0 && !key) c = shade(c, 0.75);
+        if (!wood && (i - PW) % 4 === 0 && !key) c = shade(c, 0.7);
         if (!key) c = shade(c, left ? 1.04 : 0.92);
         if (y === bandTop) c = wood ? logs[3] : shade(cap[3], 1.08);
         if (y === bandTop + 1 && !wood) c = trim;
         if (y >= y1 - 1) c = out;
       } else { // пол прохода и провал под трибуны
-        const t = (y - y0) / Math.max(1, bandTop - y0), fy = Math.floor((y - y0) / 6);
-        let fl = st[2 + (hash01(Math.floor((i + fy * 3) / 9), fy, 7) > 0.6 ? 1 : 0)];
+        const t = (y - y0) / Math.max(1, bandTop - y0), fy = Math.floor((y - y0) / 9);
+        let fl = mix(st[2], st[1], hash01(Math.floor((i + fy * 6) / 13), fy, 7) * 0.5);
         if (wood) fl = mix(th.sand[1], logs[1], 0.4);
-        if ((y - y0) % 6 === 5 || (i + fy * 3) % 9 === 0) fl = shade(fl, 0.78);
+        if ((y - y0) % 9 === 8 || (i + fy * 6) % 13 === 0) fl = shade(fl, 0.88);
         const drift = pnoise(x, y, 6, 2048, 33) * 0.6 + (1 - t) * 0.9;
         if (drift > 0.75) fl = mix(fl, pick(th.sand, 0.4 + hash01(x, y, 9) * 0.3), Math.min(1, (drift - 0.75) * 3)); // песок заметает вход
-        c = mix(fl, deep, Math.pow(Math.max(0, (t - 0.3) / 0.7), 1.3) * 0.94);
+        c = mix(fl, deep, Math.min(1, Math.pow(Math.max(0, (t - 0.12) / 0.75), 1.1)));
+        if (y >= bandTop - 3) c = deep; // провал под свод
         if (u < -(hw - PW) + 4) c = mix(c, deep, 0.45 * (1 - (u + hw - PW) / 4)); // тень левого парапета
         if (u > hw - PW - 1.5) c = shade(c, 1.12); // отсвет у правой стенки
-        const rel = i - PW - 2, inBars = rel >= 0 && rel < W2 - PW * 2 - 3; // низ поднятой решётки под сводом: острия прутьев
-        if (inBars && rel % 4 === 0 && y >= bandTop - 5) c = y >= bandTop - 2 ? bar[3] : y >= bandTop - 3 ? bar[2] : bar[1];
-        if (inBars && y === bandTop - 4) c = bar[1];
       }
     }
     bg.set(x, y, c);
@@ -515,7 +512,7 @@ export function renderArena(sp: Spec): ArenaArt {
   for (let y = gy + 4; y < nBase; y++) for (let x = gx + 77; x < gx + 84; x++) { const c = bg.get(x, y); if (c) bg.set(x, y, shade(c, 0.62 + 0.38 * ((x - gx - 77) / 7))); } // тень башни на ряды справа
   const sHW = 24, sTop = Math.ceil(cy + ry - 0.5), sNr = sp.rings >= 10 ? 3 : 2, sEnd = Math.round(cy + (e0of(0) + sNr * sp.ringW) / k);
   vomitorium(bg, th, cx, sHW, sTop, sEnd);
-  for (const s of [-1, 1]) { const bx = cx + s * (sHW - 2.5); prop("brazier", brazier(th.id === "frost"), bx, sTop + 5); lights.push({ x: bx, y: sTop - 15, r: 60, col: torchCol, a: 0.4, glow: 1 }); }
+  for (const s of [-1, 1]) { const bx = cx + s * (sHW - 2.5); prop("brazier", brazier(th.id === "frost"), bx, sTop + 5); lights.push({ x: bx, y: sTop - 15, r: 50, col: torchCol, a: 0.26, glow: 1 }); }
   const gateZones = [{ x0: gx + 12, x1: gx + 82, y0: gy - 2, y1: nBase + 4 }, { x0: cx - sHW - 6, x1: cx + sHW + 6, y0: sTop - 4, y1: sEnd + 14 }];
   // ---------- зрители (отдельным слоем: Blitter в клиенте), не заходят под декор ----------
   const blockers = [...props.filter((p) => ["box", "brazier", "statue", "passage", "column", "crystal", "gate", "post"].includes(p.kind)), ...banners.map((b) => ({ kind: "banner", x: b.x - 7, y: b.y, img: { w: 14, h: b.len } as PC }))];
