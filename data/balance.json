@@ -1,6 +1,6 @@
 {
   "_doc": "Числа баланса боя (задача 45, BALANCE.md «Цели боя»). Код — shared/balance.ts. Проверка — npx tsx tools/balance/sim.ts (манекен, мобы, лекари, PvP, боссы).",
-  "gcd": 0.75,
+  "gcd": 0.5,
   "_gcdDoc": "Общий откат умений, с (server/src/game/skills.ts castSkill): после умения без offGcd следующее такое же — не раньше. offGcd — у рывков и защит (data/skills*.json, shared/skills.ts).",
   "moveMul": 0.75,
   "aggroMul": 0.7,
