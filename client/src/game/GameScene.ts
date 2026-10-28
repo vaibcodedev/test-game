@@ -1510,10 +1510,10 @@ export class GameScene extends Phaser.Scene {
     const tint = zoneTint(z);
     // ночь (общий цикл по часам): затемнение и синева на поверхности, не в подземельях/арене/под водой
     const zs = zoneStyle(z);
-    const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
+    const night = net.kind === "arena" || z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now()); // на PvP-арене ночи нет
     setLightMode(this.room || z === Zone.Arena || z === Zone.Dungeon ? "none" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
-    const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.4) + this.weather.dim;
+    const target = net.kind === "arena" ? 0 : this.room ? this.room.dark + night * 0.1 : Math.max(tint.dark, night * 0.4) + this.weather.dim; // в зданиях ночью светло: чуть темнее, чем днём
     this.interiors?.update(dt, night, this.room);
     this.towerArchers?.update(dt);
     this.fortScenes?.update(dt, this.pos.x, this.pos.y);
@@ -1540,7 +1540,7 @@ export class GameScene extends Phaser.Scene {
     this.wow?.update(deltaMs, { zone: zs, indoor: !!this.room, night: lit ? 0 : night });
     this.postfx.update(dt, me && me.u.maxHp > 0 && !me.dead ? me.u.hp / me.u.maxHp : 1, lit ? 0 : night, zs, !!me?.dead);
     // ночь вырезается светом факелов (lights.ts); на «Простых» остаётся плоское затемнение
-    this.nightMask.update(dark.alpha, this.pos, 240, 0.9); // круг вокруг героя шире
+    this.nightMask.update(this.room || net.kind === "arena" ? 0 : dark.alpha, this.pos, 240, 0.9); // круг вокруг героя шире
     dark.setVisible(!this.nightMask.active);
     this.hud.frame({
       me: me?.u ?? null,
