@@ -563,7 +563,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
   addUnit(id: string, u: UnitState, near = false) {
-    if (this.units.has(id) || this.farUnits.has(id)) return;
+    const old = this.units.get(id);
+    if ((old ? old.u : this.farUnits.get(id)) === u) return;
+    // тот же id, новый объект состояния: питомец сменился другим призывом (у всех питомцев героя id pet_<герой>) —
+    // прежний вид снимается, иначе на карте остаётся старый питомец, а рамка показывает нового
+    const retarget = !!old && this.targetId === id;
+    if (old) { old.destroy(); this.units.delete(id); }
+    this.farUnits.delete(id);
+    if (retarget) queueMicrotask(() => { if (this.targetId === id) this.setTarget(id); });
     if (!near && id !== net.id && u.kind !== UnitKind.Player && u.kind !== UnitKind.Pet && (!this.me || this.isFar(u, UNIT_NEAR))) {
       this.farUnits.set(id, u);
       return;

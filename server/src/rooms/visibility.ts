@@ -3,7 +3,7 @@
  * Сетка VIS_CELL px; юнит входит в видимость в пределах VIS_IN клеток (по Чебышёву) и уходит только дальше VIS_OUT —
  * гистерезис в одну клетку, юниты на границе не мигают. VIS_IN·VIS_CELL = 1536 px ≥ UNIT_NEAR клиента (1500) и с запасом
  * больше полуэкрана при самом дальнем зуме (1920×1080 / 1,75 → 549×309 px).
- * Всегда видны: свой герой, его питомец, цель, участники группы (их рамкам нужно здоровье). Скачок героя (телепорт, дверь,
+ * Всегда видны: свой герой, все его питомцы (по владельцу в World.pets), цель, участники группы (их рамкам нужно здоровье). Скачок героя (телепорт, дверь,
  * смена клетки) пересчитывает вид в тот же тик — соседи приходят следующим патчем.
  * Игроки вне вида уходят лёгким каналом «dots» (точки на миникарте/карте мира) раз в VIS_DOTS_MS.
  */
@@ -12,7 +12,7 @@ import type { Client } from "@colyseus/core";
 import type { OpenWorldState, Unit } from "./schema";
 import type { World } from "../game/World";
 import type { Player } from "../game/Player";
-import { petUnitId } from "../../../shared/pets";
+import type { Pet } from "../game/Pet";
 
 export const VIS_CELL = 512;
 export const VIS_IN = 3;
@@ -66,7 +66,8 @@ export class Visibility {
       w = { view, seen: new Map(), x: NaN, y: NaN, cx: NaN, cy: NaN };
       this.watchers.set(p.id, w);
     }
-    this.gridTick = -1; // вне тика: сетку — заново
+    this.gridTick = -1; // вне тика: сетку и питомцев — заново
+    this.indexPets(this.world());
     this.refresh(w, p);
     // новый герой у соседей — в том же патче, что и вход (не ждём пересчёта)
     const cx = cellOf(p.unit.x), cy = cellOf(p.unit.y);
@@ -93,16 +94,28 @@ export class Visibility {
     const full = now - this.lastFull >= VIS_REFRESH_MS;
     if (full) this.lastFull = now;
     const w0 = this.world();
+    this.indexPets(w0);
     for (const [id, w] of this.watchers) {
       const p = w0.players.get(id);
       if (!p) continue;
       const u = p.unit;
       const moved = cellOf(u.x) !== w.cx || cellOf(u.y) !== w.cy || Math.abs(u.x - w.x) > VIS_JUMP || Math.abs(u.y - w.y) > VIS_JUMP;
-      if (full || moved) this.refresh(w, p);
+      // новый питомец (призыв, смена питомца) — в вид сразу, не через 250 мс
+      if (full || moved || (this.petsOf.get(id) ?? []).some((pet) => !w.seen.has(pet.unit))) this.refresh(w, p);
     }
     if (now - this.lastDots >= VIS_DOTS_MS) {
       this.lastDots = now;
       this.sendDots(send);
+    }
+  }
+
+  /** Питомцы по владельцу (все сразу: постоянный и призванные), раз в тик. */
+  private petsOf = new Map<string, Pet[]>();
+  private indexPets(w: World) {
+    this.petsOf.clear();
+    for (const pet of w.pets.values()) {
+      const list = this.petsOf.get(pet.owner.id);
+      if (list) list.push(pet); else this.petsOf.set(pet.owner.id, [pet]);
     }
   }
 
@@ -143,8 +156,7 @@ export class Visibility {
     // всегда: свой герой, питомец, цель, группа
     const force = (u: Unit | undefined, id: string | null | undefined) => { if (u && id && this.attached(u, id)) next.set(u, id); };
     force(me, p.id);
-    const pet = petUnitId(p.id);
-    force(this.state.mobs.get(pet), pet);
+    for (const pet of this.petsOf.get(p.id) ?? []) force(pet.unit, pet.id); // все питомцы героя
     if (p.targetId) force(this.world().actor(p.targetId)?.unit, p.targetId);
     for (const m of this.extra(p)) if (m) force(m.unit, m.id);
     for (const u of w.seen.keys()) if (!next.has(u)) w.view.remove(u);
