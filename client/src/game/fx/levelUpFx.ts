@@ -82,7 +82,7 @@ export function playLevelUp(s: Phaser.Scene, unit: () => UnitView | undefined) {
     const fz = (window as unknown as { __lvlFxT?: number }).__lvlFxT;
     const t = fz ?? s.time.now - born;
     if (fz === undefined && t > DUR + 1700) { done(); return; }
-    const p = pos(), foot = p.y + 8, fp = { x: p.x, y: foot }, D = p.y;
+    const p = pos(), foot = p.y, fp = { x: p.x, y: foot }, D = p.y; // центр колец — точно под ногами героя (позиция юнита)
     gBack.setDepth(D - 3); gFront.setDepth(D + 3); col.setDepth(D - 3); glow.setDepth(D - 4); gflash.setDepth(D - 5);
     // столб: нарастает снизу за 0,55 с, держится, плавно гаснет к 2,7 с; за героем и полупрозрачный
     const grow = ease.out(ease.clamp(t / 550)), fade = 1 - ease.io(ease.clamp((t - 1500) / 1200));
