@@ -1,0 +1,370 @@
+
+// ---------------- эффекты льда (листы мира: строки — 0 под юнитами, 1 над) ----------------
+interface FxDef { w: number; h: number; ax: number; ay: number; n: number; fps: number; hit: number }
+export const FX: Record<"ring" | "spear" | "circle", FxDef> = {
+  ring: { w: 240, h: 240, ax: 120, ay: 120, n: 8, fps: 12, hit: 1 },
+  spear: { w: 48, h: 80, ax: 24, ay: 66, n: 8, fps: 12, hit: 3 },
+  circle: { w: 96, h: 96, ax: 48, ay: 48, n: 8, fps: 8, hit: 0 },
+};
+const rgba = (c: RGBA, a: number): RGBA => [c[0], c[1], c[2], Math.round(a)];
+const fxSheet = (F: FxDef) => new PC(F.w * F.n, F.h * 2);
+/** Кольцо топота: от стопы расходится ледяная волна — полоса инея с зубцами наружу, внутри тающая заливка, искры и блики. */
+function buildRingFx(): PC {
+  const F = FX.ring;
+  const c = fxSheet(F);
+  const radii = [26, 42, 66, 86, 102, 112, 118, 120];
+  for (let f = 0; f < F.n; f++) {
+    const x0 = f * F.w, cx = F.ax, cy = F.ay, r = radii[f], k = 1 - f / (F.n - 1);
+    const px = (x: number, y: number, col: RGBA) => { if (x > 0 && x < F.w - 1 && y > 0 && y < F.h - 1) c.set(x0 + x, y, col); };
+    // заливка полосой за гребнем
+    for (let y = 0; y < F.h; y++) for (let x = 0; x < F.w; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (d > r || d < r - 26) continue;
+      const t = (r - d) / 26;
+      if (((x + y) & 1) && t > 0.35) continue;
+      px(x, y, rgba(ICE[t < 0.3 ? 3 : 2], 150 * k * (1 - t) + 30));
+    }
+    // гребень: три ряда иней-свет, зубцы наружу
+    for (let a = 0; a < 1400; a++) {
+      const th = (a / 1400) * TAU;
+      const tooth = Math.sin(th * 22 + f) > 0.25 ? 1 : 0;
+      const hi = Math.cos(th - 2.3) > 0.2;
+      for (let t = 0; t < 5 + tooth * 3; t++) {
+        const rr = r - 2 + t * (t < 5 ? -0.8 : 1.0);
+        const x = Math.round(cx + Math.cos(th) * (t < 5 ? r - t * 0.9 : r + (t - 4) * 1.2)), y = Math.round(cy + Math.sin(th) * (t < 5 ? r - t * 0.9 : r + (t - 4) * 1.2));
+        void rr;
+        px(x, y, t === 0 ? (hi ? FIRE[4] : FIRE[3]) : t === 1 ? GLOWC[4] : t === 2 ? GLOWC[3] : t === 3 ? GLOWC[2] : t === 4 ? ICE[2] : ICE[3]);
+      }
+    }
+    // искры и осколки над гребнем (ряд 1)
+    for (let i = 0; i < 40; i++) {
+      const th = hash01(i, f, 7) * TAU, rr = r * (0.55 + 0.45 * hash01(i, f, 9)), lift = 2 + 8 * hash01(i, f, 13) * (1 - k * 0.3);
+      const x = Math.round(cx + Math.cos(th) * rr), y = Math.round(cy + Math.sin(th) * rr - lift);
+      if (k > 0.12 && x > 1 && x < F.w - 2 && y > 1 && y < F.h - 2) {
+        const q = hash01(i, f, 11) > 0.55 ? FIRE[4] : GLOWC[3];
+        c.set(x0 + x, F.h + y, q); c.set(x0 + x + 1, F.h + y, GLOWC[2]); c.set(x0 + x, F.h + y - 1, FIRE[3]);
+      }
+    }
+  }
+  return c;
+}
+/** Ледяное копьё: из земли вырастает гранёный шип с бликом и кустом малых, замирает, раскалывается на осколки. */
+function buildSpearFx(): PC {
+  const F = FX.spear;
+  const c = fxSheet(F);
+  const hts = [8, 22, 46, 62, 62, 60, 52, 36];
+  for (let f = 0; f < F.n; f++) {
+    const x0 = f * F.w, cx = F.ax, gy = F.ay;
+    const H = hts[f], shatter = f >= 6 ? f - 5 : 0;
+    const spike = (dx: number, hh: number, w0: number, dst: number) => {
+      for (let y = 0; y < hh; y++) {
+        const v = y / Math.max(1, hh);
+        const hw = Math.max(0.4, w0 * Math.pow(1 - v, 0.85) + (y < 3 ? 1 : 0));
+        for (let x = Math.floor(-hw); x <= Math.ceil(hw); x++) {
+          if (Math.abs(x + 0.5) > hw) continue;
+          if (shatter && hash01(x + 9 + dx, y, 40 + f) < 0.1 * shatter) continue;
+          const e = (x + 0.5) / hw;
+          const tone = e < -0.55 ? 4 : e < -0.05 ? 3 : e < 0.55 ? 2 : 1;
+          const col = v > 0.86 ? FIRE[4] : tone === 4 ? FIRE[3] : y % 9 === 4 && tone > 1 ? ICE[4] : ICE[tone];
+          const X = Math.round(cx + dx + x + shatter * (hash01(y >> 2, dx + 5, 13) - 0.5) * 3), Y = Math.round(gy - y + shatter * (y > hh * 0.55 ? -dst : 0.6));
+          if (X > 0 && X < F.w - 1 && Y > 0 && Y < F.h - 1) c.set(x0 + X, Y, col);
+        }
+      }
+    };
+    spike(0, H, 7.2, 1.6);
+    for (const [dx, hh] of [[-10, 16], [-6, 26], [7, 22], [11, 14]] as [number, number][]) spike(dx, Math.round(hh * Math.min(1, H / 40)), 2.6, 1.0);
+    // трещины льда по земле и осколки у основания
+    for (let i = 0; i < 9; i++) {
+      const dx = Math.round((hash01(i, f, 3) - 0.5) * (30 + 8 * shatter)), dy = Math.round((hash01(i, f, 5) - 0.5) * 6);
+      const X = cx + dx, Y = gy + 1 + dy;
+      if (f > 0 && X > 1 && X < F.w - 3 && Y > 1 && Y < F.h - 2) { c.set(x0 + X, Y, ICE[4]); c.set(x0 + X + 1, Y, ICE[2]); c.set(x0 + X, F.h + Y - 2, FIRE[4]); }
+    }
+  }
+  return c;
+}
+/** Ледяной круг сборки: два рунных кольца, шесть лучей, ледяные щепки встают по кругу; пульс света. */
+function buildCircleFx(): PC {
+  const F = FX.circle;
+  const c = fxSheet(F);
+  for (let f = 0; f < F.n; f++) {
+    const x0 = f * F.w, cx = F.ax, cy = F.ay, ph = f / F.n, pulse = 0.5 + 0.5 * Math.sin(ph * TAU);
+    const px = (x: number, y: number, col: RGBA, row = 0) => { if (x > 0 && x < F.w - 1 && y > 0 && y < F.h - 1) c.set(x0 + x, row * F.h + y, col); };
+    for (let y = 0; y < F.h; y++) for (let x = 0; x < F.w; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (d < 38 && ((x + y) & 1) === 0) px(x, y, rgba(ICE[1], 70 + 50 * pulse));
+    }
+    for (const [rad, tone] of [[42, 3], [34, 2]] as [number, number][]) for (let a = 0; a < 900; a++) {
+      const th = (a / 900) * TAU;
+      if (Math.sin(th * 12 + ph * TAU * (tone === 3 ? 1 : -1)) < -0.55) continue;
+      px(Math.round(cx + Math.cos(th) * rad), Math.round(cy + Math.sin(th) * rad), tone === 3 ? (pulse > 0.5 ? GLOWC[4] : GLOWC[3]) : ICE[tone + 1]);
+      if (tone === 3) px(Math.round(cx + Math.cos(th) * (rad - 1)), Math.round(cy + Math.sin(th) * (rad - 1)), GLOWC[2]);
+    }
+    for (let i = 0; i < 6; i++) {
+      const th = (i / 6) * TAU + ph * TAU * 0.25;
+      for (let t = 0; t < 12; t++) { const rr = 8 + t * 2.4; px(Math.round(cx + Math.cos(th) * rr), Math.round(cy + Math.sin(th) * rr), t < 8 ? ICE[2 + (t & 1)] : GLOWC[3]); }
+    }
+    for (let i = 0; i < 6; i++) {
+      const hh = Math.round(4 + 12 * ((ph + i / 6) % 1)), th = i * 1.047 + 0.3;
+      const x = Math.round(cx + Math.cos(th) * 24), y0 = Math.round(cy + Math.sin(th) * 24);
+      for (let y = 0; y < hh; y++) { px(x, y0 - y, y > hh - 3 ? FIRE[4] : GLOWC[2 + (y & 1)], 1); if (y < hh - 4) px(x + 1, y0 - y, ICE[2], 1); }
+    }
+  }
+  return c;
+}
+
+// ---------------- носильщик (моб-спутник Ф2): оттаявший страж со щитом из льда; лист как у мобов — 12 столбцов × 3 вида ----------------
+/** Лист: «ходьба» 0–3 и «атака» 4–7 — шаг со щитом перед собой, 8–11 — гибель: щит падает, страж оседает. */
+export const BEARER_UNIT = { frame: FRAME, frameH: FRAME_H, cols: 12 };
+function bearerScene(ph: number, death: number): { S: Scene; X: Extra } {
+  const S = new Scene();
+  const X: Extra = { rings: [], flash: null, dust: [], glints: [], sparks: [], palm: null, shards: [], mist: 0, mistAt: [0, 0, 0] };
+  const st = Math.sin(ph * TAU), sink = death * 17, dz = -sink;
+  const lean = death * 0.9;
+  const ax: [V3, V3, V3] = [rot([1, 0, 0], lean, 0, 0), rot([0, 1, 0], lean, 0, 0), rot([0, 0, 1], lean, 0, 0)];
+  const g = S.group(1.2);
+  // ряса до земли и сапоги
+  if (death < 0.85) {
+    S.cone(g, M.robe, [0, 0, 22 + dz], 3.8, [0, 0.4, Math.max(2.4, 3.0 + dz * 0.2)], 6.2 - 2 * death, { big: true });
+    for (const s of [1, -1]) S.ell(g, M.steel, [s * 2.4, 2.4 + st * 3.0 * s * (death ? 0 : 1), 1.4 + Math.max(0, st * s) * 1.6 * (1 - death)], [1.9, 3.0, 1.5], undefined, { part: S.newPart(), tone: 0.1 });
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU, L = 1.6 + 2.2 * hash01(i, 3, 17);
+      const b0: V3 = [Math.cos(a) * 5.6, Math.sin(a) * 5.6 + 0.4, 3.6], b1: V3 = [Math.cos(a) * (5.6 + L * 0.4), Math.sin(a) * (5.6 + L * 0.4) + 0.4, 0.4];
+      S.cone(g, M.ice, b0, 0.8, b1, 0.1, { part: S.newPart(), tone: (i % 3) * 0.3 });
+    }
+  } else S.ell(g, M.robe, [0, 0, 1.6], [6.5 - death, 5.4, 2.2 - death], undefined, { tone: -0.2 });
+  // торс, плечи, капюшон и синее лицо с холодными глазами
+  const tz = 27 + dz;
+  S.ell(g, M.robe, [0, 0.2 + death * 2.0, tz], [3.9, 3.0, 4.8], ax, { big: true });
+  for (const s of [1, -1]) S.ell(g, M.steel, [s * 4.6, 0, tz + 3.2], [2.2, 2.4, 1.2], undefined, { part: S.newPart(), tone: 0.2 });
+  S.ell(g, M.fur, [0, 0.4 + death * 2.4, 33.6 + dz * 1.1], [3.5, 3.4, 3.4], undefined, { part: S.newPart(), tone: 0.1, big: true });
+  S.ell(g, M.skin, [0, 1.6 + death * 2.4, 33.0 + dz * 1.1], [2.3, 2.1, 2.5], undefined, { part: S.newPart(), tone: 0.0 });
+  if (death < 0.7) for (const s of [1, -1]) S.ball(g, M.glow, [s * 1.0, 3.4, 33.6 + dz], 0.55, { part: S.newPart(), tone: 0.4 });
+  // щит из льда: стальная рама, ледяная пластина, светлый кант, ядро; падает вперёд при гибели
+  const gs = S.group(0.8);
+  const sy = 7.0 + death * 4.0, sz = 16.5 - death * 11.0;
+  S.ell(gs, M.steel, [0, sy - 0.8, sz], [7.6, 1.3, 9.6], ax, { part: S.newPart(), tone: -0.3, big: true });
+  S.ell(gs, M.ice, [0, sy, sz], [6.8, 1.7, 8.8], ax, { part: S.newPart(), tone: 0.3, big: true });
+  S.ell(gs, M.ice, [-1.8, sy + 0.8, sz + 2.0], [2.6, 1.0, 4.4], ax, { part: S.newPart(), tone: 1.0 });
+  if (death < 0.85) S.ball(gs, M.glow, [0, sy + 1.6, sz], 1.5, { part: S.newPart(), tone: 0.3 });
+  for (const [dx, h] of [[-4.4, 4.8], [0, 6.4], [4.4, 4.4]] as [number, number][]) S.cone(gs, M.ice, [dx * 0.8, sy, sz + 8.4], 1.1, [dx, sy, sz + 8.4 + h * 0.8], 0.1, { part: S.newPart(), tone: 0.5 });
+  // руки держат щит по краям
+  if (death < 0.6) for (const s of [1, -1]) {
+    const sh: V3 = [s * 4.4, 0, tz + 2.4], el: V3 = [s * 6.8, 3.8, tz - 1], hd: V3 = [s * 8.2, 6.4, sz + 1.6];
+    S.cone(g, M.robe, sh, 1.6, el, 1.4, { part: S.newPart() });
+    S.cone(g, M.robe, el, 1.4, hd, 1.2, { part: S.newPart() });
+    S.ball(g, M.skin, hd, 1.3, { part: S.newPart() });
+  }
+  return { S, X };
+}
+function renderBearer(view: View, ph: number, death: number): { img: PC; emis: PC } {
+  CAM.CX = 40; CAMR.CX = 80;
+  const { S, X } = bearerScene(ph, death);
+  const f = finalize(S, X);
+  return finishFrame(f.S, f.X, view, { t: ph });
+}
+export function buildBearerUnit(): PC {
+  const out = new PC(FW * 12, FH * 3);
+  for (let i = 0; i < 12; i++) for (let row = 0; row < 3; row++) {
+    const v = VIEWS[row];
+    const f = i < 8 ? renderBearer(v, (i % 4) / 4, 0) : renderBearer(v, 0, (i - 7) / 4);
+    out.blit(f.img, i * FW, row * FH);
+  }
+  return out;
+}
+
+// ---------------- листы, проверки, монтажи ----------------
+function animSheets(only?: FrostAnim[], maxFrames = 99): { img: Record<FrostAnim, PC>; emis: Record<FrostAnim, PC> } {
+  const img = {} as Record<FrostAnim, PC>, emis = {} as Record<FrostAnim, PC>;
+  for (const [a, d] of ANIM_ORDER) {
+    const I = new PC(N * d.n, FH * 3), E = new PC(N * d.n, FH * 3);
+    if (!only || only.includes(a)) VIEWS.forEach((v, row) => POSES[a](v).slice(0, Math.min(d.n, maxFrames)).forEach((p, i) => {
+      const r = renderFrost(v, p);
+      I.blit(r.img, i * N, row * FH);
+      E.blit(r.emis, i * N, row * FH);
+    }));
+    img[a] = I;
+    emis[a] = E;
+  }
+  return { img, emis };
+}
+function relight(c: PC, emis: PC, x: number, y: number, k: number, flip = false) {
+  const big = scaleNN(emis, k, flip);
+  c.blit(big, x, y);
+  for (let j = 0; j < emis.h; j++) for (let i = 0; i < emis.w; i++) {
+    const q = emis.get(flip ? emis.w - 1 - i : i, j)!;
+    if (!q[3]) continue;
+    for (let dy = -3 * k; dy <= 3 * k; dy++) for (let dx = -3 * k; dx <= 3 * k; dx++) {
+      const X = x + i * k + dx, Y = y + j * k + dy;
+      const dd = Math.hypot(dx - k / 2, dy - k / 2) / (3.2 * k);
+      if (dd > 1 || !c.inside(X, Y) || big.alpha(X - x, Y - y)) continue;
+      const cur = c.get(X, Y)!;
+      c.data.set(mix(cur, [q[0], q[1], q[2], 255], 0.035 * (1 - dd)), (Y * c.w + X) * 4);
+    }
+  }
+}
+interface Assets { hero: PC; terrain: PC; ref: PC | null }
+const heroAt = (A: Assets, row: number) => crop(A.hero, 0, row * 32, 32, 32);
+type Sheets = { img: Record<FrostAnim, PC>; emis: Record<FrostAnim, PC> };
+type Item = { img: PC; emis: PC | null; flip?: boolean };
+const REF_W = 560;
+
+/** Кадры галереи: покой в четыре стороны, топот, копья (вниз, вбок), сборка, гибель (середина и конец). */
+function gallery(sheets: Sheets): { label: string; items: Item[] } {
+  const idle = (row: number, flip = false): Item => ({ img: crop(sheets.img.idle, 0, row * FH, N, FH), emis: crop(sheets.emis.idle, 0, row * FH, N, FH), flip });
+  const pose = (p: Pose, v: View, flip = false): Item => ({ ...renderFrost(v, p), flip });
+  return {
+    label: "ПОКОЙ: ВНИЗ · ВВЕРХ · ВБОК · ВЛЕВО | ТОПОТ | КОПЬЯ (ВНИЗ, ВБОК) | СБОРКА (ВНИЗ, ВБОК) | ГИБЕЛЬ (СЕРЕДИНА, КОНЕЦ) | НОСИЛЬЩИК (ВНИЗ, ВБОК)",
+    items: [idle(0), idle(1), idle(2), idle(2, true), pose(POSES.stomp("down")[2], "down"), pose(POSES.spearCast("down")[2], "down"),
+      pose(POSES.spearCast("side")[2], "side"), pose(POSES.summon("down")[2], "down"), pose(POSES.summon("side")[2], "side"),
+      pose(POSES.death("down")[6], "down"), pose(POSES.death("down")[13], "down"), { ...renderBearer("down", 0.25, 0) }, { ...renderBearer("side", 0.25, 0) }],
+  };
+}
+/** «Наш | референс»: ×1 и ×3 с героем на земле, галерея умений ×3 день/ночь, эффекты льда, большие кадры ×5 (4 стороны) рядом с образцом 08. */
+function buildCompare(sheets: Sheets, A: Assets, fx: { name: string; sheet: PC; w: number; h: number; k: number }[]): PC {
+  const k5 = 5;
+  const H5 = FH * k5;
+  const RH = A.ref ? A.ref.h : H5;
+  const rowH = Math.max(H5, RH);
+  const gal = gallery(sheets);
+  const bw = 4 * (N * k5 + 12);
+  const W = Math.max(gal.items.length * (N * 3 + 8) + 48, 24 + bw + 40 + (A.ref ? A.ref.w : 500) + 24, 1700);
+  const y1 = 12, y3 = y1 + 22 + 92 + 12, yg = y3 + 22 + 90 * 3 + 12, yx = yg + 22 + 2 * (FH * 3 + 6) + 16;
+  const fxH = Math.max(...fx.map((f) => f.h * f.k)) + 8;
+  const yb = yx + 22 + fxH + 16;
+  const c = new PC(W, yb + 2 * (rowH + 70) + 20);
+  fill(c, 0, 0, c.w, c.h, [30, 28, 34, 255]);
+  for (const [kk, y0] of [[1, y1], [3, y3]] as [number, number][]) {
+    text(c, `×${kk} · ГЕРОЙ · ВЛАДЫКА ВНИЗ, ВВЕРХ, ВБОК, ВЛЕВО`, 24, y0, 2);
+    const yb0 = y0 + 22 + 88 * kk;
+    groundBg(c, A.terrain, 24, y0 + 20, Math.min(W - 48, (34 + 86 * 4 + 40) * kk + 40), 90 * kk, kk, "dirt");
+    let x = 40;
+    const put1 = (img: PC, feet: number, w: number, flip = false) => {
+      shadowBlob(c, x + (img.w / 2) * kk, yb0 - 0.5 * kk, Math.min(18, (img.w / 32) * 6.5) * kk, 2.6 * kk);
+      c.blit(scaleNN(img, kk, flip), x, Math.round(yb0 - feet * kk));
+      x += w * kk;
+    };
+    put1(heroAt(A, 0), 30.4, 34);
+    put1(crop(sheets.img.idle, 0, 0, N, FH), CAM.GY, 86);
+    put1(crop(sheets.img.idle, 0, FH, N, FH), CAM.GY, 86);
+    put1(crop(sheets.img.idle, 0, 2 * FH, N, FH), CAM.GY, 86);
+    put1(crop(sheets.img.idle, 0, 2 * FH, N, FH), CAM.GY, 86, true);
+  }
+  text(c, gal.label + "  (×3, ДЕНЬ / НОЧЬ)", 24, yg, 2);
+  const gw = gal.items.length * (N * 3 + 8) + 8;
+  for (const [ni, night] of [false, true].entries()) {
+    const yy = yg + 22 + ni * (FH * 3 + 6);
+    fill(c, 24, yy, gw, FH * 3, night ? [38, 46, 74, 255] : [120, 104, 84, 255]);
+    gal.items.forEach((it, i) => {
+      const ix = 24 + 8 + i * (N * 3 + 8);
+      c.blit(scaleNN(it.img, 3, it.flip), ix, yy);
+      if (night && it.emis) { nightRect(c, ix, yy, N * 3, FH * 3); relight(c, it.emis, ix, yy, 3, it.flip); }
+    });
+  }
+  text(c, "ЭФФЕКТЫ ЛЬДА ×2: " + fx.map((f) => f.name).join(" · "), 24, yx, 2);
+  {
+    fill(c, 24, yx + 22, W - 48, fxH, [60, 56, 48, 255]);
+    let fxx = 32;
+    for (const f of fx) {
+      const take = Math.min(8, Math.floor((W - 48 - (fxx - 32)) / (f.w * f.k + 4)));
+      for (let i = 0; i < Math.min(take, f.k === 1 ? 3 : 4); i++) { c.blit(scaleNN(crop(f.sheet, i * f.w + 0, 0, f.w, f.h), f.k), fxx, yx + 26); fxx += f.w * f.k + 4; }
+      fxx += 16;
+    }
+  }
+  for (const night of [false, true]) {
+    const y = yb + 48 + (night ? rowH + 70 : 0);
+    text(c, night ? "НАШ · НОЧЬ" : "НАШ · ДЕНЬ", 24, y - 36, 3);
+    text(c, "РЕФЕРЕНС 08", 24 + bw + 40, y - 36, 3);
+    const oy = y + rowH - H5;
+    fill(c, 24, oy, bw, H5, night ? [38, 46, 74, 255] : [120, 104, 84, 255]);
+    const parts: [number, boolean][] = [[0, false], [1, false], [2, false], [2, true]];
+    parts.forEach(([j, flip], i) => c.blit(scaleNN(crop(sheets.img.idle, 0, j * FH, N, FH), k5, flip), 24 + i * (N * k5 + 12), oy));
+    if (night) {
+      nightRect(c, 24, oy, bw, H5);
+      parts.forEach(([j, flip], i) => relight(c, crop(sheets.emis.idle, 0, j * FH, N, FH), 24 + i * (N * k5 + 12), oy, k5, flip));
+    }
+    fill(c, 24 + bw + 16, y, 4, rowH, [240, 232, 214, 255]);
+    if (A.ref) c.blit(A.ref, 24 + bw + 40, y + rowH - A.ref.h);
+  }
+  return c;
+}
+/** Референс 08 → png 560×560 (через System.Drawing; чужой арт остаётся в tools/out, не в игре). */
+function ensureRef(root: string): PC | null {
+  const png = path.join(root, "tools", "out", "bosses139", "ref-08.png");
+  const jpg = path.join(root, "tools", "out", "refs", "bosses-139", "08.jpg");
+  if (!fs.existsSync(png) && fs.existsSync(jpg) && process.platform === "win32") {
+    const ps = `Add-Type -AssemblyName System.Drawing; $s=[System.Drawing.Image]::FromFile('${jpg}'); $b=New-Object System.Drawing.Bitmap ${REF_W},${REF_W}; $g=[System.Drawing.Graphics]::FromImage($b); $g.InterpolationMode='HighQualityBicubic'; $g.DrawImage($s,0,0,${REF_W},${REF_W}); $b.Save('${png}',[System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $b.Dispose(); $s.Dispose()`;
+    spawnSync("powershell", ["-NoProfile", "-Command", ps], { stdio: "ignore" });
+  }
+  return fs.existsSync(png) ? loadPC(png) : null;
+}
+
+export function writeFrostArt(root: string, outDir: string, quick = false): string[] {
+  fs.mkdirSync(outDir, { recursive: true });
+  const files: string[] = [];
+  const save = (c: PC, name: string) => { const f = path.join(outDir, name); c.save(f); files.push(f); return c; };
+  const sheets = animSheets(quick ? ["idle"] : undefined, quick ? 1 : 99);
+  const A: Assets = {
+    hero: loadPC(path.join(root, "client", "public", "assets", "units", "warrior.png")),
+    terrain: loadPC(path.join(root, "client", "public", "assets", "tiles", "terrain.png")),
+    ref: ensureRef(root),
+  };
+  if (process.argv.includes("--sil")) {
+    const sc = new PC(N * 5 * 4 + 60 + REF_W, REF_W + 10);
+    fill(sc, 0, 0, sc.w, sc.h, [214, 220, 226, 255]);
+    [[0, false], [1, false], [2, false], [2, true]].forEach(([j, flip], i) => {
+      const fr = crop(sheets.img.idle, 0, (j as number) * FH, N, FH);
+      for (let y = 0; y < FH; y++) for (let x = 0; x < N; x++) if (fr.alpha(x, y)) fr.set(x, y, [16, 20, 28, 255]);
+      sc.blit(scaleNN(fr, 5, flip as boolean), i * (N * 5 + 6), REF_W - FH * 5);
+    });
+    if (A.ref) {
+      const r = A.ref.clone();
+      for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) { const q = r.get(x, y)!; r.set(x, y, q[0] > 238 && q[1] > 238 && q[2] > 238 ? [214, 220, 226, 255] : [16, 20, 28, 255]); }
+      sc.blit(r, N * 5 * 4 + 40, 0);
+    }
+    save(sc, "r65n-e-sil.png");
+    return files;
+  }
+  if (process.argv.includes("--death")) {
+    const fr = [6, 9, 13].map((i) => renderFrost("down", POSES.death("down")[i]).img).concat([6, 13].map((i) => renderFrost("side", POSES.death("side")[i]).img));
+    const sc = new PC(fr.length * (N * 6 + 8), FH * 6);
+    fill(sc, 0, 0, sc.w, sc.h, [120, 104, 84, 255]);
+    fr.forEach((f, i) => sc.blit(scaleNN(f, 6), i * (N * 6 + 8), 0));
+    save(sc, "r65n-e-death.png");
+    return files;
+  }
+  const fx = [
+    { name: "КОЛЬЦО ТОПОТА", sheet: buildRingFx(), w: FX.ring.w, h: FX.ring.h, k: 1 },
+    { name: "КОПЬЁ", sheet: buildSpearFx(), w: FX.spear.w, h: FX.spear.h, k: 3 },
+    { name: "КРУГ СБОРКИ", sheet: buildCircleFx(), w: FX.circle.w, h: FX.circle.h, k: 2 },
+  ];
+  save(buildCompare(sheets, A, fx), "r65n-e-compare.png");
+  if (quick) return files;
+  const sheet = new PC(N * FROST_COLS, FH * 3), glow = new PC(N * FROST_COLS, FH * 3);
+  for (const [a] of ANIM_ORDER) { sheet.blit(sheets.img[a], FROST_ANIMS[a].col * N, 0); glow.blit(sheets.emis[a], FROST_ANIMS[a].col * N, 0); }
+  save(sheet, "frost-sheet.png");
+  save(buildBearerUnit(), "frost-bearer.png");
+  save(glow, "frost-glow.png");
+  for (const f of fx) save(f.sheet, `frost-fx-${f.name === "КОЛЬЦО ТОПОТА" ? "ring" : f.name === "КОПЬЁ" ? "spear" : "circle"}.png`);
+  const rowsN = ["вниз", "вверх", "вбок"];
+  const bad: string[] = [];
+  for (let r = 0; r < 3; r++) for (let cI = 0; cI < FROST_COLS; cI++) {
+    let hits = 0;
+    for (let k2 = 0; k2 < FH; k2++) for (const [x, y] of [[0, k2], [N - 1, k2]]) { const q = sheet.get(cI * N + x, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    for (let k2 = 0; k2 < N; k2++) for (const y of [0, FH - 1]) { const q = sheet.get(cI * N + k2, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    if (hits) bad.push(`лист, ${rowsN[r]}, кадр ${cI + 1}: ${hits} px не цветом контура на краю`);
+  }
+  console.log(`  ${ID}: ${FROST_COLS} кадров × 3 вида, кадр ${N}×${FH}`);
+  if (bad.length) { console.warn(`  проверки: ${bad.length}\n${bad.slice(0, 40).map((s) => "    " + s).join("\n")}`); process.exitCode = 1; }
+  else console.log("  проверки: край кадра чист");
+  return files;
+}
+
+const isMain = !!process.argv[1] && path.resolve(process.argv[1]).replace(/\\/g, "/").endsWith("bosses139/bone_frost_lord.ts");
+if (isMain) {
+  const root = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
+  const t = Date.now();
+  const files = writeFrostArt(root, path.join(root, "tools", "out", "bosses139"), process.argv.includes("--quick") || process.argv.includes("--sil") || process.argv.includes("--death"));
+  console.log(`  ${files.length} файлов, ${((Date.now() - t) / 1000).toFixed(0)} с`);
+}
+void linear; void hex; void cross; void easeIn; void stackRows; void depthOf; void sealPinholes; void perp; void lerpV; void ik; void rot; void sub; void snapPx;
+void lerp; void clamp; void mat; void PX; void add; void norm; void toView; void fromView; void hash01; void easeInOut; void easeOut;

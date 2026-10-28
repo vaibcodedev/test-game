@@ -1,0 +1,353 @@
+
+/** Искры льда вокруг навершия: мелкие мерцающие точки по эллипсу, ярче и крупнее — на пике заряда. */
+function drawSparks(c: Ctx, s: { at: V3; k: number; r: number; n: number }, ph: number) {
+  const [x0, y0] = scr(CAM, toView(c.view, s.at));
+  for (let i = 0; i < s.n; i++) {
+    const a = (i / s.n) * TAU + ph * TAU * (i % 2 ? 1 : -1);
+    const r = s.r * (0.7 + 0.3 * Math.sin(a * 2 + i));
+    const x = x0 + Math.cos(a) * r, y = y0 - 1 + Math.sin(a) * r * 0.75;
+    const tw = Math.sin(ph * TAU * 2 + i * 1.7);
+    put(c, x, y, tw > 0.2 ? FIRE[4] : GLOWC[3], -99, true);
+    if (s.k > 0.6 && tw > 0.6) { put(c, x + 1, y, GLOWC[2], -99, true); put(c, x, y - 1, GLOWC[2], -99, true); }
+  }
+}
+/** Иней у ладони: облачко из пяти точек, поднимается и тает. */
+function drawPalm(c: Ctx, g: { at: V3; k: number }, ph: number) {
+  const [x0, y0] = scr(CAM, toView(c.view, g.at));
+  for (let i = 0; i < 6; i++) {
+    const f = (ph * 2 + i / 6) % 1;
+    const x = x0 + Math.sin(i * 2.3 + f * 3) * (1.5 + 2.0 * f), y = y0 - 1 - f * (5 + 3 * g.k);
+    put(c, x, y, f < 0.3 ? FIRE[4] : f < 0.65 ? GLOWC[3] : GLOWC[1], -99, f < 0.7);
+  }
+  put(c, x0, y0, GLOWC[3], -99, true); put(c, x0 + 1, y0, GLOWC[2], -99, true); put(c, x0, y0 - 1, FIRE[4], -99, true);
+}
+/** Осколки льда при гибели: ромбики, светлее к центру. */
+function drawShards(c: Ctx, s: { at: V3; k: number }) {
+  const [x0, y0] = scr(CAM, toView(c.view, s.at));
+  const x = Math.round(x0), y = Math.round(y0);
+  put(c, x, y, FIRE[4], -99, true);
+  if (s.k > 0.5) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(c, x + dx, y + dy, ICE[dx + dy > 0 ? 2 : 4], -99, true);
+}
+/** Позёмка: низкие облачка снега у ног, дрейфуют по фазе (на пустых пикселях, после контура). */
+function drawMist(c: Ctx, X: Extra, ph: number) {
+  const [cx, cy] = scr(CAM, toView(c.view, X.mistAt));
+  const n = Math.round(6 + 8 * X.mist);
+  for (let i = 0; i < n; i++) {
+    const a = hash01(i, 4, 83) * TAU;
+    const drift = ((ph + i * 0.137) % 1);
+    const x = cx + Math.cos(a) * (12 + 14 * hash01(i, 5, 85)) + Math.round((drift - 0.5) * 3);
+    const y = Math.min(CAM.GY - 0.6, cy + Math.sin(a) * 5.0) - (hash01(i, 6, 87) < 0.3 ? 1 : 0);
+    const len = 2 + Math.floor(hash01(i, 7, 89) * 3);
+    for (let k = 0; k < len; k++) {
+      const xx = Math.floor(x) + k, yy = Math.floor(y);
+      if (xx < 2 || xx >= FW - 2 || yy < 2 || yy >= FH - 2 || c.img.alpha(xx, yy)) continue;
+      c.img.set(xx, yy, SAND[k === 0 || k === len - 1 ? 1 : (i + k) % 3 === 0 ? 3 : 2]);
+    }
+  }
+}
+
+/** Кадр владыки: { img, emis } 80×80. */
+function finishFrame(S: Scene, X: Extra, view: View, pose: { trail?: V3[]; t: number }): { img: PC; emis: PC } {
+  const R0 = renderScene(CAMR, S, view, OUT);
+  const D = downscale(R0);
+  const img = D.img;
+  const emis = D.emis;
+  const c: Ctx = { img, emis, t: D.t, prim: D.prim, view };
+  for (const r of X.rings) drawRing(c, r, true);
+  thicken(img, OUT, 3, [...GLOWC, ...FIRE, ...GEM, ...SAND]);
+  sealPinholes(img, OUT, true, 8);
+  selout(img);
+  const isOut = (q: RGBA | null) => colEq(q, OUT);
+  const kill: [number, number][] = [];
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    if (!isOut(img.get(x, y))) continue;
+    let body = false;
+    for (let dy = -1; dy <= 1 && !body; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const q = img.get(x + dx, y + dy);
+      if (q && q[3] > 120 && !isOut(q)) { body = true; break; }
+    }
+    if (!body) kill.push([x, y]);
+  }
+  for (const [x, y] of kill) { img.clear(x, y); emis.clear(x, y); }
+  for (let x = 0; x < FW; x++) {
+    if (!img.alpha(x, FH - 1)) continue;
+    const q = img.get(x, FH - 2)!;
+    if (q[3] > 120 && !isOut(q)) img.set(x, FH - 1, OUT); else img.clear(x, FH - 1);
+    emis.clear(x, FH - 1);
+  }
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    const q = img.get(x, y)!;
+    if (q[3] && isEmisCol(q) && !emis.alpha(x, y)) emis.set(x, y, q);
+    if (!q[3] || !isEmisCol(q)) emis.clear(x, y);
+  }
+  // контровой свет: холодная светлая кромка 1 px по внешнему силуэту — сильнее сверху и слева
+  {
+    const RIM: RGBA = [150, 224, 255, 255];
+    const snap = img.clone();
+    const gone = (x: number, y: number) => { const q = snap.get(x, y); return !q || q[3] < 120 || isOut(q); };
+    for (let y = 1; y < FH - 1; y++) for (let x = 1; x < FW - 1; x++) {
+      const q = snap.get(x, y)!;
+      if (q[3] < 200 || isOut(q) || isEmisCol(q)) continue;
+      const tl = gone(x, y - 1) || gone(x - 1, y), other = gone(x + 1, y) || gone(x, y + 1);
+      if (!tl && !other) continue;
+      const m = mix(q, RIM, tl ? 0.6 : 0.34);
+      img.set(x, y, [m[0], m[1], m[2], 255]);
+    }
+  }
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    if (x !== 0 && y !== 0 && x !== FW - 1 && y !== FH - 1) continue;
+    const q = img.get(x, y)!;
+    if (q[3] && !isOut(q)) { img.clear(x, y); emis.clear(x, y); }
+  }
+  if (X.mist > 0.03) drawMist(c, X, pose.t);
+  for (const r of X.rings) drawRing(c, r, false);
+  if (pose.trail) drawTrail(c, pose.trail.map((q) => mul(q, K)));
+  for (const g of X.glints) drawGlint(c, g);
+  for (const s of X.sparks) drawSparks(c, s, pose.t);
+  if (X.palm) drawPalm(c, X.palm, pose.t);
+  for (const s of X.shards) drawShards(c, s);
+  if (X.flash) drawFlash(c, X.flash);
+  for (const d of X.dust) drawDust(c, d);
+  return { img, emis };
+}
+export function renderFrost(view: View, pose: Pose): { img: PC; emis: PC } {
+  // хвост плаща уходит назад и в сторону: тело сдвинуто в кадре, чтобы шлейф помещался
+  const cx = view === "side" ? 47 : view === "up" ? 49 : 29;
+  CAM.CX = cx; CAMR.CX = cx * 2;
+  const { S, X } = build(pose, view);
+  return finishFrame(S, X, view, pose);
+}
+
+// ---------------- анимации ----------------
+type Num = number | V3 | [V3, V3] | [number, number] | V3[] | undefined;
+function lerpAny(a: Num, b: Num, t: number): Num {
+  if (typeof a === "number" && typeof b === "number") return lerp(a, b, t);
+  if (Array.isArray(a) && Array.isArray(b)) return (a as unknown[]).map((v, k) => lerpAny(v as Num, (b as unknown[])[k] as Num, t)) as Num;
+  return t < 0.5 ? a : b;
+}
+function lerpPose(a: Pose, b: Pose, t: number): Pose {
+  const o = { ...a } as Record<string, unknown>;
+  for (const k of Object.keys(a) as (keyof Pose)[]) {
+    if (k === "trail" || k === "flashAt" || k === "ringAt") continue;
+    o[k] = lerpAny(a[k] as Num, b[k] as Num, t);
+  }
+  return o as unknown as Pose;
+}
+interface Key { f: number; p: Partial<Pose>; ease?: (t: number) => number }
+function poseAt(base: Pose, keys: Key[], f: number): Pose {
+  const full = keys.map((k) => ({ ...base, ...k.p }) as Pose);
+  let j = 0;
+  while (j < keys.length - 2 && f >= keys[j + 1].f) j++;
+  const a = keys[j], b = keys[j + 1];
+  const u = clamp((f - a.f) / (b.f - a.f), 0, 1);
+  return lerpPose(full[j], full[j + 1], (b.ease ?? easeInOut)(u));
+}
+const keyed = (base: Pose, keys: Key[], n: number, seed: number): Pose[] =>
+  Array.from({ length: n }, (_, i) => ({ ...poseAt(base, keys, i), t: i / n, seed: seed + i }));
+const TREMBLE = [0, 1, 0, -1];
+const windPoses = (R0: Pose, wind: Partial<Pose>, seed: number, n = 4) => keyed(R0, [{ f: 0, p: {} }, { f: n - 1, p: wind, ease: easeInOut }], n, seed);
+function holdPoses(R0: Pose, wind: Partial<Pose>, seed: number, n: number, mod: (i: number) => Partial<Pose>) {
+  const base = { ...R0, ...wind } as Pose;
+  return Array.from({ length: n }, (_, i) => ({ ...base, t: i / n, seed: seed + i, ...mod(i) }));
+}
+const sv = <T,>(view: View, front: T, side: T): T => (view === "side" ? side : front);
+
+/** Покой: дыхание по пикселю (грудь, голова, ладонь), волна по плащу, свет ядра и звезды пульсирует, позёмка. */
+function idlePoses(view: View, n = 12): Pose[] {
+  const R0 = restOf(view);
+  const chest = [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0];
+  const head = [0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0];
+  const hand = [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0];
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / n, ph = t * TAU;
+    return {
+      ...R0, t, seed: 100 + i, chest: chest[i], headZ: head[i] - chest[i],
+      hand: [R0.hand[0], add(R0.hand[1], [0, 0, hand[i] * PXM])] as [V3, V3],
+      wave: t, waveAmp: 1, flare: 0.4 + 0.4 * Math.sin(ph), glow: 1 + 0.2 * Math.sin(ph), charge: 0.55 + 0.3 * Math.sin(ph + 1.2),
+    };
+  });
+}
+/** Ходьба: размеренный тяжёлый шаг под сюртуком, посох-опора идёт дугой, плащ тянется и подрагивает. */
+function walkPoses(view: View, n = 12): Pose[] {
+  const R0 = restOf(view);
+  const side = view === "side";
+  const bob = [0, -1, -1, 0, 0, 0, 0, -1, -1, 0, 0, 0];
+  const sway = [0, 0, 1, 1, 1, 0, 0, 0, -1, -1, -1, 0];
+  const b0 = sub(R0.stf[0], mul(R0.stf[1], R0.sg));
+  return Array.from({ length: n }, (_, i) => {
+    const u = i / n;
+    const PL = 0.58;
+    let y: number, z: number;
+    if (u < PL) { y = 4.5 - (9 * u) / PL; z = 0; }
+    else { const s = (u - PL) / (1 - PL); y = -4.5 + 9 * easeInOut(s); z = 2.6 * Math.sin(Math.PI * s); }
+    const butt: V3 = side ? [b0[0], b0[1] + y, z] : [b0[0], b0[1] + y * 0.6, z];
+    const stf = staffAt(butt, [0.04, 0.03 - y * 0.03, 1], R0.sg);
+    const kr = Math.max(0, Math.sin(TAU * u)), kl = Math.max(0, Math.sin(TAU * u + Math.PI));
+    return {
+      ...R0, t: u, seed: 150 + i,
+      root: [side ? 0 : sway[i] / K, 0, 0] as V3, bob: bob[i] * PXM,
+      stf, kick: [kr, kl] as [number, number], foot: [kr * 0.5, kl * 0.5] as [number, number],
+      hand: [stf[0], add(R0.hand[1], [0, 1.4 * Math.sin(TAU * u), 0.5 * Math.cos(TAU * u)])] as [V3, V3],
+      wave: u * 2, waveAmp: 1.4, flare: side ? 2.4 : 1.4,
+      dust: [i === 0 ? 1 : i === 1 ? 0.5 : 0, 0] as [number, number],
+      glow: 1 + 0.15 * Math.sin(u * TAU), charge: 0.5, mist: 0.8,
+    };
+  });
+}
+/** «Топот»: левая нога вверх, посох вскинут над головой и вбит пяткой в землю вместе со стопой (кадр 2), кольцо инея. */
+function stompKeys(view: View) {
+  const R0 = restOf(view);
+  const side = view === "side";
+  const wind: Partial<Pose> = {
+    pitch: -0.1, hp: -0.16, bob: 2 * PXM, foot: [0, 1], kick: [0, 0.8], glow: 1.3, charge: 1.1, sparks: 0.8, mist: 0.9,
+    stf: side ? staffAt([9, 6.5, 12], [0, 0.15, 1], 30) : staffAt([10.5, 3.5, 12], [0.12, 0.05, 1], 30), flare: 1.6, waveAmp: 1.4,
+    hand: [R0.hand[0], side ? [-6, 10, 40] : [-14, 6, 40]], pole: [[1, -0.4, 0.5], [-1, -0.3, 0.2]],
+  };
+  const hit: Partial<Pose> = {
+    ...wind, pitch: 0.14, hp: 0.06, bob: -2 * PXM, foot: [0, 0], kick: [0, 0], glow: 1.6, charge: 1.5, flash: 1, ring: 0.06, dust: [1, 1], sparks: 1,
+    stf: side ? staffAt([9, 9.5, -3], [0, 0.1, 1], 30) : staffAt([12.6, 3, -3], [0.02, 0.06, 1], 30),
+    hand: [R0.hand[0], side ? [-6.5, 12.5, 28] : [-14, 9, 28]], flare: 3, mist: 1,
+  };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 3 * PXM }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
+    { f: 3, p: { ...hit, flash: 0, ring: 0.35, dust: [0.6, 0.6], charge: 1.1 }, ease: linear },
+    { f: 4, p: { ...hit, flash: 0, ring: 0.62, dust: [0.3, 0.3], charge: 0.9, bob: -1 * PXM }, ease: linear },
+    { f: 5, p: { ...hit, flash: 0, ring: 0.88, dust: [0, 0], charge: 0.7, bob: -1 * PXM }, ease: linear },
+    { f: 6, p: { ...hit, flash: 0, ring: 0, dust: [0, 0], charge: 0.6, bob: -1 * PXM, sparks: 0.5 }, ease: linear },
+    { f: 7, p: {}, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function stompStrikePoses(view: View): Pose[] {
+  const { R0, keys } = stompKeys(view);
+  const poses = keyed(R0, keys, 8, 540);
+  poses[2].flashAt = add(sub(poses[2].stf[0], mul(norm(poses[2].stf[1]), poses[2].sg)), add(bodyShift(view, poses[2]), [0, 0, 1.2]));
+  return poses;
+}
+/** «Ледяные копья»: звезда отведена за плечо и налита светом; удар — посох вперёд-вниз, ладонь выброшена, вспышка (кадр 2). */
+function spearKeys(view: View) {
+  const R0 = restOf(view);
+  const side = view === "side";
+  const wind: Partial<Pose> = {
+    yaw: side ? 0.1 : -0.22, pitch: -0.06, hp: -0.1, glow: 1.4, charge: 1.3, sparks: 1, bob: 1 * PXM, mist: 0.8, palm: 1,
+    stf: side ? staffAt([9, 9, 12.5], [0, -0.55, 0.85], 30) : staffAt([4, 14, 10.6], [0.3, -0.5, 0.8], 30),
+    hand: [R0.hand[0], side ? [-6, 12, 38] : [-14, 7, 37]], pole: [[1, -0.5, 0.3], [-1, -0.3, 0.2]], flare: 1.4,
+  };
+  const hit: Partial<Pose> = {
+    ...wind, yaw: side ? -0.05 : 0.18, pitch: 0.2, hp: 0.05, bob: -2 * PXM, glow: 1.6, charge: 1.5, flash: 1,
+    stf: side ? staffAt([9, -22, 36], [0, 0.82, -0.3], 32) : staffAt([24, -8.4, 30], [-0.6, 0.62, -0.15], 30), sg: side ? 32 : 30,
+    hand: [R0.hand[0], side ? [-6, 18, 32] : [-9, 15, 31]], flare: 2.6,
+  };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 2 * PXM, charge: 1.5 }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
+    { f: 3, p: { ...hit, flash: 0, charge: 1.2 }, ease: easeOut }, { f: 5, p: { ...hit, flash: 0, bob: -1 * PXM, charge: 0.9, pitch: 0.12 }, ease: easeInOut },
+    { f: 7, p: {}, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function spearCastPoses(view: View): Pose[] {
+  const { R0, keys } = spearKeys(view);
+  const poses = keyed(R0, keys, 8, 740);
+  const sdv = norm(poses[2].stf[1]);
+  const butt = sub(add(poses[2].stf[0], bodyShift(view, poses[2])), mul(sdv, poses[2].sg));
+  poses[2].flashAt = add(butt, mul(sdv, SC));
+  return poses;
+}
+/** «Сборка»: обе руки к небу, звезда горит, у ног расходится иней — носильщики встают из льда; удар — посох оземь (кадр 2). */
+function summonKeys(view: View) {
+  const R0 = restOf(view);
+  const side = view === "side";
+  const wind: Partial<Pose> = {
+    pitch: -0.1, hp: -0.26, bob: 1 * PXM, glow: 1.5, charge: 1.4, sparks: 1, mist: 1, palm: 1, flare: 2.2, waveAmp: 1.6,
+    stf: side ? staffAt([9, 5, 6], [0, 0.2, 1], 30) : staffAt([9, 2.5, 6], [0.2, 0.03, 1], 30),
+    hand: [R0.hand[0], side ? [-5, 8, 43] : [-15, 3, 41]], pole: [[1, -0.3, 0.4], [-1, -0.3, -0.4]],
+  };
+  const hit: Partial<Pose> = {
+    ...wind, pitch: 0.18, hp: 0.08, bob: -2 * PXM, flash: 1, ring: 0.05, glow: 1.6, charge: 1.5,
+    stf: side ? staffAt([9, 9.5, -2.5], [0, 0.1, 1], 30) : staffAt([12.8, 3.4, -2.5], [0.02, 0.1, 1], 30),
+    hand: [R0.hand[0], side ? [-6, 14, 27] : [-14, 9, 27]], dust: [1, 1], flare: 3,
+  };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 3 * PXM, hp: -0.32 }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
+    { f: 3, p: { ...hit, flash: 0, ring: 0.35, dust: [0.5, 0.5] }, ease: linear },
+    { f: 4, p: { ...hit, flash: 0, ring: 0.62, dust: [0.2, 0.2] }, ease: linear },
+    { f: 5, p: { ...hit, flash: 0, ring: 0.9, dust: [0, 0], bob: -1 * PXM }, ease: linear },
+    { f: 6, p: { ...hit, flash: 0, ring: 0, dust: [0, 0], bob: -1 * PXM, charge: 0.9 }, ease: linear },
+    { f: 7, p: {}, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function summonStrikePoses(view: View): Pose[] {
+  const { R0, keys } = summonKeys(view);
+  const poses = keyed(R0, keys, 8, 940);
+  poses[2].flashAt = add(sub(poses[2].stf[0], mul(norm(poses[2].stf[1]), poses[2].sg)), add(bodyShift(view, poses[2]), [0, 0, 1.2]));
+  return poses;
+}
+/**
+ * Гибель: отшатнулся, звезда вспыхнула и погасла; посох выпал; владыка оседает в сюртук, плащ растекается лужей; корона
+ * скатывается на землю; лёд тела трескается — осколки разлетаются и тают; свет гаснет, всё выцветает.
+ */
+function deathPoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const Wv = (v: V3): V3 => fromView(view, v);
+  const fall = staffAt(Wv([-12, -3, 0]), Wv([0.55, -0.45, 0.7]), R0.sg);
+  const lying = staffAt(Wv([-20, -2, 1.0]), Wv([0.7, -0.71, 0.02]), R0.sg);
+  const recoil: Partial<Pose> = { pitch: -0.16, hp: -0.36, bob: 1 * PXM, glow: 1.6, charge: 1.5, flash: 0, sparks: 1 };
+  const stagger: Partial<Pose> = { ...recoil, pitch: 0.12, hp: 0.12, bob: 0, glow: 1.1, charge: 0.8 };
+  const down = (o: Partial<Pose>): Partial<Pose> => ({ ...stagger, held: 0, stf: lying, sparks: 0, palm: 0, mist: 0.3, ...o });
+  const keys: Key[] = [
+    { f: 0, p: { glow: 1.2 } }, { f: 1, p: recoil, ease: easeOut }, { f: 2, p: stagger, ease: easeInOut },
+    { f: 3, p: down({ stf: fall, glow: 0.9, sink: 3, collapse: 0.08, wither: 0.1, pitch: 0.2, shards: 0.1 }), ease: easeIn },
+    { f: 4, p: down({ glow: 0.7, sink: 8, collapse: 0.25, wither: 0.2, pitch: 0.26, dust: [0.9, 0.9], shards: 0.25, charge: 0.5 }), ease: easeIn },
+    { f: 5, p: down({ glow: 0.5, sink: 14, collapse: 0.45, wither: 0.32, crownOff: 0.22, shards: 0.4, charge: 0.4, dust: [0.5, 0.5] }), ease: linear },
+    { f: 6, p: down({ glow: 0.35, sink: 21, collapse: 0.65, wither: 0.45, crownOff: 0.55, shards: 0.55, charge: 0.3 }), ease: linear },
+    { f: 7, p: down({ glow: 0.2, sink: 28, collapse: 0.82, wither: 0.55, crownOff: 0.85, shards: 0.7, charge: 0.2 }), ease: linear },
+    { f: 8, p: down({ glow: 0.1, sink: 36, collapse: 0.95, wither: 0.65, crownOff: 1, shards: 0.8, charge: 0.1, dust: [0.8, 0.8] }), ease: linear },
+    { f: 10, p: down({ glow: 0.05, sink: 44, collapse: 1, wither: 0.8, crownOff: 1, shards: 0.92, charge: 0, dust: [0, 0] }), ease: easeOut },
+    { f: 13, p: down({ glow: 0, sink: 44, collapse: 1, wither: 0.95, crownOff: 1, shards: 1, charge: 0, dust: [0, 0], mist: 0.6 }), ease: easeOut },
+  ];
+  const poses = keyed(R0, keys, 14, 1300);
+  for (let i = 3; i < 14; i++) { poses[i].held = 0; if (i >= 4) poses[i].stf = lying; }
+  return poses;
+}
+
+export type FrostAnim = "idle" | "walk" | "stompWind" | "stompHold" | "stomp" | "spearWind" | "spearHold" | "spearCast"
+  | "summonWind" | "summonHold" | "summon" | "death";
+type AnimDef = { col: number; n: number; fps: number; loop: boolean; ru: string; next?: FrostAnim; hit?: number };
+const ANIM_ORDER: [FrostAnim, Omit<AnimDef, "col">][] = [
+  ["idle", { n: 12, fps: 12, loop: true, ru: "покой" }],
+  ["walk", { n: 12, fps: 12, loop: true, ru: "ходьба" }],
+  ["stompWind", { n: 4, fps: 12, loop: false, ru: "замах топота", next: "stompHold" }],
+  ["stompHold", { n: 4, fps: 12, loop: true, ru: "удержание топота", next: "stomp" }],
+  ["stomp", { n: 8, fps: 12, loop: false, ru: "топот", hit: 2 }],
+  ["spearWind", { n: 4, fps: 12, loop: false, ru: "замах копий", next: "spearHold" }],
+  ["spearHold", { n: 4, fps: 12, loop: true, ru: "удержание копий", next: "spearCast" }],
+  ["spearCast", { n: 8, fps: 12, loop: false, ru: "ледяные копья", hit: 2 }],
+  ["summonWind", { n: 4, fps: 12, loop: false, ru: "замах сборки", next: "summonHold" }],
+  ["summonHold", { n: 4, fps: 12, loop: true, ru: "удержание сборки", next: "summon" }],
+  ["summon", { n: 8, fps: 12, loop: false, ru: "сборка: носильщики", hit: 2 }],
+  ["death", { n: 14, fps: 12, loop: false, ru: "гибель" }],
+];
+export const FROST_ANIMS = {} as Record<FrostAnim, AnimDef>;
+{
+  let col = 0;
+  for (const [k, a] of ANIM_ORDER) { FROST_ANIMS[k] = { ...a, col }; col += a.n; }
+}
+export const FROST_COLS = ANIM_ORDER.reduce((s, [, a]) => s + a.n, 0);
+export const FROST_SKILLS: Record<string, { windup: [FrostAnim, FrostAnim]; strike: FrostAnim }> = {
+  stomp: { windup: ["stompWind", "stompHold"], strike: "stomp" },
+  ice_spears: { windup: ["spearWind", "spearHold"], strike: "spearCast" },
+  assemble: { windup: ["summonWind", "summonHold"], strike: "summon" },
+};
+const POSES: Record<FrostAnim, (v: View) => Pose[]> = {
+  idle: (v) => idlePoses(v), walk: (v) => walkPoses(v),
+  stompWind: (v) => { const { R0, wind } = stompKeys(v); return windPoses(R0, wind, 500); },
+  stompHold: (v) => { const { R0, wind } = stompKeys(v); return holdPoses(R0, wind, 520, 4, (i) => ({ armLift: [TREMBLE[i], 0], glow: [1.4, 1.6, 1.45, 1.6][i], wave: i / 4 })); },
+  stomp: stompStrikePoses,
+  spearWind: (v) => { const { R0, wind } = spearKeys(v); return windPoses(R0, wind, 600); },
+  spearHold: (v) => { const { R0, wind } = spearKeys(v); return holdPoses(R0, wind, 620, 4, (i) => ({ armLift: [TREMBLE[i] * 0.5, 0], glow: [1.5, 1.7, 1.55, 1.7][i], wave: i / 4 })); },
+  spearCast: spearCastPoses,
+  summonWind: (v) => { const { R0, wind } = summonKeys(v); return windPoses(R0, wind, 700); },
+  summonHold: (v) => { const { R0, wind } = summonKeys(v); return holdPoses(R0, wind, 720, 4, (i) => ({ armLift: [TREMBLE[i] * 0.5 + 1, 1], glow: [1.5, 1.7, 1.55, 1.7][i], wave: i / 4 })); },
+  summon: summonStrikePoses, death: deathPoses,
+};

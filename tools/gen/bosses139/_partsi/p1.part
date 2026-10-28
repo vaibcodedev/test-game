@@ -1,0 +1,174 @@
+/**
+ * Задача 139, босс кольца: Ледяной владыка (восток, слот r65n, Костяной хребет, ур. 65, группа 4–5; карточка — docs/bosses-139.md,
+ * раздел 3.3 п. 13 и «Раскладка референсов»: топот, ледяные копья, носильщики). Образ — референс tools/out/refs/bosses-139/08.jpg
+ * (высокий синекожий владыка в чёрной короне с двумя рогами, серебряные волосы, меховой ворот, угольные наплечники в сосульках,
+ * тёмный длинный сюртук с бирюзовой каймой и ледяным подолом, посох с ледяной звездой, огромный плащ-хвост, тянущийся по земле) —
+ * только для сравнения: чужой арт в игру и в git не идёт.
+ *
+ * Метод — как у капеллана (sol_fallen_chaplain.ts): общий движок tools/gen/mobs/lib.ts, тело в двойном разрешении (160×160) сводится
+ * в кадр 80×80, ступни на y = 75; 5 тонов на материал, выборочный контур 1 px, холодный контровой свет по краю. Светится ночью:
+ * ядро на груди, кристалл и звезда посоха, глаза, самоцвет короны, ледяной иней.
+ *
+ * Эффекты льда (листы): кольцо топота, ледяное копьё, ледяной круг сборки. Кадры умений — топот, копья, сборка (призыв), гибель.
+ *
+ * Запуск (одна генерация, низкий приоритет): npx tsx tools/gen/bosses139/bone_frost_lord.ts [--quick|--sil] →
+ *   tools/out/bosses139/r65n-e-compare.png («наш | референс»), frost-sheet.png, frost-glow.png, frost-fx-*.png.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  PC, PX, R, Scene, VIEWS, add, clamp, cross, crop, depthOf, easeIn, easeInOut, easeOut, fill, fromView,
+  groundBg, hash01, hex, ik, lerp, lerpV, linear, loadPC, mat, mix, mul, nightRect, norm, perp, renderScene, rot, scaleNN,
+  scr, sealPinholes, shadowBlob, snapPx, stackRows, stampRows, sub, text, thicken, toView, TAU,
+  type Cam, type Mat, type RGBA, type Row, type StampPx, type V3, type View,
+} from "../mobs/lib";
+import { OUT, selout } from "../mobs/rig";
+
+export const ID = "umb_frost_lord";
+export const FRAME = 80;
+export const FRAME_H = 80;
+const FW = FRAME, FH = FRAME_H;
+const N = FW;
+const CAM: Cam = { N: FW, CX: 40, GY: 75.4 };
+const RS = 2;
+const CAMR: Cam = { N: 160, CX: 80, GY: 150.8 };
+const RX0 = 0;
+/** Модель → пиксели кадра 1×: макушка короны 58 → ≈ 64 px, навершие посоха ≈ 72 px. */
+const K = 1.15;
+const PXM = PX / K;
+const snapM = (view: View, w: V3): V3 => mul(snapPx(view, mul(w, K)), 1 / K);
+const pxM = (view: View, dx: number, dy: number): V3 => fromView(view, [dx / K, 0, -dy * PXM]);
+
+// ---------------- палитра ----------------
+/** Угольная сталь наплечников, короны, посоха: холодные тени, блик — сизый. */
+const STEEL = R("#06080c", "#10151d", "#1e2733", "#34455a", "#6f88a6");
+/** Мех воротника — холодный уголь. */
+const FUR = R("#0a0c10", "#181c22", "#292f38", "#3f4854", "#5d6a7a");
+/** Сюртук — глубокая синева; бирюзовая кайма — ICE. */
+const ROBE = R("#070913", "#0e1328", "#192342", "#273660", "#3b5388");
+const CLOAK = R("#06080b", "#0e1217", "#171d25", "#232d39", "#364555");
+/** Кожа владыки — ледяная синева. */
+const SKIN = R("#0b2a4c", "#15508c", "#2e82cc", "#60b6ee", "#a6e4fb");
+const HAIR = R("#4a5058", "#7f858e", "#b2b8c2", "#dde2ea", "#ffffff");
+/** Лёд тела: кайма, сосульки, подол (не светится). */
+const ICE = R("#093650", "#106a8a", "#22a0ba", "#5ccedc", "#b4f2f4");
+/** Свет льда: ядро груди, кристалл посоха, звезда, глаза (светится). */
+const GLOWC = R("#06344a", "#0c7aa0", "#18c4e0", "#7cf0f8", "#ecffff");
+/** Иней, вспышки, блики. */
+const FIRE = R("#3e6a88", "#80b4d0", "#b8dcee", "#e2f4fc", "#ffffff");
+/** Снежная пыль у земли. */
+const SAND = R("#2a3a48", "#506a80", "#7c98ae", "#aac4d6", "#d6e8f2");
+/** Зелёный самоцвет короны (светится). */
+const GEM = R("#04301c", "#0a6a3a", "#18b068", "#60e8a0", "#c8ffe0");
+const DEAD = R("#101214", "#202427", "#363b40", "#4e555b", "#6a737b");
+const VOID = hex("#05080c");
+
+const M = {
+  steel: mat("сталь", STEEL, { base: 1.55, gain: 2.3, hi: 4 }),
+  fur: mat("мех", FUR, { base: 1.8, gain: 2.2 }),
+  robe: mat("сюртук", ROBE, { base: 1.7, gain: 2.3 }),
+  cloak: mat("плащ", CLOAK, { base: 1.8, gain: 2.3 }),
+  skin: mat("кожа", SKIN, { base: 2.0, gain: 2.2 }),
+  hair: mat("волосы", HAIR, { base: 2.3, gain: 2.0 }),
+  ice: mat("лёд", ICE, { base: 2.2, gain: 2.0, crisp: true }),
+  glow: mat("свет льда", GLOWC, { base: 2.8, gain: 1.0, glow: true, crisp: true }),
+  gem: mat("самоцвет", GEM, { base: 2.6, gain: 1.2, glow: true, crisp: true }),
+};
+const WCACHE = new Map<string, Mat>();
+function wm(m: Mat, w: number): Mat {
+  const s = Math.round(clamp(w, 0, 1) * 3);
+  if (!s) return m;
+  const key = `${m.name}:${s}`;
+  let q = WCACHE.get(key);
+  if (!q) {
+    q = { ...m, ramp: m.ramp.map((c, i) => mix(c, DEAD[Math.min(i, 4)], (s / 3) * 0.5)), glow: m.glow && s < 2 };
+    WCACHE.set(key, q);
+  }
+  return q;
+}
+const isEmisCol = (() => {
+  const s = new Set<string>();
+  for (const c of [...GLOWC, ...GEM, ...FIRE]) s.add(c.slice(0, 3).join(","));
+  return (q: RGBA) => s.has(q.slice(0, 3).join(","));
+})();
+
+// ---------------- поза ----------------
+interface Pose {
+  root: V3; bob: number; chest: number; headZ: number;
+  pitch: number; yaw: number; roll: number; hp: number; hy: number; hr: number;
+  /** кулаки [правый — хват посоха, левый — раскрытая ладонь]; локти — по IK в сторону pole */
+  hand: [V3, V3]; pole: [V3, V3];
+  /** посох: [хват, направление к навершию]; sg — от пятки до хвата; held — в руке */
+  stf: [V3, V3]; sg: number; held: number;
+  armLift: [number, number];
+  /** волна по плащу, размах, отлёт хвоста; шаг (колени) и подъём стопы под сюртуком [пр, лев] */
+  wave: number; waveAmp: number; flare: number; kick: [number, number]; foot: [number, number];
+  /** свет льда 0..1,6; звезда налита светом 0..1,5; увядание; уход тела вниз; сюртук оседает 0..1; корона падает */
+  glow: number; charge: number; wither: number; sink: number; collapse: number; crownOff: number;
+  /** иней у ладони 0..1, позёмка у ног 0..1, искры вокруг навершия 0..1, осколки гибели 0..1 */
+  palm: number; mist: number; sparks: number; shards: number;
+  ring: number; ringAt?: V3; flash: number; flashAt?: V3; dust: [number, number];
+  trail?: V3[];
+  t: number; seed: number;
+}
+
+const HIP0 = 25;
+const NECK: V3 = [0, 0.4, 45];
+const ARM: [number, number] = [10.5, 10.5];
+const STAFF_L = 58;
+const staffAt = (butt: V3, dir: V3, sg: number): [V3, V3] => {
+  const d = norm(dir);
+  return [add(butt, mul(d, sg)), d];
+};
+const STF_FRONT = staffAt([14.6, 3.0, 0], [0.02, 0.03, 1], 30);
+const REST_FRONT: Pose = {
+  root: [0, 0, 0], bob: 0, chest: 0, headZ: 0, pitch: 0.08, yaw: 0, roll: 0.02, hp: -0.04, hy: 0, hr: 0,
+  hand: [STF_FRONT[0], [-17, 9, 30]], pole: [[1, -0.4, -0.8], [-1, -0.6, -0.5]],
+  stf: STF_FRONT, sg: 30, held: 1, armLift: [0, 0],
+  wave: 0, waveAmp: 0, flare: 0, kick: [0, 0], foot: [0, 0],
+  glow: 1, charge: 0.5, wither: 0, sink: 0, collapse: 0, crownOff: 0,
+  palm: 0.5, mist: 0.5, sparks: 0.4, shards: 0,
+  ring: 0, flash: 0, dust: [0, 0], t: 0, seed: 1,
+};
+const STF_SIDE = staffAt([9.0, 9.0, 0], [0, 0.03, 1], 30);
+const REST_SIDE: Pose = { ...REST_FRONT, hand: [STF_SIDE[0], [-6.5, 11.5, 31]], pole: [[1, -0.4, -0.8], [-1, 0.2, -0.6]], stf: STF_SIDE };
+const restOf = (view: View): Pose => (view === "side" ? REST_SIDE : REST_FRONT);
+const bodyShift = (view: View, p: Pose): V3 => snapM(view, [p.root[0], p.root[1], p.bob + p.root[2] - p.sink]);
+
+// ---------------- штампы ----------------
+type Keys = Record<string, RGBA>;
+/** Строки штампа → двойное разрешение (каждый знак — блок 2×2). */
+const rowsOf2 = (rs: string[], x0: number, y0: number): StampPx[] => stampRows(rs.flatMap((r) => { const w = [...r].map((c) => c + c).join(""); return [w, w]; }), x0 * 2, y0 * 2);
+const ST_FACE: Partial<Record<View, StampPx[]>> = {
+  down: rowsOf2(["ddd..ddd", "3cc..cc3", "3cc..cc3", "........", "...kk..."], -4, -1),
+  side: rowsOf2(["ddd", "3cc", "3cc", "...", "kk."], -1, -1),
+};
+const ST_CORE: Partial<Record<View, StampPx[]>> = {
+  down: rowsOf2(["...2...", "..232..", ".23432.", "..232..", "...2..."], -3, -2),
+  side: rowsOf2(["2", "3", "4", "3", "2"], 0, -2),
+};
+function stampKeys(glow: number, wither: number): Keys {
+  const g = clamp(glow, 0, 1.6);
+  const lv = (k: number) => {
+    const v = k - Math.round((1 - Math.min(1, g)) * 3) + (g > 1.25 ? 1 : 0);
+    return v < 0 ? VOID : GLOWC[clamp(v, 0, 4)];
+  };
+  const b = (c: RGBA) => mix(c, DEAD[2], wither * 0.8);
+  return { d: SKIN[0], k: b(SKIN[1]), c: lv(4), "2": lv(2), "3": lv(3), "4": lv(4) };
+}
+const GLOW_KEYS = ["c", "2", "3", "4"];
+
+// ---------------- сцена ----------------
+interface Extra {
+  rings: { c: V3; r: number; k: number }[];
+  flash: { at: V3; k: number } | null;
+  dust: { at: V3; k: number }[];
+  glints: V3[];
+  /** искры: центр, сила, радиус орбиты (px), число; иней ладони */
+  sparks: { at: V3; k: number; r: number; n: number }[];
+  palm: { at: V3; k: number } | null;
+  shards: { at: V3; k: number }[];
+  mist: number; mistAt: V3;
+}
+type Tex = (c: { l: V3; edge: boolean }) => number | { mat: Mat; d: number };

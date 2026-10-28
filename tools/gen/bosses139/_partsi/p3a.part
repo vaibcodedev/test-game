@@ -1,0 +1,137 @@
+
+function scaleScene(S: Scene, s: number) {
+  for (const q of S.prims) {
+    q.a = mul(q.a, s); q.b = mul(q.b, s); q.anc = mul(q.anc, s);
+    q.ra *= s; q.rb *= s; q.r = mul(q.r, s); q.rr *= s;
+    if (q.cut) q.cut = { n: q.cut.n, d: q.cut.d * s };
+  }
+  S.gk = S.gk.map((k) => k * s);
+  for (const st of S.stamps) st.at = mul(st.at, s);
+}
+type Ctx = { img: PC; emis: PC; t: Float32Array; prim: Int32Array; view: View };
+const put = (c: Ctx, x: number, y: number, col: RGBA, dz: number, glow = false) => {
+  x = Math.floor(x); y = Math.floor(y);
+  if (x < 1 || y < 1 || x >= FW - 1 || y >= FH - 1) return;
+  const i = y * FW + x;
+  if (c.prim[i] >= 0 && c.t[i] < dz - 1) return;
+  c.img.set(x, y, col);
+  if (glow) c.emis.set(x, y, col);
+};
+function drawRing(c: Ctx, r: { c: V3; r: number; k: number }, back: boolean) {
+  const steps = Math.ceil(r.r * 10);
+  const cv = toView(c.view, r.c);
+  for (let s = 0; s < steps; s++) {
+    const a = (s / steps) * TAU;
+    if (Math.sin(a * 5 + r.r * 0.4) < -1.2 + 1.3 * (1 - r.k)) continue;
+    const pv = toView(c.view, [r.c[0] + Math.cos(a) * r.r, r.c[1] + Math.sin(a) * r.r, 0]);
+    if (pv[1] < cv[1] !== back) continue;
+    const [sx, sy] = scr(CAM, pv);
+    const x = Math.floor(sx), y = Math.floor(Math.min(sy, CAM.GY + 2));
+    if (x < 1 || y < 2 || x >= FW - 1 || y >= FH - 1) continue;
+    const i = y * FW + x;
+    if (!back && c.prim[i] >= 0 && c.t[i] < depthOf(pv) - 0.5) continue;
+    if (back && c.img.alpha(x, y)) continue;
+    c.img.set(x, y - 1, FIRE[r.k > 0.55 ? 4 : 3]);
+    c.img.set(x, y, ICE[r.k > 0.3 ? 3 : 2]);
+  }
+}
+function drawFlash(c: Ctx, f: { at: V3; k: number }) {
+  const v = toView(c.view, f.at);
+  const [sx, sy] = scr(CAM, v);
+  const L = Math.round(2 + 3 * f.k);
+  const x = clamp(Math.floor(sx), L + 2, FW - 3 - L), y = clamp(Math.floor(sy), L + 2, FH - 4);
+  const dz = depthOf(v);
+  for (let r = 1; r <= L; r++) {
+    const tone = r <= 1 ? 4 : r <= L - 1 ? 3 : 2;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1], [0, 1]]) put(c, x + dx * r, y + dy * Math.min(r, 2), FIRE[tone], dz, true);
+  }
+  if (f.k > 0.5) for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) put(c, x + dx * 2, y + dy, FIRE[3], dz, true);
+  put(c, x, y, FIRE[4], dz, true);
+}
+/** Огненный след посоха — полумесяц: изогнутая дуга, яркая белая сердцевина, расширяется к голове и истончается в хвост, искры по краю. */
+function drawTrail(c: Ctx, pts: V3[]) {
+  const vp = pts.map((q) => toView(c.view, q));
+  const sp0 = vp.map((q) => scr(CAM, q));
+  const [fx, fy] = sp0[0], [lx, ly] = sp0[sp0.length - 1];
+  const cl = Math.hypot(lx - fx, ly - fy) || 1;
+  const nx = -(ly - fy) / cl, ny = (lx - fx) / cl;
+  const sign = ny > 0 ? -1 : 1;
+  const sp = sp0.map(([x, y], i) => { const u = i / (sp0.length - 1); const b = 0.3 * cl * Math.sin(Math.PI * u) * sign; return [x + nx * b, y + ny * b] as [number, number]; });
+  const total = sp.length - 1;
+  for (let k = 0; k < total; k++) {
+    const [x0, y0] = sp[k], [x1, y1] = sp[k + 1];
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let s = 0; s <= steps; s++) {
+      const u = (k + s / steps) / total;
+      const x = lerp(x0, x1, s / steps), y = lerp(y0, y1, s / steps);
+      const w = 0.4 + 2.8 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.85 + 0.1)), 1.4) * (0.3 + 0.7 * u);
+      const dz = lerp(depthOf(vp[k]), depthOf(vp[k + 1]), s / steps);
+      for (let dy = -w; dy <= w + 0.01; dy += 0.5) for (let dx = -w; dx <= w + 0.01; dx += 0.5) {
+        if (dx * dx + dy * dy > w * w) continue;
+        const e = Math.hypot(dx, dy) / Math.max(0.5, w);
+        const tone = u < 0.3 ? (e < 0.5 ? 2 : 1) : e < 0.35 ? 4 : e < 0.65 ? 3 : 2;
+        if (u < 0.3 && ((Math.floor(x) + Math.floor(y)) & 1)) continue;
+        put(c, x + dx, y + dy, FIRE[tone], dz, true);
+      }
+      if (u > 0.35 && hash01(k, s, 41) < 0.12) put(c, x + (hash01(k, s, 7) - 0.5) * 9, y + (hash01(k, s, 9) - 0.5) * 7, FIRE[4], dz, true);
+    }
+  }
+}
+function drawDust(c: Ctx, d: { at: V3; k: number }) {
+  const [cx, cy0] = scr(CAM, toView(c.view, d.at));
+  const cy = Math.min(cy0, CAM.GY + 1);
+  const t = 1 - d.k;
+  for (let j = 0; j < 2; j++) {
+    const dir = j ? 1 : -1;
+    const px = cx + dir * (3 + 5 * t), py = cy - t * 1.4;
+    const rx = 1.8 + 1.5 * d.k, ry = Math.max(1, rx * 0.55);
+    for (let y = Math.floor(py - ry); y <= py + ry; y++) for (let x = Math.floor(px - rx); x <= px + rx; x++) {
+      const dx = (x + 0.5 - px) / rx, dy = (y + 0.5 - py) / ry;
+      if (dx * dx + dy * dy > 1 || x < 1 || y < 1 || x >= FW - 1 || y >= FH - 1) continue;
+      c.img.set(x, y, SAND[dy > 0.25 ? 2 : dx + dy < -0.5 ? 4 : 3]);
+    }
+  }
+}
+function drawGlint(c: Ctx, at: V3) {
+  const v = toView(c.view, at);
+  const [x, y] = scr(CAM, v);
+  const dz = depthOf(v) - 2;
+  put(c, x - 1, y - 2, GLOWC[4], dz, true);
+}
+const colEq = (q: RGBA | null, o: RGBA) => !!q && q[3] > 120 && q[0] === o[0] && q[1] === o[1] && q[2] === o[2];
+
+/**
+ * Тело (160×160, двойное разрешение) → кадр 64×80: блок 2×2 даёт пиксель, если в нём ≥ 2 цветных (не контурных) точек; цвет — самый частый,
+ * светящийся — вне конкуренции. Контур 1 px строится заново на кадре 1× (selout), глубина и призма — из первой точки блока.
+ */
+function downscale(R0: ReturnType<typeof renderScene>): { img: PC; emis: PC; t: Float32Array; prim: Int32Array } {
+  const img = new PC(FW, FH), emis = new PC(FW, FH);
+  const t = new Float32Array(FW * FH), prim = new Int32Array(FW * FH).fill(-1);
+  const RN = CAMR.N;
+  for (let Y = 0; Y < FH; Y++) for (let X = 0; X < FW; X++) {
+    const votes = new Map<string, { n: number; c: RGBA; first: number }>();
+    let opaque = 0, em: RGBA | null = null, first = -1;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+      const rx = RX0 + X * 2 + dx, ry = Y * 2 + dy;
+      const q = R0.body.get(rx, ry);
+      if (!q || q[3] < 128) continue;
+      const e = R0.emis.get(rx, ry);
+      if (e && e[3] > 0) { em = e; if (first < 0) first = ry * RN + rx; continue; }
+      if (colEq(q, OUT)) continue;
+      opaque++;
+      if (first < 0) first = ry * RN + rx;
+      const key = q.join(",");
+      const v = votes.get(key);
+      if (v) v.n++; else votes.set(key, { n: 1, c: q, first: opaque });
+    }
+    if (em) { img.set(X, Y, em); emis.set(X, Y, em); }
+    else if (opaque >= 2) {
+      let best: { n: number; c: RGBA; first: number } | null = null;
+      for (const v of votes.values()) if (!best || v.n > best.n || (v.n === best.n && v.c[0] + v.c[1] + v.c[2] < best.c[0] + best.c[1] + best.c[2])) best = v;
+      img.set(X, Y, best!.c);
+    } else continue;
+    prim[Y * FW + X] = R0.gb.prim[first];
+    t[Y * FW + X] = R0.gb.t[first];
+  }
+  return { img, emis, t, prim };
+}
