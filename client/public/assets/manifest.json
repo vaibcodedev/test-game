@@ -1,5 +1,8 @@
 {
  "units": {
+  "sol_storm_colossus": {
+   "frame": 80
+  },
   "umb_bone_marionette_cage": {
    "frame": 32,
    "frameH": 48
@@ -33852,6 +33855,9 @@
   "uq_zb_bell_flail",
   "uq_zb_thorn_halo",
   "uq_zb_drowned_bell",
+  "uq_zb_rod_chain",
+  "uq_zb_gurdan_crown",
+  "uq_zb_thunder_maul",
   "uq_zb_thorn_thread",
   "uq_zb_gael_cage",
   "uq_zb_puppet_cross",

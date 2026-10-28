@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette|sol_storm_colossus]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -22,6 +22,7 @@ import * as frost from "./bone_frost_lord";
 import * as mino from "./cliff_minotaur_knight";
 import * as midas from "./sol_gilded_midas";
 import * as mar from "./umb_bone_marionette";
+import * as col from "./sol_storm_colossus";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -280,6 +281,27 @@ BOSSES.push({
   units: [{ src: "marion-cocoon-unit.png", id: `${mar.ID}_cage`, frame: mar.COCOON_UNIT.frame, frameH: mar.COCOON_UNIT.frameH }],
 });
 
+// Гурдан Громобой, латный великан (r75n запад): 2D-штампы как у Мидара; молнии нарисованы в листе, круги и кольца рисует клиент
+BOSSES.push({
+  id: col.ID, sheet: "colossus-sheet.png", frame: col.FRAME, frameH: col.FRAME_H, cols: col.COLOSSUS_COLS, wrap: 64,
+  // phase (переход фазы 50 %) — кадры «Грозы» (молот к туче, молнии вокруг)
+  anims: {
+    ...anims({ idle: col.COLOSSUS_ANIMS.idle, walk: col.COLOSSUS_ANIMS.walk }),
+    phase: { col: col.COLOSSUS_ANIMS.stormCast.col, n: 10, fps: 12, loop: false, hit: 2 },
+    ...anims(Object.fromEntries(Object.entries(col.COLOSSUS_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))),
+  },
+  fx: {},
+  skills: {
+    // молот грома: молот из-за плеча оземь — круг, затем кольцо там же (вторая волна — тот же удар с удержания)
+    thunder_maul: { waves: [{ pre: ["hammerWind", "hammerHold"], strike: "hammerStrike" }, { pre: ["hammerHold"], strike: "hammerStrike" }], fx: [] },
+    // цепная молния: молот ловит молнию с неба и бьёт ею вперёд, развилка на три
+    split_lightning: { waves: [{ pre: ["chainWind", "chainHold"], strike: "chainCast" }], fx: [] },
+    // громоотводы: кулак-латница вверх и поклон — кулак оземь, три столба молний
+    lightning_rods: { waves: [{ pre: ["rodWind", "rodHold"], strike: "rodStrike" }], fx: [] },
+    // гроза: молот к туче, молнии падают вокруг — две волны
+    ridge_storm: { waves: [{ pre: ["stormWind", "stormHold"], strike: "stormCast" }, { pre: ["stormHold"], strike: "stormCast" }], fx: [] },
+  },
+});
 const only = process.argv[2];
 fs.mkdirSync(OUT, { recursive: true });
 const man = JSON.parse(fs.readFileSync(MAN, "utf8")) as { bosses: Record<string, unknown>; units?: Record<string, { frame: number; frameH?: number }> };

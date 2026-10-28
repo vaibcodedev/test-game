@@ -5327,6 +5327,191 @@
      ]
     }
    }
+  },
+  "sol_storm_colossus": {
+   "file": "sol_storm_colossus.png",
+   "fw": 80,
+   "cols": 124,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 92,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "hammerWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "hammerHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "hammerStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "chainWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "chainHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "chainCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "rodWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "rodHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rodStrike": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stormWind": {
+     "col": 84,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "stormHold": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "stormCast": {
+     "col": 92,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stun": {
+     "col": 102,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 110,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {},
+   "skills": {
+    "thunder_maul": {
+     "waves": [
+      {
+       "pre": [
+        "hammerWind",
+        "hammerHold"
+       ],
+       "strike": "hammerStrike"
+      },
+      {
+       "pre": [
+        "hammerHold"
+       ],
+       "strike": "hammerStrike"
+      }
+     ],
+     "fx": []
+    },
+    "split_lightning": {
+     "waves": [
+      {
+       "pre": [
+        "chainWind",
+        "chainHold"
+       ],
+       "strike": "chainCast"
+      }
+     ],
+     "fx": []
+    },
+    "lightning_rods": {
+     "waves": [
+      {
+       "pre": [
+        "rodWind",
+        "rodHold"
+       ],
+       "strike": "rodStrike"
+      }
+     ],
+     "fx": []
+    },
+    "ridge_storm": {
+     "waves": [
+      {
+       "pre": [
+        "stormWind",
+        "stormHold"
+       ],
+       "strike": "stormCast"
+      },
+      {
+       "pre": [
+        "stormHold"
+       ],
+       "strike": "stormCast"
+      }
+     ],
+     "fx": []
+    }
+   }
   }
  },
  "units": {
@@ -5397,6 +5582,9 @@
   "umb_bone_marionette_cage": {
    "frame": 32,
    "frameH": 48
+  },
+  "sol_storm_colossus": {
+   "frame": 80
   }
  }
 }

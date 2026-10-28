@@ -741,6 +741,63 @@
       ],
       "legendary": 0.015,
       "pet": 8
+    },
+    "sol_storm_colossus": {
+      "name": "Гурдан Громобой",
+      "level": 75,
+      "band": [
+        70,
+        80
+      ],
+      "special": [
+        {
+          "item": "zb_thunder_maul",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_gurdan_crown",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_rod_chain",
+          "chance": 0.04
+        }
+      ],
+      "gold": {
+        "mult": 12
+      },
+      "loot": {
+        "items": 1,
+        "epic": 0.25
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            2,
+            4
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.6,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.01,
+      "pet": 6
     }
   },
   "items": {
@@ -2193,6 +2250,118 @@
         "pommel": "ring"
       },
       "boss": "umb_bone_marionette",
+      "card": "r2"
+    },
+    "zb_thunder_maul": {
+      "id": "zb_thunder_maul",
+      "name": "Молот Громобоя",
+      "base": "hammer",
+      "ilvl": 74,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 26,
+        "crit": 1
+      },
+      "prop": "Каждый десятый удар носителя трещит молнией: цель на миг вздрагивает и теряет замах.",
+      "lore": "Железный боёк с рунами, древко в коже. В грозу молот гудит, и в руке становится тепло.",
+      "look": {
+        "shape": "spiked",
+        "rich": 1,
+        "mat": "blued",
+        "trim": "silver",
+        "cloth": "grey",
+        "haft": "darkwood",
+        "deco": "runes",
+        "fx": "diamond",
+        "guard": "claw",
+        "pommel": "spike"
+      },
+      "boss": "sol_storm_colossus",
+      "card": "r2"
+    },
+    "zb_gurdan_crown": {
+      "id": "zb_gurdan_crown",
+      "name": "Шипастый венец Гурдана",
+      "base": "plate_helm",
+      "ilvl": 73,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "vit"
+      ],
+      "stats": {
+        "str": 19,
+        "vit": 18
+      },
+      "prop": "Когда рядом бьёт молния, носитель на 2 с стоит твёрже: его труднее сдвинуть.",
+      "lore": "Шипы — из гвоздей сорванных ворот Сольгарда. Великану венец был короной, человеку — шлем.",
+      "look": {
+        "shape": "great",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "silver",
+        "cloth": "grey",
+        "gem": "diamond",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "diamond",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "sol_storm_colossus",
+      "card": "r2"
+    },
+    "zb_rod_chain": {
+      "id": "zb_rod_chain",
+      "name": "Цепь громоотвода",
+      "base": "amulet",
+      "ilvl": 72,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "hp"
+      ],
+      "stats": {
+        "str": 20,
+        "hp": 200
+      },
+      "prop": "Пока рядом стоят союзники, часть урона по носителю уходит в землю.",
+      "lore": "Звено цепи с латницы великана, на нём — кусок небесного железа. Тянет вверх, к туче.",
+      "look": {
+        "shape": "medallion",
+        "rich": 0,
+        "mat": "iron",
+        "trim": "silver",
+        "cloth": "grey",
+        "gem": "diamond",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "diamond",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "sol_storm_colossus",
       "card": "r2"
     }
   }
