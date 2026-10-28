@@ -1,6 +1,7 @@
 /** Сетевой слой клиента: комната Colyseus (мир или арена), личное состояние и подписки. */
 import { Client, getStateCallbacks, type Room } from "colyseus.js";
-import type { ArenaInfo, ArenaMode, ArenaResultMsg, HistoryRow, LeaderRow, MatchFoundMsg, PartyState, Reservation } from "../../shared/arena";
+import type { ArenaId } from "../../shared/arenaCrowd";
+import type { ArenaEvMsg, ArenaInfo, ArenaMode, ArenaResultMsg, HistoryRow, LeaderRow, MatchFoundMsg, PartyState, Reservation } from "../../shared/arena";
 import type { RaidBannerMsg, RaidCastMsg, RaidMusterMsg, RaidResultMsg, RaidReviveMsg, RaidWelcome } from "../../shared/raid";
 import type { RumorMsg } from "../../shared/rumors";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../shared/encounters";
@@ -76,6 +77,7 @@ type Events = {
   "arena:found": MatchFoundMsg;
   "arena:cancelled": { reason: string };
   "arena:result": ArenaResultMsg;
+  "arena:ev": ArenaEvMsg;
   "arena:top": { mode: ArenaMode; rows: LeaderRow[] };
   "arena:history": HistoryRow[];
   rumor: RumorMsg;
@@ -118,6 +120,8 @@ type Events = {
 export interface ArenaWelcome {
   arena: true;
   mode: ArenaMode;
+  /** Карта матча (shared/arena.ts ARENA_VARIANTS). */
+  map?: ArenaId;
   team: number;
   teams: { name: string; cls: string; level: number; rating: number }[][];
 }
@@ -418,7 +422,7 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result", "war:tpcd", "siege", "siege:result", "siege:fx"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:ev", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result", "war:tpcd", "siege", "siege:result", "siege:fx"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

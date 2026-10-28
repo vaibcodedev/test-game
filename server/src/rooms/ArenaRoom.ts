@@ -7,9 +7,10 @@ import { awardGladiators } from "../arena/gladiator";
 import { resetTargetAuras } from "../game/auras";
 import { matchMaker, Room, ServerError, type Client } from "@colyseus/core";
 import {
-  ARENA_BLOCKED_MSGS, ARENA_BLOCKED_TEXT, arenaSpawn, BOT_RATING_MULT, COUNTDOWN_MS, eloDelta, generateArenaMap, MATCH_MS,
-  type ArenaMode, type ArenaPlayerResult, type ArenaResultMsg,
+  ARENA_BLOCKED_MSGS, ARENA_BLOCKED_TEXT, arenaSpawn, BOT_RATING_MULT, COUNTDOWN_MS, eloDelta, generateArenaMap, isArenaId, MATCH_MS, pickArena,
+  type ArenaEvMsg, type ArenaMode, type ArenaPlayerResult, type ArenaResultMsg,
 } from "../../../shared/arena";
+import type { ArenaId } from "../../../shared/arenaCrowd";
 import type { ClassId } from "../../../shared/classes";
 import { PATCH_MS, TICK_MS } from "../../../shared/constants";
 import { ROOM_NAME } from "../../../shared/protocol";
@@ -53,7 +54,8 @@ interface Stat {
   left: boolean;
 }
 
-const ARENA_MAP = generateArenaMap();
+const ARENA_MAPS = new Map<ArenaId, ReturnType<typeof generateArenaMap>>();
+const arenaMap = (id: ArenaId) => ARENA_MAPS.get(id) ?? (ARENA_MAPS.set(id, generateArenaMap(id)), ARENA_MAPS.get(id)!);
 const NO_SHOW_MS = 15_000;
 const STAY_AFTER_MS = 90_000;
 
@@ -61,6 +63,9 @@ export class ArenaRoom extends Room<ArenaState> {
   override autoDispose = true;
   world!: World;
   mode!: ArenaMode;
+  /** Карта матча: 2×2 — колизей или амфитеатр, 1×1 — яма или ледяной круг (shared/arena.ts). */
+  arenaId: ArenaId = "ash";
+  private firstBlood = false;
   season = 0;
   parts: Participant[] = [];
   byKey = new Map<string, Player>();
@@ -78,6 +83,7 @@ export class ArenaRoom extends Room<ArenaState> {
     this.setPrivate(true);
     this.setSeatReservationTime(20);
     this.mode = o.mode;
+    this.arenaId = isArenaId(process.env.ARENA_MAP) ? process.env.ARENA_MAP : pickArena(o.mode); // ARENA_MAP только для тестов
     this.season = o.season;
     this.parts = o.participants;
     this.withBots = !!o.bots;
@@ -85,7 +91,7 @@ export class ArenaRoom extends Room<ArenaState> {
     this.setState(new ArenaState());
     this.state.mode = this.mode;
     this.state.phase = "waiting";
-    this.world = new World(this.state, (t, m) => this.broadcast(t, m), { map: ARENA_MAP, mobs: false, quiet: true });
+    this.world = new World(this.state, (t, m) => this.broadcast(t, m), { map: arenaMap(this.arenaId), mobs: false, quiet: true });
     for (const p of this.parts) this.stats.set(p.nameKey, { damage: 0, healing: 0, kills: 0, deaths: 0, left: false });
     const stat = (p: Player) => this.stats.get(p.name.toLowerCase());
     this.world.onDamage = (src, dst, v) => {
@@ -99,6 +105,8 @@ export class ArenaRoom extends Room<ArenaState> {
       if (this.phase !== "fight") return;
       stat(p)!.deaths++;
       if (killer && this.world.isPlayer(killer)) stat(killer)!.kills++;
+      this.broadcast("arena:ev", { k: this.firstBlood ? "kill" : "first", name: killer && this.world.isPlayer(killer) ? killer.name : undefined } satisfies ArenaEvMsg);
+      this.firstBlood = true;
       this.world.system(T("srv.ArenaRoom.831", { name: p.name, killer: killer && this.world.isPlayer(killer) ? ` (${killer.name})` : "" }));
     };
     const on = makeOn(this, () => this.world);
@@ -136,6 +144,7 @@ export class ArenaRoom extends Room<ArenaState> {
       id: client.sessionId,
       arena: true,
       mode: this.mode,
+      map: this.arenaId,
       team: part.team,
       teams: [1, 2].map((t) => this.parts.filter((x) => x.team === t).map((x) => ({ name: x.name, cls: x.cls, level: x.level, rating: x.rating }))),
     });
@@ -146,7 +155,7 @@ export class ArenaRoom extends Room<ArenaState> {
     p.team = part.team;
     p.unit.team = part.team;
     p.frozenUntil = Infinity;
-    const sp = arenaSpawn(part.team, this.parts.filter((x) => x.team === part.team).indexOf(part));
+    const sp = arenaSpawn(part.team, this.parts.filter((x) => x.team === part.team).indexOf(part), this.arenaId);
     p.unit.x = sp.x;
     p.unit.y = sp.y;
     this.world.addPlayer(p);
@@ -201,7 +210,7 @@ export class ArenaRoom extends Room<ArenaState> {
   /** Полное восстановление: здоровье, мана, перезарядки, эффекты; точка появления. */
   private restore(p: Player) {
     const part = this.parts.find((x) => x.nameKey === p.name.toLowerCase())!;
-    const sp = arenaSpawn(part.team, this.parts.filter((x) => x.team === part.team).indexOf(part));
+    const sp = arenaSpawn(part.team, this.parts.filter((x) => x.team === part.team).indexOf(part), this.arenaId);
     p.dead = false;
     p.unit.anim = 0;
     p.unit.x = sp.x;
@@ -330,6 +339,8 @@ export class ArenaRoom extends Room<ArenaState> {
         awardGladiators(players.map((r, i) => ({ nameKey: this.parts[i].nameKey, name: r.name, result: r.won ? "win" : r.draw ? "draw" : "loss", ratingAfter: r.ratingAfter, left: r.left, bot: !!this.parts[i].bot })), this.withBots);
       } catch (e) { console.error("[arena] печати гладиатора:", e); }
     }
+    const win = this.parts.find((x) => x.team === winner && !x.bot) ?? this.parts.find((x) => x.team === winner);
+    this.broadcast("arena:ev", (winner ? { k: "win", name: win?.name } : { k: "draw" }) satisfies ArenaEvMsg);
     this.broadcast("arena:result", this.result);
     this.clock.setTimeout(() => this.disconnect(), STAY_AFTER_MS);
   }

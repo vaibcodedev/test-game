@@ -83,6 +83,12 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
       id: `${c.id}_banner`, name: "Знамя павших", sprite: `${c.id}_banner`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: ban.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 14, color: "#a02a38",
     };
+    // носильщик (кольцо, bearers): стоит на месте для ИИ мобов (идёт к боссу по ходу умения), не бьёт, ломается
+    const bear = c.abilities.find((a) => a.bearers)?.bearers;
+    if (bear) MOBS[`${c.id}_bearer`] = {
+      id: `${c.id}_bearer`, name: "Носильщик", sprite: `${c.id}_bearer`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
+      hp: bear.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 14, color: "#7ad4f0",
+    };
     if (cage) MOBS[`${c.id}_cage`] = {
       id: `${c.id}_cage`, name: "Кандальный кол", sprite: `${c.id}_cage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: cage.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 10, color: "#8a2a08",

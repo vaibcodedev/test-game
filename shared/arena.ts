@@ -4,6 +4,7 @@ import type { ClassId } from "./classes";
 import { CELL_BLOCK, CELL_WALL, T, TOWN, Zone, type WorldMap } from "./map";
 import { GP } from "./gameplay";
 import { T as TX } from "./texts";
+import { ARENA_IDS, type ArenaId } from "./arenaCrowd";
 
 /** Распорядитель арены в городе: у врат арены во дворе восточного квартала (shared/town.ts). */
 export const ARENA_NPC = {
@@ -225,83 +226,65 @@ export interface Reservation {
   room: { name: string; roomId: string; processId: string };
 }
 
-// ---------- карта арены ----------
-export const ARENA_W = 34;
-export const ARENA_H = 24;
+/** Событие боя для толпы (сервер → все в матче): first — первая кровь, kill — убийство, win — победа, draw — ничья; name — убийца или победитель. */
+export interface ArenaEvMsg { k: "first" | "kill" | "win" | "draw"; name?: string }
 
-/** Каменная арена с колоннами и стенками-укрытиями, симметричная слева направо. */
-export function generateArenaMap(): WorldMap {
-  const w = ARENA_W,
-    h = ARENA_H;
-  const vtx = new Uint8Array((w + 1) * (h + 1));
-  const cx = w / 2,
-    cy = h / 2;
-  for (let y = 0; y <= h; y++)
-    for (let x = 0; x <= w; x++) {
-      const d = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy) * 1.6);
-      vtx[y * (w + 1) + x] = d < 5.2 ? T.Cobble : T.Floor;
-    }
+// ---------- карты арены ----------
+/** Арена-амфитеатр: песок — эллипс rx×ry px с центром (w/2·TILE, arenaCy); арт и толпа — client/public/assets/arena (tools/gen/arena-art.ts). */
+export interface ArenaVariant {
+  id: ArenaId;
+  name: string;
+  mode: ArenaMode;
+  w: number;
+  h: number;
+  rx: number;
+  ry: number;
+  /** Укрытия: смещения от центра, px; симметрично слева-справа. */
+  cover: [number, number][];
+}
+export const ARENA_VARIANTS: Record<ArenaId, ArenaVariant> = {
+  ash: { id: "ash", name: "Пепельный колизей", mode: "2v2", w: 38, h: 28, rx: 430, ry: 250, cover: [[-125, -78], [125, -78], [-125, 78], [125, 78]] },
+  sun: { id: "sun", name: "Солнечный амфитеатр", mode: "2v2", w: 38, h: 28, rx: 430, ry: 250, cover: [[-125, -78], [125, -78], [-125, 78], [125, 78]] },
+  pit: { id: "pit", name: "Бойцовская яма", mode: "1v1", w: 26, h: 20, rx: 262, ry: 168, cover: [[-70, 0], [70, 0]] },
+  frost: { id: "frost", name: "Ледяной круг", mode: "1v1", w: 26, h: 20, rx: 250, ry: 160, cover: [[-62, -52], [62, -52], [-62, 52], [62, 52]] },
+};
+export const arenaCy = (v: ArenaVariant) => Math.round(v.h * TILE * 0.54);
+/** Карты режима: матч получает случайную из них. */
+export function arenasOf(mode: ArenaMode): ArenaId[] {
+  return ARENA_IDS.filter((id) => ARENA_VARIANTS[id].mode === mode);
+}
+export const pickArena = (mode: ArenaMode): ArenaId => {
+  const l = arenasOf(mode);
+  return l[Math.floor(Math.random() * l.length)];
+};
+export const isArenaId = (v: unknown): v is ArenaId => typeof v === "string" && (ARENA_IDS as readonly string[]).includes(v);
+/** Объект-укрытие (колонна, обломок, глыба) в атласе: arena_cover_<id>. */
+export const arenaCoverKind = (id: ArenaId) => `arena_cover_${id}`;
+
+/** Овальная арена: ходить можно только по песку, укрытия — клетки-преграды. */
+export function generateArenaMap(id: ArenaId = "ash"): WorldMap {
+  const v = ARENA_VARIANTS[id], w = v.w, h = v.h, cx = (w * TILE) / 2, cy = arenaCy(v);
+  const vtx = new Uint8Array((w + 1) * (h + 1)).fill(T.Floor);
   const cell = new Uint8Array(w * h);
   const zone = new Uint8Array(w * h).fill(Zone.Arena);
-  const wall = (x: number, y: number) => {
-    cell[y * w + x] |= CELL_BLOCK | CELL_WALL;
-    cell[y * w + (w - 1 - x)] |= CELL_BLOCK | CELL_WALL;
-  };
   for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++)
-      if (x < 2 || y < 2 || x >= w - 2 || y >= h - 3)
-        cell[y * w + x] |= CELL_BLOCK | CELL_WALL;
-  // укрытия (левая половина, отражаются на правую)
-  const blocks: [number, number, number, number][] = [
-    [9, 6, 2, 2],
-    [9, 15, 2, 2], // квадратные блоки у входов
-    [13, 10, 1, 3], // стенки перед центром
-    [6, 10, 1, 1],
-    [6, 13, 1, 1], // невысокие колонны у точки появления
-  ];
-  for (const [bx, by, bw, bh] of blocks)
-    for (let j = 0; j < bh; j++)
-      for (let i = 0; i < bw; i++) wall(bx + i, by + j);
-  // центральная колонна
-  for (const [x, y] of [
-    [16, 11],
-    [17, 11],
-    [16, 12],
-    [17, 12],
-  ])
-    cell[y * w + x] |= CELL_BLOCK | CELL_WALL;
+    for (let x = 0; x < w; x++) {
+      const dx = ((x + 0.5) * TILE - cx) / (v.rx - 12), dy = ((y + 0.5) * TILE - cy) / (v.ry - 12);
+      if (dx * dx + dy * dy > 1) cell[y * w + x] |= CELL_BLOCK | CELL_WALL;
+    }
   const objects: WorldMap["objects"] = [];
-  for (let x = 3; x < w - 3; x += 4)
-    objects.push({ kind: "torch", x: x * TILE + 16, y: 1 * TILE + 26 });
-  for (const [x, y] of [
-    [2.5, 4],
-    [2.5, 19],
-    [w - 2.5, 4],
-    [w - 2.5, 19],
-  ])
-    objects.push({ kind: "bones", x: x * TILE, y: y * TILE });
+  for (const [dx, dy] of v.cover) {
+    const px = cx + dx, py = cy + dy;
+    cell[Math.floor((py - 6) / TILE) * w + Math.floor(px / TILE)] |= CELL_BLOCK | CELL_WALL;
+    objects.push({ kind: arenaCoverKind(id), x: px, y: py + 4 });
+  }
   return {
-    w,
-    h,
-    seed: 0,
-    vtx,
-    cell,
-    zone,
-    objects,
-    spawns: [],
-    bosses: [],
-    nodes: [],
-    playerSpawn: { x: 4.5 * TILE, y: cy * TILE },
-    merchant: { x: -1000, y: -1000 },
-    merchants: [],
+    w, h, seed: 0, vtx, cell, zone, objects, spawns: [], bosses: [], nodes: [],
+    playerSpawn: { x: cx - (v.rx - 70), y: cy }, merchant: { x: -1000, y: -1000 }, merchants: [],
   };
 }
 /** Точки появления: команда 1 слева, команда 2 справа. */
-export function arenaSpawn(
-  team: number,
-  slot: number,
-): { x: number; y: number } {
-  const x = team === 1 ? 4.5 : ARENA_W - 4.5;
-  const y = ARENA_H / 2 - 1.5 + slot * 3;
-  return { x: x * TILE, y: y * TILE };
+export function arenaSpawn(team: number, slot: number, id: ArenaId = "ash"): { x: number; y: number } {
+  const v = ARENA_VARIANTS[id], cx = (v.w * TILE) / 2;
+  return { x: team === 1 ? cx - (v.rx - 70) : cx + (v.rx - 70), y: arenaCy(v) - 48 + slot * 96 };
 }

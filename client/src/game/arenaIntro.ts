@@ -47,7 +47,7 @@ export class ArenaIntroFx {
 
   /** «В бой!»: короткое кольцо по земле от центра арены (между точками команд), под бойцами. */
   private burst() {
-    const a = arenaSpawn(1, 0), b = arenaSpawn(2, 0);
+    const a = arenaSpawn(1, 0, this.net.arena?.map), b = arenaSpawn(2, 0, this.net.arena?.map);
     const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, s = this.scene;
     const ring = s.add.graphics().setDepth(DEPTH.ground + 6);
     const st = { t: 0 };

@@ -34,6 +34,7 @@ import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { capBand, HALO, placeText, syncTextRes, worldText } from "./worldText";
 import { NPC_ICON_SIZE, NPC_ICON_TEX, npcIconFrame } from "./npcIcons";
 import { ArenaIntroFx } from "./arenaIntro";
+import { ArenaCrowd } from "./arenaCrowd";
 import { WowHost } from "./fx/host";
 import { HoverGlow, type GlowSrc } from "./hoverGlow";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
@@ -55,9 +56,9 @@ import { STATUES, type StatueKey } from "../ui/statue";
 import { T } from "../../../shared/texts";
 import { objHas, objTex } from "./objTex";
 
-type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue" | "dgdoor" | "dgexit";
 /** Дистанция, на которой цель сбрасывается (≈ 25 тайлов — дальше края экрана на любом зуме). */
 const TARGET_DROP_PX = 800;
+type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue" | "dgdoor" | "dgexit";
 /** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number }; glow?: Omit<GlowSrc, "depth"> };
 
@@ -236,7 +237,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once("destroy", done);
 
     this.hud = this.registry.get("hud") as Hud;
-    this.map = net.kind === "arena" ? generateArenaMap() : net.kind === "raid" ? generateRaidMap() : net.kind === "dungeon" ? generateDungeonMap() : generateMap(net.seed);
+    this.map = net.kind === "arena" ? generateArenaMap(net.arena?.map ?? "ash") : net.kind === "raid" ? generateRaidMap() : net.kind === "dungeon" ? generateDungeonMap() : generateMap(net.seed);
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
@@ -361,6 +362,9 @@ export class GameScene extends Phaser.Scene {
     // вступление боя арены: подсветка бойцов на отсчёте, кольца на «В бой!» (game/arenaIntro.ts)
     this.arenaIntro = net.kind === "arena" ? new ArenaIntroFx(this, net) : null;
     this.cleanup.push(() => { this.arenaIntro?.destroy(); this.arenaIntro = null; });
+    // трибуны и толпа с овациями и репликами (game/arenaCrowd.ts)
+    this.arenaCrowd = net.kind === "arena" ? new ArenaCrowd(this, net, net.arena?.map ?? "ash") : null;
+    this.cleanup.push(() => { this.arenaCrowd?.destroy(); this.arenaCrowd = null; });
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
     this.hoverGlow = new HoverGlow(this);
     this.cleanup.push(() => this.hoverGlow.destroy());
@@ -1033,6 +1037,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private arenaIntro: ArenaIntroFx | null = null;
+  private arenaCrowd: ArenaCrowd | null = null;
   private holdTimer = 0;
   private holdCode = "";
   /** Удержание клавиши умения в режиме «Быстрый» повторяет нажатие каждые 150 мс. */
@@ -1341,6 +1346,7 @@ export class GameScene extends Phaser.Scene {
     this.updateAim();
     this.updateHover();
     this.arenaIntro?.update(this.units.values(), dt);
+    this.arenaCrowd?.update(dt);
     this.world.update(this.cameras.main);
     // экран загрузки уходит, когда свой герой на месте и куски мира вокруг него построены (камера встаёт на героя кадром раньше)
     if (this.me && this.readyFrames < 3 && ++this.readyFrames === 3) loading.done();
@@ -1437,17 +1443,17 @@ export class GameScene extends Phaser.Scene {
     }
     this.scenes?.update(this.pos.x, this.pos.y);
     if (this.targetId && !this.units.get(this.targetId)) this.targetId = null;
+    // далеко убежал от цели (за пределы экрана с запасом) — цель сбрасывается, как в MMO; свою цель (себя) не трогаем
+    if (this.targetId && this.targetId !== net.id) {
+      const tv = this.units.get(this.targetId);
+      if (tv && Math.hypot(tv.x - this.pos.x, tv.y - this.pos.y) > TARGET_DROP_PX) this.setTarget(null);
+    }
 
     // подсказка взаимодействия над ближайшим объектом (с клавишей из раскладки)
     if (now >= this.tipAt) {
       this.tipAt = now + 100;
       const it = alive ? this.interactPick() : null;
       const key = keybinds.label("talk", 0) || keybinds.label("interact", 0);
-    // далеко убежал от цели (за пределы экрана с запасом) — цель сбрасывается, как в MMO; свою цель (себя) не трогаем
-    if (this.targetId && this.targetId !== net.id) {
-      const tv = this.units.get(this.targetId);
-      if (tv && Math.hypot(tv.x - this.pos.x, tv.y - this.pos.y) > TARGET_DROP_PX) this.setTarget(null);
-    }
       this.hud.setInteractTip(it && (it.d <= 110 || it.under) ? `${key ? `[${key}] ` : ""}${it.text}` : null);
     }
 

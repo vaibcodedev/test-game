@@ -89,6 +89,7 @@ export class ZoneBoss extends Boss {
     this.lastTarget = m.targetId ?? "";
     // сломанный кандальный кол: щит снят, клетка распадается
     for (const st of this.stakes) if (st.dead) this.stakeDied(st);
+    for (const c of this.carriers) if (c.dead) this.refreshShield();
     if (this.casting && this.w.time >= this.busyUntil) {
       this.casting = false;
       if (!m.dead) m.unit.anim = Anim.Idle;
@@ -107,6 +108,7 @@ export class ZoneBoss extends Boss {
     this.engaged = false;
     this.busyUntil = 0;
     this.stakes.clear();
+    this.carriers.clear();
     this.m.dmgTakenMul = 1;
     super.reset();
     // откаты — как в карточке (переход фазы их ускорял)
@@ -115,6 +117,7 @@ export class ZoneBoss extends Boss {
 
   override onDeath() {
     this.stakes.clear();
+    this.carriers.clear();
     this.m.dmgTakenMul = 1;
     this.epoch++;
     this.busyUntil = 0;
@@ -149,6 +152,7 @@ export class ZoneBoss extends Boss {
     if (ab.banner) { this.bannerPlant(ab); return; }
     if (ab.doubles) { this.doubles(ab); return; }
     if (ab.swarm) { this.swarmCall(ab); return; }
+    if (ab.bearers) { this.bearerCall(ab); return; }
     if (ab.safe) { this.storm(ab); return; }
     const waves: ZbWave[] = [ab, ...(ab.then ?? [])];
     // занятость: сумма волн (с рядами и травлей)
@@ -313,7 +317,68 @@ export class ZoneBoss extends Boss {
   private shieldMul = 1;
   private refreshShield() {
     for (const s of this.stakes) if (s.dead) this.stakes.delete(s);
-    this.m.dmgTakenMul = this.stakes.size ? this.shieldMul : 1;
+    for (const c of this.carriers) if (c.dead) this.carriers.delete(c);
+    this.m.dmgTakenMul = this.stakes.size ? this.shieldMul : this.carriers.size ? this.carryShield : 1;
+  }
+  /** Носильщики (кольцо, bearers): идут к боссу; пока хоть один жив — урон по боссу ×carryShield. */
+  private carriers = new Set<Mob>();
+  private carryShield = 1;
+  /**
+   * Сборка (кольцо, bearers): замах — по краю арены встают count стражей (моб <босс>_bearer) и идут к боссу со скоростью speed. Пока хоть один
+   * жив, босс получает урон ×shield; дошедший исчезает и лечит босса на healPct (событие zb «bearer_hit»). Убитый не лечит.
+   */
+  private bearerCall(ab: ZbAbility) {
+    const w = this.w, m = this.m, b = ab.bearers!, epoch = this.epoch;
+    const def = MOBS[`${m.def.id}_bearer`];
+    if (!def) return;
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: [Math.round(m.x), Math.round(m.y)], r: ab.r });
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead) return;
+      const a0 = Math.random() * Math.PI * 2;
+      for (let k = 0; k < b.count; k++) {
+        let spot: { x: number; y: number } | null = null;
+        for (let rr = this.arena * 0.8; rr > 40 && !spot; rr -= 20) {
+          const a = a0 + (k / b.count) * Math.PI * 2;
+          const x = Math.round(m.home.x + Math.cos(a) * rr), y = Math.round(m.home.y + Math.sin(a) * rr);
+          if (walkable(w.map, x, y, 12)) spot = { x, y };
+        }
+        if (!spot) continue;
+        const mob = new Mob(w.uid("b"), def, m.level, spot);
+        mob.summoned = true;
+        w.addMob(mob);
+        this.adds.add(mob);
+        this.carriers.add(mob);
+        w.emit({ t: "spawn", id: mob.id, k: "smoke" });
+      }
+      this.carryShield = b.shield;
+      this.refreshShield();
+      const step = () => {
+        if (epoch !== this.epoch || m.dead) return;
+        for (const c of this.carriers) {
+          if (c.dead) continue;
+          const dx = m.x - c.x, dy = m.y - c.y, d = Math.hypot(dx, dy);
+          if (d <= 40) {
+            w.removeMob(c);
+            this.adds.delete(c);
+            this.carriers.delete(c);
+            m.unit.hp = Math.min(m.unit.maxHp, m.unit.hp + b.healPct * m.unit.maxHp);
+            w.emit({ t: "zb", id: m.id, ab: "bearer_hit", w: 0, ms: 0, pts: [Math.round(c.x), Math.round(c.y)] });
+            continue;
+          }
+          const go = Math.min(d - 36, (b.speed * 100) / 1000);
+          c.unit.x += (dx / d) * go;
+          c.unit.y += (dy / d) * go;
+          c.unit.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down;
+        }
+        this.refreshShield();
+        if (this.carriers.size) w.later(100, step);
+      };
+      w.later(100, step);
+    });
   }
   /**
    * Клетки (кольцо, cage): удар оземь (windupMs) — у count случайных героев встаёт клетка с кандальным колом в центре (моб

@@ -513,6 +513,63 @@
       ],
       "legendary": 0.015,
       "pet": 8
+    },
+    "umb_frost_lord": {
+      "name": "Кальдрам Ледяной Владыка",
+      "level": 65,
+      "band": [
+        60,
+        70
+      ],
+      "special": [
+        {
+          "item": "zb_frost_staff",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_frost_crown",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_frost_heart",
+          "chance": 0.04
+        }
+      ],
+      "gold": {
+        "mult": 12
+      },
+      "loot": {
+        "items": 1,
+        "epic": 0.25
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            2,
+            4
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.6,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.01,
+      "pet": 6
     }
   },
   "items": {
@@ -1514,6 +1571,118 @@
         "pommel": "ring"
       },
       "boss": "plg_drowned_bellringer",
+      "card": "r2"
+    },
+    "zb_frost_staff": {
+      "id": "zb_frost_staff",
+      "name": "Посох Ледяного Владыки",
+      "base": "staff",
+      "ilvl": 64,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 38,
+        "crit": 1
+      },
+      "prop": "Каждое десятое заклинание носителя покрывает цель инеем: она на 2 с теряет скорость.",
+      "lore": "Звезда на навершии не тает даже у костра. Холод в ней чужой, старый, не твой.",
+      "look": {
+        "shape": "cage",
+        "mat": "blued",
+        "trim": "silver",
+        "cloth": "azure",
+        "haft": "darkwood",
+        "fx": "diamond",
+        "guard": "curved",
+        "pommel": "gem"
+      },
+      "boss": "umb_frost_lord",
+      "card": "r3"
+    },
+    "zb_frost_crown": {
+      "id": "zb_frost_crown",
+      "name": "Корона-шлем Кальдрама",
+      "base": "cloth_helm",
+      "ilvl": 63,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock",
+        "healer",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 17,
+        "vit": 16
+      },
+      "prop": "Когда здоровье носителя падает ниже трети, шлем покрывается льдом: следующий удар по нему слабее.",
+      "lore": "Чёрная сталь с белой каймой инея. Изнутри холоднее, чем снаружи.",
+      "look": {
+        "shape": "horncrown",
+        "rich": 1,
+        "mat": "blued",
+        "trim": "silver",
+        "cloth": "azure",
+        "gem": "diamond",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "diamond",
+        "guard": "ornate",
+        "pommel": "gem"
+      },
+      "boss": "umb_frost_lord",
+      "card": "r2"
+    },
+    "zb_frost_heart": {
+      "id": "zb_frost_heart",
+      "name": "Осколок ледяного сердца",
+      "base": "amulet",
+      "ilvl": 62,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock",
+        "healer",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "hp"
+      ],
+      "stats": {
+        "int": 17,
+        "hp": 170
+      },
+      "prop": "Первое заклинание после паузы в бою замораживает ближайшего врага на секунду.",
+      "lore": "Прозрачный, как стекло, и тяжёлый, как гиря. Внутри бьётся что-то медленное.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "silver",
+        "trim": "iron",
+        "cloth": "azure",
+        "gem": "diamond",
+        "haft": "yew",
+        "deco": "chains",
+        "fx": "diamond",
+        "guard": "ornate",
+        "pommel": "ring"
+      },
+      "boss": "umb_frost_lord",
       "card": "r2"
     }
   }

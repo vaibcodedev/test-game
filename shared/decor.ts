@@ -59,7 +59,7 @@ export const VENDOR_FOOTPRINT: Record<string, { w: number; h: number }> = {
   v_volcano_dead_tree: { w: 1, h: 1 }, v_volcano_dead_tree_tall: { w: 1, h: 1 },
   v_graveyard_dead_tree_a: { w: 1, h: 1 }, v_graveyard_dead_tree_b: { w: 1, h: 1 }, v_graveyard_dead_tree_vines: { w: 1, h: 1 },
   // дерево: брёвна, палисад, заборы
-  v_basic_log_pile: { w: 2, h: 1 }, v_basic_palisade_5: { w: 2, h: 1 }, v_basic_palisade_2: { w: 1, h: 1 }, v_basic_palisade_1: { w: 1, h: 1 },
+  v_basic_log_pile: { w: 2, h: 1 }, v_basic_palisade_5: { w: 2, h: 1 }, v_basic_palisade_2: { w: 1, h: 1 }, v_basic_palisade_1: { w: 1, h: 1 }, v_basic_palisade_5_b: { w: 2, h: 1 }, v_basic_palisade_2_b: { w: 1, h: 1 }, v_basic_palisade_1_b: { w: 1, h: 1 },
   v_basic_fence_row: { w: 3, h: 1 }, v_basic_fence_row_b: { w: 3, h: 1 }, v_basic_fence_post: { w: 1, h: 1 }, v_basic_fence_post_b: { w: 1, h: 1 },
   // обрывы и пещеры (после уменьшения 74×74 и 53×53)
   v_basic_cliff_h: { w: 2, h: 2 }, v_basic_cliff_end: { w: 1, h: 2 }, v_basic_cave_a: { w: 2, h: 2 }, v_basic_cave_b: { w: 2, h: 2 },

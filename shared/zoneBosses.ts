@@ -50,6 +50,9 @@ export interface ZbWave {
   /** Кольцо: знамя — босс вбивает в центр арены объект (моб <босс>_banner, здоровье hp× к мобу образцу), пока он стоит, босс получает урон ×shield,
    *  а знамя каждые everyMs бьёт кольцом r…r2 вокруг себя (предупреждение ringMs, урон dmgPct). Срубленное знамя вбивается заново по откату every. */
   banner?: { hp: number; shield: number; everyMs: number; ringMs: number };
+  /** Кольцо: носильщики — count стражей (моб <босс>_bearer, здоровье — hp× к мобу уровня босса, без добычи) встают по краю арены и идут к боссу со скоростью speed px/с;
+   *  пока хоть один жив, босс получает урон ×shield; каждый дошедший исчезает и лечит босса на healPct полного здоровья. */
+  bearers?: { count: number; hp: number; shield: number; healPct: number; speed: number };
 }
 export interface ZbAbility extends ZbWave {
   id: string;

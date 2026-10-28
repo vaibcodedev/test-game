@@ -1,5 +1,5 @@
 /** Процедурные звуки на WebAudio (без файлов). AudioContext стартует по первому действию игрока. */
-export type SfxName = "hit" | "crit" | "fire" | "frost" | "arrow" | "heal" | "shield" | "poison" | "explosion" | "slam" | "arcane" | "holy" | "shadow" | "step" | "clink" | "call" | "halt" | "bell" | "horn" | "tpgo" | "tparrive" | "tpfizzle" | "error" | "queue" | "bom" | "gong" | "thunder";
+export type SfxName = "hit" | "crit" | "fire" | "frost" | "arrow" | "heal" | "shield" | "poison" | "explosion" | "slam" | "arcane" | "holy" | "shadow" | "step" | "clink" | "call" | "halt" | "bell" | "horn" | "tpgo" | "tparrive" | "tpfizzle" | "error" | "queue" | "bom" | "gong" | "thunder" | "cheer" | "roar" | "boo";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -145,6 +145,10 @@ export function play(name: SfxName, gain = 1) {
       tone("sine", 100, 38, 0.5, v * 1.0); noise(0.5, v * 0.7, 6000, 500, "bandpass");
       [880, 1320, 1760, 2640].forEach((f, i) => { tone("sine", f, f, 0.7, v * (0.5 - i * 0.07), 0.04 + i * 0.07); tone("triangle", f * 2, f * 2, 0.35, v * 0.12, 0.04 + i * 0.07); });
       break;
+    // толпа арены (game/arenaCrowd.ts): овация — шум с форматами и хлопки; рёв — длиннее и ниже; недовольный гул
+    case "cheer": noise(1.5, v * 0.9, 700, 1500, "bandpass"); noise(1.2, v * 0.5, 2600, 900, "bandpass", 0.1); for (let i = 0; i < 6; i++) noise(0.05, v * 0.5, 3000, 1500, "bandpass", 0.1 + i * 0.13 + Math.random() * 0.06); voice(v * 0.5, [300, 380, 340], 0.2, 3); break;
+    case "roar": noise(2.4, v * 1.2, 500, 1200, "bandpass"); noise(2, v * 0.6, 200, 120, "lowpass"); tone("sawtooth", 150, 190, 1.6, v * 0.25); for (let i = 0; i < 10; i++) noise(0.05, v * 0.5, 3000, 1500, "bandpass", 0.2 + i * 0.16 + Math.random() * 0.08); break;
+    case "boo": noise(1.3, v * 0.7, 300, 250, "bandpass"); tone("sawtooth", 130, 100, 1.1, v * 0.3); break;
     case "error": tone("triangle", 190, 120, 0.09, v * 0.22); break;
     case "queue": tone("sine", 880, 1175, 0.06, v * 0.12); break;
     // отсчёт арены: мягкий низкий удар; «В бой!» — гонг с долгим хвостом (ui/arena.ts)
@@ -301,6 +305,24 @@ function ambEvent(kind: EventKind) {
     case "rumble": noise(1.4, 0.07, 220, 55, "lowpass", 0, d); tone("sine", 55, 32, 1.2, 0.07, 0, d); break;
     case "drip": tone("sine", 900 + r * 300, 450, 0.14, 0.06, 0, d); break;
   }
+}
+
+/** Гул толпы на арене: тихий фон из шума через полосовой фильтр (идемпотентно; ставится по первому действию игрока). swell — всплеск громкости на события (0..1). */
+let crowdBed: { g: GainNode; stop: () => void } | null = null;
+export function crowdHum(on: boolean, swell = 0) {
+  if (!on) { crowdBed?.stop(); crowdBed = null; return; }
+  if (!ctx || ctx.state !== "running" || !master || !noiseBuf) return;
+  if (!crowdBed) {
+    const c = ctx, src = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+    src.buffer = noiseBuf; src.loop = true;
+    fl.type = "bandpass"; fl.frequency.value = 650; fl.Q.value = 0.6;
+    g.gain.value = 0.0;
+    lfo.frequency.value = 0.17; lg.gain.value = 140; lfo.connect(lg).connect(fl.frequency);
+    src.connect(fl).connect(g).connect(master);
+    src.start(); lfo.start();
+    crowdBed = { g, stop: () => { try { g.gain.linearRampToValueAtTime(0, c.currentTime + 0.4); src.stop(c.currentTime + 0.5); lfo.stop(c.currentTime + 0.5); } catch {} } };
+  }
+  crowdBed.g.gain.setTargetAtTime(0.035 + 0.12 * swell, ctx.currentTime, 0.25);
 }
 
 /** Включить фон биома (плавный переход). null — тишина. Сработает после первого действия игрока. */

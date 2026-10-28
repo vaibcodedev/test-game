@@ -1,16 +1,10 @@
 {
  "units": {
-  "plg_drowned_bellringer": {
-   "frame": 64,
-   "frameH": 80
+  "umb_frost_lord_bearer": {
+   "frame": 80
   },
-  "sol_fallen_chaplain_banner": {
-   "frame": 64,
-   "frameH": 80
-  },
-  "sol_fallen_chaplain": {
-   "frame": 64,
-   "frameH": 80
+  "umb_frost_lord": {
+   "frame": 80
   },
   "pet_wolf": {
    "frame": 32
@@ -170,6 +164,18 @@
    "frameH": 80
   },
   "sol_plague_raven": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_fallen_chaplain": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_fallen_chaplain_banner": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "plg_drowned_bellringer": {
    "frame": 64,
    "frameH": 80
   },
@@ -31061,6 +31067,30 @@
    "w": 128,
    "h": 64
   },
+  "v_basic_palisade_5": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_palisade_2": {
+   "w": 32,
+   "h": 64
+  },
+  "v_basic_palisade_1": {
+   "w": 32,
+   "h": 64
+  },
+  "v_basic_palisade_5_b": {
+   "w": 64,
+   "h": 64
+  },
+  "v_basic_palisade_2_b": {
+   "w": 32,
+   "h": 64
+  },
+  "v_basic_palisade_1_b": {
+   "w": 32,
+   "h": 64
+  },
   "dg_pillar_c_a": {
    "w": 64,
    "h": 128
@@ -31530,18 +31560,6 @@
    "h": 128
   },
   "v_basic_oak_small": {
-   "w": 64,
-   "h": 64
-  },
-  "v_basic_palisade_1": {
-   "w": 32,
-   "h": 64
-  },
-  "v_basic_palisade_2": {
-   "w": 32,
-   "h": 64
-  },
-  "v_basic_palisade_5": {
    "w": 64,
    "h": 64
   },
@@ -32020,6 +32038,22 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
+  },
+  "arena_cover_ash": {
+   "w": 26,
+   "h": 42
+  },
+  "arena_cover_sun": {
+   "w": 26,
+   "h": 42
+  },
+  "arena_cover_pit": {
+   "w": 28,
+   "h": 28
+  },
+  "arena_cover_frost": {
+   "w": 30,
+   "h": 30
   }
  },
  "icons": [
@@ -33789,6 +33823,9 @@
   "uq_zb_bell_flail",
   "uq_zb_thorn_halo",
   "uq_zb_drowned_bell",
+  "uq_zb_frost_heart",
+  "uq_zb_frost_crown",
+  "uq_zb_frost_staff",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",
@@ -34292,13 +34329,13 @@
  "atlases": [
   {
    "key": "objs0",
-   "png": "/assets/atlas/objs0.png?v=4829164b2a",
-   "json": "/assets/atlas/objs0.json?v=4829164b2a"
+   "png": "/assets/atlas/objs0.png?v=b2a4b093e9",
+   "json": "/assets/atlas/objs0.json?v=b2a4b093e9"
   },
   {
    "key": "objs1",
-   "png": "/assets/atlas/objs1.png?v=4829164b2a",
-   "json": "/assets/atlas/objs1.json?v=4829164b2a"
+   "png": "/assets/atlas/objs1.png?v=b2a4b093e9",
+   "json": "/assets/atlas/objs1.json?v=b2a4b093e9"
   }
  ],
  "atlasOf": {
@@ -34533,6 +34570,8 @@
   "dummy": "objs0",
   "ice_spike": "objs0",
   "cactus": "objs0",
+  "arena_cover_ash": "objs0",
+  "arena_cover_sun": "objs0",
   "bf_spike_barrier": "objs0",
   "bf_spike_barrier_b": "objs0",
   "node_cactus": "objs0",
@@ -34542,9 +34581,10 @@
   "bf_blood_b": "objs0",
   "anvil": "objs0",
   "barrel": "objs0",
+  "arena_cover_frost": "objs0",
   "basalt": "objs0",
   "cactus_small": "objs0",
-  "rock": "objs0",
+  "arena_cover_pit": "objs0",
   "sol_house__fort-barracks-moss": "objs1",
   "sol_house__fort-barracks-patch": "objs1",
   "sol_temple__fort-barracks-clean": "objs1",
@@ -34811,6 +34851,7 @@
   "v_basic_log_pile": "objs1",
   "v_basic_oak_small": "objs1",
   "v_basic_palisade_5": "objs1",
+  "v_basic_palisade_5_b": "objs1",
   "v_deco_gallows": "objs1",
   "v_deco_spear_rack": "objs1",
   "v_deco_stocks": "objs1",
@@ -34869,7 +34910,9 @@
   "ruin_pillar": "objs1",
   "signpost": "objs1",
   "v_basic_palisade_1": "objs1",
+  "v_basic_palisade_1_b": "objs1",
   "v_basic_palisade_2": "objs1",
+  "v_basic_palisade_2_b": "objs1",
   "v_graveyard_coffin_closed_v": "objs1",
   "v_graveyard_coffin_open_v": "objs1",
   "v_graveyard_cross_a": "objs1",
@@ -35021,6 +35064,7 @@
   "v_volcano_sign_b": "objs1",
   "v_volcano_skull": "objs1",
   "v_volcano_skull_ram": "objs1",
+  "rock": "objs1",
   "sandstone": "objs1",
   "snow_rock": "objs1"
  }

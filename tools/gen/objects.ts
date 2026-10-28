@@ -9,6 +9,7 @@ import { FACTION_ART } from "./factions";
 import { walls141Art } from "./walls141-game";
 import { WORLD_VOLUME } from "./volume-world";
 import { BF_PROPS } from "./bf-props";
+import { GOBLIN_PALISADE_ART } from "./goblin-palisade";
 import { BF_MORE } from "./bf-more";
 import { BF_HORSES_ART } from "./bf-horses";
 import { DUNGEON_ART } from "./dungeon-art";
@@ -250,6 +251,7 @@ export const OBJECT_ART: Record<string, Art> = {
   ...BF_PROPS,
   ...BF_MORE,
   ...BF_HORSES_ART,
+  ...GOBLIN_PALISADE_ART, // частокол лагерей гоблинов, 2 варианта (shared/map.ts)
   // данж (задача 139): собор павших королей → переход → пепельный склеп: tools/gen/dungeon-art.ts
   ...DUNGEON_ART,
   // правки 6 задачи 141: цельный колодец, объёмный камень телепорта, статуи героев фракций (tools/gen/walls141-props.ts)

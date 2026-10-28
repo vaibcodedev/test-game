@@ -4434,6 +4434,249 @@
      "fx": []
     }
    }
+  },
+  "umb_frost_lord": {
+   "file": "umb_frost_lord.png",
+   "fw": 80,
+   "cols": 86,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 64,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stompWind": {
+     "col": 24,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "stompHold": {
+     "col": 28,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "stomp": {
+     "col": 32,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "spearWind": {
+     "col": 40,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "spearHold": {
+     "col": 44,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "spearCast": {
+     "col": 48,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "summonWind": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "summonHold": {
+     "col": 60,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "summon": {
+     "col": 64,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "death": {
+     "col": 72,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    },
+    "attack": {
+     "col": 48,
+     "n": 8,
+     "fps": 15,
+     "loop": false,
+     "hit": 2
+    }
+   },
+   "fx": {
+    "ring": {
+     "file": "umb_frost_lord-ring.png",
+     "fw": 240,
+     "fh": 240,
+     "ax": 120,
+     "ay": 120,
+     "rows": 2,
+     "anims": {
+      "ring": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 1
+      }
+     }
+    },
+    "spear": {
+     "file": "umb_frost_lord-spear.png",
+     "fw": 48,
+     "fh": 80,
+     "ax": 24,
+     "ay": 66,
+     "rows": 2,
+     "anims": {
+      "spear": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": false,
+       "hit": 3
+      }
+     }
+    },
+    "circle": {
+     "file": "umb_frost_lord-circle.png",
+     "fw": 96,
+     "fh": 96,
+     "ax": 48,
+     "ay": 48,
+     "rows": 2,
+     "anims": {
+      "circle": {
+       "col": 0,
+       "n": 8,
+       "fps": 8,
+       "loop": true,
+       "hit": 0
+      }
+     }
+    }
+   },
+   "skills": {
+    "stomp": {
+     "waves": [
+      {
+       "pre": [
+        "stompWind",
+        "stompHold"
+       ],
+       "strike": "stomp"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "ring",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "ring"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "ice_spears": {
+     "waves": [
+      {
+       "pre": [
+        "spearWind",
+        "spearHold"
+       ],
+       "strike": "spearCast"
+      },
+      {
+       "pre": [
+        "spearHold"
+       ],
+       "strike": "spearCast"
+      },
+      {
+       "pre": [
+        "spearHold"
+       ],
+       "strike": "spearCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "spear",
+       "waves": [
+        0,
+        1,
+        2
+       ],
+       "seq": [
+        "spear"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "assemble": {
+     "waves": [
+      {
+       "pre": [
+        "summonWind",
+        "summonHold"
+       ],
+       "strike": "summon"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "circle",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "circle"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "self",
+       "holds": {
+        "circle": 1400
+       }
+      }
+     ]
+    }
+   }
   }
  },
  "units": {
@@ -4485,6 +4728,12 @@
   "plg_drowned_bellringer": {
    "frame": 64,
    "frameH": 80
+  },
+  "umb_frost_lord": {
+   "frame": 80
+  },
+  "umb_frost_lord_bearer": {
+   "frame": 80
   }
  }
 }
