@@ -8,6 +8,8 @@ export interface WindowState {
   width: number;
   height: number;
   maximized: boolean;
+  /** Игра была во весь экран (F11, Alt+Enter или «Экран» в настройках) — так и откроется. */
+  fullscreen?: boolean;
 }
 
 export interface DesktopConfig {
@@ -54,7 +56,7 @@ function sanitize(raw: Record<string, unknown>): DesktopConfig {
   if (w && typeof w === "object") {
     const width = num(w.width);
     const height = num(w.height);
-    if (width && height) out.window = { x: num(w.x), y: num(w.y), width, height, maximized: w.maximized === true };
+    if (width && height) out.window = { x: num(w.x), y: num(w.y), width, height, maximized: w.maximized === true, fullscreen: w.fullscreen === true };
   }
   return out;
 }

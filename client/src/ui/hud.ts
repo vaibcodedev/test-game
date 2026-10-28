@@ -583,6 +583,7 @@ export class Hud {
     body.innerHTML = `<section class="sec">
         <h3 class="sec-h">${TX("ui.hud.538")}</h3>
         <div class="set-list">
+          ${segRow("set-screen", "Экран", [["win", "Окно"], ["full", "Полный экран"]], "m", "Клавиша F11 переключает так же")}
           ${rangeRow("set-scale", "Масштаб интерфейса", 80, 150, 5)}
           ${rangeRow("set-chat", "Размер шрифта чата", 14, 22, 1)}
           ${buttonRow("set-resetwin", "Расположение окон", "", "Сбросить")}
@@ -641,6 +642,15 @@ export class Hud {
     // режим эффектов — только свой #set-gearfx: у «Режима прицела» в controls.ts тоже data-m
     seg(q("#set-gearfx"), (m) => setGearFxMode(m as GearFxMode), "m").set(gearFxMode());
     seg(q("#set-shadows"), (m) => setShadowMode(m as ShadowMode), "m").set(shadowMode());
+    // полный экран — Fullscreen API (браузер и десктоп-клиент; в клиенте F11 и запоминание режима — desktop/src/main.ts); выход по Esc или F11 обновляет переключатель
+    const screenSeg = seg(q("#set-screen"), (m) => {
+      if (m === "full" && !document.fullscreenElement) void document.documentElement.requestFullscreen().catch(() => screenSeg.set("win"));
+      else if (m === "win" && document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    }, "m");
+    const syncScreen = () => screenSeg.set(document.fullscreenElement || window.innerHeight >= screen.height - 1 ? "full" : "win");
+    syncScreen();
+    document.addEventListener("fullscreenchange", syncScreen);
+    window.addEventListener("resize", syncScreen);
     this.settingsBody = body;
   }
   private settingsBody: Element | null = null;

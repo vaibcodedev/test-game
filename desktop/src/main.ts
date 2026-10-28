@@ -174,8 +174,10 @@ function lockNavigation(contents: WebContents, origin: string | null): void {
 
 function onKey(win: BrowserWindow, e: ElectronEvent, input: Input, game: boolean): void {
   if (input.type !== "keyDown") return;
-  // F11 — полный экран; остальные клавиши (Tab, F1–F5, Alt…) уходят в игру: меню нет, ускорителей нет
-  if (game && input.key === "F11" && !input.alt && !input.control && !input.meta) {
+  // F11 и Alt+Enter — полный экран; остальные клавиши (Tab, F1–F5, Alt…) уходят в игру: меню нет, ускорителей нет
+  const f11 = input.key === "F11" && !input.alt && !input.control && !input.meta;
+  const altEnter = input.key === "Enter" && input.alt && !input.control && !input.meta;
+  if (game && (f11 || altEnter)) {
     e.preventDefault();
     if (!input.isAutoRepeat) win.setFullScreen(!win.isFullScreen());
     return;
@@ -249,7 +251,7 @@ function saveWindowState(win: BrowserWindow): void {
   if (win.isDestroyed()) return;
   const b = win.getNormalBounds();
   const maximized = win.isFullScreen() ? (config.data.window?.maximized ?? false) : win.isMaximized();
-  config.update({ window: { x: b.x, y: b.y, width: b.width, height: b.height, maximized } });
+  config.update({ window: { x: b.x, y: b.y, width: b.width, height: b.height, maximized, fullscreen: win.isFullScreen() } });
 }
 
 function createGameWindow(origin: string): BrowserWindow {
@@ -286,6 +288,8 @@ function createGameWindow(origin: string): BrowserWindow {
     timer = setTimeout(() => saveWindowState(win), 800);
   };
   win.on("resize", saveLater);
+  win.on("enter-full-screen", saveLater);
+  win.on("leave-full-screen", saveLater);
   win.on("move", saveLater);
   win.on("close", () => {
     clearTimeout(timer);
@@ -318,6 +322,7 @@ async function openGame(url: string): Promise<void> {
     clearTimeout(timer);
   }
   if (config.data.window?.maximized) win.maximize();
+  if (config.data.window?.fullscreen) win.setFullScreen(true);
   win.show();
   win.focus();
   const l = launcher;
