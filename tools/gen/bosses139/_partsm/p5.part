@@ -1,0 +1,171 @@
+interface Assets { hero: PC; terrain: PC; ref: PC | null }
+const heroAt = (A: Assets, row: number) => crop(A.hero, 0, row * 32, 32, 32);
+type Sheets = { img: Record<MinoAnim, PC>; emis: Record<MinoAnim, PC> };
+type Item = { img: PC; emis: PC | null; flip?: boolean };
+
+/** Кадры галереи: покой во все стороны, оба удара «Когтей», порыв, рёв, россыпь, гибель. */
+function gallery(sheets: Sheets): { label: string; items: Item[] }[] {
+  const idle = (row: number, flip = false): Item => ({ img: crop(sheets.img.idle, 0, row * FH, N, FH), emis: crop(sheets.emis.idle, 0, row * FH, N, FH), flip });
+  const pose = (p: Pose, v: View, flip = false): Item => ({ ...renderMino(v, p), flip });
+  return [
+    {
+      label: "ПОКОЙ: ВНИЗ · ВВЕРХ · ВБОК · ВЛЕВО | КОГТИ: УДАР 1 (ВНИЗ, ВБОК) · УДАР 2 (ВНИЗ)",
+      items: [idle(0), idle(1), idle(2), idle(2, true), pose(POSES.clawStrike("down")[3], "down"), pose(POSES.clawStrike("side")[3], "side"), pose(POSES.clawStrike("down")[8], "down")],
+    },
+    {
+      label: "ПОРЫВ: БЕГ (ВНИЗ, ВБОК) · КОНЕЦ (ВБОК) | Ф2: РЁВ ВЫЗОВА (ВНИЗ) · РОССЫПЬ (ВНИЗ, ВБОК) | ГИБЕЛЬ",
+      items: [pose(POSES.rushDash("down")[1], "down"), pose(POSES.rushDash("side")[1], "side"), pose(POSES.rushStrike("side")[2], "side"),
+        pose(POSES.callCast("down")[3], "down"), pose(POSES.slamStrike("down")[3], "down"), pose(POSES.slamStrike("side")[3], "side"), pose(POSES.death("side")[9], "side")],
+    },
+  ];
+}
+const sil = (img: PC, col: RGBA = [20, 20, 24, 255]): PC => {
+  const o = img.clone();
+  for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) if (o.alpha(x, y)) o.set(x, y, col);
+  return o;
+};
+/** Силуэт референса: всё, что заметно светлее фона (фон — тёмный ровный), без подставки-камня внизу. */
+function refSil(ref: PC): PC {
+  const o = new PC(ref.w, ref.h);
+  const bg = ref.get(4, 4)!;
+  for (let y = 0; y < ref.h; y++) for (let x = 0; x < ref.w; x++) {
+    const q = ref.get(x, y)!;
+    const d = Math.abs(q[0] - bg[0]) + Math.abs(q[1] - bg[1]) + Math.abs(q[2] - bg[2]);
+    if (d > 26 && y < ref.h * 0.935) o.set(x, y, [20, 20, 24, 255]);
+  }
+  return o;
+}
+/**
+ * «Наш | референс»: ×1 и ×3 с героем на земле (4 стороны), галерея умений ×3 день/ночь, большие кадры ×5 (вниз, вверх, вбок, влево) рядом
+ * с образцом 25 и силуэт-тест.
+ */
+function buildCompare(sheets: Sheets, A: Assets): PC {
+  const k6 = 5;
+  const H6 = FH * k6;
+  const RH = A.ref ? A.ref.h : H6;
+  const rowH = Math.max(H6, RH);
+  const gal = gallery(sheets);
+  const bw = 4 * (N * k6 + 12);
+  const W = Math.max(gal[0].items.length * (N * 3 + 8) + 48, 24 + bw + 40 + (A.ref ? A.ref.w : 600) + 24, 2000);
+  const y1 = 12, y3 = y1 + 22 + 92 + 12, yg = y3 + 22 + 92 * 3 + 12, yb = yg + gal.length * (22 + 2 * (FH * 3 + 6) + 16) + 14;
+  const ySil = yb + 2 * (rowH + 70) + 12;
+  const c = new PC(W, ySil + FH * 5 + 60);
+  fill(c, 0, 0, c.w, c.h, [30, 28, 34, 255]);
+  for (const [kk, y0] of [[1, y1], [3, y3]] as [number, number][]) {
+    text(c, `×${kk} · ГЕРОЙ · МИНОТАВР ВНИЗ, ВВЕРХ, ВБОК, ВЛЕВО`, 24, y0, 2);
+    const yb0 = y0 + 22 + 90 * kk;
+    groundBg(c, A.terrain, 24, y0 + 20, Math.min(W - 48, (34 + 84 * 4 + 40) * kk + 40), 92 * kk, kk, "dirt");
+    let x = 40;
+    const put1 = (img: PC, feet: number, w: number, flip = false) => {
+      shadowBlob(c, x + (img.w / 2) * kk, yb0 - 0.5 * kk, Math.min(22, (img.w / 32) * 6.5) * kk, 2.8 * kk);
+      c.blit(scaleNN(img, kk, flip), x, Math.round(yb0 - feet * kk));
+      x += w * kk;
+    };
+    put1(heroAt(A, 0), 30.4, 34);
+    put1(crop(sheets.img.idle, 0, 0, N, FH), CAM.GY, 84);
+    put1(crop(sheets.img.idle, 0, FH, N, FH), CAM.GY, 84);
+    put1(crop(sheets.img.idle, 0, 2 * FH, N, FH), CAM.GY, 84);
+    put1(crop(sheets.img.idle, 0, 2 * FH, N, FH), CAM.GY, 84, true);
+  }
+  let yy0 = yg;
+  for (const gl of gal) {
+    text(c, gl.label + "  (×3, ДЕНЬ / НОЧЬ)", 24, yy0, 2);
+    const gw = gl.items.length * (N * 3 + 8) + 8;
+    for (const [ni, night] of [false, true].entries()) {
+      const yy = yy0 + 22 + ni * (FH * 3 + 6);
+      fill(c, 24, yy, gw, FH * 3, night ? [38, 46, 74, 255] : [120, 104, 84, 255]);
+      gl.items.forEach((it, i) => {
+        const ix = 24 + 8 + i * (N * 3 + 8);
+        c.blit(scaleNN(it.img, 3, it.flip), ix, yy);
+        if (night && it.emis) { nightRect(c, ix, yy, N * 3, FH * 3); relight(c, it.emis, ix, yy, 3, it.flip); }
+      });
+    }
+    yy0 += 22 + 2 * (FH * 3 + 6) + 16;
+  }
+  const views: [number, boolean][] = [[0, false], [1, false], [2, false], [2, true]];
+  for (const night of [false, true]) {
+    const y = yb + 48 + (night ? rowH + 70 : 0);
+    text(c, night ? "НАШ · НОЧЬ" : "НАШ · ДЕНЬ", 24, y - 36, 3);
+    text(c, "РЕФЕРЕНС 25", 24 + bw + 40, y - 36, 3);
+    const oy = y + rowH - H6;
+    fill(c, 24, oy, bw, H6, night ? [38, 46, 74, 255] : [120, 104, 84, 255]);
+    views.forEach(([j, fl], i) => c.blit(scaleNN(crop(sheets.img.idle, 0, j * FH, N, FH), k6, fl), 24 + i * (N * k6 + 12), oy));
+    if (night) {
+      nightRect(c, 24, oy, bw, H6);
+      views.forEach(([j, fl], i) => relight(c, crop(sheets.emis.idle, 0, j * FH, N, FH), 24 + i * (N * k6 + 12), oy, k6, fl));
+    }
+    fill(c, 24 + bw + 16, y, 4, rowH, [240, 232, 214, 255]);
+    if (A.ref) c.blit(A.ref, 24 + bw + 40, y);
+  }
+  // силуэт-тест: наш (вбок и вниз) рядом с силуэтом референса
+  text(c, "СИЛУЭТ-ТЕСТ: НАШ ВБОК · ВНИЗ · ВВЕРХ | СИЛУЭТ РЕФЕРЕНСА (ТОТ ЖЕ МАСШТАБ ПО ВЫСОТЕ ФИГУРЫ)", 24, ySil, 2);
+  fill(c, 24, ySil + 22, W - 48, FH * 5 + 16, [200, 190, 160, 255]);
+  [2, 0, 1].forEach((j, i) => c.blit(scaleNN(sil(crop(sheets.img.idle, 0, j * FH, N, FH)), 5), 32 + i * (N * 5 + 8), ySil + 30));
+  if (A.ref) {
+    const rs = refSil(A.ref);
+    const sc = (FH * 5) / A.ref.h;
+    const rw = Math.round(A.ref.w * sc);
+    const big = new PC(rw, FH * 5);
+    for (let y = 0; y < big.h; y++) for (let x = 0; x < big.w; x++) { const q = rs.get(Math.floor(x / sc), Math.floor(y / sc)); if (q && q[3]) big.set(x, y, q); }
+    c.blit(big, 32 + 3 * (N * 5 + 8) + 20, ySil + 30);
+  }
+  return c;
+}
+/** Референс 25 → png 600×600 (через System.Drawing; чужой арт остаётся в tools/out, не в игре). */
+function ensureRef(root: string): PC | null {
+  const png = path.join(root, "tools", "out", "bosses139", "ref-25.png");
+  const jpg = path.join(root, "tools", "out", "refs", "bosses-139", "25.jpg");
+  if (!fs.existsSync(png) && fs.existsSync(jpg) && process.platform === "win32") {
+    const ps = `Add-Type -AssemblyName System.Drawing; $s=[System.Drawing.Image]::FromFile('${jpg}'); $b=New-Object System.Drawing.Bitmap 600,600; $g=[System.Drawing.Graphics]::FromImage($b); $g.InterpolationMode='HighQualityBicubic'; $g.DrawImage($s,0,0,600,600); $b.Save('${png}',[System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $b.Dispose(); $s.Dispose()`;
+    spawnSync("powershell", ["-NoProfile", "-Command", ps], { stdio: "ignore" });
+  }
+  return fs.existsSync(png) ? loadPC(png) : null;
+}
+
+export function writeMinoArt(root: string, outDir: string, quick = false): string[] {
+  fs.mkdirSync(outDir, { recursive: true });
+  const files: string[] = [];
+  const save = (c: PC, name: string) => { const f = path.join(outDir, name); c.save(f); files.push(f); return c; };
+  const sheets = animSheets(quick ? ["idle"] : undefined, quick ? 1 : 99);
+  const A: Assets = {
+    hero: loadPC(path.join(root, "client", "public", "assets", "units", "warrior.png")),
+    terrain: loadPC(path.join(root, "client", "public", "assets", "tiles", "terrain.png")),
+    ref: ensureRef(root),
+  };
+  if (process.argv.includes("--sil")) {
+    const sc = new PC(N * 5 * 3 + 40 + 600, 600);
+    fill(sc, 0, 0, sc.w, sc.h, [200, 190, 160, 255]);
+    for (let j = 0; j < 3; j++) sc.blit(scaleNN(sil(crop(sheets.img.idle, 0, j * FH, N, FH)), 5), j * (N * 5 + 6), 0);
+    if (A.ref) sc.blit(refSil(A.ref), N * 15 + 40, 0);
+    save(sc, "r65n-w-sil.png");
+    return files;
+  }
+  save(buildCompare(sheets, A), "r65n-w-compare.png");
+  if (quick) return files;
+  const sheet = new PC(N * MINO_COLS, FH * 3), glow = new PC(N * MINO_COLS, FH * 3);
+  for (const [a] of ANIM_ORDER) { sheet.blit(sheets.img[a], MINO_ANIMS[a].col * N, 0); glow.blit(sheets.emis[a], MINO_ANIMS[a].col * N, 0); }
+  save(sheet, "mino-sheet.png");
+  save(glow, "mino-glow.png");
+  const rowsN = ["вниз", "вверх", "вбок"];
+  const bad: string[] = [];
+  for (let r = 0; r < 3; r++) for (let cI = 0; cI < MINO_COLS; cI++) {
+    let hits = 0;
+    for (let k2 = 0; k2 < FH; k2++) for (const [x, y] of [[0, k2], [N - 1, k2]]) { const q = sheet.get(cI * N + x, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    for (let k2 = 0; k2 < N; k2++) for (const y of [0, FH - 1]) { const q = sheet.get(cI * N + k2, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    if (hits) bad.push(`лист, ${rowsN[r]}, кадр ${cI + 1}: ${hits} px не цветом контура на краю`);
+  }
+  console.log(`  ${ID}: ${MINO_COLS} кадров × 3 вида, кадр ${N}×${FH}`);
+  if (bad.length) { console.warn(`  проверки: ${bad.length}\n${bad.slice(0, 40).map((s) => "    " + s).join("\n")}`); process.exitCode = 1; }
+  else console.log("  проверки: край кадра чист");
+  return files;
+}
+
+const isMain = !!process.argv[1] && path.resolve(process.argv[1]).replace(/\\/g, "/").endsWith("bosses139/cliff_minotaur_knight.ts");
+if (isMain) {
+  const root = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
+  const t = Date.now();
+  const files = writeMinoArt(root, path.join(root, "tools", "out", "bosses139"), process.argv.includes("--quick") || process.argv.includes("--sil"));
+  console.log(`  ${files.length} файлов, ${((Date.now() - t) / 1000).toFixed(0)} с`);
+  if (REACH.length) console.warn(`  недотяг руки: ${REACH.length} (макс ${Math.max(...REACH).toFixed(1)})`);
+}
+void linear; void hex; void cross; void easeIn; void stackRows; void depthOf; void sealPinholes; void easeOut; void clamp; void fromView; void snapPx; void sub; void lerp;

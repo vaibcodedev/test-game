@@ -1,0 +1,340 @@
+// ---------------- сцена ----------------
+interface Extra {
+  rings: { c: V3; r: number; k: number }[];
+  flash: { at: V3; k: number } | null;
+  dust: { at: V3; k: number }[];
+  glints: V3[];
+  streak: number;
+  embers: number;
+  shards: { at: V3; k: number } | null;
+}
+type Tex = (c: { l: V3; edge: boolean }) => number | { mat: Mat; d: number };
+
+const SC = K * RS;
+/** Кромка: светлое ребро по силуэту. */
+const engrave: Tex = (c) => (c.edge ? 1.2 : 0);
+/** Пластина: светлое ребро сверху, тёмный стык снизу, бронзовая кайма по бокам и крупный завиток (curl) — в модельных единицах. */
+const plate = (rx: number, rz: number, o: { curl?: boolean; cx?: number; cz?: number } = {}): Tex => (c) => {
+  const x = c.l[0] / SC, z = c.l[2] / SC;
+  if (z > rz * 0.8) return 1.0;
+  if (z < -rz * 0.68) return -1.0;
+  if (Math.abs(x) > rx * 0.76) return { mat: M.brass, d: 0.8 };
+  if (o.curl) {
+    const dx = x - (o.cx ?? 0), dz = z - (o.cz ?? 0), r = Math.hypot(dx, dz * 1.2), a = Math.atan2(dz, dx);
+    if (r < rx * 0.62 && Math.abs(Math.sin(r * 1.5 + a * 2)) < 0.17) return { mat: M.brass, d: 1.3 };
+  }
+  return c.edge ? 0.8 : 0;
+};
+/** Чешуя: ряды со сдвигом, тёмные стыки, светлая кромка каждой чешуйки. */
+const scales: Tex = (c) => {
+  const rz = c.l[2] * 0.62, r = Math.floor(rz);
+  const u = c.l[0] * 0.55 + (r & 1) * 0.5, fr = u - Math.floor(u), fz = rz - r;
+  return fz < 0.2 ? -0.9 : fr < 0.14 ? -0.55 : fz > 0.72 ? 1.1 : 0;
+};
+/** Мех: штрихи вдоль. */
+const furTex: Tex = (c) => {
+  const f = Math.sin(c.l[0] * 3.1 + c.l[2] * 1.3) * Math.sin(c.l[2] * 4.3 - c.l[1] * 2.1);
+  return f > 0.45 ? 0.9 : f < -0.5 ? -0.8 : 0;
+};
+const flute: Tex = (c) => (c.edge ? 1.2 : Math.sin(c.l[0] * 3.4) > 0.3 ? 1.1 : -0.35);
+
+/** Минотавр в координатах модели. */
+function build(p0: Pose, view: View): { S: Scene; X: Extra } {
+  const S = new Scene();
+  const X: Extra = { rings: [], flash: null, dust: [], glints: [], streak: 0, embers: 0, shards: null };
+  const p: Pose = view === "side" ? { ...p0, yaw: p0.yaw - 0.2, hy: p0.hy - 0.08 } : p0;
+  const W = p.wither;
+  const shift = bodyShift(view, p);
+  const pel: V3 = add([0, 0, HIP0], shift);
+  const up = p.chest * PXM, hz = p.headZ * PXM;
+  const TV = (v: V3): V3 => rot(v, p.pitch, p.yaw, p.roll);
+  const ARCH = 0.14;
+  const T = (v: V3, lift = v[2] >= 38): V3 => {
+    const w: V3 = v[2] >= 38 ? add([0, 0, 38], rot(sub(v, [0, 0, 38]), ARCH, 0, 0)) : v;
+    return add(add(pel, TV(sub(w, [0, 0, HIP0]))), [0, 0, lift ? up : 0]);
+  };
+  const PR = (v: V3): V3 => rot(v, p.pitch * 0.25, p.yaw * 0.35, p.roll * 0.5);
+  const PV = (v: V3): V3 => add(pel, PR(sub(v, [0, 0, HIP0])));
+  /** Голова вынесена вперёд (сутулость): все точки головы смещены на +HY по y. */
+  const HY = 6.5;
+  const H = (v0: V3): V3 => { const v: V3 = [v0[0], v0[1] + HY, v0[2] - 1.5]; return add(T(add(NECK, rot(sub(v, NECK), p.hp, p.hy, p.hr)), true), [0, 0, hz]); };
+  const HV = (v: V3): V3 => TV(rot(v, p.hp, p.hy, p.hr));
+  const axes = (f: (v: V3) => V3, roll = 0, pitch = 0, yaw = 0): [V3, V3, V3] => [
+    f(rot([1, 0, 0], pitch, yaw, roll)), f(rot([0, 1, 0], pitch, yaw, roll)), f(rot([0, 0, 1], pitch, yaw, roll)),
+  ];
+  const kn = p.kneel;
+  const wv = (i: number, amp = 1) => Math.round(p.waveAmp * amp * (0.5 + 0.5 * Math.sin(TAU * (p.wave + i * 0.23)))) * PXM;
+  const ID3: [V3, V3, V3] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const B = (m: Mat) => wm(m, W);
+  const at3 = (a: V3, b: V3, u: number) => add(a, mul(sub(b, a), u));
+
+  // ---------- руки: плечи и кулаки; недотянувшийся кулак подтягивается к руке вместе с рукоятью и шаром ----------
+  const SHX = 17.0, SHZ = 47.8;
+  const liftR = mul([0, 0, 1], p.armLift[0] * PXM), liftL = mul([0, 0, 1], p.armLift[1] * PXM);
+  const shR = add(T([SHX, -0.2, SHZ]), liftR), shL = add(T([-SHX, -0.2, SHZ]), liftL);
+  const reach = ARM[0] + ARM[1] - 0.6;
+  const clampFist = (sh: V3, f: V3): V3 => {
+    const d = sub(f, sh), l = lenOf(d);
+    if (l > reach) { REACH.push(l - reach); return add(sh, mul(d, reach / l)); }
+    return f;
+  };
+  const handRaw = add(p.hand[0], shift), hand0 = clampFist(shR, handRaw);
+  const fist2 = clampFist(shL, add(add(p.hand[1], shift), liftL));
+  const hdN = norm3(p.hd);
+  const headP = add(hand0, mul(hdN, HL)), bw = add(p.ball, shift), dv = sub(bw, headP), dl = lenOf(dv);
+  const ballC = dl > CL + TOPR ? add(headP, mul(dv, (CL + TOPR) / dl)) : bw;
+
+  // ---------- ноги: звериные, с обратным коленом: бедро вперёд-вниз, голень назад к скакательному суставу, пясть вперёд, мохнатое копыто ----------
+  {
+    const g = S.group(0.5), gf = S.group(1.3);
+    for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
+      const k = p.kick[i];
+      const ft: V3 = [pel[0] + s * 6.6, pel[1] + 2.4 + 4.2 * k, Math.max(0, 0.3 + 3.2 * Math.max(0, k)) - kn * 3.2];
+      const hip: V3 = [pel[0] + s * 4.8, pel[1] + 0.4, pel[2] - 2.0];
+      const hock = add(ft, [0, -3.6, 8.4]);
+      const knee = ik(hip, hock, 10.6, 10.4, [s * 0.1, 1, 0.25]);
+      const fet = add(ft, [0, 0.8, 3.0]);
+      // бедро: тёмная кольчуга и чеканный набедренник
+      S.cone(gf, B(M.fur), hip, 6.2, knee, 4.2, { tone: 0.0, tex: furTex as never, big: true });
+      S.cone(g, B(M.bronze), add(at3(hip, knee, 0.08), [0, 1.8, 0]), 5.0, add(at3(hip, knee, 0.84), [0, 1.4, 0]), 3.6, { part: S.newPart(), tone: 0.25, tex: engrave as never });
+      S.cone(g, B(M.brass), add(at3(hip, knee, 0.5), [0, 1.8, 0]), 4.6, add(at3(hip, knee, 0.56), [0, 1.7, 0]), 4.6, { part: S.newPart(), tone: 0.3 });
+      // наколенник
+      S.ell(g, B(M.bronze), add(knee, [0, 1.6, 0.4]), [4.0, 3.5, 3.8], ID3, { part: S.newPart(), tone: 0.45, tex: engrave as never, big: true });
+      for (const q of [1, -1]) S.ell(g, B(M.bronze), add(knee, [q * 3.6, 0.8, 0]), [1.0, 2.6, 2.8], ID3, { part: S.newPart(), tone: 0.2 });
+      // голень назад-вниз: мышца в кольчуге, наголенник
+      S.cone(gf, B(M.fur), knee, 4.3, hock, 2.6, { tone: 0.0, tex: furTex as never, big: true });
+      S.cone(g, B(M.bronze), add(at3(knee, hock, 0.18), [0, 1.2, 0]), 3.4, add(at3(knee, hock, 0.9), [0, 1.0, 0]), 2.4, { part: S.newPart(), tone: 0.15, tex: engrave as never });
+      S.cone(g, B(M.steel), at3(knee, hock, 0.55), 4.0, at3(knee, hock, 0.62), 4.0, { part: S.newPart(), tone: 0.8 });
+      // скакательный сустав: шип сзади
+      S.ell(g, B(M.bronze), hock, [2.8, 2.8, 2.8], ID3, { part: S.newPart(), tone: 0.5, tex: engrave as never });
+      S.cone(g, B(M.steel), add(hock, [0, -1.8, 0.4]), 1.5, add(hock, [0, -5.0, 1.2]), 0.2, { part: S.newPart(), tone: 0.9 });
+      // пясть: тёмно-бурая шерсть, лохматая бахрома вниз до копыта
+      S.cone(gf, B(M.fur), hock, 2.6, fet, 2.5, { tone: 0.0, tex: furTex as never, big: true });
+      for (let j = 0; j < 7; j++) {
+        const a = (j / 7) * TAU + 0.4;
+        const b0 = add(hock, [Math.cos(a) * 2.4, Math.sin(a) * 2.4 - 0.2, -2.0 - (j % 3)]);
+        const tip = add(ft, [Math.cos(a) * 4.0, Math.sin(a) * 4.2 + 0.8, 0.5 + (j % 3) * 0.8]);
+        S.cone(gf, B(M.fur), b0, 1.4, tip, 0.3, { part: S.newPart(), tone: j % 2 ? 0.6 : -0.5 });
+      }
+      // копыто: меховая «манжета» и два тёмных копытца
+      S.ell(gf, B(M.fur), add(ft, [0, 0.8, 3.0]), [4.2, 4.6, 2.8], ID3, { part: S.newPart(), tone: 0.1, tex: furTex as never });
+      for (const q of [1, -1]) S.cone(g, B(M.black), add(ft, [q * 1.5, 3.4, 1.8]), 1.9, add(ft, [q * 1.9, 7.2, 0.4]), 0.9, { part: S.newPart(), tone: 0.5 });
+    }
+  }
+
+  // ---------- таз и торс: узкая талия, широкая грудь клином, чеканный нагрудник ----------
+  {
+    const g = S.group(0.6);
+    S.ell(g, B(M.mail), PV([0, 0.3, 24.5]), [6.0, 4.4, 4.6], axes(PR), { tone: 0.0, big: true });
+    for (let i = -2; i <= 2; i++) {
+      const dx = i * 2.4;
+      const L = 7 + (Math.abs(i) % 2) * 2.5 + wv(i, 0.5) * 0.5;
+      S.cone(g, B(M.mail), PV([dx, 3.8, 24]), 1.7, PV([dx * 1.3, 4.8, 24 - L]), 1.2, { part: S.newPart(), tone: i % 2 ? -0.4 : 0.3 });
+      S.cone(g, B(M.mail), PV([dx, -3.8, 24]), 1.7, PV([dx * 1.3, -4.8, 24 - L + 1]), 1.2, { part: S.newPart(), tone: i % 2 ? -0.5 : 0.1 });
+    }
+    S.ell(g, B(M.leath), PV([0, 0.5, 28.6]), [6.2, 4.8, 1.4], axes(PR), { part: S.newPart(), tone: 0.0 });
+    for (const s of [1, -1]) {
+      S.ell(g, B(M.bronze), PV([s * 6.6, 2.4, 22.0]), [2.4, 4.4, 5.6], axes(PR, s * 0.4), { part: S.newPart(), tone: 0.2, tex: engrave as never });
+      S.ell(g, B(M.bronze), PV([s * 3.4, 5.0, 21.4]), [3.0, 1.4, 5.2], axes(PR, s * 0.12), { part: S.newPart(), tone: 0.35, tex: engrave as never });
+      S.ell(g, B(M.bronze), PV([s * 6.6, -2.4, 21.8]), [2.4, 3.8, 5.0], axes(PR, s * 0.4), { part: S.newPart(), tone: 0.0, tex: engrave as never });
+    }
+    S.ell(g, B(M.bronze), PV([0, 5.8, 24.2]), [3.6, 1.6, 5.6], axes(PR), { part: S.newPart(), tone: 0.6, tex: engrave as never, big: true });
+    S.ball(g, B(M.steel), PV([0, 7.1, 25.0]), 1.15, { part: S.newPart(), tone: 1.2 });
+    S.ell(g, B(M.bronze), PV([0, -4.8, 24.2]), [4.4, 1.6, 5.2], axes(PR), { part: S.newPart(), tone: 0.1, tex: engrave as never });
+    // живот: узкий, в чешуе
+    S.ell(g, B(M.steel), T([0, 0.6, 33.2]), [4.6, 4.2, 5.4], axes(TV), { part: S.newPart(), tone: 0.1, tex: scales as never, big: true });
+    S.ell(g, B(M.steel), T([0, -0.4, 33.2]), [4.8, 4.0, 5.0], axes(TV), { part: S.newPart(), tone: -0.3, tex: scales as never });
+    // грудь: широкий клин, нагрудник, ступенчатая кромка, медальон
+    S.ell(g, B(M.bronze), T([0, 1.0, 43.0]), [12.8, 8.2, 8.2], axes(TV), { part: S.newPart(), tone: 0.2, tex: plate(12.8, 8.2, { curl: true, cz: 1 }) as never, big: true });
+    S.ell(g, B(M.bronze), T([0, 1.6, 37.2]), [8.4, 6.2, 2.6], axes(TV), { part: S.newPart(), tone: -0.1, tex: engrave as never });
+    S.ell(g, B(M.bronze), T([0, 7.8, 43.6]), [3.0, 1.0, 3.0], axes(TV), { part: S.newPart(), tone: 1.0 });
+    S.ball(g, B(M.steel), T([0, 8.6, 43.6]), 1.1, { part: S.newPart(), tone: 1.4 });
+    for (const s of [1, -1]) S.ell(g, B(M.steel), T([s * 4.4, 6.4, 37.0]), [2.6, 1.0, 1.5], axes(TV, s * 0.4), { part: S.newPart(), tone: 0.8 });
+    // горжет и подбородочная кольчуга
+    S.ell(g, B(M.steel), T([0, 1.8, 49.2]), [7.6, 5.8, 2.6], axes(TV), { part: S.newPart(), tone: 0.2, tex: scales as never });
+    S.ell(g, B(M.mail), T([0, 2.4, 51.0]), [5.8, 4.8, 2.8], axes(TV), { part: S.newPart(), tone: -0.1 });
+    // спина: массивная пластина с хребтом и тёмная чешуя
+    S.ell(g, B(M.bronze), T([0, -2.0, 43.0]), [12.0, 7.0, 8.0], axes(TV), { part: S.newPart(), tone: 0.0, tex: plate(12.0, 8.0, { curl: true }) as never, big: true });
+    S.ell(g, B(M.steel), T([0, -1.4, 33.4]), [6.4, 5.0, 5.2], axes(TV), { part: S.newPart(), tone: -0.35, tex: scales as never });
+    S.cone(g, B(M.bronze), T([0, -8.0, 32.0]), 1.3, T([0, -8.2, 50.0]), 1.7, { part: S.newPart(), tone: 0.9 });
+    for (let q = 0; q < 5; q++) S.ball(g, B(M.bronze), T([0, -8.6, 35.0 + q * 3.4]), 1.2, { part: S.newPart(), tone: 1.3 });
+    S.cone(g, B(M.leath), T([-6.4, 5.0, 47.0]), 0.95, T([5.6, 6.4, 30.4]), 0.95, { part: S.newPart(), tone: 0.0 });
+    S.ball(g, B(M.bronze), T([-0.3, 7.6, 39.6]), 1.1, { part: S.newPart(), tone: 1.2 });
+  }
+
+  // ---------- грива и горб: тёмно-бурый мех загривка и вдоль спины ----------
+  {
+    const g = S.group(1.3);
+    S.ell(g, B(M.fur), T([0, -2.2, 54.2], true), [8.0, 6.0, 4.2], axes(TV), { tone: 0.0, tex: furTex as never, big: true });
+    for (let i = 0; i < 7; i++) {
+      const x = (i - 3) * 2.2;
+      const a = T([x, -4.2, 53.4], true), b = T([x * 1.25 + (i % 2 ? 0.8 : -0.8), -6.4 - (i % 3) * 0.7, 45.4 - (i % 2) * 2.4 + wv(i, 0.8)], true);
+      S.cone(g, B(M.fur), a, 2.0, b, 0.3, { part: S.newPart(), tone: i % 2 ? 0.6 : -0.4 });
+    }
+  }
+
+  // ---------- кистень: длинная рукоять, длинная цепь, крупное шипастое ядро ----------
+  {
+    const g = S.group(0.4);
+    const at = (u: number) => add(hand0, mul(hdN, u));
+    // рукоять: оплётка с кольцами, навершие, длинный рифлёный стебель, «тюльпан»
+    S.cone(g, B(M.leath), at(-3.6), 1.3, at(6.4), 1.3, { part: S.newPart(), tone: 0.0 });
+    for (const u of [-2.6, -0.4, 1.8, 4.0, 6.0]) S.cone(g, B(M.steel), at(u), 1.65, at(u + 0.55), 1.65, { part: S.newPart(), tone: 1.1 });
+    S.ball(g, B(M.bronze), at(-4.2), 1.9, { part: S.newPart(), tone: 1.0 });
+    S.cone(g, B(M.bronze), at(6.4), 1.6, at(14.6), 2.2, { part: S.newPart(), tone: 0.5, tex: flute as never });
+    S.cone(g, B(M.steel), at(14.4), 2.6, at(15.2), 2.6, { part: S.newPart(), tone: 1.2 });
+    S.cone(g, B(M.bronze), at(15.0), 2.4, at(18.2), 3.8, { part: S.newPart(), tone: 0.7, tex: flute as never });
+    S.cone(g, B(M.bronze), at(18.0), 3.8, at(18.9), 3.2, { part: S.newPart(), tone: 1.0 });
+    // цепь: девять крупных звеньев, поочерёдно плашмя и ребром; провисает, если шар ближе длины цепи
+    const hh = at(HL + 0.8);
+    const cd = norm3(sub(hh, ballC));
+    const top = add(ballC, mul(cd, TOPR));
+    const dist = lenOf(sub(top, hh));
+    const sag = Math.sqrt(Math.max(0, CL * CL - dist * dist)) * 0.5;
+    const pts: V3[] = [];
+    const nl = 8;
+    for (let i = 0; i <= nl; i++) {
+      const u = i / nl;
+      pts.push(add(add(hh, mul(sub(top, hh), u)), [0, 0, -sag * Math.sin(Math.PI * u)]));
+    }
+    for (let i = 0; i < nl; i++) {
+      const c = mul(add(pts[i], pts[i + 1]), 0.5);
+      const dir = norm3(sub(pts[i + 1], pts[i]));
+      const a = norm3(perp(dir, [0, 1, 0.15])), b = norm3(cross(dir, a));
+      const flat = i % 2 === 0;
+      S.ell(g, B(M.steel), c, flat ? [2.6, 1.3, 2.2] : [1.3, 2.6, 2.2], [a, b, dir], { part: S.newPart(), tone: 1.3 });
+    }
+    // ядро: раковина с рёбрами, широкая у цепи, сужается к длинному шипу; шипы-заклёпки
+    const sp = norm3(sub(ballC, top));
+    const f1 = norm3(perp(sp, [0, 1, 0.2])), f2 = norm3(cross(sp, f1));
+    const shell: Tex = (c) => {
+      if (c.edge) return 1.4;
+      const az = Math.atan2(c.l[1], c.l[0]);
+      return Math.sin(az * 7) > 0.25 ? 1.2 : -0.7;
+    };
+    S.cone(g, B(M.bronze), add(ballC, mul(sp, -5.4)), 4.0, add(ballC, mul(sp, -7.4)), 2.0, { part: S.newPart(), tone: 0.8 });
+    S.ell(g, B(M.bronze), add(ballC, mul(sp, -1.1)), [8.4, 8.4, 6.8], [f1, f2, sp], { part: S.newPart(), tone: 0.5, tex: shell as never, big: true });
+    S.cone(g, B(M.steel), add(ballC, mul(sp, 2.6)), 5.4, add(ballC, mul(sp, 11.6)), 0.3, { part: S.newPart(), tone: 1.0 });
+    for (let j = 0; j < 8; j++) {
+      const a = (j / 8) * TAU;
+      const sb = add(add(ballC, mul(sp, -2.0)), add(mul(f1, Math.cos(a) * 7.8), mul(f2, Math.sin(a) * 7.8)));
+      S.cone(g, B(M.steel), sb, 1.5, add(sb, add(mul(f1, Math.cos(a) * 1.6), mul(f2, Math.sin(a) * 1.6))), 0.2, { part: S.newPart(), tone: 1.4 });
+    }
+    X.glints.push(add(ballC, mul(sp, 11.6)));
+  }
+
+  // ---------- руки: массивные, в стали и кольчуге; правая держит кистень, левая сжата в кулак ----------
+  {
+    const limb = (gg: number, sh: V3, el: V3, fist: V3) => {
+      S.cone(gg, B(M.mail), sh, 4.0, el, 3.4, { tone: 0.0, big: true });
+      S.cone(gg, B(M.mail), el, 3.4, fist, 2.9, { tone: 0.0, big: true });
+      S.cone(gg, B(M.bronze), at3(sh, el, 0.12), 4.9, at3(sh, el, 0.64), 4.4, { part: S.newPart(), tone: 0.2, tex: engrave as never });
+      S.cone(gg, B(M.steel), at3(sh, el, 0.62), 4.6, at3(sh, el, 0.74), 4.6, { part: S.newPart(), tone: 0.9 });
+      S.ell(gg, B(M.bronze), el, [4.6, 4.6, 4.3], ID3, { part: S.newPart(), tone: 0.5, tex: engrave as never, big: true });
+      const f = norm3(sub(fist, el));
+      S.cone(gg, B(M.bronze), add(el, mul(f, 3.8)), 4.0, add(el, mul(f, 8.8)), 3.3, { part: S.newPart(), tone: 0.25, tex: engrave as never });
+      S.cone(gg, B(M.steel), add(el, mul(f, 8.2)), 3.5, add(el, mul(f, 9.2)), 3.5, { part: S.newPart(), tone: 1.0 });
+    };
+    const g = S.group(0.8);
+    const el = ik(shR, hand0, ARM[0], ARM[1], p.pole[0]);
+    limb(g, shR, el, hand0);
+    const fd = norm3(sub(hand0, el));
+    const e0 = norm3(perp(fd, [0, 0, 1]));
+    S.ell(g, B(M.steel), hand0, [3.6, 3.2, 3.9], [e0, cross(fd, e0), fd], { part: S.newPart(), tone: 0.5 });
+    for (let q = -1; q <= 1; q++) S.ball(g, B(M.bronze), add(add(hand0, mul(fd, 2.4)), mul(e0, q * 1.5)), 1.2, { part: S.newPart(), tone: 1.1 });
+    const g2 = S.group(0.8);
+    const el2 = ik(shL, fist2, ARM[0], ARM[1], p.pole[1]);
+    limb(g2, shL, el2, fist2);
+    const fd2 = norm3(sub(fist2, el2));
+    const e1 = norm3(perp(fd2, [0, 0, 1]));
+    S.ell(g2, B(M.steel), fist2, [3.8, 3.4, 4.1], [e1, cross(fd2, e1), fd2], { part: S.newPart(), tone: 0.5 });
+    for (let q = -1; q <= 1; q++) S.ball(g2, B(M.bronze), add(add(fist2, mul(fd2, 2.5)), mul(e1, q * 1.6)), 1.25, { part: S.newPart(), tone: 1.1 });
+  }
+
+  // ---------- наплечники: огромные, чеканные, ступенями; верхний гребень ----------
+  {
+    const g = S.group(0.5);
+    for (const s of [1, -1]) {
+      const m = s > 0 ? 1.0 : 1.08;
+      S.ell(g, B(M.bronze), T([s * 17.4, -0.4, 51.8]), [10.6 * m, 8.8 * m, 5.6 * m], axes(TV, s * 0.5), { part: S.newPart(), tone: 0.4, tex: plate(10.6 * m, 5.6 * m, { curl: true }) as never, big: true });
+      S.ell(g, B(M.steel), T([s * 18.2, -0.2, 47.8]), [9.6 * m, 8.0 * m, 3.4 * m], axes(TV, s * 0.75), { part: S.newPart(), tone: 0.1, tex: scales as never });
+      S.ell(g, B(M.bronze), T([s * 18.6, -0.1, 44.6]), [8.4 * m, 7.2 * m, 2.8 * m], axes(TV, s * 0.95), { part: S.newPart(), tone: 0.1, tex: plate(8.4 * m, 2.8 * m) as never });
+      S.ell(g, B(M.bronze), T([s * 12.4, -0.6, 56.0]), [4.8, 4.8, 2.2], axes(TV, s * 0.3), { part: S.newPart(), tone: 0.7, tex: engrave as never });
+      S.cone(g, B(M.bronze), T([s * 12.6, -1.0, 55.8]), 2.6, T([s * 21.2, -1.8, 62.0]), 0.25, { part: S.newPart(), tone: 1.1 });
+      for (let q = 0; q < 4; q++) S.ball(g, B(M.steel), T([s * (12.4 + q * 3.5), 6.4 - q * 0.6, 54.0 - q * 1.3]), 1.0, { part: S.newPart(), tone: 1.4 });
+    }
+  }
+
+  // ---------- голова: бычья морда с кольцом в носу, шлем, светящиеся глаза, витые рога из кости ----------
+  {
+    const g = S.group(0.9), gf = S.group(1.1);
+    const HC = 55.6;
+    S.cone(g, B(M.fur), T([0, 2.4, 47.6], true), 4.8, H([0, 3.4, 52.0]), 4.6, { part: S.newPart(), tone: -0.2 });
+    S.ell(g, B(M.fur), H([0, 4.2, HC + 0.4]), [5.8, 6.2, 5.6], axes(HV), { part: S.newPart(), tone: 0.0, tex: furTex as never, big: true });
+    S.ell(g, B(M.bronze), H([0, 3.4, HC + 3.2]), [6.4, 6.6, 3.6], axes(HV), { part: S.newPart(), tone: 0.5, tex: plate(6.4, 3.6) as never, big: true });
+    S.ell(g, B(M.bronze), H([0, 9.0, HC + 2.0]), [5.6, 2.6, 1.6], axes(HV, 0, 0.4), { part: S.newPart(), tone: 0.7, tex: engrave as never });
+    S.cone(g, B(M.bronze), H([0, -1.0, HC + 6.4]), 1.6, H([0, 8.4, HC + 5.8]), 1.2, { part: S.newPart(), tone: 1.2 });
+    S.cone(g, B(M.steel), H([0, 9.4, HC + 1.2]), 1.15, H([0, 11.0, HC - 3.8]), 0.8, { part: S.newPart(), tone: 1.0 });
+    for (const s of [1, -1]) {
+      S.ell(g, B(M.bronze), H([s * 5.9, 4.4, HC - 1.0]), [1.7, 3.6, 3.4], axes(HV, s * 0.25), { part: S.newPart(), tone: 0.4, tex: engrave as never });
+      S.ball(g, B(M.steel), H([s * 6.2, 7.2, HC + 2.2]), 0.9, { part: S.newPart(), tone: 1.4 });
+    }
+    // морда: бурая, глубокие глазницы с тлеющими глазами, ноздри, кольцо в носу
+    S.ell(gf, B(M.fur), H([0, 11.4, HC - 1.8]), [3.8, 5.2, 3.5], axes(HV), { part: S.newPart(), tone: 0.4, tex: furTex as never, big: true });
+    S.ell(gf, B(M.fur), H([0, 10.4, HC - 4.8]), [3.2, 4.4, 2.1], axes(HV), { part: S.newPart(), tone: -0.2, tex: furTex as never });
+    for (const s of [1, -1]) {
+      S.ball(g, B(M.black), H([s * 1.4, 15.8, HC - 1.4]), 0.95, { part: S.newPart(), tone: 0.0 });
+      S.ell(g, B(M.black), H([s * 3.4, 8.8, HC + 0.4]), [1.9, 1.3, 1.3], axes(HV), { part: S.newPart(), tone: 0.0 });
+      S.ball(g, M.glow, H([s * 3.4, 9.8, HC + 0.3]), 1.0, { part: S.newPart() });
+      S.cone(g, B(M.horn), H([s * 2.6, 13.4, HC - 5.2]), 0.8, H([s * 3.2, 15.8, HC - 8.4]), 0.2, { part: S.newPart(), tone: 0.6 });
+      S.cone(g, B(M.fur), H([s * 5.4, 2.4, HC + 0.4]), 1.9, H([s * 11.4, 0.4, HC - 3.4]), 0.45, { part: S.newPart(), tone: -0.15 });
+    }
+    // кольцо в носу: восемь звеньев по окружности под ноздрями
+    for (let j = 0; j < 8; j++) {
+      const a = (j / 8) * TAU;
+      S.ball(g, B(M.steel), H([Math.sin(a) * 1.9, 16.2, HC - 4.2 + Math.cos(a) * 1.9 - 1.2]), 0.62, { part: S.newPart(), tone: 1.6 });
+    }
+    // борода: бурые пряди и костяные клыки
+    for (let i = 0; i < 6; i++) {
+      const x = (i - 2.5) * 1.15;
+      const a = H([x, 12.4, HC - 6.0]);
+      const b = H([x * 1.2, 13.4 + (i % 2) * 0.6, HC - 11.4 - (i % 3) * 1.4]);
+      S.cone(gf, B(i % 3 === 1 ? M.bone : M.fur), a, 1.2, b, 0.25, { part: S.newPart(), tone: i % 2 ? 0.5 : -0.4 });
+    }
+    // рога: костяные, витые, светлеют к кончику, рёбра; широкая дуга наружу и вверх, острия внутрь
+    for (const s of [1, -1]) {
+      const pts: V3[] = [];
+      const nh = 8;
+      for (let i = 0; i <= nh; i++) {
+        const u = i / nh;
+        pts.push(H([s * (5.4 + 10.0 * Math.sin(u * 2.3)), 2.6 + 2.2 * Math.sin(u * 2.6) - 1.2 * u, HC + 3.0 + 11.4 * Math.pow(u, 0.88)]));
+      }
+      for (let i = 0; i < nh; i++) {
+        const r0 = 2.8 * (1 - i / nh) + 0.45, r1 = 2.8 * (1 - (i + 1) / nh) + 0.4;
+        S.cone(g, B(M.horn), pts[i], r0, pts[i + 1], r1, { part: S.newPart(), tone: -0.1 + (i / nh) * 1.1 + (i % 2 ? 0.45 : -0.3) });
+      }
+      S.cone(g, B(M.bronze), pts[0], 3.1, pts[1], 3.0, { part: S.newPart(), tone: 0.6, tex: engrave as never });
+    }
+  }
+
+  // ---------- эффекты ----------
+  if (p.ring > 0.02) X.rings.push({ c: p.ringAt ?? [pel[0], pel[1], 0], r: 3 + 26 * p.ring, k: 1 - p.ring });
+  if (p.flash > 0.02) X.flash = { at: p.flashAt ?? ballC, k: p.flash };
+  for (let i = 0; i < 2; i++) if (p.dust[i] > 0.05) X.dust.push({ at: i === 0 && p.flashAt ? [p.flashAt[0], p.flashAt[1], 0] : [pel[0] + (i ? -8 : 8), pel[1] + 7, 0], k: p.dust[i] });
+  X.streak = p.streak;
+  X.embers = p.embers;
+  if (p.shards > 0.02) X.shards = { at: p.shardAt ?? [ballC[0], ballC[1], 0], k: p.shards };
+  return finalize(S, X);
+}
+/** Тело — в двойном разрешении (K·RS), слои 2D — в пикселях кадра 1× (K). */
+function finalize(S: Scene, X: Extra): { S: Scene; X: Extra } {
+  scaleScene(S, K * RS);
+  const sk = (v: V3) => mul(v, K);
+  X.rings.forEach((r) => { r.c = sk(r.c); r.r *= K; });
+  if (X.flash) X.flash.at = sk(X.flash.at);
+  X.dust.forEach((d) => (d.at = sk(d.at)));
+  if (X.shards) X.shards.at = sk(X.shards.at);
+  X.glints = X.glints.map(sk);
+  return { S, X };
+}
+

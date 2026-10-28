@@ -1,0 +1,264 @@
+/** Шар кистеня в мире (модель): для следа и вспышки. */
+function tipW(p: Pose, view: View): V3 {
+  return add(p.ball, bodyShift(view, p));
+}
+const trailOf = (base: Pose, keys: Key[], view: View, f0: number, f1: number, n = 7): V3[] =>
+  Array.from({ length: n }, (_, k) => tipW(poseAt(base, keys, lerp(f0, f1, k / (n - 1))), view));
+
+/** Висящий шар с лёгким качанием (ph — фаза). */
+const swing = (hand: V3, hd: V3, ph: number, amp = 1): V3 => bal(hand, hd, [0.05 + 0.08 * amp * Math.sin(TAU * ph), 0.12 + 0.07 * amp * Math.cos(TAU * ph), -1]);
+
+/** Покой: дыхание по пикселю (грудь, плечи, голова), шар кистеня покачивается, мех и пластины шевелятся. */
+function idlePoses(view: View, n = 12): Pose[] {
+  const R0 = restOf(view);
+  const chest = [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0];
+  const head = [0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0];
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / n;
+    return { ...R0, t, seed: 100 + i, chest: chest[i], headZ: head[i] - chest[i], sway: 0, wave: t, waveAmp: 1, glow: 1 + 0.25 * Math.sin(t * TAU), ball: swing(R0.hand[0], R0.hd, t) };
+  });
+}
+/** Ходьба: тяжёлый шаг, руки покачиваются, шар раскачивается взад-вперёд. */
+function walkPoses(view: View, n = 12): Pose[] {
+  const R0 = restOf(view);
+  const bob = [0, -1, -1, 0, 0, 0, 0, -1, -1, 0, 0, 0];
+  const swayX = [0, 0, 1, 1, 1, 0, 0, 0, -1, -1, -1, 0];
+  const side = rv(view);
+  return Array.from({ length: n }, (_, i) => {
+    const u = i / n;
+    const fw = Math.sin(TAU * u);
+    const h0: V3 = [R0.hand[0][0], R0.hand[0][1] + 2.4 * fw, R0.hand[0][2]];
+    const h1: V3 = [R0.hand[1][0], R0.hand[1][1] - 2.4 * fw, R0.hand[1][2]];
+    return {
+      ...R0, t: u, seed: 150 + i, root: [side ? 0 : swayX[i], 0, 0] as V3, bob: -1 + bob[i] * PXM,
+      kick: [Math.max(0, Math.sin(TAU * u)) - 0.2, Math.max(0, Math.sin(TAU * u + Math.PI)) - 0.2] as [number, number],
+      wave: u * 2, waveAmp: 1.4, hand: [h0, h1] as [V3, V3],
+      ball: bal(h0, R0.hd, [0.05, 0.12 + 0.34 * fw, -1], 0), dust: [i === 1 ? 0.5 : i === 7 ? 0.5 : 0, 0] as [number, number],
+    };
+  });
+}
+const LH = (view: View, z = 30): V3 => (view === "side" ? [-9, 7, z] : [-9, 7, z]);
+
+/** Обычная атака: кистень над головой и вперёд-вниз. */
+function attackKeys(view: View) {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const wind: Partial<Pose> = { pitch: -0.05, hp: -0.1, yaw: side ? 0.1 : 0.22, glow: 1.4, armLift: [1, 0], ...fp([11, -1, 41], LH(view, 33), [0.15, -0.25, 1], [0.05, -0.75, 0.55]) };
+  const mid: Partial<Pose> = { pitch: 0.06, hp: 0.0, yaw: side ? 0.0 : 0.05, glow: 1.5, armLift: [1, 0], ...fp([10, 3, 44], LH(view, 33), [0.1, 0.2, 1], [0.05, 0.8, 0.6]) };
+  const hit: Partial<Pose> = { pitch: 0.24, hp: 0.12, yaw: side ? -0.05 : -0.14, bob: -2 * PXM, glow: 1.6, flash: 1, ...fp([9, 9, 33], LH(view, 28), [0.1, 0.65, -0.75], [0.05, 0.8, -0.55]) };
+  const keys: Key[] = [
+    { f: 0, p: {} }, { f: 3, p: wind, ease: easeInOut }, { f: 4, p: wind, ease: linear },
+    { f: 5, p: { ...mid, flash: 0 }, ease: easeIn }, { f: 6, p: hit, ease: easeOut }, { f: 7, p: { ...hit, flash: 0, bob: -1 * PXM }, ease: easeOut },
+    { f: 8, p: {}, ease: easeInOut }, { f: 9, p: {}, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function attackPoses(view: View): Pose[] {
+  const { R0, keys } = attackKeys(view);
+  const poses = keyed(R0, keys, 10, 400);
+  poses[5].trail = trailOf(R0, keys, view, 4, 5);
+  poses[6].trail = trailOf(R0, keys, view, 5, 6.2);
+  poses[6].flashAt = tipW(poses[6], view);
+  poses[6].dust = [1, 0];
+  return poses;
+}
+
+/** «Когти»: два удара кистенём подряд с поворотом корпуса: справа налево, затем обратным махом слева направо; удары — кадры 3 и 8. */
+function clawKeys(view: View) {
+  const R0 = restOf(view);
+  const side = rv(view);
+  const a = side ? 0.7 : 1;
+  const wind: Partial<Pose> = { pitch: 0.08, hp: 0.06, yaw: 0.42 * a, glow: 1.4, bob: -1 * PXM, ...fp([13, 1, 31], LH(view, 33), [0.7, -0.5, 0.2], [0.45, -0.85, -0.2]) };
+  const s1: Partial<Pose> = { pitch: 0.14, hp: 0.08, yaw: -0.34 * a, glow: 1.6, bob: -2 * PXM, flash: 1, ...fp([4, 8, 33], [-6, 6, 36], [-0.5, 0.8, 0.0], [-0.8, 0.5, -0.3]) };
+  const back: Partial<Pose> = { pitch: 0.1, hp: 0.04, yaw: -0.42 * a, glow: 1.5, bob: -1 * PXM, ...fp([0, 6, 36], [-8, 9, 30], [-0.85, -0.2, 0.2], [-0.7, -0.65, -0.2]) };
+  const s2m: Partial<Pose> = { pitch: 0.14, hp: 0.06, yaw: 0.0, glow: 1.55, bob: -2 * PXM, ...fp([6, 10, 31], [-9, 7, 31], [0.6, 0.7, -0.1], [0.7, 0.6, -0.3]) };
+  const s2: Partial<Pose> = { pitch: 0.16, hp: 0.08, yaw: 0.34 * a, glow: 1.6, bob: -2 * PXM, flash: 1, ...fp([11, 8, 29], [-9, 6, 33], [0.8, 0.5, -0.1], [0.85, 0.4, -0.3]) };
+  const keys: Key[] = [
+    { f: 0, p: wind },
+    { f: 2, p: { ...s1, flash: 0, yaw: 0.05, ...fp([8, 6, 33], [-7, 6, 34], [0.1, 0.9, 0.1], [-0.2, 0.9, -0.3]) }, ease: easeIn }, { f: 3, p: s1, ease: easeOut },
+    { f: 4, p: { ...s1, flash: 0, bob: -1 * PXM }, ease: linear },
+    { f: 5, p: { ...back, flash: 0 }, ease: easeInOut }, { f: 6, p: { ...back, flash: 0 }, ease: linear },
+    { f: 7, p: s2m, ease: easeIn }, { f: 8, p: s2, ease: easeOut },
+    { f: 9, p: { ...s2, flash: 0, bob: -1 * PXM }, ease: linear },
+    { f: 10, p: { ...s2, flash: 0, bob: 0, glow: 1.2 }, ease: easeInOut }, { f: 11, p: {}, ease: easeInOut },
+  ];
+  return { R0, wind, keys };
+}
+function clawStrikePoses(view: View): Pose[] {
+  const { R0, keys } = clawKeys(view);
+  const poses = keyed(R0, keys, 12, 540);
+  poses[2].trail = trailOf(R0, keys, view, 0.8, 2.4, 6);
+  poses[3].trail = trailOf(R0, keys, view, 1.8, 3.2, 6);
+  poses[3].flashAt = tipW(poses[3], view);
+  poses[3].dust = [0.7, 0];
+  poses[7].trail = trailOf(R0, keys, view, 5.8, 7.4, 6);
+  poses[8].trail = trailOf(R0, keys, view, 7, 8.2, 6);
+  poses[8].flashAt = tipW(poses[8], view);
+  poses[8].dust = [0, 0.8];
+  return poses;
+}
+
+/** «Порыв»: низко пригнулся, рога вперёд, кистень волочится сзади; бег с полосами; удар — остановка, толчок и ударное кольцо. */
+function rushKeys(view: View) {
+  const R0 = restOf(view);
+  const wind: Partial<Pose> = {
+    pitch: 0.42, hp: 0.5, bob: -3 * PXM, glow: 1.6,
+    ...fp([10, 0, 24], [-9, 5, 26], [0.15, -0.8, 0.1], [0.05, -1, -0.15], 0.1),
+    pole: [[0.8, -1, 0], [-0.8, -1, 0]],
+  };
+  return { R0, wind };
+}
+function rushDashPoses(view: View): Pose[] {
+  const { R0, wind } = rushKeys(view);
+  return Array.from({ length: 4 }, (_, i) => ({
+    ...R0, ...wind, t: i / 4, seed: 1000 + i, pitch: 0.48, hp: 0.55, bob: [-3, -4, -3, -4][i] * PXM, streak: 1,
+    kick: [[0.9, -0.1, 0.1, 0.9][i], [0.1, 0.9, 0.9, 0.1][i]] as [number, number],
+    wave: i / 4, waveAmp: 1.6, dust: [[0.7, 0][i % 2], 0.4] as [number, number], root: [0, 0, 0] as V3,
+  }));
+}
+function rushStrikePoses(view: View): Pose[] {
+  const { R0, wind } = rushKeys(view);
+  const hit: Partial<Pose> = { ...wind, pitch: 0.32, hp: 0.4, bob: -1 * PXM, flash: 1, ring: 0.08, dust: [1, 1], glow: 1.7 };
+  const keys: Key[] = [
+    { f: 0, p: { ...wind, streak: 1 } }, { f: 1, p: { ...hit, streak: 0.6 }, ease: easeIn },
+    { f: 2, p: { ...hit, flash: 0, ring: 0.4, dust: [0.6, 0.6], streak: 0.2 }, ease: linear },
+    { f: 3, p: { ...hit, flash: 0, ring: 0.8, dust: [0.3, 0.3], streak: 0 }, ease: linear },
+    { f: 4, p: { glow: 1.2, ring: 0, dust: [0, 0] }, ease: easeInOut }, { f: 5, p: {}, ease: easeInOut },
+  ];
+  const poses = keyed(R0, keys, 6, 1060);
+  poses.forEach((p, i) => { if (i >= 1 && i <= 3) { p.ringAt = [0, 0, 0]; p.flashAt = [0, 17, 34]; } });
+  return poses;
+}
+
+/** Ф2 «Зов стада»: кистень отведён вбок и вверх, левый кулак вскинут, голова запрокинута — рёв; кольца и искры. */
+function callKeys(view: View) {
+  const R0 = restOf(view);
+  const wind: Partial<Pose> = {
+    pitch: -0.1, hp: -0.3, chest: 1, glow: 1.5, armLift: [1, 1], embers: 0.5,
+    ...fp([12, 3, 43], [-13, 5, 52], [0.7, 0.1, 0.35], [0.7, 0.1, 0.25], 0.4), pole: [[1, -0.5, 0.2], [-1, -0.4, 0.2]],
+  };
+  return { R0, wind };
+}
+function callCastPoses(view: View): Pose[] {
+  const { R0, wind } = callKeys(view);
+  const roar: Partial<Pose> = { ...wind, hp: -0.5, pitch: -0.16, chest: 2, glow: 1.7, embers: 1, flash: 0.8 };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, hp: -0.4, embers: 0.8 }, ease: easeOut }, { f: 2, p: { ...roar, ring: 0.1 }, ease: easeIn },
+    { f: 3, p: { ...roar, flash: 0, ring: 0.35, dust: [0.8, 0.8] }, ease: linear }, { f: 4, p: { ...roar, flash: 0, ring: 0.6, dust: [0.5, 0.5] }, ease: linear },
+    { f: 5, p: { ...roar, flash: 0, ring: 0.85, dust: [0.2, 0.2], embers: 0.8 }, ease: linear }, { f: 7, p: { embers: 0, ring: 0, dust: [0, 0] }, ease: easeInOut },
+  ];
+  const poses = keyed(R0, keys, 8, 1500);
+  poses.forEach((p, i) => { if (i >= 2 && i <= 5) { p.ringAt = [0, 0, 0]; p.flashAt = [0, 16, 56]; } });
+  return poses;
+}
+
+/** Ф2 «Россыпь клинков»: кистень вскинут над спиной, затем удар о землю — ударная россыпь осколков по кругу. */
+function slamKeys(view: View) {
+  const R0 = restOf(view);
+  const wind: Partial<Pose> = { pitch: -0.12, hp: -0.12, bob: 1 * PXM, glow: 1.5, armLift: [1, 1], ...fp([10, -1, 42], [-10, 4, 36], [0.1, -0.35, 1], [0, -0.8, 0.5]) };
+  return { R0, wind };
+}
+function slamStrikePoses(view: View): Pose[] {
+  const { R0, wind } = slamKeys(view);
+  const hit: Partial<Pose> = { pitch: 0.3, hp: 0.14, bob: -2.4 * PXM, glow: 1.7, armLift: [0, 0], ring: 0.08, shards: 1, flash: 1, dust: [1, 1], ...fp([8, 10, 29], [-9, 10, 27], [0.1, 0.65, -0.75], [0.05, 0.75, -0.65]) };
+  const keys: Key[] = [
+    { f: 0, p: wind }, { f: 1, p: { ...wind, bob: 2 * PXM, ...fp([10, -1, 45], [-10, 4, 38], [0.1, -0.2, 1], [0, -0.4, 0.9]) }, ease: easeOut }, { f: 2, p: hit, ease: easeIn },
+    { f: 3, p: { ...hit, flash: 0, ring: 0.4, shards: 0.75, dust: [0.6, 0.6] }, ease: linear }, { f: 4, p: { ...hit, flash: 0, ring: 0.8, shards: 0.5, dust: [0.3, 0.3] }, ease: linear },
+    { f: 5, p: { ...hit, flash: 0, ring: 0, shards: 0.25, dust: [0, 0], bob: -1 * PXM }, ease: linear }, { f: 7, p: {}, ease: easeInOut },
+  ];
+  const poses = keyed(R0, keys, 8, 740);
+  poses.forEach((p, i) => { if (i >= 2 && i <= 5) { const b = tipW(poses[2], view); p.ringAt = [0, 0, 0]; p.shardAt = [b[0], b[1], 0]; p.flashAt = [b[0], b[1], 2]; } });
+  poses[2].trail = trailOf(R0, keys, view, 1, 2, 6);
+  return poses;
+}
+/** Оглушение: покачивается, голова свесилась, кулаки вниз. */
+function stunPoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const rl = [0, 0.05, 0.08, 0.05, 0, -0.05, -0.08, -0.05];
+  return Array.from({ length: 8 }, (_, i) => ({
+    ...R0, t: i / 8, seed: 1500 + i, roll: rl[i], hp: 0.3, hr: -rl[i] * 1.4 + 0.12, pitch: 0.22, bob: -2 * PXM, glow: 0.35,
+    root: [[0, 1, 1, 1, 0, -1, -1, -1][i], 0, 0] as V3, wave: i / 8, waveAmp: 1, ball: swing(R0.hand[0], R0.hd, i / 8, 0.6),
+  }));
+}
+/** Гибель: отшатнулся, кистень выскальзывает, падает на колени, валится вперёд; свет гаснет. */
+function deathPoses(view: View): Pose[] {
+  const R0 = restOf(view);
+  const lyingH: Partial<Pose> = fp([9, 8, 13], [-8, 8, 12], [0.2, 0.6, -0.6], [0.1, 0.9, -0.2], 0.25);
+  const recoil: Partial<Pose> = { pitch: -0.12, hp: -0.3, bob: 1 * PXM, glow: 1.6 };
+  const keys: Key[] = [
+    { f: 0, p: {} }, { f: 1, p: recoil, ease: easeOut }, { f: 2, p: { ...recoil, pitch: 0.1, hp: 0, bob: 0, glow: 1.1 }, ease: easeInOut },
+    { f: 3, p: { ...fp([10, 8, 22], [-9.6, 6, 22], [0.3, 0.6, -0.6], [0.1, 0.9, -0.3], 0.1), pitch: 0.2, glow: 0.9, kneel: 0.3 }, ease: easeIn },
+    { f: 4, p: { ...lyingH, pitch: 0.3, glow: 0.7, kneel: 0.75, dust: [1, 1] }, ease: easeIn },
+    { f: 5, p: { ...lyingH, pitch: 0.4, hp: 0.2, glow: 0.5, kneel: 1, dust: [0.5, 0.5] }, ease: easeOut },
+    { f: 8, p: { ...lyingH, pitch: 0.55, hp: 0.5, glow: 0.2, kneel: 1, wither: 0.3 }, ease: easeInOut },
+    { f: 13, p: { ...lyingH, pitch: 0.62, hp: 0.6, hr: 0.1, glow: 0, kneel: 1, wither: 0.6 }, ease: easeOut },
+  ];
+  return keyed(R0, keys, 14, 1300);
+}
+
+export type MinoAnim = "idle" | "walk" | "attack" | "clawWind" | "clawHold" | "clawStrike" | "rushWind" | "rushHold" | "rushDash" | "rushStrike"
+  | "callWind" | "callHold" | "callCast" | "slamWind" | "slamHold" | "slamStrike" | "stun" | "death";
+type AnimDef = { col: number; n: number; fps: number; loop: boolean; ru: string; next?: MinoAnim; hit?: number };
+const ANIM_ORDER: [MinoAnim, Omit<AnimDef, "col">][] = [
+  ["idle", { n: 12, fps: 12, loop: true, ru: "покой" }],
+  ["walk", { n: 12, fps: 12, loop: true, ru: "ходьба" }],
+  ["attack", { n: 10, fps: 15, loop: false, ru: "удар кистенём (обычный)", hit: 6 }],
+  ["clawWind", { n: 4, fps: 12, loop: false, ru: "замах вправо", next: "clawHold" }],
+  ["clawHold", { n: 4, fps: 12, loop: true, ru: "кистень отведён", next: "clawStrike" }],
+  ["clawStrike", { n: 12, fps: 12, loop: false, ru: "два удара подряд (Когти)", hit: 3 }],
+  ["rushWind", { n: 4, fps: 12, loop: false, ru: "пригнулся, рога вперёд", next: "rushHold" }],
+  ["rushHold", { n: 4, fps: 12, loop: true, ru: "копытом бьёт землю", next: "rushDash" }],
+  ["rushDash", { n: 4, fps: 12, loop: true, ru: "порыв (таран)", next: "rushStrike" }],
+  ["rushStrike", { n: 6, fps: 12, loop: false, ru: "конец порыва, толчок", hit: 1 }],
+  ["callWind", { n: 4, fps: 12, loop: false, ru: "вскинул кулак", next: "callHold" }],
+  ["callHold", { n: 4, fps: 12, loop: true, ru: "набирает рёв", next: "callCast" }],
+  ["callCast", { n: 8, fps: 12, loop: false, ru: "рёв, зов стада", hit: 2 }],
+  ["slamWind", { n: 4, fps: 12, loop: false, ru: "кистень над спиной", next: "slamHold" }],
+  ["slamHold", { n: 4, fps: 12, loop: true, ru: "кистень вскинут", next: "slamStrike" }],
+  ["slamStrike", { n: 8, fps: 12, loop: false, ru: "удар о землю, россыпь", hit: 2 }],
+  ["stun", { n: 8, fps: 12, loop: true, ru: "оглушение" }],
+  ["death", { n: 14, fps: 12, loop: false, ru: "гибель" }],
+];
+export const MINO_ANIMS = {} as Record<MinoAnim, AnimDef>;
+{
+  let col = 0;
+  for (const [k, a] of ANIM_ORDER) { MINO_ANIMS[k] = { ...a, col }; col += a.n; }
+}
+export const MINO_COLS = ANIM_ORDER.reduce((s, [, a]) => s + a.n, 0);
+export const MINO_SKILLS: Record<string, { windup: [MinoAnim, MinoAnim]; strike: MinoAnim }> = {
+  claws: { windup: ["clawWind", "clawHold"], strike: "clawStrike" },
+  gust: { windup: ["rushWind", "rushHold"], strike: "rushStrike" },
+  herd_call: { windup: ["callWind", "callHold"], strike: "callCast" },
+  blade_scatter: { windup: ["slamWind", "slamHold"], strike: "slamStrike" },
+};
+const POSES: Record<MinoAnim, (v: View) => Pose[]> = {
+  idle: (v) => idlePoses(v), walk: (v) => walkPoses(v), attack: attackPoses,
+  clawWind: (v) => { const { R0, wind } = clawKeys(v); return windPoses(R0, wind, 500); },
+  clawHold: (v) => { const { R0, wind } = clawKeys(v); return holdPoses(R0, wind, 520, 4, (i) => ({ armLift: [TREMBLE[i], 0], glow: [1.4, 1.6, 1.45, 1.6][i], waveAmp: 1.4, wave: i / 4 })); },
+  clawStrike: clawStrikePoses,
+  rushWind: (v) => { const { R0, wind } = rushKeys(v); return windPoses(R0, wind, 1000); },
+  rushHold: (v) => { const { R0, wind } = rushKeys(v); return holdPoses(R0, wind, 1020, 4, (i) => ({ glow: [1.5, 1.7, 1.55, 1.7][i], bob: (-3 + TREMBLE[i] * 0.5) * PXM, kick: [[0, 0.6, 0, 0][i], 0] as [number, number], dust: [[0, 0.5, 0, 0][i], 0] as [number, number], wave: i / 4, waveAmp: 1.4 })); },
+  rushDash: rushDashPoses, rushStrike: rushStrikePoses,
+  callWind: (v) => { const { R0, wind } = callKeys(v); return windPoses(R0, wind, 1400); },
+  callHold: (v) => { const { R0, wind } = callKeys(v); return holdPoses(R0, wind, 1420, 4, (i) => ({ armLift: [1 + TREMBLE[i] * 0.5, 1], glow: [1.5, 1.7, 1.55, 1.7][i], embers: [0.5, 0.7, 0.6, 0.8][i], wave: i / 4, waveAmp: 1.6 })); },
+  callCast: callCastPoses,
+  slamWind: (v) => { const { R0, wind } = slamKeys(v); return windPoses(R0, wind, 700); },
+  slamHold: (v) => { const { R0, wind } = slamKeys(v); return holdPoses(R0, wind, 720, 4, (i) => ({ armLift: [1 + TREMBLE[i] * 0.5, 1], glow: [1.4, 1.6, 1.45, 1.6][i], wave: i / 4, waveAmp: 1.4 })); },
+  slamStrike: slamStrikePoses, stun: stunPoses, death: deathPoses,
+};
+
+// ---------------- листы, проверки, монтажи ----------------
+function animSheets(only?: MinoAnim[], maxFrames = 99): { img: Record<MinoAnim, PC>; emis: Record<MinoAnim, PC> } {
+  const img = {} as Record<MinoAnim, PC>, emis = {} as Record<MinoAnim, PC>;
+  for (const [a, d] of ANIM_ORDER) {
+    const I = new PC(N * d.n, FH * 3), E = new PC(N * d.n, FH * 3);
+    if (!only || only.includes(a)) VIEWS.forEach((v, row) => POSES[a](v).slice(0, Math.min(d.n, maxFrames)).forEach((p, i) => {
+      const r = renderMino(v, p);
+      I.blit(r.img, i * N, row * FH);
+      E.blit(r.emis, i * N, row * FH);
+    }));
+    img[a] = I;
+    emis[a] = E;
+  }
+  return { img, emis };
+}

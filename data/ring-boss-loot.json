@@ -570,6 +570,63 @@
       ],
       "legendary": 0.01,
       "pet": 6
+    },
+    "sol_cliff_minotaur": {
+      "name": "Горвак Стальной Рог",
+      "level": 65,
+      "band": [
+        60,
+        70
+      ],
+      "special": [
+        {
+          "item": "zb_mino_flail",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_mino_helm",
+          "chance": 0.04
+        },
+        {
+          "item": "zb_mino_ring",
+          "chance": 0.04
+        }
+      ],
+      "gold": {
+        "mult": 12
+      },
+      "loot": {
+        "items": 1,
+        "epic": 0.25
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.5,
+        "qty": [
+          1,
+          2
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            2,
+            4
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 0.6,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.01,
+      "pet": 6
     }
   },
   "items": {
@@ -1683,6 +1740,118 @@
         "pommel": "ring"
       },
       "boss": "umb_frost_lord",
+      "card": "r2"
+    },
+    "zb_mino_flail": {
+      "id": "zb_mino_flail",
+      "name": "Кистень Горвака",
+      "base": "hammer",
+      "ilvl": 64,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 40,
+        "crit": 1
+      },
+      "prop": "Каждый десятый удар носителя бьёт оземь: цели рядом отступают на шаг.",
+      "lore": "Ядро-раковина размером с голову. Цепь звякает даже в тишине.",
+      "look": {
+        "shape": "spiked",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bronze",
+        "cloth": "grey",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "spike"
+      },
+      "boss": "sol_cliff_minotaur",
+      "card": "r3"
+    },
+    "zb_mino_helm": {
+      "id": "zb_mino_helm",
+      "name": "Рогатый шлем Горвака",
+      "base": "plate_helm",
+      "ilvl": 63,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "vit"
+      ],
+      "stats": {
+        "str": 16,
+        "vit": 16
+      },
+      "prop": "Когда здоровье носителя падает ниже трети, шлем гудит: следующий удар по нему слабее.",
+      "lore": "Рога настоящие, сталь чужая: сплавлена из павших лат. Изнутри пахнет стойлом.",
+      "look": {
+        "shape": "horned",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bronze",
+        "cloth": "grey",
+        "gem": "onyx",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "sol_cliff_minotaur",
+      "card": "r2"
+    },
+    "zb_mino_ring": {
+      "id": "zb_mino_ring",
+      "name": "Кольцо Горвака",
+      "base": "amulet",
+      "ilvl": 62,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "hp"
+      ],
+      "stats": {
+        "str": 16,
+        "hp": 195
+      },
+      "prop": "Когда носитель падает ниже трети здоровья, кольцо звякает: ближайший враг на 2 с теряет цель.",
+      "lore": "Железо, вытертое о бычий нос. Если приложить к уху, слышен ветер с утёсов.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "iron",
+        "trim": "bronze",
+        "cloth": "grey",
+        "gem": "onyx",
+        "haft": "yew",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "ornate",
+        "pommel": "ring"
+      },
+      "boss": "sol_cliff_minotaur",
       "card": "r2"
     }
   }

@@ -19,6 +19,7 @@ import * as rav from "./sol_plague_raven";
 import * as chp from "./sol_fallen_chaplain";
 import * as bel from "./plg_drowned_bellringer";
 import * as frost from "./bone_frost_lord";
+import * as mino from "./cliff_minotaur_knight";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -203,6 +204,31 @@ BOSSES.push({
     assemble: { waves: [{ pre: ["summonWind", "summonHold"], strike: "summon" }], fx: [{ fx: "circle", waves: [0], seq: ["circle"], pin: 0, timing: "wind", place: "self", holds: { circle: 1400 } }] },
   },
   units: [{ src: "frost-bearer.png", id: `${frost.ID}_bearer`, frame: frost.BEARER_UNIT.frame, frameH: frost.BEARER_UNIT.frameH }],
+});
+
+// минотавр-латник (r65n запад): 2D-штампы, эффектов-спрайтов нет — круги, конусы и кольца рисует клиент по предупреждениям
+BOSSES.push({
+  id: mino.ID, sheet: "mino-sheet.png", frame: mino.FRAME, frameH: mino.FRAME_H, cols: mino.MINO_COLS, wrap: 64,
+  // phase (переход фазы 50 %) — рёв зова: кадры общие; стоит раньше callCast; attack — обычный удар кистенём; clawHit1/2 — две половины «Когтей» (кадры листа общие)
+  anims: {
+    ...anims({ idle: mino.MINO_ANIMS.idle, walk: mino.MINO_ANIMS.walk }),
+    phase: { col: mino.MINO_ANIMS.callCast.col, n: 8, fps: 12, loop: false, hit: 2 },
+    ...anims(Object.fromEntries(Object.entries(mino.MINO_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))),
+    clawHit1: { col: mino.MINO_ANIMS.clawStrike.col, n: 6, fps: 12, loop: false, hit: 3 },
+    clawHit2: { col: mino.MINO_ANIMS.clawStrike.col + 6, n: 6, fps: 12, loop: false, hit: 4 },
+    attack: { col: mino.MINO_ANIMS.attack.col, n: 10, fps: 15, loop: false, hit: 6 },
+  },
+  fx: {},
+  skills: {
+    // когти: два удара подряд, замах вправо, второй — с поворотом (вторая половина клипа)
+    claws: { waves: [{ pre: ["clawWind", "clawHold"], strike: "clawHit1" }, { pre: ["clawHold"], strike: "clawHit2" }], fx: [] },
+    // порыв: пригнулся и таран; второй волной по краю арены ложится ледяное кольцо
+    gust: { waves: [{ pre: ["rushWind", "rushHold"], strike: "rushStrike" }, { pre: ["rushHold"], strike: "rushStrike" }], fx: [] },
+    // гнездо: рёв зова, два грифона
+    nest: { waves: [{ pre: ["callWind", "callHold"], strike: "callCast" }], fx: [] },
+    // осколки скалы: кистень над спиной и удар о землю, две волны кругов
+    blade_scatter: { waves: [{ pre: ["slamWind", "slamHold"], strike: "slamStrike" }, { pre: ["slamHold"], strike: "slamStrike" }], fx: [] },
+  },
 });
 
 const only = process.argv[2];

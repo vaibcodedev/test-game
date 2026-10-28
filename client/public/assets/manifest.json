@@ -1,5 +1,8 @@
 {
  "units": {
+  "sol_cliff_minotaur": {
+   "frame": 80
+  },
   "umb_frost_lord_bearer": {
    "frame": 80
   },
@@ -32040,20 +32043,36 @@
    "h": 32
   },
   "arena_cover_ash": {
-   "w": 26,
-   "h": 42
+   "w": 72,
+   "h": 92
   },
   "arena_cover_sun": {
-   "w": 26,
-   "h": 42
+   "w": 72,
+   "h": 92
   },
   "arena_cover_pit": {
-   "w": 28,
-   "h": 28
+   "w": 72,
+   "h": 92
   },
   "arena_cover_frost": {
-   "w": 30,
-   "h": 30
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_ash_b": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_sun_b": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_pit_b": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_frost_b": {
+   "w": 72,
+   "h": 92
   }
  },
  "icons": [
@@ -33823,6 +33842,9 @@
   "uq_zb_bell_flail",
   "uq_zb_thorn_halo",
   "uq_zb_drowned_bell",
+  "uq_zb_mino_ring",
+  "uq_zb_mino_helm",
+  "uq_zb_mino_flail",
   "uq_zb_frost_heart",
   "uq_zb_frost_crown",
   "uq_zb_frost_staff",
@@ -34329,13 +34351,13 @@
  "atlases": [
   {
    "key": "objs0",
-   "png": "/assets/atlas/objs0.png?v=b2a4b093e9",
-   "json": "/assets/atlas/objs0.json?v=b2a4b093e9"
+   "png": "/assets/atlas/objs0.png?v=8f87368664",
+   "json": "/assets/atlas/objs0.json?v=8f87368664"
   },
   {
    "key": "objs1",
-   "png": "/assets/atlas/objs1.png?v=b2a4b093e9",
-   "json": "/assets/atlas/objs1.json?v=b2a4b093e9"
+   "png": "/assets/atlas/objs1.png?v=8f87368664",
+   "json": "/assets/atlas/objs1.json?v=8f87368664"
   }
  ],
  "atlasOf": {
@@ -34552,11 +34574,10 @@
   "bf_spear_sol_a": "objs0",
   "bf_spear_sol_c": "objs0",
   "bf_spear_umb_a": "objs0",
+  "arena_cover_ash": "objs0",
   "pal_v": "objs0",
   "pal_v__ember-e-chip": "objs0",
   "pal_v__ember-e-clean": "objs0",
-  "pal_v__ember-e-crack": "objs0",
-  "pal_v__ember-e-ivy": "objs0",
   "dg_door_w_0": "objs0",
   "dg_door_w_1": "objs0",
   "teleport_stone": "objs0",
@@ -34570,8 +34591,6 @@
   "dummy": "objs0",
   "ice_spike": "objs0",
   "cactus": "objs0",
-  "arena_cover_ash": "objs0",
-  "arena_cover_sun": "objs0",
   "bf_spike_barrier": "objs0",
   "bf_spike_barrier_b": "objs0",
   "node_cactus": "objs0",
@@ -34581,10 +34600,9 @@
   "bf_blood_b": "objs0",
   "anvil": "objs0",
   "barrel": "objs0",
-  "arena_cover_frost": "objs0",
   "basalt": "objs0",
   "cactus_small": "objs0",
-  "arena_cover_pit": "objs0",
+  "rock": "objs0",
   "sol_house__fort-barracks-moss": "objs1",
   "sol_house__fort-barracks-patch": "objs1",
   "sol_temple__fort-barracks-clean": "objs1",
@@ -34672,6 +34690,15 @@
   "bf_tent_torn": "objs1",
   "bf_tent_torn_b": "objs1",
   "bf_tent_torn_c": "objs1",
+  "arena_cover_ash_b": "objs1",
+  "arena_cover_frost": "objs1",
+  "arena_cover_frost_b": "objs1",
+  "arena_cover_pit": "objs1",
+  "arena_cover_pit_b": "objs1",
+  "arena_cover_sun": "objs1",
+  "arena_cover_sun_b": "objs1",
+  "pal_v__ember-e-crack": "objs1",
+  "pal_v__ember-e-ivy": "objs1",
   "pal_v__ember-e-moss": "objs1",
   "pal_v__ember-e-patch": "objs1",
   "pal_v__ember-w-chip": "objs1",
@@ -35064,7 +35091,6 @@
   "v_volcano_sign_b": "objs1",
   "v_volcano_skull": "objs1",
   "v_volcano_skull_ram": "objs1",
-  "rock": "objs1",
   "sandstone": "objs1",
   "snow_rock": "objs1"
  }

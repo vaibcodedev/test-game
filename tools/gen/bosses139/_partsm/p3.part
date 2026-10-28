@@ -1,0 +1,112 @@
+/** Искры вокруг тела: тёплые точки, плывущие вверх (фаза — t). */
+function drawEmbers(c: Ctx, k: number, t: number) {
+  const n = Math.round(16 * k);
+  for (let i = 0; i < n; i++) {
+    const ph = (hash01(i, 3, 91) + t) % 1;
+    const x = 40 + (hash01(i, 5, 93) - 0.5) * 54 + Math.sin(ph * TAU + i) * 2;
+    const y = 72 - ph * 62;
+    const col = ph < 0.35 ? GLOWC[4] : ph < 0.7 ? GLOWC[3] : GLOWC[2];
+    put(c, x, y, col, -99, true);
+    if (i % 3 === 0 && ph < 0.6) put(c, x, y + 1, GLOWC[1], -99, true);
+  }
+}
+/** Осколки камня от удара: веер ударных «клинков» из земли — светлые клинья по радиусам, взлетающие и падающие. */
+function drawShards(c: Ctx, s: { at: V3; k: number }) {
+  const [sx, sy0] = scr(CAM, toView(c.view, s.at));
+  const sy = Math.min(sy0, CAM.GY);
+  const t = 1 - s.k;
+  for (let j = 0; j < 14; j++) {
+    const a = (j / 14) * TAU + hash01(j, 1, 61) * 0.5;
+    const d = 5 + t * (12 + hash01(j, 2, 63) * 10);
+    const h = Math.sin(Math.PI * Math.min(1, t * 1.15 + 0.1)) * (6 + hash01(j, 3, 67) * 7);
+    const x = sx + Math.cos(a) * d * (c.view === "side" ? 1 : 1.3), y = sy - h + Math.sin(a) * d * 0.28;
+    const col = SAND[hash01(j, 4, 69) > 0.5 ? 4 : 3];
+    put(c, x, y, col, -99);
+    put(c, x + 1, y, SAND[2], -99);
+    put(c, x, y - 1, SAND[4], -99);
+    if (j % 2 === 0) put(c, x, y + 1, SAND[1], -99);
+  }
+}
+/** Полосы бега: пыль и росчерки позади. */
+function drawStreak(c: Ctx, k: number) {
+  const side = c.view === "side";
+  for (let j = 0; j < 10; j++) {
+    const y = 40 + Math.floor(hash01(j, 3, 71) * 34);
+    const len = Math.round((4 + hash01(j, 5, 73) * 8) * k);
+    const x0 = side ? 2 + Math.floor(hash01(j, 9, 79) * 10) : (j % 2 ? 62 : 6) + Math.floor(hash01(j, 9, 79) * 8);
+    for (let i = 0; i < len; i++) {
+      const x = side ? x0 + i : x0, yy = side ? y : y - i;
+      if (x < 1 || yy < 1 || x >= FW - 1 || yy >= FH - 1 || c.img.alpha(x, yy)) continue;
+      c.img.set(x, yy, SAND[i < 2 ? 3 : 2 - (i > len - 2 ? 1 : 0)]);
+    }
+  }
+}
+
+/** Кадр минотавра: { img, emis } 80×80. */
+function finishFrame(S: Scene, X: Extra, view: View, pose: { trail?: V3[]; t: number }): { img: PC; emis: PC } {
+  const R0 = renderScene(CAMR, S, view, OUT);
+  const D = downscale(R0);
+  const img = D.img;
+  const emis = D.emis;
+  const c: Ctx = { img, emis, t: D.t, prim: D.prim, view };
+  for (const r of X.rings) drawRing(c, r, true);
+  thicken(img, OUT, 3, [...GLOWC, ...FIRE, ...SAND]);
+  sealPinholes(img, OUT, true, 8);
+  selout(img);
+  const isOut = (q: RGBA | null) => colEq(q, OUT);
+  const kill: [number, number][] = [];
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    if (!isOut(img.get(x, y))) continue;
+    let body = false;
+    for (let dy = -1; dy <= 1 && !body; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const q = img.get(x + dx, y + dy);
+      if (q && q[3] > 120 && !isOut(q)) { body = true; break; }
+    }
+    if (!body) kill.push([x, y]);
+  }
+  for (const [x, y] of kill) { img.clear(x, y); emis.clear(x, y); }
+  for (let x = 0; x < FW; x++) {
+    if (!img.alpha(x, FH - 1)) continue;
+    const q = img.get(x, FH - 2)!;
+    if (q[3] > 120 && !isOut(q)) img.set(x, FH - 1, OUT); else img.clear(x, FH - 1);
+    emis.clear(x, FH - 1);
+  }
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    const q = img.get(x, y)!;
+    if (q[3] && isEmisCol(q) && !emis.alpha(x, y)) emis.set(x, y, q);
+    if (!q[3] || !isEmisCol(q)) emis.clear(x, y);
+  }
+  // контровой свет: холодная светлая кромка 1 px по внешнему силуэту — сильнее сверху и слева
+  {
+    const RIM: RGBA = [190, 212, 240, 255];
+    const snap = img.clone();
+    const gone = (x: number, y: number) => { const q = snap.get(x, y); return !q || q[3] < 120 || isOut(q); };
+    for (let y = 1; y < FH - 1; y++) for (let x = 1; x < FW - 1; x++) {
+      const q = snap.get(x, y)!;
+      if (q[3] < 200 || isOut(q) || isEmisCol(q)) continue;
+      const tl = gone(x, y - 1) || gone(x - 1, y), other = gone(x + 1, y) || gone(x, y + 1);
+      if (!tl && !other) continue;
+      const m = mix(q, RIM, tl ? 0.6 : 0.28);
+      img.set(x, y, [m[0], m[1], m[2], 255]);
+    }
+  }
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    if (x !== 0 && y !== 0 && x !== FW - 1 && y !== FH - 1) continue;
+    const q = img.get(x, y)!;
+    if (q[3] && !isOut(q)) { img.clear(x, y); emis.clear(x, y); }
+  }
+  if (X.streak > 0.02) drawStreak(c, X.streak);
+  for (const r of X.rings) drawRing(c, r, false);
+  if (pose.trail) drawTrail(c, pose.trail.map((q) => mul(q, K)));
+  for (const g of X.glints) drawGlint(c, g);
+  if (X.shards) drawShards(c, X.shards);
+  if (X.embers > 0.02) drawEmbers(c, X.embers, pose.t);
+  if (X.flash) drawFlash(c, X.flash);
+  for (const d of X.dust) drawDust(c, d);
+  return { img, emis };
+}
+export function renderMino(view: View, pose: Pose): { img: PC; emis: PC } {
+  const { S, X } = build(pose, view);
+  return finishFrame(S, X, view, pose);
+}
+

@@ -4677,6 +4677,217 @@
      ]
     }
    }
+  },
+  "sol_cliff_minotaur": {
+   "file": "sol_cliff_minotaur.png",
+   "fw": 80,
+   "cols": 126,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 80,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "clawWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "clawHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "clawStrike": {
+     "col": 42,
+     "n": 12,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "rushWind": {
+     "col": 54,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "rushHold": {
+     "col": 58,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rushDash": {
+     "col": 62,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rushStrike": {
+     "col": 66,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "callWind": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "callHold": {
+     "col": 76,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "callCast": {
+     "col": 80,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "slamWind": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "slamHold": {
+     "col": 92,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "slamStrike": {
+     "col": 96,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stun": {
+     "col": 104,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 112,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    },
+    "clawHit1": {
+     "col": 42,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "clawHit2": {
+     "col": 48,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    }
+   },
+   "fx": {},
+   "skills": {
+    "claws": {
+     "waves": [
+      {
+       "pre": [
+        "clawWind",
+        "clawHold"
+       ],
+       "strike": "clawHit1"
+      },
+      {
+       "pre": [
+        "clawHold"
+       ],
+       "strike": "clawHit2"
+      }
+     ],
+     "fx": []
+    },
+    "gust": {
+     "waves": [
+      {
+       "pre": [
+        "rushWind",
+        "rushHold"
+       ],
+       "strike": "rushStrike"
+      },
+      {
+       "pre": [
+        "rushHold"
+       ],
+       "strike": "rushStrike"
+      }
+     ],
+     "fx": []
+    },
+    "nest": {
+     "waves": [
+      {
+       "pre": [
+        "callWind",
+        "callHold"
+       ],
+       "strike": "callCast"
+      }
+     ],
+     "fx": []
+    },
+    "blade_scatter": {
+     "waves": [
+      {
+       "pre": [
+        "slamWind",
+        "slamHold"
+       ],
+       "strike": "slamStrike"
+      },
+      {
+       "pre": [
+        "slamHold"
+       ],
+       "strike": "slamStrike"
+      }
+     ],
+     "fx": []
+    }
+   }
   }
  },
  "units": {
@@ -4733,6 +4944,9 @@
    "frame": 80
   },
   "umb_frost_lord_bearer": {
+   "frame": 80
+  },
+  "sol_cliff_minotaur": {
    "frame": 80
   }
  }

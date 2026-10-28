@@ -14,6 +14,7 @@ import crowdData from "../../../data/arena-crowd.json";
 import type { Net } from "../net";
 import { crowdHum, play } from "./sfx";
 import { vfxFull } from "./postfx";
+import { RopeCloth } from "./fx/ropeCloth";
 import { DEPTH } from "./terrain";
 
 const CW = 13, CH = 20, FX = 6, FY = 17; // ячейка кадра и точка ног
@@ -25,6 +26,8 @@ const hex = (c: string) => Phaser.Display.Color.HexStringToColor(c).color;
 
 interface Spec { x: number; y: number; type: number; ring: number; ang: number; base: number; bob: Phaser.GameObjects.Bob | null; pose: number; until: number; sway: number; nextSway: number; hold: number }
 interface Hat { bob: Phaser.GameObjects.Bob; x: number; y: number; vx: number; vy: number; t: number }
+interface Mote { bob: Phaser.GameObjects.Bob; x: number; y: number; vx: number; vy: number; ph: number }
+interface ArenaData { s: number[][]; standing?: number; lights?: number[][]; banners?: number[][]; look?: { accent: string; trim: string; emblem: string } }
 interface Tip { box: Phaser.GameObjects.Container; txt: Phaser.GameObjects.Text; gfx: Phaser.GameObjects.Graphics; born: number; life: number; x: number; y: number; on: boolean }
 
 export class ArenaCrowd {
@@ -46,6 +49,11 @@ export class ArenaCrowd {
   private hum = 0;
   private swell = 0;
   private winnerName: string | undefined;
+  private glows: { img: Phaser.GameObjects.Image; a: number; ph: number; flick: boolean }[] = [];
+  private ropes: RopeCloth | null = null;
+  private flags: Phaser.GameObjects.Sprite[] = [];
+  private motes: Mote[] = [];
+  private moteBlit: Phaser.GameObjects.Blitter | null = null;
   private offs: (() => void)[] = [];
   private dead = false;
   private standing = 0.2;
@@ -90,7 +98,7 @@ export class ArenaCrowd {
   }
 
   private build() {
-    const s = this.scene, bgKey = `arena_bg_${this.id}`, d = s.cache.json.get(`arena_crowd_${this.id}`) as { s: number[][]; standing?: number } | undefined;
+    const s = this.scene, bgKey = `arena_bg_${this.id}`, d = s.cache.json.get(`arena_crowd_${this.id}`) as ArenaData | undefined;
     if (!s.textures.exists(bgKey) || !d) return;
     this.bg = s.add.image(0, 0, bgKey).setOrigin(0, 0).setDepth(DEPTH.ground - 60);
     this.standing = d.standing ?? 0.2;
@@ -103,6 +111,69 @@ export class ArenaCrowd {
     }
     for (const q of this.spec) q.bob = this.blit.create(q.x - FX, q.y - FY, `${q.type}_${q.base}`);
     for (let i = 0; i < DATA.limits.maxAtOnce; i++) this.tips.push(this.makeTip());
+    this.lightsAndBanners(d);
+    this.makeMotes();
+  }
+
+  /** Тёплые ореолы жаровен и факелов (ADD, мерцание), стяги на Rope (fx/ropeCloth.ts; в «Простых» — неподвижные). */
+  private lightsAndBanners(d: ArenaData) {
+    const s = this.scene, full = vfxFull();
+    const gw = s.textures.exists("fx_glow") ? s.textures.getFrame("fx_glow").width : 64;
+    for (const [x, y, col, r, a, glow] of d.lights ?? []) {
+      if (!glow) continue;
+      const img = s.add.image(x, y, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(col).setScale((r * 2.4) / gw).setAlpha(a * 0.7).setDepth(DEPTH.ground - 40);
+      this.glows.push({ img, a: a * 0.7, ph: Math.random() * 6, flick: true });
+    }
+    const look = d.look ?? { accent: "#a8262c", trim: "#e0b64a", emblem: "skull" };
+    if (full) this.ropes = new RopeCloth(s);
+    for (const [x, y, len] of d.banners ?? []) {
+      const key = `arena_pennant_${this.id}_${len}`;
+      if (!s.textures.exists(key)) this.pennantTexture(key, len, look);
+      const sp = s.add.sprite(x, y, key).setOrigin(0.5, 0).setDepth(DEPTH.ground - 38);
+      this.flags.push(sp);
+      if (this.ropes) this.ropes.mirror(sp);
+    }
+  }
+  private pennantTexture(key: string, len: number, look: { accent: string; trim: string; emblem: string }) {
+    const c = document.createElement("canvas"); c.width = 14; c.height = len + 4;
+    const g = c.getContext("2d")!, shadeC = (hex: string, k: number) => { const n = parseInt(hex.slice(1), 16); return `rgb(${Math.min(255, ((n >> 16) & 255) * k) | 0},${Math.min(255, ((n >> 8) & 255) * k) | 0},${Math.min(255, (n & 255) * k) | 0})`; };
+    g.fillStyle = "#2a2218"; g.fillRect(0, 0, 14, 2); g.fillStyle = look.trim; g.fillRect(0, 0, 14, 1);
+    for (let y = 2; y < len; y++) { g.fillStyle = y % 5 === 0 ? shadeC(look.accent, 0.88) : look.accent; g.fillRect(1, y, 12, 1); g.fillStyle = shadeC(look.accent, 0.7); g.fillRect(1, y, 2, 1); g.fillRect(11, y, 2, 1); }
+    g.fillStyle = look.trim; for (let x = 1; x < 13; x += 2) g.fillRect(x, len, 1, 3);
+    const my = len >> 1; g.fillStyle = look.emblem === "skull" ? "#e8d8c0" : look.trim;
+    if (look.emblem === "skull") { g.fillRect(5, my - 4, 4, 4); g.fillRect(6, my, 2, 2); g.fillStyle = "#1a1018"; g.fillRect(6, my - 3, 1, 1); g.fillRect(8, my - 3, 1, 1); }
+    else if (look.emblem === "ice") { for (let i = 0; i < 4; i++) g.fillRect(7 - i, my - 3 + i, 1 + i * 2, 1), g.fillRect(7 - i, my + 3 - i, 1 + i * 2, 1); }
+    else if (look.emblem === "fang") { g.fillRect(4, my - 4, 2, 6); g.fillRect(8, my - 4, 2, 6); g.fillRect(5, my + 2, 1, 2); g.fillRect(9, my + 2, 1, 2); }
+    else { g.fillRect(6, my - 5, 2, 8); g.fillRect(3, my - 2, 8, 2); }
+    this.scene.textures.addCanvas(key, c);
+  }
+
+  /** Пыль, искры, снег: ≤ 80 пылинок в одном Blitter, дрейфуют в пределах камеры; в «Простых» нет. */
+  private makeMotes() {
+    if (!vfxFull()) return;
+    const s = this.scene, key = `arena_motes_${this.id}`, cols: Record<string, string[]> = {
+      ash: ["#ff8a3a", "#ffc060", "#ff5a2a"], sun: ["#fff0b0", "#ffe8a0", "#ffffff"], pit: ["#ff9a40", "#ffc870", "#c89a6a"], frost: ["#ffffff", "#d8f0ff", "#bfe6ff"],
+    };
+    if (!s.textures.exists(key)) {
+      const tex = s.textures.createCanvas(key, 12, 3)!, g = tex.getContext();
+      cols[this.id].forEach((c, i) => { g.fillStyle = c; g.fillRect(i * 4, 0, 2, 2); tex.add(`m${i}`, 0, i * 4, 0, 2, 2); });
+      tex.refresh();
+    }
+    this.moteBlit = s.add.blitter(0, 0, key).setDepth(DEPTH.top - 8);
+    const n = this.id === "frost" ? 80 : this.id === "sun" ? 50 : 64, cam = s.cameras.main.worldView;
+    for (let i = 0; i < n; i++) {
+      const m: Mote = { bob: this.moteBlit.create(0, 0, `m${i % 3}`), x: cam.x + Math.random() * cam.width, y: cam.y + Math.random() * cam.height, vx: 0, vy: 0, ph: Math.random() * 6 };
+      this.resetMote(m, false);
+      this.motes.push(m);
+    }
+  }
+  private resetMote(m: Mote, edge: boolean) {
+    const cam = this.scene.cameras.main.worldView, id = this.id;
+    const rise = id === "ash" || id === "pit", fall = id === "frost";
+    m.vy = rise ? -rnd(12, 30) : fall ? rnd(10, 26) : rnd(-4, 4);
+    m.vx = id === "sun" ? rnd(4, 10) : fall ? rnd(-8, 4) : rnd(-5, 5);
+    m.x = cam.x + Math.random() * cam.width;
+    m.y = edge ? (rise ? cam.bottom + 4 : fall ? cam.y - 4 : cam.y + Math.random() * cam.height) : cam.y + Math.random() * cam.height;
   }
 
   private makeTip(): Tip {
@@ -166,6 +237,16 @@ export class ArenaCrowd {
     if (this.hum <= 0) { this.hum = 0.25; crowdHum(true, this.swell); this.swell = Math.max(0, this.swell - 0.07); }
     this.tipsUpdate(now);
     if (!vfxFull()) return; // «Простые»: толпа стоит без анимации
+    this.ropes?.update(dt * 1000);
+    for (const g of this.glows) g.img.setAlpha(g.a * (0.82 + 0.18 * Math.sin(now * 0.009 + g.ph) + 0.06 * Math.sin(now * 0.023 + g.ph * 2)));
+    if (this.motes.length) {
+      const cam = this.scene.cameras.main.worldView;
+      for (const m of this.motes) {
+        m.x += (m.vx + Math.sin(now * 0.0016 + m.ph) * 6) * dt; m.y += m.vy * dt;
+        if (m.x < cam.x - 6 || m.x > cam.right + 6 || m.y < cam.y - 8 || m.y > cam.bottom + 8) this.resetMote(m, true);
+        m.bob.x = m.x; m.bob.y = m.y;
+      }
+    }
     // шапки
     for (let i = this.hats.length - 1; i >= 0; i--) {
       const h = this.hats[i];
@@ -262,7 +343,11 @@ export class ArenaCrowd {
     for (const o of this.offs) o();
     this.offs = [];
     crowdHum(false);
-    this.bg?.destroy(); this.blit?.destroy(); this.hatBlit?.destroy();
+    this.bg?.destroy(); this.blit?.destroy(); this.hatBlit?.destroy(); this.moteBlit?.destroy();
+    this.ropes?.destroy(); this.ropes = null;
+    for (const f of this.flags) f.destroy();
+    for (const g of this.glows) g.img.destroy();
+    this.flags = []; this.glows = []; this.motes = [];
     for (const t of this.tips) t.box.destroy();
     this.tips = []; this.hats = []; this.spec = [];
   }

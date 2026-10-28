@@ -1,0 +1,133 @@
+/**
+ * Задача 139, босс кольца: Грох Рогатый, минотавр-латник (запад, слот r65n, ур. 65, группа 4–5; карточка — docs/bosses-139.md,
+ * раздел 3.3 п. 5 и «Раскладка референсов»). Образ — референс tools/out/refs/bosses-139/25.jpg (сутулый бык-латник: тёмные витые рога,
+ * плоский шлем и мохнатая морда с «бородой» из клыков, огромные бронзовые наплечники с чеканкой, бронзовый нагрудник поверх тёмной
+ * чешуи и кольчуги, наколенники, бурые мохнатые копыта, кистень на цепи: рукоять с «тюльпаном» и шар-раковина с шипом) — только для
+ * сравнения: чужой арт в игру и в git не идёт.
+ *
+ * Метод — как у военачальника гоблинов и капеллана (sol_fallen_chaplain.ts): общий движок tools/gen/mobs/lib.ts, тело в двойном
+ * разрешении (160×160) сводится в кадр 80×80, ступни на y = 75; 5 тонов на материал, выборочный контур 1 px, контровой свет.
+ * Светится ночью: глаза, раскалённая искра на шипе кистеня при ударе.
+ * Файл собирается скриптом _partsm/assemble.sh из частей и общих блоков капеллана — править части, не его.
+ *
+ * Запуск (одна генерация, низкий приоритет): npx tsx tools/gen/bosses139/cliff_minotaur_knight.ts [--quick|--sil] →
+ *   tools/out/bosses139/r65n-w-compare.png («наш | референс»), mino-sheet.png, mino-glow.png.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  PC, PX, R, Scene, VIEWS, add, clamp, cross, crop, depthOf, easeIn, easeInOut, easeOut, fill, fromView,
+  groundBg, hash01, hex, ik, lerp, linear, loadPC, mat, mix, mul, nightRect, norm, perp, renderScene, rot, scaleNN,
+  scr, sealPinholes, shadowBlob, snapPx, stackRows, sub, text, thicken, toView, TAU,
+  type Cam, type Mat, type RGBA, type Row, type V3, type View,
+} from "../mobs/lib";
+import { OUT, selout } from "../mobs/rig";
+
+export const ID = "cliff_minotaur_knight";
+export const FRAME = 80;
+/** Кадр 80×80 (кадр для уровней 65–79). */
+export const FRAME_H = 80;
+const FW = FRAME, FH = FRAME_H;
+const N = FW;
+const CAM: Cam = { N: FW, CX: 40, GY: 75.4 };
+const RS = 2;
+const CAMR: Cam = { N: 160, CX: 80, GY: 150.8 };
+const RX0 = 0;
+/** Модель → пиксели кадра 1×. */
+const K = 1.08;
+const PXM = PX / K;
+const snapM = (view: View, w: V3): V3 => mul(snapPx(view, mul(w, K)), 1 / K);
+
+// ---------------- палитра ----------------
+/** Бронза: чеканные наплечники, нагрудник, наколенники, рукоять и шар кистеня (тёмная, с тёплыми бликами). */
+const BRONZE = R("#070605", "#12100d", "#201c18", "#383129", "#c7b49a");
+/** Бронза: каймы, завитки, пряжки (тёплая). */
+const BRASS = R("#140c06", "#33200f", "#6a4526", "#a0703c", "#e0ae6c");
+/** Тёмная воронёная сталь с синевой: чешуя, нижние пластины, кольца цепи. */
+const STEEL = R("#050505", "#0c0b0a", "#171513", "#25221f", "#7d776e");
+/** Кольчуга и подкольчужье. */
+const MAIL = R("#040303", "#0a0807", "#13100e", "#1d1916", "#3e3731");
+/** Бурая шерсть: морда, грива, копыта. */
+const FUR = R("#0c0705", "#1e1209", "#38230f", "#563518", "#7a5228");
+/** Рога: тёмно-бурые у корня, светлеют к кончику, кольцевые рёбра. */
+const HORN = R("#1c120c", "#4a3a28", "#8a7658", "#c4b08a", "#f0e4c4");
+/** Кость: клыки, зубы бороды. */
+const BONE = R("#2a2218", "#5a4c38", "#8c7a5c", "#c0ad88", "#eadcb8");
+/** Чёрное: ноздри, глазницы, щели. */
+const BLACK = R("#030304", "#08090c", "#101216", "#1a1d23", "#2c313a");
+/** Кожа ремней. */
+const LEATH = R("#0a0705", "#1c120b", "#30200f", "#4a3218", "#684826");
+/** Тусклое тление: глаза. */
+const GLOWC = R("#2a0804", "#6a1608", "#c03a10", "#f27a24", "#ffd890");
+/** Искры и росчерки удара: тёплый белый. */
+const FIRE = R("#2a1408", "#7a4a1c", "#e0a050", "#ffd890", "#ffffff");
+const SHADOW = GLOWC;
+const FLAME = FIRE;
+const DEAD = R("#121112", "#262223", "#3b3434", "#544a47", "#6e625c");
+/** Пыль утёсов: светлый камень. */
+const SAND = R("#34302e", "#585250", "#827a74", "#aea69c", "#d8d0c4");
+const VOID = hex("#06040a");
+
+const M = {
+  brass: mat("бронза", BRASS, { base: 1.7, gain: 2.3, hi: 4 }),
+  bronze: mat("пластина", BRONZE, { base: 1.1, gain: 1.9, hi: 4 }),
+  steel: mat("сталь", STEEL, { base: 1.55, gain: 2.3, hi: 4 }),
+  mail: mat("кольчуга", MAIL, { base: 1.5, gain: 2.1 }),
+  fur: mat("шерсть", FUR, { base: 1.9, gain: 2.0 }),
+  horn: mat("рог", HORN, { base: 1.8, gain: 2.3 }),
+  bone: mat("кость", BONE, { base: 2.1, gain: 2.1 }),
+  black: mat("чёрное", BLACK, { base: 1.6, gain: 2.3 }),
+  leath: mat("ремни", LEATH, { base: 2.0, gain: 2.2 }),
+  glow: mat("свет", GLOWC, { base: 2.8, gain: 1.0, glow: true, crisp: true }),
+  spark: mat("искра", FIRE, { base: 3.2, gain: 0.5, glow: true, crisp: true }),
+};
+
+// ---------------- поза ----------------
+interface Pose {
+  root: V3; bob: number; chest: number; headZ: number;
+  pitch: number; yaw: number; roll: number; hp: number; hy: number; hr: number;
+  /** кулаки: правый держит рукоять кистеня, левый свободен; локти — по IK в сторону pole */
+  hand: [V3, V3]; pole: [V3, V3];
+  /** направление рукояти (от кулака к «тюльпану») и положение шара кистеня (центр; цепь провисает, если шар ближе длины цепи) */
+  hd: V3; ball: V3;
+  armLift: [number, number];
+  /** фаза качания меха и пластин; шаг (стопы) */
+  wave: number; waveAmp: number; kick: [number, number]; sway: number;
+  /** свет глаз 0..1,6; увядание; на коленях */
+  glow: number; wither: number; kneel: number;
+  ring: number; ringAt?: V3; flash: number; flashAt?: V3; dust: [number, number];
+  /** полосы бега, искры вокруг тела, осколки камня от удара (центр — shardAt) */
+  streak: number; embers: number; shards: number; shardAt?: V3;
+  trail?: V3[];
+  t: number; seed: number;
+}
+
+const HIP0 = 25;
+const NECK: V3 = [0, 3.0, 50.0];
+const ARM: [number, number] = [12, 12];
+const REACH: number[] = [];
+/** Рукоять: расстояние от кулака до кольца под «тюльпаном»; цепь; шар. */
+const HL = 19, CL = 14, TOPR = 7.6;
+const norm3 = (v: V3): V3 => norm(v);
+const lenOf = (v: V3) => Math.hypot(v[0], v[1], v[2]);
+/** Шар кистеня, повисший на цепи от рукояти (или протянутый по направлению dir, slack — провис 0..1). */
+const bal = (hand: V3, hd: V3, dir: V3, slack = 0): V3 => {
+  const head = add(hand, mul(norm3(hd), HL));
+  return add(head, mul(norm3(dir), CL * (1 - slack) + TOPR));
+};
+/** Пара «кулаки + рукоять + шар» одной поправкой к позе. */
+const fp = (h0: V3, h1: V3, hd: V3, dir: V3, slack = 0): Partial<Pose> => ({ hand: [h0, h1], hd, ball: bal(h0, hd, dir, slack) });
+
+const HD0: V3 = [0.2, 0.9, 0.3];
+const HAND0: [V3, V3] = [[10.8, 5.0, 23.5], [-9.4, 8.0, 29.0]];
+const REST_FRONT: Pose = {
+  root: [0, 0, 0], bob: -1, chest: 0, headZ: 0, pitch: 0.36, yaw: 0, roll: 0, hp: -0.08, hy: 0, hr: 0,
+  hand: HAND0, pole: [[0.6, -1, -0.2], [-0.5, -1, -0.1]], hd: HD0, ball: bal(HAND0[0], HD0, [0.05, 0.1, -1]),
+  armLift: [0, 0], wave: 0, waveAmp: 1, kick: [0, 0], sway: 0,
+  glow: 1, wither: 0, kneel: 0,
+  ring: 0, flash: 0, dust: [0, 0], streak: 0, embers: 0, shards: 0, t: 0, seed: 1,
+};
+const REST_SIDE: Pose = { ...REST_FRONT };
+const restOf = (view: View): Pose => (view === "side" ? REST_SIDE : REST_FRONT);
+const bodyShift = (view: View, p: Pose): V3 => snapM(view, [p.root[0], p.root[1], p.bob + p.root[2] - p.kneel * 7]);
