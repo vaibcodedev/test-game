@@ -1322,7 +1322,8 @@ export class GameScene extends Phaser.Scene {
     b.set(text);
     b.at(v.x, v.topY - v.blockH() - 2);
     if (old) old.until = this.time.now + 3500; else this.bubbles.push({ b, id, until: this.time.now + 3500 });
-    this.hud.chatLine({ from: v.u.name, text, sys: false });
+    // болтовня горожан, стражи и бойцов — только пузырём над головой, в чат не идёт (иначе чат тонет в «Добрый вечер»); реплики боссов и мобов — в чат
+    if (v.u.kind !== UnitKind.Citizen && v.u.kind !== UnitKind.Guard && v.u.kind !== UnitKind.Soldier) this.hud.chatLine({ from: v.u.name, text, sys: false });
   }
 
   // ---------- кадр ----------

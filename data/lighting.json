@@ -13,7 +13,7 @@
  "postfx": {
   "vignette": { "hpBelow": 0.35, "strength": 0.62, "radius": 0.5, "pulseHz": 1.1, "fade": 2.5 },
   "bloom": { "night": 0.5, "strength": 0.45, "blur": 0.7, "steps": 2, "fade": 1.2 },
-  "displacement": { "zones": ["Volcano", "Ashlands"], "size": 0.004, "speed": 22, "fade": 1.5 },
+  "displacement": { "zones": ["Volcano", "Ashlands"], "size": 0.0015, "speed": 9, "fade": 1.5 },
   "glow": { "boss": 16739930, "outer": 4, "distance": 12, "quality": 0.1 },
   "shine": { "minRarity": 2, "speed": 0.45, "lineWidth": 0.5, "gradient": 3 },
   "hitStopMs": 60
