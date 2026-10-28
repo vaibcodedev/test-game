@@ -367,7 +367,7 @@ export class Hud {
     this.ctx = ctx;
     this.arena.onPickParty = (i) => ctx.selectParty?.(i);
     const n = ctx.net;
-    this.hotbar.bind({ net: n, map: ctx.map, press: (b, i) => ctx.pressSlot(b, i), tipFor: (e, h) => this.tipFor(e, h), skillTip: (d, s) => this.skillTip(d, s) });
+    this.hotbar.bind({ net: n, map: ctx.map, press: (b, i) => ctx.pressSlot(b, i), tipFor: (e, h) => this.tipFor(e, h), skillTip: (d, s) => this.skillTip(d, s, true) });
     if (!this.netBound) {
       this.netBound = true;
       n.on("self", (s) => {
@@ -854,7 +854,8 @@ export class Hud {
     if (b.slot !== "consumable" && (it.plus || it.rarity > 0)) lines.push(`<div class="hint">${esc(GEAR_FX.texts.tooltipHint)}</div>`);
     return lines.join("");
   }
-  skillTip(def: SkillDef, s: SelfState): string {
+  /** brief — подсказка на панели умений (хотбар): только текущий ранг; следующий ранг и изучение — только в окне умений. */
+  skillTip(def: SkillDef, s: SelfState, brief = false): string {
     const r = s.skills[def.id] || 0;
     // клавиша — по месту умения среди активных (так его вызывает панель), а не по полю slot, и по раскладке игрока
     const at = def.kind === "active" ? findRef(s.bars, { s: def.id }) : null;
@@ -862,6 +863,7 @@ export class Hud {
     const lines = [`<div class="t">${def.name}</div>`, `<div class="d">${TX("ui.hud.564", { key: def.kind === "active" ? `Активное${key ? ` · клавиша ${key}` : ""}` : "Пассивное", r: r, maxrank: def.maxRank })}</div>`];
     lines.push(`<div>${def.desc(Math.max(1, r))}</div>`);
     if (def.kind === "active") lines.push(`<div class="d">${TX("ui.hud.565", { skillmana: skillMana(def, r, s.level), math: def.cd!(Math.max(1, r)).toFixed(1), math2: def.range ? ` · Дальность: ${Math.round(def.range / TILE)} кл.` : "" })}</div>`);
+    if (brief) return lines.join("");
     if (r > 0 && r < def.maxRank) lines.push(`<div class="st">${TX("ui.hud.566", { desc: def.desc(r + 1) })}</div>`);
     const why = canLearn(def, s.skills, s.level, s.skillPoints);
     if (why && r < def.maxRank) lines.push(`<div class="warn">${why}</div>`);

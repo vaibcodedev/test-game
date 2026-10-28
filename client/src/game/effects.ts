@@ -58,10 +58,19 @@ export class Effects {
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener("lvlook:xp", this.onXp));
   }
   /** «+N оп.» над героем при приросте опыта (ui/levelLook.ts шлёт lvlook:xp). Своя цепочка id: цифры урона не сдвигаются, а соседние приросты идут столбиком выше. */
+  private xpSum = 0;
+  private xpTimer?: Phaser.Time.TimerEvent;
   private onXp = (e: Event) => {
-    const gain = (e as CustomEvent<{ gain: number }>).detail.gain, u = this.unit(this.selfId);
-    if (!u || u.dead || gain <= 0) return;
-    this.number(u.x, u.y - 36, `+${gain} оп.`, "#d3b0ff", true, 1.5, `xp:${this.selfId}`);
+    const gain = (e as CustomEvent<{ gain: number }>).detail.gain;
+    if (gain <= 0) return;
+    // приросты в пределах 0,3 с (убийство + задание и т. п.) — одна цифра, а не пара
+    this.xpSum += gain;
+    if (this.xpTimer) return;
+    this.xpTimer = this.scene.time.delayedCall(300, () => {
+      const u = this.unit(this.selfId), n = this.xpSum;
+      this.xpTimer = undefined; this.xpSum = 0;
+      if (u && !u.dead) this.number(u.x, u.y - 36, `+${n} оп.`, "#d3b0ff", true, 1.5, `xp:${this.selfId}`);
+    });
   };
   /** Боссы стартовых земель (задача 136): связки умений и эффекты мира. */
   private zb: ZoneBossFx;

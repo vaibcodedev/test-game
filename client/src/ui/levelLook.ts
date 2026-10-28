@@ -67,7 +67,7 @@ export class LevelLook {
   private banner(from: number, s: SelfState) {
     const stat = statPointsAt(s.level) - statPointsAt(from), skill = skillPointsAt(s.level) - skillPointsAt(from);
     const fresh = Object.values(SKILLS).filter((d) => d.cls === s.cls && d.reqLevel > from && d.reqLevel <= s.level).map((d) => d.name).join(", ");
-    const rows = [stat > 0 ? `+${stat} очк. характеристик <kbd>C</kbd>` : "", skill > 0 ? `+${skill} очк. умений <kbd>K</kbd>` : "", fresh ? `Новое умение: <b>${fresh}</b>` : ""].filter(Boolean);
+    const rows = [stat > 0 ? `<em>+${stat}</em> очк. характеристик <kbd>C</kbd>` : "", skill > 0 ? `<em>+${skill}</em> очк. умений <kbd>K</kbd>` : "", fresh ? `Новое умение: <b>${fresh}</b>` : ""].filter(Boolean);
     this.banners.forEach((b) => b.remove());
     const root = h("div", "lvb");
     root.style.setProperty("--lvb-dur", `${BANNER_MS / 1000}s`);

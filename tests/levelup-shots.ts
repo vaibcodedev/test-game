@@ -160,6 +160,9 @@ async function main() {
       const b = await jpg();
       rows.push({ label: `Подъём уровня: ${lb}`, frames: [{ buf: b, crop: HERO_C, label: "герой" }, { buf: b, crop: BAN, label: "надпись" }, { buf: b, crop: BAR, label: "полоска" }] });
     }
+    // поиск лишних надписей про уровень: все видимые DOM-элементы с текстом «уровень», кроме нашей надписи
+    const found = await page.evaluate("[...document.body.querySelectorAll('*')].filter((e) => e.children.length === 0 && /уровн|Уровн/.test(e.textContent || '') && e.getClientRects().length).map((e) => { const r = e.getBoundingClientRect(); return `${e.className || e.tagName} | ${(e.textContent || '').trim().slice(0, 60)} | ${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)} | в .lvb: ${!!e.closest('.lvb')}`; })");
+    console.log("DOM «уровень»:", JSON.stringify(found));
     await montage(br, "final.png", "Опыт и подъём уровня — финальная версия (герой 10→11 ур., 1920×1080)", rows, 620, 4);
   } finally {
     if (browser) await browser.close().catch(() => {});
