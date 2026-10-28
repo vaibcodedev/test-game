@@ -15,6 +15,8 @@ const G: Record<string, string> = {
   "+": "00000 00100 00100 11111 00100 00100 00000", "-": "00000 00000 00000 11111 00000 00000 00000",
   "!": "00100 00100 00100 00100 00100 00000 00100", ".": "00000 00000 00000 00000 00000 01100 01100",
   ",": "00000 00000 00000 00000 01100 00100 01000", " ": "00000 00000 00000 00000 00000 00000 00000",
+  // строчные для «+N оп.» (опыт тем же шрифтом, что урон)
+  "о": "00000 00000 01110 10001 10001 10001 01110", "п": "00000 00000 11110 10001 10001 10001 10001",
 };
 const CHARS = Object.keys(G).join("");
 /** scale — 1 для обычных, 1.5 для критов (ближайший сосед при рисовании: пиксели неравные, как в старых играх). */
@@ -50,7 +52,7 @@ const POP = [1.5, 1.25, 1];
 const lerpC = (a: number, b: number, k: number) => ((Math.round(((a >> 16) & 255) * (1 - k) + ((b >> 16) & 255) * k) << 16) | (Math.round(((a >> 8) & 255) * (1 - k) + ((b >> 8) & 255) * k) << 8) | Math.round((a & 255) * (1 - k) + (b & 255) * k));
 /** Градиент сверху вниз: светлее и темнее базового цвета. */
 const topCol = (c: number) => lerpC(c, 0xffffff, 0.45), botCol = (c: number) => lerpC(c, 0x3a1608, 0.32);
-export const DMG_TEXT_OK = /^[0-9+\-!., ]+$/;
+export const DMG_TEXT_OK = /^[0-9+\-!., оп]+$/;
 
 interface Num { t: Phaser.GameObjects.BitmapText; sh?: Phaser.GameObjects.Image; x0: number; y0: number; dx: number; rise: number; age: number; life: number; big: boolean; a0: number; base: number }
 
