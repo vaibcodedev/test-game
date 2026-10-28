@@ -2,7 +2,7 @@
   "$about": "Переключатели вау-эффектов (client/src/game/fx/*.ts). Включено владельцем (все 8). В «Простых» тяжёлые (птицы, облака, Rope, линза) отключаются в fx/host.ts.",
   "birds": { "on": true, "minFlock": 3, "maxFlock": 7, "everyMs": [9000, 22000] },
   "dmgFont": { "on": true },
-  "bossIntro": { "on": true, "totalMs": 2900 },
+  "bossIntro": { "on": true, "totalMs": 4800 },
   "portalWarp": { "on": true, "outMs": 420, "inMs": 380 },
   "cloudShadows": { "on": true, "density": "sparse", "alphaMax": 0.12 },
   "decals": { "on": true, "fadeMs": [20000, 40000], "maxPerScreen": 120 },
