@@ -34,6 +34,7 @@ import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { capBand, HALO, placeText, syncTextRes, worldText } from "./worldText";
 import { NPC_ICON_SIZE, NPC_ICON_TEX, npcIconFrame } from "./npcIcons";
 import { ArenaIntroFx } from "./arenaIntro";
+import { ArenaCrowd } from "./arenaCrowd";
 import { WowHost } from "./fx/host";
 import { HoverGlow, type GlowSrc } from "./hoverGlow";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
@@ -234,7 +235,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once("destroy", done);
 
     this.hud = this.registry.get("hud") as Hud;
-    this.map = net.kind === "arena" ? generateArenaMap() : net.kind === "raid" ? generateRaidMap() : net.kind === "dungeon" ? generateDungeonMap() : generateMap(net.seed);
+    this.map = net.kind === "arena" ? generateArenaMap(net.arena?.map ?? "ash") : net.kind === "raid" ? generateRaidMap() : net.kind === "dungeon" ? generateDungeonMap() : generateMap(net.seed);
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.map.w * TILE, this.map.h * TILE);
@@ -359,6 +360,9 @@ export class GameScene extends Phaser.Scene {
     // вступление боя арены: подсветка бойцов на отсчёте, кольца на «В бой!» (game/arenaIntro.ts)
     this.arenaIntro = net.kind === "arena" ? new ArenaIntroFx(this, net) : null;
     this.cleanup.push(() => { this.arenaIntro?.destroy(); this.arenaIntro = null; });
+    // трибуны и толпа с овациями и репликами (game/arenaCrowd.ts)
+    this.arenaCrowd = net.kind === "arena" ? new ArenaCrowd(this, net, net.arena?.map ?? "ash") : null;
+    this.cleanup.push(() => { this.arenaCrowd?.destroy(); this.arenaCrowd = null; });
     this.clickMark = this.add.image(0, 0, "fx_target").setDepth(DEPTH.ground + 7).setVisible(false).setScale(0.6);
     this.hoverGlow = new HoverGlow(this);
     this.cleanup.push(() => this.hoverGlow.destroy());
@@ -842,7 +846,10 @@ export class GameScene extends Phaser.Scene {
       else if (l.kind === "npc") npcGlow = l.ref as Npc;
       cur = this.cursorAt(this.pickAt(true, this.cursorPick));
     }
-    this.hoverGlow.update(npcGlow ? this.glowOf(npcGlow) : null, this.game.loop.delta, this.time.now);
+    // враг под курсором — красное свечение по силуэту текущего кадра (как у NPC, только красное)
+    const fv = hov && foe ? this.units.get(hov) : undefined, fs = fv?.sprite;
+    const foeGlow: GlowSrc | null = fs && fs.active && fs.visible && !fv!.dead ? { id: `u:${hov}`, color: "rgb(230,70,60)", tex: fs.texture.key, frame: fs.frame.name, x: fs.x, y: fs.y, ox: fs.originX, oy: fs.originY, flip: fs.flipX, depth: fs.depth } : null;
+    this.hoverGlow.update(npcGlow ? this.glowOf(npcGlow) : foeGlow, this.game.loop.delta, this.time.now);
     if (hov !== this.hoverId) {
       const old = this.hoverId ? this.units.get(this.hoverId) : undefined;
       if (old) old.hovered = false;
@@ -1028,6 +1035,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private arenaIntro: ArenaIntroFx | null = null;
+  private arenaCrowd: ArenaCrowd | null = null;
   private holdTimer = 0;
   private holdCode = "";
   /** Удержание клавиши умения в режиме «Быстрый» повторяет нажатие каждые 150 мс. */
@@ -1335,6 +1343,7 @@ export class GameScene extends Phaser.Scene {
     this.updateAim();
     this.updateHover();
     this.arenaIntro?.update(this.units.values(), dt);
+    this.arenaCrowd?.update(dt);
     this.world.update(this.cameras.main);
     // экран загрузки уходит, когда свой герой на месте и куски мира вокруг него построены (камера встаёт на героя кадром раньше)
     if (this.me && this.readyFrames < 3 && ++this.readyFrames === 3) loading.done();
