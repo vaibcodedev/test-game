@@ -161,7 +161,9 @@ export class Visibility {
     this.state.players.forEach((u) => void all.push(u));
     for (const [id, w] of this.watchers) {
       const dots: number[] = [];
-      for (const u of all) if (!w.seen.has(u)) dots.push(Math.round(u.x), Math.round(u.y), FACTION_CODE[u.faction] ?? 0);
+      // только свои: позиции врагов (и невидимок) по всей карте — это радар, их видно лишь в радиусе вида
+      const fac = this.state.players.get(id)?.faction;
+      for (const u of all) if (!w.seen.has(u) && !!fac && u.faction === fac) dots.push(Math.round(u.x), Math.round(u.y), FACTION_CODE[u.faction] ?? 0);
       send(id, dots);
     }
   }
