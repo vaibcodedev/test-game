@@ -1385,6 +1385,14 @@ export class GameScene extends Phaser.Scene {
       this.lastInput = { mx, my, at: now };
     }
     if (me) {
+      // телепорт (админка, камень, возрождение): дальний скачок — герой и камера сразу в новой точке и экран мягко проявляется из темноты, без пролёта камеры через карту
+      if (Math.hypot(u.x - this.pos.x, u.y - this.pos.y) > 400) {
+        this.pos = { x: u.x, y: u.y };
+        this.clickGoal = null;
+        const cam = this.cameras.main;
+        cam.centerOn(u.x, u.y - 12);
+        if (!cam.fadeEffect.isRunning) cam.fadeIn(280, 0, 0, 0);
+      }
       const u = me.u;
       // сервер держит героя: оглушение, корни, канал (castHold), заморозка арены до боя
       const arenaPhase = net.kind === "arena" ? (net.room?.state as { phase?: string } | undefined)?.phase : "fight";
