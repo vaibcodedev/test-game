@@ -329,8 +329,9 @@ export class AimPreview {
       }
       case "bolt": {
         // путь снаряда до точки взрыва (или середины тела цели), круги прямого попадания и брызг — у той же точки
-        this.path(from.x, from.y, shape.x, shape.y, col);
+        // путь заканчивается в центре кругов: на цели — у середины тела, без цели — на земле (крестик по центру кругов взрыва)
         const by = shape.y - (this.bodyLift(shape.x, shape.y) ?? 0);
+        this.dots(from.x, from.y - (this.bodyLift(from.x, from.y) ?? CHEST), shape.x, by, this.tone(col), 0.95, true);
         if (shape.r > 0) this.circle(shape.x, by, shape.r, col);
         if (shape.r2 > 0) { this.under(shape.x, by, shape.r2); g.lineStyle(1, tc, 0.9).strokeCircle(shape.x, by, shape.r2); }
         return;
