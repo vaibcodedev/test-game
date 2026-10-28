@@ -88,9 +88,9 @@ const mkWorld = () => {
   return new World(new WorldState(), (type, msg) => { if (type === "fx") sent.push(...(msg as Fx[])); }, { map: generateArenaMap(), mobs: false, quiet: true });
 };
 let uid = 0;
-/** Герой 40 уровня с нужными умениями на ряду арены без стен (y = 8,5 тайла); team — команда (PvP на арене: w.pvpActive). */
+/** Герой 40 уровня с нужными умениями на ряду арены без стен (y = 17,5 тайла, x = 15: арена v3 — колизей, прежний ряд 8 теперь внутри стены); team — команда (PvP на арене: w.pvpActive). */
 function mkHero(w: World, cls: ClassId, skills: string[], dx = 0, team = 1): Player {
-  const save = newSave(cls, { x: 5 * TILE + dx, y: 8.5 * TILE });
+  const save = newSave(cls, { x: 15 * TILE + dx, y: 17.5 * TILE });
   save.level = 40;
   for (const s of skills) save.skills[s] = 1;
   const p = new Player(`t${++uid}`, `Тест${uid}`, save, () => {});
@@ -319,7 +319,7 @@ const gone = (id: string) => buffs(id).filter((f) => f.ms <= 0);
   const w = mkWorld();
   const box = new Map<string, TargetAurasMsg[]>();
   const mk = (cls: ClassId, dx: number) => {
-    const save = newSave(cls, { x: 5 * TILE + dx, y: 8.5 * TILE });
+    const save = newSave(cls, { x: 15 * TILE + dx, y: 17.5 * TILE });
     save.level = 40;
     const id = `ta${++uid}`, got: TargetAurasMsg[] = [];
     box.set(id, got);
