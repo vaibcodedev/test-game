@@ -19,7 +19,7 @@ export class HoverGlow {
     this.img = scene.add.image(0, 0, "fx_glow").setVisible(false).setTint(0xd6a84b);
   }
 
-  private bake(tex: string, frame: string | number | undefined, color = GOLD): string | null {
+  bake(tex: string, frame: string | number | undefined, color = GOLD): string | null {
     const id = `${tex}|${frame ?? ""}|${color}`;
     const had = this.baked.get(id);
     if (had) return had;
@@ -33,7 +33,10 @@ export class HoverGlow {
     sx.globalCompositeOperation = "source-in"; sx.fillStyle = color; sx.fillRect(0, 0, w, h);
     const c = document.createElement("canvas"); c.width = w + PAD * 2; c.height = h + PAD * 2;
     const x = c.getContext("2d")!;
-    for (const [r, al] of [[7, 0.55], [4, 0.75], [2, 0.9], [1, 0.9]] as const) { x.filter = `blur(${r}px)`; x.globalAlpha = al; x.drawImage(sil, PAD, PAD); }
+    // только контур: толщина от размера кадра (мелкий моб не тонет в пятне, ≤ 1–2 px экрана), внутренность силуэта вырезана — заливки не бывает
+    const k = Math.max(0.3, Math.min(1, Math.max(w, h) / 64));
+    for (const [r, al] of [[2.4 * k, 0.55], [1.2 * k, 0.8], [0.6, 0.95]] as const) { x.filter = `blur(${r}px)`; x.globalAlpha = al; x.drawImage(sil, PAD, PAD); }
+    x.filter = "none"; x.globalAlpha = 1; x.globalCompositeOperation = "destination-out"; x.drawImage(sil, PAD, PAD);
     const key = `hglow_${this.baked.size}`;
     this.scene.textures.addCanvas(key, c);
     this.baked.set(id, key);

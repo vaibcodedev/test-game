@@ -446,6 +446,21 @@ export class SiegeView {
       this.add(life, (k) => { const t = (k * life) / 1000; o.setPosition(x + vx * t, y + vy * t + 260 * t * t).setRotation(rot * t).setAlpha(1 - easeInOutSine(k)); }, () => o.destroy());
     }
   }
+  /** Обломки створок и камня при проломе: один взрыв частиц (explode) веером вверх, падают с вращением и гаснут. */
+  private debris(x: number, y: number) {
+    const sc = this.sc;
+    if (!sc.textures.exists("fx_chunk")) {
+      const t = sc.textures.createCanvas("fx_chunk", 6, 5)!, g = t.getContext();
+      g.fillStyle = "#fff"; g.beginPath(); g.moveTo(0, 1); g.lineTo(4, 0); g.lineTo(6, 3); g.lineTo(3, 5); g.lineTo(0, 4); g.closePath(); g.fill(); t.refresh();
+    }
+    const em = sc.add.particles(x, y, "fx_chunk", {
+      emitting: false, lifespan: { min: 800, max: 1400 }, speed: { min: 90, max: 260 }, angle: { min: -160, max: -20 }, gravityY: 420,
+      rotate: { start: 0, end: 540 }, scale: { min: 0.7, max: 1.7 }, alpha: { start: 1, end: 0, ease: "Quad.easeIn" },
+      tint: [0x7a4e28, 0x8a5a30, 0x8a8490, 0x6a6470, 0x4a3018],
+    }).setDepth(y + 6);
+    em.explode(26);
+    sc.time.delayedCall(1600, () => em.destroy());
+  }
   private gateVis(id: string) { return this.gates.find((v) => v.g.id === id); }
 
   private fx(m: SiegeFxMsg) {
@@ -486,6 +501,7 @@ export class SiegeView {
       for (let i = 0; i < 4; i++) this.sheetFx("expl-dust", m.x + (i - 1.5) * 22, m.y - 30 - Math.random() * 30, m.y + 10, 1.6);
       this.puff(m.x, m.y, 6);
       this.splinters(m.x, m.y - 40, 28, 0x7a4e28);
+      this.debris(m.x, m.y - 24);
       this.shake(m.x, m.y, 260, 0.006);
     } else if (m.k === "repair") {
       for (const id of m.gates) {

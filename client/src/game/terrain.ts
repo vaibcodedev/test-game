@@ -33,6 +33,8 @@ export interface WorldView {
   macro: Phaser.GameObjects.TileSprite;
   /** Узел добычи появился (true) или исчерпан (false). */
   setNode(id: number, up: boolean): void;
+  /** Картинка узла добычи (попадание мышью по силуэту); кусок не загружен или узел исчерпан — undefined. */
+  nodeImage(id: number): Phaser.GameObjects.Image | undefined;
   /** Подгрузка и выгрузка кусков мира вокруг камеры (каждый кадр, дёшево). */
   update(cam: Phaser.Cameras.Scene2D.Camera): void;
 }
@@ -419,7 +421,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     else depleted.add(id);
     for (const g of nodeObjs.get(id) ?? []) (g as Phaser.GameObjects.Image).setVisible(up);
   };
-  return { water, drift, dark, macro, setNode, update };
+  const nodeImage = (id: number) => { const g = nodeObjs.get(id)?.[0] as Phaser.GameObjects.Image | undefined; return g && g.visible ? g : undefined; };
+  return { water, drift, dark, macro, setNode, nodeImage, update };
 }
 
 /** Затемнение и цвет подложки зоны (над миром, под интерфейсом). */

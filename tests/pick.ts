@@ -2,7 +2,7 @@
  *  след 120 мс за бегущими, точно → передний → текущая цель → ближе центр. Запуск: npx tsx tests/pick.ts */
 import assert from "node:assert/strict";
 import { tabOrder, type TabUnit } from "../client/src/game/castResolve";
-import { boxDist, emptyBox, hitUnit, PickBest, silhouette, sweptDist, Trail, TRAIL_MS, unionBox, type Box, type Hit } from "../client/src/game/hit";
+import { boxDist, emptyBox, hitUnit, imageDist, PickBest, silhouette, sweptDist, Trail, TRAIL_MS, unionBox, type Box, type Hit, type Mask } from "../client/src/game/hit";
 
 const box = (): Box => emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
 const H = (): Hit => ({ d: Infinity, exact: false, depth: 0, center: Infinity });
@@ -89,6 +89,27 @@ for (const fps of [60, 144]) {
   ok(tabOrder([t("near", 50), t("hit", 200, { onMe: true })], me).join() === "hit,near", "Tab: бьющий меня первым");
   ok(tabOrder([t("off", 30, { inView: false }), t("on", 400)], me).join() === "on", "Tab: за краем экрана — нет, хоть и ближе");
   ok(tabOrder([t("wall", 30, { los: false }), t("d", 40, { dead: true }), t("ally", 20, { enemy: false })], me).length === 0, "Tab: за стеной, павший и союзник — нет");
+}
+
+// объекты — по непрозрачным пикселям кадра (imageDist): камень телепорта 40x110 с опорой внизу по центру (0,5; 1) в (1000, 1000)
+{
+  const mk = (w: number, h: number, on: (x: number, y: number) => boolean): Mask => { const a = new Uint8Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) a[y * w + x] = on(x, y) ? 1 : 0; return { w, h, a }; };
+  // кристалл: узкий ромб от макушки до y = 80, постамент в нижних 30 строках
+  const stone = mk(40, 110, (x, y) => y >= 80 ? x >= 4 && x < 36 : Math.abs(x - 20) <= 3 + (y < 40 ? y * 0.4 : (80 - y) * 0.3));
+  const at = (wx: number, wy: number, tol = 5) => imageDist(stone, 1000, 1000, 0.5, 1, 1, 1, false, wx, wy, tol);
+  ok(at(1000, 893) === 0, "камень: верх кристалла");
+  ok(at(1000, 950) === 0, "камень: середина");
+  ok(at(1000, 990) === 0, "камень: основание");
+  ok(at(1030, 950) === Infinity, "камень: рядом мимо (30 px сбоку от кристалла)");
+  ok(at(1000, 880) === Infinity, "камень: над макушкой мимо");
+  ok(at(1000 + 12, 950, 5) < Infinity && at(1000 + 12, 950, 5) > 0, "камень: край с допуском");
+  ok(at(1000 + 20, 950, 5) === Infinity, "камень: дальше допуска мимо");
+  ok(imageDist(stone, 1000, 1000, 0.5, 1, 2, 2, false, 1000, 1000 - 2 * 110 + 4, 3) === 0, "камень: масштаб 2, верх");
+  const flipped = mk(10, 10, (x) => x < 2);
+  ok(imageDist(flipped, 100, 100, 0.5, 1, 1, 1, true, 100 + 4, 95, 0) === 0 && imageDist(flipped, 100, 100, 0.5, 1, 1, 1, false, 100 + 4, 95, 0) === Infinity, "отражение кадра");
+  // мешок (12x10) и узел (30x30): силуэт, а не круг
+  const bag = mk(12, 10, (x, y) => x >= 1 && x < 11 && y >= 3);
+  ok(imageDist(bag, 50, 50, 0.5, 1, 1, 1, false, 50, 45, 0) === 0 && imageDist(bag, 50, 50, 0.5, 1, 1, 1, false, 50, 38, 2) === Infinity, "мешок: по силуэту");
 }
 
 console.log(`pick: ${n} ok`);

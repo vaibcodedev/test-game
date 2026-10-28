@@ -44,6 +44,7 @@ import { isTextField, keybinds, skillKeys } from "../game/keybinds";
 import { buildControls, buttonRow, checkRow, offerSchemeOnce, rangeRow, segRow } from "./controls";
 import { rangeFill, seg, setHidden, tabs, type TabsHandle } from "./kit";
 import { Hotbar } from "./hotbar";
+import { LevelLook } from "./levelLook";
 import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
 import { plusBadge, SmithUI } from "./smith";
@@ -124,6 +125,7 @@ export class Hud {
   private wmView: WorldMapView | null = null;
   private bar = el("div", "panel hud-bar");
   private hotbar = new Hotbar();
+  private levelLook = new LevelLook();
   private menuBar = el("div", "hud-menu");
   private uiScale = 100;
   private vpBound = false;
@@ -246,6 +248,7 @@ export class Hud {
 
   constructor(readonly root: HTMLElement) {
     this.bar.append(this.hotbar.el);
+    this.bar.append(this.levelLook.bar);   // над лентой умений (сама лента перестраивается, поэтому не внутри неё)
     root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.errLine, this.itip, this.death, this.tip);
     initWindowDrag(root, () => this.ctx?.net.self?.name ?? "");
     this.stackLeftPanels();
@@ -630,6 +633,7 @@ export class Hud {
           ${checkRow("set-bars", "Полоски здоровья всех остальных")}
           ${checkRow("set-autoNames", "В толпе прятать уровень у ников", "Кроме цели, группы и раненых (авто)")}
           ${checkRow("set-crowdNums", "Чужие цифры урона в толпе приглушать")}
+          ${checkRow("set-camLead", "Камера смотрит вперёд при беге", "Чуть смещается по ходу движения и не дёргается от мелких шагов")}
           ${segRow("set-gearfx", GEAR_FX.setting.label, GEAR_FX.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.setting.note)}
           ${segRow("set-vfx", "Эффекты", [["full", "Полные"], ["simple", "Простые"]], "m", "Простые: без точечного света, Bloom, марева и блеска, дождь реже")}
           ${segRow("set-shadows", "Тени", [["off", "Выкл"], ["simple", "Простые"], ["dynamic", "Динамические"]], "m", "Динамические следуют за временем суток: утром длинные влево, в полдень короткие, вечером вправо")}
@@ -659,7 +663,7 @@ export class Hud {
     mute.onchange = () => sfx.setMuted(mute.checked);
     // заливку дорожки ставим после начальных значений; на input её обновляет сам rangeFill
     for (const r of [sc, ch, vol, mus]) rangeFill(r);
-    for (const key of ["selfNames", "selfBars", "names", "bars", "autoNames", "crowdNums"] as const) {
+    for (const key of ["selfNames", "selfBars", "names", "bars", "autoNames", "crowdNums", "camLead"] as const) {
       const c = q<HTMLInputElement>("#set-" + key);
       c.checked = overlay[key];
       c.onchange = () => setOverlay(key, c.checked);
@@ -880,8 +884,8 @@ export class Hud {
     this.bank.update();
     this.bags.update();
     this.stable.update();
-    if (this.lastSelfLevel && s.level > this.lastSelfLevel) this.toast({ text: TX("ui.hud.294", { v: s.level }), kind: "level" });
     this.lastSelfLevel = s.level;
+    this.levelLook.feed(s);
     const net = this.ctx.net;
     // панель героя: уровень плашкой, ник и под ним класс, фракция; на максимальном уровне полосы опыта нет
     const pts = [s.statPoints ? `<span class="pill" data-open="char">${TX("ui.hud.568", { statpoints: s.statPoints })}</span>` : "", s.skillPoints ? `<span class="pill" data-open="skills">+${s.skillPoints} ум.</span>` : ""].join("");

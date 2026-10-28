@@ -17,6 +17,7 @@ import { CROWD } from "./labelLayout";
 import { Vfx, LATE_MS } from "./vfx";
 import { shakeCam } from "./camShake";
 import { GP } from "../../../shared/gameplay";
+import { playLevelUp } from "./fx/levelUpFx";
 
 const MAX_BURST = GP.ui.burstMax;
 const MAX_POOL = GP.ui.poolMax;
@@ -53,7 +54,15 @@ export class Effects {
     if (net.kind === "raid") this.raid = new RaidBoss(scene, unit);
     this.zb = new ZoneBossFx(scene, unit);
     zbAttach(this.zb);
+    window.addEventListener("lvlook:xp", this.onXp);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener("lvlook:xp", this.onXp));
   }
+  /** «+N оп.» над героем при приросте опыта (ui/levelLook.ts шлёт lvlook:xp). Своя цепочка id: цифры урона не сдвигаются, а соседние приросты идут столбиком выше. */
+  private onXp = (e: Event) => {
+    const gain = (e as CustomEvent<{ gain: number }>).detail.gain, u = this.unit(this.selfId);
+    if (!u || u.dead || gain <= 0) return;
+    this.number(u.x, u.y - 36, `+${gain} оп.`, "#d3b0ff", true, 1.5, `xp:${this.selfId}`);
+  };
   /** Боссы стартовых земель (задача 136): связки умений и эффекты мира. */
   private zb: ZoneBossFx;
   private raid?: RaidBoss;
@@ -110,6 +119,33 @@ export class Effects {
       this.pool.set(key, p);
     }
     p.explode(Math.min(MAX_BURST, count), x, y);
+  }
+
+  /** Тень снаряда на земле: бежит по полу от ног стрелка к ногам цели, чем выше снаряд над землёй — тем она бледнее и мельче (видно, что он в воздухе). */
+  private projShadow(sx: number, gy0: number, tx: number, gy1: number, ms: number, sy: number) {
+    const s = this.scene, d = Math.max(60, ms), sh = s.add.ellipse(sx, gy0, 12, 5, 0x000000, 0).setDepth(DEPTH.ground + 8);
+    const h0 = Math.max(4, gy0 - sy);
+    const o = { k: 0 };
+    s.tweens.add({ targets: o, k: 1, duration: d, ease: "Linear",
+      onUpdate: () => { const arc = 1 - 0.5 * Math.sin(Math.PI * o.k); sh.setPosition(sx + (tx - sx) * o.k, gy0 + (gy1 - gy0) * o.k).setScale(arc * (h0 > 20 ? 1.2 : 1), arc).setAlpha(0.28 * (0.45 + 0.55 * Math.min(1, o.k * 6, (1 - o.k) * 6 + 0.4))); },
+      onComplete: () => sh.destroy() });
+  }
+
+  /** Прыжок босса: спрайт летит по дуге от старта к посадке (сервер переносит юнита мгновенно), на земле — тень, которая мельчает и бледнеет на пике. */
+  private jumpArc(id: string, x0: number, y0: number, x1: number, y1: number) {
+    const s = this.scene, v = this.unit(id);
+    if (!v) return;
+    const dist = Math.hypot(x1 - x0, y1 - y0), D = Math.min(650, Math.max(280, dist * 1.1)), H = Math.min(80, 28 + dist * 0.22);
+    const sh = s.add.ellipse(x0, y0, 30, 11, 0x000000, 0.3).setDepth(DEPTH.ground + 8), t0 = s.time.now;
+    const tick = () => {
+      const k = Math.min(1, (s.time.now - t0) / D), e = k * k * (3 - 2 * k), h = Math.sin(Math.PI * k) * H;
+      const gx = x0 + (x1 - x0) * e, gy = y0 + (y1 - y0) * e;
+      sh.setPosition(gx, gy).setScale(1 - 0.4 * (h / H), 1 - 0.4 * (h / H)).setAlpha(0.32 - 0.16 * (h / H));
+      if (v.sprite?.active) v.sprite.setPosition(Math.round(gx), Math.round(gy - h));
+      if (k >= 1) { s.events.off("postupdate", tick); sh.destroy(); }
+    };
+    s.events.on("postupdate", tick);
+    s.events.once("shutdown", () => s.events.off("postupdate", tick));
   }
 
   /** Короткая вспышка удара на месте попадания. */
@@ -271,6 +307,7 @@ export class Effects {
         const sx = from ? from.x : f.fx!, sy = from ? from.y - (from.frame > 32 ? 30 : 14) : f.fy!;
         const to = f.to ? this.unit(f.to) : undefined;
         const tx = to ? to.x : f.tx, ty = to ? to.y - (to.frame > 32 ? 26 : 12) : f.ty - 12;
+        this.projShadow(sx, from ? from.y : sy + 14, to ? to.x : f.tx, to ? to.y : f.ty, f.ms, sy);
         this.sound(f.k === "arrow" || f.k === "aimed" ? "arrow" : (SFX_OF[f.k === "fireball" ? "fire" : f.k] ?? "arcane"), sx, sy);
         // свой спрайт снаряда умения (proj в data/skill-fx.json): прежний снаряд с частицами не нужен
         // звук взрыва — в живой точке прилёта (снаряд умения летит за бегущей целью)
@@ -491,6 +528,7 @@ export class Effects {
         break;
       }
       case "blink": {
+        if (f.k === "leap") this.jumpArc(f.id, f.x0, f.y0, f.x1, f.y1);
         if (this.vfx.blink(f) && f.k !== "charge") break; // рывок Рывка оставляет полосу и дым частицами
         if (f.k === "leap") {
           // прыжок босса стартовых земель: пыль на взлёте и в месте приземления (воронку рисует эффект мира)
@@ -533,6 +571,7 @@ export class Effects {
       case "lvl": {
         const u = this.unit(f.id);
         if (!u) return;
+        if (f.id === this.selfId) { playLevelUp(s, () => this.unit(f.id)); this.sound("holy", u.x, u.y); s.time.delayedCall(250, () => this.sound("bell", u.x, u.y)); break; }
         if (this.vfx.has("levelup")) { this.vfx.atUnit("levelup", u); this.number(u.x, u.y - 44, `Уровень ${f.level}!`, P.numGold, true); break; }
         const col = s.add.image(u.x, u.y - 30, "fx_glow").setTint(0xffd84a).setBlendMode(Phaser.BlendModes.ADD).setScale(1, 4).setDepth(DEPTH.top - 30).setAlpha(0.9);
         s.tweens.add({ targets: col, scaleX: 0.2, alpha: 0, duration: 1100, onComplete: () => col.destroy() });

@@ -4,6 +4,7 @@ import { MOBS } from "../../../shared/mobs";
 import type { Net } from "../net";
 import { GiveTab, plural } from "./adminGive";
 import { tabs } from "./kit";
+import { collisionDebug } from "../game/collisionDebug";
 
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU");
@@ -125,6 +126,8 @@ export class AdminUI {
         <label class="field"><span class="field-label">Уровень</span><input id="w-lv" class="input num" type="number" min="1" max="60" value="10"></label>
         <button class="btn" data-act="spawn">Призвать рядом</button></div></section>
         ${this.summonedSec()}
+        <section class="sec"><h3 class="sec-h">Отладка</h3>
+        <div class="adm-row"><button class="btn" data-act="collgrid" title="Красным — непроходимые клетки вокруг героя">Сетка проходимости: ${collisionDebug.on ? "вкл" : "выкл"}</button></div></section>
         <section class="sec"><h3 class="sec-h">Объявление</h3>
         <label class="field"><span class="field-label">Текст</span><span class="input-group"><input id="w-text" class="input" maxlength="140"><button class="btn" data-act="announce">Объявить</button></span></label></section>
         <section class="sec"><h3 class="sec-h">Ивент «Знамёна Предела»</h3>
@@ -193,6 +196,7 @@ export class AdminUI {
         case "unban-name": return send("admin:unban", { name: val("adm-who") });
         case "give": this.target = n; this.tab = "give"; return this.refresh();
         case "spawn": return send("admin:spawn", { mob: val("w-mob"), level: nv("w-lv") });
+        case "collgrid": collisionDebug.on = !collisionDebug.on; return this.refresh();
         case "summoned": return send("admin:summoned");
         case "despawn": return send("admin:despawn", { id: b.dataset.id ?? "" });
         case "despawn-all": return send("admin:despawn", { all: true });

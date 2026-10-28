@@ -11,6 +11,11 @@ import { thunderBetween, weatherAt } from "../../../shared/weather";
 import { Puddles } from "./puddles";
 import * as sfx from "./sfx";
 import { debugFx, vfxFull } from "./postfx";
+import { objHas, objTex } from "./objTex";
+
+/** Объекты с крышей или навесом: под ними дождя нет (deathZone капель). */
+const ROOFED = /house|temple|crypt|tavern|tent|stall|forge|smithy|barracks|shop|hut|cabin|pavilion|canopy|awning|inn$/;
+type Box = { x0: number; y0: number; x1: number; y1: number };
 
 const W = cfg.weather;
 
@@ -30,6 +35,8 @@ export class Weather {
   private splash: Phaser.GameObjects.Particles.ParticleEmitter;
   private ripple: Phaser.GameObjects.Particles.ParticleEmitter;
   private puddles: Puddles;
+  private roofs: Box[] = [];
+  private vis: Box[] = [];
   private cur = 0;
   private lastMs = Date.now();
   private acc = 0;
@@ -43,8 +50,23 @@ export class Weather {
     const depth = 1e6 - 14;
     this.puddles = new Puddles(scene, map);
     this.drops = scene.add.particles(0, 0, "fx_raindrop", { emitting: false, emitZone: { type: "random", source: new Phaser.Geom.Rectangle(0, 0, 900, 400) } as any, lifespan: 480, speedX: { min: -95, max: -75 }, speedY: { min: 680, max: 780 }, rotate: 7, alpha: { start: 0.55, end: 0.35 } }).setDepth(depth).setAlpha(0); // капли полупрозрачные: дождь не закрывает мир
+    // силуэты крыш: габариты кадра объекта (опора снизу по центру); капля, влетевшая в прямоугольник, гаснет
+    for (const o of map.objects) {
+      if (!ROOFED.test(o.kind)) continue;
+      const id = o.v && objHas(scene, `${o.kind}__${o.v}`) ? `${o.kind}__${o.v}` : o.kind;
+      const fr = objHas(scene, id) ? scene.textures.getFrame(...(objTex(id) as [string, string | undefined])) : null;
+      if (!fr) continue;
+      const w = fr.realWidth * 0.92, h = fr.realHeight;
+      this.roofs.push({ x0: o.x - w / 2, x1: o.x + w / 2, y0: o.y - h, y1: o.y - h * 0.06 });
+    }
+    if (this.roofs.length) this.drops.addDeathZone({ type: "onEnter", source: { contains: (x: number, y: number) => this.under(x, y) } as any });
     this.splash = scene.add.particles(0, 0, "fx_splash", { emitting: false, lifespan: 320, scale: { start: 0.6, end: 1.5 }, alpha: { start: 1, end: 0 } }).setDepth(depth);
     this.ripple = scene.add.particles(0, 0, "fx_ripple", { emitting: false, lifespan: 800, scale: { start: 0.2, end: 1.3 }, alpha: { start: 0.7, end: 0 } }).setDepth(depth);
+  }
+
+  private under(x: number, y: number): boolean {
+    for (const b of this.vis) if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1) return true;
+    return false;
   }
 
   /** Молния: ломаная от верха кадра вниз, белая жила и голубое свечение, гаснет за 0,35 с. */
@@ -81,6 +103,7 @@ export class Weather {
     if (debugFx.wet >= 0) this.puddles.wet = debugFx.wet;
     const rp = this.puddles.update(dt, this.cur, indoor, v, this.scene.time.now);
     if (rp && vfxFull()) this.ripple.emitParticleAt(rp.x, rp.y);
+    if (this.roofs.length) { const m = 120; this.vis = this.roofs.filter((b) => b.x1 > v.x - m && b.x0 < v.right + m && b.y1 > v.y - m && b.y0 < v.bottom + m); }
     if (this.cur < 0.02) { this.drops.setAlpha(0); this.drops.stop(); return; }
     const k = this.cur * (vfxFull() ? 1 : 0.5);
     this.drops.setPosition(v.x - 120, v.y - 80).setAlpha(Math.min(0.8, this.cur));
@@ -93,6 +116,7 @@ export class Weather {
     for (; this.acc >= 1; this.acc -= 1) {
       const x = v.x + Math.random() * v.width, y = v.y + Math.random() * v.height;
       const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+      if (this.under(x, y)) continue;
       if (tx < 0 || ty < 0 || tx >= this.map.w || ty >= this.map.h) continue;
       if (this.map.vtx[ty * (this.map.w + 1) + tx] === T.Water) this.ripple.emitParticleAt(x, y);
       else this.splash.emitParticleAt(x, y);

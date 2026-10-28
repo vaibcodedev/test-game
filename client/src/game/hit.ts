@@ -129,3 +129,27 @@ export class PickBest {
     return h.center < this.center;
   }
 }
+
+/** Маска непрозрачных пикселей кадра (наведение на объекты — по силуэту, как у юнитов, а не по кругу у основания). a[y * w + x] = 1, если пиксель непрозрачен. */
+export interface Mask { w: number; h: number; a: Uint8Array }
+
+/** Расстояние (в пикселях кадра) от точки кадра (lx, ly) до ближайшего непрозрачного пикселя: 0 — внутри силуэта, Infinity — дальше tol. Без аллокаций. */
+export function maskDist(m: Mask, lx: number, ly: number, tol: number): number {
+  const r = Math.ceil(tol), cx = Math.floor(lx), cy = Math.floor(ly);
+  let best = Infinity;
+  for (let j = Math.max(0, cy - r); j <= Math.min(m.h - 1, cy + r); j++) {
+    const dy = ly < j ? j - ly : ly > j + 1 ? ly - j - 1 : 0;
+    for (let i = Math.max(0, cx - r); i <= Math.min(m.w - 1, cx + r); i++) {
+      if (!m.a[j * m.w + i]) continue;
+      const dx = lx < i ? i - lx : lx > i + 1 ? lx - i - 1 : 0, d = dx === 0 && dy === 0 ? 0 : Math.hypot(dx, dy);
+      if (d < best) { if (d === 0) return 0; best = d; }
+    }
+  }
+  return best <= tol ? best : Infinity;
+}
+
+/** Точка мира (wx, wy) → пиксель кадра картинки с опорной точкой в (x, y), опорой (ox, oy) в долях кадра, масштабом sx, sy и отражением flip; затем maskDist с допуском tol (пиксели мира). Результат — в пикселях мира. */
+export function imageDist(m: Mask, x: number, y: number, ox: number, oy: number, sx: number, sy: number, flip: boolean, wx: number, wy: number, tol: number): number {
+  const u = (wx - x) / sx + ox * m.w, v = (wy - y) / sy + oy * m.h, k = Math.min(sx, sy);
+  return maskDist(m, flip ? m.w - u : u, v, tol / k) * k;
+}

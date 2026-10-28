@@ -28,6 +28,8 @@ import { buildWorld, DEPTH, dgGateOpen, zoneTint, type WorldView } from "./terra
 import { setLightMode } from "./shadows";
 import { NightMask, updateLights } from "./lights";
 import { PostFx, glowOn, shineOn } from "./postfx";
+import { overlay } from "./overlay";
+import { CollisionGrid } from "./collisionDebug";
 import { Weather } from "./weather";
 import lighting from "../../../data/lighting.json";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
@@ -37,6 +39,7 @@ import { ArenaIntroFx } from "./arenaIntro";
 import { ArenaCrowd } from "./arenaCrowd";
 import { WowHost } from "./fx/host";
 import { HoverGlow, type GlowSrc } from "./hoverGlow";
+import { goDist, texDist } from "./objPick";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
 import { AimPreview } from "./aim";
@@ -111,6 +114,8 @@ function fitCanvas(game: Phaser.Game, z: number): number {
 
 /** «С превью»: через сколько мс удержания клавиши умения показывается прицел (короче — каст без вспышки превью). */
 const HOLD_PREVIEW_MS = 180;
+/** Камера с упреждением: сколько секунд держать направление после последнего шага героя. */
+const CAM_LEAD_HOLD = 0.35;
 
 export class GameScene extends Phaser.Scene {
   map!: WorldMap;
@@ -160,6 +165,8 @@ export class GameScene extends Phaser.Scene {
   /** Курсор мыши в мире, результаты выбора (подсветка, курсор, клик) и источник для pickOrder — постоянные объекты: наведение считается каждый кадр без аллокаций. */
   private mouse = new Phaser.Math.Vector2();
   private mouseSeen = false;
+  /** Что под курсором из мешков, узлов и NPC (id мешка или ссылка) — для подсказки «G»: она про тот же объект, что свечение и курсор. Обновляется каждый кадр в updateHover. */
+  private hoverItem: unknown = null;
   private cursorKind: CursorKind = "arrow";
   private pickCtx: PickCtx = { aim: false, right: false, action: true, world: true, css: 2, bigTargets: false };
   private hoverPick: PickOut = { kind: "ground", id: null, ref: null };
@@ -836,11 +843,13 @@ export class GameScene extends Phaser.Scene {
    *  Без аллокаций: курсор в мире — один Vector2, результаты — постоянные объекты. */
   private updateHover() {
     let hov: string | null = null, foe = true, cur: CursorKind = "arrow", glow = false, npcGlow: Npc | null = null;
+    this.hoverItem = null;
     const me = this.me;
     if (this.mouseSeen && !this.overUi && this.input.manager.isOver && me && !me.dead) {
       const ap = this.input.activePointer;
       this.cameras.main.getWorldPoint(ap.x, ap.y, this.mouse);
       const l = this.pickAt(false, this.hoverPick);
+      this.hoverItem = l.kind === "bag" ? l.id : l.kind === "node" || l.kind === "npc" ? l.ref : null;
       if (l.kind === "foe" || l.kind === "magnet") hov = l.id;
       else if (l.kind === "friend" && l.id !== net.id) { hov = l.id; foe = false; }
       else if (l.kind === "bag" || l.kind === "node") {
@@ -943,21 +952,49 @@ export class GameScene extends Phaser.Scene {
     return b.id;
   }
 
-  /** Мешок с добычей, узел добычи или NPC под точкой мира — в таком порядке; нашлось — кладёт в out kind, id и ref. */
+  /** Мешок с добычей, узел добычи или NPC под точкой мира — в таком порядке; нашлось — кладёт в out kind, id и ref.
+   *  Попадание везде одно: по непрозрачным пикселям текущего кадра с допуском клика (objPick.ts), у высоких — по всей высоте; круг — только запасной (нет картинки) и у NPC с зоной hit.
+   *  Среди NPC и объектов: точно → человек раньше объекта → передний по глубине. */
   private itemAt(wx: number, wy: number, out: PickOut): boolean {
+    const tol = pickReach(this.css, false, mouseOpts.bigTargets);
     for (const [id, img] of this.bagViews) {
-      const dx = img.x - wx, dy = img.y - 10 - wy;
-      if (dx * dx + dy * dy < 16 * 16) { out.kind = "bag"; out.id = id; return true; }
+      const dx = img.x - wx, dy = img.y - 10 - wy, d = goDist(this, img, wx, wy, tol);
+      if (dx * dx + dy * dy < 16 * 16 || d < Infinity) { out.kind = "bag"; out.id = id; return true; }
     }
     for (const n of this.map.nodes) {
-      const dx = n.x - wx, dy = n.y - 16 - wy;
-      if (dx * dx + dy * dy <= 24 * 24 && !this.depletedNodes.has(n.id)) { out.kind = "node"; out.ref = n; return true; }
+      if (this.depletedNodes.has(n.id)) continue;
+      const img = this.world.nodeImage(n.id), d = img ? goDist(this, img, wx, wy, tol) : NaN, dx = n.x - wx, dy = n.y - 16 - wy;
+      if (d < Infinity || (d !== d && dx * dx + dy * dy <= 24 * 24)) { out.kind = "node"; out.ref = n; return true; }
     }
+    let best: Npc | null = null, bd = Infinity, brank = 9, bdepth = -Infinity;
     for (const n of this.npcs) {
-      const dx = n.sprite.x - wx, dy = n.sprite.y - (n.hit?.dy ?? 14) - wy, r = n.hit?.r ?? 18;
-      if (dx * dx + dy * dy < r * r) { out.kind = "npc"; out.ref = n; return true; }
+      const d = this.npcDist(n, wx, wy, tol);
+      if (!(d < Infinity)) continue;
+      const exact = d === 0 ? 0 : 1, rank = n.kind === "stone" || n.kind === "door" || n.kind === "statue" || n.kind === "dgdoor" || n.kind === "dgexit" ? 1 : 0;
+      const key = exact * 10 + rank, bkey = (bd === 0 ? 0 : 1) * 10 + brank;
+      if (best === null || key < bkey || (key === bkey && n.sprite.y > bdepth)) { best = n; bd = d; brank = rank; bdepth = n.sprite.y; }
     }
+    if (best) { out.kind = "npc"; out.ref = best; return true; }
     return false;
+  }
+
+  /** Расстояние от точки мира до NPC или объекта: силуэт картинки (источник свечения или видимый спрайт) ∪ запасной круг зоны нажатия; Infinity — мимо. */
+  private npcDist(n: Npc, wx: number, wy: number, tol: number): number {
+    const s = n.sprite, g = n.glow;
+    let d = Infinity, hasImg = false;
+    if (g?.tex) {
+      const r = texDist(this, g.tex, g.frame, g.x, g.y, g.ox, g.oy, 1, 1, !!g.flip, wx, wy, tol);
+      if (r === r) { hasImg = true; d = r; }
+    } else if (s.active && s.visible && s.angle === 0) {
+      const r = goDist(this, s, wx, wy, tol);
+      if (r === r) { hasImg = true; d = r; }
+    }
+    // круг: зона нажатия, если задана; у видимого человека без картинки и у невидимых точек (двери в стенах) — по умолчанию
+    if (n.hit || !hasImg) {
+      const dx = s.x - wx, dy = s.y - (n.hit?.dy ?? 14) - wy, r = n.hit?.r ?? 18;
+      if (dx * dx + dy * dy < r * r) d = 0;
+    }
+    return d;
   }
 
   /** Ближайший к курсору живой враг: допуск клика, а с magnet — радиус магнита. */
@@ -1200,21 +1237,21 @@ export class GameScene extends Phaser.Scene {
 
   /** Единое взаимодействие (docs/controls.md, раздел 7): под курсором (24 px) → ближайший в 110 px по приоритету мешок, узел, NPC, камень, встреча → до 300 px с подходом. */
   private interactList() {
-    type It = { rank: number; d: number; cx: number; cy: number; text: string; under?: boolean; r?: number; go: () => void };
+    type It = { rank: number; d: number; cx: number; cy: number; text: string; under?: boolean; r?: number; ref?: unknown; go: () => void };
     const out: It[] = [], hx = this.pos.x, hy = this.pos.y;
     const reset = () => { this.pendingPickup = null; this.pendingNpc = null; this.pendingGather = null; };
     for (const [id, img] of this.bagViews) {
       const d = Math.hypot(img.x - hx, img.y - hy);
-      out.push({ rank: 0, d, cx: img.x, cy: img.y - 10, text: T("ui.GameScene.261"), go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
+      out.push({ rank: 0, d, ref: id, cx: img.x, cy: img.y - 10, text: T("ui.GameScene.261"), go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
     }
     for (const n of this.map.nodes) {
       if (this.depletedNodes.has(n.id)) continue;
       const d = Math.hypot(n.x - hx, n.y - 14 - hy);
-      out.push({ rank: 1, d, cx: n.x, cy: n.y - 16, text: T("ui.GameScene.262", { v: RESOURCES[n.res]?.name ?? T("ui.GameScene.758") }), go: () => { reset(); this.pendingGather = n.id; if (d > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 }); } });
+      out.push({ rank: 1, d, ref: n, cx: n.x, cy: n.y - 16, text: T("ui.GameScene.262", { v: RESOURCES[n.res]?.name ?? T("ui.GameScene.758") }), go: () => { reset(); this.pendingGather = n.id; if (d > ENV.gatherRange - 12) net.send("moveTo", { x: n.x, y: n.y + 26 }); } });
     }
     for (const n of this.npcs) {
       const d = Math.hypot(n.sprite.x - hx, n.sprite.y - hy);
-      out.push({ rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" || n.kind === "dgdoor" || n.kind === "dgexit" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? T("ui.GameScene.759") : n.kind === "dgdoor" ? this.dungeonHint(n.name ?? "") : n.kind === "dgexit" ? n.name ?? "" : n.kind === "door" || n.kind === "statue" ? n.name ?? T("ui.GameScene.760") : T("ui.GameScene.761", { name: n.name ?? "собеседник" }), go: () => { reset(); this.talk(n); } });
+      out.push({ ref: n, rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" || n.kind === "dgdoor" || n.kind === "dgexit" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? T("ui.GameScene.759") : n.kind === "dgdoor" ? this.dungeonHint(n.name ?? "") : n.kind === "dgexit" ? n.name ?? "" : n.kind === "door" || n.kind === "statue" ? n.name ?? T("ui.GameScene.760") : T("ui.GameScene.761", { name: n.name ?? "собеседник" }), go: () => { reset(); this.talk(n); } });
     }
     return out;
   }
@@ -1222,8 +1259,8 @@ export class GameScene extends Phaser.Scene {
     const list = this.interactList();
     const by = (a: { rank: number; d: number }, b: { rank: number; d: number }) => a.rank - b.rank || a.d - b.d;
     if (!this.overUi) {
-      const ap = this.input.activePointer, c = this.cameras.main.getWorldPoint(ap.x, ap.y);
-      const under = list.filter((i) => Math.hypot(i.cx - c.x, i.cy - c.y) < (i.r ?? 24)).sort(by)[0];
+      // под курсором — тот же объект, что подсвечен и меняет курсор (updateHover)
+      const under = this.hoverItem == null ? undefined : list.find((i) => i.ref === this.hoverItem);
       if (under) { under.under = true; return under; }
     }
     return list.filter((i) => i.d <= 110).sort(by)[0] ?? list.filter((i) => i.d <= 300).sort((a, b) => a.d - b.d)[0] ?? null;
@@ -1276,6 +1313,28 @@ export class GameScene extends Phaser.Scene {
     else this.hud.arena.open();
   }
 
+  /** Камера с упреждением: плавный сдвиг followOffset на LEAD px мира по направлению бега (дельтой к текущему смещению — вступление босса и др. не ломаются).
+   *  Без мёртвой зоны (давала рывки при возврате). Направление держится CAM_LEAD_HOLD с после последнего шага — пропуски шага между кадрами
+   *  и остановки на изгибах пути не дёргают сдвиг туда-обратно; сглаживание по экспоненте (не зависит от fps). */
+  private camLeadStep(dt: number, dir: { x: number; y: number } | null) {
+    const cam = this.cameras.main, on = overlay.camLead && !this.room && net.kind !== "arena";
+    if (dir) { this.camDir.x = dir.x; this.camDir.y = dir.y; this.camDirT = 0; } else this.camDirT += dt;
+    // герой стоит — сдвиг не трогаем: медленный возврат при привязке камеры к целым пикселям ползёт ступеньками по 1 px (заметные рывки);
+    // сдвиг меняется только на бегу, где ступеньки не видны. Выключено (настройка, зал, арена) — плавно в ноль.
+    const moving = this.camDirT < CAM_LEAD_HOLD;
+    if (on && !moving) return;
+    const tx = on ? this.camDir.x * 30 : 0, ty = on ? this.camDir.y * 24 : 0;
+    const k = 1 - Math.exp(-dt * (on ? 2.4 : 3));
+    const nx = this.camLead.x + (tx - this.camLead.x) * k, ny = this.camLead.y + (ty - this.camLead.y) * k;
+    cam.followOffset.x -= nx - this.camLead.x; cam.followOffset.y -= ny - this.camLead.y;
+    this.camLead.x = nx; this.camLead.y = ny;
+    if (this.camDead) { this.camDead = false; cam.setDeadzone(); }
+  }
+  private camDir = { x: 0, y: 0 };
+  private camDirT = 99;
+  private camLead = { x: 0, y: 0 };
+  private collGrid: CollisionGrid | null = null;
+  private camDead = false;
   /** Герой вошёл в зал интерьера или вышел на улицу: границы камеры, надпись зала. */
   private enterRoom(r: Interior | null) {
     if (r === this.room) return;
@@ -1441,6 +1500,8 @@ export class GameScene extends Phaser.Scene {
         this.pos.y += (u.y - this.pos.y) * k;
       }
       me.update(dt, this.pos.x, this.pos.y);
+      this.camLeadStep(dt, (vx || vy) && step > 0 ? { x: vx, y: vy } : null);
+      (this.collGrid ??= new CollisionGrid(this, this.map)).update(this.pos.x, this.pos.y);
     }
     if (now >= this.cullAt) { this.cullAt = now + 400; this.cullUnits(); }
     for (const [id, v] of this.units) {

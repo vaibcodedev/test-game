@@ -14,6 +14,7 @@ import { DEPTH } from "./terrain";
 import { ZB_BY_ID } from "../../../shared/zoneBosses";
 import { CastBar } from "../ui/castbar";
 import type { UnitView } from "./UnitView";
+import { vfxFull } from "./postfx";
 
 type A = { col: number; n: number; fps: number; loop: boolean; hit?: number };
 type Wave = { pre?: string[]; strike?: string; post?: string[]; hold?: number; turn?: boolean };
@@ -160,6 +161,19 @@ export class ZoneBossFx {
     scene.events.once("shutdown", () => this.destroy());
   }
 
+  /** Искры закручиваются вокруг босса сужающейся спиралью и поднимаются вверх (onUpdate частиц); ms — сколько длится фаза или срыв. Только полный режим эффектов. */
+  private spiral(v: UnitView, ms: number, color: number) {
+    if (!vfxFull() || !this.scene.textures.exists("fx_spark")) return;
+    const s = this.scene, R = v.frame > 32 ? 64 : 40, life = 1300;
+    const em = s.add.particles(0, 0, "fx_spark", {
+      lifespan: life, frequency: 30, quantity: 1, speed: 0, blendMode: Phaser.BlendModes.ADD, tint: color,
+      scale: { start: 0.7, end: 0 }, alpha: { start: 0.95, end: 0 },
+      x: { onEmit: (p: any) => { p.sa = Math.random() * Math.PI * 2; return v.x; }, onUpdate: (p: any, _k: string, t: number) => v.x + Math.cos(p.sa + t * 7) * R * (1 - 0.85 * t) },
+      y: { onEmit: () => v.y - 6, onUpdate: (p: any, _k: string, t: number) => v.y - 6 - t * R * 0.9 + Math.sin(p.sa + t * 7) * R * 0.32 * (1 - 0.85 * t) },
+    } as any).setDepth(1e6 - 50);
+    s.time.delayedCall(Math.min(ms, 4000), () => { em.stop(); s.time.delayedCall(life + 100, () => em.destroy()); });
+  }
+
   /** Событие zb: волна умения началась (или поджог на герое). */
   handle(f: Extract<Fx, { t: "zb" }>): void {
     const v = this.unit(f.id);
@@ -178,6 +192,7 @@ export class ZoneBossFx {
     // кольцо (задача 139): переход фазы, сорванный каст (оглушение), прерываемый каст — полоса каста над экраном
     if (f.ab === "phase" || f.ab === "break") {
       const key = f.ab === "phase" ? "phase" : "stun";
+      this.spiral(v, f.ms, f.ab === "phase" ? 0xffd27a : 0x9ad8ff);
       const a = def.anims[key];
       if (a) this.tls.set(f.id, [{ segs: [{ a: key, t0: now, t1: now + (a.loop ? f.ms : Math.max(f.ms, (a.n / a.fps) * 1000)) }], cut: now + f.ms, end: now + f.ms, turn: false }]);
       if (f.ab === "break") {
