@@ -356,6 +356,8 @@ export class Net {
   private attach(room: Room<any>): Promise<void> {
     this.room = room;
     this.id = room.sessionId;
+    // новая комната (мир ↔ арена, рейд, данж) шлёт «combat» только при смене состояния: «в бою» из прошлой комнаты иначе остаётся висеть
+    this.emit("combat", { on: false });
     this.closed = false;
     this.pingAt = 0;
     room.onMessage("pong", () => (this.pingAt = 0));
