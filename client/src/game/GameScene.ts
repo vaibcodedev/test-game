@@ -1461,7 +1461,9 @@ export class GameScene extends Phaser.Scene {
     // подсказка взаимодействия над ближайшим объектом (с клавишей из раскладки)
     if (now >= this.tipAt) {
       this.tipAt = now + 100;
-      const it = alive ? this.interactPick() : null;
+      // не подсказываем, пока герой уже занят: каст или канал (телепорт, сбор), открыто окно NPC или другое окно поверх мира
+      const busy = now < this.castHold || !!document.querySelector("#ui .win:not([hidden]):not(.win-help), #ui .dialog");
+      const it = alive && !busy ? this.interactPick() : null;
       const key = keybinds.label("talk", 0) || keybinds.label("interact", 0);
       this.hud.setInteractTip(it && (it.d <= 110 || it.under) ? `${key ? `[${key}] ` : ""}${it.text}` : null);
     }
