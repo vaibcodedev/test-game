@@ -1,6 +1,6 @@
 /**
- * Встроенные эффекты Phaser 3.90 (WebGL): Vignette (низкое здоровье), Bloom (ночью), Displacement (марево над лавой), Glow (боссы), Shine (редкая добыча), hit-stop.
- * Режим «Эффекты» (Полные / Простые, localStorage «vfxMode»): в «Простых» нет Bloom, Displacement, Glow, Shine и PointLight (lights.ts) — только виньетка.
+ * Встроенные эффекты Phaser 3.90 (WebGL): Bloom (ночью), Displacement (марево над лавой), Glow (боссы), Shine (редкая добыча), hit-stop.
+ * Режим «Эффекты» (Полные / Простые, localStorage «vfxMode»): в «Простых» нет Bloom, Displacement, Glow, Shine и PointLight (lights.ts).
  * Параметры — data/lighting.json. Камерные эффекты создаются по требованию и снимаются, когда растаяли: лишних полноэкранных проходов нет.
  */
 import Phaser from "phaser";
@@ -41,7 +41,6 @@ function ensureNoise(scene: Phaser.Scene): string {
 }
 
 export class PostFx {
-  private hurtEl?: HTMLDivElement; private vigK = 0;
   private bloom?: Phaser.FX.Bloom; private bloomK = 0;
   private disp?: Phaser.FX.Displacement; private dispK = 0;
   private t = 0;
@@ -60,12 +59,6 @@ export class PostFx {
     this.grayK = Math.max(0, Math.min(1, this.grayK + (dead ? dt : -dt) / 0.6));
     if (this.grayK > 0.005) { this.cm ??= cam.postFX.addColorMatrix(); this.cm.reset(); this.cm.grayscale(0.85 * this.grayK, false); this.cm.brightness(1 - 0.18 * this.grayK, true); }
     else if (this.cm) { cam.postFX.remove(this.cm as any); this.cm = undefined; }
-    // низкое здоровье: мягкая красная кромка по краям экрана (DOM-слой с радиальным градиентом), а не жёсткая чёрная виньетка Phaser с резким краем
-    const low = hpK > 0 && hpK < P.vignette.hpBelow ? 1 - hpK / P.vignette.hpBelow : 0;
-    this.vigK = ease(this.vigK, low, P.vignette.fade);
-    const el = (this.hurtEl ??= document.querySelector<HTMLDivElement>(".hurt-edge") ?? (() => { const d = document.createElement("div"); d.className = "hurt-edge"; document.body.append(d); return d; })());
-    const a = this.vigK > 0.01 ? Math.min(0.85, this.vigK * (0.55 + 0.15 * Math.sin(this.t * Math.PI * 2 * P.vignette.pulseHz))) : 0;
-    if (el.style.opacity !== a.toFixed(2)) el.style.opacity = a.toFixed(2);
     // Bloom: ночью, только в полном режиме
     const wantB = vfxFull() && night > P.bloom.night ? 1 : 0;
     this.bloomK = ease(this.bloomK, wantB, P.bloom.fade);

@@ -10,7 +10,7 @@ import { setVfxMode, vfxMode, type VfxMode } from "../game/postfx";
 import { setShadowMode, shadowMode, type ShadowMode } from "../game/shadows";
 import { flashGear } from "../game/gearHooks";
 import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
-import { MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
+import { FORTS, MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
 import { DUNGEON_DOOR, isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
@@ -58,6 +58,14 @@ import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
 import { AURAS, auraCompare, auraText, auraTimeLabel, auraTimeWords, foodOfAura, warOfAura } from "../../../shared/auras";
 import { DODGE_CAP, STAT_K } from "../../../shared/formulas";
 import { P } from "../../../shared/palette";
+import { DAY_CYCLE_MS, nightLevel, warmLevel } from "../../../shared/daynight";
+import { SETTLEMENTS } from "../../../shared/settlements";
+import lighting from "../../../data/lighting.json";
+
+const LOW = lighting.postfx.lowHp;
+const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
+/** Время мира для значка суток и ночной миникарты (тесты подменяют window.__shadowMs, как для теней). */
+const worldMs = () => (window as unknown as { __shadowMs?: number }).__shadowMs ?? Date.now();
 import { T as TX } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -133,6 +141,11 @@ export class Hud {
   private tip = el("div", "panel tip");
   private wins: Record<string, HTMLElement> = {};
   private lastMini = 0;
+  private todBox = el("div", "tod");
+  private todCv = el("canvas");
+  private todKey = "";
+  private todTipKey = "";
+  private lowK = 0; private lowPh = 0; private lowT = 0; private lastBeat = 0; private lowShadow = "";
   private deadSince = 0;
   private zoneTimer = 0;
   private lastSelfLevel = 0;
@@ -254,6 +267,10 @@ export class Hud {
     miniBtn.setAttribute("aria-label", TX("ui.hud.290"));
     miniBtn.onclick = () => this.toggleMinimap();
     this.mini.append(miniBtn);
+    this.todCv.width = 12;
+    this.todCv.height = 12;
+    this.todBox.append(this.todCv);
+    this.mini.append(this.todBox);
     this.buildMenu();
     this.makeWindows();
     setNpcGateToast((text) => this.toast({ text, kind: "error" }));
@@ -1505,6 +1522,88 @@ export class Hud {
     g.putImageData(img, 0, 0);
     this.miniBase = c;
   }
+  /** Низкое здоровье: красное свечение полоски HP пульсирует (чем меньше HP, тем чаще), тихое «тук-тук»; выше порога плавно гаснет. */
+  private lowHpPulse(hpK: number, alive: boolean) {
+    const now = performance.now(), dt = Math.min(0.25, this.lowT ? (now - this.lowT) / 1000 : 0);
+    this.lowT = now;
+    const sev = alive && hpK > 0 && hpK < LOW.hpBelow ? 1 - hpK / LOW.hpBelow : 0;
+    this.lowK += ((sev > 0 ? 1 : 0) - this.lowK) * Math.min(1, dt * LOW.fade);
+    const bar = this.player.querySelector<HTMLElement>(".bar.hp");
+    if (!bar) return;
+    let sh = "";
+    if (this.lowK > 0.01) {
+      const cycle = LOW.cycleSlow + (LOW.cycleFast - LOW.cycleSlow) * Math.min(1, sev);
+      const prev = this.lowPh;
+      this.lowPh = (this.lowPh + dt / cycle) % 1;
+      const wave = reducedMotion() ? 0.6 : 0.5 + 0.5 * Math.sin(this.lowPh * Math.PI * 2 - Math.PI / 2);
+      const a = (0.25 + 0.75 * wave) * this.lowK * LOW.glow;
+      sh = `0 0 ${(6 + 12 * wave).toFixed(1)}px ${(2 + 2 * wave).toFixed(1)}px rgba(230, 40, 40, ${a.toFixed(2)})`;
+      if (sev > 0 && this.lowPh < prev && now - this.lastBeat >= LOW.beatMinMs && !reducedMotion()) { this.lastBeat = now; sfx.play("heart", LOW.beatGain * (0.6 + 0.4 * sev)); }
+    }
+    if (sh !== this.lowShadow) { this.lowShadow = sh; bar.style.boxShadow = sh; }
+  }
+  /** Значок времени суток: солнце днём, закат/рассвет у горизонта, луна ночью; подсказка с минутами до смены. */
+  private drawTod() {
+    const ms = worldMs(), n = nightLevel(ms), w = warmLevel(ms);
+    const p = (((ms % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
+    const key = `${(n * 24).toFixed(0)}|${(w * 8).toFixed(0)}`;
+    if (key !== this.todKey) {
+      this.todKey = key;
+      const g = this.todCv.getContext("2d")!;
+      g.clearRect(0, 0, 12, 12);
+      g.fillStyle = n > 0.5 ? "#141c34" : "#4a78a8"; // небо
+      g.fillRect(0, 0, 12, 9);
+      g.fillStyle = "#1e2a1a"; // земля под горизонтом
+      g.fillRect(0, 9, 12, 3);
+      g.save();
+      g.beginPath(); g.rect(0, 0, 12, 9); g.clip();
+      const sy = Math.round(4 + 7 * n); // солнце опускается к горизонту (и уходит за него) по мере ночи
+      const sun = w > 0.35 ? "#ff9a3a" : "#ffd84a";
+      g.fillStyle = sun;
+      g.fillRect(4, sy - 2, 4, 4); g.fillRect(3, sy - 1, 6, 2); g.fillRect(5, sy - 3, 2, 6);
+      if (w <= 0.35 && n < 0.3) { g.fillStyle = "#fff2a8"; g.fillRect(5, sy - 1, 2, 2); }
+      if (n > 0.45) { // луна проявляется после заката
+        g.globalAlpha = Math.min(1, (n - 0.45) * 2);
+        g.fillStyle = "#e6ecff";
+        g.fillRect(4, 2, 4, 5); g.fillRect(3, 3, 6, 3);
+        g.fillStyle = "#141c34"; g.fillRect(6, 2, 3, 4); g.fillRect(7, 3, 2, 3);
+        g.fillStyle = "#e6ecff"; g.fillRect(9, 1, 1, 1); g.fillRect(2, 1, 1, 1);
+        g.globalAlpha = 1;
+      }
+      g.restore();
+    }
+    const phase = n >= 0.99 ? "night" : n <= 0.01 ? "day" : p > 0.8 ? "dawn" : "dusk";
+    const target = phase === "day" || phase === "dusk" ? 0.76 : phase === "night" ? 0.88 : 1; // до глубокой ночи / конца ночи / конца рассвета
+    const left = ((((target - p) % 1) + 1) % 1) * DAY_CYCLE_MS;
+    const mins = Math.max(1, Math.round(left / 60000));
+    const tip = TX(`ui.hud.tod_${phase}`, { m: mins });
+    if (tip !== this.todTipKey) { this.todTipKey = tip; this.todBox.title = tip; this.todBox.setAttribute("aria-label", tip); }
+  }
+  /** Ночью миникарта тускнеет и города, форты и поселения светятся тёплыми огнями (вызывается из drawMini раз в 200 мс). */
+  private miniNightLights(g: CanvasRenderingContext2D, X: (px: number) => number, Y: (py: number) => number, k: number, CW: number, CH: number, n: number) {
+    g.fillStyle = `rgba(6, 8, 20, ${(0.14 * n).toFixed(3)})`;
+    g.fillRect(0, 0, CW, CH);
+    if (n < 0.08) return;
+    const t = performance.now() / 1000;
+    const pts: { x: number; y: number; r: number }[] = [{ x: TOWN.x, y: TOWN.y, r: 7 }];
+    for (const c of CITIES) pts.push({ x: c.x, y: c.y, r: 6 });
+    for (const f of [FORTS.west, FORTS.east]) pts.push({ x: f.x, y: f.y, r: 5 });
+    for (const s of SETTLEMENTS) pts.push({ x: s.x, y: s.y, r: 4 });
+    pts.forEach((o, i) => {
+      const px = X(o.x * TILE), py = Y(o.y * TILE);
+      if (px < -12 || py < -12 || px > CW + 12 || py > CH + 12) return;
+      const fl = 0.85 + 0.15 * Math.sin(t * (3.1 + (i % 4) * 0.7) + i * 1.9) + 0.05 * Math.sin(t * 8.3 + i);
+      const r = o.r * (k / 1.5) * 2.6;
+      const gr = g.createRadialGradient(px, py, 0, px, py, r);
+      gr.addColorStop(0, `rgba(255, 214, 120, ${(0.9 * n * fl).toFixed(2)})`);
+      gr.addColorStop(0.35, `rgba(255, 160, 50, ${(0.45 * n * fl).toFixed(2)})`);
+      gr.addColorStop(1, "rgba(255, 130, 30, 0)");
+      g.fillStyle = gr;
+      g.fillRect(px - r, py - r, r * 2, r * 2);
+      g.fillStyle = `rgba(255, 238, 170, ${(n * fl).toFixed(2)})`;
+      g.fillRect(Math.round(px) - 1, Math.round(py) - 1, 2, 2);
+    });
+  }
   private drawMini(info: FrameInfo) {
     const g = this.miniCanvas.getContext("2d")!;
     g.imageSmoothingEnabled = false;
@@ -1521,6 +1620,8 @@ export class Hud {
     g.fillStyle = P.well;
     g.fillRect(0, 0, CW, CH);
     if (this.miniBase) g.drawImage(this.miniBase, ox, oy, m.w * k, m.h * k);
+    if (big && this.ctx.net.kind === "world") { const nl = nightLevel(worldMs()); if (nl > 0.01) this.miniNightLights(g, X, Y, k, CW, CH, nl); }
+    this.drawTod();
     const dot = Math.max(1.5, k * 0.9);
     for (const b of m.bosses) {
       g.fillStyle = "#ff7a2a";
@@ -1622,6 +1723,7 @@ export class Hud {
       const hp = document.getElementById("hp-fill"), mp = document.getElementById("mp-fill");
       // числа с разделителем разрядов, как у золота; текст пишется только при изменении
       const put = (id: string, t: string) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
+      this.lowHpPulse(me.hp / Math.max(1, me.maxHp), me.anim !== Anim.Dead);
       if (hp) { hp.style.width = `${this.hpLag(me.hp / Math.max(1, me.maxHp)) * 100}%`; put("hp-text", `${formatNumber(Math.max(0, me.hp))} / ${formatNumber(me.maxHp)}`); }
       // щит-поглощение поверх HP (как в WoW): от конца здоровья вправо; не помещается — заходит на здоровье с правого края
       const abs = document.getElementById("hp-abs");

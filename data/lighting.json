@@ -11,7 +11,7 @@
   "flickerHz": 5.5
  },
  "postfx": {
-  "vignette": { "hpBelow": 0.35, "strength": 0.62, "radius": 0.5, "pulseHz": 1.1, "fade": 2.5 },
+  "lowHp": { "hpBelow": 0.35, "glow": 0.9, "cycleSlow": 1.6, "cycleFast": 0.8, "fade": 2.5, "beatGain": 0.4, "beatMinMs": 1200 },
   "bloom": { "night": 0.5, "strength": 0.45, "blur": 0.7, "steps": 2, "fade": 1.2 },
   "displacement": { "zones": ["Volcano", "Ashlands"], "size": 0.0015, "speed": 9, "fade": 1.5 },
   "glow": { "boss": 16739930, "outer": 4, "distance": 12, "quality": 0.1 },
