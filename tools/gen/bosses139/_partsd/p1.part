@@ -1,0 +1,388 @@
+/**
+ * Задача 139, босс кольца: ворон пустоши (запад, слот r59s, Пустошь Павших, ур. 59, группа 3–4; карточка — docs/bosses-139.md, раздел 3.3 п. 4 и
+ * «Раскладка референсов»). Образ — по референсу tools/out/refs/bosses-139/09.jpg (чумной доктор: широкополая сине-стальная шляпа, длинный
+ * коричневый клюв-маска с жёлтыми очками, бирюзово-синий сюртук с шипованной грудью и жёлтыми лоскутами на плечах, перевязь, сумка, склянка с
+ * синим зельем в левой руке, высокий посох-фонарь в правой, длинный подол) — только для сравнения: чужой арт в игру и в git не идёт.
+ * Плащ — «крылья» ворона: сложен складками за спиной и по подолу, при ударе раскрывается веером перьев; клюв и крылья — главные акценты силуэта.
+ *
+ * Метод — как у палача, лича, хозяина миражей и военачальника (общий движок tools/gen/mobs/lib.ts): луч на пиксель, тело в 2× и сведение в 1×,
+ * 5 тонов на материал, выборочный контур. Кадр 64×80, ступни на y = 76.
+ * Светится (ночью не гаснет): очки-линзы, фонарь на посохе, зелье в склянке, глаза ворон в стае.
+ * Умения слота: «Удар крыла» (конус, отталкивание — взмах плаща), «Пикирование» (3 метки под героем — прыжок-пике), Ф2 «Взлёт»
+ * (6 с неуязвим — тело рассыпается стаей ворон, метки-тени, приземление кольцом).
+ *
+ * Запуск (одна генерация, низкий приоритет): npx tsx tools/gen/bosses139/sol_plague_raven.ts [--quick] [--sil] →
+ *   tools/out/bosses139/rav-sheet.png, rav-glow.png, rav-fx-*.png, rav-pilot.png, r59s-w-compare.png («наш | референс»);
+ *   --quick — только compare (покой), --sil — силуэт одним цветом ×1 рядом с силуэтом референса (r59s-w-sil.png).
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  PC, PX, R, Scene, VIEWS, add, clamp, cross, crop, depthOf, easeIn, easeInOut, easeOut, fill, frameEdgeCuts, frameHoles, fromView,
+  groundBg, hash01, hex, ik, lerp, linear, loadPC, mat, mix, mul, nightRect, norm, perp, renderScene, rot, scaleBox, scaleNN,
+  scr, sealPinholes, shadowBlob, snapPx, stackRows, stampRows, sub, text, thicken, toView, TAU,
+  type Cam, type Mat, type StampPx, type RGBA, type Ramp, type Row, type V3, type View,
+} from "../mobs/lib";
+import { OUT, selout, outlineStats } from "../mobs/rig";
+
+export const ID = "sol_plague_raven";
+export const FRAME = 64;
+/** Кадр 64×80 (высокий, узкий силуэт): ширина FRAME, высота FRAME_H. */
+export const FRAME_H = 80;
+const FW = FRAME, FH = FRAME_H;
+const N = FW;
+const CAM: Cam = { N: FW, CX: 32, GY: 76.4 };
+const RS = 2;
+const CAMR: Cam = { N: 160, CX: 80, GY: 152.8 };
+const RX0 = 16;
+/** Модель → пиксели кадра 1×. */
+const K = 1.3;
+const PXM = PX / K;
+const snapM = (view: View, w: V3): V3 => mul(snapPx(view, mul(w, K)), 1 / K);
+const pxM = (view: View, dx: number, dy: number): V3 => fromView(view, [dx / K, 0, -dy * PXM]);
+
+// ---------------- палитра ----------------
+/** Сюртук: тёмно-зелёный, как на референсе. */
+const COAT = R("#040a07", "#0c1a13", "#15301f", "#22483a", "#8ec4a8");
+/** Шляпа и шарф: угольно-зелёные. */
+const HATC = R("#050806", "#0e1612", "#1a2a22", "#2a4034", "#6a9482");
+/** Клюв: коричневая кожа. */
+const BEAK = R("#0c0805", "#241810", "#46301c", "#6e4e30", "#b08a5c");
+/** Плащ-крылья: чёрно-синие перья, светлая кромка. */
+const CAPE = R("#040807", "#0a1410", "#122219", "#1e382c", "#86b8a0");
+/** Жёлтые лоскуты на плечах. */
+const AMBER = R("#2c1804", "#6e4208", "#b87c12", "#e8b02c", "#ffe488");
+const STEEL = R("#0c0e12", "#1c2028", "#343c48", "#586476", "#b0c0d4");
+const BRONZE = R("#2a160a", "#52301a", "#82502a", "#b07a42", "#dba868");
+const BONE = R("#2a2620", "#5c5446", "#948a74", "#c8bea4", "#f0e8d0");
+const WOODS = R("#1c1108", "#38220f", "#5a3a1c", "#7c5429", "#a47845");
+const LEATH = R("#0e0a08", "#241a12", "#3e2c1c", "#5a4028", "#785838");
+const BOOT = R("#040506", "#0a0c0f", "#12151a", "#1c2027", "#2e343e");
+/** Свет: линзы очков и фонарь — тёплый жёлтый. */
+const GLOWC = R("#3a2004", "#8a5408", "#e8a418", "#ffd24a", "#fff4c0");
+/** Свет фонаря: вспышки и след посоха. */
+const FIRE = R("#3a2a10", "#8a6a20", "#d8b040", "#f4e08a", "#fffbe0");
+/** Зелье в склянке: синее свечение. */
+const VIAL = R("#04182c", "#0a3a6a", "#1c78c8", "#58b8f0", "#c8f0ff");
+/** Вороны стаи. */
+const CORV = R("#06080c", "#0e141c", "#1a2430", "#2c3c4c", "#7a98aa");
+const DEAD = R("#121112", "#262223", "#3b3434", "#544a47", "#6e625c");
+/** Пыль пустоши. */
+const SAND = R("#3c3a34", "#6a665a", "#98927e", "#c4bca2", "#e8e0c4");
+const DUST = SAND;
+const VOID = hex("#0a0605");
+
+const M = {
+  coat: mat("сюртук", COAT, { base: 1.8, gain: 2.3 }),
+  hat: mat("шляпа", HATC, { base: 1.8, gain: 2.3 }),
+  beak: mat("клюв", BEAK, { base: 2.0, gain: 2.4, hi: 4 }),
+  cape: mat("плащ", CAPE, { base: 1.7, gain: 2.5 }),
+  amber: mat("лоскут", AMBER, { base: 2.0, gain: 2.2 }),
+  steel: mat("сталь", STEEL, { base: 2.0, gain: 2.5, hi: 4 }),
+  bronze: mat("латунь", BRONZE, { base: 2.1, gain: 2.3 }),
+  bone: mat("кость", BONE, { base: 1.9, gain: 2.3, hi: 4 }),
+  wood: mat("древко", WOODS, { base: 2.0, gain: 2.0 }),
+  leath: mat("кожа", LEATH, { base: 1.7, gain: 2.2 }),
+  boot: mat("сапоги", BOOT, { base: 1.6, gain: 2.3 }),
+  glow: mat("свет", GLOWC, { base: 2.8, gain: 1.0, glow: true, crisp: true }),
+  vial: mat("зелье", VIAL, { base: 2.8, gain: 1.0, glow: true, crisp: true }),
+};
+const WCACHE = new Map<string, Mat>();
+function wm(m: Mat, w: number): Mat {
+  const s = Math.round(clamp(w, 0, 1) * 3);
+  if (!s) return m;
+  const key = `${m.name}:${s}`;
+  let q = WCACHE.get(key);
+  if (!q) {
+    q = { ...m, ramp: m.ramp.map((c, i) => mix(c, DEAD[Math.min(i, 4)], (s / 3) * 0.45)), glow: m.glow && s < 2 };
+    WCACHE.set(key, q);
+  }
+  return q;
+}
+const isEmisCol = (() => {
+  const s = new Set<string>();
+  for (const c of [...GLOWC, ...FIRE, ...VIAL]) s.add(c.slice(0, 3).join(","));
+  return (q: RGBA) => s.has(q.slice(0, 3).join(","));
+})();
+
+// ---------------- поза ----------------
+interface Pose {
+  root: V3; bob: number; chest: number; headZ: number;
+  pitch: number; yaw: number; roll: number; hp: number; hy: number; hr: number;
+  /** кулаки: [правый — хват посоха, если не held; левый — склянка]; локти — по IK в сторону pole */
+  hand: [V3, V3]; pole: [V3, V3];
+  /** посох: [пятка, направление пятка → фонарь]; flat — плоскость (нормаль), held — в руке */
+  staff: [V3, V3]; flat: V3; held: number;
+  armLift: [number, number];
+  /** подол и плащ: волна, шаг (стопы), раскачка кистей и хвоста (px) */
+  wave: number; waveAmp: number; kick: [number, number]; sway: number; tail: number;
+  /** свечение очков 0..1,6; (fire, sigil — не используются); увядание; на коленях */
+  glow: number; fire: number; sigil: number; wither: number; kneel: number;
+  swirl: number; swirlPh: number;
+  /** рассыпание в стаю ворон 0..1 (1 — тела нет, одна стая) */
+  ghost: number;
+  book: number; stars: number;
+  ring: number; ringAt?: V3; flash: number; flashAt?: V3; dust: [number, number];
+  trail?: V3[];
+  /** плащ-крылья: 0 — сложены, 1 — раскрыты веером; взмах вперёд (0..1) */
+  wing: number; sweep: number;
+  t: number; seed: number;
+}
+
+const HIP0 = 21;
+const NECK: V3 = [0, 0.8, 39.5];
+const ARM: [number, number] = [10.0, 10.2];
+/** Посох: от пятки до основания фонаря; хват правой руки — SG от пятки. */
+const STAFF_L = 44;
+const SG = 22;
+
+const dirN = (d: V3): V3 => norm(d);
+const stf = (grip: V3, dir: V3): [V3, V3] => { const d = dirN(dir); return [sub(grip, mul(d, SG)), d]; };
+const STAFF_FRONT = stf([15.5, 5.0, 22], [0.02, 0.06, 1]);
+const STAFF_SIDE = stf([9.0, -9.0, 22], [0, 0.06, 1]);
+const REST_FRONT: Pose = {
+  root: [0, 0, 0], bob: 0, chest: 0, headZ: 0, pitch: 0.1, yaw: 0, roll: 0, hp: 0.1, hy: 0, hr: 0,
+  hand: [[0, 0, 0], [-12.0, 7.0, 29.0]], pole: [[1, -0.4, -0.2], [-1, -0.5, -0.1]],
+  staff: STAFF_FRONT, flat: [0, 1, 0.08], held: 1, armLift: [0, 0],
+  wave: 0, waveAmp: 0, kick: [0, 0], sway: 0, tail: 0,
+  glow: 1, fire: 0, sigil: 0, wither: 0, kneel: 0,
+  swirl: 0, swirlPh: 0, ghost: 0, book: 0, stars: 0,
+  ring: 0, flash: 0, dust: [0, 0], wing: 0, sweep: 0, t: 0, seed: 1,
+};
+const REST_SIDE: Pose = { ...REST_FRONT, staff: STAFF_SIDE, flat: [-1, 0, 0.05], hand: [[0, 0, 0], [-9.0, 9.0, 29.0]], pole: [[1, -0.3, -0.7], [-1, -0.2, -0.7]] };
+const restOf = (view: View): Pose => (view === "side" ? REST_SIDE : REST_FRONT);
+const bodyShift = (view: View, p: Pose): V3 => snapM(view, [p.root[0], p.root[1], p.bob + p.root[2] - p.kneel * 7]);
+
+// ---------------- штампы ----------------
+type Keys = Record<string, RGBA>;
+const up2 = (px: StampPx[]): StampPx[] => px.flatMap(([x, y, c]) => [[x * 2, y * 2, c], [x * 2 + 1, y * 2, c], [x * 2, y * 2 + 1, c], [x * 2 + 1, y * 2 + 1, c]] as StampPx[]);
+/** Линзы очков: два круглых жёлтых глаза. */
+const ST_EYES: Partial<Record<View, ReturnType<typeof stampRows>>> = {
+  down: up2(stampRows(["k33k..k33k", "3333..3333"], -5, -1)),
+  side: up2(stampRows(["k3", "33"], 0, -1)),
+};
+function stampKeys(glow: number): Keys {
+  const g = clamp(glow, 0, 1.6);
+  const lv = (k: number) => {
+    const v = k - Math.round((1 - Math.min(1, g)) * 3) + (g > 1.25 ? 1 : 0);
+    return v < 0 ? VOID : GLOWC[clamp(v, 0, 4)];
+  };
+  return { k: BRONZE[1], "1": lv(1), "2": lv(2), "3": lv(3) };
+}
+const GLOW_KEYS = ["3"];
+
+// ---------------- сцена ----------------
+interface Extra {
+  sigil: { c: V3; r: number; ph: number; k: number } | null;
+  rings: { c: V3; r: number; k: number }[];
+  flash: { at: V3; k: number } | null;
+  dust: { at: V3; k: number }[];
+  swirl: { c: V3; k: number; ph: number } | null;
+  sparks: { at: V3; k: number }[];
+  stars: { at: V3; k: number } | null;
+  glints: V3[];
+}
+
+/** Ворон-доктор в координатах модели. */
+function build(p0: Pose, view: View): { S: Scene; X: Extra } {
+  const S = new Scene();
+  const X: Extra = { sigil: null, rings: [], flash: null, dust: [], swirl: null, sparks: [], stars: null, glints: [] };
+  const p: Pose = view === "side" ? { ...p0, yaw: p0.yaw - 0.28, hy: p0.hy - 0.15 } : p0;
+  const W = p.wither;
+  const shift = bodyShift(view, p);
+  const pel: V3 = add([0, 0, HIP0], shift);
+  const up = p.chest * PXM, hz = p.headZ * PXM;
+  const TV = (v: V3): V3 => rot(v, p.pitch, p.yaw, p.roll);
+  const T = (v: V3, lift = v[2] >= 26): V3 => add(add(pel, TV(sub(v, [0, 0, HIP0]))), [0, 0, lift ? up : 0]);
+  const PR = (v: V3): V3 => rot(v, p.pitch * 0.25, p.yaw * 0.35, p.roll * 0.5);
+  const PV = (v: V3): V3 => add(pel, PR(sub(v, [0, 0, HIP0])));
+  const HV = (v: V3): V3 => TV(rot(v, p.hp, p.hy, p.hr));
+  const H = (v: V3): V3 => add(T(add(NECK, rot(sub(v, NECK), p.hp, p.hy, p.hr)), true), [0, 0, hz]);
+  const axes = (f: (v: V3) => V3, roll = 0, pitch = 0, yaw = 0): [V3, V3, V3] => [
+    f(rot([1, 0, 0], pitch, yaw, roll)), f(rot([0, 1, 0], pitch, yaw, roll)), f(rot([0, 0, 1], pitch, yaw, roll)),
+  ];
+  const I3: [V3, V3, V3] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const keys = stampKeys(p.glow);
+  const kn = p.kneel;
+  const sw = p.sway * PXM;
+  const sp = clamp(p.wing, 0, 1);
+
+  // ---------- плащ-крылья: в покое — опущенные полы с рваным перьевым краем по бокам; раскрыты — широкий веер из перьев ----------
+  {
+    const g = S.group(0.6);
+    const NF = 10;
+    for (const s of [1, -1]) {
+      for (let j = 0; j < NF; j++) {
+        const u = j / (NF - 1), odd = j % 2;
+        const b = T([s * (3.4 + 3.2 * u), -2.6 - 0.1 * j, 38.6 - 1.0 * j], true);
+        const fold: V3 = [s * (6.6 + 8.0 * u), -2.4 - 1.2 * odd, 3.0 + odd * 3.4 + (1 - u) * 1.5];
+        const spread: V3 = [s * (7.0 + 15.5 * u), -4.6 + p.sweep * 9 * (0.4 + u * 0.6), 28.5 + 17 * u - odd * 2.2 + p.sweep * (u - 0.5) * 3];
+        const flap = sp * Math.sin(TAU * (p.wave + j * 0.06)) * 0.8 * p.waveAmp;
+        const hem = sp < 0.5 ? Math.round(p.waveAmp * 0.8 * Math.sin(TAU * (p.wave + j * 0.2))) * PXM : 0;
+        const tp: V3 = [lerp(fold[0], spread[0], sp) + s * sw * 0.3, lerp(fold[1], spread[1], sp), lerp(fold[2], spread[2], sp) + flap + hem - (sp < 0.5 ? 0 : kn * 3)];
+        S.cone(g, wm(M.cape, W), b, 2.8 + 1.6 * u, tp, 1.1, { part: S.newPart(), tone: odd * 0.45 - 0.15, big: j < 4 });
+        // светлый рваный кончик пера — читается на ×1
+        const dd = norm(sub(tp, b));
+        S.cone(g, wm(M.bone, W), sub(tp, mul(dd, 3.8)), 0.9, add(tp, mul(dd, 0.6)), 0.1, { part: S.newPart(), tone: 0.1 + odd * 0.3 });
+      }
+      // плечевая «кость» крыла: от плеча к самому дальнему перу
+      if (sp > 0.25) {
+        const wr: V3 = [s * 22 * sp + s * 8 * (1 - sp), -4.8 + p.sweep * 5, 45.5 * sp + 34 * (1 - sp)];
+        S.cone(g, wm(M.cape, W), T([s * 6.4, -1.4, 38.2], true), 1.7, wr, 1.0, { part: S.newPart(), tone: 0.25 });
+      }
+    }
+    const g2 = S.group(1.0);
+    S.ell(g2, wm(M.cape, W), T([0, -2.2, 37.0], true), [7.6, 2.6, 3.4], axes(TV), { part: S.newPart(), tone: -0.05 });
+  }
+  // ---------- подол: широкий расклёшенный, рваный перьями; из-под него видны носки сапог ----------
+  {
+    const g = S.group(1.0);
+    const bx = pel[0] + sw * 0.6, by = pel[1] + 0.5;
+    S.cone(g, wm(M.coat, W), PV([0, 0, 27 - kn * 1]), 5.4, [bx, by, 2.6], 12.4, { big: true, tone: -0.05 });
+    S.cone(g, wm(M.coat, W), PV([0, 0, 22 - kn * 1]), 5.2, [bx, by, 1.6], 12.8, { part: S.newPart(), tone: -0.15 });
+    // рваная кайма-перья по кругу
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU;
+      const lift = Math.round(p.waveAmp * (0.5 + 0.5 * Math.sin(TAU * (p.wave + i * 0.17)))) * PXM;
+      const r0 = 12.0, r1 = 13.2 + (i % 2) * 0.7;
+      S.cone(g, wm(M.coat, W), [bx + Math.cos(a) * r0, by + Math.sin(a) * r0 * 0.92, 4.2], 1.5, [bx + Math.cos(a) * r1, by + Math.sin(a) * r1 * 0.92, 0.5 + lift + (i % 3) * 0.3], 0.15, { part: S.newPart(), tone: (i % 2) * 0.4 - 0.1 });
+    }
+    // передний лоскут-фартук со стальной каймой
+    const fw = norm(PR([0, 1, 0.05])), sd = PR([1, 0, 0]), upV = norm(PR([0, -0.1, 1]));
+    S.box(g, wm(M.coat, W), PV([0, 9.5, 14.5 - kn * 0.5]), [3.6, 0.6, 9.2], [sd, fw, upV], 0.2, { part: S.newPart(), tone: 0.3 });
+    for (const sx of [-3.4, 3.4]) S.cone(g, wm(M.steel, W), PV([sx, 9.0, 23]), 0.4, PV([sx * 1.05, 10.4, 6.0]), 0.35, { part: S.newPart() });
+    S.ell(g, wm(M.steel, W), PV([0, 10.0, 13]), [1.6, 0.4, 1.6], axes(PR), { part: S.newPart(), tone: 0.1 });
+    for (const [i, s] of [[0, 1], [1, -1]] as [number, number][]) {
+      const k = p.kick[i];
+      const ft: V3 = [pel[0] + s * 5.4, pel[1] + 12.6 + 3.0 * k, 1.4 + 2.2 * Math.max(0, k) - kn * 0.8];
+      S.ell(g, wm(M.boot, W), ft, [2.3, 3.6, 1.6], I3, { part: S.newPart(), tone: 0.05 });
+    }
+  }
+  // ---------- торс: узкий сюртук, ремни, сумка, шипы на груди, жёлтые лоскуты на плечах ----------
+  {
+    const g = S.group(1.6);
+    S.cone(g, wm(M.coat, W), PV([0, 0.4, 23]), 4.2, T([0, 0.6, 31]), 4.4, { tone: -0.1 });
+    S.ell(g, wm(M.coat, W), T([0, 0.8, 34.0]), [5.0, 3.8, 5.0], axes(TV), { big: true, tone: 0.1 });
+    S.ell(g, wm(M.leath, W), PV([0, 0.6, 24.4]), [4.6, 3.6, 0.9], axes(PR), { part: S.newPart() });
+    S.ell(g, wm(M.steel, W), PV([0, 4.2, 24.4]), [1.0, 0.4, 0.9], axes(PR), { part: S.newPart(), tone: 0.3 });
+    for (const s of [1, -1]) {
+      S.ell(g, wm(M.coat, W), T([s * 6.8, -0.2, 37.2], true), [3.4, 3.2, 2.6], axes(TV, s * 0.5), { part: S.newPart(), tone: 0.15 });
+      // жёлтые лоскуты: два заострённых «пера» на плече
+      S.cone(g, wm(M.amber, W), T([s * 6.6, 0.6, 38.6], true), 2.0, T([s * 12.6, 0.4, 41.6], true), 0.15, { part: S.newPart(), tone: 0.3 });
+      S.cone(g, wm(M.amber, W), T([s * 5.6, 1.2, 38.4], true), 1.4, T([s * 9.4, 1.6, 44.6], true), 0.15, { part: S.newPart(), tone: 0.1 });
+      // шипы-заклёпки на груди
+      for (const [dx, dz] of [[2.4, 34.6], [3.2, 31.6], [1.6, 28.4]] as [number, number][]) {
+        S.cone(g, wm(M.steel, W), T([s * dx, 4.0, dz]), 0.7, T([s * dx, 5.4, dz + 0.3]), 0.1, { part: S.newPart(), tone: 0.4 });
+      }
+    }
+    // шарф-воротник
+    S.cone(g, wm(M.hat, W), T([0, 0.8, 36.4], true), 4.4, H([0, 1.0, 40.6]), 2.6, { part: S.newPart(), tone: -0.15 });
+    // перевязь и сумка у пояса
+    S.cone(g, wm(M.leath, W), T([-4.8, 2.6, 38.0], true), 0.55, T([5.2, 3.6, 26.0]), 0.55, { part: S.newPart() });
+    S.box(g, wm(M.leath, W), T([6.4, 3.6, 24.6]), [3.0, 1.7, 3.0], axes(TV), 0.3, { part: S.newPart(), tone: 0.1 });
+    S.ell(g, wm(M.steel, W), T([6.4, 5.4, 25.2]), [1.0, 0.4, 1.0], axes(TV), { part: S.newPart(), tone: 0.3 });
+  }
+
+  // ---------- посох-фонарь: тёмное древко, латунные кольца, сверху фонарь с жёлтым светом ----------
+  const held = p.held >= 0.5;
+  const ad = norm(p.staff[1]);
+  const butt: V3 = add(p.staff[0], held ? shift : [0, 0, 0]);
+  const top = add(butt, mul(ad, STAFF_L));
+  const grip0 = add(butt, mul(ad, SG));
+{
+    const g = S.group(0.5);
+    S.cone(g, wm(M.wood, W), butt, 0.8, top, 0.9, { big: true });
+    for (let i = 0; i < 5; i++) {
+      const c = add(butt, mul(ad, STAFF_L * (0.3 + i * 0.13)));
+      S.cone(g, wm(M.bronze, W), sub(c, mul(ad, 0.2)), 1.15, add(c, mul(ad, 0.5)), 1.1, { part: S.newPart(), tone: 0.2 });
+    }
+    S.cone(g, wm(M.steel, W), butt, 1.0, sub(butt, mul(ad, 2.0)), 0.2, { part: S.newPart() });
+    // крюк на конце посоха и клетка-фонарь, подвешенный на цепочке
+    const out: V3 = [1, 0, 0];
+    const h1 = add(add(top, mul(ad, 2.6)), mul(out, 1.6)), h2 = add(add(top, mul(ad, 3.6)), mul(out, 4.0));
+    const hk = add(add(top, mul(ad, 1.4)), mul(out, 5.4));
+    S.cone(g, wm(M.bronze, W), top, 1.0, h1, 0.8, { part: S.newPart(), tone: 0.2 });
+    S.cone(g, wm(M.bronze, W), h1, 0.8, h2, 0.7, { part: S.newPart(), tone: 0.2 });
+    S.cone(g, wm(M.bronze, W), h2, 0.7, hk, 0.6, { part: S.newPart(), tone: 0.3 });
+    const lc = add(hk, [0, 0, -5.4]);
+    S.cone(g, wm(M.steel, W), hk, 0.35, add(lc, [0, 0, 3.4]), 0.35, { part: S.newPart(), tone: 0.3 });
+    S.cone(g, wm(M.bronze, W), add(lc, [0, 0, 3.0]), 0.5, add(lc, [0, 0, 4.0]), 2.4, { part: S.newPart(), tone: 0.35 });
+    S.ell(g, M.glow, lc, [2.0, 2.0, 2.9], I3, { part: S.newPart() });
+    for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      S.cone(g, wm(M.bronze, W), add(lc, [ax * 2.7, ay * 2.7, 3.4]), 0.4, add(lc, [ax * 2.7, ay * 2.7, -3.4]), 0.4, { part: S.newPart(), tone: 0.15 });
+    }
+    S.cone(g, wm(M.bronze, W), add(lc, [0, 0, -3.0]), 2.4, add(lc, [0, 0, -4.4]), 0.3, { part: S.newPart(), tone: 0.1 });
+    X.glints.push(add(lc, [0, 0, 1]));
+  }
+
+  // ---------- руки: рукава сюртука, кожаные перчатки; правая — посох, левая — склянка с синим зельем ----------
+  {
+    const g = S.group(1.0);
+    const limb = (gg: number, sh: V3, el: V3, fist: V3) => {
+      S.cone(gg, wm(M.coat, W), sh, 3.0, el, 2.5, { tone: 0.05, big: true });
+      S.cone(gg, wm(M.coat, W), el, 2.5, fist, 1.9, { tone: 0.0, big: true });
+      S.ell(gg, wm(M.leath, W), fist, [1.9, 1.9, 2.0], I3, { part: S.newPart(), tone: 0.2 });
+      const f = norm(sub(fist, el));
+      S.cone(gg, wm(M.leath, W), add(el, mul(f, 3.8)), 2.1, add(el, mul(f, 4.8)), 2.0, { part: S.newPart(), tone: 0.0 });
+    };
+    const lift = pxM(view, 0, -p.armLift[0]);
+    const sh = add(T([7.6, 0.2, 36.6]), lift);
+    const fist: V3 = held ? grip0 : add(add(p.hand[0], shift), lift);
+    limb(g, sh, ik(sh, fist, ARM[0], ARM[1], p.pole[0]), fist);
+    const g2 = S.group(1.0);
+    const lift2 = pxM(view, 0, -p.armLift[1]);
+    const sh2 = add(T([-7.6, 0.2, 36.6]), lift2);
+    const fist2 = add(add(p.hand[1], shift), lift2);
+    limb(g2, sh2, ik(sh2, fist2, ARM[0], ARM[1], p.pole[1]), fist2);
+    // склянка: стеклянный шарик с зельем, пробка
+    S.ell(g2, M.vial, add(fist2, [0, 0.4, 3.0]), [1.9, 1.9, 2.1], I3, { part: S.newPart() });
+    S.cone(g2, wm(M.wood, W), add(fist2, [0, 0.4, 4.6]), 0.8, add(fist2, [0, 0.4, 6.4]), 0.8, { part: S.newPart(), tone: 0.2 });
+    X.glints.push(add(fist2, [0, 0.4, 5.0]));
+  }
+
+  // ---------- голова: шарф, тёмная шляпа с высокой изломанной тульей, длинный тёмный кожаный клюв, круглые светящиеся очки ----------
+  {
+    const g = S.group(1.0);
+    const HC = 44.0;
+    S.ell(g, wm(M.hat, W), H([0, 1.0, HC]), [3.7, 3.8, 3.8], axes(HV), { big: true, tone: -0.1 });
+    // маска и клюв: тёмная кожа, длинный, плавно загнут вниз, кончик ниже подбородка, блик по верху, ремешок
+    const bp = S.newPart();
+    S.ell(g, wm(M.beak, W), H([0, 2.8, HC - 0.4]), [3.2, 2.8, 3.2], axes(HV), { part: bp, tone: 0.1 });
+    S.cone(g, wm(M.beak, W), H([0, 3.6, HC - 0.8]), 3.1, H([0, 10.0, HC - 1.4]), 2.2, { part: bp, tone: 0.05, big: true });
+    S.cone(g, wm(M.beak, W), H([0, 9.6, HC - 1.4]), 2.2, H([0, 16.0, HC - 3.2]), 1.4, { part: bp, tone: 0.1 });
+    S.cone(g, wm(M.beak, W), H([0, 15.6, HC - 3.2]), 1.4, H([0, 21.5, HC - 9.0]), 0.12, { part: bp, tone: 0.15 });
+    S.cone(g, wm(M.beak, W), H([0, 4.0, HC + 1.4]), 0.7, H([0, 15.0, HC - 1.0]), 0.5, { part: S.newPart(), tone: 0.85 });
+    S.cone(g, wm(M.leath, W), H([-3.6, 1.0, HC + 0.6]), 0.5, H([0, 6.4, HC - 1.0]), 0.5, { part: S.newPart(), tone: 0.1 });
+    S.cone(g, wm(M.leath, W), H([3.6, 1.0, HC + 0.6]), 0.5, H([0, 6.4, HC - 1.0]), 0.5, { part: S.newPart(), tone: 0.1 });
+    // круглые очки: оправа и светящиеся стёкла по бокам над клювом
+    for (const s of [1, -1]) {
+      S.ell(g, wm(M.bronze, W), H([s * 2.6, 3.8, HC + 1.6]), [1.9, 1.2, 1.9], axes(HV), { part: S.newPart(), tone: 0.25 });
+      S.ell(g, M.glow, H([s * 2.6, 4.6, HC + 1.6]), [1.3, 0.7, 1.3], axes(HV), { part: S.newPart() });
+    }
+    // шляпа: широкие поля, высокая острая тулья с изломом вбок; лента — тонкая тёмная кожа с медной пряжкой (отдельные группы, цвета не размываются)
+    const gh = S.group(0.4);
+    S.ell(gh, wm(M.hat, W), H([0, 0.6, HC + 3.8]), [12.2, 11.8, 0.9], axes(HV, 0.07), { part: S.newPart(), tone: 0.15 });
+    S.cone(gh, wm(M.hat, W), H([0, 0.5, HC + 3.9]), 5.8, H([0, 0.1, HC + 10.0]), 4.0, { part: S.newPart(), tone: 0.0, big: true });
+    S.cone(gh, wm(M.hat, W), H([0, 0.1, HC + 9.6]), 4.0, H([1.4, -1.6, HC + 15.4]), 0.15, { part: S.newPart(), tone: 0.2 });
+    const gb = S.group(0.15);
+    S.ell(gb, wm(M.boot, W), H([0, 0.5, HC + 4.7]), [5.8, 5.8, 0.5], axes(HV), { part: S.newPart(), tone: -0.2 });
+    S.ell(gb, wm(M.bronze, W), H([0, 5.6, HC + 4.9]), [1.2, 0.4, 0.9], axes(HV), { part: S.newPart(), tone: 0.5 });
+  }
+
+  // ---------- частицы и эффекты ----------
+  if (p.ring > 0.02) X.rings.push({ c: p.ringAt ?? [pel[0], pel[1], 0], r: 3 + 22 * p.ring, k: 1 - p.ring });
+  if (p.flash > 0.02) X.flash = { at: p.flashAt ?? add(top, mul(ad, 4)), k: p.flash };
+  for (let i = 0; i < 2; i++) if (p.dust[i] > 0.05) X.dust.push({ at: i === 0 && p.flashAt ? [p.flashAt[0], p.flashAt[1], 0] : [pel[0] + (i ? -6 : 6), pel[1] + 6, 0], k: p.dust[i] });
+  if (p.stars > 0.02) X.stars = { at: H([0, 0, 58]), k: p.stars };
+  // тело — в двойном разрешении (K·RS), слои 2D — в пикселях кадра 1× (K)
+  scaleScene(S, K * RS);
+  const sk = (v: V3) => mul(v, K);
+  X.rings.forEach((r) => { r.c = sk(r.c); r.r *= K; });
+  if (X.flash) X.flash.at = sk(X.flash.at);
+  X.dust.forEach((d) => (d.at = sk(d.at)));
+  if (X.stars) X.stars.at = sk(X.stars.at);
+  X.glints = X.glints.map(sk);
+  return { S, X };
+}
+

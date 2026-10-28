@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -15,6 +15,7 @@ import * as mir from "./sol_mirage_sorcerer";
 import * as vam from "./umb_crimson_vampire";
 import * as gob from "./sol_goblin_warlord";
 import * as plg from "./umb_plague_priestess";
+import * as rav from "./sol_plague_raven";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -122,6 +123,24 @@ BOSSES.push({
     cauldron: { waves: [{ pre: ["cauldronWind", "cauldronHold"], strike: "cauldronCast" }], fx: [{ fx: "cauldron", waves: [0], seq: ["cauldronIn", "cauldronBoil", "cauldronOut"], pin: 0, timing: "wind", place: "marks", holds: { cauldronBoil: 3200 } }] },
     mutagen: { waves: [{ pre: ["mutagenWind", "mutagenHold"], strike: "mutagenCast" }], fx: [] },
     vials_fast: { waves: [{ pre: ["vialWind", "vialHold"], strike: "vialThrow" }], fx: [] },
+  },
+});
+
+const ravFx = Object.fromEntries((["wing", "dive", "land"] as const).map((k) => [k, { src: `rav-fx-${k}.png`, def: fxDef(rav.ID, k, rav.FX[k] as FxIn) }]));
+// тень «Взлёта» держится по кругу (holds), пока стая в воздухе
+ravFx.dive.def.anims.dive.loop = true;
+BOSSES.push({
+  id: rav.ID, sheet: "rav-sheet.png", frame: rav.FRAME, frameH: rav.FRAME_H, cols: rav.MIR_COLS, wrap: 64,
+  // phase (переход фазы) — приземление стаи: кадры листа общие с «Взлётом»; стоит раньше leapLand: тест кадра по столбцу берёт первое совпадение
+  anims: { ...anims({ idle: rav.MIR_ANIMS.idle, walk: rav.MIR_ANIMS.walk }), phase: { col: rav.MIR_ANIMS.leapLand.col, n: 8, fps: 12, loop: false, hit: 3 }, ...anims(Object.fromEntries(Object.entries(rav.MIR_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))) },
+  fx: ravFx,
+  skills: {
+    // удар крыла: веер перьев на метке в миг удара
+    wing_beat: { waves: [{ pre: ["wingWind", "wingHold"], strike: "wingStrike" }], fx: [{ fx: "wing", waves: [0], seq: ["wing"], pin: 0, timing: "strike", place: "marks" }] },
+    // пикирование: три метки по очереди — тень птицы на каждой
+    dive: { waves: [{ pre: ["diveWind", "diveHold"], strike: "diveCast" }, { pre: ["diveHold"], strike: "diveCast" }, { pre: ["diveHold"], strike: "diveCast" }], fx: [{ fx: "dive", waves: [0, 1, 2], seq: ["dive"], pin: 0, timing: "wind", place: "marks" }] },
+    // взлёт: стая кружит, тени лежат под героями (удар 1 в конце 3 с), приземление кольцом — удар 2
+    carrion_flight: { waves: [{ pre: ["leapWind", "leapHold"], strike: "leapHold" }, { pre: ["leapHold"], strike: "leapLand" }], fx: [{ fx: "dive", waves: [0], seq: ["dive"], pin: 0, timing: "wind", place: "marks", holds: { dive: 2800 } }, { fx: "land", waves: [1], seq: ["land"], pin: 0, timing: "strike", place: "marks" }] },
   },
 });
 

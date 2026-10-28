@@ -3670,6 +3670,274 @@
      "fx": []
     }
    }
+  },
+  "sol_plague_raven": {
+   "file": "sol_plague_raven.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 106,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "wingWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "wingHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "wingStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "diveWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "diveHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "diveCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "leapWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "leapHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "leapLand": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "stun": {
+     "col": 84,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 92,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "wing": {
+     "file": "sol_plague_raven-wing.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 50,
+     "rows": 2,
+     "anims": {
+      "wing": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    },
+    "dive": {
+     "file": "sol_plague_raven-dive.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 50,
+     "rows": 2,
+     "anims": {
+      "dive": {
+       "col": 0,
+       "n": 8,
+       "fps": 12,
+       "loop": true,
+       "hit": 4
+      }
+     }
+    },
+    "land": {
+     "file": "sol_plague_raven-land.png",
+     "fw": 64,
+     "fh": 64,
+     "ax": 32,
+     "ay": 50,
+     "rows": 2,
+     "anims": {
+      "land": {
+       "col": 0,
+       "n": 10,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      }
+     }
+    }
+   },
+   "skills": {
+    "wing_beat": {
+     "waves": [
+      {
+       "pre": [
+        "wingWind",
+        "wingHold"
+       ],
+       "strike": "wingStrike"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "wing",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "wing"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    },
+    "dive": {
+     "waves": [
+      {
+       "pre": [
+        "diveWind",
+        "diveHold"
+       ],
+       "strike": "diveCast"
+      },
+      {
+       "pre": [
+        "diveHold"
+       ],
+       "strike": "diveCast"
+      },
+      {
+       "pre": [
+        "diveHold"
+       ],
+       "strike": "diveCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "dive",
+       "waves": [
+        0,
+        1,
+        2
+       ],
+       "seq": [
+        "dive"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "marks"
+      }
+     ]
+    },
+    "carrion_flight": {
+     "waves": [
+      {
+       "pre": [
+        "leapWind",
+        "leapHold"
+       ],
+       "strike": "leapHold"
+      },
+      {
+       "pre": [
+        "leapHold"
+       ],
+       "strike": "leapLand"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "dive",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "dive"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "marks",
+       "holds": {
+        "dive": 2800
+       }
+      },
+      {
+       "fx": "land",
+       "waves": [
+        1
+       ],
+       "seq": [
+        "land"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks"
+      }
+     ]
+    }
+   }
   }
  },
  "units": {
@@ -3703,6 +3971,10 @@
    "frameH": 80
   },
   "umb_plague_priestess": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_plague_raven": {
    "frame": 64,
    "frameH": 80
   }

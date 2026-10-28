@@ -170,6 +170,21 @@ for (const c of CARDS) {
       }
       continue;
     }
+    if (ab.after?.push) {
+      // удар крыла (push): попавшего героя отбрасывает от босса — расстояние растёт, но не за арену
+      mob.reset();
+      for (const a of boss.abilities) a.at = 1e9;
+      const p = hero("warrior", mob.x + 50, mob.y, c.levels.boss);
+      mob.state = "chase";
+      mob.targetId = p.id;
+      mob.addThreat(p.id, 100);
+      const d0 = Math.hypot(p.x - mob.x, p.y - mob.y);
+      boss.run(ab);
+      for (let t = 0; t < ab.windupMs + 500; t += 50) { p.unit.hp = p.unit.maxHp; mob.attackAt = w.time + 1e9; w.update(50); }
+      const d1 = Math.hypot(p.x - mob.home.x, p.y - mob.home.y), dm = Math.hypot(p.x - mob.x, p.y - mob.y);
+      check(`${c.id}.${ab.id}: удар отбрасывает героя от босса (${Math.round(d0)} → ${Math.round(dm)} px), не за арену`, dm >= d0 + ab.after.push * 0.5 && d1 <= 322, `${Math.round(d0)} → ${Math.round(dm)}, от центра ${Math.round(d1)}`);
+      w.removePlayer(p.id);
+    }
     if (ab.swarm) {
       // рой: после замаха у босса count приспешников без добычи, здоровье — доля скорпиона; гибнут вместе с боссом
       mob.reset();

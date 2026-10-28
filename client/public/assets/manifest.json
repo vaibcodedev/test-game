@@ -1,5 +1,9 @@
 {
  "units": {
+  "sol_plague_raven": {
+   "frame": 64,
+   "frameH": 80
+  },
   "pet_wolf": {
    "frame": 32
   },
@@ -33764,6 +33768,9 @@
   "uq_zb_gnashera_ladle",
   "uq_zb_priestess_hood",
   "uq_zb_gnashera_stone",
+  "uq_zb_raven_lantern",
+  "uq_zb_doctor_beak",
+  "uq_zb_blue_vial",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",

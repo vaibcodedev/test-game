@@ -342,6 +342,63 @@
       ],
       "legendary": 0.015,
       "pet": 8
+    },
+    "sol_plague_raven": {
+      "name": "Корвин Вороний Лекарь",
+      "level": 59,
+      "band": [
+        50,
+        60
+      ],
+      "special": [
+        {
+          "item": "zb_raven_lantern",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_doctor_beak",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_blue_vial",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -1010,6 +1067,117 @@
         "pommel": "ring"
       },
       "boss": "umb_plague_priestess",
+      "card": "r2"
+    },
+    "zb_raven_lantern": {
+      "id": "zb_raven_lantern",
+      "name": "Фонарь-посох Корвина",
+      "base": "staff",
+      "ilvl": 59,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 36,
+        "crit": 1
+      },
+      "prop": "Свет фонаря не гаснет на ветру: каждое двенадцатое заклинание носителя вылетает на мгновение быстрее обычного.",
+      "lore": "Клетка из тёмной меди, внутри — огарок, что горит без воска. Говорят, он питается чужой усталостью.",
+      "look": {
+        "shape": "cage",
+        "mat": "bronze",
+        "trim": "gold",
+        "cloth": "moss",
+        "haft": "darkwood",
+        "fx": "sun",
+        "guard": "curved",
+        "pommel": "gem"
+      },
+      "boss": "sol_plague_raven",
+      "card": "r3"
+    },
+    "zb_doctor_beak": {
+      "id": "zb_doctor_beak",
+      "name": "Клюв чумного доктора",
+      "base": "leather_helm",
+      "ilvl": 57,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 14,
+        "vit": 13
+      },
+      "prop": "Носитель не чует зловония пустоши: яд и гниль действуют на него на четверть слабее.",
+      "lore": "Кожа тёмная, будто её годами коптили над костром. Внутри — травы: полынь, можжевельник, гвоздика.",
+      "look": {
+        "shape": "mask",
+        "rich": 1,
+        "mat": "bone",
+        "trim": "bronze",
+        "cloth": "black",
+        "hide": "darkleather",
+        "haft": "darkwood",
+        "fx": "onyx",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "sol_plague_raven",
+      "card": "r2"
+    },
+    "zb_blue_vial": {
+      "id": "zb_blue_vial",
+      "name": "Склянка синего зелья",
+      "base": "amulet",
+      "ilvl": 58,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "healer",
+        "bloodweaver",
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "hp"
+      ],
+      "stats": {
+        "int": 16,
+        "hp": 195
+      },
+      "prop": "Синее зелье не убывает: один раз за бой носитель восстанавливает глоток здоровья, когда его удар приходится на слабое место.",
+      "lore": "Стекло мутное от времени, пробка воском. Пока пробка цела — лекарство ещё лекарство.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "bronze",
+        "trim": "iron",
+        "cloth": "azure",
+        "gem": "diamond",
+        "haft": "yew",
+        "deco": "skull",
+        "fx": "diamond",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "sol_plague_raven",
       "card": "r2"
     }
   }

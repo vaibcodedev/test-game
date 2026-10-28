@@ -28,7 +28,7 @@ export interface ZbWave {
   windupMs: number;
   dmgPct: number;
   k?: string;
-  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number; pullMark?: number };
+  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number; pullMark?: number; push?: number };
   escape?: number;
   /** Кольцо (задача 139): урон делится поровну на всех героев в круге. */
   share?: boolean;

@@ -517,6 +517,18 @@ export class ZoneBoss extends Boss {
             }
           }
         }
+        // удар крыла: отбросить героя от босса на push px (до ближайшей проходимой точки, не за арену)
+        if (af?.push && !p.dead) {
+          const dx = p.x - m.x, dy = p.y - m.y, d = Math.hypot(dx, dy) || 1;
+          for (let go = af.push; go > 12; go -= af.push / 4) {
+            const x = p.x + (dx / d) * go, y = p.y + (dy / d) * go;
+            if (Math.hypot(x - m.home.x, y - m.home.y) > this.arena || !walkable(w.map, x, y, 10)) continue;
+            w.emit({ t: "blink", id: p.id, x0: p.x, y0: p.y, x1: x, y1: y, k: "charge" });
+            p.unit.x = x;
+            p.unit.y = y;
+            break;
+          }
+        }
         if (af?.pull && !p.dead) {
           const dx = m.x - p.x, dy = m.y - p.y, d = Math.hypot(dx, dy);
           const go = Math.min(af.pull, Math.max(0, d - 48));
