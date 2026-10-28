@@ -23,6 +23,7 @@ import { writeAshBodiesGame } from "./gen/ashborn-body";
 import { writeEmberBannersGame } from "./gen/ember-banners";
 import { writeWarBasesGame } from "./gen/war-bases";
 import { writeWarBuffIcons } from "./gen/war-buffs";
+import { buildObjectAtlases, type AtlasRef } from "./gen/atlas";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
@@ -34,6 +35,9 @@ const manifest = {
   objects: {} as Record<string, { w: number; h: number }>,
   icons: [] as string[],
   fx: [] as string[],
+  /** атласы объектов (tools/gen/atlas.ts): листы и карта id → ключ листа; объекта нет в atlasOf — клиент грузит его по одному (o_<id>) */
+  atlases: [] as AtlasRef[],
+  atlasOf: {} as Record<string, string>,
 };
 
 buildTileset().save(path.join(OUT, "tiles/terrain.png"));
@@ -126,6 +130,10 @@ for (const id of scan("units")) if (!manifest.units[id]) manifest.units[id] = { 
 for (const id of scan("objects")) if (!manifest.objects[id]) manifest.objects[id] = pngSize(path.join(OUT, "objects", id + ".png"));
 for (const id of scan("icons")) if (!manifest.icons.includes(id)) manifest.icons.push(id);
 for (const id of scan("fx")) if (!manifest.fx.includes(id)) manifest.fx.push(id);
+// атлас объектов (docs/libraries.md, 3.1): после записи всех PNG объектов; без изменений — из кэша за доли секунды
+const ta = Date.now(), atl = buildObjectAtlases(OUT, Object.keys(manifest.objects));
+manifest.atlases = atl.atlases; manifest.atlasOf = atl.atlasOf;
+console.log(`[assets] атлас объектов: ${atl.atlases.length} листов, ${Object.keys(atl.atlasOf).length} кадров${atl.cached ? " (кэш)" : ""} за ${Date.now() - ta} мс`);
 
 fs.writeFileSync(path.join(OUT, "manifest.json"), JSON.stringify(manifest, null, 1));
 // маунты: раздел manifest.mounts и иконки из готовых листов (tools/gen/mounts/build.ts, кэш mounts/meta.json); листов нет — рисует

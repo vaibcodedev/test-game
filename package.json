@@ -38,6 +38,7 @@
     "@fontsource/rubik": "^5.3.0",
     "colyseus.js": "^0.16.22",
     "express": "^4.22.3",
+    "mistreevous": "4.3.1",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
@@ -48,6 +49,7 @@
     "electron": "^44.9.0",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
+    "maxrects-packer": "2.7.4",
     "pngjs": "^7.0.0",
     "puppeteer-core": "^25.13.0",
     "tsx": "^4.23.15",

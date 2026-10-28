@@ -52,6 +52,7 @@ import { T } from "../../../shared/texts";
 type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue" | "dgdoor" | "dgexit";
 /** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number }; glow?: Omit<GlowSrc, "depth"> };
+import { objHas, objTex } from "./objTex";
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
 const AMBIENCE: Partial<Record<Zone, string>> = {
@@ -283,13 +284,13 @@ export class GameScene extends Phaser.Scene {
       for (const c of CITIES) {
         // камень телепорта нарисован картой; здесь только невидимая точка нажатия
         const st = this.add.sprite(c.stone.x, c.stone.y - 14, "u_merchant", 0).setVisible(false);
-        this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: T("ui.cities.430"), glow: { tex: "o_teleport_stone", x: c.stone.x, y: c.stone.y, ox: 0.5, oy: 1 } });
+        this.npcs.push({ sprite: st, kind: "stone", id: c.id, name: T("ui.cities.430"), glow: { ...this.objGlowTex("teleport_stone"), x: c.stone.x, y: c.stone.y, ox: 0.5, oy: 1 } });
       }
       // статуи правителей в столицах (задача 141): невидимая точка нажатия по высоте статуи, окно истории — data/statues.json
       for (const o of this.map.objects) {
         const key: StatueKey | null = o.kind === "sun_statue" ? "solgard" : o.kind === "umb_statue" ? "umbrath" : null;
         if (!key) continue;
-        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: T("ui.GameScene.754", { name: STATUES[key].name }), hit: { dy: 66, r: 44 }, glow: { tex: `o_${o.kind}`, x: o.x, y: o.y, ox: 0.5, oy: 1 } });
+        this.npcs.push({ sprite: this.add.sprite(o.x, o.y + 4, "u_merchant", 0).setVisible(false), kind: "statue", id: key, name: T("ui.GameScene.754", { name: STATUES[key].name }), hit: { dy: 66, r: 44 }, glow: { ...this.objGlowTex(o.kind), x: o.x, y: o.y, ox: 0.5, oy: 1 } });
       }
       // вход в подземелье «Пепельные чертоги» (задача 139): большая лестница на карте мира, точка нажатия у основания
       this.npcs.push({ sprite: this.add.sprite(DUNGEON_DOOR.x, DUNGEON_DOOR.y, "u_merchant", 0).setVisible(false), kind: "dgdoor", id: "dungeon", name: "Войти: Пепельные чертоги", hit: { dy: 70, r: 96 }, glow: this.objGlow("dg_entrance") });
@@ -830,7 +831,12 @@ export class GameScene extends Phaser.Scene {
   /** Картинка объекта карты по виду (вход и выход подземелья): силуэт для свечения. */
   private objGlow(kind: string): Npc["glow"] {
     const o = this.map.objects.find((q) => q.kind === kind);
-    return o && this.textures.exists(`o_${kind}`) ? { tex: `o_${kind}`, x: o.x, y: o.y, ox: 0.5, oy: 1 } : undefined;
+    return o && objHas(this, kind) ? { ...this.objGlowTex(kind), x: o.x, y: o.y, ox: 0.5, oy: 1 } : undefined;
+  }
+  /** Текстура и кадр объекта карты для свечения (атлас объектов, game/objTex.ts). */
+  private objGlowTex(kind: string): { tex: string; frame?: string } {
+    const [tex, frame] = objTex(kind);
+    return frame === undefined ? { tex } : { tex, frame };
   }
 
   /** Что светить для NPC под курсором: силуэт объекта карты, текущий кадр видимого NPC или пятно по зоне нажатия (двери в стенах зданий). */

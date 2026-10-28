@@ -16,7 +16,7 @@
  *   - «полосы» на снимках: ширины одинаковых столбцов и строк в середине кадра (при неровной растяжке — 2 и 3 px вперемешку).
  *
  * Запуск (строго по одному, порты свободные):
- *   $env:TEST_PORT="2801"; $env:VITE_TEST_PORT="5399"; npx tsx tests/perf-run.ts [--label=before] [--dpr=1.25] [--zoom=2.25] [--secs=20] [--gpu] [--no-trace] [--inval] [--only=forest,trek,shots]
+ *   $env:TEST_PORT="2801"; $env:VITE_TEST_PORT="5399"; npx tsx tests/perf-run.ts [--label=before] [--dpr=1.25] [--zoom=2.25] [--secs=20] [--gpu] [--no-trace] [--inval] [--no-atlas] [--only=city,forest,trek,shots,stills] [--stills-name=before]
  * --dpr — эмуляция масштаба экрана (deviceScaleFactor), --zoom — масштаб в пикселях CSS, как выставленный колесом (zoom:v2),
  * --gpu — WebGL на видеокарте вместо программного SwiftShader (на SwiftShader кадр упирается в растеризацию и замер не показателен).
  * Выход — tools/out/perf/<label>/: report.json (всё собранное), trace-<сегмент>.json, shots/*.png.
@@ -32,6 +32,7 @@ import { MAP_SEED, PLAYER_RADIUS, PLAYER_SPEED, TILE } from "../shared/constants
 import { SWAY_TREES } from "../shared/decor";
 import { generateMap, walkable, Zone, zoneAtPx } from "../shared/map";
 import { TOWN } from "../shared/town";
+import { DAY_CYCLE_MS } from "../shared/daynight";
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const LABEL = arg("label") ?? "run";
@@ -39,10 +40,12 @@ const DPR = Number(arg("dpr") ?? 1);
 const ZOOM = arg("zoom") ? Number(arg("zoom")) : null;
 const SECS = Number(arg("secs") ?? 20);
 const GPU = process.argv.includes("--gpu");
+/** --no-atlas: объекты карты по одному, без атласов (localStorage atlas:off, client/src/game/BootScene.ts) — замер «до». */
+const NO_ATLAS = process.argv.includes("--no-atlas");
 const TRACE = !process.argv.includes("--no-trace");
 /** --inval: в trace ещё и источники пересчёта стилей и вёрстки (какой узел и почему), счёт по видам. */
 const INVAL = process.argv.includes("--inval");
-/** --only=forest,trek,shots — только эти сегменты (city, forest, trek) и снимки (shots). */
+/** --only=forest,trek,shots — только эти сегменты (city, forest, trek) и снимки (shots); stills — неподвижные кадры города и леса (только по --only). */
 const ONLY = (arg("only") ?? "").split(",").filter(Boolean);
 const VIEW = { width: 1280, height: 800 };
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5199;
@@ -448,6 +451,41 @@ async function shots() {
   return { list, stillDiff: diff };
 }
 
+/** Неподвижные кадры для сравнения картинки (атлас объектов, docs/libraries.md 3.1): город и лес, день, без юнитов и надписей,
+ *  покачивание и анимации остановлены; пиксели холста (renderer.snapshot, без DOM) → tools/out/atlas/<--stills-name|label>-<место>-z<zoom>.png. */
+async function stills() {
+  const dir = path.resolve("tools/out/atlas"), name = arg("stills-name") ?? LABEL, out: string[] = [];
+  fs.mkdirSync(dir, { recursive: true });
+  for (const place of ["city", "forest"] as const) {
+    const r = ROUTES[place];
+    await tp(r.x, r.y);
+    // день: ночное затемнение считается от Date.now (shared/daynight.ts)
+    await run(`(() => { const C = ${DAY_CYCLE_MS}, D = Date.__real || (Date.__real = Date.now); Date.now = () => Math.floor(D() / C) * C + Math.round(C * 0.3); })()`);
+    await sleep(2500);
+    // покачивание крон и анимации — в исходное положение (первый кадр), чтобы «до» и «после» совпадали
+    await run(`(() => { const sc = window.__game.scene.getScene('game'); sc.tweens.killAll();
+      for (const o of sc.children.list) {
+        if ((o.type === 'Image' || o.type === 'Sprite') && o.angle) o.setAngle(0);
+        if (o.type === 'Sprite' && o.anims && o.anims.currentAnim) { const f = o.anims.currentAnim.frames[0]; o.anims.stop(); if (f) o.setFrame(f.textureFrame); }
+      } })()`);
+    await sleep(400);
+    // цикл игры стоит, юниты и надписи скрыты, один кадр рисуется вручную и снимается с холста
+    const url = await run<string>(`new Promise((res) => { const g = window.__game, sc = g.scene.getScene('game'); g.loop.sleep();
+      const hid = window.__hid = [], hide = (o) => { if (o && o.setVisible && o.visible) { o.setVisible(false); hid.push(o); } };
+      for (const v of sc.units.values()) for (const k of Object.keys(v)) { const o = v[k]; if (o && typeof o === 'object' && o.type && o.scene === sc) hide(o); }
+      for (const o of sc.children.list) if (o.type === 'Text') hide(o);
+      g.renderer.snapshot((img) => res(img.src));
+      g.renderer.preRender(); g.scene.render(g.renderer); g.renderer.postRender(); })`);
+    await run(`(() => { for (const o of window.__hid) o.setVisible(true); window.__game.loop.wake(); })()`);
+    const file = path.join(dir, `${name}-${place}-z${ZOOM ?? "auto"}.png`);
+    fs.writeFileSync(file, Buffer.from(url.split(",")[1], "base64"));
+    out.push(path.relative(process.cwd(), file));
+    console.log(`  снимок: ${out.at(-1)}`);
+  }
+  await run(`(() => { if (Date.__real) Date.now = Date.__real; })()`);
+  return out;
+}
+
 async function main() {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
@@ -464,7 +502,7 @@ async function main() {
     defaultViewport: { width: VIEW.width, height: VIEW.height, deviceScaleFactor: DPR },
   });
   const errors: string[] = [];
-  const report: Record<string, unknown> = { label: LABEL, dpr: DPR, zoom: ZOOM, secs: SECS, gpu: GPU, routes: ROUTES };
+  const report: Record<string, unknown> = { label: LABEL, dpr: DPR, zoom: ZOOM, secs: SECS, gpu: GPU, atlas: !NO_ATLAS, routes: ROUTES };
   try {
     await ensureChar(LOGIN, PASS, HERO, "warrior", 2);
     page = await browser.newPage();
@@ -473,7 +511,9 @@ async function main() {
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
-    await page.evaluate((z) => { try { if (z) localStorage.setItem("zoom:v2", String(z)); else localStorage.removeItem("zoom:v2"); } catch {} }, ZOOM);
+    await page.evaluate((z, na, vfx) => { try { if (z) localStorage.setItem("zoom:v2", String(z)); else localStorage.removeItem("zoom:v2"); if (na) localStorage.setItem("atlas:off", "1"); else localStorage.removeItem("atlas:off"); localStorage.setItem("vfxMode", vfx); } catch {} }, ZOOM, NO_ATLAS, process.argv.includes("--vfx-simple") ? "simple" : "full");
+    // настройка атласа читается при загрузке (BootScene): страница перезагружается с ней
+    await page.reload({ waitUntil: "networkidle0" });
     await page.waitForSelector("#login-name", { visible: true, timeout: 20000 });
     await page.type("#login-name", LOGIN);
     await page.type("#login-pass", PASS);
@@ -493,6 +533,7 @@ async function main() {
     const cdp = await page.createCDPSession();
     for (const s of ["city", "forest", "trek"] as const) if (!ONLY.length || ONLY.includes(s)) report[s] = await segment(s, cdp);
     if (!ONLY.length || ONLY.includes("shots")) report.shots = await shots();
+    if (ONLY.includes("stills")) report.stills = await stills();
   } finally {
     report.errors = errors.slice(0, 20);
     fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify(report, null, 1));

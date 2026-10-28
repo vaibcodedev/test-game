@@ -6,8 +6,9 @@ import { loading } from "../ui/loading";
 import { zbCreate, zbLoad, type ZbManifest } from "./zoneBoss";
 import { mountTex, type MountMeta } from "../../../shared/mounts";
 import { loadInteriors, makeInteriorAnims } from "./interiors";
+import { dropObjAtlas, inObjAtlas, setObjAtlases, type AtlasManifest } from "./objTex";
 
-export interface Manifest {
+export interface Manifest extends AtlasManifest {
   units: Record<string, { frame: number; frameH?: number; cols?: number }>;
   mounts?: Record<string, MountMeta>;
   objects: Record<string, { w: number; h: number }>;
@@ -39,7 +40,14 @@ export class BootScene extends Phaser.Scene {
         const key = mountTex(id, u, fac), file = key.slice(2);
         if (!this.textures.exists(key)) this.load.spritesheet(key, `/assets/mounts/${file}.png`, { frameWidth: u.frame, frameHeight: u.frame });
       }
-      for (const id of Object.keys(m.objects)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`);
+      // объекты карты: атласы objsN (tools/gen/atlas.ts), не вошедшие и при старом манифесте — по одному как o_<id> (game/objTex.ts).
+      // localStorage atlas:off = 1 — всё по одному (замер «до», откат). Лист не загрузился — его объекты догружаются по одному.
+      let off = false;
+      try { off = localStorage.getItem("atlas:off") === "1"; } catch { /* нет хранилища */ }
+      setObjAtlases(off ? {} : m);
+      for (const a of off ? [] : m.atlases ?? []) this.load.atlas(a.key, a.png, a.json);
+      this.load.on("loaderror", (f: Phaser.Loader.File) => { for (const id of dropObjAtlas(f.key)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`); });
+      for (const id of Object.keys(m.objects)) if (!inObjAtlas(id)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`);
       for (const id of m.fx) this.load.image(`fx_${id}`, `/assets/fx/${id}.png`);
       // анимации умений (задача 127): каталог листов, затем сами листы
       this.load.json("vfxm", "/assets/vfx/manifest.json");

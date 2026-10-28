@@ -10,6 +10,7 @@ import { Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { NPC_GEAR, npcGearStrings } from "../../../shared/npcGear";
 import type { UnitState } from "../net";
 import { UnitView } from "./UnitView";
+import { objTex } from "./objTex";
 
 /** Кадр вышки (tools/gen/walls141-walls.ts archerTower): высота 194, верх зубцов площадки — строка 72, низ парапета — 92; ноги лучника — 112 px над опорой (над зубцами видно всё выше колен). */
 const TOWER_H = 194, CREST_Y = 72, CREST_H = 21, FLOOR = 112, DX = -6;
@@ -30,7 +31,7 @@ export class TowerArchers {
         shield: 0, fx: "", herald: g.herald,
       };
       const v = new UnitView(scene, `tower-archer-${i}`, u, false);
-      const crest = scene.add.image(o.x, o.y, `o_${o.kind}`).setOrigin(0.5, 1).setCrop(0, CREST_Y, 80, CREST_H).setDepth(d + 0.2);
+      const crest = scene.add.image(o.x, o.y, ...objTex(o.kind)).setOrigin(0.5, 1).setCrop(0, CREST_Y, 80, CREST_H).setDepth(d + 0.2);
       this.list.push({ v, u, x, y, d, crest, turnAt: scene.time.now + 2000 + Math.random() * 6000 });
     }
     void TOWER_H;

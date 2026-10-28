@@ -17,6 +17,7 @@ import { net } from "../net";
 import { siegeView, siegeNow } from "../ui/siege";
 import { DEPTH } from "./terrain";
 import type { UnitView } from "./UnitView";
+import { objHas, objId, objImageData, setObj } from "./objTex";
 
 const num = (c: string) => parseInt(c.replace("#", ""), 16);
 const colOf = (f: string) => num(f === "solgard" ? WAR.look.color.solgard : f === "umbrath" ? WAR.look.color.umbrath : WAR.look.color.neutral);
@@ -35,6 +36,7 @@ const SMOKE_MS = SIEGE.gates.smokeMs;
 interface GateVis {
   g: GateDef;
   img: Phaser.GameObjects.Image | null;
+  /** Начало id кадров арки «<вид>__<набор>-» (дальше closed/open/broken — объекты атласа, game/objTex.ts). */
   prefix: string;
   k: number;
   leafL: Phaser.GameObjects.Image | null;
@@ -92,8 +94,9 @@ export class SiegeView {
       for (const o of list) {
         if (o.type !== "Image") continue;
         const im = o as Phaser.GameObjects.Image;
-        if (im.x !== v.g.x || im.y !== v.g.objY || !im.texture.key.startsWith("o_") || !im.texture.key.includes("_gate")) continue;
-        const key = im.texture.key, i = key.lastIndexOf("-");
+        const key = im.x === v.g.x && im.y === v.g.objY ? objId(im) : null;
+        if (!key || !`_${key}`.includes("_gate")) continue;
+        const i = key.lastIndexOf("-");
         v.img = im;
         v.prefix = i > 0 && key.includes("__") ? key.slice(0, i + 1) : "";
         break;
@@ -111,15 +114,8 @@ export class SiegeView {
   private leaves(prefix: string): [string, string] | null {
     const kl = `siege_leafL_${prefix}`, kr = `siege_leafR_${prefix}`, tx = this.sc.textures;
     if (tx.exists(kl)) return [kl, kr];
-    if (!tx.exists(`${prefix}closed`) || !tx.exists(`${prefix}open`)) return null;
-    const read = (k: string) => {
-      const src = tx.get(k).getSourceImage() as HTMLImageElement;
-      const cv = document.createElement("canvas");
-      cv.width = src.width; cv.height = src.height;
-      const g = cv.getContext("2d")!;
-      g.drawImage(src, 0, 0);
-      return g.getImageData(0, 0, cv.width, cv.height);
-    };
+    if (!objHas(this.sc, `${prefix}closed`) || !objHas(this.sc, `${prefix}open`)) return null;
+    const read = (id: string) => objImageData(this.sc, id); // кадр объекта (в атласе — только его прямоугольник)
     const a = read(`${prefix}closed`), b = read(`${prefix}open`);
     const W = ARCH.aw, H = ARCH.by - ARCH.top;
     for (const [key, x0] of [[kl, ARCH.cx - ARCH.aw], [kr, ARCH.cx]] as const) {
@@ -175,9 +171,9 @@ export class SiegeView {
     const target = broken ? 0 : near && this.ownNear(v.g, units) ? 1 : 0;
     // ~0,55 с на полный ход створок
     v.k = target > v.k ? Math.min(1, v.k + dt / 0.55) : Math.max(0, v.k - dt / 0.7);
-    const tex = (s: string) => (this.sc.textures.exists(`${v.prefix}${s}`) ? `${v.prefix}${s}` : im.texture.key);
+    const tex = (s: string) => (objHas(this.sc, `${v.prefix}${s}`) ? `${v.prefix}${s}` : objId(im) ?? "");
     const want = broken ? tex("broken") : v.k > 0 ? tex("open") : tex("closed");
-    if (im.texture.key !== want) im.setTexture(want);
+    if (want && objId(im) !== want) setObj(im, want);
     // тряска арки от удара
     const sk = (now - v.shakeT0) / 260;
     im.x = v.g.x + (sk >= 0 && sk < 1 ? Math.round(Math.sin(sk * 40) * 2 * (1 - sk)) : 0);

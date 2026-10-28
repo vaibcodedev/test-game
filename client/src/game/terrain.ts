@@ -12,6 +12,7 @@ import { placeText, worldText } from "./worldText";
 import { NO_SHADOW, Shadow, shadowTick, WALL_KINDS, WallShadow, type WallTile } from "./shadows";
 import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
+import { objHas, objId, objTex, setObj } from "./objTex";
 
 /** Ворота данжа «Пепельные чертоги»: состояние (id → открыты) приходит с сервера (DungeonRoom: dg:gate, dg:gates); створки на экране плавно доходят до него. */
 export const dgGateOpen = new Map<string, boolean>();
@@ -129,14 +130,14 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const vfxCat = (scene.cache.json.get("vfxm") ?? {}) as Record<string, { anchor: [number, number]; frames: number }>;
   const makeImage = (o: MapObject): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite => {
     const e = vfxCat[o.kind];
-    if (e && !scene.textures.exists(`o_${o.kind}`) && scene.anims.exists(`vfx_${o.kind}`)) {
+    if (e && !objHas(scene, o.kind) && scene.anims.exists(`vfx_${o.kind}`)) {
       const s = scene.add.sprite(o.x, o.y, `vfx_${o.kind}`).setOrigin(o.flip ? 1 - e.anchor[0] : e.anchor[0], e.anchor[1]);
       s.play({ key: `vfx_${o.kind}`, repeat: -1, startFrame: Math.floor(cellHash(o.x, o.y) * e.frames) % e.frames });
       return s.setFlipX(!!o.flip);
     }
-    // вариант вида (задача 141, shared/cityart.ts): кадр o_<kind>__<v>, без него — общий кадр вида
-    const key = o.v && scene.textures.exists(`o_${o.kind}__${o.v}`) ? `o_${o.kind}__${o.v}` : `o_${o.kind}`;
-    return scene.add.image(o.x, o.y, key).setOrigin(0.5, 1).setFlipX(!!o.flip);
+    // вариант вида (задача 141, shared/cityart.ts): кадр <kind>__<v>, без него — общий кадр вида (атлас или o_<id> — game/objTex.ts)
+    const id = o.v && objHas(scene, `${o.kind}__${o.v}`) ? `${o.kind}__${o.v}` : o.kind;
+    return scene.add.image(o.x, o.y, ...objTex(id)).setOrigin(0.5, 1).setFlipX(!!o.flip);
   };
   /** Тайлы стены текущего куска: их тени склеиваются в полосы по прямым участкам (shadows.ts WallShadow). */
   let wallTiles: WallTile[] | null = null;
@@ -152,7 +153,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
         flush();
       }
     };
-    const hs = tiles.filter((t) => t.img.texture.key.includes("wall_h")), vs = tiles.filter((t) => !t.img.texture.key.includes("wall_h"));
+    const isH = (t: WallTile) => !!objId(t.img)?.includes("wall_h");
+    const hs = tiles.filter(isH), vs = tiles.filter((t) => !isH(t));
     tiles = hs; run((t) => t.y, (t) => t.x);
     tiles = vs; run((t) => t.x, (t) => t.y);
   };
@@ -224,7 +226,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
           const g: DgGate = { img: img as Phaser.GameObjects.Image, id: gate.id, prefix: k, t: dgGateOpen.get(gate.id) ? 1 : 0 };
           dgGates.add(g);
           img.setDepth(o.y - 3);
-          (img as Phaser.GameObjects.Image).setTexture(`o_${k}_${g.t ? 7 : 0}`);
+          setObj(img as Phaser.GameObjects.Image, `${k}_${g.t ? 7 : 0}`);
           img.once("destroy", () => dgGates.delete(g));
         }
       }
@@ -357,8 +359,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
         if (was === 0 && g.t > 0) sfx.play(g.prefix === "dg_port" ? "clink" : "step", 0.7);
         else if (was === 1 && g.t < 1) sfx.play("clink", 0.5);
         else if (was > 0 && g.t === 0) sfx.play("slam", 0.6);
-        const key = `o_${g.prefix}_${dgGateForce.get(g.id) ?? Math.round(g.t * 7)}`;
-        if (g.img.texture.key !== key && scene.textures.exists(key)) g.img.setTexture(key);
+        const id = `${g.prefix}_${dgGateForce.get(g.id) ?? Math.round(g.t * 7)}`;
+        if (objId(g.img) !== id && objHas(scene, id)) setObj(g.img, id);
       }
     }
     const v = cam.worldView;
