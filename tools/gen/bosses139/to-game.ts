@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -20,6 +20,8 @@ import * as chp from "./sol_fallen_chaplain";
 import * as bel from "./plg_drowned_bellringer";
 import * as frost from "./bone_frost_lord";
 import * as mino from "./cliff_minotaur_knight";
+import * as midas from "./sol_gilded_midas";
+import * as mar from "./umb_bone_marionette";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -229,6 +231,53 @@ BOSSES.push({
     // осколки скалы: кистень над спиной и удар о землю, две волны кругов
     blade_scatter: { waves: [{ pre: ["slamWind", "slamHold"], strike: "slamStrike" }, { pre: ["slamHold"], strike: "slamStrike" }], fx: [] },
   },
+});
+
+// Мидар Златоперстый (r69s запад): 2D-штампы как у минотавра, эффектов-спрайтов нет — конус, круги и полосу каста рисует клиент
+BOSSES.push({
+  id: midas.ID, sheet: "midas-sheet.png", frame: midas.FRAME, frameH: midas.FRAME_H, cols: midas.MIDAS_COLS, wrap: 64,
+  // phase (переход фазы 50 %) — кадры удара проклятия (руки вниз, золотое кольцо у ног)
+  anims: {
+    ...anims({ idle: midas.MIDAS_ANIMS.idle, walk: midas.MIDAS_ANIMS.walk }),
+    phase: { col: midas.MIDAS_ANIMS.curseCast.col, n: 10, fps: 12, loop: false, hit: 3 },
+    ...anims(Object.fromEntries(Object.entries(midas.MIDAS_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))),
+  },
+  fx: {},
+  skills: {
+    // золотая длань: ладонь вверх и удар вперёд
+    golden_palm: { waves: [{ pre: ["palmWind", "palmHold"], strike: "palmStrike" }], fx: [] },
+    // россыпь монет: горсть у груди, три броска подряд
+    coin_scatter: { waves: [{ pre: ["coinWind", "coinHold"], strike: "coinThrow" }, { pre: ["coinHold"], strike: "coinThrow" }, { pre: ["coinHold"], strike: "coinThrow" }], fx: [] },
+    // аркан жадности: крутит над головой и бросает
+    greed_lasso: { waves: [{ pre: ["ropeWind", "ropeHold"], strike: "ropeThrow" }], fx: [] },
+    // проклятие Мидаса: руки вверх, каст 5 с (срыв — stun), иначе удар вниз и золото-корни
+    midas_curse: { waves: [{ pre: ["curseWind", "curseHold"], strike: "curseCast" }], fx: [] },
+  },
+});
+
+// костяная марионетка (r69s восток): 2D-штампы по скелету; сеть на земле — эффект-спрайт, кокон на герое — моб-спутник `<босс>_cage`
+BOSSES.push({
+  id: mar.ID, sheet: "marion-sheet.png", frame: mar.FRAME, frameH: mar.FRAME_H, cols: mar.MAR_COLS, wrap: 64,
+  // phase (переход 50 %) — вздёрнут нитями и падает: кадры «Падения-сети»; attack — удар когтем
+  anims: {
+    ...anims({ idle: mar.MAR_ANIMS.idle, walk: mar.MAR_ANIMS.walk }),
+    phase: { col: mar.MAR_ANIMS.netStrike.col, n: 8, fps: 12, loop: false, hit: 1 },
+    ...anims(Object.fromEntries(Object.entries(mar.MAR_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))),
+  },
+  fx: { web: { src: "marion-fx-web.png", def: fxDef(mar.ID, "web", mar.GAME_FX.web as FxIn) } },
+  skills: {
+    thorn_sweep: { waves: [{ pre: ["swipeWind", "swipeHold"], strike: "swipeStrike" }], fx: [] },
+    // нити: травля, три метки подряд; на каждой после удара ложится сеть на 5 с
+    puppet_threads: {
+      waves: [{ pre: ["threadWind", "threadHold"], strike: "threadCast" }, { pre: ["threadHold"], strike: "threadCast" }, { pre: ["threadHold"], strike: "threadCast" }],
+      fx: [{ fx: "web", waves: [0, 1, 2], seq: ["webIn", "webHold", "webOut"], pin: 0, timing: "strike", place: "marks", holds: { webHold: 4700 } }],
+    },
+    // кокон: клубок в руках и бросок; сам кокон — моб на герое
+    cocoon: { waves: [{ pre: ["cocoonWind", "cocoonHold"], strike: "cocoonCast" }], fx: [] },
+    // падение-сеть: вздёрнут нитями, падает; кольцо r…r2 застилает сеть на 4 с
+    web_drop: { waves: [{ pre: ["netWind", "netHold"], strike: "netStrike" }], fx: [{ fx: "web", waves: [0], seq: ["webIn", "webHold", "webOut"], pin: 0, timing: "strike", place: "area", spacing: 76, holds: { webHold: 3700 } }] },
+  },
+  units: [{ src: "marion-cocoon-unit.png", id: `${mar.ID}_cage`, frame: mar.COCOON_UNIT.frame, frameH: mar.COCOON_UNIT.frameH }],
 });
 
 const only = process.argv[2];

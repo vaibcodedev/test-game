@@ -163,7 +163,7 @@ for (const c of CARDS) {
         hits = [];
         boss.run(ab);
         const t0 = w.time;
-        let shieldSeen = 1, after = 1;
+        let shieldSeen = 1, after = 1, held = false, freed = false;
         for (let t = 0; t < ab.windupMs + ab.cage.holdMs + 800; t += 50) {
           p.unit.hp = p.unit.maxHp;
           mob.attackAt = w.time + 1e9;
@@ -171,8 +171,11 @@ for (const c of CARDS) {
           const stake = [...w.mobs.values()].find((m) => m.def.id === `${c.id}_cage` && !m.dead);
           if (stake) shieldSeen = Math.min(shieldSeen, mob.dmgTakenMul);
           if (mode === "break" && stake && t >= ab.windupMs + 1000) { w.killMob(stake, p); }
-          if (mode === "break" && t === ab.windupMs + 1500) after = mob.dmgTakenMul;
+          if (mode === "break" && t === ab.windupMs + 1500) { after = mob.dmgTakenMul; freed = p.rootUntil <= w.time; }
+          if (t === ab.windupMs + 500) held = p.rootUntil > w.time;
         }
+        // кокон (rootHero): герой в круге скован, пока объект цел; разбили — свободен
+        if (ab.cage.rootHero) check(`${c.id}.${ab.id}: ${mode === "stand" ? "герой в коконе скован" : "кокон разбит — герой свободен"}`, mode === "stand" ? held : held && freed, `скован ${held}, свободен ${freed}`);
         const mine = hits.filter((h) => h.dst === p && h.src === mob);
         if (mode === "stand") check(`${c.id}.${ab.id}: кол цел — клетка бьёт внутрь через ${ab.cage.holdMs} мс, босс под щитом ×${ab.cage.shield}`, mine.length > 0 && mine[0].t - t0 >= ab.windupMs + ab.cage.holdMs - 60 && shieldSeen === ab.cage.shield, `удар через ${mine[0] ? mine[0].t - t0 : -1} мс, щит ${shieldSeen}`);
         else check(`${c.id}.${ab.id}: кол сломан — урона нет, щит снят`, mine.length === 0 && after === 1 && log.some((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === "cage_break"), `урон ${mine.reduce((s, h) => s + h.v, 0)}, щит после ${after}`);

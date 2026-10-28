@@ -9,7 +9,7 @@ import { Anim, Dir, type FxKind } from "../../../shared/protocol";
 import { walkable } from "../../../shared/map";
 import { ZB_ARENA, ZB_BY_ID, ZB_LOW_HP, type ZbAbility, type ZbCard, type ZbWave } from "../../../shared/zoneBosses";
 import { Boss } from "./bosses";
-import { applyRoot, applyStun } from "./effects";
+import { applyRoot, applySlow, applyStun } from "./effects";
 import { Mob } from "./Mob";
 import { MOBS } from "../../../shared/mobs";
 import type { Player } from "./Player";
@@ -306,6 +306,7 @@ export class ZoneBoss extends Boss {
         if (p.dead) continue;
         const res = w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
         if (res.landed && b.heroStunMs) applyStun(w, m, p, b.heroStunMs);
+        if (res.landed && b.heroRootMs) applyRoot(w, m, p, b.heroRootMs);
         if (p.dead) this.killed(p);
       }
     };
@@ -402,12 +403,17 @@ export class ZoneBoss extends Boss {
       if (!def) return;
       this.shieldMul = c.shield;
       for (const s of spots) {
-        const stake = new Mob(w.uid("s"), def, m.level, { x: s.x, y: s.y });
+        const stake = new Mob(w.uid("s"), def, m.level, { x: s.x, y: s.y + (c.rootHero ? 2 : 0) }); // кокон — чуть ниже героя: рисуется поверх него
         stake.summoned = true;
         w.addMob(stake);
         this.adds.add(stake);
         this.stakes.add(stake);
         this.refreshShield();
+        // кокон (rootHero): кто в круге — скован, пока объект цел; разбили или истёк срок — свободен
+        if (c.rootHero) {
+          const held = this.inArena().filter((p) => !p.dead && Math.hypot(p.x - s.x, p.y - s.y) <= ab.r && applyRoot(w, m, p, c.holdMs));
+          this.held.set(stake, held);
+        }
         // удар внутрь клетки, если кол ещё цел; клетка распадается в любом случае
         w.telegraph(m, "circle", s.x, s.y, ab.r, c.holdMs, (p) => {
           if (epoch !== this.epoch || stake.dead) return;
@@ -418,6 +424,7 @@ export class ZoneBoss extends Boss {
         w.later(c.holdMs + 60, () => {
           if (!stake.dead) w.removeMob(stake);
           this.stakes.delete(stake);
+          this.release(stake);
           this.refreshShield();
           w.emit({ t: "zb", id: m.id, ab: "cage_break", w: 0, ms: 0, pts: [s.x, s.y] });
         });
@@ -462,9 +469,17 @@ export class ZoneBoss extends Boss {
       w.later(b.everyMs - b.ringMs, pulse);
     });
   }
+  /** Скованные коконом (cage.rootHero): объект → герои в нём. */
+  private held = new Map<Mob, Player[]>();
+  /** Кокон разбит или истёк: скованные им свободны. */
+  private release(stake: Mob) {
+    for (const p of this.held.get(stake) ?? []) p.rootUntil = Math.min(p.rootUntil, this.w.time);
+    this.held.delete(stake);
+  }
   /** Кол сломан (замечает update): щит снят, клетка распадается. */
   stakeDied(stake: Mob) {
     if (!this.stakes.delete(stake)) return;
+    this.release(stake);
     this.refreshShield();
     this.w.emit({ t: "zb", id: this.m.id, ab: "cage_break", w: 0, ms: 0, pts: [Math.round(stake.home.x), Math.round(stake.home.y)] });
   }
@@ -651,6 +666,24 @@ export class ZoneBoss extends Boss {
     }, { r2: mk.r2, a: mk.a, w: mk.w, k });
     // пятно на земле после удара: урон в секунду — доля здоровья героев на арене
     const af = wv.after;
+    // сеть (кольцо, марионетка): форма метки держится web.ms и замедляет тех, кто в ней
+    if (af?.web) {
+      const web = af.web;
+      w.later(ms, () => {
+        if (epoch !== this.epoch || m.dead) return;
+        const end = w.time + web.ms;
+        const tick = () => {
+          if (epoch !== this.epoch || m.dead || w.time > end) return;
+          for (const p of this.inArena()) {
+            if (p.dead) continue;
+            const d = Math.hypot(p.x - mk.x, p.y - mk.y);
+            if (mk.shape === "ring" ? d >= mk.r && d <= (mk.r2 ?? mk.r * 2) : d <= mk.r) applySlow(w, m, p, web.slow, 400);
+          }
+          w.later(200, tick);
+        };
+        tick();
+      });
+    }
     if (af?.hazardMs && af.hazardPct) {
       w.later(ms, () => {
         if (epoch !== this.epoch || m.dead) return;

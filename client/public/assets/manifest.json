@@ -1,5 +1,15 @@
 {
  "units": {
+  "umb_bone_marionette_cage": {
+   "frame": 32,
+   "frameH": 48
+  },
+  "umb_bone_marionette": {
+   "frame": 80
+  },
+  "sol_gilded_midas": {
+   "frame": 80
+  },
   "sol_cliff_minotaur": {
    "frame": 80
   },
@@ -33842,6 +33852,12 @@
   "uq_zb_bell_flail",
   "uq_zb_thorn_halo",
   "uq_zb_drowned_bell",
+  "uq_zb_thorn_thread",
+  "uq_zb_gael_cage",
+  "uq_zb_puppet_cross",
+  "uq_zb_greed_ring",
+  "uq_zb_midas_crown",
+  "uq_zb_midas_hand",
   "uq_zb_mino_ring",
   "uq_zb_mino_helm",
   "uq_zb_mino_flail",

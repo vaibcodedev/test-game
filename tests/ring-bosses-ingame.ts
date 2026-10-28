@@ -217,7 +217,9 @@ async function scenario() {
     for (const m of [...W().mobs.values()]) if (m.def.id === `${CARD.id}_cage` && !m.dead) W().killMob(m, H);
     await sleep(120);
     const out = await run<string>("const z = sc.fx && sc.fx.zb; return z ? z.fxs.filter((e) => e.boss === a).map((e) => (e.segs[0] ? e.segs[0].a : '-') + '@' + Math.round(e.x) + ',' + Math.round(e.y)).join(' ') : 'нет zb'", CARD.id);
-    check(/cageOut/.test(out) && mob.dmgTakenMul === 1, `${CARD.id}: колы сломаны — клетки распадаются, щит снят (×${mob.dmgTakenMul}; эффекты: ${out})`);
+    // кокон марионетки (rootHero) — сам моб-объект, эффекта клетки нет: распадается его анимацией гибели
+    const cocoon = !!cageAb.cage!.rootHero;
+    check((cocoon || /cageOut/.test(out)) && mob.dmgTakenMul === 1, `${CARD.id}: ${cocoon ? "коконы разбиты" : "колы сломаны — клетки распадаются"}, щит снят (×${mob.dmgTakenMul}; эффекты: ${out})`);
     await run("sc.scene.pause();");
     save(`${PFX}ingame-cage-broken.png`, await snap(bx, by + 10, 480, 340));
     await run("sc.scene.resume();");

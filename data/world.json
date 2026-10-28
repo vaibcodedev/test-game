@@ -22,13 +22,6 @@
         "note": "пара кольца 50–60: слот r55n (layout.ringBosses); прежние Энт и Ведьма удалены (задача 139)"
       },
       {
-        "id": "ring65",
-        "at": [[325, 248], [775, 248]],
-        "arena": 9,
-        "level": 65,
-        "note": "пара кольца 60–70, свободна"
-      },
-      {
         "id": "fields88",
         "at": [[470, 114], [630, 114]],
         "arena": 10,
@@ -64,6 +57,7 @@
       { "slot": "r55n", "west": "sol_fallen_chaplain", "east": "umb_plague_priestess", "x": 282, "y": 110, "arena": 10 },
       { "slot": "r59s", "west": "sol_plague_raven", "east": "plg_drowned_bellringer", "x": 278, "y": 252, "arena": 10 },
       { "slot": "r65n", "west": "sol_cliff_minotaur", "east": "umb_frost_lord", "x": 324, "y": 84, "arena": 10 },
+      { "slot": "r69s", "west": "sol_gilded_midas", "east": "umb_bone_marionette", "x": 330, "y": 260, "arena": 10 },
       { "slot": "r75n", "west": null, "east": "umb_crown_lich", "x": 378, "y": 98, "arena": 10 }
     ],
     "settlements": [

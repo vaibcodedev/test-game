@@ -28,15 +28,20 @@ export interface ZbWave {
   windupMs: number;
   dmgPct: number;
   k?: string;
-  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number; pullMark?: number; push?: number };
+  after?: { rootMs?: number; burnMs?: number; poisonMs?: number; hazardMs?: number; hazardPct?: number; leap?: boolean; dash?: boolean; pull?: number; pullMark?: number; push?: number;
+    /** Кольцо: сеть на земле в форме метки (круг или кольцо) на ms после удара — кто в ней, замедлен на slow %. */
+    web?: { ms: number; slow: number } };
   escape?: number;
   /** Кольцо (задача 139): урон делится поровну на всех героев в круге. */
   share?: boolean;
-  /** Кольцо: прерываемый каст на всю арену (data/ring-bosses.json _doc). heal — если не сорвали, босс лечится на эту долю здоровья (котёл), pillars тогда не используется: один объект-котёл рядом с боссом. */
-  break?: { pct: number; stunMs: number; heroStunMs: number; pillars?: number; heal?: number };
+  /** Кольцо: прерываемый каст на всю арену (data/ring-bosses.json _doc). heal — если не сорвали, босс лечится на эту долю здоровья (котёл), pillars тогда не используется: один объект-котёл рядом с боссом.
+   *  heroRootMs — если не сорвали, удар ещё и сковывает героев (золото-корни Мидара). */
+  break?: { pct: number; stunMs: number; heroStunMs: number; pillars?: number; heal?: number; heroRootMs?: number };
   /** Кольцо: клетка вокруг героя с кандальным колом в центре (моб <босс>_cage): пока кол стоит, босс получает урон ×shield;
    *  через holdMs клетка с целым колом бьёт внутрь (dmgPct). hp — множитель здоровья кола к мобу уровня босса. */
-  cage?: { holdMs: number; hp: number; shield: number };
+  cage?: { holdMs: number; hp: number; shield: number;
+    /** имя моба-объекта (по умолчанию «Кандальный кол»); rootHero — герой в круге скован, пока объект цел (кокон марионетки), разбили — свободен */
+    name?: string; rootHero?: boolean };
   /** Кольцо: мираж-двойники (моб <босс>_mirage, один удар): count штук по краю арены на holdMs; каждый повторяет умение mirror (у него mirror: true) со своего места. */
   doubles?: { count: number; hp: number; holdMs: number; mirror: string; name?: string };
   /** Умение повторяют двойники босса (кольцо «Песчаный смерч»). */

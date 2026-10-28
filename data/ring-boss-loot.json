@@ -627,6 +627,120 @@
       ],
       "legendary": 0.01,
       "pet": 6
+    },
+    "sol_gilded_midas": {
+      "name": "Мидар Златоперстый",
+      "level": 69,
+      "band": [
+        60,
+        70
+      ],
+      "special": [
+        {
+          "item": "zb_midas_hand",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_midas_crown",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_greed_ring",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
+    },
+    "umb_bone_marionette": {
+      "name": "Гаэль Безнитный",
+      "level": 69,
+      "band": [
+        60,
+        70
+      ],
+      "special": [
+        {
+          "item": "zb_puppet_cross",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_gael_cage",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_thorn_thread",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -1852,6 +1966,233 @@
         "pommel": "ring"
       },
       "boss": "sol_cliff_minotaur",
+      "card": "r2"
+    },
+    "zb_midas_hand": {
+      "id": "zb_midas_hand",
+      "name": "Длань Мидаса",
+      "base": "twinblades",
+      "ilvl": 69,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "rogue",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "crit"
+      ],
+      "stats": {
+        "agi": 42,
+        "crit": 1
+      },
+      "prop": "Каждый десятый удар носителя оставляет на цели позолоту: на 2 с она движется чуть медленнее.",
+      "lore": "Пара когтей, отлитых из пальцев, что когда-то были живыми. Тёплые на ощупь — и никогда не остывают.",
+      "look": {
+        "shape": "claws",
+        "rich": 1,
+        "mat": "solar",
+        "trim": "gold",
+        "cloth": "azure",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "sun",
+        "guard": "claw",
+        "pommel": "spike"
+      },
+      "boss": "sol_gilded_midas",
+      "card": "r3"
+    },
+    "zb_midas_crown": {
+      "id": "zb_midas_crown",
+      "name": "Венец проклятого короля",
+      "base": "cloth_helm",
+      "ilvl": 67,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "mage",
+        "healer",
+        "warlock",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 18,
+        "vit": 17
+      },
+      "prop": "Пока носитель стоит на месте, венец тяжелеет: его заклинания чуть сильнее, но шаг медленнее.",
+      "lore": "Зубцы золотые, обод — тоже: когда-то он был простым серебром. Внутри нацарапано имя дочери.",
+      "look": {
+        "shape": "horncrown",
+        "rich": 1,
+        "mat": "solar",
+        "trim": "gold",
+        "cloth": "azure",
+        "gem": "sun",
+        "haft": "yew",
+        "deco": "spikes",
+        "fx": "sun",
+        "guard": "ornate",
+        "pommel": "gem"
+      },
+      "boss": "sol_gilded_midas",
+      "card": "r2"
+    },
+    "zb_greed_ring": {
+      "id": "zb_greed_ring",
+      "name": "Перстень жадности",
+      "base": "ring",
+      "ilvl": 68,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "hp"
+      ],
+      "stats": {
+        "agi": 18,
+        "hp": 205
+      },
+      "prop": "С каждого убитого врага носитель получает чуть больше золота — и чуть меньше здоровья возвращается от лечения.",
+      "lore": "Камня нет — только золотой коготь, сжатый в кольцо. Снять его можно, но рука сама надевает обратно.",
+      "look": {
+        "shape": "claw",
+        "rich": 1,
+        "mat": "solar",
+        "trim": "gold",
+        "cloth": "azure",
+        "gem": "sun",
+        "haft": "yew",
+        "deco": "chains",
+        "fx": "sun",
+        "guard": "ornate",
+        "pommel": "ring"
+      },
+      "boss": "sol_gilded_midas",
+      "card": "r2"
+    },
+    "zb_puppet_cross": {
+      "id": "zb_puppet_cross",
+      "name": "Крестовина кукловода",
+      "base": "staff",
+      "ilvl": 69,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 40,
+        "crit": 1
+      },
+      "prop": "Каждое десятое заклинание носителя накидывает на цель нить: на 2 с она движется чуть медленнее.",
+      "lore": "Терновый крест из чёрного железа, с крючьями на концах. На крючьях ещё висят обрывки нитей — и иногда дёргаются сами.",
+      "look": {
+        "shape": "cage",
+        "rich": 1,
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "spike"
+      },
+      "boss": "umb_bone_marionette",
+      "card": "r3"
+    },
+    "zb_gael_cage": {
+      "id": "zb_gael_cage",
+      "name": "Колпак-клетка Гаэля",
+      "base": "plate_helm",
+      "ilvl": 67,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "vit"
+      ],
+      "stats": {
+        "str": 17,
+        "vit": 17
+      },
+      "prop": "Когда носителя оглушают, прутья колпака звенят: следующее оглушение короче.",
+      "lore": "Прутья сведены куполом и увенчаны шипами. Внутри темно, и кажется, что оттуда кто-то смотрит в ответ.",
+      "look": {
+        "shape": "great",
+        "rich": 1,
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_bone_marionette",
+      "card": "r2"
+    },
+    "zb_thorn_thread": {
+      "id": "zb_thorn_thread",
+      "name": "Терновая нить",
+      "base": "amulet",
+      "ilvl": 68,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "hp"
+      ],
+      "stats": {
+        "agi": 18,
+        "hp": 205
+      },
+      "prop": "Если носителя сковали, нить рвётся первой: корни держат его чуть меньше.",
+      "lore": "Обрывок колючей проволоки, завязанный узлом вокруг зелёного камня. Узел не развязать — только разрезать.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "iron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "emerald",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "umb_bone_marionette",
       "card": "r2"
     }
   }

@@ -4888,6 +4888,445 @@
      "fx": []
     }
    }
+  },
+  "sol_gilded_midas": {
+   "file": "sol_gilded_midas.png",
+   "fw": 80,
+   "cols": 122,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 90,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "palmWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "palmHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "palmStrike": {
+     "col": 42,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "coinWind": {
+     "col": 50,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "coinHold": {
+     "col": 54,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "coinThrow": {
+     "col": 58,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "ropeWind": {
+     "col": 66,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "ropeHold": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "ropeThrow": {
+     "col": 74,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "curseWind": {
+     "col": 82,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "curseHold": {
+     "col": 86,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "curseCast": {
+     "col": 90,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "stun": {
+     "col": 100,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 108,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {},
+   "skills": {
+    "golden_palm": {
+     "waves": [
+      {
+       "pre": [
+        "palmWind",
+        "palmHold"
+       ],
+       "strike": "palmStrike"
+      }
+     ],
+     "fx": []
+    },
+    "coin_scatter": {
+     "waves": [
+      {
+       "pre": [
+        "coinWind",
+        "coinHold"
+       ],
+       "strike": "coinThrow"
+      },
+      {
+       "pre": [
+        "coinHold"
+       ],
+       "strike": "coinThrow"
+      },
+      {
+       "pre": [
+        "coinHold"
+       ],
+       "strike": "coinThrow"
+      }
+     ],
+     "fx": []
+    },
+    "greed_lasso": {
+     "waves": [
+      {
+       "pre": [
+        "ropeWind",
+        "ropeHold"
+       ],
+       "strike": "ropeThrow"
+      }
+     ],
+     "fx": []
+    },
+    "midas_curse": {
+     "waves": [
+      {
+       "pre": [
+        "curseWind",
+        "curseHold"
+       ],
+       "strike": "curseCast"
+      }
+     ],
+     "fx": []
+    }
+   }
+  },
+  "umb_bone_marionette": {
+   "file": "umb_bone_marionette.png",
+   "fw": 80,
+   "cols": 120,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 90,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "swipeWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "swipeHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "swipeStrike": {
+     "col": 42,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "threadWind": {
+     "col": 50,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "threadHold": {
+     "col": 54,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "threadCast": {
+     "col": 58,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "cocoonWind": {
+     "col": 66,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "cocoonHold": {
+     "col": 70,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "cocoonCast": {
+     "col": 74,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "netWind": {
+     "col": 82,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "netHold": {
+     "col": 86,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "netStrike": {
+     "col": 90,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "stun": {
+     "col": 98,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 106,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "web": {
+     "file": "umb_bone_marionette-web.png",
+     "fw": 96,
+     "fh": 48,
+     "ax": 48,
+     "ay": 24,
+     "rows": 2,
+     "anims": {
+      "webIn": {
+       "col": 0,
+       "n": 3,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      },
+      "webHold": {
+       "col": 3,
+       "n": 3,
+       "fps": 12,
+       "loop": true
+      },
+      "webOut": {
+       "col": 6,
+       "n": 2,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    }
+   },
+   "skills": {
+    "thorn_sweep": {
+     "waves": [
+      {
+       "pre": [
+        "swipeWind",
+        "swipeHold"
+       ],
+       "strike": "swipeStrike"
+      }
+     ],
+     "fx": []
+    },
+    "puppet_threads": {
+     "waves": [
+      {
+       "pre": [
+        "threadWind",
+        "threadHold"
+       ],
+       "strike": "threadCast"
+      },
+      {
+       "pre": [
+        "threadHold"
+       ],
+       "strike": "threadCast"
+      },
+      {
+       "pre": [
+        "threadHold"
+       ],
+       "strike": "threadCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "web",
+       "waves": [
+        0,
+        1,
+        2
+       ],
+       "seq": [
+        "webIn",
+        "webHold",
+        "webOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "marks",
+       "holds": {
+        "webHold": 4700
+       }
+      }
+     ]
+    },
+    "cocoon": {
+     "waves": [
+      {
+       "pre": [
+        "cocoonWind",
+        "cocoonHold"
+       ],
+       "strike": "cocoonCast"
+      }
+     ],
+     "fx": []
+    },
+    "web_drop": {
+     "waves": [
+      {
+       "pre": [
+        "netWind",
+        "netHold"
+       ],
+       "strike": "netStrike"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "web",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "webIn",
+        "webHold",
+        "webOut"
+       ],
+       "pin": 0,
+       "timing": "strike",
+       "place": "area",
+       "spacing": 76,
+       "holds": {
+        "webHold": 3700
+       }
+      }
+     ]
+    }
+   }
   }
  },
  "units": {
@@ -4948,6 +5387,16 @@
   },
   "sol_cliff_minotaur": {
    "frame": 80
+  },
+  "sol_gilded_midas": {
+   "frame": 80
+  },
+  "umb_bone_marionette": {
+   "frame": 80
+  },
+  "umb_bone_marionette_cage": {
+   "frame": 32,
+   "frameH": 48
   }
  }
 }
