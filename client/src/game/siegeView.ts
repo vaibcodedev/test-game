@@ -170,7 +170,8 @@ export class SiegeView {
     const broken = GATE_BROKEN.has(v.g.id);
     const target = broken ? 0 : near && this.ownNear(v.g, units) ? 1 : 0;
     // ~0,55 с на полный ход створок
-    v.k = target > v.k ? Math.min(1, v.k + dt / 0.55) : Math.max(0, v.k - dt / 0.7);
+    // при k == target — стоим: иначе открытые ворота (k = 1, target = 1) уходили в ветку закрытия и моргали створками каждые ~3 кадра
+    v.k = target > v.k ? Math.min(1, v.k + dt / 0.55) : target < v.k ? Math.max(0, v.k - dt / 0.7) : v.k;
     const tex = (s: string) => (objHas(this.sc, `${v.prefix}${s}`) ? `${v.prefix}${s}` : objId(im) ?? "");
     const want = broken ? tex("broken") : v.k > 0 ? tex("open") : tex("closed");
     if (want && objId(im) !== want) setObj(im, want);

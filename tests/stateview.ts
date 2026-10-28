@@ -3,8 +3,9 @@
  * подошёл (телепорт) — видит сразу; группа видна всегда; трафик полного состояния при входе — до (VIS_OFF=1) и после.
  * Запуск: TEST_PORT=2731 npx tsx tests/stateview.ts
  */
-import { Room } from "colyseus.js";
-import { MAP_SEED } from "../shared/constants";
+import { getStateCallbacks, Room } from "colyseus.js";
+import { GATES, SIEGE } from "../shared/siege";
+import { MAP_SEED, TILE } from "../shared/constants";
 import { generateMap } from "../shared/map";
 import { VIS_CELL, VIS_OUT } from "../server/src/rooms/visibility";
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
@@ -45,7 +46,51 @@ async function measure(off: boolean) {
   }
 }
 
+/**
+ * Герой Сольгарда стоит у главных ворот Аурелиона (вне радиуса открытия) 10 с: считаем add/remove каждого юнита на клиенте
+ * и переключения «свои у ворот» (как ownNear в client/src/game/siegeView.ts) по выборке раз в 50 мс.
+ */
+async function gateWatch(off: boolean) {
+  await startServer(true, off ? { VIS_OFF: "1" } : {});
+  try {
+    const g = GATES.find((x) => x.city === "aurelion" && x.side === "s")!;
+    const b = await Bot.join(off ? "Привратник" : "Привратница");
+    b.send("dbg", { op: "tp", x: g.ox, y: g.oy + 4 * TILE });
+    await sleep(1500);
+    const adds = new Map<string, number>(), rems = new Map<string, number>();
+    const $ = getStateCallbacks(b.room) as any;
+    for (const k of ["players", "mobs"]) {
+      $(b.room.state)[k].onAdd((_u: unknown, id: string) => adds.set(id, (adds.get(id) ?? 0) + 1), false);
+      $(b.room.state)[k].onRemove((_u: unknown, id: string) => rems.set(id, (rems.get(id) ?? 0) + 1));
+    }
+    const R = SIEGE.gates.openTiles * TILE;
+    const ownNear = () => {
+      let on = false;
+      const look = (u: any) => { if (u.anim !== 4 && u.hp > 0 && u.faction === g.faction && !u.sprite.startsWith("siege_") && Math.abs(u.x - g.x) < R && Math.abs(u.y - g.y) < R) on = true; };
+      b.room.state.players.forEach(look);
+      b.room.state.mobs.forEach(look);
+      return on;
+    };
+    let flips = 0, prev = ownNear();
+    const t0 = Date.now();
+    while (Date.now() - t0 < 10_000) {
+      await sleep(50);
+      const cur = ownNear();
+      if (cur !== prev) flips++;
+      prev = cur;
+    }
+    const churn = [...new Set([...adds.keys(), ...rems.keys()])].filter((id) => (adds.get(id) ?? 0) + (rems.get(id) ?? 0) > 1);
+    await b.leave();
+    return { flips, adds: [...adds.values()].reduce((a, c) => a + c, 0), rems: [...rems.values()].reduce((a, c) => a + c, 0), churn };
+  } finally {
+    await stopServer();
+  }
+}
+
 async function main() {
+  const gOff = await gateWatch(true), gOn = await gateWatch(false);
+  console.log(`  ворота Аурелиона 10 с: без фильтра add ${gOff.adds} remove ${gOff.rems} переключений ${gOff.flips}; с фильтром add ${gOn.adds} remove ${gOn.rems} переключений ${gOn.flips}, повторных ${gOn.churn.length}`);
+
   // две точки спавна мобов далеко друг от друга (и от столиц)
   const spawns = MAP.spawns;
   const A = spawns[Math.floor(spawns.length * 0.2)];
@@ -62,6 +107,10 @@ async function main() {
     await check("трафик входа уменьшился в разы, мобов в состоянии — только окрестность", () => {
       assert(after.bytes * 3 < before.bytes, `до ${before.bytes} Б, после ${after.bytes} Б`);
       assert(after.mobs * 3 < before.mobs, `мобов до ${before.mobs}, после ${after.mobs}`);
+    });
+    await check("у ворот Аурелиона юниты не уходят и не возвращаются в вид без движения героя", () => {
+      assert(gOn.churn.length === 0, "повторные add/remove: " + gOn.churn.join(","));
+      assert(gOn.flips <= gOff.flips, `ворота дёргаются чаще, чем без фильтра: ${gOn.flips} против ${gOff.flips}`);
     });
     await check("рядом при входе — видят друг друга", async () => {
       await a.until(() => sees(a, b.id) && sees(b, a.id), 3000, "видят друг друга");
