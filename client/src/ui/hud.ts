@@ -1595,7 +1595,7 @@ export class Hud {
         g.fillStyle = OUT; g.fillRect(0, HY + 5, 16, 1);
       }
     }
-    const target = phase === "day" || phase === "dusk" ? 0.76 : phase === "night" ? 0.88 : 1; // до глубокой ночи / конца ночи / конца рассвета
+    const target = phase === "day" || phase === "dusk" ? 0.78 : phase === "night" ? 0.88 : 1; // до глубокой ночи / конца ночи / конца рассвета
     const left = ((((target - p) % 1) + 1) % 1) * DAY_CYCLE_MS;
     const mins = Math.max(1, Math.round(left / 60000));
     const vars = { m: mins };
