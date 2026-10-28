@@ -29,7 +29,7 @@ const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 /** Кольцо под ногами у выбранного и у наведённого: враг — красное (P.foe), союзник — зелёное (P.ally). */
 export const RING_FOE = Phaser.Display.Color.HexStringToColor(P.foe).color;
 export const RING_ALLY = Phaser.Display.Color.HexStringToColor(P.ally).color;
-const MELEE = new Set(["guard", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ent", "ashlord"]);
+const MELEE = new Set(["guard", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ashlord"]);
 /** Прямоугольник непрозрачных пикселей кадра (в пикселях кадра, слева сверху): считается один раз на кадр текстуры, по картинке листа. */
 const alphaCache = new Map<string, readonly [number, number, number, number] | null>();
 const sheetData = new Map<string, ImageData | null>();

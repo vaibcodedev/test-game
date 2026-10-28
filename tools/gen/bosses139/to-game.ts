@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +14,7 @@ import * as exec from "./umb_ash_executioner";
 import * as mir from "./sol_mirage_sorcerer";
 import * as vam from "./umb_crimson_vampire";
 import * as gob from "./sol_goblin_warlord";
+import * as plg from "./umb_plague_priestess";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -96,6 +97,31 @@ BOSSES.push({
     scorpion_swarm: { waves: [{ pre: ["twisterWind", "twisterHold"], strike: "twisterCast" }], fx: [] },
     // укрытия: на метках встают песчаные столбы
     sand_storm: { waves: [{ pre: ["vortexWind", "vortexHold"], strike: "vortexCast" }], fx: [{ fx: "mirage", waves: [0], seq: ["mirage"], pin: 0, timing: "wind", place: "marks" }] },
+  },
+});
+
+BOSSES.push({
+  id: plg.ID, sheet: "plg-sheet.png", frame: plg.FRAME, frameH: plg.FRAME_H, cols: plg.MIR_COLS, wrap: 64,
+  // удар и переход фазы — броски склянки и мутагена (кадры листа общие), оглушение и гибель — свои
+  anims: {
+    // phase стоит раньше mutagenCast: тест кадра по столбцу берёт первое совпадение; vialThrow в связках обрезан до 6 кадров (хвост возврата в покой не тянет цепочку)
+    ...anims({ idle: plg.MIR_ANIMS.idle, walk: plg.MIR_ANIMS.walk }),
+    phase: { col: plg.MIR_ANIMS.mutagenCast.col, n: 8, fps: 12, loop: false, hit: 4 },
+    ...anims(Object.fromEntries(Object.entries(plg.MIR_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))),
+    vialThrow: { col: plg.MIR_ANIMS.vialThrow.col, n: 6, fps: 12, loop: false, hit: 1 },
+    attack: { col: plg.MIR_ANIMS.vialThrow.col, n: 6, fps: 12, loop: false, hit: 1 },
+    // выдержка последнего кадра замаха (по кругу), пока длится предупреждение
+    vialHold: { col: plg.MIR_ANIMS.vialWind.col + 3, n: 1, fps: 12, loop: true },
+    mutagenHold: { col: plg.MIR_ANIMS.mutagenWind.col + 3, n: 1, fps: 12, loop: true },
+  },
+  fx: { cauldron: { src: "plg-fx-cauldron.png", def: fxDef(plg.ID, "cauldron", plg.FX.cauldron as FxIn) } },
+  skills: {
+    vials: { waves: [{ pre: ["vialWind", "vialHold"], strike: "vialThrow" }, { pre: ["vialWind", "vialHold"], strike: "vialThrow" }], fx: [] },
+    miasma: { waves: [{ pre: ["cauldronWind", "cauldronHold"], strike: "cauldronCast" }], fx: [] },
+    // котёл: каст 4 с — объект-котёл всплывает рядом с жрицей, кипит и уходит в землю (метка — единственная точка pts)
+    cauldron: { waves: [{ pre: ["cauldronWind", "cauldronHold"], strike: "cauldronCast" }], fx: [{ fx: "cauldron", waves: [0], seq: ["cauldronIn", "cauldronBoil", "cauldronOut"], pin: 0, timing: "wind", place: "marks", holds: { cauldronBoil: 3200 } }] },
+    mutagen: { waves: [{ pre: ["mutagenWind", "mutagenHold"], strike: "mutagenCast" }], fx: [] },
+    vials_fast: { waves: [{ pre: ["vialWind", "vialHold"], strike: "vialThrow" }], fx: [] },
   },
 });
 

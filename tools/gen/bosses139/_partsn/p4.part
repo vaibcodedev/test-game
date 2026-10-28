@@ -1,0 +1,326 @@
+
+// ---------------- котёл: спрайт-объект ----------------
+export const CAULDRON = { w: 48, h: 48, ax: 24, ay: 42, n: 8, fps: 10 };
+type Layers = { img: PC; emis: PC };
+/** Один кадр котла: boil=false — тихое бульканье и пар; boil=true — кипит (перед лечением): пузыри крупнее, пар столбом, брызги. */
+function cauldronFrame(i: number, boil: boolean): Layers {
+  const w = CAULDRON.w, h = CAULDRON.h;
+  const img = new PC(w, h), emis = new PC(w, h);
+  const mask = new Uint8Array(w * h);
+  const set = (x: number, y: number, c: RGBA, e = false) => {
+    x = Math.floor(x); y = Math.floor(y);
+    if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) return;
+    img.set(x, y, c);
+    if (e) emis.set(x, y, c);
+  };
+  const cx = 24, ry0 = 24;
+  // ножки
+  for (const [lx, ly] of [[cx - 10, 38], [cx + 10, 38], [cx, 40]] as [number, number][]) {
+    for (let y = ly; y < 42; y++) for (let x = lx - 2; x <= lx + 2 - (y - ly > 2 ? 1 : 0); x++) { set(x, y, IRON[x <= lx - 1 ? 3 : 1]); mask[y * w + x] = 1; }
+  }
+  // брюхо
+  for (let y = ry0; y <= 40; y++) {
+    const t = (y - ry0) / 16;
+    const hw = 14.6 * Math.sqrt(Math.max(0, 1 - t * t * 0.86));
+    for (let x = Math.ceil(cx - hw); x <= cx + hw; x++) {
+      const nx = (x + 0.5 - cx) / Math.max(1, hw);
+      let tone = 2.5 - nx * 1.5 - t * 0.9 + (nx > 0.7 ? -0.4 : 0);
+      if (Math.abs(nx + 0.55) < 0.12 && t < 0.7) tone += 1.0;
+      set(x, y, IRON[clamp(Math.round(tone), 0, 4)]);
+      mask[y * w + x] = 1;
+    }
+  }
+  // пояс: ржавый обод, костяные бусины
+  for (let y = 28; y <= 29; y++) {
+    const t = (y - ry0) / 16, hw = 14.6 * Math.sqrt(1 - t * t * 0.86);
+    for (let x = Math.ceil(cx - hw) + 1; x <= cx + hw - 1; x++) set(x, y, RUST[y === 28 ? 3 : 1]);
+  }
+  for (const dx of [-10, -5, 0, 5, 10]) { set(cx + dx, 31, BONE[4]); set(cx + dx, 32, BONE[2]); set(cx + dx - 1, 31, BONE[3]); }
+  // цепи по бокам и ручки
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 14; k++) {
+      const x = cx + s * (15 + Math.sin(k * 0.22) * 2 + k * 0.05), y = 25 + k;
+      set(x, y, RUST[k % 2 ? 2 : 3]); if (k % 3 === 0) set(x + s, y, RUST[1]);
+      mask[Math.floor(y) * w + Math.floor(x)] = 1;
+    }
+    for (const [dx, dy] of [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [1, 2], [0, 2]] as [number, number][]) { set(cx + s * 15 + (s > 0 ? dx : -dx), 21 + dy, IRON[3]); mask[(21 + dy) * w + cx + s * 15 + (s > 0 ? dx : -dx)] = 1; }
+  }
+  // задняя половина обода
+  for (let x = cx - 15; x <= cx + 15; x++) {
+    const u = (x - cx) / 15;
+    const y = ry0 - 4.6 * Math.sqrt(Math.max(0, 1 - u * u));
+    for (let yy = Math.round(y); yy <= ry0; yy++) { set(x, yy, IRON[yy === Math.round(y) ? 4 : 2]); mask[yy * w + x] = 1; }
+  }
+  // контур тела
+  const out: [number, number][] = [];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    if (mask[y * w + x]) continue;
+    if (mask[y * w + x - 1] || mask[y * w + x + 1] || mask[(y - 1) * w + x] || mask[(y + 1) * w + x]) out.push([x, y]);
+  }
+  for (const [x, y] of out) img.set(x, y, OUT);
+  // жижа в зеве
+  const ph = i / CAULDRON.n;
+  const lr = 13, lry = 3.7;
+  for (let y = Math.floor(ry0 - lry - 1); y <= ry0 + lry + 1; y++) for (let x = cx - lr - 1; x <= cx + lr + 1; x++) {
+    const dx = (x + 0.5 - cx) / lr, dy = (y + 0.5 - (ry0 + 0.3)) / lry;
+    const d = dx * dx + dy * dy;
+    if (d > 1) continue;
+    const sw = Math.sin((dx * 5 + dy * 3) + ph * TAU * (boil ? 2 : 1)) * 0.5 + 0.5;
+    const e = d > 0.72;
+    const tone = e ? 1 : boil ? (sw > 0.6 ? 4 : sw > 0.3 ? 3 : 2) : sw > 0.7 ? 3 : 2;
+    set(x, y, FIRE[tone], true);
+  }
+  // передняя кромка зева: свес, поверх жижи
+  for (let x = cx - 15; x <= cx + 15; x++) {
+    const u = (x - cx) / 15;
+    const y = ry0 + 4.6 * Math.sqrt(Math.max(0, 1 - u * u));
+    set(x, Math.round(y) - 1, IRON[4]); set(x, Math.round(y), IRON[3 - (u > 0.3 ? 1 : 0)]);
+  }
+  // пузыри
+  const nb = boil ? 7 : 3;
+  for (let j = 0; j < nb; j++) {
+    const u = (ph * (boil ? 2 : 1) + j / nb) % 1;
+    const bx = cx + Math.sin(j * 2.7 + 1) * 9 + (j % 2 ? 1 : -1);
+    const by = ry0 + Math.cos(j * 1.9) * 1.6 - (boil ? 4 : 2) * Math.sin(Math.PI * Math.min(1, u)) * 0.6;
+    const r = (boil ? 0.9 : 0.6) + (boil ? 1.6 : 1.2) * Math.sin(Math.PI * u);
+    if (u > 0.86) { for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [-1, -1], [1, -1]] as [number, number][]) set(bx + dx, by + dy, FIRE[4], true); continue; }
+    for (let y = Math.floor(by - r); y <= by + r; y++) for (let x = Math.floor(bx - r); x <= bx + r; x++) {
+      const dd = Math.hypot(x + 0.5 - bx, y + 0.5 - by) / Math.max(0.6, r);
+      if (dd <= 1) set(x, y, FIRE[dd > 0.75 ? 4 : 3], true);
+    }
+    set(bx - r * 0.4, by - r * 0.4, [255, 255, 235, 255], true);
+  }
+  // брызги при кипении
+  if (boil) for (let j = 0; j < 6; j++) {
+    const u = (ph * 2 + j * 0.17) % 1;
+    const sx = cx + (j - 2.5) * 4.2, sy = ry0 - 3 - 15 * Math.sin(Math.PI * u) * (0.6 + 0.4 * ((j * 7) % 3) / 2);
+    set(sx, sy, FIRE[4], true); set(sx, sy + 1, FIRE[3], true);
+  }
+  // пар: клубы по спирали вверх, тают дерганием пикселей
+  const np = boil ? 6 : 3;
+  for (let k = 0; k < np; k++) {
+    const v = (ph * (boil ? 2 : 1) + k / np) % 1;
+    const px = cx + Math.sin(v * 5 + k * 2.1) * (2 + v * (boil ? 6 : 4)) + (k - np / 2) * (boil ? 1.6 : 1.2);
+    const py = ry0 - 3 - v * (boil ? 25 : 15);
+    const r = 1.2 + v * (boil ? 3.4 : 2.6);
+    for (let y = Math.floor(py - r); y <= py + r; y++) for (let x = Math.floor(px - r); x <= px + r; x++) {
+      const dd = Math.hypot(x + 0.5 - px, (y + 0.5 - py) * 1.2) / r;
+      if (dd > 1) continue;
+      if (v > 0.55 && ((x + y + i) & 1)) continue;
+      if (v > 0.8 && ((x * 3 + y * 5 + k) % 3 === 0)) continue;
+      set(x, y, SAND[v > 0.7 ? 2 : dd < 0.5 ? 4 : 3]);
+    }
+  }
+  return { img, emis };
+}
+export function buildCauldron(): Layers & { calm: Layers[]; boil: Layers[] } {
+  const img = new PC(CAULDRON.w * CAULDRON.n, CAULDRON.h * 2), emis = new PC(CAULDRON.w * CAULDRON.n, CAULDRON.h * 2);
+  const calm: Layers[] = [], boil: Layers[] = [];
+  for (let i = 0; i < CAULDRON.n; i++) {
+    for (const [row, b, arr] of [[0, false, calm], [1, true, boil]] as [number, boolean, Layers[]][]) {
+      const f = cauldronFrame(i, b);
+      img.blit(f.img, i * CAULDRON.w, row * CAULDRON.h);
+      emis.blit(f.emis, i * CAULDRON.w, row * CAULDRON.h);
+      arr.push(f);
+    }
+  }
+  return { img, emis, calm, boil };
+}
+
+/** Эффект мира «котёл» (спрайт-объект на касте «Котёл»): всплывает из земли (4 кадра), кипит по кругу (8), уходит в землю (4); слой 1 — над юнитами. */
+export const FX = {
+  cauldron: { w: 48, h: 48, ax: 24, ay: 42, n: 16, fps: 10, hit: 3, anims: { cauldronIn: { col: 0, n: 4, loop: false, hit: 3, fps: 10 }, cauldronBoil: { col: 4, n: 8, loop: true, fps: 10 }, cauldronOut: { col: 12, n: 4, loop: false, fps: 10 } } },
+};
+function buildCauldronFx(cz: ReturnType<typeof buildCauldron>): { img: PC; emis: PC } {
+  const F = FX.cauldron;
+  const img = new PC(F.w * F.n, F.h * 2), emis = new PC(F.w * F.n, F.h * 2);
+  const put = (src: Layers, i: number, lim: number) => {
+    const a = src.img.clone(), e = src.emis.clone();
+    for (let y = 0; y < Math.min(F.h, lim); y++) for (let x = 0; x < F.w; x++) { a.clear(x, y); e.clear(x, y); }
+    img.blit(a, i * F.w, F.h);
+    emis.blit(e, i * F.w, F.h);
+  };
+  [0, 1, 2, 3].forEach((j) => put(cz.calm[j * 2], j, 42 - [10, 20, 28, 36][j]));
+  for (let i = 0; i < 8; i++) put(cz.boil[i], 4 + i, 0);
+  [0, 1, 2, 3].forEach((j) => put(cz.calm[j * 2 + 1], 12 + j, 42 - [36, 28, 18, 8][j]));
+  return { img, emis };
+}
+
+// ---------------- листы, проверки, монтажи ----------------
+interface Assets { hero: PC; terrain: PC; ref: PC | null; ref2: PC | null }
+const heroAt = (A: Assets, row: number) => crop(A.hero, 0, row * 32, 32, 32);
+type Sheets = { img: Record<MirAnim, PC>; emis: Record<MirAnim, PC> };
+PLACEHOLDER_SHEETS
+
+/** Референс 04 → png: основной вид (по центру листа) и нижний ряд видов (сбоку и спереди), пропорции сохранены. */
+function ensureRef(root: string, name: string, rect: [number, number, number, number], w: number, h: number): PC | null {
+  const png = path.join(root, "tools", "out", "bosses139", name);
+  const jpg = path.join(root, "tools", "out", "refs", "bosses-139", "04-brett-nuckles-gnashera.jpg");
+  if (!fs.existsSync(png) && fs.existsSync(jpg) && process.platform === "win32") {
+    const [x, y, rw, rh] = rect;
+    const ps = `Add-Type -AssemblyName System.Drawing; $s=[System.Drawing.Image]::FromFile('${jpg}'); $b=New-Object System.Drawing.Bitmap ${w},${h}; $g=[System.Drawing.Graphics]::FromImage($b); $g.InterpolationMode='HighQualityBicubic'; $g.DrawImage($s,(New-Object System.Drawing.Rectangle 0,0,${w},${h}),${x},${y},${rw},${rh},[System.Drawing.GraphicsUnit]::Pixel); $b.Save('${png}',[System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $b.Dispose(); $s.Dispose()`;
+    spawnSync("powershell", ["-NoProfile", "-Command", ps], { stdio: "ignore" });
+  }
+  return fs.existsSync(png) ? loadPC(png) : null;
+}
+const nightRectPart = (c: PC, x: number, y: number, w: number, h: number) => nightRect(c, x, y, w, h);
+
+/** Кадры галереи: покой ×4 стороны, бросок склянки, каст у котла, исцеление, мутаген (замах и удар), гибель. */
+function gallery(sheets: Sheets): { img: PC; emis: PC; flip?: boolean }[] {
+  const idle = (row: number, flip = false) => ({ img: crop(sheets.img.idle, 0, row * FH, N, FH), emis: crop(sheets.emis.idle, 0, row * FH, N, FH), flip });
+  const pose = (a: MirAnim, i: number, v: View) => renderMir(v, POSES[a](v)[i]);
+  return [
+    idle(0), idle(1), idle(2), idle(2, true),
+    pose("vialThrow", 1, "down"), pose("vialThrow", 2, "side"), pose("cauldronHold", 1, "down"), pose("cauldronCast", 2, "down"),
+    pose("mutagenWind", 3, "down"), pose("mutagenCast", 3, "down"), pose("mutagenCast", 4, "side"), pose("death", 8, "down"),
+  ];
+}
+
+/**
+ * «Наш | референс»: сверху — ×1 и ×3 рядом с героем и котлом на траве (день и ночь), ниже — галерея умений ×3 (день и ночь),
+ * затем жрица вниз и вбок ×7 (день, ночь) рядом с образцом 04 (основной вид и нижний ряд видов).
+ */
+function buildCompare(sheets: Sheets, A: Assets, cz: ReturnType<typeof buildCauldron>): PC {
+  const k = 7;
+  const H = FH * k;
+  const refH = A.ref ? A.ref.h : H;
+  const rowH = Math.max(H, refH);
+  const items = gallery(sheets);
+  const W = Math.max(items.length * (N * 3 + 8) + 60, 2 * N * k + 16 + 40 + (A.ref ? A.ref.w : 0) + 24 + (A.ref2 ? A.ref2.w : 0) + 24, 1700);
+  const TOP = 12 + 4 * 0 + (90 + 90 + 90 + 90) + 60;
+  const GAL = FH * 3 * 2 + 70;
+  const c = new PC(W, TOP + GAL + 2 * (rowH + 70) + 40);
+  fill(c, 0, 0, c.w, c.h, [30, 28, 34, 255]);
+  const cI = (b: boolean, i = 0) => (b ? cz.boil : cz.calm)[i % CAULDRON.n];
+  // ×1 и ×3: герой, жрица вниз, вверх, вбок, влево, котёл тихий и кипящий, день и ночь
+  let y0 = 12;
+  for (const [kk, night] of [[1, false], [1, true], [3, false], [3, true]] as [number, boolean][]) {
+    const hh = (kk === 1 ? 90 : 90) * (kk === 1 ? 1 : 1) + 0;
+    const hs = kk === 1 ? 90 : 90;
+    void hh;
+    text(c, `×${kk} · ${night ? "НОЧЬ" : "ДЕНЬ"} · ГЕРОЙ · ЖРИЦА ВНИЗ · ВВЕРХ · ВБОК · ВЛЕВО · КОТЁЛ (ТИХО, КИПИТ)`, 24, y0, 2);
+    const gh = (kk === 1 ? 86 : 86) * kk;
+    const wG = (30 + 66 * 4 + 52 * 2 + 40) * kk + 40;
+    const gy = y0 + 20;
+    groundBg(c, A.terrain, 24, gy, Math.min(W - 48, wG), gh, kk, "grass");
+    const yb = gy + (gh - 2 * kk);
+    let x = 40;
+    const lights: { emis: PC; x: number; y: number; flip?: boolean }[] = [];
+    const put1 = (img: PC, emis: PC | null, feet: number, wd: number, flip = false, sh = 6.5) => {
+      shadowBlob(c, x + (img.w / 2) * kk, yb - 0.5 * kk, Math.min(16, (img.w / 32) * sh) * kk, 2.4 * kk);
+      const top = Math.round(yb - feet * kk);
+      c.blit(scaleNN(img, kk, flip), x, top);
+      if (emis) lights.push({ emis, x, y: top, flip });
+      x += wd * kk;
+    };
+    const fr = (row: number) => crop(sheets.img.idle, 0, row * FH, N, FH), fe = (row: number) => crop(sheets.emis.idle, 0, row * FH, N, FH);
+    put1(heroAt(A, 0), null, 30.4, 34);
+    put1(fr(0), fe(0), CAM.GY, 66); put1(fr(1), fe(1), CAM.GY, 66); put1(fr(2), fe(2), CAM.GY, 66); put1(fr(2), fe(2), CAM.GY, 66, true);
+    put1(cI(false, 2).img, cI(false, 2).emis, CAULDRON.ay, 52); put1(cI(true, 2).img, cI(true, 2).emis, CAULDRON.ay, 52);
+    if (night) {
+      nightRect(c, 24, gy, Math.min(W - 48, wG), gh);
+      for (const l of lights) relight(c, l.emis, l.x, l.y, kk, l.flip);
+    }
+    y0 = gy + gh + 14;
+    void hs;
+  }
+  // галерея умений ×3 день/ночь
+  {
+    const gy = y0 + 4;
+    text(c, "ПОКОЙ: ВНИЗ · ВВЕРХ · ВБОК · ВЛЕВО | БРОСОК СКЛЯНКИ ×2 | КАСТ У КОТЛА | ИСЦЕЛЕНИЕ | МУТАГЕН: СКЛЯНКИ, УДАР ×2 | ГИБЕЛЬ  (×3, ДЕНЬ / НОЧЬ)", 24, gy, 2);
+    const gw = items.length * (N * 3 + 8) + 8;
+    for (const [ni, night] of [false, true].entries()) {
+      const yy = gy + 22 + ni * (FH * 3 + 6);
+      fill(c, 24, yy, gw, FH * 3, night ? [38, 46, 74, 255] : [150, 156, 140, 255]);
+      items.forEach((it, i) => {
+        const ix = 24 + 8 + i * (N * 3 + 8);
+        c.blit(scaleNN(it.img, 3, it.flip), ix, yy);
+        if (night) { nightRectPart(c, ix, yy, N * 3, FH * 3); relight(c, it.emis, ix, yy, 3, it.flip); }
+      });
+    }
+    y0 = gy + 22 + 2 * (FH * 3 + 6) + 20;
+  }
+  for (const night of [false, true]) {
+    const y = y0 + 48 + (night ? rowH + 70 : 0);
+    text(c, night ? "НАШ · НОЧЬ" : "НАШ · ДЕНЬ", 24, y - 36, 3);
+    text(c, "РЕФЕРЕНС 04", 24 + 2 * N * k + 56, y - 36, 3);
+    const oy = y + rowH - H;
+    fill(c, 24, oy, 2 * N * k + 16, H, [150, 156, 140, 255]);
+    for (const [j, row] of [[0, 0], [1, 2]] as [number, number][]) c.blit(scaleNN(crop(sheets.img.idle, 0, row * FH, N, FH), k), 24 + j * (N * k + 16), oy);
+    if (night) {
+      nightRect(c, 24, oy, 2 * N * k + 16, H);
+      for (const [j, row] of [[0, 0], [1, 2]] as [number, number][]) relight(c, crop(sheets.emis.idle, 0, row * FH, N, FH), 24 + j * (N * k + 16), oy, k);
+    }
+    fill(c, 24 + 2 * N * k + 16 + 16, y, 4, rowH, [240, 232, 214, 255]);
+    if (A.ref) c.blit(A.ref, 24 + 2 * N * k + 56, y);
+    if (A.ref2) c.blit(A.ref2, 24 + 2 * N * k + 56 + (A.ref ? A.ref.w : 0) + 24, y);
+  }
+  return c;
+}
+
+export function writeMirArt(root: string, outDir: string, quick = false): string[] {
+  fs.mkdirSync(outDir, { recursive: true });
+  const files: string[] = [];
+  const save = (c: PC, name: string) => { const f = path.join(outDir, name); c.save(f); files.push(f); return c; };
+  const sheets = animSheets(quick ? ["idle"] : undefined, quick ? 1 : 99);
+  const A: Assets = {
+    hero: loadPC(path.join(root, "client", "public", "assets", "units", "warrior.png")),
+    terrain: loadPC(path.join(root, "client", "public", "assets", "tiles", "terrain.png")),
+    ref: ensureRef(root, "ref-04.png", [787, 218, 2490, 2796], 480, 540),
+    ref2: ensureRef(root, "ref-04b.png", [481, 3170, 3255, 2094], 700, 451),
+  };
+  const cz = buildCauldron();
+  if (process.argv.includes("--sil")) {
+    const sc = new PC(N * 10 + 30 + 500, 560);
+    fill(sc, 0, 0, sc.w, sc.h, [200, 190, 160, 255]);
+    for (const [j, row] of [[0, 0], [1, 2]] as [number, number][]) {
+      const fr = crop(sheets.img.idle, 0, row * FH, N, FH);
+      for (let y = 0; y < FH; y++) for (let x = 0; x < N; x++) if (fr.alpha(x, y)) fr.set(x, y, [20, 20, 24, 255]);
+      sc.blit(scaleNN(fr, 5), j * (N * 5 + 10), 0);
+    }
+    if (A.ref) {
+      const rf = A.ref.clone();
+      for (let y = 0; y < rf.h; y++) for (let x = 0; x < rf.w; x++) { const q = rf.get(x, y)!; const lum = q[0] * 0.3 + q[1] * 0.6 + q[2] * 0.1; rf.set(x, y, lum < 140 ? [20, 20, 24, 255] : [200, 190, 160, 255]); }
+      sc.blit(rf, N * 10 + 30, 0);
+    }
+    save(sc, "r55n-e-sil.png");
+    return files;
+  }
+  save(buildCompare(sheets, A, cz), "r55n-e-compare.png");
+  save(cz.img, "plg-cauldron.png");
+  save(cz.emis, "plg-cauldron-glow.png");
+  if (quick) return files;
+  const cfx = buildCauldronFx(cz);
+  save(cfx.img, "plg-fx-cauldron.png");
+  save(cfx.emis, "plg-fx-cauldron-glow.png");
+  const sheet = new PC(N * MIR_COLS, FH * 3), glow = new PC(N * MIR_COLS, FH * 3);
+  for (const [a] of ANIM_ORDER) { sheet.blit(sheets.img[a], MIR_ANIMS[a].col * N, 0); glow.blit(sheets.emis[a], MIR_ANIMS[a].col * N, 0); }
+  save(sheet, "plg-sheet.png");
+  save(glow, "plg-glow.png");
+  const rows = ["вниз", "вверх", "вбок"];
+  const bad: string[] = [];
+  for (let r = 0; r < 3; r++) for (let cI = 0; cI < MIR_COLS; cI++) {
+    let hits = 0;
+    for (let k2 = 0; k2 < FH; k2++) for (const [x, y] of [[0, k2], [N - 1, k2]]) { const q = sheet.get(cI * N + x, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    for (let k2 = 0; k2 < N; k2++) for (const y of [0, FH - 1]) { const q = sheet.get(cI * N + k2, r * FH + y)!; if (q[3] && !colEq(q, OUT)) hits++; }
+    if (hits) bad.push(`лист, ${rows[r]}, кадр ${cI + 1}: ${hits} px не цветом контура на краю`);
+  }
+  console.log(`  ${ID}: ${MIR_COLS} кадров × 3 вида, кадр ${N}×${FH}`);
+  if (bad.length) { console.warn(`  проверки: ${bad.length}\n${bad.slice(0, 30).map((s) => "    " + s).join("\n")}`); process.exitCode = 1; }
+  else console.log("  проверки: край кадра чист");
+  const Wp = 2000;
+  const rowsP: Row[] = [];
+  for (const [a] of ANIM_ORDER) rowsP.push(animRow(a, sheets, A, Wp));
+  for (const a of ["idle", "cauldronHold"] as MirAnim[]) rowsP.push(animRow(a, sheets, A, Wp, true));
+  save(stackRows(rowsP, Wp), "plg-pilot.png");
+  return files;
+}
+
+const isMain = !!process.argv[1] && path.resolve(process.argv[1]).replace(/\\/g, "/").endsWith("bosses139/umb_plague_priestess.ts");
+if (isMain) {
+  const root = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
+  const t = Date.now();
+  const files = writeMirArt(root, path.join(root, "tools", "out", "bosses139"), process.argv.includes("--quick") || process.argv.includes("--sil"));
+  console.log(`  ${files.length} файлов, ${((Date.now() - t) / 1000).toFixed(0)} с`);
+}
+void linear; void hex; void cross; void frameEdgeCuts; void frameHoles; void hash01; void scaleBox; void outlineStats; void mix; void depthOf; void easeIn;

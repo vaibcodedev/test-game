@@ -32,8 +32,8 @@ export interface ZbWave {
   escape?: number;
   /** Кольцо (задача 139): урон делится поровну на всех героев в круге. */
   share?: boolean;
-  /** Кольцо: прерываемый каст на всю арену (data/ring-bosses.json _doc). */
-  break?: { pct: number; stunMs: number; heroStunMs: number; pillars?: number };
+  /** Кольцо: прерываемый каст на всю арену (data/ring-bosses.json _doc). heal — если не сорвали, босс лечится на эту долю здоровья (котёл), pillars тогда не используется: один объект-котёл рядом с боссом. */
+  break?: { pct: number; stunMs: number; heroStunMs: number; pillars?: number; heal?: number };
   /** Кольцо: клетка вокруг героя с кандальным колом в центре (моб <босс>_cage): пока кол стоит, босс получает урон ×shield;
    *  через holdMs клетка с целым колом бьёт внутрь (dmgPct). hp — множитель здоровья кола к мобу уровня босса. */
   cage?: { holdMs: number; hp: number; shield: number };

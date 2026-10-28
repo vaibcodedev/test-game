@@ -3449,6 +3449,227 @@
      ]
     }
    }
+  },
+  "umb_plague_priestess": {
+   "file": "umb_plague_priestess.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 84,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 54,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "vialWind": {
+     "col": 24,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "vialThrow": {
+     "col": 28,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "cauldronWind": {
+     "col": 36,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "cauldronHold": {
+     "col": 40,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "cauldronCast": {
+     "col": 44,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "mutagenWind": {
+     "col": 50,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "mutagenCast": {
+     "col": 54,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "stun": {
+     "col": 62,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 70,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    },
+    "attack": {
+     "col": 28,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "vialHold": {
+     "col": 27,
+     "n": 1,
+     "fps": 12,
+     "loop": true
+    },
+    "mutagenHold": {
+     "col": 53,
+     "n": 1,
+     "fps": 12,
+     "loop": true
+    }
+   },
+   "fx": {
+    "cauldron": {
+     "file": "umb_plague_priestess-cauldron.png",
+     "fw": 48,
+     "fh": 48,
+     "ax": 24,
+     "ay": 42,
+     "rows": 2,
+     "anims": {
+      "cauldronIn": {
+       "col": 0,
+       "n": 4,
+       "fps": 10,
+       "loop": false,
+       "hit": 3
+      },
+      "cauldronBoil": {
+       "col": 4,
+       "n": 8,
+       "fps": 10,
+       "loop": true
+      },
+      "cauldronOut": {
+       "col": 12,
+       "n": 4,
+       "fps": 10,
+       "loop": false
+      }
+     }
+    }
+   },
+   "skills": {
+    "vials": {
+     "waves": [
+      {
+       "pre": [
+        "vialWind",
+        "vialHold"
+       ],
+       "strike": "vialThrow"
+      },
+      {
+       "pre": [
+        "vialWind",
+        "vialHold"
+       ],
+       "strike": "vialThrow"
+      }
+     ],
+     "fx": []
+    },
+    "miasma": {
+     "waves": [
+      {
+       "pre": [
+        "cauldronWind",
+        "cauldronHold"
+       ],
+       "strike": "cauldronCast"
+      }
+     ],
+     "fx": []
+    },
+    "cauldron": {
+     "waves": [
+      {
+       "pre": [
+        "cauldronWind",
+        "cauldronHold"
+       ],
+       "strike": "cauldronCast"
+      }
+     ],
+     "fx": [
+      {
+       "fx": "cauldron",
+       "waves": [
+        0
+       ],
+       "seq": [
+        "cauldronIn",
+        "cauldronBoil",
+        "cauldronOut"
+       ],
+       "pin": 0,
+       "timing": "wind",
+       "place": "marks",
+       "holds": {
+        "cauldronBoil": 3200
+       }
+      }
+     ]
+    },
+    "mutagen": {
+     "waves": [
+      {
+       "pre": [
+        "mutagenWind",
+        "mutagenHold"
+       ],
+       "strike": "mutagenCast"
+      }
+     ],
+     "fx": []
+    },
+    "vials_fast": {
+     "waves": [
+      {
+       "pre": [
+        "vialWind",
+        "vialHold"
+       ],
+       "strike": "vialThrow"
+      }
+     ],
+     "fx": []
+    }
+   }
   }
  },
  "units": {
@@ -3478,6 +3699,10 @@
    "frameH": 80
   },
   "sol_goblin_warlord": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "umb_plague_priestess": {
    "frame": 64,
    "frameH": 80
   }

@@ -1,0 +1,74 @@
+/**
+ * Задача 139, босс кольца: жрица котла Гнашера (восток, слот r55n, Чумные топи, ур. 55, группа 3; карточка — docs/bosses-139.md,
+ * раздел 3.3 п. 11 и «Раскладка референсов»). Образ — по референсу tools/out/refs/bosses-139/04-brett-nuckles-gnashera.jpg (бледная
+ * жрица в глубоком капюшоне с высоким задним острием, глаза светятся; тёмная длинная ряса с бирюзовой подкладкой, рваный подол с
+ * шипами-рунами и шлейфом; костяные наплечья с рогами, костяная грудная пластина и рёбра по рясе; широкие рукава; две шипастые
+ * ржавые цепи с плеч до земли) — только для сравнения: чужой арт в игру и в git не идёт. Свечение синее, как у образца; яд и котёл — кислотно-зелёные.
+ *
+ * Метод — как у хозяина миражей и военачальника (tools/gen/bosses139/sol_goblin_warlord.ts): общий движок tools/gen/mobs/lib.ts,
+ * тело в двойном разрешении (160×160) сводится в кадр 64×80, выборочный контур, контровой свет по краю. Светится (ночью не гаснет):
+ * глаза, руны подола, знак на груди, склянки. Котёл — отдельный спрайт-объект (бурлит, пар; вторая строка — «кипит перед лечением»).
+ *
+ * Запуск (низкий приоритет): npx tsx tools/gen/bosses139/umb_plague_priestess.ts [--quick|--sil] →
+ *   tools/out/bosses139/plg-sheet.png, plg-glow.png, plg-cauldron.png, plg-cauldron-glow.png, plg-pilot.png, r55n-e-compare.png.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  PC, PX, R, Scene, VIEWS, add, clamp, cross, crop, depthOf, easeIn, easeInOut, easeOut, fill, frameEdgeCuts, frameHoles, fromView,
+  groundBg, hash01, hex, ik, lerp, linear, loadPC, mat, mix, mul, nightRect, norm, perp, renderScene, rot, scaleBox, scaleNN,
+  scr, sealPinholes, shadowBlob, snapPx, stackRows, stampRows, sub, text, thicken, toView, TAU,
+  type Cam, type Mat, type StampPx, type RGBA, type Ramp, type Row, type V3, type View,
+} from "../mobs/lib";
+import { OUT, selout, outlineStats } from "../mobs/rig";
+
+export const ID = "umb_plague_priestess";
+export const FRAME = 64;
+/** Кадр 64×80 (высокий, узкий силуэт): ширина FRAME, высота FRAME_H. */
+export const FRAME_H = 80;
+const FW = FRAME, FH = FRAME_H;
+const N = FW;
+const CAM: Cam = { N: FW, CX: 32, GY: 76.4 };
+const RS = 2;
+const CAMR: Cam = { N: 160, CX: 80, GY: 152.8 };
+const RX0 = 16;
+/** Модель → пиксели кадра 1×. */
+const K = 1.3;
+const PXM = PX / K;
+const snapM = (view: View, w: V3): V3 => mul(snapPx(view, mul(w, K)), 1 / K);
+
+// ---------------- палитра ----------------
+/** Ряса: чёрно-серая с зелёным отливом. */
+const CHAR = R("#020304", "#08090c", "#12161b", "#1e252d", "#38444f");
+/** Подкладка и кромки: болотная бирюза. */
+const TEAL = R("#040810", "#0a1630", "#102a58", "#1c468c", "#3a78d8");
+/** Кость: наплечья, грудь, рога, рёбра. */
+const BONE = R("#322d20", "#6c6448", "#aaa07c", "#e0d6b0", "#fbf4da");
+/** Бледное лицо и кисти: серо-зелёная кожа мертвеца. */
+const FACE = R("#222a28", "#4c5a55", "#82938a", "#b4c4b8", "#e2eee0");
+/** Ржавые шипастые цепи. */
+const RUST = R("#1a0e08", "#3e2312", "#74462a", "#ab7442", "#dca868");
+/** Железо котла и пробок. */
+const IRON = R("#07090a", "#171b1e", "#2e353a", "#4a535a", "#7c8a94");
+const BLACK = R("#030506", "#080b0d", "#10151a", "#1a2128", "#2a343e");
+/** Свет: глаза, руны, знак на груди — холодно-синий. */
+const GLOWC = R("#061a3a", "#0f3c8c", "#2272e6", "#5ab0ff", "#d8eeff");
+/** Яд в склянке и котле: кислотно-лаймовый. */
+const FIRE = R("#1c3a06", "#4c8a12", "#8ad22a", "#c4f060", "#f4ffc0");
+const DEAD = R("#121112", "#262223", "#3b3434", "#544a47", "#6e625c");
+/** Миазмы и болотная жижа (пыль, пар у ног). */
+const SAND = R("#14201a", "#2a4034", "#456650", "#6a9470", "#9cc49c");
+const VOID = hex("#030605");
+
+const M = {
+  robe: mat("ряса", CHAR, { base: 1.8, gain: 2.3 }),
+  teal: mat("подкладка", TEAL, { base: 1.9, gain: 2.3 }),
+  bone: mat("кость", BONE, { base: 2.0, gain: 2.3, hi: 4 }),
+  face: mat("лицо", FACE, { base: 2.0, gain: 2.2 }),
+  rust: mat("цепь", RUST, { base: 2.1, gain: 2.2 }),
+  iron: mat("железо", IRON, { base: 1.8, gain: 2.2 }),
+  black: mat("тьма", BLACK, { base: 1.5, gain: 2.0 }),
+  glow: mat("свет", GLOWC, { base: 2.8, gain: 1.0, glow: true, crisp: true }),
+  vial: mat("склянка", FIRE, { base: 2.9, gain: 0.9, glow: true, crisp: true }),
+};

@@ -5,10 +5,9 @@ import { services } from "../arena/registry";
 import type { Player } from "./Player";
 import type { World } from "./World";
 import { T } from "../../../shared/texts";
+import { RING_CARDS } from "../../../shared/zoneBosses";
 
 const BOSSES: Record<string, { alive: string; slain: string; gone: string }> = {
-  ent: { alive: T("srv.rumors.805"), slain: T("srv.rumors.806"), gone: T("srv.rumors.807") },
-  witch: { alive: T("srv.rumors.808"), slain: T("srv.rumors.809"), gone: T("srv.rumors.810") },
   ashlord: { alive: T("srv.rumors.811"), slain: T("srv.rumors.812"), gone: T("srv.rumors.813") },
 };
 
@@ -20,6 +19,18 @@ function bossState(w: World, id: string): string {
   if (!k) return b.gone;
   const min = Math.max(1, Math.round((w.time - k.at) / 60000));
   return T("srv.rumors.137", { slain: b.slain, by: k.by, min: min });
+}
+
+/** Слух о случайном боссе кольца 40–80 (data/ring-bosses.json): жив, повержен недавно или ещё не появлялся. */
+function ringBossState(w: World): string {
+  const c = RING_CARDS[Math.floor(Math.random() * RING_CARDS.length)];
+  const names = { name: c.name, title: c.title, loc: c.location };
+  const m = [...w.mobs.values()].find((x) => x.def.id === c.id && !x.summoned);
+  if (m && !m.dead) return T("srv.rumors.805", names);
+  const k = w.bossKills.get(c.id);
+  if (!k) return T("srv.rumors.807", names);
+  const min = Math.max(1, Math.round((w.time - k.at) / 60000));
+  return T("srv.rumors.137", { slain: T("srv.rumors.806", names), by: k.by, min: min });
 }
 
 const last = new Map<string, { at: number; npc: string; i: number }>();
@@ -39,8 +50,7 @@ export function rumorFor(w: World, p: Player, npcId: unknown): RumorMsg | null {
   if (prev && prev.npc === npc.id && lines.length > 1 && lines[i] === npc.lines[prev.i]) i = (i + 1) % lines.length;
   last.set(p.id, { at: now, npc: npc.id, i: npc.lines.indexOf(lines[i]) });
   const text = lines[i]
-    .replace("{ent}", () => `${bossState(w, "ent")}`)
-    .replace("{witch}", () => `${bossState(w, "witch")}`)
+    .replace("{ringboss}", () => ringBossState(w))
     .replace("{ashlord}", () => `${bossState(w, "ashlord")}`)
     .replace("{online}", () => String(w.players.size))
     .replace("{top}", () => (top ? `${top.name} (${top.rating})` : T("srv.rumors.814")));

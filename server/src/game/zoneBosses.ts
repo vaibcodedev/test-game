@@ -272,7 +272,9 @@ export class ZoneBoss extends Boss {
     if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
     // точки столбов: по арене, на проходимой земле
     const pts: number[] = [];
-    for (let k = 0, guard = 0; k < (b.pillars ?? 8) && guard < 200; guard++) {
+    // котёл (heal): единственный объект — рядом с боссом, а не по арене
+    if (b.heal) pts.push(Math.round(m.x + 36), Math.round(m.y + 12));
+    else for (let k = 0, guard = 0; k < (b.pillars ?? 8) && guard < 200; guard++) {
       const a = Math.random() * Math.PI * 2, d = 40 + Math.sqrt(Math.random()) * (this.arena - 50);
       const x = m.home.x + Math.cos(a) * d, y = m.home.y + Math.sin(a) * d;
       if (!walkable(w.map, x, y, 8)) continue;
@@ -292,8 +294,10 @@ export class ZoneBoss extends Boss {
         return;
       }
       if (w.time < end) { w.later(100, tick); return; }
+      // не сорвали: котёл лечит босса на heal от полного здоровья
+      if (b.heal) m.unit.hp = Math.min(m.unit.maxHp, m.unit.hp + b.heal * m.unit.maxHp);
       const k = kindOf(ab.k);
-      for (const p of this.inArena()) {
+      if (ab.dmgPct > 0) for (const p of this.inArena()) {
         if (p.dead) continue;
         const res = w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
         if (res.landed && b.heroStunMs) applyStun(w, m, p, b.heroStunMs);

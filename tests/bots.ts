@@ -376,16 +376,6 @@ async function main() {
       await g.leave();
       return uniq.name;
     };
-    await check("Древний Энт: корни, вторая фаза, саженцы, уникальный лут", async () => {
-      const name = await bossTest("ent", "warrior", [0.45], (fx) =>
-        fx.some((f) => f.t === "spawn" && f.k === "nature") ? null : "саженцы не призваны");
-      console.log("       добыча:", name);
-    });
-    await check("Болотная Ведьма: лужи яда, телепорт, ярость в 3-й фазе", async () => {
-      const name = await bossTest("witch", "mage", [0.55, 0.2], (fx) =>
-        !fx.some((f) => f.t === "hazard") ? "нет ядовитых луж" : !fx.some((f) => f.t === "buff" && f.k === "enrage") ? "нет ярости" : null);
-      console.log("       добыча:", name);
-    });
     await check("Повелитель Пепла: дыхание, метеоры, кольцо пламени", async () => {
       const name = await bossTest("ashlord", "ranger", [0.6, 0.3], (fx) =>
         !fx.some((f) => f.t === "tele" && f.shape === "cone") ? "нет огненного дыхания" : !fx.some((f) => f.t === "tele" && f.shape === "ring") ? "нет кольца пламени" : null);

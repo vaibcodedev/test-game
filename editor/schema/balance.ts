@@ -6,7 +6,7 @@ const mobHp = (c: Ctx, L: number) => evalCurve(c.bal?.mob?.hp ?? [[1, 50]], L, "
 const mobDmg = (c: Ctx, L: number) => { const d = c.bal?.mob?.dmg ?? [5, 3]; return d[0] + d[1] * L; };
 const perMob = (p: number) => (p > 0 ? `в среднем 1 раз на ${num(1 / p, 1)} убитых мобов` : "не выпадает вовсе");
 
-const BOSS_NAMES: Record<string, string> = { ent: "Энт (подземелье)", witch: "Ведьма (подземелье)", ashlord: "Повелитель Пепла", chaos_knight: "Рыцарь Хаоса (рейд)" };
+const BOSS_NAMES: Record<string, string> = { ashlord: "Повелитель Пепла", chaos_knight: "Рыцарь Хаоса (рейд)" };
 const CLASS_NAMES: Record<string, string> = { warrior: "Храмовник", deathknight: "Рыцарь Смерти", healer: "Клирик", bloodweaver: "Кровотворец", ranger: "Рейнджер", darkranger: "Тёмный рейнджер", mage: "Маг", warlock: "Чернокнижник", rogue: "Ассасин", reaver: "Потрошитель" };
 const ROLE: Record<string, string> = { warrior: "танк", deathknight: "танк", healer: "лекарь", bloodweaver: "лекарь", ranger: "лучник", darkranger: "лучник", mage: "заклинатель", warlock: "заклинатель", rogue: "боец ближнего боя", reaver: "боец ближнего боя" };
 const clsName = (c: Ctx) => CLASS_NAMES[c.path[2]] ?? c.path[2];

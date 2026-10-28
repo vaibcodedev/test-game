@@ -180,7 +180,7 @@ async function main() {
   });
 
   await check("уникальные боссов: ilvl = уровень босса из world.json, характеристики растут, потолка req нет", () => {
-    for (const [boss, ids] of [["ent", ["heartwood_staff", "bark_helm"]], ["witch", ["hexed_ring"]], ["ashlord", ["ashbringer", "ashen_crown"]]] as const) {
+    for (const [boss, ids] of [["ashlord", ["ashbringer", "ashen_crown"]]] as const) {
       for (const id of ids) {
         const lvl = MOBS[boss].level!, it = makeUnique(id);
         assert(uniqueLevel(id) === lvl && it.ilvl === lvl && it.req === lvl - 3, `${id}: ${it.ilvl}/${it.req}, босс ${lvl}`);

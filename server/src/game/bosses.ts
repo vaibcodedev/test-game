@@ -1,7 +1,5 @@
 /**
  * Боссы: фазы по порогам здоровья, способности с телеграфом (игрок видит зону удара заранее), помощники.
- *  - Древний Энт: корни под игроками, удар по земле конусом; во 2-й фазе — саженцы и буря листьев вокруг.
- *  - Болотная Ведьма: ядовитые лужи; во 2-й — телепорты с новой и утопленники; в 3-й — ярость.
  *  - Повелитель Пепла: огненное дыхание и сокрушение; во 2-й — метеоритный дождь; в 3-й — кольцо пламени и бесы.
  */
 import { MOBS } from "../../../shared/mobs";
@@ -9,7 +7,6 @@ import { BAL, bossBal } from "../../../shared/balance";
 import { Anim, BUFF_ENRAGE } from "../../../shared/protocol";
 import { walkable } from "../../../shared/map";
 import { Mob } from "./Mob";
-import { applyRoot } from "./effects";
 import type { Player } from "./Player";
 import type { World } from "./World";
 import { T } from "../../../shared/texts";
@@ -95,7 +92,7 @@ export abstract class Boss {
       if (t) add.addThreat(t.id, 50);
       this.w.addMob(add);
       this.adds.add(add);
-      this.w.emit({ t: "spawn", id: add.id, k: id === "sapling" ? "nature" : "smoke" });
+      this.w.emit({ t: "spawn", id: add.id, k: "smoke" });
     }
   }
 
@@ -143,75 +140,6 @@ export abstract class Boss {
   }
 }
 
-class Ent extends Boss {
-  protected thresholds = [0.5];
-  protected override yells = ["", T("srv.bosses.783"), T("srv.bosses.784")];
-  constructor(w: World, m: Mob, arena: number) {
-    super(w, m, arena);
-    const dmg = () => this.m.stats.dmg * this.mech;
-    // корни под ногами у игроков
-    this.ability(7, [0], () => this.roots(3));
-    this.ability(4.5, [1], () => this.roots(4));
-    // удар по земле конусом в сторону цели
-    this.ability(9, [0, 1], () => {
-      const t = this.target();
-      if (!t) return;
-      const a = Math.atan2(t.y - m.y, t.x - m.x);
-      this.cast(1000);
-      w.telegraph(m, "cone", m.x, m.y, 150, 950, (p) => w.hit(m, p, { flat: dmg() * 2.2, kind: "nature" }), { a, w: 1.4, k: "nature" });
-    });
-    // буря листьев: всё вокруг энта, нужно отбежать
-    this.ability(12, [1], () => {
-      this.cast(1700);
-      w.telegraph(m, "circle", m.x, m.y, 175, 1600, (p) => w.hit(m, p, { flat: dmg() * 2.6, kind: "nature" }), { k: "nature" });
-    }, 2);
-    this.ability(15, [1], () => this.summon("sapling", 3), 1);
-  }
-  private roots(n: number) {
-    for (const p of this.randomPlayers(n))
-      this.w.telegraph(this.m, "circle", p.x, p.y, 54, 1300, (q) => {
-        if (this.w.hitEx(this.m, q, { flat: this.m.stats.dmg * this.mech * 1.3, kind: "nature" }).landed) applyRoot(this.w, this.m, q, 1500);
-      }, { k: "nature" });
-  }
-  protected onPhase() {
-    this.summon("sapling", 3);
-  }
-}
-
-class Witch extends Boss {
-  protected thresholds = [0.6, 0.25];
-  protected override yells = ["", T("srv.bosses.785"), T("srv.bosses.786"), T("srv.bosses.787")];
-  constructor(w: World, m: Mob, arena: number) {
-    super(w, m, arena);
-    const dmg = () => this.m.stats.dmg * this.mech;
-    const pools = (n: number) => {
-      const spots = this.randomPlayers(n).map((p) => ({ x: p.x, y: p.y }));
-      for (const s of spots) w.telegraph(m, "circle", s.x, s.y, 62, 900, () => {}, { k: "poison" });
-      w.later(900, () => { if (!m.dead) for (const s of spots) w.addHazard(m, s.x, s.y, 62, 6500, dmg() * 0.9, "poison"); });
-    };
-    this.ability(6, [0, 1], () => pools(2));
-    this.ability(4, [2], () => pools(5));
-    this.ability(10, [1, 2], () => {
-      // телепорт в случайную точку арены и ядовитая нова
-      const a = Math.random() * Math.PI * 2, r = Math.random() * this.arena * 0.7;
-      const x = m.home.x + Math.cos(a) * r, y = m.home.y + Math.sin(a) * r;
-      if (!walkable(w.map, x, y, 14)) return;
-      w.emit({ t: "blink", id: m.id, x0: m.x, y0: m.y, x1: x, y1: y });
-      m.unit.x = x;
-      m.unit.y = y;
-      this.cast(1300);
-      w.telegraph(m, "circle", x, y, 140, 1200, (p) => { w.hit(m, p, { flat: dmg() * 2.3, kind: "poison" }); p.poisonUntil = w.time + 3000; }, { k: "poison" });
-    }, 1);
-    this.ability(18, [1, 2], () => this.summon("drowned", 2), 3);
-  }
-  protected onPhase(n: number) {
-    if (n === 2) {
-      this.m.unit.buffs |= BUFF_ENRAGE;
-      this.w.emit({ t: "buff", id: this.m.id, k: "enrage", ms: 0 });
-    }
-  }
-}
-
 class AshLord extends Boss {
   protected thresholds = [0.66, 0.33];
   protected override yells = ["", T("srv.bosses.788"), T("srv.bosses.789"), T("srv.bosses.790")];
@@ -255,8 +183,6 @@ class AshLord extends Boss {
 
 export function createBoss(w: World, m: Mob, arena: number) {
   switch (m.def.id) {
-    case "ent": return new Ent(w, m, arena);
-    case "witch": return new Witch(w, m, arena);
     case "ashlord": return new AshLord(w, m, arena);
   }
   return null;

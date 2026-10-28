@@ -344,7 +344,7 @@ function buildWas() {
   // реки, мосты, боссы
   for (const r of rivers) svg += `<text class="t s5 bl" x="${r.path[2][0] + 3}" y="${r.path[2][1]}" style="text-anchor:start">р. ${esc(r.name)}</text>`;
   for (const o of m.objects) if (o.kind === "bridge_h" || o.kind === "bridge_v") svg += `<rect x="${r1(o.x / TILE - 3)}" y="${r1(o.y / TILE - 3)}" width="6" height="3" fill="#a8855a" stroke="#fff" stroke-width=".5"/>`;
-  const bossName: Record<string, string> = { ent: "Ent 28", witch: "Ведьма 38", ashlord: "Ашлорд 46 (данж)" };
+  const bossName: Record<string, string> = { ashlord: "Ашлорд 46 (данж)" };
   for (const b of BOSS_SPAWNS) svg += `<circle cx="${r1(b.x / TILE)}" cy="${r1(b.y / TILE)}" r="3" fill="#d6372a" stroke="#fff" stroke-width=".6"/><text class="t s5" x="${r1(b.x / TILE + 5)}" y="${r1(b.y / TILE + 1.6)}" style="text-anchor:start">босс ${esc(bossName[b.id] ?? b.id)}</text>`;
   svg += `<text class="t s5" x="792" y="204" style="fill:#ffb3a8;text-anchor:start">дорога Умбрата обрывается: прямой к центру нет</text>`;
   // пути к Эмберхоллу

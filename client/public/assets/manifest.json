@@ -1,9 +1,5 @@
 {
  "units": {
-  "sol_goblin_warlord": {
-   "frame": 64,
-   "frameH": 80
-  },
   "pet_wolf": {
    "frame": 32
   },
@@ -150,6 +146,14 @@
    "frameH": 80
   },
   "umb_crimson_vampire_mirage": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_goblin_warlord": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "umb_plague_priestess": {
    "frame": 64,
    "frameH": 80
   },
@@ -33757,6 +33761,9 @@
   "uq_zb_burrow_spear",
   "uq_zb_grazg_skullhelm",
   "uq_zb_digger_claw",
+  "uq_zb_gnashera_ladle",
+  "uq_zb_priestess_hood",
+  "uq_zb_gnashera_stone",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",

@@ -494,7 +494,7 @@ export class GameScene extends Phaser.Scene {
     // пыль из-под ног идущих
     const now = this.time.now;
     for (const [id, u] of this.units) {
-      if (u.dead || u.u.anim !== Anim.Walk || u.frame > 32 && u.u.sprite === "witch") continue;
+      if (u.dead || u.u.anim !== Anim.Walk) continue;
       if ((this.dustAt.get(id) ?? 0) > now) continue;
       this.dustAt.set(id, now + 260);
       if (z !== Zone.Dungeon) this.dust.emitParticleAt(u.x, u.y);

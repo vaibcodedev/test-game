@@ -30,7 +30,9 @@ const SLOT: Record<string, string> = { "две руки": "weapon", "главн�
 const STAT_KEYS = new Set<ItemStatKey>(["str", "agi", "int", "vit", "hp", "crit"]);
 
 // уникальные вещи подземелий — потолок силы
-const DUNGEON = Object.values(MOBS).flatMap((m) => m.uniques ?? []).map((id) => UNIQUES[id]);
+// старые боссы Энт и Болотная Ведьма удалены (задача 139), но их вещи остались в сохранениях и в UNIQUES — планка силы по-прежнему они
+const OLD_BOSS_UNIQUES = ["heartwood_staff", "rootbreaker", "whisperwind", "bark_helm", "hexed_ring", "bog_mantle", "witch_eye", "swamp_treads"];
+const DUNGEON = [...new Set([...Object.values(MOBS).flatMap((m) => m.uniques ?? []), ...OLD_BOSS_UNIQUES])].map((id) => UNIQUES[id]);
 const dungeonMin = Math.min(...DUNGEON.map((u) => ratio(u.stats as Record<string, number>, u.ilvl)));
 const dungeonKey: Record<string, number> = {};
 for (const u of DUNGEON) for (const [k, v] of Object.entries(u.stats)) dungeonKey[k] = Math.max(dungeonKey[k] ?? 0, (v as number) / aff(k, u.ilvl));

@@ -150,6 +150,8 @@ for (const c of CARDS) {
         mob.addThreat(p.id, 100);
         log.length = 0;
         hits = [];
+        if (mode === "stand" && ab.break.heal) mob.unit.hp = Math.floor(mob.unit.maxHp * 0.8);
+        const hp0 = mob.unit.hp;
         boss.run(ab);
         const t0 = w.time;
         for (let t = 0; t < ab.windupMs + 1200; t += 50) {
@@ -161,7 +163,8 @@ for (const c of CARDS) {
         const mine = hits.filter((h) => h.dst === p && h.src === mob);
         const zb = log.find((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === ab.id);
         const broke = log.some((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === "break");
-        if (mode === "stand") check(`${c.id}.${ab.id}: не сорван — удар по всей арене в конце каста`, !!zb && mine.length > 0 && mine[0].t - t0 >= ab.windupMs - 60 && !broke, `удар через ${mine[0] ? mine[0].t - t0 : -1} мс (каст ${ab.windupMs})`);
+        if (mode === "stand" && ab.break.heal) check(`${c.id}.${ab.id}: не сорван — котёл лечит босса на ${ab.break.heal * 100} %, героев не бьёт`, !!zb && mine.length === 0 && Math.abs(mob.unit.hp - hp0 - ab.break.heal * mob.unit.maxHp) <= 2, `было ${hp0}, стало ${mob.unit.hp}, ударов ${mine.length} в ${mine.slice(0, 4).map((h) => Math.round(h.t - t0)).join(",")}, zb ${!!zb}`);
+        else if (mode === "stand") check(`${c.id}.${ab.id}: не сорван — удар по всей арене в конце каста`, !!zb && mine.length > 0 && mine[0].t - t0 >= ab.windupMs - 60 && !broke, `удар через ${mine[0] ? mine[0].t - t0 : -1} мс (каст ${ab.windupMs})`);
         else check(`${c.id}.${ab.id}: сорван — урона нет, босс оглушён`, broke && mine.length === 0 && mob.stunUntil > t0 + 1000, `урон ${mine.reduce((s, h) => s + h.v, 0)}`);
         w.removePlayer(p.id);
       }
@@ -483,7 +486,7 @@ console.log("4. добыча");
   // защита фарма: старше босса больше чем на loot.bossLevelGap — ничего; младший в той же группе — как обычно
   const gap = BAL.loot.bossLevelGap;
   // правило: добыча есть, если герой старше босса не больше чем на gap или босс не ниже bossLevelFree (80)
-  const deny = (hero: number, lv: number) => bossLootDenied({ level: lv, def: { ...MOBS.ent, level: lv } }, { level: hero });
+  const deny = (hero: number, lv: number) => bossLootDenied({ level: lv, def: { ...MOBS[c.id], level: lv } }, { level: hero });
   for (const [h, b, want] of [[100, 80, true], [100, 79, false], [60, 50, true], [61, 50, false], [100, 95, true]] as const)
     check(`отсечка: герой ${h}, босс ${b} — ${want ? "добыча есть" : "пусто"}`, deny(h, b) === !want);
   const kill = (id: string, levels: number[]) => {
@@ -497,7 +500,7 @@ console.log("4. добыча");
     for (const q of ps) w.removePlayer(q.id);
     return res;
   };
-  for (const id of [c.id, "ent"]) {
+  for (const id of [c.id]) {
     const lv = MOBS[id].level!;
     const [over] = kill(id, [lv + gap + 1]);
     const [edge] = kill(id, [lv + gap]);
@@ -507,12 +510,6 @@ console.log("4. добыча");
     check(`${id}: младший в группе со старшим получает, старший — нет`, young.gold > 0 && young.bags === 1 && old.gold === 0 && old.bags === 0);
     const commons = [edge, young].flatMap((r) => r.items).filter((it) => BASE_ITEMS[it.base]?.slot !== "consumable" && it.rarity < Rarity.Rare);
     check(`${id}: обычных вещей в добыче нет`, commons.length === 0, commons.map((it) => it.name).join(", "));
-  }
-  {
-    // старые боссы: много убийств — ни одной обычной вещи
-    let commons = 0;
-    for (let i = 0; i < 40; i++) for (const r of kill("witch", [MOBS.witch.level!])) commons += r.items.filter((it) => BASE_ITEMS[it.base]?.slot !== "consumable" && it.rarity < Rarity.Rare).length;
-    check("Болотная Ведьма: за 40 убийств обычных вещей нет", commons === 0, `обычных ${commons}`);
   }
 }
 

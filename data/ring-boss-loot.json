@@ -285,6 +285,63 @@
       ],
       "legendary": 0.015,
       "pet": 8
+    },
+    "umb_plague_priestess": {
+      "name": "Гнашера",
+      "level": 55,
+      "band": [
+        50,
+        60
+      ],
+      "special": [
+        {
+          "item": "zb_gnashera_ladle",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_priestess_hood",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_gnashera_stone",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -841,6 +898,118 @@
         "pommel": "ring"
       },
       "boss": "sol_goblin_warlord",
+      "card": "r2"
+    },
+    "zb_gnashera_ladle": {
+      "id": "zb_gnashera_ladle",
+      "name": "Черпак Гнашеры",
+      "base": "staff",
+      "ilvl": 55,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "crit"
+      ],
+      "stats": {
+        "int": 32,
+        "crit": 1
+      },
+      "prop": "Заклинание, снявшее с цели яд, заряжает следующее: оно бьёт на 8% сильнее.",
+      "lore": "Длинная ручка обмотана ржавой цепью. Черпак всегда тёплый и пахнет болотной ряской.",
+      "look": {
+        "shape": "cage",
+        "mat": "blackiron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "haft": "deadwood",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_plague_priestess",
+      "card": "r3"
+    },
+    "zb_priestess_hood": {
+      "id": "zb_priestess_hood",
+      "name": "Капюшон жрицы котла",
+      "base": "cloth_helm",
+      "ilvl": 53,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "mage",
+        "healer",
+        "warlock",
+        "bloodweaver"
+      ],
+      "affix": [
+        "int",
+        "vit"
+      ],
+      "stats": {
+        "int": 15,
+        "vit": 14
+      },
+      "prop": "Носитель дышит топью спокойно: ядовитые пятна на земле наносят ему на 15% меньше урона.",
+      "lore": "Ткань чёрная как болотная вода; по краю — вышитая синяя нить, которая не гаснет в тумане.",
+      "look": {
+        "shape": "horncrown",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "umb_plague_priestess",
+      "card": "r2"
+    },
+    "zb_gnashera_stone": {
+      "id": "zb_gnashera_stone",
+      "name": "Синий камень Гнашеры",
+      "base": "amulet",
+      "ilvl": 54,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "healer",
+        "bloodweaver",
+        "mage",
+        "warlock"
+      ],
+      "affix": [
+        "int",
+        "hp"
+      ],
+      "stats": {
+        "int": 15,
+        "hp": 180
+      },
+      "prop": "Лечение, наложенное на союзника с ядом, снимает с него яд на 1 с раньше.",
+      "lore": "Камень с груди костяной пластины. Он холодный, и в нём что-то медленно переливается.",
+      "look": {
+        "shape": "skull",
+        "rich": 0,
+        "mat": "bone",
+        "trim": "iron",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "darkwood",
+        "deco": "skull",
+        "fx": "fel",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "umb_plague_priestess",
       "card": "r2"
     }
   }
