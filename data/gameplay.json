@@ -24,7 +24,7 @@
     "combatMs": 5000,
     "logoutCombatMs": 10000,
     "reconnectSec": 30,
-    "dayCycleMin": 20,
+    "dayCycleMin": 60,
     "doorFadeMs": 260,
     "teleportCastMs": 3000
   },
