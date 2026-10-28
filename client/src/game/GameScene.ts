@@ -1392,7 +1392,7 @@ export class GameScene extends Phaser.Scene {
         this.clickGoal = null;
         const cam = this.cameras.main;
         cam.centerOn(u.x, u.y - 12);
-        if (!cam.fadeEffect.isRunning) cam.fadeIn(280, 0, 0, 0);
+        if (!cam.fadeEffect.isRunning) cam.fadeIn(700, 0, 0, 0); // мягкое проявление после прыжка — не мгновенно
       }
       // сервер держит героя: оглушение, корни, канал (castHold), заморозка арены до боя
       const arenaPhase = net.kind === "arena" ? (net.room?.state as { phase?: string } | undefined)?.phase : "fight";
