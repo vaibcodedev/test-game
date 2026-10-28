@@ -93,3 +93,67 @@ export function burntIndex(objects: { kind: string; x: number; y: number }[]) {
     return false;
   };
 }
+
+// ---------- след непроходимого: не «парит», не на дороге и не на площадке входа ----------
+const PAD = RULES.clear.pad;
+const BUILDING_DOOR = RULES.clear.buildings as Record<string, string>;
+const ENTRANCE = new Set(RULES.clear.entrances);
+const STRUCTURE = RULES.clear.structure;
+const GATE_RE = /(^|_)gate($|_)|gate_arch|^pal_gate/;
+/** Постройка (стены, ворота, ограды, дома, обрывы): её след сам образует проход и не проверяется. */
+export const isStructure = (kind: string) => STRUCTURE.some((s) => kind.includes(s));
+
+export type FootViolation = "float" | "road" | "pad";
+export const FOOT_TEXT: Record<FootViolation, string> = { float: "основание висит над водой или лавой", road: "след на дороге", pad: "след на площадке входа" };
+type Obj = { kind: string; x: number; y: number };
+type Fp = { w: number; h: number } | undefined;
+/** Привязка следа (левая нижняя клетка) по нижней середине спрайта, как в place() (дрожание меньше полклетки). */
+export const footAnchor = (o: Obj, fp: { w: number }) => [Math.round(o.x / TILE - fp.w / 2), Math.round((o.y + 2) / TILE) - 1] as const;
+
+/** Проверяется ли след вида: непроходимое, не постройка, не сам вход или ворота. */
+export const footChecked = (kind: string, fp: Fp) => !!fp && !isStructure(kind) && !ENTRANCE.has(kind) && !GATE_RE.test(kind);
+
+/**
+ * Проверка следов непроходимых объектов. surf — поверхность вершины, road — расстояние до оси дороги (тайлы), fpOf — след вида.
+ * Площадки входа: перед дверью зданий и цоколя (середина нижнего ряда следа), у лестниц и лазов, по обе стороны ворот.
+ * at(kind, x0, y0) — нарушение следа с привязкой x0, y0 (левая нижняя клетка); all() — все нарушения: индекс объекта → вид.
+ */
+export function footChecker(objects: Obj[], fpOf: (kind: string) => Fp, surf: (vx: number, vy: number) => string | null, road: (x: number, y: number) => number) {
+  const pad = new Set<number>(), key = (x: number, y: number) => y * 65536 + x;
+  const addRect = (x0: number, x1: number, y0: number, y1: number) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) pad.add(key(x, y)); };
+  for (const o of objects) {
+    const fp = fpOf(o.kind);
+    if (fp && (BUILDING_DOOR[o.kind] || ENTRANCE.has(o.kind))) {
+      const [x0, y0] = footAnchor(o, fp);
+      const d0 = x0 + Math.floor((fp.w - 1) / 2), d1 = x0 + Math.ceil((fp.w - 1) / 2);
+      addRect(d0 - PAD.half, d1 + PAD.half, y0 + 1, y0 + PAD.depth);
+    } else if (ENTRANCE.has(o.kind)) {
+      const fx = Math.floor(o.x / TILE), fy = Math.floor((o.y - 2) / TILE);
+      addRect(fx - PAD.half, fx + PAD.half, fy - 1, fy + PAD.depth);
+    } else if (GATE_RE.test(o.kind)) {
+      const gx = Math.floor(o.x / TILE), gy = Math.floor((o.y - 2) / TILE);
+      addRect(gx - PAD.half, gx + PAD.half, gy - PAD.depth, gy + PAD.depth);
+    }
+  }
+  const at = (kind: string, x0: number, y0: number): FootViolation | null => {
+    const fp = fpOf(kind);
+    if (!fp || !footChecked(kind, fp)) return null;
+    for (let vx = x0; vx <= x0 + fp.w; vx++) { const s = surf(vx, y0 + 1); if (s === "water" || s === "lava" || s === null) return "float"; }
+    for (let j = 0; j < fp.h; j++) for (let k = 0; k < fp.w; k++) {
+      if (pad.has(key(x0 + k, y0 - j))) return "pad";
+      if (road(x0 + k + 0.5, y0 - j + 0.5) < RULES.clear.road) return "road";
+    }
+    return null;
+  };
+  const all = () => {
+    const out = new Map<number, FootViolation>();
+    objects.forEach((o, i) => {
+      const fp = fpOf(o.kind);
+      if (!fp) return;
+      const v = at(o.kind, ...footAnchor(o, fp));
+      if (v) out.set(i, v);
+    });
+    return out;
+  };
+  return { at, all };
+}

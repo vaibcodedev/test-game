@@ -19,7 +19,7 @@ import { CITIES, cityHouseKind, FORT_HOUSES, fortDecor, STYLE, TEMPLE_KIND, isGa
 import { BELT_HALF, BUILDINGS, inTownRect, isBeltFence, isGate, STALLS, STANDARD_TOWERS, TOWERS, TOWN, TOWN_STANDARD, townGround, WALL } from "./town";
 import { SETTLEMENTS, SETTLE_MOB_GAP, SETTLE_R, buildSettlement, settleDist, settleGround } from "./settlements";
 import * as D from "./decor";
-import { burntIndex, checkDecor, type DecorCtx } from "./decorRules";
+import { burntIndex, checkDecor, footAnchor, footChecker, type DecorCtx } from "./decorRules";
 import { DG_FOOTPRINT } from "./dungeonDecor";
 import { assignArtVariants } from "./cityart";
 import { interiorAt, interiorCell } from "./interiors";
@@ -1248,21 +1248,51 @@ export function generateMap(seed: number): WorldMap {
   // и не на пепле (жерла на траве Полей). След снятого непроходимого освобождается; id узлов добычи пересчитываются. Правила зеркальны
   // (поверхность и зоны Полей — тоже), поэтому Поля остаются симметричными.
   {
-    const ctx = decorCtxOf({ w, h, vtx, zone }), burnt = burntIndex(objects);
-    const keep = objects.map((o) => !checkDecor(ctx, o.kind, o.x, o.y, burnt));
-    const newId = new Int32Array(objects.length).fill(-1);
-    let n = 0;
-    objects.forEach((o, i) => {
-      if (keep[i]) { newId[i] = n; objects[n++] = o; return; }
-      const a = placedAt.get(i), fp = OBJECT_FOOTPRINT[o.kind];
-      if (a && fp) for (let j = 0; j < fp.h; j++) for (let k = 0; k < fp.w; k++) cell[(a[1] - j) * w + a[0] + k] &= ~CELL_BLOCK;
-    });
-    objects.length = n;
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      const id = newId[nodes[i].id];
-      if (id < 0) nodes.splice(i, 1);
-      else nodes[i].id = id;
+    const ctx = decorCtxOf({ w, h, vtx, zone });
+    const setFoot = (ax: number, ay: number, fp: { w: number; h: number }, on: boolean) => {
+      for (let j = 0; j < fp.h; j++) for (let k = 0; k < fp.w; k++) if (on) cell[(ay - j) * w + ax + k] |= CELL_BLOCK; else cell[(ay - j) * w + ax + k] &= ~CELL_BLOCK;
+    };
+    /** Снять объекты, где keep[i] = false: след освобождается, id узлов добычи и привязки placedAt пересчитываются. */
+    const compact = (keep: boolean[]) => {
+      const newId = new Int32Array(objects.length).fill(-1), moved = new Map<number, [number, number]>();
+      let n = 0;
+      objects.forEach((o, i) => {
+        const a = placedAt.get(i), fp = OBJECT_FOOTPRINT[o.kind];
+        if (keep[i]) { newId[i] = n; if (a) moved.set(n, a); objects[n++] = o; return; }
+        if (a && fp) setFoot(a[0], a[1], fp, false);
+      });
+      objects.length = n;
+      placedAt.clear();
+      for (const [i, a] of moved) placedAt.set(i, a);
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const id = newId[nodes[i].id];
+        if (id < 0) nodes.splice(i, 1);
+        else nodes[i].id = id;
+      }
+    };
+    const burnt = burntIndex(objects);
+    compact(objects.map((o) => !checkDecor(ctx, o.kind, o.x, o.y, burnt)));
+    // След непроходимого = коллизия (decor-rules.json clear): основание не висит над водой и лавой, след не на оси дороги и не на площадке
+    // входа (перед дверью зданий и цоколя, у лестниц, лазов пещер и ворот). Что мешает входу или дороге — сдвигается вбок (запад — сначала
+    // к краю карты, восток — зеркально), а если некуда — снимается; висящее над водой снимается.
+    const fc = footChecker(objects, (k) => OBJECT_FOOTPRINT[k], ctx.surf, roadDist);
+    const keep = objects.map(() => true);
+    for (const [i, v] of fc.all()) {
+      const o = objects[i], fp = OBJECT_FOOTPRINT[o.kind]!, a = placedAt.get(i);
+      const [x0, y0] = a ?? footAnchor(o, fp);
+      if (a) setFoot(x0, y0, fp, false);
+      const sg = x0 + fp.w / 2 < MAP_W / 2 ? -1 : 1;
+      const tries = v === "float" ? [] : [[sg, 0], [-sg, 0], [2 * sg, 0], [-2 * sg, 0], [sg, 1], [-sg, 1], [3 * sg, 0], [-3 * sg, 0], [0, 1], [0, 2]];
+      const ok = (nx: number, ny: number) => {
+        for (let j = 0; j < fp.h; j++) for (let k = 0; k < fp.w; k++) if (at(nx + k, ny - j) & CELL_BLOCK) return false;
+        return !fc.at(o.kind, nx, ny);
+      };
+      const t = tries.find(([dx, dy]) => ok(x0 + dx, y0 + dy));
+      if (!t) { keep[i] = false; placedAt.delete(i); continue; }
+      o.x += t[0] * TILE; o.y += t[1] * TILE;
+      if (a) { setFoot(x0 + t[0], y0 + t[1], fp, true); placedAt.set(i, [x0 + t[0], y0 + t[1]]); }
     }
+    compact(keep);
   }
 
   // Точки появления мобов: три прохода (земли фракций, кольцо 40–80 между реками, Поля вечных битв с вулканом и данжем).
