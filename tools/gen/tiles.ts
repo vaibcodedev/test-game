@@ -7,6 +7,7 @@
 import { PC, hash01, mix, pnoise, ramp, rng, shade, withA, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
 import { TERRAIN_COUNT } from "../../shared/map";
+import { groundRows } from "./ground";
 
 export const TILESET_COLS = 18;
 const S = 32;
@@ -414,6 +415,8 @@ export function buildTileset(): PC {
     for (let mask = 1; mask <= 15; mask++) out.blit(terrainTile(t, mask, 0), (mask - 1) * S, t * S);
     for (let v = 1; v <= 3; v++) out.blit(terrainTile(t, 15, v), (14 + v) * S, t * S);
   }
+  // земля (трава, лес, тропы, песок, болото, пепел, брусчатка, снег, лёд, дюны) — объёмный вид из tools/gen/ground.ts поверх строк выше
+  groundRows(out);
   // стены данжа по стилям: собор — столбцы 0–5, переход — 6–11, склеп — 12–17 (верх 0–1, лицо 2–5 в каждом)
   for (let st = 0; st < 3; st++) {
     for (let v = 0; v < 2; v++) out.blit(wallTopS(st, v), (st * 6 + v) * S, TERRAIN_COUNT * S);
