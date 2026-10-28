@@ -77,6 +77,12 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
       ...MOBS[swm.mob], id: `${c.id}_swarm`, eliteSprite: undefined, eliteName: undefined, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: MOBS[swm.mob].hp * swm.hp, xp: 0, gold: 0,
     };
+    // знамя (кольцо, задача 139): стоит в центре арены, не бьёт, ломается; пока цело — щит босса и кольцо раз в everyMs
+    const ban = c.abilities.find((a) => a.banner)?.banner;
+    if (ban) MOBS[`${c.id}_banner`] = {
+      id: `${c.id}_banner`, name: "Знамя павших", sprite: `${c.id}_banner`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
+      hp: ban.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 14, color: "#a02a38",
+    };
     if (cage) MOBS[`${c.id}_cage`] = {
       id: `${c.id}_cage`, name: "Кандальный кол", sprite: `${c.id}_cage`, size: 1, level: Math.max(1, Math.round(c.levels.boss * scale)),
       hp: cage.hp, dmg: 0, armor: 1, xp: 0, gold: 0, speed: 0, aggro: 0, range: 0, attackCd: 99, radius: 10, color: "#8a2a08",

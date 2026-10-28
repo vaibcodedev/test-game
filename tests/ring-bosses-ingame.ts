@@ -174,6 +174,33 @@ async function scenario() {
     mob.unit.x = mob.home.x; mob.unit.y = mob.home.y;
   }
 
+  // знамя: вбито в центр арены (лист <босс>_banner в игре), босс под щитом; срублено — щит снят
+  const banAb = CARD.abilities.find((a) => a.banner);
+  if (banAb) {
+    mob.reset();
+    for (const a of boss.abilities) a.at = 1e9;
+    mob.state = "chase"; mob.targetId = H.id; mob.addThreat(H.id, 1000);
+    boss.run(banAb);
+    await sleep(banAb.windupMs + 900);
+    const flag = [...W().mobs.values()].find((m) => m.def.id === `${CARD.id}_banner` && !m.dead) as Mob | undefined;
+    check(!!flag && Math.hypot(flag.x - mob.home.x, flag.y - mob.home.y) < 2 && mob.dmgTakenMul === banAb.banner!.shield, `${CARD.id}: знамя в центре арены, босс под щитом ×${mob.dmgTakenMul}`);
+    const flagTex = await run<boolean>("return sc.textures.exists('u_' + a)", `${CARD.id}_banner`);
+    const flagSeen = await run<number>("let n = 0; for (const v of sc.units.values()) if (v.u.sprite === a) n++; return n;", `${CARD.id}_banner`);
+    check(flagTex && flagSeen === 1, `${CARD.id}: знамя видно в игре (лист ${CARD.id}_banner, на экране ${flagSeen})`);
+    // босс отходит от знамени — оба на снимке
+    mob.unit.x = mob.home.x - 120; mob.unit.y = mob.home.y + 30;
+    await sleep(1200);
+    await run("sc.scene.pause();");
+    save(`${PFX}ingame-banner.png`, await snap(mob.home.x, mob.home.y - 20, 640, 460));
+    await run("sc.scene.resume();");
+    if (flag) W().killMob(flag, H);
+    await sleep(300);
+    check(mob.dmgTakenMul === 1, `${CARD.id}: знамя срублено — щит снят (×${mob.dmgTakenMul})`);
+    mob.reset();
+    mob.unit.x = mob.home.x; mob.unit.y = mob.home.y;
+    mob.state = "chase"; mob.targetId = H.id; mob.addThreat(H.id, 1000);
+  }
+
   // клетки: кол стоит — клетка видна и босс под щитом; кол сломан — клетка распадается
   const cageAb = CARD.abilities.find((a) => a.cage);
   if (cageAb) {

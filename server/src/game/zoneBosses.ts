@@ -146,6 +146,7 @@ export class ZoneBoss extends Boss {
     if (!tank || !this.inArena().length) return;
     if (ab.break) { this.channel(ab); return; }
     if (ab.cage) { this.cages(ab); return; }
+    if (ab.banner) { this.bannerPlant(ab); return; }
     if (ab.doubles) { this.doubles(ab); return; }
     if (ab.swarm) { this.swarmCall(ab); return; }
     if (ab.safe) { this.storm(ab); return; }
@@ -356,6 +357,44 @@ export class ZoneBoss extends Boss {
           w.emit({ t: "zb", id: m.id, ab: "cage_break", w: 0, ms: 0, pts: [s.x, s.y] });
         });
       }
+    });
+  }
+  /**
+   * Знамя (кольцо, banner): замах — босс вбивает знамя в центр арены (моб <босс>_banner). Пока оно стоит: босс получает урон ×shield, а каждые everyMs
+   * знамя бьёт кольцом r…r2 вокруг себя (предупреждение ringMs, урон dmgPct). Срубили — щит снят; уже стоящее знамя второе не вбивается.
+   */
+  private bannerPlant(ab: ZbAbility) {
+    const w = this.w, m = this.m, b = ab.banner!, epoch = this.epoch;
+    const id = `${m.def.id}_banner`;
+    for (const s of this.stakes) if (!s.dead && s.def.id === id) return;
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    if (Math.random() < 0.9) this.line(this.card.lines.abilities[ab.id]);
+    const at = { x: Math.round(m.home.x), y: Math.round(m.home.y) };
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: [at.x, at.y], r: ab.r2 ?? ab.r });
+    const k = kindOf(ab.k);
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead) return;
+      const def = MOBS[id];
+      if (!def) return;
+      this.shieldMul = b.shield;
+      const stake = new Mob(w.uid("s"), def, m.level, at);
+      stake.summoned = true;
+      w.addMob(stake);
+      this.adds.add(stake);
+      this.stakes.add(stake);
+      this.refreshShield();
+      const pulse = () => {
+        if (epoch !== this.epoch || m.dead || stake.dead) return;
+        w.telegraph(m, "ring", at.x, at.y, ab.r, b.ringMs, (p) => {
+          if (epoch !== this.epoch) return;
+          w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
+          if (p.dead) this.killed(p);
+        }, { r2: ab.r2, k });
+        w.later(b.everyMs, pulse);
+      };
+      w.later(b.everyMs - b.ringMs, pulse);
     });
   }
   /** Кол сломан (замечает update): щит снят, клетка распадается. */

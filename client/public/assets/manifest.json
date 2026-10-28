@@ -1,6 +1,10 @@
 {
  "units": {
-  "sol_plague_raven": {
+  "sol_fallen_chaplain_banner": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_fallen_chaplain": {
    "frame": 64,
    "frameH": 80
   },
@@ -158,6 +162,10 @@
    "frameH": 80
   },
   "umb_plague_priestess": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_plague_raven": {
    "frame": 64,
    "frameH": 80
   },
@@ -33771,6 +33779,9 @@
   "uq_zb_raven_lantern",
   "uq_zb_doctor_beak",
   "uq_zb_blue_vial",
+  "uq_zb_apostate_blade",
+  "uq_zb_chaplain_mask",
+  "uq_zb_standard_cross",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",

@@ -109,6 +109,47 @@ for (const c of CARDS) {
   const mob = mobOf(c.id);
   const boss = mob.boss as unknown as { abilities: { at: number }[]; run: (ab: unknown) => void; casting: boolean };
   for (const ab of c.abilities) {
+    if (ab.banner) {
+      // знамя: после замаха стоит в центре арены, босс под щитом ×shield, раз в everyMs кольцо бьёт тех, кто в нём; срубленное — щита и ударов нет
+      const bn = ab.banner;
+      for (const mode of ["stand", "cut"] as const) {
+        mob.reset();
+        for (const a of boss.abilities) a.at = 1e9;
+        const rm = (ab.r + (ab.r2 ?? ab.r * 2)) / 2;
+        const p = hero("warrior", mob.home.x + rm, mob.home.y, c.levels.boss);
+        mob.state = "chase";
+        mob.targetId = p.id;
+        mob.addThreat(p.id, 100);
+        log.length = 0;
+        hits = [];
+        boss.run(ab);
+        const t0 = w.time;
+        let shieldSeen = 1, cutAt = -1, posOk = false;
+        for (let t = 0; t < ab.windupMs + bn.everyMs * 2 + 600; t += 50) {
+          p.unit.hp = p.unit.maxHp;
+          p.unit.x = mob.home.x + rm;
+          p.unit.y = mob.home.y;
+          mob.attackAt = w.time + 1e9;
+          w.update(50);
+          const st = [...w.mobs.values()].find((m) => m.def.id === `${c.id}_banner` && !m.dead);
+          if (st) { shieldSeen = Math.min(shieldSeen, mob.dmgTakenMul); posOk = Math.hypot(st.x - mob.home.x, st.y - mob.home.y) < 2; }
+          if (mode === "cut" && st && cutAt < 0 && w.time - t0 >= ab.windupMs + 1000) { cutAt = w.time; w.killMob(st, p); }
+        }
+        const mine = hits.filter((h) => h.dst === p && h.src === mob);
+        if (mode === "stand") {
+          const gaps = mine.slice(1).map((h, i) => h.t - mine[i].t);
+          check(`${c.id}.${ab.id}: знамя стоит в центре арены, босс под щитом ×${bn.shield}`, posOk && shieldSeen === bn.shield, `в центре ${posOk}, щит ${shieldSeen}`);
+          check(`${c.id}.${ab.id}: кольцо бьёт каждые ${bn.everyMs} мс (ударов ${mine.length}), первый — после замаха`, mine.length >= 2 && mine[0].t - t0 >= ab.windupMs + bn.everyMs - 120 && gaps.every((g) => Math.abs(g - bn.everyMs) <= 120), `ударов ${mine.length}, промежутки ${gaps.join(",")}`);
+        } else {
+          check(`${c.id}.${ab.id}: знамя срублено — щит снят, кольцо больше не бьёт`, cutAt > 0 && mob.dmgTakenMul === 1 && mine.every((h) => h.t <= cutAt + bn.ringMs + 80), `срублено в ${cutAt - t0}, щит ${mob.dmgTakenMul}, ударов после ${mine.filter((h) => h.t > cutAt + bn.ringMs + 80).length}`);
+        }
+        mob.reset();
+        w.update(100);
+        check(`${c.id}.${ab.id}: при сбросе боя знамя убрано`, ![...w.mobs.values()].some((m) => m.def.id === `${c.id}_banner` && !m.dead));
+        w.removePlayer(p.id);
+      }
+      continue;
+    }
     if (ab.cage) {
       // клетки: кол не сломан — через holdMs удар внутрь; сломан — урона нет; пока кол стоит, босс получает урон ×shield
       for (const mode of ["stand", "break"] as const) {

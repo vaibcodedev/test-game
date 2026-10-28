@@ -399,6 +399,63 @@
       ],
       "legendary": 0.015,
       "pet": 8
+    },
+    "sol_fallen_chaplain": {
+      "name": "Иоаким Отступник",
+      "level": 55,
+      "band": [
+        50,
+        60
+      ],
+      "special": [
+        {
+          "item": "zb_apostate_blade",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_chaplain_mask",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_standard_cross",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -1178,6 +1235,114 @@
         "pommel": "ring"
       },
       "boss": "sol_plague_raven",
+      "card": "r2"
+    },
+    "zb_apostate_blade": {
+      "id": "zb_apostate_blade",
+      "name": "Меч отступника",
+      "base": "greatsword",
+      "ilvl": 55,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 34,
+        "crit": 1
+      },
+      "prop": "Каждый десятый удар носителя рубит глубже: цель на 3 с теряет часть брони.",
+      "lore": "Этим мечом капеллан только благословлял павших — клинок стёрт о ножны, а не о врагов. Рукоять Т-образная, чтобы держать её, как крест.",
+      "look": {
+        "shape": "zwei",
+        "mat": "blued",
+        "trim": "silver",
+        "cloth": "grey",
+        "haft": "darkwood",
+        "fx": "diamond",
+        "guard": "cross",
+        "pommel": "ball"
+      },
+      "boss": "sol_fallen_chaplain",
+      "card": "r3"
+    },
+    "zb_chaplain_mask": {
+      "id": "zb_chaplain_mask",
+      "name": "Безглазая маска капеллана",
+      "base": "plate_helm",
+      "ilvl": 53,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "vit"
+      ],
+      "stats": {
+        "str": 13,
+        "vit": 13
+      },
+      "prop": "Носитель не отводит глаз: метки теней и кругов на земле видны на миг раньше.",
+      "lore": "Гладкая сталь с одной тёмной щелью. Лица под ней не нашли ни разу, но маска всё равно тёплая.",
+      "look": {
+        "shape": "great",
+        "rich": 1,
+        "mat": "blued",
+        "trim": "silver",
+        "cloth": "grey",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "diamond",
+        "guard": "cross",
+        "pommel": "ball"
+      },
+      "boss": "sol_fallen_chaplain",
+      "card": "r2"
+    },
+    "zb_standard_cross": {
+      "id": "zb_standard_cross",
+      "name": "Крест павшего знаменосца",
+      "base": "amulet",
+      "ilvl": 54,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "hp"
+      ],
+      "stats": {
+        "vit": 14,
+        "hp": 175
+      },
+      "prop": "Крест держит строй: когда рядом стоят союзники, носитель получает чуть меньше урона.",
+      "lore": "Красный крест с котты, оправленный в серебро. Ткань давно истлела, а выцветшая краска осталась.",
+      "look": {
+        "shape": "holy",
+        "rich": 1,
+        "mat": "silver",
+        "trim": "iron",
+        "cloth": "red",
+        "gem": "ruby",
+        "haft": "yew",
+        "deco": "skull",
+        "fx": "ruby",
+        "guard": "cross",
+        "pommel": "ring"
+      },
+      "boss": "sol_fallen_chaplain",
       "card": "r2"
     }
   }

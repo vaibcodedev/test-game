@@ -3938,6 +3938,197 @@
      ]
     }
    }
+  },
+  "sol_fallen_chaplain": {
+   "file": "sol_fallen_chaplain.png",
+   "fw": 64,
+   "fh": 80,
+   "cols": 124,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "slashWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "slashHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "slashStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "volleyWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "volleyHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "volleyCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "plantWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "plantHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "plantStrike": {
+     "col": 76,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "rushWind": {
+     "col": 84,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "rushHold": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rushDash": {
+     "col": 92,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rushStrike": {
+     "col": 96,
+     "n": 6,
+     "fps": 12,
+     "loop": false,
+     "hit": 1
+    },
+    "stun": {
+     "col": 102,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 110,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {},
+   "skills": {
+    "sword_cleave": {
+     "waves": [
+      {
+       "pre": [
+        "slashWind",
+        "slashHold"
+       ],
+       "strike": "slashStrike"
+      }
+     ],
+     "fx": []
+    },
+    "shadow_volley": {
+     "waves": [
+      {
+       "pre": [
+        "volleyWind",
+        "volleyHold"
+       ],
+       "strike": "volleyCast"
+      },
+      {
+       "pre": [
+        "volleyHold"
+       ],
+       "strike": "volleyCast"
+      }
+     ],
+     "fx": []
+    },
+    "plant_banner": {
+     "waves": [
+      {
+       "pre": [
+        "plantWind",
+        "plantHold"
+       ],
+       "strike": "plantStrike"
+      }
+     ],
+     "fx": []
+    },
+    "last_charge": {
+     "waves": [
+      {
+       "pre": [
+        "rushWind",
+        "rushHold"
+       ],
+       "strike": "rushDash"
+      },
+      {
+       "pre": [
+        "rushHold"
+       ],
+       "strike": "rushStrike"
+      }
+     ],
+     "fx": []
+    }
+   }
   }
  },
  "units": {
@@ -3975,6 +4166,14 @@
    "frameH": 80
   },
   "sol_plague_raven": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_fallen_chaplain": {
+   "frame": 64,
+   "frameH": 80
+  },
+  "sol_fallen_chaplain_banner": {
    "frame": 64,
    "frameH": 80
   }

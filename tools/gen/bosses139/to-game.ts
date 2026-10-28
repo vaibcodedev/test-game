@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +16,7 @@ import * as vam from "./umb_crimson_vampire";
 import * as gob from "./sol_goblin_warlord";
 import * as plg from "./umb_plague_priestess";
 import * as rav from "./sol_plague_raven";
+import * as chp from "./sol_fallen_chaplain";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -142,6 +143,24 @@ BOSSES.push({
     // взлёт: стая кружит, тени лежат под героями (удар 1 в конце 3 с), приземление кольцом — удар 2
     carrion_flight: { waves: [{ pre: ["leapWind", "leapHold"], strike: "leapHold" }, { pre: ["leapHold"], strike: "leapLand" }], fx: [{ fx: "dive", waves: [0], seq: ["dive"], pin: 0, timing: "wind", place: "marks", holds: { dive: 2800 } }, { fx: "land", waves: [1], seq: ["land"], pin: 0, timing: "strike", place: "marks" }] },
   },
+});
+
+BOSSES.push({
+  id: chp.ID, sheet: "chap-sheet.png", frame: chp.FRAME, frameH: chp.FRAME_H, cols: chp.CHAP_COLS, wrap: 64,
+  // phase (переход фазы 65 % и 30 %) — вбивание знамени: кадры листа общие; стоит раньше plantStrike: тест кадра по столбцу берёт первое совпадение
+  anims: { ...anims({ idle: chp.CHAP_ANIMS.idle, walk: chp.CHAP_ANIMS.walk }), phase: { col: chp.CHAP_ANIMS.plantStrike.col, n: 8, fps: 12, loop: false, hit: 2 }, ...anims(Object.fromEntries(Object.entries(chp.CHAP_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))) },
+  fx: {},
+  skills: {
+    // удар мечом: замах из-за спины, рубящий удар (кадр 3 — конец предупреждения)
+    sword_cleave: { waves: [{ pre: ["slashWind", "slashHold"], strike: "slashStrike" }], fx: [] },
+    // залп теней: две волны — метки и взрыв шире на тех же местах
+    shadow_volley: { waves: [{ pre: ["volleyWind", "volleyHold"], strike: "volleyCast" }, { pre: ["volleyHold"], strike: "volleyCast" }], fx: [] },
+    // знамя: достаёт из-за спины и вбивает; дальше знамя — моб-объект `<босс>_banner`
+    plant_banner: { waves: [{ pre: ["plantWind", "plantHold"], strike: "plantStrike" }], fx: [] },
+    // последний натиск: присел, меч наискось; таран — к концу пути, толчок вторым кругом
+    last_charge: { waves: [{ pre: ["rushWind", "rushHold"], strike: "rushDash" }, { pre: ["rushHold"], strike: "rushStrike" }], fx: [] },
+  },
+  units: [{ src: "chap-unit-banner.png", id: `${chp.ID}_banner`, frame: chp.BANNER_UNIT.frame, frameH: chp.BANNER_UNIT.frameH }],
 });
 
 const only = process.argv[2];

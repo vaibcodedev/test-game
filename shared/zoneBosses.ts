@@ -47,6 +47,9 @@ export interface ZbWave {
   swarm?: { mob: string; count: number; hp: number };
   /** Кольцо: укрытия — count столбов радиуса r на арене; в миг удара урон получают только те, кто стоит вне всех столбов. */
   safe?: { count: number; r: number };
+  /** Кольцо: знамя — босс вбивает в центр арены объект (моб <босс>_banner, здоровье hp× к мобу образцу), пока он стоит, босс получает урон ×shield,
+   *  а знамя каждые everyMs бьёт кольцом r…r2 вокруг себя (предупреждение ringMs, урон dmgPct). Срубленное знамя вбивается заново по откату every. */
+  banner?: { hp: number; shield: number; everyMs: number; ringMs: number };
 }
 export interface ZbAbility extends ZbWave {
   id: string;
