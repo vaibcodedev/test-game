@@ -14,7 +14,7 @@
   align-items: start;
 }
 .bst-list {
-  max-height: clamp(180px, calc(100vh - 260px), 460px);
+  max-height: clamp(180px, calc(var(--vh, 100vh) - 260px), 460px);
   scroll-padding-top: 26px; /* строка не прячется под липким заголовком раздела */
 }
 .bst-sec {

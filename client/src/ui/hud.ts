@@ -125,6 +125,7 @@ export class Hud {
   private hotbar = new Hotbar();
   private menuBar = el("div", "hud-menu");
   private uiScale = 100;
+  private vpBound = false;
   private chatSize = 14;
   private chatBox = el("div", "hud-chat");
   private chatLog = el("div", "log");
@@ -685,8 +686,16 @@ export class Hud {
     // подписка на смену масштаба экрана — одна на каждое значение dpr
     if (dpr !== this.headDpr) { this.headDpr = dpr; matchMedia(`(resolution: ${dpr}dppx)`).addEventListener("change", this.syncHeadUnit, { once: true }); }
   };
+  /** Под CSS zoom корня 100vh/100vw не уменьшаются: окна при масштабе 120–150 % вылезали за экран. --vh/--vw — видимая область в пикселях корня. */
+  private syncViewport = () => {
+    const z = this.uiScale / 100;
+    this.root.style.setProperty("--vh", `${window.innerHeight / z}px`);
+    this.root.style.setProperty("--vw", `${window.innerWidth / z}px`);
+  };
   private applySettings() {
     (this.root.style as CSSStyleDeclaration & { zoom: string }).zoom = String(this.uiScale / 100);
+    if (!this.vpBound) { this.vpBound = true; window.addEventListener("resize", this.syncViewport); }
+    this.syncViewport();
     this.root.style.setProperty("--fs-chat", this.chatSize + "px");
     this.syncHeadUnit();
     this.layoutBottom();

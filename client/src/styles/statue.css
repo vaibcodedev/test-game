@@ -5,7 +5,7 @@
   top: 90px;
   transform: translateX(-50%);
   z-index: var(--z-window);
-  max-height: calc(100vh - 140px);
+  max-height: calc(var(--vh, 100vh) - 140px);
 }
 .win-statue .st-title {
   margin: 0 0 var(--sp-2);

@@ -50,7 +50,7 @@
   top: 70px;
   transform: translateX(-50%);
   z-index: var(--z-window);
-  max-height: calc(100vh - 100px);
+  max-height: calc(var(--vh, 100vh) - 100px);
 }
 /* выбор вещи: «Надето» и «В сумке» — две группы ячеек по 8 в ряд, без вложенной прокрутки */
 .smith-pick {

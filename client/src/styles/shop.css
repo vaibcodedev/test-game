@@ -56,7 +56,7 @@
 }
 /* узкий экран: окно начинается под рамкой героя (она слева сверху) */
 @media (max-width: 1700px) {
-  .win-stable { top: 212px; max-height: calc(100vh - 290px); }
+  .win-stable { top: 212px; max-height: calc(var(--vh, 100vh) - 290px); }
 }
 /* конюший: карточки одной высоты — значок 48 | пять строк без переноса | кнопка по центру справа; подвал — ровная сетка 4 столбца */
 .win-stable .npc-say { margin-bottom: var(--sp-2); }

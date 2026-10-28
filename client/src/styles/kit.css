@@ -22,7 +22,7 @@
 
 /* ---------- каркас окна: h2 (не прокручивается) → .body (единственная прокрутка) → .win-foot ----------
    Ширина — классами .s/.m/.l/.xl. Окна без .body (ещё не переведённые) прокручиваются целиком — правило в windows.css. */
-.win { position: absolute; display: flex; flex-direction: column; gap: var(--sp-3); width: min(var(--win-w, var(--win-m)), calc(100vw - 24px)); max-height: calc(100vh - 140px); padding: var(--pad-win); overflow: hidden; }
+.win { position: absolute; display: flex; flex-direction: column; gap: var(--sp-3); width: min(var(--win-w, var(--win-m)), calc(var(--vw, 100vw) - 24px)); max-height: calc(var(--vh, 100vh) - 140px); padding: var(--pad-win); overflow: hidden; }
 .win.s { --win-w: var(--win-s); }
 .win.m { --win-w: var(--win-m); }
 .win.l { --win-w: var(--win-l); }
@@ -273,7 +273,7 @@ button.row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px;
 .row.dense { min-height: var(--ctl-h-sm); padding: var(--sp-1) var(--sp-2); }
 
 /* ---------- таблица .tbl ---------- */
-.tbl-wrap { max-height: 52vh; overflow: auto; overscroll-behavior: contain; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-3); scrollbar-gutter: stable; }
+.tbl-wrap { max-height: calc(var(--vh, 100vh) * 0.52); overflow: auto; overscroll-behavior: contain; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-3); scrollbar-gutter: stable; }
 .tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fs-sm); line-height: 1.3; font-variant-numeric: tabular-nums; }
 .tbl th { position: sticky; top: 0; z-index: var(--z-l1); height: 28px; padding: 0 var(--sp-2); background: var(--card); border-bottom: 1px solid var(--line-hi); color: var(--dim); font-size: var(--fs-xs); font-weight: var(--fw-b); text-align: left; white-space: nowrap; }
 .tbl td { height: 32px; padding: var(--sp-1) var(--sp-2); border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -519,7 +519,7 @@ button.uframe.dead:hover { border-color: var(--gold); }
 /* ---------- тост .toast ---------- */
 .toasts { position: absolute; z-index: var(--z-toast); top: 142px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--sp-1h); pointer-events: none; }
 .toast {
-  --c: var(--line-hi); max-width: min(560px, calc(100vw - 32px)); padding: var(--sp-1h) var(--sp-3);
+  --c: var(--line-hi); max-width: min(560px, calc(var(--vw, 100vw) - 32px)); padding: var(--sp-1h) var(--sp-3);
   background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: var(--r-2); box-shadow: var(--shadow-panel);
   color: var(--fg); font-size: var(--fs); text-align: center; text-shadow: var(--shadow-text); animation: toast-life 3.2s forwards;
 }
@@ -538,7 +538,7 @@ button.uframe.dead:hover { border-color: var(--gold); }
 /* ---------- модальная подложка .modal и диалог .dialog (хелпер openModal() в ui/kit.ts) ---------- */
 .modal { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--sp-4); background: var(--overlay); }
 .modal.sys { z-index: var(--z-modal-sys); }
-.dialog { display: flex; flex-direction: column; width: min(var(--win-m), 100%); max-height: calc(100vh - 2 * var(--sp-4)); overflow: hidden; }
+.dialog { display: flex; flex-direction: column; width: min(var(--win-m), 100%); max-height: calc(var(--vh, 100vh) - 2 * var(--sp-4)); overflow: hidden; }
 .dialog.sm { width: min(var(--win-s), 100%); }
 .dialog.lg { width: min(var(--win-l), 100%); }
 .dialog-head {

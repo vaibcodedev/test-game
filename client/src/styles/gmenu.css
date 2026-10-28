@@ -10,7 +10,7 @@
 }
 .gmenu {
   width: min(380px, 100%);
-  max-height: calc(100vh - 32px);
+  max-height: calc(var(--vh, 100vh) - 32px);
   overflow-y: auto;
   box-sizing: border-box;
   padding: var(--pad-win);
@@ -107,7 +107,7 @@
   left: 50%;
   top: 40px;
   transform: translateX(-50%);
-  width: min(1500px, calc(100vw - 24px));
+  width: min(1500px, calc(var(--vw, 100vw) - 24px));
   max-height: none;
   overflow: visible;
   z-index: var(--z-window);
@@ -118,7 +118,7 @@
 .wm-legend i { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--well); margin-left: var(--sp-2); }
 .wm-legend i.road { height: 3px; background: #f0d796; border: 0; width: 14px; }
 .wm-legend i.river { height: 4px; background: #468cdc; border: 0; width: 14px; }
-.wm-view { position: relative; width: 100%; height: clamp(260px, calc(100vh - 220px), 800px); background: var(--well); border-radius: var(--r-1); overflow: hidden; }
+.wm-view { position: relative; width: 100%; height: clamp(260px, calc(var(--vh, 100vh) - 220px), 800px); background: var(--well); border-radius: var(--r-1); overflow: hidden; }
 .wm-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: var(--cur-grab); touch-action: none; }
 .wm-view canvas:active { cursor: var(--cur-grabbing); }
 .wm.picking .wm-view canvas { cursor: none; } /* выбор точки (телепорт админа): курсор — золотая рамка на тайле, её рисует карта (worldmap.ts, drawPickMark); второй курсор поверх не нужен */

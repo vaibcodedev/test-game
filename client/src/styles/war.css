@@ -1,6 +1,6 @@
 /* «Знамёна Предела» (задача 132, шаг 14; client/src/ui/bannerWar.ts): полоса битвы сверху, объявления на экране, окно итогов.
    Только токены tokens.css и компоненты kit.css (.panel, .btn, .dialog, .tbl, .kv); цвета фракций — --fac-sol и --fac-umb. */
-.war-bar { position: absolute; top: 12px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(340px, calc(100vw - var(--top-l) - var(--top-r)));
+.war-bar { position: absolute; top: 12px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(340px, calc(var(--vw, 100vw) - var(--top-l) - var(--top-r)));
   padding: var(--sp-1) var(--sp-2) var(--sp-1h); display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); }
 .war-help { flex: none; width: 20px; height: 20px; min-height: 0; padding: 0; font-size: var(--fs-xs); }
 .war-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-1h); font-size: var(--fs-sm); }
@@ -17,7 +17,7 @@
 .war-tp:disabled { position: relative; overflow: hidden; color: var(--dim); filter: grayscale(1); cursor: not-allowed; font-variant-numeric: tabular-nums; }
 .war-tp.cd::after { content: ""; position: absolute; inset: 0 0 0 auto; width: calc(var(--cd) * 100%); background: var(--shade-cd); pointer-events: none; }
 
-.war-banner { position: absolute; top: 160px; left: 50%; transform: translateX(-50%); max-width: min(720px, calc(100vw - 32px)); padding: var(--sp-1h) var(--sp-5); text-align: center; font-size: 22px; font-weight: var(--fw-b); line-height: 1.25; color: var(--fg); text-shadow: 0 2px 0 #000; background: linear-gradient(90deg, transparent, var(--overlay) 12%, var(--overlay) 88%, transparent); white-space: normal; }
+.war-banner { position: absolute; top: 160px; left: 50%; transform: translateX(-50%); max-width: min(720px, calc(var(--vw, 100vw) - 32px)); padding: var(--sp-1h) var(--sp-5); text-align: center; font-size: 22px; font-weight: var(--fw-b); line-height: 1.25; color: var(--fg); text-shadow: 0 2px 0 #000; background: linear-gradient(90deg, transparent, var(--overlay) 12%, var(--overlay) 88%, transparent); white-space: normal; }
 .war-banner small { display: block; font-size: var(--fs-sm); font-weight: var(--fw); color: var(--dim); }
 .war-banner.f-sol { color: var(--fac-sol); }
 .war-banner.f-umb { color: var(--fac-umb); }
@@ -57,14 +57,14 @@
 .war-hint.act { color: var(--ok); }
 .war-hint.warn { color: var(--warn); }
 .war-hint.ok { color: var(--fg); }
-.war-intro { position: absolute; top: 300px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(400px, calc(100vw - var(--top-l) - var(--top-r))); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-1h); }
+.war-intro { position: absolute; top: 300px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(400px, calc(var(--vw, 100vw) - var(--top-l) - var(--top-r))); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-1h); }
 .war-intro h3 { margin: 0; color: var(--gold); font-size: var(--fs-md); }
 .war-intro ol { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-sm); line-height: 1.45; }
 .war-intro-btns { display: flex; justify-content: flex-end; gap: var(--sp-2); }
 /* плашка: до битвы, свёрнутая полоса, итог — одна строка */
 /* рамка полосы и плашки — как у окон игры: квадратные углы с золотыми уголками (frame-b), без скруглений */
 .war-bar { border-radius: 0; border-image: url("/ui/frame-b.png") var(--frame-slice) / var(--frame-w) stretch; image-rendering: pixelated; padding: var(--frame-w) calc(var(--frame-w) + var(--sp-1)); }
-.war-bar.war-mini { width: max-content; max-width: calc(100vw - var(--top-l) - var(--top-r)); padding: calc(var(--frame-w) - 2px) var(--frame-w); background: var(--panel); }
+.war-bar.war-mini { width: max-content; max-width: calc(var(--vw, 100vw) - var(--top-l) - var(--top-r)); padding: calc(var(--frame-w) - 2px) var(--frame-w); background: var(--panel); }
 .war-bar.war-mini .war-head { gap: var(--sp-2); }
 .war-bar.war-mini .war-front { flex: none; overflow: visible; font-size: var(--fs-sm); }
 .war-bar.war-mini .war-time { color: var(--fg); }

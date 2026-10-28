@@ -9,7 +9,7 @@
 .win-char {
   left: 12px;
   top: 150px;
-  max-height: calc(100vh - 162px);
+  max-height: calc(var(--vh, 100vh) - 162px);
 }
 /* две колонки: характеристики и показатели слева, снаряжение и эффекты справа; между колонками линия */
 .char-cols {
@@ -306,7 +306,7 @@
   }
   .hud-target {
     top: 150px;
-    width: min(190px, calc(100vw - 24px));
+    width: min(190px, calc(var(--vw, 100vw) - 24px));
   }
   .slot {
     width: 52px;

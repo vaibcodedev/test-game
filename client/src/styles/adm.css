@@ -37,7 +37,7 @@
   z-index: var(--z-announce);
   box-sizing: border-box;
   width: max-content;
-  max-width: min(560px, calc(100vw - 2 * var(--sp-4)));
+  max-width: min(560px, calc(var(--vw, 100vw) - 2 * var(--sp-4)));
   display: flex;
   flex-direction: column;
   align-items: center;
