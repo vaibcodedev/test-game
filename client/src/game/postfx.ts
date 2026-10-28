@@ -19,7 +19,7 @@ let maskOn: boolean = (() => { try { const v = localStorage.getItem("nightMask")
 export const nightMaskOn = () => maskOn;
 export function setNightMask(b: boolean) { maskOn = b; try { localStorage.setItem("nightMask", b ? "1" : "0"); } catch {} }
 /** Отладка/тесты: принудительные дождь (>=0), смерть и здоровье (>=0). */
-export const debugFx = { rain: -1, storm: false, thunder: false, dead: false, hp: -1 };
+export const debugFx = { rain: -1, storm: false, thunder: false, wet: -1, dead: false, hp: -1 };
 (window as any).__fx = { debugFx, setNightMask, setVfxMode };
 
 const isGL = (s: Phaser.Scene) => s.sys.game.renderer.type === Phaser.WEBGL;

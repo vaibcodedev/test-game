@@ -20,7 +20,7 @@
  },
  "weather": {
   "zones": ["Town", "Meadow", "Forest", "Swamp"],
-  "maxDrops": 360,
+  "maxDrops": 140,
   "dim": 0.1,
   "thunderDelayMs": [350, 1500],
   "flashMs": 700,

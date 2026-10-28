@@ -8,6 +8,7 @@ import cfg from "../../../data/lighting.json";
 import { T, Zone, type WorldMap } from "../../../shared/map";
 import { TILE } from "../../../shared/constants";
 import { thunderBetween, weatherAt } from "../../../shared/weather";
+import { Puddles } from "./puddles";
 import * as sfx from "./sfx";
 import { debugFx, vfxFull } from "./postfx";
 
@@ -28,6 +29,7 @@ export class Weather {
   private drops: Phaser.GameObjects.Particles.ParticleEmitter;
   private splash: Phaser.GameObjects.Particles.ParticleEmitter;
   private ripple: Phaser.GameObjects.Particles.ParticleEmitter;
+  private puddles: Puddles;
   private cur = 0;
   private lastMs = Date.now();
   private acc = 0;
@@ -39,7 +41,8 @@ export class Weather {
   constructor(private scene: Phaser.Scene, private map: WorldMap) {
     makeTex(scene);
     const depth = 1e6 - 14;
-    this.drops = scene.add.particles(0, 0, "fx_raindrop", { emitting: false, emitZone: { type: "random", source: new Phaser.Geom.Rectangle(0, 0, 900, 400) } as any, lifespan: 480, speedX: { min: -95, max: -75 }, speedY: { min: 680, max: 780 }, rotate: 7, alpha: { start: 1, end: 0.7 } }).setDepth(depth).setAlpha(0);
+    this.puddles = new Puddles(scene, map);
+    this.drops = scene.add.particles(0, 0, "fx_raindrop", { emitting: false, emitZone: { type: "random", source: new Phaser.Geom.Rectangle(0, 0, 900, 400) } as any, lifespan: 480, speedX: { min: -95, max: -75 }, speedY: { min: 680, max: 780 }, rotate: 7, alpha: { start: 0.55, end: 0.35 } }).setDepth(depth).setAlpha(0); // капли полупрозрачные: дождь не закрывает мир
     this.splash = scene.add.particles(0, 0, "fx_splash", { emitting: false, lifespan: 320, scale: { start: 0.6, end: 1.5 }, alpha: { start: 1, end: 0 } }).setDepth(depth);
     this.ripple = scene.add.particles(0, 0, "fx_ripple", { emitting: false, lifespan: 800, scale: { start: 0.2, end: 1.3 }, alpha: { start: 0.7, end: 0 } }).setDepth(depth);
   }
@@ -74,15 +77,19 @@ export class Weather {
       }
     }
     this.lastMs = now;
+    // лужи: проступают за ~30 с дождя и сохнут ~90 с после; на них круги от капель
+    if (debugFx.wet >= 0) this.puddles.wet = debugFx.wet;
+    const rp = this.puddles.update(dt, this.cur, indoor, v, this.scene.time.now);
+    if (rp && vfxFull()) this.ripple.emitParticleAt(rp.x, rp.y);
     if (this.cur < 0.02) { this.drops.setAlpha(0); this.drops.stop(); return; }
     const k = this.cur * (vfxFull() ? 1 : 0.5);
-    this.drops.setPosition(v.x - 120, v.y - 80).setAlpha(Math.min(1, this.cur * 1.5));
+    this.drops.setPosition(v.x - 120, v.y - 80).setAlpha(Math.min(0.8, this.cur));
     (this.drops.emitZones[0] as any)?.source?.setSize?.(v.width + 240, v.height * 0.5);
     this.drops.frequency = 1000 / (W.maxDrops * k * 6);
     if (!this.drops.emitting) this.drops.start();
     // брызги и круги на земле: случайные точки в кадре, число в секунду пропорционально силе дождя
     if (!vfxFull()) return;
-    this.acc += dt * k * 160;
+    this.acc += dt * k * 70;
     for (; this.acc >= 1; this.acc -= 1) {
       const x = v.x + Math.random() * v.width, y = v.y + Math.random() * v.height;
       const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
