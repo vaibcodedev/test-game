@@ -21,7 +21,7 @@
  "weather": {
   "zones": ["Town", "Meadow", "Forest", "Swamp"],
   "maxDrops": 140,
-  "dim": 0.1,
+  "dim": 0.05,
   "thunderDelayMs": [350, 1500],
   "flashMs": 700,
   "npcLines": ["Опять льёт…", "Ну вот, дождь пошёл.", "Сыро сегодня.", "Не к добру эта гроза."],

@@ -1513,7 +1513,7 @@ export class GameScene extends Phaser.Scene {
     const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
     setLightMode(this.room || z === Zone.Arena || z === Zone.Dungeon ? "none" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
-    const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5) + this.weather.dim;
+    const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.4) + this.weather.dim;
     this.interiors?.update(dt, night, this.room);
     this.towerArchers?.update(dt);
     this.fortScenes?.update(dt, this.pos.x, this.pos.y);
