@@ -1027,7 +1027,8 @@ async function relogAsAdmin() {
     const normal = ids.filter((id) => !MOBS[id].boss), bosses = ids.filter((id) => MOBS[id].boss);
     save.mobKills = Object.fromEntries([...normal.map((id, i) => [id, i < 6 ? 99 : i < 9 ? 1 : 0]), ...bosses.map((id) => [id, 99])].filter(([, n]) => n));
     save.bossKills = Object.fromEntries(bosses.map((id) => [id, 3]));
-    d.prepare("UPDATE players SET data = ?, admin = 1 WHERE name_key = ?").run(JSON.stringify(save), key);
+    d.prepare("UPDATE players SET data = ? WHERE name_key = ?").run(JSON.stringify(save), key);
+    d.prepare("UPDATE accounts SET admin = 1 WHERE id = (SELECT account_id FROM players WHERE name_key = ?)").run(key);
   } finally {
     d.close();
   }

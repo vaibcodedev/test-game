@@ -16,7 +16,7 @@
 - Управление: game/keybinds.ts (пресеты, mouseOpts), ui/hotbar.ts (панели), game/aim.ts (прицел), game/castResolve.ts (цель/точка каста), ui/controls.ts (настройки).
 - client/src/net.ts — подключение, сторож ping/pong и переподключение (recover); main.ts — окна «Переподключение…», «Что-то пошло не так», вытеснение; game/ — сцены и отрисовка (UnitView, effects, terrain — куски 32×32 у камеры);
   ui/ — hud (меню, сумка, настройки), arena, trade, bestiary, rumor, cook, smith, bank, admin.
-- tools/ — генерация пиксель-арта (gen/), db (CLI: просмотр, `admin <имя> on|off`).
+- tools/ — генерация пиксель-арта (gen/), db (CLI: просмотр, `admin <логин> on|off` — на аккаунт).
 - tests/ — bots, arena, trade, admin, bank, reconnect (обрыв, двойной вход), screenshot, reconnect-screens (браузер).
 
 - client/src/styles/ — дизайн-система: tokens.css (все значения `:root`), kit.css (компоненты окна, кнопок, ячеек, полос), fonts.css; правила — docs/STYLE_GUIDE.md. client/src/ui/kit.ts — tabs, seg, openModal, rangeFill.

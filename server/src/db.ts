@@ -90,6 +90,7 @@ export class GameDB {
     if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
     this.db = new DatabaseSync(file);
     this.db.exec(`
+      PRAGMA busy_timeout = 5000;
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS players (
         name_key TEXT PRIMARY KEY,
@@ -148,6 +149,20 @@ export class GameDB {
     // задача 38: фракции; все прежние герои — Сольгард (классы те же, меняются только названия)
     if (!cols.includes("faction")) this.db.exec("ALTER TABLE players ADD COLUMN faction TEXT NOT NULL DEFAULT 'solgard'");
     this.migrateAccounts(file);
+    // админка на аккаунте: все герои аккаунта (и новые) — админы. Разовый перенос: аккаунт, у любого героя которого был players.admin = 1,
+    // становится админом. Колонка players.admin остаётся для совместимости со старыми базами, сервер её больше не читает.
+    if (!acols.includes("admin")) {
+      this.db.exec("BEGIN IMMEDIATE");
+      try {
+        this.db.exec("ALTER TABLE accounts ADD COLUMN admin INTEGER NOT NULL DEFAULT 0");
+        const n = Number(this.db.prepare("UPDATE accounts SET admin = 1 WHERE id IN (SELECT account_id FROM players WHERE admin = 1 AND account_id != 0)").run().changes);
+        this.db.exec("COMMIT");
+        if (n) console.log(`[db] админка перенесена на аккаунты: ${n}`);
+      } catch (e) {
+        this.db.exec("ROLLBACK");
+        throw e;
+      }
+    }
   }
 
   /** Каждый герой без аккаунта становится аккаунтом: логин = имя героя, тот же пароль. Перед переносом — копия базы. */
@@ -246,9 +261,14 @@ export class GameDB {
     this.db.prepare("UPDATE accounts SET bank = ? WHERE id = ?").run(JSON.stringify(cells), accountId);
   }
 
+  /** Права администратора — флаг аккаунта героя (accounts.admin): действуют на всех героев аккаунта. players.admin не читается. */
   isAdmin(name: string): boolean {
-    const r = this.db.prepare("SELECT admin FROM players WHERE name_key = ?").get(GameDB.key(name)) as { admin: number } | undefined;
+    const r = this.db.prepare("SELECT a.admin FROM players p JOIN accounts a ON a.id = p.account_id WHERE p.name_key = ?").get(GameDB.key(name)) as { admin: number } | undefined;
     return !!r?.admin;
+  }
+  /** Выдать (true) или снять права администратора аккаунту по логину. false — аккаунта нет. */
+  setAccountAdmin(login: string, on: boolean): boolean {
+    return Number(this.db.prepare("UPDATE accounts SET admin = ? WHERE login_key = ?").run(on ? 1 : 0, GameDB.key(login)).changes) > 0;
   }
   /** Активный бан или null. */
   banOf(name: string, now = Date.now()): { until: number; reason: string } | null {

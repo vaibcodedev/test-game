@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { MAP_SEED, PLAYER_RADIUS, TILE } from "../shared/constants";
 import { affixCount, BASE_ITEMS, ITEM_MODELS, makeItem, previewGear, type Slot } from "../shared/items";
 import { CELL_BLOCK, CELL_WALL, generateMap, T, walkable, ZONES, zoneAtPx } from "../shared/map";
-import { assert, Bot, check, dbFile, passedCount, sleep, startServer, stopServer } from "./harness";
+import { assert, Bot, check, dbFile, ensureChar, passedCount, sleep, startServer, stopServer } from "./harness";
 
 type GiveResult = { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
 /** Самая высокая модель категории. */
@@ -24,7 +24,7 @@ async function main() {
     });
     await check("админ (флаг в БД): admin:gold работает", async () => {
       const db = new DatabaseSync(dbFile);
-      db.prepare("UPDATE players SET admin = 1 WHERE name_key = 'админ1'").run();
+      db.prepare("UPDATE accounts SET admin = 1 WHERE login_key = 'админ1'").run();
       db.close();
       const g = user.self!.gold;
       adm.send("admin:gold", { name: "Простой", v: 500 });
@@ -370,6 +370,29 @@ async function main() {
       await sleep(600);
       assert(alive(s.id) && adm.room.state.mobs.get(s.id).hp > 0, "не-админ убил призванного");
       adm.send("admin:despawn", { all: true });
+    });
+    await check("админка на аккаунте: второй герой того же аккаунта — админ, герой другого аккаунта — нет", async () => {
+      // на аккаунте одновременно играет один герой: вход вторым героем закрывает сессию Админ1 — поэтому проверка последняя
+      const alt = await Bot.enter(await ensureChar("Админ1", "secret", "АдминДва"), "АдминДва");
+      try {
+        await alt.until(() => alt.self!.isAdmin === true, 2000, "isAdmin у второго героя");
+        assert(user.self!.isAdmin !== true, "чужой герой стал админом");
+        const g = user.self!.gold;
+        alt.send("admin:gold", { name: "Простой", v: 7 });
+        await user.until(() => user.self!.gold === g + 7, 2000, "второй герой: золото +7");
+        user.send("admin:gold", { name: "Простой", v: 9 });
+        await sleep(400);
+        assert(user.self!.gold === g + 7, "чужой аккаунт выдал золото");
+        // старый флаг героя больше не даёт прав
+        const d = new DatabaseSync(dbFile);
+        d.prepare("UPDATE players SET admin = 1 WHERE name_key = 'простой'").run();
+        d.close();
+        user.send("admin:gold", { name: "Простой", v: 9 });
+        await sleep(400);
+        assert(user.self!.gold === g + 7, "players.admin всё ещё даёт права");
+      } finally {
+        alt.room.leave();
+      }
     });
   } finally {
     await stopServer();

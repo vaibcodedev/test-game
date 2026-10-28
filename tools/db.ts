@@ -3,7 +3,7 @@
  *   npm run db                 — список героев
  *   npm run db -- Имя          — подробности о герое
  *   npm run db -- Имя --json   — сырой JSON прогресса
- *   npm run db -- admin Имя on|off — выдать или снять права администратора
+ *   npm run db -- admin Логин on|off — выдать или снять права администратора аккаунту (всем его героям)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -21,19 +21,18 @@ if (!fs.existsSync(file)) {
 }
 const args = process.argv.slice(2);
 if (args[0] === "admin") {
-  const [, who, mode] = args;
-  if (!who || (mode !== "on" && mode !== "off")) {
-    console.log("Использование: npm run db -- admin <имя> on|off");
+  const [, login, mode] = args;
+  if (!login || (mode !== "on" && mode !== "off")) {
+    console.log("Использование: npm run db -- admin <логин аккаунта> on|off");
     process.exit(1);
   }
-  const w = new DatabaseSync(file);
-  w.exec("PRAGMA busy_timeout = 5000");
-  const cols = (w.prepare("PRAGMA table_info(players)").all() as { name: string }[]).map((c) => c.name);
-  if (!cols.includes("admin")) w.exec("ALTER TABLE players ADD COLUMN admin INTEGER NOT NULL DEFAULT 0");
-  const n = Number(w.prepare("UPDATE players SET admin = ? WHERE name_key = ?").run(mode === "on" ? 1 : 0, who.trim().toLowerCase()).changes);
-  console.log(n ? `Администратор ${who}: ${mode === "on" ? "выдан" : "снят"}. Действует после следующего входа.` : `Герой «${who}» не найден.`);
+  // тот же путь, что у сервера при старте: GameDB применяет миграции (accounts.admin) и ждёт занятую базу (busy_timeout)
+  const { GameDB } = await import("../server/src/db");
+  const w = new GameDB(file);
+  const ok = w.setAccountAdmin(login, mode === "on");
+  console.log(ok ? `Аккаунт ${login}: права администратора ${mode === "on" ? "выданы" : "сняты"} (все герои аккаунта, проверка на каждое действие).` : `Аккаунт «${login}» не найден.`);
   w.close();
-  process.exit(n ? 0 : 1);
+  process.exit(ok ? 0 : 1);
 }
 const db = new DatabaseSync(file, { readOnly: true });
 const json = args.includes("--json");
