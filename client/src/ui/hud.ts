@@ -143,6 +143,7 @@ export class Hud {
   private lastMini = 0;
   private todBox = el("div", "tod");
   private todCv = el("canvas");
+  private todTxt = el("span", "tod-txt");
   private todKey = "";
   private todTipKey = "";
   private lowK = 0; private lowPh = 0; private lowT = 0; private lastBeat = 0; private lowShadow = "";
@@ -267,10 +268,10 @@ export class Hud {
     miniBtn.setAttribute("aria-label", TX("ui.hud.290"));
     miniBtn.onclick = () => this.toggleMinimap();
     this.mini.append(miniBtn);
-    this.todCv.width = 12;
-    this.todCv.height = 12;
-    this.todBox.append(this.todCv);
-    this.mini.append(this.todBox);
+    this.todCv.width = 16;
+    this.todCv.height = 16;
+    this.todBox.append(this.todCv, this.todTxt);
+    this.miniCanvas.after(this.todBox);
     this.buildMenu();
     this.makeWindows();
     setNpcGateToast((text) => this.toast({ text, kind: "error" }));
@@ -1542,42 +1543,53 @@ export class Hud {
     }
     if (sh !== this.lowShadow) { this.lowShadow = sh; bar.style.boxShadow = sh; }
   }
-  /** Значок времени суток: солнце днём, закат/рассвет у горизонта, луна ночью; подсказка с минутами до смены. */
+  /** Значок времени суток 16×16 (солнце / полусолнце над горизонтом / серп луны, тёмный контур) и строка «День · 9 мин» под картой. */
   private drawTod() {
-    const ms = worldMs(), n = nightLevel(ms), w = warmLevel(ms);
+    const ms = worldMs(), n = nightLevel(ms);
     const p = (((ms % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
-    const key = `${(n * 24).toFixed(0)}|${(w * 8).toFixed(0)}`;
-    if (key !== this.todKey) {
-      this.todKey = key;
-      const g = this.todCv.getContext("2d")!;
-      g.clearRect(0, 0, 12, 12);
-      g.fillStyle = n > 0.5 ? "#141c34" : "#4a78a8"; // небо
-      g.fillRect(0, 0, 12, 9);
-      g.fillStyle = "#1e2a1a"; // земля под горизонтом
-      g.fillRect(0, 9, 12, 3);
-      g.save();
-      g.beginPath(); g.rect(0, 0, 12, 9); g.clip();
-      const sy = Math.round(4 + 7 * n); // солнце опускается к горизонту (и уходит за него) по мере ночи
-      const sun = w > 0.35 ? "#ff9a3a" : "#ffd84a";
-      g.fillStyle = sun;
-      g.fillRect(4, sy - 2, 4, 4); g.fillRect(3, sy - 1, 6, 2); g.fillRect(5, sy - 3, 2, 6);
-      if (w <= 0.35 && n < 0.3) { g.fillStyle = "#fff2a8"; g.fillRect(5, sy - 1, 2, 2); }
-      if (n > 0.45) { // луна проявляется после заката
-        g.globalAlpha = Math.min(1, (n - 0.45) * 2);
-        g.fillStyle = "#e6ecff";
-        g.fillRect(4, 2, 4, 5); g.fillRect(3, 3, 6, 3);
-        g.fillStyle = "#141c34"; g.fillRect(6, 2, 3, 4); g.fillRect(7, 3, 2, 3);
-        g.fillStyle = "#e6ecff"; g.fillRect(9, 1, 1, 1); g.fillRect(2, 1, 1, 1);
-        g.globalAlpha = 1;
-      }
-      g.restore();
-    }
     const phase = n >= 0.99 ? "night" : n <= 0.01 ? "day" : p > 0.8 ? "dawn" : "dusk";
+    if (phase !== this.todKey) {
+      this.todKey = phase;
+      const g = this.todCv.getContext("2d")!;
+      g.clearRect(0, 0, 16, 16);
+      const OUT = "#2a1606";
+      const px = (x: number, y: number, c: string) => { g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+      // маска -> заливка с тёмным контуром
+      const paint = (inside: (x: number, y: number) => boolean, fill: string) => {
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+          if (inside(x, y)) px(x, y, fill);
+          else if (inside(x - 1, y) || inside(x + 1, y) || inside(x, y - 1) || inside(x, y + 1)) px(x, y, OUT);
+        }
+      };
+      const disc = (cx: number, cy: number, r: number) => (x: number, y: number) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+      const rays = (cx: number, cy: number, r0: number, r1: number) => (x: number, y: number) => {
+        const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+        if (d < r0 || d > r1) return false;
+        return Math.abs(dx) <= 0.6 || Math.abs(dy) <= 0.6 || Math.abs(Math.abs(dx) - Math.abs(dy)) <= 0.6;
+      };
+      if (phase === "day") {
+        paint(rays(7.5, 7.5, 5.2, 7.6), "#ffcf3a");
+        paint(disc(7.5, 7.5, 3.9), "#ffe45a");
+      } else if (phase === "night") {
+        const moon = (x: number, y: number) => disc(7.5, 8, 6)(x, y) && !disc(10.5, 5.8, 5)(x, y);
+        paint(moon, "#eef2ff");
+        px(12, 11, "#eef2ff"); px(13, 2, "#eef2ff"); px(14, 5, "#eef2ff");
+      } else {
+        const dusk = phase === "dusk", HY = 11;
+        const above = (f: (x: number, y: number) => boolean) => (x: number, y: number) => y < HY && f(x, y);
+        paint(above(rays(7.5, HY - 0.5, 5.6, 8)), dusk ? "#ff9a30" : "#ffb0a0");
+        paint(above(disc(7.5, HY - 0.5, 4.4)), dusk ? "#ff7a1e" : "#ffd27a");
+        for (let x = 0; x < 16; x++) { px(x, HY, dusk ? "#ffd27a" : "#ffc0b0"); px(x, HY + 1, OUT); }
+        g.fillStyle = dusk ? "#7a3a1a" : "#8a5a6a"; g.fillRect(0, HY + 2, 16, 3);
+        g.fillStyle = OUT; g.fillRect(0, HY + 5, 16, 1);
+      }
+    }
     const target = phase === "day" || phase === "dusk" ? 0.76 : phase === "night" ? 0.88 : 1; // до глубокой ночи / конца ночи / конца рассвета
     const left = ((((target - p) % 1) + 1) % 1) * DAY_CYCLE_MS;
     const mins = Math.max(1, Math.round(left / 60000));
-    const tip = TX(`ui.hud.tod_${phase}`, { m: mins });
-    if (tip !== this.todTipKey) { this.todTipKey = tip; this.todBox.title = tip; this.todBox.setAttribute("aria-label", tip); }
+    const vars = { m: mins };
+    const tip = TX(`ui.hud.tod_${phase}`, vars), txt = TX(`ui.hud.tods_${phase}`, vars);
+    if (tip !== this.todTipKey) { this.todTipKey = tip; this.todBox.title = tip; this.todBox.setAttribute("aria-label", tip); this.todTxt.textContent = txt; }
   }
   /** Ночью миникарта тускнеет и города, форты и поселения светятся тёплыми огнями (вызывается из drawMini раз в 200 мс). */
   private miniNightLights(g: CanvasRenderingContext2D, X: (px: number) => number, Y: (py: number) => number, k: number, CW: number, CH: number, n: number) {

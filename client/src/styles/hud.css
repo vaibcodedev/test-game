@@ -294,25 +294,22 @@
 .hud-mini.collapsed canvas {
   display: none;
 }
-/* значок времени суток (ui/hud.ts drawTod): пиксельное солнце/луна в углу рамки миникарты */
+/* значок времени суток (ui/hud.ts drawTod): иконка 16 px и «День · 9 мин» отдельной строкой между картой и названием зоны */
 .hud-mini .tod {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: var(--z-l2);
-  width: 22px;
-  height: 22px;
-  box-sizing: border-box;
-  background: rgba(18, 10, 16, 0.7);
-  border: 1px solid var(--gold);
-  border-radius: var(--r-1);
-  cursor: var(--cur-help, default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  cursor: help;
 }
 .hud-mini .tod canvas {
-  width: 100%;
-  height: 100%;
+  width: 16px;
+  height: 16px;
   aspect-ratio: auto;
   border-radius: 0;
+  flex: none;
 }
 .hud-mini.collapsed .tod {
   display: none;

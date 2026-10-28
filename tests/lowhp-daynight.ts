@@ -53,7 +53,7 @@ async function main() {
     const shot = async (name: string, sel: string, pad = 8) => {
       const r = await page.$eval(sel, (e) => { const b = e.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; });
       const f = path.join(OUT, name);
-      await page.screenshot({ path: f, clip: { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: r.w + pad * 2, height: r.h + pad * 2 } });
+      await page.screenshot({ path: f, clip: { x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad), width: r.w + pad * 2, height: r.h + pad * 2, scale: sel === ".hud-mini" ? 2 : 1 } });
       return fs.readFileSync(f).toString("base64");
     };
     await sleep(1500);
@@ -82,11 +82,11 @@ async function main() {
     await page.evaluate(() => { delete (window as any).__shadowMs; });
 
     const sheet = await browser.newPage();
-    await sheet.setViewport({ width: 1100, height: 760 });
+    await sheet.setViewport({ width: 1100, height: 1300 });
     await sheet.setContent(`<body style="margin:0;background:#120a10;color:#e8dcc0;font:14px sans-serif;padding:12px">
       <div>Низкое здоровье: пик и спад пульса</div>
       <div style="display:flex;gap:12px;margin:6px 0 16px"><img src="data:image/png;base64,${peak}"><img src="data:image/png;base64,${dim}"></div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">${minis.map((m) => `<div style="width:250px"><div>${m.label}: «${m.tip}»</div><img src="data:image/png;base64,${m.img}"></div>`).join("")}</div></body>`);
+      <div style="display:flex;gap:12px;flex-wrap:wrap">${minis.map((m) => `<div style="width:500px"><div>${m.label}: «${m.tip}»</div><img src="data:image/png;base64,${m.img}"></div>`).join("")}</div></body>`);
     await sheet.screenshot({ path: path.join(OUT, "lowhp-daynight.png"), fullPage: true });
     for (const f of fs.readdirSync(OUT)) if (f.startsWith("_")) fs.rmSync(path.join(OUT, f));
     must(!errors.length, "ошибки страницы: " + errors.slice(0, 3).join(" | "));
