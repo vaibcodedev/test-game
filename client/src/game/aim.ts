@@ -213,7 +213,7 @@ export class AimPreview {
    */
   private path(x0: number, y0: number, x1: number, y1: number, col: number, x2?: number, y2?: number) {
     col = this.tone(col);
-    const h0 = this.bodyLift(x0, y0) ?? CHEST, h1 = this.bodyLift(x1, y1) ?? h0;
+    const h0 = this.bodyLift(x0, y0) ?? CHEST, h1 = this.bodyLift(x1, y1) ?? 0; // без юнита в конце — на землю: крестик в центре метки места (spot, круги)
     this.dots(x0, y0 - h0, x1, y1 - h1, col, 0.95, true);
     if (x2 !== undefined && y2 !== undefined && Math.hypot(x2 - x1, y2 - y1) > 1) this.dots(x1, y1 - h1, x2, y2 - (this.bodyLift(x2, y2) ?? h0), col, 0.35, false);
   }
