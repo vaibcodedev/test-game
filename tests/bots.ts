@@ -376,11 +376,9 @@ async function main() {
       await g.leave();
       return uniq.name;
     };
-    await check("Повелитель Пепла: дыхание, метеоры, кольцо пламени", async () => {
-      const name = await bossTest("ashlord", "ranger", [0.6, 0.3], (fx) =>
-        !fx.some((f) => f.t === "tele" && f.shape === "cone") ? "нет огненного дыхания" : !fx.some((f) => f.t === "tele" && f.shape === "ring") ? "нет кольца пламени" : null);
-      console.log("       добыча:", name);
-    });
+    // Повелитель Пепла живёт в инстансе «Пепельные чертоги» (DungeonRoom), а не в мире: его бой и добыча — tests/dungeon-instance.ts.
+    // Боссы кольца — tests/zone-bosses.ts и tests/ring-bosses-ingame.ts. bossTest остаётся для будущих мировых боссов.
+    void bossTest;
     console.log(`\nВсе проверки пройдены: ${passedCount()}`);
   } finally {
     await stopServer();
