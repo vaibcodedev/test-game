@@ -23,6 +23,7 @@ import { pvpDamageMult } from "../../../shared/balance";
 import { derive } from "../../../shared/formulas";
 import { raidBotSave } from "../arena/botgear";
 import { SETTLEMENTS } from "../../../shared/settlements";
+import { soldierHostile } from "../../../shared/factions";
 import { lineClear, moveWithCollision, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
 import { crowdStep } from "../../../shared/crowd";
 import { BELT_HALF, GUARD_RANGE_TILES, TOWN } from "../../../shared/town";
@@ -154,13 +155,13 @@ export function npcPowerStats(f: Faction, kind: Kind, power: NpcPower, attackCd:
   const h = npcHeroStats(cls, plus), taken = pvpDamageMult(100);
   return { maxHp: Math.round(h.hp * kh), armor: h.armor, dmg: h.hit * (attackCd / h.cd) * taken * kd, taken };
 }
-/** Боец со статами героя: бьёт как 100-й (Mob.level), уровень не подписан (unit.level = 0), plus в снаряжении — 0. */
+/** Боец со статами героя: бьёт как 100-й (Mob.level), уровень передаётся клиенту (unit.level = 100: рамка цели, подпись), plus в снаряжении — 0. */
 export function applyNpcPower(m: Mob, f: Faction, kind: Kind, power: NpcPower) {
   const st = npcPowerStats(f, kind, power, m.def.attackCd);
   m.level = 100;
   m.baseStats = m.stats = { maxHp: st.maxHp, dmg: st.dmg, armor: st.armor, xp: 0, gold: [0, 0] };
   m.dmgTakenMul = st.taken;
-  m.unit.level = 0;
+  m.unit.level = 100;
   m.unit.maxHp = m.unit.hp = st.maxHp;
   if (power.kind === "champion") m.unit.name = NR.champion.names[f][kind];
   else if (power.kind === "rank") m.unit.name = NR.capital.ranks[power.rank].name;
@@ -567,7 +568,14 @@ export class Soldiers {
 
   /** Враг бойца фракции f: живой герой мира чужой фракции, не скрытый (скрытность NPC не видят). */
   private foeOf(f: string, p: Player): boolean {
-    return !p.dead && p.team === 0 && !!p.faction && p.faction !== f && p.stealthUntil <= this.w.time && this.w.players.get(p.id) === p;
+    return !p.dead && soldierHostile(p.faction, p.team, f) && p.stealthUntil <= this.w.time && this.w.players.get(p.id) === p;
+  }
+  /**
+   * Достаёт ли боец врага: враг в зоне бойца — или ранил бойца (угроза) и стоит не дальше zones.retaliate тайлов за краем зоны
+   * (ответный бой: маг, бьющий из-за края поста или дороги, получает ответ, а не «неуязвимого» бойца, который тут же лечится дома).
+   */
+  private reachable(m: Mob, p: Player): boolean {
+    return this.inZone(m, p.x, p.y) || (m.threat.has(p.id) && this.inZone(m, p.x, p.y, P.zones.slack + P.zones.retaliate));
   }
   private alive(m: Mob) {
     return !m.dead && this.w.mobs.get(m.id) === m;
@@ -601,7 +609,7 @@ export class Soldiers {
       if (!site.city) continue;
       const foes: Player[] = [];
       for (const p of this.w.players.values()) if (this.foeOf(site.faction, p) && this.near(site, p.x, p.y, margin)) foes.push(p);
-      for (const g of site.guards) if (g.soldier!.foe && !foes.includes(g.soldier!.foe)) g.soldier!.foe = null;
+      for (const g of site.guards) if (g.soldier!.foe && !foes.includes(g.soldier!.foe) && !this.reachable(g, g.soldier!.foe)) g.soldier!.foe = null;
       if (!foes.length) continue;
       const alive = site.guards.filter((g) => this.alive(g));
       for (const e of foes) {
@@ -743,7 +751,7 @@ export class Soldiers {
     let best: Player | null = null, bt = 0;
     for (const [id, th] of m.threat) {
       const p = this.w.players.get(id);
-      if (p && th > bt && this.foeOf(m.faction, p) && this.inZone(m, p.x, p.y)) { bt = th; best = p; }
+      if (p && th > bt && this.foeOf(m.faction, p) && this.reachable(m, p)) { bt = th; best = p; }
     }
     if (best || s.role === "guard" || m.state === "return") return best;
     let bd = P.aggro;
@@ -788,7 +796,7 @@ export class Soldiers {
     // враг: выбыл, скрылся, ушёл из города (стража) — бросаем
     if (s.foe && !this.foeOf(m.faction, s.foe)) s.foe = null;
     // поводок от дома: враг ушёл из зоны или сам боец увлёкся дальше zones.slack тайлов за её край — бросает и идёт домой
-    if (s.foe && (!this.inZone(m, s.foe.x, s.foe.y) || !this.inZone(m, u.x, u.y, P.zones.slack))) this.disengage(m);
+    if (s.foe && (!this.reachable(m, s.foe) || !this.inZone(m, u.x, u.y, P.zones.slack))) this.disengage(m);
     // ищем врага раз в scanMs; сразу — если бой только что кончился или по бойцу ударили (World.applyDamage ставит chase)
     if (m.state !== "return" && !s.foe && (t >= s.scanAt || m.state === "chase")) {
       s.scanAt = t + P.scanMs;
@@ -864,6 +872,11 @@ export class Soldiers {
     const d = dist(m, foe), clear = lineClear(this.w.map, m.x, m.y, foe.x, foe.y);
     let moving = false;
     if ((d > reach || !clear) && canMove) moving = this.move(m, foe.x, foe.y, dt, this.speed(m, s.chase), ranged ? reach * 0.8 : reach - 6);
+    else if (s.ranged && !mounted && canMove && d < P.units.ranged.keep && d > 1) {
+      // стрелок держит дистанцию: враг вплотную — шаг назад (в пределах своей зоны), стреляет на отходе
+      const bx = m.x + ((m.x - foe.x) / d) * TILE * 2, by = m.y + ((m.y - foe.y) / d) * TILE * 2;
+      if (this.inZone(m, bx, by, P.zones.slack)) moving = this.move(m, bx, by, dt, this.speed(m, s.chase * 0.6), 2);
+    }
     if (d <= reach + 4 && clear && t >= m.attackAt) this.attack(m, foe, ranged, d);
     return moving;
   }

@@ -9,7 +9,7 @@ import * as sfx from "./sfx";
 import { nightLevel, warmLevel } from "../../../shared/daynight";
 import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
 import { SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
-import { CITIES } from "../../../shared/cities";
+import { CITIES, inEmberWalls } from "../../../shared/cities";
 import { WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
 import { ARENA_BLOCKED_TEXT, arenaBlocked, generateArenaMap, MODE_NAMES } from "../../../shared/arena";
 import { MOUNTS } from "../../../shared/mounts";
@@ -20,7 +20,7 @@ import { fmtLeft } from "../../../shared/dungeon";
 import { net, type UnitState } from "../net";
 import { PETS } from "../../../shared/pets";
 import { CLASSES } from "../../../shared/classes";
-import { factionsHostile, landLabel, pvpPlace, zoneLand } from "../../../shared/factions";
+import { factionsHostile, landLabel, pvpPlace, soldierHostile, zoneLand } from "../../../shared/factions";
 import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
@@ -887,8 +887,9 @@ export class GameScene extends Phaser.Scene {
   /** Враг ли юнит: мобы всегда; игроки — на арене из другой команды, в мире — противоположная фракция в спорной зоне или нейтральном городе (как World.hostile). */
   isEnemy(v: UnitView): boolean {
     if (v.u.kind === UnitKind.Pet || v.npc) return false;
-    // боец фракции (задача 132, шаг 5): враг только героям чужой фракции
-    if (v.u.kind === UnitKind.Soldier) return !!net.self && net.kind === "world" && v.u.faction !== net.self.faction;
+    // боец фракции (задача 132, шаг 5): враг только героям мира чужой фракции — то же правило, что World.hostile (shared soldierHostile);
+    // внутри стен Эмберхолла атаки запрещены (World.noFight) — там боец не предлагается целью атаки
+    if (v.u.kind === UnitKind.Soldier) return !!net.self && net.kind === "world" && soldierHostile(net.self.faction, net.unit(net.id)?.team ?? 0, v.u.faction) && !inEmberWalls(this.pos.x, this.pos.y);
     if (v.u.kind !== UnitKind.Player) return true;
     if (v.u.buffs & BUFF_STEALTH) return false;
     if (net.kind === "arena") return v.u.team !== 0 && v.u.team !== net.arena?.team;

@@ -48,6 +48,14 @@ export function pvpPlace(m: WorldMap, px: number, py: number): PvpPlace {
   }
   return "pvp"; // вне городов фракции враждуют везде (isPvpZone — только справочный список)
 }
+/**
+ * Враг ли боец фракции (UnitKind.Soldier, soldiers.ts) герою: только герою мира (team 0) чужой фракции — в любой зоне, где боец стоит
+ * (у бойцов нет «безопасных» зон: свои земли защищают они сами). Одно правило для сервера (World.hostile) и клиента (GameScene.isEnemy);
+ * запрет атаки внутри стен Эмберхолла — отдельно (noFight), его клиент тоже учитывает.
+ */
+export function soldierHostile(heroFaction: string, heroTeam: number, soldierFaction: string): boolean {
+  return heroTeam === 0 && !!heroFaction && !!soldierFaction && heroFaction !== soldierFaction;
+}
 /** Враждебны ли два героя мира (вне арены): разные фракции и оба в спорной зоне или оба в нейтральном городе (там удар — нарушение). */
 export function factionsHostile(m: WorldMap, fa: string, ax: number, ay: number, fb: string, bx: number, by: number): boolean {
   if (!fa || !fb || fa === fb) return false;

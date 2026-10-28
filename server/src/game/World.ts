@@ -13,7 +13,7 @@ import { ELITE } from "../../../shared/elites";
 import { SKILLS } from "../../../shared/skills";
 import { CLASSES } from "../../../shared/classes";
 import { inEmberWalls } from "../../../shared/cities";
-import { factionsHostile, inEnemyCapital, OUTLAW, pvpPlace, scramble } from "../../../shared/factions";
+import { factionsHostile, inEnemyCapital, OUTLAW, pvpPlace, scramble, soldierHostile } from "../../../shared/factions";
 import { MOBS } from "../../../shared/mobs";
 import { MOUNTS, mountName, MOUNT_CAST_MS } from "../../../shared/mounts";
 import * as mountDrops from "./mountDrops";
@@ -229,7 +229,7 @@ export class World {
     if (fa || fb) {
       if (pa === pb) return false;
       const p = (pa ? a : b) as Player;
-      return p.team === 0 && !!p.faction && p.faction !== (fa || fb);
+      return soldierHostile(p.faction, p.team, fa || fb);
     }
     if (pa !== pb) return true;
     if (!pa || !pb) return false;

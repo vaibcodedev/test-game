@@ -75,7 +75,7 @@ check("башни с лучниками на стенах обеих фракц�
   const pool = S.list.filter((m) => !m.soldier!.power.startsWith("rank")), champs = pool.filter((m) => m.soldier!.power === "champion");
   check("чемпион — в среднем каждый 6-й", champs.length / pool.length > 1 / 8 && champs.length / pool.length < 1 / 4, `${champs.length} из ${pool.length}`);
   const champ = champs[0];
-  check("чемпион: статы героя 100 ур., уровень не подписан", champ.level === 100 && champ.unit.level === 0 && champ.dmgTakenMul < 1 && champ.stats.maxHp === npcPowerStats(champ.faction as "solgard", champ.soldier!.ranged ? "ranged" : "melee", { kind: "champion" }, champ.def.attackCd).maxHp);
+  check("чемпион: статы героя 100 ур., уровень 100 уходит клиенту (рамка цели)", champ.level === 100 && champ.unit.level === 100 && champ.dmgTakenMul < 1 && champ.stats.maxHp === npcPowerStats(champ.faction as "solgard", champ.soldier!.ranged ? "ranged" : "melee", { kind: "champion" }, champ.def.attackCd).maxHp);
   const settle = S.sites.filter((s) => !s.city);
   check("в поселениях посты по периметру и у ворот (≥ 8 стражи)", settle.every((s) => s.guards.length >= 8 && s.guards.some((g) => g.soldier!.ranged)), settle.map((s) => s.guards.length).join(","));
   check("стражи: столица > форт > поселение", capital.guards.length > fort.guards.length && fort.guards.length > Math.max(...settle.map((s) => s.guards.length)), `${capital.guards.length} > ${fort.guards.length}`);

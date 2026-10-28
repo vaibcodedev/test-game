@@ -3,12 +3,12 @@
   "respawnMin": 3,
   "scanMs": 300,
   "aggro": 300,
-  "zones": { "city": 5, "settlement": 5, "bridge": 9, "patrol": 9, "slack": 3 },
+  "zones": { "city": 5, "settlement": 5, "bridge": 9, "patrol": 9, "slack": 3, "retaliate": 12 },
   "arrowSpeed": 650,
   "mounted": { "range": 360, "slowPct": 55, "slowMs": 3500 },
   "units": {
     "melee": { "hp": 3, "dmg": 1.6, "armor": 1.4, "speed": 64, "chaseSpeed": 170, "range": 40, "attackCd": 1.2, "radius": 11 },
-    "ranged": { "hp": 2.4, "dmg": 1.4, "armor": 1, "speed": 64, "chaseSpeed": 165, "range": 270, "attackCd": 1.6, "radius": 11 }
+    "ranged": { "hp": 2.4, "dmg": 1.4, "armor": 1, "speed": 64, "chaseSpeed": 165, "range": 270, "attackCd": 1.6, "radius": 11, "keep": 80 }
   },
   "factions": {
     "solgard": {
