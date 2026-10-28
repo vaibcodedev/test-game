@@ -109,6 +109,9 @@ function fitCanvas(game: Phaser.Game, z: number): number {
   return n;
 }
 
+/** «С превью»: через сколько мс удержания клавиши умения показывается прицел (короче — каст без вспышки превью). */
+const HOLD_PREVIEW_MS = 180;
+
 export class GameScene extends Phaser.Scene {
   map!: WorldMap;
   world!: WorldView;
@@ -1052,7 +1055,7 @@ export class GameScene extends Phaser.Scene {
   }
   private stopHold() { clearInterval(this.holdTimer); this.holdTimer = 0; this.holdCode = ""; }
 
-  private aimState: { id: string; hold: string | null } | null = null;
+  private aimState: { id: string; hold: string | null; t0: number } | null = null;
   private aimHover: string | null = null;
   private overUi = false;
   private aim!: AimPreview;
@@ -1069,7 +1072,7 @@ export class GameScene extends Phaser.Scene {
     if (mode === "quick" || (def.aim === "self" && mode === "confirm")) return this.castNow(def, alt);
     // «С превью»: клавиша зажата — прицел, каст при отпускании; клик по слоту — сразу
     if (mode === "preview" && !hold) return this.castNow(def, alt);
-    this.aimState = { id, hold: mode === "preview" ? hold : null };
+    this.aimState = { id, hold: mode === "preview" ? hold : null, t0: performance.now() };
   }
 
   cancelAim() { this.aimState = null; this.aim?.clear(); }
@@ -1178,10 +1181,12 @@ export class GameScene extends Phaser.Scene {
     if (this.me?.dead) this.traps.clear();
     const sel = this.castUnit(this.targetId);
     selTarget.r = sel?.r ?? PLAYER_RADIUS; selTarget.friend = !!sel?.friend; selTarget.enemy = !!sel?.enemy;
-    const def = SKILLS[this.aimState?.id ?? this.aimHover ?? ""];
+    // «С превью»: короткое нажатие кастует без вспышки прицела — превью появляется, только если клавишу держат дольше HOLD_PREVIEW_MS
+    const st = this.aimState && (!this.aimState.hold || performance.now() - this.aimState.t0 >= HOLD_PREVIEW_MS) ? this.aimState : null;
+    const def = SKILLS[st?.id ?? this.aimHover ?? ""];
     if (!def || !this.me || this.me.dead) return this.aim.clear();
     const plan: CastPlan = resolveCast(this.castInput(def, false));
-    const sp = aimSpec(def), rangeOnly = !this.aimState || def.aim === "unit", shown = !rangeOnly || sp.shape === "nova";
+    const sp = aimSpec(def), rangeOnly = !st || def.aim === "unit", shown = !rangeOnly || sp.shape === "nova";
     const units = plan.ok && shown && (sp.pick === "near" || sp.who === "ally") ? this.hitUnits() : undefined;
     const r = plan.ok ? this.aimOf(def, plan, units) : null, g = r?.g ?? null;
     const marks: { x: number; y: number; r: number }[] = [];
