@@ -1664,6 +1664,15 @@ export class Hud {
       const s = v.u.kind === UnitKind.Boss ? 3 : dot;
       g.fillRect(Math.floor(X(v.x)), Math.floor(Y(v.y)), s, s);
     }
+    // игроки за пределами видимости мира — лёгкие точки от сервера (net.dots, задача 76)
+    if (this.ctx.net.kind === "world") {
+      const d = this.ctx.net.dots, mine = this.ctx.net.self?.faction;
+      for (let i = 0; i + 2 < d.length; i += 3) {
+        const f = d[i + 2] === 1 ? "solgard" : d[i + 2] === 2 ? "umbrath" : "";
+        g.fillStyle = f && f !== mine ? P.bad : "#6ac8ff";
+        g.fillRect(Math.floor(X(d[i])), Math.floor(Y(d[i + 1])), dot, dot);
+      }
+    }
     g.fillStyle = "#ffffff";
     g.fillRect(X(info.pos.x) - 1.5, Y(info.pos.y) - 1.5, 3, 3);
     if (this.ctx.net.kind === "world") {

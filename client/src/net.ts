@@ -188,6 +188,8 @@ export class Net {
   bags: LootBag[] = [];
   arenaInfo: ArenaInfo | null = null;
   party: PartyState | null = null;
+  /** Игроки вне фильтра видимости мира (задача 76): [x, y, фракция 0|1|2, ...] — только точки на миникарте. */
+  dots: number[] = [];
   /** Умение в очереди (золотая рамка) и длительность общего отката, мс. */
   queued: string | null = null;
   pending = false;
@@ -365,6 +367,8 @@ export class Net {
     this.closed = false;
     this.pingAt = 0;
     room.onMessage("pong", () => (this.pingAt = 0));
+    this.dots = [];
+    room.onMessage("dots", (m: number[]) => (this.dots = Array.isArray(m) ? m : []));
     room.onMessage("kicked", (m: { text?: string }) => (this.kickText = m?.text ?? ""));
     const welcome = new Promise<void>((resolve) => {
       room.onMessage("welcome", (w: { seed?: number; arena?: boolean; raid?: boolean; dungeon?: boolean } & Partial<ArenaWelcome>) => {

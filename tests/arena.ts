@@ -216,6 +216,10 @@ async function main() {
       await A.until(() => A.self!.inventory.some((i) => i?.unique === "arena_diamond"), 3000, "медальон");
       await A.until(() => A.info?.season.id === 2 && A.info.ratings["1v1"].rating === 1375, 3000, "сброс рейтинга");
       assert(A.info.title.startsWith("Алмазная легенда") && A.info.frame === "diamond", "титул и рамка: " + A.info.title);
+      // фильтр видимости мира (задача 76): чужого героя видно только рядом — подходим
+      const ap = A.me();
+      B.send("dbg", { op: "tp", x: ap.x + 20, y: ap.y });
+      await B.until(() => { let f = false; B.room.state.players.forEach((u: any) => { if (u.name === "Гладиатор") f = true; }); return f; }, 2000, "Гладиатор рядом");
       await B.until(() => (B.room.state.players.get(unitByName(B, "Гладиатор"))?.title ?? "").startsWith("Алмазная легенда"), 2000, "титул виден другим");
     });
     console.log("Арена: бой с ботом");

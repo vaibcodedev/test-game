@@ -54,7 +54,8 @@ import { expandBag } from "../game/bags";
 import type { ArenaOptions, Participant } from "./ArenaRoom";
 import { guard, makeOn, registerCombat, type On } from "./common";
 import { autoPlace, setSlot } from "../../../shared/hotbar";
-import { WorldState } from "./schema";
+import { OpenWorldState } from "./schema";
+import { Visibility } from "./visibility";
 import { T } from "../../../shared/texts";
 
 interface AuthResult {
@@ -73,7 +74,7 @@ const RAID_BOT_CLASSES: Record<RaidRole, ClassId[]> = {
   ranged: ["ranger", "mage", "darkranger", "warlock"],
 };
 
-export class WorldRoom extends Room<WorldState> {
+export class WorldRoom extends Room<OpenWorldState> {
   override maxClients = 200;
   override autoDispose = false;
   world!: World;
@@ -82,6 +83,8 @@ export class WorldRoom extends Room<WorldState> {
   trade!: TradeManager;
   bank!: BankService;
   muster!: RaidMuster;
+  /** Фильтр видимости юнитов (задача 76, ./visibility.ts). */
+  vis!: Visibility;
   static db: GameDB;
   /** Единственная комната мира (для HTTP API аккаунтов: карта, кто онлайн). */
   static instance: WorldRoom | null = null;
@@ -92,11 +95,13 @@ export class WorldRoom extends Room<WorldState> {
   override onCreate() {
     WorldRoom.instance = this;
     setMarketDb(WorldRoom.db);
-    this.setState(new WorldState());
+    this.setState(new OpenWorldState());
     this.setPatchRate(PATCH_MS);
     this.world = new World(this.state, (type, msg) => this.broadcast(type, msg), { warStore: fileWarStore(path.join(path.dirname(WorldRoom.db.file), path.basename(WorldRoom.db.file, ".sqlite") + "-war.json")) });
-    this.setSimulationInterval(guard(T("srv.WorldRoom.838"), (dt: number) => this.world.update(dt)), TICK_MS);
     const find = (key: string) => this.world.findByName(key);
+    this.vis = new Visibility(this.state, () => this.world, (p) => (this.parties.members(p.name.toLowerCase()) ?? []).map((m) => find(m.key)));
+    const visTick = guard("vis", () => this.vis.tick(Date.now(), (id, dots) => this.sockets.get(id)?.send("dots", dots)));
+    this.setSimulationInterval(guard(T("srv.WorldRoom.838"), (dt: number) => { this.world.update(dt); visTick(); }), TICK_MS);
     this.parties = new Parties(find, (key) => !!find(key) || inArena.has(key) || inRaid.has(key));
     this.queue = new ArenaQueue(services.arena, find, (m) => void this.startMatch(m), (keys) => keys.forEach((k) => this.sendArenaInfo(k)));
     const away = (p: Player) => p.goingToArena || inArena.has(p.name.toLowerCase()) || inRaid.has(p.name.toLowerCase()) || inDungeon.has(p.name.toLowerCase());
@@ -180,6 +185,7 @@ export class WorldRoom extends Room<WorldState> {
     p.admin = WorldRoom.db.isAdmin(p.name);
     p.accountId = auth.accountId ?? WorldRoom.db.ownerOf(p.name) ?? 0;
     this.world.addPlayer(p, auth.fromArena ? T("srv.WorldRoom.848", { name: p.name }) : auth.fromRaid ? T("srv.WorldRoom.849", { name: p.name }) : undefined);
+    this.vis.attach(client, p); // до полного состояния: клиенту сразу уходят юниты вокруг героя
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: auth.created });
     sendNodes(this.world, p);
     if (auth.created) client.send("toast", { text: T("srv.WorldRoom.213"), kind: "level" });
@@ -243,6 +249,7 @@ export class WorldRoom extends Room<WorldState> {
   /** Переподключение: тот же герой (HP, мана, баффы, группа), клиенту — полное состояние заново. */
   private resume(p: Player, client: Client) {
     this.sockets.set(p.id, client);
+    this.vis.attach(client, p); // Colyseus переносит вид на новый клиент; пересчёт на случай нового объекта
     p.offline = false;
     p.selfDirty = true;
     p.bagsDirty = true;
@@ -280,6 +287,7 @@ export class WorldRoom extends Room<WorldState> {
       console.error("[world] сохранение при выходе:", e);
     }
     this.sockets.delete(p.id);
+    this.vis.detach(p.id);
     this.world.removePlayer(p.id, p.goingToArena ? (inRaid.has(p.name.toLowerCase()) ? T("srv.WorldRoom.850", { name: p.name }) : T("srv.WorldRoom.851", { name: p.name })) : undefined);
   }
 

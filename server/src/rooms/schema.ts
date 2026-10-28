@@ -1,5 +1,5 @@
 /** Публичное состояние мира, которое Colyseus синхронизирует со всеми клиентами. */
-import { Encoder, MapSchema, Schema, type } from "@colyseus/schema";
+import { Encoder, MapSchema, Schema, type, view } from "@colyseus/schema";
 
 /** Большая карта: ~1100 мобов в полном состоянии при входе не помещаются в буфер по умолчанию (8 КБ → 1 МБ). */
 Encoder.BUFFER_SIZE = 1024 * 1024;
@@ -54,6 +54,15 @@ export class Unit extends Schema {
 export class WorldState extends Schema {
   @type({ map: Unit }) players = new MapSchema<Unit>();
   @type({ map: Unit }) mobs = new MapSchema<Unit>();
+}
+
+/**
+ * Состояние открытого мира (WorldRoom, задача 76): юниты под фильтром видимости — каждому клиенту уходят только те,
+ * что его StateView видит (server/src/rooms/visibility.ts). Комнаты арены, рейда и подземелья — без фильтра (WorldState).
+ */
+export class OpenWorldState extends Schema {
+  @view() @type({ map: Unit }) players = new MapSchema<Unit>();
+  @view() @type({ map: Unit }) mobs = new MapSchema<Unit>();
 }
 
 /** Состояние матча арены: фаза, обратный отсчёт и оставшееся время в секундах. */
