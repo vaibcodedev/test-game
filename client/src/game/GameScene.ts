@@ -386,6 +386,7 @@ export class GameScene extends Phaser.Scene {
     this.setupInput();
     this.setupAmbient();
     this.postfx = new PostFx(this);
+    this.cleanup.push(() => { const e = document.querySelector<HTMLElement>(".hurt-edge"); if (e) e.style.opacity = "0"; }); // выход из мира: кромка ран не висит
     this.nightMask = new NightMask(this);
     this.weather = new Weather(this, this.map);
     this.weather.onRainStart = () => this.npcRainLine();

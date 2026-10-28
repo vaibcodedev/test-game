@@ -97,3 +97,7 @@
 @media (prefers-reduced-motion: reduce) { .war-tile.cap { animation: none; } }
 /* название зоны при входе — под полосой битвы, пока она на экране */
 body.war-bar-on .hud-zone { top: calc(var(--war-bar-b, 96px) + 6px); }
+
+/* низкое здоровье (game/postfx.ts): мягкая пульсирующая красная кромка по краям экрана, прозрачность задаёт код */
+.hurt-edge { position: fixed; inset: 0; pointer-events: none; z-index: var(--z-hud-event); opacity: 0; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(120, 10, 14, 0.35) 80%, rgba(90, 0, 8, 0.7) 100%); transition: opacity 0.12s linear; }
+@media (prefers-reduced-motion: reduce) { .hurt-edge { transition: none; } }
