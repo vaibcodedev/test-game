@@ -2,14 +2,26 @@ import { GP } from "./gameplay";
 /** Простой общий цикл дня и ночи по часам: у всех клиентов совпадает. */
 export const DAY_CYCLE_MS = GP.timers.dayCycleMin * 60 * 1000;
 
-/** Степень ночи 0..1 (0 — день; плавные сумерки). Ночь занимает последнюю часть цикла. */
+const smooth = (t: number) => { const x = Math.max(0, Math.min(1, t)); return x * x * (3 - 2 * x); };
+const phase = (ms: number) => (((ms % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
+
+/**
+ * Степень ночи 0..1 (0 — день). Сумерки долгие и плавные (smoothstep), а не линейный обрыв:
+ * 0..0.58 день, 0.58..0.76 вечер и закат, 0.76..0.88 ночь, 0.88..1 рассвет.
+ */
 export function nightLevel(ms: number): number {
-  const p = (((ms % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
-  // 0..0.62 день, 0.62..0.72 закат, 0.72..0.92 ночь, 0.92..1 рассвет
-  if (p < 0.62) return 0;
-  if (p < 0.72) return (p - 0.62) / 0.1;
-  if (p < 0.92) return 1;
-  return 1 - (p - 0.92) / 0.08;
+  const p = phase(ms);
+  if (p < 0.58) return 0;
+  if (p < 0.76) return smooth((p - 0.58) / 0.18);
+  if (p < 0.88) return 1;
+  return 1 - smooth((p - 0.88) / 0.12);
+}
+
+/** Тёплый свет вечера и утра 0..1: золотой час перед закатом (пик ~0.62) и розовый рассвет (пик ~0.93). */
+export function warmLevel(ms: number): number {
+  const p = phase(ms);
+  const bell = (c: number, w: number) => Math.max(0, 1 - Math.abs(p - c) / w);
+  return smooth(Math.max(bell(0.63, 0.09), bell(0.93, 0.06) * 0.7));
 }
 
 /** Фаза суток для распорядка жителей (data/schedules.json phases: [имя, начало доли цикла] по возрастанию). */

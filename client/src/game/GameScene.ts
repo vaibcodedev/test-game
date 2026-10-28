@@ -6,7 +6,7 @@ import { Nav } from "../../../shared/path";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, zoneDanger, zoneStyle, ZONES, type WorldMap, Zone } from "../../../shared/map";
 import { ENV, RESOURCES } from "../../../shared/biomes";
 import * as sfx from "./sfx";
-import { nightLevel } from "../../../shared/daynight";
+import { nightLevel, warmLevel } from "../../../shared/daynight";
 import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
 import { SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import { CITIES } from "../../../shared/cities";
@@ -1516,14 +1516,17 @@ export class GameScene extends Phaser.Scene {
     const night = net.kind === "arena" || z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now()); // на PvP-арене ночи нет
     setLightMode(this.room || z === Zone.Arena || z === Zone.Dungeon ? "none" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
-    const target = net.kind === "arena" ? 0 : this.room ? this.room.dark + night * 0.1 : Math.max(tint.dark, night * 0.4) + this.weather.dim; // в зданиях ночью светло: чуть темнее, чем днём
+    // золотой час вечера и рассвет: тёплый оттенок поверх мира, плавно переходит в ночную синеву
+    const warm = night === 0 && (net.kind === "arena" || z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano) ? 0 : this.room ? 0 : warmLevel(Date.now());
+    const target = net.kind === "arena" ? 0 : this.room ? this.room.dark + night * 0.1 : Math.max(tint.dark, night * 0.4, warm * 0.16) + this.weather.dim; // в зданиях ночью светло: чуть темнее, чем днём
     this.interiors?.update(dt, night, this.room);
     this.towerArchers?.update(dt);
     this.fortScenes?.update(dt, this.pos.x, this.pos.y);
     this.bannerBases?.update(dt, this.cameras.main.midPoint.x, this.cameras.main.midPoint.y);
     this.siegeView?.update(dt, this.cameras.main.midPoint.x, this.cameras.main.midPoint.y);
     const dark = this.world.dark;
-    const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
+    const base = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.IntegerToColor(tint.color), Phaser.Display.Color.IntegerToColor(0x7a3a10), 100, Math.round(warm * (1 - night) * 100)); // вечером — янтарь
+    const nc = Phaser.Display.Color.Interpolate.ColorWithColor(Phaser.Display.Color.ObjectToColor(base), Phaser.Display.Color.IntegerToColor(0x060a28), 100, Math.round(night * 100));
     // цвет дымки зоны (снежная синева, пустынный жар) меняется так же плавно, как её плотность, а не скачком на границе
     const k = Math.min(1, dt * 2), c0 = (this.hazeRGB ??= [nc.r, nc.g, nc.b]);
     c0[0] += (nc.r - c0[0]) * k; c0[1] += (nc.g - c0[1]) * k; c0[2] += (nc.b - c0[2]) * k;
