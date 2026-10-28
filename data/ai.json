@@ -1,0 +1,27 @@
+{
+  "_doc": "Деревья поведения жителей (mistreevous 4.3.1, язык MDSL: https://github.com/nikkorn/mistreevous; визуализатор — https://nikkorn.github.io/mistreevous-visualiser/). Строки дерева склеиваются через перевод строки. Узлы — методы агента server/src/game/ai/brain.ts. Дерево шагает раз в 200 мс у проснувшихся жителей (города без героев рядом спят); ходьба — каждый такт по цели, которую ставит дерево. Приоритеты сверху вниз: разговор → новая фаза суток (распорядок data/schedules.json) → герой рядом (повернуться, поздороваться) → в пути (встретить знакомого или идти) → занятие на месте (лицом к делу) → безделье: заговорить с соседом / сменить место (ChangeSpot: чаще остаётся у своего дела, продавец — у прилавка) / оглядеться (веса lotto — data/schedules.json chat).",
+  "trees": {
+    "citizen": [
+      "root {",
+      "  selector {",
+      "    sequence { condition [IsChatting] action [Chat] }",
+      "    sequence { condition [ScheduleChanged] action [PickSpot] }",
+      "    sequence { condition [HeroClose] action [FaceHero] action [Greet] }",
+      "    sequence {",
+      "      condition [IsWalking]",
+      "      selector {",
+      "        sequence { condition [MeetsPasserby] action [StartChat] }",
+      "        action [Walk]",
+      "      }",
+      "    }",
+      "    sequence { condition [IsBusy] action [FaceWork] }",
+      "    lotto [$idleWeight, $moveWeight, $lookWeight] {",
+      "      sequence { condition [HasChatPartner] action [StartChat] }",
+      "      action [ChangeSpot]",
+      "      action [LookAround]",
+      "    }",
+      "  }",
+      "}"
+    ]
+  }
+}

@@ -24,6 +24,7 @@ import { derive } from "../../../shared/formulas";
 import { raidBotSave } from "../arena/botgear";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { lineClear, moveWithCollision, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
+import { crowdStep } from "../../../shared/crowd";
 import { BELT_HALF, GUARD_RANGE_TILES, TOWN } from "../../../shared/town";
 import { NPC_GEAR, npcGearStrings, type NpcTier } from "../../../shared/npcGear";
 import type { MobDef } from "../../../shared/mobs";
@@ -1035,7 +1036,10 @@ export class Soldiers {
     const dx = wp.x - x, dy = wp.y - y, d = Math.hypot(dx, dy) || 1;
     const sp = Math.min(speed * MOVE_MUL * dt, final ? d - stopAt : d); // общий множитель ходьбы (data/balance.json moveMul)
     if (sp <= 0) return this.sync(m, true), false;
-    const n = moveWithCollision(map, x, y, (dx / d) * sp, (dy / d) * sp, r);
+    // разведение толпы (shared/crowd.ts) — только в бою (не слипаются у цели); в походе строй держат слоты формации
+    const fight = !!s.foe || !!s.mobFoe;
+    const c = fight ? crowdStep(this.w.crowd, m, x, y, r, (dx / d) * sp, (dy / d) * sp, 0, gx, gy) : { x: (dx / d) * sp, y: (dy / d) * sp };
+    const n = moveWithCollision(map, x, y, c.x, c.y, r);
     const moved = Math.abs(n.x - x) + Math.abs(n.y - y) > 0.01;
     s.px = Math.round(n.x * 10) / 10;
     s.py = Math.round(n.y * 10) / 10;

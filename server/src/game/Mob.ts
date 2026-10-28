@@ -20,6 +20,14 @@ export class Mob {
   attackAt = 0;
   wanderAt = 0;
   wanderTo: { x: number; y: number } | null = null;
+  /** Возврат домой (World.updateMob): начало (-1 — не идёт), лучшее расстояние до дома и когда, точка обхода препятствия и её срок. */
+  retSince = -1;
+  retBest = 0;
+  retAt = 0;
+  detour: { x: number; y: number } | null = null;
+  detourUntil = 0;
+  /** Такт разведения стоящего в бою моба (World.nudgeMob — раз в 3 такта, вразнобой). */
+  readonly nudgeSlot = Math.floor(Math.random() * 3);
   stunUntil = 0;
   rootUntil = 0;
   slowUntil = 0;
@@ -126,6 +134,8 @@ export class Mob {
     u.phase = 0;
     u.target = "";
     this.state = "idle";
+    this.retSince = -1;
+    this.detour = null;
     this.targetId = null;
     this.damageBy.clear();
     this.threat.clear();

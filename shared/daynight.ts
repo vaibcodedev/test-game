@@ -11,3 +11,11 @@ export function nightLevel(ms: number): number {
   if (p < 0.92) return 1;
   return 1 - (p - 0.92) / 0.08;
 }
+
+/** Фаза суток для распорядка жителей (data/schedules.json phases: [имя, начало доли цикла] по возрастанию). */
+export function dayPhase(ms: number, phases: [string, number][]): string {
+  const p = (((ms % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
+  let cur = phases[phases.length - 1][0];
+  for (const [id, from] of phases) if (p >= from) cur = id;
+  return cur;
+}

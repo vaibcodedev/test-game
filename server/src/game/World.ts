@@ -4,7 +4,8 @@ import { AGGRO_MUL, MAP_SEED, MOVE_MUL, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DEL
 import { armorReduction } from "../../../shared/formulas";
 import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
 import { PLUS_BONUS } from "../../../shared/upgrade";
-import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, isTownZone, zoneAtPx, Zone, type WorldMap } from "../../../shared/map";
+import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, isTownZone, walkable, zoneAtPx, Zone, type WorldMap } from "../../../shared/map";
+import { segmentWalkable } from "../../../shared/path";
 import { tickBiomes } from "./biomes";
 import { tickCities } from "./cities";
 import { nearestCity } from "../../../shared/cities";
@@ -34,6 +35,7 @@ import { grantKillRewards } from "./rewards";
 import { tickEncounters } from "./encounters";
 import { Mob } from "./Mob";
 import { Townfolk } from "./townfolk";
+import { SpatialHash, crowdStep } from "../../../shared/crowd";
 import { Soldiers } from "./soldiers";
 import { BannerWar, type WarStore } from "./bannerWar";
 import { FortSiege } from "./siege";
@@ -122,6 +124,10 @@ export class World {
   /** Постоянные зоны урона (лужи яда, огонь). */
   /** Стражники и горожане города (только в мире, не на арене). */
   town: Townfolk | null = null;
+  /** Сетка соседей для разведения толпы (shared/crowd.ts): герои, проснувшиеся мобы, бойцы и жители — пересобирается каждый такт. */
+  readonly crowd = new SpatialHash(64);
+  private awakeList: Mob[] = [];
+  private tickN = 0;
   /** Бойцы фракций: патрули, посты, стража поселений и городов, лучники на башнях (только в мире). */
   soldiers: Soldiers | null = null;
   /** «Знамёна Предела» (задача 132, шаг 14; bannerWar.ts): только в мире. */
@@ -323,7 +329,12 @@ export class World {
     tickBiomes(this, dt);
     tickCities(this);
     this.markAwake();
-    for (const m of this.mobs.values()) if (this.awake(m)) this.updateMob(m, dt);
+    this.tickN++;
+    const list = this.awakeList;
+    list.length = 0;
+    for (const m of this.mobs.values()) if (this.awake(m)) list.push(m);
+    this.buildCrowd(list);
+    for (const m of list) this.updateMob(m, dt);
     for (const pet of [...this.pets.values()]) updatePet(this, pet, dt);
     this.town?.update(dt);
     this.soldiers?.update(dt);
@@ -348,6 +359,18 @@ export class World {
     }
   }
   /** Спит ли моб: обычный, без цели и угрозы, вдали от героев. Боссы, призванные и вернувшиеся домой не спят. */
+  /** Сетка толпы на этот такт: герои — «тяжёлые» (их обходят, не толкают), боссы тоже; мобы — радиусом пути. */
+  private buildCrowd(list: Mob[]) {
+    const h = this.crowd;
+    h.clear();
+    for (const p of this.players.values()) if (!p.dead) h.add(p, p.unit.x, p.unit.y, PLAYER_RADIUS, true);
+    for (const m of list) if (!m.dead && !m.siege) h.add(m, m.unit.x, m.unit.y, World.crowdR(m), !!m.def.boss);
+    this.town?.addToCrowd(h);
+  }
+  /** Радиус тела моба в толпе — как радиус пути (moveMob). */
+  static crowdR(m: Mob) {
+    return Math.min(12, m.def.radius * 0.6);
+  }
   private awake(m: Mob): boolean {
     if (m.def.boss || m.summoned || m.state !== "idle" || m.threat.size) return true;
     const C = World.AWAKE_CHUNK, at = m.soldier ? m.unit : m.home; // патруль уходит от точки появления: спит по текущему месту
@@ -852,7 +875,7 @@ export class World {
       if (p.outlawUntil <= t) { p.outlawUntil = 0; u.outlaw = intruder ? 1 : 0; }
       else if (t >= p.guardHitAt && this.inNeutral(u.x, u.y)) {
         p.guardHitAt = t + OUTLAW.hitMs;
-        this.town?.punish(p, this.guardDamage(p));
+        this.town?.punish(p, this.guardDamage(p), true); // драка героев: сначала окрик и подход стражи
       }
     }
 
@@ -976,13 +999,28 @@ export class World {
     const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy) || 1;
     // общий множитель ходьбы всех живых (data/balance.json moveMul): speed в данных мобов — «до множителя»
     const sp = Math.min(speed * MOVE_MUL * dt, final ? d - stopAt : d);
-    const n = this.move(u.x, u.y, (dx / d) * sp, (dy / d) * sp, r, m.faction);
+    // разведение толпы: мобы не налезают друг на друга и обходят соседей; цель (герой) не отталкивает
+    const s = m.def.boss ? { x: (dx / d) * sp, y: (dy / d) * sp } : crowdStep(this.crowd, m, u.x, u.y, r, (dx / d) * sp, (dy / d) * sp, 0, gx, gy);
+    const n = this.move(u.x, u.y, s.x, s.y, r, m.faction);
     if (this.inTown(n.x, n.y)) return false;
     const moved = Math.abs(n.x - u.x) + Math.abs(n.y - u.y) > 0.01;
     u.x = Math.round(n.x * 10) / 10;
     u.y = Math.round(n.y * 10) / 10;
     u.dir = World.dirTo(dx, dy);
     return moved;
+  }
+
+  /** Стоящий в бою моб расходится с налезшими соседями (окружают героя, а не стоят в одной точке); цель (gx, gy) не толкает. */
+  private nudgeMob(m: Mob, dt: number, gx: number, gy: number) {
+    // раз в 3 такта на моба (с тройным шагом): толпа у героя расходится так же, а такт дешевле
+    if (m.def.boss || (this.tickN + m.nudgeSlot) % 3) return;
+    const u = m.unit, r = World.crowdR(m);
+    const s = crowdStep(this.crowd, m, u.x, u.y, r, 0, 0, this.mobSpeed(m) * MOVE_MUL * dt * 1.5, gx, gy);
+    if (!s.x && !s.y) return;
+    const n = this.move(u.x, u.y, s.x, s.y, r, m.faction);
+    if (this.inTown(n.x, n.y)) return;
+    u.x = Math.round(n.x * 10) / 10;
+    u.y = Math.round(n.y * 10) / 10;
   }
 
   /** Самая «угрожающая» живая цель рядом, иначе ближайший игрок в радиусе агрессии. */
@@ -1064,10 +1102,19 @@ export class World {
     if (m.ai.heal && m.state !== "return") this.mobHeal(m);
 
     if (m.state === "return") {
-      moving = this.moveMob(m, m.home.x, m.home.y, dt, m.def.speed * 1.6);
+      // домой идёт ногами, а не переносится: застрял (нет хода 1,5 с) — путь заново и обход вбок; перенос — только после returnGiveUpMs без хода
+      if (m.retSince < 0) this.beginReturn(m);
+      const det = m.detour && t < m.detourUntil ? m.detour : null;
+      const gx = det ? det.x : m.home.x, gy = det ? det.y : m.home.y;
+      moving = this.moveMob(m, gx, gy, dt, m.def.speed * 1.6);
       u.hp = Math.min(u.maxHp, u.hp + Math.ceil(u.maxHp * 0.05 * dt * 10));
-      if (!moving || this.dist(u, m.home) < 4) {
-        m.reset();
+      const dh = this.dist(u, m.home);
+      if (dh < 6) m.reset();
+      else if (det && (!moving || Math.hypot(det.x - u.x, det.y - u.y) < 6)) m.detour = null;
+      else if (dh < m.retBest - 6) { m.retBest = dh; m.retAt = t; }
+      else if (t - m.retAt > 1500) {
+        if (t - m.retSince > World.RETURN_GIVEUP_MS) m.reset();
+        else { m.nav.reset(); this.mobDetour(m); m.retAt = t; m.retBest = dh; }
       }
     } else {
       const target = this.pickTarget(m);
@@ -1078,6 +1125,7 @@ export class World {
         u.target = pet.id;
         if (this.dist(u, m.home) > (m.def.boss ? GP.mobs.leashBossMul : GP.mobs.leashMul) * m.def.aggro + GP.mobs.leashExtra) {
           m.state = "return";
+          this.beginReturn(m);
           m.targetId = null;
           u.target = "";
           m.threat.clear();
@@ -1095,6 +1143,7 @@ export class World {
         const leash = (m.def.boss ? GP.mobs.leashBossMul : GP.mobs.leashMul) * m.def.aggro + GP.mobs.leashExtra;
         if (this.dist(u, m.home) > leash) {
           m.state = "return";
+          this.beginReturn(m);
           m.targetId = null;
           u.target = "";
           m.threat.clear();
@@ -1114,12 +1163,14 @@ export class World {
           } else if (m.ai.slam && m.windUntil <= t && t >= m.slamAt && d <= m.ai.slam.r + PLAYER_RADIUS + 20 && clear) this.mobSlam(m, target);
           else if ((d > reach || !clear) && canMove) moving = this.moveMob(m, target.x, target.y, dt, this.mobSpeed(m), m.def.projectile ? reach * 0.8 : reach - 6);
           else if (d <= reach + 4 && clear && t >= m.attackAt && m.windUntil <= t) this.mobAttack(m, target);
+          if (!moving && canMove) this.nudgeMob(m, dt, target.x, target.y);
           // бросок по цели вне ближнего боя (data/mobAI.json throw): кайт не спасает от урона босса
           if (m.ai.throw && d > reach + 4 && d <= m.ai.throw.range && clear && t >= m.attackAt && m.windUntil <= t && !(m.boss && (m.boss as { casting?: boolean }).casting)) this.mobThrow(m, target);
           if (!moving && d > reach && m.def.projectile && canMove) moving = this.moveMob(m, target.x, target.y, dt, this.mobSpeed(m), 20);
         }
       } else if (m.state === "chase") {
         m.state = "return";
+        this.beginReturn(m);
         m.targetId = null;
         u.target = "";
       } else {
@@ -1137,6 +1188,29 @@ export class World {
     }
     if (moving) u.anim = Anim.Walk;
     else if (u.anim === Anim.Walk) u.anim = Anim.Idle;
+  }
+
+  /** Крайний случай возврата: столько мс без хода к дому — перенос домой (дом недостижим). */
+  static RETURN_GIVEUP_MS = 20000;
+  private beginReturn(m: Mob) {
+    m.retSince = m.retAt = this.time;
+    m.retBest = this.dist(m.unit, m.home);
+    m.detour = null;
+  }
+  /** Обход препятствия по дороге домой: проходимая точка вбок (влево или вправо от направления к дому) в 2–3 клетках. */
+  private mobDetour(m: Mob) {
+    const u = m.unit, r = World.crowdR(m);
+    const dx = m.home.x - u.x, dy = m.home.y - u.y, d = Math.hypot(dx, dy) || 1;
+    const ux = dx / d, uy = dy / d, side = Math.random() < 0.5 ? 1 : -1;
+    for (const k of [side, -side]) for (const far of [80, 56, 104]) for (const fwd of [0.5, 0, -0.5]) {
+      const x = u.x + (-uy * k + ux * fwd) * far, y = u.y + (ux * k + uy * fwd) * far;
+      if (walkable(this.map, x, y, r) && !this.inTown(x, y) && segmentWalkable(this.map, u.x, u.y, x, y, r)) {
+        m.detour = { x, y };
+        m.detourUntil = this.time + 2500;
+        return;
+      }
+    }
+    m.detour = null;
   }
 
   /** Слабость к контролю: оглушение/замедление/корни длятся дольше (или короче) по data/mobAI.json. */
