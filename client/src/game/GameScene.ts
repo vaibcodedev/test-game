@@ -1612,7 +1612,7 @@ export class GameScene extends Phaser.Scene {
     const warm = night === 0 && (net.kind === "arena" || z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano) ? 0 : this.room ? 0 : warmLevel(Date.now());
     // темнота нарастает медленно в начале сумерек и полностью наступает только к ночи (кривая night², а не линейно): сумерки — это ещё светло, с тёплым закатом
     const dk = night * night;
-    const target = net.kind === "arena" ? 0 : this.room ? this.room.dark + dk * 0.1 : Math.max(tint.dark, dk * 0.4, warm * 0.16) + this.weather.dim; // в зданиях ночью светло: чуть темнее, чем днём
+    const target = net.kind === "arena" ? 0 : this.room ? this.room.dark + dk * 0.1 : Math.min(0.42, Math.max(tint.dark, dk * 0.36, warm * 0.12) + this.weather.dim); // общий предел темноты вне света 0,42 (жалобы «слишком темно»); в зданиях ночью светло: чуть темнее, чем днём
     this.interiors?.update(dt, night, this.room);
     this.towerArchers?.update(dt);
     this.fortScenes?.update(dt, this.pos.x, this.pos.y);
@@ -1641,7 +1641,7 @@ export class GameScene extends Phaser.Scene {
     this.postfx.update(dt, me && me.u.maxHp > 0 && !me.dead ? me.u.hp / me.u.maxHp : 1, lit ? 0 : night, zs, !!me?.dead);
     // ночь вырезается светом факелов (lights.ts); на «Простых» остаётся плоское затемнение
     // маска — только от НОЧИ, не от дымки зоны: у Полей, топей, курганов своя дымка 0,2 днём, и маска включалась бы среди дня
-    this.nightMask.update(this.room || net.kind === "arena" ? 0 : Math.min(dark.alpha, dk * 0.4 + this.weather.dim), this.pos, 240, 0.9); // круг вокруг героя шире
+    this.nightMask.update(this.room || net.kind === "arena" ? 0 : Math.min(dark.alpha, dk * 0.36 + this.weather.dim), this.pos, 240, 0.9); // круг вокруг героя шире
     dark.setVisible(!this.nightMask.active);
     this.hud.frame({
       me: me?.u ?? null,

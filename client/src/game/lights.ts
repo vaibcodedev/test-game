@@ -78,7 +78,7 @@ export class NightMask {
     for (let n = 0; n < list.length; n += 4) sg += `|${Math.round(list[n])},${Math.round(list[n + 1])},${Math.round(list[n + 2] / 4)},${Math.round(list[n + 3] * 12)}`;
     if (sg === this.sig) return;
     this.sig = sg; this.last = now;
-    rt.fill(PALETTE_NIGHT, Math.min(0.38, alpha * 0.8)); // ночь светлее (просьба пользователя 2026-10-28): мир читается и вне света
+    rt.fill(PALETTE_NIGHT, Math.min(0.34, alpha * 0.8)); // ночь светлее (просьба пользователя 2026-10-28): мир читается и вне света
     const bw = br.width || 64;
     for (let n = 0; n < list.length; n += 4) {
       const sr = list[n + 2] * z / 2;
