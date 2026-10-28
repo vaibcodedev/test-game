@@ -272,6 +272,8 @@ export class Hud {
     this.todCv.height = 16;
     this.todBox.append(this.todCv, this.todTxt);
     this.miniCanvas.after(this.todBox);
+    // подсказка — общая игровая (tipFor, дизайн-система), а не системный title
+    this.tipFor(this.todBox, () => { const [head, ...rest] = this.todTipKey.split(" · "); return `<div class="t">${esc(head)}</div>${rest.length ? `<div class="d">${esc(rest.join(" · "))}</div>` : ""}`; });
     this.buildMenu();
     this.makeWindows();
     setNpcGateToast((text) => this.toast({ text, kind: "error" }));
@@ -1589,7 +1591,7 @@ export class Hud {
     const mins = Math.max(1, Math.round(left / 60000));
     const vars = { m: mins };
     const tip = TX(`ui.hud.tod_${phase}`, vars), txt = TX(`ui.hud.tods_${phase}`, vars);
-    if (tip !== this.todTipKey) { this.todTipKey = tip; this.todBox.title = tip; this.todBox.setAttribute("aria-label", tip); this.todTxt.textContent = txt; }
+    if (tip !== this.todTipKey) { this.todTipKey = tip; this.todBox.setAttribute("aria-label", tip); this.todTxt.textContent = txt; }
   }
   /** Ночью миникарта тускнеет и города, форты и поселения светятся тёплыми огнями (вызывается из drawMini раз в 200 мс). */
   private miniNightLights(g: CanvasRenderingContext2D, X: (px: number) => number, Y: (py: number) => number, k: number, CW: number, CH: number, n: number) {
