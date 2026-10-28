@@ -44,7 +44,7 @@ const wave = (s: { windup: [string, string]; strike: string }): Wave => ({ pre: 
 const M: Record<string, Boss & { sheet: string }> = {};
 const fx = (file: string, fw: number, fh: number, ax: number, ay: number, rows: number, a: Record<string, A & Record<string, unknown>>): Fx => ({ file, fw, fh, ax, ay, rows, anims: anims(a) });
 
-// ---- Дубослав (древень пущи): корни-ловушки в метках, борозда по ряду, светлячки
+// ---- Торнвель (древень пущи): корни-ловушки в метках, борозда по ряду, светлячки
 {
   const id = "sol_forest_warden";
   M[id] = {

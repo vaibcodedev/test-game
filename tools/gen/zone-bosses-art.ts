@@ -1,5 +1,5 @@
 /**
- * Боссы стартовых земель (задача 136, шаг 2): процедурный пиксель-арт. Пилот — древень Дубослав, страж Королевской пущи
+ * Боссы стартовых земель (задача 136, шаг 2): процедурный пиксель-арт. Пилот — древень Торнвель, страж Королевской пущи
  * (data/zone-bosses.json, id sol_forest_warden; образец tools/out/refs/bosses/15.png — только для сравнения).
  * В игру пока не подключён: механика — шаг 4.
  *
@@ -2055,7 +2055,7 @@ function buildHtml(sheet: PC, fx: PC, mote: PC, hero: PC, terrain: PC, skills: {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Древень Дубослав — анимации</title>
+<title>Древень Торнвель — анимации</title>
 <style>
 :root { --bg: #18141a; --fg: #efe6d2; --dim: #bdb09c; --line: #4d3f4a; --gold: #d6a84b; }
 body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
@@ -2071,7 +2071,7 @@ label { color: var(--dim); }
 </style>
 </head>
 <body>
-<h1>Древень Дубослав — страж Королевской пущи</h1>
+<h1>Древень Торнвель — страж Королевской пущи</h1>
 <p>Кадр 64×64, рядом герой 32×32; масштаб игры. Вниз, вверх, вбок, влево (отражение). Скорость — как в листе. Светлячки — не кадры листа: их облёт считается в коде каждый кадр экрана с шагом в пиксель холста, как это будет делать клиент.</p>
 <div class="bar" id="anims"></div>
 <div class="bar">
