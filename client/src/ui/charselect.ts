@@ -6,6 +6,7 @@ import { NAME_RE } from "../../../shared/constants";
 import { SLOT_NAMES } from "../../../shared/items";
 import { plusBadgeN } from "./smith";
 import { api } from "../account";
+import { openModal } from "./kit";
 import { T } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -72,9 +73,7 @@ export class CharSelect {
     screen.addEventListener("keydown", (e) => {
       if (e.key !== "Escape" || screen.hidden) return;
       e.preventDefault();
-      const dlg = screen.querySelector(".gmenu-back");
-      if (dlg) dlg.remove();
-      else if (this.mode === "create") this.renderList();
+      if (this.mode === "create") this.renderList();
       else this.host.logout();
     });
   }
@@ -189,19 +188,18 @@ export class CharSelect {
 
   // ---------- удаление ----------
   private confirmDelete(c: CharSummary) {
-    const back = document.createElement("div");
-    back.className = "gmenu-back";
-    back.innerHTML = `<form class="panel gmenu cs-del"><h2>${T("ui.charselect.402")}</h2>
-      <p class="muted" style="text-align:center"><b class="gold">${esc(c.name)}</b>${T("ui.charselect.403", { v: esc(CLASSES[c.cls]?.name ?? c.cls), level: c.level })}</p>
-      <label class="field"><span class="field-label">${T("ui.charselect.404")}</span><input class="input" name="confirm" autocomplete="off" maxlength="16"></label>
-      <p class="error" role="alert"></p>
-      <button class="btn gm-item danger" type="submit" disabled>${T("ui.charselect.405")}</button><button class="btn gm-item" type="button" data-a="no">${T("ui.gamemenu.284")}</button></form>`;
-    const f = back.querySelector("form")!;
+    const m = openModal(`<form class="panel dialog sm" aria-labelledby="cs-del-title"><div class="dialog-head"><h2 class="dialog-title" id="cs-del-title">${T("ui.charselect.402")}</h2></div>
+      <div class="dialog-body cs-del">
+        <p class="note"><b class="c-gold">${esc(c.name)}</b>${T("ui.charselect.403", { v: esc(CLASSES[c.cls]?.name ?? c.cls), level: c.level })}</p>
+        <label class="field"><span class="field-label">${T("ui.charselect.404")}</span><input class="input" name="confirm" autocomplete="off" maxlength="16"></label>
+        <p class="error c-bad" role="alert"></p>
+      </div>
+      <div class="dialog-foot"><button class="btn" type="button" data-a="no">${T("ui.gamemenu.284")}</button><button class="btn danger" type="submit" disabled>${T("ui.charselect.405")}</button></div></form>`, { focus: "input" });
+    const f = m.dialog as HTMLFormElement;
     const inp = f.querySelector("input")!, yes = f.querySelector<HTMLButtonElement>("[type=submit]")!;
-    const close = () => back.remove();
+    const close = () => m.close();
     inp.oninput = () => (yes.disabled = inp.value.trim().toLowerCase() !== c.name.toLowerCase());
     f.querySelector<HTMLButtonElement>('[data-a="no"]')!.onclick = close;
-    back.addEventListener("pointerdown", (e) => { if (e.target === back) close(); });
     f.onsubmit = async (e) => {
       e.preventDefault();
       yes.disabled = true;
@@ -215,8 +213,6 @@ export class CharSelect {
         yes.disabled = false;
       }
     };
-    this.screen.append(back);
-    inp.focus();
   }
 
   // ---------- создание ----------

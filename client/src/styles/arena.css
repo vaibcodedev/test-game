@@ -266,3 +266,4 @@ body:has(.arena-intro:not([hidden])) .hud-zone { opacity: 0; }
     font-size: 64px;
   }
 }
+.hud-party .uf.pm { cursor: var(--cur-pointer); }

@@ -72,6 +72,8 @@ export class ArenaUI {
   private lastPhase = "";
   private resultTimer = 0;
   private bound = false;
+  /** Клик по рамке члена группы: n — номер среди остальных (как F2–F5); ставит hud.bind. */
+  onPickParty?: (n: number) => void;
 
   constructor(
     readonly root: HTMLElement,
@@ -79,6 +81,10 @@ export class ArenaUI {
   ) {
     for (const e of [this.win, this.found, this.invite, this.results, this.board, this.countdown]) e.hidden = true;
     this.partyBox.hidden = true;
+    this.partyBox.addEventListener("click", (e) => {
+      const row = (e.target as HTMLElement).closest(".uf.pm");
+      if (row) this.onPickParty?.([...this.partyBox.children].indexOf(row));
+    });
     this.buildWin();
     root.append(this.win, this.board, this.countdown, this.partyBox, this.found, this.invite, this.results);
   }

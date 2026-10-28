@@ -351,10 +351,10 @@ async function stageAccount() {
   await page.waitForSelector(".cs-list .cs-slot[data-name]", { timeout: 12000 });
   await page.$eval(`.cs-slot[data-name="${HERO}"]`, (b) => (b as HTMLElement).click());
   await item("charselect", "Выбор героя", "#charsel .charsel", "три героя на аккаунте, выбран основной", async () => { await sleep(500); }, { keep: true });
-  await item("charselect-delete", "Выбор героя: подтверждение удаления", "#charsel .gmenu-back .cs-del", "кнопка «Удалить» → диалог с вводом имени", async () => {
+  await item("charselect-delete", "Выбор героя: подтверждение удаления", ".modal .cs-del", "кнопка «Удалить» → диалог с вводом имени", async () => {
     await clickEl('.cs-list [data-a="del"]');
-    await waitSel("#charsel .gmenu-back .cs-del", 3000);
-  }, { keep: true, after: async () => { await page.$eval('#charsel [data-a="no"]', (b) => (b as HTMLElement).click()).catch(() => {}); } });
+    await waitSel(".modal .cs-del", 3000);
+  }, { keep: true, after: async () => { await page.$eval('.modal [data-a="no"]', (b) => (b as HTMLElement).click()).catch(() => {}); } });
 }
 
 async function enterWorld() {

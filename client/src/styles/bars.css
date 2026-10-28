@@ -1,12 +1,6 @@
 /* рамка полос HP/MP — кольцо LiteUI Fantasy (tools/gen/vendor-liteui.ts): заливка остаётся нашими градиентами; нет картинки — обычная рамка */
 .bar.hp, .bar.mp { border-image: url("/ui/liteui/ring.png") 2 / 2px / 1px stretch; image-rendering: pixelated; }
 
-/* air bar (under water) */
-.air-bar-box { position: fixed; left: 50%; bottom: 150px; width: 200px; transform: translateX(-50%); z-index: var(--z-castbar); pointer-events: none; }
-.air-bar-label { font-size: var(--fs-sm); color: #cfeaff; text-shadow: var(--shadow-text); text-align: center; }
-.air-bar-track { height: 8px; background: #06121c; border: 1px solid #4a7a9a; margin-top: var(--sp-0); }
-.air-bar-fill { display: block; height: 100%; width: var(--p, 100%); background: #4ab8ff; transition: width .4s linear; }
-.air-bar-fill.low { background: var(--bad); }
 
 /* raid result win/loss title */
 .raid-res-win { color: var(--gold); }
@@ -19,3 +13,7 @@
 .bar.hp .hp-lag { width: 0; transition: width .3s ease-out; }
 .bar.hp .hp-lag.gain { background: linear-gradient(var(--heal), color-mix(in srgb, var(--heal) 60%, #000)); transition: none; }
 @media (prefers-reduced-motion: reduce) { .bar.hp .hp-lag { transition: none; } }
+
+/* шкала воздуха под водой: положение у центра экрана; сама полоса — .bar.air (kit.css) */
+.air-bar-box { position: fixed; left: 50%; bottom: 150px; width: 200px; transform: translateX(-50%); z-index: var(--z-castbar); pointer-events: none; }
+.air-bar-label { font-size: var(--fs-sm); color: var(--fg); text-shadow: var(--outline-text); text-align: center; margin-bottom: var(--sp-0); }

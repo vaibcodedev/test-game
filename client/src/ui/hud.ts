@@ -83,6 +83,7 @@ export interface HudCtx {
   toggleMount?: () => void;
   togglePet?: () => void;
   closeTarget: () => void;
+  selectParty?: (n: number) => void;
   focusGame: () => void;
 }
 export interface FrameInfo {
@@ -361,6 +362,7 @@ export class Hud {
   flashSlot(bar: number, i: number) { this.hotbar.flash(bar, i); }
   bind(ctx: HudCtx) {
     this.ctx = ctx;
+    this.arena.onPickParty = (i) => ctx.selectParty?.(i);
     const n = ctx.net;
     this.hotbar.bind({ net: n, map: ctx.map, press: (b, i) => ctx.pressSlot(b, i), tipFor: (e, h) => this.tipFor(e, h), skillTip: (d, s) => this.skillTip(d, s) });
     if (!this.netBound) {
@@ -497,8 +499,8 @@ export class Hud {
       const c = l.faction === "umbrath" ? factionColor(l.faction) : CLASS_COLOR[l.cls ?? ""] ?? "#ffb070";
       d.innerHTML = `<b style="color:${c}">${esc(l.from)}:</b> ${esc(l.text)}`;
     }
-    if (l.boss) d.innerHTML = `<b style="color:#ff8a3a">${esc(l.from)}:</b> <span style="color:#ff8a3a">${esc(l.text)}</span>`;
-    else if (l.raid && !l.sys) d.innerHTML = `<b style="color:#ffb070">${esc(l.from)}:</b> ${esc(l.text)}`;
+    if (l.boss) d.innerHTML = `<b class="c-boss">${esc(l.from)}:</b> <span class="c-boss">${esc(l.text)}</span>`;
+    else if (l.raid && !l.sys) d.innerHTML = `<b class="c-boss-soft">${esc(l.from)}:</b> ${esc(l.text)}`;
     const atBottom = this.chatLog.scrollTop + this.chatLog.clientHeight >= this.chatLog.scrollHeight - 4;
     this.chatLog.append(d);
     while (this.chatLog.children.length > 80) this.chatLog.firstElementChild!.remove();
@@ -1292,11 +1294,11 @@ export class Hud {
     let box = document.getElementById("air-bar");
     if (air < 0) return void box?.remove();
     if (!box) {
-      box = el("div", "air-bar-box", `<div class="air-bar-label">${TX("ui.hud.606")}</div><div class="air-bar-track"><i class="air-bar-fill"></i></div>`);
+      box = el("div", "air-bar-box", `<div class="air-bar-label">${TX("ui.hud.606")}</div><div class="bar air"><i></i></div>`);
       box.id = "air-bar";
       document.body.append(box);
     }
-    const bar = box.querySelector("i") as HTMLElement;
+    const bar = box.querySelector(".bar") as HTMLElement;
     const k = Math.max(0, Math.min(1, air / max));
     bar.style.setProperty("--p", `${k * 100}%`);
     bar.classList.toggle("low", k < 0.25);

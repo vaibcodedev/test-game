@@ -114,7 +114,7 @@ button.cs-slot {
 .cs-bar .btn.primary {
   min-width: 180px;
 }
-.cs-del .field {
+.cs-del .field-label, .cs-del .note {
   text-align: left;
 }
 .cs-sp {
