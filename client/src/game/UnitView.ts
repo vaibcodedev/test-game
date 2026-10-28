@@ -606,7 +606,10 @@ export class UnitView {
       barX = bx; barY = by; barW = w;
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
       const foeBar = u.kind === UnitKind.Player && !this.isSelf && !!net.self && !!u.faction && u.faction !== net.self.faction && net.kind !== "arena" && net.kind !== "raid";
-      const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a;
+      // стража и бойцы: своей фракции — зелёные (как питомец), чужой — красные, нейтральные (Эмберхолл, без фракции героев) — золотистые
+      const guard = u.kind === UnitKind.Guard || u.kind === UnitKind.Soldier, mine = net.self?.faction;
+      const guardCol = !guard ? 0 : u.faction && u.faction === mine ? 0x6ad06a : u.faction === "solgard" || u.faction === "umbrath" ? 0xd8443a : 0xd8b04a;
+      const col = u.kind === UnitKind.Player ? (this.isSelf ? 0x5ad04a : foeBar ? Phaser.Display.Color.HexStringToColor(FOE_COLOR).color : 0x4ab0ff) : u.kind === UnitKind.Pet ? 0x6ad06a : guardCol || (k > 0.5 ? 0xd8443a : k > 0.25 ? 0xe0902a : 0xff3a2a);
       drawPlate(this.bar, this.hpPlate, { x: bx + w / 2, y: by, w, k, col, elite: !!u.elite, boss: u.kind === UnitKind.Boss }, this.scene.time.now, Math.min(0.1, this.scene.game.loop.delta / 1000));
     }
     this.placeZones(mounted, showBar, barX, barY, barW);
