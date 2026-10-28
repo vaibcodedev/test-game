@@ -12,6 +12,8 @@ import { placeText, worldText } from "./worldText";
 import { NO_SHADOW, Shadow, shadowTick, WALL_KINDS, WallShadow, type WallTile } from "./shadows";
 import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
+import { trackLight } from "./lights";
+import { glowOn } from "./postfx";
 import { objHas, objId, objTex, setObj } from "./objTex";
 
 /** Ворота данжа «Пепельные чертоги»: состояние (id → открыты) приходит с сервера (DungeonRoom: dg:gate, dg:gates); створки на экране плавно доходят до него. */
@@ -117,6 +119,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const glow = (objs: Phaser.GameObjects.GameObject[], x: number, y: number, color: number, scale: number, alpha: number, flicker = false) => {
     const g = scene.add.image(x, y, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setTint(color).setScale(scale).setAlpha(alpha).setDepth(DEPTH.top - 10);
     objs.push(g);
+    trackLight(g, scale, alpha, flicker); // свет по времени суток и вырезы в ночной маске (lights.ts)
     if (flicker) tween({ targets: g, alpha: { from: alpha * 0.7, to: alpha * 1.1 }, scale: { from: scale * 0.92, to: scale * 1.05 }, duration: 160 + Math.random() * 220, yoyo: true, repeat: -1 });
   };
   // узлы добычи: картинка и свечение прячутся, пока ресурс исчерпан
@@ -251,6 +254,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "sol_house") for (const dx of [-42, 22]) glow(objs, o.x + dx, o.y - 45, 0xffd27a, 1.2, 0.35);
     if (o.kind === "torch") glow(objs, o.x, o.y - 22, 0xff9a3a, 2.4, 0.55, true);
     if (o.kind === "brazier") glow(objs, o.x, o.y - 26, 0xff8a2a, 2.6, 0.6, true);
+    if (o.kind === "teleport_stone") glowOn(img, 0x7ac0ff);
     if (o.kind === "teleport_stone") glow(objs, o.x, o.y - 34, 0x7ac0ff, 2.2, 0.5, true);
     if (o.kind === "lamp") glow(objs, o.x, o.y - 46, 0xffd27a, 2.2, 0.45, true);
     if (o.kind === "ember_vent") glow(objs, o.x, o.y - 6, 0xff5a1a, 1.4, 0.5, true);
@@ -300,7 +304,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       makeObject(o, cell.objs);
       for (let i = from; i < cell.objs.length; i++) {
         // запас 8 px — покачивание крон (±1°) и мерцание огней (масштаб до 1.05)
-        const b = (cell.objs[i] as Phaser.GameObjects.Image).getBounds(), x = cell.box;
+        const go = cell.objs[i] as Phaser.GameObjects.Image;
+        const b = go.getBounds(), x = cell.box;
         x.x0 = Math.min(x.x0, b.x - 8); x.y0 = Math.min(x.y0, b.y - 8);
         x.x1 = Math.max(x.x1, b.right + 8); x.y1 = Math.max(x.y1, b.bottom + 8);
       }
@@ -350,7 +355,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   const PAD = 48;
   const update = (cam: Phaser.Cameras.Scene2D.Camera) => {
     shadowTick();
-    // ворота данжа: створки доходят до состояния сервера (кадры o_dg_door_w_0..7 и o_dg_port_0..7), звук при начале хода
+    // ворота данжа: створки доходят до состояния сервера (кадры объектов dg_door_w_0..7 и dg_port_0..7), звук при начале хода
     if (dgGates.size) {
       const dt = Math.min(0.1, scene.game.loop.delta / 1000);
       for (const g of dgGates) {

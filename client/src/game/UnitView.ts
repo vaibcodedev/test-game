@@ -1,4 +1,5 @@
 /** Отображение одного юнита: спрайт с анимациями, тень, имя, полоска здоровья, эффекты состояния. */
+import { wowHooks } from "./fx/hooks";
 import Phaser from "phaser";
 import { overlay } from "./overlay";
 import { BUFF_BLEED, BUFF_CURSE, BUFF_STEALTH, BUFF_BURN, BUFF_ENRAGE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, BUFF_WARCRY, Anim, Dir, UnitKind } from "../../../shared/protocol";
@@ -276,6 +277,7 @@ export class UnitView {
 
   private showDead(instant: boolean) {
     this.dead = true;
+    if (!instant) wowHooks.death?.(this); // души летят к герою (fx/pickupFly.ts)
     // смерть посреди удара: анимация смерти перебивает удар, его ANIMATION_COMPLETE не придёт — иначе после возрождения
     // флаг удара так и висит, бег и стойка не включаются, и моб ездит в позе трупа
     this.attacking = false;

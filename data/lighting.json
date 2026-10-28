@@ -1,0 +1,30 @@
+{
+ "$about": "Свет, постэффекты и погода клиента (задача 139+: встроенные эффекты Phaser 3.90). Режим «Эффекты: Простые» отключает PointLight, Displacement и Bloom, вдвое режет дождь",
+ "nightMask": true,
+ "lights": {
+  "alphaBoost": 1.6,
+  "scaleBoost": 1.35,
+  "cutScale": 1.5,
+  "cutAlpha": 1.6,
+  "dayMin": 0.12,
+  "flickerAmp": 0.16,
+  "flickerHz": 5.5
+ },
+ "postfx": {
+  "vignette": { "hpBelow": 0.35, "strength": 0.62, "radius": 0.5, "pulseHz": 1.1, "fade": 2.5 },
+  "bloom": { "night": 0.5, "strength": 0.45, "blur": 0.7, "steps": 2, "fade": 1.2 },
+  "displacement": { "zones": ["Volcano", "Ashlands"], "size": 0.004, "speed": 22, "fade": 1.5 },
+  "glow": { "boss": 16739930, "outer": 4, "distance": 12, "quality": 0.1 },
+  "shine": { "minRarity": 2, "speed": 0.45, "lineWidth": 0.5, "gradient": 3 },
+  "hitStopMs": 60
+ },
+ "weather": {
+  "zones": ["Town", "Meadow", "Forest", "Swamp"],
+  "maxDrops": 360,
+  "dim": 0.1,
+  "thunderDelayMs": [350, 1500],
+  "flashMs": 700,
+  "npcLines": ["Опять льёт…", "Ну вот, дождь пошёл.", "Сыро сегодня.", "Не к добру эта гроза."],
+  "npcLineChance": 0.5
+ }
+}

@@ -1,4 +1,5 @@
 /** Визуальные эффекты: цифры урона, снаряды, взрывы, телеграфы атак боссов, лужи, частицы. */
+import { hitStop } from "./postfx";
 import { overlay } from "./overlay";
 import Phaser from "phaser";
 import type { Fx } from "../../../shared/protocol";
@@ -7,6 +8,7 @@ import type { UnitView } from "./UnitView";
 import { placeText, worldText } from "./worldText";
 import * as sfx from "./sfx";
 import { TeleportFx } from "./teleportFx";
+import type { WowHost } from "./fx/host";
 import { RaidBoss } from "./raidBoss";
 import { ZoneBossFx, zbAttach } from "./zoneBoss";
 import { net } from "../net";
@@ -35,6 +37,8 @@ const REMOVABLE = new Set(["shield", "block", "invuln", "antimagic", "bless", "t
 const PROJ_TEX: Record<string, string> = { arrow: "fx_arrow", arcane: "fx_arcane", fireball: "fx_fireball", fire: "fx_fire", poison: "fx_poison", shadow: "fx_shadow", frost: "fx_frost", aimed: "fx_arrow", holy: "fx_holy", blood: "fx_fire" };
 
 export class Effects {
+  /** Вау-эффекты (fx/host.ts), ставит GameScene; null — выключены. */
+  wow: WowHost | null = null;
   private hazards = new Map<string, Phaser.GameObjects.GameObject[]>();
   private rings = new Map<string, () => void>();
 
@@ -184,6 +188,7 @@ export class Effects {
       if (inc) dy += 20;
       if (this.numState.size > 200) for (const [k, v] of this.numState) if (now - v.at > 2000) this.numState.delete(k);
     } else dx = (Math.random() - 0.5) * 24;
+    if (this.wow?.number(x, y + dy - (inc ? 0 : 22), text, color, big, mul, small, dim, dx, 0, arc)) return; // вау-цифры (fx/dmgFont.ts), только цифры
     const size = small ? 7 : big ? 10 : 8; // крит ≤ 1,25× обычной
     const base = mul * (dim < 1 ? 0.8 : 1);
     const a0 = (small ? 0.65 : 1) * dim;
@@ -230,7 +235,7 @@ export class Effects {
   private one(f: Fx) {
     const s = this.scene;
     switch (f.t) {
-      case "tp": return this.tp.handle(f);
+      case "tp": this.wow?.tp(f); return this.tp.handle(f);
       case "dmg": {
         const u = this.unit(f.id);
         if (!u) return;
@@ -244,9 +249,11 @@ export class Effects {
         if (f.abs) this.sound("shield", u.x, u.y);
         if (f.abs) return this.number(u.x, y, `Щит ${f.v}`, "#ffd84a", false, 1, f.id, false, dim);
         u.flash();
+        this.wow?.onDmg(f, u);
         const mine = f.id === this.selfId;
         this.flash(u.x, u.y - 14, f.crit ? 0xffe070 : (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff), f.crit ? 1.2 : 0.7);
         this.sound(f.crit ? "crit" : (SFX_OF[f.k ?? "phys"] ?? "hit"), u.x, u.y);
+        if (mine ? f.v > 0.2 * u.u.maxHp : f.crit && u.selected) hitStop(this.scene); // стоп-кадр: сильный удар по герою или крит героя по цели
         if (mine ? f.crit || f.v > 40 : f.crit) this.shake(u.x, u.y, 90, mine ? 0.003 : 0.002);
         const col = mine ? "#ff6a5a" : f.crit ? P.numGold : "#" + (KIND_COLOR[f.k ?? "phys"] ?? 0xffffff).toString(16).padStart(6, "0");
         const small = !f.crit && !raidBoss && f.v < Math.max(4, 0.025 * u.u.maxHp);

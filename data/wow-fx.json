@@ -1,0 +1,11 @@
+{
+  "$about": "Переключатели вау-эффектов (client/src/game/fx/*.ts). По умолчанию всё выключено: пока владелец не выбрал, игра не меняется. Превью (tools/wow-preview.ts) включает всё само.",
+  "birds": { "on": false, "minFlock": 3, "maxFlock": 7, "everyMs": [9000, 22000] },
+  "dmgFont": { "on": false },
+  "bossIntro": { "on": false, "totalMs": 2900 },
+  "portalWarp": { "on": false, "outMs": 420, "inMs": 380 },
+  "cloudShadows": { "on": false, "density": "sparse", "alphaMax": 0.12 },
+  "decals": { "on": false, "fadeMs": [20000, 40000], "maxPerScreen": 120 },
+  "ropeCloth": { "on": false },
+  "pickupFly": { "on": false }
+}

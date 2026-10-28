@@ -6,6 +6,7 @@ import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/c
 import { FACTIONS, FOE_COLOR, factionColor, landLabel, zoneLand } from "../../../shared/factions";
 import * as sfx from "../game/sfx";
 import { gearFxMode, overlay, setGearFxMode, setOverlay, type GearFxMode } from "../game/overlay";
+import { setVfxMode, vfxMode, type VfxMode } from "../game/postfx";
 import { setShadowMode, shadowMode, type ShadowMode } from "../game/shadows";
 import { flashGear } from "../game/gearHooks";
 import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
@@ -607,6 +608,7 @@ export class Hud {
           ${checkRow("set-autoNames", "В толпе прятать уровень у ников", "Кроме цели, группы и раненых (авто)")}
           ${checkRow("set-crowdNums", "Чужие цифры урона в толпе приглушать")}
           ${segRow("set-gearfx", GEAR_FX.setting.label, GEAR_FX.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.setting.note)}
+          ${segRow("set-vfx", "Эффекты", [["full", "Полные"], ["simple", "Простые"]], "m", "Простые: без точечного света, Bloom, марева и блеска, дождь реже")}
           ${segRow("set-shadows", "Тени", [["off", "Выкл"], ["simple", "Простые"], ["dynamic", "Динамические"]], "m", "Динамические следуют за временем суток: утром длинные влево, в полдень короткие, вечером вправо")}
         </div>
       </section>
@@ -641,6 +643,7 @@ export class Hud {
     }
     // режим эффектов — только свой #set-gearfx: у «Режима прицела» в controls.ts тоже data-m
     seg(q("#set-gearfx"), (m) => setGearFxMode(m as GearFxMode), "m").set(gearFxMode());
+    seg(q("#set-vfx"), (m) => setVfxMode(m as VfxMode), "m").set(vfxMode());
     seg(q("#set-shadows"), (m) => setShadowMode(m as ShadowMode), "m").set(shadowMode());
     // полный экран — Fullscreen API (браузер и десктоп-клиент; в клиенте F11 и запоминание режима — desktop/src/main.ts); выход по Esc или F11 обновляет переключатель
     const screenSeg = seg(q("#set-screen"), (m) => {

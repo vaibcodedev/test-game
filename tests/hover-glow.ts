@@ -41,6 +41,9 @@ async function main() {
     const page = await browser.newPage();
     page.on("pageerror", (e) => console.error("pageerror", String(e)));
     await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
+    // --no-atlas: объекты карты по одному (localStorage atlas:off, BootScene) — сравнение с атласом объектов
+    if (process.argv.includes("--no-atlas")) { await page.evaluate(() => localStorage.setItem("atlas:off", "1")); await page.reload({ waitUntil: "networkidle0" }); }
+    else await page.evaluate(() => localStorage.removeItem("atlas:off"));
     await login(page, "Свеч" + (process.pid % 1000));
     const dbg = (m: Record<string, unknown>) => page.evaluate((x) => (window as any).__net.send("dbg", x), m);
     await dbg({ op: "god" });

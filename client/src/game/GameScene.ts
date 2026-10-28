@@ -26,10 +26,15 @@ import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, dgGateOpen, zoneTint, type WorldView } from "./terrain";
 import { setLightMode } from "./shadows";
+import { NightMask, updateLights } from "./lights";
+import { PostFx, glowOn, shineOn } from "./postfx";
+import { Weather } from "./weather";
+import lighting from "../../../data/lighting.json";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
 import { capBand, HALO, placeText, syncTextRes, worldText } from "./worldText";
 import { NPC_ICON_SIZE, NPC_ICON_TEX, npcIconFrame } from "./npcIcons";
 import { ArenaIntroFx } from "./arenaIntro";
+import { WowHost } from "./fx/host";
 import { HoverGlow, type GlowSrc } from "./hoverGlow";
 import { preloadCursors, setCursor, type CursorKind } from "./cursor";
 import { HeldKeys, isMoveAction, keybinds, mouseOpts, type ActionId, type MoveAction } from "./keybinds";
@@ -48,11 +53,11 @@ import { SiegeView } from "./siegeView";
 import { moveGated } from "../../../shared/siege";
 import { STATUES, type StatueKey } from "../ui/statue";
 import { T } from "../../../shared/texts";
+import { objHas, objTex } from "./objTex";
 
 type NpcKind = WorldNpcKind | "enc" | "stone" | "door" | "statue" | "dgdoor" | "dgexit";
 /** hit — точка и радиус нажатия, если предмет крупный (статуя): по умолчанию 18 px вокруг (x, y − 14). */
 type Npc = { sprite: Phaser.GameObjects.Sprite; kind: NpcKind; id?: string; name?: string; objs?: Phaser.GameObjects.GameObject[]; hit?: { dy: number; r: number }; glow?: Omit<GlowSrc, "depth"> };
-import { objHas, objTex } from "./objTex";
 
 /** Звуковой фон: по зоне, иначе по её биому (новые зоны звучат как биом, которым нарисованы). */
 const AMBIENCE: Partial<Record<Zone, string>> = {
@@ -272,7 +277,7 @@ export class GameScene extends Phaser.Scene {
     let lastGold = -1;
     this.cleanup.push(net.on("queue", (m) => { if (m.id) sfx.play("queue"); }));
     this.cleanup.push(net.on("cast", (m) => { this.castHold = m.ms > 0 ? this.time.now + m.ms : 0; }));
-    this.cleanup.push(net.on("self", (s) => { if (lastGold >= 0 && s.gold > lastGold) { const u = this.units.get(net.id); if (u) this.fx.goldPop(u.x, u.y - 40, s.gold - lastGold); } lastGold = s.gold; }));
+    this.cleanup.push(net.on("self", (s) => { if (lastGold >= 0 && s.gold > lastGold) { const u = this.units.get(net.id); if (u) this.fx.goldPop(u.x, u.y - 40, s.gold - lastGold); this.wow?.gold(s.gold - lastGold); } lastGold = s.gold; }));
     this.cleanup.push(net.on("fx", (list) => this.fx.play(list)), net.on("loot", (bags) => this.syncBags(bags)));
     // свои капканы — для превью капкана (отказ «Слишком близко к другому капкану»)
     this.traps = new TrapWatch();
@@ -347,7 +352,7 @@ export class GameScene extends Phaser.Scene {
       this.cleanup.push(net.on("dg:gates", (m) => { for (const g of DUNGEON_GATES) apply(g.id, m.open.includes(g.id)); }));
     }
     // затемнение перед переходом в подземелье и обратно (сервер шлёт dungeon:fade, затем резервацию — сцена пересоздаётся)
-    this.cleanup.push(net.on("dungeon:fade", (m) => { this.clickGoal = null; this.pendingNpc = null; this.cameras.main.fadeOut(m.ms ?? 300, 0, 0, 0); }));
+    this.cleanup.push(net.on("dungeon:fade", (m) => { this.clickGoal = null; this.pendingNpc = null; this.cameras.main.fadeOut(m.ms ?? 300, 0, 0, 0); this.wow?.dungeonFade(m.ms ?? 300); }));
 
     if (mouseOpts.chase) net.send("chase", { on: true });
     this.aim = new AimPreview(this);
@@ -374,6 +379,26 @@ export class GameScene extends Phaser.Scene {
 
     this.setupInput();
     this.setupAmbient();
+    this.postfx = new PostFx(this);
+    this.nightMask = new NightMask(this);
+    this.weather = new Weather(this, this.map);
+    this.weather.onRainStart = () => this.npcRainLine();
+    this.wow = new WowHost(this, { units: () => this.units, selfId: net.id, map: this.map, hero: () => this.pos, followTarget: () => this.me?.sprite });
+    this.fx.wow = this.wow;
+    (window as unknown as { __wow?: unknown }).__wow = this.wow;
+  }
+  private wow: WowHost | null = null;
+
+  private postfx!: PostFx;
+  private nightMask!: NightMask;
+  private weather!: Weather;
+  /** Дождь начался: ближайший к герою NPC иногда роняет реплику. */
+  private npcRainLine() {
+    if (Math.random() > lighting.weather.npcLineChance) return;
+    let best: Npc | null = null, bd = 520;
+    for (const n of this.npcs) { const d = Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y); if (n.id && n.kind !== "stone" && d < bd) { bd = d; best = n; } }
+    const lines = lighting.weather.npcLines;
+    if (best?.id) this.say(best.id, lines[Math.floor(Math.random() * lines.length)]);
   }
 
   private addNpc(kind: NpcKind, sprite: string, at: { x: number; y: number }, name: string, color: string, tint?: number, id?: string) {
@@ -527,6 +552,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const v = new UnitView(this, id, u, id === net.id);
+    if (u.kind === UnitKind.Boss) glowOn(v.sprite);
     this.units.set(id, v);
     if (id === net.id) {
       this.me = v;
@@ -1262,7 +1288,9 @@ export class GameScene extends Phaser.Scene {
     for (const b of bags) {
       if (this.bagViews.has(b.id)) continue;
       // добыча: падение с отскоком и мерцание по редкости — кадры листа (lootView.ts, tools/gen/loot.ts)
-      this.bagViews.set(b.id, spawnLoot(this, b));
+      const spr = spawnLoot(this, b);
+      shineOn(spr, spr.getData("rarity") ?? 0);
+      this.bagViews.set(b.id, spr);
     }
   }
 
@@ -1317,7 +1345,7 @@ export class GameScene extends Phaser.Scene {
     const me = this.me;
     const now = this.time.now;
     let mx = 0, my = 0;
-    const alive = !!me && !me.dead && !this.hud.isTyping();
+    const alive = !!me && !me.dead && !this.hud.isTyping() && !this.wow?.locked;
     if (alive) ({ mx, my } = this.held.axis());
     if (alive && this.mouseHold) {
       // удержание кнопки на земле дольше 200 мс: вектор к курсору, мёртвая зона 12 px
@@ -1485,7 +1513,7 @@ export class GameScene extends Phaser.Scene {
     const night = z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano ? 0 : nightLevel(Date.now());
     setLightMode(this.room || z === Zone.Arena || z === Zone.Dungeon ? "none" : "sun"); // длинные тени (game/shadows.ts) только под открытым небом
     // в зале — своё затемнение: днём почти нет (свет из окон), ночью мягче улицы (свечи и огонь)
-    const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5);
+    const target = this.room ? this.room.dark + night * 0.42 : Math.max(tint.dark, night * 0.5) + this.weather.dim;
     this.interiors?.update(dt, night, this.room);
     this.towerArchers?.update(dt);
     this.fortScenes?.update(dt, this.pos.x, this.pos.y);
@@ -1506,6 +1534,14 @@ export class GameScene extends Phaser.Scene {
     dark.y = (cam.height - cam.height / cam.zoom) / 2 - 2;
 
     this.updateAmbient(z, dt);
+    const lit = this.room || z === Zone.Dungeon || z === Zone.Arena || zs === Zone.Volcano;
+    updateLights(this.time.now, lit ? 1 : night, this.cameras.main.worldView);
+    this.weather.update(dt, zs, !!this.room);
+    this.wow?.update(deltaMs, { zone: zs, indoor: !!this.room, night: lit ? 0 : night });
+    this.postfx.update(dt, me && me.u.maxHp > 0 && !me.dead ? me.u.hp / me.u.maxHp : 1, lit ? 0 : night, zs, !!me?.dead);
+    // ночь вырезается светом факелов (lights.ts); на «Простых» остаётся плоское затемнение
+    this.nightMask.update(dark.alpha, this.pos, 170, 0.8);
+    dark.setVisible(!this.nightMask.active);
     this.hud.frame({
       me: me?.u ?? null,
       target: this.targetId ? (this.units.get(this.targetId)?.u ?? null) : null,
