@@ -14,5 +14,6 @@
     "useDefineForClassFields": false,
     "noEmit": true
   },
-  "include": ["shared", "server/src", "client/src", "tools", "tests", "vite.config.ts"]
+  "include": ["shared", "server/src", "client/src", "tools", "tests", "vite.config.ts"],
+  "exclude": ["tools/out"]
 }
