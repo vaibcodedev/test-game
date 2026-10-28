@@ -1,8 +1,8 @@
 /* Админ-панель, вкладка «Выдача» (client/src/ui/adminGive.ts). Префикс ag-; общие стили окон и кнопок — styles.css. */
 .win.win-admin.adm-wide {
-  width: min(1200px, calc(100vw - 16px));
+  width: min(1200px, calc(var(--vw, 100vw) - 16px));
   top: 36px;
-  max-height: calc(100vh - 52px);
+  max-height: calc(var(--vh, 100vh) - 52px);
 }
 
 .ag {
@@ -18,7 +18,7 @@
 .ag-main,
 .ag-panel {
   min-width: 0;
-  max-height: calc(100vh - 196px);
+  max-height: calc(var(--vh, 100vh) - 196px);
   min-height: 360px;
   overflow-y: auto;
   overflow-x: hidden;

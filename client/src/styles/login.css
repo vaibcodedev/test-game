@@ -9,7 +9,7 @@
 }
 .login {
   width: min(760px, 100%);
-  max-height: calc(100vh - 24px);
+  max-height: calc(var(--vh, 100vh) - 24px);
   overflow-y: auto;
   box-sizing: border-box;
   padding: var(--sp-5);
