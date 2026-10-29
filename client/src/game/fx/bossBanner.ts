@@ -43,5 +43,8 @@ export class BossBanner {
   }
   /** Быстро погасить и убрать (пропуск). */
   skip() { if (this.gone) return; this.root.classList.add("out"); setTimeout(() => this.destroy(), 230); }
-  destroy() { this.gone = true; this.root.remove(); }
+  destroy() {
+    if (!this.gone && --BossBanner.live <= 0) { BossBanner.live = 0; document.body.classList.remove("bi-cine"); }
+    this.gone = true; this.root.remove();
+  }
 }

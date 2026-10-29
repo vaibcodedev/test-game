@@ -54,3 +54,7 @@
   .bi-bar, .bi-plate, .bi-l, .bi-rule::before, .bi-rule::after { animation-duration: 0.01s; }
   .bi-flash, .bi-vig { display: none; }
 }
+
+/* кино-режим вступления босса: интерфейс уходит, мир и плашка остаются (body.bi-cine — fx/bossBanner.ts) */
+#ui { transition: opacity 0.35s ease; }
+body.bi-cine #ui { opacity: 0; pointer-events: none; }
