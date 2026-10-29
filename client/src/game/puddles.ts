@@ -8,7 +8,7 @@ import { CELL_BLOCK, CELL_WALL, T, type WorldMap } from "../../../shared/map";
 
 const CELL = 80;
 /** Шанс лужи в клетке по поверхности. */
-const CHANCE: Partial<Record<T, number>> = { [T.Cobble]: 0.55, [T.Dirt]: 0.5, [T.Worn]: 0.3, [T.Bog]: 0.25, [T.Grass]: 0.1, [T.Forest]: 0.07, [T.Floor]: 0.15 };
+const CHANCE: Partial<Record<T, number>> = { [T.Cobble]: 0.55, [T.CobbleSol]: 0.55, [T.CobbleUmb]: 0.55, [T.CobbleEmber]: 0.55, [T.Dirt]: 0.5, [T.Worn]: 0.3, [T.Bog]: 0.25, [T.Grass]: 0.1, [T.Forest]: 0.07, [T.Floor]: 0.15 };
 const POOL = 70;
 const hash = (a: number, b: number, s = 0) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(s, 2246822519); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 

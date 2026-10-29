@@ -1,27 +1,5 @@
 {
  "units": {
-  "sol_storm_colossus": {
-   "frame": 80
-  },
-  "umb_bone_marionette_cage": {
-   "frame": 32,
-   "frameH": 48
-  },
-  "umb_bone_marionette": {
-   "frame": 80
-  },
-  "sol_gilded_midas": {
-   "frame": 80
-  },
-  "sol_cliff_minotaur": {
-   "frame": 80
-  },
-  "umb_frost_lord_bearer": {
-   "frame": 80
-  },
-  "umb_frost_lord": {
-   "frame": 80
-  },
   "pet_wolf": {
    "frame": 32
   },
@@ -194,6 +172,28 @@
   "plg_drowned_bellringer": {
    "frame": 64,
    "frameH": 80
+  },
+  "umb_frost_lord": {
+   "frame": 80
+  },
+  "umb_frost_lord_bearer": {
+   "frame": 80
+  },
+  "sol_cliff_minotaur": {
+   "frame": 80
+  },
+  "sol_gilded_midas": {
+   "frame": 80
+  },
+  "umb_bone_marionette": {
+   "frame": 80
+  },
+  "umb_bone_marionette_cage": {
+   "frame": 32,
+   "frameH": 48
+  },
+  "sol_storm_colossus": {
+   "frame": 80
   },
   "arthro_bone": {
    "frame": 32
@@ -799,6 +799,18 @@
    "frame": 32
   },
   "void_spirit_caster_elite": {
+   "frame": 32
+  },
+  "wl_demon": {
+   "frame": 48
+  },
+  "wl_demon_glow": {
+   "frame": 48
+  },
+  "wl_skeleton": {
+   "frame": 32
+  },
+  "wl_skeleton_glow": {
    "frame": 32
   },
   "wolffolk_chaser": {
@@ -29132,12 +29144,12 @@
    "h": 32
   },
   "rock": {
-   "w": 32,
-   "h": 28
+   "w": 34,
+   "h": 22
   },
   "big_rock": {
-   "w": 64,
-   "h": 44
+   "w": 60,
+   "h": 34
   },
   "fountain": {
    "w": 64,
@@ -29297,7 +29309,7 @@
   },
   "teleport_stone": {
    "w": 48,
-   "h": 80
+   "h": 76
   },
   "stall_gold": {
    "w": 64,
@@ -29364,8 +29376,8 @@
    "h": 32
   },
   "sandstone": {
-   "w": 32,
-   "h": 28
+   "w": 26,
+   "h": 21
   },
   "snow_pine": {
    "w": 48,
@@ -29373,23 +29385,23 @@
   },
   "snow_rock": {
    "w": 32,
-   "h": 28
+   "h": 21
   },
   "ice_spike": {
    "w": 32,
-   "h": 48
+   "h": 37
   },
   "snow_bush": {
-   "w": 32,
-   "h": 32
+   "w": 30,
+   "h": 21
   },
   "obsidian_spire": {
    "w": 32,
    "h": 56
   },
   "basalt": {
-   "w": 32,
-   "h": 28
+   "w": 34,
+   "h": 24
   },
   "shell": {
    "w": 32,
@@ -29410,6 +29422,154 @@
   "node_pearl": {
    "w": 32,
    "h": 32
+  },
+  "rock__1": {
+   "w": 20,
+   "h": 23
+  },
+  "rock__2": {
+   "w": 34,
+   "h": 19
+  },
+  "rock__3": {
+   "w": 30,
+   "h": 17
+  },
+  "big_rock__1": {
+   "w": 56,
+   "h": 37
+  },
+  "big_rock__2": {
+   "w": 52,
+   "h": 29
+  },
+  "rock_moss": {
+   "w": 20,
+   "h": 22
+  },
+  "rock_moss__1": {
+   "w": 34,
+   "h": 20
+  },
+  "rock_moss__2": {
+   "w": 32,
+   "h": 17
+  },
+  "rock_moss__3": {
+   "w": 32,
+   "h": 21
+  },
+  "sandstone__1": {
+   "w": 32,
+   "h": 25
+  },
+  "sandstone__2": {
+   "w": 32,
+   "h": 19
+  },
+  "sandstone__3": {
+   "w": 30,
+   "h": 21
+  },
+  "basalt__1": {
+   "w": 32,
+   "h": 23
+  },
+  "basalt__2": {
+   "w": 36,
+   "h": 30
+  },
+  "basalt__3": {
+   "w": 32,
+   "h": 19
+  },
+  "snow_rock__1": {
+   "w": 24,
+   "h": 23
+  },
+  "snow_rock__2": {
+   "w": 32,
+   "h": 19
+  },
+  "snow_rock__3": {
+   "w": 32,
+   "h": 17
+  },
+  "ice_spike__1": {
+   "w": 30,
+   "h": 30
+  },
+  "ice_spike__2": {
+   "w": 34,
+   "h": 42
+  },
+  "ice_spike__3": {
+   "w": 30,
+   "h": 25
+  },
+  "snow_bush__1": {
+   "w": 24,
+   "h": 20
+  },
+  "snow_bush__2": {
+   "w": 34,
+   "h": 23
+  },
+  "snow_bush__3": {
+   "w": 22,
+   "h": 16
+  },
+  "snowdrift": {
+   "w": 38,
+   "h": 14
+  },
+  "snowdrift__1": {
+   "w": 24,
+   "h": 15
+  },
+  "snowdrift__2": {
+   "w": 38,
+   "h": 16
+  },
+  "snowdrift__3": {
+   "w": 40,
+   "h": 13
+  },
+  "v_volcano_rock_a": {
+   "w": 26,
+   "h": 18
+  },
+  "v_volcano_rock_a__1": {
+   "w": 20,
+   "h": 17
+  },
+  "v_volcano_rock_b": {
+   "w": 16,
+   "h": 23
+  },
+  "v_volcano_rock_b__1": {
+   "w": 20,
+   "h": 17
+  },
+  "v_volcano_rock_c": {
+   "w": 26,
+   "h": 16
+  },
+  "v_volcano_rock_c__1": {
+   "w": 26,
+   "h": 18
+  },
+  "v_volcano_boulder": {
+   "w": 28,
+   "h": 26
+  },
+  "v_volcano_boulder__1": {
+   "w": 40,
+   "h": 22
+  },
+  "v_volcano_rock_pile": {
+   "w": 34,
+   "h": 24
   },
   "sol_wall_h__cap-clean": {
    "w": 44,
@@ -31399,6 +31559,14 @@
    "w": 128,
    "h": 80
   },
+  "teleport_stone__sol": {
+   "w": 48,
+   "h": 76
+  },
+  "teleport_stone__umb": {
+   "w": 48,
+   "h": 76
+  },
   "umb_statue": {
    "w": 64,
    "h": 152
@@ -31406,6 +31574,38 @@
   "umb_barrow": {
    "w": 128,
    "h": 152
+  },
+  "arena_cover_ash": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_ash_b": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_frost": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_frost_b": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_pit": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_pit_b": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_sun": {
+   "w": 72,
+   "h": 92
+  },
+  "arena_cover_sun_b": {
+   "w": 72,
+   "h": 92
   },
   "bf_fallen_sol_a": {
    "w": 64,
@@ -31971,10 +32171,6 @@
    "w": 32,
    "h": 32
   },
-  "v_volcano_boulder": {
-   "w": 32,
-   "h": 32
-  },
   "v_volcano_dead_bush_a": {
    "w": 64,
    "h": 64
@@ -32019,22 +32215,6 @@
    "w": 32,
    "h": 32
   },
-  "v_volcano_rock_a": {
-   "w": 32,
-   "h": 32
-  },
-  "v_volcano_rock_b": {
-   "w": 32,
-   "h": 32
-  },
-  "v_volcano_rock_c": {
-   "w": 32,
-   "h": 32
-  },
-  "v_volcano_rock_pile": {
-   "w": 32,
-   "h": 64
-  },
   "v_volcano_signboard": {
    "w": 64,
    "h": 64
@@ -32054,38 +32234,6 @@
   "v_volcano_skull_ram": {
    "w": 32,
    "h": 32
-  },
-  "arena_cover_ash": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_sun": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_pit": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_frost": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_ash_b": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_sun_b": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_pit_b": {
-   "w": 72,
-   "h": 92
-  },
-  "arena_cover_frost_b": {
-   "w": 72,
-   "h": 92
   }
  },
  "icons": [
@@ -33855,21 +34003,21 @@
   "uq_zb_bell_flail",
   "uq_zb_thorn_halo",
   "uq_zb_drowned_bell",
-  "uq_zb_rod_chain",
-  "uq_zb_gurdan_crown",
-  "uq_zb_thunder_maul",
-  "uq_zb_thorn_thread",
-  "uq_zb_gael_cage",
-  "uq_zb_puppet_cross",
-  "uq_zb_greed_ring",
-  "uq_zb_midas_crown",
-  "uq_zb_midas_hand",
-  "uq_zb_mino_ring",
-  "uq_zb_mino_helm",
-  "uq_zb_mino_flail",
-  "uq_zb_frost_heart",
-  "uq_zb_frost_crown",
   "uq_zb_frost_staff",
+  "uq_zb_frost_crown",
+  "uq_zb_frost_heart",
+  "uq_zb_mino_flail",
+  "uq_zb_mino_helm",
+  "uq_zb_mino_ring",
+  "uq_zb_midas_hand",
+  "uq_zb_midas_crown",
+  "uq_zb_greed_ring",
+  "uq_zb_puppet_cross",
+  "uq_zb_gael_cage",
+  "uq_zb_thorn_thread",
+  "uq_zb_thunder_maul",
+  "uq_zb_gurdan_crown",
+  "uq_zb_rod_chain",
   "lg_storm_blade",
   "lg_blood_reaper",
   "lg_nova_staff",
@@ -34373,13 +34521,13 @@
  "atlases": [
   {
    "key": "objs0",
-   "png": "/assets/atlas/objs0.png?v=8f87368664",
-   "json": "/assets/atlas/objs0.json?v=8f87368664"
+   "png": "/assets/atlas/objs0.png?v=899c9c6095",
+   "json": "/assets/atlas/objs0.json?v=899c9c6095"
   },
   {
    "key": "objs1",
-   "png": "/assets/atlas/objs1.png?v=8f87368664",
-   "json": "/assets/atlas/objs1.json?v=8f87368664"
+   "png": "/assets/atlas/objs1.png?v=899c9c6095",
+   "json": "/assets/atlas/objs1.json?v=899c9c6095"
   }
  ],
  "atlasOf": {
@@ -34611,20 +34759,44 @@
   "well": "objs0",
   "brazier": "objs0",
   "dummy": "objs0",
-  "ice_spike": "objs0",
+  "soul_brazier": "objs0",
   "cactus": "objs0",
+  "ice_spike__2": "objs0",
   "bf_spike_barrier": "objs0",
-  "bf_spike_barrier_b": "objs0",
   "node_cactus": "objs0",
+  "node_ice": "objs0",
   "cauldron": "objs0",
+  "big_rock": "objs0",
   "bf_crater_d": "objs0",
   "bf_scorch": "objs0",
   "bf_blood_b": "objs0",
   "anvil": "objs0",
-  "barrel": "objs0",
-  "basalt": "objs0",
+  "basalt__2": "objs0",
+  "ice_spike__1": "objs0",
   "cactus_small": "objs0",
+  "v_volcano_boulder": "objs0",
+  "snow_rock__1": "objs0",
+  "rock__1": "objs0",
+  "v_volcano_rock_b": "objs0",
+  "v_volcano_boulder__1": "objs0",
   "rock": "objs0",
+  "rock_moss": "objs0",
+  "sandstone": "objs0",
+  "rock_moss__1": "objs0",
+  "snow_bush__1": "objs0",
+  "rock__2": "objs0",
+  "basalt__3": "objs0",
+  "sandstone__2": "objs0",
+  "snow_rock__2": "objs0",
+  "v_volcano_rock_a": "objs0",
+  "v_volcano_rock_c__1": "objs0",
+  "v_volcano_rock_a__1": "objs0",
+  "v_volcano_rock_b__1": "objs0",
+  "v_volcano_rock_c": "objs0",
+  "snow_bush__3": "objs0",
+  "snowdrift__1": "objs0",
+  "snowdrift": "objs0",
+  "snowdrift__3": "objs0",
   "sol_house__fort-barracks-moss": "objs1",
   "sol_house__fort-barracks-patch": "objs1",
   "sol_temple__fort-barracks-clean": "objs1",
@@ -34836,6 +35008,8 @@
   "dg_port_6": "objs1",
   "dg_port_7": "objs1",
   "palm": "objs1",
+  "teleport_stone__sol": "objs1",
+  "teleport_stone__umb": "objs1",
   "dg_pier_a": "objs1",
   "dg_pier_a2": "objs1",
   "dg_pier_c": "objs1",
@@ -34990,24 +35164,23 @@
   "v_graveyard_stone_d": "objs1",
   "v_graveyard_stone_e": "objs1",
   "v_graveyard_sword_grave": "objs1",
-  "v_volcano_rock_pile": "objs1",
   "dg_lintel_a": "objs1",
   "dg_lintel_c": "objs1",
   "dg_lintel_t": "objs1",
-  "soul_brazier": "objs1",
   "weapon_rack": "objs1",
   "bf_shield_stand": "objs1",
   "bf_shield_stand_b": "objs1",
   "bf_shield_stand_sol": "objs1",
   "bf_shield_stand_umb": "objs1",
-  "big_rock": "objs1",
   "bf_map_table": "objs1",
   "bf_map_table_b": "objs1",
   "bf_map_table_c": "objs1",
   "bf_map_table_umb": "objs1",
+  "bf_spike_barrier_b": "objs1",
   "bf_spike_barrier_c": "objs1",
   "bf_spike_barrier_d": "objs1",
-  "node_ice": "objs1",
+  "big_rock__1": "objs1",
+  "ice_spike": "objs1",
   "bf_scorch_b": "objs1",
   "bf_scorch_c": "objs1",
   "v_basic_fence_row": "objs1",
@@ -35041,6 +35214,7 @@
   "v_volcano_lava_mound_a": "objs1",
   "v_volcano_lava_mound_b": "objs1",
   "v_volcano_lava_mound_s": "objs1",
+  "barrel": "objs1",
   "bf_arrows_d": "objs1",
   "bf_blood_a": "objs1",
   "bf_blood_c": "objs1",
@@ -35083,7 +35257,6 @@
   "node_pearl": "objs1",
   "reeds": "objs1",
   "shell": "objs1",
-  "snow_bush": "objs1",
   "tallgrass": "objs1",
   "torch": "objs1",
   "v_basic_fence_post": "objs1",
@@ -35103,17 +35276,2073 @@
   "v_undead_bones_b": "objs1",
   "v_undead_jaw": "objs1",
   "v_undead_skull_trio": "objs1",
-  "v_volcano_boulder": "objs1",
   "v_volcano_dead_stump": "objs1",
   "v_volcano_ribs": "objs1",
-  "v_volcano_rock_a": "objs1",
-  "v_volcano_rock_b": "objs1",
-  "v_volcano_rock_c": "objs1",
   "v_volcano_sign_a": "objs1",
   "v_volcano_sign_b": "objs1",
   "v_volcano_skull": "objs1",
   "v_volcano_skull_ram": "objs1",
-  "sandstone": "objs1",
-  "snow_rock": "objs1"
+  "big_rock__2": "objs1",
+  "sandstone__1": "objs1",
+  "ice_spike__3": "objs1",
+  "basalt": "objs1",
+  "v_volcano_rock_pile": "objs1",
+  "snow_bush__2": "objs1",
+  "basalt__1": "objs1",
+  "rock_moss__3": "objs1",
+  "snow_rock": "objs1",
+  "sandstone__3": "objs1",
+  "snow_bush": "objs1",
+  "rock_moss__2": "objs1",
+  "snow_rock__3": "objs1",
+  "rock__3": "objs1",
+  "snowdrift__2": "objs1"
+ },
+ "foot": {
+  "bush": 2,
+  "fountain": 1,
+  "lamp": 2,
+  "pillar": 2,
+  "torch": 5,
+  "stall": 5,
+  "barrel": 2,
+  "crate": 3,
+  "flowers": 1,
+  "tallgrass": 1,
+  "fern": 1,
+  "reeds": 1,
+  "mushrooms": 1,
+  "mushrooms_glow": 1,
+  "lilypad": 8,
+  "bones": 2,
+  "ember_vent": 1,
+  "crystal": 1,
+  "chaos_pillar": 1,
+  "stall_blue": 5,
+  "stall_green": 5,
+  "cauldron": 1,
+  "weapon_rack": 3,
+  "hay": 2,
+  "pal_h": 1,
+  "pal_v": 1,
+  "teleport_stone": 2,
+  "stall_gold": 5,
+  "stall_purple": 5,
+  "dark_obelisk": 2,
+  "signpost": 2,
+  "cactus": 1,
+  "dry_bush": 1,
+  "obsidian_spire": 1,
+  "shell": 3,
+  "node_ice": 1,
+  "node_obsidian": 7,
+  "node_pearl": 1,
+  "sol_tower__cap-corner": 2,
+  "sol_tower__cap-corner-ivy": 2,
+  "sol_tower__cap-corner-moss": 2,
+  "sol_tower__fort-corner": 2,
+  "sol_tower__fort-corner-ivy": 2,
+  "sol_tower__fort-corner-moss": 2,
+  "sol_tower": 2,
+  "umb_tower__cap-corner": 2,
+  "umb_tower__cap-corner-ivy": 2,
+  "umb_tower__cap-corner-moss": 2,
+  "umb_tower__fort-corner": 2,
+  "umb_tower__fort-corner-ivy": 2,
+  "umb_tower__fort-corner-moss": 2,
+  "umb_tower": 2,
+  "tower__ember-corner": 2,
+  "tower__ember-corner-ivy": 2,
+  "tower__ember-corner-moss": 2,
+  "tower": 2,
+  "sol_house__cap-house-clean": 2,
+  "sol_house__cap-house-moss": 2,
+  "sol_house__cap-house-ivy": 2,
+  "sol_house__cap-house-patch": 2,
+  "sol_house__cap-shop-clean": 2,
+  "sol_house__cap-shop-moss": 2,
+  "sol_house__cap-shop-ivy": 2,
+  "sol_house__cap-shop-patch": 2,
+  "sol_house__cap-house_hip-clean": 2,
+  "sol_house__cap-house_hip-moss": 2,
+  "sol_house__cap-house_hip-ivy": 2,
+  "sol_house__cap-house_hip-patch": 2,
+  "sol_house__fort-barracks-clean": 2,
+  "sol_house__fort-barracks-moss": 2,
+  "sol_house__fort-barracks-ivy": 2,
+  "sol_house__fort-barracks-patch": 2,
+  "sol_house__fort-armory-clean": 2,
+  "sol_house__fort-armory-moss": 2,
+  "sol_house__fort-armory-ivy": 2,
+  "sol_house__fort-armory-patch": 2,
+  "sol_house__fort-command-clean": 2,
+  "sol_house__fort-command-moss": 2,
+  "sol_house__fort-command-ivy": 2,
+  "sol_house__fort-command-patch": 2,
+  "sol_house": 2,
+  "sol_temple__cap-house_hip-clean": 2,
+  "sol_temple__cap-house_hip-moss": 2,
+  "sol_temple__cap-house_hip-ivy": 2,
+  "sol_temple__cap-house_hip-patch": 2,
+  "sol_temple__cap-shop-clean": 2,
+  "sol_temple__cap-shop-moss": 2,
+  "sol_temple__cap-shop-ivy": 2,
+  "sol_temple__cap-shop-patch": 2,
+  "sol_temple__fort-barracks-clean": 2,
+  "sol_temple__fort-barracks-moss": 2,
+  "sol_temple__fort-barracks-ivy": 2,
+  "sol_temple__fort-barracks-patch": 2,
+  "sol_temple__fort-armory-clean": 2,
+  "sol_temple__fort-armory-moss": 2,
+  "sol_temple__fort-armory-ivy": 2,
+  "sol_temple__fort-armory-patch": 2,
+  "sol_temple__fort-command-clean": 2,
+  "sol_temple__fort-command-moss": 2,
+  "sol_temple__fort-command-ivy": 2,
+  "sol_temple__fort-command-patch": 2,
+  "sol_temple": 2,
+  "sol_church__cap-church-clean": 1,
+  "sol_church": 1,
+  "umb_ziggurat__cap-ziggurat-clean": 3,
+  "umb_ziggurat": 3,
+  "umb_house__cap-house-clean": 2,
+  "umb_house__cap-house-moss": 2,
+  "umb_house__cap-house-ivy": 2,
+  "umb_house__cap-house-patch": 2,
+  "umb_house__cap-shop-clean": 2,
+  "umb_house__cap-shop-moss": 2,
+  "umb_house__cap-shop-ivy": 2,
+  "umb_house__cap-shop-patch": 2,
+  "umb_house__cap-house_hip-clean": 2,
+  "umb_house__cap-house_hip-moss": 2,
+  "umb_house__cap-house_hip-ivy": 2,
+  "umb_house__cap-house_hip-patch": 2,
+  "umb_house__fort-barracks-clean": 2,
+  "umb_house__fort-barracks-moss": 2,
+  "umb_house__fort-barracks-ivy": 2,
+  "umb_house__fort-barracks-patch": 2,
+  "umb_house__fort-armory-clean": 2,
+  "umb_house__fort-armory-moss": 2,
+  "umb_house__fort-armory-ivy": 2,
+  "umb_house__fort-armory-patch": 2,
+  "umb_house__fort-command-clean": 2,
+  "umb_house__fort-command-moss": 2,
+  "umb_house__fort-command-ivy": 2,
+  "umb_house__fort-command-patch": 2,
+  "umb_house": 2,
+  "umb_crypt__cap-temple-clean": 1,
+  "umb_crypt__cap-temple-moss": 1,
+  "umb_crypt__cap-temple-ivy": 1,
+  "umb_crypt__cap-temple-patch": 1,
+  "umb_crypt__cap-house_hip-clean": 2,
+  "umb_crypt__cap-house_hip-moss": 2,
+  "umb_crypt__cap-house_hip-ivy": 2,
+  "umb_crypt__cap-house_hip-patch": 2,
+  "umb_crypt__fort-barracks-clean": 2,
+  "umb_crypt__fort-barracks-moss": 2,
+  "umb_crypt__fort-barracks-ivy": 2,
+  "umb_crypt__fort-barracks-patch": 2,
+  "umb_crypt__fort-armory-clean": 2,
+  "umb_crypt__fort-armory-moss": 2,
+  "umb_crypt__fort-armory-ivy": 2,
+  "umb_crypt__fort-armory-patch": 2,
+  "umb_crypt__fort-command-clean": 2,
+  "umb_crypt__fort-command-moss": 2,
+  "umb_crypt__fort-command-ivy": 2,
+  "umb_crypt__fort-command-patch": 2,
+  "umb_crypt__set-hut_wide-clean": 2,
+  "umb_crypt__set-hut_wide-moss": 2,
+  "umb_crypt__set-hut_wide-ivy": 2,
+  "umb_crypt__set-hut_wide-patch": 2,
+  "umb_crypt": 1,
+  "house__ember-house-clean": 2,
+  "house__ember-house-moss": 2,
+  "house__ember-house-ivy": 2,
+  "house__ember-house-patch": 2,
+  "house__ember-house_b-clean": 2,
+  "house__ember-house_b-moss": 2,
+  "house__ember-house_b-ivy": 2,
+  "house__ember-house_b-patch": 2,
+  "house": 2,
+  "house_blue__ember-house_b-clean": 2,
+  "house_blue__ember-house_b-moss": 2,
+  "house_blue__ember-house_b-ivy": 2,
+  "house_blue__ember-house_b-patch": 2,
+  "house_blue__ember-house-clean": 2,
+  "house_blue__ember-house-moss": 2,
+  "house_blue__ember-house-ivy": 2,
+  "house_blue__ember-house-patch": 2,
+  "house_blue": 2,
+  "tavern__ember-tavern-clean": 2,
+  "tavern": 2,
+  "bank__ember-bank-clean": 2,
+  "bank": 2,
+  "forge__ember-forge-clean": 2,
+  "forge": 2,
+  "hut_sol__set-hut-clean": 2,
+  "hut_sol__set-hut-moss": 2,
+  "hut_sol__set-hut-ivy": 2,
+  "hut_sol__set-hut-patch": 2,
+  "hut_sol__set-shed_shop-clean": 2,
+  "hut_sol__set-shed_shop-moss": 2,
+  "hut_sol__set-shed_shop-ivy": 2,
+  "hut_sol__set-shed_shop-patch": 2,
+  "hut_sol": 2,
+  "pal_h__ember-clean": 1,
+  "pal_h__ember-moss": 1,
+  "pal_h__ember-ivy": 1,
+  "pal_h__ember-patch": 1,
+  "pal_h__ember-chip": 1,
+  "pal_h__ember-crack": 1,
+  "pal_v__ember-w-clean": 1,
+  "pal_v__ember-w-moss": 1,
+  "pal_v__ember-w-ivy": 1,
+  "pal_v__ember-w-patch": 1,
+  "pal_v__ember-w-chip": 1,
+  "pal_v__ember-w-crack": 1,
+  "pal_v__ember-e-clean": 1,
+  "pal_v__ember-e-moss": 1,
+  "pal_v__ember-e-ivy": 1,
+  "pal_v__ember-e-patch": 1,
+  "pal_v__ember-e-chip": 1,
+  "pal_v__ember-e-crack": 1,
+  "pal_h_sol__set-clean": 1,
+  "pal_h_sol__set-moss": 1,
+  "pal_h_sol__set-ivy": 1,
+  "pal_h_sol__set-patch": 1,
+  "pal_h_sol__set-chip": 1,
+  "pal_h_sol__set-crack": 1,
+  "pal_h_sol": 1,
+  "pal_v_sol__set-w-clean": 1,
+  "pal_v_sol__set-w-moss": 1,
+  "pal_v_sol__set-w-ivy": 1,
+  "pal_v_sol__set-w-patch": 1,
+  "pal_v_sol__set-w-chip": 1,
+  "pal_v_sol__set-w-crack": 1,
+  "pal_v_sol__set-e-clean": 1,
+  "pal_v_sol__set-e-moss": 1,
+  "pal_v_sol__set-e-ivy": 1,
+  "pal_v_sol__set-e-patch": 1,
+  "pal_v_sol__set-e-chip": 1,
+  "pal_v_sol__set-e-crack": 1,
+  "pal_v_sol": 1,
+  "pal_post_sol__set-clean": 1,
+  "pal_post_sol__set-moss": 1,
+  "pal_post_sol__set-ivy": 1,
+  "pal_post_sol__set-patch": 1,
+  "pal_post_sol__set-chip": 1,
+  "pal_post_sol__set-crack": 1,
+  "pal_post_sol": 1,
+  "pal_corner_sol__set-e-clean": 1,
+  "pal_corner_sol__set-e-moss": 1,
+  "pal_corner_sol__set-w-clean": 1,
+  "pal_corner_sol__set-w-moss": 1,
+  "pal_corner_sol": 1,
+  "pal_h_umb__set-clean": 1,
+  "pal_h_umb__set-moss": 1,
+  "pal_h_umb__set-ivy": 1,
+  "pal_h_umb__set-patch": 1,
+  "pal_h_umb__set-chip": 1,
+  "pal_h_umb__set-crack": 1,
+  "pal_h_umb": 1,
+  "pal_v_umb__set-w-clean": 1,
+  "pal_v_umb__set-w-moss": 1,
+  "pal_v_umb__set-w-ivy": 1,
+  "pal_v_umb__set-w-patch": 1,
+  "pal_v_umb__set-w-chip": 1,
+  "pal_v_umb__set-w-crack": 1,
+  "pal_v_umb__set-e-clean": 1,
+  "pal_v_umb__set-e-moss": 1,
+  "pal_v_umb__set-e-ivy": 1,
+  "pal_v_umb__set-e-patch": 1,
+  "pal_v_umb__set-e-chip": 1,
+  "pal_v_umb__set-e-crack": 1,
+  "pal_v_umb": 1,
+  "pal_post_umb__set-clean": 1,
+  "pal_post_umb__set-moss": 1,
+  "pal_post_umb__set-ivy": 1,
+  "pal_post_umb__set-patch": 1,
+  "pal_post_umb__set-chip": 1,
+  "pal_post_umb__set-crack": 1,
+  "pal_post_umb": 1,
+  "pal_corner_umb__set-e-clean": 1,
+  "pal_corner_umb__set-e-moss": 1,
+  "pal_corner_umb__set-w-clean": 1,
+  "pal_corner_umb__set-w-moss": 1,
+  "pal_corner_umb": 1,
+  "well": 6,
+  "bf_sword_planted": 1,
+  "bf_sword_sol_b": 1,
+  "bf_sword_sol_c": 2,
+  "bf_sword_sol_d": 1,
+  "bf_sword_planted_dark": 1,
+  "bf_sword_umb_b": 1,
+  "bf_sword_umb_c": 2,
+  "bf_sword_umb_d": 1,
+  "bf_spear_sol_a": 1,
+  "bf_spear_sol_b": 1,
+  "bf_spear_sol_c": 1,
+  "bf_spear_umb_a": 1,
+  "bf_spear_umb_b": 1,
+  "bf_spear_umb_c": 1,
+  "bf_shield_sol_a": 1,
+  "bf_shield_sol_b": 1,
+  "bf_shield_sol_c": 1,
+  "bf_shield_umb_a": 1,
+  "bf_shield_umb_b": 1,
+  "bf_shield_umb_c": 1,
+  "bf_axe_a": 2,
+  "bf_axe_b": 3,
+  "bf_hammer_a": 2,
+  "bf_arrows_planted": 1,
+  "bf_arrows_b": 1,
+  "bf_arrows_c": 1,
+  "bf_arrows_d": 1,
+  "bf_spike_barrier": 4,
+  "bf_spike_barrier_b": 4,
+  "bf_spike_barrier_c": 2,
+  "bf_spike_barrier_d": 4,
+  "bf_wagon_broken_a": 1,
+  "bf_wagon_broken_b": 2,
+  "bf_wagon_broken_c": 1,
+  "bf_wagon_broken_e": 1,
+  "bf_tent_torn": 3,
+  "bf_tent_torn_b": 3,
+  "bf_tent_torn_c": 3,
+  "bf_tent_burnt": 3,
+  "bf_tent_burnt_b": 3,
+  "bf_tent_burnt_c": 3,
+  "bf_catapult_wreck_c": 1,
+  "bf_shield_stand": 4,
+  "bf_shield_stand_sol": 4,
+  "bf_shield_stand_umb": 4,
+  "bf_shield_stand_b": 4,
+  "bf_map_table": 3,
+  "bf_map_table_umb": 3,
+  "bf_map_table_c": 3,
+  "v_basic_palisade_5": 1,
+  "v_basic_palisade_2": 1,
+  "v_basic_palisade_1": 1,
+  "v_basic_palisade_5_b": 1,
+  "v_basic_palisade_2_b": 1,
+  "v_basic_palisade_1_b": 1,
+  "dg_pillar_c_a": 2,
+  "dg_pillar_c_b": 2,
+  "dg_pillar_t_a": 2,
+  "dg_pillar_t_b": 2,
+  "dg_pillar_a_a": 2,
+  "dg_pillar_a_b": 2,
+  "dg_pillar_a_c": 2,
+  "dg_pillar_a_d": 2,
+  "dg_statue_c_a": 2,
+  "dg_statue_c_b": 2,
+  "dg_statue_c_c": 2,
+  "dg_sarc_c_a": 1,
+  "dg_sarc_c_b": 1,
+  "dg_sarc_t_a": 1,
+  "dg_sarc_a_a": 2,
+  "dg_sarc_a_b": 2,
+  "dg_altar_c": 2,
+  "dg_brazier_a": 5,
+  "dg_brazier_b": 5,
+  "dg_puddle_a": 1,
+  "dg_puddle_b": 1,
+  "dg_exit": 2,
+  "teleport_stone__sol": 2,
+  "teleport_stone__umb": 2,
+  "arena_cover_ash": 4,
+  "arena_cover_ash_b": 4,
+  "arena_cover_frost": 3,
+  "arena_cover_frost_b": 3,
+  "arena_cover_pit": 4,
+  "arena_cover_pit_b": 4,
+  "arena_cover_sun": 4,
+  "arena_cover_sun_b": 4,
+  "bf_tent_sol": 2,
+  "bf_tent_sol_cmd": 5,
+  "bf_tent_umb": 2,
+  "bf_tent_umb_cmd": 5
+ },
+ "ao": {
+  "bush": [
+   7,
+   21
+  ],
+  "fountain": [
+   17,
+   46
+  ],
+  "torch": [
+   13,
+   18
+  ],
+  "flowers": [
+   11,
+   20
+  ],
+  "tallgrass": [
+   10,
+   22
+  ],
+  "fern": [
+   11,
+   21
+  ],
+  "reeds": [
+   9,
+   20
+  ],
+  "mushrooms": [
+   10,
+   26
+  ],
+  "mushrooms_glow": [
+   10,
+   26
+  ],
+  "lilypad": [
+   8,
+   20
+  ],
+  "bones": [
+   7,
+   24
+  ],
+  "ember_vent": [
+   8,
+   23
+  ],
+  "crystal": [
+   7,
+   25
+  ],
+  "chaos_pillar": [
+   7,
+   56
+  ],
+  "raid_portal": [
+   1,
+   46
+  ],
+  "anvil": [
+   8,
+   23
+  ],
+  "dummy": [
+   14,
+   18
+  ],
+  "pal_h": [
+   0,
+   31
+  ],
+  "pal_v": [
+   8,
+   29
+  ],
+  "brazier": [
+   6,
+   25
+  ],
+  "sun_statue": [
+   7,
+   56
+  ],
+  "soul_brazier": [
+   6,
+   25
+  ],
+  "bone_pile": [
+   5,
+   26
+  ],
+  "campfire": [
+   4,
+   27
+  ],
+  "cactus": [
+   11,
+   20
+  ],
+  "cactus_small": [
+   6,
+   22
+  ],
+  "palm": [
+   29,
+   36
+  ],
+  "dry_bush": [
+   12,
+   20
+  ],
+  "snow_pine": [
+   21,
+   27
+  ],
+  "obsidian_spire": [
+   6,
+   29
+  ],
+  "shell": [
+   11,
+   20
+  ],
+  "node_cactus": [
+   4,
+   27
+  ],
+  "node_ice": [
+   6,
+   27
+  ],
+  "node_obsidian": [
+   6,
+   26
+  ],
+  "node_pearl": [
+   7,
+   24
+  ],
+  "sol_tower__cap-corner": [
+   1,
+   78
+  ],
+  "sol_tower__cap-corner-ivy": [
+   1,
+   78
+  ],
+  "sol_tower__cap-corner-moss": [
+   1,
+   78
+  ],
+  "sol_tower__fort-corner": [
+   2,
+   77
+  ],
+  "sol_tower__fort-corner-ivy": [
+   2,
+   77
+  ],
+  "sol_tower__fort-corner-moss": [
+   2,
+   77
+  ],
+  "sol_tower": [
+   1,
+   78
+  ],
+  "umb_tower__cap-corner": [
+   1,
+   78
+  ],
+  "umb_tower__cap-corner-ivy": [
+   1,
+   78
+  ],
+  "umb_tower__cap-corner-moss": [
+   1,
+   78
+  ],
+  "umb_tower__fort-corner": [
+   2,
+   77
+  ],
+  "umb_tower__fort-corner-ivy": [
+   2,
+   77
+  ],
+  "umb_tower__fort-corner-moss": [
+   2,
+   77
+  ],
+  "umb_tower": [
+   1,
+   78
+  ],
+  "tower__ember-corner": [
+   2,
+   77
+  ],
+  "tower__ember-corner-ivy": [
+   2,
+   77
+  ],
+  "tower__ember-corner-moss": [
+   2,
+   77
+  ],
+  "tower": [
+   2,
+   77
+  ],
+  "sol_house__cap-house-clean": [
+   39,
+   69
+  ],
+  "sol_house__cap-house-moss": [
+   39,
+   69
+  ],
+  "sol_house__cap-house-ivy": [
+   39,
+   69
+  ],
+  "sol_house__cap-house-patch": [
+   39,
+   69
+  ],
+  "sol_house__cap-shop-clean": [
+   36,
+   72
+  ],
+  "sol_house__cap-shop-moss": [
+   36,
+   72
+  ],
+  "sol_house__cap-shop-ivy": [
+   36,
+   72
+  ],
+  "sol_house__cap-shop-patch": [
+   36,
+   72
+  ],
+  "sol_house__cap-house_hip-clean": [
+   39,
+   69
+  ],
+  "sol_house__cap-house_hip-moss": [
+   39,
+   69
+  ],
+  "sol_house__cap-house_hip-ivy": [
+   39,
+   69
+  ],
+  "sol_house__cap-house_hip-patch": [
+   39,
+   69
+  ],
+  "sol_house__fort-barracks-clean": [
+   39,
+   69
+  ],
+  "sol_house__fort-barracks-moss": [
+   39,
+   69
+  ],
+  "sol_house__fort-barracks-ivy": [
+   39,
+   69
+  ],
+  "sol_house__fort-barracks-patch": [
+   39,
+   69
+  ],
+  "sol_house__fort-armory-clean": [
+   36,
+   72
+  ],
+  "sol_house__fort-armory-moss": [
+   36,
+   72
+  ],
+  "sol_house__fort-armory-ivy": [
+   36,
+   72
+  ],
+  "sol_house__fort-armory-patch": [
+   36,
+   72
+  ],
+  "sol_house__fort-command-clean": [
+   39,
+   69
+  ],
+  "sol_house__fort-command-moss": [
+   39,
+   69
+  ],
+  "sol_house__fort-command-ivy": [
+   39,
+   69
+  ],
+  "sol_house__fort-command-patch": [
+   39,
+   69
+  ],
+  "sol_house": [
+   39,
+   69
+  ],
+  "sol_temple__cap-house_hip-clean": [
+   39,
+   69
+  ],
+  "sol_temple__cap-house_hip-moss": [
+   39,
+   69
+  ],
+  "sol_temple__cap-house_hip-ivy": [
+   39,
+   69
+  ],
+  "sol_temple__cap-house_hip-patch": [
+   39,
+   69
+  ],
+  "sol_temple__cap-shop-clean": [
+   36,
+   72
+  ],
+  "sol_temple__cap-shop-moss": [
+   36,
+   72
+  ],
+  "sol_temple__cap-shop-ivy": [
+   36,
+   72
+  ],
+  "sol_temple__cap-shop-patch": [
+   36,
+   72
+  ],
+  "sol_temple__fort-barracks-clean": [
+   39,
+   69
+  ],
+  "sol_temple__fort-barracks-moss": [
+   39,
+   69
+  ],
+  "sol_temple__fort-barracks-ivy": [
+   39,
+   69
+  ],
+  "sol_temple__fort-barracks-patch": [
+   39,
+   69
+  ],
+  "sol_temple__fort-armory-clean": [
+   36,
+   72
+  ],
+  "sol_temple__fort-armory-moss": [
+   36,
+   72
+  ],
+  "sol_temple__fort-armory-ivy": [
+   36,
+   72
+  ],
+  "sol_temple__fort-armory-patch": [
+   36,
+   72
+  ],
+  "sol_temple__fort-command-clean": [
+   39,
+   69
+  ],
+  "sol_temple__fort-command-moss": [
+   39,
+   69
+  ],
+  "sol_temple__fort-command-ivy": [
+   39,
+   69
+  ],
+  "sol_temple__fort-command-patch": [
+   39,
+   69
+  ],
+  "sol_temple": [
+   39,
+   69
+  ],
+  "sol_church__cap-church-clean": [
+   5,
+   104
+  ],
+  "sol_church": [
+   5,
+   104
+  ],
+  "umb_ziggurat__cap-ziggurat-clean": [
+   35,
+   74
+  ],
+  "umb_ziggurat": [
+   35,
+   74
+  ],
+  "umb_house__cap-house-clean": [
+   39,
+   69
+  ],
+  "umb_house__cap-house-moss": [
+   39,
+   69
+  ],
+  "umb_house__cap-house-ivy": [
+   39,
+   69
+  ],
+  "umb_house__cap-house-patch": [
+   39,
+   69
+  ],
+  "umb_house__cap-shop-clean": [
+   36,
+   72
+  ],
+  "umb_house__cap-shop-moss": [
+   36,
+   72
+  ],
+  "umb_house__cap-shop-ivy": [
+   36,
+   72
+  ],
+  "umb_house__cap-shop-patch": [
+   36,
+   72
+  ],
+  "umb_house__cap-house_hip-clean": [
+   39,
+   69
+  ],
+  "umb_house__cap-house_hip-moss": [
+   39,
+   69
+  ],
+  "umb_house__cap-house_hip-ivy": [
+   39,
+   69
+  ],
+  "umb_house__cap-house_hip-patch": [
+   39,
+   69
+  ],
+  "umb_house__fort-barracks-clean": [
+   39,
+   69
+  ],
+  "umb_house__fort-barracks-moss": [
+   39,
+   69
+  ],
+  "umb_house__fort-barracks-ivy": [
+   39,
+   69
+  ],
+  "umb_house__fort-barracks-patch": [
+   39,
+   69
+  ],
+  "umb_house__fort-armory-clean": [
+   36,
+   72
+  ],
+  "umb_house__fort-armory-moss": [
+   36,
+   72
+  ],
+  "umb_house__fort-armory-ivy": [
+   36,
+   72
+  ],
+  "umb_house__fort-armory-patch": [
+   36,
+   72
+  ],
+  "umb_house__fort-command-clean": [
+   39,
+   69
+  ],
+  "umb_house__fort-command-moss": [
+   39,
+   69
+  ],
+  "umb_house__fort-command-ivy": [
+   39,
+   69
+  ],
+  "umb_house__fort-command-patch": [
+   39,
+   69
+  ],
+  "umb_house": [
+   39,
+   69
+  ],
+  "umb_crypt__cap-temple-clean": [
+   39,
+   71
+  ],
+  "umb_crypt__cap-temple-moss": [
+   39,
+   71
+  ],
+  "umb_crypt__cap-temple-ivy": [
+   39,
+   71
+  ],
+  "umb_crypt__cap-temple-patch": [
+   39,
+   71
+  ],
+  "umb_crypt__cap-house_hip-clean": [
+   39,
+   69
+  ],
+  "umb_crypt__cap-house_hip-moss": [
+   39,
+   69
+  ],
+  "umb_crypt__cap-house_hip-ivy": [
+   39,
+   69
+  ],
+  "umb_crypt__cap-house_hip-patch": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-barracks-clean": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-barracks-moss": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-barracks-ivy": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-barracks-patch": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-armory-clean": [
+   36,
+   72
+  ],
+  "umb_crypt__fort-armory-moss": [
+   36,
+   72
+  ],
+  "umb_crypt__fort-armory-ivy": [
+   36,
+   72
+  ],
+  "umb_crypt__fort-armory-patch": [
+   36,
+   72
+  ],
+  "umb_crypt__fort-command-clean": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-command-moss": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-command-ivy": [
+   39,
+   69
+  ],
+  "umb_crypt__fort-command-patch": [
+   39,
+   69
+  ],
+  "umb_crypt__set-hut_wide-clean": [
+   39,
+   69
+  ],
+  "umb_crypt__set-hut_wide-moss": [
+   39,
+   69
+  ],
+  "umb_crypt__set-hut_wide-ivy": [
+   39,
+   69
+  ],
+  "umb_crypt__set-hut_wide-patch": [
+   39,
+   69
+  ],
+  "umb_crypt": [
+   39,
+   71
+  ],
+  "house__ember-house-clean": [
+   39,
+   69
+  ],
+  "house__ember-house-moss": [
+   39,
+   69
+  ],
+  "house__ember-house-ivy": [
+   39,
+   69
+  ],
+  "house__ember-house-patch": [
+   39,
+   69
+  ],
+  "house__ember-house_b-clean": [
+   39,
+   69
+  ],
+  "house__ember-house_b-moss": [
+   39,
+   69
+  ],
+  "house__ember-house_b-ivy": [
+   39,
+   69
+  ],
+  "house__ember-house_b-patch": [
+   39,
+   69
+  ],
+  "house": [
+   39,
+   69
+  ],
+  "house_blue__ember-house_b-clean": [
+   39,
+   69
+  ],
+  "house_blue__ember-house_b-moss": [
+   39,
+   69
+  ],
+  "house_blue__ember-house_b-ivy": [
+   39,
+   69
+  ],
+  "house_blue__ember-house_b-patch": [
+   39,
+   69
+  ],
+  "house_blue__ember-house-clean": [
+   39,
+   69
+  ],
+  "house_blue__ember-house-moss": [
+   39,
+   69
+  ],
+  "house_blue__ember-house-ivy": [
+   39,
+   69
+  ],
+  "house_blue__ember-house-patch": [
+   39,
+   69
+  ],
+  "house_blue": [
+   39,
+   69
+  ],
+  "tavern__ember-tavern-clean": [
+   82,
+   118
+  ],
+  "tavern": [
+   82,
+   118
+  ],
+  "bank__ember-bank-clean": [
+   67,
+   103
+  ],
+  "bank": [
+   67,
+   103
+  ],
+  "forge__ember-forge-clean": [
+   54,
+   84
+  ],
+  "forge": [
+   54,
+   84
+  ],
+  "hut_sol__set-hut-clean": [
+   24,
+   54
+  ],
+  "hut_sol__set-hut-moss": [
+   24,
+   54
+  ],
+  "hut_sol__set-hut-ivy": [
+   24,
+   54
+  ],
+  "hut_sol__set-hut-patch": [
+   24,
+   54
+  ],
+  "hut_sol__set-shed_shop-clean": [
+   22,
+   58
+  ],
+  "hut_sol__set-shed_shop-moss": [
+   22,
+   58
+  ],
+  "hut_sol__set-shed_shop-ivy": [
+   22,
+   58
+  ],
+  "hut_sol__set-shed_shop-patch": [
+   22,
+   58
+  ],
+  "hut_sol": [
+   24,
+   54
+  ],
+  "pal_h__ember-clean": [
+   0,
+   31
+  ],
+  "pal_h__ember-moss": [
+   0,
+   31
+  ],
+  "pal_h__ember-ivy": [
+   0,
+   31
+  ],
+  "pal_h__ember-patch": [
+   0,
+   31
+  ],
+  "pal_h__ember-chip": [
+   0,
+   31
+  ],
+  "pal_h__ember-crack": [
+   0,
+   31
+  ],
+  "pal_v__ember-w-clean": [
+   8,
+   29
+  ],
+  "pal_v__ember-w-moss": [
+   8,
+   29
+  ],
+  "pal_v__ember-w-ivy": [
+   8,
+   29
+  ],
+  "pal_v__ember-w-patch": [
+   8,
+   29
+  ],
+  "pal_v__ember-w-chip": [
+   8,
+   29
+  ],
+  "pal_v__ember-w-crack": [
+   8,
+   29
+  ],
+  "pal_v__ember-e-clean": [
+   8,
+   29
+  ],
+  "pal_v__ember-e-moss": [
+   8,
+   29
+  ],
+  "pal_v__ember-e-ivy": [
+   8,
+   29
+  ],
+  "pal_v__ember-e-patch": [
+   8,
+   29
+  ],
+  "pal_v__ember-e-chip": [
+   8,
+   29
+  ],
+  "pal_v__ember-e-crack": [
+   8,
+   29
+  ],
+  "pal_h_sol__set-clean": [
+   0,
+   31
+  ],
+  "pal_h_sol__set-moss": [
+   0,
+   31
+  ],
+  "pal_h_sol__set-ivy": [
+   0,
+   31
+  ],
+  "pal_h_sol__set-patch": [
+   0,
+   31
+  ],
+  "pal_h_sol__set-chip": [
+   0,
+   31
+  ],
+  "pal_h_sol__set-crack": [
+   0,
+   31
+  ],
+  "pal_h_sol": [
+   0,
+   31
+  ],
+  "pal_v_sol__set-w-clean": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-w-moss": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-w-ivy": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-w-patch": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-w-chip": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-w-crack": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-e-clean": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-e-moss": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-e-ivy": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-e-patch": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-e-chip": [
+   8,
+   29
+  ],
+  "pal_v_sol__set-e-crack": [
+   8,
+   29
+  ],
+  "pal_v_sol": [
+   8,
+   29
+  ],
+  "pal_post_sol__set-clean": [
+   2,
+   29
+  ],
+  "pal_post_sol__set-moss": [
+   2,
+   29
+  ],
+  "pal_post_sol__set-ivy": [
+   2,
+   29
+  ],
+  "pal_post_sol__set-patch": [
+   2,
+   29
+  ],
+  "pal_post_sol__set-chip": [
+   2,
+   29
+  ],
+  "pal_post_sol__set-crack": [
+   2,
+   29
+  ],
+  "pal_post_sol": [
+   2,
+   29
+  ],
+  "pal_corner_sol__set-e-clean": [
+   1,
+   38
+  ],
+  "pal_corner_sol__set-e-moss": [
+   1,
+   38
+  ],
+  "pal_corner_sol__set-w-clean": [
+   1,
+   38
+  ],
+  "pal_corner_sol__set-w-moss": [
+   1,
+   38
+  ],
+  "pal_corner_sol": [
+   1,
+   38
+  ],
+  "pal_h_umb__set-clean": [
+   0,
+   31
+  ],
+  "pal_h_umb__set-moss": [
+   0,
+   31
+  ],
+  "pal_h_umb__set-ivy": [
+   0,
+   31
+  ],
+  "pal_h_umb__set-patch": [
+   0,
+   31
+  ],
+  "pal_h_umb__set-chip": [
+   0,
+   31
+  ],
+  "pal_h_umb__set-crack": [
+   0,
+   31
+  ],
+  "pal_h_umb": [
+   0,
+   31
+  ],
+  "pal_v_umb__set-w-clean": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-w-moss": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-w-ivy": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-w-patch": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-w-chip": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-w-crack": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-e-clean": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-e-moss": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-e-ivy": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-e-patch": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-e-chip": [
+   8,
+   29
+  ],
+  "pal_v_umb__set-e-crack": [
+   8,
+   29
+  ],
+  "pal_v_umb": [
+   8,
+   29
+  ],
+  "pal_post_umb__set-clean": [
+   2,
+   29
+  ],
+  "pal_post_umb__set-moss": [
+   2,
+   29
+  ],
+  "pal_post_umb__set-ivy": [
+   2,
+   29
+  ],
+  "pal_post_umb__set-patch": [
+   2,
+   29
+  ],
+  "pal_post_umb__set-chip": [
+   2,
+   29
+  ],
+  "pal_post_umb__set-crack": [
+   2,
+   29
+  ],
+  "pal_post_umb": [
+   2,
+   29
+  ],
+  "pal_corner_umb__set-e-clean": [
+   1,
+   38
+  ],
+  "pal_corner_umb__set-e-moss": [
+   1,
+   38
+  ],
+  "pal_corner_umb__set-w-clean": [
+   1,
+   38
+  ],
+  "pal_corner_umb__set-w-moss": [
+   1,
+   38
+  ],
+  "pal_corner_umb": [
+   1,
+   38
+  ],
+  "bf_spike_barrier_c": [
+   16,
+   48
+  ],
+  "bf_wagon_broken_d": [
+   7,
+   28
+  ],
+  "bf_catapult_wreck_a": [
+   15,
+   107
+  ],
+  "bf_catapult_wreck_b": [
+   13,
+   106
+  ],
+  "bf_catapult_wreck_c": [
+   75,
+   113
+  ],
+  "dg_candles_a": [
+   10,
+   22
+  ],
+  "dg_candles_b": [
+   6,
+   26
+  ],
+  "dg_candles_c": [
+   11,
+   20
+  ],
+  "dg_rubble_c_a": [
+   17,
+   30
+  ],
+  "dg_rubble_c_b": [
+   15,
+   30
+  ],
+  "dg_rubble_c_c": [
+   14,
+   33
+  ],
+  "dg_rubble_t_a": [
+   17,
+   30
+  ],
+  "dg_rubble_t_b": [
+   17,
+   30
+  ],
+  "dg_bones_a": [
+   7,
+   25
+  ],
+  "dg_bones_b": [
+   3,
+   28
+  ],
+  "dg_bones_c": [
+   5,
+   25
+  ],
+  "dg_puddle_a": [
+   19,
+   43
+  ],
+  "dg_puddle_b": [
+   4,
+   27
+  ],
+  "dg_ashpile_a": [
+   16,
+   50
+  ],
+  "dg_ashpile_b": [
+   16,
+   50
+  ],
+  "dg_banner_c_a": [
+   8,
+   17
+  ],
+  "dg_banner_c_b": [
+   8,
+   17
+  ],
+  "dg_banner_c_c": [
+   8,
+   17
+  ],
+  "dg_banner_t_a": [
+   11,
+   22
+  ],
+  "dg_banner_t_b": [
+   15,
+   19
+  ],
+  "dg_grate_a": [
+   5,
+   26
+  ],
+  "dg_grate_b": [
+   5,
+   26
+  ],
+  "dg_chains_a": [
+   13,
+   17
+  ],
+  "dg_chains_b": [
+   8,
+   14
+  ],
+  "dg_entrance": [
+   99,
+   153
+  ],
+  "dg_pier_c": [
+   2,
+   37
+  ],
+  "dg_pier_c2": [
+   2,
+   37
+  ],
+  "dg_pier_t": [
+   2,
+   37
+  ],
+  "dg_pier_t2": [
+   2,
+   37
+  ],
+  "dg_pier_a": [
+   2,
+   37
+  ],
+  "dg_pier_a2": [
+   2,
+   37
+  ],
+  "umb_statue": [
+   7,
+   56
+  ],
+  "bf_ram": [
+   17,
+   92
+  ],
+  "bf_siege_tower": [
+   20,
+   60
+  ],
+  "v_basic_bush": [
+   20,
+   43
+  ],
+  "v_basic_bush_blue": [
+   14,
+   49
+  ],
+  "v_basic_bush_pink": [
+   14,
+   49
+  ],
+  "v_basic_bush_red": [
+   14,
+   49
+  ],
+  "v_basic_bush_yellow": [
+   14,
+   49
+  ],
+  "v_basic_cave_a": [
+   5,
+   57
+  ],
+  "v_basic_cave_b": [
+   5,
+   57
+  ],
+  "v_basic_cliff_end": [
+   3,
+   28
+  ],
+  "v_basic_cliff_h": [
+   11,
+   84
+  ],
+  "v_basic_fence_post": [
+   11,
+   20
+  ],
+  "v_basic_fence_post_b": [
+   10,
+   21
+  ],
+  "v_basic_fence_row": [
+   11,
+   84
+  ],
+  "v_basic_fence_row_b": [
+   10,
+   85
+  ],
+  "v_basic_log_pile": [
+   14,
+   49
+  ],
+  "v_basic_log_stand": [
+   10,
+   21
+  ],
+  "v_basic_oak": [
+   33,
+   61
+  ],
+  "v_basic_oak_big": [
+   33,
+   62
+  ],
+  "v_basic_oak_small": [
+   25,
+   36
+  ],
+  "v_basic_pine": [
+   25,
+   36
+  ],
+  "v_basic_shrub": [
+   6,
+   25
+  ],
+  "v_basic_shrub_white": [
+   6,
+   25
+  ],
+  "v_basic_sign_arrow": [
+   9,
+   20
+  ],
+  "v_basic_sign_post": [
+   10,
+   21
+  ],
+  "v_basic_stump": [
+   14,
+   49
+  ],
+  "v_bridges_brick_h": [
+   47,
+   236
+  ],
+  "v_bridges_brick_v": [
+   9,
+   86
+  ],
+  "v_bridges_rope_h": [
+   69,
+   188
+  ],
+  "v_bridges_rope_v": [
+   8,
+   55
+  ],
+  "v_bridges_stone_h": [
+   39,
+   188
+  ],
+  "v_bridges_stone_v": [
+   9,
+   86
+  ],
+  "v_deco_gallows": [
+   9,
+   56
+  ],
+  "v_deco_pillory": [
+   4,
+   59
+  ],
+  "v_deco_spear_rack": [
+   7,
+   55
+  ],
+  "v_deco_stocks": [
+   2,
+   61
+  ],
+  "v_deco_target": [
+   15,
+   48
+  ],
+  "v_deco_tent_side": [
+   2,
+   94
+  ],
+  "v_deco_wagon_covered": [
+   9,
+   85
+  ],
+  "v_deco_wagon_open": [
+   9,
+   85
+  ],
+  "v_deco_wheels": [
+   27,
+   38
+  ],
+  "v_fortkit_ladder": [
+   15,
+   47
+  ],
+  "v_fortkit_stairs": [
+   0,
+   95
+  ],
+  "v_fortkit_tower_block": [
+   0,
+   63
+  ],
+  "v_graveyard_coffin_closed": [
+   5,
+   58
+  ],
+  "v_graveyard_coffin_closed_v": [
+   5,
+   26
+  ],
+  "v_graveyard_coffin_open": [
+   5,
+   58
+  ],
+  "v_graveyard_coffin_open_v": [
+   7,
+   28
+  ],
+  "v_graveyard_cross_a": [
+   9,
+   22
+  ],
+  "v_graveyard_cross_b": [
+   9,
+   22
+  ],
+  "v_graveyard_cross_c": [
+   9,
+   22
+  ],
+  "v_graveyard_cross_d": [
+   9,
+   22
+  ],
+  "v_graveyard_cross_e": [
+   9,
+   22
+  ],
+  "v_graveyard_dead_stump": [
+   8,
+   20
+  ],
+  "v_graveyard_dead_tree_a": [
+   31,
+   41
+  ],
+  "v_graveyard_dead_tree_b": [
+   9,
+   21
+  ],
+  "v_graveyard_dead_tree_vines": [
+   29,
+   39
+  ],
+  "v_graveyard_fence_base": [
+   8,
+   149
+  ],
+  "v_graveyard_fence_base_end": [
+   14,
+   49
+  ],
+  "v_graveyard_fence_long": [
+   3,
+   190
+  ],
+  "v_graveyard_fence_pole_v": [
+   10,
+   21
+  ],
+  "v_graveyard_lamp_a": [
+   12,
+   19
+  ],
+  "v_graveyard_lamp_b": [
+   11,
+   20
+  ],
+  "v_graveyard_lamp_c": [
+   14,
+   17
+  ],
+  "v_graveyard_lantern_a": [
+   11,
+   20
+  ],
+  "v_graveyard_lantern_c": [
+   11,
+   20
+  ],
+  "v_graveyard_pillar": [
+   7,
+   24
+  ],
+  "v_graveyard_pillar_broken": [
+   7,
+   24
+  ],
+  "v_graveyard_pillar_chain": [
+   3,
+   20
+  ],
+  "v_graveyard_pillar_fence": [
+   15,
+   40
+  ],
+  "v_graveyard_pillar_low": [
+   6,
+   25
+  ],
+  "v_graveyard_pillar_low_fence": [
+   15,
+   48
+  ],
+  "v_graveyard_slab_a": [
+   4,
+   27
+  ],
+  "v_graveyard_slab_b": [
+   4,
+   27
+  ],
+  "v_graveyard_slab_c": [
+   4,
+   27
+  ],
+  "v_graveyard_slab_d": [
+   4,
+   27
+  ],
+  "v_graveyard_slab_e": [
+   4,
+   27
+  ],
+  "v_graveyard_statue_a": [
+   6,
+   25
+  ],
+  "v_graveyard_statue_b": [
+   22,
+   40
+  ],
+  "v_graveyard_stele_a": [
+   9,
+   22
+  ],
+  "v_graveyard_stele_b": [
+   9,
+   22
+  ],
+  "v_graveyard_stele_c": [
+   9,
+   22
+  ],
+  "v_graveyard_stele_d": [
+   9,
+   22
+  ],
+  "v_graveyard_stone_a": [
+   4,
+   27
+  ],
+  "v_graveyard_stone_b": [
+   4,
+   27
+  ],
+  "v_graveyard_stone_c": [
+   4,
+   27
+  ],
+  "v_graveyard_stone_d": [
+   4,
+   27
+  ],
+  "v_graveyard_stone_e": [
+   4,
+   27
+  ],
+  "v_graveyard_sword_grave": [
+   8,
+   23
+  ],
+  "v_smith_anvil_a": [
+   15,
+   43
+  ],
+  "v_smith_anvil_b": [
+   5,
+   27
+  ],
+  "v_smith_bench": [
+   13,
+   51
+  ],
+  "v_smith_coal_pile": [
+   18,
+   112
+  ],
+  "v_smith_forge_cone": [
+   42,
+   85
+  ],
+  "v_smith_forge_small": [
+   18,
+   80
+  ],
+  "v_smith_tool_rack": [
+   11,
+   52
+  ],
+  "v_smith_tub_a": [
+   8,
+   55
+  ],
+  "v_smith_tub_b": [
+   8,
+   62
+  ],
+  "v_undead_giant_skeleton": [
+   6,
+   120
+  ],
+  "v_undead_ruin_a": [
+   12,
+   78
+  ],
+  "v_undead_ruin_arch": [
+   46,
+   72
+  ],
+  "v_undead_ruin_b": [
+   11,
+   77
+  ],
+  "v_undead_skull_cluster": [
+   15,
+   26
+  ],
+  "v_volcano_dead_bush_a": [
+   24,
+   38
+  ],
+  "v_volcano_dead_bush_b": [
+   27,
+   38
+  ],
+  "v_volcano_dead_tree": [
+   18,
+   42
+  ],
+  "v_volcano_dead_tree_tall": [
+   12,
+   35
+  ],
+  "v_volcano_lava_mound_a": [
+   1,
+   62
+  ],
+  "v_volcano_lava_mound_b": [
+   1,
+   62
+  ],
+  "v_volcano_lava_mound_big": [
+   10,
+   72
+  ],
+  "v_volcano_lava_mound_ring": [
+   18,
+   63
+  ],
+  "v_volcano_lava_mound_s": [
+   12,
+   51
+  ],
+  "v_volcano_signboard": [
+   16,
+   48
+  ],
+  "v_volcano_sign_a": [
+   12,
+   19
+  ],
+  "v_volcano_sign_b": [
+   11,
+   18
+  ]
  }
 }

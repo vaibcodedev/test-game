@@ -37,6 +37,10 @@ export interface Surface {
   shadow?: RGBA;
   /** Пучки за кромкой (рваный край тропы). */
   strays?: string;
+  /** Множитель неровности кромки (бордюр — ровнее). */
+  calm?: number;
+  /** Бордюр площади: полоса ширины band по кромке (верх камня, швы через joint px), торец — lip. */
+  band?: { w: number; top: RGBA; lit: RGBA; seam: RGBA; joint: number };
   /** Брусчатка: «камень пикселя» для кромки по целым камням. */
   stoneOf?: (x: number, y: number, v: number) => { cx: number; cy: number };
 }
@@ -144,7 +148,7 @@ export function blob(seed: number, cx: number, cy: number, rx: number, ry: numbe
 }
 
 // ---------- поверхности ----------
-function grassSurf(R: Ramp, seed: number, forest = false): Surface {
+export function grassSurf(R: Ramp, seed: number, forest = false): Surface {
   const B = R[2];
   return {
     base: () => B,
@@ -233,7 +237,7 @@ function sandSurf(): Surface {
   };
 }
 
-function duneSurf(): Surface {
+export function duneSurf(): Surface {
   const R = P.dune;
   return {
     base: () => R[2],
@@ -286,7 +290,7 @@ export function voro(seed: number, perEdge: number, inner: number, innerD: numbe
 }
 
 /** Пепел: ровная зола, местами корка с неполной сетью трещин (часть швов не прорисована), трещины разной длины, рыхлые наносы, тление. */
-function ashSurf(): Surface {
+export function ashSurf(): Surface {
   const R = P.ash, B = R[2];
   const plates = voro(611, 2, 2, 12, 0.9, 6);
   const GL: RGBA[] = [[196, 70, 28, 255], [255, 150, 60, 255]];
@@ -330,7 +334,7 @@ function ashSurf(): Surface {
 }
 
 /** Болото: ровная топь, кочки, камыш; лужи — у каждого варианта своя форма и размер, целиком внутри тайла (без сетки и пар-близнецов). */
-function bogSurf(): Surface {
+export function bogSurf(): Surface {
   const R = P.bog;
   const W1: RGBA = [34, 52, 54, 255], W2: RGBA = [48, 74, 74, 255], WH: RGBA = [112, 142, 132, 255];
   // вариант → лужи [cx, cy, rx, ry]: 1 — большая, 3 — малая вытянутая; у 0 и 2 луж нет (кочки), иначе одна форма повторяется слишком часто
@@ -427,7 +431,7 @@ function iceSurf(): Surface {
 }
 
 /** Брусчатка: камни-ячейки Вороного, чуть вытянуты рядами, фаска к свету, тёмные швы, мох в швах у варианта 2. */
-function cobbleSurf(): Surface {
+export function cobbleSurf(): Surface {
   const R = P.cobble;
   const near = voro(811, 4, 5, 7);
   return {
@@ -451,11 +455,11 @@ function cobbleSurf(): Surface {
 }
 
 // ---------- сборка тайлов ----------
-function coverage(mask: number, x: number, y: number, seed: number, rough: number) {
+function coverage(mask: number, x: number, y: number, seed: number, rough: number, calm = 1) {
   const u = clamp((x + 0.5) / S, 0, 1), v = clamp((y + 0.5) / S, 0, 1);
   const f = (mask & 1 ? (1 - u) * (1 - v) : 0) + (mask & 2 ? u * (1 - v) : 0) + (mask & 4 ? u * v : 0) + (mask & 8 ? (1 - u) * v : 0);
   const xx = ((x % S) + S) % S, yy = ((y % S) + S) % S;
-  return f + (pnoise(xx, yy, 16, S, seed) - 0.5) * 0.5 + (pnoise(xx, yy, 8, S, seed + 1) - 0.5) * 0.3 + (pnoise(xx, yy, 4, S, seed + 2) - 0.5) * rough;
+  return f + ((pnoise(xx, yy, 16, S, seed) - 0.5) * 0.5 + (pnoise(xx, yy, 8, S, seed + 1) - 0.5) * 0.3 + (pnoise(xx, yy, 4, S, seed + 2) - 0.5) * rough) * calm;
 }
 
 export function makeTile(sf: Surface, t: number, mask: number, variant: number): PC {
@@ -464,7 +468,7 @@ export function makeTile(sf: Surface, t: number, mask: number, variant: number):
   const rough = sf.edge === "fray" ? 0.32 : sf.edge === "soft" ? 0.22 : 0.1;
   const E = S + 8, at = (x: number, y: number) => (clamp(y, -4, S + 3) + 4) * E + clamp(x, -4, S + 3) + 4;
   const covA = new Float32Array(E * E);
-  for (let y = -4; y < S + 4; y++) for (let x = -4; x < S + 4; x++) covA[at(x, y)] = mask === 15 ? 9 : coverage(mask, x, y, seed, rough);
+  for (let y = -4; y < S + 4; y++) for (let x = -4; x < S + 4; x++) covA[at(x, y)] = mask === 15 ? 9 : coverage(mask, x, y, seed, rough, sf.calm ?? 1);
   const cov = (x: number, y: number) => covA[at(x, y)];
   let inside = (x: number, y: number) => cov(x, y) > 0.5;
   if (sf.edge === "stones" && mask !== 15) {
@@ -515,14 +519,16 @@ export function makeTile(sf: Surface, t: number, mask: number, variant: number):
       if (IN(x, y)) {
         const d = lipAt(x, y);
         let c: RGBA | null = null;
-        if (sf.edge === "lip" && d < lip.length) c = lip[lip.length - 1 - d];
+        const bd = sf.band ? (() => { for (let r = 1; r <= sf.band!.w; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (!IN(x + i, y + j)) return r; return 0; })() : 0;
+        if ((sf.edge === "lip" || sf.band) && d < lip.length) c = lip[lip.length - 1 - d];
+        else if (bd) { const b = sf.band!; c = (x + y * 3) % b.joint === 0 ? b.seam : bd === b.w ? b.seam : !IN(x - bd, y) || !IN(x, y - bd) ? b.lit : b.top; } // бордюр: светлая сторона к свету, шов внутрь и стыки
         else if (sf.edge === "stones") { if (!IN(x, y + 1) || !IN(x + 1, y)) c = shade(top.get(x, y)!, 0.8); }
         else if (!IN(x, y + 1) || !IN(x - 1, y) || !IN(x + 1, y) || !IN(x, y - 1)) c = sf.rimIn ? mix(top.get(x, y)!, sf.rimIn, 0.7) : shade(top.get(x, y)!, 0.88);
         if (sf.hi && !IN(x, y - 1) && IN(x, y + 1)) c = sf.hi;
         if (c) out.set(x, y, c);
       } else if (!out.alpha(x, y)) {
         if (sf.shadow && (IN(x, y - 1) || (IN(x - 1, y - 1) && IN(x - 1, y)))) out.set(x, y, sf.shadow);
-        else if (sf.shadow && IN(x, y - 2) && sf.edge === "lip") out.set(x, y, withA(sf.shadow, sf.shadow[3] * 0.45));
+        else if (sf.shadow && IN(x, y - 2) && (sf.edge === "lip" || sf.band)) out.set(x, y, withA(sf.shadow, sf.shadow[3] * 0.45));
         else if (sf.rimOut && (IN(x - 1, y) || IN(x + 1, y) || IN(x, y - 1) || IN(x, y + 1))) out.set(x, y, sf.rimOut);
       }
     }

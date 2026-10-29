@@ -11,6 +11,7 @@
 import { CITIES } from "./cities";
 import { SETTLEMENTS, SETTLE_R } from "./settlements";
 import { TILE } from "./constants";
+import { NATURE_VARIANTS, natureVariant } from "./natureVariants";
 
 export type ArtTier = "cap" | "fort" | "set" | "ember";
 export type ArtRole = "wall_h" | "wall_v" | "tower" | "gate" | "house" | "pal_h" | "pal_v" | "pal_post" | "pal_gate" | "pal_corner";
@@ -134,6 +135,12 @@ export function assignArtVariants(objects: { kind: string; x: number; y: number;
       default: tok = pickW(PAL_TOKENS, PAL_WEIGHTS, r);
     }
     o.v = `${tier}-${tok}`;
+  }
+  // объёмные камни, льдины и снега (shared/natureVariants.ts): форма по клетке
+  for (const o of objects) {
+    if (o.v || !NATURE_VARIANTS[o.kind]) continue;
+    const k = natureVariant(o.kind, Math.floor(o.x / TILE), Math.floor((o.y + 2) / TILE) - 1);
+    if (k) o.v = String(k);
   }
 }
 

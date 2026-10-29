@@ -6,6 +6,8 @@ import Phaser from "phaser";
  * отдельная текстура o_<id> без кадра. Везде, где раньше был ключ `o_${id}`, — через эти функции.
  */
 export interface AtlasManifest { atlases?: { key: string; png: string; json: string }[]; atlasOf?: Record<string, string> }
+/** Основания кадров (tools/gen/object-feet.ts): foot — пустые ряды под основанием (только тень), ao — [x0, x1] основания у кадров без запечённого контакта. */
+export interface FeetManifest { foot?: Record<string, number>; ao?: Record<string, [number, number]> }
 
 let atlasOf: Record<string, string> = {};
 const atlasKeys = new Set<string>();
@@ -57,3 +59,11 @@ export function objImageData(scene: Phaser.Scene, id: string): ImageData {
   g.drawImage(fr.source.image as CanvasImageSource, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, 0, 0, fr.cutWidth, fr.cutHeight);
   return g.getImageData(0, 0, cv.width, cv.height);
 }
+
+let feet: Record<string, number> = {}, aos: Record<string, [number, number]> = {};
+/** Из manifest.json (BootScene): основания кадров объектов. */
+export function setObjFeet(m: FeetManifest) { feet = { ...(m.foot ?? {}) }; aos = { ...(m.ao ?? {}) }; }
+/** Сколько рядов кадра ниже настоящего основания (там только контактная тень): опора, длинная тень и глубина — от основания (docs/art-perspective.md §4). */
+export const objFoot = (id: string): number => feet[id] ?? 0;
+/** Основание без запечённой контактной тени: [x0, x1] в пикселях кадра — клиент подкладывает AO. */
+export const objAo = (id: string): [number, number] | undefined => aos[id];

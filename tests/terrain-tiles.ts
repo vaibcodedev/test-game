@@ -15,7 +15,7 @@ import { PNG } from "pngjs";
 import { generateArenaMap } from "../shared/arena";
 import { homeCity } from "../shared/cities";
 import { MAP_SEED, TILE } from "../shared/constants";
-import { generateMap, TERRAIN_COUNT, TERRAIN_KEYS, type WorldMap } from "../shared/map";
+import { generateMap, SHORE_BIOMES, SHORE_COLS, SHORE_GID, SHORE_VARIANTS, TERRAIN_COUNT, TERRAIN_KEYS, type WorldMap } from "../shared/map";
 import { generateRaidMap } from "../shared/raid";
 import { generateDungeonMap } from "../shared/dungeon";
 import { CHUNK, chunkRect, chunkRows, COLS, terrainLayers } from "../client/src/game/terrainTiles";
@@ -66,6 +66,12 @@ function problems(name: string, m: WorldMap, layers: (ArrayLike<number> | null)[
           const v = rows[j][i];
           if (v === -1) continue; // пустая клетка (PutTileAt не трогает набор)
           const at = `кусок (${cx}, ${cy}), слой ${t} (${t ? TERRAIN_KEYS[t] : "стены данжа"}), тайл (${x0 + i}, ${y0 + j}) ≈ (${(x0 + i) * TILE + 16}, ${(y0 + j) * TILE + 16}) px`;
+          if (typeof v === "number" && v >= SHORE_GID) { // автотайл берега (shores.png, tools/gen/shores.ts)
+            const k = v - SHORE_GID;
+            if (!SHORE_BIOMES.includes(t) || k % SHORE_COLS >= 15 || Math.floor(k / SHORE_COLS) >= SHORE_BIOMES.length * SHORE_VARIANTS) add(`${at}: индекс берега ${v} вне shores.png или у поверхности без берега`);
+            else shoreUsed.add(k);
+            continue;
+          }
           // как Phaser PutTileAt: tiles[index][2] — undefined вне набора
           if (typeof v !== "number" || !Number.isInteger(v) || tiles[v] === undefined) add(`${at}: индекс ${v} — в наборе ${tiles.length} тайлов`);
           else if (Math.floor(v / COLS) !== row0) add(`${at}: индекс ${v} из строки ${Math.floor(v / COLS)} набора, а слой рисует строку ${row0}`);
@@ -77,6 +83,8 @@ function problems(name: string, m: WorldMap, layers: (ArrayLike<number> | null)[
   return out;
 }
 
+const shores = PNG.sync.read(fs.readFileSync(path.resolve("client/public/assets/tiles/shores.png")));
+const shoreUsed = new Set<number>();
 // ---- набор terrain.png ----
 const set = tilesetOf(img.width, img.height);
 if (img.width % TILE || img.height % TILE) fail(`terrain.png ${img.width}×${img.height} не кратен тайлу ${TILE}`);
@@ -100,6 +108,13 @@ const blank = [...used].filter((i) => !drawn(i));
 if (blank.length) fail(`в наборе не нарисованы тайлы, что есть на картах: ${blank.slice(0, 10).join(", ")}${blank.length > 10 ? "…" : ""} (строки ${[...new Set(blank.map((i) => Math.floor(i / COLS)))].join(", ")})`);
 else ok(`все ${used.size} тайлов, что встречаются на картах, в наборе нарисованы`);
 
+{
+  const ok1 = shores.width === SHORE_COLS * TILE && shores.height === SHORE_BIOMES.length * SHORE_VARIANTS * TILE;
+  const blankS = [...shoreUsed].filter((k) => { const x0 = (k % SHORE_COLS) * TILE, y0 = Math.floor(k / SHORE_COLS) * TILE; for (let y = y0; y < y0 + TILE; y++) for (let x = x0; x < x0 + TILE; x++) if (shores.data[(y * shores.width + x) * 4 + 3] > 0) return false; return true; });
+  if (!ok1) fail(`shores.png ${shores.width}×${shores.height}, ждём ${SHORE_COLS * TILE}×${SHORE_BIOMES.length * SHORE_VARIANTS * TILE} (npx tsx tools/gen/shores.ts)`);
+  else if (blankS.length) fail(`в shores.png пустые тайлы берега, что есть на карте: ${blankS.slice(0, 10).join(", ")}`);
+  else ok(`берег автотайлами: ${shoreUsed.size} разных тайлов shores.png на картах, все нарисованы`);
+}
 // ---- куски у столиц (там падал клиент: точка появления новых героев) ----
 for (const f of ["solgard", "umbrath"]) {
   const c = homeCity(f), cx = Math.floor(c.spawn.x / TILE / CHUNK), cy = Math.floor(c.spawn.y / TILE / CHUNK);

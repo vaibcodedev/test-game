@@ -282,30 +282,6 @@
   "blend": "normal",
   "r": 1
  },
- "bf-fire-m": {
-  "frameW": 24,
-  "frameH": 35,
-  "frames": 16,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   1
-  ],
-  "blend": "normal",
-  "r": 1
- },
- "bf-fire-s": {
-  "frameW": 25,
-  "frameH": 24,
-  "frames": 16,
-  "fps": 14,
-  "anchor": [
-   0.5,
-   1
-  ],
-  "blend": "normal",
-  "r": 1
- },
  "bf-forge-cone": {
   "frameW": 98,
   "frameH": 146,
@@ -884,6 +860,61 @@
   "ease": {
    "tail": 100
   }
+ },
+ "fire-brazier": {
+  "frameW": 36,
+  "frameH": 66,
+  "frames": 16,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
+ "fire-camp": {
+  "frameW": 52,
+  "frameH": 76,
+  "frames": 16,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
+ "fire-ground": {
+  "frameW": 40,
+  "frameH": 56,
+  "frames": 16,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
+ "fire-pile": {
+  "frameW": 68,
+  "frameH": 84,
+  "frames": 16,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
+ },
+ "fire-smoke": {
+  "frameW": 40,
+  "frameH": 80,
+  "frames": 16,
+  "fps": 12,
+  "anchor": [
+   0.5,
+   1
+  ],
+  "blend": "normal"
  },
  "flame-loop": {
   "frameW": 28,

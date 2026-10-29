@@ -191,7 +191,7 @@
   },
   "summons": {
     "wl_demon": {
-      "name": "Демон-прислужник", "sprite": "imp", "projectile": "shadow", "price": 0, "level": 0, "hp": 1.1, "dmg": 1.3, "armor": 1.0,
+      "name": "Демон-прислужник", "sprite": "wl_demon", "projectile": "shadow", "price": 0, "level": 0, "hp": 1.1, "dmg": 1.3, "armor": 1.0,
       "speed": 130, "range": 190, "attackCd": 1.3, "radius": 11, "skills": []
     }
   }

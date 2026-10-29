@@ -27,7 +27,7 @@ export function setShadowMode(m: ShadowMode) {
 }
 
 /** Глубина теней: над землёй и землёй-декором, под пятном юнита (DEPTH.ground + 5) и всеми объектами. */
-const SHADOW_DEPTH = -600 + 2;
+export const SHADOW_DEPTH = -600 + 2;
 const ALPHA = 0.46;
 /** Подземелья и залы без солнца. */
 /** Освещение: «sun» — солнце суток, «torch» — данж (тени от факелов и жаровен: фиксированный наклон вправо-вниз), «none» — залы и арена без теней. */
@@ -137,7 +137,7 @@ export function shadowTick(): void {
 export const shadowCount = () => all.size;
 
 /** Виды без длинной тени: лежат на земле, низкие или сами огонь. */
-export const NO_SHADOW = new Set(["flowers", "tallgrass", "fern", "reeds", "lilypad", "bones", "ember_vent", "mushrooms", "mushrooms_glow", "soul_brazier", "campfire", "ward-sol", "ward-umb"]);
+export const NO_SHADOW = new Set(["flowers", "tallgrass", "fern", "reeds", "lilypad", "bones", "ember_vent", "mushrooms", "mushrooms_glow", "soul_brazier", "campfire"]);
 
 // отладка и замеры (скриншоты tools/shadows-shots.ts): переключатель режима из консоли
 if (typeof window !== "undefined") (window as unknown as { __setShadowMode: typeof setShadowMode }).__setShadowMode = setShadowMode;

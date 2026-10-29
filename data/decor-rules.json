@@ -346,13 +346,19 @@
     "rubble": {
       "notOn": [
         "cobble",
-        "floor"
+        "floor",
+        "cobble_sol",
+        "cobble_umb",
+        "cobble_ember"
       ]
     },
     "bones": {
       "notOn": [
         "cobble",
-        "floor"
+        "floor",
+        "cobble_sol",
+        "cobble_umb",
+        "cobble_ember"
       ],
       "notSafe": true
     },
@@ -425,7 +431,10 @@
       "notOn": [
         "ice",
         "cobble",
-        "floor"
+        "floor",
+        "cobble_sol",
+        "cobble_umb",
+        "cobble_ember"
       ]
     },
     "fire": {

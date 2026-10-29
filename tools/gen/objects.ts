@@ -14,8 +14,10 @@ import { BF_MORE } from "./bf-more";
 import { BF_HORSES_ART } from "./bf-horses";
 import { DUNGEON_ART } from "./dungeon-art";
 import { umbBarrow } from "./barrow";
-import { barrel, crate, stall, well as well141, teleportStone, solHeroStatue, umbHeroStatue } from "./walls141-props";
+import { barrel, crate, stall, well as well141, solHeroStatue, umbHeroStatue } from "./walls141-props";
+import { teleportStoneV2 } from "./teleport-v2";
 import { BIOME_ART, resourceIcon } from "./biomes";
+import { natureGameArt } from "./nature3d";
 import { RESOURCE_IDS } from "../../shared/biomes";
 import { lootObjects } from "./loot";
 
@@ -243,6 +245,8 @@ export const OBJECT_ART: Record<string, Art> = {
   ...CITY_ART,
   ...FACTION_ART,
   ...BIOME_ART,
+  // объёмные камни всех биомов, льдины, заснеженные кусты и сугробы с вариантами kind__k (tools/gen/nature3d.ts, shared/natureVariants.ts)
+  ...natureGameArt(),
   // стены, башни, ворота, здания и частокол городов, фортов, поселений и Эмберхолла (задача 141): все варианты o_<kind>__<v>
   ...walls141Art(),
   // объёмный декор мира (шатёр лагеря, сено, руины, колонна, обелиск, указатель, колодец, фонарь): tools/gen/volume-world.ts
@@ -255,7 +259,9 @@ export const OBJECT_ART: Record<string, Art> = {
   // данж (задача 139): собор павших королей → переход → пепельный склеп: tools/gen/dungeon-art.ts
   ...DUNGEON_ART,
   // правки 6 задачи 141: цельный колодец, объёмный камень телепорта, статуи героев фракций (tools/gen/walls141-props.ts)
-  well: well141, teleport_stone: teleportStone, sun_statue: solHeroStatue, umb_statue: umbHeroStatue, umb_barrow: umbBarrow,
+  // камень телепорта v2 по правилам docs/art-perspective.md (tools/gen/teleport-v2.ts): Эмберхолл — neutral, города и форты фракций — вариант o.v (shared/map.ts)
+  teleport_stone: () => teleportStoneV2("neutral"), teleport_stone__sol: () => teleportStoneV2("sol"), teleport_stone__umb: () => teleportStoneV2("umb"),
+  well: well141, sun_statue: solHeroStatue, umb_statue: umbHeroStatue, umb_barrow: umbBarrow,
 };
 
 // ---------------- иконки 32×32 ----------------

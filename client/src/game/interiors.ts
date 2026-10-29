@@ -7,6 +7,7 @@ import Phaser from "phaser";
 import { INTERIORS, type Interior } from "../../../shared/interiors";
 import { TILE } from "../../../shared/constants";
 import { DEPTH } from "./terrain";
+import { interiorUrl } from "./floorsV2";
 
 type Light = [number, number, string, number, string | null];
 interface IntManifest {
@@ -23,7 +24,7 @@ export function loadInteriors(scene: Phaser.Scene) {
   scene.load.once(`filecomplete-json-${MKEY}`, () => {
     const m = scene.cache.json.get(MKEY) as IntManifest | undefined;
     if (!m) return;
-    for (const r of INTERIORS) for (const l of ["base", "glass", "shafts", "glow"]) scene.load.image(`int_${r.id}_${l}`, `${DIR}/${r.id}_${l}.png`);
+    for (const r of INTERIORS) for (const l of ["base", "glass", "shafts", "glow"]) scene.load.image(`int_${r.id}_${l}`, interiorUrl(r.id, l, `${DIR}/${r.id}_${l}.png`));
     for (const k of Object.keys(m.props)) scene.load.image(`ip_${k}`, `${DIR}/prop_${k}.png`);
     for (const [k, f] of Object.entries(m.flames)) scene.load.spritesheet(`if_${k}`, `${DIR}/flame_${k}.png`, { frameWidth: f.w, frameHeight: f.h });
   });

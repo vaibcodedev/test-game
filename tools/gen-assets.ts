@@ -8,6 +8,7 @@ import path from "node:path";
 import { buildEquipIcons } from "./gen/equip";
 import { buildItemIcon, buildSkillIcon, FX_ART, ITEM_ICONS, OBJECT_ART, SKILL_ICONS } from "./gen/objects";
 import { buildLavaGlow, buildTileset, buildWater } from "./gen/tiles";
+import { writeShores } from "./gen/shores";
 import { buildChaosHalo, buildChaosKnightSheet, KNIGHT_COLS, KNIGHT_FRAME } from "./gen/raidboss";
 import { writeMountsGame, type GameMeta } from "./gen/mounts/build";
 import { PC } from "./gen/canvas";
@@ -24,6 +25,9 @@ import { writeEmberBannersGame } from "./gen/ember-banners";
 import { writeWarBasesGame } from "./gen/war-bases";
 import { writeWarBuffIcons } from "./gen/war-buffs";
 import { buildObjectAtlases, type AtlasRef } from "./gen/atlas";
+import { objectFeet } from "./gen/object-feet";
+import { natureGameArt } from "./gen/nature3d";
+import { GROUND_OBJECTS } from "../shared/map";
 
 const OUT = path.resolve("client/public/assets");
 const t0 = Date.now();
@@ -38,9 +42,13 @@ const manifest = {
   /** атласы объектов (tools/gen/atlas.ts): листы и карта id → ключ листа; объекта нет в atlasOf — клиент грузит его по одному (o_<id>) */
   atlases: [] as AtlasRef[],
   atlasOf: {} as Record<string, string>,
+  /** основания кадров объектов (tools/gen/object-feet.ts): пустые ряды под основанием и [x0, x1] основания без запечённого контакта */
+  foot: {} as Record<string, number>,
+  ao: {} as Record<string, [number, number]>,
 };
 
 buildTileset().save(path.join(OUT, "tiles/terrain.png"));
+writeShores(); // автотайлы берега травы и песка + таблица прохода shared/shoreWalk.ts (docs/water-shores.md)
 buildWater(0).save(path.join(OUT, "tiles/water.png"));
 buildLavaGlow().save(path.join(OUT, "tiles/lava_glow.png"));
 
@@ -134,6 +142,13 @@ for (const id of scan("fx")) if (!manifest.fx.includes(id)) manifest.fx.push(id)
 const ta = Date.now(), atl = buildObjectAtlases(OUT, Object.keys(manifest.objects));
 manifest.atlases = atl.atlases; manifest.atlasOf = atl.atlasOf;
 console.log(`[assets] атлас объектов: ${atl.atlases.length} листов, ${Object.keys(atl.atlasOf).length} кадров${atl.cached ? " (кэш)" : ""} за ${Date.now() - ta} мс`);
+
+// основания: длинная тень и глубина от настоящего основания, AO под кадрами без контакта (docs/art-perspective.md §4). Не трогаем стены,
+// ворота (siegeView ищет их картинку по y и меняет кадры), лежащее на земле, мешки добычи, двери и арки данжа на стенах и природу nature3d (её кадры без пустых рядов, ведёт свой генератор)
+const nature = new Set(Object.keys(natureGameArt()));
+const feet = objectFeet(OUT, Object.keys(manifest.objects), (id) => nature.has(id) || GROUND_OBJECTS.has(id.split("__")[0]) || /wall|gate|^loot_|^dg_(door|port|lintel|arch|window)/.test(id));
+manifest.foot = feet.foot; manifest.ao = feet.ao;
+console.log(`[assets] основания: ${Object.keys(feet.foot).length} кадров с пустыми рядами под основанием, ${Object.keys(feet.ao).length} без контактной тени`);
 
 fs.writeFileSync(path.join(OUT, "manifest.json"), JSON.stringify(manifest, null, 1));
 // маунты: раздел manifest.mounts и иконки из готовых листов (tools/gen/mounts/build.ts, кэш mounts/meta.json); листов нет — рисует

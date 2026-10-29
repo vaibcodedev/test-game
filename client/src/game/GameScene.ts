@@ -25,6 +25,7 @@ import type { Hud } from "../ui/hud";
 import { Effects } from "./effects";
 import { Scenes } from "./scenes";
 import { buildWorld, DEPTH, dgGateOpen, zoneTint, type WorldView } from "./terrain";
+import { shaderEnv } from "./waterLava";
 import { setLightMode } from "./shadows";
 import { NightMask, updateLights } from "./lights";
 import { PostFx, glowOn, shineOn } from "./postfx";
@@ -390,8 +391,8 @@ export class GameScene extends Phaser.Scene {
       toggleMount: () => this.toggleMount(),
       togglePet: () => this.togglePet(),
       closeTarget: () => this.setTarget(null),
-      selectParty: (n) => this.selectParty(n),
       selectTarget: (id) => this.setTarget(id),
+      selectParty: (n) => this.selectParty(n),
       focusGame: () => this.game.canvas.focus(),
     });
 
@@ -1648,6 +1649,7 @@ export class GameScene extends Phaser.Scene {
     this.weather.update(dt, zs, !!this.room);
     this.wow?.update(deltaMs, { zone: zs, indoor: !!this.room, night: lit ? 0 : night });
     this.postfx.update(dt, me && me.u.maxHp > 0 && !me.dead ? me.u.hp / me.u.maxHp : 1, lit ? 0 : night, zs, !!me?.dead);
+    shaderEnv.night = lit ? 0 : night; shaderEnv.rain = Math.min(1, this.weather.dim * 20); // среда шейдеров воды (waterLava.ts)
     // ночь вырезается светом факелов (lights.ts); на «Простых» остаётся плоское затемнение
     // маска — только от НОЧИ, не от дымки зоны: у Полей, топей, курганов своя дымка 0,2 днём, и маска включалась бы среди дня
     this.nightMask.update(this.room || net.kind === "arena" ? 0 : Math.min(dark.alpha, dk * 0.36 + this.weather.dim), this.pos, 240, 0.9); // круг вокруг героя шире

@@ -23,6 +23,7 @@
  *     (дуб ~96 px, большой ~110, малый ~56, сосна 0,75), кусты, обрывы, пещеры, лестница, статуи — по листу scale.png. */
 import fs from "node:fs";
 import path from "node:path";
+import { NATURE_VARIANTS } from "../../shared/natureVariants";
 import { PC, OUTLINE, type RGBA, type Ramp } from "./canvas";
 import { P } from "./palette";
 import { ROOT, OUT_DIR, PREVIEW_DIR, BG, BEIGE, GOLD, readPng, writePng, crop, opaqueBox, trim, scaleNN, downscaleMode, tidy, fill, luma, hsv, paintGround, chipText, drawText, textWidth } from "./vendor-lib";
@@ -605,8 +606,10 @@ function main() {
   if (fs.existsSync(PREVIEW_DIR)) for (const f of fs.readdirSync(PREVIEW_DIR, { withFileTypes: true })) if (f.isFile()) fs.rmSync(path.join(PREVIEW_DIR, f.name), { force: true }); // подпапки (world/) остаются
   // в игру: сначала убираем прежние v_*.png (удалённые из таблицы объекты не должны оставаться), потом пишем новые
   fs.mkdirSync(GAME_OBJECTS, { recursive: true });
-  for (const f of fs.readdirSync(GAME_OBJECTS)) if (/^v_.*\.png$/.test(f)) fs.unlinkSync(path.join(GAME_OBJECTS, f));
-  for (const r of results) writePng(r.out, r.file);
+  // пепельные камни Volcanoe заменены объёмными (tools/gen/nature3d.ts, shared/natureVariants.ts): их кадры и варианты __k не трогаем
+  const ours = (id: string) => !!NATURE_VARIANTS[id.replace(/__\d+$/, "")];
+  for (const f of fs.readdirSync(GAME_OBJECTS)) if (/^v_.*\.png$/.test(f) && !ours(f.slice(0, -4))) fs.unlinkSync(path.join(GAME_OBJECTS, f));
+  for (const r of results) if (!ours(r.id)) writePng(r.out, r.file);
   // размеры в том же виде, что объекты в client/public/assets/manifest.json: { id: { w, h } }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, "objects-manifest.json"), JSON.stringify(Object.fromEntries(results.map((r) => [r.id, { w: r.out.w, h: r.out.h }]))));

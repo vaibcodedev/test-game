@@ -5,16 +5,17 @@
  */
 import Phaser from "phaser";
 import { TILE } from "../../../shared/constants";
-import { GROUND_OBJECTS, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
+import { GROUND_OBJECTS, SHORE_GID, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
 import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
 import { CHUNK, cellHash, chunkRect, chunkRows, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
-import { NO_SHADOW, Shadow, shadowTick, WALL_KINDS, WallShadow, type WallTile } from "./shadows";
+import { NO_SHADOW, Shadow, SHADOW_DEPTH, shadowTick, WALL_KINDS, WallShadow, type WallTile } from "./shadows";
 import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
 import { trackLight } from "./lights";
 import { glowOn } from "./postfx";
-import { objHas, objId, objTex, setObj } from "./objTex";
+import { objAo, objFoot, objHas, objId, objTex, setObj } from "./objTex";
+import { setupWaterLava } from "./waterLava";
 
 /** Ворота данжа «Пепельные чертоги»: состояние (id → открыты) приходит с сервера (DungeonRoom: dg:gate, dg:gates); створки на экране плавно доходят до него. */
 export const dgGateOpen = new Map<string, boolean>();
@@ -59,6 +60,18 @@ interface Chunk {
 
 /** Размер ячейки отсечения в тайлах (кусок — 4×4 ячейки): кадр задевает 6–12 ячеек вместо 1–4 целых кусков. */
 const CELL = 8;
+/** Огонь мира (tools/gen/fire.ts): вид объекта карты → свой лист огня с основой (угли, поленья, камни/чаша). Виды карты прежние — их знают правила декора и гарь. */
+/** Плоское и мелкое на земле: без подложки-контакта. */
+const AO_SKIP = new Set(["flowers", "tallgrass", "fern", "reeds", "lilypad", "bones", "ember_vent", "mushrooms", "mushrooms_glow"]);
+/** Мягкий тёмный эллипс контакта (растягивается по ширине основания). */
+function aoTexture(scene: Phaser.Scene) {
+  const c = scene.textures.createCanvas("fx_ao", 32, 8)!, g = c.getContext();
+  const grd = g.createRadialGradient(16, 4, 0, 16, 4, 16);
+  grd.addColorStop(0, "rgba(12,8,18,0.62)"); grd.addColorStop(0.6, "rgba(12,8,18,0.42)"); grd.addColorStop(1, "rgba(12,8,18,0)");
+  g.setTransform(1, 0, 0, 0.25, 0, 3); g.fillStyle = grd; g.fillRect(0, -12, 32, 32);
+  c.refresh();
+}
+const FIRE_SHEET: Record<string, string> = { "bf-fire-s": "fire-ground", "bf-fire-m": "fire-pile", campfire: "fire-camp", brazier: "fire-brazier" };
 
 /** Крупный бесшовный шум для разбивки повторяемости тайлов (рисуется поверх земли). */
 function macroNoise(scene: Phaser.Scene) {
@@ -94,6 +107,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
   // индексы тайлов всех слоёв считаются один раз (слой 0 — стены данжа, 1..TERRAIN_COUNT−1 — поверхности; terrainTiles.ts, офлайн — tests/terrain-tiles.ts)
   const layers = terrainLayers(m);
 
+  const wl = setupWaterLava(scene, m, water, !!layers[1]);
   macroNoise(scene);
   const macro = scene.add.tileSprite(0, 0, 16, 16, "macro").setOrigin(0).setDepth(DEPTH.overlay).setAlpha(0.6);
   const follow = (v: Phaser.Geom.Rectangle) => {
@@ -164,18 +178,40 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     tiles = vs; run((t) => t.x, (t) => t.y);
   };
   const makeObject = (o: MapObject, objs: Phaser.GameObjects.GameObject[]) => {
+    const fireSheet = FIRE_SHEET[o.kind];
+    if (fireSheet && scene.anims.exists(`vfx_${fireSheet}`)) o = { ...o, kind: fireSheet };
     const img = makeImage(o);
     objs.push(img);
-    // динамическая тень из собственного кадра (game/shadows.ts): не для лежащего на земле, низкого и анимированного
+    // основание кадра (manifest.foot, tools/gen/object-feet.ts): опора — нижняя кромка основания, а не низ кадра с пустыми рядами;
+    // картинка на карте остаётся на месте, длинная тень и глубина — от основания (иначе объект «парит», docs/art-perspective.md §4)
+    const oid = img.type === "Image" ? objId(img as Phaser.GameObjects.Image) : null;
+    const old = (window as unknown as { __perspOld?: boolean }).__perspOld; // снимки «было» (tools/fix-shots.ts)
+    const foot = oid && !old && !WALL_KINDS.has(o.kind) ? objFoot(oid) : 0;
+    if (foot) img.setOrigin(img.originX, 1 - foot / img.height).setY(o.y - foot);
+    const by = o.y - foot;
+    // контакт с землёй у кадров без запечённой тени (статуи, кристаллы, фонтан, паки): мягкая тёмная полоса под основанием
+    const ao = oid && !old && !AO_SKIP.has(o.kind) && !GROUND_OBJECTS.has(o.kind) ? objAo(oid) : undefined;
+    if (ao) {
+      if (!scene.textures.exists("fx_ao")) aoTexture(scene);
+      const w = img.width, cx = (ao[0] + ao[1] + 1) / 2 - w / 2;
+      objs.push(scene.add.image(o.x + (o.flip ? -cx : cx), by + 0.5, "fx_ao").setDisplaySize(ao[1] - ao[0] + 5, 5).setDepth(SHADOW_DEPTH + 1));
+    }
+    // динамическая тень из собственного кадра (game/shadows.ts): не для лежащего на земле и низкого; анимированным — по кадру анимации
     if (wallTiles && WALL_KINDS.has(o.kind) && img.type === "Image") wallTiles.push({ img: img as Phaser.GameObjects.Image, x: o.x, y: o.y });
     else if (img.type === "Image" && (img as Phaser.GameObjects.Image).height >= 20 && !NO_SHADOW.has(o.kind) && !GROUND_OBJECTS.has(o.kind)) {
-      const sh = new Shadow(scene, o.x, o.y);
+      const sh = new Shadow(scene, o.x, by);
       sh.mirror(0, img as Phaser.GameObjects.Image, 0, 0);
+      objs.push(sh.box);
+    } else if (!old && img.type === "Sprite" && img.height >= 20 && !NO_SHADOW.has(o.kind) && !GROUND_OBJECTS.has(o.kind) && !/fire|smoke|flame|vent|beam/.test(o.kind)) {
+      // знамёна, обереги, осадные машины: тень повторяет текущий кадр анимации
+      const sp = img as Phaser.GameObjects.Sprite, sh = new Shadow(scene, o.x, o.y);
+      sh.mirror(0, sp, 0, 0);
+      sp.on(Phaser.Animations.Events.ANIMATION_UPDATE, () => sh.mirror(0, sp, 0, 0));
       objs.push(sh.box);
     }
     if (o.kind === "lilypad" || GROUND_OBJECTS.has(o.kind)) img.setDepth(DEPTH.ground - (GROUND_OBJECTS.has(o.kind) ? 1 : 0));
     else if (o.kind === "flowers" || o.kind === "tallgrass" || o.kind === "bones" || o.kind === "ember_vent") img.setDepth(o.y - 20);
-    else img.setDepth(o.y + (o.dz ?? 0));
+    else img.setDepth(by + (o.dz ?? 0));
     if (SWAY_TREES.has(o.kind)) {
       // лёгкое покачивание крон (деревья Basic из shared/decor.ts)
       const sway = (cellHash(o.x, o.y) - 0.5) * 0.04;
@@ -194,8 +230,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     // указатель: надпись с направлениями над столбом
     if (o.label) objs.push(placeText(worldText(scene, 0, 0, o.label, "plain", { fontSize: "8px", color: "#ffe8b0", stroke: "#1a0e08", strokeThickness: 3, align: "center", wordWrap: { width: 190 } }).setDepth(o.y + 1), o.x, o.y - 50, 0.5, 1));
     if (o.kind === "soul_brazier") glow(objs, o.x, o.y - 26, 0xb46aff, 2.6, 0.6, true);
-    if (o.kind === "campfire") glow(objs, o.x, o.y - 12, 0xff9a3a, 2.4, 0.6, true);
     if (o.kind === "dark_obelisk") glow(objs, o.x, o.y - 50, 0x9a4aff, 1.8, 0.45, true);
+    if (o.kind === "ice_spike") glow(objs, o.x, o.y - 16, 0x7cd8ff, 1.0, 0.22); // слабый голубой ореол льдины (ночью ярче, lights.ts)
     // анимированный огонь жаровен статуй (tools/gen/statues.ts writeStatueFire): листы statue-fire-sol/umb поверх кадра
     if ((o.kind === "sun_statue" || o.kind === "umb_statue") && scene.anims.exists(`vfx_statue-fire-${o.kind === "sun_statue" ? "sol" : "umb"}`)) {
       const key = `vfx_statue-fire-${o.kind === "sun_statue" ? "sol" : "umb"}`;
@@ -255,9 +291,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (o.kind === "umb_house" || o.kind === "umb_crypt") for (const dx of [-42, 22]) glow(objs, o.x + dx, o.y - 45, 0xb46aff, 1.1, 0.35);
     if (o.kind === "sol_house") for (const dx of [-42, 22]) glow(objs, o.x + dx, o.y - 45, 0xffd27a, 1.2, 0.35);
     if (o.kind === "torch") glow(objs, o.x, o.y - 22, 0xff9a3a, 2.4, 0.55, true);
-    if (o.kind === "brazier") glow(objs, o.x, o.y - 26, 0xff8a2a, 2.6, 0.6, true);
     if (o.kind === "teleport_stone") glowOn(img, 0x7ac0ff);
-    if (o.kind === "teleport_stone") glow(objs, o.x, o.y - 34, 0x7ac0ff, 2.2, 0.5, true);
+    if (o.kind === "teleport_stone") glow(objs, o.x, o.y - ((window as unknown as { __perspOld?: boolean }).__perspOld ? 34 : 44), 0x7ac0ff, 2.2, 0.5, true); // ореол у кристалла (камень v2, tools/gen/teleport-v2.ts)
     if (o.kind === "lamp") glow(objs, o.x, o.y - 46, 0xffd27a, 2.2, 0.45, true);
     if (o.kind === "ember_vent") glow(objs, o.x, o.y - 6, 0xff5a1a, 1.4, 0.5, true);
     if (o.kind === "mushrooms_glow") glow(objs, o.x, o.y - 8, 0x5aa8ff, 1.1, 0.35);
@@ -271,7 +306,10 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       glow(objs, o.x - 48, o.y - 24, 0xff7a2a, 2.2, 0.6, true);
       glow(objs, o.x + 49, o.y - 138, 0xff8a3a, 0.9, 0.5, true);
     }
-    if (o.kind === "bf-fire-s" || o.kind === "bf-fire-m") glow(objs, o.x, o.y - 12, 0xff8a2a, 2.2, 0.55, true);
+    if (o.kind === "fire-ground") glow(objs, o.x, o.y - 12, 0xff8a2a, 2.2, 0.55, true);
+    if (o.kind === "fire-camp") glow(objs, o.x, o.y - 16, 0xff9a3a, 2.8, 0.6, true);
+    if (o.kind === "fire-pile") glow(objs, o.x, o.y - 22, 0xff8a2a, 3.2, 0.6, true);
+    if (o.kind === "fire-brazier") glow(objs, o.x, o.y - 34, 0xff9a3a, 2.4, 0.6, true);
     if (o.kind === "bf-forge-small") glow(objs, o.x, o.y - 26, 0xff7a2a, 1.8, 0.55, true);
     if (o.kind === "bf-forge-cone") glow(objs, o.x, o.y - 40, 0xff7a2a, 2.6, 0.55, true);
     if (o.kind === "cauldron") glow(objs, o.x, o.y - 4, 0xff8a3a, 0.9, 0.45, true);
@@ -283,14 +321,17 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     const { x0, y0, cw, ch } = chunkRect(m, cx, cy);
     const tm = scene.make.tilemap({ width: cw, height: ch, tileWidth: TILE, tileHeight: TILE });
     const ts = tm.addTilesetImage("terrain", "terrain", TILE, TILE, 0, 0, 0)!;
+    // автотайлы берега (shores.png, индексы с SHORE_GID — terrainTiles.ts); куски строятся, только когда обе текстуры загружены
+    const tss = [ts, tm.addTilesetImage("shores", "shores", TILE, TILE, 0, 0, SHORE_GID)!];
     for (let t = 0; t < TERRAIN_COUNT; t++) {
       const src = layers[t];
       if (!src) continue;
       const data = chunkRows(m, src, x0, y0, cw, ch);
       if (!data) continue;
-      const layer = tm.createBlankLayer(`t${t}`, ts, x0 * TILE, y0 * TILE, cw, ch)!;
+      const layer = tm.createBlankLayer(`t${t}`, tss, x0 * TILE, y0 * TILE, cw, ch)!;
       layer.putTilesAt(data, 0, 0);
       layer.setDepth(t === 0 ? DEPTH.walls : DEPTH.terrain + t);
+      if (t === 1) wl.lava(layer);
     }
     // объекты раскладываются по ячейкам отсечения по опорной точке; рамка ячейки — по фактическим рамкам её объектов
     const objs: Phaser.GameObjects.GameObject[] = [], tweens: Phaser.Tweens.Tween[] = [];
@@ -372,6 +413,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     }
     const v = cam.worldView;
     follow(v);
+    wl.update(cam);
     const vx0 = v.x - PAD, vy0 = v.y - PAD, vx1 = v.right + PAD, vy1 = v.bottom + PAD;
     for (const c of chunks.values()) cull(c, vx0, vy0, vx1, vy1);
     // запас в полкуска (снизу больше: высокие здания торчат вверх от опорной точки)
@@ -397,7 +439,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     if (!want.length) return;
     // Набора тайлов terrain ещё нет (сцену мира запустили раньше конца загрузки BootScene): куски ждут его. Без набора addTilesetImage
     // даёт null, и Phaser PutTileAt падал на tiles[index] = undefined у точки появления (баг задачи 132; main.ts такой старт больше не делает).
-    if (!scene.textures.exists("terrain")) return;
+    if (!scene.textures.exists("terrain") || !scene.textures.exists("shores")) return;
     // Кусок, который уже задевает кадр (с объектами, торчащими вверх и в стороны), создаётся сразу, иначе на экране дыра;
     // запасные — по одному за кадр: кусок леса — это до ~200 деревьев с твинами и 3–5 слоёв тайлов, и пачка из 2–3 кусков
     // при переходе границы давала update в 20–25 мс (кадр 33 мс) раз в ~7 с бега.

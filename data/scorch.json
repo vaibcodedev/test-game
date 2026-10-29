@@ -1,0 +1,52 @@
+{
+  "_doc": "Выжженная земля вокруг сгоревшего (client/src/game/scorch.ts): вершины dual grid вокруг источника становятся пепелищем (ashfield) → обугленной (charred) → опалённой травой (singed), кольцами с мягкой рваной кромкой (переходы — тайлы tools/gen/ground2.ts). sources: [регулярка вида объекта, радиус в тайлах, лист огня vfx в центре (горит сам источник) или null]; у горящих источников кадр ещё и обугливается тонировкой. stretch — вытянутость по ветру (на восток), shift — сдвиг центра по ветру (доля радиуса), rings — границы колец (доля радиуса).",
+  "stretch": 1.15,
+  "shift": 0.12,
+  "rings": [
+    0.38,
+    0.68,
+    1.0
+  ],
+  "sources": [
+    [
+      "^bf_tent_burnt",
+      3,
+      "fire-pile"
+    ],
+    [
+      "^bf_catapult_wreck|^bf_siege_tower|^bf_ram$",
+      2.5,
+      "fire-ground"
+    ],
+    [
+      "^bf_wagon_broken",
+      2.25,
+      "fire-ground"
+    ],
+    [
+      "^bf-fire-m",
+      1.5,
+      null
+    ],
+    [
+      "^bf-fire-s",
+      1.2,
+      null
+    ],
+    [
+      "^bf_crater",
+      1.6,
+      null
+    ],
+    [
+      "^bf_scorch",
+      1.3,
+      null
+    ],
+    [
+      "^std-burned",
+      1.1,
+      null
+    ]
+  ]
+}

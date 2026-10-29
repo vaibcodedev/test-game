@@ -4,7 +4,7 @@ import { overlay } from "./overlay";
 import Phaser from "phaser";
 import type { Fx } from "../../../shared/protocol";
 import { DEPTH } from "./terrain";
-import type { UnitView } from "./UnitView";
+import { pendingSpawn, type UnitView } from "./UnitView";
 import { placeText, worldText } from "./worldText";
 import * as sfx from "./sfx";
 import { TeleportFx } from "./teleportFx";
@@ -663,6 +663,12 @@ export class Effects {
       case "spawn": {
         const u = this.unit(f.id);
         const x = u?.x ?? 0, y = u?.y ?? 0;
+        // свой лист с появлением (скелет из земли, демон из печати): вместо дыма; вида ещё нет — сыграет при создании
+        if (!u) {
+          if (pendingSpawn.size > 64) for (const [k, t] of pendingSpawn) if (this.scene.time.now - t > 3000) pendingSpawn.delete(k);
+          pendingSpawn.set(f.id, this.scene.time.now);
+        }
+        if (u?.playSpawn()) break;
         if (u) this.burst(x, y - 8, f.k === "nature" ? "fx_leaf" : "fx_smoke", f.k === "nature" ? 0x9adf5a : 0x9a8a9a, 14, 50, 700, -20);
         break;
       }

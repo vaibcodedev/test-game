@@ -115,10 +115,11 @@ function hay(): PC {
   for (let i = 0; i < 7; i++) { const sx = x + 1 + Math.floor(hash01(i, 1, 5) * (w + 6)), sy = y + Math.floor(hash01(i, 2, 5) * 3) - 4; pc.set(sx, sy, STRAW[4]); pc.set(sx + 1, sy - 1, STRAW[3]); }
   return finish(pc);
 }
-/** Указатель (32×64): столб-бревно, три доски-стрелки с толщиной. */
+/** Указатель (32×64): столб-бревно на каменной пятке (след на земле, docs/art-perspective.md §3), три доски-стрелки с толщиной. */
 function signpost(): PC {
   const pc = new PC(40, 64), cx = 18, base = 60;
-  shadowDisc(pc, cx, base, 3, 1.5, 50);
+  shadowBox(pc, cx - 6, cx + 6, base, depth(4), 50);
+  box(pc, cx - 6, base - 3, 12, 3, 4, { r: STONE, tex: grain(7, 0.25) }, { r: STONE }, { r: STONE });
   const boardTex = addTex(planksH(3, 5), grain(6, 0.15));
   const board = (y: number, dir: number, w: number, tilt: number) => {
     const x0 = dir > 0 ? cx - 3 : cx + 3, x1 = x0 + dir * w;
@@ -129,7 +130,7 @@ function signpost(): PC {
     for (let k = 0; k < 3; k++) pc.set(Math.min(x0, x1) + 4 + k * 3, y + 3, litC(WOOD, FRONT, -1.4)); // надпись
   };
   board(16, -1, 15, 0);
-  cylV(pc, cx, 10, base, 2.5, WOOD, { k: 0.5, tex: (phi, y) => (hash01(y, 1, 2) - 0.5) * 0.4, ao: 2 });
+  cylV(pc, cx, 10, base - 4, 2.5, WOOD, { k: 0.5, tex: (phi, y) => (hash01(y, 1, 2) - 0.5) * 0.4, ao: 2 });
   board(22, 1, 17, 1); board(33, -1, 13, -1);
   for (const y of [19, 25, 36]) pc.set(cx, y, litC(IRON, FRONT, 0.8)); // гвозди
   return finish(pc);

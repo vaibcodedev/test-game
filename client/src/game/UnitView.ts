@@ -21,6 +21,7 @@ import { zbDef, zbFx, zbViews } from "./zoneBoss";
 import { drawPlate, newPlate, resetPlate } from "./nameplate";
 import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
 import { GP } from "../../../shared/gameplay";
+import unitAnims from "../../../data/unit-anims.json";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
 export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
@@ -30,6 +31,10 @@ const WELL = Phaser.Display.Color.HexStringToColor(P.well).color;
 /** Кольцо под ногами у выбранного и у наведённого: враг — красное (P.foe), союзник — зелёное (P.ally). */
 export const RING_FOE = Phaser.Display.Color.HexStringToColor(P.foe).color;
 export const RING_ALLY = Phaser.Display.Color.HexStringToColor(P.ally).color;
+/** Листы со своей раскладкой анимаций и свечением (data/unit-anims.json; анимации ставит BootScene). */
+const UNIT_ART = unitAnims as unknown as Record<string, { scale?: number; glow?: boolean } | undefined>;
+/** Призыв, о котором пришло событие «spawn» раньше, чем появился его вид: id → время (effects.ts). */
+export const pendingSpawn = new Map<string, number>();
 const MELEE = new Set(["guard", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ashlord"]);
 /** Прямоугольник непрозрачных пикселей кадра (в пикселях кадра, слева сверху): считается один раз на кадр текстуры, по картинке листа. */
 const alphaCache = new Map<string, readonly [number, number, number, number] | null>();
@@ -146,6 +151,7 @@ export class UnitView {
   private attacking = false;
   private flashUntil = 0;
   private flashSpr?: Phaser.GameObjects.Sprite;
+  private glowSpr?: Phaser.GameObjects.Sprite;
   dead = false;
   selected = false;
   /** В нейтральном городе чужая фракция показывает цвет фракции, а не красный. */
@@ -217,9 +223,16 @@ export class UnitView {
     this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, frameH > this.frame ? (frameH - 4) / frameH : 30 / 32);
     // босс стартовых земель (задача 136): кадры листа ставит game/zoneBoss.ts
     if (tex === `u_${this.sid}` && zbDef(this.sid)) zbViews.add(this);
-    if (u.kind === UnitKind.Pet) {
+    const art = UNIT_ART[this.sid];
+    if (u.kind === UnitKind.Pet && !art?.scale) {
       this.sprite.setScale(0.8);
       this.shadow.setScale(0.8);
+    }
+    // свой лист с появлением (призывы чернокнижника): событие «spawn» могло прийти раньше, чем появился вид
+    const pend = pendingSpawn.get(id);
+    if (pend !== undefined) {
+      pendingSpawn.delete(id);
+      if (scene.time.now - pend < 1500) this.playSpawn();
     }
     this.lastAseq = u.aseq;
     const color = u.kind === UnitKind.Player ? (isSelf ? P.fg : "#a8e0ff") : u.kind === UnitKind.Boss ? "#ff8a5a" : u.kind === UnitKind.Pet ? "#8ae88a"
@@ -233,7 +246,7 @@ export class UnitView {
     this.titleText = worldText(scene, u.x, u.y, "", "title").setOrigin(0, 1).setDepth(DEPTH.top - 5);
     this.frameGfx = scene.add.graphics().setDepth(DEPTH.top - 7);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (a: Phaser.Animations.Animation) => {
-      if (a.key.includes("-attack-")) {
+      if (a.key.includes("-attack-") || a.key.includes("-spawn-") || a.key.includes("-hurt-")) {
         this.attacking = false;
         this.lastAnim = -1;
       }
@@ -273,6 +286,20 @@ export class UnitView {
   flash() {
     const now = this.scene.time.now;
     if (now - (this.flashUntil - FLASH_MS) >= FLASH_GAP) this.flashUntil = now + FLASH_MS;
+    // свой лист с анимацией урона: вздрагивает, если стоит (удар и появление не перебиваются)
+    const hurt = `${this.sid}-hurt-${rowOf(this.u.dir)}`;
+    if (!this.dead && !this.attacking && this.u.anim !== Anim.Walk && this.scene.anims.exists(hurt)) {
+      this.attacking = true;
+      this.sprite.play(hurt);
+    }
+  }
+  /** Появление из земли или печати (свой лист): true — анимация есть и запущена (дым при призыве тогда не нужен). */
+  playSpawn(): boolean {
+    const key = `${this.sid}-spawn-${rowOf(this.u.dir)}`;
+    if (this.dead || !this.scene.anims.exists(key)) return false;
+    this.attacking = true;
+    this.sprite.setFlipX(this.u.dir === Dir.Left).play(key);
+    return true;
   }
 
   private showDead(instant: boolean) {
@@ -559,6 +586,15 @@ export class UnitView {
         .setPosition(sp.x, sp.y).setDepth(sp.depth + 0.01).setAlpha(sp.alpha * FLASH_ALPHA * (fl / FLASH_MS)).setVisible(sp.visible);
     } else this.flashSpr?.setVisible(false);
 
+    // свечение своего листа ночью (глаза, трещины, огонь в лапе): маска <id>_glow поверх ночной маски мира
+    if (UNIT_ART[this.sid]?.glow && this.scene.textures.exists(`u_${this.sid}_glow`)) {
+      const nk = nightLevel(Date.now());
+      const g = (this.glowSpr ??= this.scene.add.sprite(0, 0, `u_${this.sid}_glow`, 0).setDepth(1e6 - 44));
+      const on = nk > 0.05 && sp.visible && sp.alpha > 0.05;
+      g.setVisible(on);
+      if (on) g.setFrame(sp.frame.name).setOrigin(sp.originX, sp.originY).setFlipX(sp.flipX).setScale(sp.scaleX, sp.scaleY).setPosition(sp.x, sp.y).setAlpha(sp.alpha * Math.min(1, nk * 1.2));
+    }
+
     // цвет: эффекты
     const b = u.buffs;
     if (b & BUFF_STUN) this.sprite.setTint(0xfff0a0);
@@ -783,6 +819,7 @@ export class UnitView {
     this.aura?.destroy();
     this.stun?.destroy();
     this.flashSpr?.destroy();
+    this.glowSpr?.destroy();
     this.titleText.destroy();
     this.frameGfx.destroy();
     this.torchGfx?.destroy();

@@ -227,8 +227,8 @@ if (process.argv[1] && path.resolve(process.argv[1]).endsWith("battlefield.ts"))
   const made: Record<string, PC> = {};
   for (const [id, f] of Object.entries(objs)) made[id] = saveObject(id, f());
   const genAnims = gen2.ANIMS();
-  // только эталоны для монтажей bf-montage (в игре не стоят, аудит 2026-10-24) — в client/public не пишутся
-  const REF_ONLY = new Set(["bf-gate-stone", "bf-flame-torch", "bf-fire-l", "bf-fire-t", "bf-catapult-w", "bf-ballista-w"]);
+  // только эталоны для монтажей bf-montage (в игре не стоят, аудит 2026-10-24; bf-fire-s/m заменены листами tools/gen/fire.ts) — в client/public не пишутся
+  const REF_ONLY = new Set(["bf-gate-stone", "bf-flame-torch", "bf-fire-s", "bf-fire-m", "bf-fire-l", "bf-fire-t", "bf-catapult-w", "bf-ballista-w"]);
   for (const a of [...anims, ...genAnims]) if (!REF_ONLY.has(a.id)) saveAnim(a);
   flushManifest();
   fs.mkdirSync(OUT, { recursive: true });

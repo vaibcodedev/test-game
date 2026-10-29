@@ -1,14 +1,20 @@
 import Phaser from "phaser";
+import { attachScorch } from "./scorch";
+import { attachFloorsV2, preloadFloorsV2 } from "./floorsV2";
 import { MOVE_MUL } from "../../../shared/constants";
+import unitAnims from "../../../data/unit-anims.json";
+
+/** Листы со своей раскладкой анимаций (призывы чернокнижника, data/unit-anims.json): покой → rest, остальные по имени. */
+export const UNIT_ART = unitAnims as unknown as Record<string, { scale?: number; glow?: boolean; anims: Record<string, { col: number; n: number; fps: number; loop: boolean }> }>;
 import { loadVfx, makeVfxAnims, type VfxEntry } from "./vfx";
 import { initAuraFx, loadAuraFx } from "./auraFx";
 import { loading } from "../ui/loading";
 import { zbCreate, zbLoad, type ZbManifest } from "./zoneBoss";
 import { mountTex, type MountMeta } from "../../../shared/mounts";
 import { loadInteriors, makeInteriorAnims } from "./interiors";
-import { dropObjAtlas, inObjAtlas, setObjAtlases, type AtlasManifest } from "./objTex";
+import { dropObjAtlas, inObjAtlas, setObjAtlases, setObjFeet, type AtlasManifest, type FeetManifest } from "./objTex";
 
-export interface Manifest extends AtlasManifest {
+export interface Manifest extends AtlasManifest, FeetManifest {
   units: Record<string, { frame: number; frameH?: number; cols?: number }>;
   mounts?: Record<string, MountMeta>;
   objects: Record<string, { w: number; h: number }>;
@@ -32,6 +38,8 @@ export class BootScene extends Phaser.Scene {
       this.load.spritesheet("note_icons", "/assets/ui/notes.png", { frameWidth: 9, frameHeight: 11 });
       this.load.spritesheet("npc_icons", "/assets/ui/npc-icons-9.png", { frameWidth: 9, frameHeight: 9 });
       this.load.image("terrain", "/assets/tiles/terrain.png");
+      this.load.image("shores", "/assets/tiles/shores.png"); // автотайлы берега (tools/gen/shores.ts)
+      preloadFloorsV2(this); // полы помещений: залы храмов, пол данжа и рейда (floorsV2.ts)
       this.load.image("water", "/assets/tiles/water.png");
       this.load.image("lava_glow", "/assets/tiles/lava_glow.png");
       for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frameH ?? u.frame });
@@ -45,6 +53,7 @@ export class BootScene extends Phaser.Scene {
       let off = false;
       try { off = localStorage.getItem("atlas:off") === "1"; } catch { /* нет хранилища */ }
       setObjAtlases(off ? {} : m);
+      setObjFeet(m);
       for (const a of off ? [] : m.atlases ?? []) this.load.atlas(a.key, a.png, a.json);
       this.load.on("loaderror", (f: Phaser.Loader.File) => { for (const id of dropObjAtlas(f.key)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`); });
       for (const id of Object.keys(m.objects)) if (!inObjAtlas(id)) this.load.image(`o_${id}`, `/assets/objects/${id}.png`);
@@ -64,12 +73,23 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    attachScorch(this.game);
+    attachFloorsV2(this.game);
     const m = this.cache.json.get("manifest") as Manifest;
     makeVfxAnims(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>);
     makeInteriorAnims(this);
     initAuraFx(this);
     zbCreate(this);
     for (const id of Object.keys(m.units)) {
+      const art = UNIT_ART[id];
+      if (art?.anims && this.textures.exists(`u_${id}`)) {
+        const wide = Math.round(this.textures.get(`u_${id}`).getSourceImage().width / m.units[id].frame);
+        for (let row = 0; row < 3; row++) for (const [name, a] of Object.entries(art.anims)) {
+          const frames = this.anims.generateFrameNumbers(`u_${id}`, { start: row * wide + a.col, end: row * wide + a.col + a.n - 1 });
+          this.anims.create({ key: `${id}-${name === "idle" ? "rest" : name}-${row}`, frames, frameRate: name === "walk" ? a.fps * MOVE_MUL : a.fps, repeat: a.loop ? -1 : 0 });
+        }
+        continue;
+      }
       // мобы задачи 140 (tools/gen/mobs/game.ts): ≥ 45 столбцов — покой 12, ходьба 12, атака 9–10, гибель 12; 3 вида
       const fw = m.units[id].frame, wide = this.textures.exists(`u_${id}`) ? Math.round(this.textures.get(`u_${id}`).getSourceImage().width / fw) : 0;
       if (!m.units[id].cols && wide >= 45 && fw <= 48) {

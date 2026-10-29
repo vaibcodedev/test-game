@@ -1,0 +1,87 @@
+{
+ "$about": "Раскладка анимаций листов юнитов со своими анимациями (призывы чернокнижника, tools/gen/pets/to-game.ts): строки — вниз, вверх, вбок; столбцы col..col+n−1. scale — масштаб спрайта в игре (питомцы по умолчанию 0,8). glow — маска свечения <id>_glow для ночи.",
+ "wl_skeleton": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "walk": {
+    "col": 12,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 24,
+    "n": 9,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 33,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 41,
+    "n": 14,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 55,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "wl_demon": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "walk": {
+    "col": 12,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 24,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 34,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 42,
+    "n": 14,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 56,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ }
+}
