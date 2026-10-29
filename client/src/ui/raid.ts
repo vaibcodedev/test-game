@@ -40,11 +40,11 @@ export class RaidHud {
   net!: Net;
   private bound = false;
   // подложка окна сбора — .modal из kit.css; итоги (result) пока на старой разметке .raid-modal
-  private modal = el("div", "modal raid-modal");
+  private host: HTMLElement | null = null;
   private result = el("div", "raid-modal");
   private top = el("div", "panel raid-top passthru");
   private frames = el("div", "panel raid-frames");
-  private count = el("div", "raid-count passthru");
+  private count = el("div", "panel raid-count passthru");
   private banner = el("div", "raid-banner passthru");
   private muster: RaidMusterMsg | null = null;
   private musterAt = 0;
@@ -65,7 +65,7 @@ export class RaidHud {
   private fInfo!: HTMLElement;
 
   constructor(readonly root: HTMLElement) {
-    for (const e of [this.modal, this.result, this.top, this.frames, this.count, this.banner]) e.hidden = true;
+    for (const e of [this.result, this.top, this.frames, this.count, this.banner]) e.hidden = true;
     // рамка босса (дизайн-система: .panel, полосы — компонент .bar): имя и фаза — строкой над полосой, номера фаз — под ней, ниже каст и ярость
     this.top.innerHTML = `<div class="raid-bhead" data-phase></div>
       <div class="bar lg raid-bossbar"><i data-fill></i><b class="raid-tick" style="left:25%"></b><b class="raid-tick" style="left:50%"></b><b class="raid-tick" style="left:75%"></b><span data-text></span></div>
@@ -96,7 +96,7 @@ export class RaidHud {
       const r = (e.target as HTMLElement).closest<HTMLElement>("[data-dead]");
       if (r?.dataset.id) this.net.send("raid:revive", { id: r.dataset.id });
     });
-    root.append(this.top, this.frames, this.count, this.banner, this.modal, this.result);
+    root.append(this.top, this.frames, this.count, this.banner, this.result);
   }
 
   bind(net: Net) {
@@ -106,7 +106,7 @@ export class RaidHud {
     net.on("raid:muster", (m) => {
       this.muster = m;
       this.musterAt = performance.now();
-      if (!this.modal.hidden) this.renderMuster();
+      if (this.host?.isConnected) this.renderMuster();
     });
     net.on("raid:cast", (m) => {
       const now = performance.now();
@@ -121,7 +121,6 @@ export class RaidHud {
     });
     net.on("raid:result", (r) => this.showResult(r));
     net.on("switch", (kind) => {
-      this.modal.hidden = true;
       this.result.hidden = true;
       this.cast = null;
       this.castBar.clear();
@@ -132,17 +131,23 @@ export class RaidHud {
   }
 
   // ---------- окно сбора ----------
+  /** Вестник: окно «Сборы» на вкладке «Рейд» (само окно — ui/wboss.ts); onOpen ставит HUD. */
+  onOpen: ((npcId: string) => void) | null = null;
   open(npcId: string) {
     if (this.net.kind !== "world") return;
     if (npcRefuses(this.net, "raid", npcId)) return;
     this.npcId = npcId;
-    this.modal.hidden = false;
+    this.onOpen?.(npcId);
+  }
+  /** Вкладка «Рейд» окна «Сборы»: состав и кнопки рейда рисуются в host (null — вкладка закрыта). */
+  mount(host: HTMLElement | null) {
+    this.host = host;
+    if (!host) return;
     this.net.send("raid:info", {});
     this.renderMuster();
   }
   close(): boolean {
-    const was = !this.modal.hidden || !this.result.hidden && this.net?.kind === "world";
-    this.modal.hidden = true;
+    const was = !this.result.hidden && this.net?.kind === "world";
     if (this.net?.kind === "world") this.result.hidden = true;
     return was;
   }
@@ -178,8 +183,9 @@ export class RaidHud {
     const status = !m ? "" : m.running ? `<span class="c-bad">${T("ui.raid.655")}</span>` : m.open ? `${T("ui.raid.656")} <b data-left>${mmss(m.leftSec)}</b>` : T("ui.raid.657");
     const rows = `<dt>${T("ui.raid.658")}</dt><dd${low ? ` class="bad"` : ""}>${need}+${low ? ` · у вас ${lvl}` : ""}</dd>`
       + (m ? `<dt>${T("ui.bestiary.393")}</dt><dd${lockH ? ` class="warn"` : ""}>${lockH ? `Откат ${lockH} ч` : "Доступна"}</dd><dt>${T("ui.raid.659")}</dt><dd>${m.wins}</dd>` : "");
-    this.modal.innerHTML = `<section class="panel dialog raid-dialog" role="dialog" aria-modal="true" aria-labelledby="raid-title">
-      <div class="dialog-head"><h2 class="dialog-title" id="raid-title">${esc(RAID.npc.name)}</h2><button class="x" data-x aria-label="Закрыть">×</button></div>
+    const host = this.host;
+    if (!host) return;
+    host.innerHTML = `<div class="raid-dialog raid-embed">
       <div class="dialog-body">
         <p class="npc-say">${esc(RAID.npc.greeting)}</p>
         <section class="sec flat">
@@ -195,9 +201,8 @@ export class RaidHud {
         <span class="win-foot-info">${status}</span>
         ${mine ? `<button class="btn" data-cancel>Выйти</button>` : `<button class="btn primary" data-join${canJoin ? "" : ` disabled${block ? ` title="${esc(block)}"` : ""}`}>Встать в рейд</button>`}
         ${mine && leader ? `<button class="btn primary" data-start>Начать сейчас</button>` : ""}
-      </div></section>`;
-    const q = (s: string) => this.modal.querySelector<HTMLButtonElement>(s);
-    q("[data-x]")!.onclick = () => (this.modal.hidden = true);
+      </div></div>`;
+    const q = (s: string) => host.querySelector<HTMLButtonElement>(s);
     q("[data-join]") && (q("[data-join]")!.onclick = () => net.send("raid:join", { npc: this.npcId }));
     q("[data-cancel]") && (q("[data-cancel]")!.onclick = () => net.send("raid:cancel", {}));
     q("[data-start]") && (q("[data-start]")!.onclick = () => net.send("raid:start", {}));
@@ -235,8 +240,8 @@ export class RaidHud {
     const net = this.net;
     if (!net) return;
     const now = performance.now();
-    if (!this.modal.hidden) {
-      const left = this.modal.querySelector("[data-left]");
+    if (this.host?.isConnected && !this.host.closest("[hidden]")) {
+      const left = this.host.querySelector("[data-left]");
       if (left && this.muster) left.textContent = mmss(this.muster.leftSec - (now - this.musterAt) / 1000);
     }
     const inRaid = net.kind === "raid";
@@ -267,7 +272,9 @@ export class RaidHud {
     this.berserkEl.textContent = bs > 0 ? T("ui.raid.667", { bs: mmss(bs) }) : T("ui.raid.668");
     // отсчёт
     const cd = Math.ceil(st.countdown ?? 0);
-    this.count.textContent = (stage === "gather" || stage === "pull") && cd > 0 ? `${stage === "gather" ? "Сбор" : "Бой через"}: ${cd}` : "";
+    // плашка под рамкой босса: «Сбор рейда · 9:44» / «Бой через · 0:09» (мм:сс)
+    const cdText = (stage === "gather" || stage === "pull") && cd > 0 ? `${stage === "gather" ? "Сбор рейда" : "Бой через"} · <b>${mmss(cd)}</b>` : "";
+    if (this.count.innerHTML !== cdText) this.count.innerHTML = cdText;
     setHidden(this.count, this.count.textContent === "");
     const info = `<span class="chip" title="Заряды воскрешения">✚ ${st.revives ?? 0}</span>${st.attempts ? `<span class="chip dim">Попытка ${st.attempt ?? 1}/${st.attempts}</span>` : ""}`;
     if (info !== this.lastInfo) { this.lastInfo = info; this.fInfo.innerHTML = info; }

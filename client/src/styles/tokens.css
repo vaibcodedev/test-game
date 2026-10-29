@@ -57,6 +57,10 @@
   --fac-umb: #b890ff;
   /* светлый текст рейд-босса: реплика и метки на полосе */
   --boss-soft: #ffd0a0;
+  /* пороги вклада мирового босса (ui/wboss.ts): бронза, серебро, золото */
+  --tier-bronze: #d08a4a;
+  --tier-silver: #cfd8e2;
+  --tier-gold: #ffd84a;
   --font: "Rubik", "Trebuchet MS", system-ui, sans-serif;
   --font-head: "Ark Pixel 10", "Rubik", system-ui, sans-serif;
   /* пиксель шрифта заголовков на экране: 10 пикселей экрана в CSS-px; JS ставит 10px / (devicePixelRatio × масштаб интерфейса).

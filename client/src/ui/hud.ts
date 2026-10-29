@@ -26,6 +26,7 @@ import type { Net, UnitState } from "../net";
 import { ARENA_BLOCKED_TEXT, rankById } from "../../../shared/arena";
 import { ArenaUI } from "./arena";
 import { RaidHud } from "./raid";
+import { WbossHud, drawWbMini } from "./wboss";
 import { WarHud, drawWarMini, warBuffUntil } from "./bannerWar";
 import { SiegeHud, drawSiegeMini } from "./siege";
 import { CastBar, castGlyph, type CastOpts, type CastVariant } from "./castbar";
@@ -163,6 +164,8 @@ export class Hud {
   private tradeBound = false;
   readonly arena: ArenaUI;
   readonly raid: RaidHud;
+  /** Мировые боссы (задача 151): окно «Сборы», трекер событий, полоса вклада, итог (ui/wboss.ts). */
+  readonly wboss: WbossHud;
   /** «Знамёна Предела» (задача 132, шаг 14): полоса битвы, объявления, итоги. */
   readonly war: WarHud;
   /** Осада форта (задача 132, шаг 15): полоса осады, итоги (ui/siege.ts). */
@@ -291,6 +294,7 @@ export class Hud {
     setNpcGateToast((text) => this.toast({ text, kind: "error" }));
     this.arena = new ArenaUI(root, (text, kind) => this.toast({ text, kind }));
     this.raid = new RaidHud(root);
+    this.wboss = new WbossHud(root, this.mini, this.raid);
     this.war = new WarHud(root);
     this.siege = new SiegeHud(root);
     this.bestiary = new BestiaryUI(root, icon);
@@ -591,7 +595,7 @@ export class Hud {
     const byCls: Record<string, () => boolean> = {
       "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-statue": () => this.statue.close(), "win-enc": () => this.enc.close(),
       "win-cook": () => this.cook.close(), "win-quest": () => this.quest.close(), "win-qlog": () => this.quest.closeLog(), "win-tp": () => this.tp.close(),
-      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-pets": () => this.menagerie.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
+      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-pets": () => this.menagerie.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-muster": () => this.wboss.close(), "win-trade": () => this.trade.close(),
     };
     const cls = [...top.classList].find((c) => byCls[c]);
     if (cls) byCls[cls]();
@@ -726,6 +730,7 @@ export class Hud {
 
   toggle(id: string) {
     if (id === "arena") return this.arena.toggle();
+    if (id === "muster") return this.wboss.toggle();
     if (id === "bestiary") return this.bestiary.toggle(this.ctx.net.self);
     if (id === "admin") return this.ctx.net.self?.isAdmin ? this.admin.toggle() : undefined;
     if (this.ctx.net.kind === "arena" && id === "shop") return;
@@ -735,7 +740,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.statue.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.menagerie.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
+    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.statue.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.menagerie.close() || this.arena.close() || this.wboss.close() || this.raid.close() || this.trade.close() || this.inspect.close();
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -1690,7 +1695,7 @@ export class Hud {
     }
     // вход в «Пепельные чертоги» на карте мира и лестница выхода внутри (подземелье — отдельная карта на весь холст)
     { const d = big ? DUNGEON_DOOR : this.ctx.net.kind === "dungeon" ? DUNGEON_EXIT : null; if (d) drawDgIcon(g, this.ctx.net.dungeon?.looted && big ? "taken" : "mini", X(d.x), Y(d.y), big ? 1 : 1); }
-    if (big && this.ctx.net.kind === "world") { drawWarMini(g, X, Y); drawSiegeMini(g, X, Y); } // основания «Знамён Предела» и ворота осады
+    if (big && this.ctx.net.kind === "world") { drawWarMini(g, X, Y); drawSiegeMini(g, X, Y); drawWbMini(g, X, Y, info.pos); } // основания «Знамён Предела» и ворота осады
     for (const [, v] of info.units) {
       if (v.dead) continue;
       const near = Math.hypot(v.x - info.pos.x, v.y - info.pos.y) < 900;
@@ -1881,6 +1886,7 @@ export class Hud {
     }
     this.arena.frame(info.units);
     this.raid.frame(info.units);
+    this.wboss.frame(info.pos);
     this.war.frame(info.pos, me?.mount ?? "");
     this.siege.frame();
     const now = performance.now();

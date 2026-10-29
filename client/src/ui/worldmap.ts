@@ -14,6 +14,7 @@ import { buildZoneLabels, type Label } from "./worldmap-labels";
 import { T } from "../../../shared/texts";
 import { drawWarMap, openWarRules, WAR_BASE_NAMES } from "./bannerWar";
 import { drawSiegeMap } from "./siege";
+import { drawWbMap, wbBadgeRects } from "./wboss";
 
 const TEXT = `"Rubik", "Trebuchet MS", system-ui, sans-serif`;
 /** Оформление подписей — как на схеме tools/map-plan.ts: Rubik, крупные числа уровней жирным, названия обычным, тёмная обводка ~3 px под заливкой.
@@ -345,16 +346,7 @@ export class WorldMapView {
       label(open || c.capital ? (c.capital ? c.name.toUpperCase() : c.name) : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", font(cs, true), cs);
       hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : T("ui.worldmap.734"), sub: open || c.capital ? (c.capital ? T("ui.worldmap.735") : T("ui.worldmap.729")) + ` ${T("ui.worldmap.736")}` : T("ui.worldmap.737") });
     }
-    // Врата Цитадели Хаоса (рейд)
-    if (big && RAID_GATE) {
-      const x = X(RAID_GATE.x / TILE), y = Y(RAID_GATE.y / TILE), r = 7;
-      g.fillStyle = "#120a10";
-      g.beginPath(); g.moveTo(x, y - r - 2); g.lineTo(x + r + 2, y); g.lineTo(x, y + r + 2); g.lineTo(x - r - 2, y); g.closePath(); g.fill();
-      g.fillStyle = "#ff6a2a";
-      g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill();
-      label(RAID.map.gate, x, y - r - 6, P.boss, font(FS.base, true), FS.base);
-      hits.push({ x, y, r: r + 4, title: RAID.map.gate, sub: T("ui.worldmap.738", { name: RAID.boss.name, minlevel: RAID.raid.minLevel }) });
-    }
+    if (big) for (const r of wbBadgeRects(X, Y)) placed.push(r); // герб Колосса занимает место до подписей рядом (подпись входа сдвигается)
     // вход в подземелье «Пепельные чертоги» (задача 139): тёмный проём с красным огнём; внутри — лестница выхода
     {
       const d = big ? DUNGEON_DOOR : null, e = !big && this.map.w < 200 ? DUNGEON_EXIT : null, p = d ?? e;
@@ -363,7 +355,7 @@ export class WorldMapView {
         const hov = !!mp && Math.hypot(mp.x - x, mp.y - y) <= r + 4, taken = !!d && !!net.dungeon?.looted;
         drawDgIcon(g, hov ? "hover" : taken ? "taken" : "normal", x, y, 1);
         const title = d ? "Пепельные чертоги · вход" : DUNGEON_EXIT_LABEL;
-        label(d ? "Пепельные чертоги" : "Выход", x, y + r + 8, "#ff9a5a", font(FS.base, true), FS.base);
+        for (const dx of d ? [0, 70, 110, -70] : [0]) if (label(d ? "Пепельные чертоги" : "Выход", x + dx, y + r + 8, "#ff9a5a", font(FS.base, true), FS.base)) break;
         hits.push({ x, y, r: r + 4, title, sub: d ? "Подземелье · ур. 85–95 · Повелитель Пепла" : "Лестница наверх, на карту мира" });
       }
     }
@@ -445,6 +437,7 @@ export class WorldMapView {
       }
       g.globalAlpha = 1;
     }
+    if (big) drawWbMap(g, X, Y, s, hits, placed); // Колосс Полей: 4 состояния, круг арены (задача 151)
     if (big) drawSiegeMap(g, X, Y, s, hits); // ворота осаждаемого форта и знамя недели (шаг 15)
     if (big) { const hp = this.getPos(), hx = X(hp.x / TILE), hy = Y(hp.y / TILE); drawWarMap(g, X, Y, s, hits, placed, [{ x0: hx - 22, y0: hy - 22, x1: hx + 22, y1: hy + 22 }]); } // основания «Знамён Предела» (задача 132, шаг 14) в цвете владельца
     this.hits = hits;

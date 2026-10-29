@@ -67,6 +67,9 @@ const closeAll = (page: Page) => page.evaluate(`(() => { document.querySelectorA
 const key = (page: Page, code: string) => page.keyboard.press(code as never);
 const openMap = (page: Page) => page.evaluate(`window.__game.scene.getScene("game").hud.openWorldMap()`);
 
+/** Ждёт конец заставки босса (.bi-root) и возврат интерфейса. */
+const calm = async (p: Page) => { await p.waitForFunction(`!document.querySelector(".bi-root")`, { timeout: 40000, polling: 300 }).catch(() => {}); await p.evaluate(`document.body.classList.remove("bi-cine")`); await sleep(1800); };
+
 async function pass(browser: Browser, w: number, h: number) {
   const tag = String(w);
   const p = await newPage(browser, w, h);
@@ -92,7 +95,9 @@ async function pass(browser: Browser, w: number, h: number) {
   await closeAll(p);
   const st = await p.evaluate(`(() => { const v = window.__wbView; const s = v ? [...v.states.values()][0] : null; return s ? { x: s.s.x, y: s.s.y } : null; })()`) as { x: number; y: number } | null;
   const pos = st ?? { x: 550.5 * 32, y: 245.5 * 32 };
-  await dbg(p, { op: "tp", x: pos.x + 160, y: pos.y + 160 }); await sleep(2500);
+  await dbg(p, { op: "tp", x: pos.x + 160, y: pos.y + 160 }); await sleep(3000);
+  await calm(p);
+  await sleep(2500);
   // мой вклад — то же сообщение, что шлёт сервер раз в секунду в бою (бить босса вручную долго)
   await p.evaluate(`window.__net.emit("wboss:me", { id: "colossus", v: 41250, tier: "bronze", next: 120000, rank: 9 })`);
   await sleep(700); await shot(p, tag, "07_bar_contrib");
@@ -110,9 +115,8 @@ async function pass(browser: Browser, w: number, h: number) {
     await sleep(800);
   }
   await shot(p, tag, "08_result");
-  await closeAll(p);
-  await key(p, "KeyJ"); await sleep(600);
-  await p.evaluate(`document.querySelector('.win-muster .tab[data-tab="chron"]').click()`); await sleep(1000);
+  await closeAll(p); await calm(p);
+  await p.evaluate(`window.__game.scene.getScene("game").hud.wboss.open("chron")`); await sleep(1200);
   await shot(p, tag, "09_chronicle");
   await dbg(p, { op: "tp", x: herald.x, y: herald.y + 40 }); await sleep(800);
   await p.evaluate(`document.querySelector('.win-muster .tab[data-tab="raid"]').click()`); await sleep(1000);

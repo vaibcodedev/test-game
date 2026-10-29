@@ -112,6 +112,7 @@ export class GameMenu {
       [T("ui.gamemenu.494"), "", () => a.openQuests()],
       [T("ui.bestiary.384"), key("winBestiary"), () => a.toggle("bestiary")],
       [T("ui.arena.319"), key("winArena"), () => a.toggle("arena")],
+      [T("ui.wboss.title"), key("winMuster"), () => a.toggle("muster")],
       [T("ui.gamemenu.495"), "", null],
       [T("ui.gamemenu.496"), "", null],
       [T("ui.gamemenu.497"), key("winMap"), () => a.openMap()],

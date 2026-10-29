@@ -42,12 +42,16 @@ export class BossBanner {
     (o.parent ?? document.body).append(root);
     // кино-режим: на время вступления интерфейс (#ui — рамки, чат, миникарта, панель умений) плавно прячется
     BossBanner.live++; document.body.classList.add("bi-cine");
+    // страховка: владелец мог не вызвать destroy (вкладка в фоне, сбой) — плашка снимает себя сама
+    this.guard = setTimeout(() => this.destroy(), (o.durMs ?? 2900) + 2000);
   }
+  private guard: ReturnType<typeof setTimeout>;
   /** Сколько плашек сейчас на экране — кино-режим снимается с последней. */
   private static live = 0;
   /** Быстро погасить и убрать (пропуск). */
   skip() { if (this.gone) return; this.root.classList.add("out"); setTimeout(() => this.destroy(), 230); }
   destroy() {
+    clearTimeout(this.guard);
     if (!this.gone && --BossBanner.live <= 0) { BossBanner.live = 0; document.body.classList.remove("bi-cine"); }
     this.gone = true; this.root.remove();
   }

@@ -57,7 +57,9 @@
 .raid-row.dead { cursor: var(--cur-pointer); }
 .raid-leave { font-size: var(--fs-xs); }
 
-.raid-count { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 44px; color: var(--gold); text-shadow: 0 4px 0 #5a2a10, 0 0 24px #000; }
+/* таймер сбора и начала боя: плашка с рамкой под рамкой босса, шрифт заголовков */
+.raid-count { position: absolute; top: 112px; left: 50%; transform: translateX(-50%); padding: var(--sp-1) var(--sp-3); display: flex; align-items: baseline; gap: var(--sp-1h); font-family: var(--font-head); font-size: var(--fs-md); color: var(--gold); text-shadow: var(--shadow-text); white-space: nowrap; box-shadow: var(--shadow-panel); }
+.raid-count b { color: var(--num-gold); font-weight: var(--fw-b); font-variant-numeric: tabular-nums; }
 .raid-banner { position: absolute; top: 24%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 44px; font-weight: var(--fw-b); color: #ffb060; text-shadow: 0 4px 0 #5a1a08, 0 0 28px #000; white-space: nowrap; }
 .raid-banner small { display: block; font-size: var(--fs-lg); font-weight: var(--fw); color: #ffe0c0; }
 .raid-banner.show { animation: raid-banner 2.8s ease-out forwards; }

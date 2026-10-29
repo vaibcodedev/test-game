@@ -59,6 +59,9 @@ export class BossIntro {
     this.tl.play();
     const onUpd = (_t: number, dt: number) => this.tick(dt);
     s.events.on("update", onUpd); this.offs.push(() => s.events.off("update", onUpd));
+    // сцена ушла посреди заставки (телепорт, смена зоны) — таймлайн гибнет вместе с ней, финиш нужен вручную, иначе кино-режим залипает
+    const onDown = () => this.finish(false);
+    s.events.once("shutdown", onDown); this.offs.push(() => s.events.off("shutdown", onDown));
     if (this.o.skippable !== false) {
       const k = () => this.finish(true);
       s.input.keyboard?.once("keydown", k); s.input.once("pointerdown", k);

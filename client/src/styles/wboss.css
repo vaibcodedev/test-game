@@ -1,0 +1,90 @@
+/* Мировые боссы (задача 151; client/src/ui/wboss.ts): окно «Сборы», трекер под миникартой, полоса боя с вкладом, плашки, итог, Летопись.
+   Только токены tokens.css и компоненты kit.css (.panel, .win, .tabs, .btn, .bar, .kv, .list, .tbl, .chip, .dialog). */
+/* вкладка «Рейд»: окно сбора рейда (ui/raid.ts, .raid-dialog) встроено в .body окна — на всю внутреннюю ширину, без своих полей, рамки и прокрутки */
+.win-muster .raid-embed { width: auto; max-width: none; max-height: none; padding: 0; overflow: visible; display: flex; flex-direction: column; gap: var(--sp-3); }
+.win-muster .raid-embed .dialog-body { padding: 0; overflow: visible; flex: none; }
+.win-muster .raid-embed .dialog-foot { padding: 0; border: 0; background: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-1h); }
+.win-muster .raid-embed .win-foot-info { margin-right: auto; color: var(--dim); font-size: var(--fs-sm); }
+.win-muster .tabs { padding: 0 var(--sp-2); margin-top: var(--sp-1); }
+.win-muster .body { min-height: 260px; }
+.win-muster .win-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-1h); }
+.win-muster .win-foot[hidden] { display: none; }
+.win-muster .win-foot-info { margin-right: auto; color: var(--dim); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.win-muster .win-foot-info b { color: var(--fg); }
+.win-muster .sec-head { flex-wrap: wrap; }
+.win-muster .sec-aside { flex: none; white-space: nowrap; }
+.win-muster .sec-h { min-width: 0; overflow-wrap: anywhere; }
+.win-muster .body > * { min-width: 0; }
+/* пустое состояние: по центру, приглушённо, с полями */
+.wb-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1h); padding: var(--sp-5) var(--sp-4); text-align: center; color: var(--dim); font-size: var(--fs-sm); line-height: 1.4; }
+.wb-empty-ic { font-size: 22px; color: var(--line-hi); }
+.wb-lore { font-style: italic; }
+.wb-tier { font-weight: var(--fw-b); }
+.wb-tier.bronze { color: var(--tier-bronze); }
+.wb-tier.silver { color: var(--tier-silver); }
+.wb-tier.gold { color: var(--tier-gold); }
+.wb-tier.none { color: var(--dim); }
+.wb-f.sol { color: var(--fac-sol); }
+.wb-f.umb { color: var(--fac-umb); }
+
+/* трекер событий под миникартой (внутри .hud-mini) */
+.wb-track { display: flex; align-items: center; gap: var(--sp-1h); width: 100%; min-height: 24px; padding: var(--sp-0) var(--sp-1h); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); color: var(--fg); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: var(--cur-pointer, pointer); }
+.wb-track:hover { border-color: var(--line-hi); background: var(--panel-2); }
+.wb-track:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.wb-track[hidden] { display: none; }
+.wb-track b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-b); }
+.hud-mini .wb-track .wb-ti { flex: none; width: 24px; height: 24px; aspect-ratio: auto; border-radius: 0; display: block; }
+.wb-ti { flex: none; width: 24px; height: 24px; font-style: normal; color: var(--dim); image-rendering: pixelated; }
+.wb-track b { flex: 1 1 auto; }
+.wb-tt { flex: none; color: var(--fg); font-variant-numeric: tabular-nums; font-weight: var(--fw-b); }
+.wb-track.soon { border-color: var(--warn); }
+.wb-track.soon .wb-ti, .wb-track.soon .wb-tt { color: var(--warn); }
+.wb-track.live { border-color: var(--bad); }
+.wb-track.live .wb-ti, .wb-track.live .wb-tt { color: var(--bad); }
+@keyframes wb-pulse { 50% { background: var(--panel-2); } }
+.wb-track.soon, .wb-track.live { animation: wb-pulse 1.6s ease-in-out infinite; }
+
+/* полоса боя: имя и фаза, здоровье, героев по фракциям, личный вклад (порог, место, прогресс до следующего) */
+.wb-bar { position: absolute; top: 12px; left: var(--top-l); right: var(--top-r); margin-inline: auto; width: min(360px, calc(var(--vw, 100vw) - var(--top-l) - var(--top-r))); padding: var(--sp-1) var(--sp-2) var(--sp-1h); display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); cursor: var(--cur-pointer, pointer); z-index: var(--z-hud-event); }
+body.war-bar-on .wb-bar { top: calc(var(--war-bar-b, 96px) + 8px); }
+.wb-bar[hidden] { display: none; }
+.wb-bhead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm); }
+.wb-bhead b { color: var(--boss); font-weight: var(--fw-b); }
+.wb-bhead span { color: var(--dim); }
+.wb-hp > i { background: linear-gradient(var(--hp-hi), var(--hp)); }
+.wb-crowd { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--sp-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; font-weight: var(--fw-b); }
+.wb-crowd .sol, .wb-num.sol { color: var(--fac-sol); text-align: right; }
+.wb-crowd .umb, .wb-num.umb { color: var(--fac-umb); text-align: left; }
+.wb-you { display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-sm); }
+.wb-you.dim { color: var(--dim); }
+.wb-v { font-weight: var(--fw-b); font-variant-numeric: tabular-nums; }
+.wb-rank { margin-left: auto; color: var(--dim); }
+.wb-contrib > i { background: var(--tier-bronze); }
+
+/* плашки event:say (рядом с полосой «Знамён»: .war-banner) */
+.wb-say-box { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); max-width: min(720px, calc(var(--vw, 100vw) - 32px)); z-index: var(--z-hud-event); }
+.wb-say-box[hidden] { display: none; }
+.wb-say { padding: var(--sp-1h) var(--sp-5); text-align: center; font-size: var(--fs-lg); font-weight: var(--fw-b); line-height: 1.25; color: var(--fg); text-shadow: 0 2px 0 #000; background: linear-gradient(90deg, transparent, var(--overlay) 12%, var(--overlay) 88%, transparent); animation: wb-say 7s ease-out forwards; }
+.wb-say small { display: block; font-size: var(--fs-sm); font-weight: var(--fw); color: var(--gold); }
+.wb-say.alarm, .wb-say.spawn { color: var(--bad); }
+.wb-say.dead { color: var(--num-gold); }
+@keyframes wb-say { 0% { opacity: 0; transform: translateY(-6px); } 6% { opacity: 1; transform: none; } 88% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wb-say { animation: none; } .wb-track.soon, .wb-track.live { animation: none; } }
+
+/* итог боя и Летопись */
+.wb-result { width: min(640px, calc(100vw - 24px)); }
+.wb-win { color: var(--num-gold); }
+.wb-score { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.wb-num { font-size: var(--fs-lg); font-weight: var(--fw-b); font-variant-numeric: tabular-nums; text-shadow: var(--shadow-text); }
+.wb-split { display: flex; height: 8px; background: var(--well); border: 1px solid var(--line); border-radius: var(--r-2); overflow: hidden; }
+.wb-split i.sol { background: var(--fac-sol); }
+.wb-split i.umb { background: var(--fac-umb); }
+.wb-tops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.wb-topcol .tbl { font-size: var(--fs-xs); width: 100%; }
+.wb-topcol .tbl td { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) { .wb-tops { grid-template-columns: 1fr; } }
+.wb-chlist { max-height: 180px; }
+.wb-chrow { width: 100%; text-align: left; }
+.wb-chrow.sel { background: var(--sel); }
+.wb-chip-sol { color: var(--fac-sol); }
+.wb-chip-umb { color: var(--fac-umb); }
