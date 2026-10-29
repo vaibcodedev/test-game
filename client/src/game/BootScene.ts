@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { attachScorch } from "./scorch";
 import { attachFloorsV2, preloadFloorsV2 } from "./floorsV2";
+import { attachCitadelV2, preloadCitadelV2 } from "./citadelV2";
 import { MOVE_MUL } from "../../../shared/constants";
 import unitAnims from "../../../data/unit-anims.json";
 
@@ -40,6 +41,7 @@ export class BootScene extends Phaser.Scene {
       this.load.image("terrain", "/assets/tiles/terrain.png");
       this.load.image("shores", "/assets/tiles/shores.png"); // автотайлы берега (tools/gen/shores.ts)
       preloadFloorsV2(this); // полы помещений: залы храмов, пол данжа и рейда (floorsV2.ts)
+      preloadCitadelV2(this); // цитадель рейда v2 под флагом (citadelV2.ts)
       this.load.image("water", "/assets/tiles/water.png");
       this.load.image("lava_glow", "/assets/tiles/lava_glow.png");
       for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frameH ?? u.frame });
@@ -75,6 +77,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     attachScorch(this.game);
     attachFloorsV2(this.game);
+    attachCitadelV2(this.game);
     const m = this.cache.json.get("manifest") as Manifest;
     makeVfxAnims(this, (this.cache.json.get("vfxm") ?? {}) as Record<string, VfxEntry>);
     makeInteriorAnims(this);
