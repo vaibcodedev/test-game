@@ -20,6 +20,8 @@ export class Unit extends Schema {
   @type("int32") maxMp = 0;
   @type("uint8") level = 1;
   @type("uint16") buffs = 0;
+  /** Действующее замедление, % (0 — нет; потолок data/cc.json maxSlowPct): клиент предсказывает шаг по той же формуле (shared/cc.ts slowMul). */
+  @type("uint8") slowPct = 0;
   @type("uint8") phase = 0;
   /** Игрок: оружие как "база:редкость:заточка_оружия:легендарка:модель" (заточка только самого оружия). */
   @type("string") weapon = "";

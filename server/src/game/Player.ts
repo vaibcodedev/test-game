@@ -80,6 +80,13 @@ export class Player {
   rootUntil = 0;
   slowUntil = 0;
   slowPct = 0;
+  /** Безмолвие и страх (задача 148, effects.applyCc): сроки; страх — от кого бежать, кто наложил, когда и сколько урона набрано (breakFear). */
+  silenceUntil = 0;
+  fearUntil = 0;
+  fearFrom: { x: number; y: number } | null = null;
+  fearBy: import("./World").Actor | null = null;
+  fearAt = 0;
+  fearDmg = 0;
   warcryUntil = 0;
   warcryDmg = 0;
   warcryArmor = 0;

@@ -32,6 +32,13 @@ export class Mob {
   rootUntil = 0;
   slowUntil = 0;
   slowPct = 0;
+  /** Безмолвие и страх (задача 148, effects.applyCc): сроки; страх — от кого бежать, кто наложил, когда и сколько урона набрано (breakFear). */
+  silenceUntil = 0;
+  fearUntil = 0;
+  fearFrom: { x: number; y: number } | null = null;
+  fearBy: import("./World").Actor | null = null;
+  fearAt = 0;
+  fearDmg = 0;
   /** Ослабление (урон −weakPct%), проклятие и кровотечение (значки). */
   weakUntil = 0;
   weakPct = 0;
@@ -47,11 +54,11 @@ export class Mob {
   tauntBy = "";
   /** Поведение из data/mobAI.json. */
   readonly ai: MobAI;
-  /** Конец замаха удара по площади; кулдауны; уже учтённые длительности контроля. */
+  /** Конец замаха удара по площади; кулдауны; когда моба последний раз оглушили, напугали или сбили (effects.interruptCast) — замах, начатый раньше, не бьёт. */
   windUntil = 0;
   slamAt = 0;
   healAt = 0;
-  seenCc = { stun: 0, slow: 0, root: 0 };
+  ccAt = -1;
   deadAt = 0;
   respawnAt = 0;
   lastHitAt = 0;
@@ -140,9 +147,10 @@ export class Mob {
     this.damageBy.clear();
     this.threat.clear();
     this.tauntUntil = 0;
-    this.stunUntil = this.rootUntil = this.slowUntil = this.weakUntil = this.curseUntil = this.bleedUntil = this.bleedStacks = 0;
+    this.stunUntil = this.rootUntil = this.slowUntil = this.silenceUntil = this.fearUntil = this.weakUntil = this.curseUntil = this.bleedUntil = this.bleedStacks = 0;
     this.windUntil = this.slamAt = this.healAt = 0;
-    this.seenCc = { stun: 0, slow: 0, root: 0 };
+    this.ccAt = -1;
+    this.fearBy = null;
     this.boss?.reset();
   }
 

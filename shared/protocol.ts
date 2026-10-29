@@ -53,6 +53,9 @@ export const BUFF_STEALTH = 256;
 /** Проклятие (урон тенью со временем) и кровотечение — классы Умбрата. */
 export const BUFF_CURSE = 512;
 export const BUFF_BLEED = 1024;
+/** Безмолвие и страх (задача 148, server/src/game/effects.ts applyCc). */
+export const BUFF_SILENCE = 2048;
+export const BUFF_FEAR = 4096;
 
 // ---------- сервер -> клиент ----------
 export interface SelfState {

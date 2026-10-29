@@ -30,7 +30,7 @@ const FM: Record<string, FMat> = {
   crypt: { r: R.crypt, base: 2.4, spread: 0.4, noise: 0.45, cracks: 0.5, lava: 0, smolder: 0, ash: 0, dust: 0.6, moss: 0.4, bones: 0.2, scorch: 0 },
 };
 const MAT_OF: Record<number, string> = { [T.Marble]: "cathedral", [T.CrackedMarble]: "cracked", [T.Basalt]: "ashen", [T.Worn]: "worn", [T.Obsidian]: "raid", [T.Ash]: "ashfloor", [T.Cobble]: "seal", [T.Floor]: "crypt" };
-const LIGHTS: Record<string, [number, RGBA, number]> = {
+export const LIGHTS: Record<string, [number, RGBA, number]> = {
   dg_brazier_a: [96, [255, 160, 70, 255], 0.75], dg_brazier_b: [96, [255, 160, 70, 255], 0.75], brazier: [96, [255, 160, 70, 255], 0.75],
   torch: [70, [255, 170, 80, 255], 0.55], ember_vent: [56, [255, 110, 40, 255], 0.6],
 };
@@ -78,7 +78,8 @@ function kdLayout(W: number, H: number, seed: number) {
   return (x: number, y: number) => { const id = ids[y * W + x], [sx, sy, w, h] = rects[id]; return { id, row: id, k: 0, sx, sy, w, h }; };
 }
 
-function paintMap(m: WorldMap, name: string, seed: number) {
+/** Пол карты одной картинкой; save=false — только вернуть слои (tools/gen/citadel.ts кладёт их под архитектуру цитадели). */
+export function paintMap(m: WorldMap, name: string, seed: number, save = true, kdAll = false): { floor: PC; emit: PC } {
   const W = m.w * S, H = m.h * S;
   const pc = new PC(W, H), emit = new PC(W, H);
   const slab = layout(W, H, seed), kd = kdLayout(W, H, seed + 5);
@@ -101,7 +102,7 @@ function paintMap(m: WorldMap, name: string, seed: number) {
   // 2. плиты: тон плиты, свет сверху-слева, швы с разрывами
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const key = matAt[y * W + x]; if (!key) continue;
-    const f = FM[key], s = key === "cathedral" ? kd(x, y) : slab(x, y), lx = x - s.sx, ly = y - s.sy;
+    const f = FM[key], s = key === "cathedral" || kdAll ? kd(x, y) : slab(x, y), lx = x - s.sx, ly = y - s.sy;
     const broken = vn(x, y, 7, 5, seed + 11) > 0.68 || (lx === 0 && hash01(s.row, s.k, seed + 12) < 0.18);
     const tone = f.base + (hash01(s.row, s.k, seed + 13) - 0.5) * 2 * f.spread + (f.checker ? (hash01(s.row, s.k, seed + 14) < 0.5 ? f.checker * 0.7 : -f.checker) : 0);
     let v = tone + (vn(x, y, 11, 8, seed + 15) - 0.5) * 2 * f.noise + (vn(x, y, 4, 4, seed + 16) - 0.5) * f.noise * 0.5;
@@ -220,10 +221,15 @@ function paintMap(m: WorldMap, name: string, seed: number) {
       const e = emit.get(x, y)!; put(emit, x, y, e[3] && e[0] > 200 && e[1] < 140 ? e : [col[0], col[1], col[2], Math.max(e[3], Math.round(a * 70))]);
     }
   }
-  pc.save(path.join(OUT, `${name}_floor.png`));
-  emit.save(path.join(OUT, `${name}_emit.png`));
-  console.log(`${name}: ${W}×${H}`);
+  if (save) {
+    pc.save(path.join(OUT, `${name}_floor.png`));
+    emit.save(path.join(OUT, `${name}_emit.png`));
+    console.log(`${name}: ${W}×${H}`);
+  }
+  return { floor: pc, emit };
 }
 
-paintMap(generateDungeonMap(), "dungeon", 101);
-paintMap(generateRaidMap(), "raid", 202);
+if (/floors-maps\.ts$/.test(process.argv[1] ?? "")) {
+  paintMap(generateDungeonMap(), "dungeon", 101);
+  paintMap(generateRaidMap(), "raid", 202);
+}

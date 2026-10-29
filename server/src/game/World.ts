@@ -18,7 +18,7 @@ import { MOBS } from "../../../shared/mobs";
 import { MOUNTS, mountName, MOUNT_CAST_MS } from "../../../shared/mounts";
 import * as mountDrops from "./mountDrops";
 import {
-  Anim, BUFF_BLEED, BUFF_BURN, BUFF_CURSE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STEALTH, BUFF_STUN, BUFF_WARCRY, Dir,
+  Anim, BUFF_BLEED, BUFF_BURN, BUFF_CURSE, BUFF_FEAR, BUFF_HASTE, BUFF_SILENCE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STEALTH, BUFF_STUN, BUFF_WARCRY, Dir,
   type ChatLine, type Fx, type FxKind,
 } from "../../../shared/protocol";
 import type { WorldState } from "../rooms/schema";
@@ -39,9 +39,12 @@ import { SpatialHash, crowdStep } from "../../../shared/crowd";
 import { Soldiers } from "./soldiers";
 import { BannerWar, type WarStore } from "./bannerWar";
 import { FortSiege } from "./siege";
+import { EventClock } from "./eventClock";
+import { WorldBosses, type WbStore } from "../worldboss";
 import { moveGated } from "../../../shared/siege";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissAllPets, type Pet } from "./Pet";
-import { applySlow, endShield, tickEffects } from "./effects";
+import { applySlow, breakFear, endShield, fearDir, tickEffects } from "./effects";
+import { CC, slowMul, slowPctCap } from "../../../shared/cc";
 import { auraPack, targetAuras } from "./auras";
 import * as auraFx from "./auraFx";
 import type { Player } from "./Player";
@@ -66,6 +69,8 @@ export interface HitOpts {
   noReflect?: boolean;
   /** Не прерывать скрытность атакующего (яд). */
   noBreak?: boolean;
+  /** Урон со временем (тик яда, горения, кровотечения): страх ломается им с весом data/cc.json fear.dotWeight. */
+  dot?: boolean;
   /** Потолок снижения бронёй (доля 0…1): удар почти мимо брони (лучники башен стен, data/patrols.json towers.armorCap). */
   armorCap?: number;
 }
@@ -93,6 +98,8 @@ export interface WorldOptions {
   quiet?: boolean;
   /** Хранилище владельцев оснований «Знамён Предела» (WorldRoom — файл рядом с базой). */
   warStore?: WarStore;
+  /** Хранилище мировых боссов (задача 151): Летопись, знамя победы, недельные трофеи. */
+  wbossStore?: WbStore;
   /** Подземелье «Пепельные чертоги»: свои мобы и босс, возрождение у входа, трофеи босса раз в сутки (shared/dungeon.ts). */
   dungeon?: boolean;
 }
@@ -134,6 +141,9 @@ export class World {
   war: BannerWar | null = null;
   /** Осада форта (задача 132, шаг 15; siege.ts): только в мире. */
   siege: FortSiege | null = null;
+  /** Общий планировщик событий (задача 151, eventClock.ts) и мировые боссы (server/src/worldboss): только в мире. */
+  clock: EventClock | null = null;
+  wboss: WorldBosses | null = null;
   hazards: { id: string; x: number; y: number; r: number; until: number; dps: number; kind: FxKind; owner: Mob; tickAt: number }[] = [];
 
   constructor(
@@ -146,8 +156,10 @@ export class World {
     if (opts.mobs !== false && !opts.map) {
       this.town = new Townfolk(this);
       this.soldiers = new Soldiers(this);
+      this.clock = new EventClock(this);
       this.war = new BannerWar(this, opts.warStore);
       this.siege = new FortSiege(this);
+      this.wboss = new WorldBosses(this, this.clock, opts.wbossStore);
     }
   }
 
@@ -340,6 +352,8 @@ export class World {
     this.soldiers?.update(dt);
     this.war?.update();
     this.siege?.update();
+    this.wboss?.update();
+    this.clock?.update(Date.now());
     this.updateHazards();
     if (this.opts.mobs !== false) tickEncounters(this);
     this.flush();
@@ -475,6 +489,8 @@ export class World {
       this.emit({ t: "dmg", id: dst.id, v: 0, imm: true });
       return MISS;
     }
+    // мировой босс (задача 151): герой ниже minLevel его не ранит
+    if (this.wboss?.weak(src, dst)) return MISS;
     // уклонение (Ловкость): обычные удары мобов и игроков, кроме фиксированного урона (зоны боссов, отражение, DoT)
     if (this.isPlayer(dst) && o.flat === undefined && src !== dst && Math.random() < dst.derived.dodge) {
       dst.combatAt = this.time;
@@ -607,6 +623,8 @@ export class World {
     if (this.isPlayer(dst)) v = legendary.beforeLethal(this, dst, rogues.beforeLethal(this, dst, mages.beforeLethal(this, dst, healers.beforeLethal(this, dst, tanks.beforeLethal(this, dst, v)))));
     this.applyDamage(dst, v, src);
     this.onDamage?.(src, dst, v);
+    this.wboss?.onDamage(src, dst, v);
+    breakFear(this, dst, src, v, o);
     this.emit({ t: "dmg", id: this.idOf(dst), v, crit, k: o.kind ?? "phys" });
     if (this.isPlayer(src)) {
       const ls = src.derived.lifesteal + (src.frenzyUntil > this.time ? src.frenzyLeech / 100 : 0);
@@ -655,7 +673,7 @@ export class World {
     const before = p.unit.hp;
     p.unit.hp = Math.min(p.unit.maxHp, p.unit.hp + v);
     const got = p.unit.hp - before;
-    if (got > 0) this.onHeal?.(by ?? p, got);
+    if (got > 0) { this.onHeal?.(by ?? p, got); this.wboss?.onHeal(by ?? p, p, got); }
     if (show && got > 0) this.emit({ t: "dmg", id: p.id, v: got, heal: true });
     if (by) healers.onHealed(this, p, v, got, by);
     return got;
@@ -694,9 +712,9 @@ export class World {
     m.respawnAt = this.time + respawn;
     m.boss?.onDeath();
     if (m.boss) this.bossKills.set(m.def.id, { by: killer && this.isPlayer(killer) ? killer.name : T("srv.World.827"), at: this.time });
-    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); if (!m.faction) mountDrops.onKill(this, killer, m); }
+    if (killer && this.isPlayer(killer)) { legendary.onKill(this, killer, m); tanks.onKill(this, killer, m); healers.onKill(this, killer, m); mages.onKill(this, killer, m); archers.onKill(this, killer, m); rogues.onKill(this, killer, m); if (!m.faction && !m.def.wboss) mountDrops.onKill(this, killer, m); }
     if (m.def.raid) this.onRaidKill?.(m, killer);
-    else if (!m.faction) grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined); // боец фракции — без опыта и добычи
+    else if (!m.faction && !m.def.wboss) grantKillRewards(this, m, killer && this.isPlayer(killer) ? killer : undefined); // боец фракции — без опыта и добычи
     if (m.summoned) this.later(2500, () => this.removeMob(m));
   }
 
@@ -722,6 +740,7 @@ export class World {
     p.send("toast", { text: T("srv.World.178"), kind: "error" });
     this.war?.onKill(p, killer);
     this.siege?.onKill(p, killer);
+    this.wboss?.onKill(p, killer);
     this.onPlayerKilled?.(p, killer);
   }
 
@@ -739,7 +758,7 @@ export class World {
     p.unit.hp = p.unit.maxHp;
     p.unit.mp = p.unit.maxMp;
     p.unit.anim = Anim.Idle;
-    p.stunUntil = p.rootUntil = p.slowUntil = 0;
+    p.stunUntil = p.rootUntil = p.slowUntil = p.silenceUntil = p.fearUntil = 0;
     p.selfDirty = true;
     if (lost) p.send("toast", { text: T("srv.World.179", { lost: lost }), kind: "error" });
   }
@@ -773,7 +792,7 @@ export class World {
     if (!m || !p.save.mounts?.includes(m.id)) return err(T("srv.World.182"));
     if (p.level < m.level) return err(T("srv.World.183", { mountname: mountName(m.id, p.faction), level: m.level }));
     if (p.inCombat(this.time)) return err(T("srv.World.184"));
-    if (p.stunUntil > this.time || p.frozenUntil > this.time) return;
+    if (p.stunUntil > this.time || p.fearUntil > this.time || p.frozenUntil > this.time) return;
     p.input = { mx: 0, my: 0 };
     p.moveTo = null;
     p.mountCast = { until: this.time + MOUNT_CAST_MS, x: p.x, y: p.y };
@@ -788,7 +807,7 @@ export class World {
   // ---------- игроки ----------
   playerSpeed(p: Player): number {
     let s = PLAYER_SPEED * (MOUNTS[p.unit.mount]?.speed ?? 1);
-    if (p.slowUntil > this.time) s *= 1 - p.slowPct / 100;
+    if (p.slowUntil > this.time) s *= slowMul(p.slowPct);
     if (p.stealthUntil > this.time) s *= 0.7;
     if (this.war) s *= this.war.speedMul(p);
     return s * terrainSpeedMul(this.map, p.unit.x, p.unit.y);
@@ -850,7 +869,11 @@ export class World {
     if (p.stealthUntil > t) b |= BUFF_STEALTH;
     if (p.curseUntil > t) b |= BUFF_CURSE;
     if (p.bleedUntil > t) b |= BUFF_BLEED;
+    if (p.silenceUntil > t) b |= BUFF_SILENCE;
+    if (p.fearUntil > t) b |= BUFF_FEAR;
     u.buffs = b;
+    const sp = p.slowUntil > t ? Math.round(slowPctCap(p.slowPct)) : 0;
+    if (u.slowPct !== sp) u.slowPct = sp;
     // остаток щита-поглотителя для рамок цели и группы (только у героев, целым): шлётся только при изменении
     if (p.shieldAmt > 0 && p.shieldUntil <= t) p.shieldAmt = 0; // срок вышел: остаток не висит (по shieldAmt судят и боты арены и рейда)
     const sh = p.shieldUntil > t ? Math.round(p.shieldAmt) : 0;
@@ -884,7 +907,7 @@ export class World {
     if (cb !== p.combatSent) { p.combatSent = cb; p.send("combat", { on: cb }); }
     tickPetCast(this, p);
     if (p.mountCast) {
-      if (Math.hypot(u.x - p.mountCast.x, u.y - p.mountCast.y) > 0.5 || p.input.mx || p.input.my || p.moveTo || p.stunUntil > t) this.breakMount(p);
+      if (Math.hypot(u.x - p.mountCast.x, u.y - p.mountCast.y) > 0.5 || p.input.mx || p.input.my || p.moveTo || p.stunUntil > t || p.fearUntil > t) this.breakMount(p);
       else if (t >= p.mountCast.until) {
         p.mountCast = null;
         u.mount = p.save.mount ?? "";
@@ -910,7 +933,8 @@ export class World {
       if (u.anim === Anim.Cast) u.anim = Anim.Idle;
       p.send("toast", { text: T("srv.World.187"), kind: "error" });
     }
-    const canMove = !frozen && p.stunUntil <= t && p.rootUntil <= t && p.castUntil <= t;
+    const feared = !frozen && p.fearUntil > t && p.stunUntil <= t;
+    const canMove = !frozen && !feared && p.fearUntil <= t && p.stunUntil <= t && p.rootUntil <= t && p.castUntil <= t;
     const target = p.targetId ? this.actor(p.targetId) : undefined;
     const foe = !!target && this.hostile(p, target);
     if (p.targetId && (!target || this.isDead(target) || (foe ? this.stealthed(target) : !this.isPlayer(target)) || this.dist(u, target) > 900)) {
@@ -920,7 +944,19 @@ export class World {
     if (!p.targetId || !foe) p.engaged = p.approach = false;
     let moving = false;
     const fol = p.followId ? this.followTarget(p) : null;
-    if (canMove) {
+    if (feared) {
+      // страх: управление у сервера — бег прочь от источника (data/cc.json fear), корни держат на месте
+      p.moveTo = null;
+      p.pend = null;
+      if (p.rootUntil <= t) {
+        const fd = fearDir(this, p), sp = this.playerSpeed(p) * CC.fear.speedMul * dt;
+        const n = this.move(u.x, u.y, fd.x * sp, fd.y * sp, PLAYER_RADIUS, p.faction);
+        moving = n.x !== u.x || n.y !== u.y;
+        u.x = Math.round(n.x * 10) / 10;
+        u.y = Math.round(n.y * 10) / 10;
+        u.dir = World.dirTo(fd.x, fd.y);
+      }
+    } else if (canMove) {
       if (p.input.mx || p.input.my) {
         const len = Math.hypot(p.input.mx, p.input.my);
         const sp = this.playerSpeed(p) * dt;
@@ -951,7 +987,7 @@ export class World {
       }
     }
     // автоатака
-    if (p.targetId && target && foe && p.engaged && !this.isDead(target) && !frozen && p.stunUntil <= t && t >= p.attackAt && !this.noFight(p) && !(p.input.mx || p.input.my) && !p.moveTo) {
+    if (p.targetId && target && foe && p.engaged && !this.isDead(target) && !frozen && p.stunUntil <= t && p.fearUntil <= t && t >= p.attackAt && !this.noFight(p) && !(p.input.mx || p.input.my) && !p.moveTo) {
       const d2 = this.dist(u, target);
       if (d2 <= p.attackRange() + this.radiusOf(target) && lineClear(this.map, u.x, u.y, target.x, target.y)) this.playerAttack(p, target);
     }
@@ -984,7 +1020,7 @@ export class World {
   // ---------- мобы ----------
   mobSpeed(m: Mob) {
     let s = m.def.speed * m.speedMul;
-    if (m.slowUntil > this.time) s *= 1 - m.slowPct / 100;
+    if (m.slowUntil > this.time) s *= slowMul(m.slowPct);
     return s;
   }
 
@@ -1089,12 +1125,25 @@ export class World {
     if (m.rootUntil > t) b |= BUFF_ROOT;
     if (m.curseUntil > t) b |= BUFF_CURSE;
     if (m.bleedUntil > t) b |= BUFF_BLEED;
+    if (m.silenceUntil > t) b |= BUFF_SILENCE;
+    if (m.fearUntil > t) b |= BUFF_FEAR;
     u.buffs = (u.buffs & 0x20) | b;
+    const sp = m.slowUntil > t ? Math.round(slowPctCap(m.slowPct)) : 0;
+    if (u.slowPct !== sp) u.slowPct = sp;
 
     if (m.boss) m.boss.update(dt);
-    this.applyWeakCc(m);
     if (m.stunUntil > t) {
       if (u.anim === Anim.Walk) u.anim = Anim.Idle;
+      return;
+    }
+    if (m.fearUntil > t && m.state !== "return") {
+      // страх: бег прочь от источника (data/cc.json fear), без атак; корни держат на месте
+      let moved = false;
+      if (m.rootUntil <= t) {
+        const fd = fearDir(this, m);
+        moved = this.moveMob(m, u.x + fd.x * 60, u.y + fd.y * 60, dt, this.mobSpeed(m) * CC.fear.speedMul);
+      }
+      u.anim = moved ? Anim.Walk : u.anim === Anim.Walk ? Anim.Idle : u.anim;
       return;
     }
     const canMove = m.rootUntil <= t && m.windUntil <= t && !(m.boss && (m.boss as { casting?: boolean }).casting);
@@ -1107,13 +1156,16 @@ export class World {
       const det = m.detour && t < m.detourUntil ? m.detour : null;
       const gx = det ? det.x : m.home.x, gy = det ? det.y : m.home.y;
       moving = this.moveMob(m, gx, gy, dt, m.def.speed * 1.6);
-      u.hp = Math.min(u.maxHp, u.hp + Math.ceil(u.maxHp * 0.05 * dt * 10));
+      // мировой босс (задача 151, holdHp): идёт домой без лечения и без сброса — здоровье сбрасывает директор при пустом круге
+      const hold = !!(m.boss as { holdHp?: boolean } | null)?.holdHp;
+      if (!hold) u.hp = Math.min(u.maxHp, u.hp + Math.ceil(u.maxHp * 0.05 * dt * 10));
       const dh = this.dist(u, m.home);
-      if (dh < 6) m.reset();
+      if (dh < 6 && hold) { m.state = "idle"; m.retSince = -1; m.detour = null; }
+      else if (dh < 6) m.reset();
       else if (det && (!moving || Math.hypot(det.x - u.x, det.y - u.y) < 6)) m.detour = null;
       else if (dh < m.retBest - 6) { m.retBest = dh; m.retAt = t; }
       else if (t - m.retAt > 1500) {
-        if (t - m.retSince > World.RETURN_GIVEUP_MS) m.reset();
+        if (t - m.retSince > World.RETURN_GIVEUP_MS) { if (hold) { u.x = m.home.x; u.y = m.home.y; m.state = "idle"; m.retSince = -1; } else m.reset(); }
         else { m.nav.reset(); this.mobDetour(m); m.retAt = t; m.retBest = dh; }
       }
     } else {
@@ -1165,7 +1217,7 @@ export class World {
           else if (d <= reach + 4 && clear && t >= m.attackAt && m.windUntil <= t) this.mobAttack(m, target);
           if (!moving && canMove) this.nudgeMob(m, dt, target.x, target.y);
           // бросок по цели вне ближнего боя (data/mobAI.json throw): кайт не спасает от урона босса
-          if (m.ai.throw && d > reach + 4 && d <= m.ai.throw.range && clear && t >= m.attackAt && m.windUntil <= t && !(m.boss && (m.boss as { casting?: boolean }).casting)) this.mobThrow(m, target);
+          if (m.ai.throw && d > reach + 4 && d <= m.ai.throw.range && clear && t >= m.attackAt && m.windUntil <= t && m.silenceUntil <= t && !(m.boss && (m.boss as { casting?: boolean }).casting)) this.mobThrow(m, target);
           if (!moving && d > reach && m.def.projectile && canMove) moving = this.moveMob(m, target.x, target.y, dt, this.mobSpeed(m), 20);
         }
       } else if (m.state === "chase") {
@@ -1213,21 +1265,10 @@ export class World {
     m.detour = null;
   }
 
-  /** Слабость к контролю: оглушение/замедление/корни длятся дольше (или короче) по data/mobAI.json. */
-  private applyWeakCc(m: Mob) {
-    const cc = m.ai.weak?.cc, t = this.time, s = m.seenCc;
-    if (cc) {
-      if (cc.stun && m.stunUntil > s.stun) m.stunUntil = t + (m.stunUntil - t) * cc.stun;
-      if (cc.slow && m.slowUntil > s.slow) m.slowUntil = t + (m.slowUntil - t) * cc.slow;
-      if (cc.root && m.rootUntil > s.root) m.rootUntil = t + (m.rootUntil - t) * cc.root;
-    }
-    s.stun = m.stunUntil; s.slow = m.slowUntil; s.root = m.rootUntil;
-  }
-
   /** Шаман лечит самого раненого союзника в бою (снаряд света), не прерывая движения. */
   private mobHeal(m: Mob) {
     const h = m.ai.heal!;
-    if (this.time < m.healAt || m.stunUntil > this.time) return;
+    if (this.time < m.healAt || m.stunUntil > this.time || m.silenceUntil > this.time || m.fearUntil > this.time) return;
     let best: Mob | null = null, bf = 0.75;
     for (const a of this.mobs.values()) {
       if (a === m || a.dead || a.def.boss || a.faction || a.state === "return") continue;
@@ -1260,7 +1301,9 @@ export class World {
     m.unit.dir = World.dirTo(target.x - m.x, target.y - m.y);
     m.unit.aseq = (m.unit.aseq + 1) % 65535;
     const kind = (["phys", "fire", "frost", "poison", "arcane", "shadow", "nature", "holy"].includes(s.k) ? s.k : "phys") as FxKind;
-    this.telegraph(m, "circle", m.x, m.y, s.r, s.ms, (p) => { if (m.stunUntil <= this.time) this.hit(m, p, { kind, mult: s.mult }); }, { k: kind });
+    const t0 = this.time;
+    // оглушение или страх во время замаха (effects.interruptCast ставит ccAt) срывают удар
+    this.telegraph(m, "circle", m.x, m.y, s.r, s.ms, (p) => { if (m.stunUntil <= this.time && m.ccAt < t0) this.hit(m, p, { kind, mult: s.mult }); }, { k: kind });
   }
 
   /** Бросок снаряда (data/mobAI.json throw): mult урона удара, тип k. */

@@ -73,7 +73,6 @@ const pv = (p: Player, id: string) => SKILLS[id].v(Math.max(1, rk(p, id)));
 const isArcher = (p: Player) => p.cls === "ranger" || p.cls === "darkranger";
 const weaponAvg = (p: Player) => ((p.derived.dmgMin + p.derived.dmgMax) / 2) * p.derived.skillMult;
 const dirTo = (dx: number, dy: number): Dir => (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down);
-const boss = (w: World, a: Actor) => !w.isPlayer(a) && !!a.def.boss;
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 function setCd(p: Player, w: World, id: string, readyInMs: number) {
@@ -153,8 +152,7 @@ function placeTrap(w: World, p: Player, x: number, y: number, trapRank: number) 
     s.rollUntil = roll;
     // контроль ложится, если удар попал (поглощённый щитом — тоже); промах (уклонение, город) — без корней
     if (landed && !w.isDead(m)) {
-      if (boss(w, m)) applySlow(w, p, m, 50, trap.root * 1000);
-      else applyRoot(w, p, m, trap.root * 1000);
+      applyRoot(w, p, m, trap.root * 1000, { bossSlow: 50 }); // на боссе — замедление (data/cc.json boss)
     }
     if (trap.refund) {
       const ready = p.cds.get("hr_trap") || 0;
@@ -360,8 +358,7 @@ export function castArcher(c: CastCtx): string | null | undefined {
         w.emit({ t: "aoe", k: "chains", x: t.x, y: t.y, r: 36 });
         // путы держат, если стрела попала (поглощённая щитом — тоже); промах (уклонение, город) — нет
         if (!w.hitEx(p, t, { mult: v.dmg / 100, skill: true, kind: "shadow" }).landed || w.isDead(t)) return;
-        if (boss(w, t)) applySlow(w, p, t, 50, v.root * 1000);
-        else applyRoot(w, p, t, v.root * 1000);
+        applyRoot(w, p, t, v.root * 1000, { bossSlow: 50 }); // на боссе — замедление (data/cc.json boss)
         applyWeaken(w, p, t, v.weak, v.dur * 1000);
       });
       return null;
@@ -419,8 +416,7 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
   const s = st(p);
   if (id === "roll" && rk(p, "hr_trickroll")) {
     const m = pv(p, "hr_trickroll");
-    p.slowUntil = 0;
-    s.rollUntil = w.time + m.dur * 1000;
+    s.rollUntil = w.time + m.dur * 1000; // замедление снимает сам «Перекат» (data/cc.json skills.roll)
     s.rollPct = m.dmg;
     if (!w.inTown(p.x, p.y) && walkable(w.map, p.x, p.y, 6)) placeTrap(w, p, p.x, p.y, rk(p, "hr_trap"));
   }
@@ -504,7 +500,7 @@ export function afterDealt(w: World, src: Player, dst: Actor, v: number, o: HitO
     }
     if (rk(src, "hr_hamstring") && !w.isDead(dst)) {
       const m = pv(src, "hr_hamstring");
-      if (w.dist(src, dst) > m.dist) applySlow(w, src, dst, boss(w, dst) ? m.slow / 2 : m.slow, m.dur * 1000);
+      if (w.dist(src, dst) > m.dist) applySlow(w, src, dst, m.slow, m.dur * 1000); // по боссу слабее — общее правило data/cc.json boss.slowMult
     }
     if (rk(src, "hr_bond")) {
       const pet = petNear(w, src);

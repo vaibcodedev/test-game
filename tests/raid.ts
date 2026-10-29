@@ -148,7 +148,7 @@ function main() {
     });
     check("у каждой колонны есть тень от «Солнца»", shadows.every((n) => n >= 4), `точек тени ${shadows.join("/")}`);
     const wm = generateMap(MAP_SEED);
-    check("Вестники и Врата стоят на проходимых клетках", RAID_HERALDS.length >= 6 && RAID_HERALDS.every((h) => walkable(wm, h.x, h.y, 10) && !(cellAt(wm, h.x, h.y) & CELL_BLOCK)), `${RAID_HERALDS.length} точек`);
+    check("Вестник в Эмберхолле и у Врат стоит на проходимых клетках", RAID_HERALDS.some((h) => h.id === "raid_herald_ember") && RAID_HERALDS.every((h) => h.id === "raid_herald_ember" || h.id === "raid_gate") && RAID_HERALDS.every((h) => walkable(wm, h.x, h.y, 10) && !(cellAt(wm, h.x, h.y) & CELL_BLOCK)), `${RAID_HERALDS.length} точек`);
   }
 
   if (ONLY.has("fight")) {

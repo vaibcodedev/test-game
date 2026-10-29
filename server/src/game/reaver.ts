@@ -133,7 +133,7 @@ export function castReaver(c: CastCtx): string | null | undefined {
         w.later((Math.min(along, len) / speed) * 1000, () => {
           if (w.gone(m) || !w.hostile(p, m) || !w.canAffect(p, m)) return;
           w.emit({ t: "aoe", k: "slash", x: m.x, y: m.y, r: 30 });
-          if (w.hitEx(p, m, { mult: v.dmg / 100, skill: true, threat: 1 }).landed && !w.isDead(m)) bleed(w, p, m);
+          if (w.hitEx(p, m, { mult: v.dmg / 100, skill: true, threat: 1 }).landed && !w.isDead(m)) { bleed(w, p, m); c.slow(m, v.slow, v.slowDur * 1000); }
         }, p);
       }
       return null;

@@ -11,8 +11,8 @@
     "dk_death_grip": {
       "cls": "deathknight", "name": "Хватка смерти", "slot": 1, "maxRank": 5, "reqLevel": 3, "req": { "id": "dk_rune_strike", "rank": 1 },
       "target": "enemy", "range": 280, "cd": [12, -0.5], "mana": [12, 0],
-      "v": { "dmg": [60, 10], "slow": [50, 0], "slowDur": [2, 0], "taunt": [3, 0] },
-      "desc": "Цепи притягивают врага к вам: {dmg}% урона, замедление {slow}% на {slowDur} с, моб атакует вас {taunt} с. Босса цепи только замедляют.",
+      "v": { "dmg": [60, 10], "slow": [50, 0], "slowDur": [3, 0], "taunt": [3, 0] },
+      "desc": "Цепи притягивают врага к вам: {dmg}% урона, рывок сбивает каст, замедление {slow}% на {slowDur} с, моб атакует вас {taunt} с. Босса цепи только замедляют.",
       "icon": { "glyph": "charge", "bg": "purple", "fg": "frost" }, "tree": [2, 2]
     },
     "dk_bone_armor": {
@@ -48,14 +48,14 @@
       "cls": "bloodweaver", "name": "Жертва крови", "slot": 2, "maxRank": 5, "reqLevel": 8, "req": { "id": "bw_blood_bond", "rank": 1 },
       "target": "ally", "range": 320, "cd": [9, 0], "mana": [6, 0],
       "v": { "cost": [12, 0], "heal": [320, 50], "mana": [25, 3] },
-      "desc": "Отдаёт {cost}% своего здоровья: союзник или питомец лечится на {heal}% силы лечения. Без цели кровь превращается в {mana}% маны.",
+      "desc": "Отдаёт {cost}% своего здоровья: союзник или питомец лечится на {heal}% силы лечения. Без цели кровь превращается в {mana}% маны и срывает с вас корни, замедление и безмолвие (работает и под безмолвием).",
       "icon": { "glyph": "heal", "bg": "black", "fg": "red" }, "tree": [4, 2]
     },
     "bw_crimson_pool": {
       "cls": "bloodweaver", "name": "Багровая купель", "slot": 3, "maxRank": 5, "reqLevel": 15, "req": { "id": "bw_sacrifice", "rank": 1 },
       "target": "point", "range": 300, "cd": [16, 0], "mana": [24, 0],
-      "v": { "radius": [110, 0], "ticks": [5, 0], "dmg": [45, 8], "heal": [50, 10] },
-      "desc": "Лужа крови на {ticks} с: каждую секунду {dmg}% урона врагам и лечение союзников на {heal}% силы лечения.",
+      "v": {"slow":[30,0], "radius": [110, 0], "ticks": [5, 0], "dmg": [45, 8], "heal": [50, 10] },
+      "desc": "Лужа крови на {ticks} с: каждую секунду {dmg}% урона врагам (внутри они замедлены на {slow}%) и лечение союзников на {heal}% силы лечения.",
       "icon": { "glyph": "circle", "bg": "black", "fg": "red" }, "tree": [4, 1]
     },
 
@@ -69,22 +69,22 @@
     "dr_weakening": {
       "cls": "darkranger", "name": "Стрела ослабления", "slot": 1, "maxRank": 5, "reqLevel": 3, "req": { "id": "dr_cursed_arrow", "rank": 1 },
       "target": "enemy", "range": 320, "cd": [9, 0], "mana": [12, 0],
-      "v": { "dmg": [90, 15], "weak": [20, 2], "dur": [5, 0], "slow": [30, 0] },
+      "v": { "dmg": [90, 15], "weak": [20, 2], "dur": [5, 0], "slow": [40, 0] },
       "desc": "Отравленная тьмой стрела: {dmg}% урона, цель наносит на {weak}% меньше урона {dur} с и замедлена на {slow}%.",
       "icon": { "glyph": "precision", "bg": "black", "fg": "green" }, "tree": [1, 1]
     },
     "dr_raven": {
       "cls": "darkranger", "name": "Теневой ворон", "slot": 2, "maxRank": 5, "reqLevel": 8, "req": { "id": "dr_weakening", "rank": 1 },
       "target": "enemy", "range": 360, "cd": [14, 0], "mana": [16, 0],
-      "v": { "pecks": [5, 0], "dmg": [45, 8], "every": [0.8, 0] },
-      "desc": "Теневой ворон-спутник клюёт цель {pecks} раз по {dmg}% урона тенью.",
+      "v": {"silence":[2,0], "pecks": [5, 0], "dmg": [45, 8], "every": [0.8, 0] },
+      "desc": "Теневой ворон-спутник клюёт цель {pecks} раз по {dmg}% урона тенью; первый клевок — безмолвие {silence} с.",
       "icon": { "glyph": "volley", "bg": "black", "fg": "purple" }, "tree": [3, 1]
     },
     "dr_shadowmeld": {
       "offGcd": true, "cls": "darkranger", "name": "Уход в тень", "slot": 3, "maxRank": 5, "reqLevel": 15, "req": { "id": "dr_raven", "rank": 1 },
       "target": "self", "range": 0, "cd": [18, 0], "mana": [12, 0],
       "v": { "dur": [4, 0.5] },
-      "desc": "Растворяется в тени на {dur} с (мобы и игроки не видят), снимает замедление. Следующий выстрел — гарантированный крит.",
+      "desc": "Растворяется в тени на {dur} с (мобы и игроки не видят), снимает замедление и корни. Следующий выстрел — гарантированный крит.",
       "icon": { "glyph": "stealth", "bg": "black", "fg": "green" }, "tree": [4, 1]
     },
 
@@ -105,15 +105,15 @@
     "wl_skeletons": {
       "cls": "warlock", "name": "Восстание скелетов", "slot": 2, "maxRank": 5, "reqLevel": 8, "req": { "id": "wl_drain_mana", "rank": 1 },
       "target": "point", "range": 260, "cd": [30, 0], "mana": [25, 0],
-      "v": { "dmg": [90, 15], "radius": [70, 0], "root": [1.5, 0], "dur": [20, 2] },
+      "v": { "dmg": [90, 15], "radius": [70, 0], "root": [2, 0], "dur": [20, 2] },
       "desc": "Костяные руки рвутся из земли: {dmg}% урона и обездвиживание {root} с в точке. Скелет-прислужник сражается за вас {dur} с (вместо питомца).",
       "icon": { "glyph": "resurrect", "bg": "black", "fg": "green" }, "tree": [2, 0]
     },
     "wl_doom": {
       "cls": "warlock", "name": "Чумной туман", "slot": 3, "maxRank": 5, "reqLevel": 15, "req": { "id": "wl_skeletons", "rank": 1 },
       "target": "point", "range": 320, "cd": [15, 0], "mana": [28, 0],
-      "v": { "radius": [110, 0], "tick": [35, 6], "dur": [6, 0], "weak": [15, 0] },
-      "desc": "Ядовитый туман проклинает всех врагов в области: {tick}% урона каждую секунду {dur} с и −{weak}% к их урону.",
+      "v": {"slow":[20,0], "radius": [110, 0], "tick": [35, 6], "dur": [6, 0], "weak": [15, 0] },
+      "desc": "Ядовитый туман проклинает всех врагов в области: {tick}% урона каждую секунду {dur} с, −{weak}% к их урону и замедление {slow}%.",
       "icon": { "glyph": "frostnova", "bg": "purple", "fg": "green" }, "tree": [3, 1]
     },
 
@@ -127,8 +127,8 @@
     "rv_leap": {
       "cls": "reaver", "name": "Прыжок с разрезом", "slot": 1, "maxRank": 5, "reqLevel": 3, "req": { "id": "rv_lacerate", "rank": 1 },
       "target": "enemy", "range": 240, "cd": [11, -0.5], "mana": [12, 0],
-      "v": { "dmg": [120, 15], "splash": [60, 0], "radius": [70, 0] },
-      "desc": "Прыжок к врагу с разрезом: {dmg}% урона цели и {splash}% этого урона врагам рядом.",
+      "v": {"silence":[1,0], "dmg": [120, 15], "splash": [60, 0], "radius": [70, 0] },
+      "desc": "Прыжок к врагу с разрезом: {dmg}% урона цели и {splash}% этого урона врагам рядом; цель — безмолвие {silence} с. Прыжок срывает с вас корни и замедление.",
       "icon": { "glyph": "charge", "bg": "black", "fg": "red" }, "tree": [1, 1]
     },
     "rv_carve": {
@@ -142,13 +142,13 @@
       "cls": "reaver", "name": "Кровавое безумие", "slot": 3, "maxRank": 5, "reqLevel": 15, "req": { "id": "rv_carve", "rank": 1 },
       "target": "self", "range": 0, "cd": [20, 0], "mana": [10, 0],
       "v": { "cost": [10, 0], "dur": [8, 0], "haste": [30, 5], "leech": [10, 2] },
-      "desc": "Режет себя ({cost}% здоровья) и впадает в безумие на {dur} с: скорость атаки +{haste}%, {leech}% урона возвращается здоровьем.",
+      "desc": "Режет себя ({cost}% здоровья) и впадает в безумие на {dur} с: скорость атаки +{haste}%, {leech}% урона возвращается здоровьем, замедления на вас не действуют.",
       "icon": { "glyph": "berserk", "bg": "black", "fg": "red" }, "tree": [3, 1]
     },
 
     "tp_tempering": {"cls":"warrior","name":"Закалка в бою","kind":"passive","maxRank":3,"reqLevel":4,"req":{"id":"taunt","rank":1},"v":{"cd":[0.3,0.1]},"desc":"Каждый полученный удар (не чаще раза в секунду) сокращает перезарядку всех ваших умений на {cd} с.","icon":{"glyph":"anvil","bg":"brown","fg":"gold"},"tree":[0,0]},
     "tp_bulwark": {"cls":"warrior","name":"Оплот","kind":"passive","maxRank":3,"reqLevel":7,"req":{"id":"taunt","rank":2},"v":{"heal":[20,10],"refund":[0.5,0.25]},"desc":"Урон, поглощённый «Щитовым блоком», лечит вас на {heal}%, а каждый блокированный удар сокращает перезарядку блока на {refund} с.","icon":{"glyph":"bulwark","bg":"blue","fg":"steel"},"tree":[0,2]},
-    "tp_shield_bash": {"cls":"warrior","name":"Удар щитом","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"taunt","rank":1},"target":"enemy","range":62,"cd":[10,-0.4],"mana":[12,0],"v":{"dmg":[170, 25],"stun":[1.5,0],"blockBonus":[50,0],"threat":[150,20]},"desc":"Оглушающий удар щитом: {dmg}% урона и оглушение {stun} с (босса — замедление). Под «Щитовым блоком» урон +{blockBonus}%.","icon":{"glyph":"bash","bg":"blue","fg":"gold"},"tree":[1,2]},
+    "tp_shield_bash": {"cls":"warrior","name":"Удар щитом","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"taunt","rank":1},"target":"enemy","range":62,"cd":[10,-0.4],"mana":[12,0],"v":{"silence":[2,0],"dmg":[170, 25],"stun":[2, 0],"blockBonus":[50,0],"threat":[150,20]},"desc":"Оглушающий удар щитом: {dmg}% урона и оглушение {stun} с, после — безмолвие {silence} с; сбивает каст (босса — замедляет и сбивает каст). Под «Щитовым блоком» урон +{blockBonus}%.","icon":{"glyph":"bash","bg":"blue","fg":"gold"},"tree":[1,2]},
     "tp_glare": {"cls":"warrior","name":"Слепящий свет","slot":5,"maxRank":5,"reqLevel":11,"req":{"id":"tp_shield_bash","rank":1},"target":"self","range":0,"cd":[18,0],"mana":[18,0],"v":{"radius":[120,0],"weak":[30,2],"dur":[5,0],"threat":[100,20]},"desc":"Вспышка света слепит врагов вокруг: их урон −{weak}% на {dur} с, вся угроза на вас.","icon":{"glyph":"glare","bg":"brown","fg":"gold"},"tree":[2,2]},
     "tp_hammer": {"cls":"warrior","name":"Молот правосудия","slot":6,"maxRank":5,"reqLevel":13,"req":{"id":"charge","rank":1},"target":"enemy","range":260,"cd":[14,-0.5],"mana":[18,0],"v":{"dmg":[220, 30],"taunt":[3,0],"threat":[200,30]},"desc":"Метнув святой молот: {dmg}% урона светом и принуждение атаковать вас {taunt} с издалека.","icon":{"glyph":"hammer","bg":"brown","fg":"gold"},"tree":[3,2]},
     "tp_fortitude": {"cls":"warrior","name":"Упорство","kind":"passive","maxRank":3,"reqLevel":14,"req":{"id":"toughness","rank":2},"v":{"pct":[2,1]},"desc":"За каждые 10% потерянного здоровья получаемый урон −{pct}% (до −35%).","icon":{"glyph":"heartshield","bg":"red","fg":"gold"},"tree":[3,0]},
@@ -160,27 +160,27 @@
     "tp_divine": {"offGcd": true, "cls":"warrior","name":"Божественный щит","slot":8,"maxRank":5,"reqLevel":27,"req":{"id":"tp_retribution","rank":2},"target":"self","range":0,"cd":[90,-4],"mana":[30,0],"v":{"dur":[2.5,0.2]},"desc":"На {dur} с вы неуязвимы, оглушение, замедление и корни снимаются.","icon":{"glyph":"divine","bg":"blue","fg":"gold"},"tree":[6,2]},
     "dk_vampiric": {"cls":"deathknight","name":"Вампирская кровь","kind":"passive","maxRank":3,"reqLevel":4,"req":{"id":"dk_rune_strike","rank":1},"v":{"leech":[3,2]},"desc":"Любой нанесённый урон лечит вас на {leech}%. Излишек сверх здоровья становится щитом (до 20% здоровья, 8 с).","icon":{"glyph":"fangs","bg":"black","fg":"red"},"tree":[1,0]},
     "dk_icebound": {"cls":"deathknight","name":"Ледяная стойкость","kind":"passive","maxRank":3,"reqLevel":5,"req":{"id":"dk_rune_strike","rank":1},"v":{"armor":[6,6],"cc":[8,8]},"desc":"Броня +{armor}%, длительность оглушений и замедлений на вас −{cc}%.","icon":{"glyph":"icearmor","bg":"black","fg":"frost"},"tree":[1,2]},
-    "dk_icy_touch": {"cls":"deathknight","name":"Ледяное касание","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"dk_rune_strike","rank":2},"target":"enemy","range":220,"cd":[8,-0.3],"mana":[14,0],"v":{"dmg":[130,18],"slow":[45,0],"dur":[4,0],"root":[1.2,0]},"desc":"Ледяной сгусток: {dmg}% урона холодом, замедление {slow}% на {dur} с. Уже замедленная цель вмерзает: обездвижена на {root} с (босс — нет).","icon":{"glyph":"icytouch","bg":"black","fg":"frost"},"tree":[0,1]},
+    "dk_icy_touch": {"cls":"deathknight","name":"Ледяное касание","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"dk_rune_strike","rank":2},"target":"enemy","range":220,"cd":[8,-0.3],"mana":[14,0],"v":{"dmg":[130,18],"slow":[50, 0],"dur":[4,0],"root":[1.5, 0]},"desc":"Ледяной сгусток: {dmg}% урона холодом, замедление {slow}% на {dur} с. Уже замедленная цель вмерзает: обездвижена на {root} с (босс — нет).","icon":{"glyph":"icytouch","bg":"black","fg":"frost"},"tree":[0,1]},
     "dk_winters_bite": {"cls":"deathknight","name":"Укус зимы","kind":"passive","maxRank":3,"reqLevel":9,"req":{"id":"dk_icy_touch","rank":1},"v":{"bonus":[8,8]},"desc":"Урон по замедленным, оглушённым и обездвиженным врагам +{bonus}%.","icon":{"glyph":"snowflake","bg":"black","fg":"frost"},"tree":[0,2]},
     "dk_rune_mastery": {"cls":"deathknight","name":"Власть рун","kind":"passive","maxRank":3,"reqLevel":10,"req":{"id":"dk_rune_strike","rank":3},"v":{"dmg":[80,25]},"desc":"Каждое умение даёт руну. Накопив 5 рун, вы следующим ударом умения выпускаете разряд: {dmg}% урона оружия холодом.","icon":{"glyph":"rune","bg":"purple","fg":"frost"},"tree":[4,0]},
     "dk_frost_thorns": {"cls":"deathknight","name":"Ледяные шипы","kind":"passive","maxRank":3,"reqLevel":12,"req":{"id":"dk_bone_armor","rank":1},"v":{"pct":[15,10],"slow":[25,0]},"desc":"Ударившие вас вплотную получают {pct}% нанесённого урона холодом и замедление {slow}% на 2 с.","icon":{"glyph":"thorns","bg":"black","fg":"frost"},"tree":[4,1]},
     "dk_soul_reap": {"cls":"deathknight","name":"Жатва душ","slot":5,"maxRank":5,"reqLevel":13,"req":{"id":"dk_death_grip","rank":2},"target":"enemy","range":62,"cd":[12,-0.4],"mana":[16,0],"v":{"dmg":[180,25],"execute":[35,0],"mult":[2,0],"heal":[25,0],"healKill":[12,0]},"desc":"Коса смерти: {dmg}% урона тенью, ×{mult} если у цели меньше {execute}% здоровья. Возвращает {heal}% урона; добив — ещё {healKill}% здоровья и почти сброс перезарядки.","icon":{"glyph":"scythe","bg":"black","fg":"green"},"tree":[3,2]},
-    "dk_iron_chains": {"cls":"deathknight","name":"Железные цепи","kind":"passive","maxRank":3,"reqLevel":14,"req":{"id":"dk_death_grip","rank":3},"v":{"radius":[80,10],"root":[1.5,0.5]},"desc":"«Хватка смерти» притягивает и врагов рядом с целью ({radius} пикс.); босс на {root} с вмерзает в землю.","icon":{"glyph":"chainlink","bg":"black","fg":"bone"},"tree":[2,1]},
+    "dk_iron_chains": {"cls":"deathknight","name":"Железные цепи","kind":"passive","maxRank":3,"reqLevel":14,"req":{"id":"dk_death_grip","rank":3},"v":{"radius":[80,10],"root":[1.5,0.5]},"desc":"«Хватка смерти» притягивает и врагов рядом с целью ({radius} пикс.); цель вмерзает в землю на {root} с (босс — замедлен).","icon":{"glyph":"chainlink","bg":"black","fg":"bone"},"tree":[2,1]},
     "dk_rune_blade": {"cls":"deathknight","name":"Рунный клинок","slot":6,"maxRank":5,"reqLevel":17,"req":{"id":"dk_rune_mastery","rank":1},"target":"self","range":0,"cd":[24,0],"mana":[20,0],"v":{"bonus":[15,3],"leech":[8,2],"dur":[10,0]},"desc":"Клинок вспыхивает рунами на {dur} с: ваш урон +{bonus}% и {leech}% нанесённого возвращается здоровьем.","icon":{"glyph":"runeblade","bg":"purple","fg":"frost"},"tree":[5,0]},
     "dk_mortality": {"cls":"deathknight","name":"Знак смерти","kind":"passive","maxRank":3,"reqLevel":18,"req":{"id":"dk_soul_reap","rank":1},"v":{"perMark":[3,2],"max":[5,0],"dur":[10,0]},"desc":"«Рунический удар» и «Жатва душ» метят цель (до {max}): каждая метка усиливает ваш урон по ней на {perMark}% на {dur} с.","icon":{"glyph":"skullmark","bg":"black","fg":"bone"},"tree":[4,2]},
     "dk_blood_tap": {"cls":"deathknight","name":"Пожирание боли","kind":"passive","maxRank":3,"reqLevel":19,"req":{"id":"dk_blood_drain","rank":1},"v":{"conv":[30,15],"icd":[25,0]},"desc":"Упав ниже 50% здоровья, вы обращаете {conv}% урона, полученного за 6 с, в лечение на 5 с (раз в {icd} с).","icon":{"glyph":"droplets","bg":"black","fg":"red"},"tree":[7,2]},
-    "dk_chain_storm": {"cls":"deathknight","name":"Цепная буря","slot":7,"maxRank":5,"reqLevel":21,"req":{"id":"dk_iron_chains","rank":1},"target":"self","range":0,"cd":[22,0],"mana":[28,0],"v":{"dmg":[70,10],"radius":[160,0],"slow":[40,0],"dur":[2,0],"max":[6,0]},"desc":"Цепи рвут землю вокруг: до {max} врагов притянуты, {dmg}% урона тенью, замедление {slow}% на {dur} с. Боссы лишь замедляются.","icon":{"glyph":"chains","bg":"purple","fg":"bone"},"tree":[2,0]},
+    "dk_chain_storm": {"cls":"deathknight","name":"Цепная буря","slot":7,"maxRank":5,"reqLevel":21,"req":{"id":"dk_iron_chains","rank":1},"target":"self","range":0,"cd":[22,0],"mana":[28,0],"v":{"dmg":[70,10],"radius":[160,0],"slow":[50, 0],"dur":[3, 0],"max":[6,0]},"desc":"Цепи рвут землю вокруг: до {max} врагов притянуты, {dmg}% урона тенью, замедление {slow}% на {dur} с. Боссы лишь замедляются.","icon":{"glyph":"chains","bg":"purple","fg":"bone"},"tree":[2,0]},
     "dk_unholy_vigor": {"cls":"deathknight","name":"Нечестивая сила","kind":"passive","maxRank":3,"reqLevel":22,"req":{"id":"dk_blood_drain","rank":2},"v":{"hp":[3,2],"mana":[3,2]},"desc":"За каждое убийство вы восстанавливаете {hp}% здоровья и {mana}% маны.","icon":{"glyph":"soulorb","bg":"black","fg":"green"},"tree":[6,1]},
-    "dk_anti_magic": {"offGcd": true, "cls":"deathknight","name":"Антимагический панцирь","slot":8,"maxRank":5,"reqLevel":24,"req":{"id":"dk_frost_thorns","rank":1},"target":"self","range":0,"cd":[30,-1],"mana":[18,0],"v":{"reduce":[60,0],"dur":[5,0],"heal":[30,5]},"desc":"На {dur} с урон не от оружия (магия, яд, тень) −{reduce}%, а {heal}% поглощённого лечит вас.","icon":{"glyph":"antimagic","bg":"purple","fg":"frost"},"tree":[5,1]},
+    "dk_anti_magic": {"offGcd": true, "cls":"deathknight","name":"Антимагический панцирь","slot":8,"maxRank":5,"reqLevel":24,"req":{"id":"dk_frost_thorns","rank":1},"target":"self","range":0,"cd":[30,-1],"mana":[18,0],"v":{"reduce":[60,0],"dur":[5,0],"heal":[30,5]},"desc":"На {dur} с урон не от оружия (магия, яд, тень) −{reduce}%, а {heal}% поглощённого лечит вас; безмолвие и страх на вас не действуют.","icon":{"glyph":"antimagic","bg":"purple","fg":"frost"},"tree":[5,1]},
     "dk_rune_fury": {"cls":"deathknight","name":"Рунная ярость","kind":"passive","maxRank":3,"reqLevel":26,"req":{"id":"dk_rune_blade","rank":1},"v":{"cd":[0.4,0.2]},"desc":"Каждый ваш обычный удар сокращает перезарядку всех умений на {cd} с: чем чаще бьёте клинком, тем чаще работают умения.","icon":{"glyph":"runefury","bg":"black","fg":"frost"},"tree":[6,0]},
     "dk_deaths_embrace": {"cls":"deathknight","name":"Объятия смерти","kind":"passive","maxRank":3,"reqLevel":28,"req":{"id":"dk_blood_tap","rank":2},"v":{"hp":[20,10],"icd":[150,-30]},"desc":"Смертельный удар оставляет вас с 1 здоровья: вы восстанавливаете {hp}% и получаете щит (раз в {icd} с).","icon":{"glyph":"coffin","bg":"black","fg":"bone"},"tree":[7,1]},
 
     "cl_absolution": {"cls":"healer","name":"Отпущение","kind":"passive","maxRank":3,"reqLevel":4,"req":{"id":"heal","rank":1},"v":{"pct":[30,15],"cap":[20,0]},"desc":"Излишек вашего лечения ({pct}%) превращается в щит на цели (до {cap}% её здоровья, 8 с): чем больше лечите здоровых, тем крепче они держатся.","icon":{"glyph":"absolve","bg":"blue","fg":"gold"},"tree":[0,0]},
-    "cl_radiance": {"cls":"healer","name":"Сияющий луч","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"circle","rank":1},"target":"point","range":300,"cd":[9,-0.3],"mana":[20,0],"v":{"heal":[150,25],"dmg":[300, 45]},"desc":"Луч света вдоль прицела (до 300): враги на пути получают {dmg}% урона светом, союзники на пути исцеляются на {heal}% силы лечения.","icon":{"glyph":"raybeam","bg":"blue","fg":"gold"},"tree":[1,2]},
+    "cl_radiance": {"cls":"healer","name":"Сияющий луч","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"circle","rank":1},"target":"point","range":300,"cd":[9,-0.3],"mana":[20,0],"v":{"silence":[2,0],"heal":[150,25],"dmg":[300, 45]},"desc":"Луч света вдоль прицела (до 300): враги на пути получают {dmg}% урона светом и безмолвие {silence} с, союзники на пути исцеляются на {heal}% силы лечения.","icon":{"glyph":"raybeam","bg":"blue","fg":"gold"},"tree":[1,2]},
     "cl_ward_wrath": {"cls":"healer","name":"Карающий щит","kind":"passive","maxRank":3,"reqLevel":17,"req":{"id":"holyshield","rank":1},"v":{"pct":[25,15]},"desc":"Когда ваш щит поглощает урон, обидчик получает {pct}% поглощённого святым светом.","icon":{"glyph":"wardwrath","bg":"brown","fg":"gold"},"tree":[5,0]},
     "cl_blessing": {"cls":"healer","name":"Благословение","slot":5,"maxRank":5,"reqLevel":9,"req":{"id":"cl_radiance","rank":1},"target":"ally","range":320,"cd":[20,0],"mana":[22,0],"v":{"dmg":[12,2],"reduce":[10,2],"dur":[15,0]},"desc":"Благословляет героя (без цели — вас) на {dur} с: его урон +{dmg}%, получаемый урон −{reduce}%.","icon":{"glyph":"bless","bg":"blue","fg":"gold"},"tree":[2,2]},
-    "cl_cleanse": {"cls":"healer","name":"Очищение","slot":6,"maxRank":5,"reqLevel":11,"req":{"id":"renew","rank":1},"target":"ally","range":320,"cd":[10,-0.4],"mana":[16,0],"v":{"heal":[60,10]},"desc":"Снимает с союзника оглушение, корни, замедление, ослабление, кровотечения и проклятия и лечит на {heal}% силы лечения.","icon":{"glyph":"cleanse","bg":"green","fg":"gold"},"tree":[3,0]},
-    "cl_pure_light": {"cls":"healer","name":"Чистый свет","kind":"passive","maxRank":3,"reqLevel":13,"req":{"id":"cl_cleanse","rank":1},"v":{"stun":[40,20]},"desc":"Ваше лечение (не чаще раза в 2 с на цель) снимает замедление, корни и ослабление, а оглушение укорачивает на {stun}%.","icon":{"glyph":"purelight","bg":"blue","fg":"gold"},"tree":[4,0]},
+    "cl_cleanse": {"cls":"healer","name":"Очищение","slot":6,"maxRank":5,"reqLevel":11,"req":{"id":"renew","rank":1},"target":"ally","range":320,"cd":[16, -0.4],"mana":[16,0],"v":{"heal":[60,10]},"desc":"Снимает с союзника оглушение, корни, замедление, безмолвие, страх, ослабление, кровотечения и проклятия и лечит на {heal}% силы лечения. Под оглушением или страхом применяется на себя.","icon":{"glyph":"cleanse","bg":"green","fg":"gold"},"tree":[3,0]},
+    "cl_pure_light": {"cls":"healer","name":"Чистый свет","kind":"passive","maxRank":3,"reqLevel":13,"req":{"id":"cl_cleanse","rank":1},"v":{"stun":[40,20]},"desc":"Ваше лечение (не чаще раза в 2 с на цель) снимает замедление, корни и ослабление, а оглушение, безмолвие и страх укорачивает на {stun}%.","icon":{"glyph":"purelight","bg":"blue","fg":"gold"},"tree":[4,0]},
     "cl_echo": {"cls":"healer","name":"Эхо света","kind":"passive","maxRank":3,"reqLevel":14,"req":{"id":"renew","rank":2},"v":{"chance":[20,10],"pct":[50,0]},"desc":"Каждое ваше лечение с шансом {chance}% эхом исцеляет ещё одного раненого союзника рядом на {pct}% того же значения.","icon":{"glyph":"echo","bg":"blue","fg":"gold"},"tree":[3,1]},
     "cl_spark": {"cls":"healer","name":"Искра света","kind":"passive","maxRank":3,"reqLevel":16,"req":{"id":"heal","rank":3},"v":{"heal":[150,40],"icd":[12,-2]},"desc":"Если союзник в 400 пикс. от вас падает ниже 30% здоровья, искра света мгновенно лечит его на {heal}% силы лечения (раз в {icd} с).","icon":{"glyph":"holyspark","bg":"black","fg":"gold"},"tree":[2,1]},
     "cl_aegis": {"cls":"healer","name":"Покров веры","slot":7,"maxRank":5,"reqLevel":18,"req":{"id":"holyshield","rank":1},"target":"point","range":280,"cd":[26,-1],"mana":[30,0],"v":{"absorb":[220,40],"radius":[130,0],"dur":[8,0]},"desc":"Покров в круге: каждый союзник получает щит, поглощающий {absorb}% силы лечения урона ({dur} с).","icon":{"glyph":"aegis","bg":"blue","fg":"gold"},"tree":[6,1]},
@@ -192,7 +192,7 @@
     "bw_thirst": {"cls":"bloodweaver","name":"Багровая жажда","kind":"passive","maxRank":3,"reqLevel":5,"req":{"id":"bw_blood_bolt","rank":1},"v":{"pct":[15,10]},"desc":"Удар по истекающему кровью или проклятому врагу лечит самого раненого союзника рядом на {pct}% нанесённого урона.","icon":{"glyph":"fangs","bg":"black","fg":"red"},"tree":[2,0]},
     "bw_leech": {"cls":"bloodweaver","name":"Кровопийца","slot":4,"maxRank":5,"reqLevel":6,"req":{"id":"bw_blood_bolt","rank":2},"target":"enemy","range":300,"cd":[14,-0.5],"mana":[18,0],"v":{"tick":[50,10],"dur":[6,0],"heal":[70,5]},"desc":"Присасывается к врагу на {dur} с: {tick}% урона оружия кровью в секунду, {heal}% нанесённого лечит самого раненого союзника рядом (или вас).","icon":{"glyph":"leech","bg":"black","fg":"red"},"tree":[0,1]},
     "bw_deep_bonds": {"cls":"bloodweaver","name":"Глубокие узы","kind":"passive","maxRank":3,"reqLevel":10,"req":{"id":"bw_blood_bond","rank":1},"v":{"taken":[20,15],"dur":[2,1]},"desc":"Урон, который вы принимаете по узам, ниже на {taken}%, а сами узы держатся на {dur} с дольше.","icon":{"glyph":"chainlink","bg":"black","fg":"red"},"tree":[3,1]},
-    "bw_blood_burst": {"cls":"bloodweaver","name":"Кровавый взрыв","slot":5,"maxRank":5,"reqLevel":12,"req":{"id":"bw_leech","rank":1},"target":"point","range":280,"cd":[18,-0.5],"mana":[26,0],"v":{"dmg":[140,22],"radius":[120,0],"heal":[40,6]},"desc":"Через 0.6 с кровь взрывается в круге: {dmg}% урона врагам (×1.5 истекающим и проклятым), {heal}% суммарного урона делится между тремя самыми ранеными союзниками.","icon":{"glyph":"bloodburst","bg":"black","fg":"red"},"tree":[0,2]},
+    "bw_blood_burst": {"cls":"bloodweaver","name":"Кровавый взрыв","slot":5,"maxRank":5,"reqLevel":12,"req":{"id":"bw_leech","rank":1},"target":"point","range":280,"cd":[18,-0.5],"mana":[26,0],"v":{"fearBleed":[2.5,0],"fear":[1.5,0],"dmg":[140,22],"radius":[120,0],"heal":[40,6]},"desc":"Через 0.6 с кровь взрывается в круге: {dmg}% урона врагам (×1.5 истекающим и проклятым) и страх {fear} с (истекающим кровью — {fearBleed} с), {heal}% суммарного урона делится между тремя самыми ранеными союзниками.","icon":{"glyph":"bloodburst","bg":"black","fg":"red"},"tree":[0,2]},
     "bw_scavenger": {"cls":"bloodweaver","name":"Падальщик","kind":"passive","maxRank":3,"reqLevel":11,"req":{"id":"bw_leech","rank":1},"v":{"hp":[4,2],"mana":[3,1]},"desc":"Убив врага, вы лечите самого раненого союзника рядом на {hp}% его здоровья и восстанавливаете {mana}% маны.","icon":{"glyph":"skullmark","bg":"black","fg":"red"},"tree":[0,0]},
     "bw_temper": {"cls":"bloodweaver","name":"Закалённая кровь","kind":"passive","maxRank":3,"reqLevel":9,"req":{"id":"bw_sacrifice","rank":1},"v":{"cost":[25,12],"shield":[50,25]},"desc":"«Жертва крови» стоит на {cost}% меньше здоровья, а заплаченная кровь на 6 с становится вашим щитом ({shield}% от цены).","icon":{"glyph":"wrist","bg":"black","fg":"red"},"tree":[5,2]},
     "bw_coagulation": {"cls":"bloodweaver","name":"Свёртывание","kind":"passive","maxRank":3,"reqLevel":14,"req":{"id":"bw_temper","rank":1},"v":{"shield":[15,8],"icd":[30,-5]},"desc":"Упав ниже 35% здоровья, вы сворачиваете кровь: щит на {shield}% здоровья на 6 с (раз в {icd} с).","icon":{"glyph":"clot","bg":"black","fg":"red"},"tree":[6,2]},

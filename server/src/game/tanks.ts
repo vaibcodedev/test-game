@@ -11,7 +11,7 @@ import { SKILLS } from "../../../shared/skills";
 import { pullDest } from "../../../shared/skillShape";
 import type { Player } from "./Player";
 import type { CastCtx } from "./umbrath";
-import { applyRoot, applySlow } from "./effects";
+import { applyRoot, applySilence, applySlow } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { leechMult } from "../../../shared/balance";
@@ -134,7 +134,9 @@ export function castTank(c: CastCtx): string | null | undefined {
       const blocking = p.blockUntil > w.time;
       w.hit(p, t, { mult: (v.dmg / 100) * (blocking ? 1 + v.blockBonus / 100 : 1), skill: true, threat: 1 });
       c.threat(t, v.threat);
-      if (!c.isBoss(t)) c.stun(t, v.stun * 1000); else c.slow(t, 40, v.stun * 1000);
+      c.stun(t, v.stun * 1000, { bossSlow: 40 }); // на боссе — замедление 40% (data/cc.json boss)
+      // задача 148: после оглушения — безмолвие (одним сроком от удара; на боссе — только сбивает каст)
+      if (v.silence > 0 && !w.isDead(t)) applySilence(w, p, t, (v.stun + v.silence) * 1000);
       return null;
     }
     case "tp_glare": {
@@ -180,8 +182,7 @@ export function castTank(c: CastCtx): string | null | undefined {
     }
     case "tp_divine": {
       c.ok();
-      s.invulnUntil = w.time + v.dur * 1000;
-      p.stunUntil = p.rootUntil = p.slowUntil = 0;
+      s.invulnUntil = w.time + v.dur * 1000; // контроль снимает поле умения (data/cc.json skills.tp_divine)
       w.emit({ t: "buff", id: p.id, k: "invuln", ms: v.dur * 1000 });
       w.emit({ t: "aoe", k: "divine", x: u.x, y: u.y, r: 70 });
       return null;
@@ -277,7 +278,8 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
       const t = target;
       w.later(40, () => {
         if (p.dead) return;
-        if (!w.isPlayer(t) && t.def.boss && applyRoot(w, p, t, m.root * 1000)) w.emit({ t: "buff", id: t.id, k: "frozen", ms: m.root * 1000 });
+        // задача 148: цель «Хватки» вмерзает (на боссе — замедление, data/cc.json boss)
+        if (applyRoot(w, p, t, m.root * 1000) && t.rootUntil > w.time) w.emit({ t: "buff", id: t.id, k: "frozen", ms: t.rootUntil - w.time });
         for (const o of w.enemiesInCircle(p, t.x, t.y, m.radius)) {
           if (o === t || (!w.isPlayer(o) && o.def.boss)) continue;
           w.emit({ t: "chain", pts: [p.x, p.y - 12, o.x, o.y - 12], k: "shadow" });

@@ -20,6 +20,7 @@ import { addItem } from "./inventory";
 import { registerAuraHook } from "./auras";
 import { warAuraKey } from "../../../shared/auras";
 import { SIEGE, siegeAttacker } from "../../../shared/siege";
+import { Announcer } from "./eventClock";
 import type { Player } from "./Player";
 import type { Actor, World } from "./World";
 
@@ -99,7 +100,8 @@ export class BannerWar {
   saved: WarSaved;
   /** Последний итог (для теста и повторного показа). */
   lastResult: WarResultMsg | null = null;
-  private announced = new Set<number>();
+  /** Объявления за 30/10/1 мин — общий Announcer планировщика событий (eventClock.ts, задача 151). */
+  private announcer = new Announcer(S.announceMin);
   private tpAnnounced = false;
   private routSince = 0;
   private scoreAt = 0;
@@ -122,6 +124,12 @@ export class BannerWar {
     this.front = this.frontByIdx();
     this.applyBonuses();
     LIVE ??= this;
+    // лента событий (eventClock.ts): ближайший «Час войны» или идущая битва
+    w.clock?.register("war", () => {
+      const now = this.now(), live = this.phase === "battle";
+      const at = live || this.phase === "prep" ? this.t0 : nextWarStart(now, siegeAttacker(this.saved.wins) !== null);
+      return [{ id: "war", kind: "war", name: this.front.name, at, until: live ? this.t1 : undefined, live }];
+    });
   }
 
   /** Срок бонуса фронта (часы ивента): в битве этого фронта — её конец, иначе — начало его следующей битвы по кругу фронтов. */
@@ -190,7 +198,7 @@ export class BannerWar {
     this.checkWeek(now);
     if (this.phase === "idle") {
       const s = nextWarStart(now, siegeAttacker(this.saved.wins) !== null);
-      if (s - now <= Math.max(...S.announceMin) * MIN) this.prep(s);
+      if (s - now <= this.announcer.first * MIN) this.prep(s);
     }
     if (this.phase === "prep") this.tickPrep(now);
     else if (this.phase === "battle") this.tickBattle(now, dt);
@@ -218,18 +226,14 @@ export class BannerWar {
     this.front = this.frontByIdx();
     this.t0 = t0;
     this.t1 = t0 + S.durationMin * MIN;
-    this.announced.clear();
+    this.announcer.reset();
     this.tpAnnounced = false;
   }
   private tickPrep(now: number) {
     const left = this.t0 - now;
-    for (const m of S.announceMin) {
-      if (left <= m * MIN && !this.announced.has(m)) {
-        // все пороги, что уже прошли (сервер поднялся за 5 мин до начала), — одно объявление по ближайшему
-        for (const k of S.announceMin) if (k >= m) this.announced.add(k);
-        if (left > 0) this.say({ text: T("srv.bannerWar.1", { min: Math.max(1, Math.ceil(left / MIN)), front: this.front.name }), kind: "info" }, true);
-      }
-    }
+    // все пороги, что уже прошли (сервер поднялся за 5 мин до начала), — одно объявление по ближайшему (Announcer)
+    const min = this.announcer.due(left);
+    if (min !== null) this.say({ text: T("srv.bannerWar.1", { min, front: this.front.name }), kind: "info" }, true);
     if (!this.tpAnnounced && left <= S.teleportMin * MIN && left > 0) { this.tpAnnounced = true; this.w.system(T("srv.bannerWar.2", { min: S.teleportMin })); }
     if (left <= 0) this.start(now);
   }
@@ -528,7 +532,8 @@ export class BannerWar {
     const z = zoneAtPx(this.w.map, m.x, m.y);
     const fields = z === Zone.Fields;
     const sw = this.saved.siege, sb = sw && sw.bonus === p.faction && this.now() < sw.until ? SIEGE.reward.xpGold : 0; // неделя после осады
-    return { xp: fields ? 1 + b.xpGold + sb : 1, gold: fields ? 1 + b.xpGold + sb : 1, mats: fields ? 1 + b.mats : 1, loot: z === Zone.Dungeon ? 1 + b.dungeon : 1 };
+    const wv = fields ? this.w.wboss?.xpBonus(p.faction) ?? 0 : 0; // знамя победы над мировым боссом (задача 151): только опыт
+    return { xp: fields ? 1 + b.xpGold + sb + wv : 1, gold: fields ? 1 + b.xpGold + sb : 1, mats: fields ? 1 + b.mats : 1, loot: z === Zone.Dungeon ? 1 + b.dungeon : 1 };
   }
   /** Скорость героя вне боя на Полях. */
   speedMul(p: Player): number {

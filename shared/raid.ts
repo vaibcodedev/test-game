@@ -3,6 +3,7 @@
  * сообщения клиент ⇄ сервер. Логика боя — server/src/raid/ (director, chaosKnight, ai, chatter, rewards, muster), комната — RaidRoom.
  */
 import data from "../data/raid.json";
+import citadel from "../data/citadel.json";
 import { CLASSES, type ClassId } from "./classes";
 import { TILE } from "./constants";
 import { CITIES } from "./cities";
@@ -158,6 +159,10 @@ export function inHall(xPx: number, yPx: number, k = 1): boolean {
   return dx * dx + dy * dy <= 1;
 }
 
+/** Вид цитадели v2 (tools/gen/citadel.ts, флаг клиента __citadelV2 — client/src/game/citadelV2.ts): другие объекты и лава под картинкой; клетки (проходимость) те же. */
+let citadelV2 = false;
+export function setCitadelV2(on: boolean) { citadelV2 = on; }
+
 /**
  * Цитадель Хаоса 48×46: зал-эллипс из обсидиана с печатью вокруг босса и пятнами пепла, кольцо лавы, стены с жаровнями;
  * 4 колонны 2×2 (тень от «Солнца Хаоса»), мост на юге в Преддверие с порталом выхода.
@@ -241,6 +246,14 @@ export function generateRaidMap(): WorldMap {
   obj("brazier", A.x1 - 0.5, A.y0 + 1.2);
   obj("soul_brazier", B.x0 - 0.2, B.y1 + 0.9);
   obj("soul_brazier", B.x1 + 1.2, B.y1 + 0.9);
+  if (citadelV2) {
+    // объекты — из data/citadel.json; лава — во всех вершинах у непроходимых клеток (её видно только сквозь чашу на картинке цитадели)
+    objects.length = 0;
+    objects.push(...citadel.objects);
+    const pillar = (x: number, y: number) => RAID_PILLARS.some((p) => x >= p.x / TILE - 1 && x < p.x / TILE + 1 && y >= p.y / TILE - 1 && y < p.y / TILE + 1);
+    const walk = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && (!(cell[y * w + x] & CELL_BLOCK) || pillar(x, y));
+    for (let y = 0; y <= h; y++) for (let x = 0; x <= w; x++) if (!(walk(x - 1, y - 1) && walk(x, y - 1) && walk(x - 1, y) && walk(x, y))) vtx[y * (w + 1) + x] = T.Lava;
+  }
   const sp = px(M.spawn);
   return {
     w, h, seed: 0, vtx, cell, zone, objects,
@@ -253,8 +266,11 @@ export function generateRaidMap(): WorldMap {
 
 // ---------------------------------------------------------------- сбор в мире
 export interface RaidHerald { id: string; name: string; place: string; x: number; y: number }
-/** «Вестник Цитадели» в Эмберхолле, столицах и фортах (смещение от центра, тайлы) и у Врат в вулкане. */
-const HERALD_AT: Record<string, [number, number]> = { ember: [-6, 4], fort_solgard: [3, 3], fort_umbrath: [3, 3], aurelion: [9, -1], morthaim: [9, -1] };
+/**
+ * «Вестник Цитадели» — в центральном мирном городе Эмберхолле (обе фракции; задача 151: перенесён из столиц и фортов) и у Врат в вулкане
+ * (смещение от центра города, тайлы). Он же — регистрация на мировых боссов: одна система сборов (server/src/raid/muster.ts).
+ */
+const HERALD_AT: Record<string, [number, number]> = { ember: [-6, 4] };
 export const RAID_GATE = M.gateAt ? px({ x: M.gateAt.x + 0.5, y: M.gateAt.y + 0.5 }) : null;
 export const RAID_HERALDS: RaidHerald[] = [
   ...CITIES.filter((c) => HERALD_AT[c.id]).map((c) => ({

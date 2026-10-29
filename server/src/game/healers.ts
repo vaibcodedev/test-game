@@ -17,6 +17,7 @@ import { segDist } from "../../../shared/skillShape";
 import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { clearDots, mostWounded, type CastCtx } from "./umbrath";
 import { noteAuraSource, registerAuraHook } from "./auras";
+import { applyFear, applySilence, applySlow, cleanseCc } from "./effects";
 import type { Actor, HitOpts, World } from "./World";
 import { BAL, leechMult, pvpHealMult } from "../../../shared/balance";
 import { T } from "../../../shared/texts";
@@ -107,7 +108,8 @@ function boost(w: World, t: Player, pct: number, ms: number) {
 /** Снять с цели оглушение, корни, замедление, ослабление, кровотечения и проклятия. */
 function cleanse(a: Ally) {
   const t = (a.player ?? a.pet) as unknown as Actor;
-  t.stunUntil = t.rootUntil = t.slowUntil = t.weakUntil = 0;
+  cleanseCc(t, ["stun", "root", "slow", "silence", "fear"]);
+  t.weakUntil = 0;
   t.bleedUntil = t.curseUntil = 0;
   clearDots(a.id);
 }
@@ -152,7 +154,10 @@ export function castHealer(c: CastCtx): string | null | undefined {
       const inBeam = (x: number, y: number, rad: number) => segDist(x, y, u.x, u.y, e.x, e.y) <= 24 + rad;
       w.emit({ t: "chain", pts: [u.x, u.y - 12, e.x, e.y - 12], k: "holy" });
       w.emit({ t: "aoe", k: "ray", x: e.x, y: e.y, r: 46 });
-      for (const m of w.enemiesInCircle(p, mx, my, half)) if (inBeam(m.x, m.y, w.radiusOf(m))) w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "holy" });
+      for (const m of w.enemiesInCircle(p, mx, my, half)) if (inBeam(m.x, m.y, w.radiusOf(m))) {
+        w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "holy" });
+        if (v.silence > 0) applySilence(w, p, m, v.silence * 1000); // задача 148: враги на луче — безмолвие
+      }
       const amt = (healPower(p) * v.heal) / 100;
       for (const a of alliesAround(w, p, mx, my, half, false)) {
         if (a.id === p.id || !inBeam(a.x, a.y, PLAYER_RADIUS)) continue;
@@ -162,7 +167,9 @@ export function castHealer(c: CastCtx): string | null | undefined {
       return null;
     }
     case "cl_cleanse": {
-      const a = resolveAlly(w, p, c.targetId);
+      // под оглушением или страхом (usableInStun, data/cc.json) — только на себя
+      const held = p.stunUntil > w.time || p.fearUntil > w.time;
+      const a = resolveAlly(w, p, held ? p.id : c.targetId);
       const err = seeAlly(a); if (err) return err;
       c.ok();
       cleanse(a);
@@ -383,10 +390,13 @@ export function onHealed(w: World, target: Player, req: number, got: number, by:
     // Клирик: лечение очищает ослабляющие эффекты
     if (rk(by, "cl_pure_light")) {
       const s = st(by), last = s.pure.get(target.id) || 0;
-      if (w.time - last >= 2000 && (target.slowUntil > w.time || target.rootUntil > w.time || target.weakUntil > w.time || target.stunUntil > w.time)) {
+      const hard = (["stunUntil", "silenceUntil", "fearUntil"] as const).filter((k) => target[k] > w.time);
+      if (w.time - last >= 2000 && (target.slowUntil > w.time || target.rootUntil > w.time || target.weakUntil > w.time || hard.length)) {
         s.pure.set(target.id, w.time);
-        target.slowUntil = target.rootUntil = target.weakUntil = 0;
-        if (target.stunUntil > w.time) target.stunUntil = w.time + ((target.stunUntil - w.time) * (100 - pv(by, "cl_pure_light").stun)) / 100;
+        cleanseCc(target, ["root", "slow"]);
+        target.weakUntil = 0;
+        // оглушение, безмолвие и страх — укорачиваются на stun %
+        for (const k of hard) target[k] = w.time + ((target[k] - w.time) * (100 - pv(by, "cl_pure_light").stun)) / 100;
         w.emit({ t: "aoe", k: "cleanse", x: target.x, y: target.y, r: 36 });
       }
     }
@@ -410,7 +420,19 @@ export function onHealed(w: World, target: Player, req: number, got: number, by:
 
 let wrathDepth = 0;
 /** Щит героя dst от лекаря owner поглотил ab урона от src: «Карающий щит». */
+/** «Святой щит» на герое (задача 148): кто наложил и до когда — пробитый щит пугает врагов рядом. */
+const holyShields = new WeakMap<Player, { by: Player; until: number }>();
+export function markHolyShield(t: Player, by: Player, until: number) { holyShields.set(t, { by, until }); }
+
 export function onAbsorb(w: World, owner: Player | null, dst: Player, ab: number, src: Actor) {
+  // «Святой щит» пробит: враги в радиусе fearR — страх fear с (источник — Клирик, бегут от щита)
+  const hs = holyShields.get(dst);
+  if (hs && dst.shieldAmt < 0.5 && hs.until > w.time && dst.shieldBy === hs.by) {
+    holyShields.delete(dst);
+    const by = hs.by, hv = SKILLS.holyshield.v(Math.max(1, rk(by, "holyshield")));
+    w.emit({ t: "aoe", k: "divine", x: dst.x, y: dst.y, r: hv.fearR });
+    for (const e of w.enemiesInCircle(by, dst.x, dst.y, hv.fearR)) applyFear(w, by, e, hv.fear * 1000, dst);
+  }
   if (!owner || owner.dead || src === dst || wrathDepth > 0 || !rk(owner, "cl_ward_wrath") || w.isDead(src) || !w.hostile(owner, src)) return;
   wrathDepth++;
   try {

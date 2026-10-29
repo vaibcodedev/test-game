@@ -67,6 +67,8 @@ export const AURA_FIELDS: readonly FieldAura[] = [
   { k: "stun", until: "stunUntil" },
   { k: "root", until: "rootUntil" },
   { k: "slow", until: "slowUntil", v: "slowPct" },
+  { k: "silence", until: "silenceUntil" },
+  { k: "fear", until: "fearUntil" },
   { k: "weak", until: "weakUntil", v: "weakPct" },
   { k: "bleed", until: "bleedUntil", n: "bleedStacks" },
   { k: "poison", until: "poisonUntil" },
