@@ -40,7 +40,7 @@ import { Soldiers } from "./soldiers";
 import { BannerWar, type WarStore } from "./bannerWar";
 import { FortSiege } from "./siege";
 import { moveGated } from "../../../shared/siege";
-import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissPet, type Pet } from "./Pet";
+import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissAllPets, type Pet } from "./Pet";
 import { applySlow, endShield, tickEffects } from "./effects";
 import { auraPack, targetAuras } from "./auras";
 import * as auraFx from "./auraFx";
@@ -197,7 +197,7 @@ export class World {
   removePlayer(id: string, note?: string) {
     const p = this.players.get(id);
     if (!p) return;
-    dismissPet(this, p);
+    dismissAllPets(this, p);
     this.players.delete(id);
     this.state.players.delete(id);
     for (const m of this.mobs.values()) {

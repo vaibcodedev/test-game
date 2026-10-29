@@ -7,12 +7,12 @@
 import { noteAuraSource } from "./auras";
 import { PLAYER_RADIUS } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";
-import { petUnitId, type PetDef } from "../../../shared/pets";
+import { petUnitId, sumUnitId, type PetDef } from "../../../shared/pets";
 import { SKILLS, SUMMONS, type SkillDef } from "../../../shared/skills";
 import { leapDest, pullDest, summonSpot } from "../../../shared/skillShape";
 import { Anim, type FxKind } from "../../../shared/protocol";
 import { bondDur, onSacrifice, poolBonus, sacrificeCost } from "./healers";
-import { dismissPet, Pet } from "./Pet";
+import { anyPetOf, dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { bleedMods } from "./reaver";
@@ -253,7 +253,7 @@ export function castUmbrath(c: CastCtx): string | null {
       let a = resolveAlly(w, p, c.targetId);
       if (a.id === p.id) {
         // без союзника — узы с собственным питомцем
-        const pet = w.pets.get(petUnitId(p.id));
+        const pet = anyPetOf(w, p);
         if (!pet || pet.dead) return T("srv.healers.100");
         a = { id: pet.id, x: pet.x, y: pet.y, pet };
       }
@@ -391,8 +391,8 @@ export function castUmbrath(c: CastCtx): string | null {
         w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "shadow" });
         c.root(m, v.root * 1000);
       }
-      // скелет-прислужник вместо питомца (вне арены)
-      if (w.opts.mobs !== false && p.team === 0) summonSkeleton(w, p, pt, v.dur * 1000);
+      // скелет-прислужник вместо питомца (и на арене: сражается за команду хозяина)
+      summonSkeleton(w, p, pt, v.dur * 1000);
       return null;
     }
     case "wl_doom": {
@@ -472,7 +472,7 @@ export function bleed(w: World, p: Player, t: Actor) {
 function summonSkeleton(w: World, p: Player, at: { x: number; y: number }, ms: number) {
   const s = SUMMONS.wl_skeleton;
   if (!s) return;
-  dismissPet(w, p);
+  dismissPet(w, p, sumUnitId(p.id, "wl_skeleton"));
   const def: PetDef = { ...s, id: "wl_skeleton", price: 0, level: 0, skills: [], temp: true };
   const pet = new Pet(def, p, p.level);
   // на воде или дереве — ближайшая проходимая точка на линии к герою (общая с превью: summonSpot)
@@ -481,5 +481,5 @@ function summonSkeleton(w: World, p: Player, at: { x: number; y: number }, ms: n
   w.pets.set(pet.id, pet);
   w.state.mobs.set(pet.id, pet.unit);
   w.emit({ t: "spawn", id: pet.id, k: "smoke" });
-  w.later(ms, () => { if (w.pets.get(pet.id) === pet) dismissPet(w, p); });
+  w.later(ms, () => { if (w.pets.get(pet.id) === pet) dismissPet(w, p, pet.id); });
 }

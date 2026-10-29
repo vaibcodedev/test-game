@@ -2,6 +2,8 @@
 import { generateMap } from "../shared/map";
 import { MAP_SEED } from "../shared/constants";
 import { BOT_RATING_MULT, eloDelta, MAX_REPEAT } from "../shared/arena";
+import { SKILLS } from "../shared/skills";
+import { sumUnitId } from "../shared/pets";
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 
 const MAP = generateMap(MAP_SEED);
@@ -261,6 +263,26 @@ async function main() {
       L.send("arena:top", { mode: "1v1" });
       await L.until(() => !!L.top, 2000, "таблица");
       assert(!JSON.stringify(L.top).includes(botName), "бот попал в таблицу рейтинга");
+    });
+    await check("чернокнижник на арене призывает демона, демон бьёт соперника", async () => {
+      const W = await Bot.join("Демонолог", "pass", "warlock");
+      const V = await Bot.join("Мишень", "pass", "warrior");
+      W.send("dbg", { op: "level", v: 100 });
+      await W.until(() => (W.self?.level ?? 0) >= 100, 3000, "уровень 100");
+      const learn = (id: string) => { const d = SKILLS[id]; if (d.req) learn(d.req.id); W.send("learn", { id }); };
+      learn("wl_demon");
+      await W.until(() => (W.self?.skills?.wl_demon ?? 0) >= 1, 3000, "демон выучен");
+      await enterMatch("1v1", [W, V], [W, V]);
+      await waitFight(W);
+      const vid = unitByName(W, V.self!.name), dm = sumUnitId(W.id, "wl_demon");
+      const hp0 = W.room.state.players.get(vid).hp;
+      const me = W.me();
+      W.send("skill", { id: "wl_demon", x: me.x + 40, y: me.y });
+      await W.until(() => W.room.state.mobs.has(dm), 3000, "демон на арене");
+      await W.until(() => W.room.state.players.get(vid).hp < hp0, 15000, "демон не ранил соперника");
+      assert(W.room.state.players.get(unitByName(W, W.self!.name)).hp > 0, "демон ранил хозяина");
+      await goHome([W, V]);
+      await W.leave(); await V.leave();
     });
     console.log(`\nВсе проверки арены пройдены: ${passedCount()}`);
   } finally {

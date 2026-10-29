@@ -5,11 +5,12 @@ import { Nav } from "../../../shared/path";
 import { MOVE_MUL } from "../../../shared/constants";
 import {
   PETS, PET_CAST_MS, PET_DROP_CHANCE, PET_FOLLOW_DIST, PET_IDS, PET_RESUMMON_MS, PET_TELEPORT_DIST,
-  petStats, petUnitId, petXpToNext, type PetDef,
+  petStats, petUnitId, petXpToNext, sumUnitId, type PetDef,
 } from "../../../shared/pets";
 import { Anim, UnitKind } from "../../../shared/protocol";
 import { Unit } from "../rooms/schema";
 import type { Mob } from "./Mob";
+import type { Actor } from "./World";
 import type { Player } from "./Player";
 import { World } from "./World";
 import { GP } from "../../../shared/gameplay";
@@ -30,7 +31,7 @@ export class Pet {
   cds = new Map<string, number>();
 
   constructor(readonly def: PetDef, readonly owner: Player, public level: number) {
-    this.id = petUnitId(owner.id);
+    this.id = def.temp ? sumUnitId(owner.id, def.id) : petUnitId(owner.id);
     this.stats = petStats(def, level);
     const u = this.unit;
     u.kind = UnitKind.Pet;
@@ -141,10 +142,25 @@ export function tickPetCast(w: World, p: Player) {
   w.emit({ t: "spawn", id: pet.id, k: "smoke" });
 }
 
-export function dismissPet(w: World, p: Player) {
-  cancelPetCast(p);
-  const pet = w.pets.get(petUnitId(p.id));
+/** Отпускает питомца героя: без id — постоянного, с id — указанного призыва (повторный призыв заменяет только свой вид). */
+export function dismissPet(w: World, p: Player, id?: string) {
+  if (!id) cancelPetCast(p);
+  const pet = w.pets.get(id ?? petUnitId(p.id));
   if (pet) removePet(w, pet);
+}
+
+/** Все питомцы героя разом (выход из мира). */
+export function dismissAllPets(w: World, p: Player) {
+  cancelPetCast(p);
+  for (const pet of [...w.pets.values()]) if (pet.owner === p) removePet(w, pet);
+}
+
+/** Любой питомец героя: постоянный, иначе первый призыв. */
+export function anyPetOf(w: World, p: Player): Pet | undefined {
+  const main = w.pets.get(petUnitId(p.id));
+  if (main) return main;
+  for (const pet of w.pets.values()) if (pet.owner === p) return pet;
+  return undefined;
 }
 
 function removePet(w: World, pet: Pet) {
@@ -216,9 +232,11 @@ export function mobAttackPet(w: World, m: Mob, pet: Pet) {
 }
 
 /** Удар питомца: броня моба, кража угрозы, награды идут хозяину. */
-function strike(w: World, pet: Pet, mob: Mob, mult: number, kind: "phys" | "fire" = "phys", flat = false): number {
-  if (pet.dead || mob.dead) return 0;
+function strike(w: World, pet: Pet, mob: Actor, mult: number, kind: "phys" | "fire" = "phys", flat = false): number {
+  if (pet.dead || w.isDead(mob)) return 0;
   let a = pet.stats.dmg * (flat ? 1 : rnd(0.85, 1.15)) * mult;
+  // арена: цель — герой соперника; удар идёт от хозяина обычным путём (броня, щиты, статистика боя)
+  if (w.isPlayer(mob)) return w.hostile(pet.owner, mob) ? w.hit(pet.owner, mob, { flat: Math.max(1, Math.round(a)), canCrit: false, kind, noProc: true, noBreak: true }) : 0;
   a *= 1 - armorReduction(kind === "phys" ? mob.stats.armor : mob.stats.armor * 0.5, pet.level);
   const v = Math.max(1, Math.round(a));
   mob.addThreat(pet.id, v);
@@ -243,8 +261,20 @@ function step(w: World, pet: Pet, gx: number, gy: number, dt: number, speed: num
   return moved;
 }
 
-function pickTarget(w: World, pet: Pet): Mob | null {
+function pickTarget(w: World, pet: Pet): Actor | null {
   const o = pet.owner;
+  if (w.opts.mobs === false) {
+    // арена: питомец бьёт цель хозяина или ближайшего героя соперника (враги — по hostile, т. е. по команде)
+    const ot = w.players.get(o.targetId ?? "");
+    if (ot && !ot.dead && w.hostile(o, ot) && w.dist(ot, o) < 420) return ot;
+    let pb: Actor | null = null, pd = 320;
+    for (const e of w.players.values()) {
+      if (e.dead || !w.hostile(o, e)) continue;
+      const d = w.dist(e, o);
+      if (d < pd) { pd = d; pb = e; }
+    }
+    return pb;
+  }
   const t = w.mobs.get(o.targetId ?? "");
   if (t && !t.dead && w.dist(t, o) < 420) return t;
   let best: Mob | null = null, bd = 320;
@@ -257,14 +287,14 @@ function pickTarget(w: World, pet: Pet): Mob | null {
 }
 
 /** Пробует применить умение; true — применено (питомец занят на мгновение). */
-function useSkill(w: World, pet: Pet, target: Mob | null, d: number): boolean {
+function useSkill(w: World, pet: Pet, target: Actor | null, d: number): boolean {
   const t = w.time, o = pet.owner;
   for (const s of pet.def.skills) {
     if (t < (pet.cds.get(s.id) ?? 0)) continue;
     let ok = false;
     switch (s.type) {
       case "bleed":
-        if (target && d <= pet.def.range + target.def.radius + 4) {
+        if (target && d <= pet.def.range + w.radiusOf(target) + 4) {
           ok = true;
           strike(w, pet, target, s.mult ?? 1);
           const ticks = Math.round((s.ms ?? 5000) / 1000);
@@ -326,6 +356,8 @@ function useSkill(w: World, pet: Pet, target: Mob | null, d: number): boolean {
 export function updatePet(w: World, pet: Pet, dt: number) {
   const o = pet.owner, u = pet.unit, t = w.time;
   if (pet.dead) return;
+  // временный призыв (скелет, демон, зверь) исчезает со смертью хозяина
+  if (pet.def.temp && o.dead) return removePet(w, pet);
   const od = w.dist(u, o);
   if (od > PET_TELEPORT_DIST) {
     u.x = o.x + (Math.random() - 0.5) * 40;
@@ -343,7 +375,7 @@ export function updatePet(w: World, pet: Pet, dt: number) {
   if (target && od < 520) {
     const d = w.dist(u, target);
     u.target = target.id;
-    const reach = pet.def.range + target.def.radius;
+    const reach = pet.def.range + w.radiusOf(target);
     const clear = lineClear(w.map, u.x, u.y, target.x, target.y);
     if (t >= pet.attackAt && useSkill(w, pet, target, d)) {
       u.dir = World.dirTo(target.x - u.x, target.y - u.y);
@@ -356,7 +388,7 @@ export function updatePet(w: World, pet: Pet, dt: number) {
         const ms = (d / 420) * 1000;
         w.emit({ t: "proj", k: pet.def.projectile, from: pet.id, to: target.id, tx: target.x, ty: target.y, ms });
         w.later(ms, () => strike(w, pet, target, 1, "fire"));
-      } else w.later(180, () => { if (!target.dead && w.dist(pet, target) <= reach + 24) strike(w, pet, target, 1); });
+      } else w.later(180, () => { if (!w.isDead(target) && w.dist(pet, target) <= reach + 24) strike(w, pet, target, 1); });
     }
   } else {
     u.target = "";

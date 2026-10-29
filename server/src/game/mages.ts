@@ -8,7 +8,7 @@
  */
 import { OUTLAW } from "../../../shared/factions";
 import { lineClear } from "../../../shared/map";
-import { petUnitId, type PetDef } from "../../../shared/pets";
+import { petUnitId, sumUnitId, type PetDef } from "../../../shared/pets";
 import { Anim } from "../../../shared/protocol";
 import { SKILLS, SUMMONS } from "../../../shared/skills";
 import { segDist, summonSpot, wallEnds, wallMark } from "../../../shared/skillShape";
@@ -243,7 +243,6 @@ export function castMage(c: CastCtx): string | null | undefined {
     }
     case "wl_demon": {
       const pt = pointAt();
-      if (w.opts.mobs === false || p.team !== 0) return T("srv.mages.116");
       c.ok(); castAnim();
       w.emit({ t: "aoe", k: "shadow", x: pt.x, y: pt.y, r: 56 });
       summonDemon(w, p, pt, v.dur * 1000, v.power / 100);
@@ -297,7 +296,7 @@ function explode(w: World, p: Player, b: { until: number; absorbed: number }) {
 function summonDemon(w: World, p: Player, at: { x: number; y: number }, ms: number, power: number) {
   const base = SUMMONS.wl_demon as unknown as PetDef | undefined;
   if (!base) return;
-  dismissPet(w, p);
+  dismissPet(w, p, sumUnitId(p.id, "wl_demon"));
   const k = power * (1 + (rk(p, "wl_demonology") ? pv(p, "wl_demonology").pct : 0) / 100);
   const def: PetDef = { ...base, id: "wl_demon", price: 0, level: 0, hp: base.hp * k, dmg: base.dmg * k, skills: [], temp: true };
   const pet = new Pet(def, p, p.level);
@@ -307,7 +306,7 @@ function summonDemon(w: World, p: Player, at: { x: number; y: number }, ms: numb
   w.pets.set(pet.id, pet);
   w.state.mobs.set(pet.id, pet.unit);
   w.emit({ t: "spawn", id: pet.id, k: "smoke" });
-  w.later(ms, () => { if (w.pets.get(pet.id) === pet) dismissPet(w, p); });
+  w.later(ms, () => { if (w.pets.get(pet.id) === pet) dismissPet(w, p, pet.id); });
 }
 
 // =====================================================================
@@ -342,7 +341,7 @@ export function onCast(w: World, p: Player, id: string, target: Actor | undefine
     if (id === "wl_skeletons" && rk(p, "wl_demonology")) {
       const k = 1 + pv(p, "wl_demonology").pct / 100;
       w.later(80, () => {
-        const pet = w.pets.get(petUnitId(p.id));
+        const pet = w.pets.get(sumUnitId(p.id, "wl_skeleton"));
         if (!pet || pet.dead || pet.def.id !== "wl_skeleton") return;
         pet.stats.maxHp = Math.round(pet.stats.maxHp * k);
         pet.stats.dmg *= k;

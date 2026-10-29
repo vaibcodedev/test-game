@@ -391,6 +391,7 @@ export class GameScene extends Phaser.Scene {
       togglePet: () => this.togglePet(),
       closeTarget: () => this.setTarget(null),
       selectParty: (n) => this.selectParty(n),
+      selectTarget: (id) => this.setTarget(id),
       focusGame: () => this.game.canvas.focus(),
     });
 

@@ -71,6 +71,8 @@ import { T as TX } from "../../../shared/texts";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
+/** Иконка рамки питомца для призывов без своего значка: берём значок умения. */
+const PET_ICON: Record<string, string> = { skeleton: "sk_wl_skeletons", imp: "sk_wl_demon" };
 const CLASS_COLOR: Record<string, string> = {
   warrior: "#ff9a7a", mage: "#c8a0ff", ranger: "#9ae07a", healer: "#ffe9a0", rogue: "#b8a0e0",
   deathknight: "#8ad8ff", bloodweaver: "#ff6a7a", darkranger: "#9a8aff", warlock: "#9aff6a", reaver: "#e06a4a",
@@ -84,6 +86,7 @@ export interface HudCtx {
   toggleMount?: () => void;
   togglePet?: () => void;
   closeTarget: () => void;
+  selectTarget?: (id: string) => void;
   selectParty?: (n: number) => void;
   focusGame: () => void;
 }
@@ -117,7 +120,7 @@ export class Hud {
   aimAtCursor = false;
   private player = el("div", "panel hud-player");
   private targetBox = el("div", "panel hud-target");
-  private petBox = el("div", "panel hud-pet");
+  private petBox = el("div", "hud-pet");
   private zoneBanner = el("div", "hud-zone passthru");
   private mini = el("div", "panel hud-mini");
   private miniCanvas = el("canvas");
@@ -257,6 +260,7 @@ export class Hud {
     roBottom.observe(this.bar); roBottom.observe(this.chatInput); roBottom.observe(this.root);
     this.targetBox.hidden = true;
     this.petBox.hidden = true;
+    this.petBox.onclick = (e) => { const c = (e.target as HTMLElement).closest<HTMLElement>(".hud-pet-card"); if (c?.dataset.id) this.ctx.selectTarget?.(c.dataset.id); };
     this.death.hidden = true;
     this.tip.hidden = true;
     this.chatInput.placeholder = TX("ui.hud.289", { v: keybinds.label("chat", 0) });
@@ -1824,15 +1828,22 @@ export class Hud {
       setHidden(this.tgtAuras.el, !(ownList && this.tgtAuras.rows.length > 0));
     } else setHidden(this.targetBox, true);
 
-    // рамка питомца под рамкой героя
+    // рамки питомцев под рамкой героя: стопкой, до 3 (постоянный, скелет, демон); клик — выбрать целью
     const sid = this.ctx.net.self?.id;
-    const pu = sid ? this.ctx.net.unit(petUnitId(sid)) : undefined;
-    if (pu) {
+    const pets: UnitState[] = [];
+    if (sid) for (const [, v] of info.units) if (v.u.kind === UnitKind.Pet && v.u.ownerId === sid) pets.push(v.u);
+    pets.sort((x, y) => (x.name < y.name ? -1 : 1));
+    if (pets.length) {
       setHidden(this.petBox, false);
-      const sig = `${pu.name}|${pu.level}|${pu.hp}|${pu.maxHp}`;
+      const shown = pets.slice(0, 3);
+      const sig = shown.map((pu) => `${pu.name}|${pu.level}|${pu.hp}|${pu.maxHp}|${pu.sprite}`).join(";") + `|${info.targetId ?? ""}`;
       if (this.petBox.dataset.sig !== sig) {
         this.petBox.dataset.sig = sig;
-        this.petBox.innerHTML = `<div class="row1"><span class="nm">${esc(pu.name)}</span><span class="lv">ур. ${pu.level}</span></div><div class="bar hp"><i style="width:${(pu.hp / Math.max(1, pu.maxHp)) * 100}%"></i><span>${pu.hp} / ${pu.maxHp}</span></div>`;
+        this.petBox.innerHTML = shown.map((pu) => {
+          const id = [...info.units].find(([, v]) => v.u === pu)?.[0] ?? "";
+          const k = Math.max(0, Math.min(1, pu.hp / Math.max(1, pu.maxHp)));
+          return `<div class="panel hud-pet-card${id === info.targetId ? " sel" : ""}" data-id="${esc(id)}"><span class="pc-ico"><img src="${icon(PET_ICON[pu.sprite] ?? pu.sprite)}" alt="" onerror="this.onerror=null;this.src='${icon("pet_wolf")}'"></span><span class="pc-head"><span class="pc-nm">${esc(pu.name)}</span><span class="pc-lv">ур. ${pu.level}</span></span><div class="bar hp"><i style="width:${k * 100}%"></i><span>${pu.hp} / ${pu.maxHp}</span></div></div>`;
+        }).join("");
       }
     } else setHidden(this.petBox, true);
 

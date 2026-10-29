@@ -6,11 +6,11 @@
  * Все выстрелы проверяют прямую видимость (lineClear). Состояние героя — в WeakMap (в сохранения не попадает).
  */
 import { lineClear, walkable } from "../../../shared/map";
-import { petUnitId, type PetDef } from "../../../shared/pets";
+import { petUnitId, sumUnitId, type PetDef } from "../../../shared/pets";
 import { Anim, Dir } from "../../../shared/protocol";
 import { SKILLS, SUMMONS } from "../../../shared/skills";
 import { NO_LOS, RAY_MIN, rayLen, trapErr, trapRadius as trapRadiusOf } from "../../../shared/skillShape";
-import { dismissPet, Pet } from "./Pet";
+import { anyPetOf, dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { addDot, dots, endDot, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
@@ -184,7 +184,7 @@ const markedActor = (w: World, p: Player): Actor | undefined => {
 
 /** Питомец (или зверь) героя рядом. */
 function petNear(w: World, p: Player) {
-  const pet = w.pets.get(petUnitId(p.id));
+  const pet = anyPetOf(w, p);
   return pet && !pet.dead && w.dist(pet, p) <= 450 ? pet : undefined;
 }
 
@@ -192,13 +192,13 @@ function petNear(w: World, p: Player) {
 function summonBeast(w: World, p: Player, ms: number) {
   const s = SUMMONS.hr_beast;
   if (!s) return;
-  dismissPet(w, p);
+  dismissPet(w, p, sumUnitId(p.id, "hr_beast"));
   const def: PetDef = { ...s, id: "hr_beast", price: 0, level: 0, skills: [], temp: true };
   const pet = new Pet(def, p, p.level);
   w.pets.set(pet.id, pet);
   w.state.mobs.set(pet.id, pet.unit);
   w.emit({ t: "spawn", id: pet.id, k: "nature" });
-  w.later(ms, () => { if (w.pets.get(pet.id) === pet) dismissPet(w, p); });
+  w.later(ms, () => { if (w.pets.get(pet.id) === pet) dismissPet(w, p, pet.id); });
 }
 
 // =====================================================================
@@ -274,7 +274,6 @@ export function castArcher(c: CastCtx): string | null | undefined {
       return null;
     }
     case "hr_beast": {
-      if (w.opts.mobs === false || p.team !== 0) return T("srv.archers.52");
       c.ok();
       u.anim = Anim.Cast;
       w.later(400, () => { if (u.anim === Anim.Cast && !p.dead) u.anim = Anim.Idle; });

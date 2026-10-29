@@ -155,23 +155,43 @@
   cursor: var(--cur-pointer);
 }
 
+/* рамки питомцев: стопка карточек в ширину и по левому краю рамки героя, та же рамка LiteUI */
 .hud-pet {
   position: absolute;
-  top: 150px;
-  padding: var(--sp-1h) var(--sp-2);
+  margin-top: var(--sp-4); /* углы рамок LiteUI выходят на 8px: без поля рамки героя и питомца слипаются */
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--sp-5);
 }
-.hud-pet .nm {
-  font-size: var(--fs);
-  color: var(--ally);
+.hud-pet-card {
+  border-image: url("/ui/liteui/panel.png") 18 / 18px / 8px stretch;
+  image-rendering: pixelated;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-areas: "ico head" "ico hp";
+  align-items: center;
+  column-gap: var(--sp-2);
+  row-gap: var(--sp-1);
+  padding: var(--sp-2);
+  cursor: var(--cur-pointer);
 }
-.hud-pet .lv {
-  color: var(--dim);
-  font-size: var(--fs);
-  margin-left: var(--sp-1h);
+.hud-pet-card.sel { outline: 1px solid var(--gold); }
+.hud-pet-card .pc-ico {
+  grid-area: ico;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: var(--well);
+  border: 1px solid var(--line-hi);
+  border-radius: var(--r-2);
 }
+.hud-pet-card .pc-ico img { width: 28px; height: 28px; image-rendering: pixelated; }
+.hud-pet-card .pc-head { grid-area: head; min-width: 0; display: flex; align-items: baseline; gap: var(--sp-1h); }
+.hud-pet-card .pc-nm { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs); font-weight: var(--fw-b); color: var(--ally); }
+.hud-pet-card .pc-lv { flex: none; font-size: var(--fs-xs); color: var(--dim); }
+.hud-pet-card .bar.hp { grid-area: hp; height: 10px; }
+.hud-pet-card .bar.hp > span { font-size: var(--fs-2xs); line-height: 8px; }
 .hud-target {
   position: absolute;
   left: calc(12px + var(--hud-col) + 20px); /* углы рамок LiteUI выходят на 8px */

@@ -207,7 +207,7 @@
   },
   "summons": {
     "wl_skeleton": {
-      "name": "Скелет-прислужник", "sprite": "skeleton", "price": 0, "level": 0, "hp": 0.9, "dmg": 1.1, "armor": 1.2,
+      "name": "Скелет-прислужник", "sprite": "skeleton", "price": 0, "level": 0, "hp": 0.7, "dmg": 0.85, "armor": 1.2,
       "speed": 125, "range": 34, "attackCd": 1.2, "radius": 10, "skills": []
     }
   }

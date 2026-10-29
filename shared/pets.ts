@@ -47,4 +47,6 @@ export const petStats = (def: PetDef, level: number) => ({
   armor: Math.round(def.armor * level * 1.6),
 });
 export const petXpToNext = (level: number) => Math.round(30 * level ** 1.5);
+/** Призванный прислужник героя (скелет, демон, зверь): свой id на каждый вид — живут вместе с постоянным питомцем. */
+export const sumUnitId = (ownerId: string, kind: string) => `sum_${ownerId}_${kind}`;
 export const petUnitId = (ownerId: string) => `pet_${ownerId}`;

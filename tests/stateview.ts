@@ -8,7 +8,7 @@ import { GATES, SIEGE } from "../shared/siege";
 import { MAP_SEED, TILE } from "../shared/constants";
 import { generateMap } from "../shared/map";
 import { SKILLS } from "../shared/skills";
-import { petUnitId } from "../shared/pets";
+import { sumUnitId } from "../shared/pets";
 import { VIS_CELL, VIS_OUT } from "../server/src/rooms/visibility";
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 
@@ -172,7 +172,7 @@ async function main() {
       await b.until(() => !sees(b, a.id), 2000, "после выхода из группы снова не видно");
     });
 
-    await check("питомец заменён другим призывом (скелет → демон → скелет): клиенту приходит новый объект, старый уходит", async () => {
+    await check("несколько питомцев (скелет + демон) живут вместе (у каждого свой id); в виде остаются после телепорта", async () => {
       const wl = await Bot.join("Чернокнига", "secret", "warlock");
       wl.send("dbg", { op: "level", v: 100 });
       await wl.until(() => (wl.self?.level ?? 0) >= 100, 3000, "уровень 100");
@@ -181,25 +181,23 @@ async function main() {
       await wl.until(() => (wl.self?.skills?.wl_demon ?? 0) >= 1, 3000, "умения выучены");
       wl.send("dbg", { op: "tp", x: A.x, y: A.y }); // вне столицы: там призывы запрещены
       await sleep(800);
-      const pid = petUnitId(wl.id), added: any[] = [];
-      (getStateCallbacks(wl.room) as any)(wl.room.state).mobs.onAdd((u: any, id: string) => { if (id === pid) added.push(u); }, false);
-      /** Призыв: у клиента под pet_<герой> — новый объект (onAdd), с другим спрайтом, чем был. */
+      const sk = sumUnitId(wl.id, "wl_skeleton"), dm = sumUnitId(wl.id, "wl_demon"), added: any[] = [];
+      const mobs = (getStateCallbacks(wl.room) as any)(wl.room.state).mobs;
+      mobs.onAdd((u: any, id: string) => { if (id === sk) added.push(u); }, false);
       const cast = async (id: string) => {
-        const me = wl.me(), n = added.length, was = wl.room.state.mobs.get(pid);
+        const me = wl.me();
         wl.send("skill", { id, x: me.x + 60, y: me.y });
-        await wl.until(() => added.length > n && wl.room.state.mobs.get(pid) === added[added.length - 1] && added[added.length - 1] !== was, 3000, `${id}: новый питомец у клиента`);
-        return added[added.length - 1];
+        await wl.until(() => wl.room.state.mobs.has(id === "wl_demon" ? dm : sk), 3000, `${id}: питомец у клиента`);
       };
-      const skel = await cast("wl_skeletons");
+      await cast("wl_skeletons");
+      const skel = wl.room.state.mobs.get(sk);
       await sleep(1600); // общий откат
-      const demon = await cast("wl_demon");
-      assert(demon.sprite !== skel.sprite, "спрайт не сменился: " + demon.sprite);
-      await sleep((SKILLS.wl_skeletons.cd?.(1) ?? 30) * 1000 - 1200); // откат скелетов
-      const skel2 = await cast("wl_skeletons");
-      assert(skel2.sprite === skel.sprite, "скелет не вернулся: " + skel2.sprite);
-      wl.send("dbg", { op: "tp", x: B.x, y: B.y }); // телепорт: питомец остаётся в виде
+      await cast("wl_demon");
+      assert(wl.room.state.mobs.has(sk) && wl.room.state.mobs.has(dm), "скелет и демон не вместе");
+      assert(wl.room.state.mobs.get(dm).sprite !== skel.sprite, "спрайты совпали");
+      wl.send("dbg", { op: "tp", x: B.x, y: B.y }); // телепорт: питомцы остаются в виде
       await sleep(600);
-      assert(wl.room.state.mobs.has(pid), "питомец пропал из вида после телепорта");
+      assert(wl.room.state.mobs.has(sk) && wl.room.state.mobs.has(dm), "питомцы пропали из вида после телепорта");
       await wl.leave();
     });
 
