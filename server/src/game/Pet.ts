@@ -237,7 +237,10 @@ function strike(w: World, pet: Pet, mob: Actor, mult: number, kind: "phys" | "fi
   let a = pet.stats.dmg * (flat ? 1 : rnd(0.85, 1.15)) * mult;
   // арена: цель — герой соперника; удар идёт от хозяина обычным путём (броня, щиты, статистика боя)
   if (w.isPlayer(mob)) return w.hostile(pet.owner, mob) ? w.hit(pet.owner, mob, { flat: Math.max(1, Math.round(a)), canCrit: false, kind, noProc: true, noBreak: true }) : 0;
+  // неуязвимость и множитель получаемого урона — как в World.hitEx (босс рейда до пробуждения и в паузе фазы ×0.1, слабости моба)
+  if (w.isImmune(mob)) return 0;
   a *= 1 - armorReduction(kind === "phys" ? mob.stats.armor : mob.stats.armor * 0.5, pet.level);
+  a *= (mob.ai.weak?.dmg?.[kind] ?? 1) * mob.dmgTakenMul;
   const v = Math.max(1, Math.round(a));
   mob.addThreat(pet.id, v);
   w.emit({ t: "dmg", id: mob.id, v, k: kind });
@@ -273,7 +276,8 @@ function pickTarget(w: World, pet: Pet): Actor | null {
       const d = w.dist(e, o);
       if (d < pd) { pd = d; pb = e; }
     }
-    return pb;
+    if (pb) return pb;
+    // рейд тоже без обычных мобов (mobs: false), но босс — моб: дальше выбор как в мире, иначе призывы стоят без дела
   }
   const t = w.mobs.get(o.targetId ?? "");
   if (t && !t.dead && w.dist(t, o) < 420) return t;

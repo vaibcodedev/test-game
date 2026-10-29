@@ -133,10 +133,13 @@ async function main() {
       // мана регенерирует (derived.mpRegen в секунду), поэтому порог «потрачено 8» учитывает регенерацию за время каста
       const regen = a.self!.derived.mpRegen;
       let cd = 0;
-      const gob = mobNear(a, sp.x, sp.y, 300);
+      // после телепорта мобы вокруг приходят патчами состояния (фильтр видимости) — ждём живую цель, а не берём срез сразу
+      let gob: string | null = null;
+      await a.until(() => (gob = mobNear(a, sp.x, sp.y, 300)) !== null, 4000, `моб у точки гоблинов ${sp.x},${sp.y}: в состоянии ${a.room.state.mobs.size}`);
       a.room.onMessage("cd", (c: any) => { if (c.id === "taunt") cd = c.ms; });
+      a.toasts.length = 0;
       a.send("skill", { id: "taunt", x: sp.x, y: sp.y, target: gob });
-      await a.until(() => cd > 0, 2000, "перезарядка");
+      await a.until(() => cd > 0, 2000, "перезарядка").catch((e) => { throw new Error(`${e.message} (цель ${gob}, герой ${Math.round(a.me().x)},${Math.round(a.me().y)}, мана ${a.me().mp}, тосты: ${a.toasts.join(" | ") || "нет"})`); });
       await a.until(() => a.me().mp <= mp0 - 8 + (regen * (Date.now() - t0)) / 1000 + 1, 3000, "мана потрачена");
       const mp1 = a.me().mp;
       a.send("skill", { id: "taunt", x: sp.x, y: sp.y, target: gob });

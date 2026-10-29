@@ -2,7 +2,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { MAP_SEED, PLAYER_RADIUS, TILE } from "../shared/constants";
 import { affixCount, BASE_ITEMS, ITEM_MODELS, makeItem, previewGear, type Slot } from "../shared/items";
-import { CELL_BLOCK, CELL_WALL, generateMap, T, walkable, ZONES, zoneAtPx } from "../shared/map";
+import { CELL_BLOCK, CELL_WALL, CELL_WATER, generateMap, T, walkable, ZONES, zoneAtPx } from "../shared/map";
 import { assert, Bot, check, dbFile, ensureChar, passedCount, sleep, startServer, stopServer } from "./harness";
 
 type GiveResult = { kind: "info" | "warn" | "error"; text: string; given: number; worn: boolean };
@@ -250,7 +250,8 @@ async function main() {
     const start = pos(adm);
     const walk = scan("проходимая рядом со стартом", (tx, ty) => { const d = dist({ x: center(tx), y: center(ty) }, start); return d > 8 * TILE && d < 16 * TILE && tileOk(tx, ty); });
     const water = scan("вода у берега", (tx, ty) => cellFlag(tx, ty, CELL_BLOCK) && !cellFlag(tx, ty, CELL_WALL) && isWater(tx, ty) && gap(tx, ty));
-    const wall = scan("стена", (tx, ty) => cellFlag(tx, ty, CELL_WALL) && gap(tx, ty));
+    /** «Стена» — любая сухая непроходимая клетка (скала, обрыв, постройка): CELL_WALL в открытом мире не ставится (только арены и подземелья). */
+    const wall = scan("стена", (tx, ty) => cellFlag(tx, ty, CELL_BLOCK) && !cellFlag(tx, ty, CELL_WATER) && !isWater(tx, ty) && gap(tx, ty));
     const closed = scan("глухой участок", (tx, ty) => tx > SNAP + 2 && ty > SNAP + 2 && tx < MAP.w - SNAP - 2 && ty < MAP.h - SNAP - 2 && cellFlag(tx, ty, CELL_BLOCK) && nearest({ x: center(tx), y: center(ty) }, SNAP + 1) === Infinity);
     /** Админ шлёт admin:tp { x, y } и ждёт, пока позиция сместится (цели в тесте дальше 8 px друг от друга) и устоится
      *  (не меняется 300 мс — опрос вместо фиксированной паузы: под нагрузкой патчи состояния приходят с задержкой); возвращает итоговую. */
@@ -306,11 +307,18 @@ async function main() {
       adm.send("admin:tp", { zone: safe });
       await adm.until(() => dist(pos(adm), MAP.playerSpawn) < 2, 3000, `ТП в зону «${ZONES[safe].name}»`);
       // зоны с общими мобами (Поля, вулкан, данж, кольцо) ведут в саму выбранную зону, а не в первую точку с таким мобом
-      for (const name of ["Поля вечных битв", "Пылающий вулкан", "Пепельные чертоги", "Пустошь Павших"]) {
+      for (const name of ["Поля вечных битв", "Пылающий вулкан", "Пустошь Павших"]) {
         const zi = ZONES.findIndex((z) => z.name === name);
         adm.send("admin:tp", { zone: zi });
         await adm.until(() => zoneAtPx(MAP, pos(adm).x, pos(adm).y) === zi, 3000, `ТП в зону «${name}»`);
       }
+      // «Пепельные чертоги» с 20164bc — инстанс (своя карта), в мире ни одной клетки этой зоны: ТП отказывает, позиция та же
+      const dg = ZONES.findIndex((z) => z.name === "Пепельные чертоги");
+      assert(!MAP.zone.includes(dg), "«Пепельные чертоги» снова в открытом мире — верните зону в список ТП выше");
+      const from = pos(adm), k = adm.toasts.length;
+      adm.send("admin:tp", { zone: dg });
+      const t = await toastsAfter(k);
+      assert(t.includes("Цель телепорта не найдена") && dist(pos(adm), from) < 1, `ТП в инстанс-зону: тост «${t}», позиция ${JSON.stringify(from)} → ${JSON.stringify(pos(adm))}`);
     });
     // ---- призванные монстры: список, «Убить», «Убить всех призванных», «Убить цель» (вкладка «Мир») ----
     type Summoned = { id: string; name: string; level: number; hp: number; maxHp: number; boss: boolean; d: number };
