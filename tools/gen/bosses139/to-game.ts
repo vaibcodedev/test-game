@@ -276,7 +276,7 @@ BOSSES.push({
     // кокон: клубок в руках и бросок; сам кокон — моб на герое
     cocoon: { waves: [{ pre: ["cocoonWind", "cocoonHold"], strike: "cocoonCast" }], fx: [] },
     // падение-сеть: вздёрнут нитями, падает; кольцо r…r2 застилает сеть на 4 с
-    web_drop: { waves: [{ pre: ["netWind", "netHold"], strike: "netStrike" }], fx: [{ fx: "web", waves: [0], seq: ["webIn", "webHold", "webOut"], pin: 0, timing: "strike", place: "area", spacing: 76, holds: { webHold: 3700 } }] },
+    web_drop: { waves: [{ pre: ["netWind", "netHold"], strike: "netStrike" }], fx: [{ fx: "web", waves: [0], seq: ["webIn", "webHold", "webOut"], pin: 0, timing: "strike", place: "area", spacing: 76, holds: { webHold: 4500 } }] },
   },
   units: [{ src: "marion-cocoon-unit.png", id: `${mar.ID}_cage`, frame: mar.COCOON_UNIT.frame, frameH: mar.COCOON_UNIT.frameH }],
 });

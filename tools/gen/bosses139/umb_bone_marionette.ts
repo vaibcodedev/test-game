@@ -723,15 +723,42 @@ function cocoonFx(i: number): Cv {
   o.outline(OUTL);
   return o;
 }
-/** сеть на земле 96×48 (вид сверху в перспективе): растёт 0–2, держит 3–4 (мерцает), тает 5 */
+/** цвет полупрозрачной плёнки сети (при выгрузке в игру получает альфу MEMB_A) */
+const MEMB: C = [41, 31, 61], MEMB_A = 58;
+/** сеть на земле 96×48 (вид сверху в перспективе): плотная паутина — 16 радиальных и 7 круговых нитей с провисом, плёнка между ними, блики сверху-слева; растёт 0–2, держит 3–4 (мерцает), тает 5 */
 function webFx(i: number): Cv {
-  const o = new Cv(96, 48), cx = 48, cy = 24, k = [0.35, 0.7, 1, 1, 1, 1][i], R = 44 * k;
-  const col = (q: number) => (i === 5 ? (q % 3 ? THR0 : STRB) : i === 4 && q % 4 === 0 ? THR1 : q % 2 ? THR0 : THR1);
-  const SP = 12;
-  const spoke = (t: number) => t * 2 * PI / SP + 0.13;
-  for (let s = 0; s < SP; s++) { const t = spoke(s); for (let q = 2; q <= R; q += 0.6) { const x = cx + COS(t) * q, y = cy + SIN(t) * q * 0.48; if (i === 5 && hash(s, q) < 0.4) continue; o.set(x, y, col(Math.round(q))); } }
-  for (let ring = 1; ring <= 5; ring++) { const rr = (ring / 5) * R; for (let s = 0; s < SP; s++) { const t0 = spoke(s), t1 = spoke(s + 1); for (let u = 0; u <= 1; u += 0.05) { const sag = SIN(u * PI) * rr * 0.08; const x = cx + COS(t0) * rr * (1 - u) + COS(t1) * rr * u, y = cy + SIN(t0) * rr * 0.48 * (1 - u) + SIN(t1) * rr * 0.48 * u; const dx = x - cx, dy = (y - cy) / 0.48, dl = Math.hypot(dx, dy) || 1; if (i === 5 && hash(ring * 13 + s, u * 20) < 0.45) continue; o.set(x - (dx / dl) * sag, y - (dy / dl) * sag * 0.48, col(ring + s)); } } }
-  // (тень под нитями)
+  const o = new Cv(96, 48), cx = 48, cy = 24, k = [0.35, 0.7, 1, 1, 1, 1][i], R = 46 * k, Y = 0.5;
+  const SP = 16, RINGS = 7, fade = i === 5;
+  const spoke = (t: number) => t * 2 * PI / SP + 0.1;
+  // плёнка между нитями (полупрозрачная заливка, в игре — альфа)
+  for (let y = 0; y < 48; y++) for (let x = 0; x < 96; x++) {
+    const dx = x - cx, dy = (y - cy) / Y, d = Math.hypot(dx, dy);
+    if (d > R || d < 2) continue;
+    if (fade && hash(x, y) < 0.45) continue;
+    o.set(x, y, MEMB);
+  }
+  // свет сверху-слева: нить, обращённая к свету, — блик, обращённая от света — тень
+  const lit = (nx: number, ny: number) => -nx * 0.7 - ny * 0.7;
+  const tone = (nx: number, ny: number, q: number): C => { const l = lit(nx, ny); return l > 0.45 ? THR1 : l > -0.2 ? (q % 3 === 0 ? THR1 : THR0) : (q % 2 ? THR0 : STRB); };
+  for (let s = 0; s < SP; s++) {
+    const t = spoke(s), nx = COS(t), ny = SIN(t);
+    for (let q = 2; q <= R; q += 0.5) { if (fade && hash(s, q * 3) < 0.4) continue; o.set(cx + nx * q, cy + ny * q * Y, tone(nx, ny, Math.round(q))); }
+  }
+  for (let ring = 1; ring <= RINGS; ring++) {
+    const rr = Math.pow(ring / RINGS, 0.85) * R;
+    for (let s = 0; s < SP; s++) {
+      const t0 = spoke(s), t1 = spoke(s + 1);
+      for (let u = 0; u <= 1; u += 0.04) {
+        const sag = SIN(u * PI) * rr * 0.1;
+        const x = cx + COS(t0) * rr * (1 - u) + COS(t1) * rr * u, y = cy + (SIN(t0) * (1 - u) + SIN(t1) * u) * rr * Y;
+        const dx = x - cx, dy = (y - cy) / Y, dl = Math.hypot(dx, dy) || 1;
+        if (fade && hash(ring * 13 + s, u * 20) < 0.5) continue;
+        o.set(x - (dx / dl) * sag, y - (dy / dl) * sag * Y, tone(dx / dl, dy / dl, ring + s));
+      }
+    }
+  }
+  // капли росы на пересечениях (2×1, яркие) и тёмная кромка под нитями
+  for (let ring = 2; ring <= RINGS; ring += 2) for (let s = 0; s < SP; s += 2) { if (fade) break; const t = spoke(s), rr = Math.pow(ring / RINGS, 0.85) * R; const x = Math.round(cx + COS(t) * rr), y = Math.round(cy + SIN(t) * rr * Y); o.set(x, y, [255, 255, 255]); o.set(x + 1, y, THR1); }
   for (let y = 0; y < 48; y++) for (let x = 0; x < 96; x++) if (o.has(x, y) && !o.has(x, y + 1) && GLOWSET.has(o.get(x, y).join())) o.set(x, y + 1, STRD);
   return o;
 }
@@ -781,6 +808,13 @@ export function writeSketch(root: string, outDir: string): string {
   const f = path.join(outDir, "r69s-e-sketch.png"); savePng(s, f); return f;
 }
 
+/** сеть на земле для игры: лист marion-fx-web.png (рисунок + свечение, плёнка полупрозрачная) */
+export function writeWebFx(outDir: string) {
+  { const F = GAME_FX.web, web = new Cv(F.w * F.n, F.h * 2), MAP = [0, 1, 2, 3, 4, 3, 5, 5];
+    for (let j = 0; j < F.n; j++) { const f = webFx(MAP[j]);
+      for (let y = 0; y < F.h; y++) for (let x = 0; x < F.w; x++) { if (!f.has(x, y) || (j === 7 && hash(x, y + 7) < 0.5)) continue; const q = f.get(x, y); web.set(j * F.w + x, y, q); if (q.join() === MEMB.join()) web.d[((y) * web.w + j * F.w + x) * 4 + 3] = MEMB_A; if (GLOWSET.has(q.join())) web.set(j * F.w + x, F.h + y, q); } }
+    savePng(web, path.join(outDir, "marion-fx-web.png")); }
+}
 export function writeMarionetteArt(root: string, outDir: string, only?: MarAnim[], quick = false): string[] {
   fs.mkdirSync(outDir, { recursive: true });
   const N = FRAME, FH = FRAME_H, sheet = new Cv(N * MAR_COLS, FH * 3), glow = new Cv(N * MAR_COLS, FH * 3);
@@ -806,10 +840,8 @@ export function writeMarionetteArt(root: string, outDir: string, only?: MarAnim[
   for (let i = 0; i < 6; i++) { fx.blit(cocoonFx(i), i * 32, 0); fx.blit(webFx(i), 6 * 32 + 8 + i * 96, 0); }
   savePng(fx, path.join(outDir, "marion-fx.png"));
   // в игру: сеть (рисунок + свечение) и лист кокона-моба
-  { const F = GAME_FX.web, web = new Cv(F.w * F.n, F.h * 2), MAP = [0, 1, 2, 3, 4, 3, 5, 5];
-    for (let j = 0; j < F.n; j++) { const f = webFx(MAP[j]);
-      for (let y = 0; y < F.h; y++) for (let x = 0; x < F.w; x++) { if (!f.has(x, y) || (j === 7 && hash(x, y + 7) < 0.5)) continue; const q = f.get(x, y); web.set(j * F.w + x, y, q); if (GLOWSET.has(q.join())) web.set(j * F.w + x, F.h + y, q); } }
-    savePng(web, path.join(outDir, "marion-fx-web.png"));
+  writeWebFx(outDir);
+  {
     const U = COCOON_UNIT, unit = new Cv(U.frame * U.cols, U.frameH * 3);
     const cols: [number, number, number][] = [[2, 0, 0], [2, 1, 0], [2, 0, 0], [2, -1, 0], [3, 0, 0], [4, 1, 0], [3, 0, 0], [4, -1, 0], [4, 0, 0], [5, 0, 0], [5, 0, 0.4], [5, 0, 0.8]];
     for (let row = 0; row < 3; row++) cols.forEach(([fi, dx, drop], i) => { const f = cocoonFx(fi);
@@ -860,6 +892,7 @@ const isMain = !!process.argv[1] && path.resolve(process.argv[1]).replace(/\\/g,
 if (isMain) {
   const root = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
   const out = path.join(root, "tools", "out", "bosses139"), t = Date.now();
+  if (process.argv.includes("--webonly")) { writeWebFx(out); console.log("web ok"); process.exit(0); }
   if (process.argv.includes("--sketch")) console.log("  эскиз:", writeSketch(root, out));
   else {
     const onlyArg = process.argv.find((a) => a.startsWith("--only="));
