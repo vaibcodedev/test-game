@@ -18,6 +18,7 @@ import { barrel, crate, stall, well as well141, solHeroStatue, umbHeroStatue } f
 import { teleportStoneV2 } from "./teleport-v2";
 import { BIOME_ART, resourceIcon } from "./biomes";
 import { natureGameArt } from "./nature3d";
+import { floraGameArt } from "./nature3d-flora";
 import { RESOURCE_IDS } from "../../shared/biomes";
 import { lootObjects } from "./loot";
 
@@ -247,6 +248,8 @@ export const OBJECT_ART: Record<string, Art> = {
   ...BIOME_ART,
   // объёмные камни всех биомов, льдины, заснеженные кусты и сугробы с вариантами kind__k (tools/gen/nature3d.ts, shared/natureVariants.ts)
   ...natureGameArt(),
+  // объёмные растения, кости, руда и уступы с вариантами и кадрами ствола <id>_trunk (tools/gen/nature3d-flora.ts)
+  ...floraGameArt(),
   // стены, башни, ворота, здания и частокол городов, фортов, поселений и Эмберхолла (задача 141): все варианты o_<kind>__<v>
   ...walls141Art(),
   // объёмный декор мира (шатёр лагеря, сено, руины, колонна, обелиск, указатель, колодец, фонарь): tools/gen/volume-world.ts

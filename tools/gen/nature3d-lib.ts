@@ -174,6 +174,21 @@ export interface Rendered { pc: PC; mat: Int16Array; depth: Float32Array; ax: nu
 export function render(sc: Scene, o: RenderOpts): PC {
   return renderFull(sc, o).pc;
 }
+/**
+ * Слой кадра по материалам (ствол дерева для полупрозрачной кроны): видимые пиксели этих материалов, их контур
+ * и контактная тень у основания (нижние 3 ряда). Тот же размер и опора, что у кадра.
+ */
+export function layerOf(r: Rendered, keep: Set<number>): PC {
+  const { pc, mat } = r, W = pc.w, H = pc.h, out = new PC(W, H);
+  const on = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && keep.has(mat[y * W + x]);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = pc.get(x, y)!;
+    if (!c[3]) continue;
+    const m = mat[y * W + x];
+    if (keep.has(m) || (m < 0 && (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1) || y >= H - 3))) out.set(x, y, c);
+  }
+  return out;
+}
 export function renderFull(sc: Scene, o: RenderOpts): Rendered {
   const W = o.w, H = o.h, ax = o.ax ?? W / 2, ay = o.ay ?? H - 12;
   const col = new PC(W, H), mat = new Int16Array(W * H).fill(-1), dep = new Float32Array(W * H).fill(1e9);

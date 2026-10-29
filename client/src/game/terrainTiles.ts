@@ -19,6 +19,17 @@ export function cellHash(x: number, y: number) {
 /** Глобальный индекс тайла берега (набор shores.png с firstgid SHORE_GID): строка биом·варианты + вариант, столбец маска − 1. */
 export const shoreIndex = (biome: number, variant: number, mask: number) => SHORE_GID + (biome * SHORE_VARIANTS + variant) * SHORE_COLS + mask - 1;
 
+/** Свес стенки берега в клетку ниже (столбцы 16–30 shores.png): клетка под клеткой берега получает низ её стенки, линию воды и тень. −1 — пусто. */
+export function shoreSpillLayer(m: WorldMap): Int16Array | null {
+  let out: Int16Array | null = null;
+  for (let y = 1; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+    const s = shoreAt(m, x, y - 1);
+    if (!s || (s.mask & 3) === 0) continue; // стенка бывает только под сушей верхних углов
+    (out ??= new Int16Array(m.w * m.h).fill(-1))[y * m.w + x] = shoreIndex(s.biome, s.variant, s.mask) + 16;
+  }
+  return out;
+}
+
 /** Индексы тайлов всех слоёв по клеткам карты, считаются один раз: слой 0 — стены данжа, 1..TERRAIN_COUNT−1 — поверхности; −1 — пусто, null — слоя на карте нет. */
 export function terrainLayers(m: WorldMap): (Int16Array | null)[] {
   const V = (x: number, y: number) => m.vtx[y * (m.w + 1) + x];

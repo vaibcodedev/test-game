@@ -7,13 +7,13 @@ import fs from "node:fs";
 import { PNG } from "pngjs";
 import { MAP_SEED } from "../shared/constants";
 import { generateMap, T, waterAtFeet, Zone, zoneAt } from "../shared/map";
-import { COLS, terrainLayers } from "../client/src/game/terrainTiles";
-import { SHORE_GID, SHORE_COLS } from "../shared/map";
+import { COLS, shoreSpillLayer, terrainLayers } from "../client/src/game/terrainTiles";
+import { SHORE_GID, SHORE_COLS, shoreAt } from "../shared/map";
 import { PC } from "./gen/canvas";
 
 const walkLine = process.argv.includes("--walk");
 const m = generateMap(MAP_SEED);
-const layers = terrainLayers(m);
+const layers = [shoreSpillLayer(m), ...terrainLayers(m)];
 const terrain = PNG.sync.read(fs.readFileSync("client/public/assets/tiles/terrain.png"));
 const shores = PNG.sync.read(fs.readFileSync("client/public/assets/tiles/shores.png"));
 const water = PNG.sync.read(fs.readFileSync("client/public/assets/tiles/water.png"));
@@ -59,14 +59,20 @@ function spot(pred: (t: number, tx: number, ty: number) => boolean, skip = 0) {
   return found[Math.min(found.length - 1, skip)];
 }
 const up = (pc: PC, k: number) => { const o = new PC(pc.w * k, pc.h * k); for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) o.set(x, y, pc.get(Math.floor(x / k), Math.floor(y / k))!); return o; };
-const spots = [
-  spot((v, x, y) => v === T.Grass && zoneAt(x, y, MAP_SEED) === Zone.Meadow),
-  spot((v) => v === T.Sand),
-  spot((v) => v === T.Grass, 40),
-  spot((v) => v === T.Sand, 25),
-].filter(Boolean) as [number, number][];
-const b = m.objects.find((o) => o.kind === "bridge_h" || o.kind === "bridge_v");
-if (b) spots.push([Math.floor(b.x / 32), Math.floor(b.y / 32)]);
+/** Клетка северного берега биома bi (маска 3) с водой 25–60 % в окне — первая по ходу карты, skip — пропустить столько найденных. */
+function shoreSpot(bi: number, skip = 0, lo = 30, hi = 72): [number, number] | null {
+  let n = 0;
+  for (let ty = 6; ty < m.h - 6; ty++) for (let tx = 8; tx < m.w - 8; tx++) {
+    const s = shoreAt(m, tx, ty);
+    if (!s || s.biome !== bi || s.mask !== 3) continue;
+    let c = 0; for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (V(tx + x, ty + y) === T.Water) c++;
+    if (c < lo || c > hi) continue;
+    if (n++ >= skip) return [tx, ty];
+  }
+  return null;
+}
+const want = (process.argv.find((a) => a.startsWith("--biomes="))?.slice(9) ?? "2,3,4,5,6,7").split(",").map(Number);
+const spots = want.map((b) => shoreSpot(b, 3) ?? shoreSpot(b) ?? shoreSpot(b, 0, 12, 110)).filter(Boolean) as [number, number][];
 const TW = 12, TH = 8;
 const out = new PC(2 * TW * 32 * 2 + 10, Math.ceil(spots.length / 2) * (TH * 32 * 2 + 10));
 spots.forEach(([x, y], i) => out.blit(up(render(x, y, TW, TH), 2), (i % 2) * (TW * 64 + 10), Math.floor(i / 2) * (TH * 64 + 10)));

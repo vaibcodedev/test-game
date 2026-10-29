@@ -18,7 +18,7 @@ import { MAP_SEED, TILE } from "../shared/constants";
 import { generateMap, SHORE_BIOMES, SHORE_COLS, SHORE_GID, SHORE_VARIANTS, TERRAIN_COUNT, TERRAIN_KEYS, type WorldMap } from "../shared/map";
 import { generateRaidMap } from "../shared/raid";
 import { generateDungeonMap } from "../shared/dungeon";
-import { CHUNK, chunkRect, chunkRows, COLS, terrainLayers } from "../client/src/game/terrainTiles";
+import { CHUNK, chunkRect, chunkRows, COLS, shoreSpillLayer, terrainLayers } from "../client/src/game/terrainTiles";
 
 let failed = 0;
 const ok = (s: string) => console.log("  ok   " + s);
@@ -114,6 +114,11 @@ else ok(`все ${used.size} тайлов, что встречаются на к
   if (!ok1) fail(`shores.png ${shores.width}×${shores.height}, ждём ${SHORE_COLS * TILE}×${SHORE_BIOMES.length * SHORE_VARIANTS * TILE} (npx tsx tools/gen/shores.ts)`);
   else if (blankS.length) fail(`в shores.png пустые тайлы берега, что есть на карте: ${blankS.slice(0, 10).join(", ")}`);
   else ok(`берег автотайлами: ${shoreUsed.size} разных тайлов shores.png на картах, все нарисованы`);
+  const sp = shoreSpillLayer(world);
+  let badSpill = 0;
+  if (sp) for (const v of sp) if (v >= 0) { const k = v - SHORE_GID; if (k < 0 || k % SHORE_COLS < 16 || k % SHORE_COLS > 30 || Math.floor(k / SHORE_COLS) >= SHORE_BIOMES.length * SHORE_VARIANTS) badSpill++; }
+  if (badSpill) fail(`свес берега: ${badSpill} индексов вне столбцов 16–30 shores.png`);
+  else ok(`свес стенок берега: ${sp ? [...sp].filter((v) => v >= 0).length : 0} клеток, индексы в shores.png`);
 }
 // ---- куски у столиц (там падал клиент: точка появления новых героев) ----
 for (const f of ["solgard", "umbrath"]) {

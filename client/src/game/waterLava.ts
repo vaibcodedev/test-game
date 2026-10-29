@@ -112,7 +112,7 @@ void main () {
   // Трава/земля: с севера стенка грунта (кромка дёрна, свет, середина, тёмный низ, тень, пена), с боков узкая стенка 2-3 px,
   // с юга кромка дёрна с тенью на воде. Песок: пологий мокрый край 2-4 px и пена.
   if (uLook > 1.5 && mk.b < 0.9 && s0 > 0.42) {
-    float W = (uMaskN.x - 1.0) * 0.5;
+    float W = (uMaskN.x - 2.0) / 3.0;
     vec3 gk = texture2D(uMask, ((wq / 32.0 + 0.5) + vec2(W + 1.0, 0.0)) / uMaskN).rgb; // грунт у кромки: песок, снег/лёд, камень/пепел
     float sand = gk.r;
     float lum = 1.0 - 0.45 * uNight;
@@ -165,6 +165,33 @@ void main () {
       if (dS < 1.5) col *= 0.55; else col *= 0.8;
     } else col = mix(col, pal(4.0), 0.5 * foam);
   } else col = mix(col, pal(4.0), 0.5 * foam);
+  // биом воды (по соседней суше, плавно): болото — мутная зелёно-бурая с ряской, холод — бирюзово-серая со льдинками, пепел — свинцовая с плёнкой
+  {
+    float WB = (uMaskN.x - 2.0) / 3.0;
+    vec3 bm = texture2D(uMask, ((vWorld / 32.0 + 0.5) + vec2(2.0 * WB + 2.0, 0.0)) / uMaskN).rgb;
+    float lum = dot(col, vec3(0.3, 0.5, 0.2));
+    if (bm.r > 0.02) {
+      vec3 mud = mix(vec3(30.0, 40.0, 28.0), vec3(78.0, 88.0, 52.0), clamp(lum * 1.5, 0.0, 1.0)) / 255.0;
+      vec3 c2 = mix(col, mud, 0.85);
+      float dw = vn(p * 0.09 + vec2(t * 0.03, 0.0));
+      if (dw > 0.71 && hh(floor(p / 2.0)) < 0.75) c2 = hh(floor(p)) < 0.25 ? vec3(110.0, 150.0, 60.0) / 255.0 : vec3(62.0, 104.0, 44.0) / 255.0; // ряска пятнами
+      col = mix(col, c2, bm.r);
+    }
+    if (bm.g > 0.02) {
+      vec3 icy = mix(vec3(52.0, 92.0, 108.0), vec3(150.0, 190.0, 200.0), clamp(lum * 1.4 + (1.0 - mk.b) * 0.35, 0.0, 1.0)) / 255.0; // светлее у кромки
+      vec3 c2 = icy;
+      vec2 ic = floor(p / 26.0), lp = p - ic * 26.0 - (vec2(hh(ic + 3.0), hh(ic + 9.0)) * 14.0 + 6.0);
+      float r = 2.0 + floor(hh(ic + 5.0) * 3.0);
+      if (hh(ic) < 0.12 && dot(lp * vec2(1.0, 1.6), lp * vec2(1.0, 1.6)) < r * r) c2 = lp.y > r * 0.35 ? vec3(120.0, 160.0, 180.0) / 255.0 : vec3(214.0, 234.0, 242.0) / 255.0; // льдинка: верх светлый, низ в тени
+      col = mix(col, c2, bm.g);
+    }
+    if (bm.b > 0.02) {
+      vec3 lead = mix(vec3(24.0, 28.0, 36.0), vec3(70.0, 74.0, 84.0), clamp(lum * 1.3, 0.0, 1.0)) / 255.0;
+      float film = vn(p * 0.05 + vec2(t * 0.02, -t * 0.015));
+      if (film > 0.57) lead = mix(lead, vec3(96.0, 90.0, 86.0) / 255.0, 0.45); // плёнка пепла
+      col = mix(col, lead, bm.b);
+    }
+  }
   col *= 1.0 - 0.1 * uNight;
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -248,9 +275,45 @@ const readLook = (k: string, def: number): number => {
   return def;
 };
 
+/** Двухпроходная коробка радиуса R по сетке W×H (на месте). */
+function boxBlur(a: Float32Array, W: number, H: number, R: number) {
+  const tmp = new Float32Array(W * H);
+  const pass = (src: Float32Array, dst: Float32Array, len: number, step: number, lines: number, lstep: number) => {
+    for (let l = 0; l < lines; l++) {
+      const o = l * lstep;
+      let acc = 0;
+      for (let k = 0; k <= R && k < len; k++) acc += src[o + k * step];
+      for (let k = 0; k < len; k++) {
+        dst[o + k * step] = acc / (2 * R + 1);
+        const add = k + R + 1, rem = k - R;
+        if (add < len) acc += src[o + add * step];
+        if (rem >= 0) acc -= src[o + rem * step];
+      }
+    }
+  };
+  pass(a, tmp, W, 1, H, W);
+  pass(tmp, a, H, W, W, 1);
+}
+/** Биом воды по соседней суше (0..1): болото, холод (снег, лёд), пепел (пепел, обсидиан, базальт); луг, лес, песок — 0 (вид как есть). */
+export function waterBiome(m: WorldMap) {
+  const W = m.w + 1, H = m.h + 1, N = W * H;
+  const land = new Float32Array(N), bog = new Float32Array(N), cold = new Float32Array(N), ash = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const v = m.vtx[i];
+    if (v === T.Water) continue;
+    land[i] = 1;
+    if (v === T.Bog) bog[i] = 1;
+    else if (v === T.Snow || v === T.Ice) cold[i] = 1;
+    else if (v === T.Ash || v === T.Obsidian || v === T.Basalt || v === T.Lava) ash[i] = 1;
+  }
+  for (const a of [land, bog, cold, ash]) { boxBlur(a, W, H, 6); boxBlur(a, W, H, 6); }
+  for (let i = 0; i < N; i++) { const l = Math.max(land[i], 1e-3); bog[i] = Math.min(1, bog[i] / l); cold[i] = Math.min(1, cold[i] / l); ash[i] = Math.min(1, ash[i] / l); }
+  return { bog, cold, ash };
+}
+
 /** Маска по углам клеток: R — вода, G — лава, размытая коробкой (радиус 3 клетки по каждой оси). */
 function buildMask(scene: Phaser.Scene, m: WorldMap): GLTex {
-  const W = m.w + 1, H = m.h + 1, TW = 2 * W + 1; // слева R — вода, G — лава (размытая), B — вода (размытая); справа (после колонки-подложки) R — песок
+  const W = m.w + 1, H = m.h + 1, TW = 3 * W + 2; // слева R — вода, G — лава (размытая), B — вода (размытая); в середине (после колонки-подложки) R — песок, G — снег/лёд, B — камень/пепел; справа — биом воды (размытый): R — болото, G — холод, B — пепел
   if (scene.textures.exists("fx_mask")) scene.textures.remove("fx_mask");
   const tex = scene.textures.createCanvas("fx_mask", TW, H)!;
   const ctx = tex.getContext(), img = ctx.createImageData(TW, H);
@@ -267,6 +330,13 @@ function buildMask(scene: Phaser.Scene, m: WorldMap): GLTex {
     deep[i] = v === T.Water ? 1 : 0;
   }
   for (let y = 0; y < H; y++) { const o = (y * TW + W) * 4, c = (y * TW + W - 1) * 4; for (let k = 0; k < 4; k++) img.data[o + k] = img.data[c + k]; }
+  // биом воды: доля болота / холода / пепла среди суши в радиусе ~6 вершин (две коробки), плавно вдоль реки через биомы
+  const { bog, cold, ash } = waterBiome(m);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x, o = (y * TW + 2 * W + 2 + x) * 4;
+    img.data[o] = Math.round(bog[i] * 255); img.data[o + 1] = Math.round(cold[i] * 255); img.data[o + 2] = Math.round(ash[i] * 255); img.data[o + 3] = 255;
+  }
+  for (let y = 0; y < H; y++) { const o = (y * TW + 2 * W + 1) * 4, c = (y * TW + 2 * W) * 4; for (let k = 0; k < 4; k++) img.data[o + k] = img.data[c + k]; }
   const R = 3, tmp = new Float32Array(W * H), box = (src: Float32Array, dst: Float32Array, len: number, step: number, lines: number, lstep: number) => {
     for (let l = 0; l < lines; l++) {
       const o = l * lstep;
@@ -335,9 +405,31 @@ export function setupWaterLava(scene: Phaser.Scene, m: WorldMap, water: Phaser.G
       if (halo) { const v = cam.worldView; halo.setPosition(v.x - 8, v.y - 8).setDisplaySize(v.width + 16, v.height + 16); }
     }
   };
+  // «Простые» эффекты, не-WebGL и откат: статичный тон воды по биому — картинка по вершинам (1 px = 32 px мира, сглаживание), над водой, под землёй
+  let tintImg: Phaser.GameObjects.Image | null = null;
+  const staticTint = (show: boolean) => {
+    if (show && !tintImg) {
+      const key = "fx_water_biome";
+      if (!scene.textures.exists(key)) {
+        const W = m.w + 1, H = m.h + 1, { bog, cold, ash } = waterBiome(m);
+        const tex = scene.textures.createCanvas(key, W, H)!, ctx = tex.getContext(), im = ctx.createImageData(W, H);
+        for (let i = 0; i < W * H; i++) {
+          const b = bog[i], c = cold[i], a = ash[i], sum = b + c + a, o = i * 4;
+          if (sum < 0.02) continue;
+          im.data[o] = (b * 52 + c * 120 + a * 46) / sum; im.data[o + 1] = (b * 66 + c * 160 + a * 50) / sum; im.data[o + 2] = (b * 40 + c * 172 + a * 58) / sum;
+          im.data[o + 3] = Math.round(Math.min(1, sum) * 170);
+        }
+        ctx.putImageData(im, 0, 0); tex.refresh(); tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+      tintImg = scene.add.image(-16, -16, key).setOrigin(0).setScale(32).setDepth(-999); // DEPTH.water + 1 (terrain.ts)
+    }
+    tintImg?.setVisible(show);
+  };
+  if (!gl) staticTint(true);
   return {
     lava(layer) { layers.add(layer); layer.once("destroy", () => layers.delete(layer)); if (gl && curL && !broken) applyLava(layer); },
     update(cam) {
+      if (gl) staticTint(broken || !curW || !vfxFull());
       if (!gl || broken) return;
       try { tick(cam); } catch (e) {
         // ошибка компиляции шейдера или WebGL: откат к прежнему виду, без заливки

@@ -7,12 +7,13 @@ import Phaser from "phaser";
 import { TILE } from "../../../shared/constants";
 import { GROUND_OBJECTS, SHORE_GID, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
 import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
-import { CHUNK, cellHash, chunkRect, chunkRows, terrainLayers } from "./terrainTiles";
+import { CHUNK, cellHash, chunkRect, chunkRows, shoreSpillLayer, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
 import { NO_SHADOW, Shadow, SHADOW_DEPTH, shadowTick, WALL_KINDS, WallShadow, type WallTile } from "./shadows";
 import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
 import { trackLight } from "./lights";
+import { addTreeFade } from "./treeFade";
 import { glowOn } from "./postfx";
 import { objAo, objFoot, objHas, objId, objTex, setObj } from "./objTex";
 import { setupWaterLava } from "./waterLava";
@@ -106,6 +107,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
 
   // индексы тайлов всех слоёв считаются один раз (слой 0 — стены данжа, 1..TERRAIN_COUNT−1 — поверхности; terrainTiles.ts, офлайн — tests/terrain-tiles.ts)
   const layers = terrainLayers(m);
+  const spill = shoreSpillLayer(m); // низ стенок берега в клетке под берегом (над водой, под сушей)
 
   const wl = setupWaterLava(scene, m, water, !!layers[1]);
   macroNoise(scene);
@@ -218,6 +220,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
       tween({ targets: img, angle: { from: -1 + sway, to: 1 + sway }, duration: 2400 + cellHash(o.y, o.x) * 1600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       if (FLIP_TREES.has(o.kind)) img.setFlipX(cellHash(o.x, o.y) > 0.5);
     }
+    // полупрозрачная крона, когда герой за деревом: у деревьев nature3d есть кадр ствола <id>_trunk (treeFade.ts)
+    if (oid && objHas(scene, `${oid}_trunk`)) objs.push(addTreeFade(scene, img as Phaser.GameObjects.Image, `${oid}_trunk`));
     const nid = nodeOf.get(o);
     if (nid !== undefined) {
       const mine: Phaser.GameObjects.GameObject[] = [img];
@@ -323,6 +327,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     const ts = tm.addTilesetImage("terrain", "terrain", TILE, TILE, 0, 0, 0)!;
     // автотайлы берега (shores.png, индексы с SHORE_GID — terrainTiles.ts); куски строятся, только когда обе текстуры загружены
     const tss = [ts, tm.addTilesetImage("shores", "shores", TILE, TILE, 0, 0, SHORE_GID)!];
+    const sd = spill && chunkRows(m, spill, x0, y0, cw, ch);
+    if (sd) tm.createBlankLayer("spill", tss, x0 * TILE, y0 * TILE, cw, ch)!.putTilesAt(sd, 0, 0).setDepth(DEPTH.terrain + 0.5);
     for (let t = 0; t < TERRAIN_COUNT; t++) {
       const src = layers[t];
       if (!src) continue;

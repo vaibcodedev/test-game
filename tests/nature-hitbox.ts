@@ -13,6 +13,8 @@ import { NATURE_VARIANTS, natureVariant } from "../shared/natureVariants";
 const OBJ = path.resolve("client/public/assets/objects");
 const man = JSON.parse(fs.readFileSync(path.resolve("client/public/assets/manifest.json"), "utf8")) as { objects: Record<string, { w: number; h: number }> };
 let bad = 0, n = 0;
+// камни и уступы: основание = след; у деревьев и кактусов след — клетка ствола, основание уже
+const ROCKY = new Set(["rock", "big_rock", "sandstone", "basalt", "snow_rock", "ice_spike", "v_volcano_boulder", "v_volcano_rock_pile", "ledge_grass", "ledge_snow", "ledge_sand", "ledge_ash"]);
 const fail = (s: string) => { bad++; console.log("FAIL", s); };
 
 for (const [kind, cnt] of Object.entries(NATURE_VARIANTS)) {
@@ -49,7 +51,7 @@ for (const [kind, cnt] of Object.entries(NATURE_VARIANTS)) {
     if (fp) {
       const bw = base[1] - base[0] + 1, cw = fp.w * 32;
       if (bw > cw + 6) fail(`${id}: основание ${bw} px шире следа ${cw}`);
-      if (bw < cw * 0.33) fail(`${id}: основание ${bw} px меньше трети следа ${cw}`);
+      if (ROCKY.has(kind) && bw < cw * 0.33) fail(`${id}: основание ${bw} px меньше трети следа ${cw}`);
     }
     n++;
   }

@@ -7,8 +7,18 @@
 import { hex, ramp, type PC, type RGBA, type Ramp } from "./canvas";
 import { BIOME, P } from "./palette";
 import {
-  Scene, capsule, clamp, cone, crystal, cylinder, ellipsoid, facetedRock, fbm, logX, noise3, render, smin, sphere, type Mat, type SDF, type V3,
+  Scene, capsule, clamp, cone, crystal, cylinder, ellipsoid, facetedRock, fbm, layerOf, logX, noise3, render, renderFull, smin, sphere, type Mat, type RenderOpts, type SDF, type V3,
 } from "./nature3d-lib";
+import { NATURE_VARIANTS } from "../../shared/natureVariants";
+
+/** Кадр ствола каждого дерева (для полупрозрачной кроны в игре: client/src/game/treeFade.ts) — по кадру дерева. */
+export const TRUNKS = new WeakMap<PC, PC>();
+/** Трассировка дерева: кадр и слой ствола (материалы trunk). */
+function treeRender(sc: Scene, o: RenderOpts, trunk: number[]): PC {
+  const r = renderFull(sc, o);
+  TRUNKS.set(r.pc, layerOf(r, new Set(trunk)));
+  return r.pc;
+}
 import { R as RK } from "./nature3d";
 
 const R = {
@@ -17,6 +27,7 @@ const R = {
   leaf: ramp("#16301a", "#22481f", "#346628", "#4e8834", "#76ae48"),
   leafLight: ramp("#2a4a1a", "#3e6a24", "#5a8c2e", "#7aac3c", "#a6cc5a"),
   bark: ramp("#22160f", "#36241a", "#4e3424", "#6a4a32", "#8a6644"),
+  grave: ramp("#16161c", "#24242c", "#383a42", "#50525a", "#6c6e74"),
   deadAsh: ramp("#1e1a1c", "#2e2828", "#463e3a", "#625850", "#80746a"),
   bog: ramp("#1a1a12", "#2a2a1a", "#3e3c24", "#565232", "#706a42"),
   bogMoss: ramp("#1c2a18", "#2a3c22", "#3e522c", "#566c38", "#728848"),
@@ -87,19 +98,19 @@ export function pine(v: number, snowy: boolean): PC {
     sc.add(cone(0, 0, z0, z0 + hh, r, 8 + (i % 2), 0.22, i * 1.7 + v), 0, [0, 0, z0 + hh / 2], r + hh / 2 + 2);
   }
   
-  return render(sc, { w: 64, h: 110, inner: 4 });
+  return treeRender(sc, { w: 64, h: 110, inner: 4 }, [1]);
 }
 
 // ---------- лиственные ----------
-export function oak(v: number): PC {
-  const leaf: Mat = { r: v === 3 ? R.leafLight : R.leaf, out: O("#0a1a0c"), bounce: GRASS_B, tex: leafTex(21 + v, 0.28, 0.9) };
+export function oak(v: number, alt = 0): PC {
+  const leaf: Mat = { r: v === 3 ? R.leafLight : R.leaf, out: O("#0a1a0c"), bounce: GRASS_B, tex: leafTex(21 + v + alt * 5, 0.28, 0.9) };
   const bark: Mat = { r: R.bark, out: O("#120a06"), tex: barkTex(5) };
-  const sc = new Scene([leaf, bark]);
+  const sc = new Scene([leaf, bark, { ...bark }]);
   // размер — как у старых дубов паков (малый 64, средний 96, большой 96×128), крона пышная и круглая
   const H = [24, 17, 30, 15][v], C = [27, 20, 35, 18][v];
-  const top = trunk(sc, 1, H, 3.8 + v * 0.3, 2.4, v, [v % 2 ? 1.5 : -1, 0], 5);
+  const top = trunk(sc, 2, H, 3.8 + v * 0.3, 2.4, v + alt, [(v + alt) % 2 ? 1.5 : -1, alt ? 0.8 : 0], 5);
   for (const a of [0.6, 2.4, 4.2, 5.5]) sc.add(capsule([top[0] * 0.8, 0, H * 0.7], [Math.cos(a + v) * C * 0.55, Math.sin(a + v) * C * 0.35, H + C * 0.4], 1.9, 1.0), 1, [0, 0, H], C, 0.8);
-  let s = 31 + v * 7;
+  let s = 31 + v * 7 + alt * 101;
   const rnd = () => { s = (s * 16807 + 3) % 2147483647; return s / 2147483647; };
   const cc: V3 = [top[0], 0, H + C * 0.72];
   sc.add(leafBlob(cc, C * 0.72, 39, 0.22), 0, cc, C * 0.72 * 1.3 + 2, 2.5); // ядро кроны без дыр
@@ -110,18 +121,18 @@ export function oak(v: number): PC {
     const r = C * (0.34 + rnd() * 0.14);
     sc.add(leafBlob(c, r, 41 + i, 0.26), 0, c, r * 1.3 + 2, 2.5);
   }
-  return render(sc, { w: 140, h: 150, inner: 5 });
+  return treeRender(sc, { w: 140, h: 150, inner: 5 }, [2]);
 }
 
 // ---------- мёртвые деревья ----------
-export function deadTree(v: number, kind: "ash" | "bog"): PC {
-  const bark: Mat = { r: kind === "ash" ? R.deadAsh : R.bog, out: O(kind === "ash" ? "#0a0808" : "#0c0c06"), bounce: kind === "ash" ? ASH_B : BOG_B, tex: barkTex(9 + v) };
+export function deadTree(v: number, kind: "ash" | "bog" | "grave"): PC {
+  const bark: Mat = { r: kind === "ash" ? R.deadAsh : kind === "bog" ? R.bog : R.grave, out: O(kind === "bog" ? "#0c0c06" : "#0a0808"), bounce: kind === "ash" ? ASH_B : BOG_B, tex: barkTex(9 + v) };
   const moss: Mat = { r: R.bogMoss, out: O("#0c160a"), tex: leafTex(5, 0.8) };
   const ember: Mat = { r: RK.ember, out: O("#3a0c04"), emit: true };
-  const sc = new Scene([bark, moss, ember]);
+  const sc = new Scene([bark, moss, ember, { ...bark }]);
   const H = [30, 40, 24, 34][v];
   const lean: [number, number] = [[2, 0], [-3, 1], [4, -1], [-1, 0]][v] as [number, number];
-  const top = trunk(sc, 0, H, 3.4, 1.8, v * 3, lean, 4);
+  const top = trunk(sc, 3, H, 3.4, 1.8, v * 3, lean, 4);
   branches(sc, 0, top, [0.2 * (v - 1.5), 0, 1], H * 0.45, 2.3, 3, 101 + v * 13);
   branches(sc, 0, [lean[0] * 0.5, lean[1] * 0.5, H * 0.55], [v % 2 ? 1 : -1, 0, 0.6], H * 0.4, 1.9, 3, 201 + v);
   branches(sc, 0, [lean[0] * 0.4, lean[1] * 0.4, H * 0.38], [v % 2 ? -1 : 1, 0.2, 0.5], H * 0.3, 1.5, 2, 251 + v);
@@ -136,11 +147,11 @@ export function deadTree(v: number, kind: "ash" | "bog"): PC {
       const x = top[0] + (noise3(i, v, 0, 3) - 0.5) * H * 1.2, y = (noise3(i, v, 1, 3) - 0.5) * 6, z = H * (0.7 + noise3(i, v, 2, 3) * 0.45);
       sc.add(capsule([x, y, z], [x + 0.5, y, z - 6 - noise3(i, v, 3, 3) * 8], 1.3, 0.5), 1, [x, y, z - 6], 9);
     }
-  } else {
+  } else if (kind === "ash") {
     // тлеющая трещина в стволе
     sc.add(capsule([0.4, -3.1, 4], [lean[0] * 0.25, -2.6, 11], 0.7), 2, [0, -3, 7], 6);
   }
-  return render(sc, { w: 96, h: 110, inner: 4 });
+  return treeRender(sc, { w: 96, h: 110, inner: 4 }, [3, 2]);
 }
 
 // ---------- пальма ----------
@@ -167,7 +178,7 @@ export function palm(v: number): PC {
     }
   }
   for (const a of [0.5, 2.6, 4.4]) sc.add(sphere(top[0] + Math.cos(a) * 2.2, Math.sin(a) * 2.2, top[2] - 2, 1.8), 2, [top[0], 0, top[2] - 2], 4.5);
-  return render(sc, { w: 96, h: 100, inner: 4 });
+  return treeRender(sc, { w: 96, h: 100, inner: 4 }, [0]);
 }
 
 // ---------- кактусы ----------
@@ -228,7 +239,8 @@ export function bush(v: number, flower?: RGBA): PC {
   const leaf: Mat = { r: v % 2 ? R.leafLight : R.leaf, out: O("#0a1a0c"), bounce: GRASS_B, tex: leafTex(51 + v, 0.55) };
   const fl: Mat = { r: flower ? ([0.45, 0.7, 0.88, 1, 1.25].map((k) => [Math.min(255, flower[0] * k), Math.min(255, flower[1] * k), Math.min(255, flower[2] * k), 255]) as Ramp) : R.capRed, out: flower ? ([flower[0] * 0.3, flower[1] * 0.3, flower[2] * 0.3, 255] as RGBA) : O("#2a0a10"), spec: 0.92 };
   const sc = new Scene([leaf, fl]);
-  const W = [10, 8, 13, 7][v], Hh = [8, 7, 10, 6][v], n = [6, 5, 8, 4][v];
+  const big = flower ? 1.75 : 1;
+  const W = [10, 8, 13, 7][v] * big, Hh = [8, 7, 10, 6][v] * big, n = Math.round([6, 5, 8, 4][v] * (flower ? 1.6 : 1));
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + v * 0.7, d = W * 0.5;
     const c: V3 = [Math.cos(a) * d, Math.sin(a) * d * 0.6, Hh * 0.55 + (i % 2) * 1.5];
@@ -237,14 +249,21 @@ export function bush(v: number, flower?: RGBA): PC {
   const top: V3 = [0, 0, Hh * 1.05];
   sc.add(leafBlob(top, W * 0.55, 67, 0.4), 0, top, W * 0.55 * 1.4 + 2, 1.5);
   // цветы — по поверхности куста спереди и сверху (видны с камеры), ягоды — немного
-  const k = flower ? 10 + v * 2 : 3;
-  for (let i = 0; i < k; i++) {
-    const a = i * 2.39996 + v, el = flower ? 0.15 + ((i * 0.618) % 1) * 1.1 : 0.3;
-    const dir: V3 = [Math.cos(a) * Math.cos(el), -Math.abs(Math.sin(a)) * Math.cos(el) - 0.25, Math.sin(el)];
-    const c: V3 = [dir[0] * W * 0.95, dir[1] * W * 0.75, Hh * 0.75 + dir[2] * W * 0.62];
-    sc.add(sphere(c[0], c[1], c[2], flower ? 1.7 : 1.3), 1, c, 2.8);
+  // точка — на настоящей поверхности листвы: луч из середины куста в случайную сторону (спереди и сверху) до выхода наружу
+  const k = flower ? 26 + v * 4 : 3;
+  const c0: V3 = [0, 0, Hh * 0.8], pts: V3[] = [];
+  for (let i = 0; i < k * 3 && pts.length < k; i++) {
+    const a = noise3(i * 7.3, v, 1, 51) * Math.PI * 2 + i, el = -0.15 + noise3(i * 5.1, v, 2, 53) * 1.45;
+    const dir: V3 = [Math.cos(a) * Math.cos(el), Math.sin(a) * Math.cos(el), Math.sin(el)];
+    if (dir[1] > 0.25) continue; // задняя сторона не видна
+    let t = 0;
+    while (t < W * 2 && sc.map(c0[0] + dir[0] * t, c0[1] + dir[1] * t, c0[2] + dir[2] * t)[0] < 0) t += 0.4;
+    const p: V3 = [c0[0] + dir[0] * (t - 0.6), c0[1] + dir[1] * (t - 0.6), c0[2] + dir[2] * (t - 0.6)];
+    if (p[2] < 2 || pts.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < (flower ? 3.6 : 4))) continue;
+    pts.push(p);
   }
-  return render(sc, { w: 56, h: 48, inner: 4 });
+  for (const c of pts) sc.add(sphere(c[0], c[1], c[2], flower ? 1.7 : 1.3), 1, c, 3);
+  return render(sc, { w: 80, h: 70, inner: 4 });
 }
 
 // ---------- пни, брёвна ----------
@@ -376,7 +395,7 @@ export function ledge(v: number, top: "grass" | "snow" | "sand" | "ash"): PC {
     tex: (x, y, z) => Math.sin(z * 0.75 + (fbm(x * 0.08, y * 0.08, 0, 5 + v) - 0.5) * 3) * 0.8 + (fbm(x * 0.25, y * 0.25, z * 0.25, 9) - 0.5) * 1.2,
     snow: { nz: 0.72, r: capR, noise: 0.2 } };
   const sc = new Scene([wall]);
-  const rx = [40, 30][v % 2], ry = [13, 11][v % 2], Ht = 24, seed = 700 + v * 11;
+  const rx = [44, 41][v % 2], ry = [13, 12][v % 2], Ht = 24, seed = 700 + v * 11;
   sc.add((x, y, z) => {
     const a = Math.atan2(y / ry, x / rx), q = Math.hypot(x / rx, y / ry);
     const rad = 1 + (noise3(Math.cos(a) * 2.2 + seed, Math.sin(a) * 2.2, z * 0.06, seed) - 0.5) * 0.32;
@@ -384,9 +403,9 @@ export function ledge(v: number, top: "grass" | "snow" | "sand" | "ash"): PC {
     const lid = z - Ht - (noise3(x * 0.08, y * 0.08, 0, seed + 1) - 0.5) * 3;
     return Math.max(side, lid) + (fbm(x * 0.2, y * 0.2, z * 0.2, seed) - 0.5) * 1.2;
   }, 0, [0, 0, Ht / 2], rx + Ht);
-  for (const [x, y, r] of [[-rx * 0.8, -ry * 1.05, 3.5], [rx * 0.55, -ry * 1.15, 2.6], [rx * 0.95, -ry * 0.4, 3]])
+  for (const [x, y, r] of [[-rx * 0.7, -ry * 1.05, 3.5], [rx * 0.5, -ry * 1.1, 2.6], [rx * 0.82, -ry * 0.5, 3]])
     sc.add(facetedRock(x, y, r * 0.6, r, r * 0.8, r * 0.8, 8, seed + Math.round(x), 0.3), 0, [x, y, r * 0.6], r + 2);
-  return render(sc, { w: 120, h: 80, inner: 4 });
+  return render(sc, { w: 130, h: 80, inner: 4 });
 }
 
 /** Ореолы ночью: что светится. */
@@ -425,3 +444,62 @@ export const FLORA3D: Record<string, () => PC[]> = {
   node_obsidian: () => [0, 1, 2].map((v) => oreCrystal(v, "obsidian")),
 };
 void clamp; void P;
+
+/** В игру (решение пользователя): id игры → кадры [база, __1, …]; число вариантов — shared/natureVariants.ts. Виды v_* заменяют спрайты паков. */
+export const FLORA_GAME: Record<string, () => PC[]> = {
+  snow_pine: () => [0, 1, 2, 3].map((v) => pine(v, true)),
+  v_basic_pine: () => [0, 1, 2, 3].map((v) => pine(v, false)),
+  v_basic_oak_small: () => [oak(1), oak(3), oak(1, 1)],
+  v_basic_oak: () => [oak(0), oak(0, 1), oak(0, 2)],
+  v_basic_oak_big: () => [oak(2), oak(2, 1)],
+  v_volcano_dead_tree: () => [0, 2].map((v) => deadTree(v, "ash")),
+  v_volcano_dead_tree_tall: () => [1, 3].map((v) => deadTree(v, "ash")),
+  v_graveyard_dead_tree_vines: () => [0, 1, 3].map((v) => deadTree(v, "bog")),
+  v_graveyard_dead_tree_a: () => [0, 2].map((v) => deadTree(v, "grave")),
+  v_graveyard_dead_tree_b: () => [1, 3].map((v) => deadTree(v, "grave")),
+  palm: () => [0, 1, 2].map(palm),
+  cactus: () => [0, 1, 2, 3].map(cactus),
+  cactus_small: () => [0, 1, 2, 3].map(cactusSmall),
+  dry_bush: () => [0, 1, 2, 3].map((v) => dryBush(v)),
+  v_volcano_dead_bush_a: () => [0, 2].map((v) => dryBush(v, true)),
+  v_volcano_dead_bush_b: () => [1, 3].map((v) => dryBush(v, true)),
+  bush: () => [0, 1, 2, 3].map((v) => bush(v)),
+  v_basic_bush: () => [2, 0, 1, 3].map((v) => bush(v)),
+  v_basic_shrub: () => [1, 3].map((v) => bush(v)),
+  v_basic_bush_red: FLORA3D.v_basic_bush_red,
+  v_basic_bush_pink: FLORA3D.v_basic_bush_pink,
+  v_basic_bush_yellow: FLORA3D.v_basic_bush_yellow,
+  v_basic_bush_blue: FLORA3D.v_basic_bush_blue,
+  v_basic_stump: () => [0, 2, 3].map(stump),
+  v_basic_stump_small: () => [stump(1)],
+  v_basic_log: () => [0, 1, 2, 3].map(log),
+  mushrooms: FLORA3D.mushrooms,
+  mushrooms_glow: FLORA3D.mushrooms_glow,
+  reeds: FLORA3D.reeds,
+  v_volcano_skull: () => [0, 2].map(skull),
+  v_volcano_skull_ram: () => [1, 3].map(skull),
+  v_volcano_ribs: FLORA3D.v_volcano_ribs,
+  crystal: FLORA3D.crystal,
+  node_ice: FLORA3D.node_ice,
+  node_obsidian: FLORA3D.node_obsidian,
+  ledge_grass: FLORA3D.ledge_grass,
+  ledge_snow: FLORA3D.ledge_snow,
+  ledge_sand: FLORA3D.ledge_sand,
+  ledge_ash: FLORA3D.ledge_ash,
+};
+/** Плоский словарь кадров для OBJECT_ART: kind, kind__k и кадры ствола <id>_trunk у деревьев; каждый вид считается один раз. */
+export function floraGameArt(): Record<string, () => PC> {
+  const out: Record<string, () => PC> = {};
+  const memo = new Map<string, PC[]>();
+  const get = (id: string) => { if (!memo.has(id)) memo.set(id, FLORA_GAME[id]()); return memo.get(id)!; };
+  for (const id of Object.keys(FLORA_GAME)) {
+    const n = NATURE_VARIANTS[id] ?? 1;
+    for (let k = 0; k < n; k++) {
+      const key = k ? `${id}__${k}` : id;
+      out[key] = () => get(id)[k];
+      if (TREE_KINDS.has(id)) out[`${key}_trunk`] = () => TRUNKS.get(get(id)[k])!;
+    }
+  }
+  return out;
+}
+export const TREE_KINDS = new Set(["snow_pine", "v_basic_pine", "v_basic_oak_small", "v_basic_oak", "v_basic_oak_big", "v_volcano_dead_tree", "v_volcano_dead_tree_tall", "v_graveyard_dead_tree_vines", "v_graveyard_dead_tree_a", "v_graveyard_dead_tree_b", "palm"]);

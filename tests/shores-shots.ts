@@ -9,7 +9,7 @@ import { PNG } from "pngjs";
 import puppeteer, { type Page } from "puppeteer-core";
 import { createServer } from "vite";
 import { DAY_CYCLE_MS } from "../shared/daynight";
-import { generateMap, moveWithCollision, shoreAt, T, walkable, waterAtFeet } from "../shared/map";
+import { FOOT_DY, generateMap, moveWithCollision, shoreAt, T, walkable, waterAtFeet } from "../shared/map";
 import { MAP_SEED } from "../shared/constants";
 import { PC } from "../tools/gen/canvas";
 import { drawText } from "../tools/gen/vendor-lib";
@@ -22,6 +22,8 @@ const chrome = ["C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Pro
 const base = Math.floor(Date.now() / DAY_CYCLE_MS) * DAY_CYCLE_MS;
 const DAY = base + DAY_CYCLE_MS * 0.3, EVE = base + DAY_CYCLE_MS * 0.72;
 const CW = 400, CH = 260;
+/** Набор мест: 1 — трава, песок, лес, пруд, мост (ingame1.png); 2 — лёд, болото, пепел, обсидиан, лес (ingame2.png); 3 — вода по биому: болото, лёд, пепел, лес, река через 2 биома (water-biome.png). SHOTS=2|3 */
+const SET = Number(process.env.SHOTS) || 1;
 
 async function login(page: Page, name: string) {
   await page.waitForSelector("#login-name");
@@ -60,13 +62,28 @@ const m = generateMap(MAP_SEED);
 function northShore(biome: number, near?: { x: number; y: number }, pond = false): { x: number; y: number } | null {
   let best: { x: number; y: number } | null = null, bd = Infinity;
   const V = (x: number, y: number) => m.vtx[y * (m.w + 1) + x];
-  for (let ty = 12; ty < m.h - 12; ty++) for (let tx = 12; tx < m.w - 12; tx++) {
+  for (let ty = 6; ty < m.h - 6; ty++) for (let tx = 8; tx < m.w - 8; tx++) {
     const s = shoreAt(m, tx, ty);
     if (!s || s.biome !== biome || s.mask !== 3) continue;
     let c = 0; for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) if (V(tx + x, ty + y) === T.Water) c++;
-    if (pond ? c < 4 || c > 20 : c < 20 || c > 52) continue;
+    if (pond ? c < 4 || c > 30 : c < 14 || c > 60) continue;
     const d = near ? Math.hypot(tx * 32 - near.x, ty * 32 - near.y) : Math.hypot(tx * 32 - m.playerSpawn.x, ty * 32 - m.playerSpawn.y);
     if (d < bd) { bd = d; best = { x: tx * 32 + 16, y: ty * 32 + 16 }; }
+  }
+  return best;
+}
+/** Вода на стыке биомов: доля болота/холода/пепла среди суши в радиусе 6 вершин — 0.3–0.7, вокруг много воды (река). */
+function biomeSeam(): { x: number; y: number } | null {
+  const V = (x: number, y: number) => m.vtx[y * (m.w + 1) + x];
+  let best: { x: number; y: number } | null = null, bd = Infinity;
+  for (let ty = 8; ty < m.h - 8; ty++) for (let tx = 8; tx < m.w - 8; tx++) {
+    if (V(tx, ty) !== T.Water) continue;
+    let land = 0, sp = 0, water = 0;
+    for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) { const v = V(tx + x, ty + y); if (v === T.Water) { water++; continue; } land++; if (v === T.Bog || v === T.Snow || v === T.Ice || v === T.Ash || v === T.Obsidian) sp++; }
+    const f = land ? sp / land : 0;
+    if (water < 30 || water > 150 || f < 0.25 || f > 0.75) continue;
+    const d = Math.hypot(tx * 32 - m.playerSpawn.x, ty * 32 - m.playerSpawn.y);
+    if (d < bd) { bd = d; best = { x: tx * 32, y: ty * 32 }; }
   }
   return best;
 }
@@ -88,11 +105,25 @@ async function main() {
   const bridge = m.objects.find((o) => o.kind === "bridge_h" || o.kind === "bridge_v");
   const list: Spot[] = [];
   const add = (id: string, cap: string, p: { x: number; y: number } | null) => { if (p) list.push({ id, cap, ...p }); else console.log("нет места:", id); };
-  add("grass", "озеро у травы", northShore(0));
-  add("sand", "река с песком", northShore(1, bridge ? { x: bridge.x, y: bridge.y - 300 } : undefined));
-  add("forest", "лес у воды", northShore(2));
-  add("pond", "пруд", northShore(1, undefined, true) ?? northShore(0, undefined, true));
-  if (bridge) list.push({ id: "bridge", cap: "мост", x: bridge.x, y: bridge.y - 40 });
+  if (SET === 3) {
+    add("bog", "болото", northShore(5));
+    add("ice", "лёд", northShore(4) ?? northShore(4, undefined, true));
+    add("ash", "пепел", northShore(6) ?? northShore(6, undefined, true));
+    add("forest", "лес (как было)", northShore(2));
+    add("mix", "река через 2 биома", biomeSeam());
+  } else if (SET === 2) {
+    add("ice", "снег и лёд у воды", northShore(4) ?? northShore(4, undefined, true));
+    add("bog", "болото", northShore(5));
+    add("ash", "пепел", northShore(6) ?? northShore(6, undefined, true));
+    add("obsidian", "обсидиан", northShore(7) ?? northShore(7, undefined, true));
+    add("forest", "лес у воды", northShore(2));
+  } else {
+    add("grass", "озеро у травы", northShore(0));
+    add("sand", "река с песком", northShore(1, bridge ? { x: bridge.x, y: bridge.y - 300 } : undefined));
+    add("forest", "лес у воды", northShore(2));
+    add("pond", "пруд", northShore(1, undefined, true) ?? northShore(0, undefined, true));
+    if (bridge) list.push({ id: "bridge", cap: "мост", x: bridge.x, y: bridge.y - 40 });
+  }
   console.log(JSON.stringify(list));
   process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
   await startServer(true);
@@ -114,18 +145,18 @@ async function main() {
     const focusOf = (p: { x: number; y: number }) => page.evaluate((q) => { const w = window as any, c = w.__game.scene.getScene("game").cameras.main, g = w.__game, k = g.canvas.width / g.scale.width; return { x: (q.x - c.worldView.x) * c.zoom * k, y: (q.y - c.worldView.y) * c.zoom * k }; }, p);
     const cap = async () => decode(await page.evaluate(() => new Promise<string>((res) => { const g = (window as any).__game; g.events.once("postrender", () => res(g.canvas.toDataURL("image/png"))); })));
     for (const sp of list) {
-      const st = sp.id === "bridge" ? dryNear(sp.x, sp.y) : edgeStand(sp);
+      const st = sp.id === "bridge" || sp.id === "mix" ? dryNear(sp.x, sp.y) : edgeStand(sp);
       await page.evaluate(() => (window as any).__net.send("respawn", {})); await sleep(500); await dbg({ op: "god" });
       await dbg({ op: "tp", x: st.x, y: st.y });
       await page.evaluate(() => { const w = window as any; w.__waterLook = 1; const f = w.__fx?.debugFx; if (f) { f.rain = 0; f.wet = 0; } });
-      for (const [t, z, nm] of [[DAY, 2, "день, зум 2"], [EVE, 3, "вечер, зум 3"]] as const) {
+      for (const [t, z, nm] of (SET === 3 ? [[DAY, 2, "день, зум 2"], [EVE, 2, "вечер, зум 2"]] : [[DAY, 2, "день, зум 2"], [EVE, 3, "вечер, зум 3"]]) as [number, number, string][]) {
         await setNow(t);
         await page.evaluate((zz) => (window as any).__game.scene.getScene("game").cameras.main.setZoom(zz), z);
         await sleep(4000);
         const f = await focusOf({ x: st.x, y: st.y });
         shots.push([crop(await cap(), f, CW, CH), `${sp.cap}: ${nm}`]);
       }
-      const feet = waterAtFeet(m, st.x, st.y + 6);
+      const feet = waterAtFeet(m, st.x, st.y + FOOT_DY);
       console.log(sp.id, "стоянка", Math.round(st.x), Math.round(st.y), "ноги в воде:", feet);
     }
     const cols = 2, sheet = new PNG({ width: CW * 2 * cols, height: CH * 2 * Math.ceil(shots.length / cols) });
@@ -137,8 +168,9 @@ async function main() {
       PNG.bitblt(big, sheet, 0, 0, big.width, big.height, X, Y);
       label(sheet, c, X + 6, Y + 6);
     });
-    fs.writeFileSync(path.join(OUT, "ingame1.png"), PNG.sync.write(sheet));
-    console.log("ingame1.png записан");
+    const file = SET === 3 ? "water-biome.png" : `ingame${SET}.png`;
+    fs.writeFileSync(path.join(OUT, file), PNG.sync.write(sheet));
+    console.log(file, "записан");
     await page.close();
   } finally {
     await browser.close(); await vite.close(); await stopServer();

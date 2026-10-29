@@ -31,6 +31,7 @@ import { NightMask, updateLights } from "./lights";
 import { PostFx, glowOn, shineOn } from "./postfx";
 import { overlay } from "./overlay";
 import { CollisionGrid } from "./collisionDebug";
+import { updateTreeFade } from "./treeFade";
 import { Weather } from "./weather";
 import lighting from "../../../data/lighting.json";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
@@ -536,6 +537,7 @@ export class GameScene extends Phaser.Scene {
       else if (!want[k] && e.emitting && e.alpha < 0.02) e.stop(true);
     }
     this.selfLight.setPosition(this.pos.x, this.pos.y - 12).setAlpha(this.world.dark.alpha * 0.55);
+    updateTreeFade(this.pos.x, this.pos.y, dt); // крона полупрозрачна, когда герой за деревом (treeFade.ts)
     // пыль из-под ног идущих
     const now = this.time.now;
     for (const [id, u] of this.units) {

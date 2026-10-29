@@ -133,6 +133,18 @@
       "bf-fire-s",
       "bf-fire-m",
       "bf-smoke"
+    ],
+    "ledgeGrass": [
+      "ledge_grass"
+    ],
+    "ledgeSnow": [
+      "ledge_snow"
+    ],
+    "ledgeSand": [
+      "ledge_sand"
+    ],
+    "ledgeAsh": [
+      "ledge_ash"
     ]
   },
   "rules": {
@@ -439,6 +451,48 @@
     },
     "fire": {
       "fire": true
+    },
+    "ledgeGrass": {
+      "on": [
+        "grass",
+        "forest",
+        "dirt"
+      ],
+      "biomes": [
+        "Meadow",
+        "Frontier",
+        "Forest"
+      ]
+    },
+    "ledgeSnow": {
+      "on": [
+        "snow",
+        "dirt"
+      ],
+      "biomes": [
+        "Snow"
+      ]
+    },
+    "ledgeSand": {
+      "on": [
+        "sand",
+        "dune",
+        "dirt"
+      ],
+      "biomes": [
+        "Desert"
+      ]
+    },
+    "ledgeAsh": {
+      "on": [
+        "ash",
+        "obsidian",
+        "dirt"
+      ],
+      "biomes": [
+        "Ashlands",
+        "Volcano"
+      ]
     }
   },
   "clear": {
@@ -459,7 +513,11 @@
       "rubble",
       "palm",
       "pearl",
-      "campfire"
+      "campfire",
+      "ledgeGrass",
+      "ledgeSnow",
+      "ledgeSand",
+      "ledgeAsh"
     ],
     "door": 48,
     "gate": 64,
