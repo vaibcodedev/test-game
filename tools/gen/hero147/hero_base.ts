@@ -196,7 +196,7 @@ export function renderFrame(b0: Build, l: Look, v: View, anim: Anim, i: number):
           const ay = P(an)[1], ax = P(an)[0], c = Math.cos(pit), sn = Math.sin(pit);
           const rot = ([x, y]: V2): V2 => { const dx = x - ax, dy = y - ay; return [ax + dx * c + dy * sn, ay - dx * sn + dy * c]; };
           const h = b.ankle;
-          z.pg([[ax - 1.2, ay - 0.6], [ax + 0.9, ay - 0.3], [ax + b.footL - 0.2, ay + h - 1.5], [ax + b.footL + 0.4, ay + h - 0.3], [ax + b.footL, ay + h + 0.5], [ax - 1.3, ay + h + 0.5]].map(rot));
+          z.pg(([[ax - 1.2, ay - 0.6], [ax + 0.9, ay - 0.3], [ax + b.footL - 0.2, ay + h - 1.5], [ax + b.footL + 0.4, ay + h - 0.3], [ax + b.footL, ay + h + 0.5], [ax - 1.3, ay + h + 0.5]] as V2[]).map(rot));
         } else {
           const toe = v === "down" ? 1 : -1;
           const c = P([an[0], an[1] + b.ankle * 0.55, an[2] + b.footL * 0.35]);
