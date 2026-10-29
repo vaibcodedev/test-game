@@ -18,10 +18,11 @@
  */
 import assert from "node:assert/strict";
 import { CELL_WALL, isTownZone, lineClear, walkable, zoneAtPx, type WorldMap } from "../shared/map";
+import { generateDungeonMap } from "../shared/dungeon";
 import { PLAYER_RADIUS, TILE } from "../shared/constants";
 import { CLASSES } from "../shared/classes";
 import { MOBS } from "../shared/mobs";
-import { PETS, petUnitId } from "../shared/pets";
+import { PETS } from "../shared/pets";
 import { activeSkills, SKILLS, type SkillDef } from "../shared/skills";
 import {
   aimSpec, behindSpot, BLOCKED, DASH_MIN, GROUND_TOL, groundPoint, HIT_EDGE, NO_BEHIND, NO_LOS, NO_TARGETS, placeSkill, RAY_MIN, shapeHits, shapeSize, skillDims,
@@ -42,6 +43,21 @@ import { WorldState } from "../server/src/rooms/schema";
 const sent: Fx[] = [];
 const w = new World(new WorldState(), (type, msg) => { if (type === "fx") sent.push(...(msg as Fx[])); });
 const map: WorldMap = w.map;
+/** Стены (CELL_WALL, непрозрачны для лучей и видимости) с 20164bc есть только в инстансах: подземелье — своя карта, в открытом мире их нет.
+ *  Проверкам «у стены», «за стеной», «луч до стены» нужны стены рядом с городом и водой, поэтому в мир теста вставлен план подземелья
+ *  (клетки и зона: залы, перегородки, лавовые ямы) на свободный от городов участок. Сервер, превью и эталон читают одну и ту же w.map. */
+{
+  const dg = generateDungeonMap(), M = 4;
+  const free = (x0: number, y0: number) => {
+    for (let y = y0 - M; y < y0 + dg.h + M; y++) for (let x = x0 - M; x < x0 + dg.w + M; x++)
+      if (x < 6 || y < 6 || x >= map.w - 6 || y >= map.h - 6 || isTownZone(map.zone[y * map.w + x])) return false;
+    return true;
+  };
+  let at: { x: number; y: number } | null = null;
+  for (let y = 10; y < map.h && !at; y += 8) for (let x = 10; x < map.w && !at; x += 8) if (free(x, y)) at = { x, y };
+  assert.ok(at, "нет участка вне городов под план подземелья");
+  for (let y = 0; y < dg.h; y++) for (let x = 0; x < dg.w; x++) { const i = (at.y + y) * map.w + at.x + x; map.cell[i] = dg.cell[y * dg.w + x]; map.zone[i] = dg.zone[y * dg.w + x]; }
+}
 /** Убрать моба из мира мёртвым: живого удалённого стража города держит целью навсегда (townfolk.ts assignFoes проверяет только dead) и, если до него
  *  нет пути, считает A* каждый такт — такт мира дорожал в 30–100 раз, и тест шёл 13 минут. */
 const drop1 = (m: Mob) => { m.state = "dead"; w.removeMob(m); };
@@ -380,7 +396,8 @@ for (const id of ids) {
       const err = castSkill(w, p, id, msg.x, msg.y, null, msg);
       // призыв встаёт в метку превью (на воде — у берега на линии к герою); дальше он пойдёт за героем
       if (!err && sp.summon) {
-        const pet = w.pets.get(petUnitId(p.id));
+        // с задачи 149 у призыва свой id (sum_<герой>_<вид>), не id постоянного питомца
+        const pet = [...w.pets.values()].find((q) => q.owner === p && q.def.temp);
         assert.ok(pet && near(pet.unit.x, g.sx) && near(pet.unit.y, g.sy), `${ctx}: призыв в ${pet && `(${pet.unit.x}, ${pet.unit.y})`}, превью — (${g.sx}, ${g.sy})`);
         stat.summons++;
         if (Math.hypot(g.sx - g.x, g.sy - g.y) > 1) stat.shore++;
@@ -691,6 +708,8 @@ for (const id of ["meteor", "circle", "wl_doom", "rain"]) {
   botThink(w, bot, [foe]);
   assert.ok(hidden.shieldUntil > w.time, "бот-лекарь застрял на «Круге света» за стеной: самый раненый без щита");
   const vis2 = allyAt(seenAt[1], 0.6);
+  // бот решает не чаще раза в botReactMs (data/balance.json, до 400 мс): второе решение — через полсекунды мира, а не в тот же такт
+  w.time += 500;
   bot.cds.clear(); bot.gcdUntil = 0;
   botThink(w, bot, [foe]);
   assert.ok((bot.cds.get("circle") ?? 0) > w.time, "два видимых раненых — бот не поставил «Круг света»");
