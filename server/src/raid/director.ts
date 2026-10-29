@@ -310,7 +310,7 @@ export class RaidDirector {
     p.moveTo = null;
     p.engaged = p.approach = false;
     p.input = { mx: 0, my: 0 };
-    p.stunUntil = p.rootUntil = p.slowUntil = p.warcryUntil = p.hasteUntil = p.blockUntil = p.weakUntil = p.lastStandUntil = p.lastStandReady = p.poisonUntil = p.burnUntil = p.castUntil = 0;
+    p.stunUntil = p.rootUntil = p.slowUntil = p.silenceUntil = p.fearUntil = p.warcryUntil = p.hasteUntil = p.blockUntil = p.weakUntil = p.lastStandUntil = p.lastStandReady = p.poisonUntil = p.burnUntil = p.castUntil = 0;
     p.shieldAmt = 0;
     p.attackAt = 0;
     p.cds.clear();

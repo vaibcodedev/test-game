@@ -3,6 +3,7 @@ import ai from "../data/mobAI.json";
 import raid from "../data/raid.json";
 import { bossBal } from "./balance";
 import { ZB_CARDS, ZB_MOB } from "./zoneBosses";
+import { WB_BOSSES, wbMobId, wbShardId } from "./worldBoss";
 
 /** Поведение моба из data/mobAI.json. */
 export interface MobAI {
@@ -11,7 +12,7 @@ export interface MobAI {
   slam?: { r: number; ms: number; mult: number; cd: number; k: string };
   /** Бросок: цель вне ближнего боя, но ближе range — снаряд с mult урона удара (k — тип) вместо удара; против бесконечного кайта. */
   throw?: { range: number; mult: number; k: string };
-  weak?: { dmg?: Record<string, number>; cc?: Partial<Record<"stun" | "slow" | "root", number>> };
+  weak?: { dmg?: Record<string, number>; cc?: Partial<Record<"stun" | "slow" | "root" | "silence" | "fear", number>> };
 }
 export const MOB_AI = ai as unknown as Record<string, MobAI>;
 
@@ -42,6 +43,8 @@ export interface MobDef {
   respawn?: number;
   uniques?: string[];
   color: string;
+  /** Мировой босс и его свита (задача 151, data/world-bosses.json): id босса; награды — по вкладу (server/src/worldboss), не убийце. */
+  wboss?: string;
   /** Усиленный (элитный) вариант (задача 140): свой спрайт-лист и имя без случайной приставки. */
   eliteSprite?: string;
   eliteName?: string;
@@ -118,4 +121,18 @@ export const MOBS: Record<string, MobDef> = Object.fromEntries(Object.entries(mo
     if (id.startsWith("_")) continue;
     MOBS[id] = { id, name: a.name, sprite: a.sprite, size: 1, raid: true, hp: a.hp, dmg: a.dmg, armor: a.armor, xp: 0, speed: a.speed, aggro: 900, range: a.range, attackCd: a.attackCd, radius: a.radius, projectile: a.projectile, color: "#ff6a2a" };
   }
+}
+
+// мировые боссы (задача 151): моб босса и «Осколки» свиты — data/world-bosses.json (mob, mechanics.shards.mob); спрайты временные
+for (const b of WB_BOSSES) {
+  const n = b.mob;
+  MOBS[wbMobId(b.id)] = {
+    id: wbMobId(b.id), name: b.name, sprite: n.sprite, size: n.size, boss: true, wboss: b.id, level: b.level, hp: n.hp, dmg: n.dmg, armor: n.armor,
+    xp: n.xp, gold: n.gold, speed: n.speed, aggro: n.aggro, range: n.range, attackCd: n.attackCd, radius: n.radius, color: n.color,
+  };
+  const sh = b.mechanics.shards as { name?: string; mob?: { sprite: string; hp: number; dmg: number; armor: number; speed: number; radius: number; range: number; attackCd: number } } | undefined;
+  if (sh?.mob) MOBS[wbShardId(b.id)] = {
+    id: wbShardId(b.id), name: sh.name ?? "Осколок", sprite: sh.mob.sprite, size: 1, wboss: b.id, level: b.level, hp: sh.mob.hp, dmg: sh.mob.dmg, armor: sh.mob.armor,
+    xp: 0, gold: 0, speed: sh.mob.speed, aggro: 600, range: sh.mob.range, attackCd: sh.mob.attackCd, radius: sh.mob.radius, color: "#5a4a40",
+  };
 }

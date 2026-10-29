@@ -1,0 +1,75 @@
+{
+  "_doc": "Задача 147, шаг 2: основа героя «Б» (~3,5 головы, рост ~30 px, кадр 48×48, ступни y=45, x=24). Палитры (5 тонов, тёмный → светлый), причёски и анимации. Генератор: tools/gen/hero147/base_b.ts; точки скелета для слоёв снаряжения — data/hero-skeleton-b.json. В игру пока не подключено.",
+  "build": { "headW": 9.4, "headH": 8.8, "neck": 0.7, "chest": 6.6, "pelvis": 2.8, "thigh": 5.0, "shin": 4.5, "ankle": 1.7, "footL": 2.8, "shW": 5.4, "waist": 3.7, "hipW": 4.0, "uArm": 4.1, "fArm": 3.7, "thighT": 3.3, "shinT": 2.7, "armT": 2.6, "foreT": 2.2, "handR": 1.35, "neckT": 2.5 },
+  "factions": {
+    "sol": {
+      "skin": ["#4a2620", "#7e4636", "#b06c52", "#d99a76", "#f2c49e"],
+      "eye": "#2a1a1c", "lip": "#a8524a", "blush": "#e08a7a",
+      "m": { "shirt": ["#3e3428", "#6e5e48", "#a08c6e", "#cbb994", "#ece0c2"], "pants": ["#16182a", "#262a44", "#3a4062", "#545c86", "#737ca8"], "vest": null },
+      "f": { "shirt": ["#3a3026", "#6a5a46", "#9c8a6c", "#c8b896", "#eee4ca"], "pants": ["#2a1418", "#4a2228", "#6e343a", "#944c4e", "#b86a64"], "vest": ["#1e100a", "#3a2214", "#5e3a20", "#86562e", "#a87444"] },
+      "boots": ["#1a0e08", "#36200f", "#5a381e", "#835834", "#a67a4e"],
+      "belt": ["#140c06", "#2c1a0c", "#4c3016", "#704a24", "#8e6232"],
+      "buckle": ["#5a3a10", "#a06c1c", "#dca634", "#ffd864", "#fff2b0"],
+      "pouch": ["#22140a", "#40281a", "#64422a", "#8a6040", "#ac8058"]
+    },
+    "umb": {
+      "skin": ["#1e2624", "#36433f", "#5a6c64", "#86998e", "#b4c4b6"],
+      "eye": "#7ad8ff", "eyeGlow": ["#1c4a60", "#3a8ab0", "#7ad8ff", "#d8f6ff"], "lip": "#2a1a30", "blush": null,
+      "m": { "shirt": ["#121018", "#221e2a", "#36303f", "#4e4658", "#6c6276"], "pants": ["#0b0a0e", "#16141a", "#24212a", "#35313d", "#4b4654"], "vest": null },
+      "f": { "shirt": ["#140e16", "#261a28", "#3c2a3e", "#563e58", "#745674"], "pants": ["#0b0a0e", "#16141a", "#24212a", "#35313d", "#4b4654"], "vest": ["#08070a", "#141218", "#221e28", "#35303d", "#4c4656"] },
+      "boots": ["#0e0a0a", "#1e1616", "#322626", "#4a3a38", "#665250"],
+      "belt": ["#2a2018", "#4a3c2e", "#6e5c46", "#9a8466", "#c4b090"],
+      "buckle": ["#1e3a18", "#3a6a2a", "#6aa848", "#a0d880", "#d8f8c0"],
+      "pouch": ["#2a2018", "#4a3c2e", "#6e5c46", "#9a8466", "#c4b090"],
+      "wrap": ["#3a3630", "#5e584e", "#8a8272", "#b0a892", "#d0c8b0"]
+    }
+  },
+  "hairColors": {
+    "sol": {
+      "brown": ["#1c100a", "#3a2214", "#5e3a20", "#86562c", "#a8743c"],
+      "auburn": ["#3a1a0c", "#6a3016", "#9c4e22", "#c87432", "#e8a050"],
+      "blond": ["#4a3412", "#7a5a20", "#b08c38", "#dcbc5a", "#f4e09a"],
+      "black": ["#0c0a10", "#1a1620", "#2c2634", "#423a4c", "#5c5268"],
+      "copper": ["#3a140a", "#6e2410", "#a83c18", "#d8642a", "#f09a52"]
+    },
+    "umb": {
+      "white": ["#24242e", "#454553", "#6e6e7e", "#a2a2b0", "#d2d2dc"],
+      "ash": ["#1a1a1c", "#2e2e32", "#4a4a50", "#6e6e74", "#94949a"],
+      "violet": ["#0a0810", "#18121f", "#2a2034", "#40324c", "#5a4868"],
+      "moss": ["#0c120e", "#18221a", "#28382a", "#3c523c", "#567058"],
+      "bone": ["#2a2018", "#5c4a38", "#9a8466", "#cdb890", "#ece0c0"]
+    }
+  },
+  "hair": {
+    "m": [
+      { "id": "tousled", "name": "Вихры", "sol": "brown", "umb": "ash" },
+      { "id": "crew", "name": "Ёжик", "sol": "black", "umb": "moss" },
+      { "id": "tail", "name": "Хвост назад", "sol": "auburn", "umb": "white" },
+      { "id": "mane", "name": "Грива", "sol": "blond", "umb": "white" },
+      { "id": "beard", "name": "Бритый с бородой", "sol": "copper", "umb": "bone" },
+      { "id": "topknot", "name": "Пучок воина", "sol": "black", "umb": "violet" }
+    ],
+    "f": [
+      { "id": "loose", "name": "Распущенные", "sol": "auburn", "umb": "violet" },
+      { "id": "pony", "name": "Высокий хвост", "sol": "blond", "umb": "white" },
+      { "id": "braid", "name": "Коса", "sol": "copper", "umb": "moss" },
+      { "id": "bob", "name": "Каре", "sol": "black", "umb": "ash" },
+      { "id": "bun", "name": "Пучок", "sol": "brown", "umb": "bone" },
+      { "id": "twin", "name": "Две косы", "sol": "blond", "umb": "violet" }
+    ]
+  },
+  "anims": {
+    "idle": { "name": "Покой", "frames": 10, "fps": 10, "loop": true },
+    "walk": { "name": "Ходьба", "frames": 10, "fps": 12, "loop": true },
+    "run": { "name": "Бег", "frames": 8, "fps": 14, "loop": true },
+    "atk1h": { "name": "Удар одноручным", "frames": 10, "fps": 16, "loop": false, "props": ["sword", "shield"] },
+    "atk2h": { "name": "Удар двуручным", "frames": 12, "fps": 16, "loop": false, "props": ["great"] },
+    "bow": { "name": "Выстрел из лука", "frames": 10, "fps": 14, "loop": false, "props": ["bow"] },
+    "cast": { "name": "Каст", "frames": 10, "fps": 14, "loop": false, "props": ["staff"] },
+    "block": { "name": "Блок щитом", "frames": 8, "fps": 12, "loop": false, "props": ["sword", "shield"] },
+    "hurt": { "name": "Получение урона", "frames": 8, "fps": 16, "loop": false },
+    "death": { "name": "Гибель", "frames": 12, "fps": 12, "loop": false },
+    "ride": { "name": "Верхом", "frames": 8, "fps": 12, "loop": true },
+    "gather": { "name": "Сбор ресурсов", "frames": 10, "fps": 12, "loop": true }
+  }
+}

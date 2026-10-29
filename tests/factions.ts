@@ -1,4 +1,5 @@
 /** Фракции (задача 38): создание, перенос старых героев, вражда в спорной зоне, нейтральный город и стража, группа/обмен/чат, умения Умбрата. */
+import { reachable } from "../shared/skillShape";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -26,7 +27,8 @@ function pvpSpot() {
     if (MAP.zone[ty * MAP.w + tx] !== Zone.Ashlands) continue;
     const x = tx * TILE + 16, y = ty * TILE + 16;
     if (pvpPlace(MAP, x, y) !== "pvp" || pvpPlace(MAP, x + 70, y) !== "pvp") continue;
-    if (walkable(MAP, x, y, 14) && walkable(MAP, x + 70, y, 14) && lineClear(MAP, x, y, x + 70, y)) return { x, y };
+    // рывки и прыжки к мобу (он подходит вплотную) — путь проходим для героя (reachable, как у сервера)
+    if (walkable(MAP, x, y, 14) && walkable(MAP, x + 70, y, 14) && lineClear(MAP, x, y, x + 70, y) && reachable(MAP, x, y, x + 70, y + 8, 70).x >= x + 60) return { x, y };
   }
   return null;
 }

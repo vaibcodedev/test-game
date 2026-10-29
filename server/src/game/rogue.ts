@@ -10,7 +10,7 @@ import { behindSpot as behindAt, facingOf } from "../../../shared/skillShape";
 import type { Player } from "./Player";
 import * as rv from "./reaver";
 import type { CastCtx } from "./umbrath";
-import { applyHaste, applyWeaken } from "./effects";
+import { applyHaste, applySlow, applyWeaken, cleanseCc } from "./effects";
 import { registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
 import { stealthBan } from "./wards";
@@ -70,6 +70,8 @@ export function applyPoison(w: World, p: Player, target: Actor, rank: number, ad
   p.poisons.set(target.id, e);
   if (w.isPlayer(target)) { target.venomUntil = e.until; target.venomStacks = e.stacks; } // значок яда у героя-жертвы (auras.ts)
   w.emit({ t: "aoe", k: "poison", x: target.x, y: target.y, r: 28 });
+  // задача 148: на полных стаках (maxStacks) яд замедляет на slow % на slowDur с — обновляется каждым наложением
+  if (e.stacks >= v.maxStacks && v.slow > 0) applySlow(w, p, target, v.slow, v.slowDur * 1000);
   if (live) return;
   const tick = () => {
     const c = p.poisons.get(target.id);
@@ -159,7 +161,7 @@ export function castRogue(c: CastCtx): string | null | undefined {
       // контроль — если удар попал (поглощённый щитом — тоже); промах (уклонение, нейтральный город) — без контроля
       if (!w.hitEx(p, t, { mult: v.dmg / 100, skill: true, threat: 1 }).landed || w.isDead(t)) return null;
       const ms = (v.stun + (sneaky ? v.bonus : 0)) * 1000;
-      if (c.isBoss(t)) c.slow(t, v.bslow, ms);
+      if (c.isBoss(t)) c.stun(t, ms, { bossSlow: v.bslow }); // на боссе — замедление (data/cc.json boss)
       else if (c.stun(t, ms)) w.emit({ t: "buff", id: t.id, k: "stun", ms: t.stunUntil - w.time });
       return null;
     }
@@ -288,7 +290,7 @@ export function afterDamaged(w: World, src: Actor, dst: Player, v: number) {
   if (u.hp >= (u.maxHp * m.hp) / 100 || w.time < s.escapeReady || w.inTown(u.x, u.y) || stealthBan(w, dst)) return;
   s.escapeReady = w.time + m.icd * 1000;
   dst.stealthUntil = w.time + m.dur * 1000;
-  dst.slowUntil = dst.rootUntil = 0;
+  cleanseCc(dst, ["stun", "root", "slow"]); // задача 148: уход в тень срывает и оглушение
   dst.targetId = null;
   u.target = "";
   w.heal(dst, Math.round((u.maxHp * m.heal) / 100));

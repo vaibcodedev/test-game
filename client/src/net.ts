@@ -3,6 +3,7 @@ import { Client, getStateCallbacks, type Room } from "colyseus.js";
 import type { ArenaId } from "../../shared/arenaCrowd";
 import type { ArenaEvMsg, ArenaInfo, ArenaMode, ArenaResultMsg, HistoryRow, LeaderRow, MatchFoundMsg, PartyState, Reservation } from "../../shared/arena";
 import type { RaidBannerMsg, RaidCastMsg, RaidMusterMsg, RaidResultMsg, RaidReviveMsg, RaidWelcome } from "../../shared/raid";
+import type { WbChronicleEntry, WbMeMsg, WbMusterMsg, WbResultMsg, WbStateMsg } from "../../shared/worldBoss";
 import type { RumorMsg } from "../../shared/rumors";
 import type { EncDialogMsg, EncNpcMsg, EncShopMsg } from "../../shared/encounters";
 import type { TradeView } from "../../shared/trade";
@@ -69,6 +70,15 @@ type Events = {
   "dg:gate": { id: string; open: boolean };
   "dg:gates": { open: string[] };
   "raid:muster": RaidMusterMsg;
+  /** Мировые боссы и лента событий (задача 151; окно — следующая партия). */
+  wboss: WbStateMsg;
+  "wboss:me": WbMeMsg;
+  "wboss:result": WbResultMsg;
+  "wboss:muster": WbMusterMsg;
+  "wboss:chronicle": WbChronicleEntry[];
+  "wboss:wave": Record<string, unknown>;
+  events: Record<string, unknown>[];
+  "event:say": { text: string; kind: string; from: string };
   "raid:cast": RaidCastMsg;
   "raid:banner": RaidBannerMsg;
   "raid:revive": RaidReviveMsg;
@@ -141,6 +151,8 @@ export interface UnitState {
   maxMp: number;
   level: number;
   buffs: number;
+  /** Действующее замедление, % (shared/cc.ts slowMul). */
+  slowPct?: number;
   phase: number;
   weapon: string;
   gear: string;
@@ -426,6 +438,7 @@ export class Net {
       this.party = m;
       this.emit("party", m);
     });
+    for (const t of ["wboss", "wboss:me", "wboss:result", "wboss:muster", "wboss:chronicle", "wboss:wave", "events", "event:say"] as const) room.onMessage(t, (m: any) => this.emit(t, m));
     for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:ev", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result", "war:tpcd", "siege", "siege:result", "siege:fx"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

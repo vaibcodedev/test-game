@@ -36,6 +36,8 @@ export class ZoneBoss extends Boss {
   private lastKillAt = -1;
   /** Срок, до которого босс занят умением (сам ставит casting). */
   private busyUntil = 0;
+  /** Начало идущего обычного умения (волны с телеграфом) — его сбивает безмолвие (interrupt); −1 — идёт особое умение или ничего. */
+  private plainAt = -1;
 
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
@@ -59,6 +61,7 @@ export class ZoneBoss extends Boss {
     const pause = ph.pauseMs ?? 0;
     this.line(ph.yell);
     if (pause > 0) {
+      this.plainAt = -1; // пауза перехода фазы безмолвием не сбивается
       this.casting = true;
       this.busyUntil = Math.max(this.busyUntil, this.w.time + pause);
       this.m.unit.anim = Anim.Cast;
@@ -149,6 +152,7 @@ export class ZoneBoss extends Boss {
   private run(ab: ZbAbility) {
     const tank = this.target() ?? this.far();
     if (!tank || !this.inArena().length) return;
+    this.plainAt = -1; // особые умения безмолвием не сбиваются; обычное ставит plainAt ниже
     if (ab.break) { this.channel(ab); return; }
     if (ab.duel) { this.duelMark(ab); return; }
     if (ab.cage) { this.cages(ab); return; }
@@ -163,6 +167,7 @@ export class ZoneBoss extends Boss {
     for (const wv of waves) total += wv.windupMs + this.tail(wv);
     this.casting = true;
     this.busyUntil = this.w.time + total;
+    const t0 = (this.plainAt = this.w.time);
     this.m.unit.anim = Anim.Cast;
     this.face(tank.x, tank.y);
     if (Math.random() < 0.6) this.line(this.card.lines.abilities[ab.id]);
@@ -172,7 +177,7 @@ export class ZoneBoss extends Boss {
       this.m.dmgTakenMul = 0;
       this.w.later(ab.burrow.invulnMs, () => { if (epoch === this.epoch) this.refreshShield(); });
     }
-    this.wave(ab, waves, 0, null, this.epoch);
+    this.wave(ab, waves, 0, null, this.epoch, t0);
     if (ab.mirror) this.mirrorWave(ab);
   }
 
@@ -535,25 +540,40 @@ export class ZoneBoss extends Boss {
     return (wv.at === "path" || wv.at === "hunt") && wv.count ? (wv.count - 1) * (wv.stepMs ?? 0) : 0;
   }
 
-  private wave(ab: ZbAbility, waves: ZbWave[], i: number, prev: Mark[] | null, epoch: number) {
+  /**
+   * Безмолвие героя (effects.interruptCast, data/cc.json boss.silence): обычное умение с волнами срывается — ещё не ударившие метки не бьют,
+   * следующие волны не идут, босс свободен. Особые умения (каналы, клетки, знамёна, рой) безмолвием не сбиваются.
+   */
+  override interrupt(): boolean {
+    if (!this.casting || this.plainAt < 0 || this.w.time >= this.busyUntil || this.m.dead) return false;
+    this.cutAt = this.w.time;
+    this.plainAt = -1;
+    this.busyUntil = 0;
+    this.casting = false;
+    this.m.unit.anim = Anim.Idle;
+    this.w.emit({ t: "dmg", id: this.m.id, v: 0, imm: true });
+    return true;
+  }
+
+  private wave(ab: ZbAbility, waves: ZbWave[], i: number, prev: Mark[] | null, epoch: number, t0 = -1) {
     const w = this.w, m = this.m, wv = waves[i];
-    if (epoch !== this.epoch || m.dead) return;
+    if (epoch !== this.epoch || m.dead || !this.live(t0)) return;
     const hitSet = new Set<string>();
     const marks = wv.at === "hunt" ? [] : this.marks(wv, prev);
-    if (wv.at === "hunt") this.hunt(ab, wv, i, epoch);
+    if (wv.at === "hunt") this.hunt(ab, wv, i, epoch, t0);
     else if (!marks.length) return;
     else {
       const pts: number[] = [];
       for (const mk of marks) pts.push(Math.round(mk.x), Math.round(mk.y));
       const a0 = marks[0].a;
       w.emit({ t: "zb", id: m.id, ab: ab.id, w: i, ms: wv.windupMs, pts, a: a0 === undefined ? undefined : Math.round(a0 * 1000) / 1000, step: wv.stepMs, r: wv.r, r2: wv.r2 });
-      for (const mk of marks) this.strike(wv, mk, hitSet, epoch);
+      for (const mk of marks) this.strike(wv, mk, hitSet, epoch, t0);
     }
     const last = wv.windupMs + this.tail(wv);
     // после удара: прыжок в центр круга, таран — в конец ряда
-    if (wv.after?.leap && marks[0]) w.later(wv.windupMs, () => { if (epoch === this.epoch && !m.dead) this.moveTo(marks[0].x, marks[0].y, "leap"); });
-    if (wv.after?.dash && marks.length) w.later(last, () => { if (epoch === this.epoch && !m.dead) this.moveTo(marks[marks.length - 1].x, marks[marks.length - 1].y, "charge"); });
-    if (i + 1 < waves.length) w.later(last, () => this.wave(ab, waves, i + 1, marks, epoch));
+    if (wv.after?.leap && marks[0]) w.later(wv.windupMs, () => { if (epoch === this.epoch && !m.dead && this.live(t0)) this.moveTo(marks[0].x, marks[0].y, "leap"); });
+    if (wv.after?.dash && marks.length) w.later(last, () => { if (epoch === this.epoch && !m.dead && this.live(t0)) this.moveTo(marks[marks.length - 1].x, marks[marks.length - 1].y, "charge"); });
+    if (i + 1 < waves.length) w.later(last, () => this.wave(ab, waves, i + 1, marks, epoch, t0));
   }
 
   /** Перенос босса (прыжок, таран): только на проходимое место и не дальше арены. */
@@ -566,19 +586,19 @@ export class ZoneBoss extends Boss {
   }
 
   /** Травля: count меток по очереди под одним героем — новая каждые stepMs там, где он стоит в этот миг. */
-  private hunt(ab: ZbAbility, wv: ZbWave, wi: number, epoch: number) {
+  private hunt(ab: ZbAbility, wv: ZbWave, wi: number, epoch: number, t0 = -1) {
     const prey = pick(this.inArena());
     if (!prey) return;
     const n = wv.count ?? 1;
     for (let k = 0; k < n; k++) {
       this.w.later(k * (wv.stepMs ?? 0), () => {
-        if (epoch !== this.epoch || this.m.dead) return;
+        if (epoch !== this.epoch || this.m.dead || !this.live(t0)) return;
         const p = this.w.players.get(prey.id);
         if (!p || p.dead) return;
         // каждая метка — своя волна по попаданиям: травля бьёт добычу каждой меткой, на которой она стоит
         const mk: Mark = { shape: "circle", x: p.x, y: p.y, r: wv.r, delay: 0 };
         this.w.emit({ t: "zb", id: this.m.id, ab: ab.id, w: wi + k, ms: wv.windupMs, pts: [Math.round(p.x), Math.round(p.y)], r: wv.r });
-        this.strike(wv, mk, new Set(), epoch);
+        this.strike(wv, mk, new Set(), epoch, t0);
       });
     }
   }
@@ -654,11 +674,11 @@ export class ZoneBoss extends Boss {
   }
 
   /** Метка: предупреждение на земле и удар по тем, кто остался в форме (одна волна бьёт героя не больше раза). */
-  private strike(wv: ZbWave, mk: Mark, hitSet: Set<string>, epoch: number) {
+  private strike(wv: ZbWave, mk: Mark, hitSet: Set<string>, epoch: number, t0 = -1) {
     const w = this.w, m = this.m, k = kindOf(wv.k);
     const ms = wv.windupMs + mk.delay;
     w.telegraph(m, mk.shape, mk.x, mk.y, mk.r, ms, (p) => {
-      if (epoch !== this.epoch || hitSet.has(p.id)) return;
+      if (epoch !== this.epoch || hitSet.has(p.id) || !this.live(t0)) return;
       hitSet.add(p.id);
       // общая метка (share): урон делится на всех героев в круге в миг удара
       const n = wv.share ? Math.max(1, this.inArena().filter((q) => !q.dead && Math.hypot(q.x - mk.x, q.y - mk.y) <= mk.r).length) : 1;

@@ -1,0 +1,72 @@
+{
+  "_doc": "Мировые боссы (задача 151; проект — docs/world-bosses.md, идеи — docs/world-bosses-ideas.md). Сервер — server/src/worldboss/ (директор на каждого босса, EventClock — server/src/game/eventClock.ts), общее — shared/worldBoss.ts. Место — слот data/world.json layout.bossSlots (slot): at — одна или несколько клеток (центр клетки +0,5), arena — радиус круга-территории (тайлы); при нескольких клетках pick: alternate — по очереди, random — случайно. trigger — когда встаёт: kind schedule — по часам сервера times (ЧЧ:ММ), появление — случайно в окне jitterMin минут после отметки; kind random — раз в everyH [от, до] часов, omens — предвестники (min — за сколько минут, text — фраза, без точки на карте) — так добавляются боссы кольца без кода. lifeMin — не убит за столько минут — уходит; resetEmptySec — сброс здоровья, только если в круге столько секунд нет живого героя. crowd — сила по толпе: здоровье ×(1 + hpPerStep·(ступень − 1)), ступень — герои в круге по step (только вверх, раз в everyMs). mob — числа моба (как data/mobs.json: hp/dmg/armor — множители кривой), sprite — временный спрайт (арт позже). mechanics — умения (Колосс: п.1 docs/world-bosses-ideas.md). texts — объявления ({min}, {name}, {faction}, {zone}); heralds — от чьего имени пишет анонс своей фракции, chronicler — общие вести. contrib — вклад: dmg за 1 урон по боссу и свите, heal за 1 лечения героя в бою с боссом, tank за 1 урона, принятого держащим агро; пороги bronze/silver/gold — доля полного здоровья босса (у бронзы ещё bronzeActSec секунд действий в круге); capShare — доля одного героя в суммах фракций не больше этой доли общей суммы; afkMs — без ввода и боя вклад не копится; pvpSteal — убийца врага с вкладом получает такую долю его очков; leaveZones — вышел из этих зон до конца — вклад сгорает. rewards — по порогам (marks — Знаки Полей, xpMul — доля опыта босса, items — вещи: n, minRarity, ilvl), factionMarksMul — больше Знаков фракции с большим вкладом, heartChest — лишний сундук владельцу Сердца южного фронта (heart — id основания, от silver), legendary/mount — шанс у золота с защитой от невезения (pityStep за победу без трофея, до pityMax; раз в неделю на аккаунт), mounts — id маунтов-трофеев (пусто — арт ещё не готов), bagMs — сколько живёт личный мешок у тела (невзятое — в сумку или pendingItems). lockout — вещи раз в сутки на героя (сутки с dayResetHour). victory — знамя победы фракции с большим вкладом: +xpPct опыта на Полях hours часов, без урона. chronicle — Летопись: keep последних записей, top лучших по урону, лечению и танку. titles — титулы за победы (boss, wins), frame — рамка за gold золотых вкладов. muster — сборы мирового босса: maxPlayers на фракцию, squad [мин, макс] — размер отряда при автосборе по ролям, musterMs — таймер от первого.",
+  "minLevel": 80,
+  "clock": { "announceMin": [30, 10, 1], "teleportMin": 15, "stateEveryMs": 5000, "feedEveryMs": 15000 },
+  "contrib": {
+    "dmg": 1, "heal": 1.2, "tank": 1.5,
+    "bronze": 0.003, "bronzeActSec": 60, "silver": 0.01, "gold": 0.02,
+    "capShare": 0.05, "afkMs": 60000, "combatMs": 6000, "pvpSteal": 0.3,
+    "leaveZones": ["Fields", "Volcano"]
+  },
+  "lockout": { "dayResetHour": 5 },
+  "victory": { "xpPct": 0.05, "hours": 24 },
+  "chronicle": { "keep": 60, "top": 5 },
+  "frame": { "id": "wb_gold", "name": "Рамка «Пепельное золото»", "gold": 25 },
+  "muster": { "maxPlayers": 40, "squad": [10, 20], "musterMs": 120000 },
+  "bosses": {
+    "colossus": {
+      "name": "Колосс Пепельного Знамени",
+      "lore": "Великан из доспехов павших обеих фракций, в груди тлеет сорванное знамя. Поля веками копили мёртвых, и Пепел собрал их в одно тело.",
+      "slot": "fieldsSouth",
+      "pick": "alternate",
+      "level": 93,
+      "trigger": { "kind": "schedule", "times": ["13:00", "18:30", "23:00"], "jitterMin": 5 },
+      "lifeMin": 20,
+      "resetEmptySec": 60,
+      "crowd": { "step": 10, "hpPerStep": 0.9, "everyMs": 1000 },
+      "mob": { "sprite": "sol_storm_colossus", "size": 2, "hp": 330, "dmg": 4.6, "armor": 1.9, "xp": 120, "gold": 0, "speed": 52, "aggro": 140, "range": 80, "attackCd": 2.4, "radius": 30, "color": "#c8641e" },
+      "mechanics": {
+        "gather": { "name": "Сбор павших", "armorPerStack": 0.08, "maxStacks": 25 },
+        "bannerStrike": { "name": "Удар знаменем", "every": 9, "r": 230, "angleDeg": 70, "ms": 1100, "mult": 2.6 },
+        "ashCircles": { "name": "Пепельные круги", "every": 13, "count": 5, "r": 70, "ms": 1600, "mult": 2.0 },
+        "shards": { "name": "Осколки", "at": 0.6, "count": 4, "mob": { "sprite": "golem_obsidian", "hp": 9, "dmg": 1.4, "armor": 1.4, "speed": 56, "radius": 16, "range": 52, "attackCd": 1.8 } },
+        "waves": { "name": "Ярость Полей", "at": 0.3, "every": 16, "rings": 4, "width": 70, "stepMs": 900, "ms": 1200, "gaps": 3, "gapDeg": 40, "mult": 2.4 }
+      },
+      "rewards": {
+        "bronze": { "marks": 40, "xpMul": 0.5, "items": { "n": 1, "minRarity": 1, "ilvl": 93 }, "ore": 2, "dust": 0 },
+        "silver": { "marks": 80, "xpMul": 0.8, "items": { "n": 2, "minRarity": 2, "ilvl": 93 }, "ore": 4, "dust": 1 },
+        "gold": { "marks": 120, "xpMul": 1, "items": { "n": 2, "minRarity": 2, "ilvl": 95 }, "ore": 6, "dust": 2 },
+        "factionMarksMul": 1.25,
+        "heartChest": { "heart": "south_h", "ore": 4, "dust": 2 },
+        "legendary": { "chance": 0.04, "pityStep": 0.01, "pityMax": 0.12 },
+        "mount": { "chance": 0.01, "pityStep": 0.003, "pityMax": 0.03 },
+        "mounts": [],
+        "bagMs": 180000
+      },
+      "titles": [
+        { "id": "wb_colossus_1", "name": "Свидетель Колосса", "wins": 1 },
+        { "id": "wb_colossus_10", "name": "Сокрушитель Колосса", "wins": 10 }
+      ],
+      "heralds": { "solgard": "Глашатай Рассвета", "umbrath": "Вещатель Склепа" },
+      "chronicler": "Летописец Предела",
+      "texts": {
+        "soon": "{name} пробудится через {min} мин на юге Полей вечных битв, у Пылающего вулкана!",
+        "teleport": "До пробуждения {name} — {min} мин: «В форт» открыт.",
+        "spawn": "{name} пробудился! Земля Полей дрожит у Пылающего вулкана.",
+        "dead": "{name} пал. Больше всех вложила фракция {faction}.",
+        "deadNone": "{name} пал.",
+        "gone": "{name} уходит в пепел… До следующего окна.",
+        "phase2": "Доспехи Колосса трещат — Осколки отваливаются!",
+        "phase3": "Ярость Полей! Огонь идёт от центра — ищите бреши!",
+        "stack": "Колосс впитал павшего: броня крепнет ({n}).",
+        "unstack": "Осколок разбит — Колосс слабеет ({n}).",
+        "weak": "Вы слишком слабы, чтобы ранить его.",
+        "burned": "Вы покинули Поля — вклад в бой с {name} сгорел.",
+        "locked": "Добыча уже взята сегодня.",
+        "bag": "Ваш мешок с добычей {name} — у тела.",
+        "banner": "Знамя победы над {name}: фракции {faction} +{pct}% опыта на Полях на сутки.",
+        "oneChar": "На событие идёт один герой с аккаунта."
+      }
+    }
+  }
+}

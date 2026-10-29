@@ -18,11 +18,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { PC, hash01, mix, pnoise, shade, withA, type RGBA, type Ramp } from "./canvas";
 import { BIOME, P } from "./palette";
-import { SHORE_BIOMES, SHORE_COLS, SHORE_SPILL, SHORE_VARIANTS, T } from "../../shared/map";
+import { SHORE_BIOMES, SHORE_COLS, SHORE_LIQUID, SHORE_SPILL, SHORE_VARIANTS, T } from "../../shared/map";
 import { buildTileset } from "./tiles";
 
 const S = 32;
-type Style = "sod" | "beach" | "snow" | "bog" | "rock";
+type Style = "sod" | "beach" | "snow" | "bog" | "rock" | "magma";
 interface Look { style: Style; h: number; lip: Ramp; face: Ramp }
 /** Вид берега по поверхности нижней суши. h — высота стенки (px), lip — рампа кромки верха, face — рампа стенки. */
 const LOOK: Record<number, Look> = {
@@ -35,8 +35,22 @@ const LOOK: Record<number, Look> = {
   [T.Ash]: { style: "rock", h: 12, lip: P.ash, face: [shade(P.ash[0], 0.6), shade(P.ash[0], 0.85), P.ash[1], P.ash[2], P.ash[3]] }, // стенка — тот же тёплый пепельный камень, темнее верха
   [T.Obsidian]: { style: "rock", h: 12, lip: P.obsidian, face: BIOME.basaltR },
 };
+/** Берег у лавы (магма): базальт, раскалённая кромка с отсветом снизу; лава ниже уровня. */
+const LOOK_LAVA: Record<number, Look> = {
+  // низкая каменная кромка 3–5 px тем же камнем, что верх (2–3 тона, без чёрной линии); к лаве — мягкий раскалённый градиент
+  [T.Ash]: { style: "magma", h: 5, lip: P.ash, face: [shade(P.ash[0], 0.75), P.ash[0], P.ash[1], P.ash[2], P.ash[3]] },
+  [T.Obsidian]: { style: "magma", h: 5, lip: P.obsidian, face: [P.obsidian[0], P.obsidian[1], P.obsidian[2], P.obsidian[3], P.obsidian[4]] },
+  [T.Snow]: { style: "magma", h: 4, lip: P.snow, face: [shade(P.ash[0], 0.75), P.ash[0], P.ash[1], P.ash[2], P.ash[3]] },
+  [T.Forest]: { style: "magma", h: 4, lip: P.forest, face: [shade(P.ash[0], 0.75), P.ash[0], P.ash[1], P.ash[2], P.ash[3]] },
+  [T.Bog]: { style: "magma", h: 3, lip: P.bog, face: [shade(P.ash[0], 0.75), P.ash[0], P.ash[1], P.ash[2], P.ash[3]] },
+};
+const lookOf = (kind: number): Look => (SHORE_LIQUID[kind] === T.Lava ? LOOK_LAVA : LOOK)[SHORE_BIOMES[kind]];
 
-/** Поле «суша» тайла (>0.5 — суша). За краем тайла — значение на краю (без шума): так видит его сосед. */
+/** Порог суши поля: выше 0.5 — жидкость чуть шире середины между вершинами, чтобы протоки в 1 вершину и диагональные седла не рвались на пруды. */
+export const LAND_T = 0.58, LAND_T_LAVA = 0.64;
+/** Порог суши вида берега: у лавы выше — озерца лавы цельные и круглее. */
+export const landT = (kind: number) => (SHORE_LIQUID[kind] === T.Lava ? LAND_T_LAVA : LAND_T);
+/** Поле «суша» тайла (> LAND_T — суша). За краем тайла — значение на краю (без шума): так видит его сосед. */
 export function shoreField(mask: number, v: number, x: number, y: number) {
   const u = Math.max(0, Math.min(1, (x + 0.5) / S)), w = Math.max(0, Math.min(1, (y + 0.5) / S));
   const tl = mask & 1 ? 1 : 0, tr = mask & 2 ? 1 : 0, br = mask & 4 ? 1 : 0, bl = mask & 8 ? 1 : 0;
@@ -52,14 +66,15 @@ const DEEP: RGBA = [8, 16, 34, 255];
 
 export interface ShoreTile { img: PC; spill: PC; stand: Uint8Array }
 
-export function shoreTile(t: number, mask: number, v: number, top: (x: number, y: number) => RGBA): ShoreTile {
-  const L0 = LOOK[t], st = L0.style, h = L0.h, LIP = L0.lip, F = L0.face;
+export function shoreTile(kind: number, mask: number, v: number, top: (x: number, y: number) => RGBA): ShoreTile {
+  const t = kind;
+  const L0 = lookOf(kind), st = L0.style, h = L0.h, LIP = L0.lip, F = L0.face;
   const img = new PC(S, S + SHORE_SPILL), stand = new Uint8Array(S * S);
   const cache = new Map<number, boolean>();
   const land = (x: number, y: number) => {
     const k = (y + 24) * 96 + x + 24;
     let r = cache.get(k);
-    if (r === undefined) { r = shoreField(mask, v, x, y) > 0.5; cache.set(k, r); }
+    if (r === undefined) { r = shoreField(mask, v, x, y) > landT(kind); cache.set(k, r); }
     return r;
   };
   const sd = 1000 + v * 97 + mask * 13 + t * 7;
@@ -81,6 +96,8 @@ export function shoreTile(t: number, mask: number, v: number, top: (x: number, y
     if (dUp && dUp <= h) { img.set(x, y, faceColor(st, h, LIP, F, x, y, dUp, land, sd)); continue; }
     if (dUp) { const c = waterline(st, F, dUp - h, x, y, sd); if (c) { img.set(x, y, c); continue; } }
     if (!inTile) continue; // в свесе — только стенка, линия воды и тень
+    const sw = sideWall(st, F, x, y, land, sd);
+    if (sw) { img.set(x, y, sw); continue; }
     const c = edgeWater(st, LIP, F, near(x, y, true, 7), x, y, land, sd);
     if (c) img.set(x, y, c);
   }
@@ -91,6 +108,36 @@ export function shoreTile(t: number, mask: number, v: number, top: (x: number, y
 }
 
 type Land = (x: number, y: number) => boolean;
+
+/**
+ * Боковые и ближние края там, где суша выше жидкости: у западного/восточного берега — узкая стенка 2–3 px (лицо к свету светлее,
+ * от света — темнее) с тенью на воде; у ближнего (южного) берега — торец кромки 2 px под дёрном. Песок и болото — пологие, без стенки.
+ */
+function sideWall(st: Style, F: Ramp, x: number, y: number, land: Land, sd: number): RGBA | null {
+  if (st === "beach" || st === "bog") return null;
+  const first = (dx: number, dy: number, n: number) => { for (let k = 1; k <= n; k++) if (land(x + dx * k, y + dy * k)) return k; return 0; };
+  const dB = first(0, 1, 3), dL = first(-1, 0, 3), dR = first(1, 0, 3);
+  const w = 2 + (hash01(x >> 2, y >> 2, sd + 40) < 0.5 ? 1 : 0); // ширина стенки 2–3 px
+  const hot = st === "magma";
+  if (hot) { // у лавы: торец 1 px камня, дальше — свечение (edgeWater)
+    if (dB === 1 || dL === 1 || dR === 1) return dR === 1 ? F[2] : F[1];
+    return null;
+  }
+  if (dB && dB <= 2) { // ближний берег: торец под кромкой (вода дальше и ниже)
+    const c = dB === 1 ? F[1] : shade(F[0], 0.8);
+    return hot && dB === 2 ? mix(c, P.lava[2], 0.5) : c;
+  }
+  if (dL && dL <= w) { // суша слева: стенка смотрит на восток — от света, темнее
+    const c = dL === 1 ? F[1] : dL === w ? shade(F[0], 0.75) : F[0];
+    return hot && dL === w ? mix(c, P.lava[2], 0.55) : c;
+  }
+  if (dR && dR <= w) { // суша справа: стенка смотрит на запад — к свету
+    const c = dR === 1 ? F[3] : dR === w ? shade(F[1], 0.8) : F[2];
+    return hot && dR === w ? mix(c, P.lava[2], 0.55) : c;
+  }
+  if ((dL && dL === w + 1) || (dR && dR === w + 1)) return hot ? withA(P.lava[3], 200) : withA(DEEP, 110); // тень / отсвет у подножия
+  return null;
+}
 
 /** Верх суши у кромки. */
 function landColor(st: Style, LIP: Ramp, c: RGBA, x: number, y: number, land: Land, near: (x: number, y: number, l: boolean, R: number) => number, sd: number): RGBA {
@@ -133,6 +180,11 @@ function landColor(st: Style, LIP: Ramp, c: RGBA, x: number, y: number, land: La
     if (d <= 1.01) return mix(P.bog[1], P.dirt[0], 0.4); // топкая грязь
     if (d <= 2.01) return mix(c, P.bog[1], 0.6);
     if (d <= 3.3 && hash01(x, y, sd + 5) < 0.5) return mix(c, P.bog[1], 0.3);
+    return c;
+  }
+  if (st === "magma") { // камень у лавы тёплый от отсвета: край — 2 px с оранжевым подсветом, без тёмной корки
+    if (wD || wU || wL || wR) return mix(c, P.lava[2], wD ? 0.25 : 0.35);
+    if (!land(x, y + 2) || !land(x, y - 2) || !land(x - 2, y) || !land(x + 2, y)) return mix(c, P.lava[1], 0.18);
     return c;
   }
   // rock: кромка базальта — холодный блик сверху, тёмный бок справа
@@ -189,6 +241,12 @@ function faceColor(st: Style, h: number, LIP: Ramp, F: Ramp, x: number, y: numbe
     }
     return endR ? shade(F[0], 0.8) : endL && r > 1 ? mix(c, F[4], 0.4) : nearR ? shade(c, 0.88) : c;
   }
+  if (st === "magma") { // низкая стенка камня: верх светлее, низ подсвечен лавой
+    c = r === 1 ? F[3] : t < 0.6 ? F[2] : F[1];
+    if (r === h) c = mix(F[1], P.lava[2], 0.45);
+    else if (r === h - 1 && h > 3) c = mix(c, P.lava[1], 0.2);
+    return endR ? mix(c, F[0], 0.5) : endL && r > 1 ? mix(c, F[3], 0.3) : c;
+  }
   // rock: базальт уступами по 4 px, трещины, светлая полка
   const row = Math.floor((r - 1) / 4), inRow = (r - 1) % 4;
   const bx = (x + row * 5) % 9;
@@ -208,6 +266,12 @@ function waterline(st: Style, F: Ramp, r: number, x: number, y: number, sd: numb
     if (r === 1) return withA(P.ice[3], 230); // ледяная корка у подножия
     if (r === 2) return hash01(x >> 1, y, sd + 24) < 0.6 ? withA(P.ice[4], 190) : withA(P.ice[2], 170);
     return withA([20, 40, 90, 255], Math.max(0, 110 - (r - 3) * 30));
+  }
+  if (st === "magma") { // мягкий градиент от подножия к лаве
+    if (r === 1) return withA(hash01(x >> 1, y, sd + 42) < 0.5 ? P.lava[4] : P.lava[3], 220);
+    if (r === 2) return withA(P.lava[3], 150);
+    if (r === 3) return withA(P.lava[3], 80);
+    return null;
   }
   if (st === "rock") {
     if (r === 1) return hash01(x >> 1, y, sd + 25) < 0.35 ? withA(FOAM, 150) : withA(shade(F[0], 0.7), 210);
@@ -241,6 +305,11 @@ function edgeWater(st: Style, LIP: Ramp, F: Ramp, d: number, x: number, y: numbe
     if (d <= 4) return withA(P.ice[2], 110);
     return null;
   }
+  if (st === "magma") { // раскалённый край без обводки: свет падает к лаве
+    if (d <= 1.6) return withA(hash01(x >> 1, y, sd + 43) < 0.5 ? P.lava[4] : P.lava[3], 200);
+    if (d <= 3.2) return withA(P.lava[3], Math.round(150 - (d - 1.6) * 50));
+    return null;
+  }
   if (st === "rock") {
     if (d <= 1.01) return sideDark ? shade(F[0], 0.8) : F[1];
     if (d <= 1.6) return shade(F[0], 0.7);
@@ -260,12 +329,12 @@ export function buildShores(): { png: PC; walk: Uint8Array } {
   const png = new PC(SHORE_COLS * S, SHORE_BIOMES.length * SHORE_VARIANTS * S);
   const walk = new Uint8Array(SHORE_BIOMES.length * SHORE_VARIANTS * 15 * 128);
   SHORE_BIOMES.forEach((t, bi) => {
-    if (!LOOK[t]) throw new Error(`нет вида берега для поверхности ${t}`);
+    if (!lookOf(bi)) throw new Error(`нет вида берега для поверхности ${t} у жидкости ${SHORE_LIQUID[bi]}`);
     for (let v = 0; v < SHORE_VARIANTS; v++) {
       const col = 14 + v;
       const top = (x: number, y: number) => ts.get(col * S + x, t * S + y)!;
       for (let mask = 1; mask <= 15; mask++) {
-        const tile = shoreTile(t, mask, v, top);
+        const tile = shoreTile(bi, mask, v, top);
         const row = (bi * SHORE_VARIANTS + v) * S;
         png.blit(tile.img, (mask - 1) * S, row);
         png.blit(tile.spill, (16 + mask - 1) * S, row);

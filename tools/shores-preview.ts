@@ -65,7 +65,7 @@ function shoreSpot(bi: number, skip = 0, lo = 30, hi = 72): [number, number] | n
   for (let ty = 6; ty < m.h - 6; ty++) for (let tx = 8; tx < m.w - 8; tx++) {
     const s = shoreAt(m, tx, ty);
     if (!s || s.biome !== bi || s.mask !== 3) continue;
-    let c = 0; for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (V(tx + x, ty + y) === T.Water) c++;
+    let c = 0; for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (V(tx + x, ty + y) <= T.Lava) c++;
     if (c < lo || c > hi) continue;
     if (n++ >= skip) return [tx, ty];
   }

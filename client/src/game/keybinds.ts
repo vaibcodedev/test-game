@@ -15,7 +15,7 @@ export type SlotAction = `slot${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 export type ActionId =
   | MoveAction | SlotAction
   | "targetNext" | "targetPrev" | "attack" | "selectSelf" | "selectParty1" | "selectParty2" | "selectParty3" | "selectParty4" | "potionHp" | "potionMp" | "interact" | "talk" | "mount" | "mountNext" | "pet" | "petNext" | "autorun" | "follow"
-  | "winChar" | "winInv" | "winSkills" | "winMap" | "winBestiary" | "winArena" | "winAdmin" | "chat" | "escape";
+  | "winChar" | "winInv" | "winSkills" | "winMap" | "winBestiary" | "winArena" | "winMuster" | "winAdmin" | "chat" | "escape";
 
 export const GROUPS = { move: "Движение", target: "Цель", bar: "Панель умений", act: "Действия", ui: "Интерфейс" } as const;
 export type GroupId = keyof typeof GROUPS;
@@ -56,6 +56,7 @@ const DEFS: Record<ActionId, Def> = {
   winMap: { group: "ui", name: "Карта" },
   winBestiary: { group: "ui", name: "Бестиарий" },
   winArena: { group: "ui", name: "Арена" },
+  winMuster: { group: "ui", name: "Сборы" },
   winAdmin: { group: "ui", name: "Админ-панель" },
   chat: { group: "ui", name: "Чат" },
   escape: { group: "ui", name: "Закрыть окно, снять цель, меню", fixed: true },
@@ -86,7 +87,7 @@ const CLASSIC: Layout = {
   interact: [k("Space")], talk: [k("KeyF")],
   autorun: [k("KeyR"), k("NumLock")], follow: [shift("KeyF")],
   mount: [k("KeyX")], mountNext: [shift("KeyX")], pet: [k("KeyG")], petNext: [shift("KeyG")],
-  winChar: [k("KeyC")], winInv: [k("KeyI")], winSkills: [k("KeyK")], winMap: [k("KeyM")], winBestiary: [k("KeyB")], winArena: [k("KeyP")], winAdmin: [k("F10")],
+  winChar: [k("KeyC")], winInv: [k("KeyI")], winSkills: [k("KeyK")], winMap: [k("KeyM")], winBestiary: [k("KeyB")], winArena: [k("KeyP")], winMuster: [k("KeyJ")], winAdmin: [k("F10")],
   chat: [k("Enter")], escape: [k("Escape")],
 };
 /**
@@ -449,6 +450,7 @@ export function hotkeyRows(kb: Keybinds): [string, string][] {
   add([first("pet"), first("petNext")].filter(Boolean).join(" / "), "питомец");
   pairs([["winChar", "герой"], ["winInv", "сумка"], ["winSkills", "умения"]]);
   pairs([["winArena", "арена"], ["winBestiary", "бестиарий"], ["winMap", "карта"]]);
+  add(first("winMuster"), "сборы на события и мировых боссов");
   add(first("chat"), "чат");
   add(first("escape"), "закрыть окно, снять цель, меню");
   return rows;
@@ -472,7 +474,7 @@ export function hotkeySections(kb: Keybinds): HelpSection[] {
     sec("target", [row(["targetNext"]), row(["targetPrev"]), row(["attack"]), row(["selectSelf"]), text(partyKeys(kb), "Выбрать члена группы")]),
     sec("bar", [text(skillKeys(kb), "Умения"), row(["potionHp"]), row(["potionMp"])]),
     sec("act", [row(["interact"]), row(["talk"]), row(["mount", "mountNext"], "Ездовое животное"), row(["pet", "petNext"], "Питомец"), row(["follow"])]),
-    sec("ui", [...wins("winChar", "winInv", "winSkills", "winMap", "winBestiary", "winArena"), row(["chat"]), row(["escape"])]),
+    sec("ui", [...wins("winChar", "winInv", "winSkills", "winMap", "winBestiary", "winArena", "winMuster"), row(["chat"]), row(["escape"])]),
   ].filter((s) => s.rows.length > 0);
 }
 

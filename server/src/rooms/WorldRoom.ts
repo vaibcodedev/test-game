@@ -48,6 +48,7 @@ import { gainXp } from "../game/rewards";
 import { forgetRumors, rumorFor } from "../game/rumors";
 import { World } from "../game/World";
 import { fileWarStore } from "../game/bannerWar";
+import { fileWbStore } from "../worldboss";
 import path from "node:path";
 import { TradeManager } from "../trade/TradeManager";
 import { BankService } from "../game/bank";
@@ -98,7 +99,10 @@ export class WorldRoom extends Room<OpenWorldState> {
     setMarketDb(WorldRoom.db);
     this.setState(new OpenWorldState());
     this.setPatchRate(PATCH_MS);
-    this.world = new World(this.state, (type, msg) => this.broadcast(type, msg), { warStore: fileWarStore(path.join(path.dirname(WorldRoom.db.file), path.basename(WorldRoom.db.file, ".sqlite") + "-war.json")) });
+    this.world = new World(this.state, (type, msg) => this.broadcast(type, msg), {
+      warStore: fileWarStore(path.join(path.dirname(WorldRoom.db.file), path.basename(WorldRoom.db.file, ".sqlite") + "-war.json")),
+      wbossStore: fileWbStore(path.join(path.dirname(WorldRoom.db.file), path.basename(WorldRoom.db.file, ".sqlite") + "-wboss.json")),
+    });
     const find = (key: string) => this.world.findByName(key);
     this.vis = new Visibility(this.state, () => this.world, (p) => (this.parties.members(p.name.toLowerCase()) ?? []).map((m) => find(m.key)));
     const visTick = guard("vis", () => this.vis.tick(Date.now(), (id, dots) => this.sockets.get(id)?.send("dots", dots)));
@@ -275,6 +279,7 @@ export class WorldRoom extends Room<OpenWorldState> {
       p.logout = null;
       this.trade.leave(p);
       this.world.breakMount(p);
+      this.world.wboss?.onLeave(p); // невзятое из мешков мирового босса — в сумку или pendingItems до сохранения
       if (!p.goingToArena) {
         this.queue.drop(key);
         if (!keepParty) this.parties.leave(key);
@@ -517,6 +522,26 @@ export class WorldRoom extends Room<OpenWorldState> {
       for (const g of group) g.send("toast", { text: T("srv.WorldRoom.222", { name: RAID.boss.name, length: group.length > 1 ? ` ${T("srv.WorldRoom.857")}` : "" }), kind: "info" });
     });
     on("raid:cancel", (p) => this.muster.cancel(key(p)));
+    // мировые боссы (задача 151): тот же Вестник в Эмберхолле — регистрация в сбор своей фракции (общий Muster, автосбор отрядов по ролям)
+    const wb = () => this.world.wboss;
+    on("wboss:info", (p) => wb()?.sendMuster(key(p)));
+    on("wboss:chronicle", (p) => p.send("wboss:chronicle", wb()?.chronicle() ?? []));
+    on("wboss:join", (p) => {
+      if (!wb()) return;
+      if (!heraldNear(p.x, p.y, RAID.npc.range + 40)) return p.send("toast", { text: T("srv.WorldRoom.220"), kind: "error" });
+      let group = [p];
+      const party = this.parties.members(key(p));
+      if (party && party.length > 1) {
+        const mates = party.map((x) => this.world.findByName(x.key));
+        if (mates.some((x) => !x)) return p.send("toast", { text: T("srv.WorldRoom.221"), kind: "error" });
+        group = mates as Player[];
+      }
+      const err = wb()!.join(group);
+      if (err) return p.send("toast", { text: err, kind: "error" });
+    });
+    on("wboss:cancel", (p) => wb()?.cancel(p));
+    on("wboss:tp", (p) => { const err = wb()?.teleport(p); if (err) p.send("toast", { text: err, kind: "error" }); });
+    on("wboss:start", (p) => { const err = wb()?.startNow(p); if (err) p.send("toast", { text: err, kind: "error" }); });
     on("raid:start", (p) => {
       const err = this.muster.startNow(key(p));
       if (err) p.send("toast", { text: err, kind: "error" });
@@ -749,7 +774,8 @@ export class WorldRoom extends Room<OpenWorldState> {
         case "fill": for (let i = 0; i < p.save.inventory.length; i++) if (!p.save.inventory[i]) p.save.inventory[i] = makeItem("ring", 1, Rarity.Common); break;
         case "rating": services.arena.setRating(p.name.toLowerCase(), p.name, p.cls, m.mode as ArenaMode, Number(m.v)); this.sendArenaInfo(p.name.toLowerCase()); break;
         case "war": w().war?.debug(String(m.act ?? ""), m); break; // «Знамёна Предела»: act start [front] | heart | end | skip ms | prep ms | owner base f | reset
-        case "siege": w().siege?.debug(String(m.act ?? ""), m); break; // осада форта: act start [att] | breach [gate] | hp gate pct | end [win] | prep ms | reset
+        case "siege": w().siege?.debug(String(m.act ?? ""), m); break;
+        case "wboss": w().wboss?.debug(String(m.act ?? ""), m, p); break; // мировые боссы (задача 151): act start | soon [ms] | kill | reset | end | skip ms [boss] // осада форта: act start [att] | breach [gate] | hp gate pct | end [win] | prep ms | reset
         case "season:end": { const id = services.arena.closeSeasonIfDue(Date.now(), true); if (id !== null) this.onSeasonClosed(id); break; }
       }
       p.selfDirty = true;

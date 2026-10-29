@@ -31,13 +31,13 @@ export function shoreSpillLayer(m: WorldMap): Int16Array | null {
 }
 
 /** Индексы тайлов всех слоёв по клеткам карты, считаются один раз: слой 0 — стены данжа, 1..TERRAIN_COUNT−1 — поверхности; −1 — пусто, null — слоя на карте нет. */
-export function terrainLayers(m: WorldMap): (Int16Array | null)[] {
+export function terrainLayers(m: WorldMap, shores = true): (Int16Array | null)[] {
   const V = (x: number, y: number) => m.vtx[y * (m.w + 1) + x];
   const layers: (Int16Array | null)[] = new Array(TERRAIN_COUNT).fill(null);
   for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
     const c = [V(x, y), V(x + 1, y), V(x + 1, y + 1), V(x, y + 1)];
     const low = Math.min(...c);
-    const sh = low === 0 ? shoreAt(m, x, y) : null; // берег автотайлом (shores.png): заменяет тайл нижней суши клетки
+    const sh = shores && low <= 1 ? shoreAt(m, x, y) : null; // 0 — вода, 1 — лава // берег автотайлом (shores.png): заменяет тайл нижней суши клетки
     for (let t = 1; t < TERRAIN_COUNT; t++) {
       if (!c.includes(t)) continue;
       if (sh && t === sh.t) { (layers[t] ??= new Int16Array(m.w * m.h).fill(-1))[y * m.w + x] = shoreIndex(sh.biome, sh.variant, sh.mask); continue; }

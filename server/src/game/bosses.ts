@@ -71,13 +71,36 @@ export abstract class Boss {
   }
   /** Короткая остановка на время каста. */
   protected cast(ms: number) {
+    const t0 = (this.castAt = this.w.time);
+    this.castUntil = t0 + ms;
     this.casting = true;
     this.m.unit.anim = Anim.Cast;
     this.m.unit.aseq = (this.m.unit.aseq + 1) % 65535;
     this.w.later(ms, () => {
+      if (this.castAt !== t0) return; // каст сорван (interrupt) или уже начат новый
       this.casting = false;
       if (!this.m.dead) this.m.unit.anim = Anim.Idle;
     });
+  }
+
+  // ---------- срыв каста безмолвием (задача 148: data/cc.json boss.silence = "interrupt", effects.interruptCast) ----------
+  /** Сбивается ли каст этого босса (телеграфы каста проверяют live(t0)); у прочих interrupt() ничего не делает. */
+  protected interruptible = false;
+  /** Начало и конец текущего каста cast(); последний срыв. */
+  protected castAt = -1;
+  protected castUntil = 0;
+  protected cutAt = -1;
+  /** Каст, начатый в t0, не сорван (t0 < 0 — не каст: всегда идёт). */
+  protected live(t0: number) { return t0 < 0 || this.cutAt < t0; }
+  /** Безмолвие героя по боссу: идущий каст срывается (удар телеграфа не бьёт), босс сразу свободен. true — сорван. */
+  interrupt(): boolean {
+    if (!this.interruptible || !this.casting || this.castUntil <= this.w.time || this.m.dead) return false;
+    this.cutAt = this.w.time;
+    this.castAt = -1;
+    this.casting = false;
+    this.m.unit.anim = Anim.Idle;
+    this.w.emit({ t: "dmg", id: this.m.id, v: 0, imm: true });
+    return true;
   }
   protected summon(id: string, count: number, radius = 90) {
     const def = MOBS[id];
@@ -146,16 +169,19 @@ class AshLord extends Boss {
   constructor(w: World, m: Mob, arena: number) {
     super(w, m, arena);
     const dmg = () => this.m.stats.dmg * this.mech;
+    this.interruptible = true; // дыхание, сокрушение и кольцо сбиваются безмолвием
     this.ability(8, [0, 1, 2], () => {
       const t = this.target();
       if (!t) return;
       const a = Math.atan2(t.y - m.y, t.x - m.x);
       this.cast(1100);
-      w.telegraph(m, "cone", m.x, m.y, 210, 1000, (p) => { w.hit(m, p, { flat: dmg() * 2.6, kind: "fire" }); p.burnUntil = w.time + 2500; }, { a, w: 1.1, k: "fire" });
+      const t0 = w.time;
+      w.telegraph(m, "cone", m.x, m.y, 210, 1000, (p) => { if (!this.live(t0)) return; w.hit(m, p, { flat: dmg() * 2.6, kind: "fire" }); p.burnUntil = w.time + 2500; }, { a, w: 1.1, k: "fire" });
     });
     this.ability(10, [0, 1, 2], () => {
       this.cast(950);
-      w.telegraph(m, "circle", m.x, m.y, 105, 900, (p) => w.hit(m, p, { flat: dmg() * 2, kind: "fire" }), { k: "fire" });
+      const t0 = w.time;
+      w.telegraph(m, "circle", m.x, m.y, 105, 900, (p) => { if (this.live(t0)) w.hit(m, p, { flat: dmg() * 2, kind: "fire" }); }, { k: "fire" });
     }, 4);
     this.ability(12, [1, 2], () => {
       const targets = this.inArena();
@@ -168,7 +194,8 @@ class AshLord extends Boss {
     }, 1);
     this.ability(14, [2], () => {
       this.cast(1900);
-      w.telegraph(m, "ring", m.x, m.y, 105, 1800, (p) => { w.hit(m, p, { flat: dmg() * 3, kind: "fire" }); p.burnUntil = w.time + 3000; }, { r2: this.arena + 60, k: "fire" });
+      const t0 = w.time;
+      w.telegraph(m, "ring", m.x, m.y, 105, 1800, (p) => { if (!this.live(t0)) return; w.hit(m, p, { flat: dmg() * 3, kind: "fire" }); p.burnUntil = w.time + 3000; }, { r2: this.arena + 60, k: "fire" });
     }, 2);
     this.ability(20, [2], () => this.summon("imp", 2), 5);
   }

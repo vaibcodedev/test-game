@@ -10,11 +10,12 @@ import { CLASSES } from "../../../shared/classes";
 import { castUmbrath } from "./umbrath";
 import { castTank, onCast } from "./tanks";
 import { castMage, onCast as mageCast } from "./mages";
-import { castHealer, powerMult, pvpHealScale } from "./healers";
+import { castHealer, markHolyShield, powerMult, pvpHealScale } from "./healers";
 import { castArcher, onCast as onCastArcher } from "./archers";
 import type { Pet } from "./Pet";
 import { applyPoison, castRogue, facing, isBehind, onCast as onRogueCast } from "./rogue";
-import { applyHaste, applyRoot, applySlow, applyStun, applyWeaken } from "./effects";
+import { applyHaste, applyRoot, applySilence, applySlow, applyStun, applyWeaken, cleanseCc, grantCcImmune, type CcOpts } from "./effects";
+import { ccOf } from "../../../shared/cc";
 import type { Player } from "./Player";
 import { World, type Actor } from "./World";
 import { stealthBan } from "./wards";
@@ -49,7 +50,10 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
   const rank = p.save.skills[id] || 0;
   if (!rank) return T("srv.skills.140");
   if (p.dead) return T("srv.skills.141");
-  if (p.stunUntil > w.time) return T("srv.skills.142");
+  const cc = ccOf(id);
+  if (p.stunUntil > w.time && !cc.usableInStun) return T("srv.skills.142");
+  if (p.fearUntil > w.time && !cc.usableInStun) return T("srv.cc.feared");
+  if (p.silenceUntil > w.time && !cc.usableInSilence) return T("srv.cc.silenced");
   if (p.frozenUntil > w.time) return T("srv.skills.143");
   const ready = p.cds.get(id) || 0;
   if (w.time < ready) return null; // молча: кнопку уже показывают на перезарядке
@@ -80,13 +84,19 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
   const threat = (a: Actor, v: number) => { if (!w.isPlayer(a)) a.addThreat(p.id, v); };
   const range = def.range ?? 0;
   /** Контроль и дебаффы героя — общие помощники effects.ts: нейтральный город, «Несгибаемый», слияние с живым эффектом. */
-  const stun = (a: Actor, ms: number) => applyStun(w, p, a, ms);
+  const stun = (a: Actor, ms: number, o?: CcOpts) => applyStun(w, p, a, ms, o);
   const slow = (a: Actor, pct: number, ms: number) => applySlow(w, p, a, pct, ms);
-  const root = (a: Actor, ms: number) => applyRoot(w, p, a, ms);
+  const root = (a: Actor, ms: number, o?: CcOpts) => applyRoot(w, p, a, ms, o);
   const weaken = (a: Actor, pct: number, ms: number) => applyWeaken(w, p, a, pct, ms);
 
+  // корни: рывки, прыжки и шаг за спину — только умениям с breaksRoot (data/cc.json skills); они же снимают корни
+  if (p.rootUntil > w.time && !cc.breaksRoot && (g.shape === "dash" || g.shape === "leap" || g.shape === "behind")) return T("srv.cc.rooted");
   const ok = () => {
     w.breakMount(p);
+    // поля контроля умения (data/cc.json skills.<id>): снять с себя, вырваться из корней, иммунитет на срок
+    if (cc.cleanse) cleanseCc(p, cc.cleanse);
+    if (cc.breaksRoot) cleanseCc(p, ["root"]);
+    if (cc.immune) grantCcImmune(w, p, cc.immune.kinds, cc.immune.ms ?? v.dur * 1000);
     if (id !== "stealth" && id !== "dr_shadowmeld") p.stealthUntil = 0;
     u.mp -= mana;
     if (liveTarget && def.target === "enemy" && p.targetId === liveTarget.id) p.engaged = p.approach = true;
@@ -181,8 +191,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
       w.hit(p, liveTarget, { mult: v.dmg / 100, skill: true, threat: 1 });
       threat(liveTarget, v.threat);
-      if (!isBoss(liveTarget)) stun(liveTarget, v.stun * 1000);
-      else slow(liveTarget, 40, v.stun * 1000);
+      stun(liveTarget, v.stun * 1000, { bossSlow: 40 }); // на боссе — замедление 40% (data/cc.json boss)
       return null;
     }
     case "quake": {
@@ -221,7 +230,9 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       w.emit({ t: "aoe", k: "frost", x: u.x, y: u.y, r: v.radius });
       for (const m of w.enemiesInCircle(p, u.x, u.y, v.radius)) {
         w.hit(p, m, { mult: v.dmg / 100, skill: true, kind: "frost" });
-        slow(m, v.slow, v.dur * 1000);
+        // задача 148: вмерзание (корни), после — замедление dur с (одним сроком: под корнями замедление не мешает)
+        if (root(m, v.root * 1000)) w.emit({ t: "buff", id: m.id, k: "frozen", ms: v.root * 1000 });
+        slow(m, v.slow, (v.root + v.dur) * 1000);
       }
       return null;
     }
@@ -232,9 +243,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y });
       u.x = dest.x;
       u.y = dest.y;
-      p.moveTo = null;
-      p.rootUntil = 0;
-      p.slowUntil = 0;
+      p.moveTo = null; // корни и замедление снимает поле умения (data/cc.json skills.blink)
       return null;
     }
     case "meteor": {
@@ -282,7 +291,11 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
           const m = best;
           const repeat = used.has(m);
           used.add(m);
-          w.later(ms, () => { if (!w.isDead(m) && w.hostile(p, m)) w.hit(p, m, { mult: (v.dmg / 100) * (repeat ? 0.6 : 1), skill: true }); }, p);
+          w.later(ms, () => {
+            if (w.isDead(m) || !w.hostile(p, m)) return;
+            w.hit(p, m, { mult: (v.dmg / 100) * (repeat ? 0.6 : 1), skill: true });
+            if (!repeat && v.slow > 0) slow(m, v.slow, v.dur * 1000);
+          }, p);
         }
       }
       return null;
@@ -294,8 +307,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       w.emit({ t: "blink", id: p.id, x0: u.x, y0: u.y, x1: dest.x, y1: dest.y });
       u.x = dest.x;
       u.y = dest.y;
-      p.moveTo = null;
-      p.rootUntil = 0;
+      p.moveTo = null; // корни и замедление снимает поле умения (data/cc.json skills.roll)
       applyHaste(w, p, v.haste, v.dur * 1000);
       w.emit({ t: "buff", id: p.id, k: "haste", ms: v.dur * 1000 });
       return null;
@@ -360,6 +372,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       u.dir = World.dirTo(liveTarget.x - u.x, liveTarget.y - u.y);
       p.critNextUntil = w.time + 8000;
       p.attackAt = Math.min(p.attackAt, w.time + 250);
+      if (v.silence > 0) applySilence(w, p, liveTarget, v.silence * 1000); // задача 148: «кик» — сбивает каст и безмолвие
       return null;
     }
     case "stealth": {
@@ -462,6 +475,7 @@ function castSkillInner(w: World, p: Player, id: string, ax: number, ay: number,
       tp.shieldAmt = healPower(p) * v.absorb / 100 * pvpHealScale(w, tp); // в PvP — как лечение (раньше «Святой щит» шёл мимо)
       tp.shieldUntil = w.time + v.dur * 1000;
       tp.shieldBy = p;
+      markHolyShield(tp, p, tp.shieldUntil); // пробитый щит пугает врагов рядом (healers.ts onAbsorb)
       w.emit({ t: "buff", id: tp.id, k: "shield", ms: v.dur * 1000 });
       return null;
     }

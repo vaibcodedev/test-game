@@ -17,7 +17,7 @@ import type { Player } from "./Player";
 import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { bleedMods } from "./reaver";
 import { dotMult } from "./mages";
-import { applyHaste } from "./effects";
+import { applyHaste, applySilence, cleanseCc, interruptCast } from "./effects";
 import { World, type Actor } from "./World";
 import { stealthBan } from "./wards";
 import { leechMult } from "../../../shared/balance";
@@ -38,9 +38,9 @@ export interface CastCtx {
   /** Списать ману, поставить перезарядку (всегда вызывать перед эффектом). */
   ok: () => null;
   /** Контроль и дебаффы от героя (effects.ts): нейтральный город, «Несгибаемый», слияние с живым эффектом; true — эффект лёг. */
-  stun: (a: Actor, ms: number) => boolean;
+  stun: (a: Actor, ms: number, o?: import("./effects").CcOpts) => boolean;
   slow: (a: Actor, pct: number, ms: number) => boolean;
-  root: (a: Actor, ms: number) => boolean;
+  root: (a: Actor, ms: number, o?: import("./effects").CcOpts) => boolean;
   weaken: (a: Actor, pct: number, ms: number) => boolean;
   threat: (a: Actor, v: number) => void;
   isBoss: (a: Actor) => boolean;
@@ -202,6 +202,7 @@ export function castUmbrath(c: CastCtx): string | null {
           if (t.state === "idle") t.state = "chase";
           w.emit({ t: "buff", id: t.id, k: "taunted", ms: v.taunt * 1000 });
         } else t.moveTo = null;
+        interruptCast(w, t, false); // задача 148: рывок цепей сбивает каст
       }
       w.hit(p, t, { mult: v.dmg / 100, skill: true, kind: "shadow" });
       c.slow(t, v.slow, v.slowDur * 1000);
@@ -286,7 +287,8 @@ export function castUmbrath(c: CastCtx): string | null {
       w.emit({ t: "dmg", id: p.id, v: cost, k: "blood" });
       onSacrifice(w, p, cost);
       if (a.id === p.id) {
-        // без цели: кровь превращается в ману
+        // без цели: кровь превращается в ману и срывает с себя корни, замедление и безмолвие (usableInSilence, data/cc.json)
+        cleanseCc(p, ["root", "slow", "silence"]);
         const mp = Math.round((u.maxMp * v.mana) / 100);
         u.mp = Math.min(u.maxMp, u.mp + mp);
         w.emit({ t: "buff", id: p.id, k: "haste", ms: 600 });
@@ -309,7 +311,10 @@ export function castUmbrath(c: CastCtx): string | null {
         w.later(i * 1000, () => {
           if (p.dead) return;
           w.emit({ t: "aoe", k: "fire", x: pt.x, y: pt.y, r: v.radius * 0.6 });
-          for (const m of w.enemiesInCircle(p, pt.x, pt.y, v.radius)) w.hit(p, m, { mult: dmgMult, skill: true, kind: "blood", noBreak: true });
+          for (const m of w.enemiesInCircle(p, pt.x, pt.y, v.radius)) {
+            w.hit(p, m, { mult: dmgMult, skill: true, kind: "blood", noBreak: true });
+            if (v.slow > 0) c.slow(m, v.slow, 1100); // внутри купели — замедление (до следующей волны)
+          }
           for (const q of w.playersInCircle(pt.x, pt.y, v.radius)) if (q === p || (!w.hostile(p, q) && q.faction === p.faction)) w.heal(q, Math.round(heal * (q.unit.hp < q.unit.maxHp * 0.5 ? pb.low : 1)), true, p);
         });
       return null;
@@ -344,7 +349,11 @@ export function castUmbrath(c: CastCtx): string | null {
         w.later(300 + i * v.every * 1000, () => {
           if (w.isDead(target) || p.dead || !w.hostile(p, target)) return;
           w.emit({ t: "proj", k: "shadow", from: p.id, to: target.id, tx: target.x, ty: target.y, ms: 260 });
-          w.later(260, () => { if (!w.isDead(target) && w.hostile(p, target)) w.hit(p, target, { mult: v.dmg / 100, skill: true, kind: "shadow", noBreak: true }); });
+          w.later(260, () => {
+            if (w.isDead(target) || !w.hostile(p, target)) return;
+            w.hit(p, target, { mult: v.dmg / 100, skill: true, kind: "shadow", noBreak: true });
+            if (i === 0 && v.silence > 0) applySilence(w, p, target, v.silence * 1000); // первый клевок — безмолвие
+          });
         });
       return null;
     }
@@ -353,8 +362,7 @@ export function castUmbrath(c: CastCtx): string | null {
       { const ban = stealthBan(w, p); if (ban) return ban; } // «Раскрыт» оберегом (wards.ts)
       c.ok();
       p.stealthUntil = w.time + v.dur * 1000;
-      p.critNextUntil = w.time + v.dur * 1000 + 4000;
-      p.slowUntil = p.rootUntil = 0;
+      p.critNextUntil = w.time + v.dur * 1000 + 4000; // корни и замедление снимает поле умения (data/cc.json skills.dr_shadowmeld)
       p.targetId = null;
       u.target = "";
       w.emit({ t: "aoe", k: "shadow", x: u.x, y: u.y, r: 50 });
@@ -402,6 +410,7 @@ export function castUmbrath(c: CastCtx): string | null {
       for (const m of w.enemiesInCircle(p, pt.x, pt.y, v.radius)) {
         addDot(w, p, m, "plague", (weaponAvg(p) * v.tick) / 100, v.dur, "poison");
         c.weaken(m, v.weak, v.dur * 1000);
+        if (v.slow > 0) c.slow(m, v.slow, v.dur * 1000);
         c.threat(m, 30);
       }
       return null;
@@ -432,6 +441,7 @@ export function castUmbrath(c: CastCtx): string | null {
       face(t);
       w.emit({ t: "aoe", k: "slash", x: t.x, y: t.y, r: v.radius });
       const dealt = w.hit(p, t, { mult: v.dmg / 100, skill: true });
+      if (v.silence > 0 && !w.isDead(t)) applySilence(w, p, t, v.silence * 1000); // задача 148: прыжок — короткое безмолвие цели
       for (const m of w.enemiesInCircle(p, t.x, t.y, v.radius)) if (m !== t && dealt > 0) w.hit(p, m, { flat: Math.max(1, Math.round((dealt * v.splash) / 100)), canCrit: false, skill: true, noProc: true });
       return null;
     }

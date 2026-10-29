@@ -328,7 +328,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     // автотайлы берега (shores.png, индексы с SHORE_GID — terrainTiles.ts); куски строятся, только когда обе текстуры загружены
     const tss = [ts, tm.addTilesetImage("shores", "shores", TILE, TILE, 0, 0, SHORE_GID)!];
     const sd = spill && chunkRows(m, spill, x0, y0, cw, ch);
-    if (sd) tm.createBlankLayer("spill", tss, x0 * TILE, y0 * TILE, cw, ch)!.putTilesAt(sd, 0, 0).setDepth(DEPTH.terrain + 0.5);
+    if (sd) tm.createBlankLayer("spill", tss, x0 * TILE, y0 * TILE, cw, ch)!.putTilesAt(sd, 0, 0).setDepth(DEPTH.terrain + 1.5); // над слоем лавы (terrain + 1), под сушей (terrain + 2…)
     for (let t = 0; t < TERRAIN_COUNT; t++) {
       const src = layers[t];
       if (!src) continue;

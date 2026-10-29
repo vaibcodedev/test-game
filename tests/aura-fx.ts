@@ -13,7 +13,7 @@ import table from "../data/aura-fx.json";
 import rules from "../data/aura-fx-rules.json";
 import { FX_KEYS, FX_INDEX, MAX_ZONES, stats, tick } from "../server/src/game/auraFx";
 import { AURA_FIELDS } from "../server/src/game/auras";
-import { AURAS } from "../shared/auras";
+import { AURAS, warOfAura } from "../shared/auras";
 import { FX_BASE, FX_MAX_STACKS, fxChar, fxIdx, fxN } from "../shared/auraFx";
 import { SKILLS } from "../shared/skills";
 import { World, type Actor } from "../server/src/game/World";
@@ -92,15 +92,18 @@ for (const k of Object.values(rules.byClass).flatMap((m) => Object.values(m))) a
 
 // каждый эффект героя (data/auras.json, поля и хуки) получает обозначение; ключи таблицы без эффекта — только зоны, общие и осознанные исключения
 const NO_AURA = new Set(["block@mage", "food", "potion", "mount", ...Object.keys(table.zones)]);
-for (const k of Object.keys(AURAS)) if (!k.startsWith("food_")) assert.ok(FX_INDEX[k] !== undefined, `эффект ${k}: нет обозначения в data/aura-fx.json`);
+// задача 148: dr_* — только значок в рамке (над юнитом не рисуется); silence и fear — обозначения в партии E (docs/combat-148.md §5)
+const NO_FX_YET = new Set(["silence", "fear"]);
+// war_<бонус>_<sol|umb> — бафы земли «Знамён Предела»: только значок в рамке (shared/auras.ts warAuraKey), как блюда
+for (const k of Object.keys(AURAS)) if (!k.startsWith("food_") && !k.startsWith("dr_") && warOfAura(k) === undefined && !NO_FX_YET.has(k)) assert.ok(FX_INDEX[k] !== undefined, `эффект ${k}: нет обозначения в data/aura-fx.json`);
 for (const k of FX_KEYS) if (!NO_AURA.has(k)) assert.ok(AURAS[k], `обозначение ${k}: нет такого эффекта в data/auras.json`);
-for (const d of AURA_FIELDS) assert.ok(FX_INDEX[d.k] !== undefined, `поле героя ${d.k}: нет обозначения`);
+for (const d of AURA_FIELDS) if (!NO_FX_YET.has(d.k)) assert.ok(FX_INDEX[d.k] !== undefined, `поле героя ${d.k}: нет обозначения`);
 
 // ---------- мир без сети ----------
 const mkWorld = () => new World(new WorldState(), () => {}, { map: generateArenaMap(), mobs: false, quiet: true });
 let uid = 0;
 function mkHero(w: World, cls: ClassId, skills: string[], dx = 0, dy = 0, team = 1): Player {
-  const save = newSave(cls, { x: 5 * TILE + dx, y: 8.5 * TILE + dy });
+  const save = newSave(cls, { x: 17 * TILE + dx, y: 17.5 * TILE + dy }); // открытый песок арены (стены — эллипс по краю, shared/arena.ts)
   save.level = 40;
   for (const s of skills) save.skills[s] = 1;
   const p = new Player(`f${++uid}`, `Тест${uid}`, save, () => {});

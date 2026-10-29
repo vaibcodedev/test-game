@@ -150,7 +150,7 @@ export const zoneStyle = (z: Zone): Zone => ZONES[z]?.style ?? z;
 const zoneByName = (n: string) => Zone[n as keyof typeof Zone] as Zone | undefined;
 
 /** Версия раскладки мира: при смене позиции из старых сохранений сбрасываются к точке появления. */
-export const MAP_VERSION = 40; // 40 — арена босса кольца r79s восток (Ирмот Двусерпый, жнец с двумя серпами, задача 139); 39 — арена босса кольца r79s запад (Эрвальд Лозорог, рогатый рыцарь с секирой, задача 139); 38 — песчаный берег оазиса шире (пальмы встают); 37 — 37 — скалы-уступы 3×1 (ledge_*) и варианты формы растений, костей и руды (shared/natureVariants.ts); 36 — выжженная земля вокруг сгоревшего (клиент, client/src/game/scorch.ts): пепелище → обугленная → опалённая трава; 35 — 35 — брусчатка по стилю: столицы и форты Сольгарда — CobbleSol, Умбрата — CobbleUmb (вместо плитки Floor), Эмберхолл — CobbleEmber; 34 — 34 — правила декора (data/decor-rules.json): без кустов на льду, пальм на пепле, деревьев на песке и в воде, костей в городах и огня на траве без сгоревшего; 33 — арена босса кольца r75n запад (Гурдан Громобой, латный великан, задача 139); 32 — арена босса кольца r69s восток (Гаэль Безнитный, костяная марионетка, задача 139); 31 — арена босса кольца r69s запад (Мидар Златоперстый, проклятый золотом, задача 139), слот ring65 убран; 30 — арена босса кольца r65n запад (Горвак Стальной Рог, минотавр-латник, задача 139); 29 — арена босса кольца r65n восток (Кальдрам Ледяной Владыка, задача 139); 28 — арена босса кольца r59s восток (Орвен Звонарь, звонарь утопленников, задача 139); 27 — арена босса кольца r55n запад (Иоаким Отступник, капеллан-знаменосец, задача 139); 26 — арена босса кольца r59s запад (Корвин Вороний Лекарь, задача 139); 25 — арена босса кольца r55n восток (Гнашера, жрица котла, задача 139), прежние арены Энта и Болотной Ведьмы убраны (layout.bosses удалён); 24 — арена босса кольца r49s запад (Гразг Подкопщик, задача 139); 23 — тренировочные манекены убраны (плацы фортов, лагеря поселений, Поля); 22 — арена босса кольца r45n (Азхар Многоликий, задача 139); 21 — «Пепельные чертоги» стали отдельным инстансом (shared/dungeon.ts): на месте данжа обычные Поля и лестница-вход dg_entrance 6×5; 20 — зал босса данжа: вытертая дорожка, помост-ритуальный круг, жаровни и колонны с цепями, саркофаги вдоль стен, кости по углам; лужа лавы севернее не режется стилем; 19 — данж по стилям: собор павших королей → переход → пепельный склеп (новые полы, стены, реквизит, арки и ворота; shared/dungeonDecor.ts); 18 — арена босса кольца r49s (Кассар, задача 139); 17 — павшие кони Полей в объёме (по 5 вариантов фракций, нейтральные, скелеты: shared/decor.ts, tools/gen/bf-horses.ts); 16 — воронки с рельефом, гарь с текстурой, сгоревшая катапульта дымит, варианты стойки щитов и стола с картой (форты — по фракции); 15 — декор Полей в объёме с вариантами (воткнутое оружие, щиты, воронки, обломки, повозки, шатры, катапульты: shared/decor.ts, tools/gen/bf-props.ts); 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
+export const MAP_VERSION = 41; // 41 — арены мирового босса «Колосс Пепельного Знамени» на юге Полей (пара 505/594, 318, задача 151); 40 — арена босса кольца r79s восток (Ирмот Двусерпый, жнец с двумя серпами, задача 139); 39 — арена босса кольца r79s запад (Эрвальд Лозорог, рогатый рыцарь с секирой, задача 139); 38 — песчаный берег оазиса шире (пальмы встают); 37 — 37 — скалы-уступы 3×1 (ledge_*) и варианты формы растений, костей и руды (shared/natureVariants.ts); 36 — выжженная земля вокруг сгоревшего (клиент, client/src/game/scorch.ts): пепелище → обугленная → опалённая трава; 35 — 35 — брусчатка по стилю: столицы и форты Сольгарда — CobbleSol, Умбрата — CobbleUmb (вместо плитки Floor), Эмберхолл — CobbleEmber; 34 — 34 — правила декора (data/decor-rules.json): без кустов на льду, пальм на пепле, деревьев на песке и в воде, костей в городах и огня на траве без сгоревшего; 33 — арена босса кольца r75n запад (Гурдан Громобой, латный великан, задача 139); 32 — арена босса кольца r69s восток (Гаэль Безнитный, костяная марионетка, задача 139); 31 — арена босса кольца r69s запад (Мидар Златоперстый, проклятый золотом, задача 139), слот ring65 убран; 30 — арена босса кольца r65n запад (Горвак Стальной Рог, минотавр-латник, задача 139); 29 — арена босса кольца r65n восток (Кальдрам Ледяной Владыка, задача 139); 28 — арена босса кольца r59s восток (Орвен Звонарь, звонарь утопленников, задача 139); 27 — арена босса кольца r55n запад (Иоаким Отступник, капеллан-знаменосец, задача 139); 26 — арена босса кольца r59s запад (Корвин Вороний Лекарь, задача 139); 25 — арена босса кольца r55n восток (Гнашера, жрица котла, задача 139), прежние арены Энта и Болотной Ведьмы убраны (layout.bosses удалён); 24 — арена босса кольца r49s запад (Гразг Подкопщик, задача 139); 23 — тренировочные манекены убраны (плацы фортов, лагеря поселений, Поля); 22 — арена босса кольца r45n (Азхар Многоликий, задача 139); 21 — «Пепельные чертоги» стали отдельным инстансом (shared/dungeon.ts): на месте данжа обычные Поля и лестница-вход dg_entrance 6×5; 20 — зал босса данжа: вытертая дорожка, помост-ритуальный круг, жаровни и колонны с цепями, саркофаги вдоль стен, кости по углам; лужа лавы севернее не режется стилем; 19 — данж по стилям: собор павших королей → переход → пепельный склеп (новые полы, стены, реквизит, арки и ворота; shared/dungeonDecor.ts); 18 — арена босса кольца r49s (Кассар, задача 139); 17 — павшие кони Полей в объёме (по 5 вариантов фракций, нейтральные, скелеты: shared/decor.ts, tools/gen/bf-horses.ts); 16 — воронки с рельефом, гарь с текстурой, сгоревшая катапульта дымит, варианты стойки щитов и стола с картой (форты — по фракции); 15 — декор Полей в объёме с вариантами (воткнутое оружие, щиты, воронки, обломки, повозки, шатры, катапульты: shared/decor.ts, tools/gen/bf-props.ts); 14 — арена босса кольца r75n (Ведрас, задача 139): ровная земля без декора; 13 — курган короля Морта под статуей в Мортхейме (umb_barrow 4×4, на земле); 12 — столицы 41×31 с круглой площадью и статуей короля в центре (задача 145); 11 — 11 — статуи героев столиц 2×2 на площади у камня перемещения (задача 141); 10 — 10 — частокол поселений сплошной (угловые столбы, штандарты у ворот снаружи), хижины вместо шатров-домов (задача 141); 9 — знамёна реже (акцентами): штандарты только снаружи у ворот городов и фортов и у ворот поселений; 8 — штандарты своих земель вместо sun/crown_banner; 7 — арены боссов стартовых земель (задача 136): ровная земля без декора; 6 — декор Полей и мест (шаг 10 задачи 132)
 
 export const CELL_BLOCK = 1;
 export const CELL_WALL = 2;
@@ -159,6 +159,8 @@ export const CELL_RESERVED = 4; // дороги, арены, город: без 
 export const CELL_WATER = 8;
 /** Клетка под настилом моста: вода под ним проходима по всей ширине. */
 export const CELL_BRIDGE = 16;
+/** Центр клетки — лава (вместе с CELL_BLOCK): как CELL_WATER, проход решает видимая кромка (waterAtFeet по лаве). */
+export const CELL_LAVA = 32;
 
 export interface MapObject {
   kind: string;
@@ -292,7 +294,7 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   campfire: { w: 1, h: 1 },
 };
 /** Объекты, лежащие на земле (под юнитами): мосты, лестницы, лазы, могилы. */
-export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", "umb_barrow", "dg_dais", ...D.VENDOR_GROUND, ...D.BF_GROUND]);
+export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", "bridge_h_mid", "bridge_h_mid2", "bridge_h_end_w", "bridge_h_end_e", "bridge_v_mid", "bridge_v_mid2", "bridge_v_end_n", "bridge_v_end_s", "umb_barrow", "dg_dais", ...D.VENDOR_GROUND, ...D.BF_GROUND]);
 
 // ---------- раскладка мира (data/world.json: layout, rivers, roads, walls; задача 132) ----------
 type Line = [number, number][];
@@ -400,8 +402,15 @@ export const BOSS_SPAWNS: BossSpawn[] = [
   ...ZONE_BOSS_SPAWNS,
   ...RING_BOSS_SPAWNS,
 ];
-/** Резерв арен (ровная земля без декора и мобов): все боссы и пустые арены кольца. */
-const ARENA_RESERVE: BossSpawn[] = [...BOSS_SPAWNS, ...RING_EMPTY];
+/**
+ * Арены мировых боссов (задача 151, data/world-bosses.json): слоты layout.bossSlots с reserve — каждая клетка at (центр +0,5) с радиусом arena;
+ * моба здесь нет (босса ставит server/src/worldboss), арена — ровная земля без декора и мобов.
+ */
+export const WORLD_BOSS_ARENAS: BossSpawn[] = ((LAYOUT as unknown as { bossSlots?: { id: string; at: [number, number][]; arena: number; reserve?: boolean }[] }).bossSlots ?? [])
+  .filter((s) => s.reserve)
+  .flatMap((s) => s.at.map(([x, y]) => ({ id: s.id, x: (x + 0.5) * TILE, y: (y + 0.5) * TILE, arena: s.arena * TILE })));
+/** Резерв арен (ровная земля без декора и мобов): все боссы, пустые арены кольца и арены мировых боссов. */
+const ARENA_RESERVE: BossSpawn[] = [...BOSS_SPAWNS, ...RING_EMPTY, ...WORLD_BOSS_ARENAS];
 /**
  * Боссы стартовых земель (задача 136, layout.zoneBosses): пара на полосу уровней — запад (Сольгард) в клетке x, y, восток (Умбрат) —
  * в зеркальной клетке MAP_W − 1 − x; босс стоит в центре клетки (+0,5), поэтому арены зеркальны и для поверхности, и для проходимости.
@@ -925,7 +934,7 @@ function buildPlaces(cell: Uint8Array, w: number, objects: MapObject[], place: P
 }
 
 /** Мосты там, где дорога пересекает реку: вода остаётся, клетки под настилом проходимы. */
-function buildBridges(cell: Uint8Array, w: number, objects: MapObject[]) {
+function buildBridges(cell: Uint8Array, w: number, objects: MapObject[], vtx: Uint8Array) {
   const cross = (a: [number, number], b: [number, number], c: [number, number], d: [number, number]) => {
     const r = [b[0] - a[0], b[1] - a[1]], s = [d[0] - c[0], d[1] - c[1]];
     const den = r[0] * s[1] - r[1] * s[0];
@@ -938,8 +947,25 @@ function buildBridges(cell: Uint8Array, w: number, objects: MapObject[]) {
     if (!p) continue;
     const cx = Math.round(p.x), cy = Math.floor(p.y);
     const [x0, x1, y0, y1] = p.h ? [cx - 3, cx + 3, cy - 1, cy + 2] : [cx - 1, cx + 2, cy - 3, cy + 3];
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (x > 0 && y > 0 && x < MAP_W && y < MAP_H) cell[y * w + x] = (cell[y * w + x] & ~CELL_BLOCK) | CELL_RESERVED | CELL_BRIDGE;
+    const mark = (xa: number, xb: number, ya: number, yb: number) => { for (let y = ya; y < yb; y++) for (let x = xa; x < xb; x++) if (x > 0 && y > 0 && x < MAP_W && y < MAP_H) cell[y * w + x] = (cell[y * w + x] & ~CELL_BLOCK) | CELL_RESERVED | CELL_BRIDGE; };
+    mark(x0, x1, y0, y1);
     objects.push(p.h ? { kind: "bridge_h", x: cx * TILE, y: y1 * TILE } : { kind: "bridge_v", x: (cx + 0.5) * TILE, y: y1 * TILE });
+    // продолжение над водой до берега и устой на суше (концы не висят над водой): клетка «мокрая», если хоть один её угол — вода
+    const W1 = w + 1, wetCell = (x: number, y: number) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H && [vtx[y * W1 + x], vtx[y * W1 + x + 1], vtx[(y + 1) * W1 + x], vtx[(y + 1) * W1 + x + 1]].includes(T.Water);
+    const wetLine = (k: number) => (p.h ? [0, 1, 2].some((j) => wetCell(k, y0 + j)) : [0, 1, 2].some((i) => wetCell(x0 + i, k)));
+    for (const dir of [-1, 1]) {
+      const start = p.h ? (dir < 0 ? x0 : x1 - 1) : (dir < 0 ? y0 : y1 - 1);
+      if (!wetLine(start)) continue; // край настила уже на суше
+      let k = start + dir, n = 0;
+      for (; n < 8 && wetLine(k); k += dir, n++) {
+        const kind = (p.h ? "bridge_h_mid" : "bridge_v_mid") + (n % 2 ? "2" : "");
+        if (p.h) { mark(k, k + 1, y0, y1); objects.push({ kind, x: k * TILE + 16, y: y1 * TILE }); }
+        else { mark(x0, x1, k, k + 1); objects.push({ kind, x: (cx + 0.5) * TILE, y: (k + 1) * TILE }); }
+      }
+      const end = p.h ? (dir < 0 ? "bridge_h_end_w" : "bridge_h_end_e") : (dir < 0 ? "bridge_v_end_n" : "bridge_v_end_s");
+      if (p.h) { mark(k, k + 1, y0, y1); objects.push({ kind: end, x: k * TILE + 16, y: y1 * TILE }); }
+      else { mark(x0, x1, k, k + 1); objects.push({ kind: end, x: (cx + 0.5) * TILE, y: (k + 1) * TILE }); }
+    }
   }
 }
 
@@ -1026,6 +1052,7 @@ function generateMap0(seed: number): WorldMap {
     let f = 0;
     const tc = terrainAt(cx, cy, seed, z);
     if (tc === T.Water) { wet[i] = 1; f |= CELL_WATER; }
+    if (tc === T.Lava) f |= CELL_LAVA;
     if (BLOCKING.has(tc)) f |= CELL_BLOCK;
     if (isTownZone(z) || roadDist(cx, cy) < 2.2 || siteDist(cx, cy) < 1.15 || bossNear(cx, cy, 1) || townDist(cx, cy) < 3 || placeNear(cx, cy) || inGateArea(cx, cy)) f |= CELL_RESERVED;
     cell[i] = f;
@@ -1049,7 +1076,7 @@ function generateMap0(seed: number): WorldMap {
 
   buildTown(seed, w, cell, objects, place);
   for (const c of CITIES) if (c.style) buildCity(c, cell, w, objects, place, seed);
-  buildBridges(cell, w, objects);
+  buildBridges(cell, w, objects, vtx);
   buildRiverWalls(cell, w, h, place, objects);
   buildPlaces(cell, w, objects, place, seed);
   // указатели у перекрёстков: ближайшая свободная клетка у обочины
@@ -1458,9 +1485,30 @@ export function nearLava(m: WorldMap, px: number, py: number): boolean {
   for (let j = -1; j <= 2; j++) for (let i = -1; i <= 2; i++) if (m.vtx[(y + j) * (m.w + 1) + x + i] === T.Lava) return true;
   return false;
 }
+/**
+ * Настил моста (tools/gen/factions.ts bridge): поперёк хода ногам можно только между перилами — у горизонтального моста 3 клеток высотой
+ * ряды 14–60 px от верха моста, у вертикального (3 клетки шириной) — 14–82 px от левого края. Вдоль хода — весь настил (въезд с берега без ступеньки).
+ * Направление — по длине ряда клеток моста (горизонтальный — 6 в ряд). true — нога на перилах/за краем (как вода).
+ */
+export const BRIDGE_DECK_H: [number, number] = [14, 60], BRIDGE_DECK_V: [number, number] = [14, 82];
+function offDeck(m: WorldMap, x: number, y: number, px: number, py: number): boolean {
+  const br = (cx: number, cy: number) => cx >= 0 && cy >= 0 && cx < m.w && cy < m.h && (m.cell[cy * m.w + cx] & CELL_BRIDGE) !== 0;
+  let run = 1;
+  for (let k = 1; k < 6 && br(x - k, y); k++) run++;
+  for (let k = 1; k < 6 && br(x + k, y); k++) run++;
+  if (run >= 5) { // горизонтальный: поперёк — y
+    let top = y; while (top > 0 && y - top < 3 && br(x, top - 1)) top--;
+    const rel = py - top * TILE;
+    return rel < BRIDGE_DECK_H[0] || rel > BRIDGE_DECK_H[1];
+  }
+  let left = x; while (left > 0 && x - left < 3 && br(left - 1, y)) left--;
+  const rel = px - left * TILE;
+  return rel < BRIDGE_DECK_V[0] || rel > BRIDGE_DECK_V[1];
+}
 let coverBits: Uint8Array | null = null;
-/** Автотайлы берега (tools/gen/shores.ts, docs/water-shores.md): биомы по порядку строк shores.png, вариантов на маску, столбцов (маска − 1). */
-export const SHORE_BIOMES: number[] = [T.Grass, T.Sand, T.Forest, T.Snow, T.Ice, T.Bog, T.Ash, T.Obsidian];
+/** Автотайлы берега (tools/gen/shores.ts, docs/water-shores.md): виды берега по порядку строк shores.png — суша SHORE_BIOMES[k] у жидкости SHORE_LIQUID[k]. */
+export const SHORE_BIOMES: number[] = [T.Grass, T.Sand, T.Forest, T.Snow, T.Ice, T.Bog, T.Ash, T.Obsidian, T.Ash, T.Obsidian, T.Snow, T.Forest, T.Bog];
+export const SHORE_LIQUID: number[] = [T.Water, T.Water, T.Water, T.Water, T.Water, T.Water, T.Water, T.Water, T.Lava, T.Lava, T.Lava, T.Lava, T.Lava];
 /** Столбцов в shores.png: 0–14 — тайлы берега, 16–30 — свес стенки в клетку ниже; SHORE_SPILL — сколько рядов свеса рисует генератор. */
 export const SHORE_VARIANTS = 3, SHORE_COLS = 32, SHORE_SPILL = 16;
 /** firstgid набора shores.png в тайлмапе клиента (terrain.png — с 0; запас, чтобы рост terrain.png не сдвигал индексы). */
@@ -1469,20 +1517,23 @@ export const SHORE_GID = 2048;
  * Тайл берега клетки (x, y) или null: в клетке есть и вода, и суша, а нижняя поверхность суши — биом с автотайлами (трава, песок, лес, снег, лёд, болото, пепел, обсидиан).
  * mask — сухие углы (TL=1, TR=2, BR=4, BL=8), variant — по хешу клетки. Им рисует клиент (terrainTiles.ts) и по нему же ходит waterAtFeet.
  */
-export function shoreAt(m: WorldMap, x: number, y: number): { biome: number; mask: number; variant: number; t: number } | null {
+export function shoreAt(m: WorldMap, x: number, y: number): { biome: number; mask: number; variant: number; t: number; liquid: number } | null {
   if (!m.vtx || x < 0 || y < 0 || x >= m.w || y >= m.h) return null;
   const W1 = m.w + 1, i = y * W1 + x;
   if (m.vtx.length < (m.h + 1) * W1) return null;
   const c = [m.vtx[i], m.vtx[i + 1], m.vtx[i + W1 + 1], m.vtx[i + W1]];
+  const liquid = c.includes(T.Water) ? T.Water : c.includes(T.Lava) ? T.Lava : -1;
+  if (liquid < 0) return null;
   let mask = 0, low = 99;
-  for (let k = 0; k < 4; k++) if (c[k] !== T.Water) { mask |= 1 << k; low = Math.min(low, c[k]); }
+  for (let k = 0; k < 4; k++) if (c[k] !== liquid) { mask |= 1 << k; low = Math.min(low, c[k]); }
   if (mask === 0 || mask === 15) return null;
-  const biome = SHORE_BIOMES.indexOf(low);
+  let biome = -1;
+  for (let k = 0; k < SHORE_BIOMES.length; k++) if (SHORE_BIOMES[k] === low && SHORE_LIQUID[k] === liquid) biome = k;
   if (biome < 0) return null;
   let h = Math.imul(x, 73856093) ^ Math.imul(y, 19349663);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   const variant = Math.floor((((h ^ (h >>> 16)) >>> 0) / 4294967296) * SHORE_VARIANTS);
-  return { biome, mask, variant, t: low };
+  return { biome, mask, variant, t: low, liquid };
 }
 let shoreBits: Uint8Array | null = null;
 /** Можно ли стоять в пикселе (lx, ly) тайла берега — верх суши по тому же рисунку (shared/shoreWalk.ts). */
@@ -1495,23 +1546,23 @@ export function shoreStand(biome: number, mask: number, variant: number, lx: num
  * Вода под точкой опоры (ногами) по ВИДИМОЙ кромке, а не по целой клетке: пиксель клетки — вода, если ни один слой земли его не закрывает
  * (те же индексы тайлов dual grid, что рисует client/src/game/terrainTiles.ts, и альфа краевых тайлов из terrain.png — shared/waterCover.ts,
  * tools/gen/water-cover.ts). Детерминированно, без шума и времени: сервер и клиентское предсказание считают одинаково.
- * Мосты (CELL_BRIDGE) проходимы по всему настилу.
+ * Мосты (CELL_BRIDGE): проходим настил между перилами (offDeck), за перилами — как вода.
  */
 export function waterAtFeet(m: WorldMap, px: number, py: number): boolean {
   const fx = px / TILE, fy = py / TILE, x = Math.floor(fx), y = Math.floor(fy);
   if (x < 0 || y < 0 || x >= m.w || y >= m.h) return false;
-  if (m.cell[y * m.w + x] & CELL_BRIDGE) return false;
+  if (m.cell[y * m.w + x] & CELL_BRIDGE) return offDeck(m, x, y, px, py);
   const W1 = m.w + 1, i = y * W1 + x;
   if (!m.vtx || m.vtx.length < (m.h + 1) * W1) return false; // карта без поверхностей (интерьеры, тестовые карты)
   const c0 = m.vtx[i], c1 = m.vtx[i + 1], c2 = m.vtx[i + W1 + 1], c3 = m.vtx[i + W1]; // TL, TR, BR, BL (как в terrainTiles.ts)
   const low = Math.min(c0, c1, c2, c3);
-  if (low !== T.Water) return false;
-  if (c0 === T.Water && c1 === T.Water && c2 === T.Water && c3 === T.Water) return true;
+  if (low !== T.Water && low !== T.Lava) return false; // жидкость клетки — вода или лава (у лавы так же: проход по кромке)
+  if (c0 === low && c1 === low && c2 === low && c3 === low) return true;
   const sh = shoreAt(m, x, y); // берег автотайлом: вода — всё, что не верх суши (стенка, пена, вода)
   if (sh) return !shoreStand(sh.biome, sh.mask, sh.variant, Math.min(31, Math.floor(px - x * TILE)), Math.min(31, Math.floor(py - y * TILE)));
   if (!coverBits) { const bin = atob(WATER_COVER_B64); coverBits = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) coverBits[k] = bin.charCodeAt(k); }
   const bit = Math.min(31, Math.floor(py - y * TILE)) * 32 + Math.min(31, Math.floor(px - x * TILE));
-  for (let t = 1; t < TERRAIN_COUNT; t++) {
+  for (let t = low + 1; t < TERRAIN_COUNT; t++) {
     if (c0 !== t && c1 !== t && c2 !== t && c3 !== t) continue;
     const col = (c0 >= t ? 1 : 0) | (c1 >= t ? 2 : 0) | (c2 >= t ? 4 : 0) | (c3 >= t ? 8 : 0); // маска углов, столбец = маска − 1
     if (col === 0 || col > 14) continue;
@@ -1527,7 +1578,7 @@ const waterUnderFoot = (m: WorldMap, px: number, py: number): boolean =>
   waterAtFeet(m, px, py + FOOT_DY) || waterAtFeet(m, px - FOOT_HW, py + FOOT_DY) || waterAtFeet(m, px + FOOT_HW, py + FOOT_DY);
 const solidCell = (m: WorldMap, px: number, py: number): boolean => {
   const c = cellAt(m, px, py);
-  return (c & CELL_BLOCK) !== 0 && (!EDGE_COLLISION || (c & CELL_WATER) === 0); // вода решается ногами, не углами тела
+  return (c & CELL_BLOCK) !== 0 && (!EDGE_COLLISION || (c & (CELL_WATER | CELL_LAVA)) === 0); // вода и лава решаются ногами, не углами тела
 };
 function walkIn(m: WorldMap, px: number, py: number, r: number, skipWater: boolean): boolean {
   return !(

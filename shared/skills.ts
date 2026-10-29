@@ -84,8 +84,8 @@ export const SKILLS: Record<string, SkillDef> = {
   charge: {
     id: "charge", cls: "warrior", name: "Рывок", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "shieldblock", rank: 1 }, icon: "sk_charge",
     target: "enemy", range: 260, cd: (r) => 12 - 0.5 * (r - 1), mana: () => 12,
-    v: (r) => ({ dmg: 120 + 15 * (r - 1), stun: 1.2, threat: 120 + 30 * r }),
-    desc: (r) => `Бросок к врагу (до 8 клеток): ${pct(120 + 15 * (r - 1))} урона, оглушение 1.2 с и угроза.`,
+    v: (r) => ({ dmg: 120 + 15 * (r - 1), stun: 1.5, threat: 120 + 30 * r }),
+    desc: (r) => `Бросок к врагу (до 8 клеток): ${pct(120 + 15 * (r - 1))} урона, оглушение 1.5 с и угроза. Срывает с вас корни и замедление.`,
     tree: [2, 1],
   },
   bloodlust: {
@@ -97,14 +97,14 @@ export const SKILLS: Record<string, SkillDef> = {
   quake: {
     id: "quake", cls: "warrior", name: "Сотрясение земли", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "charge", rank: 1 }, icon: "sk_quake",
     target: "self", range: 0, cd: () => 14, mana: () => 20,
-    v: (r) => ({ dmg: 140 + 20 * (r - 1), radius: 130, slow: 40, dur: 3, threat: 150 + 30 * r }),
-    desc: (r) => `Удар по земле: ${pct(140 + 20 * (r - 1))} урона всем вокруг, замедление 40% на 3 с, много угрозы.`,
+    v: (r) => ({ dmg: 140 + 20 * (r - 1), radius: 130, slow: 50, dur: 3, threat: 150 + 30 * r }),
+    desc: (r) => `Удар по земле: ${pct(140 + 20 * (r - 1))} урона всем вокруг, замедление 50% на 3 с, много угрозы.`,
     tree: [4, 1],
   },
   unbending: {
     id: "unbending", cls: "warrior", name: "Несгибаемый", kind: "passive", maxRank: 3, reqLevel: 18, req: { id: "quake", rank: 1 }, icon: "sk_unbending",
     v: (r) => ({ cc: 15 * r }),
-    desc: (r) => `Длительность оглушений и замедлений на вас −${15 * Math.max(1, r)}%.`,
+    desc: (r) => `Длительность любого контроля на вас (оглушение, корни, замедление, безмолвие, страх) −${15 * Math.max(1, r)}%.`,
     tree: [4, 0],
   },
   laststand: {
@@ -125,8 +125,8 @@ export const SKILLS: Record<string, SkillDef> = {
   frostnova: {
     id: "frostnova", cls: "mage", name: "Ледяная нова", kind: "active", slot: 1, maxRank: 5, reqLevel: 3, req: { id: "fireball", rank: 1 }, icon: "sk_frostnova",
     target: "self", range: 0, cd: () => 9, mana: () => 16,
-    v: (r) => ({ dmg: 90 + 15 * (r - 1), radius: 135, slow: 50, dur: 2.5 + 0.5 * (r - 1) }),
-    desc: (r) => `Волна холода вокруг: ${pct(90 + 15 * (r - 1))} урона и замедление на 50% на ${(2.5 + 0.5 * (r - 1)).toFixed(1)} с.`,
+    v: (r) => ({ dmg: 90 + 15 * (r - 1), radius: 135, root: 2 + 0.25 * (r - 1), slow: 50, dur: 2 }),
+    desc: (r) => `Волна холода вокруг: ${pct(90 + 15 * (r - 1))} урона, враги вмерзают на ${+(2 + 0.25 * (r - 1)).toFixed(2)} с, затем замедлены на 50% ещё 2 с.`,
     tree: [1, 0],
   },
   wisdom: {
@@ -137,9 +137,9 @@ export const SKILLS: Record<string, SkillDef> = {
   },
   blink: {
     id: "blink", cls: "mage", name: "Мерцание", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "frostnova", rank: 1 }, icon: "sk_blink", offGcd: true,
-    target: "point", range: 0, cd: (r) => 9 - 0.6 * (r - 1), mana: () => 12,
+    target: "point", range: 0, cd: (r) => 11 - 0.6 * (r - 1), mana: () => 12,
     v: (r) => ({ dist: 200 + 20 * (r - 1) }),
-    desc: (r) => `Мгновенный перенос к курсору на ${200 + 20 * (r - 1)} пикселей.`,
+    desc: (r) => `Мгновенный перенос к курсору на ${200 + 20 * (r - 1)} пикселей. Работает и под оглушением, снимает корни и замедление.`,
     tree: [2, 0],
   },
   focus: {
@@ -173,8 +173,8 @@ export const SKILLS: Record<string, SkillDef> = {
   volley: {
     id: "volley", cls: "ranger", name: "Залп", kind: "active", slot: 1, maxRank: 5, reqLevel: 3, req: { id: "aimed", rank: 1 }, icon: "sk_volley",
     target: "point", range: 300, cd: () => 8, mana: () => 14,
-    v: (r) => ({ dmg: 75 + 12 * (r - 1), arrows: 5 + Math.floor((r - 1) / 2), arc: 50 }),
-    desc: (r) => `Веер из ${5 + Math.floor((r - 1) / 2)} стрел, каждая наносит ${pct(75 + 12 * (r - 1))} урона.`,
+    v: (r) => ({ dmg: 75 + 12 * (r - 1), arrows: 5 + Math.floor((r - 1) / 2), arc: 50, slow: 30, dur: 2 }),
+    desc: (r) => `Веер из ${5 + Math.floor((r - 1) / 2)} стрел, каждая наносит ${pct(75 + 12 * (r - 1))} урона и замедляет на 30% на 2 с.`,
     tree: [2, 0],
   },
   precision: {
@@ -187,7 +187,7 @@ export const SKILLS: Record<string, SkillDef> = {
     id: "roll", cls: "ranger", name: "Перекат", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "volley", rank: 1 }, icon: "sk_roll", offGcd: true,
     target: "point", range: 0, cd: (r) => 8 - 0.5 * (r - 1), mana: () => 10,
     v: (r) => ({ dist: 170, haste: 40 + 10 * (r - 1), dur: 3 }),
-    desc: (r) => `Перекат к курсору, затем 3 с скорость атаки +${40 + 10 * (r - 1)}%.`,
+    desc: (r) => `Перекат к курсору (срывает корни и замедление), затем 3 с скорость атаки +${40 + 10 * (r - 1)}%.`,
     tree: [3, 0],
   },
   quickhands: {
@@ -199,8 +199,8 @@ export const SKILLS: Record<string, SkillDef> = {
   rain: {
     id: "rain", cls: "ranger", name: "Град стрел", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "roll", rank: 1 }, icon: "sk_rain",
     target: "point", range: 320, cd: () => 15, mana: () => 30,
-    v: (r) => ({ dmg: 55 + 10 * (r - 1), ticks: 6, radius: 120, slow: 30 }),
-    desc: (r) => `Ливень стрел на 3 с: 6 волн по ${pct(55 + 10 * (r - 1))} урона и замедление.`,
+    v: (r) => ({ dmg: 55 + 10 * (r - 1), ticks: 6, radius: 120, slow: 40 }),
+    desc: (r) => `Ливень стрел на 3 с: 6 волн по ${pct(55 + 10 * (r - 1))} урона и замедление 40%.`,
     tree: [4, 1],
   },
   hunter: {
@@ -254,8 +254,8 @@ export const SKILLS: Record<string, SkillDef> = {
   holyshield: {
     id: "holyshield", cls: "healer", name: "Святой щит", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "renew", rank: 1 }, icon: "sk_holyshield",
     target: "ally", range: 320, cd: () => 14, mana: () => 24,
-    v: (r) => ({ absorb: 320 + 60 * (r - 1), dur: 8 }),
-    desc: (r) => `Щит на союзнике: поглощает ${pct(320 + 60 * (r - 1))} силы лечения урона в течение 8 с.`,
+    v: (r) => ({ absorb: 320 + 60 * (r - 1), dur: 8, fearR: 90, fear: 2 }),
+    desc: (r) => `Щит на союзнике: поглощает ${pct(320 + 60 * (r - 1))} силы лечения урона в течение 8 с. Пробитый щит вспыхивает: враги рядом в страхе 2 с.`,
     tree: [5, 1],
   },
   insight: {
@@ -275,8 +275,8 @@ export const SKILLS: Record<string, SkillDef> = {
   venom: {
     id: "venom", cls: "rogue", name: "Ядовитый клинок", kind: "active", slot: 1, maxRank: 5, reqLevel: 3, req: { id: "backstab", rank: 1 }, icon: "sk_venom",
     target: "enemy", range: 62, cd: () => 3, mana: () => 8,
-    v: (r) => ({ tick: 30 + 6 * (r - 1), dur: 8, maxStacks: 3 }),
-    desc: (r) => `Яд на 8 с: ${pct(30 + 6 * (r - 1))} урона оружия в секунду. Накладывается до 3 раз.`,
+    v: (r) => ({ tick: 30 + 6 * (r - 1), dur: 8, maxStacks: 3, slow: 30, slowDur: 3 }),
+    desc: (r) => `Яд на 8 с: ${pct(30 + 6 * (r - 1))} урона оружия в секунду. Накладывается до 3 раз; на 3 стаках цель замедлена на 30% (3 с).`,
     tree: [2, 1],
   },
   deadly: {
@@ -288,8 +288,8 @@ export const SKILLS: Record<string, SkillDef> = {
   shadowstep: {
     id: "shadowstep", cls: "rogue", name: "Теневой шаг", kind: "active", slot: 2, maxRank: 5, reqLevel: 8, req: { id: "venom", rank: 1 }, icon: "sk_shadowstep", offGcd: true,
     target: "enemy", range: 256, cd: (r) => 12 - 0.8 * (r - 1), mana: () => 14,
-    v: () => ({ crit: 1 }),
-    desc: () => "Мгновенно переносит за спину цели (до 8 клеток). Следующий удар — гарантированный крит.",
+    v: () => ({ crit: 1, silence: 2 }),
+    desc: () => "Мгновенно переносит за спину цели (до 8 клеток), срывая с вас корни; цель под безмолвием 2 с. Следующий удар — гарантированный крит.",
     tree: [3, 1],
   },
   evasion: {
@@ -308,7 +308,7 @@ export const SKILLS: Record<string, SkillDef> = {
     id: "stealth", cls: "rogue", name: "Скрытность", kind: "active", slot: 3, maxRank: 5, reqLevel: 15, req: { id: "shadowstep", rank: 1 }, icon: "sk_stealth", offGcd: true,
     target: "self", range: 0, cd: () => 20, mana: () => 12,
     v: (r) => ({ dur: 6 + r, slow: 30 }),
-    desc: (r) => `Невидимость до ${6 + r} с (мобы не замечают, игроки не видят и не выбирают целью). Движение −30%. Прерывается атакой, умением или уроном. Обереги врага у мостов и ворот раскрывают: 10 с нельзя скрыться.`,
+    desc: (r) => `Срывает корни и замедление; невидимость до ${6 + r} с (мобы не замечают, игроки не видят и не выбирают целью). Движение −30%. Прерывается атакой, умением или уроном. Обереги врага у мостов и ворот раскрывают: 10 с нельзя скрыться.`,
     tree: [5, 1],
   },
 };

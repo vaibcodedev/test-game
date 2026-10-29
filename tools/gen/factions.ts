@@ -5,7 +5,7 @@
  *   Дороги: указатель, мосты, руины, костёр.
  * Опорная точка — нижняя середина, размеры кратны тайлу (32 px).
  */
-import { PC, hash01, hex, ramp, withA, type RGBA, type Ramp } from "./canvas";
+import { PC, hash01, hex, mix, ramp, withA, type RGBA, type Ramp } from "./canvas";
 import { FACTION, P } from "./palette";
 import { bricks, slabs } from "./town";
 import { stall } from "./walls141-props";
@@ -75,28 +75,112 @@ const signpost: Art = () => {
   c.ellipse(16, 62, 6, 2, P.stone[1]);
   return c.outline();
 };
-function bridge(horizontal: boolean): PC {
-  const W = horizontal ? 192 : 96, H = horizontal ? 96 : 192;
+/**
+ * Деревянный мост в 3/4 (docs/water-shores.md): настил из досок поперёк хода ровного тона с лёгким разбросом, тонкие щели, торцы досок у перил;
+ * перила со столбиками и тенью на настил; у горизонтального — торец настила и сваи в воде с тенью и рябью, у вертикального — сваи по бокам и тень справа.
+ * Куски: центр 6 тайлов (bridge_h / bridge_v, якорь мостовых постов), продолжение над водой по 1 тайлу (…_mid, свая через тайл) и концы на берегу —
+ * каменный устой под настилом (…_end_w/_e, …_end_n/_s): настил заходит на сушу, береговая стенка под ним скрыта. Проход — между перилами
+ * (shared/map.ts BRIDGE_DECK_H / BRIDGE_DECK_V); раскладка кусков — shared/map.ts buildBridges.
+ */
+export type BridgePiece = "center" | "mid" | "mid2" | "endA" | "endB";
+export function bridgePiece(horizontal: boolean, piece: BridgePiece): PC {
+  const len = piece === "center" ? 192 : 32;
+  const W = horizontal ? len : 96, H = horizontal ? 96 : len;
   const c = new PC(W, H);
-  const along = horizontal ? W : H, across = horizontal ? H : W;
-  for (let a = 0; a < along; a++) for (let b = 8; b < across - 8; b++) {
-    const plank = Math.floor(a / 8), seam = a % 8 === 7;
-    const n = hash01(plank, Math.floor(b / 24), 9);
-    const col: RGBA = seam ? P.wood[0] : n < 0.3 ? P.wood[1] : n < 0.8 ? P.wood[2] : P.wood[3];
-    if (horizontal) c.set(a, b, col);
-    else c.set(b, a, col);
+  const along = len;
+  const end = piece === "endA" || piece === "endB", rev = piece === "endB"; // конец: со стороны a < 13 — въезд на земле; endB — зеркально
+  const put = (a: number, b: number, col: RGBA) => { const A = rev ? along - 1 - a : a; if (horizontal) c.set(A, b, col); else c.set(b, A, col); };
+  const WD = P.wood, ST = P.stone, DT = P.dirt;
+  const d0 = 8, d1 = horizontal ? 72 : 88;
+  const a0 = piece === "center" ? 0 : piece === "mid" ? 200 : piece === "mid2" ? 232 : 264;
+  const deckFrom = end ? 13 : 0;
+  // настил: доски поперёк хода ровного тона, тонкие щели, торцы у перил, вытертая середина
+  for (let a = deckFrom; a < along; a++) for (let b = d0; b < d1; b++) {
+    const A = a + a0, plank = Math.floor(A / 8), pa = A % 8;
+    const off = Math.floor(hash01(plank, 0, 13) * 12), seg = Math.floor((b - d0 + off) / 28);
+    const n = hash01(plank, seg, 9);
+    const k = n < 0.07 ? 1 : n > 0.95 ? 3 : 2;
+    let col: RGBA = WD[k];
+    if (Math.abs(b - (d0 + d1) / 2) < (d1 - d0) * 0.18 && hash01(plank, seg, 15) < 0.5) col = mix(col, WD[3], 0.3);
+    if (pa === 7) col = mix(WD[k], WD[0], 0.6);
+    else if (pa === 0) col = mix(WD[k], WD[3], 0.4);
+    if ((b - d0 + off) % 28 === 0 && pa < 7) col = mix(WD[k], WD[0], 0.5);
+    if ((b === d0 + 3 || b === d1 - 4) && (pa === 2 || pa === 5)) col = P.steel[2];
+    if (b === d0 || b === d1 - 1) col = mix(col, WD[0], 0.45);
+    put(a, b, col);
   }
-  // перила и столбики
-  for (const b of [6, across - 10]) for (let a = 0; a < along; a++) {
-    if (horizontal) { c.rect(a, b, 1, 4, P.wood[3]); c.set(a, b + 4, P.wood[0]); }
-    else { c.rect(b, a, 4, 1, P.wood[3]); c.set(b + 4, a, P.wood[0]); }
+  if (end) for (let a = 10; a < 13; a++) for (let b = d0 - 1; b < d1 + 1; b++) put(a, b, a === 10 ? WD[3] : a === 11 ? WD[2] : WD[0]); // порог — толстая доска поперёк въезда
+  if (horizontal) for (let a = deckFrom; a < along; a++) { // торец настила: видны концы досок, кромка к свету, тёмный низ
+    const pa = (a + a0) % 8;
+    put(a, d1, WD[3]);
+    for (let b = d1 + 1; b < d1 + 6; b++) put(a, b, b === d1 + 5 ? WD[0] : pa === 7 ? mix(WD[1], WD[0], 0.6) : b === d1 + 1 ? WD[2] : WD[1]);
   }
-  for (let a = 4; a < along; a += 32) for (const b of [4, across - 12]) {
-    if (horizontal) c.shadedRect(a, b, 6, 8, P.wood);
-    else c.shadedRect(b, a, 8, 6, P.wood);
+  // перила; у конца — толстый столб у въезда
+  const rails = horizontal ? [2, 60] : [2, 84];
+  for (const r of rails) {
+    for (let a = deckFrom; a < along; a++) { put(a, r + 2, WD[3]); put(a, r + 3, WD[2]); put(a, r + 4, WD[0]); put(a, r + 5, withA([20, 12, 8, 255], 70)); }
+    const posts = end ? [13] : [];
+    for (let a = piece === "center" ? 4 : end ? 45 : 13; a < along; a += 32) posts.push(a);
+    for (const a of posts) {
+      const wdt = end && a === 13 ? 6 : 5, h = (horizontal ? 12 : 10) + (end && a === 13 ? 3 : 0);
+      for (let q = 0; q < wdt; q++) for (let k = 0; k < h; k++) put(a + q, r + k - (horizontal ? 2 : 0) - (end && a === 13 ? 3 : 0), q === 0 ? WD[3] : q < wdt - 2 ? WD[2] : WD[0]);
+      for (let q = 0; q < wdt; q++) put(a + q, r - (horizontal ? 3 : 1) - (end && a === 13 ? 3 : 0), WD[3]);
+      for (let q = wdt; q < wdt + 3; q++) for (let k = 0; k < 3; k++) put(a + q, r + (horizontal ? 6 : 4) + k, withA([20, 12, 8, 255], 80 - k * 20));
+    }
   }
-  return c.outline();
+  c.outline(withA(WD[0], 255));
+  // после контура: вода, сваи, тень, устой и въезд (без обводки)
+  if (horizontal) {
+    // тень моста на воде: тёмная полоса со смещением вниз
+    for (let a = end ? 13 : 0; a < along; a++) for (let b = 78; b < 94; b++) put(a, b, withA([8, 14, 30, 255], Math.max(0, 150 - (b - 78) * 10)));
+    const piles = piece === "center" ? [14, 58, 102, 146] : piece === "mid2" ? [13] : piece === "mid" ? [] : [];
+    for (const a of piles) {
+      for (let b = 76; b < 91; b++) for (let k = 0; k < 6; k++) {
+        let col = k === 0 ? WD[2] : k < 3 ? WD[1] : WD[0];
+        if (b > 86) col = [col[0] * 0.7 + 10, col[1] * 0.75 + 18, col[2] * 0.8 + 30, 255] as RGBA;
+        put(a + k, b, col);
+      }
+      for (let k = -4; k <= 9; k++) if (Math.abs(k - 2.5) > 3.6 && hash01(a + k, 3, 77) < 0.8) put(a + k, 91, withA(P.water[4], 210));
+      for (let k = -6; k <= 11; k++) if (Math.abs(k - 2.5) > 6.5 && hash01(a + k, 5, 78) < 0.6) put(a + k, 93, withA(P.water[3], 170));
+    }
+    if (end) { // каменный устой: верх виден у въезда, лицо кладки под торцом, тень у подножия
+      for (let a = 4; a < 24; a++) for (let b = 72; b < 92; b++) {
+        if (a >= 13 && b < 78) continue; // под торцом настила
+        const top = b < 76 && a < 13;
+        const row = Math.floor((b - 76) / 5), bx = (a + row * 7) % 12;
+        put(a, b, top ? (b === 72 ? ST[4] : ST[3]) : b === 76 ? ST[3] : bx === 0 || (b - 76) % 5 === 4 ? ST[0] : ST[2 - (row & 1)]);
+      }
+      for (let a = 4; a < 24; a++) { put(a, 92, withA([10, 8, 12, 255], 150)); put(a, 93, withA([10, 8, 12, 255], 70)); }
+    }
+  } else {
+    if (!end) for (let a = 0; a < along; a++) for (let b = 88; b < 96; b++) put(a, b, withA([8, 16, 34, 255], Math.max(0, 130 - (b - 88) * 15)));
+    const piles = piece === "center" ? [20, 68, 116, 164] : piece === "mid2" ? [12] : [];
+    for (const a of piles) for (const b0 of [1, 89]) {
+      for (let k = 0; k < 5; k++) for (let q = 0; q < 7; q++) put(a + q, b0 + k, q === 0 ? WD[2] : q < 4 ? WD[1] : WD[0]);
+      for (let q = -2; q < 9; q++) if (hash01(a + q, b0, 79) < 0.7) put(a + q + 1, b0 + 5, withA(P.water[4], 190));
+    }
+  }
+  if (end) { // въезд: утоптанная земля дороги до порога (ровная плоскость, светлее к середине), по бокам — каменные тумбы устоя
+    for (let a = 0; a < 10; a++) for (let b = d0 + 2; b < d1 - 2; b++) {
+      const m2 = Math.abs(b - (d0 + d1) / 2) / ((d1 - d0) / 2);
+      let col: RGBA = m2 > 0.8 ? DT[1] : m2 > 0.5 ? DT[2] : DT[3];
+      if (a === 9) col = mix(col, WD[0], 0.4); // тень порога на земле
+      put(a, b, withA(col, a < 2 ? 150 + a * 50 : 255));
+    }
+    for (const b of [d0 - 3, d1 - 5]) for (let q = 0; q < 9; q++) for (let k = 0; k < 8; k++) // тумба: верх светлый, лицо кладки, AO
+      put(1 + q, b + k, k < 3 ? (k === 0 ? ST[4] : ST[3]) : k === 7 ? withA([10, 8, 12, 255], 140) : q === 0 ? ST[3] : q >= 7 ? ST[0] : ST[2 - ((k + q) % 5 === 0 ? 1 : 0)]);
+  }
+  return c;
 }
+export const bridge = (horizontal: boolean) => bridgePiece(horizontal, "center");
+/** Куски мостов по ключам объектов (shared/map.ts buildBridges). */
+export const BRIDGE_PIECES: Record<string, () => PC> = {
+  bridge_h: () => bridgePiece(true, "center"), bridge_v: () => bridgePiece(false, "center"),
+  bridge_h_mid: () => bridgePiece(true, "mid"), bridge_h_mid2: () => bridgePiece(true, "mid2"),
+  bridge_h_end_w: () => bridgePiece(true, "endA"), bridge_h_end_e: () => bridgePiece(true, "endB"),
+  bridge_v_mid: () => bridgePiece(false, "mid"), bridge_v_mid2: () => bridgePiece(false, "mid2"),
+  bridge_v_end_n: () => bridgePiece(false, "endA"), bridge_v_end_s: () => bridgePiece(false, "endB"),
+};
 const ruinPillar: Art = () => {
   const c = new PC(32, 64);
   const h = 30 + Math.floor(hash01(3, 4, 5) * 10);
@@ -133,5 +217,5 @@ export const FACTION_ART: Record<string, Art> = {
   stall_gold: () => stall(hex("#e8b84a")), sun_statue: sunStatue,
   stall_purple: () => stall(hex("#7a3ab0"), "cloth"),
   soul_brazier: soulBrazier, bone_pile: bonePile, dark_obelisk: darkObelisk,
-  signpost, bridge_h: () => bridge(true), bridge_v: () => bridge(false), ruin_pillar: ruinPillar, ruin_wall: ruinWall, campfire,
+  signpost, ...BRIDGE_PIECES, ruin_pillar: ruinPillar, ruin_wall: ruinWall, campfire,
 };

@@ -880,10 +880,10 @@
    "frame": 48
   },
   "pet_bog_lizard_glow": {
-   "frame": 32
+   "frame": 40
   },
   "pet_bog_lizard": {
-   "frame": 32
+   "frame": 40
   },
   "pet_ash_salamander_glow": {
    "frame": 32
@@ -910,10 +910,10 @@
    "frame": 48
   },
   "pet_ghost_fox_glow": {
-   "frame": 32
+   "frame": 40
   },
   "pet_ghost_fox": {
-   "frame": 32
+   "frame": 40
   },
   "keeper_sol_glow": {
    "frame": 32
@@ -32740,6 +32740,38 @@
   "ledge_ash__1": {
    "w": 96,
    "h": 40
+  },
+  "bridge_h_mid": {
+   "w": 32,
+   "h": 96
+  },
+  "bridge_h_mid2": {
+   "w": 32,
+   "h": 96
+  },
+  "bridge_h_end_w": {
+   "w": 32,
+   "h": 96
+  },
+  "bridge_h_end_e": {
+   "w": 32,
+   "h": 96
+  },
+  "bridge_v_mid": {
+   "w": 96,
+   "h": 32
+  },
+  "bridge_v_mid2": {
+   "w": 96,
+   "h": 32
+  },
+  "bridge_v_end_n": {
+   "w": 96,
+   "h": 32
+  },
+  "bridge_v_end_s": {
+   "w": 96,
+   "h": 32
   }
  },
  "icons": [
@@ -35054,13 +35086,13 @@
  "atlases": [
   {
    "key": "objs0",
-   "png": "/assets/atlas/objs0.png?v=84d65d9f13",
-   "json": "/assets/atlas/objs0.json?v=84d65d9f13"
+   "png": "/assets/atlas/objs0.png?v=e782887ff4",
+   "json": "/assets/atlas/objs0.json?v=e782887ff4"
   },
   {
    "key": "objs1",
-   "png": "/assets/atlas/objs1.png?v=84d65d9f13",
-   "json": "/assets/atlas/objs1.json?v=84d65d9f13"
+   "png": "/assets/atlas/objs1.png?v=e782887ff4",
+   "json": "/assets/atlas/objs1.json?v=e782887ff4"
   }
  ],
  "atlasOf": {
@@ -35433,6 +35465,10 @@
   "pal_corner_umb__set-w-clean": "objs1",
   "pal_corner_umb__set-w-moss": "objs1",
   "bf_spear_umb_c": "objs1",
+  "bridge_h_end_e": "objs1",
+  "bridge_h_end_w": "objs1",
+  "bridge_h_mid": "objs1",
+  "bridge_h_mid2": "objs1",
   "dark_obelisk": "objs1",
   "pal_post_sol": "objs1",
   "pal_post_sol__set-chip": "objs1",
@@ -35814,6 +35850,10 @@
   "ice_spike": "objs1",
   "bf_scorch_b": "objs1",
   "bf_scorch_c": "objs1",
+  "bridge_v_end_n": "objs1",
+  "bridge_v_end_s": "objs1",
+  "bridge_v_mid": "objs1",
+  "bridge_v_mid2": "objs1",
   "v_basic_fence_row": "objs1",
   "v_basic_fence_row_b": "objs1",
   "v_volcano_lava_mound_ring": "objs1",

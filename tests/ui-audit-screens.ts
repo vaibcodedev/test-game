@@ -904,7 +904,7 @@ async function stageNpc() {
     await sleep(400);
   });
   const herald = RAID_HERALDS[0];
-  await item("win-raid", "Вестник Цитадели: окно сбора рейда", ".raid-modal:not([hidden]) .raid-dialog", "hud.raid.open() у вестника", async () => {
+  await item("win-raid", "Вестник Цитадели: окно сбора рейда", ".win-muster:not([hidden]) .raid-dialog", "hud.raid.open() у вестника", async () => {
     await near(herald, 1500);
     await run("hud.raid.open(a)", herald.id);
     await sleep(900);

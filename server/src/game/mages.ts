@@ -16,7 +16,7 @@ import { dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
 import { reachable } from "./skills";
 import { addDot, dotsOf, removeDots, type CastCtx } from "./umbrath";
-import { applyHaste, applySlow, applyWeaken } from "./effects";
+import { applyFear, applyHaste, applySilence, applySlow, applyWeaken } from "./effects";
 import { registerAuraHook } from "./auras";
 import { World, type Actor, type HitOpts } from "./World";
 import { leechMult } from "../../../shared/balance";
@@ -140,6 +140,7 @@ export function castMage(c: CastCtx): string | null | undefined {
       hits.forEach((m, i) => {
         w.hit(p, m, { mult: (v.dmg / 100) * Math.pow(1 - v.falloff / 100, i), skill: true, kind: "arcane" });
         if (w.canAffect(p, m)) shock(w, p, m);
+        if (i === 0 && v.silence > 0) applySilence(w, p, m, v.silence * 1000); // задача 148: первая цель — безмолвие (сбивает каст)
       });
       return null;
     }
@@ -222,6 +223,7 @@ export function castMage(c: CastCtx): string | null | undefined {
         s.hex.set(t.id, { until: w.time + v.dur * 1000, pct: v.amp });
         if (w.isPlayer(t)) hexedBy.set(t, p); // у героя-цели проклятие рока видно в списке эффектов
         applyWeaken(w, p, t, v.weak, v.dur * 1000);
+        if (v.fear > 0) applyFear(w, p, t, v.fear * 1000); // задача 148: при наложении — страх (боссы не боятся)
         w.emit({ t: "aoe", k: "hex", x: t.x, y: t.y, r: 46 });
         c.threat(t, 30);
       }, p);

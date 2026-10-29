@@ -21,7 +21,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const chrome = ["C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"].find((p) => fs.existsSync(p))!;
 const base = Math.floor(Date.now() / DAY_CYCLE_MS) * DAY_CYCLE_MS;
 const DAY = base + DAY_CYCLE_MS * 0.3, EVE = base + DAY_CYCLE_MS * 0.72;
-const CW = 400, CH = 260;
+const CW = Number(process.env.SHOTS) === 5 ? 640 : 400, CH = 260;
 /** Набор мест: 1 — трава, песок, лес, пруд, мост (ingame1.png); 2 — лёд, болото, пепел, обсидиан, лес (ingame2.png); 3 — вода по биому: болото, лёд, пепел, лес, река через 2 биома (water-biome.png). SHOTS=2|3 */
 const SET = Number(process.env.SHOTS) || 1;
 
@@ -105,7 +105,12 @@ async function main() {
   const bridge = m.objects.find((o) => o.kind === "bridge_h" || o.kind === "bridge_v");
   const list: Spot[] = [];
   const add = (id: string, cap: string, p: { x: number; y: number } | null) => { if (p) list.push({ id, cap, ...p }); else console.log("нет места:", id); };
-  if (SET === 3) {
+  if (SET === 4) { // лава: озёра разного размера (центры — по связным областям вершин лавы)
+    for (const [id, cap, x, y] of [["l5", "озерцо 5 вершин", 757, 24], ["l7", "озерцо 7 у леса", 1082, 288], ["l17", "озеро 17", 1077, 53], ["l35", "озеро 35", 827, 343], ["l48", "лава у обсидиана и снега", 631, 343]] as const)
+      list.push({ id, cap, x: x * 32, y: y * 32 });
+  } else if (SET === 5) { // мосты
+    for (const [i, o] of m.objects.filter((q) => q.kind === "bridge_h" || q.kind === "bridge_v").slice(0, 3).entries()) list.push({ id: "bridge", cap: `мост ${i + 1}`, x: o.x, y: o.y - 48 });
+  } else if (SET === 3) {
     add("bog", "болото", northShore(5));
     add("ice", "лёд", northShore(4) ?? northShore(4, undefined, true));
     add("ash", "пепел", northShore(6) ?? northShore(6, undefined, true));
@@ -145,15 +150,15 @@ async function main() {
     const focusOf = (p: { x: number; y: number }) => page.evaluate((q) => { const w = window as any, c = w.__game.scene.getScene("game").cameras.main, g = w.__game, k = g.canvas.width / g.scale.width; return { x: (q.x - c.worldView.x) * c.zoom * k, y: (q.y - c.worldView.y) * c.zoom * k }; }, p);
     const cap = async () => decode(await page.evaluate(() => new Promise<string>((res) => { const g = (window as any).__game; g.events.once("postrender", () => res(g.canvas.toDataURL("image/png"))); })));
     for (const sp of list) {
-      const st = sp.id === "bridge" || sp.id === "mix" ? dryNear(sp.x, sp.y) : edgeStand(sp);
+      const st = sp.id === "bridge" || sp.id === "mix" || SET === 4 ? dryNear(sp.x, sp.y) : edgeStand(sp);
       await page.evaluate(() => (window as any).__net.send("respawn", {})); await sleep(500); await dbg({ op: "god" });
       await dbg({ op: "tp", x: st.x, y: st.y });
       await page.evaluate(() => { const w = window as any; w.__waterLook = 1; const f = w.__fx?.debugFx; if (f) { f.rain = 0; f.wet = 0; } });
-      for (const [t, z, nm] of (SET === 3 ? [[DAY, 2, "день, зум 2"], [EVE, 2, "вечер, зум 2"]] : [[DAY, 2, "день, зум 2"], [EVE, 3, "вечер, зум 3"]]) as [number, number, string][]) {
+      for (const [t, z, nm] of (SET === 3 || SET === 5 ? [[DAY, 2, "день, зум 2"], [EVE, 2, "вечер, зум 2"]] : SET === 4 ? [[DAY, 2, "день, зум 2"], [EVE, 3, "вечер, зум 3"]] : [[DAY, 2, "день, зум 2"], [EVE, 3, "вечер, зум 3"]]) as [number, number, string][]) {
         await setNow(t);
         await page.evaluate((zz) => (window as any).__game.scene.getScene("game").cameras.main.setZoom(zz), z);
         await sleep(4000);
-        const f = await focusOf({ x: st.x, y: st.y });
+        const f = await focusOf(SET >= 4 ? { x: sp.x, y: sp.y } : { x: st.x, y: st.y });
         shots.push([crop(await cap(), f, CW, CH), `${sp.cap}: ${nm}`]);
       }
       const feet = waterAtFeet(m, st.x, st.y + FOOT_DY);
@@ -168,7 +173,7 @@ async function main() {
       PNG.bitblt(big, sheet, 0, 0, big.width, big.height, X, Y);
       label(sheet, c, X + 6, Y + 6);
     });
-    const file = SET === 3 ? "water-biome.png" : `ingame${SET}.png`;
+    const file = SET === 3 ? "water-biome.png" : SET === 4 ? "lava-ingame.png" : SET === 5 ? "bridges-ingame2.png" : `ingame${SET}.png`;
     fs.writeFileSync(path.join(OUT, file), PNG.sync.write(sheet));
     console.log(file, "записан");
     await page.close();

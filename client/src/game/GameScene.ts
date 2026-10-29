@@ -7,7 +7,8 @@ import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, zoneAtPx, z
 import { ENV, RESOURCES } from "../../../shared/biomes";
 import * as sfx from "./sfx";
 import { nightLevel, warmLevel } from "../../../shared/daynight";
-import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, UnitKind, type LootBag } from "../../../shared/protocol";
+import { Anim, Dir, BUFF_STEALTH, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, BUFF_FEAR, UnitKind, type LootBag } from "../../../shared/protocol";
+import { slowMul } from "../../../shared/cc";
 import { SKILLS, skillMana, type SkillDef } from "../../../shared/skills";
 import { CITIES, inEmberWalls } from "../../../shared/cities";
 import { WORLD_NPCS, type WorldNpcKind } from "../../../shared/npcs";
@@ -698,6 +699,7 @@ export class GameScene extends Phaser.Scene {
       winMap: () => this.hud.toggleWorldMap(),
       winBestiary: () => this.hud.toggle("bestiary"),
       winArena: () => this.hud.toggle("arena"),
+      winMuster: () => this.hud.toggle("muster"),
       winAdmin: () => this.hud.toggle("admin"),
       chat: () => this.hud.focusChat(),
       // Esc: прицел → очередь, подход, канал (сервер, cancel) → окно, цель, меню
@@ -1476,13 +1478,13 @@ export class GameScene extends Phaser.Scene {
         cam.centerOn(u.x, u.y - 12);
         if (!cam.fadeEffect.isRunning) cam.fadeIn(700, 0, 0, 0); // мягкое проявление после прыжка — не мгновенно
       }
-      // сервер держит героя: оглушение, корни, канал (castHold), заморозка арены до боя
+      // сервер держит героя: оглушение, корни, страх (ведёт сервер), канал (castHold), заморозка арены до боя
       const arenaPhase = net.kind === "arena" ? (net.room?.state as { phase?: string } | undefined)?.phase : "fight";
-      const blocked = u.buffs & (BUFF_STUN | BUFF_ROOT) || u.anim === Anim.Dead || now < this.castHold || arenaPhase !== "fight";
+      const blocked = u.buffs & (BUFF_STUN | BUFF_ROOT | BUFF_FEAR) || u.anim === Anim.Dead || now < this.castHold || arenaPhase !== "fight";
       const g = this.clickGoal;
       if (g && (blocked || moving || (now - g.at > 600 && u.anim !== Anim.Walk))) this.clickGoal = null;
       let vx = 0, vy = 0;
-      const sp = PLAYER_SPEED * (MOUNTS[u.mount]?.speed ?? 1) * (u.buffs & BUFF_SLOW ? 0.55 : 1) * terrainSpeedMul(this.map, this.pos.x, this.pos.y) * dt;
+      const sp = PLAYER_SPEED * (MOUNTS[u.mount]?.speed ?? 1) * (u.buffs & BUFF_SLOW ? slowMul(u.slowPct ?? 0) : 1) * terrainSpeedMul(this.map, this.pos.x, this.pos.y) * dt;
       let step = sp;
       if (moving && !blocked) {
         const len = Math.hypot(mx, my);
