@@ -58,7 +58,8 @@
       { "slot": "r59s", "west": "sol_plague_raven", "east": "plg_drowned_bellringer", "x": 278, "y": 252, "arena": 10 },
       { "slot": "r65n", "west": "sol_cliff_minotaur", "east": "umb_frost_lord", "x": 324, "y": 84, "arena": 10 },
       { "slot": "r69s", "west": "sol_gilded_midas", "east": "umb_bone_marionette", "x": 330, "y": 260, "arena": 10 },
-      { "slot": "r75n", "west": "sol_storm_colossus", "east": "umb_crown_lich", "x": 378, "y": 98, "arena": 10 }
+      { "slot": "r75n", "west": "sol_storm_colossus", "east": "umb_crown_lich", "x": 378, "y": 98, "arena": 10 },
+      { "slot": "r79s", "west": "sol_horned_knight", "east": "umb_twin_reaper", "x": 384, "y": 270, "arena": 10 }
     ],
     "settlements": [
       { "id": "s1", "lv": [1, 10], "west": ["Ясный Дол", 96, 214], "east": ["Погост Скорби", 1003, 214], "spur": "sol_spur_1" },

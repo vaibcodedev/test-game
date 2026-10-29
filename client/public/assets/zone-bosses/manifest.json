@@ -5512,6 +5512,413 @@
      "fx": []
     }
    }
+  },
+  "sol_horned_knight": {
+   "file": "sol_horned_knight.png",
+   "fw": 80,
+   "cols": 128,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "phase": {
+     "col": 80,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 6
+    },
+    "cleaveWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "cleaveHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "cleaveStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "vineWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "vineHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "vineCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "whirlWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "whirlHold": {
+     "col": 72,
+     "n": 8,
+     "fps": 14,
+     "loop": true
+    },
+    "whirlStrike": {
+     "col": 80,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 4
+    },
+    "chargeWind": {
+     "col": 90,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "chargeHold": {
+     "col": 94,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "chargeStrike": {
+     "col": 98,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "stun": {
+     "col": 106,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 114,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {},
+   "skills": {
+    "twin_cleave": {
+     "waves": [
+      {
+       "pre": [
+        "cleaveWind",
+        "cleaveHold"
+       ],
+       "strike": "cleaveStrike"
+      },
+      {
+       "strike": "attack",
+       "turn": true
+      }
+     ],
+     "fx": []
+    },
+    "vine_snare": {
+     "waves": [
+      {
+       "pre": [
+        "vineWind",
+        "vineHold"
+       ],
+       "strike": "vineCast"
+      }
+     ],
+     "fx": []
+    },
+    "axe_vortex": {
+     "waves": [
+      {
+       "pre": [
+        "whirlWind",
+        "whirlHold"
+       ],
+       "strike": "whirlStrike"
+      }
+     ],
+     "fx": []
+    },
+    "antler_charge": {
+     "waves": [
+      {
+       "pre": [
+        "chargeWind",
+        "chargeHold"
+       ],
+       "strike": "chargeStrike"
+      }
+     ],
+     "fx": []
+    }
+   }
+  },
+  "umb_twin_reaper": {
+   "file": "umb_twin_reaper.png",
+   "fw": 80,
+   "cols": 128,
+   "wrap": 64,
+   "anims": {
+    "idle": {
+     "col": 0,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "walk": {
+     "col": 12,
+     "n": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "twinA": {
+     "col": 42,
+     "n": 5,
+     "fps": 15,
+     "loop": false,
+     "hit": 2
+    },
+    "twinMid": {
+     "col": 46,
+     "n": 1,
+     "fps": 12,
+     "loop": true
+    },
+    "twinB": {
+     "col": 47,
+     "n": 5,
+     "fps": 15,
+     "loop": false,
+     "hit": 1
+    },
+    "phase": {
+     "col": 76,
+     "n": 12,
+     "fps": 15,
+     "loop": false,
+     "hit": 5
+    },
+    "attack": {
+     "col": 24,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 5
+    },
+    "twinWind": {
+     "col": 34,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "twinHold": {
+     "col": 38,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "twinStrike": {
+     "col": 42,
+     "n": 10,
+     "fps": 15,
+     "loop": false,
+     "hit": 2
+    },
+    "duelWind": {
+     "col": 52,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "duelHold": {
+     "col": 56,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "duelCast": {
+     "col": 60,
+     "n": 8,
+     "fps": 12,
+     "loop": false,
+     "hit": 3
+    },
+    "sweepWind": {
+     "col": 68,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "sweepHold": {
+     "col": 72,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "sweepStrike": {
+     "col": 76,
+     "n": 12,
+     "fps": 15,
+     "loop": false,
+     "hit": 5
+    },
+    "harvWind": {
+     "col": 88,
+     "n": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "harvHold": {
+     "col": 92,
+     "n": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "harvStrike": {
+     "col": 96,
+     "n": 10,
+     "fps": 12,
+     "loop": false,
+     "hit": 2
+    },
+    "stun": {
+     "col": 106,
+     "n": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "death": {
+     "col": 114,
+     "n": 14,
+     "fps": 12,
+     "loop": false
+    }
+   },
+   "fx": {
+    "duel": {
+     "file": "umb_twin_reaper-duel.png",
+     "fw": 64,
+     "fh": 32,
+     "ax": 32,
+     "ay": 16,
+     "rows": 2,
+     "anims": {
+      "duelIn": {
+       "col": 0,
+       "n": 3,
+       "fps": 12,
+       "loop": false,
+       "hit": 2
+      },
+      "duelHold": {
+       "col": 3,
+       "n": 3,
+       "fps": 12,
+       "loop": true
+      },
+      "duelOut": {
+       "col": 6,
+       "n": 2,
+       "fps": 12,
+       "loop": false
+      }
+     }
+    }
+   },
+   "skills": {
+    "twin_reap": {
+     "waves": [
+      {
+       "pre": [
+        "twinWind",
+        "twinHold"
+       ],
+       "strike": "twinA"
+      },
+      {
+       "pre": [
+        "twinMid"
+       ],
+       "strike": "twinB",
+       "turn": true
+      }
+     ],
+     "fx": []
+    },
+    "duel_mark": {
+     "waves": [
+      {
+       "pre": [
+        "duelWind",
+        "duelHold"
+       ],
+       "strike": "duelCast"
+      }
+     ],
+     "fx": []
+    },
+    "reaper_sweep": {
+     "waves": [
+      {
+       "pre": [
+        "sweepWind",
+        "sweepHold"
+       ],
+       "strike": "sweepStrike"
+      }
+     ],
+     "fx": []
+    },
+    "soul_harvest": {
+     "waves": [
+      {
+       "pre": [
+        "harvWind",
+        "harvHold"
+       ],
+       "strike": "harvStrike"
+      }
+     ],
+     "fx": []
+    }
+   }
   }
  },
  "units": {
@@ -5584,6 +5991,12 @@
    "frameH": 48
   },
   "sol_storm_colossus": {
+   "frame": 80
+  },
+  "sol_horned_knight": {
+   "frame": 80
+  },
+  "umb_twin_reaper": {
    "frame": 80
   }
  }

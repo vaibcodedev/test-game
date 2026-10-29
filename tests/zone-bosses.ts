@@ -109,6 +109,37 @@ for (const c of CARDS) {
   const mob = mobOf(c.id);
   const boss = mob.boss as unknown as { abilities: { at: number }[]; run: (ab: unknown) => void; casting: boolean };
   for (const ab of c.abilities) {
+    if (ab.duel) {
+      // метка дуэли: меченый держит босса вплотную — прочим урон ×mul, дуэль идёт; отошёл — дуэль сорвана и сразу punish
+      const d = ab.duel;
+      for (const mode of ["hold", "leave"] as const) {
+        mob.reset();
+        for (const a of boss.abilities) a.at = 1e9;
+        const tank = hero("warrior", mob.x + 40, mob.y, c.levels.boss), other = hero("mage", mob.x + 150, mob.y + 30, c.levels.boss);
+        mob.state = "chase";
+        mob.targetId = tank.id;
+        mob.addThreat(tank.id, 100);
+        log.length = 0;
+        hits = [];
+        boss.run(ab);
+        let mul = 1;
+        for (let t = 0; t < ab.windupMs + 1500; t += 50) {
+          const away = mode === "leave" && t >= ab.windupMs + 400;
+          tank.unit.x = mob.x + (away ? d.r + 120 : 40); tank.unit.y = mob.y;
+          tank.unit.hp = tank.unit.maxHp; other.unit.hp = other.unit.maxHp;
+          mob.attackAt = w.time + 1e9;
+          w.update(50);
+          if (t === ab.windupMs + 300) mul = (boss as unknown as { duelMul: (p: unknown) => number }).duelMul(other);
+        }
+        const zbs = log.filter((e) => e.f.t === "zb").map((e) => e.f as { ab: string; tgt?: string });
+        const marked = zbs.some((f) => f.ab === "duel" && f.tgt === tank.id), ended = zbs.some((f) => f.ab === "duel_end"), punished = zbs.some((f) => f.ab === d.punish);
+        if (mode === "hold") check(`${c.id}.${ab.id}: меченый вплотную — прочим урон ×${d.mul}, дуэль идёт`, marked && mul === d.mul && !ended && !punished, `метка ${marked}, множитель ${mul}, конец ${ended}`);
+        else check(`${c.id}.${ab.id}: меченый отошёл — дуэль сорвана, сразу «${d.punish}»`, marked && ended && punished, `метка ${marked}, конец ${ended}, наказание ${punished}`);
+        w.removePlayer(tank.id);
+        w.removePlayer(other.id);
+      }
+      continue;
+    }
     if (ab.banner) {
       // знамя: после замаха стоит в центре арены, босс под щитом ×shield, раз в everyMs кольцо бьёт тех, кто в нём; срубленное — щита и ударов нет
       const bn = ab.banner;
@@ -269,12 +300,20 @@ for (const c of CARDS) {
         const edge = bs.every((m) => Math.hypot(m.x - mob.home.x, m.y - mob.home.y) > 150);
         check(`${c.id}.${ab.id}: ${bz.count} носильщиков встали по краю арены, босс под щитом ×${bz.shield}`, bs.length === bz.count && edge && mob.dmgTakenMul === bz.shield, `носильщиков ${bs.length}, щит ${mob.dmgTakenMul}`);
         check(`${c.id}.${ab.id}: носильщик — без добычи (опыт 0, золото 0), не бьёт`, bs.every((d) => d.def.xp === 0 && d.def.gold === 0 && d.def.dmg === 0), `${bs[0]?.def.xp}/${bs[0]?.def.gold}`);
-        const d0 = Math.hypot(bs[0].x - mob.x, bs[0].y - mob.y);
+        // один и тот же носильщик до и после (последний: в режиме kill убиты первые два) — носильщики встают на разном расстоянии;
+        // босс тем временем идёт за героем (носильщику с той стороны расстояние почти не сокращается), поэтому меряем сам шаг
+        // носильщика: путь к боссу (проекция смещения на направление к нему) и что он идёт именно к нему
+        const track = bs[bs.length - 1];
+        const t0: [number, number] = [track.x, track.y];
+        const d0 = Math.hypot(track.x - mob.x, track.y - mob.y);
         let killed = 0;
         if (mode === "kill") { for (const b of bs.slice(0, 2)) { w.killMob(b, p); killed++; } }
         for (let t = 0; t < 600; t += 50) { p.unit.hp = p.unit.maxHp; mob.attackAt = w.time + 1e9; w.update(50); }
-        const d1 = Math.hypot(bs[bs.length - 1].x - mob.x, bs[bs.length - 1].y - mob.y);
-        check(`${c.id}.${ab.id}: носильщики идут к боссу (${Math.round(d0)} → ${Math.round(d1)} px)`, d1 < d0 - 10, `${Math.round(d0)} → ${Math.round(d1)}`);
+        const d1 = Math.hypot(track.x - mob.x, track.y - mob.y);
+        const mvx = track.x - t0[0], mvy = track.y - t0[1], mv = Math.hypot(mvx, mvy);
+        const tbx = mob.x - t0[0], tby = mob.y - t0[1], tb = Math.hypot(tbx, tby) || 1;
+        const toward = (mvx * tbx + mvy * tby) / tb, aim = mv ? toward / mv : 0;
+        check(`${c.id}.${ab.id}: носильщики идут к боссу (${Math.round(d0)} → ${Math.round(d1)} px, шаг к боссу ${Math.round(toward)} px)`, !track.dead && toward > 10 && aim > 0.9, `шаг ${Math.round(mv)} px, к боссу ${Math.round(toward)} px, cos ${aim.toFixed(2)}`);
         for (let t = 0; t < (d0 / bz.speed) * 1000 + 1500; t += 50) { p.unit.hp = p.unit.maxHp; mob.attackAt = w.time + 1e9; mob.unit.hp = Math.min(mob.unit.hp, mob.unit.maxHp * 0.99); w.update(50); }
         const reached = bz.count - killed;
         const heal = mob.unit.hp - hp0;
@@ -301,6 +340,17 @@ for (const c of CARDS) {
         const zb = log.find((e) => e.f.t === "zb" && (e.f as { ab: string }).ab === ab.id)?.f as { pts: number[]; r: number } | undefined;
         check(`${c.id}.${ab.id}: ${ab.safe.count} укрытий помечены событием`, !!zb && zb.pts.length === ab.safe.count * 2 && zb.r === ab.safe.r, `точек ${zb?.pts.length}`);
         if (mode === "cover" && zb) { p.unit.x = zb.pts[0]; p.unit.y = zb.pts[1]; }
+        // вне укрытий: столбы встают в случайных местах и могут накрыть стартовую точку героя — ставим его туда, где до всех столбов дальше всего
+        if (mode === "open" && zb) {
+          let best: [number, number] = [p.x, p.y], bd = -1;
+          for (let k = 0; k < 48; k++) {
+            const a = (k / 48) * Math.PI * 2, x = mob.x + Math.cos(a) * 150, y = mob.y + Math.sin(a) * 150;
+            let dmin = 1e9;
+            for (let i = 0; i + 1 < zb.pts.length; i += 2) dmin = Math.min(dmin, Math.hypot(x - zb.pts[i], y - zb.pts[i + 1]));
+            if (dmin > bd) { bd = dmin; best = [x, y]; }
+          }
+          p.unit.x = best[0]; p.unit.y = best[1];
+        }
         for (let t = 0; t < ab.windupMs + 500; t += 50) { mob.attackAt = w.time + 1e9; w.update(50); }
         const mine = hits.filter((h) => h.dst === p && h.src === mob);
         check(`${c.id}.${ab.id}: ${mode === "cover" ? "в укрытии урона нет" : "вне укрытий — удар"}`, mode === "cover" ? mine.length === 0 : mine.length > 0, `ударов ${mine.length}`);

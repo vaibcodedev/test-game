@@ -109,6 +109,7 @@ export class ZoneBoss extends Boss {
     this.busyUntil = 0;
     this.stakes.clear();
     this.carriers.clear();
+    this.duel = null;
     this.m.dmgTakenMul = 1;
     super.reset();
     // откаты — как в карточке (переход фазы их ускорял)
@@ -116,6 +117,7 @@ export class ZoneBoss extends Boss {
   }
 
   override onDeath() {
+    this.duel = null;
     this.stakes.clear();
     this.carriers.clear();
     this.m.dmgTakenMul = 1;
@@ -148,6 +150,7 @@ export class ZoneBoss extends Boss {
     const tank = this.target() ?? this.far();
     if (!tank || !this.inArena().length) return;
     if (ab.break) { this.channel(ab); return; }
+    if (ab.duel) { this.duelMark(ab); return; }
     if (ab.cage) { this.cages(ab); return; }
     if (ab.banner) { this.bannerPlant(ab); return; }
     if (ab.doubles) { this.doubles(ab); return; }
@@ -210,6 +213,49 @@ export class ZoneBoss extends Boss {
         w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
         if (p.dead) this.killed(p);
       }
+    });
+  }
+
+  /** Метка дуэли (кольцо, duel): меченый, срок, радиус, множитель урона прочим и умение-наказание. */
+  private duel: { tank: string; until: number; r: number; mul: number; punish: string } | null = null;
+  /** Множитель урона умений босса герою p: пока идёт дуэль и меченый держит босса ближе r, прочим — ×mul. */
+  private duelMul(p: Player): number {
+    const d = this.duel;
+    if (!d || p.id === d.tank || this.w.time >= d.until) return 1;
+    const t = this.w.players.get(d.tank);
+    return t && !t.dead && Math.hypot(t.x - this.m.x, t.y - this.m.y) <= d.r ? d.mul : 1;
+  }
+  /**
+   * Метка дуэли (кольцо, duel): замах — серп на цель; затем метка на ней на duel.ms (событие zb «duel», tgt — меченый). Пока меченый ближе r,
+   * прочие получают от умений босса урон ×mul. Отошёл дальше r или погиб — дуэль сорвана (zb «duel_end»): босс сразу запускает умение punish.
+   */
+  private duelMark(ab: ZbAbility) {
+    const w = this.w, m = this.m, d = ab.duel!, epoch = this.epoch;
+    const tank = this.target() ?? this.far();
+    if (!tank) return;
+    this.casting = true;
+    this.busyUntil = w.time + ab.windupMs + 300;
+    m.unit.anim = Anim.Cast;
+    this.face(tank.x, tank.y);
+    if (Math.random() < 0.8) this.line(this.card.lines.abilities[ab.id]);
+    w.emit({ t: "zb", id: m.id, ab: ab.id, w: 0, ms: ab.windupMs, pts: [Math.round(tank.x), Math.round(tank.y)], r: ab.r });
+    w.later(ab.windupMs, () => {
+      if (epoch !== this.epoch || m.dead || tank.dead) return;
+      const duel = { tank: tank.id, until: w.time + d.ms, r: d.r, mul: d.mul, punish: d.punish };
+      this.duel = duel;
+      w.emit({ t: "zb", id: m.id, ab: "duel", w: 0, ms: d.ms, tgt: tank.id });
+      const check = () => {
+        if (this.duel !== duel || m.dead) return;
+        const p = w.players.get(duel.tank);
+        if (w.time >= duel.until) { this.duel = null; w.emit({ t: "zb", id: m.id, ab: "duel_end", w: 0, ms: 0, tgt: duel.tank }); return; }
+        if (p && !p.dead && Math.hypot(p.x - m.x, p.y - m.y) <= duel.r) { w.later(200, check); return; }
+        // дуэль сорвана: меченый отошёл или погиб — наказание сразу
+        this.duel = null;
+        w.emit({ t: "zb", id: m.id, ab: "duel_end", w: 0, ms: 0, tgt: duel.tank });
+        const pun = this.card.abilities.find((x) => x.id === duel.punish);
+        if (pun && this.inArena().length) { this.busyUntil = 0; this.run(pun); }
+      };
+      w.later(200, check);
     });
   }
 
@@ -304,7 +350,7 @@ export class ZoneBoss extends Boss {
       const k = kindOf(ab.k);
       if (ab.dmgPct > 0) for (const p of this.inArena()) {
         if (p.dead) continue;
-        const res = w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp), kind: k });
+        const res = w.hitEx(m, p, { flat: Math.max(1, ab.dmgPct * p.unit.maxHp * this.duelMul(p)), kind: k });
         if (res.landed && b.heroStunMs) applyStun(w, m, p, b.heroStunMs);
         if (res.landed && b.heroRootMs) applyRoot(w, m, p, b.heroRootMs);
         if (p.dead) this.killed(p);
@@ -616,7 +662,7 @@ export class ZoneBoss extends Boss {
       hitSet.add(p.id);
       // общая метка (share): урон делится на всех героев в круге в миг удара
       const n = wv.share ? Math.max(1, this.inArena().filter((q) => !q.dead && Math.hypot(q.x - mk.x, q.y - mk.y) <= mk.r).length) : 1;
-      const res = w.hitEx(m, p, { flat: Math.max(1, (wv.dmgPct * p.unit.maxHp) / n), kind: k });
+      const res = w.hitEx(m, p, { flat: Math.max(1, (wv.dmgPct * p.unit.maxHp * this.duelMul(p)) / n), kind: k });
       if (res.landed) {
         const af = wv.after;
         if (af?.rootMs) applyRoot(w, m, p, af.rootMs);
@@ -664,6 +710,23 @@ export class ZoneBoss extends Boss {
       }
       if (p.dead) this.killed(p);
     }, { r2: mk.r2, a: mk.a, w: mk.w, k });
+    // тяга вихря (кольцо, drag): весь замах героев ближе drag.r тянет к центру метки; граница тяги — кольцо без урона
+    if (wv.drag) {
+      const dr = wv.drag, end = w.time + ms;
+      w.emit({ t: "tele", shape: "ring", k: "nature", x: mk.x, y: mk.y, r: mk.r, r2: dr.r, ms });
+      const pull = () => {
+        if (epoch !== this.epoch || m.dead || w.time >= end) return;
+        for (const p of this.inArena()) {
+          if (p.dead) continue;
+          const dx = mk.x - p.x, dy = mk.y - p.y, d = Math.hypot(dx, dy);
+          if (d > dr.r || d <= 30) continue;
+          const go = Math.min((dr.speed * 100) / 1000, d - 30), x = p.x + (dx / d) * go, y = p.y + (dy / d) * go;
+          if (walkable(w.map, x, y, 10)) { p.unit.x = x; p.unit.y = y; }
+        }
+        w.later(100, pull);
+      };
+      w.later(100, pull);
+    }
     // пятно на земле после удара: урон в секунду — доля здоровья героев на арене
     const af = wv.after;
     // сеть (кольцо, марионетка): форма метки держится web.ms и замедляет тех, кто в ней

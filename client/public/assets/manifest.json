@@ -1,5 +1,11 @@
 {
  "units": {
+  "umb_twin_reaper": {
+   "frame": 80
+  },
+  "sol_horned_knight": {
+   "frame": 80
+  },
   "pet_wolf": {
    "frame": 32
   },
@@ -34503,6 +34509,12 @@
   "uq_zb_bell_flail",
   "uq_zb_thorn_halo",
   "uq_zb_drowned_bell",
+  "uq_zb_duelist_chain",
+  "uq_zb_reaper_mask",
+  "uq_zb_twin_sickles",
+  "uq_zb_thorn_cloak",
+  "uq_zb_antler_helm",
+  "uq_zb_horned_axe",
   "uq_zb_frost_staff",
   "uq_zb_frost_crown",
   "uq_zb_frost_heart",

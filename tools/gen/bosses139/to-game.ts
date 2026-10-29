@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette|sol_storm_colossus]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette|sol_storm_colossus|sol_horned_knight|umb_twin_reaper]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -23,6 +23,8 @@ import * as mino from "./cliff_minotaur_knight";
 import * as midas from "./sol_gilded_midas";
 import * as mar from "./umb_bone_marionette";
 import * as col from "./sol_storm_colossus";
+import * as kn from "./sol_horned_knight";
+import * as rp from "./umb_twin_reaper";
 
 const ROOT = path.resolve(path.dirname(process.argv[1]), "..", "..", "..");
 const SRC = path.join(ROOT, "tools", "out", "bosses139");
@@ -302,6 +304,56 @@ BOSSES.push({
     ridge_storm: { waves: [{ pre: ["stormWind", "stormHold"], strike: "stormCast" }, { pre: ["stormHold"], strike: "stormCast" }], fx: [] },
   },
 });
+// Эрвальд Лозорог, рогатый рыцарь (r79s запад): 2D-штампы как у Гурдана; вихрь, лозы и шлейф секиры нарисованы в листе, формы рисует клиент
+BOSSES.push({
+  id: kn.ID, sheet: "knight-sheet.png", frame: kn.FRAME, frameH: kn.FRAME_H, cols: kn.KNIGHT_COLS, wrap: 64,
+  // phase (переходы 70 % и 30 %) — кадры «Вихря секиры» (последний взмах и кольцо ветра)
+  anims: {
+    ...anims({ idle: kn.KNIGHT_ANIMS.idle, walk: kn.KNIGHT_ANIMS.walk }),
+    phase: { col: kn.KNIGHT_ANIMS.whirlStrike.col, n: 10, fps: 12, loop: false, hit: 4 },
+    ...anims(Object.fromEntries(Object.entries(kn.KNIGHT_ANIMS).filter(([k]) => k !== "idle" && k !== "walk"))),
+  },
+  fx: {},
+  skills: {
+    // двойной раскол: секира из-за головы вперёд, затем разворотом назад (вторая волна — удар с поворотом)
+    twin_cleave: { waves: [{ pre: ["cleaveWind", "cleaveHold"], strike: "cleaveStrike" }, { strike: "attack", turn: true }], fx: [] },
+    // лозовая петля: кулак вверх, поклон — кулак оземь, лозы из земли
+    vine_snare: { waves: [{ pre: ["vineWind", "vineHold"], strike: "vineCast" }], fx: [] },
+    // вихрь секиры: секира вбок, оборот за оборотом весь замах (тяга), затем последний взмах и кольцо ветра
+    axe_vortex: { waves: [{ pre: ["whirlWind", "whirlHold"], strike: "whirlStrike" }], fx: [] },
+    // рогатый натиск: рога вниз, роет землю, бросок
+    antler_charge: { waves: [{ pre: ["chargeWind", "chargeHold"], strike: "chargeStrike" }], fx: [] },
+  },
+});
+// Ирмот Двусерпый, жнец (r79s восток): 2D-штампы по скелету как у Гаэля; следы клинков, круг размаха и души — в листе;
+// метка дуэли — эффект-спрайт под меченым (событие zb «duel» идёт за героем, «duel_end» гасит)
+{
+  const A = rp.REAPER_ANIMS, ts = A.twinStrike;
+  BOSSES.push({
+    id: rp.ID, sheet: "reaper-sheet.png", frame: rp.FRAME, frameH: rp.FRAME_H, cols: rp.REAPER_COLS, wrap: 64,
+    // phase (переходы 70 % и 30 %) — кадры «Размаха вкруговую» (оборот с серпами); двойной взмах — два отрезка листа: правый удар, левый
+    // порядок ключей: отрезки взмаха раньше целого twinStrike, phase — раньше sweepStrike (кадр по столбцу узнаётся по первому ключу)
+    anims: {
+      ...anims({ idle: A.idle, walk: A.walk }),
+      twinA: { col: ts.col, n: 5, fps: 15, loop: false, hit: 2 },
+      twinMid: { col: ts.col + 4, n: 1, fps: 12, loop: true },
+      twinB: { col: ts.col + 5, n: 5, fps: 15, loop: false, hit: 1 },
+      phase: { col: A.sweepStrike.col, n: 12, fps: 15, loop: false, hit: 5 },
+      ...anims(Object.fromEntries(Object.entries(A).filter(([k]) => k !== "idle" && k !== "walk"))),
+    },
+    fx: { duel: { src: "reaper-fx-duel.png", def: fxDef(rp.ID, "duel", rp.GAME_FX.duel as FxIn) } },
+    skills: {
+      // двойной взмах: оба серпа за плечо, правый рубит через тело; вторая волна — левый с поворотом
+      twin_reap: { waves: [{ pre: ["twinWind", "twinHold"], strike: "twinA" }, { pre: ["twinMid"], strike: "twinB", turn: true }], fx: [] },
+      // метка дуэли: серп на цель, клеймо в ладони, бросок; знак под меченым — по событию «duel»
+      duel_mark: { waves: [{ pre: ["duelWind", "duelHold"], strike: "duelCast" }], fx: [] },
+      // размах: присед, серпы назад, оборот на месте
+      reaper_sweep: { waves: [{ pre: ["sweepWind", "sweepHold"], strike: "sweepStrike" }], fx: [] },
+      // жатва (прерываемый каст): серпы скрещены, души к клинкам; не сорвали — удар крест-накрест оземь
+      soul_harvest: { waves: [{ pre: ["harvWind", "harvHold"], strike: "harvStrike" }], fx: [] },
+    },
+  });
+}
 const only = process.argv[2];
 fs.mkdirSync(OUT, { recursive: true });
 const man = JSON.parse(fs.readFileSync(MAN, "utf8")) as { bosses: Record<string, unknown>; units?: Record<string, { frame: number; frameH?: number }> };

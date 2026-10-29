@@ -218,6 +218,21 @@ export class ZoneBossFx {
       }
       return;
     }
+    // метка дуэли (кольцо, жнец): знак под меченым идёт за ним весь срок; сорвана или истекла — знак гаснет
+    if (f.ab === "duel") {
+      const t = f.tgt ? this.unit(f.tgt) : undefined, fd = def.fx.duel;
+      if (t && fd) this.addFx(v.u.sprite, fd, segments(fd.anims, ["duelIn", "duelHold", "duelOut"], 0, now, now, { duelHold: Math.max(0, f.ms - 700) }), t.x, t.y, 0, f.tgt);
+      return;
+    }
+    if (f.ab === "duel_end") {
+      for (const e of this.fxs) {
+        const out = e.f.anims.duelOut;
+        if (e.boss !== v.u.sprite || e.follow !== f.tgt || !out || e.end <= now) continue;
+        e.segs = [{ a: "duelOut", t0: now, t1: now + (out.n / out.fps) * 1000 }];
+        e.end = now + (out.n / out.fps) * 1000;
+      }
+      return;
+    }
     const sk = def.skills[f.ab];
     if (!sk) return;
     const card = ZB_BY_ID[v.u.sprite]?.abilities.find((x) => x.id === f.ab);

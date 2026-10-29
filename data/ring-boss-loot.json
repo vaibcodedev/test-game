@@ -798,6 +798,120 @@
       ],
       "legendary": 0.01,
       "pet": 6
+    },
+    "sol_horned_knight": {
+      "name": "Эрвальд Лозорог",
+      "level": 79,
+      "band": [
+        70,
+        80
+      ],
+      "special": [
+        {
+          "item": "zb_horned_axe",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_antler_helm",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_thorn_cloak",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
+    },
+    "umb_twin_reaper": {
+      "name": "Ирмот Двусерпый",
+      "level": 79,
+      "band": [
+        70,
+        80
+      ],
+      "special": [
+        {
+          "item": "zb_twin_sickles",
+          "chance": 0.02
+        },
+        {
+          "item": "zb_reaper_mask",
+          "chance": 0.03
+        },
+        {
+          "item": "zb_duelist_chain",
+          "chance": 0.03
+        }
+      ],
+      "gold": {
+        "mult": 15
+      },
+      "loot": {
+        "items": 2,
+        "epic": 0.3
+      },
+      "potion": {
+        "id": "hp_potion",
+        "chance": 0.6,
+        "qty": [
+          2,
+          3
+        ]
+      },
+      "mats": [
+        {
+          "id": "ash_ore",
+          "chance": 1,
+          "qty": [
+            3,
+            5
+          ]
+        },
+        {
+          "id": "star_dust",
+          "chance": 1,
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "legendary": 0.015,
+      "pet": 8
     }
   },
   "items": {
@@ -2362,6 +2476,227 @@
         "pommel": "ring"
       },
       "boss": "sol_storm_colossus",
+      "card": "r2"
+    },
+    "zb_horned_axe": {
+      "id": "zb_horned_axe",
+      "name": "Секира Лозорога",
+      "base": "greataxe",
+      "ilvl": 79,
+      "rarity": 2,
+      "fac": "solgard",
+      "cls": [
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "str",
+        "crit"
+      ],
+      "stats": {
+        "str": 48,
+        "crit": 1
+      },
+      "prop": "Каждый восьмой удар носителя закручивает ветер: ближние враги на миг подтягиваются к нему.",
+      "lore": "Лезвие-полумесяц в зелёной вязи, древко обвито живой лозой. Лоза не сохнет — даже зимой на ней есть лист.",
+      "look": {
+        "shape": "bardiche",
+        "rich": 1,
+        "mat": "blackiron",
+        "trim": "bronze",
+        "cloth": "moss",
+        "haft": "darkwood",
+        "deco": "runes",
+        "fx": "fel",
+        "guard": "curved",
+        "pommel": "gem"
+      },
+      "boss": "sol_horned_knight",
+      "card": "r3"
+    },
+    "zb_antler_helm": {
+      "id": "zb_antler_helm",
+      "name": "Рогатый шлем Предела",
+      "base": "plate_helm",
+      "ilvl": 77,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight"
+      ],
+      "affix": [
+        "str",
+        "vit"
+      ],
+      "stats": {
+        "str": 20,
+        "vit": 19
+      },
+      "prop": "Пока носитель стоит в бою больше 10 с, рога шлема гудят: его чуть труднее сбить с ног.",
+      "lore": "Шлем-ведро с узкой щелью. Рога проросли сквозь железо сами — кузнецы Сольгарда так и не смогли их спилить.",
+      "look": {
+        "shape": "horned",
+        "rich": 1,
+        "mat": "darksteel",
+        "trim": "bronze",
+        "cloth": "moss",
+        "gem": "onyx",
+        "haft": "darkwood",
+        "deco": "spikes",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "gem"
+      },
+      "boss": "sol_horned_knight",
+      "card": "r2"
+    },
+    "zb_thorn_cloak": {
+      "id": "zb_thorn_cloak",
+      "name": "Терновый плащ Лозорога",
+      "base": "cloak",
+      "ilvl": 76,
+      "rarity": 1,
+      "fac": "solgard",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "hp"
+      ],
+      "stats": {
+        "vit": 20,
+        "hp": 215
+      },
+      "prop": "Кто бьёт носителя вплотную, цепляется за терн: его шаг на миг замедляется.",
+      "lore": "Рваный мшистый табард рыцаря, подбитый лозой. Пахнет мокрым камнем и горной травой.",
+      "look": {
+        "shape": "shroud",
+        "mat": "blackiron",
+        "trim": "bronze",
+        "cloth": "moss",
+        "haft": "darkwood",
+        "fx": "fel",
+        "guard": "claw",
+        "pommel": "ball"
+      },
+      "boss": "sol_horned_knight",
+      "card": "r2"
+    },
+    "zb_twin_sickles": {
+      "id": "zb_twin_sickles",
+      "name": "Серпы-близнецы Ирмота",
+      "base": "twinblades",
+      "ilvl": 79,
+      "rarity": 2,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "crit"
+      ],
+      "stats": {
+        "agi": 48,
+        "crit": 1
+      },
+      "prop": "Каждый восьмой удар носителя бьёт вторым серпом следом: та же цель получает ещё один слабый удар.",
+      "lore": "Два серпа с зазубренным обухом и короткими древками в обмотках. Кромки светлые, как иней, — и всегда холодные, даже у костра.",
+      "look": {
+        "shape": "sickles",
+        "rich": 1,
+        "mat": "frost",
+        "trim": "silver",
+        "cloth": "shroud",
+        "haft": "deadwood",
+        "deco": "chains",
+        "fx": "diamond",
+        "guard": "claw",
+        "pommel": "gem",
+        "gem": "diamond"
+      },
+      "boss": "umb_twin_reaper",
+      "card": "r3"
+    },
+    "zb_reaper_mask": {
+      "id": "zb_reaper_mask",
+      "name": "Маска-оскал жнеца",
+      "base": "leather_helm",
+      "ilvl": 77,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "rogue",
+        "ranger",
+        "darkranger",
+        "reaver"
+      ],
+      "affix": [
+        "agi",
+        "vit"
+      ],
+      "stats": {
+        "agi": 20,
+        "vit": 19
+      },
+      "prop": "Враг, с которым носитель дерётся вплотную, на миг медлит с замахом, когда видит оскал.",
+      "lore": "Костяная маска с вечной ухмылкой, вшитая в острый капюшон. В прорезях глаз иногда загорается голубой огонёк — сам по себе.",
+      "look": {
+        "shape": "mask",
+        "rich": 1,
+        "mat": "bone",
+        "trim": "bone",
+        "cloth": "shroud",
+        "hide": "darkleather",
+        "haft": "darkwood",
+        "fx": "diamond",
+        "guard": "cross",
+        "pommel": "gem"
+      },
+      "boss": "umb_twin_reaper",
+      "card": "r2"
+    },
+    "zb_duelist_chain": {
+      "id": "zb_duelist_chain",
+      "name": "Цепь дуэлянта",
+      "base": "amulet",
+      "ilvl": 78,
+      "rarity": 1,
+      "fac": "umbrath",
+      "cls": [
+        "warrior",
+        "deathknight",
+        "reaver"
+      ],
+      "affix": [
+        "vit",
+        "hp"
+      ],
+      "stats": {
+        "vit": 20,
+        "hp": 220
+      },
+      "prop": "Пока носитель бьётся с одним врагом вплотную, союзники рядом получают от этого врага чуть меньше урона.",
+      "lore": "Две цепи накрест, скованные клеймом-кругом. Клеймо тёплое, будто его только что сняли с огня.",
+      "look": {
+        "shape": "medallion",
+        "rich": 1,
+        "mat": "iron",
+        "trim": "bone",
+        "cloth": "shroud",
+        "gem": "onyx",
+        "haft": "darkwood",
+        "deco": "chains",
+        "fx": "diamond",
+        "guard": "curved",
+        "pommel": "ring"
+      },
+      "boss": "umb_twin_reaper",
       "card": "r2"
     }
   }
