@@ -16,6 +16,7 @@ import { wowCfg, wowOn } from "./config";
 import { Birds, type Species } from "./birds";
 import { DmgNumbers, DMG_TEXT_OK } from "./dmgFont";
 import { BossIntro } from "./bossIntro";
+import { overlay } from "../overlay";
 import { warpIn, warpOut, warpClear, warpFrame } from "./portalWarp";
 import { CloudShadows } from "./cloudShadows";
 import { Decals } from "./decals";
@@ -192,7 +193,7 @@ export class WowHost {
     this.decals.step(surf, h.x, h.y - 1, dx / n, dy / n, this.foot++, mounted);
   }
   private watchBosses() {
-    if (this.intro?.active || this.indoor) return;
+    if (this.intro?.active || this.indoor || !overlay.bossIntro) return;
     const h = this.o.hero(), me = this.o.units().get(this.o.selfId);
     if (!me || me.dead) return;
     for (const [id, v] of this.o.units()) {

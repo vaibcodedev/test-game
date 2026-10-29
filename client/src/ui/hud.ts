@@ -634,6 +634,7 @@ export class Hud {
           ${checkRow("set-autoNames", "В толпе прятать уровень у ников", "Кроме цели, группы и раненых (авто)")}
           ${checkRow("set-crowdNums", "Чужие цифры урона в толпе приглушать")}
           ${checkRow("set-camLead", "Камера смотрит вперёд при беге", "Чуть смещается по ходу движения и не дёргается от мелких шагов")}
+          ${checkRow("set-bossIntro", "Вступление босса", "Камера показывает босса, имя на весь экран, интерфейс прячется на 5 с")}
           ${segRow("set-gearfx", GEAR_FX.setting.label, GEAR_FX.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.setting.note)}
           ${segRow("set-vfx", "Эффекты", [["full", "Полные"], ["simple", "Простые"]], "m", "Простые: без точечного света, Bloom, марева и блеска, дождь реже")}
           ${segRow("set-shadows", "Тени", [["off", "Выкл"], ["simple", "Простые"], ["dynamic", "Динамические"]], "m", "Динамические следуют за временем суток: утром длинные влево, в полдень короткие, вечером вправо")}
@@ -663,7 +664,7 @@ export class Hud {
     mute.onchange = () => sfx.setMuted(mute.checked);
     // заливку дорожки ставим после начальных значений; на input её обновляет сам rangeFill
     for (const r of [sc, ch, vol, mus]) rangeFill(r);
-    for (const key of ["selfNames", "selfBars", "names", "bars", "autoNames", "crowdNums", "camLead"] as const) {
+    for (const key of ["selfNames", "selfBars", "names", "bars", "autoNames", "crowdNums", "camLead", "bossIntro"] as const) {
       const c = q<HTMLInputElement>("#set-" + key);
       c.checked = overlay[key];
       c.onchange = () => setOverlay(key, c.checked);

@@ -40,7 +40,11 @@ export class BossBanner {
     if (o.sub) plate.append(el("p", "bi-sub", o.sub));
     root.append(plate);
     (o.parent ?? document.body).append(root);
+    // кино-режим: на время вступления интерфейс (#ui — рамки, чат, миникарта, панель умений) плавно прячется
+    BossBanner.live++; document.body.classList.add("bi-cine");
   }
+  /** Сколько плашек сейчас на экране — кино-режим снимается с последней. */
+  private static live = 0;
   /** Быстро погасить и убрать (пропуск). */
   skip() { if (this.gone) return; this.root.classList.add("out"); setTimeout(() => this.destroy(), 230); }
   destroy() {

@@ -1,7 +1,7 @@
 /** Подписи над юнитами: ники и полоски здоровья — отдельно для своего героя и для остальных. Хранится в localStorage. */
 import { GEAR_FX } from "../../../shared/gearFx";
-export type OverlayKey = "selfNames" | "selfBars" | "names" | "bars" | "autoNames" | "crowdNums" | "camLead";
-const STORE: Record<OverlayKey, string> = { selfNames: "showSelfNames", selfBars: "showSelfBars", names: "showNames", bars: "showBars", autoNames: "autoNames", crowdNums: "crowdNums", camLead: "camLead" };
+export type OverlayKey = "selfNames" | "selfBars" | "names" | "bars" | "autoNames" | "crowdNums" | "camLead" | "bossIntro";
+const STORE: Record<OverlayKey, string> = { selfNames: "showSelfNames", selfBars: "showSelfBars", names: "showNames", bars: "showBars", autoNames: "autoNames", crowdNums: "crowdNums", camLead: "camLead", bossIntro: "bossIntro" };
 function load(key: string): boolean {
   try { return localStorage.getItem(key) !== "0"; } catch { return true; }
 }
@@ -9,7 +9,7 @@ function loadOff(key: string): boolean {
   try { return localStorage.getItem(key) === "1"; } catch { return false; }
 }
 export const overlay: Record<OverlayKey, boolean> = {
-  selfNames: load(STORE.selfNames), selfBars: load(STORE.selfBars), names: load(STORE.names), bars: load(STORE.bars), autoNames: loadOff(STORE.autoNames), crowdNums: load(STORE.crowdNums), camLead: load(STORE.camLead),
+  selfNames: load(STORE.selfNames), selfBars: load(STORE.selfBars), names: load(STORE.names), bars: load(STORE.bars), autoNames: loadOff(STORE.autoNames), crowdNums: load(STORE.crowdNums), camLead: load(STORE.camLead), bossIntro: load(STORE.bossIntro),
 };
 export function setOverlay(key: OverlayKey, on: boolean) {
   overlay[key] = on;
