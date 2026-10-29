@@ -82,10 +82,11 @@ async function main() {
       await a.until(() => !!interiorAt(a.me().x, a.me().y), 2000, "герой в зале");
       assert(msgs[0]?.ph === "fade" && msgs.some((m) => m.ph === "arrive" && m.id === sol.id), `сообщения перехода: ${JSON.stringify(msgs)}`);
       assert(d(a.me(), sol.entry) < 4, "не у входа");
-      await sleep(200);
-      const bu = b.me(), au = [...b.room.state.players.values()].find((u: any) => u.name === "Прихожанин") as { x: number; y: number };
-      assert(!interiorAt(bu.x, bu.y), "второй тоже в зале");
-      assert(d(au, bu) > 2000, "второй игрок рядом с вошедшим");
+      // фильтр видимости мира (задача 76): ушедший в зал (за 2000+ px) пропадает из состояния второго; пока не пропал — он должен быть далеко
+      const au = () => [...b.room.state.players.values()].find((u: any) => u.name === "Прихожанин") as { x: number; y: number } | undefined;
+      await b.until(() => { const u = au(); return !u || d(u, b.me()) > 2000; }, 2000, "вошедший далеко от второго");
+      await b.until(() => !au(), 2000, "вошедший пропал из вида второго");
+      assert(!interiorAt(b.me().x, b.me().y), "второй тоже в зале");
     });
     await check("внутри можно ходить (клик-шаг за край карты мира принимается)", async () => {
       const goal = { x: sol.entry.x - 64, y: sol.entry.y - 40 };

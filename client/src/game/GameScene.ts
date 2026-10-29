@@ -47,7 +47,7 @@ import { aimUnit, castAim, hitUnitsOf, PICK_NEAR, pickOrder, pickReach, resolveC
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 import { removeLoot, spawnLoot } from "./lootView";
-import { INTERIORS, interiorAt, type Interior } from "../../../shared/interiors";
+import { DOOR_RANGE, INTERIORS, interiorAt, type Interior } from "../../../shared/interiors";
 import { InteriorViews } from "./interiors";
 import { TowerArchers } from "./towerArchers";
 import { FortScenes } from "./fortScenes";
@@ -1290,7 +1290,8 @@ export class GameScene extends Phaser.Scene {
     const left = Math.max(0, st.leftMs - (Date.now() - st.at));
     return st.looted && left > 0 ? `${name} · Трофеи Повелителя Пепла уже получены — новые через ${fmtLeft(left)}` : `${name} · Трофеи Повелителя Пепла доступны сегодня`;
   }
-  private talkRange(n: Npc) { return n.kind === "statue" ? STATUE_RANGE : TALK_RANGE; }
+  // дверь зала: дальность сервера (DOOR_RANGE 110) с запасом — изнутри дверь в стене в 44 px от входа, при TALK_RANGE 30 клиент вёл героя «к двери» в стену и не открывал её
+  private talkRange(n: Npc) { return n.kind === "statue" ? STATUE_RANGE : n.kind === "door" ? DOOR_RANGE - 20 : TALK_RANGE; }
   talk(n: Npc) {
     const d = Math.hypot(n.sprite.x - this.pos.x, n.sprite.y - this.pos.y);
     if (d < this.talkRange(n)) {
