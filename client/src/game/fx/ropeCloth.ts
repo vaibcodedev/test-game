@@ -87,6 +87,7 @@ export class RopeCloth {
     const w = wind(this.t), tt = this.t / 1000;
     for (const it of this.items) {
       const pts = it.rope.points;
+      if (!pts) continue; // верёвку уже уничтожили в этом кадре (сменилась текстура, сцена ушла) — в items её нет, массив кадра старый
       if (it.spr) {
         if (!it.spr.active || it.spr.texture.key !== it.key) { const sp = it.spr; this.dropMirror(sp); if (sp.active && /vfx_std-(pennant|drape)/.test(sp.texture.key)) this.mirror(sp); else if (sp.active) sp.setAlpha(1); continue; }
         this.syncMirror(it);
