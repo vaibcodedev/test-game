@@ -403,3 +403,6 @@
 .slot.empty {
   opacity: 0.35;
 }
+/* рамка постоянного питомца (задача 150): тонкая полоска опыта под здоровьем */
+.hud-pet-card.has-xp { grid-template-areas: "ico head" "ico hp" "ico xp"; }
+.hud-pet-card .bar.xp.pc-xp { grid-area: xp; --h: 3px; height: 3px; }

@@ -15,6 +15,7 @@ import type { Player } from "./Player";
 import { World } from "./World";
 import { GP } from "../../../shared/gameplay";
 import { T } from "../../../shared/texts";
+import { givePetSeal } from "./menagerie";
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const PET_MOVE_R = GP.misc.petMoveRadius;
@@ -66,32 +67,13 @@ export function grantPets(w: World, p: Player) {
   p.selfDirty = true;
 }
 
-/** Редкая находка питомца из добычи (открывает ещё не полученного платного питомца). */
+/** Редкая находка из добычи (задача 150): «Печать питомца» ещё не полученного питомца без особых условий (её можно изучить, продать или передать). */
 export function rollPetDrop(w: World, p: Player, mult: number) {
   if (Math.random() >= PET_DROP_CHANCE * mult) return;
-  const own = (p.save.pets ??= {});
-  const left = PET_IDS.filter((id) => PETS[id].price > 0 && !own[id]);
+  const own = p.save.pets ?? {};
+  const left = PET_IDS.filter((id) => PETS[id].price > 0 && !PETS[id].need && !PETS[id].faction && !own[id] && PETS[id].level <= p.level);
   if (!left.length) return;
-  const d = PETS[left[Math.floor(Math.random() * left.length)]];
-  own[d.id] = { level: 1, xp: 0 };
-  if (!p.save.pet) p.save.pet = d.id;
-  p.selfDirty = true;
-  p.send("toast", { text: T("srv.Pet.120", { name: d.name }), kind: "loot" });
-}
-
-export function buyPet(w: World, p: Player, id: string) {
-  const d = PETS[id];
-  const err = (text: string) => p.send("toast", { text, kind: "error" });
-  if (!d || p.dead) return;
-  const own = (p.save.pets ??= {});
-  if (own[id]) return err(T("srv.Pet.121"));
-  if (p.level < d.level) return err(T("srv.Pet.122", { name: d.name, level: d.level }));
-  if (d.price <= 0 || p.save.gold < d.price) return err(T("srv.bags.58"));
-  p.save.gold -= d.price;
-  own[id] = { level: 1, xp: 0 };
-  if (!p.save.pet) p.save.pet = id;
-  p.selfDirty = true;
-  p.send("toast", { text: T("srv.Pet.123", { name: d.name }), kind: "loot" });
+  givePetSeal(p, left[Math.floor(Math.random() * left.length)]);
 }
 
 export function selectPet(w: World, p: Player, id: string) {
@@ -232,7 +214,7 @@ export function mobAttackPet(w: World, m: Mob, pet: Pet) {
 }
 
 /** Удар питомца: броня моба, кража угрозы, награды идут хозяину. */
-function strike(w: World, pet: Pet, mob: Actor, mult: number, kind: "phys" | "fire" = "phys", flat = false): number {
+function strike(w: World, pet: Pet, mob: Actor, mult: number, kind: "phys" | "fire" | "poison" = "phys", flat = false): number {
   if (pet.dead || w.isDead(mob)) return 0;
   let a = pet.stats.dmg * (flat ? 1 : rnd(0.85, 1.15)) * mult;
   // арена: цель — герой соперника; удар идёт от хозяина обычным путём (броня, щиты, статистика боя)
@@ -303,6 +285,36 @@ function useSkill(w: World, pet: Pet, target: Actor | null, d: number): boolean 
           strike(w, pet, target, s.mult ?? 1);
           const ticks = Math.round((s.ms ?? 5000) / 1000);
           for (let i = 1; i <= ticks; i++) w.later(i * 1000, () => strike(w, pet, target, 0.25, "phys", true));
+        }
+        break;
+      case "dot":
+        if (target && d <= Math.max(pet.def.range, 60) + w.radiusOf(target) + 4) {
+          ok = true;
+          const kind = s.kind === "fire" ? "fire" : "poison";
+          strike(w, pet, target, s.mult ?? 1, kind);
+          const ticks = Math.round((s.ms ?? 5000) / 1000);
+          for (let i = 1; i <= ticks; i++) w.later(i * 1000, () => strike(w, pet, target, 0.3, kind, true));
+        }
+        break;
+      case "strike":
+        if (target && d <= pet.def.range + w.radiusOf(target) + 24) {
+          ok = true;
+          strike(w, pet, target, s.mult ?? 1.5);
+        }
+        break;
+      case "guard":
+        if (target && !o.dead && o.warcryUntil <= t) {
+          ok = true;
+          o.warcryUntil = t + (s.ms ?? 10000);
+          o.warcryDmg = 0;
+          o.warcryArmor = Math.round(o.derived.armor * (s.pct ?? 20) / 100);
+        }
+        break;
+      case "renew":
+        if (!o.dead && o.unit.hp < o.unit.maxHp * 0.9 && w.dist(pet, o) < 300) {
+          ok = true;
+          const ticks = Math.round((s.ms ?? 6000) / 1000);
+          for (let i = 1; i <= ticks; i++) w.later(i * 1000, () => { if (!o.dead && !pet.dead) w.heal(o, Math.round(o.unit.maxHp * (s.pct ?? 3) / 100)); });
         }
         break;
       case "bolt":

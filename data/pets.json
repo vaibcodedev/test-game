@@ -1,29 +1,99 @@
 {
+  "_doc": "Постоянные питомцы (задача 150, «Зверинец»). Питомец приходит «Печатью питомца» (seal) в сумку: до изучения её можно продать или передать, после изучения питомец в коллекции и привязан. Продаёт Смотритель зверинца (keepers) в столицах: золото price, уровень героя level, фракция faction (\"\" — любая), условия need: rep — порог репутации, marks — списываемые Знаки Полей, bosses — побеждено разных боссов (save.bossKills). tier — ярус (цвет и редкость печати). hp/dmg/armor — множители к росту growth; skills — 2 умения по роли (type: bleed, dot, strike, bolt, howl, guard, heal, renew, taunt, shell). Цены — от дохода героя (BALANCE.md «150 питомцы», модель — data/mounts.json economy: золото в час ≈ 504·L): обычный ≈ 3 ч фарма на своём уровне, необычный ≈ 5 ч, редкие и эпический — 5–8 ч золота плюс репутация, знаки или боссы. migrate — замена старых питомцев (задача 150) при загрузке героя (server/src/db.ts): уровень и опыт сохраняются.",
   "castMs": 2000,
   "resummonMs": 60000,
   "followDist": 64,
   "teleportDist": 480,
   "dropChance": 0.004,
+  "tiers": {"common": "Обычный", "uncommon": "Необычный", "rare": "Редкий", "epic": "Эпический"},
+  "roles": {"tank": "Танк", "dmg": "Урон", "air": "Урон с воздуха", "ranged": "Урон издали", "support": "Поддержка", "healer": "Лекарь", "tankpoison": "Танк и яд"},
+  "seal": {"name": "Печать питомца", "icon": "pet_seal", "desc": "Изучите печать (клик в сумке), чтобы питомец навсегда вошёл в коллекцию. До изучения печать можно продать или передать.", "price": {"common": 2000, "uncommon": 8000, "rare": 15000, "epic": 30000}},
+  "growth": {"_doc": "Характеристики питомца уровня L (shared/pets.ts petStats): здоровье = hp·(hpBase + hpPerLevel·L), урон = dmg·(dmgBase + dmgPerLevel·L)·рост урона data/balance.json pet, броня = armor·armorPerLevel·L.", "hpBase": 40, "hpPerLevel": 24, "dmgBase": 4, "dmgPerLevel": 1.7, "armorPerLevel": 1.6},
+  "leveling": {"_doc": "Опыт питомца: призванный питомец получает долю опыта хозяина за бой (data/gameplay.json rewards.petXpShare = 0,7). До следующего уровня ему нужно xpOfHero от опыта героя того же уровня — питомец догоняет хозяина в 0,7/0,5 = 1,4 раза быстрее, но не выше уровня героя. Изученный питомец начинает с уровня, с которого его продают (level).", "xpOfHero": 0.5},
+  "migrate": {"wolf": "cliff_lynx", "ember": "ash_salamander", "turtle": "ash_bear"},
+  "keepers": {
+    "aurelion": {"id": "aurelion_pets", "name": "Смотритель зверинца Велимир", "sprite": "keeper_sol", "tint": "0", "color": "#e8c070", "at": [-5, -5], "greeting": "«Зверь не служит — зверь дружит. Выбирай того, кто пойдёт с тобой и в огонь, и в пепел. Печать отдам — а дальше сами подружитесь.»"},
+    "morthaim": {"id": "morthaim_pets", "name": "Смотритель зверинца Корвин", "sprite": "keeper_umb", "tint": "0", "color": "#c0a0e8", "at": [5, -5], "greeting": "«Живые звери, мёртвые звери — все слушают того, кто держит поводок. Плати — и поводок твой.»"}
+  },
   "pets": {
-    "wolf": {
-      "name": "Волчонок", "sprite": "pet_wolf", "price": 0, "level": 5, "hp": 1.0, "dmg": 1.0, "armor": 1.0, "speed": 150, "range": 34, "attackCd": 1.2, "radius": 10,
+    "cliff_lynx": {
+      "name": "Рысь утёсов", "desc": "Поджарая серая рысь с кисточками на ушах: бьёт из засады, рвёт когтями.", "sprite": "pet_cliff_lynx", "role": "dmg", "tier": "common", "faction": "", "price": 7500, "level": 5,
+      "hp": 1.0, "dmg": 1.15, "armor": 0.9, "speed": 160, "range": 34, "attackCd": 1.1, "radius": 10,
       "skills": [
-        { "id": "bite", "name": "Укус", "type": "bleed", "cd": 8, "mult": 1.2, "ms": 5000, "desc": "Рана: кровотечение 5 с" },
-        { "id": "howl", "name": "Вой", "type": "howl", "cd": 30, "pct": 12, "ms": 10000, "desc": "+12% урона хозяину на 10 с" }
+        { "id": "lynx_claws", "name": "Рваные когти", "type": "bleed", "cd": 8, "mult": 1.2, "ms": 5000, "desc": "Удар ×1,2 и кровотечение 5 с" },
+        { "id": "lynx_pounce", "name": "Прыжок с утёса", "type": "strike", "cd": 12, "mult": 2.0, "desc": "Прыжок на цель: удар ×2" }
       ]
     },
-    "ember": {
-      "name": "Огоньёк", "sprite": "pet_ember", "price": 600, "level": 10, "hp": 0.7, "dmg": 1.1, "armor": 0.5, "speed": 130, "range": 170, "attackCd": 1.6, "radius": 9, "projectile": "fire",
+    "ash_bear": {
+      "name": "Пепельный медведь", "desc": "Огромный бурый медведь с пеплом в шерсти: принимает удары на себя.", "sprite": "pet_ash_bear", "role": "tank", "tier": "common", "faction": "", "price": 15000, "level": 10,
+      "hp": 1.9, "dmg": 0.65, "armor": 1.7, "speed": 120, "range": 36, "attackCd": 1.5, "radius": 14,
       "skills": [
-        { "id": "firebolt", "name": "Огненная стрела", "type": "bolt", "cd": 5, "mult": 2.2, "desc": "Мощный огненный выстрел" },
-        { "id": "mend", "name": "Искра жизни", "type": "heal", "cd": 20, "pct": 12, "desc": "Лечит хозяина на 12% здоровья" }
+        { "id": "bear_roar", "name": "Рёв", "type": "taunt", "cd": 12, "range": 160, "desc": "Враги рядом переключаются на медведя" },
+        { "id": "bear_hide", "name": "Пепельная шкура", "type": "shell", "cd": 25, "pct": 50, "ms": 6000, "desc": "−50% получаемого урона 6 с" }
       ]
     },
-    "turtle": {
-      "name": "Черепашка", "sprite": "pet_turtle", "price": 500, "level": 8, "hp": 1.8, "dmg": 0.6, "armor": 1.8, "speed": 105, "range": 32, "attackCd": 1.5, "radius": 10,
+    "war_raven": {
+      "name": "Боевой ворон", "desc": "Чёрный ворон в кожаном нагруднике: пикирует сверху и метит в глаза.", "sprite": "pet_war_raven", "role": "air", "tier": "common", "faction": "", "price": 22000, "level": 15,
+      "hp": 0.75, "dmg": 1.15, "armor": 0.6, "speed": 170, "range": 40, "attackCd": 1.2, "radius": 9,
       "skills": [
-        { "id": "taunt", "name": "Провокация", "type": "taunt", "cd": 12, "range": 160, "desc": "Враги рядом переключаются на питомца" },
-        { "id": "shell", "name": "Панцирь", "type": "shell", "cd": 25, "pct": 60, "ms": 6000, "desc": "-60% получаемого урона 6 с" }
+        { "id": "raven_dive", "name": "Пикирование", "type": "strike", "cd": 10, "mult": 2.2, "desc": "Удар с высоты ×2,2" },
+        { "id": "raven_peck", "name": "Клевок", "type": "bleed", "cd": 9, "mult": 1.0, "ms": 4000, "desc": "Удар и кровотечение 4 с" }
+      ]
+    },
+    "iron_boar": {
+      "name": "Бронированный кабан", "desc": "Кабан в клёпаных пластинах с окованными клыками: врывается в толпу.", "sprite": "pet_iron_boar", "role": "tank", "tier": "common", "faction": "", "price": 30000, "level": 20,
+      "hp": 1.7, "dmg": 0.75, "armor": 1.9, "speed": 135, "range": 34, "attackCd": 1.4, "radius": 12,
+      "skills": [
+        { "id": "boar_ram", "name": "Таран", "type": "taunt", "cd": 14, "range": 140, "desc": "Врывается в бой: враги рядом переключаются на кабана" },
+        { "id": "boar_bristle", "name": "Железная щетина", "type": "shell", "cd": 22, "pct": 40, "ms": 8000, "desc": "−40% получаемого урона 8 с" }
+      ]
+    },
+    "bog_lizard": {
+      "name": "Ящер трясины", "desc": "Приземистый болотный ящер в бородавчатой броне: держит врагов и травит ядом.", "sprite": "pet_bog_lizard", "role": "tankpoison", "tier": "uncommon", "faction": "", "price": 60000, "level": 25,
+      "hp": 1.6, "dmg": 0.8, "armor": 1.5, "speed": 115, "range": 34, "attackCd": 1.5, "radius": 12,
+      "skills": [
+        { "id": "lizard_hiss", "name": "Шипение", "type": "taunt", "cd": 14, "range": 150, "desc": "Враги рядом переключаются на ящера" },
+        { "id": "lizard_bite", "name": "Ядовитый укус", "type": "dot", "kind": "poison", "cd": 9, "mult": 0.8, "ms": 6000, "desc": "Удар ×0,8 и яд 6 с" }
+      ]
+    },
+    "ash_salamander": {
+      "name": "Пепельная саламандра", "desc": "Саламандра с тлеющим гребнем: плюётся пламенем издалека.", "sprite": "pet_ash_salamander", "role": "ranged", "tier": "uncommon", "faction": "", "price": 75000, "level": 30,
+      "hp": 0.7, "dmg": 1.1, "armor": 0.5, "speed": 125, "range": 170, "attackCd": 1.6, "radius": 10, "projectile": "fire",
+      "skills": [
+        { "id": "sal_spit", "name": "Плевок пламени", "type": "bolt", "cd": 5, "mult": 2.2, "desc": "Огненный выстрел ×2,2" },
+        { "id": "sal_smolder", "name": "Тлеющий жар", "type": "dot", "kind": "fire", "cd": 12, "mult": 0.6, "ms": 5000, "desc": "Поджигает цель: горение 5 с" }
+      ]
+    },
+    "sol_falcon": {
+      "name": "Сокол Сольгарда", "desc": "Белый сокол в золочёном клобуке — птица рыцарей Сольгарда: ведёт хозяина в бой.", "sprite": "pet_sol_falcon", "role": "support", "tier": "rare", "faction": "solgard", "price": 90000, "level": 35, "need": { "rep": 800 },
+      "hp": 0.8, "dmg": 0.8, "armor": 0.7, "speed": 170, "range": 40, "attackCd": 1.3, "radius": 9,
+      "skills": [
+        { "id": "falcon_cry", "name": "Клич рассвета", "type": "howl", "cd": 30, "pct": 10, "ms": 10000, "desc": "+10% урона хозяину на 10 с" },
+        { "id": "falcon_ward", "name": "Солнечный щит", "type": "guard", "cd": 30, "pct": 25, "ms": 10000, "desc": "+25% брони хозяину на 10 с" }
+      ]
+    },
+    "bone_hound": {
+      "name": "Костяная гончая Умбрата", "desc": "Гончая из чёрных костей с зелёным огнём в глазницах — псарня Умбрата.", "sprite": "pet_bone_hound", "role": "dmg", "tier": "rare", "faction": "umbrath", "price": 90000, "level": 35, "need": { "rep": 800 },
+      "hp": 1.0, "dmg": 1.2, "armor": 0.9, "speed": 160, "range": 34, "attackCd": 1.1, "radius": 11,
+      "skills": [
+        { "id": "hound_bite", "name": "Костяной укус", "type": "bleed", "cd": 8, "mult": 1.3, "ms": 5000, "desc": "Удар ×1,3 и кровотечение 5 с" },
+        { "id": "hound_howl", "name": "Вой мёртвых", "type": "howl", "cd": 30, "pct": 8, "ms": 10000, "desc": "+8% урона хозяину на 10 с" }
+      ]
+    },
+    "rune_golem": {
+      "name": "Малый рунный голем", "desc": "Каменный голем в рост человека, по плитам бегут голубые руны: стена между хозяином и врагом.", "sprite": "pet_rune_golem", "role": "tank", "tier": "rare", "faction": "", "price": 130000, "level": 45, "need": { "rep": 1500, "marks": 150 },
+      "hp": 2.0, "dmg": 0.7, "armor": 2.0, "speed": 110, "range": 36, "attackCd": 1.6, "radius": 13,
+      "skills": [
+        { "id": "golem_call", "name": "Рунный зов", "type": "taunt", "cd": 12, "range": 170, "desc": "Враги рядом переключаются на голема" },
+        { "id": "golem_skin", "name": "Каменная кожа", "type": "shell", "cd": 24, "pct": 60, "ms": 6000, "desc": "−60% получаемого урона 6 с" }
+      ]
+    },
+    "ghost_fox": {
+      "name": "Призрачный лис", "desc": "Полупрозрачный лис с тремя хвостами-огоньками: дух, что лечит раны хозяина.", "sprite": "pet_ghost_fox", "role": "healer", "tier": "epic", "faction": "", "price": 220000, "level": 55, "need": { "rep": 2500, "bosses": 15 },
+      "hp": 0.85, "dmg": 0.6, "armor": 0.7, "speed": 150, "range": 34, "attackCd": 1.4, "radius": 10,
+      "skills": [
+        { "id": "fox_light", "name": "Призрачный свет", "type": "heal", "cd": 18, "pct": 12, "desc": "Лечит хозяина на 12% здоровья" },
+        { "id": "fox_whisper", "name": "Шёпот духов", "type": "renew", "cd": 24, "pct": 3, "ms": 6000, "desc": "Лечит хозяина на 3% здоровья в секунду 6 с" }
       ]
     }
   }

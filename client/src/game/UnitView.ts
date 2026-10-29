@@ -35,7 +35,7 @@ export const RING_ALLY = Phaser.Display.Color.HexStringToColor(P.ally).color;
 const UNIT_ART = unitAnims as unknown as Record<string, { scale?: number; glow?: boolean } | undefined>;
 /** Призыв, о котором пришло событие «spawn» раньше, чем появился его вид: id → время (effects.ts). */
 export const pendingSpawn = new Map<string, number>();
-const MELEE = new Set(["guard", "pet_wolf", "pet_turtle", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ashlord"]);
+const MELEE = new Set(["guard", "pet_cliff_lynx", "pet_ash_bear", "pet_iron_boar", "pet_bog_lizard", "pet_bone_hound", "pet_rune_golem", "warrior", "deathknight", "reaver", "goblin", "skeleton", "skeleton_knight", "wolf", "boar", "spider", "drowned", "golem", "ashlord"]);
 /** Прямоугольник непрозрачных пикселей кадра (в пикселях кадра, слева сверху): считается один раз на кадр текстуры, по картинке листа. */
 const alphaCache = new Map<string, readonly [number, number, number, number] | null>();
 const sheetData = new Map<string, ImageData | null>();

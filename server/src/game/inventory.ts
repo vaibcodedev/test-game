@@ -10,6 +10,8 @@ import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
 import type { Player } from "./Player";
 import { isPart, sealMount } from "../../../shared/mounts";
 import { learnSeal } from "./stable";
+import { learnPetSeal } from "./menagerie";
+import { sealPet } from "../../../shared/pets";
 import { recordSale, sellPrice, sendPrices } from "./market";
 import type { World } from "./World";
 import { T } from "../../../shared/texts";
@@ -98,6 +100,7 @@ export function useItem(w: World, p: Player, index: unknown) {
   const base = BASE_ITEMS[it.base];
   if (base.slot !== "consumable") return equip(w, p, index);
   if (sealMount(it.base)) return learnSeal(p, index);
+  if (sealPet(it.base)) return learnPetSeal(p, index);
   if (MATERIALS[it.base] || RESOURCES[it.base] || isPart(it.base)) return;
   const dish = foodOf(it.base);
   if (dish) return eat(w, p, index, dish);

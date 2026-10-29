@@ -1,6 +1,7 @@
 /** Интерфейс поверх игры (DOM): панели, окна, чат, мини-карта, подсказки. */
 import { npcRefuses, setNpcGateToast } from "./npcGate";
 import { formatNumber, gold, goldify } from "./gold";
+import { GP } from "../../../shared/gameplay";
 import { initWindowDrag, resetWindowPositions, scaleOf } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
 import { FACTIONS, FOE_COLOR, factionColor, landLabel, zoneLand } from "../../../shared/factions";
@@ -51,8 +52,9 @@ import { plusBadge, SmithUI } from "./smith";
 import { BankUI, parseBankDrag } from "./bank";
 import { BagsUI } from "./bags";
 import { StableUI } from "./stable";
+import { MenagerieUI } from "./menagerie";
 import { MOUNTS, MOUNT_IDS, MOUNT_SOURCES, MOUNT_TIERS, TIER_COLOR, mountSprite, sealMount, isPart, PARTS, PART_PREFIX, SEAL } from "../../../shared/mounts";
-import { PETS, PET_IDS, petUnitId } from "../../../shared/pets";
+import { PETS, PET_SEAL, PET_TIERS, PET_ROLES, petNextGain, petUnitId, sealPet, canKeepPet } from "../../../shared/pets";
 import { MATERIALS } from "../../../shared/upgrade";
 import { FOOD, foodOf } from "../../../shared/food";
 import { isQuestItem, QUEST_ITEM_MSG } from "../../../shared/quests";
@@ -180,6 +182,7 @@ export class Hud {
   readonly bank: BankUI;
   readonly bags: BagsUI;
   readonly stable: StableUI;
+  readonly menagerie: MenagerieUI;
   readonly quest: QuestUI;
   readonly tp: TeleportUI;
   /** Бафы и дебафы героя (сообщение "auras"): строка значков под полосами в рамке героя; еда — тоже баф. */
@@ -312,6 +315,7 @@ export class Hud {
     this.bank = new BankUI(root, { itemTip: (it, s) => this.itemTip(it, s), tipFor: (e, h) => this.tipFor(e, h), hideTip: () => (this.tip.hidden = true), showInv: () => { if (this.wins.inv.hidden && this.ctx?.net.self) { this.wins.inv.hidden = false; this.renderSelf(this.ctx.net.self); } } });
     this.bags = new BagsUI(root, () => this.showInvWin());
     this.stable = new StableUI(root, () => this.showInvWin());
+    this.menagerie = new MenagerieUI(root, () => this.showInvWin());
     this.heroAuras.el.hidden = true;
     this.tgtAuras.el.hidden = true;
     window.setInterval(() => this.tickAuras(), 1000);
@@ -400,6 +404,7 @@ export class Hud {
       this.bank.bind(n);
       this.bags.bind(n);
       this.stable.bind(n);
+      this.menagerie.bind(n);
       this.quest.bind(n);
       this.tp.bind(n);
       this.chatLine({ from: "", text: TX("ui.hud.291", { v: skillKeys(keybinds), v2: keybinds.label("winArena", 0) }), sys: true });
@@ -586,7 +591,7 @@ export class Hud {
     const byCls: Record<string, () => boolean> = {
       "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-statue": () => this.statue.close(), "win-enc": () => this.enc.close(),
       "win-cook": () => this.cook.close(), "win-quest": () => this.quest.close(), "win-qlog": () => this.quest.closeLog(), "win-tp": () => this.tp.close(),
-      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
+      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-pets": () => this.menagerie.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-trade": () => this.trade.close(),
     };
     const cls = [...top.classList].find((c) => byCls[c]);
     if (cls) byCls[cls]();
@@ -730,7 +735,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.statue.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
+    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.statue.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.menagerie.close() || this.arena.close() || this.raid.close() || this.trade.close() || this.inspect.close();
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -806,6 +811,17 @@ export class Hud {
       + `<div class="tip-sec"><div class="d">${TX("ui.hud.547")}</div>${list || `<div class="d">—</div>`}</div>`
       + `<div class="tip-sec">${isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">Можно передать или продать</div>`}</div>${price}`;
   }
+  /** Подсказка «Печати питомца» (задача 150): какой питомец, роль и умения, можно ли изучить, передаётся ли, цена продажи. */
+  private petSealTip(it: Item, s: SelfState, bare: boolean): string {
+    const d = PETS[sealPet(it.base)!];
+    const owned = !!s.pets?.[d.id], low = s.level < d.level, foe = !canKeepPet(d, s.faction);
+    const head = `<div class="tip-head"><div class="tip-ico"><span class="cell sm r${it.rarity}"><img src="${icon(iconFor(it))}" alt=""></span><div><div class="tip-title r${it.rarity}">${esc(itemName(it))}</div><div class="tip-sub">${esc(PET_SEAL.name)} · ${RARITY_NAMES[it.rarity]}</div></div></div></div>`;
+    return head
+      + `<div class="tip-sec"><div>Питомец: <b>${esc(d.name)}</b></div><div class="d">${PET_TIERS[d.tier ?? "common"]} · ${esc(PET_ROLES[d.role ?? ""] ?? "")} · с ${d.level} уровня</div>${d.skills.map((k) => `<div class="d"><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}`
+      + `${owned ? `<div class="c-warn">Уже в коллекции — печать можно продать${isBound(it) ? "" : " или передать"}</div>` : low ? `<div class="c-bad">Нужен ${d.level} уровень</div>` : foe ? `<div class="c-bad">Только для другой фракции</div>` : ""}</div>`
+      + `<div class="tip-sec">${isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">До изучения можно передать или продать</div>`}<div>Клик — изучить: питомец навсегда войдёт в коллекцию</div></div>`
+      + (bare ? "" : `<div class="tip-foot">${TX("ui.hud.543", { it: this.priceHtml(it) })}</div>`);
+  }
   /** Подсказка предмета. bare — без цены и подсказок по клику (осмотр чужого героя, лавка встречи, окно «Герой»). */
   itemTip(it: Item, s: SelfState, equipped = false, bare = false): string {
     const b = BASE_ITEMS[it.base];
@@ -816,6 +832,7 @@ export class Hud {
       if (MATERIALS[it.base]) return lines.join("") + `<div class="d">${TX("ui.hud.549", { qty: it.qty ?? 1 })}</div><div class="d">${TX("ui.hud.550", { it: this.priceHtml(it) })}</div>`;
       // конюшня (задача 142): «Печать скакуна», Печать гладиатора и детали маунтов — сгруппированная подсказка (tip-head/tip-sec/tip-foot)
       if (sealMount(it.base) || isPart(it.base)) return this.stableItemTip(it, s, bare);
+      if (sealPet(it.base)) return this.petSealTip(it, s, bare);
       lines.push(`<div class="d">${TX("ui.hud.551", { qty: it.qty ?? 1 })}</div>`, `<div>${it.base === "hp_potion" ? "Восстанавливает 45% здоровья" : "Восстанавливает 50% маны"}</div>`, `<div class="d">${TX("ui.hud.552", { e: it.base === "hp_potion" ? "Q" : "E" })}</div>`);
     } else {
       const slot = b.slot, plus = it.plus || 0;
@@ -891,6 +908,7 @@ export class Hud {
     this.bank.update();
     this.bags.update();
     this.stable.update();
+    this.menagerie.update();
     this.lastSelfLevel = s.level;
     this.levelLook.feed(s);
     const net = this.ctx.net;
@@ -928,7 +946,7 @@ export class Hud {
       const b = el("button", `slot ${pd ? "" : "empty"}`, `<span style="font-size:26px;line-height:50px;display:block;text-align:center">${out ? "✕" : "🐾"}</span><kbd>${keybinds.label("pet", 0)}</kbd>`);
       b.onclick = () => this.ctx.togglePet?.();
       this.tipFor(b, () => this.arenaLockTip() + (pd && rec
-        ? `<div class="t">${pd.name} · ур. ${rec.level}</div><div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${TX("ui.hud.572", { label: keybinds.label("pet", 0), label2: keybinds.label("petNext", 0) })}</div>`
+        ? `<div class="t">${pd.name} · ур. ${rec.level}</div>${this.petLevelHtml(pd.id, s)}<div class="d">${pd.skills.map((k) => `${k.name}: ${k.desc}`).join("<br>")}<br>${TX("ui.hud.572", { label: keybinds.label("pet", 0), label2: keybinds.label("petNext", 0) })}</div>`
         : `<div class="t">${TX("ui.hotbar.522")}</div><div class="d">${TX("ui.hud.573")}</div>`));
       this.hotbar.petHost.append(b);
     }
@@ -1133,7 +1151,7 @@ export class Hud {
         this.tipFor(c, () => kind === "pet" ? this.petTip(id!, s) : this.mountTip(id!));
       } else {
         c.title = label;
-        c.innerHTML = `<img class="ghost" src="${icon(kind === "pet" ? "pet_wolf" : "mount_horse")}" alt="${label}">`;
+        c.innerHTML = `<img class="ghost" src="${icon(kind === "pet" ? "pet_cliff_lynx" : "mount_horse")}" alt="${label}">`;
       }
       const key = keybinds.label(kind, 0); // клавиша — в углу ячейки, как на панели умений; переназначили — подпись сменится
       if (key) c.append(Object.assign(el("kbd"), { textContent: key }));
@@ -1157,7 +1175,7 @@ export class Hud {
       if (!d) continue;
       const r = el("button", "row comp-row");
       r.setAttribute("aria-pressed", String(id === cur));
-      const sub = kind === "pet" ? `ур. ${s.pets![id].level}` : `${MOUNT_TIERS[MOUNTS[id].tier]} · ×${MOUNTS[id].speed}`;
+      const sub = kind === "pet" ? `ур. ${s.pets![id].level} · опыт ${Math.min(100, Math.floor((s.pets![id].xp / Math.max(1, s.pets![id].next)) * 100))}%` : `${MOUNT_TIERS[MOUNTS[id].tier]} · ×${MOUNTS[id].speed}`;
       r.innerHTML = `<span class="row-icon"><img src="${icon(kind === "pet" ? PETS[id].sprite : mountSprite(id))}" alt=""></span><span class="row-main"><span class="row-title">${esc(d.name)}</span><span class="row-sub">${sub}${id === cur ? " · выбран" : ""}</span></span>`;
       r.onclick = () => send(kind === "pet" ? "pet:select" : "mount:select", id);
       this.tipFor(r, () => kind === "pet" ? this.petTip(id, s) : this.mountTip(id));
@@ -1168,10 +1186,22 @@ export class Hud {
     pop.append(list, act);
     return { cells, pop };
   }
+  /** Подсказка питомца (задача 150): уровень, полоска опыта, что даст следующий уровень, умения. */
   private petTip(id: string, s: SelfState): string {
     const d = PETS[id];
     if (!d) return "";
-    return `<div class="t">${esc(d.name)} · ур. ${s.pets?.[id]?.level ?? 1}</div>${d.skills.map((k) => `<div><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}<div class="d">${TX("ui.hud.595", { label: esc(keybinds.label("pet", 0)), label2: esc(keybinds.label("petNext", 0)) })}</div>`;
+    return `<div class="t">${esc(d.name)} · ур. ${s.pets?.[id]?.level ?? 1}</div>${this.petLevelHtml(id, s)}${d.skills.map((k) => `<div><b>${esc(k.name)}</b> — ${esc(k.desc)}</div>`).join("")}<div class="d">${TX("ui.hud.595", { label: esc(keybinds.label("pet", 0)), label2: esc(keybinds.label("petNext", 0)) })}</div>`;
+  }
+  /** Опыт питомца и прирост на следующем уровне; на уровне героя — «догнал хозяина». */
+  private petLevelHtml(id: string, s: SelfState): string {
+    const d = PETS[id], r = s.pets?.[id];
+    if (!d || !r) return "";
+    const pct = Math.max(0, Math.min(100, Math.floor((r.xp / Math.max(1, r.next)) * 100)));
+    const g = petNextGain(d, r.level);
+    const capped = r.level >= s.level;
+    return `<div class="bar xp" title="Опыт питомца: ${pct}%"><i style="width:${pct}%"></i></div>`
+      + `<div class="d">Опыт ${formatNumber(r.xp)} / ${formatNumber(r.next)} · ${Math.round(GP.rewards.petXpShare * 100)}% опыта хозяина, пока питомец призван</div>`
+      + (capped ? `<div class="c-warn">Уровень хозяина — питомец растёт вместе с ним</div>` : `<div class="c-ok">На ${r.level + 1} уровне: +${g.dmg} урона, +${g.hp} здоровья, +${g.armor} брони</div>`);
   }
   private mountTip(id: string): string {
     const m = MOUNTS[id];
@@ -1239,7 +1269,7 @@ export class Hud {
         };
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!));
         // «Печать скакуна»: ПКМ тоже изучает (подсказка печати)
-        if (sealMount(it.base)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.ctx.net.send("use", { index: i }); };
+        if (sealMount(it.base) || sealPet(it.base)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.ctx.net.send("use", { index: i }); };
       }
       grid.append(c);
     });
@@ -1383,7 +1413,7 @@ export class Hud {
     const sell = this.shopTab === "sell";
     // проданное и убранное из сумки уходит из выбора
     if (sell) for (const uid of [...this.sellSel]) if (!s.inventory.some((it) => it?.uid === uid)) this.sellSel.delete(uid);
-    const sig = JSON.stringify([this.shopTab, s.gold, s.level, s.cls, s.faction, s.mounts, s.pets && Object.keys(s.pets), sell && [s.inventory, this.prices, [...this.sellSel]]]);
+    const sig = JSON.stringify([this.shopTab, s.gold, s.level, s.cls, s.faction, s.mounts, sell && [s.inventory, this.prices, [...this.sellSel]]]);
     if (sig === this.shopSig) return;
     this.shopSig = sig;
     if (this.wins.shop.matches(":hover")) this.tip.hidden = true; // вещь под курсором пересобирается, её mouseleave не придёт
@@ -1437,13 +1467,8 @@ export class Hud {
       }
       return r;
     });
-    const pets = PET_IDS.filter((id) => PETS[id].price > 0 && !s.pets?.[id]).map((id) => {
-      const d = PETS[id];
-      return row(d.sprite, d.name, esc(d.skills.map((k) => k.name).join(", ")),
-        [{ q: TX("ui.bank.378"), price: d.price, need: d.level, go: () => this.ctx.net.send("pet:buy", { id }) }], lv(d.level));
-    });
     body.replaceChildren(el("p", "npc-say", TX("ui.hud.608")), sec(TX("ui.hud.609"), potions),
-      ...(mounts.length ? [sec(TX("ui.hud.610"), mounts)] : []), ...(pets.length ? [sec(TX("ui.hud.611"), pets)] : []));
+      ...(mounts.length ? [sec(TX("ui.hud.610"), mounts)] : []));
     foot.innerHTML = `<span class="win-foot-info">${TX("ui.bags.369")}</span>${gold(s.gold)}`;
   }
 
@@ -1836,13 +1861,15 @@ export class Hud {
     if (pets.length) {
       setHidden(this.petBox, false);
       const shown = pets.slice(0, 3);
-      const sig = shown.map((pu) => `${pu.name}|${pu.level}|${pu.hp}|${pu.maxHp}|${pu.sprite}`).join(";") + `|${info.targetId ?? ""}`;
+      const sig = shown.map((pu) => `${pu.name}|${pu.level}|${pu.hp}|${pu.maxHp}|${pu.sprite}`).join(";") + `|${info.targetId ?? ""}|${JSON.stringify(this.ctx.net.self?.pets?.[this.ctx.net.self?.pet ?? ""] ?? "")}`;
       if (this.petBox.dataset.sig !== sig) {
         this.petBox.dataset.sig = sig;
         this.petBox.innerHTML = shown.map((pu) => {
           const id = [...info.units].find(([, v]) => v.u === pu)?.[0] ?? "";
           const k = Math.max(0, Math.min(1, pu.hp / Math.max(1, pu.maxHp)));
-          return `<div class="panel hud-pet-card${id === info.targetId ? " sel" : ""}" data-id="${esc(id)}"><span class="pc-ico"><img src="${icon(PET_ICON[pu.sprite] ?? pu.sprite)}" alt="" onerror="this.onerror=null;this.src='${icon("pet_wolf")}'"></span><span class="pc-head"><span class="pc-nm">${esc(pu.name)}</span><span class="pc-lv">ур. ${pu.level}</span></span><div class="bar hp"><i style="width:${k * 100}%"></i><span>${pu.hp} / ${pu.maxHp}</span></div></div>`;
+          const mine = sid && id === petUnitId(sid) ? this.ctx.net.self?.pets?.[this.ctx.net.self?.pet ?? ""] : undefined;
+          const xp = mine ? `<div class="bar xp pc-xp" title="Опыт питомца"><i style="width:${Math.min(100, Math.floor((mine.xp / Math.max(1, mine.next)) * 100))}%"></i></div>` : "";
+          return `<div class="panel hud-pet-card${xp ? " has-xp" : ""}${id === info.targetId ? " sel" : ""}" data-id="${esc(id)}"><span class="pc-ico"><img src="${icon(PET_ICON[pu.sprite] ?? pu.sprite)}" alt="" onerror="this.onerror=null;this.src='${icon("pet_cliff_lynx")}'"></span><span class="pc-head"><span class="pc-nm">${esc(pu.name)}</span><span class="pc-lv">ур. ${pu.level}</span></span><div class="bar hp"><i style="width:${k * 100}%"></i><span>${pu.hp} / ${pu.maxHp}</span></div>${xp}</div>`;
         }).join("");
       }
     } else setHidden(this.petBox, true);

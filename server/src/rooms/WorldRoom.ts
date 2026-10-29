@@ -10,7 +10,8 @@ import { xpToNext } from "../../../shared/formulas";
 import { MOUNTS } from "../../../shared/mounts";
 import { buySeal, stableBuy, stableCraft } from "../game/stable";
 import { bestArenaRating } from "../arena/gladiator";
-import { buyPet, selectPet, togglePet } from "../game/Pet";
+import { selectPet, togglePet } from "../game/Pet";
+import { keeperBuy } from "../game/menagerie";
 import { MAX_LEVEL, MERCHANT_RANGE, PLAYER_RADIUS } from "../../../shared/constants";
 import { DUNGEON_DOOR, MAP_VERSION, walkable } from "../../../shared/map";
 import { DUNGEON_ENTRY, bossLootStatus } from "../../../shared/dungeon";
@@ -615,13 +616,8 @@ export class WorldRoom extends Room<OpenWorldState> {
     });
     on("pet:toggle", (p) => togglePet(w(), p));
     on<{ id: unknown }>("pet:select", (p, m) => typeof m.id === "string" && selectPet(w(), p, m.id));
-    on<{ id: unknown }>("pet:buy", (p, m) => {
-      if (typeof m.id !== "string" || p.dead) return;
-      if (!nearMerchant(w(), p)) return p.send("toast", { text: T("srv.WorldRoom.224"), kind: "error" });
-      const no = merchantRefusal(p);
-      if (no) return p.send("toast", { text: no, kind: "error" });
-      buyPet(w(), p, m.id);
-    });
+    // Смотритель зверинца (задача 150): «Печать питомца» в сумку (server/src/game/menagerie.ts)
+    on<{ id: unknown }>("pet:buy", (p, m) => keeperBuy(w(), p, m.id));
     // маунты торговки (vendor) и конюшего (vendor, rep): печать в сумку; сборка из деталей — у конюшего (server/src/game/stable.ts)
     on<{ id: unknown }>("mount:buy", (p, m) => {
       const def = typeof m.id === "string" && Object.hasOwn(MOUNTS, m.id) ? MOUNTS[m.id] : undefined;

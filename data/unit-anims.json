@@ -83,5 +83,533 @@
     "loop": false
    }
   }
+ },
+ "pet_cliff_lynx": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_ash_bear": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_war_raven": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_iron_boar": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_bog_lizard": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_ash_salamander": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_sol_falcon": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_bone_hound": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_rune_golem": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "pet_ghost_fox": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "act": {
+    "col": 12,
+    "n": 16,
+    "fps": 10,
+    "loop": false
+   },
+   "walk": {
+    "col": 28,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 40,
+    "n": 10,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 50,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 58,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 70,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "keeper_sol": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "walk": {
+    "col": 12,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "gesture": {
+    "col": 24,
+    "n": 10,
+    "fps": 12,
+    "loop": false
+   }
+  }
+ },
+ "keeper_umb": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "walk": {
+    "col": 12,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "gesture": {
+    "col": 24,
+    "n": 10,
+    "fps": 12,
+    "loop": false
+   }
+  }
  }
 }

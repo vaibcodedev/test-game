@@ -423,7 +423,11 @@ export class GameScene extends Phaser.Scene {
 
   private addNpc(kind: NpcKind, sprite: string, at: { x: number; y: number }, name: string, color: string, tint?: number, id?: string) {
     const tex = this.textures.exists(`u_${sprite}`) ? `u_${sprite}` : "u_merchant";
-    const s = this.add.sprite(at.x, at.y, tex, 0).setOrigin(0.5, 30 / 32).setDepth(at.y);
+    // лист со своими анимациями (смотрители зверинца, data/unit-anims.json): живой покой вместо смены двух кадров
+    const live = tex === `u_${sprite}` && this.anims.exists(`${sprite}-rest-0`);
+    const fh = live ? this.textures.get(tex).get(0).height : 32;
+    const s = this.add.sprite(at.x, at.y, tex, 0).setOrigin(0.5, (fh - 2) / fh).setDepth(at.y);
+    if (live) s.play({ key: `${sprite}-rest-0`, startFrame: Math.floor(Math.random() * 12) });
     if (tint) s.setTint(tint);
     const shadow = this.add.image(at.x, at.y - 2, "fx_shadow_blob").setDepth(DEPTH.ground + 5);
     // подпись NPC (решение пользователя 2026-10-27): роль мелко над именем, имя на ступень крупнее ника героя, тень 1 px вместо обводки,
@@ -447,7 +451,7 @@ export class GameScene extends Phaser.Scene {
     }
     const markY = split ? at.y - 40 - 7 : at.y - 40;
     const mark = placeText(worldText(this, 0, 0, kind === "enc" ? (at as { icon?: string }).icon ?? "!" : npcIconFrame(kind) >= 0 ? "" : "!", "plain", { ...shadowed, fontSize: "10px", color: "#ffd84a" }).setDepth(DEPTH.top - 5), at.x, markY, 0.5, 1);
-    this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
+    if (!live) this.time.addEvent({ delay: 2600 + Math.random() * 800, loop: true, callback: () => s.active && s.setFrame(Math.random() < 0.5 ? 0 : 24) });
     this.npcExtras = [shadow, nameT, mark, ...extras];
     this.npcs.push({ sprite: s, kind, id, name });
   }
@@ -1313,6 +1317,7 @@ export class GameScene extends Phaser.Scene {
     else if (n.kind === "bank") this.hud.bank.open(n.id);
     else if (n.kind === "bags") this.hud.bags.open(n.id);
     else if (n.kind === "stable") this.hud.stable.open(n.id);
+    else if (n.kind === "pets") this.hud.menagerie.open(n.id);
     else if (n.kind === "quest") this.hud.quest.open(n.id!);
     else if (n.kind === "stone") this.hud.tp.open(this.pos);
     else if (n.kind === "door") net.send("door", { id: n.id });

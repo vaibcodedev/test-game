@@ -848,6 +848,78 @@
   },
   "zombie_digger_elite": {
    "frame": 32
+  },
+  "pet_cliff_lynx_glow": {
+   "frame": 48
+  },
+  "pet_cliff_lynx": {
+   "frame": 48
+  },
+  "pet_ash_bear_glow": {
+   "frame": 48
+  },
+  "pet_ash_bear": {
+   "frame": 48
+  },
+  "pet_war_raven_glow": {
+   "frame": 32
+  },
+  "pet_war_raven": {
+   "frame": 32
+  },
+  "pet_iron_boar_glow": {
+   "frame": 48
+  },
+  "pet_iron_boar": {
+   "frame": 48
+  },
+  "pet_bog_lizard_glow": {
+   "frame": 32
+  },
+  "pet_bog_lizard": {
+   "frame": 32
+  },
+  "pet_ash_salamander_glow": {
+   "frame": 32
+  },
+  "pet_ash_salamander": {
+   "frame": 32
+  },
+  "pet_sol_falcon_glow": {
+   "frame": 32
+  },
+  "pet_sol_falcon": {
+   "frame": 32
+  },
+  "pet_bone_hound_glow": {
+   "frame": 48
+  },
+  "pet_bone_hound": {
+   "frame": 48
+  },
+  "pet_rune_golem_glow": {
+   "frame": 48
+  },
+  "pet_rune_golem": {
+   "frame": 48
+  },
+  "pet_ghost_fox_glow": {
+   "frame": 32
+  },
+  "pet_ghost_fox": {
+   "frame": 32
+  },
+  "keeper_sol_glow": {
+   "frame": 32
+  },
+  "keeper_sol": {
+   "frame": 32
+  },
+  "keeper_umb_glow": {
+   "frame": 32
+  },
+  "keeper_umb": {
+   "frame": 32
   }
  },
  "mounts": {
@@ -34922,7 +34994,28 @@
   "war_squads_sol",
   "war_squads_umb",
   "war_xpGold_sol",
-  "war_xpGold_umb"
+  "war_xpGold_umb",
+  "pet_cliff_lynx",
+  "pseal_cliff_lynx",
+  "pet_ash_bear",
+  "pseal_ash_bear",
+  "pet_war_raven",
+  "pseal_war_raven",
+  "pet_iron_boar",
+  "pseal_iron_boar",
+  "pet_bog_lizard",
+  "pseal_bog_lizard",
+  "pet_ash_salamander",
+  "pseal_ash_salamander",
+  "pet_sol_falcon",
+  "pseal_sol_falcon",
+  "pet_bone_hound",
+  "pseal_bone_hound",
+  "pet_rune_golem",
+  "pseal_rune_golem",
+  "pet_ghost_fox",
+  "pseal_ghost_fox",
+  "pet_seal"
  ],
  "fx": [
   "arrow",

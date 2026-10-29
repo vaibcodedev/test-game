@@ -6,4 +6,4 @@ export const NPC_ICON_TEX = "npc_icons";
 const FRAMES = ["shop", "cook", "smith", "bank", "bags", "rumor", "raid", "stable", "arena"];
 
 /** Номер кадра значка службы или -1, если у службы значка нет. */
-export const npcIconFrame = (kind: string): number => FRAMES.indexOf(kind);
+export const npcIconFrame = (kind: string): number => FRAMES.indexOf(kind === "pets" ? "stable" : kind); // смотритель зверинца — значок конюшни (задача 150)

@@ -8,6 +8,7 @@ import { classFaction, type ClassId, type FactionId, type Stats } from "../../sh
 import type { Item, Slot } from "../../shared/items";
 import type { BankSave } from "../../shared/bank";
 import type { QuestSave } from "../../shared/quests";
+import { migratePets } from "../../shared/pets";
 
 export interface PlayerSave {
   cls: ClassId;
@@ -317,6 +318,8 @@ export class GameDB {
     if (!row) return null;
     const save = JSON.parse(row.data) as PlayerSave;
     save.faction ??= classFaction(save.cls);
+    // задача 150: Волчонок, Огонёк и Черепашка заменены новыми питомцами (data/pets.json migrate) — уровень и опыт переносятся, запись сразу
+    if (migratePets(save)) this.save(name, save);
     return save;
   }
 
