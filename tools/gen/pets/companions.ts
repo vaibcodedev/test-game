@@ -49,7 +49,8 @@ const num = (c: Ctx, k: string, d = 0) => ((X(c)[k] as number | undefined) ?? d)
 function eyes(c: Ctx, at: V3, sideAt: V3, col: string, lid: RGBA, glow = false, gap = 3, halo?: RGBA) {
   const shut = c.p.blink > 0.5;
   const k = shut ? "l" : glow ? "G" : "e";
-  face(c, { at, sideAt, colors: { e: hex(col), G: hex(col), l: lid, k: hex("#0c0806") }, glow: shut ? [] : ["G"], halo, down: [[k + ".".repeat(Math.max(0, gap - 1)) + k], -Math.floor(gap / 2), 0], side: [[k], 0, 0] });
+  const dots = ".".repeat(Math.max(0, gap - 1));
+  face(c, { at, sideAt, colors: { e: hex(col), G: hex(col), l: lid, b: lid, k: hex("#0c0806") }, glow: shut ? [] : ["G"], halo, down: [["b" + dots + "b", k + k + dots.slice(1) + k + k], -Math.floor(gap / 2) - (gap > 2 ? 0 : 1), -1], side: [["b.", k + k], -1, -1] });
 }
 interface Quad { body: [V3, V3][]; fur: Mat; tex?: TexFn; legs: { x: number; y: number; z: number; len: [number, number]; pole: V3; spread?: number }[]; legR: [number, number, number]; pawR: number; claws?: Mat; paw?: Mat }
 function quad(c: Ctx, q: Quad) {
@@ -60,6 +61,22 @@ function quad(c: Ctx, q: Quad) {
   const legs = legsOf(c, q.legs);
   for (const pr of legs) for (const L of pr) drawLeg4(c, L, q.fur, q.legR, { tex: q.tex, pawR: q.pawR, claws: q.claws, clawN: 3, paw: q.paw });
 }
+/** Пряди шерсти, перья, бахрома по силуэту: конусы от точки (оси корпуса) по направлению. */
+function tufts(c: Ctx, m: Mat, list: [V3, V3, number][], r = 0.6, head = false) {
+  const g = c.S.group(0.25);
+  const p = c.S.newPart();
+  for (const [a, d, L] of list) {
+    const A = head ? hp(c, a) : c.up(a);
+    const D = norm(c.rotU(d));
+    c.S.cone(g, m, A, r, add(A, mul(D, L)), 0.12, { part: p });
+  }
+}
+/** Ряд прядей вдоль хребта от y0 до y1 на высоте z(y). */
+const ridge = (y0: number, y1: number, n: number, z: (y: number) => number, len: number, back = 0.5): [V3, V3, number][] =>
+  Array.from({ length: n }, (_, k) => { const y = y0 + ((y1 - y0) * k) / (n - 1); return [[0, y, z(y)], [0, -back, 1], len * (0.8 + (0.4 * ((k * 7) % 3)) / 2)] as [V3, V3, number]; });
+/** Бахрома снизу по бокам. */
+const fringe = (y0: number, y1: number, n: number, x: number, z: number, len: number): [V3, V3, number][] =>
+  Array.from({ length: n * 2 }, (_, k) => { const sd = k % 2 ? 1 : -1, y = y0 + ((y1 - y0) * Math.floor(k / 2)) / (n - 1); return [[x * sd, y, z], [0.35 * sd, -0.2, -1], len] as [V3, V3, number]; });
 /** Челюсть: нижняя часть морды открывается на jaw; внутри — пасть и клыки. */
 function jaw(c: Ctx, m: Mat, a: V3, b: V3, r0: number, r1: number, open = 1.4) {
   const S = c.S;
@@ -88,7 +105,12 @@ function bear(c: Ctx) {
   jaw(c, ASHF, [0, 1.4, -1.4], [0, 3.4, -1.6], 1.1, 0.8, 1.2);
   S.ball(S.group(0), M_NOSE, hp(c, [0, 4.0, -0.3]), 0.6, { part: S.newPart() });
   for (const s of [1, -1]) S.ell(S.group(0.2), BEAR, hp(c, [2.2 * s, -0.6, 2.2]), [0.9, 0.5, 0.9], undefined, { part: S.newPart() });
-  eyes(c, [0, 2.4, 0.8], [1.6, 2.0, 0.8], "#ffb040", BEAR.ramp[1], true, 3, EMBER[2]);
+  S.ell(S.group(0), BEAR, hp(c, [0, 2.0, 1.2]), [2.5, 0.9, 0.7], undefined, { part: S.newPart(), tone: -0.3 });
+  for (const sd of [1, -1]) S.ball(S.group(0), m5("ухо внутри", "#1a1010", "#2e1e1a", "#44302a", "#5a423a", "#70544a"), hp(c, [2.2 * sd, -0.2, 2.3]), 0.5, { part: S.newPart() });
+  eyes(c, [0, 2.5, 0.8], [1.7, 2.0, 0.8], "#ffb040", BEAR.ramp[0], true, 3, EMBER[2]);
+  tufts(c, ASHF, ridge(5.0, -6.0, 7, (y) => 16.4 - Math.abs(y - 1.5) * 0.35, 1.6), 0.7);
+  tufts(c, BEAR, fringe(3.6, -5.6, 4, 3.4, 6.6, 1.3), 0.6);
+  tufts(c, ASHF, [[[2.6, 0.6, -0.8], [1, -0.3, -0.5], 1.5], [[-2.6, 0.6, -0.8], [-1, -0.3, -0.5], 1.5], [[0, -2.2, 1.6], [0, -1, 0.5], 1.2]], 0.6, true);
   tail(c, BEAR, [0, -7.2, 10.4], [[0, -0.8, -0.6]], [0.9, 0.6]);
 }
 // ============ 2,5. Птицы ============
@@ -127,11 +149,14 @@ function birdBody(c: Ctx, F: Mat, o: { z: number; span: number; beak: Mat; tailL
     const pw = S.newPart();
     S.cone(gw, F, root, 1.0, el, 0.8, { part: pw, tex: feather });
     S.cone(gw, F, el, 0.8, tip, 0.3, { part: pw });
+    for (let k = 0; k < 3; k++) S.cone(S.group(0), F, tip, 0.45, add(tip, c.rotU([s * (0.3 + 0.5 * k) * (1 - fold), -1.6 - 0.5 * k, -0.6 - 0.3 * k])), 0.1, { part: pw, tone: 0.2 });
     for (let k = 0; k < 4; k++) {
       const q = lerpV(el, tip, k / 3);
       S.box(S.group(0), F, add(q, c.rotU([0, -0.6, -1.0 + k * 0.1])), [0.5, 0.25, 1.3 - k * 0.15], [c.rotU([1, 0, 0]), c.rotU([0, 1, 0]), c.rotU([0, 0, 1])], 0.2, { part: pw, tone: -0.2 });
     }
   }
+  for (const k of [-1, 0, 1]) S.cone(S.group(0.2), F, add(body, add(mul(tl, 3.0), [0, 0, -0.4])), 0.5, add(body, add(mul(tl, 3.4 + o.tailL), c.rotU([k * 1.2, 0, -0.5]))), 0.15, { part: S.newPart() });
+  for (const k of [0, 1]) S.cone(S.group(0), F, add(head, c.rotU([0, -0.6, 1.2])), 0.4, add(head, c.rotU([0, -2.0 - k * 0.6, 2.0 - k * 0.6])), 0.1, { part: S.newPart() });
   for (const s of [1, -1]) S.cone(S.group(0), M_CLAW, c.up([0.7 * s, 0.4, o.z - 1.6]), 0.35, c.up([0.8 * s, 0.9 + num(c, "grab") * 1.5, o.z - 3.0 + num(c, "grab") * 0.8]), 0.2, { part: S.newPart() });
   const shut = c.p.blink > 0.5;
   const ec = shut ? F.ramp[1] : hex(o.eye);
@@ -181,7 +206,9 @@ function lynx(c: Ctx) {
     S.cone(S.group(0), LYNX_D, hp(c, [(1.7 + ear) * s, -0.6, 3.5]), 0.2, hp(c, [(1.8 + ear) * s, -0.6, 4.8]), 0.12, { part: S.newPart() });
   }
   S.ell(S.group(0), MUZZ, up([0, 5.2, 9.4]), [1.8, 1.0, 1.8], undefined, { part: S.newPart(), tex: furTex(62, 0.2) });
-  eyes(c, [0, 2.1, 0.5], [1.4, 1.7, 0.5], "#c8e040", LYNX.ramp[1], false, 3);
+  eyes(c, [0, 2.1, 0.5], [1.4, 1.7, 0.5], "#c8e040", LYNX_D.ramp[1], false, 3);
+  tufts(c, MUZZ, [[[1.2, 5.4, 8.8], [0.2, 0.6, -1], 1.4], [[-1.2, 5.4, 8.8], [-0.2, 0.6, -1], 1.4], [[0, 5.8, 9.2], [0, 0.5, -1], 1.6]], 0.6);
+  tufts(c, LYNX, fringe(3.0, -4.0, 3, 2.4, 7.2, 1.0), 0.5);
   tail(c, LYNX, [0, -6.0, 11.0], [[0, -1.0, 0.4]], [0.9, 0.8], undefined, (g, at, dir) => S.cone(g, LYNX_D, at, 0.8, add(at, mul(dir, 0.8)), 0.5, { part: S.newPart() }));
 }
 // ============ 4. Бронированный кабан ============
@@ -208,7 +235,9 @@ function aboar(c: Ctx) {
     S.cone(S.group(0), M.bone, hp(c, [1.0 * s, 3.2, -2.0]), 0.6, hp(c, [2.0 * s, 4.4, 0.4]), 0.12, { part: S.newPart() });
     S.cone(S.group(0.2), BOAR, hp(c, [1.6 * s, -0.6, 1.6]), 0.8, hp(c, [2.4 * s, -1.0, 2.6 + num(c, "ear") * 0.5]), 0.2, { part: S.newPart() });
   }
-  eyes(c, [0, 2.0, 0.6], [1.6, 1.6, 0.6], "#e04a2a", BOAR.ramp[1], true, 3);
+  eyes(c, [0, 2.0, 0.6], [1.6, 1.6, 0.6], "#e04a2a", BOAR.ramp[0], true, 3);
+  tufts(c, m5("тёмная щетина", "#0e0a08", "#1e1610", "#30241a", "#443426", "#5a4634"), [...ridge(6.0, 4.4, 3, () => 12.0, 1.6, 0.8), ...ridge(-5.0, -6.4, 2, () => 10.2, 1.2, 0.8)], 0.6);
+  tufts(c, BOAR, fringe(3.0, -5.0, 3, 3.2, 5.2, 1.0), 0.5);
   tail(c, BOAR, [0, -6.4, 9.0], [[0, -0.8, -0.8], [0.2, -0.4, -1.0]], [0.4, 0.3, 0.25]);
 }
 // ============ 6. Костяная гончая ============
@@ -229,6 +258,7 @@ function hound(c: Ctx) {
   jaw(c, BONE, [0, 1.0, -1.3], [0, 3.8, -2.0], 0.8, 0.45, 1.4);
   for (const s of [1, -1]) S.cone(S.group(0), BONE, hp(c, [1.2 * s, -0.6, 1.2]), 0.6, hp(c, [1.8 * s, -1.6, 3.0]), 0.15, { part: S.newPart() });
   eyes(c, [0, 2.0, 0.6], [1.2, 1.6, 0.6], "#a8f080", hex("#120c0e"), true, 3, GREEN[2]);
+  tufts(c, m5("рваная шкура", "#120a10", "#24142a", "#3a2244", "#55345e", "#704a7a"), fringe(2.6, -3.4, 3, 2.6, 11.4, 2.0), 0.55);
   const legs = legsOf(c, [{ x: 1.8, y: -4.4, z: 9.6, len: [4.6, 5.0], pole: [0, 1, 0.2], spread: 0.6 }, { x: 2.0, y: 3.8, z: 9.4, len: [4.4, 5.0], pole: [0, -1, 0], spread: 0.6 }]);
   for (const pr of legs) for (const L of pr) drawLeg4(c, L, BONE, [0.9, 0.7, 0.6], { pawR: 0.8, claws: M_CLAW, clawN: 3 });
   tail(c, BONE, [0, -6.0, 10.6], [[0, -1.4, -0.6], [0, -1.4, -1.0], [0, -1.0, -1.2]], [0.6, 0.5, 0.4, 0.3]);
@@ -250,7 +280,8 @@ function salamander(c: Ctx) {
   for (let k = 0; k < 6; k++) S.cone(S.group(0), M_EMBER, up([0, 3.6 - k * 1.5, 6.6]), 0.55, up([0, 3.2 - k * 1.5, 6.6 + (1.4 + (k % 2) * 0.6) * fl]), 0.15, { part: S.newPart() });
   for (const s of [1, -1]) S.ell(S.group(0.2), m5("воротник", "#2a0a06", "#561a0e", "#8a3018", "#b85424", "#e08038"), hp(c, [1.8 * s, -0.8, 0.2]), [1.4 * fl, 0.3, 1.2 * fl], [norm(c.rotU([s, -0.3, 0])), c.rotU([0, 1, 0]), c.rotU([0, 0, 1])], { part: S.newPart() });
   if (num(c, "tongue") > 0.5) S.cone(S.group(0), m5("язык", "#3a0a10", "#6a1420", "#a02a38", "#d04a5a", "#f07a88"), hp(c, [0, 2.4, -0.6]), 0.25, hp(c, [0, 4.2, -0.8]), 0.15, { part: S.newPart() });
-  eyes(c, [0, 1.9, 0.5], [1.3, 1.5, 0.5], "#ffd060", SAL.ramp[1], true, 3, EMBER[2]);
+  eyes(c, [0, 1.9, 0.5], [1.3, 1.5, 0.5], "#ffd060", SAL.ramp[0], true, 3, EMBER[2]);
+  tufts(c, SAL, fringe(3.0, -3.6, 3, 2.4, 4.2, 0.9), 0.45);
   tail(c, SAL, [0, -5.2, 4.6], [[0.6, -2.0, -1.0], [1.4, -2.0, -0.8], [1.8, -1.4, -0.4], [1.4, -1.0, 0.2]], [1.5, 1.1, 0.8, 0.5, 0.25], crackT, (g, at) => S.ball(g, M_EMBER, at, 0.6, { part: S.newPart() }));
 }
 // ============ 8. Малый рунный голем ============
@@ -271,10 +302,13 @@ function golem(c: Ctx) {
   const ph = S.newPart();
   S.box(gH, STONE, c.head, [1.9, 1.8, 1.6], [c.rotU([1, 0, 0]), c.rotU([0, 1, 0]), c.rotU([0, 0, 1])], 0.6, { part: ph, big: true });
   const eyeK = c.p.blink > 0.5 ? "g" : "G";
+  S.box(S.group(0), STONE, hp(c, [0, 1.2, 1.4]), [2.1, 0.8, 0.5], [c.rotU([1, 0, 0]), c.rotU([0, 1, 0]), c.rotU([0, 0, 1])], 0.3, { part: S.newPart(), tone: -0.3 });
+  tufts(c, m5("мох", "#0e1a0c", "#1c3018", "#2e4a26", "#466a38", "#62884c"), [[[-2.6, 0.6, 16.2], [0, 0.2, -1], 1.6], [[-1.4, 1.0, 16.4], [0, 0.3, -1], 1.2], [[-3.4, -0.6, 15.8], [-0.2, 0, -1], 1.4]], 0.5);
   face(c, { at: [0, 1.9, 0.2], sideAt: [1.2, 1.7, 0.2], colors: { G: RUNE[3], g: RUNE[1] }, glow: ["G", "g"], halo: RUNE[1], down: [[`${eyeK}g${eyeK}`], -1, 0], side: [[eyeK], 0, 0] });
   for (const i of [0, 1]) {
     drawArm(c, i, { mat: STONE, r: [1.7, 1.5, 1.7], tex: rn }, 2.0);
-    S.ell(S.group(0), STONE, add(c.sh[i], [0, 0, 0.6]), [2.0, 1.9, 1.5], undefined, { part: S.newPart() });
+    S.ell(S.group(0), STONE, add(c.sh[i], [0, 0, 0.8]), [2.4, 2.2, 1.7], undefined, { part: S.newPart(), tex: spotTex(0.12, -0.8, 41 + i) });
+    S.cone(S.group(0), MR, add(c.sh[i], [0, 0.9, 1.6]), 0.3, add(c.sh[i], [0, 1.6, 0.4]), 0.3, { part: S.newPart() });
     drawLeg(c, i, { mat: STONE, r: [1.7, 1.5, 1.5] });
     drawFoot(c, i, STONE, 2.0, 1.4, 1.2);
   }
@@ -292,6 +326,8 @@ function fox(c: Ctx) {
   jaw(c, FOX, [0, 1.2, -0.9], [0, 3.4, -1.1], 0.7, 0.3, 1.0);
   for (const s of [1, -1]) S.cone(S.group(0.2), FOX, hp(c, [1.2 * s, -0.4, 1.2]), 0.9, hp(c, [(1.9 + num(c, "ear") * 0.4) * s, -0.6, 3.8]), 0.15, { part: S.newPart() });
   eyes(c, [0, 1.8, 0.4], [1.2, 1.4, 0.4], "#e4f4ff", GHOST[1], true, 3, GHOST[2]);
+  tufts(c, FOX, [[[1.0, 4.6, 8.6], [0.3, 0.6, -1], 1.4], [[-1.0, 4.6, 8.6], [-0.3, 0.6, -1], 1.4], [[0, 5.0, 9.0], [0, 0.5, -1], 1.6]], 0.55);
+  tufts(c, FOX, [[[1.8, 0.4, -0.6], [1, -0.4, -0.4], 1.2], [[-1.8, 0.4, -0.6], [-1, -0.4, -0.4], 1.2]], 0.5, true);
   const sw = c.p.tail;
   for (const s of [1, -1]) tail(c, FOX, [0.6 * s, -5.0, 10.4], [[(1.2 + sw * 0.3) * s, -1.6, 1.0], [(1.6 + sw * 0.5) * s, -1.8, 1.6], [(1.0 + sw * 0.6) * s, -1.4, 1.6]], [1.0, 1.6, 1.4, 0.4], undefined, (g, at) => S.ball(g, M_GHOSTG, at, 0.7, { part: S.newPart() }));
   S.ball(S.group(0), M_GHOSTG, up([0, 3.6, 11.6]), 0.6 + num(c, "glowUp") * 0.4, { part: S.newPart() });
@@ -317,7 +353,8 @@ function bog(c: Ctx) {
   S.ell(gH, BOG, c.head, [2.3, 3.0, 1.6], undefined, { part: ph, big: true, tex: tx });
   jaw(c, BOG, [0, 0.0, -1.0], [0, 2.8, -1.1], 1.5, 0.8, 1.3);
   for (const s of [1, -1]) S.cone(S.group(0), MOSS, hp(c, [1.6 * s, -1.0, 0.6]), 0.5, hp(c, [2.6 * s, -2.4, 1.4]), 0.12, { part: S.newPart() });
-  eyes(c, [0, 1.8, 0.6], [1.6, 1.3, 0.6], "#c8e040", BOG.ramp[1], true, 3, GREEN[1]);
+  eyes(c, [0, 1.8, 0.6], [1.6, 1.3, 0.6], "#c8e040", BOG.ramp[0], true, 3, GREEN[1]);
+  tufts(c, MOSS, fringe(3.0, -4.0, 3, 3.4, 6.4, 1.2), 0.5);
   tail(c, BOG, [0, -5.4, 5.6], [[0.6, -2.0, -1.4], [1.4, -1.8, -1.0], [1.6, -1.2, -0.4]], [2.0, 1.4, 0.9, 0.3], tx);
 }
 void [GOLD, POISON, mix];
@@ -325,18 +362,18 @@ void [GOLD, POISON, mix];
 // =============================== анимации ===============================
 type Kind = "quad" | "bird" | "golem";
 type Atk = "bite" | "swipe" | "charge" | "spit" | "cast" | "screech" | "dive" | "slam" | "poison";
-interface Spec { scale?: number; id: string; ru: string; build: (c: Ctx) => void; kind: Kind; atk: Atk; act: string; fx: Ramp; iconView: View; spawnCol: Ramp; deathFx: "roll" | "bones" | "fall" | "dust" | "fade" }
+interface Spec { scale?: number; N?: number; id: string; ru: string; build: (c: Ctx) => void; kind: Kind; atk: Atk; act: string; fx: Ramp; iconView: View; spawnCol: Ramp; deathFx: "roll" | "bones" | "fall" | "dust" | "fade" }
 const SPECS: Spec[] = [
-  { id: "ash_bear", ru: "ПЕПЕЛЬНЫЙ МЕДВЕДЬ", build: bear, kind: "quad", atk: "swipe", act: "ВСТАЁТ НА ДЫБЫ, НЮХАЕТ ВОЗДУХ", fx: EMBER, iconView: "side", spawnCol: EMBER, deathFx: "roll" },
-  { scale: 0.84, id: "war_raven", ru: "БОЕВОЙ ВОРОН", build: raven, kind: "bird", atk: "dive", act: "ЧИСТИТ ПЕРЬЯ, КАРКАЕТ", fx: GREEN, iconView: "down", spawnCol: GREEN, deathFx: "fall" },
-  { scale: 0.84, id: "cliff_lynx", ru: "РЫСЬ УТЁСОВ", build: lynx, kind: "quad", atk: "bite", act: "САДИТСЯ, ПОВОДИТ УШАМИ, ЗЕВАЕТ", fx: EMBER, iconView: "side", spawnCol: GOLD, deathFx: "roll" },
-  { id: "iron_boar", ru: "БРОНИРОВАННЫЙ КАБАН", build: aboar, kind: "quad", atk: "charge", act: "РОЕТ ЗЕМЛЮ, ФЫРКАЕТ", fx: EMBER, iconView: "side", spawnCol: GOLD, deathFx: "roll" },
-  { scale: 0.84, id: "sol_falcon", ru: "СОКОЛ СОЛЬГАРДА", build: falcon, kind: "bird", atk: "screech", act: "РАСПРАВЛЯЕТ КРЫЛЬЯ, ОГЛЯДЫВАЕТСЯ", fx: GOLD, iconView: "down", spawnCol: GOLD, deathFx: "fall" },
-  { id: "bone_hound", ru: "КОСТЯНАЯ ГОНЧАЯ УМБРАТА", build: hound, kind: "quad", atk: "bite", act: "КЛАЦАЕТ ЧЕЛЮСТЬЮ, НАКЛОНЯЕТ ГОЛОВУ", fx: GREEN, iconView: "side", spawnCol: GREEN, deathFx: "bones" },
-  { id: "ash_salamander", ru: "ПЕПЕЛЬНАЯ САЛАМАНДРА", build: salamander, kind: "quad", atk: "spit", act: "ПРОБУЕТ ВОЗДУХ ЯЗЫКОМ, РАЗДУВАЕТ ГРЕБЕНЬ", fx: EMBER, iconView: "side", spawnCol: EMBER, deathFx: "dust" },
-  { id: "rune_golem", ru: "МАЛЫЙ РУННЫЙ ГОЛЕМ", build: golem, kind: "golem", atk: "slam", act: "РУНЫ ПУЛЬСИРУЮТ, РАЗМИНАЕТ ПЛЕЧИ", fx: RUNE, iconView: "down", spawnCol: RUNE, deathFx: "dust" },
-  { scale: 0.82, id: "ghost_fox", ru: "ПРИЗРАЧНЫЙ ЛИС", build: fox, kind: "quad", atk: "cast", act: "САДИТСЯ, ХВОСТЫ КРУЖАТ", fx: GHOST, iconView: "side", spawnCol: GHOST, deathFx: "fade" },
-  { id: "bog_lizard", ru: "ЯЩЕР ТРЯСИНЫ", build: bog, kind: "quad", atk: "poison", act: "ШИПИТ, РАЗЕВАЕТ ПАСТЬ", fx: POISON, iconView: "side", spawnCol: POISON, deathFx: "roll" },
+  { scale: 1.45, N: 48, id: "ash_bear", ru: "ПЕПЕЛЬНЫЙ МЕДВЕДЬ", build: bear, kind: "quad", atk: "swipe", act: "ВСТАЁТ НА ДЫБЫ, НЮХАЕТ ВОЗДУХ", fx: EMBER, iconView: "side", spawnCol: EMBER, deathFx: "roll" },
+  { scale: 1.0, id: "war_raven", ru: "БОЕВОЙ ВОРОН", build: raven, kind: "bird", atk: "dive", act: "ЧИСТИТ ПЕРЬЯ, КАРКАЕТ", fx: GREEN, iconView: "down", spawnCol: GREEN, deathFx: "fall" },
+  { scale: 1.0, N: 48, id: "cliff_lynx", ru: "РЫСЬ УТЁСОВ", build: lynx, kind: "quad", atk: "bite", act: "САДИТСЯ, ПОВОДИТ УШАМИ, ЗЕВАЕТ", fx: EMBER, iconView: "side", spawnCol: GOLD, deathFx: "roll" },
+  { scale: 1.15, N: 48, id: "iron_boar", ru: "БРОНИРОВАННЫЙ КАБАН", build: aboar, kind: "quad", atk: "charge", act: "РОЕТ ЗЕМЛЮ, ФЫРКАЕТ", fx: EMBER, iconView: "side", spawnCol: GOLD, deathFx: "roll" },
+  { scale: 1.0, id: "sol_falcon", ru: "СОКОЛ СОЛЬГАРДА", build: falcon, kind: "bird", atk: "screech", act: "РАСПРАВЛЯЕТ КРЫЛЬЯ, ОГЛЯДЫВАЕТСЯ", fx: GOLD, iconView: "down", spawnCol: GOLD, deathFx: "fall" },
+  { scale: 1.1, N: 48, id: "bone_hound", ru: "КОСТЯНАЯ ГОНЧАЯ УМБРАТА", build: hound, kind: "quad", atk: "bite", act: "КЛАЦАЕТ ЧЕЛЮСТЬЮ, НАКЛОНЯЕТ ГОЛОВУ", fx: GREEN, iconView: "side", spawnCol: GREEN, deathFx: "bones" },
+  { scale: 1.1, id: "ash_salamander", ru: "ПЕПЕЛЬНАЯ САЛАМАНДРА", build: salamander, kind: "quad", atk: "spit", act: "ПРОБУЕТ ВОЗДУХ ЯЗЫКОМ, РАЗДУВАЕТ ГРЕБЕНЬ", fx: EMBER, iconView: "side", spawnCol: EMBER, deathFx: "dust" },
+  { scale: 0.95, N: 48, id: "rune_golem", ru: "МАЛЫЙ РУННЫЙ ГОЛЕМ", build: golem, kind: "golem", atk: "slam", act: "РУНЫ ПУЛЬСИРУЮТ, РАЗМИНАЕТ ПЛЕЧИ", fx: RUNE, iconView: "down", spawnCol: RUNE, deathFx: "dust" },
+  { scale: 0.9, id: "ghost_fox", ru: "ПРИЗРАЧНЫЙ ЛИС", build: fox, kind: "quad", atk: "cast", act: "САДИТСЯ, ХВОСТЫ КРУЖАТ", fx: GHOST, iconView: "side", spawnCol: GHOST, deathFx: "fade" },
+  { scale: 1.15, id: "bog_lizard", ru: "ЯЩЕР ТРЯСИНЫ", build: bog, kind: "quad", atk: "poison", act: "ШИПИТ, РАЗЕВАЕТ ПАСТЬ", fx: POISON, iconView: "side", spawnCol: POISON, deathFx: "roll" },
 ];
 
 const ipx = (v: number) => Math.round(v);
@@ -535,7 +572,7 @@ function petOf(sp: Spec): Pet {
       const fr: PFrame = { p };
       if (f >= 1 && (sp.deathFx === "roll" || sp.deathFx === "bones" || sp.deathFx === "fade" || (bird && f >= 6))) {
         const ang = rad(84) * easeInOut(bird ? clamp((f - 6) / 3, 0, 1) : t);
-        fr.rigid = (sc, view) => deathRoll(sc, view === "side" ? [0, 1, 0] : [0, 1, 0], ang);
+        fr.rigid = (sc, view) => deathRoll(sc, view === "side" || sp.id !== "ash_bear" ? [0, 1, 0] : [1, 0, 0], view === "side" || sp.id !== "ash_bear" ? ang : ang * 0.8);
       }
       if (golemK && f >= 1) fr.rigid = (sc) => deathRoll(sc, [1, 0, 0], rad(-20) * t, -easeIn(clamp((f - 4) / 7, 0, 1)) * 6);
       fr.over = (o) => {
@@ -553,7 +590,7 @@ function petOf(sp: Spec): Pet {
     return Array.from({ length: n }, (_, f) => ({ p: { ...R0, flap: bird ? 0.5 + 0.5 * Math.cos(f * 1.0) : R0.flap, fold: 0, blink: f < 8 ? 1 : 0 } as XP, over: (o) => spawnFx(o, f, n, sp.spawnCol) }));
   };
   return {
-    id: sp.id, ru: sp.ru, cr, v, cam: camN(rp.N), shadow: rp.shadow, hover: bird ? 1 : 0,
+    id: sp.id, ru: sp.ru, cr, v, cam: camN(sp.N ?? rp.N), shadow: rp.shadow * ((sp.scale ?? rp.cr.scale[0]) / rp.cr.scale[0]), hover: bird ? 1 : 0,
     anims: [
       { id: "idle", ru: "ПОКОЙ", fps: 10, loop: true, frames: idle },
       { id: "act", ru: `ЖИВОЕ ДЕЙСТВИЕ — ${sp.act}`, fps: 10, loop: false, frames: act },
@@ -599,8 +636,8 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/gen/p
   const only = (process.argv.find((a) => a.startsWith("--only=")) ?? "").slice(7).split(",").filter(Boolean);
   const A = loadAssets(ROOT);
   const K = 4;
-  const W = 1800;
-  const over: Row[] = [{ h: 46, draw: (c, y) => text(c, "ПОСТОЯННЫЕ ПИТОМЦЫ · ОБЗОР ×4 · ГЕРОЙ · ПОКОЙ СПЕРЕДИ, СБОКУ, СЗАДИ · ДЕЙСТВИЕ, АТАКА, ГИБЕЛЬ · ИКОНКА 48 · В ИГРУ НЕ ВКЛЮЧЕНО", 16, y + 8, 3) }];
+  const W = 2200;
+  const over: Row[] = [{ h: 46, draw: (c, y) => text(c, "ПОСТОЯННЫЕ ПИТОМЦЫ · ФИНАЛ 3 ×4 · ГЕРОЙ | ЭСКИЗ | ФИНАЛ: СПЕРЕДИ, СБОКУ, СЗАДИ · ДЕЙСТВИЕ, АТАКА, ГИБЕЛЬ · ИКОНКА 48", 16, y + 8, 3) }];
   fs.mkdirSync(path.join(OUT_DIR, "anims"), { recursive: true });
   fs.mkdirSync(path.join(OUT_DIR, "icons"), { recursive: true });
   for (const sp of SPECS) {
@@ -617,8 +654,12 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/gen/p
     const fr = (a: string, i: number, row: number) => frameOfSheet(o.sheets.get(a)!, N, i, row);
     const atkHit = sp.atk === "spit" || sp.atk === "poison" ? 5 : sp.atk === "cast" || sp.atk === "screech" ? 6 : 4;
     for (const night of [false, true]) {
+      const rp = ROSTER.find((q) => q.id === sp.id)!;
+      const sk: Pet = { ...pet, cr: rp.cr, cam: camN(rp.N), anims: [] };
+      const skp = rest(rp.cr, pet.v, { glow: 1 });
       const items: Item[] = [{ img: heroAt(A, 0), label: "ГЕРОЙ" }];
-      [0, 2, 1].forEach((row, i) => { const f = fr("idle", 0, row); items.push({ img: f.img, emis: f.emis, shadow: pet.shadow, gap: i === 0 ? 8 : 0, label: ["ПОКОЙ ВНИЗ", "ВБОК", "ВВЕРХ"][i] }); });
+      for (const vw of ["down", "side"] as View[]) { const r = renderPet(sk, vw, { p: skp }, 0); items.push({ img: r.img, emis: r.emis, shadow: rp.shadow, gap: vw === "down" ? 8 : 0, label: vw === "down" ? "ЭСКИЗ" : "" }); }
+      [0, 2, 1].forEach((row, i) => { const f = fr("idle", 0, row); items.push({ img: f.img, emis: f.emis, shadow: pet.shadow, gap: i === 0 ? 28 : 0, label: ["ФИНАЛ ВНИЗ", "ВБОК", "ВВЕРХ"][i] }); });
       for (const [a, i, row, lab] of [["act", 8, 2, "ДЕЙСТВИЕ"], ["attack", atkHit, 2, "АТАКА"], ["death", 11, 2, "ГИБЕЛЬ"]] as [string, number, number, string][]) {
         const f = fr(a, i, row);
         items.push({ img: f.img, emis: f.emis, shadow: pet.shadow, gap: lab === "ДЕЙСТВИЕ" ? 24 : 0, label: lab });
@@ -630,7 +671,7 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/gen/p
     const Wa = 24 + 36 * 3 + 16 * N * 3 + 60;
     stackRows([{ h: 40, draw: (c, y) => text(c, `${sp.ru} · ВСЕ АНИМАЦИИ ×3 · ГЕРОЙ ДЛЯ МАСШТАБА`, 16, y + 8, 3) }, ...animRows(o, A, 3, Wa), ...animRows({ ...o, pet: { ...o.pet, anims: o.pet.anims.filter((q) => q.id === "idle" || q.id === "spawn") } }, A, 3, Wa, true)], Wa).save(path.join(OUT_DIR, "anims", `${sp.id}.png`));
   }
-  const name = only.length ? `final2-${only.join("+")}.png` : "final2.png";
+  const name = only.length ? `final3-${only.join("+")}.png` : "final3.png";
   stackRows(over, W).save(path.join(OUT_DIR, name));
   console.log(`  → tools/out/pets/${name}, tools/out/pets/anims/*.png`);
 }
