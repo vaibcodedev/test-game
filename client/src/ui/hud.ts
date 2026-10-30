@@ -75,7 +75,7 @@ import { T as TX } from "../../../shared/texts";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
 /** Иконка рамки питомца для призывов без своего значка: берём значок умения. */
-const PET_ICON: Record<string, string> = { skeleton: "sk_wl_skeletons", imp: "sk_wl_demon" };
+const PET_ICON: Record<string, string> = { skeleton: "sk_wl_skeletons", imp: "sk_wl_demon", wl_skeleton: "sk_wl_skeletons", wl_demon: "sk_wl_demon" };
 const CLASS_COLOR: Record<string, string> = {
   warrior: "#ff9a7a", mage: "#c8a0ff", ranger: "#9ae07a", healer: "#ffe9a0", rogue: "#b8a0e0",
   deathknight: "#8ad8ff", bloodweaver: "#ff6a7a", darkranger: "#9a8aff", warlock: "#9aff6a", reaver: "#e06a4a",

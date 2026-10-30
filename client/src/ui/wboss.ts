@@ -411,12 +411,13 @@ export class WbossHud {
     // ближайшее: идущее, иначе по времени; события без будущего времени (старая отметка) пропускаем
     const rows = view.events.filter((e) => e.live || e.at > sn - 1000).sort((a, b) => Number(b.live) - Number(a.live) || a.at - b.at);
     const e = rows[0];
-    this.tracker.hidden = !world;
-    if (!world) return;
+    // без событий трекер не показывается вовсе
+    this.tracker.hidden = !world || !e;
+    if (!world || !e) return;
     // босс — герб 24 px (тот же, что на карте), короткое имя («Колосс»); прочие события — значок ⚔
     const boss = e?.kind === "wboss" ? view.states.get(e.id.slice(6)) : undefined, def = boss ? WB_BY_ID[boss.s.id] : undefined;
     const nm = def ? def.name.split(" ")[0] : e?.kind === "war" ? t("tr.war") : e?.kind === "siege" ? t("tr.siege") : e?.name ?? "";
-    const label = !e ? esc(t("tr.none")) : e.live ? `<b>${esc(nm)}</b><span class="wb-tt live">${esc(t("tr.live"))}</span>` : `<b>${esc(nm)}</b><span class="wb-tt">${wbDur(e.at - sn)}</span>`;
+    const label = e.live ? `<b>${esc(nm)}</b><span class="wb-tt live">${esc(t("tr.live"))}</span>` : `<b>${esc(nm)}</b><span class="wb-tt">${wbDur(e.at - sn)}</span>`;
     const html = `<canvas class="wb-ti" width="24" height="24"></canvas>${label}`;
     if (this.tracker.dataset.h !== html) { this.tracker.dataset.h = html; this.tracker.innerHTML = html; }
     const cv = this.tracker.querySelector<HTMLCanvasElement>(".wb-ti");
