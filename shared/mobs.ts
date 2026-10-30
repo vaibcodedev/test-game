@@ -27,7 +27,7 @@ export interface MobDef {
   dmg: number;
   armor: number;
   xp: number;
-  /** Множитель золота, если он не равен xp (боссам опыт подняли под BALANCE.md, золото — прежнее). */
+  /** Множитель золота, если он не равен xp (боссам опыт подняли под docs/plan/balance.md, золото — прежнее). */
   gold?: number;
   speed: number;
   aggro: number;

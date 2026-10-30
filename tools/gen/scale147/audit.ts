@@ -1,5 +1,5 @@
 /**
- * Задача 147: аудит роста юнитов, маунтов и объектов относительно героя Б (30 px) → docs/scale-147.md (таблицы между
+ * Задача 147: аудит роста юнитов, маунтов и объектов относительно героя Б (30 px) → docs/art/scale.md (таблицы между
  * маркерами AUDIT:BEGIN/END; остальной текст документа не трогается).
  * Рост — высота непрозрачного силуэта (alpha > 40): юниты — медиана кадров покоя вида «вниз», маунты — кадр покоя,
  * объекты — вся картинка. Цели по классам — CLASSES ниже (план задачи 147).
@@ -123,8 +123,8 @@ const body = [
   `\n### Объекты (${seen.size} видов, ${Object.keys(man.objects).length} с вариантами)`, ...orows,
   `<!-- AUDIT:END -->`,
 ].join("\n");
-const doc = path.join(ROOT, "docs/scale-147.md");
+const doc = path.join(ROOT, "docs/art/scale.md");
 let text = fs.existsSync(doc) ? fs.readFileSync(doc, "utf8") : "";
 text = text.includes("<!-- AUDIT:BEGIN") ? text.replace(/<!-- AUDIT:BEGIN[\s\S]*<!-- AUDIT:END -->/, () => body) : text + "\n" + body + "\n";
 fs.writeFileSync(doc, text);
-console.log(`  аудит: юнитов ${units.length}, маунтов ${Object.keys(man.mounts ?? {}).length}, объектов ${seen.size} → docs/scale-147.md`);
+console.log(`  аудит: юнитов ${units.length}, маунтов ${Object.keys(man.mounts ?? {}).length}, объектов ${seen.size} → docs/art/scale.md`);

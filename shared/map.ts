@@ -1506,7 +1506,7 @@ function offDeck(m: WorldMap, x: number, y: number, px: number, py: number): boo
   return rel < BRIDGE_DECK_V[0] || rel > BRIDGE_DECK_V[1];
 }
 let coverBits: Uint8Array | null = null;
-/** Автотайлы берега (tools/gen/shores.ts, docs/water-shores.md): виды берега по порядку строк shores.png — суша SHORE_BIOMES[k] у жидкости SHORE_LIQUID[k]. */
+/** Автотайлы берега (tools/gen/shores.ts, docs/art/perspective.md): виды берега по порядку строк shores.png — суша SHORE_BIOMES[k] у жидкости SHORE_LIQUID[k]. */
 export const SHORE_BIOMES: number[] = [T.Grass, T.Sand, T.Forest, T.Snow, T.Ice, T.Bog, T.Ash, T.Obsidian, T.Ash, T.Obsidian, T.Snow, T.Forest, T.Bog];
 export const SHORE_LIQUID: number[] = [T.Water, T.Water, T.Water, T.Water, T.Water, T.Water, T.Water, T.Water, T.Lava, T.Lava, T.Lava, T.Lava, T.Lava];
 /** Столбцов в shores.png: 0–14 — тайлы берега, 16–30 — свес стенки в клетку ниже; SHORE_SPILL — сколько рядов свеса рисует генератор. */

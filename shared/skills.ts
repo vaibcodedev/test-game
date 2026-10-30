@@ -338,7 +338,7 @@ for (const [id, s] of Object.entries(skillData.skills as unknown as Record<strin
     ...(s.offGcd ? { offGcd: true } : {}),
   };
 }
-// reqLevel выше задан по проектной шкале 1..30 — переводим в реальный уровень 1..MAX_LEVEL (BALANCE.md)
+// reqLevel выше задан по проектной шкале 1..30 — переводим в реальный уровень 1..MAX_LEVEL (docs/plan/balance.md)
 for (const s of Object.values(SKILLS)) s.reqLevel = skillUnlockLevel(s.reqLevel);
 // прицел из data/skills_aim.json: aim и offGcd; где не задано — из target. Форма, размеры по рангу и пассивкам — shared/skillShape.ts
 const AIM = skillAim as unknown as Record<string, { aim?: SkillAim; offGcd?: boolean }>;

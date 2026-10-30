@@ -1,6 +1,6 @@
 /**
  * Добыча боссов стартовых земель (задача 136, шаг 5): data/zone-boss-loot.json против карточек data/zone-bosses.json; боссов кольца
- * (задача 139): data/ring-boss-loot.json против data/ring-bosses.json — те же правила силы, свои материалы (docs/bosses-139.md 3.2). Офлайн.
+ * (задача 139): data/ring-boss-loot.json против data/ring-bosses.json — те же правила силы, свои материалы (docs/systems/bosses.md 3.2). Офлайн.
  */
 import { assert, check, passedCount } from "./harness";
 import { BASE_ITEMS, ITEM_MODELS, UNIQUES, type ItemStatKey } from "../shared/items";

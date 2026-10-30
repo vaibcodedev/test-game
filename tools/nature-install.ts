@@ -15,7 +15,7 @@ const manifest = JSON.parse(fs.readFileSync(MAN, "utf8")) as { objects: Record<s
 let n = 0;
 for (const [id, art] of Object.entries({ ...natureGameArt(), ...floraGameArt() })) {
   const pc = art();
-  // низ кадра = основание: в нижнем ряду есть непрозрачное (контактная тень), иначе длинная тень оторвётся (docs/art-perspective.md, п. 4)
+  // низ кадра = основание: в нижнем ряду есть непрозрачное (контактная тень), иначе длинная тень оторвётся (docs/art/perspective.md, п. 4)
   let low = false;
   for (let x = 0; x < pc.w; x++) if (pc.alpha(x, pc.h - 1)) low = true;
   if (!low) throw new Error(`${id}: пустой нижний ряд кадра`);

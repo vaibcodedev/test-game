@@ -1,5 +1,5 @@
 /**
- * Примеры к docs/art-perspective.md: «неправильно | правильно» на наших объектах и схемах (уступ с лестницей, колонна, здание,
+ * Примеры к docs/art/perspective.md: «неправильно | правильно» на наших объектах и схемах (уступ с лестницей, колонна, здание,
  * обрыв, вода ниже уровня, полёт). Игру и ассеты не меняет: читает кадры из client/public/assets, рисует в tools/out/perspective/ex/,
  * монтаж с подписями — headless-браузером в tools/out/perspective/rules-example.png. Длинная тень — та же матрица, что в shadows.ts (SIMPLE).
  */
@@ -276,7 +276,7 @@ async function montage() {
   const img = (n: string) => `<img src="data:image/png;base64,${fs.readFileSync(path.join(EX, `${n}.png`)).toString("base64")}">`;
   const pair = (t: string, a: string, b: string, na: string, nb: string) => `<section><h4>${t}</h4><div class=p><figure>${img(a)}<figcaption class=bad>✗ ${na}</figcaption></figure><figure>${img(b)}<figcaption class=ok>✓ ${nb}</figcaption></figure></div></section>`;
   const one = (t: string, a: string, n: string) => `<section><h4>${t}</h4><figure>${img(a)}<figcaption class=ok>✓ ${n}</figcaption></figure></section>`;
-  const html = `<html><body><h3>Правила перспективы — примеры (docs/art-perspective.md). Красный крест — точка опоры (origin), жёлтый пунктир — клетка коллизии 32×32</h3><div class=g>
+  const html = `<html><body><h3>Правила перспективы — примеры (docs/art/perspective.md). Красный крест — точка опоры (origin), жёлтый пунктир — клетка коллизии 32×32</h3><div class=g>
   ${pair("1. Камень телепорта (наш кадр 48×80)", "ts-wrong", "ts-right", `как в игре: под основанием ${ts.pad} пустых ряда, длинная тень разворачивается от низа кадра → зазор, объект «парит»; запечённая тень косо вправо`, "кадр обрезан по основанию: опора = нижняя кромка постамента, тень и AO начинаются прямо от неё")}
   ${pair("2. Камень rock (наш кадр 32×28)", "rock-wrong", "rock-right", `пустых рядов под камнем: ${rk.pad} → тень отделена полосой травы`, "опора по основанию, 2 px AO под всей шириной")}
   ${pair("3. Фонарь lamp (наш кадр)", "lamp-wrong", "lamp-right", `пустых рядов: ${lp.pad}`, "опора по основанию")}

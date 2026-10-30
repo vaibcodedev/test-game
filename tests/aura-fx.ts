@@ -92,7 +92,7 @@ for (const k of Object.values(rules.byClass).flatMap((m) => Object.values(m))) a
 
 // каждый эффект героя (data/auras.json, поля и хуки) получает обозначение; ключи таблицы без эффекта — только зоны, общие и осознанные исключения
 const NO_AURA = new Set(["block@mage", "food", "potion", "mount", ...Object.keys(table.zones)]);
-// задача 148: dr_* — только значок в рамке (над юнитом не рисуется); silence и fear — обозначения в партии E (docs/combat-148.md §5)
+// задача 148: dr_* — только значок в рамке (над юнитом не рисуется); silence и fear — обозначения в партии E (docs/systems/combat.md §5)
 const NO_FX_YET = new Set(["silence", "fear"]);
 // war_<бонус>_<sol|umb> — бафы земли «Знамён Предела»: только значок в рамке (shared/auras.ts warAuraKey), как блюда
 for (const k of Object.keys(AURAS)) if (!k.startsWith("food_") && !k.startsWith("dr_") && warOfAura(k) === undefined && !NO_FX_YET.has(k)) assert.ok(FX_INDEX[k] !== undefined, `эффект ${k}: нет обозначения в data/aura-fx.json`);

@@ -153,7 +153,7 @@ export class Scene {
   }
 }
 
-/** Проекция проекта (docs/art-perspective.md): фронтальная косоугольная — высота 1:1, глубина ×0,4 (эллипс основания ry = 0,4·rx). */
+/** Проекция проекта (docs/art/perspective.md): фронтальная косоугольная — высота 1:1, глубина ×0,4 (эллипс основания ry = 0,4·rx). */
 export const DEPTH_K = 0.4;
 const VD: V3 = norm([0, 1, -DEPTH_K]);
 export const LIGHT: V3 = norm([-0.6, -0.35, 0.72]);
@@ -248,7 +248,7 @@ export function renderFull(sc: Scene, o: RenderOpts): Rendered {
     }
     if (mm >= 0) { const M = sc.mats[mm]; out.set(px, py, withA(M.out ?? shade(M.r[0], 0.62), M.ice ? 230 : 255)); }
   }
-  // контактная тень (docs/art-perspective.md, п. 4): след основания на земле — тёмное пятно, и 2 ряда AO сразу под нижней кромкой
+  // контактная тень (docs/art/perspective.md, п. 4): след основания на земле — тёмное пятно, и 2 ряда AO сразу под нижней кромкой
   // (альфа ≈150 и ≈65), шире на 1 px с каждой стороны, симметрично (без сдвига от света): длинная тень клиента начнётся от основания
   const sh = o.shadow ?? 1;
   const final = new PC(W, H);

@@ -1,5 +1,5 @@
 /**
- * Слои интерфейса (client/src/styles/tokens.css, --z-*; таблица — docs/STYLE_GUIDE.md 1.6a).
+ * Слои интерфейса (client/src/styles/tokens.css, --z-*; таблица — docs/art/ui-style.md 1.6a).
  * Часть 1 (без браузера): в client/src нет числовых z-index вне tokens.css (допустимы var(--z-*) и счётчик окон в ui/drag.ts); порядок токенов верный.
  * Часть 2 (браузер): магазин, сумка, стойла — клики по очереди выводят окно наверх; тост, подсказка, модалка — порядок по computed z-index и elementFromPoint.
  * Снимки → tools/out/ui-layers/*.png.

@@ -1,10 +1,10 @@
 /**
- * Сборы (задача 151, docs/world-bosses.md §2): общий Muster для рейда и мировых боссов. Встать — у Вестника в Эмберхолле
+ * Сборы (задача 151, docs/systems/bosses.md §2): общий Muster для рейда и мировых боссов. Встать — у Вестника в Эмберхолле
  * (уровень ≥ minLevel, герой жив, не занят; при faction — только своя фракция); группа входит целиком. Таймер ms от первого
  * игрока, лидер начинает раньше, при maxPlayers — сразу. Автосбор по ролям: fill — кого не хватает до состава, squads — делёж
  * большого сбора на отряды с балансом танк/лекарь/бой.
  *
- * RaidMuster (docs/raid.md §1): один сбор на сервер, обе фракции; боты добирают состав до size по недостающим ролям (WorldRoom.startRaid).
+ * RaidMuster (docs/systems/bosses.md §1): один сбор на сервер, обе фракции; боты добирают состав до size по недостающим ролям (WorldRoom.startRaid).
  */
 import type { ClassId } from "../../../shared/classes";
 import { RAID_CFG, RAID_ROLES, raidRole, roleTargets, type RaidMemberInfo, type RaidMusterMsg, type RaidRole } from "../../../shared/raid";

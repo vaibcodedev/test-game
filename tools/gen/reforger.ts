@@ -1,5 +1,5 @@
 /**
- * Лист NPC «Перековщик» (docs/transmog.md) через генератор горожан tools/gen/units.ts, без пересборки всех ассетов:
+ * Лист NPC «Перековщик» (docs/art/gear.md) через генератор горожан tools/gen/units.ts, без пересборки всех ассетов:
  * client/public/assets/units/reforger.png и запись в manifest.json. Запуск: npx tsx tools/gen/reforger.ts
  */
 import fs from "node:fs";

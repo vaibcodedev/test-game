@@ -1,7 +1,7 @@
 /**
  * NPC, патрули и камни телепорта — для слоёв Tiled. Сейчас они живут в коде и data (shared/town.ts, shared/cities.ts,
  * shared/settlements.ts, data/townfolk.json, data/patrols.json, data/world.json → roads); здесь только собираются в один список (пиксели мира).
- * В игру из Tiled пока не возвращаются (docs/tiled-guide.md: «что пока не применяется»).
+ * В игру из Tiled пока не возвращаются (docs/systems/world.md: «что пока не применяется»).
  */
 import world from "../../data/world.json";
 import PATROLS_DATA from "../../data/patrols.json";

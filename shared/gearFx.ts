@@ -1,4 +1,4 @@
-/** Отображение заточки и редкости на герое и в окнах (docs/gear-visuals.md). Данные: data/gear-fx.json. */
+/** Отображение заточки и редкости на герое и в окнах (docs/art/gear.md). Данные: data/gear-fx.json. */
 import data from "../data/gear-fx.json";
 import { LEGENDARIES } from "./legendary";
 import type { Slot } from "./items";

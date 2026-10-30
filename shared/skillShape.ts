@@ -1,5 +1,5 @@
 /**
- * Геометрия умений (задача 133, шаги 1–2; docs/aim-and-pick.md): форма и размеры по рангу и пассивкам, «куда ляжет» (placeSkill), правила модулей,
+ * Геометрия умений (задача 133, шаги 1–2; docs/systems/combat.md): форма и размеры по рангу и пассивкам, «куда ляжет» (placeSkill), правила модулей,
  * которые превью знает заранее (ruleErr: капкан, рой), и «кого заденет» (shapeHits) — одни функции для превью (client/src/game/castResolve.ts → aim.ts),
  * подсветки и сервера: server/src/game/skills.ts зовёт placeSkill до модулей классов, модули — общие помощники (leapDest, pullDest, summonSpot, trapErr,
  * wallEnds, facingOf). Препятствия: reachable — рывок до воды, деревьев и стен, rayLen — луч до первой стены (вода его не режет), behindSpot — место

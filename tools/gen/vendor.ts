@@ -74,7 +74,7 @@ const SHEETS: Record<string, string> = {
   "basic.ladder_soil": `${BASIC}/sprites/ladder-soil.png`,
   "volcano.assets": "vendor/volcano/src/volcanoe_tileset_and_assets/volcanoe_assets.png",
   "graveyard.set": "vendor/graveyard/src/Graveyard/Graveyard_Set.png",
-  // шаг 9 задачи 132: форты, мосты, поле после битвы, лагерь, кузня (выбор пользователя 2026-10-22, лицензии — CREDITS.md)
+  // шаг 9 задачи 132: форты, мосты, поле после битвы, лагерь, кузня (выбор пользователя 2026-10-22, лицензии — docs/content/credits.md)
   "fort.tiles": "vendor/craftpix-fortress-kit/src/Tileset/Tiled_Map.png",
   "bridges.set": "vendor/craftpix-bridges/src/PNG_n_Tiled/Bridges.png",
   "undead.obj": "vendor/craftpix-undead/src/PNG/Objects.png",

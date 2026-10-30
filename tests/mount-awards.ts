@@ -17,7 +17,7 @@ for (let i = 1; i < sp.length; i++) assert.ok(sp[i] > sp[i - 1], "скорост
 for (const d of Object.values(MOUNTS)) assert.equal(d.speed, MOUNT_SPEEDS[d.tier], `${d.id}: скорость по ярусу`);
 assert.equal(new Set(Object.values(MOUNTS).map((d) => d.speed)).size, 5, "ровно 5 ступеней");
 
-// ---------- цены от дохода (BALANCE.md «142 маунты»): часы игры на своём уровне в целевых рамках яруса ----------
+// ---------- цены от дохода (docs/plan/balance.md «142 маунты»): часы игры на своём уровне в целевых рамках яруса ----------
 for (const d of Object.values(MOUNTS)) {
   const h = mountHours(d), [lo, hi] = (MOUNT_ECONOMY.targets as unknown as Record<string, [number, number]>)[d.tier];
   for (const [how, v] of [["купить", h.buy], ["собрать", h.craft]] as const) if (v !== null) assert.ok(v >= lo && v <= hi, `${d.id}: ${how} за ${v.toFixed(1)} ч, цель ${lo}–${hi}`);

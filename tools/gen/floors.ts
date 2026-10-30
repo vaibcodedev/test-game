@@ -452,7 +452,7 @@ export function carpet(pc: PC, c: { x: number; y: number; w: number; h: number; 
 
 /** Бордюр-торец помоста: кромка, грань из блоков или брус, тёмный низ; тень на нижний пол. */
 export function daisFace(pc: PC, x0: number, x1: number, yb: number, h0: number, kind: "stone" | "wood", r: Ramp, trim?: RGBA) {
-  // docs/art-perspective.md §1, §7: светлая кромка 3 px сверху и торец h px вниз
+  // docs/art/perspective.md §1, §7: светлая кромка 3 px сверху и торец h px вниз
   const h = h0 + 3;
   for (let y = yb; y < yb + h; y++) for (let x = x0; x < x1; x++) {
     const ly = y - yb;

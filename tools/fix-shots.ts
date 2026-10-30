@@ -1,5 +1,5 @@
 /**
- * «Было | стало» исправления парения (docs/art-perspective.md §4): опора по основанию (manifest.foot), AO под кадрами без контакта,
+ * «Было | стало» исправления парения (docs/art/perspective.md §4): опора по основанию (manifest.foot), AO под кадрами без контакта,
  * тени анимированных знамён и оберегов, камень телепорта v2. TAG=before — снимать до пересборки ассетов (window.__perspOld выключает
  * новое в клиенте), TAG=after — после npm run assets. Утро и вечер, зум 2 и 3. MONTAGE=1 — монтаж tools/out/perspective/fix.png.
  * Порты TEST_PORT 2873 / 5273, замок tools/out/scenario.lock берёт сам.

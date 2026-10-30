@@ -48,7 +48,7 @@ const manifest = {
 };
 
 buildTileset().save(path.join(OUT, "tiles/terrain.png"));
-writeShores(); // автотайлы берега травы и песка + таблица прохода shared/shoreWalk.ts (docs/water-shores.md)
+writeShores(); // автотайлы берега травы и песка + таблица прохода shared/shoreWalk.ts (docs/art/perspective.md)
 buildWater(0).save(path.join(OUT, "tiles/water.png"));
 buildLavaGlow().save(path.join(OUT, "tiles/lava_glow.png"));
 
@@ -138,12 +138,12 @@ for (const id of scan("units")) if (!manifest.units[id]) manifest.units[id] = { 
 for (const id of scan("objects")) if (!manifest.objects[id]) manifest.objects[id] = pngSize(path.join(OUT, "objects", id + ".png"));
 for (const id of scan("icons")) if (!manifest.icons.includes(id)) manifest.icons.push(id);
 for (const id of scan("fx")) if (!manifest.fx.includes(id)) manifest.fx.push(id);
-// атлас объектов (docs/libraries.md, 3.1): после записи всех PNG объектов; без изменений — из кэша за доли секунды
+// атлас объектов (docs/plan/next.md, 3.1): после записи всех PNG объектов; без изменений — из кэша за доли секунды
 const ta = Date.now(), atl = buildObjectAtlases(OUT, Object.keys(manifest.objects));
 manifest.atlases = atl.atlases; manifest.atlasOf = atl.atlasOf;
 console.log(`[assets] атлас объектов: ${atl.atlases.length} листов, ${Object.keys(atl.atlasOf).length} кадров${atl.cached ? " (кэш)" : ""} за ${Date.now() - ta} мс`);
 
-// основания: длинная тень и глубина от настоящего основания, AO под кадрами без контакта (docs/art-perspective.md §4). Не трогаем стены,
+// основания: длинная тень и глубина от настоящего основания, AO под кадрами без контакта (docs/art/perspective.md §4). Не трогаем стены,
 // ворота (siegeView ищет их картинку по y и меняет кадры), лежащее на земле, мешки добычи, двери и арки данжа на стенах и природу nature3d (её кадры без пустых рядов, ведёт свой генератор)
 const nature = new Set(Object.keys(natureGameArt()));
 const feet = objectFeet(OUT, Object.keys(manifest.objects), (id) => nature.has(id) || GROUND_OBJECTS.has(id.split("__")[0]) || /wall|gate|^loot_|^dg_(door|port|lintel|arch|window)/.test(id));

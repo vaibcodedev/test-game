@@ -2,7 +2,7 @@
  * Слоёвая внешность героя по снаряжению: шлем, доспех (наплечники), плащ (слот cloak), сапоги и оружие рисуются
  * пиксельными слоями поверх спрайта класса. Вид зависит от типа, модели каталога (data/items.json -> look: форма, материал,
  * ткань, украшения), редкости своей детали (кайма и камень) и легендарной темы (data/legendaries.json -> look).
- * Эффекты по docs/gear-visuals.md: заточка — бирюзовый контур своей детали по ступеням +4/+7/+10 (двухпроходная отрисовка),
+ * Эффекты по docs/art/gear.md: заточка — бирюзовый контур своей детали по ступеням +4/+7/+10 (двухпроходная отрисовка),
  * легендарка — тема в зоне своей вещи; не больше 2 источников частиц и 8 частиц на героя; чужим — по настройке gearFx.
  * Координаты слоёв — в системе кадра 32x32 (голова в (16,11), плечи на y=16, ступни на y=30).
  */
@@ -53,7 +53,7 @@ const modelOf = (id: string | undefined): ItemModel | undefined => (id ? ITEM_MO
 const armorTypeOf = (m: ItemModel) => BASE_ITEMS[m.cat]?.armorType;
 /**
  * Цвета детали по модели: основной материал (латы — металл, кожа — шкура, ткань — ткань) в 4 тонах, ткань-акцент, кожа.
- * Кайма tr и камень st — по редкости своей детали (docs/gear-visuals.md 2.1): r0 — нейтральный металл и тусклый камень, r≥1 — цвет редкости.
+ * Кайма tr и камень st — по редкости своей детали (docs/art/gear.md 2.1): r0 — нейтральный металл и тусклый камень, r≥1 — цвет редкости.
  */
 function piecePal(m: ItemModel, r: number) {
   const bt = armorTypeOf(m), lk = m.look, rim = rimOf(lk, r, m.fac);
@@ -173,7 +173,7 @@ export class GearLayers {
     this.bloom?.clear().setVisible(this.glowK > 0);
     const pal = i.faction === "umbrath" ? PAL.umbrath : PAL.solgard;
     const legOf = (id: string): LegendaryDef | undefined => (id ? LEGENDARIES[id] : undefined);
-    // кайма — по редкости своей детали: легендарка оранжевая, r≥1 цвет редкости, r0 нейтральная (docs/gear-visuals.md 2.1)
+    // кайма — по редкости своей детали: легендарка оранжевая, r≥1 цвет редкости, r0 нейтральная (docs/art/gear.md 2.1)
     const trimOf = (p: Piece) => (p.leg ? RARITY_COLORS[3] : p.r >= 1 ? RARITY_COLORS[Math.min(3, p.r)] : "");
     const t = i.t;
     this.prepareFx(i, [
@@ -183,7 +183,7 @@ export class GearLayers {
       { slot: "armor", L: legOf(a.leg), plus: a.r >= 0 && !a.rag ? a.plus : 0 },
       { slot: "boots", L: legOf(b.leg), plus: b.r >= 0 && !b.rag ? b.plus : 0 },
       { slot: "cloak", L: legOf(cl.leg), plus: cl.r >= 0 ? cl.plus : 0 },
-      // кольцо и амулет: только тема легендарки (заточка на герое не рисуется, docs/gear-visuals.md 2.2)
+      // кольцо и амулет: только тема легендарки (заточка на герое не рисуется, docs/art/gear.md 2.2)
       { slot: "ring", L: legOf(rg.leg), plus: 0 },
       { slot: "amulet", L: legOf(amu.leg), plus: 0 },
     ]);
@@ -432,7 +432,7 @@ export class GearLayers {
     this.flushHidden();
   }
 
-  // ---------------- эффекты снаряжения: контур заточки, темы легендарок, лимит шума (docs/gear-visuals.md 2.2–2.4) ----------------
+  // ---------------- эффекты снаряжения: контур заточки, темы легендарок, лимит шума (docs/art/gear.md 2.2–2.4) ----------------
   /** Решает для кадра: видны ли бирюза и темы (своему — всегда, чужим — по настройке) и какие источники частиц показать. */
   private prepareFx(i: GearInput, pieces: { slot: Slot; L?: LegendaryDef; plus: number }[]) {
     ACTIVE.set(this, i.t);
@@ -1080,11 +1080,11 @@ export class GearLayers {
     else { ang = atk >= 0 ? [-95 * D, -70 * D + F * 0.25, -60 * D + F * 0.3, -85 * D][atk] : -90 * D; if (atk >= 0) hy -= [2, 1, 1, 0][atk]; }
     if (off) { ang = Math.PI - ang; hx = view === 2 ? 14 - swing : view === 0 ? 9.5 : 22.5; if (view === 2) ang = -100 * D; }
     const dx = Math.cos(ang), dy = Math.sin(ang), px = -dy, py = dx;
-    // модель каталога: локальный спрайт архетипа, повёрнутый в руку; без свечения (docs/gear-visuals.md 2.1)
+    // модель каталога: локальный спрайт архетипа, повёрнутый в руку; без свечения (docs/art/gear.md 2.1)
     const wg = view === 1 ? this.back : this.front; // со спины оружие в руке за телом и плащом: виден клинок сбоку
     if (wm && !L) { this.g = wg; this.blitSprite(weaponSprite(wm, wr), hx, hy, dx, dy); return; }
     const pulse = this.themeOn ? 0.75 + 0.25 * Math.sin(t / 150 + i.seed) : 0.9;
-    // длина клинка не зависит от заточки (docs/gear-visuals.md 2.2)
+    // длина клинка не зависит от заточки (docs/art/gear.md 2.2)
     // легендарка: клинок длиннее с каждым ярусом (+3…+7), look.blade = long — ещё +4 (docs: _doc.tierLook)
     const len = Math.min(18, (WLEN[wb] ?? 14) + (L ? 3 + L.ti + (L.look.blade === "long" ? 4 : 0) : wr * 1.5)); // не длиннее роста героя
     this.g = wg;
@@ -1225,7 +1225,7 @@ export class GearLayers {
 
   /**
    * Шлем по модели: архетип (look.shape) — силуэт, материал — палитра модели, кайма и камень — по редкости шлема.
-   * Свечения, пульсации и машущих крыльев нет; нимб у обычных моделей — обруч (docs/gear-visuals.md 2.1).
+   * Свечения, пульсации и машущих крыльев нет; нимб у обычных моделей — обруч (docs/art/gear.md 2.1).
    */
   private helmetModel(md: ItemModel, r: number, pal: typeof PAL.solgard, cx: number, view: number, bob: number, t: number, seed: number) {
     const up = view === 1, side = view === 2, y = bob, lk = md.look, p = piecePal(md, r), M = p.m, sh = lk.shape;

@@ -117,7 +117,7 @@ function hay(): PC {
   for (let i = 0; i < 7; i++) { const sx = x + 1 + Math.floor(hash01(i, 1, 5) * (w + 6)), sy = y + Math.floor(hash01(i, 2, 5) * 3) - 4; pc.set(sx, sy, STRAW[4]); pc.set(sx + 1, sy - 1, STRAW[3]); }
   return finish(pc);
 }
-/** Указатель (32×64): столб-бревно на каменной пятке (след на земле, docs/art-perspective.md §3), три доски-стрелки с толщиной. */
+/** Указатель (32×64): столб-бревно на каменной пятке (след на земле, docs/art/perspective.md §3), три доски-стрелки с толщиной. */
 function signpost(): PC {
   const pc = new PC(40, 64), cx = 18, base = 60;
   shadowBox(pc, cx - 6, cx + 6, base, depth(4), 50);

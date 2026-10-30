@@ -146,7 +146,7 @@ export class Hud {
   private chatLog = el("div", "log");
   private chatInput = el("input");
   private toasts = el("div", "toasts");
-  /** Строка ошибок над панелью (docs/controls.md, раздел 10). */
+  /** Строка ошибок над панелью (docs/systems/combat.md, раздел 10). */
   private errLine = el("div", "errline");
   private itip = el("div", "interact-tip");
   private itipText = "";
@@ -913,7 +913,7 @@ export class Hud {
       if (isBound(it)) lines.push(`<div class="${bare ? "d" : "warn"}">${TX("ui.hud.560")}</div>`);
       if (it.legendary && LEGENDARIES[it.legendary]) lines.push(`<div class="legend">★ ${esc(LEGENDARIES[it.legendary].desc)}</div>`, `<div class="lore">${esc(LEGENDARIES[it.legendary].lore)}</div>`);
       if (it.unique) lines.push(`<div class="lore">${esc(UNIQUES[it.unique].lore)}</div>`);
-      // перековка: наложенный вид другой вещи (docs/transmog.md); сила — своя
+      // перековка: наложенный вид другой вещи (docs/art/gear.md); сила — своя
       if (it.appearance) lines.push(`<div class="fx theme c-r${it.appearance.rarity}">${TX("ui.transmog.lookOf", { name: esc(it.appearance.name) })}</div>`);
       if (!equipped) {
         const cur = s.equip[slot];

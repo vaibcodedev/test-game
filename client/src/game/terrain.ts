@@ -185,7 +185,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     const img = makeImage(o);
     objs.push(img);
     // основание кадра (manifest.foot, tools/gen/object-feet.ts): опора — нижняя кромка основания, а не низ кадра с пустыми рядами;
-    // картинка на карте остаётся на месте, длинная тень и глубина — от основания (иначе объект «парит», docs/art-perspective.md §4)
+    // картинка на карте остаётся на месте, длинная тень и глубина — от основания (иначе объект «парит», docs/art/perspective.md §4)
     const oid = img.type === "Image" ? objId(img as Phaser.GameObjects.Image) : null;
     const old = (window as unknown as { __perspOld?: boolean }).__perspOld; // снимки «было» (tools/fix-shots.ts)
     const foot = oid && !old && !WALL_KINDS.has(o.kind) ? objFoot(oid) : 0;

@@ -146,7 +146,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
     // ---------- Клирик ----------
     case "cl_radiance": {
       // конец луча посчитал placeSkill (общий с превью): до первой стены (rayLen), как стрела и топор — вода и деревья луч не режут
-      // (решение пользователя, docs/aim-and-pick.md); точка — как есть, модуль её не пересчитывает
+      // (решение пользователя, docs/systems/combat.md); точка — как есть, модуль её не пересчитывает
       const e = { x: c.ax, y: c.ay };
       c.ok(); castAnim();
       u.dir = dirTo(e.x - u.x, e.y - u.y);

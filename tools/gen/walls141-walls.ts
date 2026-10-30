@@ -836,7 +836,7 @@ function brokenLeaves(c: PC, look: Look, cx: number, aw: number, ay: number, spr
   for (let i = 0; i < 8; i++) { const x = cx - aw + Math.floor(hash01(i, seed, 8) * aw * 2), y = by - 2 + Math.floor(hash01(i, seed, 9) * 5); c.rect(x, y, 2, 2, look.stone[3]); c.set(x, y, look.stone[5]); }
 }
 
-// ---------------- частокол поселений (правки 3, docs/walls-141.md: как в LPC — торцы-спилы, столбец спилов по бокам, угловой столб) ----------------
+// ---------------- частокол поселений (правки 3, docs/art/perspective.md: как в LPC — торцы-спилы, столбец спилов по бокам, угловой столб) ----------------
 /** Бревно частокола в 3/4: тело-цилиндр (свет слева), кора с продольными бороздами, сверху торец-спил эллипсом с кольцами;
  *  у Умбрата на части брёвен — кованый шип из торца. top — верх торца, bottom — низ бревна. */
 function log(c: PC, look: Look, x0: number, w: number, top: number, bottom: number, seed: number, o: { fresh?: boolean; broken?: boolean; spike?: boolean; ry?: number } = {}) {

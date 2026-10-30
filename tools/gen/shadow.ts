@@ -35,7 +35,7 @@ export const shadowCallCount = () => calls;
 export function shadowFoot(c: PC, fp: Pt[], h: number) {
   calls++;
   // в кадре — только контактная тень (AO): след, расширенный на 1 px в стороны и на 1,5 px вниз, симметрично — без сдвига по солнцу
-  // (длинную тень в нужную сторону рисует клиент по времени суток, client/src/game/shadows.ts; docs/art-perspective.md §4). SHADOW_LONG=1 — старая длинная
+  // (длинную тень в нужную сторону рисует клиент по времени суток, client/src/game/shadows.ts; docs/art/perspective.md §4). SHADOW_LONG=1 — старая длинная
   const long = process.env.SHADOW_LONG === "1", s = Math.max(4, Math.min(12, h * 0.3));
   const poly = long ? hull([...fp.map(([x, y]): Pt => [x, y + 1]), ...fp.map(([x, y]): Pt => [x + s, y + s * 0.45])])
     : hull([...fp.map(([x, y]): Pt => [x - 1, y]), ...fp.map(([x, y]): Pt => [x + 1, y]), ...fp.map(([x, y]): Pt => [x, y + 1.5])]);

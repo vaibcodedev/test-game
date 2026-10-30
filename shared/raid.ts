@@ -1,5 +1,5 @@
 /**
- * Рейд «Рогатый Рыцарь Хаоса» (задача 114, docs/raid.md): данные data/raid.json, карта цитадели, роли, точки сбора и
+ * Рейд «Рогатый Рыцарь Хаоса» (задача 114, docs/systems/bosses.md): данные data/raid.json, карта цитадели, роли, точки сбора и
  * сообщения клиент ⇄ сервер. Логика боя — server/src/raid/ (director, chaosKnight, ai, chatter, rewards, muster), комната — RaidRoom.
  */
 import data from "../data/raid.json";

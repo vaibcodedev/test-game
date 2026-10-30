@@ -284,7 +284,7 @@ function frameOf(d: Def, t: number): PC {
   [FX, FY] = d.fire;
   const pc = new PC(d.w, d.h);
   d.ground(pc, t);
-  // основание (без огня): по нему — пятно тени 60 % ширины и контактная AO (docs/art-perspective.md §4: 2 ряда ≈150/65, шире на 1 px)
+  // основание (без огня): по нему — пятно тени 60 % ширины и контактная AO (docs/art/perspective.md §4: 2 ряда ≈150/65, шире на 1 px)
   const m = new PC(d.w, d.h); d.back(m, t); d.front(m, t);
   const low = new Int16Array(d.w).fill(-1);
   for (let x = 0; x < d.w; x++) for (let y = d.h - 1; y >= 0; y--) { const c = m.get(x, y)!; if (c[3] > 200) { low[x] = y; break; } }

@@ -1,6 +1,6 @@
 /**
  * Объём городской мелочи Эмберхолла (задача 1030): здание распорядителя арены (врата), стойка оружия, чучело, факел, наковальня.
- * Перекрывает одноимённые плоские кадры (подключено в volume-world.ts → WORLD_VOLUME). Правила: docs/art-perspective.md.
+ * Перекрывает одноимённые плоские кадры (подключено в volume-world.ts → WORLD_VOLUME). Правила: docs/art/perspective.md.
  */
 import {
   PC, hash01, ramp, type RGBA, type Tex,

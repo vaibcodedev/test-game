@@ -358,6 +358,18 @@
       "fps": 12,
       "loop": true
     },
+    "idle2": {
+      "name": "Покой: переступ (редко, раз в несколько секунд)",
+      "frames": 16,
+      "fps": 12,
+      "loop": false
+    },
+    "stance": {
+      "name": "Боевая стойка (между ударами)",
+      "frames": 16,
+      "fps": 12,
+      "loop": true
+    },
     "walk": {
       "name": "Ходьба",
       "frames": 12,
@@ -375,6 +387,7 @@
       "frames": 12,
       "fps": 16,
       "loop": false,
+      "hit": 7,
       "props": [
         "sword",
         "shield"
@@ -385,6 +398,7 @@
       "frames": 12,
       "fps": 16,
       "loop": false,
+      "hit": 8,
       "props": [
         "great"
       ]
@@ -446,6 +460,7 @@
       "frames": 14,
       "fps": 16,
       "loop": false,
+      "hit": 7,
       "props": [
         "great"
       ],

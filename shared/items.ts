@@ -81,7 +81,7 @@ export interface Item {
   /** id модели из data/items.json: имя, иконка и вид на герое. Без неё предмет — обычная база. */
   model?: string;
   /**
-   * Перековка (docs/transmog.md): наложенный вид другой вещи того же слота и семейства — рисуется на герое и в иконке вместо своего.
+   * Перековка (docs/art/gear.md): наложенный вид другой вещи того же слота и семейства — рисуется на герое и в иконке вместо своего.
    * Характеристики, заточка (и её свечение) и свойства легендарки остаются от настоящей вещи. У «Оболочки» (SHELL_BASE) — вид, который она несёт.
    */
   appearance?: Appearance;
@@ -132,7 +132,7 @@ const STR_MELEE: ClassId[] = ["warrior", "deathknight", "reaver"];
 const CASTERS: ClassId[] = ["mage", "healer", "warlock", "bloodweaver"];
 const LEATHER: ClassId[] = ["rogue", "ranger", "darkranger", "reaver"];
 /**
- * Базы (категории) экипировки. Кривая основных характеристик — BALANCE.md «Экипировка»: урон и броня линейны по ilvl,
+ * Базы (категории) экипировки. Кривая основных характеристик — docs/plan/balance.md «Экипировка»: урон и броня линейны по ilvl,
  * двуручное ≈ ×1.5 одноручного, у кожи и ткани часть брони заменена главной характеристикой.
  */
 export const BASE_ITEMS: Record<string, BaseItem> = {
@@ -166,11 +166,11 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   plate_boots: { id: "plate_boots", name: "Сабатоны", typeName: "Латные сапоги", slot: "boots", icon: "plate_boots", armorType: "plate", classes: STR_MELEE, roll: statRoll(IR.rolls.plate_boots) },
   leather_boots: { id: "leather_boots", name: "Ботинки", typeName: "Кожаные сапоги", slot: "boots", icon: "leather_boots", armorType: "leather", classes: LEATHER, roll: statRoll(IR.rolls.leather_boots) },
   cloth_boots: { id: "cloth_boots", name: "Туфли", typeName: "Тканевые туфли", slot: "boots", icon: "cloth_boots", armorType: "cloth", classes: CASTERS, roll: statRoll(IR.rolls.cloth_boots) },
-  // плащ: отдельный слот, общий для всех классов; броня + аффиксы модели (BALANCE.md «Экипировка»)
+  // плащ: отдельный слот, общий для всех классов; броня + аффиксы модели (docs/plan/balance.md «Экипировка»)
   cloak: { id: "cloak", name: "Плащ", typeName: "Плащ", slot: "cloak", icon: "cloak", roll: statRoll(IR.rolls.cloak) },
   ring: { id: "ring", name: "Кольцо", typeName: "Кольцо", slot: "ring", icon: "ring", roll: () => ({}) },
   amulet: { id: "amulet", name: "Амулет", typeName: "Амулет", slot: "amulet", icon: "amulet", roll: statRoll(IR.rolls.amulet) },
-  // «Оболочка» перековки (docs/transmog.md, data/transmog.json shell): не складывается, иконка — вида, который несёт
+  // «Оболочка» перековки (docs/art/gear.md, data/transmog.json shell): не складывается, иконка — вида, который несёт
   [SHELL_BASE]: { id: SHELL_BASE, name: tmData.shell.name, typeName: tmData.shell.typeName, slot: "consumable", icon: "tm_shell", price: tmData.shell.price },
   hp_potion: { id: "hp_potion", name: "Зелье здоровья", slot: "consumable", icon: "potion_red", price: 15, stack: 20 },
   mp_potion: { id: "mp_potion", name: "Зелье маны", slot: "consumable", icon: "potion_blue", price: 15, stack: 20 },
@@ -190,7 +190,7 @@ export const isTwoHanded = (baseId: string | undefined): boolean => !!baseId && 
 /** Параметры вида модели: силуэт (архетип), материалы (ключи ITEM_PALETTES), украшение, богатство отделки. */
 export interface ModelLook {
   shape: string; mat: string; trim: string; cloth?: string; hide?: string; gem?: string; haft?: string;
-  /** Богатство отделки по ярусу 0..3 (больше рун, камней, инкрустации). Свечения нет: docs/gear-visuals.md 2.1. */
+  /** Богатство отделки по ярусу 0..3 (больше рун, камней, инкрустации). Свечения нет: docs/art/gear.md 2.1. */
   deco?: string; rich?: number; fx?: string; guard?: string; pommel?: string;
 }
 export interface ItemModel {
@@ -424,7 +424,7 @@ export function iconFor(it: Pick<Item, "base" | "stats" | "uid" | "rarity" | "un
   // особая добыча боссов стартовых земель — своих иконок пока нет: иконка базы в цвете редкости
   if (it.unique && !Object.hasOwn(ZB_ITEMS, it.unique)) return "uq_" + it.unique;
   if (it.legendary) return "lg_" + it.legendary;
-  // модель: своя иконка на каждую редкость (камень и кайма в цвете редкости, docs/gear-visuals.md 2.1)
+  // модель: своя иконка на каждую редкость (камень и кайма в цвете редкости, docs/art/gear.md 2.1)
   if (it.model && ITEM_MODELS[it.model]) return `im_${it.model}_${Math.max(0, Math.min(2, it.rarity | 0))}`; // легендарной редкости у моделей нет — r3 рисуется как r2
   const b = BASE_ITEMS[it.base];
   // расходники и ресурсы (зелья, еда, материалы, добыча биомов) рисуются одной иконкой без вариантов
@@ -531,7 +531,7 @@ export function rollRarity(rand: () => number, bonus = 0): Rarity {
 
 /**
  * Как вещь выглядит на герое: у перекованной — база, редкость, модель, легендарка и лохмотья вида донора;
- * заточка (plus) — всегда своя (свечение заточки от настоящей вещи, docs/transmog.md).
+ * заточка (plus) — всегда своя (свечение заточки от настоящей вещи, docs/art/gear.md).
  */
 export function lookItem(it: Item): Item {
   const ap = it.appearance;

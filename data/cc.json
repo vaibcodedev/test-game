@@ -1,5 +1,5 @@
 {
-  "_doc": "Контроль (задача 148, docs/combat-148.md §2). Читает shared/cc.ts, механика — server/src/game/effects.ts applyCc. Виды: stun (ни шага, ни атаки, ни умений), root (нет шага), slow (скорость −pct%), silence (нет умений, атака и бег можно; сбивает каст), fear (бег прочь без управления; ломается уроном). Длительность: ms × (1 − ccReduce) × pvp.ccMult (герой по герою, data/balance.json) × DR, затем потолок maxMs[вид] (0 — без потолка). Потолки и DR — только для контроля от героя; механики мобов и боссов (коконы, удержания) — по своим данным, у обычных мобов по героям жёсткий контроль не дольше mobMaxMs.",
+  "_doc": "Контроль (задача 148, docs/systems/combat.md §2). Читает shared/cc.ts, механика — server/src/game/effects.ts applyCc. Виды: stun (ни шага, ни атаки, ни умений), root (нет шага), slow (скорость −pct%), silence (нет умений, атака и бег можно; сбивает каст), fear (бег прочь без управления; ломается уроном). Длительность: ms × (1 − ccReduce) × pvp.ccMult (герой по герою, data/balance.json) × DR, затем потолок maxMs[вид] (0 — без потолка). Потолки и DR — только для контроля от героя; механики мобов и боссов (коконы, удержания) — по своим данным, у обычных мобов по героям жёсткий контроль не дольше mobMaxMs.",
   "maxMs": { "stun": 4000, "root": 4000, "fear": 4000, "silence": 4000, "slow": 0 },
   "maxSlowPct": 70,
   "_drDoc": "DR (убывающая длительность) — только герой по герою, у каждой категории (drCat: вид → категория) свой счётчик: dr — доли по счёту наложений (0 — иммунитет: эффект не ложится, всплывает «Иммунитет»), сброс через drMs после ПОСЛЕДНЕГО наложения в категории. Замедления — мягкая шкала slowDr по сроку, не до иммунитета. PvE (моб по герою, герой по мобу) — без DR. Категория \"\" — вид без DR. Партия B (2026-10-29): DR корней и мягкий slowDr включены вместе с выходами классов (рывки breaksRoot, очищения) — tools/balance/sim.ts.",
@@ -19,7 +19,7 @@
   "eliteMult": 1,
   "silenceLockMs": 3000,
   "mobMaxMs": 2000,
-  "_skillsDoc": "Поля контроля умений по id (партия B, docs/combat-148.md §3): usableInStun, usableInSilence, breaksRoot, cleanse: [виды], immune: { kinds, ms }. Код читает через ccOf(id) (shared/cc.ts).",
+  "_skillsDoc": "Поля контроля умений по id (партия B, docs/systems/combat.md §3): usableInStun, usableInSilence, breaksRoot, cleanse: [виды], immune: { kinds, ms }. Код читает через ccOf(id) (shared/cc.ts).",
   "skills": {
     "tp_divine": { "usableInStun": true, "cleanse": ["stun", "root", "slow", "silence", "fear"] },
     "charge": { "breaksRoot": true, "cleanse": ["slow"] },

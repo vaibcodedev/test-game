@@ -1,5 +1,5 @@
 /**
- * Единая модель ворот (docs/dungeon-doors.md): проходы данжа (server/src/rooms/DungeonRoom.ts), ворота фортов и городов (shared/siege.ts: gateBlocks).
+ * Единая модель ворот (docs/art/perspective.md): проходы данжа (server/src/rooms/DungeonRoom.ts), ворота фортов и городов (shared/siege.ts: gateBlocks).
  * Состояние ворот — closed / opening / open / closing / broken, ход t 0..1; правила: кто может открыть, когда проходимо, шаг автомата по времени.
  */
 export type GateKind = "doors" | "portcullis" | "leaves";

@@ -3,7 +3,7 @@
  *  стиль frosty_rabbid (tools/gen/icons-frosty.ts). Сами картинки game-icons в игру не попадают.
  *  Кэш SVG: vendor/game-icons/<автор>/<имя>.svg (vendor/ в .gitignore). Скачать недостающее: npx tsx tools/gen/icons-svg.ts fetch
  *  (скачивает всё, что названо в SHAPES генератора, с raw.githubusercontent.com/game-icons/icons).
- *  Автор каждой использованной формы пишется в data/skill-icons.json (поле author) и в CREDITS.md. */
+ *  Автор каждой использованной формы пишется в data/skill-icons.json (поле author) и в docs/content/credits.md. */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 export const GI_DIR = path.join(ROOT, "vendor/game-icons");
 const RAW = "https://raw.githubusercontent.com/game-icons/icons/master/";
 
-/** Имена авторов для CREDITS.md (по папке репозитория). */
+/** Имена авторов для docs/content/credits.md (по папке репозитория). */
 export const GI_AUTHORS: Record<string, string> = {
   lorc: "Lorc", delapouite: "Delapouite", skoll: "Skoll", "caro-asercion": "Caro Asercion", sbed: "sbed", "viscious-speed": "Viscious Speed",
   "john-colburn": "John Colburn", felbrigg: "Felbrigg", willdabeast: "Willdabeast", "carl-olsen": "Carl Olsen", cathelineau: "Cathelineau",

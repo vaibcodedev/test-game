@@ -1,5 +1,5 @@
 /**
- * Античит, шаг 1 (docs/anticheat-research.md, «Рекомендация»): транспорт (maxPayload, Origin, лимит соединений с IP),
+ * Античит, шаг 1 (docs/systems/architecture.md, «Рекомендация»): транспорт (maxPayload, Origin, лимит соединений с IP),
  * версия клиента в onAuth, журнал подозрительного (таблица suspicion). Схемы сообщений — rooms/schemas.ts (проверка в makeOn).
  * Настройки — data/anticheat.json.
  */

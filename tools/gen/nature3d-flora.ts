@@ -387,7 +387,7 @@ export function oreCrystal(v: number, kind: "amethyst" | "ice" | "obsidian"): PC
 }
 
 // ---------- скалы-уступы ----------
-/** Уступ высотой 24 px (docs/art-perspective.md): плоский верх с травой/снегом/песком/пеплом, вертикальные стены со слоями, обломки у подножия. */
+/** Уступ высотой 24 px (docs/art/perspective.md): плоский верх с травой/снегом/песком/пеплом, вертикальные стены со слоями, обломки у подножия. */
 export function ledge(v: number, top: "grass" | "snow" | "sand" | "ash"): PC {
   const wallR = top === "sand" ? RK.sand : top === "ash" ? RK.ash : top === "snow" ? RK.snowRock : RK.stone;
   const capR = top === "grass" ? R.leaf : top === "snow" ? RK.snow : top === "sand" ? RK.sandDark : ramp("#2a2428", "#3e3636", "#5a504c", "#766a62", "#948676");

@@ -63,7 +63,7 @@ export function objImageData(scene: Phaser.Scene, id: string): ImageData {
 let feet: Record<string, number> = {}, aos: Record<string, [number, number]> = {};
 /** Из manifest.json (BootScene): основания кадров объектов. */
 export function setObjFeet(m: FeetManifest) { feet = { ...(m.foot ?? {}) }; aos = { ...(m.ao ?? {}) }; }
-/** Сколько рядов кадра ниже настоящего основания (там только контактная тень): опора, длинная тень и глубина — от основания (docs/art-perspective.md §4). */
+/** Сколько рядов кадра ниже настоящего основания (там только контактная тень): опора, длинная тень и глубина — от основания (docs/art/perspective.md §4). */
 export const objFoot = (id: string): number => feet[id] ?? 0;
 /** Основание без запечённой контактной тени: [x0, x1] в пикселях кадра — клиент подкладывает AO. */
 export const objAo = (id: string): [number, number] | undefined => aos[id];

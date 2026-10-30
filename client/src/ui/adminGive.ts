@@ -317,7 +317,7 @@ export class GiveTab {
   }
 
   // ---------- выдача ----------
-  /** Задача 147: весь сет героя «Б» (data/items-147.json, поле set) — выдать и надеть получателю; вид — консоль heroB.self(), docs/hero147-live.md. */
+  /** Задача 147: весь сет героя «Б» (data/items-147.json, поле set) — выдать и надеть получателю; вид — консоль heroB.self(), docs/art/gear.md. */
   private giveSet147(set: string) {
     const who = this.st.who.trim();
     if (!who) return this.status("Кому выдать?", "warn");

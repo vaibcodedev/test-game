@@ -1,4 +1,4 @@
-/** Очередь умений, подход к цели и коды отказов (задача 115, шаг 7–8; docs/controls.md, разделы 6 и 10). */
+/** Очередь умений, подход к цели и коды отказов (задача 115, шаг 7–8; docs/systems/combat.md, разделы 6 и 10). */
 import { Anim } from "../../../shared/protocol";
 import { TILE } from "../../../shared/constants";
 import { lineClear } from "../../../shared/map";

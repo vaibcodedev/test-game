@@ -71,6 +71,6 @@ await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, worker));
 
 const sum = (k: "passed" | "failed" | "known" | "xpass") => results.reduce((n, r) => n + r[k], 0);
 const badFiles = results.filter((r) => r.code !== 0);
-console.log(`\nИТОГ: проверок ${sum("passed")} ok, ${sum("failed")} fail, ${sum("known")} known-fail (баги из docs/tests-map.md), ${sum("xpass")} xpass; файлов ${results.length}, с ошибками ${badFiles.length}`);
+console.log(`\nИТОГ: проверок ${sum("passed")} ok, ${sum("failed")} fail, ${sum("known")} known-fail (баги из docs/process/tests.md), ${sum("xpass")} xpass; файлов ${results.length}, с ошибками ${badFiles.length}`);
 if (badFiles.length) console.log("Файлы с ошибками:\n  " + badFiles.map((r) => r.file).join("\n  "));
 process.exit(badFiles.length ? 1 : 0);

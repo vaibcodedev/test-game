@@ -451,7 +451,7 @@ async function shots() {
   return { list, stillDiff: diff };
 }
 
-/** Неподвижные кадры для сравнения картинки (атлас объектов, docs/libraries.md 3.1): город и лес, день, без юнитов и надписей,
+/** Неподвижные кадры для сравнения картинки (атлас объектов, docs/plan/next.md 3.1): город и лес, день, без юнитов и надписей,
  *  покачивание и анимации остановлены; пиксели холста (renderer.snapshot, без DOM) → tools/out/atlas/<--stills-name|label>-<место>-z<zoom>.png. */
 async function stills() {
   const dir = path.resolve("tools/out/atlas"), name = arg("stills-name") ?? LABEL, out: string[] = [];

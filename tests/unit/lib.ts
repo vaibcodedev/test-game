@@ -27,7 +27,7 @@ export async function test(name: string, fn: () => unknown | Promise<unknown>) {
   }
 }
 
-/** Тест на найденный баг (docs/tests-map.md, «Найденные баги»): id — номер бага, bug — что не так. */
+/** Тест на найденный баг (docs/process/tests.md, «Найденные баги»): id — номер бага, bug — что не так. */
 export async function knownFail(id: string, name: string, bug: string, fn: () => unknown | Promise<unknown>) {
   try {
     await fn();

@@ -1,4 +1,4 @@
-/** Перековка (docs/transmog.md): снять оболочку, наложить, неверное семейство, нехватка золота, бой, передача, сброс, перезаход. Запуск: npx tsx tests/transmog.ts */
+/** Перековка (docs/art/gear.md): снять оболочку, наложить, неверное семейство, нехватка золота, бой, передача, сброс, перезаход. Запуск: npx tsx tests/transmog.ts */
 import { applyPrice, extractPrice, REFORGER } from "../shared/transmog";
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
 

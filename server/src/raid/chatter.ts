@@ -1,5 +1,5 @@
 /**
- * Перекличка ботов рейда (docs/raid.md §5): на событие шины Director отвечает один бот подходящей роли строкой из
+ * Перекличка ботов рейда (docs/systems/bosses.md §5): на событие шины Director отвечает один бот подходящей роли строкой из
  * data/raid.json bots.lines (подстановка {name}). Общий откат и откат одного события — bots.cooldown.
  */
 import { RAID, type RaidRole } from "../../../shared/raid";

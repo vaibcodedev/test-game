@@ -1,5 +1,5 @@
 {
-  "_doc": "Рейд «Рогатый Рыцарь Хаоса» (задача 114). Структура — docs/raid.md §9, код — shared/raid.ts, server/src/raid/. Время — мс (ms, Ms) или с (every, first, cast), радиусы — px, mult — от урона удара босса (m.stats.dmg), pctHp — доля максимального здоровья цели (мимо брони, щиты поглощают). HP, урон и броня босса — data/balance.json bosses.chaos_knight. Подстановки в {скобках}: {name} — имя, {n} — номер фазы, {item} — трофей.",
+  "_doc": "Рейд «Рогатый Рыцарь Хаоса» (задача 114). Структура — docs/systems/bosses.md §9, код — shared/raid.ts, server/src/raid/. Время — мс (ms, Ms) или с (every, first, cast), радиусы — px, mult — от урона удара босса (m.stats.dmg), pctHp — доля максимального здоровья цели (мимо брони, щиты поглощают). HP, урон и броня босса — data/balance.json bosses.chaos_knight. Подстановки в {скобках}: {name} — имя, {n} — номер фазы, {item} — трофей.",
   "raid": {
     "tauntMul": 1.1, "tauntFlat": 500, "tauntRangeDefault": 260, "tauntRangePad": 20, "hurryGatherMs": 3000, "healFxMs": 900,
     "_doc": "Сбор (musterMs от первого игрока, сразу при maxPlayers), этапы комнаты: gather → pull → fight → end (endMs), вайп — подъём через wipeMs, попыток attempts. Боты добирают состав до size. Откат добычи lockoutH часов. Воскрешение: канал channelMs в range px от тела, встаёт с hpPct здоровья; заряды base + perPhase за фазу, не больше max.",

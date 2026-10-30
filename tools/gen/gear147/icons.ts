@@ -11,7 +11,7 @@ import { GD, SLOTS, ramp, setOf, type CrestId, type Slot } from "./gear";
 import { PARAM_STYLES, helmGeo, helmModel } from "./helm";
 import { armorShape, bodyMat } from "./armorgeo";
 
-/** маска с масштабом вокруг центра поля: формы рисуются в координатах 48×48, предмет вписывается в ~80 % (docs/icon-style.md, п. 8) */
+/** маска с масштабом вокруг центра поля: формы рисуются в координатах 48×48, предмет вписывается в ~80 % (docs/art/icons.md, п. 8) */
 let KS = 0.82; const CC = 24;
 class SMz extends Mz {
   private f(p: V2): V2 { return [CC + (p[0] - CC) * KS, CC + (p[1] - CC) * KS]; }
@@ -468,7 +468,7 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
   void rarity;
   return render(p);
 }
-/** Ячейка: фон-градиент и рамка по редкости (docs/icon-style.md, п. 10), предмет поверх. */
+/** Ячейка: фон-градиент и рамка по редкости (docs/art/icons.md, п. 10), предмет поверх. */
 const CELL: Record<string, { bg: C; frame: C; corner?: C }> = {
   common: { bg: hx("#3a4250"), frame: hx("#7a8494") },
   rare: { bg: hx("#1e3a66"), frame: hx("#4a8ae0") },

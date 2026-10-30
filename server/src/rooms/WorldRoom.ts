@@ -692,7 +692,7 @@ export class WorldRoom extends Room<OpenWorldState> {
       p.send("toast", { text: T("srv.bank.65"), kind: "error" });
       return true;
     };
-    // осмотр игрока (docs/gear-visuals.md, раздел 4): цель в зоне видимости, не чаще раза в секунду
+    // осмотр игрока (docs/art/gear.md, раздел 4): цель в зоне видимости, не чаще раза в секунду
     on<{ sid: unknown }>("inspect", (p, m) => {
       if (typeof m.sid !== "string") return;
       if (w().time - p.lastInspect < INSPECT_COOLDOWN_MS) return p.send("toast", { text: T("srv.common.212"), kind: "error" });
@@ -733,7 +733,7 @@ export class WorldRoom extends Room<OpenWorldState> {
     on<{ id: unknown; qty: unknown }>("cook:buy", (p, m) => buyFood(w(), p, m.id, m.qty));
     on<{ id: unknown; qty: unknown }>("smith:buy", (p, m) => buyMaterial(w(), p, m.id, m.qty));
     on<{ index: unknown; slot: unknown }>("smith:upgrade", (p, m) => upgradeItem(w(), p, m.index, m.slot, (i) => this.trade.locked(p, i)));
-    // Перековщик (docs/transmog.md): снять оболочку, наложить, сбросить вид
+    // Перековщик (docs/art/gear.md): снять оболочку, наложить, сбросить вид
     on<{ index: unknown }>("tm:extract", (p, m) => tmExtract(w(), p, m.index, (i) => this.trade.locked(p, i)));
     on<{ shell: unknown; index: unknown; slot: unknown }>("tm:apply", (p, m) => tmApply(w(), p, m.shell, m.index, m.slot, (i) => this.trade.locked(p, i)));
     on<{ index: unknown; slot: unknown }>("tm:reset", (p, m) => tmReset(w(), p, m.index, m.slot, (i) => this.trade.locked(p, i)));

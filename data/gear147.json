@@ -88,7 +88,7 @@
     "umb": { "name": "Луна", "field": "umb_field", "charge": "umb_charge", "shape": "moon" }
   },
   "tiers": {
-    "_doc": "Вид по уровню и редкости (docs/gear-sets-spec.md): 5 ступеней по 20 ур. × 4 редкости. Здесь — материалы ступеней; флаги редкостей и размер силуэта — tools/gen/gear147/tier.ts. Проверка «богатства вида» — tools/out/gear147/tier-table.json.",
+    "_doc": "Вид по уровню и редкости (docs/art/gear.md): 5 ступеней по 20 ур. × 4 редкости. Здесь — материалы ступеней; флаги редкостей и размер силуэта — tools/gen/gear147/tier.ts. Проверка «богатства вида» — tools/out/gear147/tier-table.json.",
     "levels": [10, 30, 50, 70, 90],
     "names": ["железо, сыромятная кожа, лён", "сталь, дублёная кожа, шерсть", "калёная сталь, кожа с пластинами, шёлк", "мастерская ковка, позолота", "звёздное серебро, холодное сияние"],
     "plate": { "base": ["iron", "steel60", "steel_temper", "steel_master", "star_silver"], "trim": ["brass", "brass", "gold", "gold", "star_gold"], "cloth": ["dye_green", "cloth_blue", "cloth_purple", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "star_glow"] },

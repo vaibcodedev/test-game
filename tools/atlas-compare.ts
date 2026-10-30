@@ -1,5 +1,5 @@
 /**
- * Лист сравнения атласа объектов (docs/libraries.md, 3.1): строки «до | после | разница» по снимкам tests/perf-run.ts --only=stills
+ * Лист сравнения атласа объектов (docs/plan/next.md, 3.1): строки «до | после | разница» по снимкам tests/perf-run.ts --only=stills
  * (tools/out/atlas/{before,after}-{city,forest}-z{2.25,1.75}.png) и цифры замера (tools/out/perf/atlas-{before,after}/report.json):
  * вызовы отрисовки на кадр и p95 кадра. Результат — tools/out/atlas/compare.png и compare.json.
  * Запуск: npx tsx tools/atlas-compare.ts

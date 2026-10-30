@@ -1,4 +1,4 @@
-/** Осмотр игрока: имя, класс, уровень, фракция и 7 вещей. ПКМ → «Осмотреть» или клик по рамке цели (docs/gear-visuals.md, раздел 3). */
+/** Осмотр игрока: имя, класс, уровень, фракция и 7 вещей. ПКМ → «Осмотреть» или клик по рамке цели (docs/art/gear.md, раздел 3). */
 import { CLASSES } from "../../../shared/classes";
 import { FACTIONS, factionColor } from "../../../shared/factions";
 import type { Item } from "../../../shared/items";

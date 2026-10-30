@@ -1,5 +1,5 @@
 /**
- * Снимки берегов автотайлами (tools/gen/shores.ts, docs/water-shores.md) в игре: озеро у травы, река с песком, мост, пруд, лес у воды.
+ * Снимки берегов автотайлами (tools/gen/shores.ts, docs/art/perspective.md) в игре: озеро у травы, река с песком, мост, пруд, лес у воды.
  * Герой подходит к воде с севера тем же moveWithCollision, что у сервера, и встаёт у кромки (ноги на кромке, под ним — стенка).
  * Каждое место: день зум 2 и вечер зум 3 → tools/out/shores/ingame1.png. Под замком: TEST_PORT=2947 VITE_TEST_PORT=5447 npx tsx tests/shores-shots.ts
  */

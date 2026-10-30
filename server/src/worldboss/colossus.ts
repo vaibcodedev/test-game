@@ -1,5 +1,5 @@
 /**
- * Колосс Пепельного Знамени (задача 151, docs/world-bosses-ideas.md п.1). Числа — data/world-bosses.json bosses.colossus.mechanics.
+ * Колосс Пепельного Знамени (задача 151, docs/systems/bosses.md п.1). Числа — data/world-bosses.json bosses.colossus.mechanics.
  *  - «Сбор павших»: каждый герой, павший в круге (в том числе от PvP), — стак брони (armorPerStack, до maxStacks).
  *  - «Удар знаменем»: конус перед собой по цели (танк разворачивает от толпы); «Пепельные круги» под случайными героями.
  *  - Ф2 (ниже shards.at): отваливаются «Осколки» (count аддов), каждый разбитый снимает стак.

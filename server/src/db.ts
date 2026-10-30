@@ -342,7 +342,7 @@ export class GameDB {
     save.faction ??= classFaction(save.cls);
     // задача 150: Волчонок, Огонёк и Черепашка заменены новыми питомцами (data/pets.json migrate) — уровень и опыт переносятся, запись сразу
     if (migratePets(save)) this.save(name, save);
-    // перековка (docs/transmog.md): вид хранится в самом предмете (поле appearance в JSON); битый вид (модель или легендарка ушли из данных) снимается
+    // перековка (docs/art/gear.md): вид хранится в самом предмете (поле appearance в JSON); битый вид (модель или легендарка ушли из данных) снимается
     let tm = false;
     for (const it of [...(save.inventory ?? []), ...Object.values(save.equip ?? {})]) tm = sanitizeItem(it) || tm;
     if (tm) this.save(name, save);

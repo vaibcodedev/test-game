@@ -1,5 +1,5 @@
 /**
- * Общее для экспорта и импорта карты мира в Tiled 1.12 (docs/libraries-2.md, раздел 1; инструкция владельцу — docs/tiled-guide.md).
+ * Общее для экспорта и импорта карты мира в Tiled 1.12 (docs/plan/next.md, раздел 1; инструкция владельцу — docs/systems/world.md).
  * Мир режется на регионы REG_COLS × REG_ROWS (110 × 120 тайлов), их склеивает main.world. Форматы: карты — Tiled JSON (.tmj,
  * тайловые слои base64 + zlib), наборы тайлов — .tsx (XML), проект — ashen.tiled-project.
  * Игра эти файлы пока НЕ читает: источник мира — generateMap (shared/map.ts).

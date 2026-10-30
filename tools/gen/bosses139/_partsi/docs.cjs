@@ -1,5 +1,5 @@
 const fs = require("fs");
-let s = fs.readFileSync("docs/bosses-139.md", "utf8");
+let s = fs.readFileSync("docs/systems/bosses.md", "utf8");
 const nl = s.includes("\r\n") ? "\r\n" : "\n";
 const J = (t) => t.split("\n").join(nl);
 const rep = (a, b) => { if (!s.includes(a)) throw new Error("MISS " + a.slice(0, 60)); s = s.replace(a, b); };
@@ -18,7 +18,7 @@ const sec = J(`
 - Арт: tools/gen/bosses139/bone_frost_lord.ts (тело в двойном разрешении, свёрнутом в 1×; в профиль и вид сзади тело сдвинуто под шлейф плаща; лицо и ядро — 2D-штампы; эффекты льда — кольцо топота, копьё, круг сборки; носильщик со щитом из льда — лист 12 столбцов); в игру — tools/gen/bosses139/to-game.ts umb_frost_lord; сценарий — tests/ring-bosses-ingame.ts --boss=umb_frost_lord → tools/out/bosses139/umb_frost_lord-ingame-*.png. Механика носильщиков — server/src/game/zoneBosses.ts (\`bearerCall\`), тест — tests/zone-bosses.ts. MAP_VERSION 29.
 `);
 s = s.replace(anchor, sec + anchor);
-fs.writeFileSync("docs/bosses-139.md", s);
+fs.writeFileSync("docs/systems/bosses.md", s);
 // MAP_VERSION
 let m = fs.readFileSync("shared/map.ts", "utf8");
 const a = "export const MAP_VERSION = 28; // 28 —";

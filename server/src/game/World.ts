@@ -532,7 +532,7 @@ export class World {
     const preArmor = amount;
     amount *= 1 - Math.min(armorReduction(armor, level), o.armorCap ?? 1);
     if (!this.isPlayer(dst)) amount *= (dst.ai.weak?.dmg?.[o.kind ?? "phys"] ?? 1) * dst.dmgTakenMul;
-    // PvP (BALANCE.md «PvP»): устойчивость по уровню цели, бонус заточки оружия атакующего — долей plusShare. Сразу после брони:
+    // PvP (docs/plan/balance.md «PvP»): устойчивость по уровню цели, бонус заточки оружия атакующего — долей plusShare. Сразу после брони:
     // поглощения ресурсом («Мановая броня»), щиты и лечение от заблокированного считаются в единицах здоровья, а урон героя растёт как L².
     const pvpHit = this.isPlayer(src) && this.isPlayer(dst) && src !== dst;
     let pvpK = 1;

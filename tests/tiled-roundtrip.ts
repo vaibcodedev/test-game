@@ -1,5 +1,5 @@
 /**
- * Круг без потерь для Tiled (docs/libraries-2.md 1.4; tools/tiled/): generateMap → экспорт в .tmj/.tsx/.world (временная папка) →
+ * Круг без потерь для Tiled (docs/plan/next.md 1.4; tools/tiled/): generateMap → экспорт в .tmj/.tsx/.world (временная папка) →
  * импорт → тот же WorldMap: vtx, cell, zone побайтно; objects (kind, x, y, label, flip, v, dz и порядок), spawns, bosses, nodes,
  * точки появления и торговцев. Плюс: проверка tools/tiled/validate.ts на исходном мире без ошибок; намеренные поломки ловятся
  * (сдвинутое дерево и стёртая клетка проходимости — круг не сходится; стена поперёк моста — validate видит закрытый проход).

@@ -7,7 +7,7 @@ import { GP } from "./gameplay";
 
 /** Начало «длинного хвоста»: до этого уровня кривая прежняя (старые сохранения ≤30 валидны без пересчёта). */
 export const XP_TAIL_FROM = GP.progression.xpTailFrom;
-/** Опыт до следующего уровня (BALANCE.md): 20 + 30·L^1.65, после 30 — × (1 + 3.6·((L−30)/70)^1.5). */
+/** Опыт до следующего уровня (docs/plan/balance.md): 20 + 30·L^1.65, после 30 — × (1 + 3.6·((L−30)/70)^1.5). */
 export function xpToNext(level: number): number {
   if (level >= MAX_LEVEL || level < 1) return 0;
   const P = GP.progression;
@@ -145,7 +145,7 @@ export interface MobStats {
 }
 export function mobStats(def: MobDef, level: number): MobStats {
   return {
-    // кривая HP — data/balance.json mob.hp (BALANCE.md «Цели боя»)
+    // кривая HP — data/balance.json mob.hp (docs/plan/balance.md «Цели боя»)
     maxHp: Math.round(mobHpAt(level) * def.hp * (def.boss ? bossHpLevelMult(level) : 1)),
     dmg: (BAL.mob.dmg[0] + level * BAL.mob.dmg[1]) * def.dmg,
     armor: Math.round(level * 2.5 * def.armor),

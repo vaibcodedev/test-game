@@ -1,4 +1,4 @@
-/** Ступени заточки (docs/gear-visuals.md, критерий 15): enchantTier(0..10) и тексты эффектов. Запуск: npx tsx tests/gearFx.ts */
+/** Ступени заточки (docs/art/gear.md, критерий 15): enchantTier(0..10) и тексты эффектов. Запуск: npx tsx tests/gearFx.ts */
 import assert from "node:assert/strict";
 import { ENCHANT_COLOR, enchantTier, fxText, nextTierPlus, smithNextText } from "../shared/gearFx";
 import { RARITY_COLORS } from "../shared/items";

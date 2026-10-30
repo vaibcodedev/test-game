@@ -162,7 +162,7 @@ async function main() {
     assert((b.unit.buffs & 4096) !== 0, "BUFF_FEAR");
   });
 
-  // ---------- партия B: стиль контроля и выход у классов (docs/combat-148.md §3) — один каст, один эффект ----------
+  // ---------- партия B: стиль контроля и выход у классов (docs/systems/combat.md §3) — один каст, один эффект ----------
   const cast = (w: World, p: Player, id: string, t?: { x: number; y: number; id?: string }, r = 5) => {
     p.save.skills[id] = r;
     p.unit.mp = p.unit.maxMp; p.gcdUntil = 0; p.cds.delete(id);

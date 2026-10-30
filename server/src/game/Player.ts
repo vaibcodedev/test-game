@@ -73,7 +73,7 @@ export class Player {
   cds = new Map<string, number>();
   /** Конец общего отката (GCD): умения без offGcd до этого момента не кастуются. */
   gcdUntil = 0;
-  /** Очередь умений (одно) и отложенный каст с подходом к цели (docs/controls.md, раздел 6). */
+  /** Очередь умений (одно) и отложенный каст с подходом к цели (docs/systems/combat.md, раздел 6). */
   queue: import("./skillQueue").SkillReq | null = null;
   pend: import("./skillQueue").SkillReq | null = null;
   qSig = "";

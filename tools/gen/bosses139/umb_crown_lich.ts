@@ -1,6 +1,6 @@
 /**
  * Задача 139, пилот боссов кольца: Ведрас Неугасимый, Лич Грозового хребта (восток, слот r75n, ур. 75, группа 4–5;
- * карточка — docs/bosses-139.md, раздел «Пилот»). Образ — по референсу tools/out/refs/bosses-139/01.jpg (лич в шипастой
+ * карточка — docs/systems/bosses.md, раздел «Пилот»). Образ — по референсу tools/out/refs/bosses-139/01.jpg (лич в шипастой
  * короне, зелёное пламя на ладони, посох с кристаллом, череп на груди, рваный тёмный плащ) — только для сравнения: чужой
  * арт в игру и в git не идёт.
  *
@@ -1474,7 +1474,7 @@ function ensureRef(root: string): PC | null {
   return fs.existsSync(png) ? loadPC(png) : null;
 }
 
-/** Карточка умений для просмотра (тайминги — docs/bosses-139.md, пилот). */
+/** Карточка умений для просмотра (тайминги — docs/systems/bosses.md, пилот). */
 const SKILLS = [
   { id: "crypt_seal", name: "Печать склепа", windupMs: 2000, r: 56, kind: "share" },
   { id: "wandering_fires", name: "Блуждающие огни", windupMs: 850, r: 36, kind: "all" },

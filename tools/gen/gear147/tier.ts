@@ -1,5 +1,5 @@
 /**
- * Таблица «уровень × редкость» (docs/gear-sets-spec.md «Вид по уровню и редкости»): npx tsx tools/gen/gear147/tier.ts
+ * Таблица «уровень × редкость» (docs/art/gear.md «Вид по уровню и редкости»): npx tsx tools/gen/gear147/tier.ts
  * → tools/out/gear147/tier-table.png (латы: кираса и шлем 5×4 иконками + герой вниз; кожа и ткань: кираса 5×4)
  * → tools/out/gear147/tier-table.json (оценка «богатства вида» и проверка правил).
  * Вещи строятся из материалов ступени (data/gear147.json → tiers) и флагов редкости (ниже).

@@ -19,8 +19,8 @@ export type V3 = [number, number, number];
 export type V2 = [number, number];
 export type Fac = "sol" | "umb";
 export type Sex = "m" | "f";
-export type AnimId = "idle" | "walk" | "run" | "atk1h" | "atk2h" | "bow" | "cast" | "block" | "hurt" | "death" | "ride" | "gather" | "special2h";
-export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** затемнение видимого лица под шлемом (0..1) */ faceShade?: number; /** размер кадра (по умолчанию 48): под крупное оружие */ frame?: number; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; /** клинок оружия сета для смаза удара: длина (px) и цвет */ blade?: { len: number; ramp?: C[] }; /** вес снаряжения 0..1 (латы 1, кожа ~0.35): глубже присед и тяжелее шаг, запаздывание пластин */ weight?: number; posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
+export type AnimId = "idle" | "idle2" | "stance" | "walk" | "run" | "atk1h" | "atk2h" | "bow" | "cast" | "block" | "hurt" | "death" | "ride" | "gather" | "special2h";
+export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** затемнение видимого лица под шлемом (0..1) */ faceShade?: number; /** размер кадра (по умолчанию 48): под крупное оружие */ frame?: number; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; /** клинок оружия сета для смаза удара: длина (px) и цвет */ blade?: { len: number; ramp?: C[] }; /** вес снаряжения 0..1 (латы 1, кожа ~0.35): глубже присед и тяжелее шаг, запаздывание пластин */ weight?: number; posePatch?: (P: Pose, k: { anim: AnimId; /** боевая стойка (anim = "idle"): оружие наготове */ stance?: boolean; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
 
 export const DATA = JSON.parse(fs.readFileSync(path.resolve("data/hero-base-b.json"), "utf8"));
 /** обычные анимации основы; особые (special: true) задаются оружием через posePatch */
@@ -216,7 +216,18 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
   const swordReady = () => { P.weapon = { kind: "sword", dir: nrm([0.25, -0.25, 1]) }; P.shield = { n: nrm([-0.45, 0, 1]) }; };
   const breathe = (k = 1) => { const e = (x: number) => 0.5 - 0.5 * Math.cos(2 * Math.PI * x); P.chestRise = 0.5 * e(u) * k; P.headOff = [0, -0.45 * e(u - 0.08) * k, 0]; P.hairLag = e(u - 0.12) * k; };
   switch (anim) {
-    case "idle": {
+    case "stance": {
+      // боевая стойка между ударами: присед, левая нога вперёд, корпус чуть развёрнут и наклонён (кадр 0 = готовность удара atk2h, u = 0),
+      // дыхание и лёгкое покачивание таза; оружие наготове — posePatch (stance: true)
+      breathe(0.8);
+      const sh = Math.sin(2 * Math.PI * u), e2 = 0.5 - 0.5 * Math.cos(4 * Math.PI * u), w = l.weight ?? 0;
+      P.hip = [0.15 * sh, hipY + 0.5 + 0.15 * e2 + 0.1 * w, 0];
+      P.twist = 0.1 + 0.02 * sh; P.lean += 0.06; P.roll = -0.02 * sh;
+      P.ankL = [hipJ + 0.3, FY - b.ankle, 0.8];
+      P.hL.rel = [1.0 + 0.1 * sh, arm * 0.85, 0.8]; P.hR.rel = [-1.0 + 0.1 * sh, arm * 0.85, 0.8];
+      break;
+    }
+    case "idle": case "idle2": {
       // живой покой: дыхание (грудь, плечи, голова с запаздыванием), медленный перенос веса с ноги на ногу (таз в сторону, наклон),
       // руки висят и отстают от корпуса; ступни стоят на месте (ноги — IK к неподвижным лодыжкам)
       breathe();
@@ -226,6 +237,17 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
       P.headOff = [-0.12 * sh, P.headOff[1], 0];
       P.hL.rel = [1.0 + 0.15 * sh, arm * 0.9 - 0.3 * e, 0.4 + 0.3 * Math.sin(2 * Math.PI * (u - 0.15))];
       P.hR.rel = [-1.0 + 0.15 * sh, arm * 0.9 - 0.3 * e, 0.4 + 0.3 * Math.sin(2 * Math.PI * (u - 0.2))];
+      if (anim === "idle2") {
+        // редкий переступ (в игре — раз в несколько секунд вместо цикла покоя, кадр 0 и конец = кадр 0 покоя): вес на левую ногу,
+        // правая приподнимается и ставится чуть вперёд-внутрь, вес возвращается, затем правая обратно на место
+        const q = kf([[0, { w: 0, f: 0, l: 0 }], [0.2, { w: 1, f: 0, l: 0 }], [0.3, { w: 1, f: 0.5, l: 1 }], [0.4, { w: 0.9, f: 1, l: 0 }], [0.5, { w: 0.35, f: 1, l: 0 }],
+          [0.6, { w: 1, f: 1, l: 0 }], [0.7, { w: 1, f: 0.5, l: 1 }], [0.8, { w: 1, f: 0, l: 0 }], [1, { w: 0, f: 0, l: 0 }]], u);
+        const W = N(q.w), Fz = N(q.f), Lf = N(q.l);
+        P.hip = [P.hip[0] + 0.6 * W, P.hip[1] + 0.12 * W - 0.1 * Lf, 0];
+        P.roll += -0.03 * W; P.headOff = [P.headOff[0] - 0.15 * W, P.headOff[1], 0];
+        P.ankR = [P.ankR[0] + 0.25 * Fz, P.ankR[1] - 1.1 * Lf, P.ankR[2] + 1.0 * Fz]; P.pitchR = -0.22 * Lf;
+        P.hR.rel = [P.hR.rel![0] - 0.2 * W, P.hR.rel![1], P.hR.rel![2] + 0.3 * Lf];
+      }
       break;
     }
     case "walk": case "run": gait(P, l, b, anim, u, hipY, hipJ); break;
@@ -258,17 +280,23 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
       break;
     }
     case "atk2h": {
-      const ready: KF = { h: [-(sx - 0.8), arm * 0.72, 2.2], d: [0.12, -0.6, 0.8], tw: 0.1, ln: 0.06, st: 0.8, dy: 0.5 };
+      // ритм тяжёлого оружия (кадр контакта — data/hero-base-b.json atk2h.hit = 8, момент урона на сервере): медленный тяжёлый замах 5 кадров
+      // (корпус встаёт и отклоняется назад, вес на заднюю ногу) → натяжение → удар 2 кадра со смазом (передняя нога шагает, таз проседает и уходит вперёд)
+      // → контакт и фиксация → возврат в стойку (кадр 0 = боевая стойка stance)
+      const ready: KF = { h: [-(sx - 0.8), arm * 0.72, 2.2], d: [0.12, -0.6, 0.8], tw: 0.1, ln: 0.06, st: 0.8, dy: 0.5, hz: 0 };
       const k = kf([
         [0, ready],
-        [0.35, { h: [-(sx - 1.4), -arm * 0.32, -0.4], d: [0.1, -0.35, -1], tw: 0.25, ln: -0.12, st: 0.4, dy: 0.2 }],
-        [0.55, { h: [-(sx - 0.9), arm * 0.72, arm * 0.85], d: [0.05, 0.78, 0.62], tw: -0.12, ln: 0.36, st: 1.8, dy: 1.8 }],
-        [0.72, { h: [-(sx - 0.9), arm * 0.76, arm * 0.82], d: [0.05, 0.8, 0.6], tw: -0.12, ln: 0.38, st: 1.8, dy: 2.0 }],
+        [0.25, { h: [-(sx - 1.2), arm * 0.15, 0.6], d: [0.12, -0.5, -0.2], tw: 0.2, ln: -0.04, st: 0.6, dy: 0.3, hz: -0.2 }],
+        [0.42, { h: [-(sx - 1.4), -arm * 0.32, -0.4], d: [0.1, -0.35, -1], tw: 0.3, ln: -0.12, st: 0.4, dy: 0.15, hz: -0.35 }],
+        [0.5, { h: [-(sx - 1.45), -arm * 0.36, -0.55], d: [0.1, -0.3, -1], tw: 0.33, ln: -0.14, st: 0.35, dy: 0.1, hz: -0.4 }],
+        [0.667, { h: [-(sx - 0.9), arm * 0.72, arm * 0.85], d: [0.05, 0.78, 0.62], tw: -0.14, ln: 0.4, st: 1.9, dy: 2.0, hz: 0.5 }],
+        [0.75, { h: [-(sx - 0.9), arm * 0.76, arm * 0.82], d: [0.05, 0.8, 0.6], tw: -0.15, ln: 0.42, st: 1.9, dy: 2.2, hz: 0.55 }],
         [1, ready],
-      ], u, [ease, easeIn, ease, ease]);
+      ], u, [ease, easeOut, ease, (t) => t, ease, ease]);
       P.weapon = { kind: "great", dir: nrm(V(k.d)) }; P.twoHand = true;
       P.hL = { rel: V(k.h), pole: [0.7, 0.3, -0.7] }; P.hR = { pole: [-0.7, 0.3, -0.7] };
-      P.twist = N(k.tw); P.lean += N(k.ln); P.ankL = [hipJ + 0.3, FY - b.ankle, N(k.st)]; P.hip = [0, hipY + N(k.dy), 0];
+      const stepL = u > 0.5 && u < 0.667 ? Math.sin(Math.PI * (u - 0.5) / 0.167) : 0; // передняя нога шагает с подъёмом стопы
+      P.twist = N(k.tw); P.lean += N(k.ln); P.ankL = [hipJ + 0.3, FY - b.ankle - 0.9 * stepL, N(k.st)]; P.pitchL = -0.2 * stepL; P.hip = [0, hipY + N(k.dy), N(k.hz)];
       break;
     }
     case "bow": {
@@ -352,7 +380,8 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
       break;
     }
   }
-  l.posePatch?.(P, { anim, u, view, arm, sx, b, hipY, hipJ });
+  // переступ и стойка для снаряжения — тот же покой (хват оружия, ткань); стойка — с флагом stance
+  l.posePatch?.(P, { anim: anim === "idle2" || anim === "stance" ? "idle" : anim, stance: anim === "stance", u, view, arm, sx, b, hipY, hipJ });
   if (!props) { delete P.weapon; delete P.shield; P.twoHand = false; }
   return P;
 }
@@ -724,7 +753,7 @@ function buildParts(l: Look, v: View, anim: AnimId, i: number) {
   if (hv === "side" && style !== "loose" && style !== "mane" && style !== "bob") push({ g: "ear", ramp: M.skin, o: { dome: 1, bias: -0.1 }, layer: 6.2, loc: (z) => z.el([-hw * 0.12, hh * 0.16], 0.85, 1.15), slot: "hair" });
   if (style === "beard") for (const p of parts) if (p.g === "beard") p.slot = "hair";
   if (hv !== "side" && !longEar) for (const p of parts) if (p.g === "ear") p.slot = "hair";
-  if (l.gear) l.gear({ l, v, anim, i, u: i / NF(anim), P, sk, b, M, PJ, D, facing, parts, push, loft, secs, surf, c, dW, hv, hw, hh, arm: ARM, leg: LEG, wpL0: WPL0 });
+  if (l.gear) l.gear({ l, v, anim: anim === "idle2" || anim === "stance" ? "idle" : anim, i, u: i / NF(anim), P, sk, b, M, PJ, D, facing, parts, push, loft, secs, surf, c, dW, hv, hw, hh, arm: ARM, leg: LEG, wpL0: WPL0 });
   { const wl = parts.filter((p) => p.slot === "weapon" || (p.g === "weapon" && !p.slot)).map((p) => p.layer); smear(l, v, anim, i, P, sk, PJ, push, wl.length ? Math.min(...wl) : WPL0, M); }
   for (const p of parts) p.slot ??= "body";
   // вторичное движение: наплечники и подвижные пластины (тассеты, юбка, табард, сумки) запаздывают за корпусом на 1 px, плавно

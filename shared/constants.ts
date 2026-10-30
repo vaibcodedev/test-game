@@ -35,7 +35,7 @@ export const AGGRO_MUL: number = balance.aggroMul;
 /** Скорость героя пешком, px/с: 150 «до множителя» × MOVE_MUL. */
 export const PLAYER_SPEED = GP.player.baseSpeed * MOVE_MUL;
 export const PLAYER_RADIUS = GP.player.radius;
-/** Предел уровня (задача 39, BALANCE.md); levelCap в data/world.json должен совпадать. */
+/** Предел уровня (задача 39, docs/plan/balance.md); levelCap в data/world.json должен совпадать. */
 export const MAX_LEVEL = 100;
 export const STAT_POINTS_PER_LEVEL = GP.player.statPointsPerLevel;
 export const INVENTORY_SIZE = GP.player.inventorySize;

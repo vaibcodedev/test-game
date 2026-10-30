@@ -1,5 +1,5 @@
 /**
- * Мировые боссы (задача 151, docs/world-bosses.md): данные data/world-bosses.json, слоты карты (data/world.json layout.bossSlots),
+ * Мировые боссы (задача 151, docs/systems/bosses.md): данные data/world-bosses.json, слоты карты (data/world.json layout.bossSlots),
  * расписание и предвестники (trigger), сообщения сервер → клиент. Логика — server/src/worldboss/.
  */
 import data from "../data/world-bosses.json";

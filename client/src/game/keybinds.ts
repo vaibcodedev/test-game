@@ -1,5 +1,5 @@
 /**
- * Раскладка клавиш (задача 115, шаг 1; docs/controls.md, разделы 3, 9, 11).
+ * Раскладка клавиш (задача 115, шаг 1; docs/systems/combat.md, разделы 3, 9, 11).
  * Действие → до двух сочетаний; пресеты «Классика» и «Экшен»; запрещённые сочетания; хранение в localStorage (keybinds:v1);
  * подписи для справки и панели. Без Phaser и DOM на уровне модуля: тестируется из Node (tests/keybinds.ts).
  * Что делает действие — решает GameScene.setupInput; здесь только «какое нажатие какому действию принадлежит».
@@ -64,7 +64,7 @@ const DEFS: Record<ActionId, Def> = {
 export const ACTION_IDS = Object.keys(DEFS) as ActionId[];
 export const ACTIONS: ActionDef[] = ACTION_IDS.map((id) => ({ id, ...DEFS[id] }));
 export const SLOT_IDS: SlotAction[] = ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7", "slot8", "slot9"];
-/** Действия слотов панели 1 по порядку (12 слотов); панель 2 — те же клавиши с Shift. Схема решает, какая клавиша какому слоту (docs/controls.md, раздел 8). */
+/** Действия слотов панели 1 по порядку (12 слотов); панель 2 — те же клавиши с Shift. Схема решает, какая клавиша какому слоту (docs/systems/combat.md, раздел 8). */
 export const BAR_ACTIONS: ActionId[] = [...SLOT_IDS, "potionHp", "potionMp", "slot10"];
 const MOVE_IDS: MoveAction[] = ["moveUp", "moveDown", "moveLeft", "moveRight"];
 export const isMoveAction = (a: ActionId): a is MoveAction => (MOVE_IDS as string[]).includes(a);
@@ -111,7 +111,7 @@ export const PRESETS: Record<PresetId, { name: string; layout: Layout }> = {
 };
 /**
  * Схема новых игроков. Решение пользователя — «Экшен», но он держится на ПКМ-движении и ПКМ-атаке (шаги 2, 3, 10):
- * без них у героя нет WASD, а клик мышью по-прежнему одинаков для обеих кнопок. До шага 10 по умолчанию «Классика» (docs/controls.md).
+ * без них у героя нет WASD, а клик мышью по-прежнему одинаков для обеих кнопок. До шага 10 по умолчанию «Классика» (docs/systems/combat.md).
  */
 export const DEFAULT_PRESET: PresetId = "action";
 

@@ -1,5 +1,5 @@
 /**
- * Атлас объектов карты (docs/libraries.md, 3.1): PNG из client/public/assets/objects/*.png упаковываются в листы до 2048×2048
+ * Атлас объектов карты (docs/plan/next.md, 3.1): PNG из client/public/assets/objects/*.png упаковываются в листы до 2048×2048
  * (maxrects-packer 2.7.4, без поворота) → client/public/assets/atlas/objsN.png + objsN.json (Phaser «JSON Hash», кадр = id объекта).
  * Отступ 2 px между кадрами и экструзия краёв на 1 px: при дробном зуме (1,75; 2,25) выборка у края кадра не захватывает соседа.
  * Кэш по хешу содержимого всех PNG (atlas/cache.json): без изменений повторный запуск только читает файлы и выходит.

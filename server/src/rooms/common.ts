@@ -196,7 +196,7 @@ export function registerCombat(on: On, world: () => World) {
   });
   // Esc: очередь, подход, канал (дальше клиент снимает окно, цель, меню)
   on("cancel", (p) => { cancelAll(w(), p); });
-  // панели умений (docs/controls.md, раздел 8): не чаще 10 изменений в секунду
+  // панели умений (docs/systems/combat.md, раздел 8): не чаще 10 изменений в секунду
   const barsOk = (p: Player) => {
     const now = Date.now();
     if (now - p.barsWin > 1000) { p.barsWin = now; p.barsHits = 0; }

@@ -17,7 +17,7 @@ export function setOverlay(key: OverlayKey, on: boolean) {
 }
 
 /**
- * Эффекты снаряжения других игроков (docs/gear-visuals.md, 2.4; ключ и режимы — data/gear-fx.json, setting):
+ * Эффекты снаряжения других игроков (docs/art/gear.md, 2.4; ключ и режимы — data/gear-fx.json, setting):
  * all — все, legend — только темы легендарок без бирюзы, off — только статичные цвета. На своём герое эффекты видны всегда.
  * GearLayers читает gearFxMode() при отрисовке чужого героя.
  */

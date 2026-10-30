@@ -262,7 +262,7 @@ export const OBJECT_ART: Record<string, Art> = {
   // данж (задача 139): собор павших королей → переход → пепельный склеп: tools/gen/dungeon-art.ts
   ...DUNGEON_ART,
   // правки 6 задачи 141: цельный колодец, объёмный камень телепорта, статуи героев фракций (tools/gen/walls141-props.ts)
-  // камень телепорта v2 по правилам docs/art-perspective.md (tools/gen/teleport-v2.ts): Эмберхолл — neutral, города и форты фракций — вариант o.v (shared/map.ts)
+  // камень телепорта v2 по правилам docs/art/perspective.md (tools/gen/teleport-v2.ts): Эмберхолл — neutral, города и форты фракций — вариант o.v (shared/map.ts)
   teleport_stone: () => teleportStoneV2("neutral"), teleport_stone__sol: () => teleportStoneV2("sol"), teleport_stone__umb: () => teleportStoneV2("umb"),
   well: well141, sun_statue: solHeroStatue, umb_statue: umbHeroStatue, umb_barrow: umbBarrow,
 };

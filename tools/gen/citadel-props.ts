@@ -5,7 +5,7 @@
  *    рогатая чаша с углями;
  *  - жаровня: каменная пята, кованый треножник, чаша с углями (огонь — лист fire v2 fire-brazier, клиент);
  *  - кости: черепа и рёбра nature3d (те же модели, что у природы вулкана).
- * Каждый кадр обрезан так, что под передней кромкой основания ровно 2 ряда тени (docs/art-perspective.md §4).
+ * Каждый кадр обрезан так, что под передней кромкой основания ровно 2 ряда тени (docs/art/perspective.md §4).
  */
 import { PC, hex, ramp, type RGBA } from "./canvas";
 import { Scene, renderFull, capsule, cylinder, ellipsoid, len3, noise3, smin, type Mat, type SDF, type V3 } from "./nature3d-lib";

@@ -1,5 +1,5 @@
 /**
- * Пачка улучшений из docs/phaser-examples.md (11, 12, 13, 17 + сетка проходимости админки): кадры и монтаж tools/out/phaser-wow/montage.png.
+ * Пачка улучшений из docs/plan/next.md (11, 12, 13, 17 + сетка проходимости админки): кадры и монтаж tools/out/phaser-wow/montage.png.
  * Дождь у домов (deathZone), ворота осады (обломки), прыжок (дуга и тень), спираль искр, камера в беге, сетка проходимости.
  * Запуск под замком tools/out/scenario.lock: TEST_PORT=2961 VITE_TEST_PORT=5461 npx tsx tools/phaser-wow-shots.ts
  */

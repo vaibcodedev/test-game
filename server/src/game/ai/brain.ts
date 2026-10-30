@@ -1,5 +1,5 @@
 /**
- * Деревья поведения жителей (mistreevous 4.3.1, docs/libraries-2.md 3.3 шаг 5): текст дерева — data/ai.json (MDSL),
+ * Деревья поведения жителей (mistreevous 4.3.1, docs/plan/next.md 3.3 шаг 5): текст дерева — data/ai.json (MDSL),
  * узлы — методы агента. Агент горожанина реализует townfolk.ts (CitizenAgent): условия возвращают true/false,
  * действия — State.SUCCEEDED/FAILED (мгновенные: ходьба идёт каждый такт по цели, которую ставит дерево).
  */

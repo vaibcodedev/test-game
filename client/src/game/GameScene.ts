@@ -1255,7 +1255,7 @@ export class GameScene extends Phaser.Scene {
   pickupNearest() { this.interactNearest(); }
   talkNearest() { this.interactNearest(); }
 
-  /** Единое взаимодействие (docs/controls.md, раздел 7): под курсором (24 px) → ближайший в 110 px по приоритету мешок, узел, NPC, камень, встреча → до 300 px с подходом. */
+  /** Единое взаимодействие (docs/systems/combat.md, раздел 7): под курсором (24 px) → ближайший в 110 px по приоритету мешок, узел, NPC, камень, встреча → до 300 px с подходом. */
   private interactList() {
     type It = { rank: number; d: number; cx: number; cy: number; text: string; under?: boolean; r?: number; ref?: unknown; go: () => void };
     const out: It[] = [], hx = this.pos.x, hy = this.pos.y;

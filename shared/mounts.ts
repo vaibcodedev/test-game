@@ -147,7 +147,7 @@ export function gladiatorSeals(result: "win" | "draw" | "loss", streak: number, 
   return g.win + streakBonus + ratingBonus;
 }
 
-// ---------- экономика (data economy, BALANCE.md «142 маунты») ----------
+// ---------- экономика (data economy, docs/plan/balance.md «142 маунты») ----------
 export const MOUNT_ECONOMY = data.economy;
 /** Золото в час на уровне L: убийства × среднее золото моба (shared/formulas.ts: от L·g до 3L·g) × продажа добычи. */
 export const goldPerHour = (L: number) => MOUNT_ECONOMY.killsPerHour * 2 * L * MOUNT_ECONOMY.mobGoldMul * MOUNT_ECONOMY.salesMul;
