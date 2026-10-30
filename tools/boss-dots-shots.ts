@@ -70,14 +70,25 @@ const openMap = (page: Page) => page.evaluate(`window.__game.scene.getScene("gam
 /** Ждёт конец заставки босса (.bi-root) и возврат интерфейса. */
 const calm = async (p: Page) => { await p.waitForFunction(`!document.querySelector(".bi-root")`, { timeout: 40000, polling: 300 }).catch(() => {}); await p.evaluate(`document.body.classList.remove("bi-cine")`); await sleep(1800); };
 
-async function pass(browser: Browser, w: number, h: number) {
+async function pass(browser: Browser, w: number, h: number, scale: number) {
   const p = await newPage(browser, w, h);
-  await login(p, `Точки${w}`, "warrior");
+  await p.evaluateOnNewDocument(`try{localStorage.setItem("uiScale","${scale}")}catch(e){}`);
+  await login(p, `Точки${w}${scale}`, "warrior");
   await dbg(p, { op: "level", v: 100 }); await sleep(600);
   await dbg(p, { op: "god" });
   await zoom2(p);
-  await sleep(7000); await openMap(p); await sleep(1200); await shot(p, "map", "z2"); console.log("chk", JSON.stringify(await p.evaluate(`window.__chk`))); console.log("bossdbg",  await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;return v.hits.filter(q=>q.sub.startsWith("Босс")).map(q=>[q.title.slice(0,14),Math.round(q.x),Math.round(q.y)]).filter(a=>a[1]>300&&a[1]<380&&a[2]>170&&a[2]<220)})()`)); const pt = await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;const h=v.hits.find(q=>q.title.startsWith("Пустошь")||q.sub.startsWith("Босс"));const r=v.cv.getBoundingClientRect();return h?[r.x+h.x+2,r.y+h.y+3, h.title]:null})()`) as any; console.log("hover", pt); if (pt) { await p.mouse.move(pt[0] - 40, pt[1] - 40); await p.mouse.move(pt[0], pt[1]); } await sleep(500); await shot(p, "map", "z2_tip");
-  // зум карты: ближе к боссу ниже
+  await sleep(6000); await openMap(p); await sleep(1200);
+  for (const zoomed of [false, true]) {
+    if (zoomed) { await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;const b=v.hits.find(q=>q.title.startsWith("Колосс"))||v.hits.find(q=>q.sub.startsWith("Босс"));v.s=v.fit*12;v.cx=v.map.w/2;v.cy=v.map.h*0.8;v.clamp();})()`); await sleep(600); }
+    const names = (await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;const out=[];for(const key of ["Колосс","Босс","Пепельные чертоги","Рассветный","Эмберхолл"]){const h=v.hits.find(q=>q.title.includes(key)||q.sub.includes(key)); if(h) out.push(h.title)} return out})()`)) as string[];
+    for (const nm of names) {
+      const pt = (await p.evaluate(`((nm)=>{const v=window.__game.scene.getScene("game").hud.wmView;const h=v.hits.find(q=>q.title===nm);const r=v.cv.getBoundingClientRect();const k=r.width/v.cv.clientWidth;return [r.x+h.x*k,r.y+h.y*k]})(${JSON.stringify(nm)})`)) as number[];
+      await p.mouse.move(pt[0] - 60, pt[1] - 60); await p.mouse.move(pt[0], pt[1]); await sleep(350);
+      const tip = await p.evaluate(`(()=>{const t=document.querySelector(".wm-tip");return t&&!t.hidden?t.textContent:null})()`);
+      console.log(`${w}@${scale}% zoom=${zoomed}`, nm, "=>", tip);
+      if (nm.includes("Колосс")|| nm.includes("ур.")) await shot(p, `hover${w}_${scale}_${zoomed ? "z" : "n"}`, nm.slice(0, 5));
+    }
+  }
   await p.close();
 }
 
@@ -108,7 +119,7 @@ async function main() {
     const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: chromeArgs, defaultViewport: { width: 1366, height: 768 }, protocolTimeout: 1800000 });
     try {
       { const w = await newPage(browser, 1366, 768); await w.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" }); await sleep(12000); await w.close(); }
-      await pass(browser, 1366, 768);
+      for (const [w, h, sc] of [[1366, 768, 100], [1366, 768, 125], [1920, 1080, 100], [1920, 1080, 150]] as const) await pass(browser, w, h, sc);
       log(`ошибок консоли: ${errors.length}`); for (const e of [...new Set(errors)].slice(0, 8)) log(`  ${e}`);
     } finally { await browser.close(); await vite.close(); await stopServer(); }
   } finally { try { fs.unlinkSync(lock); } catch { /* ok */ } }

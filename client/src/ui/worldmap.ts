@@ -113,19 +113,19 @@ export class WorldMapView {
     const cv = this.cv;
     cv.addEventListener("wheel", (e) => {
       e.preventDefault();
-      const r = cv.getBoundingClientRect();
-      this.zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top);
+      const c = this.toCanvas(e);
+      this.zoomAt(e.deltaY < 0 ? 1.25 : 0.8, c.x, c.y);
     }, { passive: false });
     cv.addEventListener("pointerdown", (e) => {
       cv.setPointerCapture(e.pointerId);
       this.drag = { x: e.clientX, y: e.clientY, cx: this.cx, cy: this.cy, moved: false };
     });
     cv.addEventListener("pointermove", (e) => {
-      const r = cv.getBoundingClientRect();
-      this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+      const c = this.toCanvas(e);
+      this.mouse = { x: c.x, y: c.y };
       const d = this.drag;
       if (d) {
-        const dx = e.clientX - d.x, dy = e.clientY - d.y;
+        const dx = (e.clientX - d.x) / c.k, dy = (e.clientY - d.y) / c.k; // в пикселях холста (под CSS zoom корня интерфейса экранные пиксели крупнее)
         if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
         this.cx = d.cx - dx / this.s;
         this.cy = d.cy - dy / this.s;
@@ -137,21 +137,28 @@ export class WorldMapView {
       this.drag = null;
       // перетаскивание (сдвиг больше порога) кликом не считается
       if (this.pick && d && !d.moved && e.button === 0) {
-        const r = cv.getBoundingClientRect();
-        this.commitPick(e.clientX - r.left, e.clientY - r.top);
+        const c = this.toCanvas(e);
+        this.commitPick(c.x, c.y);
       }
       // щелчок по основанию «Знамён Предела» — окно правил битвы
       else if (!this.pick && d && !d.moved && e.button === 0) {
-        const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+        const { x: mx, y: my } = this.toCanvas(e);
         if (this.hits.some((h) => WAR_BASE_NAMES.has(h.title) && Math.hypot(h.x - mx, h.y - my) <= h.r)) openWarRules();
       }
     });
     cv.addEventListener("pointercancel", () => (this.drag = null));
     cv.addEventListener("pointerleave", () => { this.mouse = null; });
     cv.addEventListener("dblclick", (e) => {
-      const r = cv.getBoundingClientRect();
-      this.zoomAt(2, e.clientX - r.left, e.clientY - r.top);
+      const c = this.toCanvas(e);
+      this.zoomAt(2, c.x, c.y);
     });
+  }
+
+  /** Единый перевод «экран → холст карты» для всех попаданий и жестов: k — отношение экранных пикселей к пикселям холста (CSS zoom корня интерфейса, масштаб UI ≠ 100 %). */
+  private toCanvas(e: { clientX: number; clientY: number }): { x: number; y: number; k: number } {
+    const r = this.cv.getBoundingClientRect();
+    const k = this.cv.clientWidth > 0 ? r.width / this.cv.clientWidth : 1;
+    return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k, k };
   }
 
   open() {
