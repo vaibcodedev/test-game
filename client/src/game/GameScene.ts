@@ -878,9 +878,9 @@ export class GameScene extends Phaser.Scene {
       else if (l.kind === "npc") npcGlow = l.ref as Npc;
       cur = this.cursorAt(this.pickAt(true, this.cursorPick));
     }
-    // враг под курсором — красное свечение по силуэту текущего кадра (как у NPC, только красное)
-    const fv = hov && foe ? this.units.get(hov) : undefined, fs = fv?.sprite;
-    const foeGlow: GlowSrc | null = fs && fs.active && fs.visible && !fv!.dead ? { id: `u:${hov}`, color: "rgb(230,70,60)", tex: fs.texture.key, frame: fs.frame.name, x: fs.x, y: fs.y, ox: fs.originX, oy: fs.originY, flip: fs.flipX, depth: fs.depth } : null;
+    // юнит под курсором — свечение по силуэту текущего кадра: враг красное, союзник зелёное (у NPC — золотое)
+    const fv = hov ? this.units.get(hov) : undefined, fs = fv?.sprite;
+    const foeGlow: GlowSrc | null = fs && fs.active && fs.visible && !fv!.dead ? { id: `u:${hov}`, color: foe ? "rgb(230,70,60)" : "rgb(90,210,110)", tex: fs.texture.key, frame: fs.frame.name, x: fs.x, y: fs.y, ox: fs.originX, oy: fs.originY, flip: fs.flipX, depth: fs.depth } : null;
     this.hoverGlow.update(npcGlow ? this.glowOf(npcGlow) : foeGlow, this.game.loop.delta, this.time.now);
     if (hov !== this.hoverId) {
       const old = this.hoverId ? this.units.get(this.hoverId) : undefined;
