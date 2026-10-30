@@ -8,7 +8,7 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "assets": "tsx tools/gen-assets.ts",
+    "assets": "tsx tools/gen-assets.ts && tsx tools/gen/zb-icons-fix.ts",
     "editor": "tsx editor/server/index.ts",
     "predev": "npm run assets",
     "dev": "concurrently -k -n server,client -c cyan,magenta \"tsx watch --clear-screen=false server/src/index.ts\" \"vite\"",

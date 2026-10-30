@@ -9,6 +9,7 @@ import {
   box, prism, frame32, face, fillPoly, cylV, ellipseFace, log, shadowPoly, shadowBox, shadowDisc, depth, litC, planksV, planksH, grain, addTex, finish, ramp,
 } from "./volume-lib";
 import { ridgeTent } from "./volume-bf";
+import { TOWN_VOLUME } from "./volume-town";
 
 /** Тёсаные блоки по фасаду: швы рядами со сдвигом. */
 const blocks = (bw: number, bh: number, seed: number, amp = 0.3): Tex => (x, y) => {
@@ -174,7 +175,7 @@ function lamp(): PC {
 
 const RAW: Record<string, () => PC> = {
   tent: () => ridgeTent({ a: CLOTH.cream, b: CLOTH.teal, trim: CLOTH.teal, flag: CLOTH.red, seed: 21, w: 70, h: 54, d: 30 }),
-  hay, ruin_wall: ruinWall, ruin_pillar: ruinPillar, pillar, dark_obelisk: darkObelisk, signpost, well, lamp,
+  hay, ruin_wall: ruinWall, ruin_pillar: ruinPillar, pillar, dark_obelisk: darkObelisk, signpost, well, lamp, ...TOWN_VOLUME,
 };
 void mix; void STONE; void IRON; void TOP;
 type _N = N3; type _R = RGBA;
