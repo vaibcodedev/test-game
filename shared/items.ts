@@ -30,7 +30,7 @@ export const SLOT_NAMES: Record<Slot, string> = {
   helmet: "Шлем",
   armor: "Доспех",
   boots: "Сапоги",
-  cloak: "Плащ",
+  cloak: "Спина",
   ring: "Кольцо",
   amulet: "Амулет",
 };

@@ -23,8 +23,8 @@ const icon = (name: string) => `/assets/icons/${name}.png`;
 const PAGE = 120;
 
 type Group = "weapon" | "offhand" | "armor" | "cloak" | "jewelry" | "unique" | "legend" | "stuff" | "mount";
-const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["cloak", "Плащ"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"], ["mount", "Маунты"]];
-const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", armor: "Броня", boots: "Броня", cloak: "Плащ", ring: "Бижутерия", amulet: "Бижутерия" };
+const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["cloak", "Спина"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"], ["mount", "Маунты"]];
+const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", armor: "Броня", boots: "Броня", cloak: "Спина", ring: "Бижутерия", amulet: "Бижутерия" };
 /** Подписи видов предметов (typeName у секиры — «Двуручный топор», а игрок знает «Секира»). */
 const CHIP: Record<string, string> = { sword: "Одноручный меч", greatsword: "Двуручный меч", twinblades: "Парные мечи", dagger: "Кинжалы", axe: "Топор", greataxe: "Секира", mace: "Булава", hammer: "Молот", spear: "Копьё", scythe: "Коса", bow: "Лук", crossbow: "Арбалет", staff: "Посох", scepter: "Жезл", shield: "Щит", orb: "Сфера", tome: "Книга", ring: "Кольцо", amulet: "Амулет" };
 const STUFF: [string, string][] = [["potion", "Зелья"], ["food", "Еда"], ["material", "Материалы улучшения"], ["resource", "Ресурсы биомов"]];
