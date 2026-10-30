@@ -77,8 +77,8 @@ async function pass(browser: Browser, w: number, h: number, scale: number) {
   await dbg(p, { op: "level", v: 100 }); await sleep(600);
   await dbg(p, { op: "god" });
   await zoom2(p);
-  await sleep(6000); await openMap(p); await sleep(1200);
-  for (const zoomed of [false, true]) {
+  await sleep(6000); await openMap(p); await sleep(1500); await shot(p, `after${w}_${scale}`, "map"); console.log("CNT", JSON.stringify(await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;const b=v.map.bosses;return {n:b.length,uniq:new Set(b.map(q=>q.id+q.x+q.y)).size,ids:b.map(q=>q.id).join(","),hitsBoss:v.hits.filter(q=>q.sub.startsWith("Босс")).length,camps:v.hits.filter(q=>q.sub&&q.sub.includes("Лагерь")).length}})()`)));
+  for (const zoomed of [false]) {
     if (zoomed) { await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;const b=v.hits.find(q=>q.title.startsWith("Колосс"))||v.hits.find(q=>q.sub.startsWith("Босс"));v.s=v.fit*12;v.cx=v.map.w/2;v.cy=v.map.h*0.8;v.clamp();})()`); await sleep(600); }
     const names = (await p.evaluate(`(()=>{const v=window.__game.scene.getScene("game").hud.wmView;const out=[];for(const key of ["Колосс","Босс","Пепельные чертоги","Рассветный","Эмберхолл"]){const h=v.hits.find(q=>q.title.includes(key)||q.sub.includes(key)); if(h) out.push(h.title)} return out})()`)) as string[];
     for (const nm of names) {
@@ -119,7 +119,7 @@ async function main() {
     const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: chromeArgs, defaultViewport: { width: 1366, height: 768 }, protocolTimeout: 1800000 });
     try {
       { const w = await newPage(browser, 1366, 768); await w.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" }); await sleep(12000); await w.close(); }
-      for (const [w, h, sc] of [[1366, 768, 100], [1366, 768, 125], [1920, 1080, 100], [1920, 1080, 150]] as const) await pass(browser, w, h, sc);
+      for (const [w, h, sc] of [[1366, 768, 100]] as const) await pass(browser, w, h, sc);
       log(`ошибок консоли: ${errors.length}`); for (const e of [...new Set(errors)].slice(0, 8)) log(`  ${e}`);
     } finally { await browser.close(); await vite.close(); await stopServer(); }
   } finally { try { fs.unlinkSync(lock); } catch { /* ok */ } }

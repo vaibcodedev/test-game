@@ -37,15 +37,11 @@ const SIGNS = (world.signs.list as { x: number; y: number; text: string }[]);
 /** Подпись зоны второй строкой и её цвет: опасность цветом токена (кольцо — янтарный, Поля — красный) или земли фракции её цветом; как на миникарте. */
 const zoneTag = (z: { danger?: "unsafe" | "deadly"; land?: FactionId }): { text: string; color: string } | null =>
   z.danger ? { text: DANGER_LABEL[z.danger], color: z.danger === "deadly" ? P.bad : P.warn } : z.land ? { text: landLabel(z.land), color: factionColor(z.land) } : null;
-/** Значок босса: череп 9×9, обводка тёмная, заливка алая (пиксель-арт; в легенде — тот же, см. bossSkullUrl). */
+/** Значки карты (tools/gen/wm-icons.ts → client/public/assets/ui/wm): легенда и значок босса на самой карте. */
+const WM_ICON = (n: string) => `/assets/ui/wm/${n}.png`;
+const bossImg = (() => { const i = new Image(); i.src = WM_ICON("boss"); return i; })();
 /** Сдвиги подписи-блока (px экрана), от ближайших к дальним. */
 const BLOCK_SHIFTS: [number, number][] = (() => { const o: [number, number][] = []; for (let dx = -120; dx <= 120; dx += 12) for (let dy = -60; dy <= 60; dy += 6) if (dx || dy) o.push([dx, dy]); return o.sort((a, b) => Math.hypot(a[0], a[1] * 2) - Math.hypot(b[0], b[1] * 2)); })();
-const SKULL = ["..ooooo..", ".oRRRRRo.", "oRRRRRRRo", "oRKRRRKRo", "oRKRRRKRo", ".oRRKRRo.", ".oRRRRRo.", "..oRoRo..", "...ooo..."];
-const SKULL_COL: Record<string, string> = { o: "#2a0a12", R: "#e0283a", K: "#120a10" };
-function drawBossSkull(g: CanvasRenderingContext2D, cx: number, cy: number) {
-  SKULL.forEach((row, j) => [...row].forEach((c, i) => { if (c !== ".") { g.fillStyle = SKULL_COL[c]; g.fillRect(cx - 4 + i, cy - 4 + j, 1, 1); } }));
-}
-const bossSkullUrl = (() => { const c = document.createElement("canvas"); c.width = c.height = 9; drawBossSkull(c.getContext("2d")!, 4, 4); return c.toDataURL(); })();
 interface Hit { x: number; y: number; r: number; title: string; sub: string }
 
 export class WorldMapView {
@@ -78,10 +74,11 @@ export class WorldMapView {
     this.root.className = "wm";
     const bar = document.createElement("div");
     bar.className = "wm-bar";
-    const btn = (t: string, title: string, fn: () => void) => {
+    const btn = (t: string, title: string, fn: () => void, icon?: string) => {
       const b = document.createElement("button");
-      b.className = "btn wm-btn";
-      b.textContent = t;
+      b.className = icon ? "btn wm-btn wm-btn-ic" : "btn wm-btn";
+      if (icon) b.innerHTML = `<img src="${WM_ICON(icon)}" alt="">`;
+      b.append(t);
       b.title = title;
       b.onclick = fn;
       bar.append(b);
@@ -89,16 +86,19 @@ export class WorldMapView {
     btn("+", T("ui.worldmap.723"), () => this.zoomAt(1.5, this.W / 2, this.H / 2));
     btn("−", T("ui.worldmap.724"), () => this.zoomAt(1 / 1.5, this.W / 2, this.H / 2));
     btn(T("ui.worldmap.725"), T("ui.worldmap.726"), () => this.reset());
-    btn(T("ui.worldmap.727"), T("ui.worldmap.728"), () => this.centerMe());
+    btn(T("ui.worldmap.727"), T("ui.worldmap.728"), () => this.centerMe(), "center");
     this.hint.className = "chip";
     this.hint.textContent = T("ui.worldmap.309");
     this.hint.hidden = true;
     bar.append(this.hint);
     const leg = document.createElement("div");
     leg.className = "wm-legend";
-    leg.innerHTML = `<i style="background:#fff;border-color:#e84a4a"></i>Вы <i style="background:${CITY}"></i>${T("ui.worldmap.729")} <i style="background:${KIND_COLOR.settlement}"></i>${T("ui.worldmap.719")} <i style="background:${KIND_COLOR.camp}"></i>${T("ui.worldmap.720")} <i style="background:${KIND_COLOR.ruins}"></i>${T("ui.worldmap.721")} <i class="road"></i>${T("ui.worldmap.730")} <i class="river"></i>${T("ui.worldmap.731")} <i style="background:${factionColor("solgard")}"></i>${T("ui.worldmap.732")} <i style="background:${factionColor("umbrath")}"></i>${T("ui.worldmap.733")} <img src="${bossSkullUrl}" class="wm-skull" alt="">Босс`;
+    const it = (n: string, t: string) => `<span class="wm-it"><img src="${WM_ICON(n)}" alt="">${t}</span>`;
+    const sw = (c: string, t: string) => `<span class="wm-it"><i style="background:${c}"></i>${t}</span>`;
+    leg.innerHTML = `<span class="wm-lg">${it("you", "Вы")}${it("city", T("ui.worldmap.729"))}${it("house", T("ui.worldmap.719"))}${it("camp", T("ui.worldmap.720"))}${it("ruin", T("ui.worldmap.721"))}${it("boss", "Босс")}</span><span class="wm-lg"><span class="wm-it"><i class="road"></i>${T("ui.worldmap.730")}</span><span class="wm-it"><i class="river"></i>${T("ui.worldmap.731")}</span></span><span class="wm-lg">${sw(factionColor("solgard"), T("ui.worldmap.732"))}${sw(factionColor("umbrath"), T("ui.worldmap.733"))}</span>`;
     bar.append(leg);
     this.wrap.className = "wm-view";
+    this.wrap.style.setProperty("--wm-ar", String(map.w / map.h)); // рамка по карте, без тёмных полос
     this.tip.className = "wm-tip";
     this.tip.hidden = true;
     this.wrap.append(this.cv, this.tip);
@@ -291,7 +291,7 @@ export class WorldMapView {
     const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
     const hits: Hit[] = [];
     const bossIcons = big ? this.map.bosses.filter((b) => MOBS[b.id]).map((b) => ({ b, x: Math.round(X(b.x / TILE)), y: Math.round(Y(b.y / TILE)) })) : [];
-    for (const i of bossIcons) placed.push({ x0: i.x - 5, y0: i.y - 5, x1: i.x + 5, y1: i.y + 5 }); // значки боссов занимают место до подписей
+    for (const i of bossIcons) placed.push({ x0: i.x - 8, y0: i.y - 8, x1: i.x + 8, y1: i.y + 8 }); // значки боссов занимают место до подписей
     const label = (text: string, x: number, y: number, fill: string, font: string, size = 16, ws = "0px", dry: Dry = false, inMap = false): boolean => {
       g.font = font;
       g.wordSpacing = ws;
@@ -351,7 +351,7 @@ export class WorldMapView {
           g.strokeStyle = P.fg;
           g.strokeRect(Math.round(((r.x0 + r.x1) / 2 - ws[i] / 2) * dpr) / dpr + 0.5, top + 1.5, ws[i] - 1, hs[i] - 3);
         } else {
-          g.lineWidth = 3;
+          g.lineWidth = 4;
           g.strokeStyle = P.well;
           g.lineJoin = "round";
           g.strokeText(l.text, lx, ly);
@@ -474,8 +474,8 @@ export class WorldMapView {
     // боссы зон и кольца (BOSS_SPAWNS): алый череп 9 px с тёмной обводкой в клетке босса; состояние (жив/возрождение) вне зоны видимости на клиент не приходит
     for (const { b, x, y } of bossIcons) {
       const d = MOBS[b.id]!;
-      drawBossSkull(g, x, y);
-      hits.push({ x, y, r: 4, title: `${d.name} · ур. ${d.level ?? "?"}`, sub: "Босс · состояние неизвестно" });
+      if (bossImg.complete && bossImg.naturalWidth) g.drawImage(bossImg, x - 7, y - 7, 14, 14);
+      hits.push({ x, y, r: 6, title: `${d.name} · ур. ${d.level ?? "?"}`, sub: "Босс · состояние неизвестно" });
     }
     if (big) drawWbMap(g, X, Y, s, hits, placed); // Колосс Полей: 4 состояния, круг арены (задача 151)
     if (big) drawSiegeMap(g, X, Y, s, hits); // ворота осаждаемого форта и знамя недели (шаг 15)

@@ -112,14 +112,19 @@
   overflow: visible;
   z-index: var(--z-window);
 }
-.wm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1h); margin-bottom: var(--sp-2); }
-.wm-btn { min-width: 36px; padding: var(--sp-1) var(--sp-2); }
-.wm-legend { margin-left: auto; font-size: var(--fs-sm); color: var(--dim); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-1h); }
-.wm-legend i { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--well); margin-left: var(--sp-2); }
-.wm-legend i.road { height: 3px; background: #f0d796; border: 0; width: 14px; }
-.wm-legend img.wm-skull { width: 9px; height: 9px; margin-left: var(--sp-2); image-rendering: pixelated; }
-.wm-legend i.river { height: 4px; background: #468cdc; border: 0; width: 14px; }
-.wm-view { position: relative; width: 100%; height: clamp(260px, calc(var(--vh, 100vh) - 220px), 800px); background: var(--well); border-radius: var(--r-1); overflow: hidden; }
+.wm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--well); border: 1px solid var(--line); border-radius: var(--r-1); }
+.wm-btn { min-width: 36px; height: 28px; padding: 0 var(--sp-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1h); }
+.wm-btn img { width: 14px; height: 14px; image-rendering: pixelated; }
+.wm-btn-ic { color: var(--gold); border-color: var(--line-hi); }
+.wm-legend { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; font-size: var(--fs-sm); color: var(--dim); padding: var(--sp-1) var(--sp-3); background: var(--panel); border: 1px solid var(--line-hi); border-radius: var(--r-1); }
+.wm-lg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
+.wm-lg + .wm-lg { margin-left: var(--sp-3); padding-left: var(--sp-3); border-left: 1px solid var(--line); }
+.wm-it { display: inline-flex; align-items: center; gap: var(--sp-1h); white-space: nowrap; }
+.wm-it img { width: 14px; height: 14px; image-rendering: pixelated; }
+.wm-it i { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--well); }
+.wm-it i.road { height: 3px; background: #f0d796; border: 0; width: 14px; }
+.wm-it i.river { height: 4px; background: #468cdc; border: 0; width: 14px; }
+.wm-view { position: relative; margin: 0 auto; width: min(100%, calc(clamp(260px, calc(var(--vh, 100vh) - 240px), 800px) * var(--wm-ar, 2))); height: auto; aspect-ratio: var(--wm-ar, 2); background: var(--well); border: 2px solid var(--line-hi); box-shadow: 0 0 0 3px var(--well), 0 0 0 4px var(--line); border-radius: var(--r-1); overflow: hidden; box-sizing: border-box; }
 .wm-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: var(--cur-grab); touch-action: none; }
 .wm-view canvas:active { cursor: var(--cur-grabbing); }
 .wm.picking .wm-view canvas { cursor: none; } /* выбор точки (телепорт админа): курсор — золотая рамка на тайле, её рисует карта (worldmap.ts, drawPickMark); второй курсор поверх не нужен */

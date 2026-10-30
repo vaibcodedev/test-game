@@ -88,5 +88,8 @@ export function build(v: string, name: string): PC {
 if (process.argv[1]?.includes("wm-icons")) {
   const out = path.resolve("tools/out/boss-dots/icons");
   for (const v of Object.keys(V)) for (const n of Object.keys(V[v])) build(v, n).save(path.join(out, `${v}_${n}.png`));
+  // выбор владельца (смесь) → клиент: client/public/assets/ui/wm/<имя>.png
+  const PICK: Record<string, string> = { city: "B", house: "C", camp: "C", ruin: "B", boss: "B", you: "A", center: "A" };
+  for (const [n, v] of Object.entries(PICK)) build(v, n).save(path.resolve("client/public/assets/ui/wm", `${n}.png`));
   console.log("ok");
 }
