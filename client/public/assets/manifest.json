@@ -35737,13 +35737,13 @@
  "atlases": [
   {
    "key": "objs0",
-   "png": "/assets/atlas/objs0.png?v=3e149b6ebe",
-   "json": "/assets/atlas/objs0.json?v=3e149b6ebe"
+   "png": "/assets/atlas/objs0.png?v=6b991ef46d",
+   "json": "/assets/atlas/objs0.json?v=6b991ef46d"
   },
   {
    "key": "objs1",
-   "png": "/assets/atlas/objs1.png?v=3e149b6ebe",
-   "json": "/assets/atlas/objs1.json?v=3e149b6ebe"
+   "png": "/assets/atlas/objs1.png?v=6b991ef46d",
+   "json": "/assets/atlas/objs1.json?v=6b991ef46d"
   }
  ],
  "atlasOf": {
