@@ -137,7 +137,11 @@ export class WorldBosses {
     return m.join(group, this.now());
   }
   cancel(p: Player) { this.musters.get(p.faction)?.cancel(p.name.toLowerCase()); }
-  startNow(p: Player) { return this.musters.get(p.faction)?.startNow(p.name.toLowerCase()) ?? "—"; }
+  /** null — сбор начат; строка — причина отказа. Нет сбора своей фракции — отказ «—» (B41: успех null не подменяется). */
+  startNow(p: Player): string | null {
+    const m = this.musters.get(p.faction);
+    return m ? m.startNow(p.name.toLowerCase()) : "—";
+  }
   /** Сбор окончен: автосбор отрядов по ролям (баланс танк/лекарь/бой), каждому — его отряд. */
   private formSquads(f: string, list: MusterEntry[]) {
     const boss = this.nextBoss()?.def.id ?? WB_BOSSES[0]?.id ?? "";

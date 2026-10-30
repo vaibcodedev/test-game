@@ -16,6 +16,7 @@
 |---|---|
 | любой арт, ассеты, паки, проверка перед показом | [docs/art/quality-bar.md](docs/art/quality-bar.md) |
 | объекты, здания, стены, ворота, высоты, вода и берега | [docs/art/perspective.md](docs/art/perspective.md) |
+| любая правка объектов мира: полный список, категории, где стоят | [docs/art/objects.md](docs/art/objects.md) (источник — data/objects-catalog.json) |
 | рост и масштаб юнитов, маунтов, объектов | [docs/art/scale.md](docs/art/scale.md) |
 | иконки вещей и умений | [docs/art/icons.md](docs/art/icons.md) |
 | снаряжение, сеты, оружие, редкость, заточка, перековка, герой Б | [docs/art/gear.md](docs/art/gear.md) |

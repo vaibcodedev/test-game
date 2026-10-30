@@ -14,7 +14,7 @@ import BARKS from "../../../data/barks.json";
 import { CITIES, CITY_CITIZEN_COUNT, CITY_GATE_GUARDS, CITY_PATROLS, layoutOf, type CityLayout } from "../../../shared/cities";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { MOVE_MUL, TILE } from "../../../shared/constants";
-import { moveWithCollision, walkable } from "../../../shared/map";
+import { moveWithCollision, roundPos, walkable } from "../../../shared/map";
 import { Nav } from "../../../shared/path";
 import { Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { CITIZEN_COUNT, CITIZEN_SPOTS, GATE_GUARDS, GUARD_RANGE_TILES, PATROLS, TOWN, TOWN_HALF, WALL } from "../../../shared/town";
@@ -663,8 +663,9 @@ export class Townfolk {
     const s = crowdStep(this.w.crowd, f, f.x, f.y, R, (dx / d) * sp, (dy / d) * sp, 0, gx, gy);
     const n = moveWithCollision(this.w.map, f.x, f.y, s.x, s.y, R);
     const moved = Math.abs(n.x - f.x) + Math.abs(n.y - f.y) > 0.05;
-    f.x = Math.round(n.x * 10) / 10;
-    f.y = Math.round(n.y * 10) / 10;
+    const q = roundPos(this.w.map, f.x, f.y, n, R);
+    f.x = q.x;
+    f.y = q.y;
     f.dir = dirTo(dx, dy);
     return moved;
   }
@@ -673,8 +674,9 @@ export class Townfolk {
     const s = crowdStep(this.w.crowd, f, f.x, f.y, R, 0, 0, speed * MOVE_MUL * dt);
     if (!s.x && !s.y) return false;
     const n = moveWithCollision(this.w.map, f.x, f.y, s.x, s.y, R);
-    f.x = Math.round(n.x * 10) / 10;
-    f.y = Math.round(n.y * 10) / 10;
+    const q = roundPos(this.w.map, f.x, f.y, n, R);
+    f.x = q.x;
+    f.y = q.y;
     return true;
   }
 

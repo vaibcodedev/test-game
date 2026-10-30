@@ -13,6 +13,7 @@ import type { OpenWorldState, Unit } from "./schema";
 import type { World } from "../game/World";
 import type { Player } from "../game/Player";
 import type { Pet } from "../game/Pet";
+import { BUFF_STEALTH } from "../../../shared/protocol";
 
 export const VIS_CELL = 512;
 export const VIS_IN = 3;
@@ -49,6 +50,8 @@ export class Visibility {
   private tickNo = 0;
   private lastFull = 0;
   private lastDots = 0;
+  /** Герои под скрытностью на прошлом тике. */
+  private hidden = new Set<Unit>();
 
   constructor(
     private state: OpenWorldState,
@@ -95,13 +98,18 @@ export class Visibility {
     if (full) this.lastFull = now;
     const w0 = this.world();
     this.indexPets(w0);
+    // скрытность сменилась у кого-то из героев — пересчитать все виды сразу (вышедший из тени виден в тот же тик, ушедший — пропадает)
+    const hidden = new Set<Unit>();
+    this.state.players.forEach((u) => { if (u.buffs & BUFF_STEALTH) hidden.add(u); });
+    const stealthChanged = hidden.size !== this.hidden.size || [...hidden].some((u) => !this.hidden.has(u));
+    this.hidden = hidden;
     for (const [id, w] of this.watchers) {
       const p = w0.players.get(id);
       if (!p) continue;
       const u = p.unit;
       const moved = cellOf(u.x) !== w.cx || cellOf(u.y) !== w.cy || Math.abs(u.x - w.x) > VIS_JUMP || Math.abs(u.y - w.y) > VIS_JUMP;
       // новый питомец (призыв, смена питомца) — в вид сразу, не через 250 мс
-      if (full || moved || (this.petsOf.get(id) ?? []).some((pet) => !w.seen.has(pet.unit))) this.refresh(w, p);
+      if (full || moved || stealthChanged || (this.petsOf.get(id) ?? []).some((pet) => !w.seen.has(pet.unit))) this.refresh(w, p);
     }
     if (now - this.lastDots >= VIS_DOTS_MS) {
       this.lastDots = now;
@@ -153,11 +161,15 @@ export class Visibility {
     // гистерезис: уже видимый юнит уходит только за VIS_OUT клеток
     for (const [u, id] of w.seen)
       if (!next.has(u) && this.attached(u, id) && Math.abs(cellOf(u.x) - cx) <= VIS_OUT && Math.abs(cellOf(u.y) - cy) <= VIS_OUT) next.set(u, id);
-    // всегда: свой герой, питомец, цель, группа
+    // B40: герой под скрытностью (BUFF_STEALTH) не уходит чужим клиентам вовсе — ни координат, ни имени (прятать только на клиенте —
+    // читер видит невидимок). Видят его только он сам и его группа (ниже, force); обнаружения героев по правилам игры пока нет.
+    // Питомцы невидимого остаются видны (как в WoW): они дерутся и не прячутся вместе с хозяином.
+    for (const u of [...next.keys()]) if (u !== me && u.buffs & BUFF_STEALTH && this.state.players.get(next.get(u)!) === u) next.delete(u);
+    // всегда: свой герой, питомец, цель (кроме невидимки), группа
     const force = (u: Unit | undefined, id: string | null | undefined) => { if (u && id && this.attached(u, id)) next.set(u, id); };
     force(me, p.id);
     for (const pet of this.petsOf.get(p.id) ?? []) force(pet.unit, pet.id); // все питомцы героя
-    if (p.targetId) force(this.world().actor(p.targetId)?.unit, p.targetId);
+    if (p.targetId) { const tu = this.world().actor(p.targetId)?.unit; if (!(tu && tu.buffs & BUFF_STEALTH && this.state.players.get(p.targetId) === tu)) force(tu, p.targetId); }
     for (const m of this.extra(p)) if (m) force(m.unit, m.id);
     for (const u of w.seen.keys()) if (!next.has(u)) w.view.remove(u);
     for (const [u, id] of next) if (!w.seen.has(u)) {

@@ -110,6 +110,7 @@ export function stableCraft(w: World, p: Player, id: unknown, arenaRating = 0) {
   const o = stableOffer(d, stateOf(p, arenaRating));
   if (!o.craft) return err(p, T("srv.stable.169"));
   if (o.owned) return err(p, T("srv.stable.166"));
+  if (o.sealInBag) return err(p, T("srv.stable.167")); // B7: как в buySeal — вторая печать того же маунта не нужна, детали и золото не списываем
   if (!o.canCraft) return err(p, T("srv.stable.170", { mountname: mountName(d.id, p.faction), join: o.missCraft.join(", ") }));
   const backup = JSON.stringify(p.save.inventory);
   for (const [part, n] of Object.entries(d.craft!.parts)) takeBase(p, partBase(part), n);

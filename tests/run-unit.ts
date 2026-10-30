@@ -11,14 +11,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const UNIT = ["economy", "bank-trade", "combat", "persistence", "anticheat", "teleport"].map((f) => `tests/unit/${f}.ts`);
+const UNIT = ["economy", "bank-trade", "combat", "persistence", "anticheat", "teleport", "rewards", "stable", "legendary", "transmog", "admin", "drop",
+  ...["warrior", "healer", "ranger", "mage", "rogue", "deathknight", "bloodweaver", "darkranger", "warlock", "reaver"].map((c) => `classes-${c}`), // механики классов (общие заготовки — classes-kit.ts)
+  "world-map", "world-visibility", "world-format", "pvp-world", "pvp-arena", "events-muster", "events-raid", "events-wboss", "social-party", // мир, PvP, события, группа/чат/задания
+].map((f) => `tests/unit/${f}.ts`);
 /** Прежние тесты без сервера (проверено: не поднимают сервер и браузер). */
 const LEGACY = [
   "keybinds", "style-tokens", "cast-resolve", "skill-shape", "cast-move", "pick", "gearFx", "cc", "auras", "aura-fx", "aura-plan",
   "map-layout", "worldmap-labels", "terrain-tiles", "cities", "path-buffer", "server-safety", "npc-faction", "patrols", "squads",
   "mount-awards", "menagerie", "zone-boss-loot", "legendary", "zone-bosses", "move", "raid", "skill-fx", "editor",
   "cloak", "decor-rules", "dungeon-helpers", "fort-scenes", "fort-siege", "heroB-weapon", "nature-hitbox", "npc-ai",
-  "soldier-hostility", "tiled-roundtrip", "water-edge",
+  "soldier-hostility", "tiled-roundtrip", "water-edge", "banners-event", "guard-target",
 ].map((f) => `tests/${f}.ts`);
 
 const args = process.argv.slice(2);

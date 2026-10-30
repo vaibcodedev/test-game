@@ -48,7 +48,12 @@ export interface CastCtx {
 
 // ---------- урон со временем: проклятия и кровотечения ----------
 export interface Dot { stacks: number; until: number; dmg: number }
-export const dots = new Map<string, Dot>();
+/**
+ * Эффекты по цели: карта у самого объекта цели (WeakMap), ключ внутри — `${id героя}|${вид}`. Не общая карта по id: id мобов (w.uid)
+ * в разных мирах (арена, подземелье) совпадают — чужой мир видел бы эти записи (B23).
+ */
+const dotsBy = new WeakMap<object, Map<string, Dot>>();
+const dotMap = (t: object) => { let m = dotsBy.get(t); if (!m) dotsBy.set(t, (m = new Map())); return m; };
 
 /**
  * Периодический урон от героя по цели: тик раз в секунду, stacks — до maxStacks, повтор продлевает срок (никогда не укорачивает).
@@ -56,7 +61,7 @@ export const dots = new Map<string, Dot>();
  */
 export function addDot(w: World, p: Player, target: Actor, key: "curse" | "bleed" | "agony" | "plague", dmg: number, durS: number, kind: FxKind, maxStacks = 1) {
   if (w.gone(p) || w.isDead(target) || !w.canAffect(p, target)) return;
-  const k = `${p.id}|${target.id}|${key}`;
+  const dots = dotMap(target), k = `${p.id}|${key}`;
   const cur = dots.get(k);
   const live = cur && cur.until > w.time;
   const e: Dot = live ? cur : { stacks: 0, until: 0, dmg };
@@ -82,8 +87,8 @@ export function addDot(w: World, p: Player, target: Actor, key: "curse" | "bleed
 /** Живые периодические эффекты героя на цели (для «Взрыва проклятий» и «Эпидемии»). */
 export function dotsOf(w: World, p: Player, target: Actor): { key: string; dmg: number; stacks: number; left: number }[] {
   const out: { key: string; dmg: number; stacks: number; left: number }[] = [];
-  const pre = `${p.id}|${target.id}|`;
-  for (const [k, e] of dots) if (k.startsWith(pre) && e.until > w.time) out.push({ key: k.slice(pre.length), dmg: e.dmg, stacks: e.stacks, left: e.until - w.time });
+  const pre = `${p.id}|`;
+  for (const [k, e] of dotMap(target)) if (k.startsWith(pre) && e.until > w.time) out.push({ key: k.slice(pre.length), dmg: e.dmg, stacks: e.stacks, left: e.until - w.time });
   return out;
 }
 /**
@@ -93,10 +98,8 @@ export function dotsOf(w: World, p: Player, target: Actor): { key: string; dmg: 
  */
 function syncDotFlags(target: Actor, gone: { curse: number; bleed: number }) {
   let curse = 0, bleed = 0, stacks = 0;
-  for (const [k, e] of dots) {
-    const part = k.split("|");
-    if (part[1] !== target.id) continue;
-    if (part[2] === "bleed") { if (e.until > bleed) { bleed = e.until; stacks = e.stacks; } } else curse = Math.max(curse, e.until);
+  for (const [k, e] of dotMap(target)) {
+    if (k.endsWith("|bleed")) { if (e.until > bleed) { bleed = e.until; stacks = e.stacks; } } else curse = Math.max(curse, e.until);
   }
   if (gone.curse && target.curseUntil <= gone.curse) target.curseUntil = curse;
   if (gone.bleed && target.bleedUntil <= gone.bleed) {
@@ -107,7 +110,7 @@ function syncDotFlags(target: Actor, gone: { curse: number; bleed: number }) {
 
 /** Снять периодические эффекты героя с цели (после «Взрыва проклятий»). */
 export function removeDots(p: Player, target: Actor) {
-  const pre = `${p.id}|${target.id}|`, gone = { curse: 0, bleed: 0 };
+  const dots = dotMap(target), pre = `${p.id}|`, gone = { curse: 0, bleed: 0 };
   for (const [k, e] of [...dots]) {
     if (!k.startsWith(pre)) continue;
     if (k.endsWith("|bleed")) gone.bleed = Math.max(gone.bleed, e.until); else gone.curse = Math.max(gone.curse, e.until);
@@ -118,19 +121,19 @@ export function removeDots(p: Player, target: Actor) {
 
 /** Живой эффект героя p на цели (для умений Потрошителя: server/src/game/reaver.ts). */
 export function dotOf(w: World, p: Player, t: Actor, key: "curse" | "bleed" | "agony" | "plague"): Dot | undefined {
-  const e = dots.get(`${p.id}|${t.id}|${key}`);
+  const e = dotMap(t).get(`${p.id}|${key}`);
   return e && e.until > w.time ? e : undefined;
 }
 /** Оборвать эффект героя p на цели (тик сам остановится); значок цели уходит, если других таких эффектов на ней нет. */
 export function endDot(p: Player, t: Actor, key: "curse" | "bleed" | "agony" | "plague") {
-  const k = `${p.id}|${t.id}|${key}`, e = dots.get(k);
+  const dots = dotMap(t), k = `${p.id}|${key}`, e = dots.get(k);
   dots.delete(k);
   if (e) syncDotFlags(t, key === "bleed" ? { curse: 0, bleed: e.until } : { curse: e.until, bleed: 0 });
 }
 
 /** Снять все периодические эффекты героев с цели (очищение). */
-export function clearDots(targetId: string) {
-  for (const k of [...dots.keys()]) if (k.split("|")[1] === targetId) dots.delete(k);
+export function clearDots(target: object) {
+  dotsBy.get(target)?.clear(); // тики держат ссылку на карту: чистим её, а не отвязываем
 }
 
 const weaponAvg = (p: Player) => ((p.derived.dmgMin + p.derived.dmgMax) / 2) * p.derived.skillMult;

@@ -55,7 +55,7 @@ export function banner(root: HTMLElement, o: { title: string; name: string; sub?
 }
 
 export interface RowHost { self(): SelfState | undefined; take(bagId: string): void }
-/** Ряд всего содержимого над мешком: иконки в рамках цвета редкости, у стопок число, при наведении на иконку — карточка. */
+/** Карточка содержимого над мешком: строки «иконка в рамке редкости · имя · ×N», золото с монетой, до 5 строк, при наведении на строку — полная карточка вещи. Подсказка G — общая плашка hud.setInteractTip. */
 export class LootRow {
   private box = document.createElement("div");
   private key = "";
@@ -79,14 +79,25 @@ export class LootRow {
       if (key !== this.key) {
         this.key = key;
         const s = this.host.self();
-        this.box.innerHTML = `<div class="lr-row">${gold ? `<div class="lr-it" style="--rc:#e0a630;--i:0"><div class="lr-b"><img src="${icon("gold")}" alt=""><em>${gold}</em></div></div>` : ""}${items.map((it, j) => `<div class="lr-it" style="--rc:${RARITY_COLORS[it.rarity]};--i:${j}"><div class="lr-b"><img src="${icon(iconFor(it))}" alt="">${it.qty && it.qty > 1 ? `<em>${it.qty}</em>` : ""}</div><div class="lr-card">${s ? lootCard(it, s) : ""}</div></div>`).join("")}</div><div class="lr-hint">${lock ? esc(T("ui.drop.lootLock", { sec: lock })) : `<kbd class="kbd">G</kbd> / клик — взять всё`}</div>`;
+        const MAX = 5, lines: string[] = [];
+        if (gold) lines.push(`<div class="lr-it" style="--rc:#e0a630;--i:0"><div class="lr-b"><img src="${icon("gold")}" alt=""></div><span class="lr-nm" style="color:#e0a630">${gold}</span></div>`);
+        const room = MAX - lines.length, hidden = items.length > room ? items.length - (room - 1) : 0, shown = hidden ? items.slice(0, room - 1) : items;
+        shown.forEach((it, j) => {
+          const q = it.qty && it.qty > 1 ? `<span class="lr-q">×${it.qty}</span>` : "";
+          lines.push(`<div class="lr-it" style="--rc:${RARITY_COLORS[it.rarity]};--i:${lines.length}"><div class="lr-b"><img src="${icon(iconFor(it))}" alt=""></div><span class="lr-nm">${esc(itemName(it))}</span>${q}<div class="lr-card">${s ? lootCard(it, s) : ""}</div></div>`);
+        });
+        if (hidden) lines.push(`<div class="lr-more">${esc(T("ui.loot.more", { n: hidden }))}</div>`);
+        this.box.innerHTML = `<div class="lr-row">${lines.join("")}${lock ? `<div class="lr-lock">${esc(T("ui.loot.foreign", { sec: lock }))}</div>` : ""}</div>`;
         this.box.hidden = false;
         this.box.classList.remove("show");
         void this.box.offsetWidth;
         this.box.classList.add("show");
       }
-      this.box.style.left = `${Math.round(sx)}px`;
-      this.box.style.top = `${Math.round(sy)}px`;
+      const w = this.box.offsetWidth, h = this.box.offsetHeight;
+      const x = Math.min(Math.max(sx, w / 2 + 8), window.innerWidth - w / 2 - 8), y = Math.max(sy, h + 8);
+      this.box.style.left = `${Math.round(x)}px`;
+      this.box.style.top = `${Math.round(y)}px`;
+      this.box.classList.toggle("flip", x + w / 2 + 266 > window.innerWidth);
       return;
     }
     if (this.over || this.hideT || this.box.hidden) return;

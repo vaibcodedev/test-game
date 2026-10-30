@@ -82,6 +82,12 @@ export function applyPoison(w: World, p: Player, target: Actor, rank: number, ad
   w.later(1000, tick);
 }
 
+/** Снять яды всех разбойников мира с цели (очищение лекаря, B21): тики обрываются сами (запись яда пропала). */
+export function clearPoisons(w: World, target: Actor) {
+  for (const q of w.players.values()) q.poisons.delete(target.id);
+  if (w.isPlayer(target)) { target.venomUntil = 0; target.venomStacks = 0; }
+}
+
 /** «Отравитель»: шанс яда при обычной атаке. */
 export function rogueProc(w: World, p: Player, target: Actor) {
   const r = p.save.skills.poisoner || 0;

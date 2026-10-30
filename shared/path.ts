@@ -1,6 +1,6 @@
 /** Поиск пути A* по клеткам карты (8 направлений, без срезания углов) и сглаживание по прямой видимости. */
 import { TILE } from "./constants";
-import { CELL_BLOCK, walkable, type WorldMap } from "./map";
+import { CELL_BLOCK, CELL_OBJ, walkable, type WorldMap } from "./map";
 import { interiorAt, interiorGrid } from "./interiors";
 import { GP } from "./gameplay";
 
@@ -61,16 +61,17 @@ class Heap {
  * Переиспользуемые буферы A* на размер карты (аудит 1.2): вместо Map/Set/кучи на каждый вызов.
  * Метка поколения: клетка «посещена в этом поиске», если seen[i] === gen (closed[i] === gen — закрыта); g, from, f валидны только при seen[i] === gen.
  */
-interface Scratch { size: number; g: Float64Array; from: Int32Array; seen: Uint32Array; closed: Uint32Array; heap: Heap; gen: number }
+interface Scratch { size: number; g: Float64Array; from: Int32Array; seen: Uint32Array; closed: Uint32Array; esc: Uint32Array; heap: Heap; gen: number }
 let scratch: Scratch | null = null;
 function getScratch(size: number): Scratch {
   // буфер не меньше нужного: зал интерьера (задача 144) ищет путь по своей маленькой сетке в буфере карты мира, без пересоздания
   if (!scratch || scratch.size < size) {
-    scratch = { size, g: new Float64Array(size), from: new Int32Array(size), seen: new Uint32Array(size), closed: new Uint32Array(size), heap: new Heap(new Float64Array(size)), gen: 0 };
+    scratch = { size, g: new Float64Array(size), from: new Int32Array(size), seen: new Uint32Array(size), closed: new Uint32Array(size), esc: new Uint32Array(size), heap: new Heap(new Float64Array(size)), gen: 0 };
   }
   if (++scratch.gen >= 0xffffffff) {
     scratch.seen.fill(0);
     scratch.closed.fill(0);
+    scratch.esc.fill(0);
     scratch.gen = 1;
   }
   scratch.heap.a.length = 0;
@@ -94,9 +95,16 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
   const tcx = Math.floor(tx / TILE), tcy = Math.floor(ty / TILE);
   const goal = tcy * W + tcx;
   const cell = m.cell;
-  const open = (i: number) => !(cell[i] & CELL_BLOCK);
+  // клетки следа объектов с коллизией по основанию (CELL_OBJ) закрыты, как прежде (быстро: такт с недостижимой целью — tests/guard-target.ts).
+  // Исключение — выход: юнит стоит за домом или у ствола внутри следа — от старта можно идти по клеткам CELL_OBJ, где можно стоять,
+  // пока не выйдет на обычную клетку (esc — «дошли от старта только по клеткам объекта»; переход — по прямой, shared/map.ts objBoxHit)
+  const OBJ = CELL_BLOCK | CELL_OBJ;
+  const cxOf = (i: number) => (i % W) * TILE + TILE / 2, cyOf = (i: number) => Math.floor(i / W) * TILE + TILE / 2;
   const S = getScratch(W * H);
-  const { g, from, seen, closed, heap } = S, gen = S.gen;
+  const { g, from, seen, closed, esc, heap } = S, gen = S.gen;
+  /** Клетка открыта для шага из cur: обычная свободная или (выход от старта) клетка объекта, в центре которой можно стоять. */
+  const open = (i: number, cur: number) => !(cell[i] & CELL_BLOCK) || ((cell[i] & OBJ) === OBJ && esc[cur] === gen && walkable(m, cxOf(i), cyOf(i), r));
+  if ((cell[s] & OBJ) === OBJ) esc[s] = gen;
   const h = (i: number) => {
     const dx = Math.abs((i % W) - tcx), dy = Math.abs(Math.floor(i / W) - tcy);
     return Math.max(dx, dy) + 0.414 * Math.min(dx, dy);
@@ -121,13 +129,15 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
       const nx = cx + dx, ny = cy + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
       const n = ny * W + nx;
-      if (!open(n)) continue;
-      if (dx && dy && (!open(cy * W + nx) || !open(ny * W + cx))) continue;
+      if (!open(n, cur)) continue;
+      if (dx && dy && (!open(cy * W + nx, cur) || !open(ny * W + cx, cur))) continue;
+      if (esc[cur] === gen && !segmentWalkable(m, cur === s ? sx : cxOf(cur), cur === s ? sy : cyOf(cur), cxOf(n), cyOf(n), r)) continue;
       const ng = gc + (dx && dy ? 1.414 : 1);
       if (seen[n] !== gen || ng < g[n]) {
         seen[n] = gen;
         g[n] = ng;
         from[n] = cur;
+        if ((cell[n] & OBJ) === OBJ) esc[n] = gen;
         heap.f[n] = ng + h(n);
         heap.push(n);
       }

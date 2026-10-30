@@ -46,7 +46,7 @@ export function robe(ctx: GearCtx, it: any, crest: CrestId) {
   // центральная полоса и вышивка (спереди)
   if (it.panel && fF > -0.2) {
     const t0 = sum(hp, mul(Fp, dW * 1.05 + th + 0.75), [0, -0.4, 0]), b0: V3 = [hp[0], hemY - 0.2, hp[2] + (dW * 1.05 + th + 0.75) * flare];
-    const w0 = mul(Ap, 1.0), w1 = mul(Ap, 1.4);
+    const w0 = mul(Ap, 1.5), w1 = mul(Ap, 2.0);
     push({ g: "r_panel", ramp: ramp(it.panel), o: { dome: 2, amp: 1.7, bias: 0.25, kant: true }, layer: 3.98, m: (z) => z.pg([add(t0, mul(w0, -1)), add(t0, w0), add(b0, w1), add(b0, mul(w1, -1))].map(PJ)) });
     if (it.embroid) push({ g: "r_emb", ramp: Tr, o: { dome: 1, bias: 0.6 }, layer: 3.981, m: (z) => { for (let j = 0; j < 4; j++) { const p = PJ(lerp(t0, b0, 0.15 + j * 0.22)); z.seg([p[0] - 0.9, p[1]], [p[0], p[1] + 0.8], 0.5); z.seg([p[0], p[1] + 0.8], [p[0] + 0.9, p[1]], 0.5); } } });
   } else if (it.embroid && fF > -0.2) push({ g: "r_emb", ramp: Tr, o: { dome: 1, bias: 0.6 }, layer: 3.981, m: (z) => { const p = PJ(surf(0, c * 0.4, 1, 0.3)); z.seg([p[0] - 1.2, p[1]], [p[0], p[1] + 1.0], 0.5); z.seg([p[0], p[1] + 1.0], [p[0] + 1.2, p[1]], 0.5); } });

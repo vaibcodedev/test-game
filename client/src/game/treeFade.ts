@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { objTex } from "./objTex";
+import type { ObjBox } from "../../../shared/map";
+import { PLAYER_RADIUS } from "../../../shared/constants";
 
 /**
  * Полупрозрачная крона: герой стоит за деревом (выше его основания по глубине) и крона перекрывает его — дерево плавно гаснет до 0,5,
@@ -34,20 +36,22 @@ export function updateTreeFade(hx: number, hy: number, dt: number) {
 
 /**
  * Здания: герой заходит за дом (севернее основания, в пределах силуэта) — здание плавно гаснет до 0,45, герой виден; впереди и сбоку — плотное.
- * Коллизия не меняется: непроходим только след на земле (shared/map.ts OBJ_SIZE), а верхняя часть над ним — зона «за зданием».
+ * Коллизия не меняется: непроходим только след на земле (shared/map.ts objBox, data/collision.json), а верхняя часть над ним — зона «за зданием».
  */
 export const FADE_BUILDINGS = new Set(["house", "house_blue", "tavern", "bank", "forge", "arena_gate", "hut_sol", "tent", "sol_house", "sol_temple", "sol_church", "umb_house", "umb_crypt", "umb_ziggurat", "tower", "sol_tower", "umb_tower"]);
-interface Bld { img: Phaser.GameObjects.Image; x: number; y: number; half: number; top: number; a: number }
+interface Bld { img: Phaser.GameObjects.Image; x: number; y: number; half: number; top: number; a: number; box: ObjBox | null }
 const blds = new Set<Bld>();
 const BFADE = 0.45;
-export function addBuildingFade(img: Phaser.GameObjects.Image) {
-  const b: Bld = { img, x: img.x, y: img.y, half: img.displayWidth * 0.5, top: img.displayHeight, a: 1 };
+/** box — основание здания (shared/map.ts objBox, data/collision.json): гаснет, только когда ноги героя севернее основания (за домом), а сбоку у стены — нет. */
+export function addBuildingFade(img: Phaser.GameObjects.Image, box: ObjBox | null = null) {
+  const b: Bld = { img, x: img.x, y: img.y, half: img.displayWidth * 0.5, top: img.displayHeight, a: 1, box };
   blds.add(b);
   img.once("destroy", () => blds.delete(b));
 }
 export function updateBuildingFade(hx: number, hy: number, dt: number) {
   for (const b of blds) {
-    const want = hy < b.y - 2 && hy > b.y - b.top + 8 && Math.abs(hx - b.x) < b.half ? BFADE : 1;
+    const bx = b.box, behind = bx ? hy < bx[2] && hx > bx[0] - PLAYER_RADIUS && hx < bx[1] + PLAYER_RADIUS : hy < b.y - 2 && Math.abs(hx - b.x) < b.half;
+    const want = behind && hy > b.y - b.top + 8 ? BFADE : 1;
     if (b.a === want) continue;
     b.a = want < b.a ? Math.max(want, b.a - dt * SPEED * (1 - BFADE)) : Math.min(want, b.a + dt * SPEED * (1 - BFADE));
     b.img.setAlpha(b.a);

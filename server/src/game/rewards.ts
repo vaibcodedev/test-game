@@ -103,12 +103,23 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
   if (!contributors.length) return;
   const boss = !!m.def.boss;
   const group = contributors.length;
+  // золото обычного моба (не босса) делится поровну между участниками рядом: бросок один на убийство, остаток — первым по списку
+  // (сумма не теряется и не удваивается); бонус точек фракции (wb.gold) — к своей доле (решение владельца 2026-10-30)
+  const goldShare = new Map<Player, number>();
+  if (!boss) {
+    const [g0, g1] = m.stats.gold;
+    const total = Math.round(g0 + Math.random() * (g1 - g0));
+    const base = Math.floor(total / group), rest = total - base * group;
+    contributors.forEach((p, i) => goldShare.set(p, base + (i < rest ? 1 : 0)));
+  }
   for (const p of contributors) {
     // «Знамёна Предела»: точки фракции дают опыт и золото, материалы на Полях и добычу в данже (bannerWar.ts mobBonus)
     const wb = w.war?.mobBonus(p, m) ?? { xp: 1, gold: 1, mats: 1, loot: 1 };
     // групповой бонус: каждый получает 70% + 30%/участник, но не больше 100%
     const share = boss ? 1 : Math.min(1, GP.rewards.shareBase + GP.rewards.shareGroup / group);
-    const xp = Math.round(xpForKill(m.stats.xp, m.level, p.level) * share * wb.xp);
+    // серый моб (на GP.rewards.greyLevels уровней ниже героя и больше) — без опыта (решение владельца 2026-10-30)
+    const grey = m.level <= p.level - GP.rewards.greyLevels;
+    const xp = grey ? 0 : Math.round(xpForKill(m.stats.xp, m.level, p.level) * share * wb.xp);
     const [g0, g1] = m.stats.gold;
     const zt = boss ? ZB_LOOT[m.def.id] : undefined;
     const denied = bossLootDenied(m, p);
@@ -119,13 +130,13 @@ export function grantKillRewards(w: World, m: Mob, killer?: Player) {
       const mk0 = (p.save.mobKills ??= {});
       mk0[m.def.id] = (mk0[m.def.id] || 0) + 1;
       p.save.bossKills[m.def.id] = (p.save.bossKills[m.def.id] || 0) + 1;
-      gainXp(w, p, Math.round(xpForKill(m.stats.xp, m.level, p.level) * share * wb.xp));
+      gainXp(w, p, xp);
       p.selfDirty = true;
       p.send("toast", { text: `Трофеи ${m.def.name === "Повелитель Пепла" ? "Повелителя Пепла" : m.def.name} уже получены сегодня · ещё ${fmtLeft(dg.leftMs)}`, kind: "info" });
       continue;
     }
     if (dg && !denied) { (p.save.dgLoot ??= {})[m.def.id] = Date.now(); const st = bossLootStatus(Date.now(), Date.now()); p.send("dungeon:status", { looted: true, leftMs: st.leftMs, at: Date.now() }); }
-    const gold = denied ? 0 : Math.round((g0 + Math.random() * (g1 - g0)) * (zt ? zt.gold.mult : boss ? GP.rewards.bossGoldMul : 1) * wb.gold);
+    const gold = denied ? 0 : boss ? Math.round((g0 + Math.random() * (g1 - g0)) * (zt ? zt.gold.mult : GP.rewards.bossGoldMul) * wb.gold) : Math.round((goldShare.get(p) ?? 0) * wb.gold);
     p.save.gold += gold;
     p.save.kills++;
     const mk = (p.save.mobKills ??= {});

@@ -16,6 +16,7 @@ import type { Player } from "./Player";
 import { segDist } from "../../../shared/skillShape";
 import { applyHeal, healPower, resolveAlly, type Ally } from "./skills";
 import { clearDots, mostWounded, type CastCtx } from "./umbrath";
+import { clearPoisons } from "./rogue";
 import { noteAuraSource, registerAuraHook } from "./auras";
 import { applyFear, applySilence, applySlow, cleanseCc } from "./effects";
 import type { Actor, HitOpts, World } from "./World";
@@ -105,13 +106,15 @@ function boost(w: World, t: Player, pct: number, ms: number) {
   w.emit({ t: "buff", id: t.id, k: "bless", ms });
 }
 
-/** Снять с цели оглушение, корни, замедление, ослабление, кровотечения и проклятия. */
-function cleanse(a: Ally) {
+/** Снять с цели оглушение, корни, замедление, ослабление, кровотечения, проклятия (и «Пиявку», B20) и яды (B21, решение владельца 2026-10-30). */
+function cleanse(w: World, a: Ally) {
   const t = (a.player ?? a.pet) as unknown as Actor;
   cleanseCc(t, ["stun", "root", "slow", "silence", "fear"]);
   t.weakUntil = 0;
   t.bleedUntil = t.curseUntil = 0;
-  clearDots(a.id);
+  clearDots(t);
+  leeches.get(t)?.clear(); // тики «Пиявки» сверяют свой жетон — без записи обрываются
+  clearPoisons(w, t);
 }
 
 // =====================================================================
@@ -172,7 +175,7 @@ export function castHealer(c: CastCtx): string | null | undefined {
       const a = resolveAlly(w, p, held ? p.id : c.targetId);
       const err = seeAlly(a); if (err) return err;
       c.ok();
-      cleanse(a);
+      cleanse(w, a);
       w.emit({ t: "aoe", k: "cleanse", x: a.x, y: a.y, r: 50 });
       w.emit({ t: "buff", id: a.id, k: "heal", ms: 700 });
       applyHeal(w, p, a, (healPower(p) * v.heal) / 100);
@@ -231,14 +234,15 @@ export function castHealer(c: CastCtx): string | null | undefined {
       const e = needTarget(); if (e) return e;
       c.ok(); face(t);
       const target = t, until = w.time + v.dur * 1000;
-      const key = `${p.id}|${target.id}`, token = (leeches.get(key) || 0) + 1;
-      leeches.set(key, token);
+      const lm = leeches.get(target) ?? leeches.set(target, new Map()).get(target)!;
+      const key = p.id, token = (lm.get(key) || 0) + 1;
+      lm.set(key, token);
       target.curseUntil = Math.max(target.curseUntil, until);
       noteAuraSource(target, "curse", p, until);
       const dmg = Math.max(1, Math.round((weaponAvg(p) * v.tick) / 100));
       for (let i = 1; i <= v.dur; i++)
         w.later(i * 1000, () => {
-          if (leeches.get(key) !== token || p.dead || w.isDead(target) || !w.hostile(p, target)) return;
+          if (lm.get(key) !== token || p.dead || w.isDead(target) || !w.hostile(p, target)) return;
           const dealt = w.hit(p, target, { flat: dmg, canCrit: false, kind: "blood", noBreak: true, noProc: true });
           if (dealt <= 0) return;
           const a = mostWounded(w, p, 320);
@@ -326,7 +330,8 @@ export function castHealer(c: CastCtx): string | null | undefined {
   }
   return undefined;
 }
-const leeches = new Map<string, number>();
+/** «Пиявка»: жетон последнего наложения по цели (карта у объекта цели — id мобов в разных мирах совпадают) и герою. */
+const leeches = new WeakMap<object, Map<string, number>>();
 
 // =====================================================================
 //                    МОДИФИКАТОРЫ СТАРЫХ УМЕНИЙ (вызываются из umbrath.ts / skills.ts)

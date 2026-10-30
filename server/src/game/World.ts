@@ -3,6 +3,7 @@ import { lootFor } from "./drop";
 import { stepApproach, tickQueue } from "./skillQueue";
 import { AGGRO_MUL, MAP_SEED, MOVE_MUL, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
 import { armorReduction } from "../../../shared/formulas";
+import { meleeTiming } from "../../../shared/attackTiming";
 import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
 import { PLUS_BONUS } from "../../../shared/upgrade";
 import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, isTownZone, walkable, zoneAtPx, Zone, type WorldMap } from "../../../shared/map";
@@ -410,7 +411,21 @@ export class World {
   private flush() {
     auraFx.tick(this, this.fx);
     if (this.fx.length) {
-      this.broadcast("fx", this.fx);
+      // B40: эффекты героя под скрытностью (он кастер c или юнит id) уходят только ему — иначе по координатам эффектов видно невидимку
+      let open = this.fx;
+      const hidden = new Map<string, Player>();
+      for (const p of this.players.values()) if (p.stealthUntil > this.time) hidden.set(p.id, p);
+      if (hidden.size) {
+        const own = new Map<Player, Fx[]>();
+        open = [];
+        for (const f of this.fx) {
+          const id = "id" in f && typeof f.id === "string" ? f.id : undefined;
+          const who = (f.c && hidden.get(f.c)) || (id && hidden.get(id));
+          if (who) (own.get(who) ?? own.set(who, []).get(who)!).push(f); else open.push(f);
+        }
+        for (const [p, list] of own) p.send("fx", list);
+      }
+      if (open.length) this.broadcast("fx", open);
       this.fx = [];
     }
     const wall = Date.now();
@@ -1000,13 +1015,15 @@ export class World {
     const u = p.unit;
     this.breakMount(p);
     const haste = p.hasteUntil > this.time ? 1 + p.hastePct / 100 : 1;
-    p.attackAt = this.time + (p.derived.attackCd * 1000) / haste;
+    const cdMs = (p.derived.attackCd * 1000) / haste;
+    p.attackAt = this.time + cdMs;
     p.combatAt = this.time;
     u.dir = World.dirTo(target.x - u.x, target.y - u.y);
     u.aseq = (u.aseq + 1) % 65535;
     const cls = p.cls, atk = CLASSES[cls].attack;
     if (atk.melee) {
-      this.later(140, () => {
+      // урон — в кадр контакта клинка анимации удара (shared/attackTiming.ts, data/hero-b-live.json attackTiming): цифра совпадает с ударом
+      this.later(meleeTiming(u.weapon, cdMs).hitMs, () => {
         if (this.isDead(target) || !this.hostile(p, target)) return;
         this.hit(p, target, { kind: atk.hit });
         if (cls === "rogue") rogueProc(this, p, target);

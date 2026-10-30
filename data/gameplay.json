@@ -131,6 +131,7 @@
   },
   "rewards": {
     "contribRange": 1200,
+    "greyLevels": 12,
     "shareBase": 0.7,
     "shareGroup": 0.3,
     "bossGoldMul": 25,

@@ -10,7 +10,9 @@ import { DEPTH } from "./terrain";
 import { Shadow } from "./shadows";
 import { nightLevel } from "../../../shared/daynight";
 import { MOUNTS, mountTex, type MountMeta } from "../../../shared/mounts";
-import { PLAYER_SPEED } from "../../../shared/constants";
+import { MOVE_MUL, PLAYER_SPEED } from "../../../shared/constants";
+import { meleeTiming } from "../../../shared/attackTiming";
+import { gait as GAIT_B } from "../../../data/hero-base-b.json";
 import { FOE_COLOR, factionColor } from "../../../shared/factions";
 import { P } from "../../../shared/palette";
 import { GearLayers, parseGear } from "./GearLayers";
@@ -23,7 +25,9 @@ import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
 import { GP } from "../../../shared/gameplay";
 import unitAnims from "../../../data/unit-anims.json";
 import { isScaledSheet, scaledSprite } from "./scale147";
-import { heroBAttack, heroBDeadFrame, heroBSheet, heroBTrail, type HbSheet } from "./heroB";
+import { heroBAnim, heroBAttack, heroBBridge, heroBDeadFrame, heroBNear, heroBSheet, heroBTrail, type HbSheet } from "./heroB";
+/** Шаг основы Б (data/hero-base-b.json gait.walk): скорость, под которую нарисован лист «ходьба», px/с. */
+const HB_WALK_SPEED = GAIT_B.walk.speedBase * MOVE_MUL;
 import { tryOnLook } from "./tryOn";
 import { HeroCloth } from "./heroCloth";
 import { texDist } from "./objPick";
@@ -195,6 +199,60 @@ export class UnitView {
   private cloth?: HeroCloth;
   private baseTex = "";
   private baseOy = 0;
+  /** Герой Б, ритм и переходы: скорость отрисовки (px/с, сглаженная), прошлая позиция, начало прошлого удара и промежуток между ударами (мс),
+   *  когда можно переступить в покое, мост «доиграть бег до опоры» (кадр, -1 — нет), медленный ход (шаг вместо бега). */
+  private hbSpeed = 0;
+  private hbPX = NaN;
+  private hbPY = NaN;
+  private hbAtkAt = -1e9;
+  private hbGap = 0;
+  private hbIdle2At = 0;
+  private hbBridge = -1;
+  private hbStroll = false;
+  /** Имя текущей анимации UnitView (rest, walk, stance, …), её кадр (0..) и строка вида. */
+  private curAnim(): { name: string; fr: number; row: number } {
+    const k = this.sprite.anims.currentAnim?.key ?? "", p = k.split("-");
+    return { name: p.length > 2 ? p[p.length - 2] : "", fr: Math.max(0, (this.sprite.anims.currentFrame?.index ?? 1) - 1), row: p.length > 2 ? Number(p[p.length - 1]) : -1 };
+  }
+  /**
+   * Герой Б: покой, боевая стойка, бег и шаг — переходы без рывка (старт со ближайшей по силуэту позы; при остановке бег доигрывается до опоры ≤ 2 кадра),
+   * скорость шага по фактической скорости (timeScale = скорость / скорость листа, ступни не скользят), между ударами — боевая стойка, в покое — редкий переступ.
+   */
+  private hbLoco(anim: Anim, row: number) {
+    const sh = this.hb!, sp = this.sprite, now = this.scene.time.now, left = this.u.dir === Dir.Left, has = (n: string) => this.scene.anims.exists(`${this.sid}-${n}-${row}`);
+    const cur = this.curAnim();
+    let want: string;
+    if (anim === Anim.Walk) {
+      const v = this.hbSpeed;
+      this.hbStroll = has("stroll") && (this.hbStroll ? v < 0.62 * PLAYER_SPEED : v < 0.5 * PLAYER_SPEED);
+      want = this.hbStroll ? "stroll" : "walk";
+    } else {
+      const combat = now - this.hbAtkAt < Math.max(2500, (this.hbGap || 1000) * 1.6);
+      want = cur.name === "rest2" && sp.anims.isPlaying ? "rest2" : combat && has("stance") ? "stance" : "rest";
+    }
+    if (!has(want)) want = want === "stroll" ? "walk" : "rest";
+    const key = `${this.sid}-${want}-${row}`, moving = want === "walk" || want === "stroll";
+    if (sp.anims.currentAnim?.key !== key || (!sp.anims.isPlaying && want !== "rest2")) {
+      // остановка посреди шага: доиграть бег (×2) до кадра, ближайшего к покою, — не больше 2 кадров
+      if (cur.name === "walk" && !moving && sp.anims.isPlaying && cur.row === row) {
+        if (this.hbBridge < 0) { const k = heroBBridge(sh, "walk", cur.fr, want, row, left); if (k > 0) this.hbBridge = (cur.fr + k) % (sp.anims.currentAnim?.frames.length ?? 12); }
+        if (this.hbBridge >= 0 && cur.fr !== this.hbBridge) { sp.anims.timeScale = 2; return; }
+      }
+      this.hbBridge = -1;
+      const n = this.scene.anims.get(key).frames.length;
+      let start: number;
+      if (cur.name === want) start = cur.fr % n; // смена направления — та же фаза
+      else if ((cur.name === "walk" || cur.name === "stroll") && moving) start = Math.round((cur.fr / (sp.anims.currentAnim?.frames.length || n)) * n) % n; // бег ↔ шаг — фаза по доле цикла
+      else if (cur.name) start = heroBNear(sh, cur.name, cur.fr, want, row, left);
+      else start = -1;
+      if (start < 0) start = want === "rest" || want === "stance" ? this.hbSeed() % n : 0; // первый показ — случайная фаза (герои не дышат в такт)
+      if (want === "rest") this.hbIdle2At = Math.max(this.hbIdle2At, now + 3000 + (this.hbSeed() % 5) * 1000);
+      sp.play({ key, startFrame: start });
+    } else this.hbBridge = -1;
+    // шаг по фактической скорости: лист нарисован под PLAYER_SPEED (бег) и HB_WALK_SPEED (шаг) — ступни не скользят при замедлении и ускорении
+    sp.anims.timeScale = want === "walk" ? Phaser.Math.Clamp(this.hbSpeed / PLAYER_SPEED, 0.35, 2.2) : want === "stroll" ? Phaser.Math.Clamp(this.hbSpeed / HB_WALK_SPEED, 0.35, 2.2) : 1;
+  }
+  private hbSeed() { let h = 7; for (let k = 0; k < this.id.length; k++) h = (h * 31 + this.id.charCodeAt(k)) >>> 0; return h; }
   /** Герой «Б»: лист облика готов — спрайт берёт его текстуру и ключи анимаций (sid), взгляд влево — свой вид (sidL); флаг выключен — всё прежнее. */
   private syncHeroB() {
     if (this.u.kind !== UnitKind.Player) return;
@@ -286,6 +344,14 @@ export class UnitView {
     this.bar = scene.add.graphics().setDepth(DEPTH.top - 6);
     this.titleText = worldText(scene, u.x, u.y, "", "title").setOrigin(0, 1).setDepth(DEPTH.top - 5);
     this.frameGfx = scene.add.graphics().setDepth(DEPTH.top - 7);
+    // герой Б: редкий переступ в покое — на стыке циклов покоя, раз в 5–12 с, у каждого героя свой сдвиг
+    this.sprite.on(Phaser.Animations.Events.ANIMATION_REPEAT, (a: Phaser.Animations.Animation) => {
+      if (!this.hb || this.attacking || this.dead || !a.key.includes("-rest-")) return;
+      const now = this.scene.time.now, k2 = a.key.replace("-rest-", "-rest2-");
+      if (now < this.hbIdle2At || !this.scene.anims.exists(k2)) return;
+      this.hbIdle2At = now + 5000 + Math.random() * 7000;
+      this.sprite.play(k2);
+    });
     this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (a: Phaser.Animations.Animation) => {
       if (a.key.includes("-attack-") || a.key.includes("-attack2-") || a.key.includes("-spawn-") || a.key.includes("-hurt-")) {
         this.attacking = false;
@@ -332,6 +398,7 @@ export class UnitView {
     if (!this.dead && !this.attacking && this.u.anim !== Anim.Walk && this.scene.anims.exists(hurt)) {
       this.attacking = true;
       this.sprite.play(hurt);
+      this.sprite.anims.timeScale = 1;
     }
   }
   /** Появление из земли или печати (свой лист): true — анимация есть и запущена (дым при призыве тогда не нужен). */
@@ -355,6 +422,7 @@ export class UnitView {
     if (this.hb && (instant || !this.scene.anims.exists(key))) { this.sprite.stop(); this.sprite.setFrame(heroBDeadFrame(this.hb, row, this.u.dir === Dir.Left)); }
     else if (instant || !this.scene.anims.exists(key)) this.sprite.setFrame(wide ? row * wide + wide - 1 : row * 12 + 11);
     else this.sprite.play(key);
+    this.sprite.anims.timeScale = 1;
     this.sprite.setFlipX(this.u.dir === Dir.Left);
     this.label.setVisible(false);
     this.bar.clear();
@@ -363,6 +431,7 @@ export class UnitView {
 
   /** Стойка: у листов задачи 140 — анимация покоя, у прежних — первый кадр строки. */
   private restPose(row: number) {
+    if (this.hb) { this.hbLoco(Anim.Idle, row); return; }
     const rest = `${this.sid}-rest-${row}`;
     if (this.scene.anims.exists(rest)) this.sprite.play(rest, true);
     else {
@@ -413,6 +482,12 @@ export class UnitView {
       }
     }
     this.trail.push(this.scene.time.now, this.x, this.y, jump);
+    // герой Б: фактическая скорость отрисовки (сглаживание ~0,12 с) — для шага без скольжения
+    if (this.hb) {
+      const sp = jump || !Number.isFinite(this.hbPX) || dt <= 0 ? 0 : Math.hypot(this.x - this.hbPX, this.y - this.hbPY) / dt;
+      this.hbSpeed += (Math.min(sp, PLAYER_SPEED * 3) - this.hbSpeed) * (1 - Math.exp(-Math.max(dt, 0) / 0.12));
+      this.hbPX = this.x; this.hbPY = this.y;
+    }
     // смерть и возрождение
     if (u.anim === Anim.Dead && !this.dead) this.showDead(false);
     else if (u.anim !== Anim.Dead && this.dead) {
@@ -449,10 +524,20 @@ export class UnitView {
         // герой Б: оружие с особым ударом чередует обычный и особый (data/hero-b-live.json specialAttack), у особого — огненный след
         const atk = this.hb ? heroBAttack(this.hb, this.sid, row, ++this.hbAtk) : null;
         this.sprite.play(atk && this.scene.anims.exists(atk.key) ? atk.key : `${this.sid}-attack-${row}`);
+        if (this.hb) {
+          // ритм удара (shared/attackTiming.ts): кадр контакта клинка — в момент урона с сервера; удар не длиннее перезарядки (с ускорением)
+          const now = this.scene.time.now, gap = now - this.hbAtkAt < 4000 ? now - this.hbAtkAt : 0;
+          this.hbAtkAt = now; if (gap) this.hbGap = gap;
+          const name = atk?.special && this.scene.anims.exists(atk.key) ? "attack2" : "attack";
+          const srv = meleeTiming(u.weapon, gap), mine = meleeTiming(u.weapon, gap, heroBAnim(this.hb, name));
+          this.sprite.anims.timeScale = mine.fullMs && srv.hitMs > 0 ? Phaser.Math.Clamp((mine.hitMs * mine.scale) / srv.hitMs, 0.6, 3) : 1;
+          this.hbBridge = -1;
+        }
         if (atk?.special && this.scene.anims.exists(atk.key)) heroBTrail(this.scene, Math.round(this.x), Math.round(this.y), this.y, u.dir === Dir.Left, 875);
         this.hbPush = true;
         if (MELEE.has(u.sprite)) this.slash(u.dir);
-      } else if (!this.attacking && (anim !== this.lastAnim || row !== this.lastRow)) {
+      } else if (!this.attacking && this.hb) this.hbLoco(anim, row);
+      else if (!this.attacking && (anim !== this.lastAnim || row !== this.lastRow)) {
         if (anim === Anim.Walk) this.sprite.play(`${this.sid}-walk-${row}`, true);
         else this.restPose(row);
       }

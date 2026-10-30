@@ -23,8 +23,10 @@ export function hood(ctx: GearCtx, it: any, crest: CrestId) {
   const Cl = ramp(it.cloth), Ln = ramp(it.lining), Sh = ramp(it.shadow ?? "hood_shadow"), Mk = it.mask ? ramp(it.mask) : null, G = it.glow ? ramp(it.glow) : null;
   const loc = (g: string, rp: C[], layer: number, f: (z: Mz) => void, o: any = { dome: 3, amp: 1.7, bias: 0.2 }, emis = false, emisColor?: C) => push({ g, ramp: rp, layer, loc: f, o, emis, emisColor });
   if (hv === "front") {
-    loc("hd_out", Cl, 6.15, (z) => z.pg([[-hw - 0.7, hh * 0.3], [-hw - 0.5, -hh * 0.6], [-hw * 0.45, -hh - 1.1], [0, -hh - 1.9], [hw * 0.45, -hh - 1.1], [hw + 0.5, -hh * 0.6], [hw + 0.7, hh * 0.3], [hw + 0.6, hh + 1.0], [-hw - 0.6, hh + 1.0]]), { dome: 3, amp: 1.8, bias: 0.25, kant: true });
-    loc("hd_fold", Cl, 6.151, (z) => { z.bz([-hw * 0.8, -hh * 0.9], [-hw * 1.0, 0], [-hw * 0.95, hh + 0.6], 0.6, 0.6); z.bz([hw * 0.8, -hh * 0.9], [hw * 1.0, 0], [hw * 0.95, hh + 0.6], 0.6, 0.6); }, { dome: 1, bias: -1.5 });
+    // без маски и глаз лицо героя видно в вырезе (gear.md §4): вырез сквозь капюшон и подкладку
+    const open = !Mk && !G, cut = (z: Mz) => { if (open) z.clip((x, y) => !(Math.hypot(x / (hw * 0.74), (y - hh * 0.28) / (hh * 0.9)) < 1)); };
+    loc("hd_out", Cl, 6.15, (z) => { z.pg([[-hw - 0.7, hh * 0.3], [-hw - 0.5, -hh * 0.6], [-hw * 0.45, -hh - 1.1], [0, -hh - 1.9], [hw * 0.45, -hh - 1.1], [hw + 0.5, -hh * 0.6], [hw + 0.7, hh * 0.3], [hw + 0.6, hh + 1.0], [-hw - 0.6, hh + 1.0]]); cut(z); }, { dome: 3, amp: 1.8, bias: 0.25, kant: true });
+    loc("hd_fold", Cl, 6.151, (z) => { z.bz([-hw * 0.8, -hh * 0.9], [-hw * 1.0, 0], [-hw * 0.95, hh + 0.6], 0.6, 0.6); z.bz([hw * 0.8, -hh * 0.9], [hw * 1.0, 0], [hw * 0.95, hh + 0.6], 0.6, 0.6); cut(z); }, { dome: 1, bias: -1.5 });
     loc("hd_lit", Cl, 6.152, (z) => z.bz([-hw - 0.2, hh * 0.1], [-hw * 0.7, -hh - 0.6], [0, -hh - 1.6], 0.7, 0.6), { dome: 1, bias: 2.6 });
     loc("hd_lin", Ln, 6.16, (z) => { z.el([0, hh * 0.22], hw * 0.86, hh * 1.0); if (!Mk && !G) z.clip((x, y) => !(Math.hypot(x / (hw * 0.74), (y - hh * 0.28) / (hh * 0.9)) < 1)); }, { dome: 2, amp: 1.6, bias: 0.2 });
     // без маски лицо видно: кромка-кольцо и тень только сверху (от капюшона на лоб)
@@ -45,7 +47,7 @@ export function hood(ctx: GearCtx, it: any, crest: CrestId) {
   } else {
     // профиль: лицом вправо, остриё капюшона назад-вверх, вырез спереди в тени, маска клювом
     // профиль: козырёк вперёд над лицом, остриё назад, без длинного «столба» вниз
-    loc("hd_out", Cl, 6.15, (z) => { z.el([-0.4, -hh * 0.12], hw + 0.55, hh + 0.65); z.pg([[-hw * 0.3, -hh - 0.4], [-hw - 1.7, -hh * 0.35], [-hw * 0.4, hh * 0.1]]); z.pg([[-hw * 0.5, hh * 0.3], [hw * 0.5, hh * 0.55], [hw * 0.3, hh + 0.8], [-hw * 0.8, hh + 0.8]]); z.bz([hw * 0.1, -hh * 0.9], [hw + 1.1, -hh * 0.85], [hw + 1.6, -hh * 0.3], 1.5, 0.8); }, { dome: 3, amp: 1.8, bias: 0.3, kant: true });
+    loc("hd_out", Cl, 6.15, (z) => { z.el([-0.4, -hh * 0.12], hw + 0.55, hh + 0.65); z.pg([[-hw * 0.3, -hh - 0.4], [-hw - 1.7, -hh * 0.35], [-hw * 0.4, hh * 0.1]]); z.pg([[-hw * 0.5, hh * 0.3], [hw * 0.5, hh * 0.55], [hw * 0.3, hh + 0.8], [-hw * 0.8, hh + 0.8]]); z.bz([hw * 0.1, -hh * 0.9], [hw + 1.1, -hh * 0.85], [hw + 1.6, -hh * 0.3], 1.5, 0.8); if (!Mk && !G) z.clip((x, y) => !(Math.hypot((x - hw * 0.8) / (hw * 0.3), (y - hh * 0.3) / (hh * 0.8)) < 1)); }, { dome: 3, amp: 1.8, bias: 0.3, kant: true });
     loc("hd_lit", Cl, 6.152, (z) => z.bz([hw + 1.3, -hh * 0.6], [hw * 0.2, -hh - 0.9], [-hw - 1.0, -hh * 0.5], 0.7, 0.6), { dome: 1, bias: 2.6 });
     loc("hd_fold", Cl, 6.151, (z) => z.bz([-hw * 0.2, -hh * 0.9], [-hw * 0.6, 0], [-hw * 0.3, hh + 0.7], 0.6, 0.6), { dome: 1, bias: -1.5 });
     loc("hd_lin", Ln, 6.16, (z) => { z.el([hw * 0.74, hh * 0.25], hw * 0.36, hh * 0.92); if (!Mk && !G) z.clip((x, y) => !(Math.hypot((x - hw * 0.8) / (hw * 0.3), (y - hh * 0.3) / (hh * 0.8)) < 1)); }, { dome: 2, amp: 1.6, bias: 0.2 });
@@ -81,8 +83,13 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
   // строчка (пунктир 2 px), заклёпки, потёртости — читаются на зуме 2
   if (it.stitch) {
     const St2 = ramp(it.stitch), sd = fF >= 0 ? 1 : -1;
-    const dash = (z: Mz, a: V3, b2: V3, n: number) => { for (let k = 0; k < n; k++) { const t0 = k / n, t1 = t0 + 0.55 / n; z.seg(PJ(lerp(a, b2, t0)), PJ(lerp(a, b2, t1)), 0.6); } };
-    push({ g: "c_stitch", ramp: St2, o: { dome: 1, bias: 0.5 }, layer: 3.7619, m: (z) => { for (const o of [-0.55, 0.55]) dash(z, surf(o + sd * sw * 0.15, c * 0.92, sd, 0.3), surf(o + sd * sw * 0.05, -0.8, sd, 0.3), 5); dash(z, surf(-sw * 0.85, c * 0.75, sd, 0.3), surf(-sw * 0.8, c * 0.15, sd, 0.3), 3); dash(z, surf(sw * 0.85, c * 0.75, sd, 0.3), surf(sw * 0.8, c * 0.15, sd, 0.3), 3); } });
+    const dash = (z: Mz, a: V3, b2: V3, n: number) => { for (let k = 0; k < n; k++) { const t0 = k / n, t1 = t0 + 0.55 / n; z.seg(PJ(lerp(a, b2, t0)), PJ(lerp(a, b2, t1)), 1.0); } };
+    // при нагруднике строчка идёт по коже вокруг него (по бокам и под ним), а не под сталью
+    push({ g: "c_stitch", ramp: St2, o: { dome: 1, bias: 0.5 }, layer: 3.7619, m: (z) => {
+      if (!it.breast) for (const o of [-0.55, 0.55]) dash(z, surf(o + sd * sw * 0.15, c * 0.92, sd, 0.3), surf(o + sd * sw * 0.05, -0.8, sd, 0.3), 5);
+      else { dash(z, surf(-sw * 0.5, c * 0.2, sd, 0.3), surf(sw * 0.5, c * 0.2, sd, 0.3), 4); }
+      for (const sg of [-1, 1]) dash(z, surf(sg * sw * (it.breast ? 0.86 : 0.85), c * 0.85, sd, 0.3), surf(sg * sw * 0.8, c * 0.1, sd, 0.3), 4);
+    } });
   }
   if (it.wear) push({ g: "c_wear", ramp: Lt, o: { dome: 1, bias: 1.6 }, layer: 3.7613, m: (z) => { const sd = fF >= 0 ? 1 : -1; for (const [a, h] of [[-0.55, 0.3], [0.62, 0.55], [0.3, 0.1]]) z.dot(PJ(surf(a * sw, h * c, sd, 0.3)), 0.75); } });
   if (it.breast && fF > 0.3) push({ g: "c_riv", ramp: ramp("gold"), o: { dome: 1, bias: 1.2 }, layer: 3.7657, m: (z) => { for (const [a, h] of [[-0.6, 0.86], [0.6, 0.86], [-0.48, 0.48], [0.48, 0.48]]) z.dot(PJ(add(surf(a * sw, h * c), mul(F, 0.3))), 0.55); } });
@@ -224,6 +231,9 @@ export function dualPose(P: Pose, k: { anim: AnimId; u: number; arm: number; sx:
     const e = (i === 1 ? (t: number) => t * t * t : ease)(cl((u - keys[i][0]) / (keys[i + 1][0] - keys[i][0])));
     const st = (s: 1 | -1, n: number) => (n === 0 ? rest(s) : n === 1 ? cross(s) : open(s));
     const R = mix(st(1, keys[i][1]), st(1, keys[i + 1][1]), e), L = mix(st(-1, keys[i][1]), st(-1, keys[i + 1][1]), e);
+    // поворот корпуса и шаг — свои (ритм тяжёлого двуручника основы atk2h к парным не относится)
+    const TW = [0.1, 0.25, -0.12, -0.12, 0.1], STp = [0.8, 0.4, 1.8, 1.8, 0.8];
+    P.twist = TW[i] + (TW[i + 1] - TW[i]) * e; P.ankL = [P.ankL[0], P.ankR[1], STp[i] + (STp[i + 1] - STp[i]) * e]; P.pitchL = 0;
     P.lean = 0.15 * (keys[i][1] === 2 || keys[i + 1][1] === 2 ? 1 : 0); P.hip = [0, k.hipY + 0.8 * (keys[i + 1][1] === 2 ? e : keys[i][1] === 2 ? 1 - e : 0), 0];
     return set(R, L);
   }
