@@ -70,6 +70,7 @@
     "hurt": { "name": "Получение урона", "frames": 8, "fps": 16, "loop": false },
     "death": { "name": "Гибель", "frames": 12, "fps": 12, "loop": false },
     "ride": { "name": "Верхом", "frames": 8, "fps": 12, "loop": true },
-    "gather": { "name": "Сбор ресурсов", "frames": 10, "fps": 12, "loop": true }
+    "gather": { "name": "Сбор ресурсов", "frames": 10, "fps": 12, "loop": true },
+    "special2h": { "name": "Особый удар двуручным (с разворотом)", "frames": 14, "fps": 16, "loop": false, "props": ["great"], "special": true }
   }
 }

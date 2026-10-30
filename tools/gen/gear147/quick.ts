@@ -1,6 +1,6 @@
 /** Просмотр: npx tsx tools/gen/gear147/quick.ts <set> <anim> [look 0..3] [views] → tools/out/gear147/q.png (×K, env FR=кадры через запятую, SLOTS=) */
 import { PC } from "../canvas";
-import { NF, FR, type AnimId, type Look } from "../hero147/base_b";
+import { NF, frameOf, type AnimId, type Look } from "../hero147/base_b";
 import { dress, renderView, setOf, type Slot, type View4 } from "./gear";
 const all: Look[] = [{ fac: "sol", sex: "m", hair: "tousled" }, { fac: "sol", sex: "f", hair: "braid" }, { fac: "umb", sex: "m", hair: "mane" }, { fac: "umb", sex: "f", hair: "loose" }];
 const set = process.argv[2] === "none" ? null : setOf(process.argv[2] ?? "chaos-knight");
@@ -9,6 +9,7 @@ const looks = [...(process.argv[4] ?? "0")].map((c) => all[+c]);
 const views = (process.argv[5] ?? "down,up,side,left").split(",") as View4[];
 const K = Number(process.env.K ?? 4), only = process.env.FR ? process.env.FR.split(",").map(Number) : [...Array(NF(anim)).keys()];
 const slots = process.env.SLOTS ? (process.env.SLOTS.split(",") as Slot[]) : undefined;
+const FR = frameOf(dress(all[0], set, "sol", slots)).FRx;
 const out = new PC(only.length * FR * K, looks.length * views.length * FR * K);
 for (let i = 0; i < out.data.length; i += 4) { out.data[i] = 70; out.data[i + 1] = 92; out.data[i + 2] = 58; out.data[i + 3] = 255; }
 let r = 0;

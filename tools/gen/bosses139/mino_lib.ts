@@ -49,7 +49,11 @@ export class Mk {
     }
   }
   poly(pts: [number, number][], v = 1) {
-    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+    // только в рамке многоугольника (результат тот же, быстрее на больших кадрах)
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const [px, py] of pts) { if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; }
+    const ya = Math.max(0, Math.floor(y0) - 1), yb = Math.min(this.h, Math.ceil(y1) + 1), xa = Math.max(0, Math.floor(x0) - 1), xb = Math.min(this.w, Math.ceil(x1) + 1);
+    for (let y = ya; y < yb; y++) for (let x = xa; x < xb; x++) {
       let ins = false;
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
         const [xi, yi] = pts[i], [xj, yj] = pts[j];
@@ -59,16 +63,19 @@ export class Mk {
     }
   }
   ell(cx: number, cy: number, rx: number, ry: number, v = 1) {
-    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) { const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry; if (dx * dx + dy * dy <= 1) this.set(x, y, v); }
+    const ya = Math.max(0, Math.floor(cy - Math.abs(ry)) - 1), yb = Math.min(this.h, Math.ceil(cy + Math.abs(ry)) + 1), xa = Math.max(0, Math.floor(cx - Math.abs(rx)) - 1), xb = Math.min(this.w, Math.ceil(cx + Math.abs(rx)) + 1);
+    for (let y = ya; y < yb; y++) for (let x = xa; x < xb; x++) { const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry; if (dx * dx + dy * dy <= 1) this.set(x, y, v); }
   }
   /** расстояние до края внутри маски (1 = крайний пиксель) */
   dist(): Int16Array {
     const d = new Int16Array(this.w * this.h);
     for (let i = 0; i < d.length; i++) d[i] = this.d[i] ? 999 : 0;
     const g = (x: number, y: number) => (x < 0 || y < 0 || x >= this.w || y >= this.h ? 0 : d[y * this.w + x]);
+    let xa = this.w, xb = -1, ya = this.h, yb = -1;
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) if (this.d[y * this.w + x]) { if (x < xa) xa = x; if (x > xb) xb = x; if (y < ya) ya = y; if (y > yb) yb = y; }
     for (let it = 0; it < 60; it++) {
       let ch = false;
-      for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
+      for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
         const i = y * this.w + x; if (!d[i]) continue;
         const m = Math.min(g(x - 1, y), g(x + 1, y), g(x, y - 1), g(x, y + 1)) + 1;
         if (m < d[i]) { d[i] = m; ch = true; }

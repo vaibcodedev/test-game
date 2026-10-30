@@ -18,11 +18,13 @@ export type V3 = [number, number, number];
 export type V2 = [number, number];
 export type Fac = "sol" | "umb";
 export type Sex = "m" | "f";
-export type AnimId = "idle" | "walk" | "run" | "atk1h" | "atk2h" | "bow" | "cast" | "block" | "hurt" | "death" | "ride" | "gather";
-export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
+export type AnimId = "idle" | "walk" | "run" | "atk1h" | "atk2h" | "bow" | "cast" | "block" | "hurt" | "death" | "ride" | "gather" | "special2h";
+export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** размер кадра (по умолчанию 48): под крупное оружие */ frame?: number; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
 
 export const DATA = JSON.parse(fs.readFileSync(path.resolve("data/hero-base-b.json"), "utf8"));
-export const ANIMS: AnimId[] = Object.keys(DATA.anims) as AnimId[];
+/** обычные анимации основы; особые (special: true) задаются оружием через posePatch */
+export const ANIMS: AnimId[] = (Object.keys(DATA.anims) as AnimId[]).filter((a) => !DATA.anims[a].special);
+export const SPECIAL_ANIMS: AnimId[] = (Object.keys(DATA.anims) as AnimId[]).filter((a) => DATA.anims[a].special);
 export const NF = (a: AnimId): number => DATA.anims[a].frames;
 const R5 = (a: string[]): C[] => a.map(hx);
 
@@ -647,33 +649,36 @@ function buildParts(l: Look, v: View, anim: AnimId, i: number) {
 /** Кадр целиком (все слои). */
 export function renderFrame(l: Look, v: View, anim: AnimId, i: number): Frame { return renderLayers(l, v, anim, i, [() => true])[0]; }
 /** Несколько кадров-подмножеств из одной сборки частей: части рисуются один раз, затем сводятся по каждому фильтру (листы слоёв). */
+/** Кадр рендера: 48 по умолчанию; крупное оружие расширяет кадр (Look.frame), ступни остаются в (24 + OX, 45 + OY). */
+export function frameOf(l: Look) { const FRx = l.frame ?? FR, e = FRx - FR, OX = e / 2, OY = Math.round(e * 0.75); return { FRx, Wx: FRx * Z, OX, OY }; }
 export function renderLayers(l: Look, v: View, anim: AnimId, i: number, filters: ((p: Part) => boolean)[]): Frame[] {
   const B = buildParts(l, v, anim, i);
+  const { FRx, Wx, OX, OY } = frameOf(l);
   const order0 = B.parts.map((p, k) => ({ p, k })).sort((a, b2) => a.p.layer - b2.p.layer || a.k - b2.k).map((q) => q.p);
   const { hc, theta } = B;
-  const ox = Math.round(hc[0]) - LCX, oy = Math.round(hc[1]) - LCY, cs = Math.cos(theta), sn = Math.sin(theta);
+  const ox = Math.round(hc[0] + OX) - LCX, oy = Math.round(hc[1] + OY) - LCY, cs = Math.cos(theta), sn = Math.sin(theta);
   const painted = new Map<Part, { q: number[]; c: C[] }>();
   const paintOne = (p: Part) => {
     let r = painted.get(p); if (r) return r;
     r = { q: [], c: [] };
     if (p.m) {
-      const m = new Mz(); p.m(m);
-      const cv = new Cv(W, W); paint(cv, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
-      if (p.o?.kant) { const sx = l.lightFlip ? 2 : -2, top = p.ramp[p.ramp.length - 1], hi = p.ramp[p.ramp.length - 2]; for (let q = 0; q < m.d.length; q++) { if (!m.d[q]) continue; const x = q % W, y = Math.floor(q / W); const up = y < 2 || !m.d[q - 2 * W], sd = x + sx < 0 || x + sx >= W || !m.d[q + sx]; if (up) cv.set(x, y, top); else if (sd) cv.set(x, y, hi); } }
-      for (let q = 0; q < m.d.length; q++) if (m.d[q]) { r.q.push(q); r.c.push(cv.get(q % W, Math.floor(q / W))); }
+      const m = new Mz(Wx, Wx, OX, OY); p.m(m);
+      const cv = new Cv(Wx, Wx); paint(cv, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
+      if (p.o?.kant) { const sx = l.lightFlip ? 2 : -2, top = p.ramp[p.ramp.length - 1], hi = p.ramp[p.ramp.length - 2]; for (let q = 0; q < m.d.length; q++) { if (!m.d[q]) continue; const x = q % Wx, y = Math.floor(q / Wx); const up = y < 2 || !m.d[q - 2 * Wx], sd = x + sx < 0 || x + sx >= Wx || !m.d[q + sx]; if (up) cv.set(x, y, top); else if (sd) cv.set(x, y, hi); } }
+      for (let q = 0; q < m.d.length; q++) if (m.d[q]) { r.q.push(q); r.c.push(cv.get(q % Wx, Math.floor(q / Wx))); }
     } else if (p.loc) {
       const m = new Mz(LW * Z, LW * Z, LCX, LCY); p.loc(m);
       const lc = new Cv(LW * Z, LW * Z); paint(lc, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
       if (p.o?.kant) { const LWZ = LW * Z, sx = l.lightFlip ? 2 : -2, top = p.ramp[p.ramp.length - 1], hi = p.ramp[p.ramp.length - 2]; for (let q = 0; q < m.d.length; q++) { if (!m.d[q]) continue; const x = q % LWZ, y = Math.floor(q / LWZ); const up = y < 2 || !m.d[q - 2 * LWZ], sd = x + sx < 0 || x + sx >= LWZ || !m.d[q + sx]; if (up) lc.set(x, y, top); else if (sd) lc.set(x, y, hi); } }
       if (Math.abs(theta) < 0.02) {
-        for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.d[y * m.w + x]) { const gx = x + ox * Z, gy = y + oy * Z; if (gx >= 0 && gy >= 0 && gx < W && gy < W) { r.q.push(gy * W + gx); r.c.push(lc.get(x, y)); } }
+        for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.d[y * m.w + x]) { const gx = x + ox * Z, gy = y + oy * Z; if (gx >= 0 && gy >= 0 && gx < Wx && gy < Wx) { r.q.push(gy * Wx + gx); r.c.push(lc.get(x, y)); } }
       } else {
-        const cx2 = Math.round(hc[0]) * Z, cy2 = Math.round(hc[1]) * Z;
-        for (let gy = 0; gy < W; gy++) for (let gx = 0; gx < W; gx++) {
+        const cx2 = Math.round(hc[0] + OX) * Z, cy2 = Math.round(hc[1] + OY) * Z;
+        for (let gy = 0; gy < Wx; gy++) for (let gx = 0; gx < Wx; gx++) {
           const dx = gx + 0.5 - cx2, dy = gy + 0.5 - cy2; if (dx * dx + dy * dy > (LW * Z) ** 2 / 2) continue;
           const lx = Math.floor(LCX * Z + dx * cs + dy * sn), ly = Math.floor(LCY * Z - dx * sn + dy * cs);
           if (lx < 0 || ly < 0 || lx >= m.w || ly >= m.h || !m.d[ly * m.w + lx]) continue;
-          r.q.push(gy * W + gx); r.c.push(lc.get(lx, ly));
+          r.q.push(gy * Wx + gx); r.c.push(lc.get(lx, ly));
         }
       }
     }
@@ -684,41 +689,42 @@ export function renderLayers(l: Look, v: View, anim: AnimId, i: number, filters:
 
 function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: Part) => { q: number[]; c: C[] }): Frame {
   const { hc, theta, style, P, sk, M, v, l, hv, hw } = B;
+  const { FRx, Wx, OX, OY } = frameOf(l);
   const und = l.fac === "umb", fem = l.sex === "f";
   const cs = Math.cos(theta), sn = Math.sin(theta);
-  const cv = new Cv(W, W), ids = new Uint8Array(W * W);
+  const cv = new Cv(Wx, Wx), ids = new Uint8Array(Wx * Wx);
   const emisParts = new Set<number>(), emisCol = new Map<number, C>();
   order.forEach((p, k) => {
     if (p.emis) { emisParts.add(k + 1); if (p.emisColor) emisCol.set(k + 1, p.emisColor); }
     const r = paintOne(p);
-    for (let j = 0; j < r.q.length; j++) { const q = r.q[j]; cv.set(q % W, Math.floor(q / W), r.c[j]); ids[q] = k + 1; }
+    for (let j = 0; j < r.q.length; j++) { const q = r.q[j]; cv.set(q % Wx, Math.floor(q / Wx), r.c[j]); ids[q] = k + 1; }
   });
   // ---- сведение 2× → 1× ----
-  const out = new Cv(FR, FR), oid = new Uint8Array(FR * FR);
-  for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) {
+  const out = new Cv(FRx, FRx), oid = new Uint8Array(FRx * FRx);
+  for (let y = 0; y < FRx; y++) for (let x = 0; x < FRx; x++) {
     const cnt = new Map<number, number>();
-    for (let j = 0; j < 2; j++) for (let i2 = 0; i2 < 2; i2++) { const id = ids[(y * 2 + j) * W + x * 2 + i2]; if (id) cnt.set(id, (cnt.get(id) ?? 0) + 1); }
+    for (let j = 0; j < 2; j++) for (let i2 = 0; i2 < 2; i2++) { const id = ids[(y * 2 + j) * Wx + x * 2 + i2]; if (id) cnt.set(id, (cnt.get(id) ?? 0) + 1); }
     let tot = 0; for (const q of cnt.values()) tot += q;
     if (tot < 2) continue;
     let best = 0, bn = -1;
     for (const [id, q] of cnt) if (q > bn || (q === bn && id > best)) { best = id; bn = q; }
     const cols = new Map<string, { n: number; c: C }>();
     for (let j = 0; j < 2; j++) for (let i2 = 0; i2 < 2; i2++) {
-      const q = (y * 2 + j) * W + x * 2 + i2; if (ids[q] !== best) continue;
+      const q = (y * 2 + j) * Wx + x * 2 + i2; if (ids[q] !== best) continue;
       const cc = cv.get(x * 2 + i2, y * 2 + j), key = cc.join(","), e = cols.get(key); if (e) e.n++; else cols.set(key, { n: 1, c: cc });
     }
     let bc: { n: number; c: C } | null = null;
     for (const e of cols.values()) if (!bc || e.n > bc.n || (e.n === bc.n && e.c[0] + e.c[1] + e.c[2] < bc.c[0] + bc.c[1] + bc.c[2])) bc = e;
-    out.set(x, y, bc!.c); oid[y * FR + x] = best;
+    out.set(x, y, bc!.c); oid[y * FRx + x] = best;
   }
   // ---- лицо (1×, в системе головы) ----
   const emis: [number, number, C][] = [];
-  const hcx = Math.round(hc[0]), hcy = Math.round(hc[1]);
-  const isHead = (x: number, y: number) => { const id = oid[y * FR + x]; return id && (order[id - 1].g === "head" || order[id - 1].g === "beard"); };
+  const hcx = Math.round(hc[0] + OX), hcy = Math.round(hc[1] + OY);
+  const isHead = (x: number, y: number) => { const id = oid[y * FRx + x]; return id && (order[id - 1].g === "head" || order[id - 1].g === "beard"); };
   const px = (lx: number, ly: number, col: C, any = false) => {
     const x = Math.round(hcx + lx * cs - ly * sn), y = Math.round(hcy + lx * sn + ly * cs);
-    if (x < 0 || y < 0 || x >= FR || y >= FR) return;
-    if (any ? oid[y * FR + x] : isHead(x, y)) out.set(x, y, col);
+    if (x < 0 || y < 0 || x >= FRx || y >= FRx) return;
+    if (any ? oid[y * FRx + x] : isHead(x, y)) out.set(x, y, col);
     return [x, y] as V2;
   };
   const S = M.skin, ey = 1;
@@ -752,21 +758,21 @@ function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: 
     else if (und) { px(ex, ey - 1, S[0]); const q = px(ex, ey, M.glow![2]); px(ex, ey + 1, M.glow![1]); if (q && P.eyes !== "squint") emis.push([q[0], q[1], M.glow![3]]); }
     else { px(ex, ey, M.eye); if (P.eyes !== "squint") px(ex, ey - 1, M.eye); px(ex, ey - 2, fem ? M.eye : M.hair[1]); }
     // нос и рот
-    let fx = 0; for (let k = 0; k < 8; k++) { const x = Math.round(hcx + (hw - 1 + k) * cs - (ey + 1) * sn), y = Math.round(hcy + (hw - 1 + k) * sn + (ey + 1) * cs); if (x >= 0 && x < FR && y >= 0 && y < FR && isHead(x, y)) fx = hw - 1 + k; }
+    let fx = 0; for (let k = 0; k < 8; k++) { const x = Math.round(hcx + (hw - 1 + k) * cs - (ey + 1) * sn), y = Math.round(hcy + (hw - 1 + k) * sn + (ey + 1) * cs); if (x >= 0 && x < FRx && y >= 0 && y < FRx && isHead(x, y)) fx = hw - 1 + k; }
     const nose = Math.round(fx + 1);
     const q = (() => { const x = Math.round(hcx + nose * cs - (ey + 1) * sn), y = Math.round(hcy + nose * sn + (ey + 1) * cs); return [x, y] as V2; })();
-    if (q[0] >= 1 && q[0] < FR && oid[q[1] * FR + q[0] - 1] && isHead(q[0] - 1, q[1])) out.set(q[0] - 1, q[1], S[2]);
+    if (q[0] >= 1 && q[0] < FRx && oid[q[1] * FRx + q[0] - 1] && isHead(q[0] - 1, q[1])) out.set(q[0] - 1, q[1], S[2]);
     px(fx - 0.5, ey + 3, beard ? M.hair[0] : und ? S[0] : fem ? M.lip : S[1]);
   }
   // ---- внутренний контур ----
   const grp = (id: number) => order[id - 1].g;
   const SAME = new Set(["torso|belt", "belt|torso", "torso|vest", "neck|head", "pelvis|belt", "belt|pelvis", "ear|head", "head|ear", "hairB|hair", "hair|hairB", "weapon|armL", "armL|weapon", "head|beard", "beard|hair", "vest|belt", "belt|vest"]);
-  const res = new Cv(FR, FR); res.d.set(out.d);
-  for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) {
-    const a = oid[y * FR + x]; if (!a) continue;
+  const res = new Cv(FRx, FRx); res.d.set(out.d);
+  for (let y = 0; y < FRx; y++) for (let x = 0; x < FRx; x++) {
+    const a = oid[y * FRx + x]; if (!a) continue;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= FR || yy >= FR) continue;
-      const cc = oid[yy * FR + xx];
+      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= FRx || yy >= FRx) continue;
+      const cc = oid[yy * FRx + xx];
       if (!cc || cc <= a) continue;
       const ga = grp(a), gc = grp(cc);
       if (ga === gc || SAME.has(ga + "|" + gc)) continue;
@@ -776,18 +782,18 @@ function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: 
   }
   // ---- внешний контур ----
   const DK = hx("#0a060c");
-  for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) {
-    if (oid[y * FR + x]) continue;
+  for (let y = 0; y < FRx; y++) for (let x = 0; x < FRx; x++) {
+    if (oid[y * FRx + x]) continue;
     let best: C | null = null;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= FR || yy >= FR) continue;
-      const cc = oid[yy * FR + xx]; if (!cc) continue;
+      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= FRx || yy >= FRx) continue;
+      const cc = oid[yy * FRx + xx]; if (!cc) continue;
       const col = mixC(order[cc - 1].ramp[0], DK, 0.55);
       if (!best || col[0] + col[1] + col[2] < best[0] + best[1] + best[2]) best = col;
     }
     if (best) res.set(x, y, best);
   }
-  for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) if (emisParts.has(oid[y * FR + x])) emis.push([x, y, emisCol.get(oid[y * FR + x]) ?? res.get(x, y)]);
+  for (let y = 0; y < FRx; y++) for (let x = 0; x < FRx; x++) if (emisParts.has(oid[y * FRx + x])) emis.push([x, y, emisCol.get(oid[y * FRx + x]) ?? res.get(x, y)]);
   return { img: res, emis, sk, pose: P };
 }
 export const mixC = (a: C, b: C, t: number): C => [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
