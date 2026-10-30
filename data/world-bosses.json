@@ -24,7 +24,7 @@
       "lifeMin": 20,
       "resetEmptySec": 60,
       "crowd": { "step": 10, "hpPerStep": 0.9, "everyMs": 1000 },
-      "mob": { "sprite": "sol_storm_colossus", "size": 2, "hp": 330, "dmg": 4.6, "armor": 1.9, "xp": 120, "gold": 0, "speed": 52, "aggro": 140, "range": 80, "attackCd": 2.4, "radius": 30, "color": "#c8641e" },
+      "mob": { "sprite": "wb_colossus", "size": 2, "hp": 330, "dmg": 4.6, "armor": 1.9, "xp": 120, "gold": 0, "speed": 52, "aggro": 140, "range": 80, "attackCd": 2.4, "radius": 45, "color": "#c8641e" },
       "mechanics": {
         "gather": { "name": "Сбор павших", "armorPerStack": 0.08, "maxStacks": 25 },
         "bannerStrike": { "name": "Удар знаменем", "every": 9, "r": 230, "angleDeg": 70, "ms": 1100, "mult": 2.6 },

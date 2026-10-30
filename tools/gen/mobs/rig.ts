@@ -145,6 +145,10 @@ export interface Creature {
   id: string; ru: string;
   scale: [number, number];
   big?: boolean;
+  /** свой кадр (задача 147: великаны под героя 30 px — кадр 64); без него — 48 у big, иначе 32 */
+  cam?: Cam;
+  /** кадров атаки (задача 147, листы b147: планка 12–16); без него — по виду удара (9–10). Ключи позы те же, кадры — пересчёт по времени. */
+  attackN?: number;
   dims: Dims;
   roles: RoleDef[];
   build: (c: Ctx) => void;
@@ -171,7 +175,7 @@ export const variantsOf = (cr: Creature): Variant[] => {
 };
 export const variantId = (cr: Creature, v: Variant) => `${cr.id}_${v.role.id}${v.elite ? "_elite" : ""}`;
 export const variantRu = (v: Variant) => `${v.role.ru}${v.elite ? "+" : ""}`;
-export const camOf = (cr: Creature): Cam => (cr.big ? { N: 48, CX: 24, GY: 46.4 } : MOB_CAM);
+export const camOf = (cr: Creature): Cam => cr.cam ?? (cr.big ? { N: 48, CX: 24, GY: 46.4 } : MOB_CAM);
 
 // ---------------- поза ----------------
 export interface Pose {
@@ -866,13 +870,13 @@ const ATK: Record<Kind, { n: number; fps: number; ru: string; hit: number }> = {
   claw: { n: 9, fps: 14, ru: "удар", hit: 3 },
   leap: { n: 10, fps: 14, ru: "прыжок", hit: 5 },
 };
-export function animsOf(role: RoleDef): Record<Anim, AnimDef> {
-  const a = ATK[role.kind];
+export function animsOf(role: RoleDef, attackN?: number): Record<Anim, AnimDef> {
+  const a = ATK[role.kind], n = attackN ?? a.n;
   return {
     idle: { col: 0, n: 12, fps: 10, loop: true, ru: "покой" },
     walk: { col: 12, n: 12, fps: 12, loop: true, ru: "ходьба" },
-    attack: { col: 24, n: a.n, fps: a.fps, loop: false, ru: a.ru, hit: a.hit },
-    death: { col: 24 + a.n, n: 12, fps: 12, loop: false, ru: "гибель" },
+    attack: { col: 24, n, fps: Math.round((a.fps * n) / a.n), loop: false, ru: a.ru, hit: Math.round((a.hit * (n - 1)) / (a.n - 1)) },
+    death: { col: 24 + n, n: 12, fps: 12, loop: false, ru: "гибель" },
   };
 }
 
@@ -1531,6 +1535,18 @@ function drawDust(cam: Cam, o: PC, atv: V3, k: number, ramp: Ramp) {
   }
 }
 
+/** Пересчёт кадров по времени (задача 147): M кадров вместо n, позы — интерполяция соседних ключевых (easing ключей сохраняется), эффекты — от ближайшего кадра. */
+function retime(fr: Frame[], M: number): Frame[] {
+  const n = fr.length;
+  if (n === M || n < 2) return fr;
+  return Array.from({ length: M }, (_, t) => {
+    const u = (t * (n - 1)) / (M - 1), i0 = Math.floor(u), i1 = Math.min(n - 1, i0 + 1), k = u - i0;
+    const p = lerpPose(fr[i0].p, fr[i1].p, k) as Pose & Record<string, unknown>;
+    const near = fr[Math.round(u)].p as Pose & Record<string, unknown>;
+    for (const key of ["jaw", "draw"]) if (key in near) p[key] = near[key];
+    return { p, ex: fr[Math.round(u)].ex };
+  });
+}
 // ---------------- листы ----------------
 const FRAMES: Record<Anim, (cr: Creature, v: Variant, view: View) => Frame[]> = {
   idle: (cr, v) => idleFrames(cr, v),
@@ -1543,7 +1559,7 @@ export function buildAnim(cr: Creature, v: Variant, a: Anim): { sheet: PC; emis:
   const N = camOf(cr).N;
   let sheet: PC | null = null, emis: PC | null = null;
   VIEWS.forEach((view, row) => {
-    const fr = FRAMES[a](cr, v, view);
+    const fr0 = FRAMES[a](cr, v, view), fr = a === "attack" && cr.attackN ? retime(fr0, cr.attackN) : fr0;
     if (!sheet) { sheet = new PC(N * fr.length, N * 3); emis = new PC(N * fr.length, N * 3); }
     fr.forEach((F, i) => {
       const r = renderFrame(cr, v, view, F.p, F.ex, a);
@@ -1615,7 +1631,7 @@ export function buildCreature(cr: Creature, sheetDir?: string): CreatureOut {
   const rowsRu = VIEWS.map((q) => VIEW_RU[q]);
   for (const v of vars) {
     const id = variantId(cr, v);
-    const A = animsOf(v.role);
+    const A = animsOf(v.role, cr.attackN);
     const sh = {} as Sheets;
     for (const a of ANIM_LIST) sh[a] = buildAnim(cr, v, a);
     sheets.set(id, sh);
@@ -1707,7 +1723,7 @@ const VIEW_ROWS: [number, string][] = [[0, "СПЕРЕДИ"], [2, "СБОКУ"],
 
 function animRow(o: CreatureOut, v: Variant, a: Anim, A: Assets, W: number): Row {
   const N = camOf(o.cr).N;
-  const D = animsOf(v.role)[a];
+  const D = animsOf(v.role, o.cr.attackN)[a];
   const S0 = o.sheets.get(variantId(o.cr, v))![a];
   const k = 2;
   return {

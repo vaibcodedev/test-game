@@ -1,0 +1,181 @@
+/**
+ * Задача 147, подключение героя «Б»: снимки в игре с флагом (консоль heroB.on(), без перезапуска) → tools/out/hero147-live/.
+ * Три героя: воин (Сольгард, свой), рыцарь смерти (Умбрат), воин-союзник. Сеты — латы Рыцаря Хаоса и латы новобранца (heroB.set).
+ * Рядом с героем — ряды кадров его листа: покой, бег, удар × вниз, вверх, вправо, влево; слева — Сольгард, справа — Умбрат.
+ * День и ночь (Date.now со сдвигом фазы), зум 2 и 3. Наведение: зелёное (союзник), красное (враг: isEnemy подменён на «игрок — враг»), золотое (NPC).
+ * Замок tools/out/scenario.lock3 (каталог), чужой не трогается; приоритет ниже обычного.
+ *   $env:TEST_PORT="2977"; $env:VITE_TEST_PORT="5377"; npx tsx tools/hero147-live-shots.ts
+ */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import { createServer } from "vite";
+import { ensureChar, sleep, startServer, stopServer, PORT } from "../tests/harness";
+import { DAY_CYCLE_MS } from "../shared/daynight";
+
+const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5377, OUT = path.resolve("tools/out/hero147-live"), LOCK = path.resolve("tools/out/scenario.lock3");
+const chrome = ["C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"].find((p) => fs.existsSync(p))!;
+const log = (s: string) => console.log(s);
+const errors: string[] = [];
+
+async function newPage(browser: Browser) {
+  const p = await browser.newPage();
+  p.setDefaultNavigationTimeout(300000); p.setDefaultTimeout(180000);
+  p.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 160)); });
+  p.on("pageerror", (e) => errors.push(`pageerror: ${String(e).slice(0, 160)}`));
+  await p.setViewport({ width: 1366, height: 768 });
+  // фаза дня управляется из сценария: window.__phase (0.3 — день, 0.83 — ночь)
+  await p.evaluateOnNewDocument(`try { localStorage.setItem("shadowMode", "dynamic"); } catch {}
+    (() => { const n0 = Date.now.bind(Date), C = ${DAY_CYCLE_MS}; window.__phase = 0.3; Date.now = () => { const t = n0(); return t + (((window.__phase * C - (t % C)) + C) % C); }; })();`);
+  return p;
+}
+async function login(page: Page, name: string, cls: string) {
+  const token = await ensureChar(`hb${Array.from(name).map((c) => c.charCodeAt(0).toString(36)).join("")}`.slice(0, 16), "secret", name, cls);
+  for (let k = 0; ; k++) {
+    try {
+      await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
+      await page.evaluate((t: string) => { sessionStorage.setItem("emberfall-token", t); }, token);
+      await page.reload({ waitUntil: "networkidle0" });
+      await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 30000 });
+      await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
+      await sleep(300);
+      await page.click('.cs-list [data-a="play"]');
+      await page.waitForFunction("document.getElementById('charsel').hidden", { timeout: 120000, polling: 500 });
+      await page.waitForFunction("window.__game && window.__game.scene.isActive('game')", { timeout: 120000, polling: 500 });
+      await page.waitForFunction("window.__net && window.__net.self && window.__net.online", { timeout: 60000, polling: 500 });
+      await sleep(2000);
+      return;
+    } catch (e) { if (k >= 2) throw e; log(`повтор входа: ${String((e as Error).message).slice(0, 80)}`); }
+  }
+}
+const dbg = (page: Page, m: Record<string, unknown>) => page.evaluate((x) => (window as any).__net.send("dbg", x), m);
+const shot = async (page: Page, id: string) => { fs.mkdirSync(OUT, { recursive: true }); await page.screenshot({ path: path.join(OUT, `${id}.png`) as `${string}.png` }); log(`снят ${id}`); };
+
+/** Ряды кадров листов героев (свой и два соседних) вокруг своего героя; старые ряды убираются. */
+const GRID = `(() => {
+  const s = window.__game.scene.getScene("game");
+  (window.__hbGrid || []).forEach((o) => o.destroy());
+  const out = []; window.__hbGrid = out;
+  const me = s.units.get(window.__net.id); if (!me) return "нет себя";
+  const others = [...s.units.values()].filter((v) => v !== me && v.u.kind === me.u.kind && v.hb);
+  const umb = others.find((v) => v.u.faction !== me.u.faction);
+  const list = [[me, -1], [umb, 1]].filter((q) => q[0] && q[0].hb);
+  const res = [];
+  for (const [v, side] of list) {
+    const sh = v.hb, F = sh.frame;
+    const anims = [["rest", 2, -50], ["walk", 2, 50], ["attack", -1, 98]];
+    const dirs = [[0, sh.sid, false], [1, sh.sid, false], [2, sh.sid, false], [2, sh.sidL, true]];
+    dirs.forEach(([view, sid, flip], c) => anims.forEach(([name, fi, dy]) => {
+      const a = s.anims.get(sid + "-" + name + "-" + view); if (!a) return;
+      const fr = a.frames[fi < 0 ? Math.round(a.frames.length * 0.55) : fi].frame.name;
+      const x = Math.round(me.x + side * (40 + c * 44)), y = Math.round(me.y + dy);
+      const sp = s.add.sprite(x, y, sh.key, fr).setOrigin(sh.ox, sh.oy).setFlipX(flip).setDepth(y);
+      out.push(sp);
+      const sd = s.add.image(x, y - 2, "fx_shadow_blob").setDepth(-1e5 + 5); out.push(sd);
+      if (sh.glow) { const g = s.add.sprite(x, y, sh.key + "_glow", fr).setOrigin(sh.ox, sh.oy).setFlipX(flip).setDepth(1e6 - 44); out.push(g); g.__night = true; }
+    }));
+    res.push(sh.key);
+  }
+  return res.join(" | ");
+})()`;
+/** Свечение «Б» ночью у рядов: альфа по ночи (как UnitView). */
+const GLOW = (night: number) => `(window.__hbGrid || []).forEach((o) => { if (o.__night) o.setAlpha(${night}).setVisible(${night} > 0.05); })`;
+
+async function screenOf(p: Page, wx: number, wy: number) {
+  return p.evaluate((x: number, y: number) => {
+    const s = (window as any).__game.scene.getScene("game"), cam = s.cameras.main, r = s.game.canvas.getBoundingClientRect();
+    return { x: r.left + (x - cam.worldView.x) * cam.zoom * (r.width / s.game.canvas.width) * (s.game.canvas.width / cam.width), y: r.top + (y - cam.worldView.y) * cam.zoom * (r.height / s.game.canvas.height) * (s.game.canvas.height / cam.height) };
+  }, wx, wy);
+}
+
+/** QUICK=1: один воин, heroB.self() + вид сета Рыцаря, зум 3 днём и ночью — быстрая проверка пути «включить и посмотреть». */
+async function quick(browser: Browser) {
+  const A = await newPage(browser);
+  await login(A, "Быстробэ", "warrior");
+  await dbg(A, { op: "god" });
+  log(await A.evaluate(`window.heroB.self()`) as string);
+  for (const set of ["chaos-knight", "recruit-plate"]) {
+    await A.evaluate(`window.heroB.set(${JSON.stringify(set)})`);
+    await sleep(4000);
+    log(`${set}: ${await A.evaluate(GRID)}`);
+    log(JSON.stringify(await A.evaluate(`window.heroB.status()`)));
+    for (const PH of [0.3, 0.83]) {
+      await A.evaluate(`window.__phase = ${PH}; window.__game.scene.getScene("game").cameras.main.setZoom(3);`);
+      await A.evaluate(GLOW(PH > 0.5 ? 1 : 0));
+      await sleep(1500);
+      await shot(A, `quick_${set}_z3_${PH > 0.5 ? "night" : "day"}`);
+    }
+  }
+  await A.close();
+}
+
+async function run(browser: Browser) {
+  if (process.env.QUICK) return quick(browser);
+  const A = await newPage(browser), B = await newPage(browser), C = await newPage(browser);
+  await login(A, "Сольбэ", "warrior");
+  await login(B, "Умбэ", "deathknight");
+  await login(C, "Союзбэ", "warrior");
+  for (const p of [A, B, C]) { await dbg(p, { op: "god" }); await dbg(p, { op: "level", v: 100 }); }
+  const me = await A.evaluate(`({ x: window.__net.self.x, y: window.__net.self.y })`) as { x: number; y: number };
+  await dbg(A, { op: "tp", x: me.x, y: me.y });
+  await dbg(B, { op: "tp", x: me.x + 26, y: me.y + 4 });
+  await dbg(C, { op: "tp", x: me.x - 26, y: me.y + 4 });
+  await sleep(2500);
+  for (const p of [A, B, C]) await p.evaluate(`window.heroB.on()`);
+  await sleep(2500);
+  // проверка хитбокса героя Б по маске кадра (A смотрит на B)
+  for (const set of ["chaos-knight", "recruit-plate"]) {
+    for (const p of [A, B, C]) await p.evaluate(`window.heroB.set(${JSON.stringify(set)})`);
+    await sleep(3000);
+    const keys = await A.evaluate(GRID);
+    log(`${set}: ${keys}`);
+    const hit = await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"); const v = [...s.units.values()].find((q) => q.u.faction === "umbrath" && q.hb); if (!v) return "нет"; const sp = v.sprite;
+      const t = (dx, dy, r) => { const d = v.hitTest(sp.x + dx, sp.y + dy, r, false); return d === Infinity ? "мимо" : d.toFixed(1); };
+      return { rise: v.hb.rise, frame: v.hb.frame, head: t(0, -v.hb.rise + 2, 0), aboveHead: t(0, -v.hb.rise - 4, 0), aboveTol: t(0, -v.hb.rise - 4, 5), side: t(14, -14, 0), feet: t(0, -2, 0), boxW: Math.round(v.body.x1 - v.body.x0), boxH: Math.round(v.body.y1 - v.body.y0) }; })()`);
+    log(`хитбокс ${set}: ${JSON.stringify(hit)}`);
+    for (const [Z, PH] of [[2, 0.3], [3, 0.3], [2, 0.83], [3, 0.83]] as [number, number][]) {
+      await A.evaluate(`window.__phase = ${PH}; window.__game.scene.getScene("game").cameras.main.setZoom(${Z});`);
+      await A.evaluate(GLOW(PH > 0.5 ? 1 : 0));
+      await sleep(1800);
+      await shot(A, `${set}_z${Z}_${PH > 0.5 ? "night" : "day"}`);
+    }
+    // наведение: союзник — зелёное, враг — красное (isEnemy: игрок — враг), NPC — золотое; зум 3, день
+    await A.evaluate(`window.__phase = 0.3; (window.__hbGrid || []).forEach((o) => o.setVisible(false)); window.__game.scene.getScene("game").cameras.main.setZoom(3);`);
+    await sleep(800);
+    const pos = async (who: "ally" | "foe") => A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), me = s.units.get(window.__net.id); const v = [...s.units.values()].find((q) => q !== me && q.u.kind === me.u.kind && (${who === "foe"} ? q.u.faction !== me.u.faction : q.u.faction === me.u.faction)); return v ? { x: v.sprite.x, y: v.sprite.y - 14 } : null; })()`) as Promise<{ x: number; y: number } | null>;
+    const ally = await pos("ally");
+    if (ally) { const sc = await screenOf(A, ally.x, ally.y); await A.mouse.move(sc.x, sc.y); await sleep(900); await shot(A, `${set}_hover_green`); }
+    await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"); s.__isEnemy0 ??= s.isEnemy; s.isEnemy = (v) => v.u.kind === 0 ? v.u.faction !== window.__net.self.faction : s.__isEnemy0(v); })()`);
+    const foe = await pos("foe");
+    if (foe) { const sc = await screenOf(A, foe.x, foe.y); await A.mouse.move(sc.x, sc.y); await sleep(900); await shot(A, `${set}_hover_red`); }
+    await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"); if (s.__isEnemy0) s.isEnemy = s.__isEnemy0; })()`);
+    await A.evaluate(`(window.__hbGrid || []).forEach((o) => o.setVisible(true))`);
+  }
+  // золотое: ближайший видимый NPC (свечение NPC прежнее, проверка, что герой Б его не ломает)
+  const npc = await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"); let b = null, bd = 1e9; for (const n of s.npcs) { if (!n.sprite || !n.sprite.visible || !n.id) continue; const d = Math.hypot(n.sprite.x - s.pos.x, n.sprite.y - s.pos.y); if (d < bd) { bd = d; b = n; } } return b ? { x: b.sprite.x, y: b.sprite.y - 12 } : null; })()`) as { x: number; y: number } | null;
+  if (npc) {
+    await dbg(A, { op: "tp", x: npc.x + 30, y: npc.y + 30 }); await sleep(2500);
+    const sc = await screenOf(A, npc.x, npc.y); await A.mouse.move(sc.x, sc.y); await sleep(900); await shot(A, `hover_gold_npc`);
+  }
+  for (const p of [A, B, C]) await p.close();
+}
+
+async function main() {
+  fs.mkdirSync(OUT, { recursive: true });
+  for (let k = 0; ; k++) { try { fs.mkdirSync(LOCK); break; } catch { if (k % 12 === 0) log("жду замок scenario.lock3…"); if (k > 720) throw new Error("замок"); await sleep(5000); } }
+  try {
+    fs.writeFileSync(path.join(LOCK, "owner"), `hero147-live ${process.pid} ${new Date().toISOString()}\n`);
+    try { os.setPriority(0, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* ok */ }
+    process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
+    const vite = await createServer({ configFile: path.resolve("vite.config.ts"), server: { port: VITE_PORT, strictPort: true, watch: { ignored: ["**/*"] } }, logLevel: "error" });
+    await vite.listen();
+    await startServer(true);
+    try {
+      const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--use-gl=angle", "--use-angle=swiftshader-webgl", "--enable-unsafe-swiftshader", "--disable-gpu-sandbox", "--no-sandbox"], defaultViewport: { width: 1366, height: 768 }, protocolTimeout: 600000 });
+      try { await run(browser); } finally { await browser.close(); }
+    } finally { await vite.close(); await stopServer(); }
+  } finally { fs.rmSync(LOCK, { recursive: true, force: true }); }
+  if (errors.length) log(`ошибки страницы (${errors.length}):\n` + [...new Set(errors)].slice(0, 12).join("\n"));
+}
+main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });

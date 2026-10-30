@@ -26,8 +26,10 @@ export function hood(ctx: GearCtx, it: any, crest: CrestId) {
     loc("hd_out", Cl, 6.15, (z) => z.pg([[-hw - 0.7, hh * 0.3], [-hw - 0.5, -hh * 0.6], [-hw * 0.45, -hh - 1.1], [0, -hh - 1.9], [hw * 0.45, -hh - 1.1], [hw + 0.5, -hh * 0.6], [hw + 0.7, hh * 0.3], [hw + 0.6, hh + 1.0], [-hw - 0.6, hh + 1.0]]), { dome: 3, amp: 1.8, bias: 0.25, kant: true });
     loc("hd_fold", Cl, 6.151, (z) => { z.bz([-hw * 0.8, -hh * 0.9], [-hw * 1.0, 0], [-hw * 0.95, hh + 0.6], 0.6, 0.6); z.bz([hw * 0.8, -hh * 0.9], [hw * 1.0, 0], [hw * 0.95, hh + 0.6], 0.6, 0.6); }, { dome: 1, bias: -1.5 });
     loc("hd_lit", Cl, 6.152, (z) => z.bz([-hw - 0.2, hh * 0.1], [-hw * 0.7, -hh - 0.6], [0, -hh - 1.6], 0.7, 0.6), { dome: 1, bias: 2.6 });
-    loc("hd_lin", Ln, 6.16, (z) => z.el([0, hh * 0.22], hw * 0.86, hh * 1.0), { dome: 2, amp: 1.6, bias: 0.2 });
-    loc("hd_sh", Sh, 6.17, (z) => z.el([0, hh * 0.28], hw * 0.74, hh * 0.9), { dome: 2, amp: 0.8, bias: -0.2 });
+    loc("hd_lin", Ln, 6.16, (z) => { z.el([0, hh * 0.22], hw * 0.86, hh * 1.0); if (!Mk && !G) z.clip((x, y) => !(Math.hypot(x / (hw * 0.74), (y - hh * 0.28) / (hh * 0.9)) < 1)); }, { dome: 2, amp: 1.6, bias: 0.2 });
+    // без маски лицо видно: кромка-кольцо и тень только сверху (от капюшона на лоб)
+    if (Mk || G) loc("hd_sh", Sh, 6.17, (z) => z.el([0, hh * 0.28], hw * 0.74, hh * 0.9), { dome: 2, amp: 0.8, bias: -0.2 });
+    else loc("hd_sh", Sh, 6.17, (z) => { z.el([0, -hh * 0.25], hw * 0.78, hh * 0.55); z.clip((x, y) => y < -hh * 0.05 + Math.abs(x) * 0.25); }, { dome: 1, amp: 0.6, bias: 0.2 });
     if (G) loc("hd_eye", G, 6.18, (z) => { z.dot([-hw * 0.32, hh * 0.08], 0.55); z.dot([hw * 0.32, hh * 0.08], 0.55); }, { dome: 1, bias: 0.4 }, true, hx("#ff6a3a"));
     if (Mk) loc("hd_mask", Mk, 6.19, (z) => z.pg([[-hw * 0.74, hh * 0.52], [hw * 0.74, hh * 0.52], [hw * 0.5, hh + 0.7], [0, hh + 1.3], [-hw * 0.5, hh + 0.7]]), { dome: 2, amp: 1.8, bias: 0.15, kant: true });
     if (Mk && it.seam) loc("hd_seam", ramp(it.seam), 6.192, (z) => z.seg([-hw * 0.7, hh * 0.56], [hw * 0.7, hh * 0.56], 0.6), { dome: 1, bias: 0.4 }, true, hx("#ff6a3a"));
@@ -46,8 +48,8 @@ export function hood(ctx: GearCtx, it: any, crest: CrestId) {
     loc("hd_out", Cl, 6.15, (z) => { z.el([-0.4, -hh * 0.12], hw + 0.55, hh + 0.65); z.pg([[-hw * 0.3, -hh - 0.4], [-hw - 1.7, -hh * 0.35], [-hw * 0.4, hh * 0.1]]); z.pg([[-hw * 0.5, hh * 0.3], [hw * 0.5, hh * 0.55], [hw * 0.3, hh + 0.8], [-hw * 0.8, hh + 0.8]]); z.bz([hw * 0.1, -hh * 0.9], [hw + 1.1, -hh * 0.85], [hw + 1.6, -hh * 0.3], 1.5, 0.8); }, { dome: 3, amp: 1.8, bias: 0.3, kant: true });
     loc("hd_lit", Cl, 6.152, (z) => z.bz([hw + 1.3, -hh * 0.6], [hw * 0.2, -hh - 0.9], [-hw - 1.0, -hh * 0.5], 0.7, 0.6), { dome: 1, bias: 2.6 });
     loc("hd_fold", Cl, 6.151, (z) => z.bz([-hw * 0.2, -hh * 0.9], [-hw * 0.6, 0], [-hw * 0.3, hh + 0.7], 0.6, 0.6), { dome: 1, bias: -1.5 });
-    loc("hd_lin", Ln, 6.16, (z) => z.el([hw * 0.74, hh * 0.25], hw * 0.36, hh * 0.92), { dome: 2, amp: 1.6, bias: 0.2 });
-    loc("hd_sh", Sh, 6.17, (z) => z.el([hw * 0.8, hh * 0.3], hw * 0.28, hh * 0.8), { dome: 2, amp: 0.8, bias: -0.2 });
+    loc("hd_lin", Ln, 6.16, (z) => { z.el([hw * 0.74, hh * 0.25], hw * 0.36, hh * 0.92); if (!Mk && !G) z.clip((x, y) => !(Math.hypot((x - hw * 0.8) / (hw * 0.3), (y - hh * 0.3) / (hh * 0.8)) < 1)); }, { dome: 2, amp: 1.6, bias: 0.2 });
+    if (Mk || G) loc("hd_sh", Sh, 6.17, (z) => z.el([hw * 0.8, hh * 0.3], hw * 0.28, hh * 0.8), { dome: 2, amp: 0.8, bias: -0.2 });
     if (G) loc("hd_eye", G, 6.18, (z) => z.dot([hw * 0.78, hh * 0.1], 0.55), { dome: 1, bias: 0.4 }, true, hx("#ff6a3a"));
     if (Mk) loc("hd_mask", Mk, 6.19, (z) => z.pg([[hw * 0.55, hh * 0.5], [hw + 1.0, hh * 0.55], [hw + 0.5, hh + 0.7], [hw * 0.45, hh + 1.0]]), { dome: 2, amp: 1.8, bias: 0.15, kant: true });
     if (Mk && it.seam) loc("hd_seam", ramp(it.seam), 6.192, (z) => z.seg([hw * 0.55, hh * 0.56], [hw + 0.95, hh * 0.6], 0.6), { dome: 1, bias: 0.4 }, true, hx("#ff6a3a"));
@@ -76,11 +78,20 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
     if (it.crest && fF > 0.3) crestParts(ctx, add(surf(-sw * 0.32, c * 0.62), mul(F, 0.35)), A, U, 1.25, 3.7655, crest);
   }
   if (it.breast && fF < 0.2) push({ g: "c_plate", ramp: St, o: { dome: 2, bias: 0.1, kant: true }, layer: 3.762, m: (z) => z.pg([surf(-sw * 0.6, c * 0.9, -1), surf(sw * 0.6, c * 0.9, -1), surf(sw * 0.4, c * 0.5, -1), surf(-sw * 0.4, c * 0.5, -1)].map(PJ)) });
+  // строчка (пунктир 2 px), заклёпки, потёртости — читаются на зуме 2
+  if (it.stitch) {
+    const St2 = ramp(it.stitch), sd = fF >= 0 ? 1 : -1;
+    const dash = (z: Mz, a: V3, b2: V3, n: number) => { for (let k = 0; k < n; k++) { const t0 = k / n, t1 = t0 + 0.55 / n; z.seg(PJ(lerp(a, b2, t0)), PJ(lerp(a, b2, t1)), 0.6); } };
+    push({ g: "c_stitch", ramp: St2, o: { dome: 1, bias: 0.5 }, layer: 3.7612, m: (z) => { for (const o of [-0.55, 0.55]) dash(z, surf(o + sd * sw * 0.15, c * 0.92, sd, 0.3), surf(o + sd * sw * 0.05, -0.8, sd, 0.3), 5); dash(z, surf(-sw * 0.85, c * 0.75, sd, 0.3), surf(-sw * 0.8, c * 0.15, sd, 0.3), 3); dash(z, surf(sw * 0.85, c * 0.75, sd, 0.3), surf(sw * 0.8, c * 0.15, sd, 0.3), 3); } });
+  }
+  if (it.wear) push({ g: "c_wear", ramp: Lt, o: { dome: 1, bias: 1.6 }, layer: 3.7613, m: (z) => { const sd = fF >= 0 ? 1 : -1; for (const [a, h] of [[-0.55, 0.3], [0.62, 0.55], [0.3, 0.1]]) z.dot(PJ(surf(a * sw, h * c, sd, 0.3)), 0.75); } });
+  if (it.breast && fF > 0.3) push({ g: "c_riv", ramp: ramp("gold"), o: { dome: 1, bias: 1.2 }, layer: 3.7623, m: (z) => { for (const [a, h] of [[-0.6, 0.86], [0.6, 0.86], [-0.48, 0.48], [0.48, 0.48]]) z.dot(PJ(add(surf(a * sw, h * c), mul(F, 0.3))), 0.55); } });
   // ремень через грудь (справа-налево) с пряжкой
   if (it.strap) {
     const sd = fF >= 0 ? 1 : -1;
     push({ g: "c_strap", ramp: ramp(it.strapMat ?? it.accent), o: { dome: 1, bias: 0.4 }, layer: 3.764, m: (z) => z.seg(PJ(surf(-sw * 0.85 * sd, c * 0.95, sd, 0.35)), PJ(surf(sw * 0.7 * sd, c * 0.05, sd, 0.35)), 1.0) });
-    if (sd > 0) push({ g: "c_buck", ramp: ramp("gold"), o: { dome: 1, bias: 1.0 }, layer: 3.7641, m: (z) => z.dot(PJ(surf(sw * 0.1, c * 0.5, 1, 0.45)), 0.75) });
+    if (sd > 0) push({ g: "c_buck", ramp: ramp("gold"), o: { dome: 1, bias: 1.0 }, layer: 3.7641, m: (z) => { const q = PJ(surf(sw * 0.1, c * 0.5, 1, 0.45)); z.pg([[q[0] - 1.0, q[1] - 0.9], [q[0] + 1.0, q[1] - 0.9], [q[0] + 1.0, q[1] + 0.9], [q[0] - 1.0, q[1] + 0.9]]); } });
+    if (sd > 0) push({ g: "c_sriv", ramp: ramp("gold"), o: { dome: 1, bias: 1.4 }, layer: 3.7642, m: (z) => { for (const t of [0.2, 0.75]) z.dot(PJ(lerp(surf(-sw * 0.85, c * 0.95, 1, 0.45), surf(sw * 0.7, c * 0.05, 1, 0.45), t)), 0.5); } });
   }
   // кушак: широкий алый пояс с узлом и хвостами
   const sashC: Sec[] = [{ h: -1.45, a: b.waist + th + 0.45, d: dW + th + 0.45, f: 0 }, { h: 0.35, a: b.waist + th + 0.4, d: dW + th + 0.4, f: 0 }];
@@ -123,6 +134,8 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
     const quad = [ring(p0, "t"), ring(p1, "t"), ring(p1, "b"), ring(p0, "b")];
     const L = D(lerp(quad[0], quad[2], 0.5)) < -0.5 ? 1.95 : 3.975;
     push({ g: "c_skirt", ramp: Lt, o: { dome: 2, amp: 1.6, bias: (k % 2 ? -0.35 : 0.25) }, layer: L + 0.00001 * k, m: (z) => z.pg(quad.map(PJ)) });
+    if (it.stitch && k % 3 === 1) push({ g: "c_skst", ramp: ramp(it.stitch), o: { dome: 1, bias: 0.5 }, layer: L + 0.00015, m: (z) => { const a = lerp(quad[0], quad[1], 0.5), b2 = lerp(quad[3], quad[2], 0.5); for (let q = 0; q < 3; q++) z.seg(PJ(lerp(a, b2, 0.15 + q * 0.28)), PJ(lerp(a, b2, 0.27 + q * 0.28)), 0.6); } });
+    if (it.wear && k % 4 === 2) push({ g: "c_skw", ramp: Lt, o: { dome: 1, bias: 1.6 }, layer: L + 0.00016, m: (z) => z.dot(PJ(lerp(lerp(quad[0], quad[1], 0.5), lerp(quad[3], quad[2], 0.5), 0.7)), 0.7) });
     if (it.hem && (k === 0 || k === N - 1)) push({ g: "c_hem", ramp: Tr, o: { dome: 1, bias: 0.5 }, layer: L + 0.0002, m: (z) => { const ph = k === 0 ? p0 : p1; z.seg(PJ(ring(ph, "t")), PJ(ring(ph, "b")), 0.7); } });
   }
   // рукава: кожа, на локте стальная пластинка
@@ -162,7 +175,7 @@ export function dualPose(P: Pose, k: { anim: AnimId; u: number; arm: number; sx:
   const a = k.arm, u = k.u, X = P as any;
   delete P.shield; P.twoHand = false;
   if (k.anim === "death" && P.G) P.G = { ...P.G, shift: [P.G.shift[0], P.G.shift[1] - 5.8 * (P.G.ang / (Math.PI / 2)), P.G.shift[2]] };
-  const rest = (s: 1 | -1, bob = 0): { h: V3; d: V3 } => ({ h: [s * 0.5, a * 0.78 + bob, 1.3], d: [s * 0.5, 0.6, 0.62] });
+  const rest = (s: 1 | -1, bob = 0): { h: V3; d: V3 } => ({ h: [s * 0.5, a * 0.78 + bob, 1.3], d: [s * 0.68, 0.42, 0.6] });
   const set = (main: { h: V3; d: V3 }, off: { h: V3; d: V3 }) => {
     P.weapon = { kind: "sword", dir: nrm(main.d) }; P.hL = { rel: main.h, pole: [0.7, 0.3, -0.7] };
     X.weapon2 = { dir: nrm(off.d) }; P.hR = { rel: off.h, pole: [-0.7, 0.3, -0.7] };
@@ -194,7 +207,7 @@ export function dualPose(P: Pose, k: { anim: AnimId; u: number; arm: number; sx:
     const sv = k.view === "side";
     const cross = (s: 1 | -1): { h: V3; d: V3 } => ({ h: [s * -(k.sx + 0.4), a * 0.28, 2.0], d: sv ? [s * -0.3, -0.85, 0.45] : [s * -0.55, -0.82, 0.2] });
     // вбок клинки расходятся вперёд и назад, вниз и вверх — иначе ушли бы в глубину
-    const open = (s: 1 | -1): { h: V3; d: V3 } => sv ? (s > 0 ? { h: [0.4, a * 0.7, a * 0.85], d: [0.1, 0.4, 0.9] } : { h: [-0.4, a * 0.75, -1.6], d: [-0.1, 0.45, -0.89] }) : { h: [s * 2.4, a * 0.8, 2.4], d: [s * 0.82, 0.38, 0.45] };
+    const open = (s: 1 | -1): { h: V3; d: V3 } => sv ? (s > 0 ? { h: [0.4, a * 0.72, a * 0.62], d: [0.1, 0.62, 0.77] } : { h: [-0.4, a * 0.75, -1.2], d: [-0.1, 0.62, -0.77] }) : { h: [s * 2.4, a * 0.8, 2.4], d: [s * 0.82, 0.38, 0.45] };
     const keys: [number, number][] = [[0, 0], [0.38, 1], [0.58, 2], [0.78, 2], [1, 0]];
     let i = 0; while (i < keys.length - 2 && u > keys[i + 1][0]) i++;
     const e = (i === 1 ? (t: number) => t * t * t : ease)(cl((u - keys[i][0]) / (keys[i + 1][0] - keys[i][0])));
@@ -233,8 +246,8 @@ export function dual(ctx: GearCtx, it: any, draw: (ctx: GearCtx, it: any, Hd: V3
   if (anim === "death") {
     const t = cl((u - DROP_U) / 0.3), e = ease(t), mx = (p: V3): V3 => (ctx.l.mirrorX ? [-p[0], p[1], p[2]] : p);
     for (const s of [1, -1]) {
-      const h0: V3 = [s * 3, FY - 12, 3], h1: V3 = [s * 6, FY - 2.2, 2 + s], Hd: V3 = [h0[0] + (h1[0] - h0[0]) * e, h0[1] + (h1[1] - h0[1]) * e - 2.5 * Math.sin(Math.PI * t), h0[2] + (h1[2] - h0[2]) * e];
-      const d = nrm(lerp([s * 0.28, 0.35, 1], [s * 0.9, 0, 0.3], e));
+      const h0: V3 = [s * 3, FY - 12, 3], h1: V3 = [s * 4, FY - 2.4, 1.5], Hd: V3 = [h0[0] + (h1[0] - h0[0]) * e, h0[1] + (h1[1] - h0[1]) * e - 2.5 * Math.sin(Math.PI * t), h0[2] + (h1[2] - h0[2]) * e];
+      const d = nrm(lerp([s * 0.28, 0.35, 1], [s * 0.45, 0, v === "up" ? 0.9 : -0.9], e));
       const Dr = (p: V3) => (v === "down" ? p[2] : v === "up" ? -p[2] : ctx.l.mirrorX ? -p[0] : p[0]), L = Dr(Hd) < -1.2 ? 1.2 : 5.2;
       draw(ctx, it, Hd, d, L, L, (p: V3) => proj(mx(p), v));
     }

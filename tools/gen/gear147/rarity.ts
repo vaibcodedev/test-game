@@ -8,7 +8,8 @@ import { PC, type RGBA } from "../canvas";
 import { P as PAL } from "../palette";
 import { text } from "../mobs/lib";
 import { FR, FY, frameOf, type Look } from "../hero147/base_b";
-import { SLOTS, dress, renderView, setOf, type View4 } from "./gear";
+import { SLOTS, baseView, dress, renderView, setOf, viewLook, type View4 } from "./gear";
+import { renderLayers } from "../hero147/base_b";
 import { cell, icon } from "./icons";
 
 const SETS = ["plate60-common", "plate60-rare", "plate60-epic", "chaos-knight"].map((id) => ({ id, set: setOf(id) }));
@@ -58,7 +59,7 @@ const icons = SETS.map(({ set }) => SLOTS.map((s) => cell(icon(s, set.items[s]).
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = n(x >> 2, y >> 2) * 0.5 + n(x, y) * 0.5; g.set(x, y, gr[v < 0.3 ? 0 : v < 0.55 ? 1 : v < 0.8 ? 2 : 3]); }
     return g;
   };
-  const w = 40 + SETS.length * (views.length * cw + 20), rowH = WH * K + 40, H = 70 + 2 * rowH;
+  const w = 40 + SETS.length * (views.length * cw + 20), rowH = WH * K + 40, H = 70 + 3 * rowH;
   const c = new PC(w, H); fill(c, 0, 0, w, H, BG);
   text(c, "ГЕРОИ В 4 РЕДКОСТЯХ · ЗУМ 3 · ДЕНЬ | НОЧЬ", 20, 16, 3, GOLD);
   for (const night of [false, true]) {
@@ -80,6 +81,16 @@ const icons = SETS.map(({ set }) => SLOTS.map((s) => cell(icon(s, set.items[s]).
       });
     });
   }
+  // кадр «силуэт оружия»: тело серым, оружие жёлтым
+  const ys = 60 + 2 * rowH;
+  text(c, "СИЛУЭТ ОРУЖИЯ: ТЕЛО И ЛАТЫ — СЕРЫМ, ОРУЖИЕ — ЖЁЛТЫМ", 20, ys - 4, 2, GOLD);
+  SETS.forEach(({ set }, r) => views.forEach((v, j) => {
+    const lk = dress(L, set, "sol"), fo = frameOf(lk), ox = FX - (24 + fo.OX), oy = FYW - (FY + fo.OY);
+    const [all, wp] = renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [() => true, (p) => p.slot === "weapon"]);
+    const x0 = 20 + r * (views.length * cw + 20) + j * cw, y0 = ys + 24;
+    for (let yy = 0; yy < WH; yy++) for (let xx = 0; xx < WW; xx++) for (let a = 0; a < K; a++) for (let b = 0; b < K; b++) c.set(x0 + xx * K + a, y0 + yy * K + b, [44, 54, 40, 255]);
+    for (let yy = 0; yy < all.img.h; yy++) for (let xx = 0; xx < all.img.w; xx++) { const X = xx + ox, Y = yy + oy; if (X < 0 || Y < 0 || X >= WW || Y >= WH || !all.img.has(xx, yy)) continue; const col: [number, number, number, number] = wp.img.has(xx, yy) ? [255, 220, 60, 255] : [110, 110, 118, 255]; for (let a = 0; a < K; a++) for (let b = 0; b < K; b++) c.set(x0 + X * K + a, y0 + Y * K + b, col); }
+  }));
   c.save(path.resolve("tools/out/gear147/rarity-ladder.png"));
 }
 console.log("→ tools/out/gear147/rarity-icons.png, rarity-ladder.png");

@@ -4,7 +4,7 @@
  * запись босса в client/public/assets/zone-bosses/manifest.json (остальные записи не трогаются — общий сборщик
  * tools/gen/zone-bosses-to-game.ts не запускается). Связки умений и эффекты — из реестров генераторов.
  * Широкий лист (больше 8192 px — предел текстуры WebGL) переносится по строкам: wrap столбцов в строке, вид — ceil(cols / wrap) строк.
- * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette|sol_storm_colossus|sol_horned_knight|umb_twin_reaper]   (без аргумента — все)
+ * Запуск: npx tsx tools/gen/bosses139/to-game.ts [umb_crown_lich|umb_ash_executioner|sol_mirage_sorcerer|umb_crimson_vampire|sol_goblin_warlord|umb_plague_priestess|sol_plague_raven|sol_fallen_chaplain|plg_drowned_bellringer|umb_frost_lord|sol_cliff_minotaur|sol_gilded_midas|umb_bone_marionette|sol_storm_colossus|wb_colossus|sol_horned_knight|umb_twin_reaper]   (без аргумента — все)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -285,7 +285,7 @@ BOSSES.push({
 
 // Гурдан Громобой, латный великан (r75n запад): 2D-штампы как у Мидара; молнии нарисованы в листе, круги и кольца рисует клиент
 BOSSES.push({
-  id: col.ID, sheet: "colossus-sheet.png", frame: col.FRAME, frameH: col.FRAME_H, cols: col.COLOSSUS_COLS, wrap: 64,
+  id: col.ID, sheet: "colossus-sheet.png", frame: 80, frameH: 80, cols: col.COLOSSUS_COLS, wrap: 64,
   // phase (переход фазы 50 %) — кадры «Грозы» (молот к туче, молнии вокруг)
   anims: {
     ...anims({ idle: col.COLOSSUS_ANIMS.idle, walk: col.COLOSSUS_ANIMS.walk }),
@@ -304,6 +304,8 @@ BOSSES.push({
     ridge_storm: { waves: [{ pre: ["stormWind", "stormHold"], strike: "stormCast" }, { pre: ["stormHold"], strike: "stormCast" }], fx: [] },
   },
 });
+// мировой босс Колосс (задача 147): тот же образ ×1,75, кадр 140 (лист — COLOSSUS_FR=140, приставка wb-); перенос по 56 столбцов (ширина ≤ 8192)
+BOSSES.push({ ...BOSSES[BOSSES.length - 1], id: "wb_colossus", sheet: "wb-colossus-sheet.png", frame: 140, frameH: 140, wrap: 56 });
 // Эрвальд Лозорог, рогатый рыцарь (r79s запад): 2D-штампы как у Гурдана; вихрь, лозы и шлейф секиры нарисованы в листе, формы рисует клиент
 BOSSES.push({
   id: kn.ID, sheet: "knight-sheet.png", frame: kn.FRAME, frameH: kn.FRAME_H, cols: kn.KNIGHT_COLS, wrap: 64,

@@ -12,6 +12,8 @@ import { text } from "../mobs/lib";
 import { FR, FY, NF, frameOf, type AnimId, type Look } from "../hero147/base_b";
 import { dress, renderView, setOf, SLOTS, type CrestId, type View4 } from "./gear";
 import { cell as iconCell, icon } from "./icons";
+import { baseView, viewLook } from "./gear";
+import { flipCv, renderLayers } from "../hero147/base_b";
 
 const OUT = path.resolve("tools/out/gear147"); fs.mkdirSync(OUT, { recursive: true });
 const BG: RGBA = [24, 20, 26, 255], GOLD: RGBA = [255, 216, 100, 255], DIM: RGBA = [200, 190, 170, 255], RED: RGBA = [255, 110, 90, 255];
@@ -160,9 +162,33 @@ for (const [a, nm] of CFG.atk) {
     text(c, "ИКОНКИ ×1 И ×2 · РЕДКОСТЬ — ФОН И РАМКА ЯЧЕЙКИ", 20, yi + 168, 2, DIM);
   } });
 }
+// ---------- 4б. кадр «силуэт оружия»: тело серым, оружие залито одним цветом ----------
+{
+  const K = 3, cw = 84 * K, AN: [AnimId, number][] = [CFG.hands.anims[0], CFG.hands.anims[2] ?? CFG.hands.anims[1]];
+  blocks.push({ w: 40 + 4 * (2 * cw + 20), h: 40 + 84 * K + 30, file: `${CFG.prefix}-weapon-sil.png`, draw: (c, y0) => {
+    text(c, "СИЛУЭТ ОРУЖИЯ · ТЕЛО И СЕТ — СЕРЫМ, ОРУЖИЕ — ЖЁЛТЫМ · ГРАНИЦА ТЕЛА И ОРУЖИЯ ВИДНА В КАЖДОМ НАПРАВЛЕНИИ · ЗУМ 3", 20, y0, 2, GOLD);
+    V4S.forEach((v, j) => AN.forEach(([a, i], k) => {
+      const lk = dress(SOL, KN, "sol"), fo = frameOf(lk), [all, wp] = renderLayers(viewLook(lk, v), baseView(v), a, i, [() => true, (p) => p.slot === "weapon"]);
+      const im = v === "left" ? flipCv(all.img) : all.img, wi = v === "left" ? flipCv(wp.img) : wp.img;
+      const x = 20 + j * (2 * cw + 20) + k * cw, y = y0 + 30, dx = 42 - (24 + fo.OX), dy = 72 - (FY + fo.OY);
+      fill(c, x, y, 84 * K - 4, 84 * K, [44, 54, 40, 255]);
+      for (let yy = 0; yy < im.h; yy++) for (let xx = 0; xx < im.w; xx++) {
+        const X = xx + dx, Y = yy + dy; if (X < 0 || Y < 0 || X >= 84 || Y >= 84 || !im.has(xx, yy)) continue;
+        const col: RGBA = wi.has(xx, yy) ? [255, 220, 60, 255] : [110, 110, 118, 255];
+        for (let a2 = 0; a2 < K; a2++) for (let b2 = 0; b2 < K; b2++) c.set(x + X * K + a2, y + Y * K + b2, col);
+      }
+    }));
+  } });
+}
 // ---------- 5. сцена день / ночь, зум 2 и 3 ----------
-function scene(night: boolean): PC {
-  const SW = 240, SH = 110, g = ground(SW, SH, 7), c = new PC(SW, SH); c.data.set(g.data);
+function snowGround(w: number, h: number): PC {
+  const g = new PC(w, h), sn: RGBA[] = [[150, 162, 182, 255], [182, 194, 212, 255], [210, 220, 234, 255], [232, 238, 246, 255]];
+  const n = (x: number, y: number) => { const s = Math.sin(x * 12.9898 + y * 78.233 + 91.7) * 43758.5453; return s - Math.floor(s); };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = n(x >> 3, y >> 3) * 0.55 + n(x >> 1, y >> 1) * 0.25 + n(x, y) * 0.2; g.set(x, y, sn[v < 0.3 ? 0 : v < 0.55 ? 1 : v < 0.8 ? 2 : 3]); }
+  return g;
+}
+function scene(night: boolean, snow = false): PC {
+  const SW = 240, SH = 110, g = snow ? snowGround(SW, SH) : ground(SW, SH, 7), c = new PC(SW, SH); c.data.set(g.data);
   const items: { x: number; y: number; p: Pack }[] = [
     { x: 40, y: 90, p: fr(SOL, RC, "sol", "down", "idle", 0) },
     { x: 80, y: 94, p: fr(SOL, KN, "sol", "down", "idle", 3) },
@@ -184,10 +210,10 @@ function scene(night: boolean): PC {
   return c;
 }
 {
-  const day = scene(false), nig = scene(true);
+  const day = scene(false), nig = scene(true), snw = scene(false, true);
   const w = 60 + day.w * 2 * 2;
   const gray = new PC(day.w, day.h); for (let i = 0; i < day.data.length; i += 4) { const l = Math.round(day.data[i] * 0.3 + day.data[i + 1] * 0.59 + day.data[i + 2] * 0.11); gray.data[i] = gray.data[i + 1] = gray.data[i + 2] = l; gray.data[i + 3] = 255; }
-  blocks.push({ w, h: 40 + day.h * 2 + 40 + 72 * 3 + 40 + 72 * 3 + 20, file: `${CFG.prefix}-scene.png`, draw: (c, y0) => {
+  blocks.push({ w, h: 40 + day.h * 2 + 40 + 72 * 3 + 40 + 72 * 3 + 20 + 40 + day.h * 2, file: `${CFG.prefix}-scene.png`, draw: (c, y0) => {
     text(c, "СЦЕНА · ЗУМ 2 · ДЕНЬ | НОЧЬ · " + CFG.sceneTitle, 20, y0, 2);
     blit(c, day, 20, y0 + 26, 2); blit(c, nig, 40 + day.w * 2, y0 + 26, 2);
     const y1 = y0 + 26 + day.h * 2 + 16;
@@ -196,6 +222,9 @@ function scene(night: boolean): PC {
     const y2 = y1 + 26 + 72 * 3 + 16;
     text(c, "Ч/Б · ЗУМ 3 · ТРИ ЗОНЫ: ШЛЕМ | ПЛЕЧИ И КИРАСА | НОГИ", 20, y2, 2);
     blit(c, gray, 20, y2 + 26, 3, 56, 30, 116, 72);
+    const y3 = y2 + 26 + 72 * 3 + 16;
+    text(c, "СНЕГ · ЗУМ 2 · ОРУЖИЕ ЧИТАЕТСЯ И НА СВЕТЛОМ ФОНЕ", 20, y3, 2);
+    blit(c, snw, 20, y3 + 26, 2);
   } });
 }
 // ---------- сборка ----------

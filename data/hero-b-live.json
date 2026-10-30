@@ -1,0 +1,252 @@
+{
+  "_doc": "Задача 147, подключение героя «Б» в живую игру (под флагом data/hero-b.json → enabled; консоль heroB.on()/off()). Экспорт листов — tools/gen/gear147-export.ts → client/public/assets/hero147/. classes — позы по оружию: free — без двуручника (свои предметы основы в анимациях удара: меч и щит, посох, лук), great — двуручник (хват двумя руками, без atk1h/bow/cast/block). weaponClass — база оружия с сервера → класс позы и удар. sets — сеты с новой моделью; models — id модели предмета (Item.model) или легендарки → сет (пусто, пока сервер не знает новых вещей); slotMap — слот сервера → слот основы Б. stubs — заглушки «обычные латы / кожа / ткань» для вещей без новой модели (по armorType базы; без типа — латы). stubWeapon — двуручник без новой модели. look — внешность без данных с сервера: пол и причёска по хешу id.",
+  "classes": {
+    "free": {
+      "anims": [
+        "idle",
+        "walk",
+        "run",
+        "atk1h",
+        "atk2h",
+        "bow",
+        "cast",
+        "block",
+        "hurt",
+        "death",
+        "ride",
+        "gather"
+      ]
+    },
+    "great": {
+      "anims": [
+        "idle",
+        "walk",
+        "run",
+        "atk2h",
+        "hurt",
+        "death",
+        "ride",
+        "gather"
+      ]
+    }
+  },
+  "weaponClass": {
+    "greatsword": {
+      "cls": "great",
+      "atk": "atk2h"
+    },
+    "greataxe": {
+      "cls": "great",
+      "atk": "atk2h"
+    },
+    "hammer": {
+      "cls": "great",
+      "atk": "atk2h"
+    },
+    "scythe": {
+      "cls": "great",
+      "atk": "atk2h"
+    },
+    "bow": {
+      "cls": "free",
+      "atk": "bow"
+    },
+    "crossbow": {
+      "cls": "free",
+      "atk": "bow"
+    },
+    "staff": {
+      "cls": "free",
+      "atk": "cast"
+    },
+    "scepter": {
+      "cls": "free",
+      "atk": "cast"
+    },
+    "": {
+      "cls": "free",
+      "atk": "atk1h"
+    }
+  },
+  "sets": [
+    "chaos-knight",
+    "recruit-plate"
+  ],
+  "models": {
+    "hb147_chaos_helm": "chaos-knight",
+    "hb147_chaos_armor": "chaos-knight",
+    "hb147_chaos_boots": "chaos-knight",
+    "hb147_chaos_cloak": "chaos-knight",
+    "hb147_chaos_weapon": "chaos-knight",
+    "hb147_recruit_helm": "recruit-plate",
+    "hb147_recruit_armor": "recruit-plate",
+    "hb147_recruit_boots": "recruit-plate",
+    "hb147_recruit_weapon": "recruit-plate"
+  },
+  "slotMap": {
+    "helmet": "helm",
+    "armor": "armor",
+    "boots": "boots",
+    "cloak": "cloak",
+    "weapon": "weapon"
+  },
+  "stubs": {
+    "plate": {
+      "helm": {
+        "name": "Латный шлем",
+        "style": "kettle",
+        "plate": "iron",
+        "accent": "iron",
+        "trim": "iron",
+        "mail": "mail"
+      },
+      "pauldrons": {
+        "name": "Наплечники",
+        "plate": "iron",
+        "accent": "iron",
+        "trim": "iron",
+        "size": 0.78,
+        "lames": 1,
+        "spikes": 0
+      },
+      "armor": {
+        "name": "Латы",
+        "plate": "iron",
+        "accent": "iron",
+        "trim": "leather",
+        "cloth": "leather",
+        "thick": 0.45,
+        "chestPlate": false,
+        "inlay": false,
+        "crest": false,
+        "tassets": "iron",
+        "tabard": false
+      },
+      "gloves": {
+        "name": "Рукавицы",
+        "plate": "iron",
+        "accent": "leather",
+        "cuff": false,
+        "cuffSpike": false
+      },
+      "boots": {
+        "name": "Поножи",
+        "plate": "iron",
+        "accent": "iron",
+        "kneeSpike": false,
+        "stripe": false
+      },
+      "cloak": {
+        "name": "Плащ",
+        "kind": "cape",
+        "outer": "wool_grey",
+        "lining": "wool_grey",
+        "tatter": 0,
+        "crest": false
+      }
+    },
+    "leather": {
+      "pauldrons": {
+        "name": "Кожаные наплечники",
+        "plate": "leather",
+        "accent": "leather",
+        "trim": "leather",
+        "size": 0.6,
+        "lames": 1,
+        "spikes": 0
+      },
+      "armor": {
+        "name": "Кожаный доспех",
+        "plate": "leather",
+        "accent": "leather",
+        "trim": "leather",
+        "cloth": "leather",
+        "thick": 0.3,
+        "chestPlate": false,
+        "inlay": false,
+        "crest": false,
+        "tassets": "leather",
+        "tabard": false
+      },
+      "gloves": {
+        "name": "Кожаные перчатки",
+        "plate": "leather",
+        "accent": "leather",
+        "cuff": false,
+        "cuffSpike": false
+      },
+      "boots": {
+        "name": "Кожаные сапоги",
+        "plate": "leather",
+        "accent": "leather",
+        "kneeSpike": false,
+        "stripe": false
+      },
+      "cloak": {
+        "name": "Плащ",
+        "kind": "cape",
+        "outer": "leather",
+        "lining": "wool_grey",
+        "tatter": 0,
+        "crest": false
+      }
+    },
+    "cloth": {
+      "armor": {
+        "name": "Мантия",
+        "plate": "cloth_blue",
+        "accent": "cloth_blue",
+        "trim": "wool_grey",
+        "cloth": "cloth_blue",
+        "thick": 0.2,
+        "chestPlate": false,
+        "inlay": false,
+        "crest": false,
+        "tassets": "cloth_blue",
+        "tabard": true
+      },
+      "gloves": {
+        "name": "Перчатки",
+        "plate": "wool_grey",
+        "accent": "wool_grey",
+        "cuff": false,
+        "cuffSpike": false
+      },
+      "boots": {
+        "name": "Туфли",
+        "plate": "wool_grey",
+        "accent": "cloth_blue",
+        "kneeSpike": false,
+        "stripe": false
+      },
+      "cloak": {
+        "name": "Плащ",
+        "kind": "cape",
+        "outer": "cloth_blue",
+        "lining": "wool_grey",
+        "tatter": 0,
+        "crest": false
+      }
+    }
+  },
+  "stubWeapon": {
+    "name": "Двуручник",
+    "kind": "great",
+    "blade": "iron",
+    "edge": "iron",
+    "hilt": "iron",
+    "grip": "leather",
+    "accent": "iron",
+    "length": 15,
+    "width": 2.4,
+    "serrate": false,
+    "flames": false,
+    "glow": false
+  },
+  "look": {
+    "sexes": [
+      "m",
+      "f"
+    ]
+  }
+}

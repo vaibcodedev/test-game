@@ -1,0 +1,276 @@
+{
+ "_doc": "Задача 147: вещи сетов героя «Б» для проверки (выдача из админки, вкладка «Выдача», поиск «hb147»). noRoll — не выпадают с мобов и у торговцев. set — сет листов героя Б (data/gear147.json, data/hero-b-live.json models). look — запасной вид прежнего героя (флаг выключен). Наплечники и перчатки рисуются с кирасой сета, пока у сервера нет этих слотов.",
+ "models": [
+  {
+   "id": "hb147_chaos_helm",
+   "name": "Рогатый шлем Хаоса",
+   "cat": "plate_helm",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "horned",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_chaos_armor",
+   "name": "Кираса Рогатого Рыцаря",
+   "cat": "plate_armor",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "plate",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_chaos_boots",
+   "name": "Поножи Хаоса",
+   "cat": "plate_boots",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "winged",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_chaos_cloak",
+   "name": "Рваный плащ Хаоса",
+   "cat": "cloak",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "hp"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "crest",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_chaos_weapon",
+   "name": "Пылающий клинок Хаоса",
+   "cat": "greatsword",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "str",
+    "vit"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "zwei",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_recruit_helm",
+   "name": "Железный шапель",
+   "cat": "plate_helm",
+   "lvl": 1,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "recruit-plate",
+   "look": {
+    "shape": "sallet",
+    "rich": 0,
+    "mat": "rust",
+    "trim": "iron",
+    "cloth": "brown",
+    "haft": "wood",
+    "fx": "diamond",
+    "guard": "cross",
+    "pommel": "ring"
+   }
+  },
+  {
+   "id": "hb147_recruit_armor",
+   "name": "Железная кираса",
+   "cat": "plate_armor",
+   "lvl": 1,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "recruit-plate",
+   "look": {
+    "shape": "brigandine",
+    "rich": 0,
+    "mat": "rust",
+    "trim": "iron",
+    "cloth": "brown",
+    "haft": "wood",
+    "fx": "diamond",
+    "guard": "cross",
+    "pommel": "ring"
+   }
+  },
+  {
+   "id": "hb147_recruit_boots",
+   "name": "Железные поножи",
+   "cat": "plate_boots",
+   "lvl": 1,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "recruit-plate",
+   "look": {
+    "shape": "winged",
+    "rich": 0,
+    "mat": "rust",
+    "trim": "iron",
+    "cloth": "brown",
+    "haft": "wood",
+    "fx": "diamond",
+    "guard": "cross",
+    "pommel": "ring"
+   }
+  },
+  {
+   "id": "hb147_recruit_weapon",
+   "name": "Железный двуручник",
+   "cat": "greatsword",
+   "lvl": 1,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "str",
+    "vit"
+   ],
+   "noRoll": true,
+   "set": "recruit-plate",
+   "look": {
+    "shape": "claymore",
+    "rich": 0,
+    "mat": "rust",
+    "trim": "iron",
+    "cloth": "brown",
+    "haft": "wood",
+    "fx": "diamond",
+    "guard": "cross",
+    "pommel": "ring"
+   }
+  }
+ ]
+}

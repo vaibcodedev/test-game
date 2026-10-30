@@ -10,7 +10,7 @@ import { Mz, mixC, type PO, type V2 } from "../hero147/base_b";
 import { GD, SLOTS, ramp, setOf, type CrestId, type Slot } from "./gear";
 
 /** маска с масштабом вокруг центра поля: формы рисуются в координатах 48×48, предмет вписывается в ~80 % (docs/icon-style.md, п. 8) */
-const KS = 0.82, CC = 24;
+let KS = 0.82; const CC = 24;
 class SMz extends Mz {
   private f(p: V2): V2 { return [CC + (p[0] - CC) * KS, CC + (p[1] - CC) * KS]; }
   override seg(a: V2, b: V2, t0: number, t1 = t0) { return super.seg(this.f(a), this.f(b), t0 * KS, t1 * KS); }
@@ -23,7 +23,7 @@ class SMz extends Mz {
 interface IP { g: string; ramp: C[]; o?: PO; m: (z: Mz) => void; emis?: boolean }
 const S = 48, W2 = 96;
 /** rim — кант редкости снаружи контура (легендарное — оранжевый, как в паке) */
-function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][] } {
+function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][]; parts: number } {
   const cv = new Cv(W2, W2), ids = new Uint8Array(W2 * W2);
   parts.forEach((p, k) => {
     const m = new SMz(); p.m(m); const c = new Cv(W2, W2); paint(c, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o });
@@ -72,7 +72,7 @@ function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][] } {
   }
   const img = new PC(S, S), emis: [number, number][] = [];
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (res.has(x, y)) { const q = res.get(x, y); img.set(x, y, [q[0], q[1], q[2], 255]); if (oid[y * S + x] && parts[oid[y * S + x] - 1].emis) emis.push([x, y]); }
-  return { img, emis };
+  return { img, emis, parts: parts.length };
 }
 const tri = (z: Mz, a: V2, b: V2, t: V2) => z.pg([a, t, b]);
 const spk = (z: Mz, b: V2, t: V2, w: number) => { const dx = t[0] - b[0], dy = t[1] - b[1], l = Math.hypot(dx, dy); const n: V2 = [(-dy / l) * w, (dx / l) * w]; tri(z, [b[0] + n[0], b[1] + n[1]], [b[0] - n[0], b[1] - n[1]], t); };
@@ -85,6 +85,7 @@ function crest(parts: IP[], cx: number, cy: number, s: number, id: CrestId) {
 
 export const RARITY_RIM: Record<string, C | undefined> = { legendary: hx("#f0901c"), epic: hx("#b05ae0"), rare: hx("#4a8ae0") };
 export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common") {
+  KS = it.iconScale ?? 0.82; // ступень: мелкий простой силуэт внизу, крупный на 81–100
   const p: IP[] = [], add = (g: string, rp: C[], m: (z: Mz) => void, o: PO = { dome: 3, amp: 1.7, bias: 0.2 }, emis = false) => p.push({ g, ramp: rp, m, o, emis });
   const P = ramp(it.plate ?? it.hilt ?? "iron"), Ac = ramp(it.accent ?? it.outer ?? "iron"), Tr = ramp(it.trim ?? "gold");
   switch (slot) {
@@ -177,6 +178,26 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       break;
     }
     case "armor": {
+      if (it.style === "robe") {
+        // мантия: расклёшенный подол, высокий ворот, кушак, центральная полоса с вышивкой; выше — наплечная пелерина, самоцвет, герб, светящиеся руны
+        const Cl = ramp(it.cloth), Tr = ramp(it.trim ?? it.cloth), Sa = ramp(it.sash ?? it.cloth);
+        add("robe", Cl, (z) => z.pg([[14, 8], [34, 8], [37, 20], [41, 46], [7, 46], [11, 20]]), { dome: 4, amp: 1.8, bias: 0.2 });
+        add("fold", Cl, (z) => { z.bz([15, 24], [13, 35], [11, 45], 0.8, 0.8); z.bz([33, 24], [35, 35], [37, 45], 0.8, 0.8); }, { dome: 1, bias: -1.5 });
+        add("spec", Cl, (z) => z.bz([12.5, 21], [11, 32], [9, 43], 1.0, 0.7), { dome: 1, bias: 2.3 });
+        if (it.panel) add("panel", ramp(it.panel), (z) => z.pg([[20, 22], [28, 22], [30, 46], [18, 46]]), { dome: 3, amp: 1.7, bias: 0.25 });
+        if (it.embroid) add("emb", Tr, (z) => { for (let y = 25; y < 45; y += 4) { z.seg([20, y], [24, y + 2], 0.8); z.seg([24, y + 2], [28, y], 0.8); } }, { dome: 1, bias: 0.6 });
+        if (it.hemTrim) add("hem", Tr, (z) => z.bz([7.5, 45], [24, 47.5], [40.5, 45], 1.5, 1.5), { dome: 1, bias: 0.5 });
+        add("sash", Sa, (z) => z.pg([[11, 20], [37, 20], [37.5, 24], [10.5, 24]]), { dome: 3, amp: 1.8, bias: 0.3 });
+        if (it.sashTails) add("tail", Sa, (z) => { z.bz([28, 23], [30, 30], [28.5, 37], 2.4, 1.6); z.bz([30, 23], [33, 29], [33, 35], 2.0, 1.4); }, { dome: 2, bias: 0.2 });
+        add("collar", ramp(it.collar ?? it.cloth), (z) => z.pg([[15, 8], [24, 15], [33, 8], [31, 3], [24, 9], [17, 3]]), { dome: 3, amp: 1.8, bias: 0.35 });
+        if (it.mantle) add("mantle", ramp(it.mantle), (z) => z.pg([[6, 15], [12, 6], [24, 11], [36, 6], [42, 15], [36, 18], [24, 15.5], [12, 18]]), { dome: 3, amp: 1.8, bias: 0.25 });
+        if (it.mantle && it.hemTrim) add("mTrim", Tr, (z) => z.bz([6.5, 15], [24, 19.5], [41.5, 15], 1.1, 1.1), { dome: 1, bias: 0.5 });
+        if (it.gem) add("gem", ramp(it.gem), (z) => z.el([24, 12.5], 2.2, 2.0), { dome: 2, bias: 0.7 }, it.gem === "eye_glow" || it.gemGlow);
+        if (it.crest) crest(p, 24, 31, 1.9, cr);
+        if (it.runes) add("rune", ramp(it.runes), (z) => { for (const x of [12, 17, 31, 36]) { z.seg([x, 39], [x + 1.5, 42], 0.8); z.seg([x + 1.5, 42], [x, 44.5], 0.8); } z.seg([14, 26], [16, 30], 0.8); z.seg([34, 26], [32, 30], 0.8); }, { dome: 1, bias: 0.6 }, true);
+        if (it.spikes) add("rSp", ramp(it.spike ?? it.trim), (z) => { spk(z, [10, 10], [2, 2], 1.6); spk(z, [38, 10], [46, 2], 1.6); }, { dome: 1, amp: 2, bias: 0.6 });
+        break;
+      }
       if (it.style === "coat") {
         const Lt = ramp(it.leather), St = ramp(it.plate), Sa = ramp(it.sash ?? it.leather);
         add("skirtB", Lt, (z) => z.pg([[11, 30], [37, 30], [43, 46], [36, 44], [30, 47], [24, 45], [18, 47], [12, 44], [5, 46]]), { dome: 3, amp: 1.6, bias: -0.15 });
@@ -189,6 +210,11 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
           add("plateL", St, (z) => z.seg([24, 12], [24, 25], 0.8), { dome: 1, bias: -1.5 });
           if (it.cracks) add("crack", ramp(it.cracks), (z) => { z.seg([16, 13.5], [19, 17], 0.8); z.seg([19, 17], [17.5, 20], 0.8); z.seg([32, 13.5], [29, 17], 0.8); z.seg([29, 17], [30.5, 20], 0.8); }, { dome: 1, bias: 0.6 }, true);
         }
+        if (it.cracks && !it.breast) add("crack", ramp(it.cracks), (z) => { z.seg([15, 14], [18, 19], 0.8); z.seg([33, 14], [30, 19], 0.8); z.seg([24, 38], [23, 43], 0.8); }, { dome: 1, bias: 0.6 }, true);
+        if (it.pauldronsOnIcon) add("pd", ramp(it.plate), (z) => { z.el([9, 11], 5.5, 4.2); z.el([39, 11], 5.5, 4.2); }, { dome: 4, amp: 1.9, bias: 0.25 });
+        if (it.spikes) add("cSp", ramp(it.spike ?? it.plate), (z) => { spk(z, [8, 9], [2, 3], 1.6); spk(z, [40, 9], [46, 3], 1.6); }, { dome: 1, amp: 2, bias: 0.6 });
+        if (it.lacing) add("lace", ramp(it.lacing), (z) => { for (let y = 14; y < 28; y += 3.5) { z.seg([21.5, y], [26.5, y + 3], 0.7); z.seg([26.5, y], [21.5, y + 3], 0.7); } }, { dome: 1, bias: 0.6 });
+        if (it.pouch) add("pouch", ramp(it.pouch), (z) => z.pg([[29, 34], [35, 34], [35.5, 41], [28.5, 41]]), { dome: 3, amp: 1.8, bias: 0.2 });
         if (it.strap) { add("strap", ramp(it.accent), (z) => z.seg([11, 11], [35, 31], 2.4), { dome: 2, bias: 0.4 }); add("buck", ramp("gold"), (z) => z.el([22, 20.5], 1.9, 1.7), { dome: 1, bias: 0.6 }); }
         add("sash", Sa, (z) => z.pg([[11.5, 29], [36.5, 29], [37, 35], [11, 35]]), { dome: 3, amp: 1.9, bias: 0.3 });
         add("sashF", Sa, (z) => { z.seg([13, 31], [35, 32], 0.8); z.seg([13, 33.5], [35, 33.5], 0.7); }, { dome: 1, bias: -1.4 });
@@ -218,6 +244,9 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       add("gorget", it.chestPlate ? Ac : P, (z) => { z.el([24, 7.5], 9, 4); z.clip((x, y) => !(Math.hypot((x - 24) / 5.5, (y - 6) / 2.4) < 1)); }, { dome: 2, bias: 0.1 });
       add("belt", it.chestPlate || it.rivets ? ramp("leather") : Tr, (z) => z.pg([[12.5, 32.5], [35.5, 32.5], [36, 36], [12, 36]]), { dome: 1, bias: -0.3 });
       add("buckle", it.chestPlate || it.rivets ? Tr : ramp("iron"), (z) => z.el([24, 34.2], 2.4, 2.0), { dome: 1, bias: 0.4 });
+      if (it.cracks) add("crack", ramp(it.cracks), (z) => { z.seg([14, 14], [17.5, 19], 0.8); z.seg([17.5, 19], [15.5, 24], 0.8); z.seg([34, 14], [30.5, 19], 0.8); z.seg([30.5, 19], [32.5, 24], 0.8); z.seg([24, 27], [23, 31], 0.8); }, { dome: 1, bias: 0.6 }, true);
+      if (it.spikes) add("aSp", ramp(it.spike ?? it.plate), (z) => { spk(z, [8, 10], [1.5, 4], 1.8); spk(z, [40, 10], [46.5, 4], 1.8); }, { dome: 1, amp: 2, bias: 0.6 });
+      if (it.pauldronsOnIcon) add("pd", ramp(it.accent ?? it.plate), (z) => { z.el([8.5, 12], 6.5, 5); z.el([39.5, 12], 6.5, 5); }, { dome: 4, amp: 1.9, bias: 0.25 });
       if (it.inlay) add("gGem", ramp(it.gemColor ?? "eye_glow"), (z) => z.dot([24, 5.6], 1.4), { dome: 2, bias: it.gemColor ? 0.8 : 0.5 }, !it.gemColor);
       if (it.crest) crest(p, 24, 15.5, 2.5, cr);
       break;

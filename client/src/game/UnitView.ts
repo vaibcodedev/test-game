@@ -22,6 +22,10 @@ import { drawPlate, newPlate, resetPlate } from "./nameplate";
 import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
 import { GP } from "../../../shared/gameplay";
 import unitAnims from "../../../data/unit-anims.json";
+import { isScaledSheet, scaledSprite } from "./scale147";
+import { heroBDeadFrame, heroBSheet, type HbSheet } from "./heroB";
+import { texDist } from "./objPick";
+import { PLATE_DEPTH, sweptDist } from "./hit";
 
 /** Любой объект сцены с позицией и глубиной: спрайт вспышки, эллипс щита или круга (UnitView.attach). */
 export type Attachable = { setPosition(x: number, y: number): unknown; setDepth(value: number): unknown };
@@ -176,6 +180,33 @@ export class UnitView {
   topY = 0;
   /** Гигантский спрайт (рейд-босс, кадр 128): на сколько пикселей выше ног стоит низ ника; иначе подпись идёт от роста героя. Титул, рамка и разводка считаются от него так же, как у героев. */
   private nameRise?: number;
+  /** Множитель тени и кольца великанов (кадр от 96 px): кадр / 80. */
+  private shK = 1;
+  /** Крупный юнит (тень, кольцо, ник): кадр больше 32; листы масштаба героя Б (кадр 40) — обычного роста. */
+  private big(): boolean { return !this.hb && this.frame > (isScaledSheet(this.sid) ? 40 : 32); }
+  /** Герой «Б» (задача 147, client/src/game/heroB.ts): сведённый лист облика; null — прежний герой со слоями GearLayers. */
+  private hb: HbSheet | null = null;
+  private baseSid = "";
+  private baseTex = "";
+  private baseOy = 0;
+  /** Герой «Б»: лист облика готов — спрайт берёт его текстуру и ключи анимаций (sid), взгляд влево — свой вид (sidL); флаг выключен — всё прежнее. */
+  private syncHeroB() {
+    if (this.u.kind !== UnitKind.Player) return;
+    const sh = heroBSheet(this.scene, this.u, this.id, this.isSelf), sp = this.sprite;
+    if (sh !== this.hb) {
+      if (!this.hb) { this.baseSid = this.sid; this.baseTex = sp.texture.key; this.baseOy = sp.originY; }
+      this.hb = sh;
+      if (sh) sp.setTexture(sh.key, 0).setOrigin(sh.ox, sh.oy);
+      else { this.sid = this.baseSid; sp.setTexture(this.baseTex, 0).setOrigin(0.5, this.baseOy); }
+      this.lastAnim = -1;
+      this.attacking = false;
+      if (sh) this.sid = this.u.dir === Dir.Left ? sh.sidL : sh.sid;
+      if (this.dead) { sp.stop(); sp.setFrame(sh ? heroBDeadFrame(sh, rowOf(this.u.dir), this.u.dir === Dir.Left) : rowOf(this.u.dir) * 12 + 11); }
+      // смена облика (сет, причёска) снимает прежнюю маску силуэта: новая текстура — новый ключ
+      this.glowSpr?.destroy(); this.glowSpr = undefined;
+    }
+    if (sh && !this.dead) { const want = this.u.dir === Dir.Left ? sh.sidL : sh.sid; if (want !== this.sid) { this.sid = want; this.lastAnim = -1; } }
+  }
   /** Базовая линия и верх заглавных ника от верха его блока (пиксели мира): от них центруются рамка и щит. Постоянны, пока жив текст. */
   private band: { base: number; cap: number };
   /** Сколько пикселей блок подписи (титул, рамка, ник) поднимается над topY: считается в update от фактических размеров текста. */
@@ -187,7 +218,7 @@ export class UnitView {
   /** Ширина блока подписи для проверки перекрытий (с рядом значков над ней: обозначения, game/auraFx.ts). */
   blockW(): number {
     const own = !this.nameHover;
-    return Math.max(own && this.label.visible ? this.label.width : 0, own && this.titleText.visible ? this.titleText.width : 0, this.frame > 32 ? 44 : 20, this.afxView?.rowW ?? 0);
+    return Math.max(own && this.label.visible ? this.label.width : 0, own && this.titleText.visible ? this.titleText.width : 0, this.big() ? 44 : 20, this.afxView?.rowW ?? 0);
   }
   /** Высота блока подписи для проверки перекрытий: от верхнего края титула (или ника) до низа полоски здоровья, плюс ряд значков над подписью (если есть):
    *  без этого ник соседа, поднятый разводкой, оказывался бы под значками. */
@@ -210,16 +241,18 @@ export class UnitView {
     // бойцы фракций со снаряжением (задача 132, шаг 8) — так же: тело класса и слои
     // стража Эмберхолла — Пепельнорождённые: тело из шлака nude_ashborn_<класс> (npm run assets, tools/gen/ashborn-body.ts)
     const ash = this.layered() && this.heraldOf()?.H.ash && scene.textures.exists(`u_nude_ashborn_${u.sprite}`);
-    this.sid = ash ? `nude_ashborn_${u.sprite}` : this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : u.sprite;
+    this.sid = ash ? `nude_ashborn_${u.sprite}` : this.layered() && scene.textures.exists(`u_nude_${u.sprite}`) ? `nude_${u.sprite}` : scaledSprite(u.sprite);
     const tex = scene.textures.exists(`u_${this.sid}`) ? `u_${this.sid}` : "u_skeleton";
     this.frame = scene.textures.get(tex).get(0).width;
     const frameH = scene.textures.get(tex).get(0).height;
-    const big = this.frame > 32;
+    const big = this.big();
     if (this.frame >= 96) this.nameRise = 0.9 * this.frame;
     else if (frameH > this.frame) this.nameRise = 0.9 * frameH; // высокий кадр (64×80): имя над макушкой
-    this.shadow = scene.add.image(u.x, u.y, "fx_shadow_blob").setScale(big ? 2.2 : 1, big ? 2 : 1).setDepth(DEPTH.ground + 5);
+    // великаны в кадре от 96 px (Колосс 120, задача 147): тень и кольцо — по ширине основания, пропорционально кадру
+    this.shK = this.frame >= 96 ? this.frame / 80 : 1;
+    this.shadow = scene.add.image(u.x, u.y, "fx_shadow_blob").setScale(big ? 2.2 * this.shK : 1, big ? 2 * this.shK : 1).setDepth(DEPTH.ground + 5);
     // кольцо выбора и наведения лежит над кругами бафов и щитов (DEPTH.ground + 7): те почти того же размера и цвета и скрыли бы его
-    this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 7.5).setScale(big ? 2 : 1);
+    this.ring = scene.add.image(u.x, u.y, "fx_target").setVisible(false).setAlpha(0.7).setDepth(DEPTH.ground + 7.5).setScale(big ? 2 * this.shK : 1);
     this.sprite = scene.add.sprite(u.x, u.y, tex, 0).setOrigin(0.5, frameH > this.frame ? (frameH - 4) / frameH : 30 / 32);
     // босс стартовых земель (задача 136): кадры листа ставит game/zoneBoss.ts
     if (tex === `u_${this.sid}` && zbDef(this.sid)) zbViews.add(this);
@@ -276,7 +309,7 @@ export class UnitView {
   /** Короткий след удара оружием в сторону взгляда. */
   private slash(dir: number) {
     const a = dir === Dir.Down ? Math.PI / 2 : dir === Dir.Up ? -Math.PI / 2 : dir === Dir.Left ? Math.PI : 0;
-    const big = this.frame > 32;
+    const big = this.big();
     const s = this.scene.add.image(this.x + Math.cos(a) * (big ? 22 : 10), this.y - (big ? 24 : 12) + Math.sin(a) * (big ? 18 : 8), "fx_slash")
       .setRotation(a - 0.6).setScale(big ? 1.2 : 0.55).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.y + 1).setAlpha(0);
     if (this.u.sprite === "ashlord") s.setTint(0xff8a3a);
@@ -311,7 +344,8 @@ export class UnitView {
     const row = rowOf(this.u.dir);
     const key = `${this.sid}-death-${row}`;
     const wide = this.scene.anims.exists(`${this.sid}-rest-${row}`) ? Math.round(this.sprite.texture.getSourceImage().width / this.frame) : 0;
-    if (instant || !this.scene.anims.exists(key)) this.sprite.setFrame(wide ? row * wide + wide - 1 : row * 12 + 11);
+    if (this.hb && (instant || !this.scene.anims.exists(key))) { this.sprite.stop(); this.sprite.setFrame(heroBDeadFrame(this.hb, row, this.u.dir === Dir.Left)); }
+    else if (instant || !this.scene.anims.exists(key)) this.sprite.setFrame(wide ? row * wide + wide - 1 : row * 12 + 11);
     else this.sprite.play(key);
     this.sprite.setFlipX(this.u.dir === Dir.Left);
     this.label.setVisible(false);
@@ -381,9 +415,10 @@ export class UnitView {
       // снять затухание трупа (если возродился раньше, чем оно доиграло) и кадр смерти: стойку или бег поставит код ниже
       this.scene.tweens.killTweensOf([this.sprite, this.shadow]);
       // моб мог возродиться усиленным (задача 140): у него свой лист
-      if (!this.layered() && u.sprite !== this.sid && this.scene.textures.exists(`u_${u.sprite}`)) {
-        this.sid = u.sprite;
-        this.sprite.setTexture(`u_${u.sprite}`, 0);
+      const ns = scaledSprite(u.sprite);
+      if (!this.layered() && ns !== this.sid && this.scene.textures.exists(`u_${ns}`)) {
+        this.sid = ns;
+        this.sprite.setTexture(`u_${ns}`, 0);
       }
       this.restPose(rowOf(u.dir));
       this.sprite.setAlpha(0);
@@ -395,6 +430,7 @@ export class UnitView {
       resetPlate(this.hpPlate);
     }
 
+    this.syncHeroB();
     const row = rowOf(u.dir);
     const anim = u.mount ? Anim.Idle : u.anim;
     if (!this.dead) {
@@ -413,13 +449,13 @@ export class UnitView {
     }
 
     // позиция и глубина
-    const bob = !this.dead && anim === Anim.Idle && !u.mount && !this.attacking ? Math.round(Math.sin(this.scene.time.now / 380 + this.x) * 0.6) : 0;
+    const bob = !this.dead && anim === Anim.Idle && !u.mount && !this.attacking && !this.hb ? Math.round(Math.sin(this.scene.time.now / 380 + this.x) * 0.6) : 0;
     const mmeta = u.mount ? (this.scene.cache.json.get("manifest")?.mounts?.[u.mount] as MountMeta | undefined) : undefined;
     const mtex = mmeta ? mountTex(u.mount, mmeta, u.faction) : "";
     const mounted = !!mmeta && !this.dead && this.scene.textures.exists(mtex);
     this.mounted = mounted;
     this.mountDust = mounted && !mmeta?.fly;
-    const big0 = this.frame > 32;
+    const big0 = this.big();
     let lift = 0, riderDx = 0, riderDy = 0, hover = 0;
     if (mounted && mmeta) {
       if (!this.mountSpr || this.mountId !== mtex) {
@@ -471,7 +507,7 @@ export class UnitView {
     } else {
       this.mountSpr?.setVisible(false);
       this.mountFront?.setVisible(false);
-      if (this.shadowMounted) { this.shadow.setScale(big0 ? 2.2 : 1, big0 ? 2 : 1).setAlpha(1); this.ring.setScale(big0 ? 2 : 1); }
+      if (this.shadowMounted) { this.shadow.setScale(big0 ? 2.2 * this.shK : 1, big0 ? 2 * this.shK : 1).setAlpha(1); this.ring.setScale(big0 ? 2 * this.shK : 1); }
     }
     this.shadowMounted = mounted;
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
@@ -484,7 +520,8 @@ export class UnitView {
     // setTintFill, а не setTint: текстура кольца золотая (255, 208, 64), умножение дало бы оранжево-красное и оливковое вместо цветов палитры
     else if (hov) this.ring.setAlpha(0.35).setTintFill(this.hoverFoe ? RING_FOE : RING_ALLY);
     if (this.attached.length) this.placeAttached();
-    let top = this.nameRise !== undefined ? this.y - this.nameRise + 4 : this.y - (this.frame > 32 ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
+    // герой «Б»: ник и полоска — от макушки сведённого кадра (рост 30 px, шлем и рога уже в нём)
+    let top = this.hb ? this.y - this.hb.rise - 2 - lift : this.nameRise !== undefined ? this.y - this.nameRise + 4 : this.y - (this.big() ? 58 : u.kind === UnitKind.Pet ? 22 : 27) - lift - this.gearTop();
     // плавный переход к назначенному разводкой сдвигу
     const sk = Math.min(1, dt * 9);
     this.offX += (this.tgtX - this.offX) * sk;
@@ -587,9 +624,10 @@ export class UnitView {
     } else this.flashSpr?.setVisible(false);
 
     // свечение своего листа ночью (глаза, трещины, огонь в лапе): маска <id>_glow поверх ночной маски мира
-    if (UNIT_ART[this.sid]?.glow && this.scene.textures.exists(`u_${this.sid}_glow`)) {
+    const glowTex = this.hb ? (this.hb.glow ? `${this.hb.key}_glow` : "") : UNIT_ART[this.sid]?.glow && this.scene.textures.exists(`u_${this.sid}_glow`) ? `u_${this.sid}_glow` : "";
+    if (glowTex) {
       const nk = nightLevel(Date.now());
-      const g = (this.glowSpr ??= this.scene.add.sprite(0, 0, `u_${this.sid}_glow`, 0).setDepth(1e6 - 44));
+      const g = (this.glowSpr ??= this.scene.add.sprite(0, 0, glowTex, 0).setDepth(1e6 - 44));
       const on = nk > 0.05 && sp.visible && sp.alpha > 0.05;
       g.setVisible(on);
       if (on) g.setFrame(sp.frame.name).setOrigin(sp.originX, sp.originY).setFlipX(sp.flipX).setScale(sp.scaleX, sp.scaleY).setPosition(sp.x, sp.y).setAlpha(sp.alpha * Math.min(1, nk * 1.2));
@@ -610,7 +648,7 @@ export class UnitView {
     // аура элитного моба — единственное свечение на теле; бафы рисуются кругом под ногами
     const auraOn = !!u.elite && !this.dead;
     if (auraOn && !this.aura) this.aura = this.scene.add.image(0, 0, "fx_glow").setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.35).setTint(0xf0c040);
-    if (this.aura) this.aura.setVisible(auraOn).setPosition(this.x, this.y - 12).setDepth(this.y - 1).setScale(this.frame > 32 ? 2.2 : 1.1);
+    if (this.aura) this.aura.setVisible(auraOn).setPosition(this.x, this.y - 12).setDepth(this.y - 1).setScale(this.big() ? 2.2 : 1.1);
     // круги боевого клича и ускорения заменили обозначения (warcry, haste; game/auraFx.ts), ярость босса — прежний круг
     this.buffRings(this.dead ? 0 : b & (afx.ready ? BUFF_ENRAGE : BUFF_WARCRY | BUFF_HASTE | BUFF_ENRAGE));
     if (b & BUFF_STUN && !this.dead && !afx.ready) {
@@ -619,7 +657,7 @@ export class UnitView {
     } else this.stun?.setVisible(false);
 
     // снаряжение в скрытности видят те же, кто видит героя (сам, союзники по команде), так же полупрозрачно; для остальных его нет, как и героя
-    const gearOn = this.layered() && !this.dead && !(stealthy && this.unseen) && this.frame === 32;
+    const gearOn = this.layered() && !this.dead && !(stealthy && this.unseen) && this.frame === 32 && !this.hb;
     if (gearOn) {
       if (!this.layers) { this.layers = new GearLayers(this.scene); for (let k = 0; k < this.id.length; k++) this.seed = (this.seed * 31 + this.id.charCodeAt(k)) % 97; }
       const row = rowOf(u.dir), fr = Number(this.sprite.frame.name) || 0;
@@ -637,7 +675,7 @@ export class UnitView {
     if (!showBar) { if (this.hpPlate.sig) { this.bar.clear(); this.hpPlate.sig = ""; this.hpPlate.barK = -1; } }
     else {
       this.lastHp = u.hp;
-      const w = badged ? 24 : (this.frame > 32 ? 40 : 20) + (u.elite ? 8 : 0); // у стражи одна ширина для всех (капитан и рядовой)
+      const w = badged ? 24 : (this.big() ? 40 : 20) + (u.elite ? 8 : 0); // у стражи одна ширина для всех (капитан и рядовой)
       const bx = Math.round(lx - w / 2), by = Math.round(top - 2);
       barX = bx; barY = by; barW = w;
       const k = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
@@ -680,7 +718,7 @@ export class UnitView {
     if (mask !== this.buffMask) {
       this.buffMask = mask;
       g.clear();
-      const k = this.frame > 32 ? 2 : 1;
+      const k = this.big() ? 2 : 1;
       for (const [flag, col, rx] of [[BUFF_WARCRY, 0xff6a3a, 17], [BUFF_HASTE, 0xc0f050, 14], [BUFF_ENRAGE, 0xff3a1a, 20]]) {
         if (!(mask & flag)) continue;
         g.fillStyle(col, 0.16).fillEllipse(0, 0, rx * 2 * k, rx * k);
@@ -764,7 +802,18 @@ export class UnitView {
     if (this.dead) { this.hit.d = Infinity; this.hit.exact = false; return Infinity; }
     let tdx = 0, tdy = 0;
     if (trail && this.trail.past(this.scene.time.now, TRAIL_MS, this.trailPt)) { tdx = this.trailPt.x - this.x; tdy = this.trailPt.y - this.y; }
-    return hitUnit(this.hit, whole ? this.body : this.rider, this.plate, this.y, tdx, tdy, wx, wy, reach);
+    const d = hitUnit(this.hit, whole ? this.body : this.rider, this.plate, this.y, tdx, tdy, wx, wy, reach);
+    // герой «Б»: тело — по непрозрачным пикселям сведённого кадра (общая маска objPick), а не по прямоугольнику; плашка и след — как у всех
+    if (!this.hb || this.hit.depth >= PLATE_DEPTH || (whole && this.mounted)) return d;
+    const sp = this.sprite, md = texDist(this.scene, sp.texture.key, sp.frame.name, sp.x, sp.y, sp.originX, sp.originY, 1, 1, sp.flipX, wx, wy, Math.max(reach, 0.5));
+    if (Number.isNaN(md)) return d;
+    const h = this.hit;
+    if (md === 0) { h.d = 0; h.exact = true; return 0; }
+    h.exact = false;
+    let dd = md;
+    if (tdx * tdx + tdy * tdy >= 4) dd = Math.min(dd, sweptDist(this.rider, tdx, tdy, wx, wy));
+    h.d = dd <= reach ? dd : Infinity;
+    return h.d;
   }
   /** Зоны клика (задача 134, шаг 2; game/hit.ts), ставит update: body — силуэт кадра (всадник — с маунтом), plate — видимые ник, титул и полоска HP. */
   readonly body: Box = emptyBox({ x0: 0, y0: 0, x1: 0, y1: 0 });
@@ -779,7 +828,8 @@ export class UnitView {
   /** Зоны клика по тому, что нарисовано в этом кадре. */
   private placeZones(mounted: boolean, showBar: boolean, barX: number, barY: number, barW: number) {
     const sp = this.sprite;
-    silhouette(this.body, sp.x, sp.y, this.frame, this.u.kind === UnitKind.Pet ? 0.8 : 1);
+    if (this.hb) spriteAlphaBox(sp, this.body); // герой «Б»: рамка непрозрачных пикселей кадра (точно — по маске в hitTest)
+    else silhouette(this.body, sp.x, sp.y, this.frame, this.u.kind === UnitKind.Pet ? 0.8 : 1);
     const r = this.rider;
     r.x0 = this.body.x0; r.y0 = this.body.y0; r.x1 = this.body.x1; r.y1 = this.body.y1;
     // маунт — по непрозрачным пикселям текущего кадра (задний и передний слой): конь анфас узкий, сбоку длинный

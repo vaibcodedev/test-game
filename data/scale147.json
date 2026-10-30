@@ -1,0 +1,306 @@
+{
+  "_doc": "Задача 147: масштаб мира под рост героя Б (30 px). Включается флагом data/hero-b.json → enabled вместе с героем Б. remap — замена листа юнита (sprite → новый лист, перерисованный генератором в большем кадре; масштаб только целый, без setScale); список пишет tools/gen/scale147/mobs-b.ts. mobs.rig — параметры перерисовки рига tools/gen/mobs: k — множитель к прежнему росту (герой Б выше прежнего ≈ на 12 %), либо scale — рост явно; cam — кадр (ступни на 30/32 высоты, как у прежних). Аудит и партии — docs/scale-147.md.",
+  "heroH": 30,
+  "suffix": "_b147",
+  "remap": {
+    "boarfolk_axe": "boarfolk_axe_b147",
+    "boarfolk_axe_elite": "boarfolk_axe_elite_b147",
+    "boarfolk_shield": "boarfolk_shield_b147",
+    "boarfolk_shield_elite": "boarfolk_shield_elite_b147",
+    "boarfolk_spear": "boarfolk_spear_b147",
+    "boarfolk_spear_elite": "boarfolk_spear_elite_b147",
+    "frogfolk_harpoon": "frogfolk_harpoon_b147",
+    "frogfolk_harpoon_elite": "frogfolk_harpoon_elite_b147",
+    "frogfolk_shaman": "frogfolk_shaman_b147",
+    "frogfolk_shaman_elite": "frogfolk_shaman_elite_b147",
+    "ghoul_catcher": "ghoul_catcher_b147",
+    "ghoul_catcher_elite": "ghoul_catcher_elite_b147",
+    "ghoul_eater": "ghoul_eater_b147",
+    "ghoul_eater_elite": "ghoul_eater_elite_b147",
+    "ghoul_leaper": "ghoul_leaper_b147",
+    "ghoul_leaper_elite": "ghoul_leaper_elite_b147",
+    "goblin_shaman": "goblin_shaman_b147",
+    "goblin_shaman_elite": "goblin_shaman_elite_b147",
+    "goblin_slasher": "goblin_slasher_b147",
+    "goblin_slasher_elite": "goblin_slasher_elite_b147",
+    "goblin_slinger": "goblin_slinger_b147",
+    "goblin_slinger_elite": "goblin_slinger_elite_b147",
+    "hobgoblin_halberd": "hobgoblin_halberd_b147",
+    "hobgoblin_halberd_elite": "hobgoblin_halberd_elite_b147",
+    "hobgoblin_sword": "hobgoblin_sword_b147",
+    "hobgoblin_sword_elite": "hobgoblin_sword_elite_b147",
+    "imp_caster": "imp_caster_b147",
+    "imp_caster_elite": "imp_caster_elite_b147",
+    "imp_fork": "imp_fork_b147",
+    "imp_fork_elite": "imp_fork_elite_b147",
+    "imp_thrower": "imp_thrower_b147",
+    "imp_thrower_elite": "imp_thrower_elite_b147",
+    "kobold_bomber": "kobold_bomber_b147",
+    "kobold_bomber_elite": "kobold_bomber_elite_b147",
+    "kobold_digger": "kobold_digger_b147",
+    "kobold_digger_elite": "kobold_digger_elite_b147",
+    "mummy_curser": "mummy_curser_b147",
+    "mummy_curser_elite": "mummy_curser_elite_b147",
+    "mummy_guard": "mummy_guard_b147",
+    "mummy_guard_elite": "mummy_guard_elite_b147",
+    "ogre_brute": "ogre_brute_b147",
+    "ogre_brute_elite": "ogre_brute_elite_b147",
+    "ogre_woodcutter": "ogre_woodcutter_b147",
+    "ogre_woodcutter_elite": "ogre_woodcutter_elite_b147",
+    "ratfolk_cutter": "ratfolk_cutter_b147",
+    "ratfolk_cutter_elite": "ratfolk_cutter_elite_b147",
+    "ratfolk_poacher": "ratfolk_poacher_b147",
+    "ratfolk_poacher_elite": "ratfolk_poacher_elite_b147",
+    "satyr_piper": "satyr_piper_b147",
+    "satyr_piper_elite": "satyr_piper_elite_b147",
+    "satyr_spear": "satyr_spear_b147",
+    "satyr_spear_elite": "satyr_spear_elite_b147",
+    "troll_brute": "troll_brute_b147",
+    "troll_brute_elite": "troll_brute_elite_b147",
+    "wolffolk_chaser": "wolffolk_chaser_b147",
+    "wolffolk_chaser_elite": "wolffolk_chaser_elite_b147",
+    "wolffolk_hunter": "wolffolk_hunter_b147",
+    "wolffolk_hunter_elite": "wolffolk_hunter_elite_b147",
+    "zombie_anchor": "zombie_anchor_b147",
+    "zombie_anchor_elite": "zombie_anchor_elite_b147",
+    "zombie_digger": "zombie_digger_b147",
+    "zombie_digger_elite": "zombie_digger_elite_b147"
+  },
+  "mobs": {
+    "_c": "партия 1: мобы зон 1–40 (tools/gen/mobs/batch1-list.ts). Правило владельца: гуманоиды ростом как герой Б — 32 px до ступней ±2 (силуэт с подошвой и контуром 34–35, как у героя Б: 34), малые расы (гоблины, кобольды, бесы) ≈ 0,75 героя — 24 px до ступней (силуэт 26); огры и тролли крупнее. target — силуэт [обычный, усиленный].",
+    "rig": {
+      "boarfolk": {
+        "scale": [
+          1.283,
+          1.306
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ],
+        "split": {
+          "roles": [
+            "spear"
+          ],
+          "scale": [
+            1.283,
+            1.267
+          ],
+          "_c": "копейщик: выпад копьём у края кадра 40"
+        }
+      },
+      "ratfolk": {
+        "scale": [
+          1.391,
+          1.399
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "goblin": {
+        "scale": [
+          0.927,
+          0.91
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          26,
+          26
+        ]
+      },
+      "zombie": {
+        "scale": [
+          1.248,
+          1.302
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "imp": {
+        "scale": [
+          0.805,
+          0.861
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          26,
+          26
+        ]
+      },
+      "wolffolk": {
+        "scale": [
+          1.205,
+          1.262
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "satyr": {
+        "scale": [
+          1.167,
+          1.188
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "ghoul": {
+        "scale": [
+          1.421,
+          1.468
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ],
+        "split": {
+          "roles": [
+            "leaper"
+          ],
+          "scale": [
+            1.318,
+            1.294
+          ],
+          "_c": "прыгун: выпад с когтями шире кадра 40 — рост 32 (30 до ступней)"
+        }
+      },
+      "hobgoblin": {
+        "scale": [
+          1.205,
+          1.153
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "kobold": {
+        "scale": [
+          0.946,
+          0.964
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          26,
+          26
+        ]
+      },
+      "mummy": {
+        "scale": [
+          1.243,
+          1.264
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "frogfolk": {
+        "scale": [
+          1.414,
+          1.447
+        ],
+        "cam": {
+          "N": 40,
+          "CX": 20,
+          "GY": 37.9
+        },
+        "target": [
+          34,
+          35
+        ]
+      },
+      "ogre": {
+        "scale": [
+          1.93,
+          1.9
+        ],
+        "cam": {
+          "N": 64,
+          "CX": 32,
+          "GY": 60.4
+        },
+        "target": [
+          46,
+          50
+        ]
+      },
+      "troll": {
+        "scale": [
+          1.9,
+          1.88
+        ],
+        "cam": {
+          "N": 64,
+          "CX": 32,
+          "GY": 60.4
+        },
+        "target": [
+          44,
+          46
+        ]
+      }
+    },
+    "attackN": 12,
+    "_c2": "attackN — кадров атаки у листов b147 (планка владельца: удары 12–16; покой, ходьба, гибель — 12). Время удара в игре — BootScene: 14 к/с."
+  }
+}

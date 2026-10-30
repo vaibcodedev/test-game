@@ -1,13 +1,16 @@
 /**
  * Задача 139, босс кольца: латный великан с молотом грома (запад, слот r75n, ур. 75, группа 4–5; референс 02 — только для сравнения: чужой арт в игру и в git не идёт).
- * Метод — как у минотавра и Мидаса: 2D-пиксель-арт слоями-штампами, тело в 2× (160×160) сводится в кадр 80×80, ступни y=76, контур 1 px;
+ * Метод — как у минотавра и Мидаса: 2D-пиксель-арт слоями-штампами, контур 1 px. Задача 147 (масштаб под героя 30 px): мировой босс Колосс — ×1,75 к прежнему (выше рейд-босса 119 px), босс кольца Гурдан — прежний кадр 80;
+ * разметка поз — в логических единицах прежнего кадра 80 (ступни y=76), рисуется в сетке Z = кадр/40 и сводится 2:1 (Колосс: Z=3,5, кадр 140, рост ≈ 128 px; Гурдан: Z=2, кадр 80);
+ * пиксельные детали (заклёпки, глаза, ядро молнии) — в пикселях кадра и не растягиваются;
  * общий код — mino_lib.ts. Руки по IK, сутулость — сдвиг рядов выше пояса. Молния — ломаная в 2–3 px: белое ядро, голубая кромка, ореол в листе glow.
  * Виды: вниз, вверх, вбок (строки листа), влево — зеркало вбок (в игре).
  *
  * Запуск (низкий приоритет, под замком tools/out/scenario.lock):
  *   npx tsx tools/gen/bosses139/sol_storm_colossus.ts --sketch          → tools/out/bosses139/colossus-sketch.png
  *   npx tsx tools/gen/bosses139/sol_storm_colossus.ts [--quick] [--only=idle,walk]
- *     → colossus-sheet.png, colossus-glow.png, r75n-w-compare.png («наш | референс 02»), r75n-w-sheet.png (превью листа)
+ *     → colossus-sheet.png, colossus-glow.png, r75n-w-compare.png («наш | референс 02»), r75n-w-sheet.png (превью листа) — Гурдан, кадр 80;
+ *   $env:COLOSSUS_FR="140" — мировой босс Колосс, те же файлы с приставкой wb- (кадр 140)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -16,9 +19,13 @@ import { C, Cv, F, Mk, OUTL, hash, hx, label, paint } from "./mino_lib";
 F["0"] ??= "111,101,101,101,111"; F["6"] ??= "011,100,111,101,111"; F["9"] ??= "111,101,111,001,110"; F["7"] ??= "111,001,010,010,010"; F["8"] ??= "111,101,111,101,111";
 
 export const ID = "sol_storm_colossus";
-export const FRAME = 80;
-export const FRAME_H = 80;
-const Z = 2, W = 160, FR = 80;
+/** Размер кадра: 80 — босс кольца r75n «Гурдан Громобой» (прежний вид); 140 — мировой босс Колосс (задача 147, ×1,75). Выбор — COLOSSUS_FR. */
+export const FRAME = Number(process.env.COLOSSUS_FR ?? 80) === 140 ? 140 : 80;
+export const FRAME_H = FRAME;
+/** Приставка файлов: Колосс — wb-, Гурдан — без неё. */
+export const OUT_PFX = FRAME === 140 ? "wb-" : "";
+/** Z — пикселей сетки на логическую единицу; FR = W / 2; S = PX — пикселей кадра на логическую единицу (1,75). */
+const FR = FRAME, Z = FR / 40, W = FR * 2, S = FR / 80, PX = Z / 2;
 const PI = Math.PI, SIN = Math.sin, COS = Math.cos;
 type V2 = [number, number];
 
@@ -71,8 +78,10 @@ const lerp = (a: V2, b: V2, u: number): V2 => [a[0] + (b[0] - a[0]) * u, a[1] + 
 const nrm = (v: V2): V2 => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
 const perpOf = (v: V2): V2 => [-v[1], v[0]];
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-const px2 = (c: Cv, p: V2, col: C) => { const x = Math.floor(p[0]) * Z, y = Math.floor(p[1]) * Z; c.set(x, y, col); c.set(x + 1, y, col); c.set(x, y + 1, col); c.set(x + 1, y + 1, col); };
-const pxo = (c: Cv, b: V2, dx: number, dy: number, col: C) => px2(c, [Math.floor(b[0]) + dx, Math.floor(b[1]) + dy], col);
+/** Пиксель кадра (блок 2×2 сетки, ровно по сетке сведения) в логической точке p; pxo — со сдвигом dx, dy в пикселях кадра. */
+const blk = (c: Cv, X: number, Y: number, col: C) => { const x = X * 2, y = Y * 2; c.set(x, y, col); c.set(x + 1, y, col); c.set(x, y + 1, col); c.set(x + 1, y + 1, col); };
+const px2 = (c: Cv, p: V2, col: C) => blk(c, Math.floor(p[0] * PX), Math.floor(p[1] * PX), col);
+const pxo = (c: Cv, b: V2, dx: number, dy: number, col: C) => blk(c, Math.floor(b[0] * PX) + dx, Math.floor(b[1] * PX) + dy, col);
 const LIGHT: V2 = [-0.6, -0.8];
 
 // ---------------- части ----------------
@@ -86,7 +95,7 @@ function spike(c: Cv, base: V2, dir: V2, len: number, w: number, bias = 0.3, ram
   if (len > 4) for (let u = 0.15; u <= 0.6; u += 0.08) px2(c, add(add(base, d, len * u), n, s * w * 0.4 * (1 - u)), ramp[ramp.length - 2]);
 }
 /** Заклёпка 2×2 (в 1×): блик, полутон, тень снизу. */
-const rivet = (c: Cv, p: V2) => { const x = Math.floor(p[0]), y = Math.floor(p[1]); px2(c, [x, y], STEEL[6]); px2(c, [x + 1, y], STEEL[5]); px2(c, [x, y + 1], STEEL[4]); px2(c, [x + 1, y + 1], STEEL[3]); px2(c, [x, y + 2], STEEL[1]); px2(c, [x + 1, y + 2], STEEL[1]); };
+const rivet = (c: Cv, p: V2) => { pxo(c, p, 0, 0, STEEL[6]); pxo(c, p, 1, 0, STEEL[5]); pxo(c, p, 0, 1, STEEL[4]); pxo(c, p, 1, 1, STEEL[3]); pxo(c, p, 0, 2, STEEL[1]); pxo(c, p, 1, 2, STEEL[1]); };
 /** Блик-дуга на выпуклой пластине (свет сверху-слева). */
 function spec(c: Cv, ctr: V2, rx: number, ry: number, a0: number, a1: number, col = STEEL[6], col2 = STEEL[5]) {
   const n = Math.max(3, Math.round(Math.abs(a1 - a0) * Math.max(rx, ry)));
@@ -349,7 +358,7 @@ function renderSide(p: Pose): Frame {
   const belt = M().L(U(30.6, 43.2), U(52.5, 43.6), 3.4); const db = paint(c, belt, LEATH, { amp: 1.5, dome: 2, dith: 0, bias: 0.2 });
   for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (belt.has(x, y) && db[y * W + x] > 1 && (x + y) % 3 === 0) c.set(x, y, LEATH[1]);
   const bk = M().P([U(29.6, 41.2), U(33.4, 41.8), U(33.4, 45), U(29.6, 45.8)]); plate(c, bk, 0.3); px2(c, U(31, 43), STEEL[1]);
-  for (const x of [35, 38]) { pxo(c, U(x, 45.6), 0, 0, BONE[4]); pxo(c, U(x, 46.6), 0, 0, BONE[2]); }
+  for (const x of [35, 38]) { pxo(c, U(x, 45.6), 0, 0, BONE[4]); pxo(c, U(x, 45.6), 0, 1, BONE[2]); }
   // ближнее плечо, наплечник, голова
   upperArm(c, sN, elN, 0);
   const coll = U(36.5, 21.5); furBlob(c, coll, 5, 3.4, 4, 0.2);
@@ -444,7 +453,7 @@ function renderFront(p: Pose, back: boolean): Frame {
     for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (belt.has(x, y) && db[y * W + x] > 1 && (x + y) % 3 === 0) c.set(x, y, LEATH[1]);
     const bk = M().P([U(36.6, 41.4), U(43.4, 41.4), U(45.2, 40), U(45.2, 46.6), U(43.4, 45.2), U(36.6, 45.2), U(34.8, 46.6), U(34.8, 40)]);
     plate(c, bk, 0.3); px2(c, U(40, 43), STEEL[1]); px2(c, U(36, 41), STEEL[6]);
-    for (const x of [31.5, 33.5, 46.5, 48.5]) { pxo(c, U(x, 45.4), 0, 0, BONE[4]); pxo(c, U(x, 46.4), 0, 0, BONE[3]); pxo(c, U(x, 47.4), 0, 0, BONE[1]); }
+    for (const x of [31.5, 33.5, 46.5, 48.5]) { pxo(c, U(x, 45.4), 0, 0, BONE[4]); pxo(c, U(x, 45.4), 0, 1, BONE[3]); pxo(c, U(x, 45.4), 0, 2, BONE[1]); }
   } else {
     const belt = M().L(U(29, 43.4), U(51, 43.4), 3.3); const db = paint(c, belt, LEATH, { amp: 1.5, dome: 2, dith: 0, bias: -0.1 });
     for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (belt.has(x, y) && db[y * W + x] > 1 && (x + y) % 3 === 0) c.set(x, y, LEATH[1]);
@@ -469,7 +478,7 @@ function renderFront(p: Pose, back: boolean): Frame {
     eyes = [Hd(37.6, 15.6), Hd(42.4, 15.6)];
     for (const e of eyes) { pxo(c, e, 0, 0, EYE); pxo(c, e, 1, 0, SKIN[0]); for (let y = 1; y <= 4; y++) pxo(c, e, 0, y, PAINTR[y % 2 ? 2 : 1]); }
     pxo(c, eyes[1], -1, 0, SKIN[0]); pxo(c, eyes[1], 0, 0, EYE); pxo(c, eyes[1], 1, 0, SKIN[1]);
-    for (let y = 11.6; y < 13.6; y++) pxo(c, Hd(39.6, y), 0, 0, PAINTR[1]);
+    for (let y = 11.6; y < 13.6; y += 1 / PX) pxo(c, Hd(39.6, y), 0, 0, PAINTR[1]);
     const nb = Hd(39.6, 17.2); pxo(c, nb, 0, -1, SKIN[4]); pxo(c, nb, -1, 0, SKIN[0]); pxo(c, nb, 1, 0, SKIN[0]); pxo(c, nb, 0, 0, SKIN[5]);
     const mb = Hd(36.8, 20.4);
     for (let x = 0; x < 7; x++) pxo(c, mb, x, 0, x === 0 || x === 6 ? SKIN[1] : x % 2 ? BONE[3] : SKIN[0]);
@@ -480,7 +489,7 @@ function renderFront(p: Pose, back: boolean): Frame {
   } else {
     for (const s of [-1, 1]) { const ear = M().P([Hd(40 + s * 4.6, 14.6), Hd(40 + s * 7.8, 12.6), Hd(40 + s * 5, 17.6)]); paint(c, ear, SKIN, { amp: 1.6, dome: 1, dith: 0, bias: -0.2 }); }
     const nape = M().E(Hd(40, 16.8), 5.3, 5.8); paint(c, nape, SKIN, { amp: 1.9, dome: 3, dith: 0.25, bias: 0.1 });
-    for (let y = 15; y < 22; y++) pxo(c, Hd(40, y), 0, 0, y % 2 ? PAINTR[1] : PAINTR[2]);
+    for (let y = 15; y < 22; y += 1 / PX) pxo(c, Hd(40, y), 0, 0, Math.floor(y) % 2 ? PAINTR[1] : PAINTR[2]);
     for (let x = -3; x <= 3; x++) pxo(c, Hd(40, 21.6), x, 0, SKIN[1]);
     crown(c, [Hd(34.6, 11.8), Hd(45.4, 11.8), Hd(45.2, 14), Hd(34.8, 14)],
       [[Hd(35.2, 12), 3.2, 0.8, -1.2], [Hd(36.9, 11.8), 4.6, 0.9, -0.8], [Hd(38.5, 11.7), 6, 1.0, -0.3], [Hd(40, 11.6), 6.8, 1.1, 0], [Hd(41.5, 11.7), 6, 1.0, 0.3], [Hd(43.1, 11.8), 4.6, 0.9, 0.8], [Hd(44.8, 12), 3.2, 0.8, 1.2]]);
@@ -547,8 +556,11 @@ export function renderFrame(view: ViewId, pose: Pose): { img: Cv; emis: Cv } {
   if (Math.abs(pose.tilt) > 1e-3 || pose.sy !== 1) big = rotCv(big, pose.tilt * (view === "side" ? 1 : view === "front" ? 0.25 : -0.25), 40 * Z, 76 * Z, pose.sy);
   const o = down(big), emis = new Cv(FR, FR);
   const ok = (x: number, y: number) => x >= 1 && y >= 1 && x <= FR - 2 && y <= FR - 2;
-  const put = (x: number, y: number, col: C, glow = true) => { x = Math.round(x); y = Math.round(y); if (!ok(x, y)) return; o.set(x, y, col); if (glow) emis.set(x, y, col); };
-  const glowOnly = (x: number, y: number, col: C) => { x = Math.round(x); y = Math.round(y); if (ok(x, y) && !emis.has(x, y)) emis.set(x, y, col); };
+  // putP, glowP — в пикселях кадра; put, glowOnly — в логических единицах (×S)
+  const putP = (x: number, y: number, col: C, glow = true) => { x = Math.round(x); y = Math.round(y); if (!ok(x, y)) return; o.set(x, y, col); if (glow) emis.set(x, y, col); };
+  const glowP = (x: number, y: number, col: C) => { x = Math.round(x); y = Math.round(y); if (ok(x, y) && !emis.has(x, y)) emis.set(x, y, col); };
+  const put = (x: number, y: number, col: C, glow = true) => putP(x * S, y * S, col, glow);
+  const glowOnly = (x: number, y: number, col: C) => glowP(x * S, y * S, col);
   const hs = (a: number, b: number) => hash(a + pose.seed * 13.7, b + pose.seed * 3.1);
   const tl = Math.abs(pose.tilt) < 0.3;
   // молнии: сначала ореол и кромка всех веток, затем ядра — ядро не перекрывается чужой кромкой
@@ -564,19 +576,19 @@ export function renderFrame(view: ViewId, pose: Pose): { img: Cv; emis: Cv } {
   };
   const flushBolts = () => {
     for (const b of bolts) for (let i = 0; i < b.pts.length - 1; i++) {
-      const p = b.pts[i], q = b.pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) * 2));
+      const p = b.pts[i], q = b.pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) * 2 * S)), w = b.w * S, r = w + 1.2;
       for (let s = 0; s <= n; s++) {
-        const x = p[0] + ((q[0] - p[0]) * s) / n, y = p[1] + ((q[1] - p[1]) * s) / n, r = b.w + 1.2;
-        for (let j = -3; j <= 3; j++) for (let ii = -3; ii <= 3; ii++) { const d = Math.hypot(ii, j); if (d <= r) glowOnly(x + ii, y + j, LT[0]); }
-        for (let j = -2; j <= 2; j++) for (let ii = -2; ii <= 2; ii++) { const d = Math.hypot(ii, j); if (d <= b.w) put(x + ii, y + j, d > b.w - 0.6 ? LT[1] : LT[2]); }
+        const x = (p[0] + ((q[0] - p[0]) * s) / n) * S, y = (p[1] + ((q[1] - p[1]) * s) / n) * S;
+        for (let j = -4; j <= 4; j++) for (let ii = -4; ii <= 4; ii++) { const d = Math.hypot(ii, j); if (d <= r) glowP(x + ii, y + j, LT[0]); }
+        for (let j = -3; j <= 3; j++) for (let ii = -3; ii <= 3; ii++) { const d = Math.hypot(ii, j); if (d <= w) putP(x + ii, y + j, d > w - 0.6 ? LT[1] : LT[2]); }
       }
     }
     for (const b of bolts) for (let i = 0; i < b.pts.length - 1; i++) {
-      const p = b.pts[i], q = b.pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) * 2));
+      const p = b.pts[i], q = b.pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) * 2 * S));
       for (let s = 0; s <= n; s++) {
-        const x = p[0] + ((q[0] - p[0]) * s) / n, y = p[1] + ((q[1] - p[1]) * s) / n;
-        put(x, y, LT[4]);
-        if (b.w >= 1.4) { put(x + 0.5, y, LT[3]); put(x, y + 0.5, LT[3]); }
+        const x = (p[0] + ((q[0] - p[0]) * s) / n) * S, y = (p[1] + ((q[1] - p[1]) * s) / n) * S;
+        putP(x, y, LT[4]);
+        if (b.w >= 1.4) { putP(x + 0.5, y, LT[3]); putP(x, y + 0.5, LT[3]); }
       }
     }
     bolts.length = 0;
@@ -585,8 +597,8 @@ export function renderFrame(view: ViewId, pose: Pose): { img: Cv; emis: Cv } {
   // руна на бойке (светится всегда), глаза
   if (tl) {
     const rr: V2[] = [add(add(hd, H.u, -H.hh + 1.2), H.perp, -0.8), add(hd, H.perp, 0.8), add(add(hd, H.u, H.hh - 1.2), H.perp, -0.4)];
-    for (let i = 0; i < rr.length - 1; i++) for (let t = 0; t <= 1; t += 0.2) { const q = lerp(rr[i], rr[i + 1], t); put(q[0], q[1], pose.bolt > 0.9 ? LT[4] : LT[3]); glowOnly(q[0] + 1, q[1], LT[1]); glowOnly(q[0] - 1, q[1], LT[1]); }
-    for (const e of f.eyes) { put(e[0], e[1], EYE2); glowOnly(e[0] + 1, e[1], EYE); glowOnly(e[0], e[1] - 1, EYE); }
+    for (let i = 0; i < rr.length - 1; i++) for (let t = 0; t <= 1; t += 0.2) { const q = lerp(rr[i], rr[i + 1], t); put(q[0], q[1], pose.bolt > 0.9 ? LT[4] : LT[3]); glowP(q[0] * S + 1, q[1] * S, LT[1]); glowP(q[0] * S - 1, q[1] * S, LT[1]); }
+    for (const e of f.eyes) { put(e[0], e[1], EYE2); glowP(e[0] * S + 1, e[1] * S, EYE); glowP(e[0] * S, e[1] * S - 1, EYE); }
   }
   // треск на бойке
   if (pose.bolt > 0.05 && tl) {
@@ -597,13 +609,13 @@ export function renderFrame(view: ViewId, pose: Pose): { img: Cv; emis: Cv } {
       const a = Math.atan2(H.perp[1] * s, H.perp[0] * s) + (hs(i, 9) - 0.5) * 2.2;
       addBolt(st, add(st, [COS(a), SIN(a)], 3.5 + 4.5 * pose.bolt * (0.5 + hs(i, 11))), pose.seed * 5 + i, 1, 0.6, 3);
     }
-    for (let i = 0; i < Math.round(3 * pose.bolt); i++) { const a = hs(i, 13) * 2 * PI, r = H.hl + 2 + hs(i, 15) * 5; const x = hd[0] + COS(a) * r, y = hd[1] + SIN(a) * r; put(x, y, LT[4]); put(x + 1, y, LT[3]); put(x, y + 1, LT[2]); }
+    for (let i = 0; i < Math.round(3 * pose.bolt); i++) { const a = hs(i, 13) * 2 * PI, r = H.hl + 2 + hs(i, 15) * 5; const x = (hd[0] + COS(a) * r) * S, y = (hd[1] + SIN(a) * r) * S; putP(x, y, LT[4]); putP(x + 1, y, LT[3]); putP(x, y + 1, LT[2]); }
   }
   // удар с неба в молот
   if (pose.sky > 0.05) {
     const top = H.top, x0 = clamp(top[0] + (hs(3, 3) - 0.5) * 14, 3, 76);
     addBolt([x0, 1], top, pose.seed * 11 + 3, 1.6, 0.35, 5, 2);
-    for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) { const d = Math.hypot(i, j), r = 2.5 + 2 * pose.sky; if (d <= r) { if (d < r * 0.5) put(top[0] + i, top[1] + j, LT[4]); else glowOnly(top[0] + i, top[1] + j, LT[2]); } }
+    for (let j = -8; j <= 8; j++) for (let i = -8; i <= 8; i++) { const d = Math.hypot(i, j), r = (2.5 + 2 * pose.sky) * S; if (d <= r) { if (d < r * 0.5) putP(top[0] * S + i, top[1] * S + j, LT[4]); else glowP(top[0] * S + i, top[1] * S + j, LT[2]); } }
   }
   // цепная молния: от бойка вперёд, на развилке делится на три
   if (pose.arc > 0.05) {
@@ -634,24 +646,25 @@ export function renderFrame(view: ViewId, pose: Pose): { img: Cv; emis: Cv } {
   // кольцо удара по земле
   if (pose.shock > 0.02) {
     const ctr: V2 = pose.shockAt < 0.5 ? [hd[0], 74] : [f.fist[0], 74], r = 4 + 32 * pose.shock, ry = 0.3, fade = pose.shock > 0.7;
-    for (let a = 0; a < 120; a++) {
-      const t = (a / 120) * 2 * PI, x = ctr[0] + COS(t) * r, y = ctr[1] + SIN(t) * r * ry;
-      if (hs(a >> 2, 51) < 0.82 - 0.3 * pose.shock) { put(x, y, fade ? LT[1] : LT[3]); put(x, y + 1, fade ? LT[0] : LT[2]); glowOnly(x, y - 1, LT[1]); }
+    const NA = Math.round(120 * S);
+    for (let a = 0; a < NA; a++) {
+      const t = (a / NA) * 2 * PI, x = (ctr[0] + COS(t) * r) * S, y = (ctr[1] + SIN(t) * r * ry) * S;
+      if (hs(Math.floor(a / (4 * S)), 51) < 0.82 - 0.3 * pose.shock) { putP(x, y, fade ? LT[1] : LT[3]); putP(x, y + 1, fade ? LT[0] : LT[2]); glowP(x, y - 1, LT[1]); }
     }
     if (pose.shock < 0.75) for (let i = 0; i < 6; i++) { const t = hs(i, 53) * 2 * PI, b: V2 = [ctr[0] + COS(t) * r, ctr[1] + SIN(t) * r * ry]; addBolt(b, [b[0] + (hs(i, 55) - 0.5) * 4, b[1] - 4 - 6 * (1 - pose.shock)], pose.seed * 23 + i, 1, 0.5, 2); }
-    if (pose.shock < 0.3) for (let j = -3; j <= 3; j++) for (let i = -6; i <= 6; i++) if ((i / 6) ** 2 + (j / 3) ** 2 <= 1) put(ctr[0] + i, ctr[1] + j * 0.6, Math.abs(i) < 3 ? LT[4] : LT[3]);
+    if (pose.shock < 0.3) { const RX = Math.round(6 * S), RY = Math.round(3 * S); for (let j = -RY; j <= RY; j++) for (let i = -RX; i <= RX; i++) if ((i / RX) ** 2 + (j / RY) ** 2 <= 1) putP(ctr[0] * S + i, ctr[1] * S + j * 0.6, Math.abs(i) < 3 * S ? LT[4] : LT[3]); }
   }
   flushBolts();
   // вспышка у бойка
   if (pose.flash > 0.05) {
     const k = pose.flash, L = Math.round(6 * k);
-    for (let q = -L; q <= L; q++) for (const v of [H.u, H.perp]) { const x = hd[0] + v[0] * q, y = hd[1] + v[1] * q; put(x, y, Math.abs(q) < L * 0.5 ? LT[4] : LT[3]); put(x + 1, y, LT[2]); }
-    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (Math.hypot(i, j) <= 2) put(hd[0] + i, hd[1] + j, LT[4]);
+    for (let q = -L; q <= L; q += 1 / S) for (const v of [H.u, H.perp]) { const x = (hd[0] + v[0] * q) * S, y = (hd[1] + v[1] * q) * S; putP(x, y, Math.abs(q) < L * 0.5 ? LT[4] : LT[3]); putP(x + 1, y, LT[2]); }
+    for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) if (Math.hypot(i, j) <= 2 * S) putP(hd[0] * S + i, hd[1] * S + j, LT[4]);
   }
   // оглушение: искры кружат над короной
-  if (pose.stars > 0.05) { const hp = f.head; for (let i = 0; i < 3; i++) { const a = pose.seed * 0.8 + i * 2.1, x = hp[0] + COS(a) * 8, y = hp[1] + SIN(a) * 2.2; put(x, y, LT[4]); put(x + 1, y, LT[3]); for (const [i2, j2] of [[-1, 0], [2, 0], [0, -1], [1, 1], [0, 1], [1, -1]]) put(x + i2, y + j2, LT[2]); } }
+  if (pose.stars > 0.05) { const hp = f.head; for (let i = 0; i < 3; i++) { const a = pose.seed * 0.8 + i * 2.1, x = hp[0] + COS(a) * 8, y = hp[1] + SIN(a) * 2.2; const X = x * S, Y = y * S; putP(X, Y, LT[4]); putP(X + 1, Y, LT[3]); for (const [i2, j2] of [[-1, 0], [2, 0], [0, -1], [1, 1], [0, 1], [1, -1]]) putP(X + i2, Y + j2, LT[2]); } }
   // пыль
-  const puff = (x: number, y: number, k: number) => { for (let i = 0; i < 16 * k; i++) { const a = hash(i, x) * 6.28, r = hash(y, i) * 6 * k + 1; put(x + COS(a) * r * 1.4, y - Math.abs(SIN(a)) * r * 0.9, DUST[(i % 3) + 1], false); } };
+  const puff = (x: number, y: number, k: number) => { for (let i = 0; i < 16 * k * S * S; i++) { const a = hash(i, x) * 6.28, r = hash(y, i) * 6 * k + 1; put(x + COS(a) * r * 1.4, y - Math.abs(SIN(a)) * r * 0.9, DUST[(i % 3) + 1], false); } };
   if (pose.dust[0] > 0.05) puff(f.feet[0] + 9, 75, pose.dust[0]);
   if (pose.dust[1] > 0.05) puff(f.feet[0] - 9, 75, pose.dust[1]);
   for (let k = 0; k < FR; k++) for (const [x, y] of [[0, k], [FR - 1, k], [k, 0], [k, FR - 1]] as V2[]) if (o.has(x, y) && o.get(x, y).join() !== OUTL.join()) o.set(x, y, OUTL);
@@ -828,7 +841,7 @@ export function writeSketch(root: string, outDir: string): string {
   label(c, 10, 382, "СИЛУЭТ ×2 | НОЧЬ + СВЕЧЕНИЕ ×2", 2);
   c.blit(silc(frames[0], hx("#d8d8e0")), 10, 400, 2); c.blit(silc(frames[2], hx("#d8d8e0")), 180, 400, 2);
   [R3[0], R3[2]].forEach((r, i) => { const x = 380 + i * 170; c.rect(x, 400, 160, 160, NIGHT); c.blit(r.img, x, 400, 2); nightTint(c, x, 400, 160, 160); c.blit(r.emis, x, 400, 2); });
-  const out = path.join(outDir, "colossus-sketch.png"); savePng(c, out); return out;
+  const out = path.join(outDir, OUT_PFX + "colossus-sketch.png"); savePng(c, out); return out;
 }
 
 export function writeColossusArt(root: string, outDir: string, only?: ColossusAnim[], quick = false): string[] {
@@ -848,49 +861,51 @@ export function writeColossusArt(root: string, outDir: string, only?: ColossusAn
       if (hits) bad.push(`${a} ${v} кадр ${i + 1}: ${hits}`);
     }));
   }
-  const fSheet = path.join(outDir, "colossus-sheet.png"), fGlow = path.join(outDir, "colossus-glow.png");
+  const fSheet = path.join(outDir, OUT_PFX + "colossus-sheet.png"), fGlow = path.join(outDir, OUT_PFX + "colossus-glow.png");
   savePng(sheet, fSheet); savePng(glow, fGlow);
   // сравнение «наш | референс»: покой ×3 во всех видах, ×1, ночь со свечением; затем анимации вбок (4 кадра ×2)
-  const ref = refCrop(root, 240);
+  const ref = refCrop(root, N * 3);
   const shown = ANIM_ORDER.filter(([a]) => !only || only.includes(a));
-  const rows = Math.ceil(shown.length / 2), RW = 1360, rowH = 176;
-  const c = new Cv(Math.max(RW, 990 + (ref ? ref.w + 12 : 0)), 340 + 40 + rows * rowH);
+  const CW = N * 3, G = CW + 4, NX = 4 * G + 6, ST = 2 * N + 6, COLW = 4 * ST + 10;
+  const rows = Math.ceil(shown.length / 2), RW = Math.max(NX + 2 * N + 40, 2 * COLW + 30), rowH = 2 * FH + 26;
+  const c = new Cv(Math.max(RW, NX + (ref ? ref.w + 12 : 0)), CW + 50 + FH + 20 + rows * rowH);
   c.rect(0, 0, c.w, c.h, BG);
   label(c, 10, 8, "ВЕЛИКАН ПОКОЙ ВНИЗ ВВЕРХ ВБОК ВЛЕВО ×3 | РЕФЕРЕНС 2", 2);
   const idle = (row: number, fl = false): Cv => { const f = new Cv(N, FH); blitSub(f, sheet, 0, row * FH, N, FH, 0, 0); return fl ? flip(f) : f; };
   const idles = [idle(0), idle(1), idle(2), idle(2, true)];
-  idles.forEach((f, i) => { c.rect(10 + i * 244, 30, 240, 240, GROUND); c.blit(f, 10 + i * 244, 30, 3); });
-  c.rect(10, 280, 4 * 244 - 4, 84, GROUND); idles.forEach((f, i) => c.blit(f, 10 + i * 244 + 80, 282, 1));
-  if (ref) { c.rect(990, 30, ref.w + 8, 240, PANEL); c.blit(ref, 994, 30, 1); }
-  c.rect(990, 280, 360, 84, NIGHT);
-  for (let k = 0; k < 2; k++) { const row = k ? 2 : 0, x = 1000 + k * 100; blitSub(c, sheet, 0, row * FH, N, FH, x, 282); nightTint(c, x, 282, N, FH); blitSub(c, glow, 0, row * FH, N, FH, x, 282); }
-  const y0 = 380;
+  const yS = CW + 40;
+  idles.forEach((f, i) => { c.rect(10 + i * G, 30, CW, CW, GROUND); c.blit(f, 10 + i * G, 30, 3); });
+  c.rect(10, yS, 4 * G - 4, FH + 4, GROUND); idles.forEach((f, i) => c.blit(f, 10 + i * G + N, yS + 2, 1));
+  if (ref) { c.rect(NX, 30, ref.w + 8, CW, PANEL); c.blit(ref, NX + 4, 30, 1); }
+  c.rect(NX, yS, 2 * N + 30, FH + 4, NIGHT);
+  for (let k = 0; k < 2; k++) { const row = k ? 2 : 0, x = NX + 10 + k * (N + 10); blitSub(c, sheet, 0, row * FH, N, FH, x, yS + 2); nightTint(c, x, yS + 2, N, FH); blitSub(c, glow, 0, row * FH, N, FH, x, yS + 2); }
+  const y0 = yS + FH + 20;
   shown.forEach(([a, d], idx) => {
-    const col = idx % 2, row = Math.floor(idx / 2), ox = 10 + col * 680, oy = y0 + row * rowH;
-    c.rect(ox, oy, 670, rowH - 6, PANEL);
+    const col = idx % 2, row = Math.floor(idx / 2), ox = 10 + col * (COLW + 10), oy = y0 + row * rowH;
+    c.rect(ox, oy, COLW, rowH - 6, PANEL);
     label(c, ox + 4, oy + 3, COLOSSUS_ANIMS[a].ru.toUpperCase(), 2);
     const nShow = Math.min(4, d.n), step = (d.n - 1) / Math.max(1, nShow - 1);
     for (let k = 0; k < nShow; k++) {
-      const fi = Math.round(k * step), fx = ox + 4 + k * 166;
-      c.rect(fx, oy + 18, 162, 150, GROUND);
+      const fi = Math.round(k * step), fx = ox + 4 + k * ST;
+      c.rect(fx, oy + 18, ST - 4, rowH - 26, GROUND);
       blitSub(c, sheet, (COLOSSUS_ANIMS[a].col + fi) * N, 2 * FH, N, FH, fx + 1, oy + 18 - 5, 2);
     }
   });
-  const fCmp = path.join(outDir, "r75n-w-compare.png"); savePng(c, fCmp);
+  const fCmp = path.join(outDir, OUT_PFX + "r75n-w-compare.png"); savePng(c, fCmp);
   // превью листа: каждая анимация — три ряда (вниз, вверх, вбок), все кадры ×1
-  const PW = 16 * 82 + 20, blocks = shown.map(([a, d]) => ({ a, d, lines: Math.ceil(d.n / 16) }));
-  const ph = blocks.reduce((s, b) => s + 16 + b.lines * 3 * 82 + 6, 10);
+  const PW = 16 * (N + 2) + 20, blocks = shown.map(([a, d]) => ({ a, d, lines: Math.ceil(d.n / 16) }));
+  const ph = blocks.reduce((s, b) => s + 16 + b.lines * 3 * (FH + 2) + 6, 10);
   const pv = new Cv(PW, ph); pv.rect(0, 0, PW, ph, BG);
   let yy = 6;
   for (const b of blocks) {
     label(pv, 10, yy, `${b.d.ru}`.toUpperCase(), 2); yy += 14;
     for (let ln = 0; ln < b.lines; ln++) for (let v = 0; v < 3; v++) {
-      for (let k = ln * 16; k < Math.min(b.d.n, ln * 16 + 16); k++) { const x = 10 + (k - ln * 16) * 82; pv.rect(x, yy, 80, 80, GROUND); blitSub(pv, sheet, (COLOSSUS_ANIMS[b.a].col + k) * N, v * FH, N, FH, x, yy); }
-      yy += 82;
+      for (let k = ln * 16; k < Math.min(b.d.n, ln * 16 + 16); k++) { const x = 10 + (k - ln * 16) * (N + 2); pv.rect(x, yy, N, FH, GROUND); blitSub(pv, sheet, (COLOSSUS_ANIMS[b.a].col + k) * N, v * FH, N, FH, x, yy); }
+      yy += FH + 2;
     }
     yy += 8;
   }
-  const fPrev = path.join(outDir, "r75n-w-sheet.png"); savePng(pv, fPrev);
+  const fPrev = path.join(outDir, OUT_PFX + "r75n-w-sheet.png"); savePng(pv, fPrev);
   if (bad.length) { console.warn(`  проверки: ${bad.length}\n${bad.slice(0, 40).map((s) => "    " + s).join("\n")}`); process.exitCode = 1; } else console.log("  проверки: край кадра чист");
   console.log(`  ${ID}: ${COLOSSUS_COLS} кадров × 3 вида, кадр ${N}×${FH}`);
   return [fSheet, fGlow, fCmp, fPrev];

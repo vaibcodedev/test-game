@@ -1,6 +1,8 @@
 /** Попадание мышью и порядок при наложении (задача 134, шаг 2; client/src/game/hit.ts): силуэт кадра (босс 128, всадник с конём), плашка ника и полоски,
  *  след 120 мс за бегущими, точно → передний → текущая цель → ближе центр. Запуск: npx tsx tests/pick.ts */
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import { PNG } from "pngjs";
 import { tabOrder, type TabUnit } from "../client/src/game/castResolve";
 import { boxDist, emptyBox, hitUnit, imageDist, PickBest, silhouette, sweptDist, Trail, TRAIL_MS, unionBox, type Box, type Hit, type Mask } from "../client/src/game/hit";
 
@@ -27,6 +29,15 @@ const boss = unit("boss", 300, 300, 128);
 ok(pick([boss], 300, 190) === "boss", "голова рейд-босса");
 ok(pick([boss], 350, 250) === "boss", "плечо рейд-босса");
 ok(pick([boss], 300, 170) === null, "над рейд-боссом — мимо");
+// Колосс (мировой босс, кадр 140, задача 147): рост ≈ 127 px над ногами, ширина ≈ 128 — макушка и плечо кликаются, выше макушки — мимо
+const colossus = unit("col", 600, 600, 140);
+ok(pick([colossus], 600, 600 - 122) === "col", "макушка Колосса");
+ok(pick([colossus], 600 + 56, 600 - 80) === "col", "плечо Колосса");
+ok(pick([colossus], 600, 600 - 134) === null, "над Колоссом — мимо");
+// Гурдан Громобой (босс кольца r75n, тот же образ в прежнем кадре 80): рост ≈ 73 px
+const gurdan = unit("gur", 900, 600, 80);
+ok(pick([gurdan], 900, 600 - 70) === "gur", "макушка Гурдана");
+ok(pick([gurdan], 900, 600 - 78) === null, "над Гурданом — мимо");
 
 // всадник: кадр героя ∪ кадр коня (конь 64, ноги коня на 6 px выше нижнего края кадра — gy 58)
 const rider = unit("r", 200, 200 - 14);
@@ -110,6 +121,52 @@ for (const fps of [60, 144]) {
   // мешок (12x10) и узел (30x30): силуэт, а не круг
   const bag = mk(12, 10, (x, y) => x >= 1 && x < 11 && y >= 3);
   ok(imageDist(bag, 50, 50, 0.5, 1, 1, 1, false, 50, 45, 0) === 0 && imageDist(bag, 50, 50, 0.5, 1, 1, 1, false, 50, 38, 2) === Infinity, "мешок: по силуэту");
+}
+
+// герой «Б» (задача 147, client/src/game/heroB.ts): кадр сводится из листов client/public/assets/hero147 по z, клик — по маске сведённого кадра
+// (imageDist, как объекты), опора — ступни (origin листа). Проверка на покое вниз, кадр 0: основа + причёска и латы новобранца + шлем.
+{
+  const root = "client/public/assets/hero147", manFile = `${root}/manifest.json`;
+  if (!fs.existsSync(manFile)) console.log("pick: листов героя Б нет (npx tsx tools/gen/gear147-export.ts) — пропуск");
+  else {
+    const man = JSON.parse(fs.readFileSync(manFile, "utf8"));
+    const frameOf = (groups: string[], filter: (k: string) => boolean, row: number, col: number) => {
+      const ents = groups.flatMap((g) => Object.entries(man.groups[g] ?? {}).filter(([k]) => filter(k)).map(([, e]) => e as { file: string; frame: number; origin: number[]; z: (number | null)[][] }))
+        .filter((e) => e.z[row]?.[col] != null).sort((p, q) => p.z[row][col]! - q.z[row][col]!);
+      const F = Math.max(...ents.map((e) => e.frame)), O = ents.find((e) => e.frame === F)!.origin;
+      const a = new Uint8Array(F * F);
+      for (const e of ents) {
+        const png = PNG.sync.read(fs.readFileSync(`${root}/${e.file}`)), dx = O[0] - e.origin[0], dy = O[1] - e.origin[1];
+        for (let y = 0; y < e.frame; y++) for (let x = 0; x < e.frame; x++) if (png.data[((row * e.frame + y) * png.width + col * e.frame + x) * 4 + 3] >= 24) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < F && Y < F) a[Y * F + X] = 1; }
+      }
+      return { m: { w: F, h: F, a } as Mask, O };
+    };
+    const rows = man.rows.great as [string, string][], r0 = rows.findIndex((q) => q[0] === "idle" && q[1] === "down");
+    const { m, O } = frameOf(["body/sol_m/great", "hair/m_tousled_sol/great"], () => true, r0, 0);
+    // ступни на опоре: опора — середина следа ступни в 3/4 (skeleton foot y 45,5), нижний край подошвы с контуром — на 1..2 px ниже
+    let foot = -1; for (let y = m.h - 1; y >= 0 && foot < 0; y--) for (let x = O[0] - 6; x <= O[0] + 6; x++) if (m.a[y * m.w + x]) { foot = y; break; }
+    ok(foot >= O[1] && foot <= O[1] + 2, `герой Б: ступни на опоре (${foot} vs ${O[1]})`);
+    let top = -1; for (let y = 0; y < m.h && top < 0; y++) for (let x = O[0] - 7; x <= O[0] + 7; x++) if (m.a[y * m.w + x]) { top = y; break; }
+    const rise = O[1] - top;
+    ok(rise >= 28 && rise <= 34, `герой Б: рост ${rise} px (≈30)`);
+    const ox = O[0] / m.w, oy = O[1] / m.h, at = (wx: number, wy: number, tol = 0) => imageDist(m, 500, 500, ox, oy, 1, 1, false, wx, wy, tol);
+    ok(at(500, 500 - rise + 1.5) === 0, "герой Б: макушка");
+    ok(at(500, 500 - 2) === 0 || at(497, 500 - 2) === 0 || at(503, 500 - 2) === 0, "герой Б: ноги");
+    ok(at(500, 500 - rise - 3) === Infinity, "герой Б: над макушкой — мимо");
+    ok(at(500, 500 - rise - 3, 4) < Infinity, "герой Б: над макушкой в допуске");
+    ok(at(500 + 16, 500 - 15) === Infinity, "герой Б: сбоку от тела — мимо (не прямоугольник кадра)");
+    // в латах новобранца со шлемом: силуэт шире и выше, ступни там же
+    const dressed = frameOf(["body/sol_m/great", "gear/recruit-plate/m/great"], (k) => !k.startsWith("crest@") || k.endsWith("-sol"), r0, 0);
+    ok(dressed.O[0] === O[0] && dressed.O[1] === O[1], "герой Б: опора в латах та же");
+    let cnt0 = 0, cnt1 = 0; for (let k = 0; k < m.a.length; k++) { cnt0 += m.a[k]; cnt1 += dressed.m.a[k]; }
+    ok(cnt1 > cnt0, "герой Б: латы добавляют силуэт");
+    // Рыцарь Хаоса: кадр 96 под крупный клинок, опора сдвинута (frameOf), тело совпадает с телом кадра 48 после сдвига
+    if (man.groups["gear/chaos-knight/m/great"]) {
+      const ck = frameOf(["body/sol_m/great", "gear/chaos-knight/m/great"], (k) => !k.startsWith("crest@") || k.endsWith("-sol"), r0, 0);
+      ok(ck.m.w === 96 && ck.O[0] === 48 && ck.O[1] === 81, "герой Б: кадр Рыцаря 96, ступни (48, 81)");
+      ok(imageDist(ck.m, 500, 500, ck.O[0] / 96, ck.O[1] / 96, 1, 1, false, 500, 500 - 2, 2) < Infinity, "герой Б: Рыцарь — ноги на опоре");
+    }
+  }
 }
 
 console.log(`pick: ${n} ok`);

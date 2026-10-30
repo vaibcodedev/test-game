@@ -11,6 +11,7 @@ import {
   BASE_ITEMS, ITEM_STAT_NAMES, RARITY_COLORS, RARITY_NAMES, SLOTS, SLOT_NAMES, canEquip, effStats, iconFor, isBound, isTwoHanded, itemName, itemTypeName,
   listItemModels, makeItem, makeUnique, previewGear, uniqueLevel, UNIQUES, type GearPreview, type Item, type ItemStatKey, type Rarity, type Slot,
 } from "../../../shared/items";
+import items147 from "../../../data/items-147.json";
 import { LEGENDARIES, makeLegendary, TIER_LIST } from "../../../shared/legendary";
 import { MATERIALS, MAX_PLUS } from "../../../shared/upgrade";
 import { RESOURCES } from "../../../shared/biomes";
@@ -244,6 +245,7 @@ export class GiveTab {
       case "qty": s.qty = Number(v); return this.renderItem();
       case "give": return this.give(false);
       case "give-eq": return this.give(true);
+      case "set147": return this.giveSet147(v);
       case "players": this.host.send("admin:players"); return;
       case "gold": return this.host.send("admin:gold", { name: s.who.trim(), v: Number(this.q<HTMLInputElement>("#ag-gold").value) });
       case "xp": this.host.send("admin:xp", { name: s.who.trim(), xp: Number(this.q<HTMLInputElement>("#ag-xp").value) }); return this.host.send("admin:players");
@@ -315,6 +317,14 @@ export class GiveTab {
   }
 
   // ---------- выдача ----------
+  /** Задача 147: весь сет героя «Б» (data/items-147.json, поле set) — выдать и надеть получателю; вид — консоль heroB.self(), docs/hero147-live.md. */
+  private giveSet147(set: string) {
+    const who = this.st.who.trim();
+    if (!who) return this.status("Кому выдать?", "warn");
+    const list = (items147.models as { id: string; set: string; lvl: number }[]).filter((m) => m.set === set);
+    for (const m of list) this.host.send("admin:give", { name: who, model: m.id, rarity: m.lvl >= 100 ? 2 : 0, ilvl: m.lvl, plus: 0, equip: true });
+    this.status(`Сет: ${list.length} вещей отправлено…`);
+  }
   private give(equip: boolean) {
     const e = this.entry(), s = this.st, who = s.who.trim();
     if (!e || !who) return;
@@ -615,6 +625,9 @@ const SHELL = `
     <div class="ag-whorow"><input id="ag-who" placeholder="или введите имя героя" autocomplete="off" maxlength="16"><button class="ag-chip" data-a="players" title="Обновить список онлайн">↻</button></div>
   </div>
   <div id="ag-item"></div>
+  <details class="ag-extra" open><summary>Герой «Б» (задача 147)</summary>
+    <div class="ag-whorow"><button class="btn small" data-a="set147" data-v="chaos-knight" title="Шлем, кираса (с наплечниками и перчатками), поножи, плащ, двуручник — выдать и надеть">Сет Рыцаря Хаоса</button><button class="btn small" data-a="set147" data-v="recruit-plate" title="Латы новобранца 1 ур. и железный двуручник — выдать и надеть">Латы новобранца</button></div>
+  </details>
   <details class="ag-extra"><summary>Золото, опыт, уровень</summary>
     <div class="ag-whorow"><input id="ag-gold" type="number" value="1000"><button class="btn small" data-a="gold">Золото</button></div>
     <div class="ag-whorow"><input id="ag-xp" type="number" value="1000"><button class="btn small" data-a="xp">Опыт</button></div>

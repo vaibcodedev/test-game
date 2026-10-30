@@ -4,6 +4,7 @@ import { attachFloorsV2, preloadFloorsV2 } from "./floorsV2";
 import { attachCitadelV2, preloadCitadelV2 } from "./citadelV2";
 import { MOVE_MUL } from "../../../shared/constants";
 import unitAnims from "../../../data/unit-anims.json";
+import { isScaledSheet, skipUnitSheet } from "./scale147";
 
 /** Листы со своей раскладкой анимаций (призывы чернокнижника, data/unit-anims.json): покой → rest, остальные по имени. */
 export const UNIT_ART = unitAnims as unknown as Record<string, { scale?: number; glow?: boolean; anims: Record<string, { col: number; n: number; fps: number; loop: boolean }> }>;
@@ -44,7 +45,7 @@ export class BootScene extends Phaser.Scene {
       preloadCitadelV2(this); // цитадель рейда v2 под флагом (citadelV2.ts)
       this.load.image("water", "/assets/tiles/water.png");
       this.load.image("lava_glow", "/assets/tiles/lava_glow.png");
-      for (const [id, u] of Object.entries(m.units)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frameH ?? u.frame });
+      for (const [id, u] of Object.entries(m.units)) if (!skipUnitSheet(id)) this.load.spritesheet(`u_${id}`, `/assets/units/${id}.png`, { frameWidth: u.frame, frameHeight: u.frameH ?? u.frame });
       // маунты (задача 142): один лист на модель (sheet), у гербовых — второй лист для Умбрата (<модель>_umbrath)
       for (const [id, u] of Object.entries(m.mounts ?? {})) for (const fac of u.fac ? ["", "umbrath"] : [""]) {
         const key = mountTex(id, u, fac), file = key.slice(2);
@@ -84,6 +85,7 @@ export class BootScene extends Phaser.Scene {
     initAuraFx(this);
     zbCreate(this);
     for (const id of Object.keys(m.units)) {
+      if (skipUnitSheet(id)) continue; // лист масштаба героя Б не загружен (флаг выключен)
       const art = UNIT_ART[id];
       if (art?.anims && this.textures.exists(`u_${id}`)) {
         const wide = Math.round(this.textures.get(`u_${id}`).getSourceImage().width / m.units[id].frame);
@@ -95,7 +97,7 @@ export class BootScene extends Phaser.Scene {
       }
       // мобы задачи 140 (tools/gen/mobs/game.ts): ≥ 45 столбцов — покой 12, ходьба 12, атака 9–10, гибель 12; 3 вида
       const fw = m.units[id].frame, wide = this.textures.exists(`u_${id}`) ? Math.round(this.textures.get(`u_${id}`).getSourceImage().width / fw) : 0;
-      if (!m.units[id].cols && wide >= 45 && fw <= 48) {
+      if (!m.units[id].cols && wide >= 45 && (fw <= 48 || isScaledSheet(id))) {
         for (let row = 0; row < 3; row++) {
           const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * wide + a, end: row * wide + b });
           this.anims.create({ key: `${id}-rest-${row}`, frames: f(0, 11), frameRate: 10, repeat: -1 });

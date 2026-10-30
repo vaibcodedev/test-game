@@ -319,6 +319,13 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
     }
   }
   if (it.crest && fF > 0.3) crestParts(ctx, add(surf(0, c * 0.4), mul(F, 0.35)), A, U, 1.5, 3.7655, crest);
+  // боковые ремни кирасы с пряжками (все латы) и гравировка нагрудника (эпик и выше)
+  for (const sg of [-1, 1]) {
+    if (sg * facing(A) < -0.3 && Math.abs(fF) > 0.3) continue;
+    push({ g: "a_sstrap", ramp: ramp("leather_dark"), o: { dome: 1, bias: 0.4 }, layer: 3.7636, m: (z) => { for (const h of [c * 0.3, c * 0.62]) z.seg(PJ(surf(sg * sw * 0.98, h, 1, 0.25)), PJ(surf(sg * sw * 0.98, h, -1, 0.25)), 0.9); } });
+    if (fF > 0.2) push({ g: "a_sbuck", ramp: ramp(it.chestPlate || it.rivets ? (it.trim === "leather" ? "brass" : it.trim) : "iron"), o: { dome: 1, bias: 1.0 }, layer: 3.7637, m: (z) => { for (const h of [c * 0.3, c * 0.62]) z.dot(PJ(surf(sg * sw * 0.9, h, 1, 0.35)), 0.6); } });
+  }
+  if (it.inlay && it.chestPlate && fF > 0.3) push({ g: "a_engr", ramp: Ac, o: { dome: 1, bias: -1.2 }, layer: 3.7626, m: (z) => { for (const sg of [-1, 1]) z.bz(PJ(add(surf(sg * sw * 0.7, c * 0.92), mul(F, 0.2))), PJ(add(surf(sg * sw * 0.35, c * 0.8), mul(F, 0.2))), PJ(add(surf(sg * sw * 0.45, c * 0.62), mul(F, 0.2))), 0.6, 0.6); } });
   // горжет
   const nt = b.neckT;
   push({ g: "a_gorget", ramp: it.chestPlate ? Ac : P, o: { dome: 2, bias: 0.1 }, layer: 3.82, m: (z) => loft(z, waist, A, U, F, [{ h: c - 0.5, a: nt * 0.8 + 1.0, d: nt * 0.6 + 0.9, f: 0.1 }, { h: c + 0.75, a: nt * 0.7 + 0.75, d: nt * 0.55 + 0.7, f: 0.1 }]) });
@@ -435,6 +442,7 @@ function boots(ctx: GearCtx, it: any) {
     push({ g: "b_gr" + s, ramp: P, o: { dome: 1, bias: lg.far + 2.1 }, layer: L + 0.00052, m: (z) => hiSeg(ctx, z, lerp(K, An, 0.25), lerp(K, An, 0.85), 0.7, b.shinT * 0.38) });
     const toe = add(Ft[1], mul(nrm(sub(Ft[1], Ft[0])), 0.5));
     push({ g: "b_ft" + s, ramp: P, o: { dome: 2, amp: 1.9, bias: lg.far + 0.45, kant: true }, layer: L + 0.0006, m: (z) => z.seg(PJ(Ft[0]), PJ(toe), b.shinT * 1.1 + 0.6, b.shinT * 0.9 + 0.15) });
+    if (it.stitch) push({ g: "b_stitch" + s, ramp: ramp(it.stitch), o: { dome: 1, bias: 0.6 }, layer: L + 0.000535, m: (z) => { const o = mul(sk.Ap, (s === "L" ? 1 : -1) * (b.shinT * 0.5 + 0.2)); for (let k = 0; k < 4; k++) { const t0 = 0.2 + k * 0.17; z.seg(PJ(add(lerp(K, An, t0), o)), PJ(add(lerp(K, An, t0 + 0.08), o)), 0.6); } } });
     if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_st" + s, ramp: Ac, o: { dome: 1, bias: lg.far + 0.55 }, layer: L + 0.00055, m: (z) => z.seg(PJ(add(lerp(K, An, 0.22), mul(fwd, b.shinT * 0.5 + 0.35))), PJ(add(lerp(K, An, 0.85), mul(fwd, b.shinT * 0.45 + 0.35))), 1.5) });
     if (it.stripe) push({ g: "b_strap" + s, ramp: ramp("grip"), o: { dome: 1, bias: 0.4 }, layer: L + 0.00056, m: (z) => { const m = lerp(K, An, 0.6), q = mul(sk.Ap, b.shinT * 0.62 + 0.4); z.seg(PJ(sub(m, q)), PJ(add(m, q)), 1.3); } });
     if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_buck" + s, ramp: ramp(it.strapAccent ?? "gold"), o: { dome: 1, bias: 1.0 }, layer: L + 0.00057, m: (z) => z.dot(PJ(add(lerp(K, An, 0.6), mul(fwd, b.shinT * 0.5 + 0.4))), 0.95) });
@@ -563,14 +571,17 @@ function drawWeapon(ctx: GearCtx, it: any, Hd: V3, d: V3, Lg: number, Lb: number
   }
   const bladePoly = [...L, ...R.reverse()];
   // тёмная обводка клинка: отделяет его от тела и красных лат тоном и контуром
-  const rimPoly: V2[] = [];
-  for (let k = 0; k <= n; k++) { const t = k / n, w = t < 0.8 ? W0 * 0.5 * (1 - 0.3 * t) : W0 * 0.5 * 0.76 * Math.max(0, 1 - (t - 0.8) / 0.2) ** 0.8; rimPoly.push(at(t, w + 0.7 + (it.serrate && k % 2 === 1 && t < 0.85 ? 0.55 : 0))); }
+  const rimPoly: V2[] = [], rw = W0 < 3 ? 0.45 : 0.7;
+  for (let k = 0; k <= n; k++) { const t = k / n, w = t < 0.8 ? W0 * 0.5 * (1 - 0.3 * t) : W0 * 0.5 * 0.76 * Math.max(0, 1 - (t - 0.8) / 0.2) ** 0.8; rimPoly.push(at(t, w + rw + (it.serrate && k % 2 === 1 && t < 0.85 ? 0.55 : 0))); }
   rimPoly.push(at(1 + 0.8 / Math.max(1, ln), 0));
-  for (let k = n; k >= 0; k--) { const t = k / n, w = t < 0.8 ? W0 * 0.5 * (1 - 0.3 * t) : W0 * 0.5 * 0.76 * Math.max(0, 1 - (t - 0.8) / 0.2) ** 0.8; rimPoly.push(at(t, -w - 0.7)); }
-  if (glow) push({ g: "w_rim", ramp: RIM, o: { dome: 1, bias: 0.4 }, layer: Lb - 0.0005, m: (z) => z.pg(rimPoly) });
+  for (let k = n; k >= 0; k--) { const t = k / n, w = t < 0.8 ? W0 * 0.5 * (1 - 0.3 * t) : W0 * 0.5 * 0.76 * Math.max(0, 1 - (t - 0.8) / 0.2) ** 0.8; rimPoly.push(at(t, -w - rw)); }
+  // обводка — у любого оружия (читается на траве, снегу и на теле)
+  push({ g: "w_rim", ramp: RIM, o: { dome: 1, bias: 0.4 }, layer: Lb - 0.0005, m: (z) => z.pg(rimPoly) });
   push({ g: "w_edge", ramp: edge, o: { dome: 1, bias: 0.3 }, layer: Lb, emis: glow, m: (z) => z.pg(bladePoly) });
-  push({ g: "w_blade", ramp: blade, o: { dome: 3, amp: 1.2, bias: glow ? 0.2 : 0.3 }, layer: Lb + 0.001, emis: glow, m: (z) => { z.pg(bladePoly); const cx = a2[0] + dx * 0.4, cy = a2[1] + dy * 0.4; z.clip((x, y) => { const px = x - cx, py = y - cy, along = px * ux + py * uy, across = px * nx + py * ny; return Math.abs(across) < W0 * 0.5 * (1 - 0.3 * cl((along + ln * 0.4) / ln)) - 0.45 || along > ln * 0.45; }); } });
-  push({ g: "w_blade", ramp: blade, o: { dome: 1, bias: 2.2 }, layer: Lb + 0.002, emis: glow, m: (z) => z.seg(at(0.04, 0), at(0.72, 0), glow ? 0.95 : 0.7) });
+  push({ g: "w_blade", ramp: blade, o: { dome: 3, amp: 1.2, bias: glow ? 0.2 : 0.75 }, layer: Lb + 0.001, emis: glow, m: (z) => { z.pg(bladePoly); const cx = a2[0] + dx * 0.4, cy = a2[1] + dy * 0.4; z.clip((x, y) => { const px = x - cx, py = y - cy, along = px * ux + py * uy, across = px * nx + py * ny; return Math.abs(across) < W0 * 0.5 * (1 - 0.3 * cl((along + ln * 0.4) / ln)) - 0.45 || along > ln * 0.45; }); } });
+  push({ g: "w_blade", ramp: blade, o: { dome: 1, bias: 2.2 }, layer: Lb + 0.002, emis: glow, m: (z) => z.seg(at(0.04, 0), at(0.72, 0), glow ? 0.95 : 0.85) });
+  // яркий блик по кромке к свету
+  if (!glow) push({ g: "w_blik", ramp: blade, o: { dome: 1, bias: 2.8 }, layer: Lb + 0.0021, m: (z) => z.seg(at(0.06, W0 * 0.32), at(0.6, W0 * 0.22), 0.6) });
   if (glow) {
     if (it.flames) push({ g: "w_fire", ramp: blade, o: { dome: 1, bias: 1.2 }, layer: Lb + 0.004, emis: true, m: (z) => {
       for (let k = 0; k < 3; k++) {
@@ -582,9 +593,11 @@ function drawWeapon(ctx: GearCtx, it: any, Hd: V3, d: V3, Lg: number, Lb: number
     } });
   }
   // гарда, рукоять, навершие
-  if (it.rune) push({ g: "w_rune", ramp: ramp(it.rune), o: { dome: 1, bias: 0.6 }, layer: Lb + 0.0025, emis: true, emisColor: hx("#ff5a3a"), m: (z) => z.seg(at(0.1, (it.bend ?? 0) * 0.02), at(0.7, (it.bend ?? 0) * 0.6), 0.7) });
+  if (it.rune) push({ g: "w_rune", ramp: ramp(it.rune), o: { dome: 1, bias: 0.6 }, layer: Lb + 0.0025, emis: true, emisColor: hx("#ff5a3a"), m: (z) => z.seg(at(0.08, (it.bend ?? 0) * 0.02), at(0.34, (it.bend ?? 0) * 0.15), 0.6) });
   const gA = at(0, 0), gl = W0 * 0.5 + (it.kind === "dual" ? 1.1 : 2.0);
   const gp = (s: number): [V2, V2, V2] => [at(-0.005, s * 0.6), at(-0.02, s * gl * 0.7), [gA[0] + nx * s * gl + ux * (glow ? 2.0 : 0.4), gA[1] + ny * s * gl + uy * (glow ? 2.0 : 0.4)]];
+  // тёмная обводка рукояти, гарды и навершия
+  push({ g: "w_hrim", ramp: RIM, o: { dome: 1, bias: 0.4 }, layer: Lg - 0.0005, m: (z) => { const gr0 = it.kind === "great" ? 3.6 : 1.8; z.seg(PJ(add(Hd, mul(d, 1.6))), PJ(add(Hd, mul(d, -gr0))), 2.6); for (const s of [1, -1]) { const [p0, p1, p2] = gp(s); z.bz(p0, p1, p2, 2.9, 1.9); } z.dot(PJ(add(Hd, mul(d, -gr0 - 0.35))), 1.65); } });
   push({ g: "w_guard", ramp: hilt, o: { dome: 1, amp: 1.8, bias: 0.6 }, layer: Lg + 0.01, m: (z) => { for (const s of [1, -1]) { const [p0, p1, p2] = gp(s); z.bz(p0, p1, p2, 1.5, 0.55); } } });
   push({ g: "w_gem", ramp: acc, o: { dome: 2, bias: 0.5 }, layer: Lg + 0.011, emis: glow, m: (z) => z.dot(gA, glow ? 1.0 : 0.75) });
   const gr = it.kind === "great" ? 3.6 : 1.8, pm = add(Hd, mul(d, -gr - 0.35));
