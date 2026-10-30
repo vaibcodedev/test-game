@@ -4,7 +4,7 @@ import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
 import { failLevel, MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, SMITHS, stepFor } from "../../../shared/upgrade";
-import { enchantTier, GEAR_FX, smithNextText, tierText } from "../../../shared/gearFx";
+import { visualTier as enchantTier, ENCHANT_VISUAL, GEAR_FX, smithNextText, tierText } from "../../../shared/gearFx";
 import type { Net } from "../net";
 import { T } from "../../../shared/texts";
 
@@ -159,7 +159,7 @@ export class SmithUI {
     // свечение на герое: что нарисовано сейчас и что появится
     const nextTxt = smithNextText(slot, plus);
     const nextFx = nextTxt || (slot === "ring" || slot === "amulet" ? tierText(slot, 0) : GEAR_FX.texts.smithMax);
-    sec.append(el("div", "smith-fx", `<p class="note">${T("ui.smith.681", { v: esc(tier > 0 ? tierText(slot, tier) : "эффекта заточки нет") })}</p><p class="note${nextTxt ? " c-ench" : ""}">${esc(nextFx)}</p>`));
+    if (ENCHANT_VISUAL) sec.append(el("div", "smith-fx", `<p class="note">${T("ui.smith.681", { v: esc(tier > 0 ? tierText(slot, tier) : "эффекта заточки нет") })}</p><p class="note${nextTxt ? " c-ench" : ""}">${esc(nextFx)}</p>`));
 
     if (!step) {
       sec.append(el("p", "note c-ok", T("ui.smith.682", { max_plus: MAX_PLUS })));

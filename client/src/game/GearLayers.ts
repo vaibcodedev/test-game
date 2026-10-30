@@ -11,7 +11,7 @@ import { BASE_ITEMS, ITEM_MODELS, RARITY_COLORS, type ItemModel } from "../../..
 import { cellAt, PR, rimOf, weaponSprite, type WSprite } from "./GearModelSprites";
 import { LEGENDARIES, type LegendaryDef } from "../../../shared/legendary";
 import type { Slot } from "../../../shared/items";
-import { enchantTier, ENCHANT_COLOR, GEAR_FX } from "../../../shared/gearFx";
+import { visualTier, ENCHANT_VISUAL, ENCHANT_COLOR, GEAR_FX } from "../../../shared/gearFx";
 import { gearFxMode } from "./overlay";
 import { onGearFlash, setHiddenParticles, type HiddenReason } from "./gearHooks";
 import type { Herald } from "../../../shared/npcGear";
@@ -487,11 +487,11 @@ export class GearLayers {
     // силуэт детали: пиксели непрозрачных прямоугольников
     const px = new Set<number>();
     for (const r of rects) if (r.a >= 0.5) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) px.add(KEY(x, y));
-    const tier = enchantTier(plus);
+    const tier = visualTier(plus);
     const fl = this.flash && this.flash.slot === slot ? this.flash : null;
     if (fl) { fl.start ??= t; if (t - fl.start > fl.ms) this.flash = null; }
     const flashOn = !!(this.flash && fl);
-    if (px.size && (flashOn || (this.enchantOn && tier > 0))) {
+    if (ENCHANT_VISUAL && px.size && (flashOn || (this.enchantOn && tier > 0))) {
       const T = ENCHANT.tiers[tier] as { outlineAlpha?: number; outlineAlphaMin?: number; outlineAlphaMax?: number; pulseMs?: number; haloAlpha?: number; haloExpand?: number };
       const ring = this.ring1(px);
       if (!flashOn && tier >= 3) {

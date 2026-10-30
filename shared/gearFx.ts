@@ -5,6 +5,8 @@ import type { Slot } from "./items";
 
 export const GEAR_FX = data;
 /** Цвет заточки (бирюза). Не совпадает ни с одним цветом редкости и фракции. */
+/** Визуал заточки (контур/ореол на герое, бирюза в окнах). Выключен 2026-10-30; вернуть: enchant.visual=true в data/gear-fx.json. */
+export const ENCHANT_VISUAL: boolean = data.enchant.visual;
 export const ENCHANT_COLOR = data.enchant.color;
 /** Пороги ступеней заточки: +4, +7, +10. */
 export const ENCHANT_THRESHOLDS: readonly number[] = data.enchant.thresholds;
@@ -19,6 +21,9 @@ export function enchantTier(plus: number): EnchantTier {
   for (const th of ENCHANT_THRESHOLDS) if (plus >= th) t++;
   return t as EnchantTier;
 }
+
+/** Ступень для отрисовки: 0, пока визуал заточки выключен. */
+export const visualTier = (plus: number): EnchantTier => (ENCHANT_VISUAL ? enchantTier(plus) : 0);
 
 /** Ближайшая следующая ступень свечения: с какого +N она начнётся. null — уже максимальная. */
 export function nextTierPlus(plus: number): number | null {

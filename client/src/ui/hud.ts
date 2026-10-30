@@ -10,7 +10,7 @@ import { gearFxMode, overlay, setGearFxMode, setOverlay, type GearFxMode } from 
 import { setVfxMode, vfxMode, type VfxMode } from "../game/postfx";
 import { setShadowMode, shadowMode, type ShadowMode } from "../game/shadows";
 import { flashGear } from "../game/gearHooks";
-import { enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
+import { visualTier as enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
 import { FORTS, MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
 import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";

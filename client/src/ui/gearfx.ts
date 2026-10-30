@@ -1,5 +1,5 @@
 /** Общие куски окон «Герой» и «Осмотр»: строки снаряжения, итог заточки и легенда эффектов (docs/gear-visuals.md, раздел 3). */
-import { enchantTier, GEAR_FX, legendText, tierText } from "../../../shared/gearFx";
+import { visualTier as enchantTier, GEAR_FX, legendText, tierText } from "../../../shared/gearFx";
 import { effStats, iconFor, itemName, SLOT_NAMES, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import { hiddenParticles, type HiddenReason } from "../game/gearHooks";
 import { plusBadge } from "./smith";
