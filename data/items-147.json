@@ -154,7 +154,10 @@
     "fx": "fel",
     "guard": "claw",
     "pommel": "spike"
-   }
+   },
+   "tooltip": [
+    "Особая анимация удара"
+   ]
   },
   {
    "id": "hb147_recruit_helm",

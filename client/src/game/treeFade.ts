@@ -31,3 +31,25 @@ export function updateTreeFade(hx: number, hy: number, dt: number) {
     t.trunk.setVisible(t.a < 1).setAngle(t.img.angle);
   }
 }
+
+/**
+ * Здания: герой заходит за дом (севернее основания, в пределах силуэта) — здание плавно гаснет до 0,45, герой виден; впереди и сбоку — плотное.
+ * Коллизия не меняется: непроходим только след на земле (shared/map.ts OBJ_SIZE), а верхняя часть над ним — зона «за зданием».
+ */
+export const FADE_BUILDINGS = new Set(["house", "house_blue", "tavern", "bank", "forge", "arena_gate", "hut_sol", "tent", "sol_house", "sol_temple", "sol_church", "umb_house", "umb_crypt", "umb_ziggurat", "tower", "sol_tower", "umb_tower"]);
+interface Bld { img: Phaser.GameObjects.Image; x: number; y: number; half: number; top: number; a: number }
+const blds = new Set<Bld>();
+const BFADE = 0.45;
+export function addBuildingFade(img: Phaser.GameObjects.Image) {
+  const b: Bld = { img, x: img.x, y: img.y, half: img.displayWidth * 0.5, top: img.displayHeight, a: 1 };
+  blds.add(b);
+  img.once("destroy", () => blds.delete(b));
+}
+export function updateBuildingFade(hx: number, hy: number, dt: number) {
+  for (const b of blds) {
+    const want = hy < b.y - 2 && hy > b.y - b.top + 8 && Math.abs(hx - b.x) < b.half ? BFADE : 1;
+    if (b.a === want) continue;
+    b.a = want < b.a ? Math.max(want, b.a - dt * SPEED * (1 - BFADE)) : Math.min(want, b.a + dt * SPEED * (1 - BFADE));
+    b.img.setAlpha(b.a);
+  }
+}

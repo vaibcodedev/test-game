@@ -13,7 +13,7 @@ import { flashGear } from "../game/gearHooks";
 import { visualTier as enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
 import { FORTS, MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
-import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, type Item, type ItemStatKey } from "../../../shared/items";
+import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, ITEM_MODELS, type Item, type ItemStatKey } from "../../../shared/items";
 import { DUNGEON_DOOR, isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
 import { DUNGEON_EXIT } from "../../../shared/dungeon";
 import { drawDgIcon } from "./dungeonIcon";
@@ -50,6 +50,10 @@ import { LevelLook } from "./levelLook";
 import { findRef } from "../../../shared/hotbar";
 import { WorldMapView } from "./worldmap";
 import { plusBadge, SmithUI } from "./smith";
+import { TransmogUI } from "./transmog";
+import { FAMILY_NAMES, familyOf, gearStrings, isShell, slotOf, tryOnSlot, withLook } from "../../../shared/transmog";
+import { previewImg } from "../game/gearPreview";
+import { setTryOn } from "../game/tryOn";
 import { BankUI, parseBankDrag } from "./bank";
 import { BagsUI } from "./bags";
 import { StableUI } from "./stable";
@@ -71,6 +75,7 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
 /** Время мира для значка суток и ночной миникарты (тесты подменяют window.__shadowMs, как для теней). */
 const worldMs = () => (window as unknown as { __shadowMs?: number }).__shadowMs ?? Date.now();
 import { T as TX } from "../../../shared/texts";
+import { LootRow, LootToasts } from "./lootfx";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -149,6 +154,10 @@ export class Hud {
   private lastCast: { id: string; at: number } | null = null;
   private death = el("div", "death");
   private tip = el("div", "panel tip");
+  /** Превью добычи: ряд над мешком и тост-карточка (lootfx.ts). take — клик по ряду, ставит GameScene. */
+  readonly lootRow: LootRow;
+  readonly lootToasts: LootToasts;
+  onTakeBag?: (id: string) => void;
   private wins: Record<string, HTMLElement> = {};
   private lastMini = 0;
   private todBox = el("div", "tod");
@@ -182,6 +191,7 @@ export class Hud {
   private targetSid: string | null = null;
   readonly cook: CookUI;
   readonly smith: SmithUI;
+  readonly transmog: TransmogUI;
   readonly bank: BankUI;
   readonly bags: BagsUI;
   readonly stable: StableUI;
@@ -256,6 +266,8 @@ export class Hud {
   }
 
   constructor(readonly root: HTMLElement) {
+    this.lootRow = new LootRow(root, { self: () => this.ctx?.net.self ?? undefined, take: (id) => this.onTakeBag?.(id) });
+    this.lootToasts = new LootToasts(root, () => this.ctx?.net.self ?? undefined);
     this.bar.append(this.hotbar.el);
     this.bar.append(this.levelLook.bar);   // над лентой умений (сама лента перестраивается, поэтому не внутри неё)
     root.append(this.player, this.petBox, this.targetBox, this.zoneBanner, this.mini, this.bar, this.chatBox, this.toasts, this.errLine, this.itip, this.death, this.tip);
@@ -306,6 +318,7 @@ export class Hud {
     this.targetBox.onclick = () => { if (this.targetSid && this.ctx?.net.kind === "world") this.inspect.open(this.targetSid); };
     this.cook = new CookUI(root);
     this.smith = new SmithUI(root);
+    this.transmog = new TransmogUI(root);
     this.quest = new QuestUI(root);
     this.tp = new TeleportUI(root);
     this.gameMenu = new GameMenu(root, {
@@ -405,6 +418,7 @@ export class Hud {
       this.admin.bind(n);
       this.cook.bind(n);
       this.smith.bind(n);
+      this.transmog.bind(n);
       this.bank.bind(n);
       this.bags.bind(n);
       this.stable.bind(n);
@@ -472,6 +486,11 @@ export class Hud {
     if (t.code) {
       const lc = this.lastCast;
       return this.castError(t.text, lc && performance.now() - lc.at < 800 ? lc.id : undefined);
+    }
+    // подбор из мешка: карточка справа (lootfx), в чат — строка с иконкой, как раньше
+    if (t.kind === "loot" && t.item) {
+      this.lootToasts.push(t.item);
+      return this.chatLine({ from: "", text: t.text, sys: true, loot: true, html: t.icon ? this.lootHtml(t) : undefined } as ChatLine & { loot: boolean; html?: string });
     }
     const html = this.lootHtml(t.slot ? { ...t, text: TX("ui.hud.292", { v: t.text, v2: this.hotbar.keyOf(t.slot.bar, t.slot.i) }) } : t);
     const cls = `toast ${t.kind ?? "info"}`;
@@ -595,7 +614,7 @@ export class Hud {
     const byCls: Record<string, () => boolean> = {
       "win-bestiary": () => this.bestiary.close(), "win-admin": () => this.admin.close(), "win-rumor": () => this.rumor.close(), "win-statue": () => this.statue.close(), "win-enc": () => this.enc.close(),
       "win-cook": () => this.cook.close(), "win-quest": () => this.quest.close(), "win-qlog": () => this.quest.closeLog(), "win-tp": () => this.tp.close(),
-      "win-smith": () => this.smith.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-pets": () => this.menagerie.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-muster": () => this.wboss.close(), "win-trade": () => this.trade.close(),
+      "win-smith": () => this.smith.close(), "win-tm": () => this.transmog.close(), "win-inspect": () => this.inspect.close(), "win-bank": () => this.bank.close(), "win-bags": () => this.bags.close(), "win-pets": () => this.menagerie.close(), "win-stable": () => this.stable.close(), "win-arena": () => this.arena.close(), "win-muster": () => this.wboss.close(), "win-trade": () => this.trade.close(),
     };
     const cls = [...top.classList].find((c) => byCls[c]);
     if (cls) byCls[cls]();
@@ -740,7 +759,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = [() => this.bestiary.close(), () => this.admin.close(), () => this.rumor.close(), () => this.statue.close(), () => this.enc.close(), () => this.cook.close(), () => this.quest.close(), () => this.tp.close(), () => this.smith.close(), () => this.bank.close(), () => this.bags.close(), () => this.stable.close(), () => this.menagerie.close(), () => this.arena.close(), () => this.wboss.close(), () => this.raid.close(), () => this.trade.close(), () => this.inspect.close()].map((f) => f()).some(Boolean);
+    let any = [() => this.bestiary.close(), () => this.admin.close(), () => this.rumor.close(), () => this.statue.close(), () => this.enc.close(), () => this.cook.close(), () => this.quest.close(), () => this.tp.close(), () => this.smith.close(), () => this.transmog.close(), () => this.bank.close(), () => this.bags.close(), () => this.stable.close(), () => this.menagerie.close(), () => this.arena.close(), () => this.wboss.close(), () => this.raid.close(), () => this.trade.close(), () => this.inspect.close()].map((f) => f()).some(Boolean);
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
@@ -827,6 +846,30 @@ export class Hud {
       + `<div class="tip-sec">${isBound(it) ? `<div class="c-bad">Привязана к герою: передать нельзя</div>` : `<div class="c-ok">До изучения можно передать или продать</div>`}<div>Клик — изучить: питомец навсегда войдёт в коллекцию</div></div>`
       + (bare ? "" : `<div class="tip-foot">${TX("ui.hud.543", { it: this.priceHtml(it) })}</div>`);
   }
+  /** «Оболочка» перековки: превью вида на своём герое, слот и семейство, «примерить» (ПКМ в сумке). */
+  private shellTip(it: Item, s: SelfState, bare: boolean): string {
+    const ap = it.appearance;
+    const head = `<div class="t r${it.rarity}">${esc(itemName(it))}</div>`;
+    if (!ap) return head;
+    const slot = slotOf(ap.base), fam = familyOf(ap.base);
+    const at = tryOnSlot(s.equip, ap);
+    const look = gearStrings(at ? withLook(s.equip, at, ap) : s.equip);
+    return head
+      + `<div class="d">${TX("ui.transmog.shellTip", { slot: slot ? SLOT_NAMES[slot] : "", family: fam ? FAMILY_NAMES[fam] ?? fam : "" })}</div>`
+      + `<div class="tm-tip-pv">${previewImg(s.cls, s.faction, look.gear, look.weapon, "tm-hero")}</div>`
+      + `<div class="fx theme c-r${ap.rarity}">${TX("ui.transmog.lookOf", { name: esc(ap.name) })}</div>`
+      + `<div class="d">${TX("ui.transmog.shellUse")}</div>`
+      + (bare ? "" : `<div class="d">${TX("ui.hud.550", { it: this.priceHtml(it) })}</div>`);
+  }
+  /** «Примерить» оболочку: вид на своём герое на 10 с, только на клиенте. */
+  private tryOnShell(it: Item) {
+    const s = this.ctx.net.self, ap = it.appearance;
+    if (!s || !ap) return;
+    const at = tryOnSlot(s.equip, ap);
+    if (!at) return this.toast({ text: TX("ui.transmog.tryOnNo"), kind: "error" });
+    setTryOn(gearStrings(withLook(s.equip, at, ap)), 10000);
+    this.toast({ text: TX("ui.transmog.tryOn", { name: ap.name }), kind: "info" });
+  }
   /** Подсказка предмета. bare — без цены и подсказок по клику (осмотр чужого героя, лавка встречи, окно «Герой»). */
   itemTip(it: Item, s: SelfState, equipped = false, bare = false): string {
     const b = BASE_ITEMS[it.base];
@@ -838,6 +881,7 @@ export class Hud {
       // конюшня (задача 142): «Печать скакуна», Печать гладиатора и детали маунтов — сгруппированная подсказка (tip-head/tip-sec/tip-foot)
       if (sealMount(it.base) || isPart(it.base)) return this.stableItemTip(it, s, bare);
       if (sealPet(it.base)) return this.petSealTip(it, s, bare);
+      if (isShell(it)) return this.shellTip(it, s, bare);
       lines.push(`<div class="d">${TX("ui.hud.551", { qty: it.qty ?? 1 })}</div>`, `<div>${it.base === "hp_potion" ? "Восстанавливает 45% здоровья" : "Восстанавливает 50% маны"}</div>`, `<div class="d">${TX("ui.hud.552", { e: it.base === "hp_potion" ? "Q" : "E" })}</div>`);
     } else {
       const slot = b.slot, plus = it.plus || 0;
@@ -859,11 +903,15 @@ export class Hud {
       if (plus > 0) lines.push(`<div class="fx${enchantTier(plus) >= 1 ? " ench" : ""}">${TX("ui.hud.557", { plus: plus, tiertext: esc(tierText(slot, enchantTier(plus))), nextsteptext: nextStepText(slot, plus) ? ` ${esc(nextStepText(slot, plus))}` : "" })}</div>`);
       const theme = legendText(slot, it.legendary);
       if (theme) lines.push(`<div class="fx theme">${TX("ui.gearfx.513", { theme: esc(theme) })}</div>`);
+      // строки модели (задача 147: «Особая анимация удара» у Пылающего клинка Хаоса — data/items-147.json tooltip)
+      for (const t of (it.model ? ITEM_MODELS[it.model]?.tooltip : undefined) ?? []) lines.push(`<div class="fx theme">${esc(t)}</div>`);
       if (b.classes) lines.push(`<div class="${b.classes.includes(s.cls) || bare ? "d" : "warn"}">${TX("ui.hud.558", { map: b.classes.map((c) => CLASSES[c].name).join(", ") })}</div>`);
       lines.push(`<div class="${it.req > s.level && !bare ? "warn" : "d"}">${TX("ui.hud.559", { req: it.req })}</div>`);
       if (isBound(it)) lines.push(`<div class="${bare ? "d" : "warn"}">${TX("ui.hud.560")}</div>`);
       if (it.legendary && LEGENDARIES[it.legendary]) lines.push(`<div class="legend">★ ${esc(LEGENDARIES[it.legendary].desc)}</div>`, `<div class="lore">${esc(LEGENDARIES[it.legendary].lore)}</div>`);
       if (it.unique) lines.push(`<div class="lore">${esc(UNIQUES[it.unique].lore)}</div>`);
+      // перековка: наложенный вид другой вещи (docs/transmog.md); сила — своя
+      if (it.appearance) lines.push(`<div class="fx theme c-r${it.appearance.rarity}">${TX("ui.transmog.lookOf", { name: esc(it.appearance.name) })}</div>`);
       if (!equipped) {
         const cur = s.equip[slot];
         if (cur && cur.uid !== it.uid) {
@@ -910,6 +958,7 @@ export class Hud {
     this.quest.update(s);
     this.tp.update(s, this.lastPos);
     this.smith.update(s);
+    this.transmog.update(s);
     this.bank.update();
     this.bags.update();
     this.stable.update();
@@ -1275,6 +1324,8 @@ export class Hud {
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!));
         // «Печать скакуна»: ПКМ тоже изучает (подсказка печати)
         if (sealMount(it.base) || sealPet(it.base)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.ctx.net.send("use", { index: i }); };
+        // «Оболочка» перековки: ПКМ — примерить на себя (только у себя на экране)
+        if (isShell(it)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.tryOnShell(it); };
       }
       grid.append(c);
     });

@@ -37,6 +37,7 @@ import { CLASSES, type ClassId } from "../../../shared/classes";
 import { GameDB, type PlayerSave } from "../db";
 import { sendPrices, setMarketDb } from "../game/market";
 import { buyMaterial, upgradeItem } from "../game/smith";
+import { tmApply, tmExtract, tmReset } from "../game/transmog";
 import { registerAdmin } from "../game/admin";
 import { registerEncounters } from "../game/encounters";
 import { registerBiomes, sendNodes } from "../game/biomes";
@@ -727,6 +728,10 @@ export class WorldRoom extends Room<OpenWorldState> {
     on<{ id: unknown; qty: unknown }>("cook:buy", (p, m) => buyFood(w(), p, m.id, m.qty));
     on<{ id: unknown; qty: unknown }>("smith:buy", (p, m) => buyMaterial(w(), p, m.id, m.qty));
     on<{ index: unknown; slot: unknown }>("smith:upgrade", (p, m) => upgradeItem(w(), p, m.index, m.slot, (i) => this.trade.locked(p, i)));
+    // Перековщик (docs/transmog.md): снять оболочку, наложить, сбросить вид
+    on<{ index: unknown }>("tm:extract", (p, m) => tmExtract(w(), p, m.index, (i) => this.trade.locked(p, i)));
+    on<{ shell: unknown; index: unknown; slot: unknown }>("tm:apply", (p, m) => tmApply(w(), p, m.shell, m.index, m.slot, (i) => this.trade.locked(p, i)));
+    on<{ index: unknown; slot: unknown }>("tm:reset", (p, m) => tmReset(w(), p, m.index, m.slot, (i) => this.trade.locked(p, i)));
     on<{ bag: unknown }>("pickup", (p, m) => pickup(w(), p, m.bag));
     // банк
     on("bag:expand", (p) => expandBag(w(), WorldRoom.db, w().map.playerSpawn, p, p.goingToArena || inArena.has(p.name.toLowerCase())));

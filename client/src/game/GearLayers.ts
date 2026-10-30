@@ -1422,6 +1422,8 @@ export class GearLayers {
   }
 
   setDepth(d: number) { this.back.setDepth(d - 0.1); this.front.setDepth(d + 0.5); }
+  /** Слои за телом и перед ним (превью героя в окне Перековщика, client/src/game/gearPreview.ts). */
+  graphics(): [Phaser.GameObjects.Graphics, Phaser.GameObjects.Graphics] { return [this.back, this.front]; }
   /** Прозрачность всего снаряжения (скрытность: как у спрайта героя). */
   setAlpha(a: number) { this.back.setAlpha(a); this.front.setAlpha(a); this.glow?.setAlpha(a); this.bloom?.setAlpha(a); }
   destroy() { this.unflash(); ACTIVE.delete(this); if (this.sid) setHiddenParticles(this.sid, null); this.back.destroy(); this.front.destroy(); this.glow?.destroy(); this.bloom?.destroy(); }

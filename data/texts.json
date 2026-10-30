@@ -8359,6 +8359,271 @@
       "vars": {
         "need": "need"
       }
+    },
+    "srv.transmog.far": {
+      "text": "Перековщик далеко",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.arena": {
+      "text": "На арене перековка недоступна",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.noItem": {
+      "text": "Вещь не найдена",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.isShell": {
+      "text": "С оболочки нельзя снять оболочку",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.notGear": {
+      "text": "Это нельзя перековать",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.hasLook": {
+      "text": "На вещи чужой вид — сначала сбросьте его",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.noShell": {
+      "text": "Нужна оболочка из сумки",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.wrongFamily": {
+      "text": "Оболочка подходит только к вещи того же слота: {family}",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server",
+      "vars": {
+        "family": "family"
+      }
+    },
+    "srv.transmog.noLook": {
+      "text": "У вещи свой вид — сбрасывать нечего",
+      "who": "Сервер",
+      "where": "Сообщение об ошибке",
+      "area": "server"
+    },
+    "srv.transmog.extracted": {
+      "text": "Оболочка снята: {name} распалась (−{gold} золота)",
+      "who": "Сервер",
+      "where": "Сообщение о перековке",
+      "area": "server",
+      "vars": {
+        "name": "name",
+        "gold": "gold"
+      }
+    },
+    "srv.transmog.applied": {
+      "text": "{name} теперь выглядит как «{look}» (−{gold} золота)",
+      "who": "Сервер",
+      "where": "Сообщение о перековке",
+      "area": "server",
+      "vars": {
+        "name": "name",
+        "look": "look",
+        "gold": "gold"
+      }
+    },
+    "srv.transmog.reset": {
+      "text": "{name}: вид вещи возвращён",
+      "who": "Сервер",
+      "where": "Сообщение о перековке",
+      "area": "server",
+      "vars": {
+        "name": "name"
+      }
+    },
+    "ui.transmog.tabExtract": {
+      "text": "Снять оболочку",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.tabApply": {
+      "text": "Наложить",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.pickDonor": {
+      "text": "Вещь-донор",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.pickDonorAside": {
+      "text": "из сумки",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.pickTarget": {
+      "text": "Вещь, которой дать вид",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.pickShell": {
+      "text": "Оболочка",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.noDonors": {
+      "text": "В сумке нет вещей, с которых можно снять оболочку",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.noShells": {
+      "text": "В сумке нет оболочек. Снимите оболочку с вещи на первой вкладке",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.noTargets": {
+      "text": "Нет вещей того же слота и семейства",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.pickHint": {
+      "text": "Выберите вещь",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.pickShellHint": {
+      "text": "Выберите оболочку",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.was": {
+      "text": "Было",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.will": {
+      "text": "Станет",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.price": {
+      "text": "Цена",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.extractGo": {
+      "text": "Снять оболочку",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.applyGo": {
+      "text": "Наложить",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.resetGo": {
+      "text": "Сбросить вид",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.extractNote": {
+      "text": "Вещь распадётся, вместо неё в сумке появится «Оболочка: {name}» — её можно передать, продать или наложить.",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui",
+      "vars": {
+        "name": "name"
+      }
+    },
+    "ui.transmog.applyNote": {
+      "text": "Вещь сохранит характеристики, заточку и свойства — изменится только вид. Оболочка исчезнет.",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.replaceNote": {
+      "text": "Наложенный сейчас вид «{name}» пропадёт.",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui",
+      "vars": {
+        "name": "name"
+      }
+    },
+    "ui.transmog.family": {
+      "text": "Семейство",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
+    },
+    "ui.transmog.lookOf": {
+      "text": "Вид: {name}",
+      "who": "Интерфейс",
+      "where": "Подсказка предмета",
+      "area": "ui",
+      "vars": {
+        "name": "name"
+      }
+    },
+    "ui.transmog.shellTip": {
+      "text": "Вид для слота «{slot}» · {family}",
+      "who": "Интерфейс",
+      "where": "Подсказка оболочки",
+      "area": "ui",
+      "vars": {
+        "slot": "slot",
+        "family": "family"
+      }
+    },
+    "ui.transmog.shellUse": {
+      "text": "Наложить у Перековщика в Эмберхолле. ПКМ — примерить на себя",
+      "who": "Интерфейс",
+      "where": "Подсказка оболочки",
+      "area": "ui"
+    },
+    "ui.transmog.tryOn": {
+      "text": "Примерка: {name} (только у вас, 10 с)",
+      "who": "Интерфейс",
+      "where": "Сообщение примерки",
+      "area": "ui",
+      "vars": {
+        "name": "name"
+      }
+    },
+    "ui.transmog.tryOnNo": {
+      "text": "Нечего примерить: на вас нет вещи этого слота и семейства",
+      "who": "Интерфейс",
+      "where": "Сообщение примерки",
+      "area": "ui"
+    },
+    "ui.transmog.notEnough": {
+      "text": "Не хватает золота",
+      "who": "Интерфейс",
+      "where": "Окно «Перековщик»",
+      "area": "ui"
     }
   }
 }

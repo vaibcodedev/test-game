@@ -22,6 +22,10 @@
     "bins": [0, 0.95, 1.15, 1.22, 1.28, 1.9, 4.9, 5.1, 5.18, 5.22, 5.28, 5.9, 99]
   },
   "materials": {
+    "star_silver": ["#2a3448", "#56688a", "#8aa2c4", "#c4d8f0", "#f4faff"],
+    "star_glow": ["#0a3a5a", "#1a7aaa", "#40c0ff", "#a0f0ff", "#f0ffff"],
+    "star_gold": ["#5a4a20", "#a08840", "#e0c870", "#fff0a8", "#fffbe8"],
+    "leather_star": ["#141a2a", "#28324c", "#3e4c70", "#5e6e98", "#8c9cc4"],
     "steel_temper": ["#141c28", "#2a3a50", "#46607e", "#7090b4", "#b0cae6"],
     "steel_master": ["#1c1a1e", "#3a3640", "#5e5866", "#908a9a", "#d0cad8"],
     "ash_steel": ["#120e16", "#2a2234", "#463a56", "#6e5e88", "#b4a4d8"],
@@ -80,10 +84,10 @@
   "tiers": {
     "_doc": "Вид по уровню и редкости (docs/gear-sets-spec.md): 5 ступеней по 20 ур. × 4 редкости. Здесь — материалы ступеней; флаги редкостей и размер силуэта — tools/gen/gear147/tier.ts. Проверка «богатства вида» — tools/out/gear147/tier-table.json.",
     "levels": [10, 30, 50, 70, 90],
-    "names": ["железо, сыромятная кожа, лён", "сталь, дублёная кожа, шерсть", "калёная сталь, кожа с пластинами, шёлк", "мастерская ковка, позолота", "пепельная сталь, звёздный шёлк"],
-    "plate": { "base": ["iron", "steel60", "steel_temper", "steel_master", "ash_steel"], "trim": ["brass", "brass", "gold", "gold", "ash_gold"], "cloth": ["dye_green", "cloth_blue", "cloth_purple", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "ash_glow"] },
-    "leather": { "base": ["rawhide", "leather", "rogue_leather", "leather_master", "leather_myth"], "plate": ["iron", "steel60", "steel_temper", "steel_master", "ash_steel"], "trim": ["brass", "brass", "gold", "gold", "ash_gold"], "cloth": ["cloth_blue", "dye_green", "cloth_crimson", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "ash_glow"] },
-    "cloth": { "base": ["linen", "wool_blue", "cloth_purple", "cloth_crimson", "star_silk"], "trim": ["tan", "brass", "gold", "gold", "ash_gold"], "cloth": ["wool_brown", "cloth_blue", "cloth_blue", "cloth_purple", "ash_steel"], "glow": [null, null, null, null, "ash_glow"] },
+    "names": ["железо, сыромятная кожа, лён", "сталь, дублёная кожа, шерсть", "калёная сталь, кожа с пластинами, шёлк", "мастерская ковка, позолота", "звёздное серебро, холодное сияние"],
+    "plate": { "base": ["iron", "steel60", "steel_temper", "steel_master", "star_silver"], "trim": ["brass", "brass", "gold", "gold", "star_gold"], "cloth": ["dye_green", "cloth_blue", "cloth_purple", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "star_glow"] },
+    "leather": { "base": ["rawhide", "leather", "rogue_leather", "leather_master", "leather_star"], "plate": ["iron", "steel60", "steel_temper", "steel_master", "star_silver"], "trim": ["brass", "brass", "gold", "gold", "star_gold"], "cloth": ["cloth_blue", "dye_green", "cloth_crimson", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "star_glow"] },
+    "cloth": { "base": ["linen", "wool_blue", "cloth_purple", "cloth_crimson", "star_silk"], "trim": ["tan", "brass", "gold", "gold", "star_gold"], "cloth": ["wool_brown", "cloth_blue", "cloth_blue", "cloth_purple", "star_silver"], "glow": [null, null, null, null, "star_glow"] },
     "scale": [0.64, 0.69, 0.74, 0.79, 0.84]
   },
   "sets": {
@@ -116,26 +120,26 @@
       "name": "Стальные латы стража",
       "rarity": "common", "level": 60, "material": "plate", "source": "mobs",
       "items": {
-        "helm": { "name": "Стальной топфхельм", "style": "great", "plate": "steel60", "accent": "steel60", "trim": "steel60", "slit": true },
-        "pauldrons": { "name": "Стальные наплечники", "plate": "steel60", "accent": "steel60", "trim": "steel60", "size": 0.86, "lames": 1, "spikes": 0 },
-        "armor": { "name": "Стальная кираса", "plate": "steel60", "accent": "steel60", "trim": "leather", "cloth": "leather", "mail": "mail", "thick": 0.5, "tassets": "steel60" },
+        "helm": { "name": "Стальной бацинет", "style": "bascinet", "plate": "steel60", "accent": "steel60", "trim": "steel60", "mail": "mail" },
+        "pauldrons": { "name": "Стальные наплечники", "plate": "steel60", "accent": "steel60", "trim": "steel60", "size": 0.86, "lames": 1, "spikes": 0, "form": "small" },
+        "armor": { "name": "Стальная кираса", "cut": "plain", "plate": "steel60", "accent": "steel60", "trim": "leather", "cloth": "leather", "mail": "mail", "thick": 0.5, "tassets": "steel60" },
         "gloves": { "name": "Стальные рукавицы", "plate": "steel60", "accent": "steel60", "cuff": false },
-        "boots": { "name": "Стальные сабатоны", "plate": "steel60", "accent": "steel60" },
-        "cloak": { "name": "Шерстяной плащ", "kind": "cape", "outer": "wool_grey", "lining": "wool_grey", "tatter": 0, "crest": false },
-        "weapon": { "name": "Стальной двуручник", "kind": "great", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "leather_dark", "grip": "leather", "accent": "steel60", "length": 17, "width": 2.6 }
+        "boots": { "name": "Стальные башмаки", "plate": "steel60", "accent": "steel60", "low": true },
+        "cloak": { "name": "Шерстяная пелерина", "kind": "cape", "outer": "wool_grey", "lining": "wool_grey", "trim": "iron", "tatter": 0, "crest": false, "short": true },
+        "weapon": { "name": "Стальной полуторник", "kind": "great", "style": "arming", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "leather_dark", "grip": "leather", "accent": "steel60", "length": 17, "width": 2.6 }
       }
     },
     "plate60-rare": {
       "name": "Латы капитана заставы",
       "rarity": "rare", "level": 60, "material": "plate", "source": "dungeon",
       "items": {
-        "helm": { "name": "Топфхельм капитана", "style": "great", "plate": "steel60", "accent": "steel60", "trim": "brass", "slit": true, "rivets": true, "plume": "cloth_blue" },
-        "pauldrons": { "name": "Наплечники капитана", "plate": "steel60", "accent": "steel60", "trim": "brass", "size": 0.98, "lames": 2, "spikes": 0, "rivets": true },
-        "armor": { "name": "Кираса капитана", "plate": "steel60", "accent": "steel60", "trim": "brass", "cloth": "cloth_blue", "mail": "mail", "thick": 0.55, "tassets": "steel60", "tabard": true, "rivets": true, "kant": "brass" },
-        "gloves": { "name": "Рукавицы капитана", "plate": "steel60", "accent": "brass", "trim": "brass", "cuff": true, "rivets": true },
-        "boots": { "name": "Сабатоны капитана", "plate": "steel60", "accent": "steel60", "stripe": true, "strapAccent": "brass" },
+        "helm": { "name": "Барбют капитана", "style": "barbute", "plate": "steel60", "accent": "steel60", "trim": "brass", "rivets": true, "crestMat": "cloth_blue", "plume": "cloth_blue" },
+        "pauldrons": { "name": "Наплечники капитана", "plate": "steel60", "accent": "steel60", "trim": "brass", "size": 0.98, "lames": 2, "spikes": 0, "rivets": true, "form": "lames" },
+        "armor": { "name": "Бригантина капитана", "cut": "brig", "plate": "steel60", "accent": "steel60", "trim": "brass", "cloth": "cloth_blue", "mail": "mail", "thick": 0.55, "tassets": "steel60", "tabard": true, "rivets": true, "kant": "brass" },
+        "gloves": { "name": "Наручи капитана", "plate": "steel60", "accent": "brass", "trim": "brass", "cuff": false, "bracer": true, "rivets": true },
+        "boots": { "name": "Сапоги капитана", "plate": "steel60", "accent": "steel60", "stripe": true, "strapAccent": "brass", "topCuff": "leather" },
         "cloak": { "name": "Синий плащ заставы", "kind": "cape", "outer": "cloth_blue", "lining": "wool_grey", "trim": "brass", "hem": "brass", "tatter": 0, "crest": false },
-        "weapon": { "name": "Двуручник капитана", "kind": "great", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "brass", "grip": "leather", "accent": "brass", "length": 18, "width": 2.9, "fuller": true }
+        "weapon": { "name": "Секира капитана", "kind": "great", "head": "axe", "style": "zwei", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "brass", "grip": "leather", "accent": "brass", "length": 18, "width": 2.9, "fuller": true }
       }
     },
     "plate60-epic": {
@@ -144,10 +148,10 @@
       "items": {
         "helm": { "name": "Крылатый шлем клятвы", "style": "great", "plate": "steel60", "accent": "cloth_purple", "trim": "gold", "slit": true, "rivets": true, "wings": true, "gem": "sapphire", "engrave": true },
         "pauldrons": { "name": "Наплечники клятвы", "plate": "steel60", "accent": "steel60", "trim": "gold", "size": 1.14, "lames": 2, "spikes": 0, "rivets": true, "filigree": true, "gem": "sapphire" },
-        "armor": { "name": "Кираса клятвы", "plate": "steel60", "accent": "cloth_purple", "trim": "gold", "cloth": "cloth_purple", "mail": "mail", "thick": 0.6, "tassets": "steel60", "tabard": true, "rivets": true, "chestPlate": true, "inlay": true, "crest": true, "gemColor": "sapphire" },
-        "gloves": { "name": "Рукавицы клятвы", "plate": "steel60", "accent": "gold", "trim": "gold", "cuff": true, "rivets": true, "gem": "sapphire" },
-        "boots": { "name": "Сабатоны клятвы", "plate": "steel60", "accent": "gold", "stripe": true, "kneeAccent": "gold" },
-        "cloak": { "name": "Плащ клятвы", "kind": "cape", "outer": "cloth_purple", "lining": "wool_grey", "trim": "gold", "hem": "gold", "tatter": 0.25, "crest": true },
+        "armor": { "name": "Кираса клятвы", "pauldronsOnIcon": true, "plate": "steel60", "accent": "cloth_purple", "trim": "gold", "cloth": "cloth_purple", "mail": "mail", "thick": 0.6, "tassets": "steel60", "tabard": false, "rivets": true, "chestPlate": true, "inlay": true, "crest": true, "gemColor": "sapphire" },
+        "gloves": { "name": "Рукавицы клятвы", "plate": "steel60", "accent": "steel60", "trim": "gold", "cuff": true, "rivets": true, "gem": "sapphire" },
+        "boots": { "name": "Сабатоны клятвы", "plate": "steel60", "accent": "gold", "stripe": true, "kneeAccent": "gold", "bigWing": true },
+        "cloak": { "name": "Плащ клятвы", "kind": "cape", "outer": "cloth_purple", "lining": "wool_grey", "trim": "gold", "hem": "gold", "tatter": 0.25, "crest": true, "mantle": "steel60" },
         "weapon": { "name": "Фламберг клятвы", "kind": "great", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "gold", "grip": "cloth_purple", "accent": "sapphire", "length": 19.5, "width": 3.2, "fuller": true, "wavy": true, "gem": true }
       }
     },
@@ -158,9 +162,9 @@
         "helm": { "name": "Рогатый шлем Хаоса", "style": "horned", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "horn": "chaos_spike", "glow": "eye_glow", "spikes": 3, "horns": 1.0 },
         "pauldrons": { "name": "Шипастые наплечники Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "size": 1.18, "lames": 2, "spikes": 3, "cracks": "chaos_crack", "spike": "chaos_spike" },
         "armor": { "name": "Кираса Рогатого Рыцаря", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "cloth": "chaos_tabard", "mail": "mail", "thick": 0.6, "chestPlate": true, "inlay": true, "crest": true, "cracks": "chaos_crack", "spikes": true, "spike": "chaos_spike", "tassets": "chaos_red", "tabard": true },
-        "gloves": { "name": "Латные рукавицы Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "cuff": true, "cuffSpike": true, "spike": "chaos_spike" },
-        "boots": { "name": "Поножи Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "kneeSpike": true, "stripe": true, "spike": "chaos_spike" },
-        "cloak": { "name": "Рваный плащ Хаоса", "kind": "cape", "outer": "chaos_cape", "lining": "chaos_lining", "trim": "gold", "hem": "chaos_red", "tatter": 1.0, "crest": true, "claspGem": true },
+        "gloves": { "name": "Латные рукавицы Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "cuff": true, "cuffSpike": true, "claws": true, "spike": "chaos_spike" },
+        "boots": { "name": "Поножи Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "kneeSpike": true, "stripe": true, "spurs": true, "spike": "chaos_spike" },
+        "cloak": { "name": "Рваный плащ Хаоса", "kind": "cape", "outer": "chaos_cape", "lining": "chaos_lining", "trim": "gold", "hem": "chaos_red", "tatter": 1.0, "crest": true, "claspGem": true, "flowing": true },
         "weapon": { "name": "Пылающий клинок Хаоса", "kind": "great", "blade": "hellfire", "edge": "chaos_red", "hilt": "chaos_steel", "grip": "grip", "accent": "chaos_red", "length": 34, "width": 4.6, "serrate": true, "flames": true, "glow": true, "size": "large", "frame": 96, "special": ["special2h"], "tooltip": ["Особая анимация удара"] }
       }
     },
@@ -168,7 +172,7 @@
       "name": "Латы новобранца",
       "rarity": "common", "level": 1, "material": "plate", "source": "mobs",
       "items": {
-        "helm": { "name": "Железный шапель", "style": "kettle", "plate": "iron", "accent": "iron", "trim": "iron", "mail": "mail" },
+        "helm": { "name": "Железный бацинет", "style": "bascinet", "plate": "iron", "accent": "iron", "trim": "iron", "mail": "mail" },
         "pauldrons": { "name": "Железные наплечники", "plate": "iron", "accent": "iron", "trim": "iron", "size": 0.78, "lames": 1, "spikes": 0 },
         "armor": { "name": "Железная кираса", "plate": "iron", "accent": "iron", "trim": "leather", "cloth": "leather", "thick": 0.45, "chestPlate": false, "inlay": false, "crest": false, "tassets": "iron", "tabard": false },
         "gloves": { "name": "Кожаные рукавицы", "plate": "leather", "accent": "leather", "cuff": false, "cuffSpike": false },

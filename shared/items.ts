@@ -3,10 +3,12 @@ import { FOOD } from "./food";
 import { RESOURCES } from "./biomes";
 import { MATERIALS, PLUS_BONUS } from "./upgrade";
 import catalog from "../data/items.json";
+import items147 from "../data/items-147.json";
 import { MOBS } from "./mobs";
 import { ZB_ITEMS } from "./zoneBosses";
 import mountData from "../data/mounts.json";
 import petData from "../data/pets.json";
+import tmData from "../data/transmog.json";
 import { sealIconFor, nameFor } from "./mountArt";
 import { IR } from "./itemRules";
 /** Печать гербового маунта: имя по фракции зрителя (задача 142). */
@@ -78,7 +80,29 @@ export interface Item {
   rags?: boolean;
   /** id модели из data/items.json: имя, иконка и вид на герое. Без неё предмет — обычная база. */
   model?: string;
+  /**
+   * Перековка (docs/transmog.md): наложенный вид другой вещи того же слота и семейства — рисуется на герое и в иконке вместо своего.
+   * Характеристики, заточка (и её свечение) и свойства легендарки остаются от настоящей вещи. У «Оболочки» (SHELL_BASE) — вид, который она несёт.
+   */
+  appearance?: Appearance;
 }
+
+/** Вид вещи-донора: всё, что нужно, чтобы нарисовать её на герое и в иконке (без характеристик). */
+export interface Appearance {
+  /** База донора (слот и семейство — по ней). */
+  base: string;
+  /** Имя донора: «Оболочка: <имя>» и строка «Вид:» в подсказке. */
+  name: string;
+  rarity: Rarity;
+  model?: string;
+  legendary?: string;
+  unique?: string;
+  rags?: boolean;
+  /** Вариант иконки старых универсальных баз (шлем/доспех/сапоги без класса брони): у донора он считался по его uid и характеристикам. */
+  variant?: ClassId;
+}
+/** База предмета «Оболочка» (перековка): несёт вид в appearance, без характеристик; передаётся и продаётся как обычный предмет. */
+export const SHELL_BASE = "tm_shell";
 
 export interface BaseItem {
   id: string;
@@ -146,6 +170,8 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   cloak: { id: "cloak", name: "Плащ", typeName: "Плащ", slot: "cloak", icon: "cloak", roll: statRoll(IR.rolls.cloak) },
   ring: { id: "ring", name: "Кольцо", typeName: "Кольцо", slot: "ring", icon: "ring", roll: () => ({}) },
   amulet: { id: "amulet", name: "Амулет", typeName: "Амулет", slot: "amulet", icon: "amulet", roll: statRoll(IR.rolls.amulet) },
+  // «Оболочка» перековки (docs/transmog.md, data/transmog.json shell): не складывается, иконка — вида, который несёт
+  [SHELL_BASE]: { id: SHELL_BASE, name: tmData.shell.name, typeName: tmData.shell.typeName, slot: "consumable", icon: "tm_shell", price: tmData.shell.price },
   hp_potion: { id: "hp_potion", name: "Зелье здоровья", slot: "consumable", icon: "potion_red", price: 15, stack: 20 },
   mp_potion: { id: "mp_potion", name: "Зелье маны", slot: "consumable", icon: "potion_blue", price: 15, stack: 20 },
   ...Object.fromEntries(Object.values(MATERIALS).map((m) => [m.id, { id: m.id, name: m.name, slot: "consumable", icon: m.icon, price: m.price, stack: 99 } as BaseItem])),
@@ -170,12 +196,16 @@ export interface ModelLook {
 export interface ItemModel {
   id: string; name: string; cat: string; lvl: number; fac: string; cls: ClassId[];
   affix: ItemStatKey[]; g?: number; look: ModelLook;
+  /** Не выпадает с мобов и у торговцев (вещи для проверки, data/items-147.json): только выдача. */
+  noRoll?: boolean;
+  /** Дополнительные строки подсказки (например, «Особая анимация удара»). */
+  tooltip?: string[];
 }
 /** Палитры материалов, тканей и камней: 5 тонов от тёмного к светлому. */
 export const ITEM_PALETTES: Record<string, string[]> = catalog.palettes as Record<string, string[]>;
-export const ITEM_MODELS: Record<string, ItemModel> = Object.fromEntries((catalog.models as unknown as ItemModel[]).filter((m) => BASE_ITEMS[m.cat]).map((m) => [m.id, m]));
+export const ITEM_MODELS: Record<string, ItemModel> = Object.fromEntries(([...catalog.models, ...items147.models] as unknown as ItemModel[]).filter((m) => BASE_ITEMS[m.cat]).map((m) => [m.id, m]));
 const MODELS_BY_CAT: Record<string, ItemModel[]> = {};
-for (const m of Object.values(ITEM_MODELS)) (MODELS_BY_CAT[m.cat] ??= []).push(m);
+for (const m of Object.values(ITEM_MODELS)) if (!m.noRoll) (MODELS_BY_CAT[m.cat] ??= []).push(m);
 for (const l of Object.values(MODELS_BY_CAT)) l.sort((a, b) => a.lvl - b.lvl);
 
 export const modelOf = (it: Pick<Item, "model"> | null | undefined): ItemModel | undefined => (it?.model ? ITEM_MODELS[it.model] : undefined);
@@ -383,8 +413,14 @@ export function iconId(icon: string, variant: ClassId, rarity: Rarity): string {
   return ICON_VARIANT_SLOTS.includes(icon) ? `${icon}_${variant}_${rarity}` : `${icon}_${rarity}`;
 }
 
-/** Единственная точка выбора иконки предмета для всего UI. */
-export function iconFor(it: Pick<Item, "base" | "stats" | "uid" | "rarity" | "unique"> & { legendary?: string; model?: string }): string {
+/** Единственная точка выбора иконки предмета для всего UI. Перекованная вещь и «Оболочка» — иконкой своего вида (appearance). */
+export function iconFor(it: Pick<Item, "base" | "stats" | "uid" | "rarity" | "unique"> & { legendary?: string; model?: string; appearance?: Appearance }): string {
+  const ap = it.appearance;
+  if (ap && BASE_ITEMS[ap.base] && BASE_ITEMS[ap.base].slot !== "consumable") {
+    const b = BASE_ITEMS[ap.base];
+    if (!ap.unique && !ap.legendary && !(ap.model && ITEM_MODELS[ap.model])) return iconId(b.icon, ap.variant ?? iconVariant({ base: ap.base, stats: {}, uid: it.uid }), ap.rarity);
+    return iconFor({ base: ap.base, stats: {}, uid: it.uid, rarity: ap.rarity, unique: ap.unique, legendary: ap.legendary, model: ap.model });
+  }
   // особая добыча боссов стартовых земель — своих иконок пока нет: иконка базы в цвете редкости
   if (it.unique && !Object.hasOwn(ZB_ITEMS, it.unique)) return "uq_" + it.unique;
   if (it.legendary) return "lg_" + it.legendary;
@@ -491,6 +527,16 @@ export function rollRarity(rand: () => number, bonus = 0): Rarity {
   if (r < IR.rarityChance.epic + bonus * IR.rarityChance.bonusEpicShare) return Rarity.Epic;
   if (r < IR.rarityChance.epic + IR.rarityChance.rare + bonus) return Rarity.Rare;
   return Rarity.Common;
+}
+
+/**
+ * Как вещь выглядит на герое: у перекованной — база, редкость, модель, легендарка и лохмотья вида донора;
+ * заточка (plus) — всегда своя (свечение заточки от настоящей вещи, docs/transmog.md).
+ */
+export function lookItem(it: Item): Item {
+  const ap = it.appearance;
+  if (!ap || it.base === SHELL_BASE || !BASE_ITEMS[ap.base]) return it;
+  return { ...it, base: ap.base, rarity: ap.rarity, model: ap.model, legendary: ap.legendary, unique: ap.unique, rags: ap.rags };
 }
 
 /** Название с уровнем улучшения: «Лук Феникса +7». */

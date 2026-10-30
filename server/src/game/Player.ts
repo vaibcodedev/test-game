@@ -9,6 +9,7 @@ import { FOOD } from "../../../shared/food";
 import { MOUNTS } from "../../../shared/mounts";
 import { petXpToNext } from "../../../shared/pets";
 import { makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
+import { gearStrings } from "../../../shared/transmog";
 import { Anim, UnitKind, type LootBag, type SelfState } from "../../../shared/protocol";
 import { hasUnknownSkills, starterSkill } from "../../../shared/skills";
 import { defaultBars, hasBars, migrateBars, validateBars, type Bars } from "../../../shared/hotbar";
@@ -290,13 +291,10 @@ export class Player {
     u.hp = Math.min(u.hp, u.maxHp);
     u.mp = Math.min(u.mp, u.maxMp);
     u.level = this.save.level;
-    const w = this.save.equip.weapon;
-    u.weapon = w ? `${w.base}:${w.rarity}:${w.plus || 0}:${w.legendary || ""}:${w.model || ""}` : "";
-    const piece = (e: Item | null | undefined) => (e ? `${e.rarity}:${e.plus || 0}:${e.legendary || ""}:${e.rags ? 1 : ""}:${e.base}:${e.model || ""}` : "");
-    const gear = (["helmet", "armor", "boots", "offhand", "cloak"] as const).map((k) => piece(this.save.equip[k]));
-    // кольцо и амулет — 6-й и 7-й куски, только когда хоть одно из них легендарное (тема «вокруг героя»); иначе строка из 5 кусков
-    const jewel = (["ring", "amulet"] as const).map((k) => (this.save.equip[k]?.legendary ? piece(this.save.equip[k]) : ""));
-    u.gear = (jewel.some(Boolean) ? [...gear, ...jewel] : gear).join("|");
+    // внешность для всех, кто видит героя: у перекованных вещей — вид оболочки, заточка — своя (shared/transmog.ts gearStrings)
+    const look = gearStrings(this.save.equip);
+    u.weapon = look.weapon;
+    u.gear = look.gear;
     this.selfDirty = true;
   }
 

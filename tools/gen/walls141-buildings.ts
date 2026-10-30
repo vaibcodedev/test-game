@@ -587,7 +587,7 @@ export function umbZiggurat(look: Look, wear: Wear = "clean", seed = 1): PC {
   tiers.forEach(([x0, x1, h], ti) => {
     const top = y - h;
     // верхняя площадка яруса (видна полосой: свет сверху)
-    for (let j = 0; j < K; j++) for (let x = x0 + j; x < x1 + j + 1; x++) c.set(x, top - j, tone(S, 3.6 - j * 0.12 + (pnoise(x, j, 3, 64, seed) - 0.5) * 0.6));
+    for (let j = 0; j < K; j++) { const sh = Math.round(((j + 0.5) / K) * D); for (let x = x0 + sh; x < x1 + sh + 1; x++) c.set(x, top - j, tone(S, 3.6 - j * 0.12 + (pnoise(x, j, 3, 64, seed) - 0.5) * 0.6)); } // сдвиг по глубине D/K — верх совпадает с правой гранью (без обрезанного вертикального края)
     // боковая грань в тени
     for (let i = 0; i < D; i++) { const off = Math.round(((i + 0.5) / D) * K); for (let yy = top - off; yy < y - off; yy++) c.set(x1 + i, yy, shade(tex(big, x1 + i, yy + off), 0.52 - i * 0.008)); }
     // лицевая грань

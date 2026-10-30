@@ -169,4 +169,19 @@ for (const fps of [60, 144]) {
   }
 }
 
+// сундуки добычи 3/4 (tools/gen/loot34.ts, objects/loot_r*): кадр покоя — наведение по силуэту, на всю высоту, мимо — нет
+for (const id of ["loot_r0", "loot_r1", "loot_r2", "loot_r3", "loot_r0_boss", "loot_r3_boss"]) {
+  const png = PNG.sync.read(fs.readFileSync(`client/public/assets/objects/${id}.png`)), fw = Math.floor(png.width / 20), fh = png.height;
+  const a = new Uint8Array(fw * fh);
+  for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) a[y * fw + x] = png.data[(y * png.width + 12 * fw + x) * 4 + 3] > 40 ? 1 : 0;
+  const m: Mask = { w: fw, h: fh, a };
+  let top = -1, bot = -1;
+  for (let y = 0; y < fh && (top < 0 || bot < 0); y++) { if (top < 0 && a.slice(y * fw, (y + 1) * fw).some((v) => v)) top = y; const yy = fh - 1 - y; if (bot < 0 && a.slice(yy * fw, (yy + 1) * fw).some((v) => v)) bot = yy; }
+  const at = (lx: number, ly: number) => imageDist(m, 0, 0, 0, 0, 1, 1, false, lx, ly, 0);
+  const col = (y: number) => { for (let x = 0; x < fw; x++) if (a[y * fw + x]) return x; return -1; };
+  ok(at(col(top), top) === 0 && at(col(bot), bot) === 0, `${id}: верх и низ силуэта кликабельны`);
+  ok(at(0, 0) === Infinity && at(fw - 1, 0) === Infinity, `${id}: пустой угол кадра мимо`);
+  ok(bot - top >= fh * 0.5, `${id}: силуэт занимает кадр по высоте`);
+}
+
 console.log(`pick: ${n} ok`);

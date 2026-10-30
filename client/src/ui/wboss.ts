@@ -13,6 +13,7 @@ import { WB, WB_BOSSES, WB_BY_ID, wbSlot, type WbChronicleEntry, type WbMeMsg, t
 import { net as NET, type Net } from "../net";
 import { openModal, tabs, type ModalHandle } from "./kit";
 import type { RaidHud } from "./raid";
+import { banner } from "./lootfx";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const num = (n: number) => Math.round(n).toLocaleString("ru-RU");
@@ -473,6 +474,8 @@ export class WbossHud {
           ${me.trophy.length ? `<dt>${esc(t("res.trophy"))}</dt><dd>${me.trophy.map(esc).join(", ")}</dd>` : ""}
         </dl>${me.locked ? `<p class="note c-warn">${esc(t("res.locked"))}</p>` : ""}</section>`
       : `<p class="note">${esc(t("res.none"))}</p>`;
+    // торжественный баннер добычи (вариант B, lootfx.ts): лучшая вещь из выданных, ранг по вкладу
+    if (me && !me.locked && me.items.length) banner(document.body, { title: "ДОБЫЧА МИРОВОГО БОССА", name: me.items[0], sub: `Ваш вклад: ${esc(tierName(me.tier))} · ${num(me.v)}${me.items.length > 1 ? ` · +${me.items.length - 1} ${esc(t("res.items").toLowerCase())}` : ""}` });
     const root = el("section", "panel dialog wb-result");
     root.setAttribute("role", "dialog");
     root.innerHTML = `<div class="dialog-head"><h2 class="dialog-title wb-win">${esc(t("res.title", { name: e.name }))}</h2><button class="x" data-x aria-label="${esc(t("close"))}">×</button></div>

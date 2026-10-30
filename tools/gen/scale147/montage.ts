@@ -37,7 +37,7 @@ const unit = (id: string) => { const u = man.units[id]; return frame0(path.join(
 /** ft — рядов силуэта ниже ступней (герой Б — 2: подошва и контур; прочие — 1, контур). */
 interface Fig { img: Cv; cap: string; ft?: number }
 /** Ряд фигур на общей земле: ступни на одной линии (линия земли), пунктир — макушка героя Б; подпись — рост до ступней, px. */
-function row(title: string, figs: Fig[], k: number, file: string) {
+function row(title: string, figs: Fig[], k: number, file: string | null): Cv {
   const gap = 10, H = Math.max(...figs.map((f) => f.img.h)) * k;
   const W = figs.reduce((s, f) => s + Math.max(f.img.w * k, 60) + gap, gap);
   const c = new Cv(Math.max(W, 360), H + 70);
@@ -55,21 +55,43 @@ function row(title: string, figs: Fig[], k: number, file: string) {
     label(c, x, base + 30, `${f.img.h - (f.ft ?? 1)}`, 2);
     x += cw + gap;
   }
-  save(c, path.join(OUT, file));
+  if (file) save(c, path.join(OUT, file));
+  return c;
 }
 function save(c: Cv, f: string) { const p = new PNG({ width: c.w, height: c.h }); p.data = Buffer.from(c.d); fs.writeFileSync(f, PNG.sync.write(p)); console.log("  " + path.relative(ROOT, f)); }
 
 const hb = heroB();
+const MOBS40 = process.env.MOBS40 === "1";
 const H = (): Fig => ({ img: hb, cap: "ГЕРОЙ Б", ft: 2 });
 // 1. Колосс: было (кадр 80) | стало (кадр 140)
 const oldCol = process.argv[2];
-if (oldCol && fs.existsSync(oldCol)) {
+if (!MOBS40 && oldCol && fs.existsSync(oldCol)) {
   row("КОЛОСС БЫЛО СТАЛО ГУРДАН РЕЙД ×2", [H(), { img: frame0(oldCol, 80), cap: "БЫЛО" }, H(), { img: unit("wb_colossus"), cap: "СТАЛО" }, { img: unit("sol_storm_colossus"), cap: "ГУРДАН" }, { img: unit("chaos_knight"), cap: "РЕЙД" }], 2, "colossus-before-after.png");
 }
 // 2. великаны партии 1: было | стало (под флагом)
+if (!MOBS40) {
 const pairs = Object.entries<string>(sc.remap).filter(([a]) => /^(ogre|troll)_/.test(a));
 row("ОГРЫ И ТРОЛЛИ БЫЛО СТАЛО ×3", pairs.flatMap(([a, b]) => [{ img: unit(a), cap: "БЫЛО" }, { img: unit(b), cap: "СТАЛО" }]).concat([H()]), 3, "giants-before-after.png");
 // 3. NPC и мобы зон 1–40 рядом с героем Б (стало = с заменами под флагом)
 const line = ["merchant", "guard", "citizen1", "citizen2", "skeleton_sword", "boarfolk_axe", "zombie_digger", "wolffolk_chaser", "satyr_spear", "ghoul_eater", "hobgoblin_sword", "mummy_guard", "frogfolk_harpoon", "ratfolk_cutter", "goblin_slasher", "kobold_digger", "imp_fork", "ogre_woodcutter", "troll_brute"];
 row("NPC И МОБЫ 1 40 БЫЛО ×3", [H(), ...line.map((id) => ({ img: unit(id), cap: id.slice(0, 9).toUpperCase() }))], 3, "npc-mobs-before.png");
 row("NPC И МОБЫ 1 40 СТАЛО ×3", [H(), ...line.map((id) => { const n = sc.remap[id] ?? id; return { img: unit(n), cap: id.slice(0, 9).toUpperCase() }; })], 3, "npc-mobs-after.png");
+}
+// 4. партия 3, мобы 40–100: было | стало рядом с героем Б по линии ступней (один файл, три ряда: гуманоиды, великаны, звери)
+if (MOBS40) {
+  const stack = (title: string, cs: Cv[], file: string) => {
+    const W = Math.max(...cs.map((c) => c.w)), Ht = cs.reduce((s, c) => s + c.h, 0);
+    const o = new Cv(W, Ht); for (let y = 0; y < Ht; y++) for (let x = 0; x < W; x++) o.set(x, y, BG);
+    let y = 0; for (const c of cs) { o.blit(c, 0, y, 1); y += c.h; }
+    save(o, path.join(OUT, file)); void title;
+  };
+  const pair = (ids: string[]): Fig[] => ids.flatMap((id) => { const n = sc.remap[id]; return n ? [{ img: unit(id), cap: "БЫЛО" }, { img: unit(n), cap: id.slice(0, 9).toUpperCase() }] : []; });
+  const hum = ["orc_axe", "orc_bow_elite", "gnoll_chaser", "lizardfolk_javelin", "barbarian_axe", "barbarian_legion_elite", "harpy_scavenger", "fallen_spirit_warrior", "banshee_wail", "void_spirit_caster", "bone_witch_staff", "wrapped_construct_guard", "chaos_squire_halberd_elite", "chaos_spark_caster_elite", "skeleton_sword", "skeleton_bow_elite", "skeleton_mage"];
+  const big = ["golem_sandstone", "golem_lava_elite", "golem_obsidian", "golem_magma", "golem_siege_elite", "ice_golem_ice", "ice_golem_ice_elite", "butcher_cleaver", "butcher_hook_elite"];
+  const beasts = ["canine_wolf", "canine_frost_elite", "boar_boar", "rat_rat", "bat_bat", "spider_biter", "beetle_armored", "lizard_horned", "basilisk_cave", "arthro_scorpion", "crawler_crawler", "grove_ent", "grove_mushroom", "slime_jelly"];
+  stack("", [
+    row("МОБЫ 40 100: ГУМАНОИДЫ БЫЛО СТАЛО ×2", [H(), ...pair(hum)], 2, null),
+    row("ВЕЛИКАНЫ БЫЛО СТАЛО ×2", [H(), ...pair(big)], 2, null),
+    row("ЗВЕРИ БЫЛО СТАЛО ×2", [H(), ...pair(beasts)], 2, null),
+  ], "mobs40-100.png");
+}

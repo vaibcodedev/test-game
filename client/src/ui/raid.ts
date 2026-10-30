@@ -1,6 +1,7 @@
 /** Интерфейс рейда (задача 114): окно сбора у Вестника, полоса босса, рамки рейда, баннеры, итоги. */
 import { npcRefuses } from "./npcGate";
-import { RARITY_COLORS } from "../../../shared/items";
+import { RARITY_COLORS, itemName } from "../../../shared/items";
+import { banner, lootCard } from "./lootfx";
 import { CLASSES } from "../../../shared/classes";
 import { UnitKind } from "../../../shared/protocol";
 import { phaseName, phaseNo, RAID, RAID_CFG, RAID_PHASES, RAID_ROLES, ROLE_NAMES, type RaidBannerMsg, type RaidMemberInfo, type RaidMusterMsg, type RaidResultMsg, type RaidRole } from "../../../shared/raid";
@@ -233,6 +234,9 @@ export class RaidHud {
       <div class="raid-btns"><button class="btn primary" data-world>${T("ui.raid.665")}</button></div></div>`;
     this.result.querySelector<HTMLButtonElement>("[data-world]")!.onclick = () => { this.result.hidden = true; this.net.send("raid:leave", {}); };
     this.result.hidden = false;
+    // объявление победителя (вариант B, lootfx.ts): вещь достаётся мне при текущей раздаче; ролла нет
+    const best = r.win && !r.locked ? [...r.loot].sort((a, b) => b.rarity - a.rarity)[0] : undefined;
+    if (best && me) banner(document.body, { title: "ДОБЫЧА РЕЙДА", name: itemName(best), sub: `Достаётся: <b>${esc(me)}</b>`, card: lootCard(best, this.net.self ?? undefined) });
   }
 
   // ---------- кадр ----------

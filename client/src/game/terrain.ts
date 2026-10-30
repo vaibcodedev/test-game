@@ -13,7 +13,7 @@ import { NO_SHADOW, Shadow, SHADOW_DEPTH, shadowTick, WALL_KINDS, WallShadow, ty
 import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
 import { trackLight } from "./lights";
-import { addTreeFade } from "./treeFade";
+import { addTreeFade, addBuildingFade, FADE_BUILDINGS } from "./treeFade";
 import { glowOn } from "./postfx";
 import { objAo, objFoot, objHas, objId, objTex, setObj } from "./objTex";
 import { setupWaterLava } from "./waterLava";
@@ -222,6 +222,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     }
     // полупрозрачная крона, когда герой за деревом: у деревьев nature3d есть кадр ствола <id>_trunk (treeFade.ts)
     if (oid && objHas(scene, `${oid}_trunk`)) objs.push(addTreeFade(scene, img as Phaser.GameObjects.Image, `${oid}_trunk`));
+    if (FADE_BUILDINGS.has(o.kind) && img.type === "Image") addBuildingFade(img as Phaser.GameObjects.Image); // здание полупрозрачно, когда герой за ним (treeFade.ts)
     const nid = nodeOf.get(o);
     if (nid !== undefined) {
       const mine: Phaser.GameObjects.GameObject[] = [img];

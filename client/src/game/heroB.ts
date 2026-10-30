@@ -16,15 +16,18 @@ import { parseGear } from "./GearLayers";
 
 type Cls = "free" | "great";
 interface Entry { file: string; frame: number; origin: [number, number]; cls: Cls; z: (number | null)[][]; glow?: string }
-interface Man { rows: Record<Cls, [string, string][]>; anims: Record<string, { frames: number; fps: number; loop: boolean }>; hair: Record<"m" | "f", { id: string }[]>; groups: Record<string, Record<string, Entry>> }
+export interface ClothView { file: string; pins: number[][]; pinFrom: { key: string; offset: [number, number] }[]; layer: "behind" | "front"; z: number }
+export interface ClothDef { kind: string; frame: number; origin: [number, number]; views: Record<string, ClothView> }
+interface Man { special?: string[]; cloth?: Record<string, ClothDef>; pinKeys?: string[]; pins?: Record<string, Record<string, Record<string, number[][]>>>; rows: Record<Cls | "special", [string, string][]>; anims: Record<string, { frames: number; fps: number; loop: boolean }>; hair: Record<"m" | "f", { id: string }[]>; groups: Record<string, Record<string, Entry>> }
 const SLOTS = ["helm", "pauldrons", "armor", "gloves", "boots", "cloak", "weapon"] as const;
 type Slot147 = (typeof SLOTS)[number];
-const LIVE = live as unknown as { classes: Record<Cls, { anims: string[] }>; weaponClass: Record<string, { cls: Cls; atk: string }>; sets: string[]; models: Record<string, string>; slotMap: Record<string, Slot147>; stubs: Record<string, Partial<Record<Slot147, unknown>>> };
+const LIVE = live as unknown as { specialAttack: { every: number; chance: number; trail: { color: string; core: string } }; classes: Record<Cls, { anims: string[] }>; weaponClass: Record<string, { cls: Cls; atk: string }>; sets: string[]; models: Record<string, string>; slotMap: Record<string, Slot147>; stubs: Record<string, Partial<Record<Slot147, unknown>>> };
 
 /** Облик героя Б, из которого сводится лист. */
-export interface HbLook { fac: "sol" | "umb"; sex: "m" | "f"; hair: string; cls: Cls; atk: string; slots: Partial<Record<Slot147, string>> }
+export interface HbLook { fac: "sol" | "umb"; sex: "m" | "f"; hair: string; cls: Cls; atk: string; /** сет оружия с особым ударом (special2h) */ special?: string; slots: Partial<Record<Slot147, string>> }
 /** Готовый лист: sid прежних ключей анимаций (`${sid}-walk-${row}` и т. д.), sidL — то же для взгляда влево; frame — кадр, oy — опора по ногам, rise — макушка над ногами. */
-export interface HbSheet { key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; rise: number; glow: boolean; /** листы ткани (cloth@…) — не в листе, для Verlet-ткани */ cloth: Entry[] }
+export interface HbSheet { key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[];
+  /** ткань «Спины» с физикой (heroCloth.ts): сет, описание текстур и точек крепления, тело для pins */ cloth: { set: string; def: ClothDef; body: string } | null }
 
 /** Режим: off — прежний герой, self — только свой герой (проверка одним игроком, запоминается в браузере), all — все герои (флаг data/hero-b.json). */
 type Mode = "off" | "self" | "all";
@@ -65,7 +68,8 @@ export function lookOf(u: { faction: string; gear: string; weapon: string; name:
   const sex = st.look.sex ?? (h % 2 ? "f" : "m");
   const styles = man.hair[sex];
   const hair = st.look.hair && styles.some((s) => s.id === st.look.hair) ? st.look.hair : styles[(h >> 3) % styles.length].id;
-  const [wBase = "", , , wLeg = "", wModel = ""] = (u.weapon || "").split(":");
+  // 6-е поле — «1», если на оружие наложен чужой вид (перековка, shared/transmog.ts gearStrings): особый удар не переносится
+  const [wBase = "", , , wLeg = "", wModel = "", wTm = ""] = (u.weapon || "").split(":");
   let wc = LIVE.weaponClass[wBase] ?? LIVE.weaponClass[""];
   const slots: HbLook["slots"] = {};
   const has = (set: string, cls: Cls, slot: Slot147) => !!man!.groups[`gear/${set}/${sex}/${cls}`] && Object.keys(man!.groups[`gear/${set}/${sex}/${cls}`]).some((k) => k.startsWith(slot + "@"));
@@ -97,7 +101,8 @@ export function lookOf(u: { faction: string; gear: string; weapon: string; name:
       slots.weapon = set && has(set, "great", "weapon") ? set : `stub-${mat}`;
     }
   }
-  return { fac, sex, hair, cls: wc.cls, atk: wc.atk, slots };
+  const special = wc.cls === "great" && !wTm && slots.weapon && man.special?.includes(slots.weapon) ? slots.weapon : undefined;
+  return { fac, sex, hair, cls: wc.cls, atk: wc.atk, special, slots };
 }
 const lookKey = (l: HbLook) => `hb_${l.fac}${l.sex}_${l.hair}_${l.cls}_${l.atk}_` + SLOTS.map((s) => l.slots[s] ?? "-").join(",");
 
@@ -125,29 +130,37 @@ export function heroBSheet(scene: Phaser.Scene, u: { faction: string; gear: stri
   return null;
 }
 
-interface Layer { e: Entry; im: HTMLImageElement; gl: HTMLImageElement | null; ord: number }
+/** Слой сведения: лист, его строки начинаются со строки r0 листа облика (особый удар — свои строки после строк класса). */
+interface Layer { e: Entry; im: HTMLImageElement; gl: HTMLImageElement | null; ord: number; r0: number; n: number }
+/** Столбцов в листе облика: самая длинная анимация (особый удар — 14 кадров). */
+const COLS = 14;
 async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbSheet | null> {
   const m = man!;
-  const want: { grp: string; filter: (k: string) => boolean }[] = [{ grp: `body/${l.fac}_${l.sex}/${l.cls}`, filter: () => true }];
-  if (!l.slots.helm) want.push({ grp: `hair/${l.sex}_${l.hair}_${l.fac}/${l.cls}`, filter: () => true });
-  const crestOf = new Set<string>();
-  for (const s of SLOTS) {
-    const set = l.slots[s]; if (!set) continue;
-    want.push({ grp: `gear/${set}/${l.sex}/${l.cls}`, filter: (k) => k.startsWith(s + "@") });
-    if (s === "armor" || s === "cloak") crestOf.add(set);
-  }
-  for (const set of crestOf) want.push({ grp: `gear/${set}/${l.sex}/${l.cls}`, filter: (k) => k.startsWith("crest@") && k.endsWith(l.fac === "umb" ? "-umb" : "-sol") });
-  const list: { e: Entry; ord: number }[] = [];
-  // ткань (плащ, шарф, полы) — отдельная текстура «cloth@…» по кадрам (экспорт gear147): в лист не сводится, её качает Verlet-цепь на Rope
-  // (docs/hero147-live.md «Ткань»); здесь только место в сборке — список листов ткани в HbSheet.cloth
-  const cloth: Entry[] = [];
-  for (const w of want) { const g = m.groups[w.grp]; if (!g) continue; for (const [k, e] of Object.entries(g)) if (w.filter(k)) { if (k.startsWith("cloth@")) cloth.push(e); else list.push({ e, ord: list.length }); } }
-  for (const s of SLOTS) { const set = l.slots[s]; const g = set ? m.groups[`gear/${set}/${l.sex}/${l.cls}`] : undefined; if (g) for (const [k, e] of Object.entries(g)) if (k.startsWith("cloth@") && !cloth.includes(e)) cloth.push(e); }
+  const clsRows = m.rows[l.cls], spRows = l.special ? m.rows.special ?? [] : [];
+  const rows = [...clsRows, ...spRows];
+  // ткань «Спины» с физикой (cloth в манифесте, экспорт gear147): плащ этого сета не сводится в лист — его рисует heroCloth (Rope + Verlet)
+  const clothSet = l.slots.cloak && m.cloth?.[l.slots.cloak] ? l.slots.cloak : "";
+  const want: { grp: string; filter: (k: string) => boolean; r0: number }[] = [];
+  const add = (sub: string, special: string, r0: number) => {
+    want.push({ grp: `body/${l.fac}_${l.sex}/${special ? "special-" + special : sub}`, filter: () => true, r0 });
+    if (!l.slots.helm) want.push({ grp: `hair/${l.sex}_${l.hair}_${l.fac}/${special ? "special-" + special : sub}`, filter: () => true, r0 });
+    const crestOf = new Set<string>();
+    for (const s of SLOTS) {
+      const set = l.slots[s]; if (!set || (s === "cloak" && set === clothSet)) continue;
+      if (special && set !== special) continue; // в особом ударе — только вещи сета с этим ударом (листы есть только у него)
+      want.push({ grp: `gear/${set}/${l.sex}/${special ? "special" : sub}`, filter: (k) => k.startsWith(s + "@"), r0 });
+      if (s === "armor" || s === "cloak") crestOf.add(set);
+    }
+    for (const set of crestOf) want.push({ grp: `gear/${set}/${l.sex}/${special ? "special" : sub}`, filter: (k) => k.startsWith("crest@") && k.endsWith(l.fac === "umb" ? "-umb" : "-sol"), r0 });
+  };
+  add(l.cls, "", 0);
+  if (l.special) add(l.cls, l.special, clsRows.length);
+  const list: { e: Entry; ord: number; r0: number; n: number }[] = [];
+  for (const w of want) { const g = m.groups[w.grp]; if (!g) continue; for (const [k, e] of Object.entries(g)) if (w.filter(k) && !k.startsWith("cloth@")) list.push({ e, ord: list.length, r0: w.r0, n: e.z.length }); }
   if (!list.length) return null;
   const layers: Layer[] = (await Promise.all(list.map(async (q) => ({ ...q, im: await img(q.e.file), gl: q.e.glow ? await img(q.e.glow) : null })))).filter((q): q is Layer => !!q.im);
   const F = Math.max(...layers.map((q) => q.e.frame));
   const O = layers.find((q) => q.e.frame === F)!.e.origin;
-  const rows = m.rows[l.cls], COLS = 12;
   const cv = document.createElement("canvas");
   cv.width = COLS * F; cv.height = rows.length * F;
   const g = cv.getContext("2d")!;
@@ -156,24 +169,25 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
   const gcv = anyGlow ? document.createElement("canvas") : null;
   if (gcv) { gcv.width = cv.width; gcv.height = cv.height; }
   const gg = gcv?.getContext("2d") ?? null;
-  // клетка: кадр слоя с его опорой → кадр листа с опорой O
-  const cell = (ctx: CanvasRenderingContext2D, q: Layer, im: HTMLImageElement, r: number, i: number, left: boolean) => {
+  // клетка: кадр слоя (строка листа слоя rr) с его опорой → кадр листа облика (строка R) с опорой O
+  const cell = (ctx: CanvasRenderingContext2D, q: Layer, im: HTMLImageElement, rr: number, R: number, i: number, left: boolean) => {
     const f = q.e.frame, dx = O[0] - q.e.origin[0], dy = O[1] - q.e.origin[1];
     ctx.save();
     if (left) { ctx.translate((2 * i + 1) * F, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(im, i * f, r * f, f, f, i * F + dx, r * F + dy, f, f);
+    ctx.drawImage(im, i * f, rr * f, f, f, i * F + dx, R * F + dy, f, f);
     ctx.restore();
   };
-  rows.forEach(([a, v], r) => {
+  rows.forEach(([a, v], R) => {
     const n = Math.min(COLS, m.anims[a]?.frames ?? 0), left = v === "left";
     for (let i = 0; i < n; i++) {
-      const lay = layers.filter((q) => q.e.z[r]?.[i] != null).sort((p, q) => p.e.z[r][i]! - q.e.z[r][i]! || p.ord - q.ord);
+      const lay = layers.filter((q) => R >= q.r0 && R - q.r0 < q.n && q.e.z[R - q.r0]?.[i] != null)
+        .sort((p, q) => p.e.z[R - p.r0][i]! - q.e.z[R - q.r0][i]! || p.ord - q.ord);
       for (const q of lay) {
-        cell(g, q, q.im, r, i, left);
+        cell(g, q, q.im, R - q.r0, R, i, left);
         if (gg) {
           // свечение закрывается слоями выше по z
-          gg.globalCompositeOperation = "destination-out"; cell(gg, q, q.im, r, i, left);
-          gg.globalCompositeOperation = "source-over"; if (q.gl) cell(gg, q, q.gl, r, i, left);
+          gg.globalCompositeOperation = "destination-out"; cell(gg, q, q.im, R - q.r0, R, i, left);
+          gg.globalCompositeOperation = "source-over"; if (q.gl) cell(gg, q, q.gl, R - q.r0, R, i, left);
         }
       }
     }
@@ -182,39 +196,76 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
   const tex = scene.textures.addCanvas(key, cv)!;
   const gtex = gcv ? scene.textures.addCanvas(key + "_glow", gcv) : null;
   for (let r = 0; r < rows.length; r++) for (let i = 0; i < COLS; i++) { tex.add(r * COLS + i, 0, i * F, r * F, F, F); gtex?.add(r * COLS + i, 0, i * F, r * F, F, F); }
-  // анимации под ключи UnitView: rest, walk (бег), attack, hurt, death; строки 0 вниз, 1 вверх, 2 вбок; sidL — строка 2 из вида «влево»
+  // анимации под ключи UnitView: rest, walk (бег), attack (и attack2 — особый удар), hurt, death; строки 0 вниз, 1 вверх, 2 вбок; sidL — строка 2 из вида «влево»
   const sid = key, sidL = key + "L";
   const rowOf = (a: string, v: string) => rows.findIndex((q) => q[0] === a && q[1] === v);
-  const mk = (s: string, name: string, a: string, view: number, left: boolean, repeat: number, fpsK = 1) => {
+  const mk = (s: string, name: string, a: string, view: number, left: boolean, repeat: number) => {
     const vv = view === 0 ? "down" : view === 1 ? "up" : left ? "left" : "side";
     const r = rowOf(a, vv); if (r < 0) return;
     const A = m.anims[a], n = Math.min(COLS, A.frames);
     const k = `${s}-${name}-${view}`;
     if (scene.anims.exists(k)) scene.anims.remove(k);
-    scene.anims.create({ key: k, frames: Array.from({ length: n }, (_, i) => ({ key, frame: r * COLS + i })), frameRate: A.fps * fpsK, repeat });
+    scene.anims.create({ key: k, frames: Array.from({ length: n }, (_, i) => ({ key, frame: r * COLS + i })), frameRate: A.fps, repeat });
   };
   for (const [s, left] of [[sid, false], [sidL, true]] as const) for (let view = 0; view < 3; view++) {
     mk(s, "rest", "idle", view, left, -1);
     mk(s, "walk", "run", view, left, -1);
     mk(s, "attack", l.atk, view, left, 0);
+    if (l.special) mk(s, "attack2", "special2h", view, left, 0);
     mk(s, "hurt", "hurt", view, left, 0);
     mk(s, "death", "death", view, left, 0);
   }
+  const dead = [0, 1, 2, 3].map((k) => Math.max(0, rowOf("death", ["down", "up", "side", "left"][k])) * COLS + Math.min(COLS, m.anims.death.frames) - 1);
   // макушка над ногами: самый верхний непрозрачный пиксель покоя (вниз, кадр 0) в полосе ±7 px от оси
   let rise = 30;
   try {
     const r0 = rowOf("idle", "down"), d = g.getImageData(O[0] - 7, r0 * F, 15, O[1]).data;
     for (let y = 0; y < O[1]; y++) { let hit = false; for (let x = 0; x < 15; x++) if (d[(y * 15 + x) * 4 + 3] > 24) { hit = true; break; } if (hit) { rise = O[1] - y; break; } }
   } catch { /* нет данных — рост по умолчанию */ }
-  return { key, sid, sidL, frame: F, ox: O[0] / F, oy: O[1] / F, rise, glow: !!gtex, cloth };
+  const bodyKey = `${l.fac}_${l.sex}`;
+  return { key, sid, sidL, frame: F, ox: O[0] / F, oy: O[1] / F, origin: [O[0], O[1]], rise, glow: !!gtex, special: !!l.special, dead, rows: rows.map((q) => q[0] + ":" + q[1]),
+    cloth: clothSet ? { set: clothSet, def: m.cloth![clothSet], body: bodyKey } : null };
 }
 
 /** Кадр смерти (последний) для мгновенной смерти без анимации: строка вида row (0 вниз, 1 вверх, 2 вбок). */
 export function heroBDeadFrame(sh: HbSheet, row: number, left: boolean): number {
-  const rows = man!.rows[sh.key.includes("_great_") ? "great" : "free"];
-  const r = rows.findIndex((q) => q[0] === "death" && q[1] === (row === 0 ? "down" : row === 1 ? "up" : left ? "left" : "side"));
-  return Math.max(0, r) * 12 + Math.min(12, man!.anims.death.frames) - 1;
+  return sh.dead[row === 2 && left ? 3 : row];
 }
+
+/** Номер удара → ключ анимации: у оружия с особым ударом — каждый every-й (или по шансу) особый (data/hero-b-live.json specialAttack). */
+export function heroBAttack(sh: HbSheet, sid: string, row: number, n: number): { key: string; special: boolean } {
+  const sp = LIVE.specialAttack;
+  const special = sh.special && (sp.chance > 0 ? Math.random() < sp.chance : n % Math.max(1, sp.every) === 0);
+  return { key: `${sid}-${special ? "attack2" : "attack"}-${row}`, special };
+}
+
+/** Огненный след особого удара поверх героя: дуги вслед за клинком по кругу разворота (ADD, гаснут с easing). */
+export function heroBTrail(scene: Phaser.Scene, x: number, y: number, depth: number, flip: boolean, ms: number) {
+  if (!scene.textures.exists("fx_slash")) return;
+  const col = Phaser.Display.Color.HexStringToColor(LIVE.specialAttack.trail.color).color, core = Phaser.Display.Color.HexStringToColor(LIVE.specialAttack.trail.core).color;
+  const N = 12, dir = flip ? -1 : 1;
+  for (let k = 0; k < N; k++) {
+    const a = dir * (k / N) * Math.PI * 2 - Math.PI / 2, delay = (k / N) * ms * 0.8;
+    for (const [c, sc, al] of [[col, 0.95, 0.85], [core, 0.6, 0.9]] as const) {
+      const s = scene.add.image(x + Math.cos(a) * 15, y - 14 + Math.sin(a) * 8, "fx_slash").setRotation(a + dir * Math.PI / 2).setScale(sc).setTint(c)
+        .setBlendMode(Phaser.BlendModes.ADD).setDepth(depth + 1).setAlpha(0);
+      scene.tweens.add({ targets: s, alpha: { from: al, to: 0 }, scale: sc * 1.25, delay, duration: 260, ease: "Cubic.easeOut", onComplete: () => s.destroy() });
+    }
+  }
+}
+
+/** Точки крепления ткани в кадре тела (кадр 48, ступни 24,45): анимация и вид по строке листа облика, кадр i. */
+export function heroBPins(sh: HbSheet, rowName: string, i: number): number[] | null {
+  const p = man?.pins?.[sh.cloth?.body ?? ""];
+  if (!p) return null;
+  const [a0, v] = rowName.split(":"), a = a0 === "special2h" ? "atk2h" : a0;
+  const vv = v === "left" ? "side" : v, fr = p[a]?.[vv] ?? p.idle?.[vv];
+  if (!fr?.length) return null;
+  const q = fr[Math.min(i, fr.length - 1)].slice();
+  if (v === "left") for (let k = 0; k < q.length; k += 2) q[k] = 48 - q[k];
+  return q;
+}
+export const heroBPinKeys = () => man?.pinKeys ?? [];
 
 // консоль: heroB.on() / off() / set(сет) / look({ sex, hair }) / status()
 const api = {
@@ -226,6 +277,8 @@ const api = {
   /** Вид сета поверх надетого (проверка без выдачи); null — по надетому. */
   set(id: string | null) { st.preview = id; save("heroB:set", id); st.ver++; return id ? `вид сета ${id}` : "вещи — по надетому"; },
   look(l: Partial<Pick<HbLook, "sex" | "hair">>) { st.look = l || {}; st.ver++; return st.look; },
+  /** Для снимков: огненный след особого удара (scene, x, y, depth, flip, ms). */
+  trail: heroBTrail,
   status() { return { mode: st.mode, preview: st.preview, look: st.look, sheets: [...sheets.keys()], sets: LIVE.sets }; },
 };
 (window as unknown as { heroB: typeof api }).heroB = api;

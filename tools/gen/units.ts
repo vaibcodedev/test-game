@@ -581,6 +581,11 @@ const SPECS: Record<string, HSpec> = {
     skin: P.skin, hair: P.hair.brown, hairStyle: "short", torso: ramp_("#7a1620", "#b02a30", "#e0463c", "#ff7a58"), legs: P.steel, boots: P.darkSteel, belt: P.gold,
     head: "helmet", headRamp: P.steel, plume: ramp_("#8a1020", "#c82030", "#f04a48", "#ff9a88"), weapon: "sword", shield: ramp_("#6a4210", "#a8681c", "#e0a630", "#ffd864"), armorPlates: P.steel, cape: P.cloth.red, beard: P.hair.brown,
   },
+  /** Перековщик Ульв (Эмберхолл, у кузницы; docs/transmog.md): седой мастер в капюшоне, кожаный фартук поверх тёмно-лилового кафтана, посох с руническим камнем. */
+  reforger: {
+    skin: P.skin, hair: P.hair.white, hairStyle: "short", torso: ramp_("#241830", "#3a2650", "#56397a", "#7a58a4"), legs: P.cloth.black, boots: P.leather, belt: P.gold,
+    head: "hood", headRamp: ramp_("#2a2230", "#443a4e", "#62566e", "#857890"), apron: ramp_("#3a2416", "#5a3a22", "#7c5434", "#9c704a"), beard: P.hair.white, weapon: "staff", orb: P.magic.purple, bodyW: 11,
+  },
   citizen1: {
     skin: P.skin, hair: P.hair.brown, hairStyle: "long", torso: P.cloth.green, legs: P.cloth.brown, boots: P.leather, belt: P.leather,
     robe: ramp_("#3a4a22", "#56683a", "#768a52", "#98ac6e"), weapon: "none", bodyW: 10,
@@ -685,6 +690,7 @@ export const UNIT_ART: Record<string, UnitArt> = {
   merchant: humanoidArt(SPECS.merchant),
   arenamaster: humanoidArt(SPECS.arenamaster),
   guard: humanoidArt(SPECS.guard),
+  reforger: humanoidArt(SPECS.reforger),
   citizen1: humanoidArt(SPECS.citizen1),
   citizen2: humanoidArt(SPECS.citizen2),
   citizen3: humanoidArt(SPECS.citizen3),

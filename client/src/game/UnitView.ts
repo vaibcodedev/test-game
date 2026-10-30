@@ -23,7 +23,9 @@ import { HERALDRY, parseHerald, type Herald } from "../../../shared/npcGear";
 import { GP } from "../../../shared/gameplay";
 import unitAnims from "../../../data/unit-anims.json";
 import { isScaledSheet, scaledSprite } from "./scale147";
-import { heroBDeadFrame, heroBSheet, type HbSheet } from "./heroB";
+import { heroBAttack, heroBDeadFrame, heroBSheet, heroBTrail, type HbSheet } from "./heroB";
+import { tryOnLook } from "./tryOn";
+import { HeroCloth } from "./heroCloth";
 import { texDist } from "./objPick";
 import { PLATE_DEPTH, sweptDist } from "./hit";
 
@@ -187,12 +189,18 @@ export class UnitView {
   /** Герой «Б» (задача 147, client/src/game/heroB.ts): сведённый лист облика; null — прежний герой со слоями GearLayers. */
   private hb: HbSheet | null = null;
   private baseSid = "";
+  /** Счёт ударов (чередование особого удара), толчок ткани в этом кадре, ткань «Спины». */
+  private hbAtk = 0;
+  private hbPush = false;
+  private cloth?: HeroCloth;
   private baseTex = "";
   private baseOy = 0;
   /** Герой «Б»: лист облика готов — спрайт берёт его текстуру и ключи анимаций (sid), взгляд влево — свой вид (sidL); флаг выключен — всё прежнее. */
   private syncHeroB() {
     if (this.u.kind !== UnitKind.Player) return;
-    const sh = heroBSheet(this.scene, this.u, this.id, this.isSelf), sp = this.sprite;
+    // «примерить» оболочку (client/src/game/tryOn.ts): только свой герой и только у себя
+    const to = this.isSelf ? tryOnLook() : null;
+    const sh = heroBSheet(this.scene, to ? { faction: this.u.faction, name: this.u.name, gear: to.gear, weapon: to.weapon } : this.u, this.id, this.isSelf), sp = this.sprite;
     if (sh !== this.hb) {
       if (!this.hb) { this.baseSid = this.sid; this.baseTex = sp.texture.key; this.baseOy = sp.originY; }
       this.hb = sh;
@@ -279,7 +287,7 @@ export class UnitView {
     this.titleText = worldText(scene, u.x, u.y, "", "title").setOrigin(0, 1).setDepth(DEPTH.top - 5);
     this.frameGfx = scene.add.graphics().setDepth(DEPTH.top - 7);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (a: Phaser.Animations.Animation) => {
-      if (a.key.includes("-attack-") || a.key.includes("-spawn-") || a.key.includes("-hurt-")) {
+      if (a.key.includes("-attack-") || a.key.includes("-attack2-") || a.key.includes("-spawn-") || a.key.includes("-hurt-")) {
         this.attacking = false;
         this.lastAnim = -1;
       }
@@ -438,7 +446,11 @@ export class UnitView {
       if (u.aseq !== this.lastAseq) {
         this.lastAseq = u.aseq;
         this.attacking = true;
-        this.sprite.play(`${this.sid}-attack-${row}`);
+        // герой Б: оружие с особым ударом чередует обычный и особый (data/hero-b-live.json specialAttack), у особого — огненный след
+        const atk = this.hb ? heroBAttack(this.hb, this.sid, row, ++this.hbAtk) : null;
+        this.sprite.play(atk && this.scene.anims.exists(atk.key) ? atk.key : `${this.sid}-attack-${row}`);
+        if (atk?.special && this.scene.anims.exists(atk.key)) heroBTrail(this.scene, Math.round(this.x), Math.round(this.y), this.y, u.dir === Dir.Left, 875);
+        this.hbPush = true;
         if (MELEE.has(u.sprite)) this.slash(u.dir);
       } else if (!this.attacking && (anim !== this.lastAnim || row !== this.lastRow)) {
         if (anim === Anim.Walk) this.sprite.play(`${this.sid}-walk-${row}`, true);
@@ -513,6 +525,12 @@ export class UnitView {
     this.sprite.setPosition(Math.round(this.x) + riderDx, Math.round(this.y) + bob + (mounted ? riderDy + 9 - hover : 0)).setDepth(this.y);
     this.shadow.setPosition(Math.round(this.x), Math.round(this.y) - 2);
     this.syncDynShadow();
+    // ткань «Спины» героя Б (Verlet + Rope, heroCloth.ts): свой — всегда, чужие — рядом с камерой, иначе статично
+    if (this.hb?.cloth && !this.dead) {
+      const cam = this.scene.cameras.main, near = this.isSelf || Math.hypot(this.x - cam.midPoint.x, this.y - cam.midPoint.y) < Math.max(cam.width, cam.height) / cam.zoom;
+      (this.cloth ??= new HeroCloth(this.scene)).update(this.sprite, this.hb, dt, this.hbPush, near);
+    } else this.cloth?.update(this.sprite, null, dt, false, false);
+    this.hbPush = false;
     // под курсором (вместо тинта спрайта): кольцо под ногами вдвое бледнее выбранного, красное у врага и зелёное у союзника; ник и полоска видны ниже
     const hov = this.hovered && !this.dead && !this.unseen;
     this.ring.setPosition(Math.round(this.x), Math.round(this.y) - 1).setVisible((this.selected || hov) && !this.dead);
@@ -664,7 +682,8 @@ export class UnitView {
       this.layers.setDepth(this.y);
       this.layers.setAlpha(stealthy ? this.sprite.alpha : 1);
       const hd = this.heraldOf();
-      this.layers.draw({ cls: u.sprite, faction: u.faction, gear: u.gear, weapon: u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf, herald: hd, night: hd?.H.ash ? nightLevel(Date.now()) : 0 });
+      const to = this.isSelf ? tryOnLook() : null;
+      this.layers.draw({ cls: u.sprite, faction: u.faction, gear: to?.gear ?? u.gear, weapon: to?.weapon ?? u.weapon, view: row, flip: u.dir === Dir.Left, col: row * 12 <= fr ? fr % 12 : 0, ox: this.sprite.x - 16, oy: this.sprite.y - 30, t: this.scene.time.now, seed: this.seed, sid: this.id, self: this.isSelf, herald: hd, night: hd?.H.ash ? nightLevel(Date.now()) : 0 });
       this.bearerFlag(hd?.banner && hd.H.bearerSheet ? hd.H.bearerSheet : "", stealthy ? this.sprite.alpha : 1);
     } else { this.layers?.hide(); this.bearer?.setVisible(false); this.bearerGlow?.setVisible(false); }
 
@@ -876,6 +895,7 @@ export class UnitView {
     this.torchGlow?.destroy();
     this.buffGfx?.destroy();
     this.layers?.destroy();
+    this.cloth?.destroy();
     this.bearer?.destroy();
     this.bearerGlow?.destroy();
     this.afxView?.destroy();

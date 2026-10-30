@@ -1,5 +1,437 @@
 {
  "units": {
+  "chaos_spark_caster_elite_b147": {
+   "frame": 40
+  },
+  "chaos_squire_halberd_elite_b147": {
+   "frame": 40
+  },
+  "slime_magma_elite_b147": {
+   "frame": 40
+  },
+  "slime_plague_elite_b147": {
+   "frame": 40
+  },
+  "slime_shell_elite_b147": {
+   "frame": 40
+  },
+  "slime_jelly_elite_b147": {
+   "frame": 40
+  },
+  "slime_magma_b147": {
+   "frame": 40
+  },
+  "slime_plague_b147": {
+   "frame": 40
+  },
+  "slime_shell_b147": {
+   "frame": 40
+  },
+  "slime_jelly_b147": {
+   "frame": 40
+  },
+  "grove_cone_elite_b147": {
+   "frame": 40
+  },
+  "grove_spore_elite_b147": {
+   "frame": 40
+  },
+  "grove_mushroom_elite_b147": {
+   "frame": 40
+  },
+  "grove_moss_elite_b147": {
+   "frame": 40
+  },
+  "grove_root_elite_b147": {
+   "frame": 40
+  },
+  "grove_ent_elite_b147": {
+   "frame": 40
+  },
+  "grove_cone_b147": {
+   "frame": 40
+  },
+  "grove_spore_b147": {
+   "frame": 40
+  },
+  "grove_mushroom_b147": {
+   "frame": 40
+  },
+  "grove_moss_b147": {
+   "frame": 40
+  },
+  "grove_root_b147": {
+   "frame": 40
+  },
+  "grove_ent_b147": {
+   "frame": 40
+  },
+  "crawler_crawler_elite_b147": {
+   "frame": 40
+  },
+  "crawler_crawler_b147": {
+   "frame": 40
+  },
+  "arthro_bone_elite_b147": {
+   "frame": 40
+  },
+  "arthro_scorpion_elite_b147": {
+   "frame": 40
+  },
+  "arthro_crab_elite_b147": {
+   "frame": 40
+  },
+  "arthro_bone_b147": {
+   "frame": 40
+  },
+  "arthro_scorpion_b147": {
+   "frame": 40
+  },
+  "arthro_crab_b147": {
+   "frame": 40
+  },
+  "basilisk_sand_elite_b147": {
+   "frame": 40
+  },
+  "basilisk_cave_elite_b147": {
+   "frame": 40
+  },
+  "basilisk_sand_b147": {
+   "frame": 40
+  },
+  "basilisk_cave_b147": {
+   "frame": 40
+  },
+  "lizard_salamander_elite_b147": {
+   "frame": 40
+  },
+  "lizard_clay_elite_b147": {
+   "frame": 40
+  },
+  "lizard_horned_elite_b147": {
+   "frame": 40
+  },
+  "lizard_salamander_b147": {
+   "frame": 40
+  },
+  "lizard_clay_b147": {
+   "frame": 40
+  },
+  "lizard_horned_b147": {
+   "frame": 40
+  },
+  "beetle_armored_elite_b147": {
+   "frame": 40
+  },
+  "beetle_armored_b147": {
+   "frame": 40
+  },
+  "spider_spitter_elite_b147": {
+   "frame": 40
+  },
+  "spider_biter_elite_b147": {
+   "frame": 40
+  },
+  "spider_spitter_b147": {
+   "frame": 40
+  },
+  "spider_biter_b147": {
+   "frame": 40
+  },
+  "bat_bat_elite_b147": {
+   "frame": 40
+  },
+  "bat_bat_b147": {
+   "frame": 40
+  },
+  "rat_rat_elite_b147": {
+   "frame": 40
+  },
+  "rat_rat_b147": {
+   "frame": 40
+  },
+  "boar_boar_elite_b147": {
+   "frame": 40
+  },
+  "boar_boar_b147": {
+   "frame": 40
+  },
+  "canine_lava_elite_b147": {
+   "frame": 40
+  },
+  "canine_frost_elite_b147": {
+   "frame": 40
+  },
+  "canine_jackal_elite_b147": {
+   "frame": 40
+  },
+  "canine_wolf_elite_b147": {
+   "frame": 40
+  },
+  "canine_lava_b147": {
+   "frame": 40
+  },
+  "canine_frost_b147": {
+   "frame": 40
+  },
+  "canine_jackal_b147": {
+   "frame": 40
+  },
+  "canine_wolf_b147": {
+   "frame": 40
+  },
+  "wrapped_construct_weaver_elite_b147": {
+   "frame": 40
+  },
+  "wrapped_construct_guard_elite_b147": {
+   "frame": 40
+  },
+  "wrapped_construct_weaver_b147": {
+   "frame": 40
+  },
+  "wrapped_construct_guard_b147": {
+   "frame": 40
+  },
+  "bone_witch_staff_elite_b147": {
+   "frame": 40
+  },
+  "bone_witch_staff_b147": {
+   "frame": 40
+  },
+  "void_spirit_caster_elite_b147": {
+   "frame": 40
+  },
+  "void_spirit_caster_b147": {
+   "frame": 40
+  },
+  "banshee_claw_elite_b147": {
+   "frame": 40
+  },
+  "banshee_wail_elite_b147": {
+   "frame": 40
+  },
+  "banshee_claw_b147": {
+   "frame": 40
+  },
+  "banshee_wail_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_undead_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_drowned_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_ash_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_shroud_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_hollow_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_archer_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_spear_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_warrior_elite_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_undead_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_drowned_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_ash_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_shroud_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_hollow_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_archer_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_spear_b147": {
+   "frame": 40
+  },
+  "fallen_spirit_warrior_b147": {
+   "frame": 40
+  },
+  "butcher_hook_elite_b147": {
+   "frame": 64
+  },
+  "butcher_cleaver_elite_b147": {
+   "frame": 64
+  },
+  "butcher_hook_b147": {
+   "frame": 64
+  },
+  "butcher_cleaver_b147": {
+   "frame": 64
+  },
+  "ice_golem_ice_elite_b147": {
+   "frame": 64
+  },
+  "ice_golem_ice_b147": {
+   "frame": 64
+  },
+  "golem_siege_elite_b147": {
+   "frame": 64
+  },
+  "golem_magma_elite_b147": {
+   "frame": 64
+  },
+  "golem_obsidian_elite_b147": {
+   "frame": 64
+  },
+  "golem_lava_elite_b147": {
+   "frame": 64
+  },
+  "golem_sandstone_elite_b147": {
+   "frame": 64
+  },
+  "golem_siege_b147": {
+   "frame": 64
+  },
+  "golem_magma_b147": {
+   "frame": 64
+  },
+  "golem_obsidian_b147": {
+   "frame": 64
+  },
+  "golem_lava_b147": {
+   "frame": 64
+  },
+  "golem_sandstone_b147": {
+   "frame": 64
+  },
+  "harpy_storm_elite_b147": {
+   "frame": 40
+  },
+  "harpy_screamer_elite_b147": {
+   "frame": 40
+  },
+  "harpy_scavenger_elite_b147": {
+   "frame": 40
+  },
+  "harpy_storm_b147": {
+   "frame": 40
+  },
+  "harpy_screamer_b147": {
+   "frame": 40
+  },
+  "harpy_scavenger_b147": {
+   "frame": 40
+  },
+  "barbarian_legion_elite_b147": {
+   "frame": 40
+  },
+  "barbarian_pyro_elite_b147": {
+   "frame": 40
+  },
+  "barbarian_bow_elite_b147": {
+   "frame": 40
+  },
+  "barbarian_shield_elite_b147": {
+   "frame": 40
+  },
+  "barbarian_axe_elite_b147": {
+   "frame": 40
+  },
+  "barbarian_legion_b147": {
+   "frame": 40
+  },
+  "barbarian_pyro_b147": {
+   "frame": 40
+  },
+  "barbarian_bow_b147": {
+   "frame": 40
+  },
+  "barbarian_shield_b147": {
+   "frame": 40
+  },
+  "barbarian_axe_b147": {
+   "frame": 40
+  },
+  "lizardfolk_salamander_elite_b147": {
+   "frame": 40
+  },
+  "lizardfolk_shaman_elite_b147": {
+   "frame": 40
+  },
+  "lizardfolk_javelin_elite_b147": {
+   "frame": 40
+  },
+  "lizardfolk_salamander_b147": {
+   "frame": 40
+  },
+  "lizardfolk_shaman_b147": {
+   "frame": 40
+  },
+  "lizardfolk_javelin_b147": {
+   "frame": 40
+  },
+  "gnoll_archer_elite_b147": {
+   "frame": 40
+  },
+  "gnoll_chaser_elite_b147": {
+   "frame": 40
+  },
+  "gnoll_archer_b147": {
+   "frame": 40
+  },
+  "gnoll_chaser_b147": {
+   "frame": 40
+  },
+  "orc_thunder_elite_b147": {
+   "frame": 40
+  },
+  "orc_bow_elite_b147": {
+   "frame": 40
+  },
+  "orc_shield_elite_b147": {
+   "frame": 40
+  },
+  "orc_axe_elite_b147": {
+   "frame": 40
+  },
+  "orc_thunder_b147": {
+   "frame": 40
+  },
+  "orc_bow_b147": {
+   "frame": 40
+  },
+  "orc_shield_b147": {
+   "frame": 40
+  },
+  "orc_axe_b147": {
+   "frame": 40
+  },
+  "skeleton_mage_elite_b147": {
+   "frame": 40
+  },
+  "skeleton_bow_elite_b147": {
+   "frame": 40
+  },
+  "skeleton_sword_elite_b147": {
+   "frame": 40
+  },
+  "skeleton_mage_b147": {
+   "frame": 40
+  },
+  "skeleton_bow_b147": {
+   "frame": 40
+  },
+  "skeleton_sword_b147": {
+   "frame": 40
+  },
   "wb_colossus": {
    "frame": 140
   },
@@ -1114,6 +1546,9 @@
    "frame": 32
   },
   "zombie_digger_elite": {
+   "frame": 32
+  },
+  "reforger": {
    "frame": 32
   }
  },
@@ -29495,36 +29930,36 @@
    "h": 64
   },
   "loot_r0": {
-   "w": 680,
-   "h": 35
+   "w": 760,
+   "h": 39
   },
   "loot_r0_boss": {
-   "w": 840,
-   "h": 42
+   "w": 940,
+   "h": 47
   },
   "loot_r1": {
-   "w": 680,
-   "h": 35
+   "w": 760,
+   "h": 39
   },
   "loot_r1_boss": {
-   "w": 840,
-   "h": 42
+   "w": 940,
+   "h": 47
   },
   "loot_r2": {
-   "w": 680,
-   "h": 35
+   "w": 760,
+   "h": 39
   },
   "loot_r2_boss": {
-   "w": 840,
-   "h": 42
+   "w": 940,
+   "h": 47
   },
   "loot_r3": {
-   "w": 680,
-   "h": 35
+   "w": 760,
+   "h": 39
   },
   "loot_r3_boss": {
-   "w": 840,
-   "h": 42
+   "w": 940,
+   "h": 47
   },
   "arena_gate": {
    "w": 160,
@@ -35248,7 +35683,34 @@
   "war_squads_sol",
   "war_squads_umb",
   "war_xpGold_sol",
-  "war_xpGold_umb"
+  "war_xpGold_umb",
+  "im_hb147_chaos_helm_0",
+  "im_hb147_chaos_helm_1",
+  "im_hb147_chaos_helm_2",
+  "im_hb147_chaos_armor_0",
+  "im_hb147_chaos_armor_1",
+  "im_hb147_chaos_armor_2",
+  "im_hb147_chaos_boots_0",
+  "im_hb147_chaos_boots_1",
+  "im_hb147_chaos_boots_2",
+  "im_hb147_chaos_cloak_0",
+  "im_hb147_chaos_cloak_1",
+  "im_hb147_chaos_cloak_2",
+  "im_hb147_chaos_weapon_0",
+  "im_hb147_chaos_weapon_1",
+  "im_hb147_chaos_weapon_2",
+  "im_hb147_recruit_helm_0",
+  "im_hb147_recruit_helm_1",
+  "im_hb147_recruit_helm_2",
+  "im_hb147_recruit_armor_0",
+  "im_hb147_recruit_armor_1",
+  "im_hb147_recruit_armor_2",
+  "im_hb147_recruit_boots_0",
+  "im_hb147_recruit_boots_1",
+  "im_hb147_recruit_boots_2",
+  "im_hb147_recruit_weapon_0",
+  "im_hb147_recruit_weapon_1",
+  "im_hb147_recruit_weapon_2"
  ],
  "fx": [
   "arrow",
@@ -35275,13 +35737,13 @@
  "atlases": [
   {
    "key": "objs0",
-   "png": "/assets/atlas/objs0.png?v=bab0b334e4",
-   "json": "/assets/atlas/objs0.json?v=bab0b334e4"
+   "png": "/assets/atlas/objs0.png?v=3e149b6ebe",
+   "json": "/assets/atlas/objs0.json?v=3e149b6ebe"
   },
   {
    "key": "objs1",
-   "png": "/assets/atlas/objs1.png?v=bab0b334e4",
-   "json": "/assets/atlas/objs1.json?v=bab0b334e4"
+   "png": "/assets/atlas/objs1.png?v=3e149b6ebe",
+   "json": "/assets/atlas/objs1.json?v=3e149b6ebe"
   }
  ],
  "atlasOf": {

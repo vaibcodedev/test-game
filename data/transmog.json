@@ -1,0 +1,59 @@
+{
+  "_doc": "Перековка (трансмог, docs/transmog.md): NPC «Перековщик» в Эмберхолле (tile — клетка от центра города, у кузницы), предмет «Оболочка» и цены. Логика — shared/transmog.ts, сервер — server/src/game/transmog.ts, окно — client/src/ui/transmog.ts. families — семейство базы: оболочку можно наложить только на вещь того же слота и того же семейства (латы → латы, кожа → кожа, ткань → ткань; оружие — по хвату и анимации). Цена в золоте = округление((base + уровень × perLevel) × rarity[редкость]); extract — снять оболочку (по донору), apply — наложить (по большему из уровней и редкостей вещи и оболочки), reset — вернуть вещи её вид. Золото выводится из экономики.",
+  "npc": {
+    "id": "reforger",
+    "name": "Перековщик Ульв",
+    "sprite": "reforger",
+    "color": "#d8b4ff",
+    "tile": [13, -1],
+    "greeting": "«Сталь помнит форму, а форма — сталь. Дай мне вещь, что тебе по нраву на вид, — сниму с неё оболочку и надену на ту, что сильнее. Сила останется при вещи, вид — при тебе.»"
+  },
+  "shell": {
+    "name": "Оболочка",
+    "typeName": "Оболочка вида",
+    "price": 40
+  },
+  "families": {
+    "sword": "onehand", "axe": "onehand", "mace": "onehand",
+    "greatsword": "twohand", "greataxe": "twohand", "hammer": "twohand",
+    "twinblades": "dual", "dagger": "dual",
+    "spear": "spear",
+    "scythe": "scythe",
+    "staff": "staff",
+    "scepter": "scepter",
+    "bow": "bow", "crossbow": "bow",
+    "shield": "shield",
+    "orb": "focus", "tome": "focus",
+    "helmet": "legacy", "armor": "legacy", "boots": "legacy",
+    "plate_helm": "plate", "plate_armor": "plate", "plate_boots": "plate",
+    "leather_helm": "leather", "leather_armor": "leather", "leather_boots": "leather",
+    "cloth_helm": "cloth", "cloth_armor": "cloth", "cloth_boots": "cloth",
+    "cloak": "cloak",
+    "ring": "ring",
+    "amulet": "amulet"
+  },
+  "familyNames": {
+    "onehand": "одноручное оружие",
+    "twohand": "двуручное оружие",
+    "dual": "парные клинки",
+    "spear": "копьё",
+    "scythe": "коса",
+    "staff": "посох",
+    "scepter": "жезл",
+    "bow": "лук и арбалет",
+    "shield": "щит",
+    "focus": "сфера и книга",
+    "legacy": "старая простая броня",
+    "plate": "латы",
+    "leather": "кожа",
+    "cloth": "ткань",
+    "cloak": "плащ",
+    "ring": "кольцо",
+    "amulet": "амулет"
+  },
+  "price": {
+    "extract": { "base": 20, "perLevel": 3, "rarity": [1, 1.6, 2.6, 5] },
+    "apply": { "base": 30, "perLevel": 4, "rarity": [1, 1.6, 2.6, 5] },
+    "reset": { "base": 0, "perLevel": 0, "rarity": [0, 0, 0, 0] }
+  }
+}

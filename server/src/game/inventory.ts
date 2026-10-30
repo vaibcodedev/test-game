@@ -2,7 +2,7 @@
 import { COOKS, FOOD, foodOf, type Dish } from "../../../shared/food";
 import { MERCHANT_RANGE, PICKUP_RANGE } from "../../../shared/constants";
 import { serviceRefusal } from "../../../shared/npcs";
-import { BASE_ITEMS, ONEHAND, canEquip, isTwoHanded, iconFor, itemName, itemValue, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
+import { BASE_ITEMS, ONEHAND, SHELL_BASE, canEquip, isTwoHanded, iconFor, itemName, itemValue, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
 import { usableBase } from "../../../shared/hotbar";
 import { MATERIALS } from "../../../shared/upgrade";
 import { RESOURCES } from "../../../shared/biomes";
@@ -101,7 +101,7 @@ export function useItem(w: World, p: Player, index: unknown) {
   if (base.slot !== "consumable") return equip(w, p, index);
   if (sealMount(it.base)) return learnSeal(p, index);
   if (sealPet(it.base)) return learnPetSeal(p, index);
-  if (MATERIALS[it.base] || RESOURCES[it.base] || isPart(it.base)) return;
+  if (MATERIALS[it.base] || RESOURCES[it.base] || isPart(it.base) || it.base === SHELL_BASE) return; // «Оболочка» перековки не используется из сумки
   const dish = foodOf(it.base);
   if (dish) return eat(w, p, index, dish);
   const now = w.time;
@@ -232,7 +232,7 @@ export function pickup(w: World, p: Player, bagId: unknown) {
   if (w.dist(p, bag) > PICKUP_RANGE + 8) return err(p, T("srv.encounters.94"));
   const left = [];
   for (const it of bag.items) {
-    if (addItem(p, it)) p.send("toast", { text: T("srv.inventory.114", { itemname: itemName(it), qty: it.qty && it.qty > 1 ? ` ×${it.qty}` : "" }), kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes });
+    if (addItem(p, it)) p.send("toast", { text: T("srv.inventory.114", { itemname: itemName(it), qty: it.qty && it.qty > 1 ? ` ×${it.qty}` : "" }), kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes, item: it });
     else left.push(it);
   }
   if (left.length) {

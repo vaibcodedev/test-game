@@ -1,0 +1,72 @@
+/* Перековщик (client/src/ui/transmog.ts): каркас как у кузнеца (.smith-pick, .smith-item, .smith-info — rumor.css), превью «было | станет» */
+.win-tm {
+  left: 50%;
+  top: 70px;
+  transform: translateX(-50%);
+  z-index: var(--z-window);
+  max-height: calc(var(--vh, 100vh) - 100px);
+}
+.win-tm .win-foot > .smith-go:first-of-type {
+  margin-left: auto;
+}
+.win-tm .win-foot > .smith-go + .smith-go {
+  margin-left: var(--sp-2);
+}
+.win-tm .tm-tabs {
+  padding: 0 var(--sp-3);
+}
+/* ромб на ячейке: на вещи чужой вид */
+.cell .tm-mark {
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--enchant);
+  text-shadow: 0 1px 0 #000;
+  pointer-events: none;
+}
+.tm-preview {
+  display: flex;
+  justify-content: center;
+}
+.tm-pair {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.tm-fig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.tm-fig figcaption {
+  color: var(--dim);
+  font-size: var(--fs-sm);
+}
+.tm-arrow {
+  color: var(--gold);
+  font-size: 18px;
+}
+/* герой 48×48 в целом масштабе ×3, без сглаживания */
+img.tm-hero {
+  width: 144px;
+  height: 144px;
+  image-rendering: pixelated;
+  background: radial-gradient(ellipse 30% 8% at 50% 84%, rgba(0, 0, 0, 0.45), transparent 100%);
+}
+.tm-tip-pv {
+  display: flex;
+  justify-content: center;
+  margin: var(--sp-1) 0;
+}
+.tm-tip-pv img.tm-hero {
+  width: 96px;
+  height: 96px;
+}

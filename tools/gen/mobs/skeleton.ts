@@ -21,12 +21,18 @@ import path from "node:path";
 import {
   MOB_CAM, PC, R, Scene, VIEWS, VIEW_RU, add, clamp, crop, cross, depthOf, dot, easeIn, easeInOut, easeOut, fill, frameEdgeCuts, frameHoles,
   frameOf, fromView, groundBg, hash01, hex, ik, lerp, linear, lerpV, loadPC, mat, mix, mul, nightRect, norm, pngDataUrl, rad, renderScene, rigidPieces, rotAxis,
-  saveTo, scaleBox, sealPinholes, thicken, scaleNN, scr, shadowBlob, snapPx, stackRows, stampRows, sub, text, thinLines, toView, vlen,
-  type Grip, type Mat, type RGBA, type Row, type Stamp, type TexFn, type V3, type View, type WeaponFn,
+  saveTo, scaleBox, sealPinholes, thicken, scaleNN, scr as scr0, shadowBlob, snapPx, stackRows, stampRows, sub, text, thinLines, toView, vlen,
+  type Cam, type Grip, type Mat, type RGBA, type Row, type Stamp, type TexFn, type V3, type View, type WeaponFn,
 } from "./lib";
 
-const cam = MOB_CAM;
-const N = cam.N;
+let cam: Cam = MOB_CAM;
+let N = cam.N;
+/** Задача 147: рост образа (множитель к прежнему, листы b147) и число кадров атаки (0 — прежнее). Кадр и множитель задаёт setSkeletonScale. */
+let SK = 1;
+let ATTACK_N = 0;
+export function setSkeletonScale(s: number, c: Cam = MOB_CAM, attackN = 0) { SK = s; cam = c; N = c.N; ATTACK_N = attackN; }
+/** Точка вида → пиксель кадра с учётом роста образа (рисуемые поверх тела линии, шары и искры лежат в прежних единицах). */
+const scr = (c: Cam, p: V3): [number, number] => scr0(c, SK === 1 ? p : mul(p, SK));
 
 // ---------------- палитра (5 тонов на материал) ----------------
 /** Пожелтевшая кость: тени бурые, свет — слоновая кость. */
@@ -300,8 +306,8 @@ function buildSkeleton(v: Variant, p: Pose, view: View): Built {
   const T = E ? 1.16 : 1; // толщина костей
   const centers = new Map<number, V3>();
   // жёсткое ядро — целые пиксели кадра
-  const core = snapPx(view, p.core);
-  const chestUp: V3 = [0, 0, p.chest * 1.0 / 0.97];
+  const core = mul(snapPx(view, p.core), 1 / SK);
+  const chestUp: V3 = [0, 0, p.chest * 1.0 / 0.97 / SK];
   const pelvisC = add(core, [0, 0, Z_PELVIS]);
   const yawRot = (q: V3, c: V3) => {
     let r = sub(q, c);
@@ -310,7 +316,7 @@ function buildSkeleton(v: Variant, p: Pose, view: View): Built {
     return add(c, r);
   };
   const upper = (q: V3) => yawRot(add(add(q, core), chestUp), pelvisC);
-  const headOff: V3 = [p.head[0], 0, p.head[1] / 0.97];
+  const headOff: V3 = [p.head[0] / SK, 0, p.head[1] / 0.97 / SK];
   // --- таз и ветошь
   {
     const g = S.group(0.6);
@@ -497,6 +503,17 @@ function buildSkeleton(v: Variant, p: Pose, view: View): Built {
 interface DeathState { t: number; lay: Map<number, { c1: V3; axis: V3; ang: number; delay: number; dur: number; bounce?: boolean }>; dust: { x: number; y: number; k: number }[] }
 interface FrameExtra { trail?: V3[][]; death?: { pose: Pose; f: number }; flashAt?: V3; flash?: number; motes?: V3[] }
 
+/** Масштаб сцены (как в риге): геометрия, радиусы и сдвиги света растут вместе — перерисовка в большем кадре, не растяжение. */
+function scaleScene(S: Scene, s: number) {
+  for (const q of S.prims) {
+    q.a = mul(q.a, s); q.b = mul(q.b, s); q.anc = mul(q.anc, s);
+    q.ra *= s; q.rb *= s; q.r = mul(q.r, s); q.rr *= s;
+    if (q.cut) q.cut = { n: q.cut.n, d: q.cut.d * s };
+  }
+  S.gk = S.gk.map((k) => k * s);
+  for (const st of S.stamps) st.at = mul(st.at, s);
+}
+
 function renderFrame(v: Variant, view: View, p: Pose, ex: FrameExtra = {}): { img: PC; emis: PC } {
   const B = buildSkeleton(v, p, view);
   const sc = B.sc;
@@ -506,6 +523,7 @@ function renderFrame(v: Variant, view: View, p: Pose, ex: FrameExtra = {}): { im
     rigidPieces(sc, tf);
     dust = puffs;
   }
+  if (SK !== 1) scaleScene(sc, SK);
   const R0 = renderScene(cam, sc, view, OUT);
   const img = new PC(N, N);
   const emis = R0.emis;
@@ -539,7 +557,7 @@ function drawLine3(o: PC, depth: Float32Array, a: V3, b: V3, view: View, col: RG
     if (x === px && y === py) continue;
     px = x; py = y;
     if (x < 1 || y < 1 || x >= N - 1 || y >= N - 1) continue;
-    const dp = depthOf(lerpV(A, Bv, t));
+    const dp = depthOf(SK === 1 ? lerpV(A, Bv, t) : mul(lerpV(A, Bv, t), SK));
     const i = y * N + x;
     if (o.alpha(x, y) && depth[i] && depth[i] < dp - 0.3) continue;
     o.set(x, y, col);
@@ -686,8 +704,9 @@ function deathTransform(v: Variant, B: Built, f: number, view: View) {
 // ---------------- анимации ----------------
 export type Anim = "idle" | "walk" | "attack" | "death";
 export interface AnimDef { col: number; n: number; fps: number; loop: boolean; ru: string; hit?: number }
-export function animsOf(role: Role): Record<Anim, AnimDef> {
-  const atk = role === "sword" ? { n: 9, fps: 14, ru: "удар", hit: 3 } : role === "bow" ? { n: 10, fps: 12, ru: "выстрел", hit: 6 } : { n: 10, fps: 12, ru: "каст", hit: 6 };
+export function animsOf(role: Role, attackN = 0): Record<Anim, AnimDef> {
+  const a0 = role === "sword" ? { n: 9, fps: 14, ru: "удар", hit: 3 } : role === "bow" ? { n: 10, fps: 12, ru: "выстрел", hit: 6 } : { n: 10, fps: 12, ru: "каст", hit: 6 };
+  const atk = attackN > 0 ? { ...a0, n: attackN, fps: Math.round((a0.fps * attackN) / a0.n), hit: Math.round((a0.hit * (attackN - 1)) / (a0.n - 1)) } : a0;
   return {
     idle: { col: 0, n: 12, fps: 10, loop: true, ru: "покой" },
     walk: { col: 12, n: 12, fps: 12, loop: true, ru: "ходьба" },
@@ -871,8 +890,21 @@ function deathFrames(v: Variant): Frame[] {
 const FRAMES: Record<Anim, (v: Variant) => Frame[]> = { idle: idleFrames, walk: walkFrames, attack: attackFrames, death: deathFrames };
 
 /** Анимация → лист (3 строки вида) и маска свечения. */
+/** Пересчёт кадров атаки по времени (как в риге): M кадров вместо n, позы — интерполяция ключевых, эффекты — от ближайшего кадра. */
+function retime(fr: Frame[], M: number): Frame[] {
+  const n = fr.length;
+  if (n === M || n < 2) return fr;
+  return Array.from({ length: M }, (_, t) => {
+    const u = (t * (n - 1)) / (M - 1), i0 = Math.floor(u), i1 = Math.min(n - 1, i0 + 1), k = u - i0;
+    const p = lerpPose(fr[i0].p, fr[i1].p, k) as Pose & Record<string, unknown>;
+    const near = fr[Math.round(u)].p as Pose & Record<string, unknown>;
+    for (const key of ["jaw", "arrow", "draw"]) p[key] = near[key];
+    return { p, ex: fr[Math.round(u)].ex };
+  });
+}
 function buildAnim(v: Variant, a: Anim): { sheet: PC; emis: PC } {
-  const fr = FRAMES[a](v);
+  const fr0 = FRAMES[a](v);
+  const fr = a === "attack" && ATTACK_N ? retime(fr0, ATTACK_N) : fr0;
   const sheet = new PC(N * fr.length, N * 3);
   const emis = new PC(N * fr.length, N * 3);
   VIEWS.forEach((view, row) => fr.forEach((F, i) => {
@@ -1103,6 +1135,28 @@ document.getElementById("vars").addEventListener("click", () => bar("anims", Obj
 }
 
 // ---------------- запуск ----------------
+/** Листы 6 вариантов без монтажей (задача 147: рост b147) — после setSkeletonScale. Возвращает листы и замечания по кадрам. */
+export function buildSkeletonSheets(outDir: string): { files: string[]; problems: string[] } {
+  fs.mkdirSync(outDir, { recursive: true });
+  const files: string[] = [];
+  const save = saveTo(outDir, files);
+  const problems: string[] = [];
+  const rowsRu = VIEWS.map((v) => VIEW_RU[v]);
+  for (const v of VARIANTS) {
+    const id = variantId(v);
+    const A = animsOf(v.role, ATTACK_N);
+    const sheet = new PC(N * (A.death.col + A.death.n), N * 3);
+    for (const a of ANIM_LIST) {
+      const sh = buildAnim(v, a);
+      sheet.blit(sh.sheet, A[a].col * N, 0);
+      problems.push(...frameEdgeCuts(sh.sheet, N, OUT, `${id} ${a}`, rowsRu));
+      problems.push(...frameHoles(sh.sheet, N, `${id} ${a}`, rowsRu));
+      problems.push(...thinLines(sh.sheet, N, OUT, `${id} ${a}`, rowsRu, 3, [STRING]));
+    }
+    save(sheet, `${id}.png`);
+  }
+  return { files, problems };
+}
 export function writeSkeletonPilot(root: string, outDir: string): string[] {
   fs.mkdirSync(outDir, { recursive: true });
   const files: string[] = [];
@@ -1113,7 +1167,7 @@ export function writeSkeletonPilot(root: string, outDir: string): string[] {
   const rowsRu = VIEWS.map((v) => VIEW_RU[v]);
   for (const v of VARIANTS) {
     const id = variantId(v);
-    const A = animsOf(v.role);
+    const A = animsOf(v.role, ATTACK_N);
     const sh = {} as Sheets;
     for (const a of ANIM_LIST) sh[a] = buildAnim(v, a);
     all.set(id, sh);

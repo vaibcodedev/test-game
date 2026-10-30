@@ -10,12 +10,13 @@ import os from "node:os";
 import path from "node:path";
 import { buildCreature, camOf, type Creature } from "../mobs/rig";
 import { BATCH1 } from "../mobs/batch1-list";
+import { BATCH2 } from "../mobs/batch2-list";
 import { A, ROOT, unitHeight } from "./measure";
 
 const DF = path.join(ROOT, "data/scale147.json");
 const DATA = JSON.parse(fs.readFileSync(DF, "utf8"));
 const SUF = DATA.suffix as string;
-const BASE: Record<string, Creature> = Object.fromEntries(BATCH1.map((c) => [c.id, c]));
+const BASE: Record<string, Creature> = Object.fromEntries([...BATCH1, ...BATCH2].map((c) => [c.id, c]));
 const only = process.argv[2]?.split(",");
 const UNITS = path.join(A, "units"), MAN = path.join(A, "manifest.json");
 
@@ -40,7 +41,9 @@ for (const [key, def] of Object.entries<any>(DATA.mobs.rig)) {
 }
 for (const [key, def, roleSel] of passes) {
   const base0 = BASE[key]; if (!base0) { console.warn(`  нет образа ${key}`); continue; }
-  const base: Creature = roleSel ? { ...base0, roles: base0.roles.filter((r) => roleSel.some((q) => (q.startsWith('!') ? q.slice(1) !== r.id : q === r.id)) && !roleSel.some((q) => q === '!' + r.id)) } : base0;
+  const base1: Creature = roleSel ? { ...base0, roles: base0.roles.filter((r) => roleSel.some((q) => (q.startsWith('!') ? q.slice(1) !== r.id : q === r.id)) && !roleSel.some((q) => q === '!' + r.id)) } : base0;
+  // роли без прежнего листа в игре (вырезаны) не строим
+  const base: Creature = { ...base1, roles: base1.roles.filter((r) => [`${key}_${r.id}`, `${key}_${r.id}_elite`].some((q) => fs.existsSync(path.join(UNITS, `${q}.png`)))) };
   const scale = (def.scale ?? base.scale.map((s: number) => +(s * def.k).toFixed(3))) as [number, number];
   const cr: Creature = { ...base, scale, cam: def.cam, attackN: def.attackN ?? DATA.mobs.attackN };
   const N0 = camOf(base).N;
@@ -49,6 +52,7 @@ for (const [key, def, roleSel] of passes) {
   problems += o.problems.length;
   for (const p of o.problems.slice(0, 12)) console.warn(`  ${p}`);
   for (const id of o.sheets.keys()) {
+    if (!fs.existsSync(path.join(UNITS, `${id}.png`))) continue; // нет прежнего листа в игре
     const nid = `${id}${SUF}`, dst = path.join(UNITS, `${nid}.png`);
     fs.copyFileSync(path.join(tmp, `${id}.png`), dst);
     setUnit(nid, def.cam.N);

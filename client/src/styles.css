@@ -15,6 +15,7 @@
 @import "./styles/trade.css";
 @import "./styles/bestiary.css";
 @import "./styles/rumor.css";
+@import "./styles/transmog.css";
 @import "./styles/statue.css";
 @import "./styles/menu.css";
 @import "./styles/adm.css";
@@ -32,11 +33,13 @@
 @import "./styles/controls.css";
 @import "./styles/errline.css";
 @import "./styles/raid.css";
+@import "./styles/lootfx.css";
 @import "./styles/war.css";
 @import "./styles/siege.css";
 @import "./styles/wboss.css";
 @import "./styles/bars.css";
 @import "./styles/castbar.css";
+
 /* версия игры (client/src/version.ts) */
 #game-ver { position: fixed; right: var(--sp-2, 8px); bottom: var(--sp-2, 8px); z-index: 50; font-size: var(--fs-xs, 11px); color: var(--dim, #8a8090); opacity: .75; pointer-events: none; letter-spacing: .04em; }
 #game-ver[hidden] { display: none; }

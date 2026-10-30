@@ -248,5 +248,14 @@
       "m",
       "f"
     ]
+  },
+  "specialAttack": {
+    "_doc": "Особый удар оружия (weapon.special в data/gear147.json): каждый every-й удар, либо по шансу chance (0..1), если chance > 0. Огненный след поверх — trail.",
+    "every": 3,
+    "chance": 0,
+    "trail": {
+      "color": "#ff6a1a",
+      "core": "#ffd060"
+    }
   }
 }

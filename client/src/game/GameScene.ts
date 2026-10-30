@@ -1,4 +1,5 @@
 import { layoutLabels } from "./labelLayout";
+import { bindPreviewScene } from "./gearPreview";
 import { PickBest } from "./hit";
 import Phaser from "phaser";
 import { MERCHANT_RANGE, PICKUP_RANGE, PLAYER_RADIUS, PLAYER_SPEED, STATUE_RANGE, TALK_RANGE, TILE } from "../../../shared/constants";
@@ -32,7 +33,7 @@ import { NightMask, updateLights } from "./lights";
 import { PostFx, glowOn, shineOn } from "./postfx";
 import { overlay } from "./overlay";
 import { CollisionGrid } from "./collisionDebug";
-import { updateTreeFade } from "./treeFade";
+import { updateTreeFade, updateBuildingFade } from "./treeFade";
 import { Weather } from "./weather";
 import lighting from "../../../data/lighting.json";
 import { RING_ALLY, RING_FOE, UnitView } from "./UnitView";
@@ -50,6 +51,7 @@ import { aimUnit, castAim, hitUnitsOf, PICK_NEAR, pickOrder, pickReach, resolveC
 import { aimSpec, type HitUnit } from "../../../shared/skillShape";
 import { loading } from "../ui/loading";
 import { removeLoot, spawnLoot } from "./lootView";
+import { chestReveal } from "../ui/lootfx";
 import { DOOR_RANGE, INTERIORS, interiorAt, type Interior } from "../../../shared/interiors";
 import { InteriorViews } from "./interiors";
 import { TowerArchers } from "./towerArchers";
@@ -148,6 +150,7 @@ export class GameScene extends Phaser.Scene {
   /** Масштаб камеры, под который сделаны текстуры мировых текстов (разрешение текста = zoom). */
   private textZoom = 0;
   bagViews = new Map<string, Phaser.GameObjects.Image>();
+  private lastBags: LootBag[] = [];
   pendingPickup: string | null = null;
   /** NPC города (только в мире): торговка и распорядитель арены. */
   npcs: Npc[] = [];
@@ -250,6 +253,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once("destroy", done);
 
     this.hud = this.registry.get("hud") as Hud;
+    this.hud.onTakeBag = (id) => this.takeBag(id);
     this.map = net.kind === "arena" ? generateArenaMap(net.arena?.map ?? "ash") : net.kind === "raid" ? generateRaidMap() : net.kind === "dungeon" ? generateDungeonMap() : generateMap(net.seed);
     this.world = buildWorld(this, this.map);
     const cam = this.cameras.main;
@@ -300,6 +304,7 @@ export class GameScene extends Phaser.Scene {
     this.cleanup.push(net.on("fx", (list) => this.traps.note(list, net.id, performance.now(), net.self?.skills)));
 
     // NPC — декоративные, проверки дальности делает сервер; расстановка — из данных (shared/npcs.ts: Эмберхолл, города, столицы, поселения)
+    bindPreviewScene(this); // превью героя в окнах (Перековщик, подсказка «Оболочки»): client/src/game/gearPreview.ts
     if (net.kind === "world") {
       for (const n of WORLD_NPCS) this.addNpc(n.kind, n.sprite, n, n.name, n.color, n.tint, n.id);
       for (const c of CITIES) {
@@ -542,6 +547,7 @@ export class GameScene extends Phaser.Scene {
       else if (!want[k] && e.emitting && e.alpha < 0.02) e.stop(true);
     }
     this.selfLight.setPosition(this.pos.x, this.pos.y - 12).setAlpha(this.world.dark.alpha * 0.55);
+    updateBuildingFade(this.pos.x, this.pos.y, dt);
     updateTreeFade(this.pos.x, this.pos.y, dt); // крона полупрозрачна, когда герой за деревом (treeFade.ts)
     // пыль из-под ног идущих
     const now = this.time.now;
@@ -796,11 +802,7 @@ export class GameScene extends Phaser.Scene {
           return this.setTarget(hit.id);
         case "bag": {
           // мешок с добычей
-          const img = this.bagViews.get(hit.id!);
-          if (!img) return;
-          this.pendingPickup = hit.id;
-          if (Math.hypot(img.x - this.pos.x, img.y - this.pos.y) > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y });
-          return;
+          return this.takeBag(hit.id!);
         }
         case "node": {
           // узлы добычи (кактус, кристалл, обсидиан, жемчуг)
@@ -891,6 +893,7 @@ export class GameScene extends Phaser.Scene {
     if (v) { v.hovered = true; v.hoverFoe = foe; }
     if (cur !== this.cursorKind) { this.cursorKind = cur; setCursor(cur); }
     if (glow !== this.takeGlow.visible) this.takeGlow.setVisible(glow);
+    this.lootRowHover();
   }
 
   /** Картинка объекта карты по виду (вход и выход подземелья): силуэт для свечения. */
@@ -1316,6 +1319,7 @@ export class GameScene extends Phaser.Scene {
     if (n.kind === "shop") this.hud.openShop(n.name);
     else if (n.kind === "cook") this.hud.cook.open(n.id);
     else if (n.kind === "smith") this.hud.smith.open(n.id);
+    else if (n.kind === "transmog") this.hud.transmog.open(n.id);
     else if (n.kind === "bank") this.hud.bank.open(n.id);
     else if (n.kind === "bags") this.hud.bags.open(n.id);
     else if (n.kind === "stable") this.hud.stable.open(n.id);
@@ -1376,7 +1380,41 @@ export class GameScene extends Phaser.Scene {
     if (b.x !== bx || b.y !== by || b.width !== bw || b.height !== bh) cam.setBounds(bx, by, bw, bh);
   }
 
+  /** Забрать мешок: подойти и взять всё (клик по мешку или по ряду содержимого). */
+  private takeBag(id: string) {
+    const img = this.bagViews.get(id);
+    if (!img) return;
+    this.pendingPickup = id;
+    if (Math.hypot(img.x - this.pos.x, img.y - this.pos.y) > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y });
+  }
+
+  /** Сундук зонного босса (вариант A): тряска 0,6 с после падения, затем свет и предмет вылетает вверх (ui/lootfx.ts chestReveal). */
+  private chestOpen(spr: Phaser.GameObjects.Sprite, b: LootBag) {
+    const best = [...b.items].sort((x, y) => y.rarity - x.rarity)[0];
+    const x0 = spr.x;
+    this.time.delayedCall(500, () => {
+      if (!spr.active) return;
+      this.tweens.add({ targets: spr, x: { from: x0 - 2, to: x0 + 2 }, angle: { from: -2, to: 2 }, duration: 60, yoyo: true, repeat: 4, ease: "Sine.easeInOut", onComplete: () => spr.setPosition(x0, spr.y).setAngle(0) });
+    });
+    if (!best) return;
+    this.time.delayedCall(800, () => {
+      if (!spr.active) return;
+      const cam = this.cameras.main, r = this.game.canvas.getBoundingClientRect(), v = cam.worldView, k = cam.zoom * r.width / cam.width;
+      chestReveal(this.hud.root, r.left + (spr.x - v.x) * k, r.top + (spr.y - 10 - v.y) * k, best);
+    });
+  }
+
+  /** Ряд содержимого над мешком под курсором (hud.lootRow): экранная точка над макушкой спрайта. */
+  private lootRowHover() {
+    const id = typeof this.hoverItem === "string" && this.bagViews.has(this.hoverItem) ? this.hoverItem : null;
+    const bag = id ? this.lastBags.find((b) => b.id === id) : undefined, img = id ? this.bagViews.get(id) : undefined;
+    if (!bag || !img) return this.hud.lootRow.hover(null, null, 0);
+    const cam = this.cameras.main, r = this.game.canvas.getBoundingClientRect(), v = cam.worldView, k = cam.zoom * r.width / cam.width;
+    this.hud.lootRow.hover(bag.id, bag.items, r.left + (img.x - v.x) * k, r.top + (img.y - img.displayHeight + 12 - v.y) * k);
+  }
+
   syncBags(bags: LootBag[]) {
+    this.lastBags = bags;
     const ids = new Set(bags.map((b) => b.id));
     // убранный мешок: рядом с героем — эффект подбора (lootView.ts), иначе тихо гаснет
     for (const [id, img] of this.bagViews) if (!ids.has(id)) { removeLoot(this, img, this.pos, PICKUP_RANGE + 24); this.bagViews.delete(id); }
@@ -1386,6 +1424,7 @@ export class GameScene extends Phaser.Scene {
       const spr = spawnLoot(this, b);
       shineOn(spr, spr.getData("rarity") ?? 0);
       this.bagViews.set(b.id, spr);
+      if (b.boss) this.chestOpen(spr, b);
     }
   }
 

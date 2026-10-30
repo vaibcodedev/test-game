@@ -20,7 +20,7 @@ import { BIOME_ART, resourceIcon } from "./biomes";
 import { natureGameArt } from "./nature3d";
 import { floraGameArt } from "./nature3d-flora";
 import { RESOURCE_IDS } from "../../shared/biomes";
-import { lootObjects } from "./loot";
+import { buildChest34 } from "./loot34";
 
 type Art = () => PC;
 
@@ -240,8 +240,8 @@ export const OBJECT_ART: Record<string, Art> = {
   stall: () => stall(P.cloth.red[2], "food"), barrel, crate,
   flowers: () => tuft("flowers"), tallgrass: () => tuft("tallgrass"), fern: () => tuft("fern"), reeds: () => tuft("reeds"),
   mushrooms: mushrooms(false), mushrooms_glow: mushrooms(true), lilypad, bones, ember_vent: emberVent, crystal, chaos_pillar: chaosPillar, raid_portal: raidPortal,
-  // добыча на земле: листы 20 кадров (tools/gen/loot.ts), клиент — client/src/game/lootView.ts
-  ...lootObjects(),
+  // добыча на земле: листы 20 кадров (tools/gen/loot34.ts: вид 3/4), клиент — client/src/game/lootView.ts
+  ...Object.fromEntries([0, 1, 2, 3].flatMap((r) => [false, true].map((boss) => [`loot_r${r}${boss ? "_boss" : ""}`, () => buildChest34(r, boss).sheet] as const))),
   ...TOWN_ART,
   ...CITY_ART,
   ...FACTION_ART,

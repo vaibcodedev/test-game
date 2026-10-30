@@ -19,8 +19,10 @@ const PARTS = path.resolve("tools/out/hero147-export");
 const BINS: number[] = GD.layers.bins;
 const binOf = (L: number) => { for (let k = 0; k + 1 < BINS.length; k++) if (L < BINS[k + 1]) return k; return BINS.length - 2; };
 const VIEWS: View4[] = ["down", "up", "side", "left"];
-type Cls = "free" | "great";
-const animsOf = (c: Cls): AnimId[] => LIVE.classes[c].anims;
+type Cls = "free" | "great" | "special";
+/** Особый удар оружия (weapon.special, Пылающий клинок Хаоса): свой класс строк — special2h × 4 вида; тело и причёска — в позе этого оружия. */
+const SPECIAL_SETS = (LIVE.sets as string[]).filter((id) => setOf(id).items.weapon?.special?.length);
+const animsOf = (c: Cls): AnimId[] => (c === "special" ? ["special2h" as AnimId] : LIVE.classes[c].anims);
 const rowsOf = (c: Cls): [AnimId, View4][] => animsOf(c).flatMap((a) => VIEWS.map((v) => [a, v] as [AnimId, View4]));
 
 const STUBS: Record<string, SetDef> = Object.fromEntries(Object.entries(LIVE.stubs).map(([k, items]) => [`stub-${k}`, { name: k, rarity: "common", level: 1, items: items as any }]));
@@ -34,7 +36,7 @@ const withCls = (s: SetDef, c: Cls): SetDef => {
 };
 const EMPTY: SetDef = { name: "", rarity: "common", level: 0, items: {} };
 
-interface Job { id: string; kind: "base" | "gear"; fac: "sol" | "umb"; sex: "m" | "f"; cls: Cls; hair?: string; withBody?: boolean; set?: string }
+interface Job { id: string; kind: "base" | "gear" | "sbase" | "sgear"; fac: "sol" | "umb"; sex: "m" | "f"; cls: Cls; hair?: string; withBody?: boolean; set?: string }
 function jobs(): Job[] {
   const J: Job[] = [], G: Job[] = [];
   for (const fac of ["sol", "umb"] as const) for (const sex of ["m", "f"] as const) for (const cls of ["free", "great"] as Cls[])
@@ -42,6 +44,10 @@ function jobs(): Job[] {
   for (const set of [...LIVE.sets, ...Object.keys(STUBS)]) for (const sex of ["m", "f"] as const) for (const cls of ["free", "great"] as Cls[]) {
     if (!STUBS[set] && cls === "free" && setOf(set).items.weapon?.kind === "great") continue;
     G.push({ id: `gear-${set}-${sex}-${cls}`, kind: "gear", fac: "sol", sex, cls, set });
+  }
+  for (const set of SPECIAL_SETS) {
+    for (const sex of ["m", "f"] as const) G.push({ id: `sgear-${set}-${sex}`, kind: "sgear", fac: "sol", sex, cls: "special", set });
+    for (const fac of ["sol", "umb"] as const) for (const sex of ["m", "f"] as const) hairStyles(sex).forEach((h, i) => G.push({ id: `sbase-${set}-${fac}-${sex}-${h.id}`, kind: "sbase", fac, sex, cls: "special", hair: h.id, withBody: i === 0, set }));
   }
   // сначала вещи (дольше всех — Рыцарь в кадре 96), затем основа
   return [...G, ...J];
@@ -55,12 +61,15 @@ function blit(d: PC, s: { w: number; h: number; has: (x: number, y: number) => b
 function runJob(j: Job): Record<string, Record<string, Entry>> {
   const rows = rowsOf(j.cls);
   const base: Look = { fac: j.fac, sex: j.sex, hair: j.hair };
-  const crests: CrestId[] = j.kind === "gear" ? ["sol", "umb"] : ["sol"];
-  const slots = j.kind === "base" ? (j.withBody ? ["body", "hair"] : ["hair"]) : [...SLOTS, "crest", "cloth"]; // cloth — подвижная ткань (если генератор пометит части slot: "cloth"), в игре — Verlet-ткань
+  const gearish = j.kind === "gear" || j.kind === "sgear";
+  const crests: CrestId[] = gearish ? ["sol", "umb"] : ["sol"];
+  const slots = !gearish ? (j.withBody ? ["body", "hair"] : ["hair"]) : [...SLOTS, "crest", "cloth"]; // cloth — подвижная ткань (если генератор пометит части slot: "cloth"), в игре — Verlet-ткань
   const keys: string[] = []; for (const s of slots) for (let b = 0; b + 1 < BINS.length; b++) keys.push(`${s}@${b}`);
-  const set = j.kind === "gear" ? withCls(setDef(j.set!), j.cls) : j.cls === "great" ? withCls(EMPTY, "great") : EMPTY;
+  const noHelm = (s: SetDef): SetDef => { const it = { ...s.items } as any; delete it.helm; return { ...s, items: it }; };
+  const set = j.kind === "sgear" ? setDef(j.set!) : j.kind === "sbase" ? noHelm(setDef(j.set!)) : j.kind === "gear" ? withCls(setDef(j.set!), j.cls) : j.cls === "great" ? withCls(EMPTY, "great") : EMPTY;
   const FRx = frameOf(dress(base, set)).FRx, O = frameOf(dress(base, set));
   const origin: [number, number] = [24 + O.OX, 45 + O.OY];
+  const COLS = Math.max(...rows.map(([a]) => NF(a)));
   const sheets = new Map<string, PC>(), zs = new Map<string, (number | null)[][]>();
   rows.forEach(([a, v], r) => {
     for (let i = 0; i < NF(a); i++) for (const crest of crests) {
@@ -73,11 +82,11 @@ function runJob(j: Job): Record<string, Record<string, Entry>> {
         const slot = k.split("@")[0];
         if (crest === "umb" && slot !== "crest") return;
         const kk = crest === "umb" ? k + "-umb" : slot === "crest" ? k + "-sol" : k;
-        let s = sheets.get(kk); if (!s) { s = new PC(12 * FRx, rows.length * FRx); sheets.set(kk, s); zs.set(kk, rows.map(([aa]) => Array(NF(aa)).fill(null))); }
+        let s = sheets.get(kk); if (!s) { s = new PC(COLS * FRx, rows.length * FRx); sheets.set(kk, s); zs.set(kk, rows.map(([aa]) => Array(NF(aa)).fill(null))); }
         blit(s, frames[q].img, i * FRx, r * FRx); zs.get(kk)![r][i] = Math.round(minL.get(k)! * 1e4) / 1e4;
         // свечение ночью (глаза Умбрата, огонь клинка, руны): свой лист «…~glow», в игре — поверх ночной маски, закрытый слоями выше по z
         const em = frames[q].emis;
-        if (em.length) { let g = sheets.get(kk + "~glow"); if (!g) { g = new PC(12 * FRx, rows.length * FRx); sheets.set(kk + "~glow", g); } for (const [x, y, c] of em) g.set(i * FRx + x, r * FRx + y, [c[0], c[1], c[2], 255]); }
+        if (em.length) { let g = sheets.get(kk + "~glow"); if (!g) { g = new PC(COLS * FRx, rows.length * FRx); sheets.set(kk + "~glow", g); } for (const [x, y, c] of em) g.set(i * FRx + x, r * FRx + y, [c[0], c[1], c[2], 255]); }
       });
     }
   });
@@ -85,7 +94,8 @@ function runJob(j: Job): Record<string, Record<string, Entry>> {
   for (const [k, s] of sheets) {
     if (k.endsWith("~glow")) continue;
     const slot = k.split("@")[0];
-    const grp = j.kind === "gear" ? `gear/${j.set}/${j.sex}/${j.cls}` : slot === "body" ? `body/${j.fac}_${j.sex}/${j.cls}` : `hair/${j.sex}_${j.hair}_${j.fac}/${j.cls}`;
+    const sub = j.kind === "sbase" ? `special-${j.set}` : j.cls;
+    const grp = gearish ? `gear/${j.set}/${j.sex}/${j.cls}` : slot === "body" ? `body/${j.fac}_${j.sex}/${sub}` : `hair/${j.sex}_${j.hair}_${j.fac}/${sub}`;
     const file = `${grp}/${k}.png`;
     fs.mkdirSync(path.dirname(path.join(OUT, file)), { recursive: true });
     s.save(path.join(OUT, file));
@@ -96,6 +106,25 @@ function runJob(j: Job): Record<string, Record<string, Entry>> {
   return groups;
 }
 
+/** Ткань слота «Спина» (экспорт gear147: tools/out/gear147/cloth, data/hero-skeleton-b.json → cloth): текстуры в assets/hero147/cloth,
+ *  точки крепления по кадрам тела — pins[тело][анимация][вид] = кадры [x, y по ключам pinKeys] (кадр 48, ступни 24,45; влево — зеркало side). */
+function clothPart() {
+  const SK = JSON.parse(fs.readFileSync(path.resolve("data/hero-skeleton-b.json"), "utf8"));
+  if (!SK.cloth) return {};
+  const cloth = JSON.parse(JSON.stringify(SK.cloth.textures));
+  const used = new Set<string>();
+  fs.mkdirSync(path.join(OUT, "cloth"), { recursive: true });
+  for (const t of Object.values(cloth) as any[]) for (const v of Object.values(t.views) as any[]) {
+    const name = path.basename(v.file); fs.copyFileSync(path.resolve(v.file), path.join(OUT, "cloth", name)); v.file = "cloth/" + name;
+    for (const p of v.pinFrom) used.add(p.key);
+  }
+  const pinKeys = [...used], idx = pinKeys.map((k) => SK.keys.indexOf(k));
+  const pins: any = {};
+  for (const [bk, anims] of Object.entries(SK.bodies) as [string, any][]) for (const [a, A] of Object.entries(anims) as [string, any][]) for (const [v, frames] of Object.entries(A.views) as [string, any][])
+    ((pins[bk] ??= {})[a] ??= {})[v] = frames.map((fr: any) => idx.flatMap((i) => [fr.p[i * 2], fr.p[i * 2 + 1]]));
+  return { cloth, pinKeys, pins };
+}
+
 const arg = process.argv[2] ?? "1/1";
 fs.mkdirSync(PARTS, { recursive: true });
 if (arg === "merge") {
@@ -103,7 +132,9 @@ if (arg === "merge") {
   for (const f of fs.readdirSync(PARTS).filter((f) => f.endsWith(".json"))) Object.assign(groups, JSON.parse(fs.readFileSync(path.join(PARTS, f), "utf8")));
   const man = {
     _doc: "Листы героя «Б» (задача 147): tools/gen/gear147-export.ts. groups[группа][слот@корзина] = { file, frame, origin (ступни в кадре), cls, z[строка][кадр] }; строки класса — rows[cls] ([анимация, вид]); влево — свой вид. Сведение: по возрастанию z; hair — только без шлема; crest@*-sol / -umb — герб фракции.",
-    rows: { free: rowsOf("free"), great: rowsOf("great") },
+    rows: { free: rowsOf("free"), great: rowsOf("great"), special: rowsOf("special") },
+    special: SPECIAL_SETS,
+    ...clothPart(),
     anims: Object.fromEntries(Object.entries(DATA.anims).map(([k, a]: [string, any]) => [k, { frames: a.frames, fps: a.fps, loop: a.loop }])),
     hair: DATA.hair,
     groups,

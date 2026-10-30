@@ -104,6 +104,8 @@ type Events = {
   "trade:request": { from: string; ms: number } | null;
   "trade:state": TradeView | null;
   "trade:done": Record<string, never>;
+  /** Перековщик: действие выполнено (окно сбрасывает выбор). */
+  "tm:done": Record<string, never>;
   bank: BankView;
   /** Осмотр игрока: ответ на send("inspect"). */
   inspect: InspectReply;
@@ -439,7 +441,7 @@ export class Net {
       this.emit("party", m);
     });
     for (const t of ["wboss", "wboss:me", "wboss:result", "wboss:muster", "wboss:chronicle", "wboss:wave", "events", "event:say"] as const) room.onMessage(t, (m: any) => this.emit(t, m));
-    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:ev", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result", "war:tpcd", "siege", "siege:result", "siege:fx"] as const)
+    for (const t of ["rumor", "enc:npc", "enc:say", "enc:move", "enc:gone", "enc:dialog", "enc:shop", "arena:found", "arena:cancelled", "arena:result", "arena:ev", "arena:top", "arena:history", "party:invite", "trade:request", "trade:state", "trade:done", "tm:done", "bank", "inspect", "market:prices", "admin:players", "admin:logs", "admin:banner", "admin:summoned", "admin:give:result", "raid:muster", "raid:cast", "raid:banner", "raid:revive", "raid:result", "war", "war:say", "war:result", "war:tpcd", "siege", "siege:result", "siege:fx"] as const)
       room.onMessage(t, (m: any) => this.emit(t, m));
     room.onMessage("arena:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("arena:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));

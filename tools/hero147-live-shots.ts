@@ -25,12 +25,17 @@ async function newPage(browser: Browser) {
   p.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 160)); });
   p.on("pageerror", (e) => errors.push(`pageerror: ${String(e).slice(0, 160)}`));
   await p.setViewport({ width: 1366, height: 768 });
-  // фаза дня управляется из сценария: window.__phase (0.3 — день, 0.83 — ночь)
+  // фаза дня управляется из сценария: window.__phase (0.3 — день, 0.83 — ночь). Причина зависаний прежних прогонов (вместе с фоновыми вкладками):
+  // Date.now возвращал одно и то же значение до конца цикла дня — клиент и сервер расходились, вход переподключался по кругу.
   await p.evaluateOnNewDocument(`try { localStorage.setItem("shadowMode", "dynamic"); } catch {}
-    (() => { const n0 = Date.now.bind(Date), C = ${DAY_CYCLE_MS}; window.__phase = 0.3; Date.now = () => { const t = n0(); return t + (((window.__phase * C - (t % C)) + C) % C); }; })();`);
+    (() => { const n0 = Date.now.bind(Date), C = ${DAY_CYCLE_MS}; let ph = -1, off = 0; window.__phase = 0.3;
+      // сдвиг считается один раз на смену фазы: часы идут ровно (прежняя формула замораживала Date.now — истекали брони мест, вход шёл минутами и по кругу)
+      Date.now = () => { const t = n0(); if (window.__phase !== ph) { ph = window.__phase; off = ((ph * C - (t % C)) + C) % C; } return t + off; }; })();`);
   return p;
 }
 async function login(page: Page, name: string, cls: string) {
+  await page.bringToFront();
+  const t0 = Date.now();
   const token = await ensureChar(`hb${Array.from(name).map((c) => c.charCodeAt(0).toString(36)).join("")}`.slice(0, 16), "secret", name, cls);
   for (let k = 0; ; k++) {
     try {
@@ -45,12 +50,13 @@ async function login(page: Page, name: string, cls: string) {
       await page.waitForFunction("window.__game && window.__game.scene.isActive('game')", { timeout: 120000, polling: 500 });
       await page.waitForFunction("window.__net && window.__net.self && window.__net.online", { timeout: 60000, polling: 500 });
       await sleep(2000);
+      log(`вход ${name}: ${((Date.now() - t0) / 1000).toFixed(0)} с`);
       return;
     } catch (e) { if (k >= 2) throw e; log(`повтор входа: ${String((e as Error).message).slice(0, 80)}`); }
   }
 }
 const dbg = (page: Page, m: Record<string, unknown>) => page.evaluate((x) => (window as any).__net.send("dbg", x), m);
-const shot = async (page: Page, id: string) => { fs.mkdirSync(OUT, { recursive: true }); await page.screenshot({ path: path.join(OUT, `${id}.png`) as `${string}.png` }); log(`снят ${id}`); };
+const shot = async (page: Page, id: string) => { fs.mkdirSync(OUT, { recursive: true }); await page.bringToFront(); await page.screenshot({ path: path.join(OUT, `${id}.png`) as `${string}.png` }); log(`снят ${id}`); };
 
 /** Ряды кадров листов героев (свой и два соседних) вокруг своего героя; старые ряды убираются. */
 const GRID = `(() => {
@@ -82,6 +88,40 @@ const GRID = `(() => {
 /** Свечение «Б» ночью у рядов: альфа по ночи (как UnitView). */
 const GLOW = (night: number) => `(window.__hbGrid || []).forEach((o) => { if (o.__night) o.setAlpha(${night}).setVisible(${night} > 0.05); })`;
 
+
+/** Запись кадров вокруг своего героя (зум 3): n снимков через ms → полоса tools/out/hero147-live/<tag>.png. */
+async function record(p: Page, tag: string, n: number, ms: number) {
+  const { PNG } = await import("pngjs");
+  const W = 240, H = 240, strip = new PNG({ width: W * n, height: H });
+  for (let k = 0; k < n; k++) {
+    const buf = await p.screenshot({ clip: { x: 683 - W / 2, y: 384 - H / 2 - 40, width: W, height: H } }) as Buffer;
+    const im = PNG.sync.read(Buffer.from(buf));
+    PNG.bitblt(im, strip, 0, 0, W, H, k * W, 0);
+    await sleep(ms);
+  }
+  fs.writeFileSync(path.join(OUT, `${tag}.png`), PNG.sync.write(strip)); log(`запись ${tag}`);
+}
+/** Ткань (бег, остановка, ветер) и особый удар Рыцаря с огненным следом — на своём герое в сете Рыцаря. */
+async function clothAndSpecial(A: Page) {
+  await A.bringToFront();
+  await A.evaluate(`window.heroB.set("chaos-knight"); window.__phase = 0.3; (window.__hbGrid || []).forEach((o) => o.destroy()); window.__hbGrid = []; window.__game.scene.getScene("game").cameras.main.setZoom(3);`);
+  await sleep(3500);
+  await record(A, "cloth_idle_wind", 10, 300);
+  // бег: клик по земле вправо (герой бежит ~3 с), затем остановка
+  await A.mouse.click(683 + 330, 384 + 20);
+  await record(A, "cloth_run_stop", 14, 220);
+  await A.mouse.click(683 - 330, 384 + 20);
+  await record(A, "cloth_run_back", 14, 220);
+  await A.keyboard.press("Escape");
+  await sleep(2500);
+  // особый удар: анимация attack2 своего листа и огненный след (как в UnitView при каждом 3-м ударе)
+  for (const view of [0, 2]) {
+    await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); if (!v || !v.hb) return; v.attacking = true; v.sprite.play(v.hb.sid + "-attack2-${view}"); v.hbPush = true; window.heroB.trail(s, Math.round(v.x), Math.round(v.y), v.y, false, 875); })()`);
+    await record(A, `special2h_view${view}`, 10, 85);
+    await sleep(800);
+  }
+}
+
 async function screenOf(p: Page, wx: number, wy: number) {
   return p.evaluate((x: number, y: number) => {
     const s = (window as any).__game.scene.getScene("game"), cam = s.cameras.main, r = s.game.canvas.getBoundingClientRect();
@@ -107,15 +147,19 @@ async function quick(browser: Browser) {
       await shot(A, `quick_${set}_z3_${PH > 0.5 ? "night" : "day"}`);
     }
   }
+  await clothAndSpecial(A);
   await A.close();
 }
 
 async function run(browser: Browser) {
   if (process.env.QUICK) return quick(browser);
-  const A = await newPage(browser), B = await newPage(browser), C = await newPage(browser);
-  await login(A, "Сольбэ", "warrior");
-  await login(B, "Умбэ", "deathknight");
-  await login(C, "Союзбэ", "warrior");
+  // Причина зависания прежнего прогона: три вкладки открывались сразу, вход шёл в фоновых — у фоновой вкладки requestAnimationFrame
+  // стоит, Phaser не стартует, ожидание сцены (120 с × 3 попытки) на каждой. Теперь вкладка создаётся перед входом и выводится вперёд,
+  // а у Chrome выключено торможение фоновых вкладок (флаги в launch).
+  const A = await newPage(browser); await login(A, "Сольбэ", "warrior");
+  const B = await newPage(browser); await login(B, "Умбэ", "deathknight");
+  const C = await newPage(browser); await login(C, "Союзбэ", "warrior");
+  await A.bringToFront();
   for (const p of [A, B, C]) { await dbg(p, { op: "god" }); await dbg(p, { op: "level", v: 100 }); }
   const me = await A.evaluate(`({ x: window.__net.self.x, y: window.__net.self.y })`) as { x: number; y: number };
   await dbg(A, { op: "tp", x: me.x, y: me.y });
@@ -158,6 +202,7 @@ async function run(browser: Browser) {
     await dbg(A, { op: "tp", x: npc.x + 30, y: npc.y + 30 }); await sleep(2500);
     const sc = await screenOf(A, npc.x, npc.y); await A.mouse.move(sc.x, sc.y); await sleep(900); await shot(A, `hover_gold_npc`);
   }
+  await clothAndSpecial(A);
   for (const p of [A, B, C]) await p.close();
 }
 
@@ -172,7 +217,7 @@ async function main() {
     await vite.listen();
     await startServer(true);
     try {
-      const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--use-gl=angle", "--use-angle=swiftshader-webgl", "--enable-unsafe-swiftshader", "--disable-gpu-sandbox", "--no-sandbox"], defaultViewport: { width: 1366, height: 768 }, protocolTimeout: 600000 });
+      const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--use-gl=angle", "--use-angle=swiftshader-webgl", "--enable-unsafe-swiftshader", "--disable-gpu-sandbox", "--no-sandbox", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"], defaultViewport: { width: 1366, height: 768 }, protocolTimeout: 600000 });
       try { await run(browser); } finally { await browser.close(); }
     } finally { await vite.close(); await stopServer(); }
   } finally { fs.rmSync(LOCK, { recursive: true, force: true }); }

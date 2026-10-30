@@ -19,9 +19,10 @@ import { settlementAt, SETTLEMENTS } from "./settlements";
 import { SMITHS } from "./upgrade";
 import { STABLEMASTERS } from "./stables";
 import { PET_KEEPERS } from "./pets";
+import { REFORGER } from "./transmog";
 
 /** Что делает NPC по нажатию (окно на клиенте): торговля, арена, еда, заточка, банк, сумки, слухи, рейд, задания, конюшня. */
-export type WorldNpcKind = "shop" | "arena" | "cook" | "smith" | "bank" | "bags" | "rumor" | "raid" | "quest" | "stable" | "pets";
+export type WorldNpcKind = "shop" | "arena" | "cook" | "smith" | "bank" | "bags" | "rumor" | "raid" | "quest" | "stable" | "pets" | "transmog";
 export interface WorldNpc {
   kind: WorldNpcKind;
   id: string;
@@ -51,6 +52,7 @@ export const WORLD_NPCS: WorldNpc[] = [
   ...QUEST_GIVERS.map(as("quest")),
   ...STABLEMASTERS.map(as("stable")),
   ...PET_KEEPERS.map(as("pets")),
+  as("transmog")(REFORGER),
 ];
 
 // ---------- фракция NPC (решение пользователя: чужим не служат) ----------
@@ -64,7 +66,7 @@ export function npcFaction(x: number, y: number): FactionId | null {
 }
 const VERB: Record<WorldNpcKind, string> = {
   shop: "не торгует с врагами", stable: "не торгует с врагами", pets: "не торгует с врагами", cook: "не торгует с врагами", bank: "не торгует с врагами", bags: "не торгует с врагами",
-  smith: "не работает на врагов", quest: "не даёт заданий врагам", rumor: "не говорит с врагами", raid: "не собирает в поход врагов", arena: "не служит врагам",
+  smith: "не работает на врагов", transmog: "не работает на врагов", quest: "не даёт заданий врагам", rumor: "не говорит с врагами", raid: "не собирает в поход врагов", arena: "не служит врагам",
 };
 /** Текст отказа: «Казначей Лукиан не торгует с врагами Сольгарда». */
 export function npcRefusalText(n: { kind: WorldNpcKind; name: string; x: number; y: number }, f: FactionId): string {
