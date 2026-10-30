@@ -22,11 +22,15 @@
     "bins": [0, 0.95, 1.15, 1.22, 1.28, 1.9, 4.9, 5.1, 5.18, 5.22, 5.28, 5.9, 99]
   },
   "materials": {
-    "rogue_leather": ["#1c1418", "#382830", "#58424e", "#7e6272", "#aa8ea0"],
+    "rogue_leather": ["#2a2026", "#4a3a44", "#6e5866", "#967c8c", "#c4a8b8"],
+    "rogue_pants": ["#1e1c26", "#363444", "#524e64", "#767088", "#a09ab2"],
+    "hood_lining": ["#1a1418", "#2c2228", "#40323a", "#58464e", "#745e66"],
+    "tan": ["#3a2614", "#6a4a2a", "#9a7444", "#c49e66", "#e6c896"],
+    "leather_dark": ["#120a06", "#24160c", "#3a2414", "#54361e", "#704a2a"],
     "rogue_boot": ["#2c2228", "#4e3e48", "#76606e", "#a08898", "#cab4c2"],
     "hood_cloth": ["#0e0b10", "#1d1820", "#302834", "#4a3e50", "#6e5e76"],
     "hood_shadow": ["#040306", "#08060a", "#0c0a0e", "#120e14", "#18141a"],
-    "dagger_steel": ["#1a1e28", "#384152", "#606c84", "#98a6c0", "#dce4f2"],
+    "dagger_steel": ["#262c38", "#4a5468", "#76849e", "#aebcd4", "#eef4ff"],
     "wool_brown": ["#1c120c", "#33231a", "#4e3828", "#6c503a", "#8e6c50"],
     "steel60": ["#1a1e26", "#353c4a", "#5a6476", "#8e9aae", "#cdd6e4"],
     "brass": ["#3e2a10", "#6e4c1c", "#a87a30", "#d8aa50", "#f4d68a"],
@@ -65,24 +69,24 @@
       "name": "Кожа Рогатого Рыцаря Хаоса",
       "rarity": "legendary", "level": 100, "material": "leather", "source": "raid:horned-chaos-knight",
       "items": {
-        "helm": { "name": "Капюшон Хаоса", "style": "hood", "cloth": "hood_cloth", "capelet": "rogue_leather", "lining": "chaos_red", "shadow": "hood_shadow", "mask": "chaos_red", "glow": "eye_glow", "crest": true },
-        "pauldrons": { "name": "Наплечники ловчего Хаоса", "plate": "rogue_leather", "accent": "chaos_steel", "trim": "chaos_red", "size": 0.92, "lames": 2, "spikes": 2, "spikeScale": 0.55, "spike": "chaos_steel", "rivets": true, "cracks": "chaos_crack" },
-        "armor": { "name": "Куртка ловчего Хаоса", "style": "coat", "leather": "rogue_leather", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "sash": "chaos_red", "sashTails": true, "strap": true, "breast": true, "crest": true, "cracks": "chaos_crack", "gem": "eye_glow", "long": true, "hem": true, "tatter": true, "thick": 0.35 },
+        "helm": { "name": "Капюшон Хаоса", "style": "hood", "cloth": "hood_cloth", "capelet": "rogue_leather", "lining": "hood_lining", "shadow": "hood_shadow", "mask": "hood_lining", "seam": "chaos_red", "glow": "eye_glow", "crest": true },
+        "pauldrons": { "name": "Наплечники ловчего Хаоса", "plate": "rogue_leather", "accent": "chaos_steel", "trim": "chaos_red", "size": 0.96, "lames": 2, "spikes": 3, "spikeScale": 0.8, "spike": "chaos_steel", "rivets": true, "cracks": "chaos_crack" },
+        "armor": { "name": "Куртка ловчего Хаоса", "style": "coat", "leather": "rogue_leather", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "sash": "chaos_red", "sashTails": true, "strap": true, "strapMat": "leather_dark", "breast": true, "pants": "rogue_pants", "crest": true, "cracks": "chaos_crack", "gem": "eye_glow", "long": true, "hem": true, "tatter": true, "thick": 0.35 },
         "gloves": { "name": "Перчатки ловчего Хаоса", "plate": "rogue_leather", "accent": "chaos_steel", "trim": "gold", "cuff": true, "cuffSpike": true, "spike": "chaos_steel" },
         "boots": { "name": "Сапоги ловчего Хаоса", "plate": "rogue_boot", "accent": "chaos_red", "stripe": true, "strapAccent": "gold", "kneeAccent": "chaos_steel" },
         "cloak": { "name": "Алый шарф Хаоса", "kind": "scarf", "cloth": "chaos_red", "length": 7 },
-        "weapon": { "name": "Клыки Хаоса", "kind": "dual", "blade": "dagger_steel", "edge": "chaos_steel", "hilt": "chaos_steel", "grip": "grip", "accent": "chaos_red", "rune": "chaos_red", "length": 10, "width": 2.4, "bend": 0.55 }
+        "weapon": { "name": "Клыки Хаоса", "kind": "dual", "blade": "dagger_steel", "edge": "chaos_steel", "hilt": "chaos_steel", "grip": "grip", "accent": "chaos_red", "rune": "chaos_red", "trail": "chaos_red", "length": 11, "width": 2.9, "bend": 0.5 }
       }
     },
     "leather-novice": {
       "name": "Кожанка новичка",
       "rarity": "common", "level": 1, "material": "leather", "source": "mobs",
       "items": {
-        "helm": { "name": "Холщовый капюшон", "style": "hood", "cloth": "wool_brown", "lining": "leather", "shadow": "hood_shadow" },
+        "helm": { "name": "Холщовый капюшон", "style": "hood", "cloth": "tan", "lining": "leather", "shadow": "hood_shadow" },
         "pauldrons": { "name": "Кожаные наплечники", "plate": "leather", "accent": "leather", "trim": "leather", "size": 0.78, "lames": 1, "spikes": 0 },
-        "armor": { "name": "Кожаная куртка", "style": "coat", "leather": "leather", "plate": "iron", "accent": "leather", "sash": "wool_brown", "thick": 0.3, "open": 0.7 },
+        "armor": { "name": "Кожаная куртка", "style": "coat", "leather": "leather", "plate": "iron", "accent": "leather", "sash": "leather_dark", "thick": 0.3, "lacing": "tan", "pouch": "leather_dark", "pants": "wool_brown", "strap": true, "strapMat": "leather_dark" },
         "gloves": { "name": "Кожаные перчатки", "plate": "leather", "accent": "leather", "cuff": false },
-        "boots": { "name": "Кожаные сапоги", "plate": "leather", "accent": "leather" },
+        "boots": { "name": "Кожаные сапоги", "plate": "leather", "accent": "leather", "stripe": true, "strapAccent": "brass" },
         "weapon": { "name": "Пара ножей", "kind": "dual", "blade": "iron", "edge": "iron", "hilt": "iron", "grip": "leather", "accent": "iron", "length": 7, "width": 1.8 }
       }
     },
