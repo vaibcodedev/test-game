@@ -13,6 +13,7 @@ const TENT: Mat = { o: "#2a0a0a", d: "#9a2a22", m: "#d8503a", l: "#f48a62", a: "
 const RUIN: Mat = { o: "#1c1630", d: "#6a5e96", m: "#9a8cc8", l: "#cabef0", a: "#463a68", b: "#2a2440" };
 const SKUL: Mat = { o: "#2a0a12", d: "#9a1424", m: "#e0283a", l: "#ff7a6a", a: "#f6dc86", b: "#5a0a14" };
 const YOU: Mat = { o: "#7a1418", d: "#a8a098", m: "#e8e0d6", l: "#ffffff", a: "#e84a4a", b: "#7a1418" };
+const MEET: Mat = { o: "#0a2a2a", d: "#3a8a7a", m: "#8ad8c8", l: "#d0f6ee", a: "#e8d8a8", b: "#5a3a1c" };
 const AIM: Mat = { o: "#2a1c0a", d: "#8a5e1c", m: "#d6a84b", l: "#f6dc86", a: "#e0283a", b: "#5a3a1c" };
 
 /** Кнопка «Ко мне»: A — прицел (кольцо, риски, точка); B — компас-крест, север красный; C — кольцо с точкой. */
@@ -43,6 +44,7 @@ const V: Record<string, Record<string, { mat: Mat; rows: string[] }>> = {
     boss: { mat: SKUL, rows: ["...######...", "..########..", ".##########.", ".##ee##ee##.", ".##ee##ee##.", ".####ee####.", "..########..", "...#.##.#...", "...#.##.#...", "............", "............", "............"] },
     you: { mat: YOU, rows: [".....##.....", "....####....", "...######...", "..########..", ".##########.", "..###..###..", "..##....##..", "............", "............", "............", "............", "............"] },
     center: { mat: AIM, rows: ring("A") },
+    meet: { mat: MEET, rows: [".....##.....", "..########..", ".##########.", "a.a.a.a.a.a.", ".b........b.", ".b........b.", ".b..####..b.", ".b..####..b.", ".b........b.", "............", "............", "............"] },
   },
   B: {
     city: { mat: GOLD, rows: ["#.#......#.#", "###..aa..###", "###.####.###", "###.####.###", "############", "####eeee####", "####eeee####", "####eeee####", "####eeee####", "############", "............", "............"] },
@@ -64,8 +66,7 @@ const V: Record<string, Record<string, { mat: Mat; rows: string[] }>> = {
   },
 };
 
-export function build(v: string, name: string): PC {
-  const { mat, rows } = V[v][name];
+function render(mat: Mat, rows: string[]): PC {
   const pc = new PC(14, 14);
   const at = (x: number, y: number) => rows[y]?.[x] ?? ".";
   const filled = (x: number, y: number) => at(x, y) !== ".";
@@ -85,11 +86,53 @@ export function build(v: string, name: string): PC {
   }
   return pc;
 }
+export function build(v: string, name: string): PC {
+  const { mat, rows } = V[v][name];
+  return render(mat, rows);
+}
+
+/** Варианты значков особых мест (форты, «Сердце Севера», «Пепельные чертоги», «???»): выбор владельца ещё не сделан, в игру не встроены (лист tools/out/boss-dots/icons-forts.png). */
+const fac = (m: string, d: string, l: string): Mat => ({ o: "#1c1410", d, m, l, a: "#e8e0d6", b: "#3a2a1c" });
+const FSOL = fac("#d89a2a", "#8a5a10", "#f6cf6a"), FUMB = fac("#6ac84a", "#2e6a22", "#a8ee8a");
+const HEART: Mat = { o: "#2a0a1a", d: "#7a1a3a", m: "#c8386a", l: "#f08aaa", a: "#cabef0", b: "#3a1a4a" };
+const ASH: Mat = { o: "#1a0a0a", d: "#3a3a46", m: "#6a6a7e", l: "#a0a0b8", a: "#ff7a2a", b: "#5a0a08" };
+const UNK: Mat = { o: "#1c1630", d: "#5a4e80", m: "#8a7cc0", l: "#c0b4f0", a: "#f6dc86", b: "#2a2440" };
+export const SPECIAL: Record<string, { mat: Mat; rows: string[] }[]> = {
+  fort: [
+    { mat: FSOL, rows: ["..a.......a.", "..a.......a.", ".###.###.###", ".###.###.###", ".###########", ".####eee####", ".####eee####", ".####eee####", "############", "............", "............", "............"] },
+    { mat: FSOL, rows: ["...a....a...", "..###..###..", ".####..####.", ".##########.", ".####..####.", ".###e##e###.", ".###e##e###.", ".####ee####.", "############", "............", "............", "............"] },
+    { mat: FSOL, rows: ["....a.......", "....b.......", "#.#.#.#.#.#.", "############", "############", "##e##e##e##.", "############", "###eeee#####", "###eeee#####", "############", "............", "............"] },
+  ],
+  heart: [
+    { mat: HEART, rows: ["............", ".###....###.", "#####..#####", "############", "############", ".##########.", "..########..", "...######...", "....####....", ".....##.....", "............", "............"] },
+    { mat: HEART, rows: ["............", ".....a......", "....aaa.....", "...#####....", "..#######...", ".#########..", ".#########..", "############", "############", "............", "............", "............"] },
+    { mat: HEART, rows: ["....a.......", "....a.......", "...###......", "..#####.....", "..#####.#...", "..#####.#...", ".#######.##.", ".#########.#", "############", "............", "............", "............"] },
+  ],
+  ashen: [
+    { mat: ASH, rows: ["............", "....aaaa....", "...aaaaaa...", "..########..", ".##########.", ".###eeee###.", ".###eeee###.", ".###eeee###.", ".###eeee###.", ".###eeee###.", "############", "............"] },
+    { mat: ASH, rows: ["............", "..########..", ".##########.", ".#e######e#.", ".##########.", ".###eeee###.", ".##e#aa#e##.", ".##e#aa#e##.", ".##ee..ee##.", "..#########.", "............", "............"] },
+    { mat: ASH, rows: ["#..........#", "##........##", ".##.####.##.", "..########..", "..#aa##aa#..", "..#aa##aa#..", "..###ee###..", "...#.##.#...", "..##.##.##..", "..#########.", "............", "............"] },
+  ],
+  unknown: [
+    { mat: UNK, rows: ["....####....", "...######...", "..###aa###..", "..###..###..", ".......###..", "......###...", ".....###....", ".....###....", "............", ".....###....", ".....###....", "............"] },
+    { mat: UNK, rows: ["....####....", "..########..", ".###a##a###.", ".####aa####.", ".####..####.", "..###..###..", "..########..", "...######...", "....####....", "............", "............", "............"] },
+    { mat: UNK, rows: ["............", "..########..", ".##########.", ".###aaaa###.", ".##aa..aa##.", ".#####aa###.", ".####aa####.", ".####..####.", ".####aa####.", ".##########.", "..########..", "............"] },
+  ],
+};
+export function buildSpecial(kind: string, i: number, mat?: Mat): PC {
+  const e = SPECIAL[kind][i];
+  return render(mat ?? e.mat, e.rows);
+}
 if (process.argv[1]?.includes("wm-icons")) {
   const out = path.resolve("tools/out/boss-dots/icons");
   for (const v of Object.keys(V)) for (const n of Object.keys(V[v])) build(v, n).save(path.join(out, `${v}_${n}.png`));
   // выбор владельца (смесь) → клиент: client/public/assets/ui/wm/<имя>.png
-  const PICK: Record<string, string> = { city: "B", house: "C", camp: "C", ruin: "B", boss: "B", you: "A", center: "A" };
+  const PICK: Record<string, string> = { city: "B", house: "C", camp: "C", ruin: "B", boss: "B", you: "A", center: "A", meet: "A" };
   for (const [n, v] of Object.entries(PICK)) build(v, n).save(path.resolve("client/public/assets/ui/wm", `${n}.png`));
+  const sp = path.resolve("tools/out/boss-dots/forts");
+  for (let i = 0; i < 3; i++) {
+    buildSpecial("fort", i, FSOL).save(path.join(sp, `fort_sol_${i}.png`)); buildSpecial("fort", i, FUMB).save(path.join(sp, `fort_umb_${i}.png`));
+    for (const k of ["heart", "ashen", "unknown"]) buildSpecial(k, i).save(path.join(sp, `${k}_${i}.png`));
+  }
   console.log("ok");
 }

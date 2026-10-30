@@ -39,7 +39,10 @@ const zoneTag = (z: { danger?: "unsafe" | "deadly"; land?: FactionId }): { text:
   z.danger ? { text: DANGER_LABEL[z.danger], color: z.danger === "deadly" ? P.bad : P.warn } : z.land ? { text: landLabel(z.land), color: factionColor(z.land) } : null;
 /** Значки карты (tools/gen/wm-icons.ts → client/public/assets/ui/wm): легенда и значок босса на самой карте. */
 const WM_ICON = (n: string) => `/assets/ui/wm/${n}.png`;
-const bossImg = (() => { const i = new Image(); i.src = WM_ICON("boss"); return i; })();
+const wmImgs = new Map<string, HTMLImageElement>();
+const wmImg = (n: string) => { let i = wmImgs.get(n); if (!i) { i = new Image(); i.src = WM_ICON(n); wmImgs.set(n, i); } return i; };
+const drawWmIcon = (g: CanvasRenderingContext2D, n: string, x: number, y: number) => { const i = wmImg(n); if (i.complete && i.naturalWidth) g.drawImage(i, Math.round(x) - 7, Math.round(y) - 7, 14, 14); };
+const PLACE_ICON: Record<string, string> = { settlement: "house", camp: "camp", ruins: "ruin", meeting: "meet" };
 /** Сдвиги подписи-блока (px экрана), от ближайших к дальним. */
 const BLOCK_SHIFTS: [number, number][] = (() => { const o: [number, number][] = []; for (let dx = -120; dx <= 120; dx += 12) for (let dy = -60; dy <= 60; dy += 6) if (dx || dy) o.push([dx, dy]); return o.sort((a, b) => Math.hypot(a[0], a[1] * 2) - Math.hypot(b[0], b[1] * 2)); })();
 interface Hit { x: number; y: number; r: number; title: string; sub: string }
@@ -370,12 +373,12 @@ export class WorldMapView {
       const x = X(c.x), y = Y(c.y);
       const open = !known || cityKnown(c, known, faction);
       const col = c.capital ? factionColor(c.capital) : open ? CITY : "#8a8290";
-      const r = (c.capital ? 7 : 5.5) + Math.min(4, s * 0.4);
-      g.fillStyle = "#120a10";
-      g.fillRect(x - r - 1.5, y - r - 1.5, r * 2 + 3, r * 2 + 3);
-      g.fillStyle = col;
-      g.fillRect(x - r, y - r, r * 2, r * 2);
-      if (c.capital) { g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.strokeRect(x - r, y - r, r * 2, r * 2); }
+      const r = c.capital ? 10 : 8; // значок «Город» 14 px; у столицы — рамка цвета фракции
+      if (c.capital) { g.fillStyle = "#120a10"; g.fillRect(Math.round(x) - 9, Math.round(y) - 9, 18, 18); g.fillStyle = col; g.fillRect(Math.round(x) - 8, Math.round(y) - 8, 16, 16); g.fillStyle = "#18101a"; g.fillRect(Math.round(x) - 7, Math.round(y) - 7, 14, 14); }
+      g.globalAlpha = open || c.capital ? 1 : 0.5;
+      drawWmIcon(g, "city", x, y);
+      g.globalAlpha = 1;
+      placed.push({ x0: x - r, y0: y - r, x1: x + r, y1: y + r });
       const cs = c.capital ? FS.md : FS.base;
       label(open || c.capital ? (c.capital ? c.name.toUpperCase() : c.name) : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", font(cs, true), cs);
       hits.push({ x, y, r: r + 4, title: open || c.capital ? c.name : T("ui.worldmap.734"), sub: open || c.capital ? (c.capital ? T("ui.worldmap.735") : T("ui.worldmap.729")) + ` ${T("ui.worldmap.736")}` : T("ui.worldmap.737") });
@@ -423,12 +426,9 @@ export class WorldMapView {
         const tag = zi && !zi.safe ? zoneTag(zi) : null;
         // опасность — строчными (часть фразы), земли фракции — как имя собственное
         const sub = `${KIND_NAME[p.kind]}${zi ? ` · ${zi.safe ? "безопасно" : zi.note ? "дикие края" : `ур. ${zi.levels[0]}–${zi.levels[1]}${tag ? ` · ${zi.danger ? tag.text.toLowerCase() : tag.text}` : ""}`}` : ""}`;
-        const sz = p.kind === "settlement" ? 4 : 3;
-        g.fillStyle = "#120a10";
-        g.fillRect(x - sz - 1, y - sz - 1, sz * 2 + 2, sz * 2 + 2);
-        g.fillStyle = KIND_COLOR[p.kind];
-        if (p.kind === "settlement") g.fillRect(x - sz, y - sz, sz * 2, sz * 2);
-        else { g.beginPath(); g.moveTo(x, y - sz - 1); g.lineTo(x + sz + 1, y + sz); g.lineTo(x - sz - 1, y + sz); g.closePath(); g.fill(); }
+        const sz = 8; // значок 14 px: подпись и попадание отсчитываются от него
+        drawWmIcon(g, PLACE_ICON[p.kind], x, y);
+        placed.push({ x0: x - 8, y0: y - 8, x1: x + 8, y1: y + 8 }); // значок занимает место: подписи не налезают
         const fs = p.kind === "settlement" ? FS.sm : FS.xs;
         if (s >= minS[p.kind]) {
           // зеркальная пара поселений подписывается вместе: если одно название не влезло, не рисуется и второе
@@ -441,7 +441,7 @@ export class WorldMapView {
           }
           if (show) label(p.name, x, y - sz - 5, KIND_COLOR[p.kind], font(fs), fs);
         }
-        hits.push({ x, y, r: sz + 5, title: p.name, sub });
+        hits.push({ x, y, r: 8, title: p.name, sub });
       }
       // указатели
       if (s >= 4) for (const sg of SIGNS) {
@@ -474,7 +474,7 @@ export class WorldMapView {
     // боссы зон и кольца (BOSS_SPAWNS): алый череп 9 px с тёмной обводкой в клетке босса; состояние (жив/возрождение) вне зоны видимости на клиент не приходит
     for (const { b, x, y } of bossIcons) {
       const d = MOBS[b.id]!;
-      if (bossImg.complete && bossImg.naturalWidth) g.drawImage(bossImg, x - 7, y - 7, 14, 14);
+      drawWmIcon(g, "boss", x, y);
       hits.push({ x, y, r: 6, title: `${d.name} · ур. ${d.level ?? "?"}`, sub: "Босс · состояние неизвестно" });
     }
     if (big) drawWbMap(g, X, Y, s, hits, placed); // Колосс Полей: 4 состояния, круг арены (задача 151)
