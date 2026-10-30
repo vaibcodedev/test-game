@@ -360,9 +360,10 @@ function convexHull(p: V2[]): V2[] {
   return lo.slice(0, -1).concat(up.slice(0, -1));
 }
 
-export type PO = { amp?: number; dome?: number; bias?: number; dith?: number };
+/** kant — светлый кант 1 px по кромкам к свету (сверху и со стороны света) */
+export type PO = { amp?: number; dome?: number; bias?: number; dith?: number; kant?: boolean };
 /** slot — слой листа: body (основа), hair (причёска, прячется шлемом) или слот снаряжения */
-export interface Part { g: string; ramp: C[]; o?: PO; layer: number; m?: (z: Mz) => void; loc?: (z: Mz) => void; emis?: boolean; slot?: string }
+export interface Part { g: string; ramp: C[]; o?: PO; layer: number; m?: (z: Mz) => void; loc?: (z: Mz) => void; emis?: boolean; /** цвет свечения ночью (иначе — цвет пикселя) */ emisColor?: C; slot?: string }
 /** Всё, что нужно слою снаряжения, чтобы привязаться к скелету кадра (см. tools/gen/gear147) */
 export interface GearCtx {
   l: Look; v: View; anim: AnimId; i: number; u: number; P: Pose; sk: Sk; b: Build; M: Mats;
@@ -658,10 +659,12 @@ export function renderLayers(l: Look, v: View, anim: AnimId, i: number, filters:
     if (p.m) {
       const m = new Mz(); p.m(m);
       const cv = new Cv(W, W); paint(cv, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
+      if (p.o?.kant) { const sx = l.lightFlip ? 2 : -2, top = p.ramp[p.ramp.length - 1], hi = p.ramp[p.ramp.length - 2]; for (let q = 0; q < m.d.length; q++) { if (!m.d[q]) continue; const x = q % W, y = Math.floor(q / W); const up = y < 2 || !m.d[q - 2 * W], sd = x + sx < 0 || x + sx >= W || !m.d[q + sx]; if (up) cv.set(x, y, top); else if (sd) cv.set(x, y, hi); } }
       for (let q = 0; q < m.d.length; q++) if (m.d[q]) { r.q.push(q); r.c.push(cv.get(q % W, Math.floor(q / W))); }
     } else if (p.loc) {
       const m = new Mz(LW * Z, LW * Z, LCX, LCY); p.loc(m);
       const lc = new Cv(LW * Z, LW * Z); paint(lc, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
+      if (p.o?.kant) { const LWZ = LW * Z, sx = l.lightFlip ? 2 : -2, top = p.ramp[p.ramp.length - 1], hi = p.ramp[p.ramp.length - 2]; for (let q = 0; q < m.d.length; q++) { if (!m.d[q]) continue; const x = q % LWZ, y = Math.floor(q / LWZ); const up = y < 2 || !m.d[q - 2 * LWZ], sd = x + sx < 0 || x + sx >= LWZ || !m.d[q + sx]; if (up) lc.set(x, y, top); else if (sd) lc.set(x, y, hi); } }
       if (Math.abs(theta) < 0.02) {
         for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.d[y * m.w + x]) { const gx = x + ox * Z, gy = y + oy * Z; if (gx >= 0 && gy >= 0 && gx < W && gy < W) { r.q.push(gy * W + gx); r.c.push(lc.get(x, y)); } }
       } else {
@@ -684,9 +687,9 @@ function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: 
   const und = l.fac === "umb", fem = l.sex === "f";
   const cs = Math.cos(theta), sn = Math.sin(theta);
   const cv = new Cv(W, W), ids = new Uint8Array(W * W);
-  const emisParts = new Set<number>();
+  const emisParts = new Set<number>(), emisCol = new Map<number, C>();
   order.forEach((p, k) => {
-    if (p.emis) emisParts.add(k + 1);
+    if (p.emis) { emisParts.add(k + 1); if (p.emisColor) emisCol.set(k + 1, p.emisColor); }
     const r = paintOne(p);
     for (let j = 0; j < r.q.length; j++) { const q = r.q[j]; cv.set(q % W, Math.floor(q / W), r.c[j]); ids[q] = k + 1; }
   });
@@ -784,7 +787,7 @@ function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: 
     }
     if (best) res.set(x, y, best);
   }
-  for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) if (emisParts.has(oid[y * FR + x])) emis.push([x, y, res.get(x, y)]);
+  for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) if (emisParts.has(oid[y * FR + x])) emis.push([x, y, emisCol.get(oid[y * FR + x]) ?? res.get(x, y)]);
   return { img: res, emis, sk, pose: P };
 }
 export const mixC = (a: C, b: C, t: number): C => [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];

@@ -160,12 +160,16 @@ function scene(night: boolean): PC {
 {
   const day = scene(false), nig = scene(true);
   const w = 60 + day.w * 2 * 2;
-  blocks.push({ w, h: 40 + day.h * 2 + 40 + 60 * 3, file: "knight-chaos-scene.png", draw: (c, y0) => {
+  const gray = new PC(day.w, day.h); for (let i = 0; i < day.data.length; i += 4) { const l = Math.round(day.data[i] * 0.3 + day.data[i + 1] * 0.59 + day.data[i + 2] * 0.11); gray.data[i] = gray.data[i + 1] = gray.data[i + 2] = l; gray.data[i + 3] = 255; }
+  blocks.push({ w, h: 40 + day.h * 2 + 40 + 60 * 3 + 40 + 66 * 3, file: "knight-chaos-scene.png", draw: (c, y0) => {
     text(c, "СЦЕНА · ЗУМ 2 · ДЕНЬ | НОЧЬ · ОБЫЧНЫЕ ЛАТЫ, ЗАТЕМ СЕТ ×4", 20, y0, 2);
     blit(c, day, 20, y0 + 26, 2); blit(c, nig, 40 + day.w * 2, y0 + 26, 2);
     const y1 = y0 + 26 + day.h * 2 + 16;
     text(c, "ЗУМ 3 · ДЕНЬ | НОЧЬ", 20, y1, 2);
     blit(c, day, 20, y1 + 26, 3, 56, 16, 104, 64); blit(c, nig, 40 + 104 * 3, y1 + 26, 3, 56, 16, 104, 64);
+    const y2 = y1 + 26 + 64 * 3 + 16;
+    text(c, "Ч/Б · ЗУМ 3 · ТРИ ЗОНЫ: ШЛЕМ | ПЛЕЧИ И КИРАСА | НОГИ", 20, y2, 2);
+    blit(c, gray, 20, y2 + 26, 3, 56, 16, 104, 64);
   } });
 }
 // ---------- сборка ----------

@@ -19,8 +19,10 @@
     "bins": [0, 0.95, 1.15, 1.22, 1.28, 1.9, 4.9, 5.1, 5.18, 5.22, 5.28, 5.9, 99]
   },
   "materials": {
-    "chaos_steel": ["#100c13", "#261e2e", "#41364d", "#665872", "#a091b4"],
-    "chaos_red": ["#2e0610", "#5c0c18", "#9a1424", "#d42a34", "#ff6a5a"],
+    "chaos_steel": ["#121622", "#262e42", "#414d68", "#6a7a9a", "#b0bed8"],
+    "chaos_red": ["#4a0610", "#8c0e1e", "#cc1c2c", "#f2443e", "#ffa088"],
+    "chaos_spike": ["#0a080c", "#1a1620", "#2e2836", "#4c4458", "#9a90aa"],
+    "chaos_crack": ["#3a0810", "#5e0c16", "#7e121c", "#9a1a22", "#b02428"],
     "gold": ["#6a4210", "#a8681c", "#e0a630", "#ffd864", "#fff2b0"],
     "chaos_horn": ["#120809", "#2a1214", "#4a1c20", "#74302e", "#a8564a"],
     "chaos_cape": ["#1c0408", "#3c0a10", "#66121a", "#902028", "#b83c3a"],
@@ -48,10 +50,10 @@
       "rarity": "legendary", "level": 100, "material": "plate", "source": "raid:horned-chaos-knight",
       "items": {
         "helm": { "name": "Рогатый шлем Хаоса", "style": "horned", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "horn": "chaos_horn", "glow": "eye_glow", "spikes": 3, "horns": 1.0 },
-        "pauldrons": { "name": "Шипастые наплечники Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "size": 1.18, "lames": 2, "spikes": 3 },
-        "armor": { "name": "Кираса Рогатого Рыцаря", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "cloth": "chaos_tabard", "mail": "mail", "thick": 0.6, "chestPlate": true, "inlay": true, "crest": true, "tassets": "chaos_red", "tabard": true },
-        "gloves": { "name": "Латные рукавицы Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "cuff": true, "cuffSpike": true },
-        "boots": { "name": "Поножи Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "kneeSpike": true, "stripe": true },
+        "pauldrons": { "name": "Шипастые наплечники Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "size": 1.18, "lames": 2, "spikes": 3, "cracks": "chaos_crack", "spike": "chaos_spike" },
+        "armor": { "name": "Кираса Рогатого Рыцаря", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "cloth": "chaos_tabard", "mail": "mail", "thick": 0.6, "chestPlate": true, "inlay": true, "crest": true, "cracks": "chaos_crack", "spikes": true, "spike": "chaos_spike", "tassets": "chaos_red", "tabard": true },
+        "gloves": { "name": "Латные рукавицы Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "cuff": true, "cuffSpike": true, "spike": "chaos_spike" },
+        "boots": { "name": "Поножи Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "kneeSpike": true, "stripe": true, "spike": "chaos_spike" },
         "cloak": { "name": "Рваный плащ Хаоса", "kind": "cape", "outer": "chaos_cape", "lining": "chaos_lining", "trim": "gold", "hem": "chaos_red", "tatter": 1.0, "crest": true },
         "weapon": { "name": "Пылающий клинок Хаоса", "kind": "great", "blade": "hellfire", "edge": "chaos_red", "hilt": "chaos_steel", "grip": "grip", "accent": "chaos_red", "length": 21, "width": 3.6, "serrate": true, "flames": true, "glow": true }
       }
