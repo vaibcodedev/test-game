@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CITIES } from "../../../shared/cities";
+import { castTeleport } from "../game/cities";
 import { FACTIONS } from "../../../shared/factions";
 import { Zone, zoneAtPx } from "../../../shared/map";
 import { RAID_ROLES } from "../../../shared/raid";
@@ -175,17 +176,15 @@ export class WorldBosses {
     const now = this.now(), key = p.name.toLowerCase();
     const open = this.directors.some((d) => d.stage === "alive" || (d.stage === "soon" && (d.win?.mark ?? 0) - now <= WB.clock.teleportMin * 60000));
     if (!open) return wbText("«В форт» откроется за {min} мин до пробуждения.", { min: WB.clock.teleportMin });
-    if (p.level < WB.minLevel || p.dead || p.team || p.inCombat(this.w.time)) return "—";
-    if ((this.tpAt.get(key) ?? -1e15) > this.w.time) return "—";
+    if (p.level < WB.minLevel) return wbText("«В форт» доступно с {lvl} уровня.", { lvl: WB.minLevel });
+    if (p.dead || p.team) return "Сейчас нельзя";
+    if (p.inCombat(this.w.time)) return "Нельзя в бою";
+    const left = (this.tpAt.get(key) ?? -1e15) - this.w.time;
+    if (left > 0) return `Телепорт перезаряжается: ещё ${Math.ceil(left / 1000)} с`;
     const fort = CITIES.find((c) => c.id === `fort_${p.faction}`);
-    if (!fort) return "—";
-    this.w.emit({ t: "tp", id: p.id, ph: "go", x: p.x, y: p.y });
-    p.unit.x = fort.spawn.x;
-    p.unit.y = fort.spawn.y;
-    p.moveTo = null;
-    p.targetId = null;
-    this.w.emit({ t: "tp", id: p.id, ph: "arrive", x: p.x, y: p.y });
-    this.tpAt.set(key, this.w.time + 120000);
+    if (!fort) return "Свой форт не найден";
+    // обычный каст телепорта (полоса, эффект, прерывание движением и уроном); перезарядка — после переноса
+    castTeleport(this.w, p, { x: fort.spawn.x, y: fort.spawn.y }, fort.name, () => this.tpAt.set(key, this.w.time + 120000));
     return null;
   }
 

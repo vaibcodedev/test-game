@@ -39,7 +39,7 @@ type Events = {
   fx: Fx[];
   chat: ChatLine;
   toast: ToastMsg;
-  mountcast: { ms: number; name?: string };
+  mountcast: { ms: number; name?: string; tp?: number };
   /** Конюший: лучший рейтинг арены за сезон (ответ на stable:open). */
   "stable:info": { arenaRating: number };
   cast: { ms: number; name?: string };

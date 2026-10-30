@@ -41,6 +41,16 @@ export function tickCities(w: World) {
     } else if (w.time >= t.until) {
       p.tele = null;
       p.send("mountcast", { ms: 0 });
+      if (t.dest) { // телепорт не к камню (в форт, в лагерь осады): тот же каст, без цены
+        w.emit({ t: "tp", id: p.id, ph: "go", x: p.x, y: p.y });
+        p.unit.x = t.dest.x; p.unit.y = t.dest.y;
+        p.moveTo = null; p.targetId = null;
+        p.nav.reset();
+        p.selfDirty = true;
+        w.emit({ t: "tp", id: p.id, ph: "arrive", x: p.x, y: p.y });
+        t.after?.();
+        continue;
+      }
       const to = cityById(t.to);
       if (!to || p.save.gold < t.price) { w.emit({ t: "tp", id: p.id, ph: "cancel", x: p.x, y: p.y }); continue; }
       w.emit({ t: "tp", id: p.id, ph: "go", x: p.x, y: p.y });
@@ -54,6 +64,18 @@ export function tickCities(w: World) {
       p.send("toast", { text: T("srv.cities.81", { name: to.name, price: t.price }), kind: "info" });
     }
   }
+}
+
+/** Каст телепорта в точку (в форт, в лагерь осады): тот же каст, полоса, эффект и прерывание (движение, урон), что у камня. false — нельзя начать сейчас. */
+export function castTeleport(w: World, p: Player, to: { x: number; y: number }, name: string, after?: () => void): boolean {
+  if (p.tele || p.mountCast || p.stunUntil > w.time || p.dead) return false;
+  w.breakMount(p);
+  p.input = { mx: 0, my: 0 };
+  p.moveTo = null;
+  p.tele = { until: w.time + TELEPORT_CAST_MS, x: p.x, y: p.y, to: "", price: 0, dest: to, after };
+  p.send("mountcast", { ms: TELEPORT_CAST_MS, name: `Телепорт: ${name}`, tp: 1 });
+  w.emit({ t: "tp", id: p.id, ph: "cast", x: p.x, y: p.y, sx: p.x, sy: p.y, ms: TELEPORT_CAST_MS });
+  return true;
 }
 
 /** Начать телепорт к открытому городу: рядом с камнем, не в бою, хватает золота. */
@@ -74,7 +96,7 @@ export function startTeleport(w: World, p: Player, id: unknown) {
   p.input = { mx: 0, my: 0 };
   p.moveTo = null;
   p.tele = { until: w.time + TELEPORT_CAST_MS, x: p.x, y: p.y, to: to.id, price };
-  p.send("mountcast", { ms: TELEPORT_CAST_MS, name: T("srv.cities.791", { name: to.name }) });
+  p.send("mountcast", { ms: TELEPORT_CAST_MS, name: T("srv.cities.791", { name: to.name }), tp: 1 });
   w.emit({ t: "tp", id: p.id, ph: "cast", x: p.x, y: p.y, sx: from.stone.x, sy: from.stone.y, ms: TELEPORT_CAST_MS });
 }
 

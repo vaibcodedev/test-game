@@ -247,7 +247,6 @@ for (const f of ["sol", "umb", "none"]) for (const h of ["", "-heart"]) {
   im.src = `/ui/war/icon-${f}${h}.png`;
   ICONS.set(`${f}${h}`, im);
 }
-const HEART_IMG = (() => { const i = new Image(); i.src = "/assets/ui/wm/heart.png"; return i; })();
 const iconOf = (o: string, heart: boolean) => ICONS.get(`${fcls(o)}${heart ? "-heart" : ""}`);
 const lookCol = (f: string) => (f === "solgard" ? WAR.look.color.solgard : f === "umbrath" ? WAR.look.color.umbrath : WAR.look.color.neutral);
 
@@ -310,9 +309,9 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
   const order = [...WAR_BASES].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "heart" ? -1 : 1));
   for (const d of order) {
     const b = warView.byId.get(d.id), on = !!st && st.ph !== "idle" && st.front === d.front, heart = d.kind === "heart";
-    const im = heart ? HEART_IMG : iconOf(b?.o ?? "", heart); // «Сердце Севера» — кристаллы (tools/gen/wm-icons.ts), владелец — полоска под значком
+    const im = iconOf(b?.o ?? "", heart);
     const x = Math.round(X(d.x / TILE)), y = Math.round(Y(d.y / TILE));
-    const iw = (im?.naturalWidth || 22) * k, ih = (im?.naturalHeight || 30) * k, foot = (heart ? 0 : 3) * k, mid = y - ih / 2 + foot;
+    const iw = (im?.naturalWidth || 22) * k, ih = (im?.naturalHeight || 30) * k, foot = 3 * k, mid = y - ih / 2 + foot;
     // прогресс захвата — дуга вокруг значка цветом знамени; спор — мигающий обод
     if (on && b && (b.c || (b.b && b.h < 1))) {
       g.lineWidth = 3;
@@ -325,9 +324,8 @@ export function drawWarMap(g: CanvasRenderingContext2D, X: (tx: number) => numbe
     if (act) { const pu = 0.5 + 0.5 * Math.sin(performance.now() / 300); g.lineWidth = 2; g.strokeStyle = `rgba(255, 216, 74, ${0.35 + 0.55 * pu})`; g.beginPath(); g.arc(x, mid, ih / 2 + 6 + pu * 2, 0, Math.PI * 2); g.stroke(); }
     g.globalAlpha = st?.ph === "battle" && !act ? 0.55 : 1;
     if (im?.complete && im.naturalWidth) g.drawImage(im, Math.round(x - iw / 2), Math.round(y - ih + foot), iw, ih);
-    if (heart) { g.fillStyle = "#120a10"; g.fillRect(Math.round(x - iw / 2), y + 1, iw, 4); g.fillStyle = b?.o ? lookCol(b.o) : P.dim; g.fillRect(Math.round(x - iw / 2) + 1, y + 2, iw - 2, 2); }
     g.globalAlpha = 1;
-    const rIcon = { x0: x - iw / 2, y0: y - ih + foot, x1: x + iw / 2, y1: y + foot + (heart ? 5 : 0) };
+    const rIcon = { x0: x - iw / 2, y0: y - ih + foot, x1: x + iw / 2, y1: y + foot };
     placed.push(rIcon);
     // подпись
     const { owner, state } = baseState(d.id);

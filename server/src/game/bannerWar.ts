@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { WAR, WAR_FACTIONS, WAR_FRONTS, WAR_RADIUS, nextWarStart, raiseSec, warFront, weekKey, type WarBaseDef, type WarBaseView, type WarFaction, type WarFrontDef, type WarPhase, type WarResultMsg, type WarSayMsg, type WarStateMsg, type WarTopRow } from "../../../shared/bannerWar";
 import { CITIES } from "../../../shared/cities";
+import { castTeleport } from "./cities";
 import { FACTIONS } from "../../../shared/factions";
 import { makeItem, type Item } from "../../../shared/items";
 import { Zone, zoneAtPx } from "../../../shared/map";
@@ -569,9 +570,8 @@ export class BannerWar {
     const key = p.name.toLowerCase(), left = (this.tpCd.get(key) ?? 0) - this.w.time;
     if (p.inCombat(this.w.time)) return p.send("toast", { text: T("srv.bannerWar.18"), kind: "error" });
     if (left > 0) { p.send("war:tpcd", { ms: left }); return p.send("toast", { text: T("srv.bannerWar.21", { n: Math.ceil(left / 1000) }), kind: "error" }); }
-    const x0 = p.x, y0 = p.y;
-    const done = () => { if (p.x !== x0 || p.y !== y0) { this.tpCd.set(key, this.w.time + S.teleportCdSec * 1000); p.send("war:tpcd", { ms: S.teleportCdSec * 1000 }); } };
-    if (this.w.siege?.active()) { this.w.siege.teleport(p); return done(); } // в осаде — в лагерь осады или в свой форт
+    const done = () => { this.tpCd.set(key, this.w.time + S.teleportCdSec * 1000); p.send("war:tpcd", { ms: S.teleportCdSec * 1000 }); }; // перезарядка — после переноса
+    if (this.w.siege?.active()) return this.w.siege.teleport(p, done); // в осаде — в лагерь осады или в свой форт
     const now = this.now();
     const open = (this.phase === "prep" && this.t0 - now <= S.teleportMin * MIN) || this.phase === "battle";
     if (!open) return p.send("toast", { text: T("srv.bannerWar.16", { min: S.teleportMin }), kind: "error" });
@@ -579,13 +579,7 @@ export class BannerWar {
     if (p.dead || p.team || p.inCombat(this.w.time)) return p.send("toast", { text: T("srv.bannerWar.18"), kind: "error" });
     const fort = CITIES.find((c) => c.id === `fort_${p.faction}`);
     if (!fort) return;
-    this.w.emit({ t: "tp", id: p.id, ph: "go", x: p.x, y: p.y });
-    p.unit.x = fort.spawn.x;
-    p.unit.y = fort.spawn.y;
-    p.moveTo = null;
-    p.targetId = null;
-    this.w.emit({ t: "tp", id: p.id, ph: "arrive", x: p.x, y: p.y });
-    done();
+    castTeleport(this.w, p, { x: fort.spawn.x, y: fort.spawn.y }, fort.name, done);
   }
 
   // ---------- сообщения ----------

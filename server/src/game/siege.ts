@@ -9,6 +9,7 @@
  * взявшим — титул; Знаки и сундук — выдачей «Знамён» (BannerWar.grant, одна транзакция). Проскок сквозь ворота рывком — откат.
  */
 import { CITIES } from "../../../shared/cities";
+import { castTeleport } from "./cities";
 import { TILE } from "../../../shared/constants";
 import { FACTIONS } from "../../../shared/factions";
 import { Dir, UnitKind } from "../../../shared/protocol";
@@ -400,16 +401,12 @@ export class FortSiege {
     if (Math.hypot(p.x - c.x * TILE, p.y - c.y * TILE) > 80 * TILE) return null;
     return p.faction === this.att ? { ...this.camp(), free: true } : { x: c.spawn.x, y: c.spawn.y, free: true };
   }
-  teleport(p: Player) {
+  teleport(p: Player, after?: () => void) {
     if (!this.active()) return p.send("toast", { text: T("srv.siege.19", { min: WAR.schedule.teleportMin }), kind: "error" });
     if (p.level < WAR.minLevel) return p.send("toast", { text: T("srv.bannerWar.17", { lvl: WAR.minLevel }), kind: "error" });
     if (p.dead || p.team || p.inCombat(this.w.time) || !isWarFaction(p.faction)) return p.send("toast", { text: T("srv.bannerWar.18"), kind: "error" });
     const c = this.fortCity(), to = p.faction === this.att ? this.camp() : c.spawn;
-    this.w.emit({ t: "tp", id: p.id, ph: "go", x: p.x, y: p.y });
-    p.unit.x = to.x; p.unit.y = to.y;
-    p.moveTo = null; p.targetId = null;
-    this.prev.set(p.id, { x: to.x, y: to.y });
-    this.w.emit({ t: "tp", id: p.id, ph: "arrive", x: p.x, y: p.y });
+    castTeleport(this.w, p, { x: to.x, y: to.y }, p.faction === this.att ? "лагерь осады" : c.name, () => { this.prev.set(p.id, { x: to.x, y: to.y }); after?.(); });
   }
   onKill(victim: Player, killer?: Actor) {
     if (this.phase !== "siege" || !killer || !this.w.isPlayer(killer)) return;

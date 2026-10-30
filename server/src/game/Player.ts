@@ -191,7 +191,7 @@ export class Player {
   /** Призыв маунта: момент готовности и точка начала (движение отменяет). */
   mountCast: { until: number; x: number; y: number } | null = null;
   /** Каст телепорта (3 с): куда, откуда, цена. */
-  tele: { until: number; x: number; y: number; to: string; price: number } | null = null;
+  tele: { until: number; x: number; y: number; to: string; price: number; dest?: { x: number; y: number }; after?: () => void } | null = null;
   /** Призыв питомца (2 с на месте) и момент, когда можно призвать снова после гибели. */
   petCast: { until: number; x: number; y: number } | null = null;
   petCdUntil = 0;

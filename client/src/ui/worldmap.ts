@@ -27,7 +27,7 @@ const font = (px: number, bold = false) => `${bold ? 600 : 400} ${px}px ${TEXT}`
  *  (при приближении к одной стороне её подписи видны, хотя зеркальные за экраном); если на экране обе — рисуются обе или ни одной. */
 type Dry = boolean | "pair";
 interface Line { text: string; size: number; bold?: boolean; fill: string; pill?: string }
-const CITY = "#ffe08a";
+const CITY = "#d8dce6"; // нейтральный город — серебро
 const KIND_NAME: Record<string, string> = { settlement: T("ui.worldmap.719"), camp: T("ui.worldmap.720"), ruins: T("ui.worldmap.721"), meeting: T("ui.worldmap.722") };
 const KIND_COLOR: Record<string, string> = { settlement: "#e8d8a8", camp: "#e0705a", ruins: "#b8a8d8", meeting: "#8ad8c8" };
 const ROADS = Object.entries(world.roads as unknown as Record<string, unknown>).filter(([k]) => k !== "_doc").map(([, v]) => v as [number, number][]);
@@ -374,7 +374,7 @@ export class WorldMapView {
       const col = c.capital ? factionColor(c.capital) : open ? CITY : "#8a8290";
       const r = 8; // значок 14 px: форт — две башни со стеной, столица и город — крепость, неизвестный — табличка «?»; цвет по фракции (Сольгард — золото, Умбрат — зелёный)
       const fac = c.capital === "umbrath" ? "umb" : c.capital === "solgard" ? "sol" : "";
-      const icon = !open && !c.capital ? "unknown" : c.fort ? `fort_${fac || "sol"}` : fac ? `city_${fac}` : "city";
+      const icon = !open && !c.capital ? "unknown" : c.fort ? `fort_${fac || "sol"}` : fac ? `city_${fac}` : "city_neu";
       drawWmIcon(g, icon, x, y);
       placed.push({ x0: x - r, y0: y - r, x1: x + r, y1: y + r });
       const cs = c.capital ? FS.md : FS.base;
@@ -477,7 +477,7 @@ export class WorldMapView {
     }
     if (big) drawWbMap(g, X, Y, s, hits, placed); // Колосс Полей: 4 состояния, круг арены (задача 151)
     if (big) drawSiegeMap(g, X, Y, s, hits); // ворота осаждаемого форта и знамя недели (шаг 15)
-    if (big) { const hp = this.getPos(), hx = X(hp.x / TILE), hy = Y(hp.y / TILE); drawWarMap(g, X, Y, s, hits, placed, [{ x0: hx - 22, y0: hy - 22, x1: hx + 22, y1: hy + 22 }]); } // основания «Знамён Предела» (задача 132, шаг 14) в цвете владельца
+    if (big) { const hp = this.getPos(), hx = X(hp.x / TILE), hy = Y(hp.y / TILE); drawWarMap(g, X, Y, s, hits, placed, [{ x0: hx - 34, y0: hy - 34, x1: hx + 34, y1: hy + 44 }]); } // основания «Знамён Предела» (задача 132, шаг 14) в цвете владельца
     this.hits = hits;
     this.drawHero(g, X, Y);
     if (this.pick) this.drawPickMark(g, X, Y);

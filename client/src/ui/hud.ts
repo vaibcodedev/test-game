@@ -392,7 +392,7 @@ export class Hud {
       n.on("chat", (l) => this.chatLine(l));
       n.on("toast", (t) => this.toast(t));
       n.on("combat", (m) => this.setCombat(m.on));
-      n.on("mountcast", (m) => this.mountCast(m.ms, m.name));
+      n.on("mountcast", (m) => { if (m.tp && m.ms) this.closeAll(); this.mountCast(m.ms, m.name); }); // телепорт: окна (Сборы, диалог NPC, город) закрываются до переноса
       n.on("air", (m) => this.airBar(m.air, m.max));
       n.on("arena:info", () => this.applyFrame());
       n.on("market:prices", (m: Record<string, number>) => {
@@ -740,7 +740,7 @@ export class Hud {
     if (id === "shop" && w.hidden) this.renderSelf(this.ctx.net.self!);
   }
   closeAll(): boolean {
-    let any = this.bestiary.close() || this.admin.close() || this.rumor.close() || this.statue.close() || this.enc.close() || this.cook.close() || this.quest.close() || this.tp.close() || this.smith.close() || this.bank.close() || this.bags.close() || this.stable.close() || this.menagerie.close() || this.arena.close() || this.wboss.close() || this.raid.close() || this.trade.close() || this.inspect.close();
+    let any = [() => this.bestiary.close(), () => this.admin.close(), () => this.rumor.close(), () => this.statue.close(), () => this.enc.close(), () => this.cook.close(), () => this.quest.close(), () => this.tp.close(), () => this.smith.close(), () => this.bank.close(), () => this.bags.close(), () => this.stable.close(), () => this.menagerie.close(), () => this.arena.close(), () => this.wboss.close(), () => this.raid.close(), () => this.trade.close(), () => this.inspect.close()].map((f) => f()).some(Boolean);
     for (const w of Object.values(this.wins)) if (!w.hidden) { w.hidden = true; any = true; }
     this.tip.hidden = true;
     return any;
