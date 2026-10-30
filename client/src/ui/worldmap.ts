@@ -99,13 +99,12 @@ export class WorldMapView {
     const it = (n: string, t: string) => `<span class="wm-it"><img src="${WM_ICON(n)}" alt="">${t}</span>`;
     const sw = (c: string, t: string) => `<span class="wm-it"><i style="background:${c}"></i>${t}</span>`;
     leg.innerHTML = `<span class="wm-lg">${it("you", "Вы")}${it("city", T("ui.worldmap.729"))}${it("house", T("ui.worldmap.719"))}${it("camp", T("ui.worldmap.720"))}${it("ruin", T("ui.worldmap.721"))}${it("boss", "Босс")}</span><span class="wm-lg"><span class="wm-it"><i class="road"></i>${T("ui.worldmap.730")}</span><span class="wm-it"><i class="river"></i>${T("ui.worldmap.731")}</span></span><span class="wm-lg">${sw(factionColor("solgard"), T("ui.worldmap.732"))}${sw(factionColor("umbrath"), T("ui.worldmap.733"))}</span>`;
-    bar.append(leg);
     this.wrap.className = "wm-view";
     this.wrap.style.setProperty("--wm-ar", String(map.w / map.h)); // рамка по карте, без тёмных полос
     this.tip.className = "wm-tip";
     this.tip.hidden = true;
     this.wrap.append(this.cv, this.tip);
-    this.root.append(bar, this.wrap);
+    this.root.append(bar, this.wrap, leg); // легенда — картушем на нижней кромке карты
     for (const p of PLACES) { const q = PLACES.find((o) => o !== p && o.kind === p.kind && o.y === p.y && o.x === map.w - 1 - p.x); if (q) this.placePair.set(p, q); }
     const lb = buildZoneLabels(map);
     this.zoneLabels = lb.zoneLabels;
@@ -373,11 +372,10 @@ export class WorldMapView {
       const x = X(c.x), y = Y(c.y);
       const open = !known || cityKnown(c, known, faction);
       const col = c.capital ? factionColor(c.capital) : open ? CITY : "#8a8290";
-      const r = c.capital ? 10 : 8; // значок «Город» 14 px; у столицы — рамка цвета фракции
-      if (c.capital) { g.fillStyle = "#120a10"; g.fillRect(Math.round(x) - 9, Math.round(y) - 9, 18, 18); g.fillStyle = col; g.fillRect(Math.round(x) - 8, Math.round(y) - 8, 16, 16); g.fillStyle = "#18101a"; g.fillRect(Math.round(x) - 7, Math.round(y) - 7, 14, 14); }
-      g.globalAlpha = open || c.capital ? 1 : 0.5;
-      drawWmIcon(g, "city", x, y);
-      g.globalAlpha = 1;
+      const r = 8; // значок 14 px: форт — две башни со стеной, столица и город — крепость, неизвестный — табличка «?»; цвет по фракции (Сольгард — золото, Умбрат — зелёный)
+      const fac = c.capital === "umbrath" ? "umb" : c.capital === "solgard" ? "sol" : "";
+      const icon = !open && !c.capital ? "unknown" : c.fort ? `fort_${fac || "sol"}` : fac ? `city_${fac}` : "city";
+      drawWmIcon(g, icon, x, y);
       placed.push({ x0: x - r, y0: y - r, x1: x + r, y1: y + r });
       const cs = c.capital ? FS.md : FS.base;
       label(open || c.capital ? (c.capital ? c.name.toUpperCase() : c.name) : "???", x, y - r - 5, c.capital ? col : open ? CITY : "#a8a0b0", font(cs, true), cs);

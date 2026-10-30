@@ -94,6 +94,7 @@ export function build(v: string, name: string): PC {
 /** Варианты значков особых мест (форты, «Сердце Севера», «Пепельные чертоги», «???»): выбор владельца ещё не сделан, в игру не встроены (лист tools/out/boss-dots/icons-forts.png). */
 const fac = (m: string, d: string, l: string): Mat => ({ o: "#1c1410", d, m, l, a: "#e8e0d6", b: "#3a2a1c" });
 const FSOL = fac("#d89a2a", "#8a5a10", "#f6cf6a"), FUMB = fac("#6ac84a", "#2e6a22", "#a8ee8a");
+const STONE_B = "#5a5a6e";
 const HEART: Mat = { o: "#2a0a1a", d: "#7a1a3a", m: "#c8386a", l: "#f08aaa", a: "#cabef0", b: "#3a1a4a" };
 const ASH: Mat = { o: "#1a0a0a", d: "#3a3a46", m: "#6a6a7e", l: "#a0a0b8", a: "#ff7a2a", b: "#5a0a08" };
 const UNK: Mat = { o: "#1c1630", d: "#5a4e80", m: "#8a7cc0", l: "#c0b4f0", a: "#f6dc86", b: "#2a2440" };
@@ -113,12 +114,18 @@ export const SPECIAL: Record<string, { mat: Mat; rows: string[] }[]> = {
     { mat: ASH, rows: ["............", "..########..", ".##########.", ".#e######e#.", ".##########.", ".###eeee###.", ".##e#aa#e##.", ".##e#aa#e##.", ".##ee..ee##.", "..#########.", "............", "............"] },
     { mat: ASH, rows: ["#..........#", "##........##", ".##.####.##.", "..########..", "..#aa##aa#..", "..#aa##aa#..", "..###ee###..", "...#.##.#...", "..##.##.##..", "..#########.", "............", "............"] },
   ],
+  heart2: [
+    { mat: { ...HEART, b: STONE_B }, rows: ["..###..###..", ".####a#####.", ".#########a.", "..#######...", "...#####....", "....###.....", ".....#......", "...bbbbbb...", "..bbbbbbbb..", "..bbbbbbbb..", "............", "............"] },
+    { mat: { ...ASH, b: STONE_B }, rows: [".....a......", "....aaa.....", "...aaaaa....", "....aaa.....", "..########..", "..########..", "...######...", "...######...", "..########..", ".##########.", "............", "............"] },
+    { mat: { ...HEART, b: STONE_B }, rows: [".....#...a..", "....###.###.", "...##a##.##.", "..###a###.#.", ".####a####..", ".####a####..", "..###a###...", "..bbbbbbbb..", ".bbbbbbbbbb.", "............", "............", "............"] },
+  ],
   unknown: [
     { mat: UNK, rows: ["....####....", "...######...", "..###aa###..", "..###..###..", ".......###..", "......###...", ".....###....", ".....###....", "............", ".....###....", ".....###....", "............"] },
     { mat: UNK, rows: ["....####....", "..########..", ".###a##a###.", ".####aa####.", ".####..####.", "..###..###..", "..########..", "...######...", "....####....", "............", "............", "............"] },
     { mat: UNK, rows: ["............", "..########..", ".##########.", ".###aaaa###.", ".##aa..aa##.", ".#####aa###.", ".####aa####.", ".####..####.", ".####aa####.", ".##########.", "..########..", "............"] },
   ],
 };
+const buildCity = (f: "sol" | "umb") => render(f === "sol" ? FSOL : FUMB, V.B.city.rows);
 export function buildSpecial(kind: string, i: number, mat?: Mat): PC {
   const e = SPECIAL[kind][i];
   return render(mat ?? e.mat, e.rows);
@@ -129,6 +136,12 @@ if (process.argv[1]?.includes("wm-icons")) {
   // выбор владельца (смесь) → клиент: client/public/assets/ui/wm/<имя>.png
   const PICK: Record<string, string> = { city: "B", house: "C", camp: "C", ruin: "B", boss: "B", you: "A", center: "A", meet: "A" };
   for (const [n, v] of Object.entries(PICK)) build(v, n).save(path.resolve("client/public/assets/ui/wm", `${n}.png`));
+  // по фракции: город-столица, форт (вариант A — две башни со стеной), «???» (вариант C — табличка)
+  const W = path.resolve("client/public/assets/ui/wm");
+  buildCity("sol").save(path.join(W, "city_sol.png")); buildCity("umb").save(path.join(W, "city_umb.png"));
+  buildSpecial("fort", 0, FSOL).save(path.join(W, "fort_sol.png")); buildSpecial("fort", 0, FUMB).save(path.join(W, "fort_umb.png"));
+  buildSpecial("unknown", 2).save(path.join(W, "unknown.png"));
+  for (let i = 0; i < 3; i++) buildSpecial("heart2", i).save(path.resolve("tools/out/boss-dots/heart", `heart_${i}.png`));
   const sp = path.resolve("tools/out/boss-dots/forts");
   for (let i = 0; i < 3; i++) {
     buildSpecial("fort", i, FSOL).save(path.join(sp, `fort_sol_${i}.png`)); buildSpecial("fort", i, FUMB).save(path.join(sp, `fort_umb_${i}.png`));
