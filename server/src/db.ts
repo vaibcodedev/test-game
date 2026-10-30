@@ -115,6 +115,16 @@ export class GameDB {
         a_gold  INTEGER NOT NULL,
         b_gold  INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS drop_log (
+        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        at      INTEGER NOT NULL,
+        kind    TEXT NOT NULL,
+        who     TEXT NOT NULL,
+        x       INTEGER NOT NULL,
+        y       INTEGER NOT NULL,
+        items   TEXT NOT NULL,
+        gold    INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS admin_log (
         id      INTEGER PRIMARY KEY AUTOINCREMENT,
         at      INTEGER NOT NULL,
@@ -317,7 +327,18 @@ export class GameDB {
   load(name: string): PlayerSave | null {
     const row = this.db.prepare("SELECT data FROM players WHERE name_key = ?").get(GameDB.key(name)) as { data: string } | undefined;
     if (!row) return null;
-    const save = JSON.parse(row.data) as PlayerSave;
+    let save = GameDB.parseSave(row.data);
+    if (!save) {
+      // битая строка: сама строка не трогается (ручное восстановление); пробуем последнюю резервную копию базы
+      console.error(`[db] битое сохранение героя «${name}» (${row.data.length} байт): ищу в резервных копиях`);
+      save = this.fromBackup(name);
+      if (!save) {
+        console.error(`[db] герой «${name}»: целой копии нет — вход отклонён, строка оставлена для ручного восстановления`);
+        return null;
+      }
+      console.warn(`[db] герой «${name}» восстановлен из резервной копии`);
+      this.save(name, save);
+    }
     save.faction ??= classFaction(save.cls);
     // задача 150: Волчонок, Огонёк и Черепашка заменены новыми питомцами (data/pets.json migrate) — уровень и опыт переносятся, запись сразу
     if (migratePets(save)) this.save(name, save);
@@ -326,6 +347,37 @@ export class GameDB {
     for (const it of [...(save.inventory ?? []), ...Object.values(save.equip ?? {})]) tm = sanitizeItem(it) || tm;
     if (tm) this.save(name, save);
     return save;
+  }
+
+  /** Сохранение из JSON или null: битый текст, не объект, нет класса. */
+  static parseSave(data: string): PlayerSave | null {
+    try {
+      const v = JSON.parse(data) as PlayerSave;
+      return v && typeof v === "object" && !Array.isArray(v) && typeof v.cls === "string" ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Целое сохранение героя из резервных копий (backups рядом с базой, от новой к старой) или null. */
+  private fromBackup(name: string, dir = path.join(path.dirname(this.file), "backups")): PlayerSave | null {
+    if (this.file === ":memory:" || !fs.existsSync(dir)) return null;
+    const base = path.basename(this.file, ".sqlite");
+    const files = fs.readdirSync(dir).filter((f) => f.startsWith(base + "-") && f.endsWith(".sqlite")).sort().reverse();
+    for (const f of files) {
+      let b: DatabaseSync | null = null;
+      try {
+        b = new DatabaseSync(path.join(dir, f), { readOnly: true });
+        const r = b.prepare("SELECT data FROM players WHERE name_key = ?").get(GameDB.key(name)) as { data: string } | undefined;
+        const s = r ? GameDB.parseSave(r.data) : null;
+        if (s) return s;
+      } catch (e) {
+        console.error(`[db] копия ${f} не читается:`, (e as Error).message);
+      } finally {
+        try { b?.close(); } catch {}
+      }
+    }
+    return null;
   }
 
   get raw(): DatabaseSync {

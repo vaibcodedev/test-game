@@ -27,7 +27,7 @@ function take(p: Player, base: string, n: number) {
 }
 
 export function buyMaterial(w: World, p: Player, id: unknown, qtyRaw: unknown) {
-  const m = typeof id === "string" ? MATERIALS[id] : undefined;
+  const m = typeof id === "string" && Object.hasOwn(MATERIALS, id) ? MATERIALS[id] : undefined;
   if (!m) return;
   if (!smithNear(w, p)) return err(p, T("srv.smith.153"));
   const no = smithRefusal(p);

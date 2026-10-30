@@ -4,7 +4,12 @@
  * Запуск: npx tsx tests/unit/anticheat.ts
  */
 import { Player, newSave } from "../../server/src/game/Player";
-import { cleanText, num } from "../../server/src/rooms/common";
+import { cleanText, floodCheck, invalidCount, makeOn, num } from "../../server/src/rooms/common";
+import { checkMsg, schemaOf } from "../../server/src/rooms/schemas";
+import { clientIp, IpLimit, makeVerifyClient, originOk, setSuspicionLog, SuspicionLog, versionError } from "../../server/src/anticheat";
+import { GAME_VERSION } from "../../shared/version";
+import { GameDB } from "../../server/src/db";
+import { EventEmitter } from "node:events";
 import { canLearn, SKILLS } from "../../shared/skills";
 import { cleanRef } from "../../shared/hotbar";
 import { statPointsAt } from "../../shared/formulas";
@@ -67,6 +72,157 @@ await test("cleanText: вырезает управляющие и невидим
   assert.equal(cleanText("  при​вет‮\u0007  "), "привет");
   assert.equal(cleanText("⁦⁩"), "");
   assert.equal(cleanText("обычный текст 123"), "обычный текст 123");
+});
+
+section("Версия клиента");
+
+await test("versionError: своя версия — null; старая, пустая, не строка — отказ с просьбой обновить страницу", () => {
+  assert.equal(versionError(GAME_VERSION), null);
+  for (const v of ["Альфа 0.0.1", "", undefined, 5, null, { v: GAME_VERSION }]) {
+    const e = versionError(v);
+    assert.ok(e && /обновите страницу/i.test(e), `версия ${JSON.stringify(v)} → ${e}`);
+  }
+});
+
+section("Схемы сообщений");
+
+await test("типичные сообщения клиента проходят схему", () => {
+  const ok: [string, unknown][] = [
+    ["input", { mx: 0.7, my: -0.7 }], ["moveTo", { x: 100, y: 200 }], ["attack", { id: null }], ["target", { id: "m12" }],
+    ["skill", { id: "fireball", x: 1, y: 2, target: null, q: 400, ap: true }], ["skill", { id: "charge", x: 1, y: 2, dx: 30, dy: -4, a: 1.2, target: "m1", q: 0, ap: false }],
+    ["bars:set", { bar: 1, i: 0, ref: { s: "fireball" } }], ["bars:set", { bar: 0, i: 3, ref: null }], ["bars:swap", { a: { bar: 0, i: 1 }, b: { bar: 1, i: 2 } }],
+    ["chat", { text: "привет" }], ["pickup", { bag: "b17" }], ["bank:put", { index: 3, tab: 0 }], ["bank:take", { tab: 0, slot: 1, index: 4 }],
+    ["smith:upgrade", { slot: "weapon" }], ["tm:apply", { shell: 2, index: 5 }], ["cancel", {}], ["trade:gold", { v: 100 }],
+    ["mount:select", { id: null }], ["raid:join", { npc: "herald" }], ["drop", { gold: 40 }], ["drop", { index: "x" }],
+    ["admin:give", { name: "Кто", model: "sword_6", rarity: 1, plus: 0, equip: true }], ["admin:gold", { name: "Кто", v: NaN }], ["dbg", { op: "tp", x: 1, y: 2 }],
+  ];
+  for (const [t, m] of ok) assert.equal(checkMsg(t, m), null, `${t} ${JSON.stringify(m)}`);
+});
+
+await test("невалидное отклоняется: лишние поля, не те типы, NaN и бесконечность, длинные строки, вложенный мусор", () => {
+  const bad: [string, unknown][] = [
+    ["input", { mx: NaN, my: 0 }], ["input", { mx: Infinity, my: 0 }], ["input", { mx: "1", my: 0 }], ["input", { mx: 0, my: 0, speed: 9 }],
+    ["moveTo", { x: 1 }], ["attack", { id: 5 }], ["skill", { id: "x".repeat(65) }], ["skill", { x: 1, y: 2 }],
+    ["chat", { text: "a".repeat(5000) }], ["chat", { text: ["a"] }], ["bank:put", { index: 1.5 }], ["swap", { a: 0, b: "1" }],
+    ["bars:set", { bar: 0, i: 0, ref: { s: "fireball", extra: 1 } }], ["bars:swap", { a: { bar: 0 }, b: { bar: 1, i: 2 } }],
+    ["cancel", { x: 1 }], ["trade:respond", { accept: "yes" }], ["admin:tp", { name: { $gt: "" } }], ["dbg", { v: 1 }],
+  ];
+  for (const [t, m] of bad) assert.notEqual(checkMsg(t, m), null, `${t} ${JSON.stringify(m)} прошло`);
+});
+
+await test("ключи прототипа: тип «__proto__»/«constructor» — без схемы и без исключения; поле __proto__ не проходит строгую схему", () => {
+  for (const t of ["__proto__", "constructor", "toString"]) assert.equal(schemaOf(t), undefined, t);
+  const m = JSON.parse(`{"mx":0,"my":0,"__proto__":{"admin":true}}`);
+  assert.notEqual(checkMsg("input", m), null);
+});
+
+/** Поддельная комната: onMessage копит обработчики, call — как Colyseus вызывает их на входящее сообщение. */
+function fakeRoom(name = "Шулер") {
+  const handlers = new Map<string, (c: unknown, m: unknown) => void>();
+  const room = { onMessage: (t: string, fn: (c: unknown, m: unknown) => void) => void handlers.set(t, fn) };
+  const client = { sessionId: "s1", send() {}, leave() {} };
+  const player = { name, inputAt: 0, send() {} };
+  const world = { players: new Map([["s1", player]]), time: 0 };
+  const on = makeOn(room as never, () => world as never);
+  return { on, client, call: (t: string, m: unknown) => handlers.get(t)!(client, m) };
+}
+
+await test("makeOn: невалидное сообщение не доходит до обработчика, считается и пишется в журнал suspicion", () => {
+  const db = new GameDB(":memory:");
+  const log = new SuspicionLog(db.raw, 0);
+  setSuspicionLog(log);
+  try {
+    const r = fakeRoom();
+    let calls = 0;
+    r.on<{ mx: unknown; my: unknown }>("input", () => void calls++);
+    r.call("input", { mx: 1, my: 0 });
+    r.call("input", { mx: "fast", my: 0 });
+    r.call("input", { mx: 0, my: 0, hack: true });
+    assert.equal(calls, 1, "обработчик вызван на невалидное");
+    assert.equal(invalidCount.get(r.client as never), 2);
+    const rows = log.rows("Шулер");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].kind, "invalid");
+    assert.equal(rows[0].count, 2);
+    assert.ok(rows[0].first_at > 0 && rows[0].last_at >= rows[0].first_at);
+  } finally {
+    setSuspicionLog(null);
+    db.close();
+  }
+});
+
+await test("журнал: виды раздельно, повтор копится в count, флуд из floodCheck тоже попадает", () => {
+  const db = new GameDB(":memory:");
+  const log = new SuspicionLog(db.raw, 0);
+  setSuspicionLog(log);
+  try {
+    log.flag("А", "speed", "input 50,0", 1000);
+    log.flag("А", "speed", "input 9,0", 2000);
+    log.flag("А", "range", "pickup 900 px", 1500);
+    log.flush();
+    log.flag("А", "speed", "input 7,0", 3000);
+    const state = new WeakMap();
+    const c = { sessionId: "x", send() {}, leave() {} };
+    const cfg = { windowMs: 1000, move: 2, general: 2, kickAfterWindows: 99 };
+    for (let i = 0; i < 5; i++) floodCheck(state as never, c as never, "chat", 10, cfg, "Б");
+    const rows = log.rows();
+    const a = rows.find((r) => r.name === "А" && r.kind === "speed")!;
+    assert.equal(a.count, 3);
+    assert.equal(a.first_at, 1000);
+    assert.equal(a.last_at, 3000);
+    assert.equal(a.detail, "input 7,0");
+    assert.equal(rows.find((r) => r.name === "А" && r.kind === "range")?.count, 1);
+    assert.equal(rows.find((r) => r.name === "Б" && r.kind === "flood")?.count, 1, "флуд не записан (одно окно — одна запись)");
+  } finally {
+    setSuspicionLog(null);
+    db.close();
+  }
+});
+
+section("Транспорт");
+
+await test("Origin: свой хост, список и без Origin — да; чужой сайт и мусор — нет", () => {
+  assert.ok(originOk(undefined, "game.example:2567"));
+  assert.ok(originOk("https://game.example:2567", "game.example:2567"));
+  assert.ok(originOk("http://localhost:5173", "localhost:2567", ["http://localhost:5173"]));
+  assert.ok(!originOk("https://evil.example", "game.example:2567", []));
+  assert.ok(!originOk("not a url", "game.example", []));
+});
+
+await test("IP: loopback без прокси не считается; X-Forwarded-For за локальным прокси; лимит и освобождение места", () => {
+  const req = (remote: string, xff?: string) => ({ socket: { remoteAddress: remote }, headers: xff ? { "x-forwarded-for": xff } : {} }) as never;
+  assert.equal(clientIp(req("127.0.0.1")), "");
+  assert.equal(clientIp(req("::1", "203.0.113.5, 10.0.0.1")), "203.0.113.5");
+  assert.equal(clientIp(req("198.51.100.7", "1.2.3.4")), "198.51.100.7", "X-Forwarded-For от чужого адреса не доверяем");
+  const lim = new IpLimit(2);
+  assert.ok(lim.take("1.1.1.1") && lim.take("1.1.1.1"));
+  assert.ok(!lim.take("1.1.1.1"));
+  assert.ok(lim.take(""), "loopback без лимита");
+  lim.give("1.1.1.1");
+  assert.ok(lim.take("1.1.1.1"));
+});
+
+await test("verifyClient: чужой Origin — 403, лимит IP — 429, закрытие сокета освобождает место", () => {
+  const lim = new IpLimit(1);
+  const verify = makeVerifyClient(lim, []);
+  const mk = (origin: string) => {
+    const socket = Object.assign(new EventEmitter(), { remoteAddress: "198.51.100.9" });
+    return { socket, info: { origin, secure: false, req: { socket, headers: { host: "game.example" } } as never } };
+  };
+  const res: unknown[][] = [];
+  const cb = (...a: unknown[]) => void res.push(a);
+  verify(mk("https://evil.example").info, cb);
+  assert.deepEqual(res.pop()!.slice(0, 2), [false, 403]);
+  const first = mk("https://game.example");
+  verify(first.info, cb);
+  assert.deepEqual(res.pop(), [true]);
+  verify(mk("https://game.example").info, cb);
+  assert.deepEqual(res.pop()!.slice(0, 2), [false, 429]);
+  first.socket.emit("close");
+  first.socket.emit("close");
+  assert.equal(lim.count.get("198.51.100.9"), undefined, "место не освободилось (или освободилось дважды)");
+  verify(mk("https://game.example").info, cb);
+  assert.deepEqual(res.pop(), [true]);
 });
 
 done();

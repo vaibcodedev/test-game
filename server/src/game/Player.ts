@@ -223,6 +223,8 @@ export class Player {
     save.level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(save.level) || 1));
     const next = xpToNext(save.level);
     save.xp = next ? Math.max(0, Math.min(next - 1, save.xp || 0)) : 0;
+    // золото: NaN, бесконечность, отрицательное, дробное из битой строки → целое ≥ 0 (с NaN проверки «gold < price» ложны)
+    save.gold = Number.isFinite(save.gold) ? Math.max(0, Math.floor(save.gold)) : 0;
     save.equip.offhand ??= null; // старые сохранения без второй руки
     save.equip.cloak ??= null; // и без плаща (задача 79)
     const u = this.unit;

@@ -12,7 +12,7 @@ import { TRADE_CONFIRM_DELAY_MS, TRADE_RANGE_TILES, TRADE_SLOTS } from "../../sh
 import { TILE } from "../../shared/constants";
 import type { GameDB } from "../../server/src/db";
 import type { Player } from "../../server/src/game/Player";
-import { assert, done, knownFail, section, test } from "./lib";
+import { assert, done, section, test } from "./lib";
 import { at, countIn, drop, emptyBag, fillBag, gear, hero, memDb, register, shiftNow, stack, uids, world, type Hero } from "./fixtures";
 
 const w = world();
@@ -240,7 +240,7 @@ await test("общий склад аккаунта: положил один ге
   drop(w, a, b, stranger);
 });
 
-await knownFail("B2", "общий склад без аккаунта (accountId 0): put в конкретную ячейку склада не уничтожает предмет", "BankService.put с tab=SHARED_TAB и slot: ячейка общего склада существует и без аккаунта, предмет кладётся туда, а saveAccountBank пропускается (нет accountId) — предмет исчезает. Проверка «без аккаунта» есть только в ветке без slot", () => {
+await test("общий склад без аккаунта (accountId 0): put в конкретную ячейку склада не уничтожает предмет", () => {
   const { db, bank } = bankSetup();
   const p = banker(db);
   p.accountId = 0;

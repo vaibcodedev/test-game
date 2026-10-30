@@ -1,0 +1,12 @@
+{
+  "_doc": "Выброс предметов из сумки. ownerLockSec — сколько секунд мешок может поднять только выбросивший; ttlSec — через сколько секунд после падения мешок исчезает; confirmRarity — с этой редкости (1 = редкая) и для стопок нужно подтверждение; rateMax за rateWindowSec — лимит выбросов; minGapMs — пауза между выбросами; maxBagsPerPlayer — сколько своих мешков может лежать на земле; maxBagsWorld — общий потолок; destroyWord — слово для уничтожения привязанных и квестовых вещей.",
+  "ownerLockSec": 30,
+  "ttlSec": 180,
+  "confirmRarity": 1,
+  "rateMax": 12,
+  "rateWindowSec": 60,
+  "minGapMs": 400,
+  "maxBagsPerPlayer": 10,
+  "maxBagsWorld": 300,
+  "destroyWord": "УНИЧТОЖИТЬ"
+}

@@ -1410,7 +1410,7 @@ export class GameScene extends Phaser.Scene {
     const bag = id ? this.lastBags.find((b) => b.id === id) : undefined, img = id ? this.bagViews.get(id) : undefined;
     if (!bag || !img) return this.hud.lootRow.hover(null, null, 0);
     const cam = this.cameras.main, r = this.game.canvas.getBoundingClientRect(), v = cam.worldView, k = cam.zoom * r.width / cam.width;
-    this.hud.lootRow.hover(bag.id, bag.items, r.left + (img.x - v.x) * k, r.top + (img.y - img.displayHeight + 12 - v.y) * k);
+    this.hud.lootRow.hover(bag.id, bag.items, r.left + (img.x - v.x) * k, r.top + (img.y - img.displayHeight + 12 - v.y) * k, bag.gold ?? 0, bag.lock ?? 0);
   }
 
   syncBags(bags: LootBag[]) {

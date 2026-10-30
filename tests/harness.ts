@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { Client, type Room } from "colyseus.js";
 import type { SelfState } from "../shared/protocol";
+import { GAME_VERSION } from "../shared/version";
 
 export const PORT = Number(process.env.TEST_PORT) || 2601;
 let server: ChildProcess | null = null;
@@ -118,7 +119,7 @@ export class Bot {
     const b = new Bot();
     b.token = token;
     b.client = new Client(`ws://localhost:${PORT}`);
-    b.attach(await b.client.joinOrCreate("world", { token, character }));
+    b.attach(await b.client.joinOrCreate("world", { token, character, version: GAME_VERSION }));
     await b.until(() => !!b.self && b.room.state.players?.size > 0, 3000, "self");
     return b;
   }

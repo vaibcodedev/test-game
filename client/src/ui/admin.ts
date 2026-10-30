@@ -9,6 +9,8 @@ import { collisionDebug } from "../game/collisionDebug";
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU");
 const opts = (ids: string[], name: (id: string) => string) => ids.map((id) => `<option value="${esc(id)}">${esc(name(id))} (${esc(id)})</option>`).join("");
+/** Журнал подозрительного (server/src/anticheat.ts): подписи видов. */
+const SUSPICION: Record<string, string> = { speed: "Скорость", range: "Дальность", flood: "Флуд", invalid: "Невалидное сообщение", foreign: "Чужие вещи", admin: "Админ-команда" };
 const TABS: [string, string][] = [["players", "Игроки"], ["give", "Выдача"], ["world", "Мир"], ["logs", "Логи"]];
 /** Объявление держится столько, чтобы успеть прочесть: 5 с и ещё 60 мс на знак, не дольше 12 с; уход — 400 мс (styles/adm.css). */
 const bannerMs = (text: string) => Math.min(12000, 5000 + text.length * 60);
@@ -140,11 +142,13 @@ export class AdminUI {
         <div class="adm-row"><label class="field grow"><span class="field-label">Зона</span><select id="w-zone" class="input">${zones}</select></label><button class="btn" data-act="tp-zone">ТП в зону</button></div></section>`;
     }
     const L = this.logs;
-    const rows = L.rows.map((r) => L.kind === "trades"
+    const rows = L.rows.map((r) => L.kind === "suspicion"
+      ? `<tr><td class="nowrap">${date(r.last_at)}</td><td>${esc(r.name)}</td><td>${esc(SUSPICION[r.kind] ?? r.kind)} ×${r.count}</td><td>${esc(r.detail)} <span class="muted">с ${date(r.first_at)}</span></td></tr>`
+      : L.kind === "trades"
       ? `<tr><td class="nowrap">${date(r.at)}</td><td>${esc(r.a)} ⇄ ${esc(r.b)}</td><td>${esc(this.items(r.a_items))} +${r.a_gold} з</td><td>${esc(this.items(r.b_items))} +${r.b_gold} з</td></tr>`
       : `<tr><td class="nowrap">${date(r.at)}</td><td>${esc(r.admin)}</td><td>${esc(r.action)}</td><td>${esc(r.target)} ${esc(r.details)}</td></tr>`).join("");
-    const head = L.kind === "trades" ? "<th>Время</th><th>Участники</th><th>A отдал</th><th>B отдал</th>" : "<th>Время</th><th>Админ</th><th>Действие</th><th>Цель и детали</th>";
-    return `<section class="sec flat"><div class="adm-row"><label class="field"><span class="field-label">Журнал</span><select id="l-kind" class="input"><option value="trades"${this.logKind === "trades" ? " selected" : ""}>Сделки</option><option value="admin"${this.logKind === "admin" ? " selected" : ""}>Журнал админов</option></select></label>
+    const head = L.kind === "suspicion" ? "<th>Последний раз</th><th>Герой</th><th>Что и сколько</th><th>Деталь</th>" : L.kind === "trades" ? "<th>Время</th><th>Участники</th><th>A отдал</th><th>B отдал</th>" : "<th>Время</th><th>Админ</th><th>Действие</th><th>Цель и детали</th>";
+    return `<section class="sec flat"><div class="adm-row"><label class="field"><span class="field-label">Журнал</span><select id="l-kind" class="input"><option value="trades"${this.logKind === "trades" ? " selected" : ""}>Сделки</option><option value="admin"${this.logKind === "admin" ? " selected" : ""}>Журнал админов</option><option value="suspicion"${this.logKind === "suspicion" ? " selected" : ""}>Подозрительное</option></select></label>
       <label class="field grow"><span class="field-label">Фильтр по имени</span><input id="l-name" class="input" value="${esc(this.logName)}"></label>
       <button class="btn" data-act="logs">Показать</button></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div></section>`;

@@ -15,16 +15,28 @@ import { sealPet } from "../../../shared/pets";
 import { recordSale, sellPrice, sendPrices } from "./market";
 import type { World } from "./World";
 import { T } from "../../../shared/texts";
+import { flag } from "../anticheat";
 
 const err = (p: Player, text: string, code?: "cd" | "target") => p.send("toast", { text, kind: "error", ...(code ? { code } : {}) });
 const validIndex = (p: Player, i: unknown): i is number => Number.isInteger(i) && (i as number) >= 0 && (i as number) < p.save.inventory.length;
 
-/** Положить предмет в сумку (зелья складываются в стопки). false — места нет. */
+/** Сколько штук стопкового предмета base ещё влезет в сумку (долив стопок + пустые ячейки). */
+export function stackRoom(p: Player, baseId: string): number {
+  const max = BASE_ITEMS[baseId]?.stack;
+  if (!max) return p.save.inventory.includes(null) ? 1 : 0;
+  let room = 0;
+  for (const s of p.save.inventory) room += !s ? max : s.base === baseId ? Math.max(0, max - (s.qty ?? 1)) : 0;
+  return room;
+}
+
+/** Положить предмет в сумку (зелья складываются в стопки). Атомарно: false — места нет, сумка не меняется. */
 export function addItem(p: Player, it: Item): boolean {
   const inv = p.save.inventory;
   const base = BASE_ITEMS[it.base];
+  if (!base) return false;
   if (base.stack) {
     let left = it.qty ?? 1;
+    if (!Number.isInteger(left) || left < 1 || stackRoom(p, it.base) < left) return false;
     for (const s of inv) {
       if (!s || s.base !== it.base) continue;
       const room = base.stack - (s.qty ?? 1);
@@ -149,7 +161,7 @@ function eat(w: World, p: Player, index: number, dish: Dish) {
 }
 
 export function buyFood(w: World, p: Player, id: unknown, qtyRaw: unknown) {
-  const dish = typeof id === "string" ? FOOD[id] : undefined;
+  const dish = typeof id === "string" && Object.hasOwn(FOOD, id) ? FOOD[id] : undefined;
   if (!dish) return;
   if (!COOKS.some((c) => w.dist(p, c) <= MERCHANT_RANGE)) return err(p, T("srv.inventory.112"));
   const no = serviceRefusal("cook", p.x, p.y, p.faction, MERCHANT_RANGE);
@@ -228,12 +240,22 @@ export function swap(p: Player, a: unknown, b: unknown) {
 export function pickup(w: World, p: Player, bagId: unknown) {
   if (typeof bagId !== "string" || p.dead) return;
   const bag = p.bags.get(bagId);
-  if (!bag) return;
-  if (w.dist(p, bag) > PICKUP_RANGE + 8) return err(p, T("srv.encounters.94"));
+  // мешка нет среди своих: чужой или уже подобранный id — слабый сигнал в журнал подозрительного (копится счётчиком)
+  if (!bag) return flag(p.name, "foreign", `pickup ${bagId.slice(0, 40)}`);
+  if (w.dist(p, bag) > PICKUP_RANGE + 8) {
+    flag(p.name, "range", `pickup ${Math.round(w.dist(p, bag))} px`);
+    return err(p, T("srv.encounters.94"));
+  }
   const left = [];
   for (const it of bag.items) {
-    if (addItem(p, it)) p.send("toast", { text: T("srv.inventory.114", { itemname: itemName(it), qty: it.qty && it.qty > 1 ? ` ×${it.qty}` : "" }), kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes, item: it });
-    else left.push(it);
+    if (addItem(p, it)) { p.send("toast", { text: T("srv.inventory.114", { itemname: itemName(it), qty: it.qty && it.qty > 1 ? ` ×${it.qty}` : "" }), kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes, item: it }); continue; }
+    // стопка не влезла целиком: берём сколько влезет, в мешке остаётся точный остаток
+    const fit = BASE_ITEMS[it.base]?.stack ? Math.min(stackRoom(p, it.base), (it.qty ?? 1) - 1) : 0;
+    if (fit > 0 && addItem(p, { ...it, qty: fit })) {
+      const rest = { ...it, qty: (it.qty ?? 1) - fit };
+      p.send("toast", { text: T("srv.inventory.114", { itemname: itemName(it), qty: fit > 1 ? ` ×${fit}` : "" }), kind: "loot", icon: iconFor(it), classes: BASE_ITEMS[it.base].classes, item: { ...it, qty: fit } });
+      left.push(rest);
+    } else left.push(it);
   }
   if (left.length) {
     bag.items = left;

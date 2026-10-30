@@ -3,6 +3,7 @@
  * для легендарки (C), торжественный баннер победителя для мирового босса и рейда (B). Стили — styles/lootfx.css, цвета — tokens.css.
  */
 import { BASE_ITEMS, ITEM_STAT_NAMES, RARITY_COLORS, RARITY_NAMES, effStats, iconFor, itemName, itemTypeName, type Item, type ItemStatKey } from "../../../shared/items";
+import { T } from "../../../shared/texts";
 import type { SelfState } from "../../../shared/protocol";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -45,10 +46,10 @@ export class LootToasts {
 }
 
 /** Торжественный баннер: лучи, заголовок, линия, имя, подпись; card — карточка под ним. Сам исчезает. */
-export function banner(root: HTMLElement, o: { title: string; name: string; sub?: string; card?: string; ms?: number }) {
+export function banner(root: HTMLElement, o: { title: string; name: string; sub?: string; card?: string; ms?: number; color?: string }) {
   const b = document.createElement("div");
   b.className = "lb-wrap passthru";
-  b.innerHTML = `<div class="lb-rays"></div><div class="lb"><div class="lb-t">${esc(o.title)}</div><div class="lb-l"></div><div class="lb-n">${esc(o.name)}</div>${o.sub ? `<div class="lb-s">${o.sub}</div>` : ""}</div>${o.card ? `<div class="lb-card">${o.card}</div>` : ""}`;
+  b.innerHTML = `<div class="lb-rays"></div><div class="lb"><div class="lb-t">${esc(o.title)}</div><div class="lb-l"></div><div class="lb-n"${o.color ? ` style="color:${o.color}"` : ""}>${esc(o.name)}</div>${o.sub ? `<div class="lb-s">${o.sub}</div>` : ""}</div>${o.card ? `<div class="lb-card">${o.card}</div>` : ""}`;
   root.append(b);
   window.setTimeout(() => { b.classList.add("out"); window.setTimeout(() => b.remove(), 500); }, o.ms ?? 6500);
 }
@@ -70,15 +71,15 @@ export class LootRow {
     root.append(this.box);
   }
   /** Каждый кадр: id мешка под курсором (или null) и экранная точка над его верхом. */
-  hover(bagId: string | null, items: Item[] | null, sx: number, sy = 0) {
+  hover(bagId: string | null, items: Item[] | null, sx: number, sy = 0, gold = 0, lock = 0) {
     if (bagId && items) {
       clearTimeout(this.hideT);
       this.id = bagId;
-      const key = bagId + "|" + items.map((i) => i.uid + (i.qty ?? 1)).join(",");
+      const key = bagId + "|" + gold + "|" + lock + "|" + items.map((i) => i.uid + (i.qty ?? 1)).join(",");
       if (key !== this.key) {
         this.key = key;
         const s = this.host.self();
-        this.box.innerHTML = `<div class="lr-row">${items.map((it, j) => `<div class="lr-it" style="--rc:${RARITY_COLORS[it.rarity]};--i:${j}"><div class="lr-b"><img src="${icon(iconFor(it))}" alt="">${it.qty && it.qty > 1 ? `<em>${it.qty}</em>` : ""}</div><div class="lr-card">${s ? lootCard(it, s) : ""}</div></div>`).join("")}</div><div class="lr-hint"><kbd class="kbd">G</kbd> / клик — взять всё</div>`;
+        this.box.innerHTML = `<div class="lr-row">${gold ? `<div class="lr-it" style="--rc:#e0a630;--i:0"><div class="lr-b"><img src="${icon("gold")}" alt=""><em>${gold}</em></div></div>` : ""}${items.map((it, j) => `<div class="lr-it" style="--rc:${RARITY_COLORS[it.rarity]};--i:${j}"><div class="lr-b"><img src="${icon(iconFor(it))}" alt="">${it.qty && it.qty > 1 ? `<em>${it.qty}</em>` : ""}</div><div class="lr-card">${s ? lootCard(it, s) : ""}</div></div>`).join("")}</div><div class="lr-hint">${lock ? esc(T("ui.drop.lootLock", { sec: lock })) : `<kbd class="kbd">G</kbd> / клик — взять всё`}</div>`;
         this.box.hidden = false;
         this.box.classList.remove("show");
         void this.box.offsetWidth;

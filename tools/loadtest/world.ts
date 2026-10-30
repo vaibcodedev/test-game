@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { Client, type Room } from "colyseus.js";
+import { GAME_VERSION } from "../../shared/version";
 
 const { values: args } = parseArgs({
   options: {
@@ -68,7 +69,7 @@ async function runBot(i: number, deadline: number, onJoined?: () => void) {
   const name = `${args.prefix}${String(i).padStart(3, "0")}`;
   const token = await ensureChar(name, "loadtest", CLASSES[i % CLASSES.length]).catch(() => ensureChar(name, "loadtest", "warrior"));
   const client = new Client(WS);
-  const room: Room<any> = await client.joinOrCreate("world", { token, character: name });
+  const room: Room<any> = await client.joinOrCreate("world", { token, character: name, version: GAME_VERSION });
   const s: BotStats = { bytes: 0, msgs: 0, rtt: [], moves: 0, attacks: 0, errToasts: 0, left: false };
   bots.push(s);
   joined++;

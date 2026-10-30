@@ -27,6 +27,8 @@ export function bankOf(p: Player): BankSave {
 interface Box {
   b: BankSave;
   shared: (Item | null)[];
+  /** есть аккаунт: без него общего склада нет (ячейки не сохраняются — предмет пропал бы) */
+  acct: boolean;
 }
 
 export class BankService {
@@ -70,7 +72,7 @@ export class BankService {
       return false;
     }
     const b = bankOf(p);
-    const box: Box = { b, shared: this.sharedOf(p) };
+    const box: Box = { b, shared: this.sharedOf(p), acct: !!p.accountId };
     const backup = JSON.stringify({ inv: p.save.inventory, bank: b, gold: p.save.gold });
     const restore = () => {
       const o = JSON.parse(backup);
@@ -120,7 +122,7 @@ export class BankService {
 
   /** Ячейки вкладки: личные 0..n-1 или общий склад SHARED_TAB. */
   private cells(x: Box, tab: unknown): (Item | null)[] | null {
-    if (tab === SHARED_TAB) return x.shared;
+    if (tab === SHARED_TAB) return x.acct ? x.shared : null;
     return isInt(tab) && tab >= 0 && tab < x.b.tabs.length ? x.b.tabs[tab] : null;
   }
   private slotOk(x: Box, tab: unknown, slot: unknown): boolean {
@@ -175,6 +177,7 @@ export class BankService {
       const it = inv[index];
       if (!it) return T("srv.bank.66");
       if (isQuestItem(it.base)) return QUEST_ITEM_MSG;
+      if (tab === SHARED_TAB && !x.acct) return T("srv.bank.67");
       if (this.slotOk(x, tab, slot)) {
         const t = this.cells(x, tab)!, cur = t[slot as number];
         if (!cur) {

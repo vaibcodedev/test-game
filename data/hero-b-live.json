@@ -68,10 +68,7 @@
       "atk": "atk1h"
     }
   },
-  "sets": [
-    "chaos-knight",
-    "recruit-plate"
-  ],
+  "sets": ["chaos-knight", "recruit-plate", "rogue-chaos", "leather-novice", "plate60-common", "plate60-rare", "plate60-epic"],
   "models": {
     "hb147_chaos_helm": "chaos-knight",
     "hb147_chaos_armor": "chaos-knight",

@@ -10,6 +10,9 @@ import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
 import { KICK_CODE } from "../../../shared/accounts";
 import serverCfg from "../../../data/server.json";
 import { T } from "../../../shared/texts";
+import { flag } from "../anticheat";
+import { checkMsg, schemaOf } from "./schemas";
+import { SKILLS } from "../../../shared/skills";
 
 export const num = (v: unknown, min: number, max: number): number | null =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : null;
@@ -75,6 +78,7 @@ export function floodCheck(state: WeakMap<Client, Flood>, client: Client, type: 
   f.dropped++;
   if (!f.overMarked) {
     f.overMarked = true;
+    flag(name, "flood", `${type}: окно ${f.over + 1}`);
     if (++f.over >= cfg.kickAfterWindows) {
       f.kicked = true;
       console.warn(T("srv.common.208", { sessionid: name || client.sessionId, over: f.over, type: type, dropped: f.dropped }));
@@ -87,7 +91,10 @@ export function floodCheck(state: WeakMap<Client, Flood>, client: Client, type: 
   return false;
 }
 
-/** Подписка на сообщение с поиском игрока по сессии, лимитом сообщений и защитой от исключений. */
+/** Невалидные сообщения клиента (схема, rooms/schemas.ts): всего за соединение — для журнала и тестов. */
+export const invalidCount = new WeakMap<Client, number>();
+
+/** Подписка на сообщение с поиском игрока по сессии, лимитом сообщений, проверкой схемы и защитой от исключений. */
 export function makeOn(room: Room<any>, world: () => World): On {
   // по объекту соединения: после переподключения счёт заново, закрытые соединения уходят сборщику мусора
   const flood = new WeakMap<Client, Flood>();
@@ -98,6 +105,7 @@ export function makeOn(room: Room<any>, world: () => World): On {
     if (!floodCheck(flood, client, String(type), Date.now(), MSG_LIMIT, p?.name) && p && flood.get(client)?.kicked) p.noReconnect = true;
   });
   return <T>(type: string, fn: (p: Player, msg: T) => void) => {
+    if (!schemaOf(type)) console.warn(`[schemas] нет схемы для сообщения «${type}» (server/src/rooms/schemas.ts)`);
     room.onMessage(type, (client: Client, msg: T) => {
       const p = world().players.get(client.sessionId);
       if (!floodCheck(flood, client, type, Date.now(), MSG_LIMIT, p?.name)) {
@@ -105,6 +113,13 @@ export function makeOn(room: Room<any>, world: () => World): On {
         return;
       }
       if (!p || msg === null || typeof msg !== "object") return;
+      // форма сообщения: не та — отказ без вызова обработчика, счётчик и журнал подозрительного
+      const bad = checkMsg(type, msg);
+      if (bad) {
+        invalidCount.set(client, (invalidCount.get(client) ?? 0) + 1);
+        flag(p.name, "invalid", `${type} ${bad}`);
+        return;
+      }
       p.inputAt = world().time; // последний ввод героя (AFK в круге «Знамён Предела»)
       try {
         fn(p, msg);
@@ -120,6 +135,8 @@ export function registerCombat(on: On, world: () => World) {
   on<{ mx: unknown; my: unknown }>("input", (p, m) => {
     const mx = num(m.mx, -1, 1), my = num(m.my, -1, 1);
     if (mx === null || my === null) return;
+    // обычный клиент шлёт направление длиной ≤ 1: больше — попытка разогнаться (сервер всё равно режет)
+    if (Math.abs(m.mx as number) > 1.001 || Math.abs(m.my as number) > 1.001) flag(p.name, "speed", `input ${m.mx},${m.my}`);
     p.input.mx = mx;
     p.input.my = my;
   });
@@ -170,7 +187,7 @@ export function registerCombat(on: On, world: () => World) {
   });
   on<{ on: unknown }>("chase", (p, m) => { p.chase = m.on === true; });
   on<{ id: unknown; x: unknown; y: unknown; target: unknown; q: unknown; ap: unknown; a: unknown; dx: unknown; dy: unknown }>("skill", (p, m) => {
-    if (typeof m.id !== "string") return;
+    if (typeof m.id !== "string" || !Object.hasOwn(SKILLS, m.id)) return; // «__proto__» и прочие ключи прототипа — не умения
     const x = num(m.x, 0, playWidth(w().map)) ?? p.x, y = num(m.y, 0, w().map.h * TILE) ?? p.y;
     // a — угол прицела (линии, стена огня), dx, dy — вектор рывка или до точки линии: сервер применяет их от своей позиции (задача 133, shared/skillShape.ts)
     const a = num(m.a, -8, 8) ?? undefined, dx = num(m.dx, -4000, 4000) ?? undefined, dy = num(m.dy, -4000, 4000) ?? undefined;

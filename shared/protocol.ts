@@ -12,6 +12,8 @@ export const ROOM_NAME = "world";
 export interface JoinOptions {
   token: string;
   character: string;
+  /** GAME_VERSION сборки клиента (shared/version.ts): сервер не пускает старые сборки */
+  version?: string;
 }
 
 /** Состояние анимации юнита в Schema. */
@@ -148,6 +150,11 @@ export interface LootBag {
   y: number;
   items: Item[];
   boss?: boolean;
+  /** золото в мешке (подбирается вместе с вещами) */
+  gold?: number;
+  /** выброшенный мешок: хозяин (имя) и сколько секунд он ещё только его; lock — для этого игрока мешок пока чужой */
+  own?: string;
+  lock?: number;
 }
 
 export type FxKind = "phys" | "fire" | "frost" | "poison" | "arcane" | "shadow" | "nature" | "holy" | "blood";

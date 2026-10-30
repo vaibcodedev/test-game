@@ -1,4 +1,5 @@
 /** Игровой мир: вся симуляция на сервере. Комната Colyseus только передаёт сюда сообщения. */
+import { lootFor } from "./drop";
 import { stepApproach, tickQueue } from "./skillQueue";
 import { AGGRO_MUL, MAP_SEED, MOVE_MUL, PLAYER_RADIUS, PLAYER_SPEED, RESPAWN_DELAY_MS, TICK_MS } from "../../../shared/constants";
 import { armorReduction } from "../../../shared/formulas";
@@ -432,7 +433,7 @@ export class World {
       if (tm) p.send("tauras", tm);
       if (p.bagsDirty) {
         p.bagsDirty = false;
-        p.send("loot", [...p.bags.values()]);
+        p.send("loot", lootFor(this, p));
       }
     }
     auraFx.mobFx(this);

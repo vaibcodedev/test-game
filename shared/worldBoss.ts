@@ -159,7 +159,7 @@ export interface WbChronicleEntry {
 export interface WbResultMsg {
   boss: string;
   win: string;
-  me: { v: number; tier: WbTier; marks: number; xp: number; items: string[]; locked: boolean; titles: string[]; frame: string; trophy: string[] } | null;
+  me: { v: number; tier: WbTier; marks: number; xp: number; items: string[]; /** редкость каждой вещи из items (цвет имени в баннере) */ itemsR?: number[]; locked: boolean; titles: string[]; frame: string; trophy: string[] } | null;
   entry: WbChronicleEntry;
 }
 /** wboss:muster — мой сбор на мирового босса (сервер → клиент). */

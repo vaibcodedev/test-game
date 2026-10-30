@@ -76,6 +76,7 @@ const reducedMotion = () => { try { return window.matchMedia("(prefers-reduced-m
 const worldMs = () => (window as unknown as { __shadowMs?: number }).__shadowMs ?? Date.now();
 import { T as TX } from "../../../shared/texts";
 import { LootRow, LootToasts } from "./lootfx";
+import { DropUI } from "./dropui";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const icon = (name: string) => `/assets/icons/${name}.png`;
@@ -156,6 +157,7 @@ export class Hud {
   private tip = el("div", "panel tip");
   /** Превью добычи: ряд над мешком и тост-карточка (lootfx.ts). take — клик по ряду, ставит GameScene. */
   readonly lootRow: LootRow;
+  private dropUi!: DropUI;
   readonly lootToasts: LootToasts;
   onTakeBag?: (id: string) => void;
   private wins: Record<string, HTMLElement> = {};
@@ -266,6 +268,7 @@ export class Hud {
   }
 
   constructor(readonly root: HTMLElement) {
+    this.dropUi = new DropUI((t, m) => this.ctx?.net.send(t, m));
     this.lootRow = new LootRow(root, { self: () => this.ctx?.net.self ?? undefined, take: (id) => this.onTakeBag?.(id) });
     this.lootToasts = new LootToasts(root, () => this.ctx?.net.self ?? undefined);
     this.bar.append(this.hotbar.el);
@@ -1300,6 +1303,12 @@ export class Hud {
       const c = this.cell(it, s, locked.has(i) ? "locked" : "");
       c.draggable = !!it;
       c.ondragstart = (e) => e.dataTransfer!.setData("text/plain", String(i));
+      // отпустили за пределами окна сумки — выбросить (dropEffect none: цели нет)
+      c.ondragend = (e) => {
+        const r = this.wins.inv.getBoundingClientRect();
+        const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (it && !inside && e.dataTransfer?.dropEffect === "none" && this.invMode().id !== "trade") this.dropUi.ask(i, it);
+      };
       c.ondragover = (e) => { e.preventDefault(); c.classList.add("drag"); };
       c.ondragleave = () => c.classList.remove("drag");
       c.ondrop = (e) => {
@@ -1323,9 +1332,12 @@ export class Hud {
         };
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!));
         // «Печать скакуна»: ПКМ тоже изучает (подсказка печати)
-        if (sealMount(it.base) || sealPet(it.base)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.ctx.net.send("use", { index: i }); };
-        // «Оболочка» перековки: ПКМ — примерить на себя (только у себя на экране)
-        if (isShell(it)) c.oncontextmenu = (e) => { e.preventDefault(); this.tip.hidden = true; this.tryOnShell(it); };
+        // ПКМ: меню «Выбросить»/«Уничтожить»; у печатей — «Изучить», у «Оболочки» перековки — «Примерить» (только у себя на экране)
+        c.oncontextmenu = (e) => {
+          this.tip.hidden = true;
+          const extra = sealMount(it.base) || sealPet(it.base) ? [{ label: "Изучить", run: () => this.ctx.net.send("use", { index: i }) }] : isShell(it) ? [{ label: "Примерить", run: () => this.tryOnShell(it) }] : [];
+          this.dropUi.menu(e, i, it, extra);
+        };
       }
       grid.append(c);
     });

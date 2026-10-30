@@ -14,6 +14,7 @@ import { net as NET, type Net } from "../net";
 import { openModal, tabs, type ModalHandle } from "./kit";
 import type { RaidHud } from "./raid";
 import { banner } from "./lootfx";
+import { RARITY_COLORS } from "../../../shared/items";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const num = (n: number) => Math.round(n).toLocaleString("ru-RU");
@@ -468,14 +469,14 @@ export class WbossHud {
       ? `<section class="sec flat"><h3 class="sec-h">${esc(t("res.mine"))}</h3><dl class="kv">
           <dt>${esc(t("kv.me"))}</dt><dd>${num(me.v)} · <b class="wb-tier ${me.tier || "none"}">${esc(tierName(me.tier))}</b></dd>
           <dt>${esc(t("res.marks"))}</dt><dd>${num(me.marks)}</dd><dt>${esc(t("res.xp"))}</dt><dd>${num(me.xp)}</dd>
-          ${me.items.length ? `<dt>${esc(t("res.items"))}</dt><dd>${me.items.map(esc).join(", ")}</dd>` : ""}
+          ${me.items.length ? `<dt>${esc(t("res.items"))}</dt><dd>${me.items.map((n, i) => `<span style="color:${RARITY_COLORS[me.itemsR?.[i] ?? 0]}">${esc(n)}</span>`).join(", ")}</dd>` : ""}
           ${me.titles.length ? `<dt>${esc(t("res.titles"))}</dt><dd class="c-gold">${me.titles.map(esc).join(", ")}</dd>` : ""}
           ${me.frame ? `<dt>${esc(t("res.frame"))}</dt><dd class="c-gold">${esc(me.frame)}</dd>` : ""}
           ${me.trophy.length ? `<dt>${esc(t("res.trophy"))}</dt><dd>${me.trophy.map(esc).join(", ")}</dd>` : ""}
         </dl>${me.locked ? `<p class="note c-warn">${esc(t("res.locked"))}</p>` : ""}</section>`
       : `<p class="note">${esc(t("res.none"))}</p>`;
     // торжественный баннер добычи (вариант B, lootfx.ts): лучшая вещь из выданных, ранг по вкладу
-    if (me && !me.locked && me.items.length) banner(document.body, { title: "ДОБЫЧА МИРОВОГО БОССА", name: me.items[0], sub: `Ваш вклад: ${esc(tierName(me.tier))} · ${num(me.v)}${me.items.length > 1 ? ` · +${me.items.length - 1} ${esc(t("res.items").toLowerCase())}` : ""}` });
+    if (me && !me.locked && me.items.length) banner(document.body, { title: "ДОБЫЧА МИРОВОГО БОССА", name: me.items[0], color: RARITY_COLORS[me.itemsR?.[0] ?? 0], sub: `Ваш вклад: ${esc(tierName(me.tier))} · ${num(me.v)}${me.items.length > 1 ? ` · +${me.items.length - 1} ${esc(t("res.items").toLowerCase())}` : ""}` });
     const root = el("section", "panel dialog wb-result");
     root.setAttribute("role", "dialog");
     root.innerHTML = `<div class="dialog-head"><h2 class="dialog-title wb-win">${esc(t("res.title", { name: e.name }))}</h2><button class="x" data-x aria-label="${esc(t("close"))}">×</button></div>

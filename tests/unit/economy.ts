@@ -12,7 +12,7 @@ import { MATERIALS, MAX_PLUS, SMITH, failLevel, stepFor } from "../../shared/upg
 import { BAGMAN, BAG_MAX, BAG_STEP, bagPrice } from "../../shared/bags";
 import { FOOD, COOKS } from "../../shared/food";
 import { QUESTS } from "../../shared/quests";
-import { assert, done, knownFail, section, test, withRandom } from "./lib";
+import { assert, done, section, test, withRandom } from "./lib";
 import { at, countIn, drop, emptyBag, fillBag, gear, hero, memDb, register, stack, uids, world } from "./fixtures";
 
 const w = world();
@@ -50,7 +50,7 @@ await test("стопки: добор до предела, остаток — в 
   drop(w, p);
 });
 
-await knownFail("B1", "addItem: неудача (нет места) не должна менять сумку", "addItem доливает стопки и только потом узнаёт, что остатку нет ячейки: возвращает false, но часть уже лежит в сумке", () => {
+await test("addItem: неудача (нет места) не должна менять сумку", () => {
   const p = hero(w);
   fillBag(p);
   const max = BASE_ITEMS.hp_potion.stack!;
@@ -62,7 +62,7 @@ await knownFail("B1", "addItem: неудача (нет места) не долж
   assert.equal(countIn(p.save.inventory, "hp_potion"), before, "после отказа зелий стало больше");
 });
 
-await knownFail("B1", "подбор мешка с зельями в полную сумку: зелья не дублируются", "pickup: addItem частично долил стопку и вернул false — предмет целиком остался в мешке (дюп разницы)", () => {
+await test("подбор мешка с зельями в полную сумку: зелья не дублируются", () => {
   const p = hero(w);
   fillBag(p);
   const max = BASE_ITEMS.hp_potion.stack!;
@@ -73,6 +73,20 @@ await knownFail("B1", "подбор мешка с зельями в полную
   const total = countIn(p.save.inventory, "hp_potion") + inBag;
   drop(w, p);
   assert.equal(total, max - 2 + 5, `всего зелий ${total}, было ${max + 3}`);
+});
+
+await test("подбор стопки частично: в сумке долито до предела, в мешке — точный остаток", () => {
+  const p = hero(w);
+  fillBag(p);
+  const max = BASE_ITEMS.hp_potion.stack!;
+  p.save.inventory[0] = stack("hp_potion", max - 2);
+  p.bags.set("bag2", { id: "bag2", x: p.x, y: p.y, items: [stack("hp_potion", 5)] } as never);
+  pickup(w, p, "bag2");
+  const rest = p.bags.get("bag2")?.items ?? [];
+  drop(w, p);
+  assert.equal(p.save.inventory[0]!.qty, max);
+  assert.equal(rest.length, 1);
+  assert.equal(rest[0].qty, 3);
 });
 
 await test("подбор: далеко — отказ, рядом — всё в сумку и мешок исчезает; мёртвый не подбирает", () => {
@@ -298,7 +312,7 @@ await test("покупка материалов: цена × qty (1…99), по�
   drop(w, p);
 });
 
-await knownFail("B3", "ключи прототипа в покупках («__proto__», «constructor») отбрасываются без исключения", "buyMaterial/buyFood ищут MATERIALS[id] / FOOD[id] без Object.hasOwn: «__proto__» находит Object.prototype, дальше makeItem бросает исключение (состояние не меняется, комната ловит ошибку — но это шум в логе и хрупкость)", () => {
+await test("ключи прототипа в покупках («__proto__», «constructor») отбрасываются без исключения", () => {
   const p = smithHero();
   p.save.gold = 1e6;
   const s = snap(p);

@@ -17,6 +17,7 @@ import { homeCity } from "../../shared/cities";
 import { classFaction } from "../../shared/classes";
 import { WorldRoom } from "./rooms/WorldRoom";
 import serverCfg from "../../data/server.json";
+import { AC, makeVerifyClient, setSuspicionLog, SuspicionLog, suspicionLog } from "./anticheat";
 
 const PORT = Number(process.env.PORT || 2567);
 
@@ -47,9 +48,12 @@ const dist = path.resolve("dist");
 if (fs.existsSync(path.join(dist, "index.html"))) app.use(express.static(dist));
 
 const httpServer = createServer(app);
-const gameServer = new Server({ transport: new WebSocketTransport({ server: httpServer }), greet: false });
+// античит, шаг 1 (data/anticheat.json): предел кадра, Origin и лимит соединений с IP — до рукопожатия
+const transport = new WebSocketTransport({ server: httpServer, maxPayload: AC.maxPayloadBytes, verifyClient: makeVerifyClient() });
+const gameServer = new Server({ transport, greet: false });
 
 WorldRoom.db = new GameDB();
+setSuspicionLog(new SuspicionLog(WorldRoom.db.raw));
 services.db = WorldRoom.db;
 services.arena = new ArenaStore(WorldRoom.db.raw);
 gameServer.define(ROOM_NAME, WorldRoom);
@@ -87,6 +91,7 @@ const shutdown = async () => {
   try {
     await gameServer.gracefullyShutdown(false);
   } finally {
+    try { suspicionLog()?.close(); } catch {}
     WorldRoom.db.close();
     process.exit(0);
   }
@@ -115,6 +120,7 @@ process.on("uncaughtException", (e) => {
   shuttingDown = true;
   emergencySave();
   try {
+    suspicionLog()?.close();
     WorldRoom.db.close();
   } catch {}
   process.exit(1);

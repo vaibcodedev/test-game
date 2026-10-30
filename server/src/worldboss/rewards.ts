@@ -139,5 +139,5 @@ export function grantWb(c: WbGrantCtx, p: Player, v: number, tier: Exclude<WbTie
   else { dropBag(w, p, c.x, c.y, items, R.bagMs); p.send("toast", { text: wbText(def.texts.bag, { name: def.name }), kind: "loot" }); }
   for (const t of trophy) w.system(`${p.name}: ${t}`);
   p.selfDirty = true;
-  return { v: Math.floor(v), tier, marks, xp, items: items.map((it) => it.name ?? it.base), locked, titles: newTitles.map((t) => t.name), frame, trophy };
+  return { v: Math.floor(v), tier, marks, xp, items: items.map((it) => it.name ?? it.base), itemsR: items.map((it) => it.rarity), locked, titles: newTitles.map((t) => t.name), frame, trophy };
 }

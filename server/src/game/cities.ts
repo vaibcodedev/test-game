@@ -126,7 +126,7 @@ function giverErr(w: World, p: Player, giver: string): string | null {
 }
 
 function accept(w: World, p: Player, id: unknown) {
-  const def = typeof id === "string" ? QUESTS[id] : undefined;
+  const def = typeof id === "string" && Object.hasOwn(QUESTS, id) ? QUESTS[id] : undefined;
   if (!def || p.dead) return;
   const ge = giverErr(w, p, def.giver);
   if (ge) return err(p, ge);
@@ -140,7 +140,7 @@ function accept(w: World, p: Player, id: unknown) {
 }
 
 function turnIn(w: World, p: Player, id: unknown) {
-  const def = typeof id === "string" ? QUESTS[id] : undefined;
+  const def = typeof id === "string" && Object.hasOwn(QUESTS, id) ? QUESTS[id] : undefined;
   if (!def || p.dead) return;
   const ge = giverErr(w, p, def.giver);
   if (ge) return err(p, ge);

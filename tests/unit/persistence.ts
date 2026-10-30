@@ -13,7 +13,7 @@ import { Player, newSave } from "../../server/src/game/Player";
 import { homeCity } from "../../shared/cities";
 import { MAX_LEVEL } from "../../shared/constants";
 import { xpToNext } from "../../shared/formulas";
-import { assert, done, knownFail, section, test } from "./lib";
+import { assert, done, section, test } from "./lib";
 import { drop, gear, hero, memDb, register, stack, world } from "./fixtures";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "emberfall-unit-"));
@@ -168,7 +168,7 @@ await test("Player: здоровье из сохранения не выше м�
   assert.equal(p.unit.mp, p.unit.maxMp);
 });
 
-await knownFail("B4", "Player чинит золото из сохранения: отрицательное, NaN, дробное", "конструктор Player нормализует уровень и опыт, но не золото: отрицательное/NaN/дробное золото из битой строки остаётся как есть, а дальше все проверки «gold < price» с NaN проходят (NaN < x — false)", () => {
+await test("Player чинит золото из сохранения: отрицательное, NaN, дробное", () => {
   for (const g of [-50, NaN, 10.5]) {
     const s = newSave("warrior", { x: 10, y: 10 });
     s.gold = g;
@@ -177,7 +177,7 @@ await knownFail("B4", "Player чинит золото из сохранения:
   }
 });
 
-await knownFail("B5", "битый JSON в строке героя: load не роняет вход исключением", "GameDB.load делает JSON.parse без try/catch: одна повреждённая строка — исключение при входе героя (вход невозможен, в лог — стек); ожидается null или понятная ошибка", () => {
+await test("битый JSON в строке героя: load не роняет вход исключением", () => {
   const db = memDb();
   const p = hero(w);
   register(db, p);

@@ -13,6 +13,7 @@ import { ROOM_NAME } from "../../shared/protocol";
 import type { WarResultMsg, WarSayMsg, WarStateMsg } from "../../shared/bannerWar";
 import type { SiegeFxMsg, SiegeResultMsg, SiegeStateMsg } from "../../shared/siege";
 import { KICK_CODE, KICK_TEXT, LOGOUT_CODE, RECONNECT_SEC } from "../../shared/accounts";
+import { GAME_VERSION } from "../../shared/version";
 
 export type LogoutMode = "char" | "account";
 
@@ -256,7 +257,7 @@ export class Net {
   async connect(opts: JoinOptions): Promise<void> {
     this.stopRecover();
     this.resetPersonal();
-    this.joinOpts = opts;
+    this.joinOpts = opts = { ...opts, version: GAME_VERSION };
     this.client = new Client(serverUrl());
     await this.attach(await this.client.joinOrCreate(ROOM_NAME, opts));
     this.startWatchdog();

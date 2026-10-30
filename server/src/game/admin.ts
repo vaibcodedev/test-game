@@ -20,6 +20,7 @@ import { MOUNTS } from "../../../shared/mounts";
 import { awardMount } from "./mountDrops";
 import { GP } from "../../../shared/gameplay";
 import { T } from "../../../shared/texts";
+import { flag, suspicionLog } from "../anticheat";
 
 const PERMA = 9e12;
 /** Телепорт по координатам (карта админ-панели, поля x, y): насколько далеко, в тайлах, искать проходимую клетку, если в точку встать нельзя. */
@@ -61,6 +62,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
     on<T>(type, (p, m) => {
       if (!db().isAdmin(p.name)) {
         p.admin = false;
+        flag(p.name, "admin", type);
         const now = Date.now(), key = p.name + "|" + type;
         if (now - (deniedAt.get(key) ?? 0) < DENY_LOG_MS) return;
         if (deniedAt.size > 500) for (const [k, at] of deniedAt) if (now - at >= DENY_LOG_MS) deniedAt.delete(k);
@@ -314,6 +316,7 @@ export function registerAdmin(room: WorldRoom, on: On) {
   adm<{ kind: unknown; name: unknown }>("admin:logs", (p, m) => {
     const name = str(m.name, 16);
     if (m.kind === "trades") p.send("admin:logs", { kind: "trades", rows: db().tradeLogRows(name) });
+    else if (m.kind === "suspicion") p.send("admin:logs", { kind: "suspicion", rows: suspicionLog()?.rows(name) ?? [] });
     else p.send("admin:logs", { kind: "admin", rows: db().adminLogRows(name) });
   });
 }

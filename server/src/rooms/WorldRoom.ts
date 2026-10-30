@@ -54,11 +54,13 @@ import path from "node:path";
 import { TradeManager } from "../trade/TradeManager";
 import { BankService } from "../game/bank";
 import { expandBag } from "../game/bags";
+import { destroyItem, dropItem, pickupBag } from "../game/drop";
 import type { ArenaOptions, Participant } from "./ArenaRoom";
 import { guard, makeOn, registerCombat, type On } from "./common";
 import { autoPlace, setSlot } from "../../../shared/hotbar";
 import { OpenWorldState } from "./schema";
 import { Visibility } from "./visibility";
+import { versionError } from "../anticheat";
 import { T } from "../../../shared/texts";
 
 interface AuthResult {
@@ -142,6 +144,9 @@ export class WorldRoom extends Room<OpenWorldState> {
 
   /** Вход героя аккаунта: токен сессии HTTP API + имя героя (герой должен принадлежать аккаунту). */
   override async onAuth(_client: Client, options: JoinOptions): Promise<AuthResult> {
+    // старая сборка клиента (другой протокол) — не пускаем, с понятной просьбой обновить страницу
+    const old = versionError(options?.version);
+    if (old) throw new ServerError(426, old);
     const sess = sessionOf(options?.token);
     if (!sess) throw new ServerError(401, "Сессия истекла, войдите снова");
     const db = WorldRoom.db;
@@ -669,7 +674,7 @@ export class WorldRoom extends Room<OpenWorldState> {
       if (!p.allocate(m.stat as StatKey, n)) p.send("toast", { text: T("srv.WorldRoom.226"), kind: "error" });
     });
     on<{ id: unknown }>("learn", (p, m) => {
-      const def = typeof m.id === "string" ? SKILLS[m.id] : undefined;
+      const def = typeof m.id === "string" && Object.hasOwn(SKILLS, m.id) ? SKILLS[m.id] : undefined;
       if (!def || def.cls !== p.cls) return;
       const why = canLearn(def, p.save.skills, p.level, p.skillPoints());
       if (why) return p.send("toast", { text: why, kind: "error" });
@@ -732,7 +737,10 @@ export class WorldRoom extends Room<OpenWorldState> {
     on<{ index: unknown }>("tm:extract", (p, m) => tmExtract(w(), p, m.index, (i) => this.trade.locked(p, i)));
     on<{ shell: unknown; index: unknown; slot: unknown }>("tm:apply", (p, m) => tmApply(w(), p, m.shell, m.index, m.slot, (i) => this.trade.locked(p, i)));
     on<{ index: unknown; slot: unknown }>("tm:reset", (p, m) => tmReset(w(), p, m.index, m.slot, (i) => this.trade.locked(p, i)));
-    on<{ bag: unknown }>("pickup", (p, m) => pickup(w(), p, m.bag));
+    on<{ bag: unknown }>("pickup", (p, m) => pickupBag(w(), WorldRoom.db, p, m.bag));
+    const here = () => this.world.map.playerSpawn;
+    on<{ index: unknown; qty: unknown; gold: unknown }>("drop", (p, m) => dropItem(w(), WorldRoom.db, here(), p, m, (i) => this.trade.locked(p, i)));
+    on<{ index: unknown; word: unknown }>("destroy", (p, m) => destroyItem(w(), WorldRoom.db, here(), p, m, (i) => this.trade.locked(p, i)));
     // банк
     on("bag:expand", (p) => expandBag(w(), WorldRoom.db, w().map.playerSpawn, p, p.goingToArena || inArena.has(p.name.toLowerCase())));
     on("bank:open", (p) => this.bank.open(p));
