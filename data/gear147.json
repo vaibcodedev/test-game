@@ -1,0 +1,72 @@
+{
+  "_doc": "Задача 147+: снаряжение на основе героя «Б» (скелет data/hero-skeleton-b.json). Слоты, материалы (5 тонов, тёмный → светлый, свет сверху-слева), правила слоёв и сеты. Шаблоны вещей — tools/gen/gear147/gear.ts, параметры — здесь. В игру не подключено.",
+  "slots": [
+    { "id": "helm", "name": "Шлем" },
+    { "id": "pauldrons", "name": "Наплечники", "new": true },
+    { "id": "armor", "name": "Доспех" },
+    { "id": "gloves", "name": "Перчатки", "new": true },
+    { "id": "boots", "name": "Сапоги" },
+    { "id": "cloak", "name": "Спина", "kinds": ["cape", "banner", "shieldBack", "swordsCross", "halo"] },
+    { "id": "weapon", "name": "Оружие" }
+  ],
+  "back": {
+    "_doc": "Слот «Спина» (id cloak): общая точка крепления — спина у лопаток (кадр торса A/U/F) или голова (ореол). Слой: вид вниз — позади всего (0.40), вид вверх — поверх спины и рук, под оружием, наплечниками, кистями и головой (5.15), вбок — за телом (0.90). Вещь задаёт только форму; порядок и привязка общие для всех видов.",
+    "layer": { "down": 0.4, "up": 5.15, "side": 0.9 },
+    "mount": { "cape": "shoulders", "banner": "back", "shieldBack": "back", "swordsCross": "back", "halo": "head" }
+  },
+  "layers": {
+    "_doc": "Листы слоёв: каждая часть вещи имеет слой (число) по правилам основы; лист = (слот, корзина слоя). У каждого кадра листа — z (минимальный слой его частей); в игре листы надетых вещей рисуются по возрастанию z. Корзины разделяют то, что может переплетаться с телом: дальняя рука / оружие сзади / кисть, ноги и торс, ближняя рука / оружие / наплечник / кисть / спина вверх / голова.",
+    "bins": [0, 0.95, 1.15, 1.22, 1.28, 1.9, 4.9, 5.1, 5.18, 5.22, 5.28, 5.9, 99]
+  },
+  "materials": {
+    "chaos_steel": ["#0d0a10", "#201a26", "#372e40", "#564a64", "#8a7c9e"],
+    "chaos_red": ["#2e0610", "#5c0c18", "#9a1424", "#d42a34", "#ff6a5a"],
+    "gold": ["#6a4210", "#a8681c", "#e0a630", "#ffd864", "#fff2b0"],
+    "chaos_horn": ["#120809", "#2a1214", "#4a1c20", "#74302e", "#a8564a"],
+    "chaos_cape": ["#1c0408", "#3c0a10", "#66121a", "#902028", "#b83c3a"],
+    "chaos_lining": ["#08060a", "#141018", "#221a24", "#342634", "#4c3646"],
+    "chaos_tabard": ["#0a080c", "#16121a", "#241e28", "#36303c", "#4c4454"],
+    "grip": ["#120a08", "#22140e", "#382218", "#543424", "#704a32"],
+    "hellfire": ["#7a1006", "#d23410", "#ff7a1e", "#ffc844", "#fff6c0"],
+    "eye_glow": ["#5a0a08", "#b01810", "#ff4a2a", "#ff9a6a", "#ffe0c8"],
+    "iron": ["#16181c", "#2c3036", "#4c525a", "#7a828c", "#b2bac2"],
+    "leather": ["#1a0f08", "#33200f", "#55361a", "#7a5028", "#94683a"],
+    "mail": ["#1e2024", "#3a3e44", "#5c626a", "#868c94", "#aeb4ba"],
+    "sol_field": ["#0e0a08", "#1e1610", "#30241a", "#463626", "#5e4a34"],
+    "sol_charge": ["#6a4210", "#a8681c", "#e0a630", "#ffd864", "#fff2b0"],
+    "umb_field": ["#0c0812", "#1a1024", "#2a1a3a", "#3e2a54", "#56406e"],
+    "umb_charge": ["#3a1e4a", "#5e3474", "#8a52a0", "#b88cd0", "#e8d0f8"]
+  },
+  "crests": {
+    "_doc": "Герб фракции игрока — подменяемая маска (отдельный лист слоя crest). Цвет сета не меняется.",
+    "sol": { "name": "Солнце", "field": "sol_field", "charge": "sol_charge", "shape": "sun" },
+    "umb": { "name": "Луна", "field": "umb_field", "charge": "umb_charge", "shape": "moon" }
+  },
+  "sets": {
+    "chaos-knight": {
+      "name": "Латы Рогатого Рыцаря Хаоса",
+      "rarity": "legendary", "level": 100, "material": "plate", "source": "raid:horned-chaos-knight",
+      "items": {
+        "helm": { "name": "Рогатый шлем Хаоса", "style": "horned", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "horn": "chaos_horn", "glow": "eye_glow", "spikes": 3, "horns": 1.0 },
+        "pauldrons": { "name": "Шипастые наплечники Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "size": 1.18, "lames": 2, "spikes": 3 },
+        "armor": { "name": "Кираса Рогатого Рыцаря", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "cloth": "chaos_tabard", "thick": 0.6, "chestPlate": true, "inlay": true, "crest": true, "tassets": "chaos_red", "tabard": true },
+        "gloves": { "name": "Латные рукавицы Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "cuff": true, "cuffSpike": true },
+        "boots": { "name": "Поножи Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "kneeSpike": true, "stripe": true },
+        "cloak": { "name": "Рваный плащ Хаоса", "kind": "cape", "outer": "chaos_cape", "lining": "chaos_lining", "trim": "gold", "tatter": 1.0, "crest": true },
+        "weapon": { "name": "Пылающий клинок Хаоса", "kind": "great", "blade": "hellfire", "edge": "chaos_red", "hilt": "chaos_steel", "grip": "grip", "accent": "chaos_red", "length": 21, "width": 3.6, "serrate": true, "flames": true, "glow": true }
+      }
+    },
+    "recruit-plate": {
+      "name": "Латы новобранца",
+      "rarity": "common", "level": 1, "material": "plate", "source": "mobs",
+      "items": {
+        "helm": { "name": "Железный шапель", "style": "kettle", "plate": "iron", "accent": "iron", "trim": "iron", "mail": "mail" },
+        "pauldrons": { "name": "Железные наплечники", "plate": "iron", "accent": "iron", "trim": "iron", "size": 0.78, "lames": 1, "spikes": 0 },
+        "armor": { "name": "Железная кираса", "plate": "iron", "accent": "iron", "trim": "leather", "cloth": "leather", "thick": 0.45, "chestPlate": false, "inlay": false, "crest": false, "tassets": "iron", "tabard": false },
+        "gloves": { "name": "Кожаные рукавицы", "plate": "leather", "accent": "leather", "cuff": false, "cuffSpike": false },
+        "boots": { "name": "Железные поножи", "plate": "iron", "accent": "iron", "kneeSpike": false, "stripe": false },
+        "weapon": { "name": "Железный двуручник", "kind": "great", "blade": "iron", "edge": "iron", "hilt": "iron", "grip": "leather", "accent": "iron", "length": 15, "width": 2.4, "serrate": false, "flames": false, "glow": false }
+      }
+    }
+  }
+}
