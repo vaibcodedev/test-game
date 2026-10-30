@@ -477,10 +477,11 @@ function back(ctx: GearCtx, it: any, crest: CrestId) {
 }
 function cape(ctx: GearCtx, it: any, crest: CrestId) {
   const { sk, b, PJ, push, v, anim, u } = ctx, M = backMount(ctx);
-  const sx = b.shW - b.armT * 0.3, dW = b.waist * 0.62, sw = swingOf(anim, u);
+  const sx = b.shW - b.armT * 0.3, dW = b.waist * 0.62, sw = (ctx.l as any).calmCloth ? 0.35 : swingOf(anim, u);
   const outer = ramp(it.outer), lin = ramp(it.lining), Tr = it.trim ? ramp(it.trim) : null;
   const N = 9, tat = [1.2, 3.6, 0.4, 4.6, 1.4, 3.4, 0.0, 5.0, 2.2].map((x) => x * (it.tatter ?? 1));
-  const flutter = anim === "walk" || anim === "run" || anim === "ride" ? 1 : anim === "idle" ? 0.35 : 0.6;
+  // calmCloth — спокойная ткань для экспорта текстуры под физику в игре (Rope + Verlet)
+  const calm = (ctx.l as any).calmCloth, flutter = calm ? 0 : anim === "walk" || anim === "run" || anim === "ride" ? 1 : anim === "idle" ? 0.35 : 0.6;
   const top: V3[] = [], mid: V3[] = [], bot: V3[] = [];
   for (let k = 0; k < N; k++) {
     const t = (k / (N - 1)) * 2 - 1;

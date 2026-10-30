@@ -81,8 +81,8 @@
     "_doc": "Вид по уровню и редкости (docs/gear-sets-spec.md): 5 ступеней по 20 ур. × 4 редкости. Здесь — материалы ступеней; флаги редкостей и размер силуэта — tools/gen/gear147/tier.ts. Проверка «богатства вида» — tools/out/gear147/tier-table.json.",
     "levels": [10, 30, 50, 70, 90],
     "names": ["железо, сыромятная кожа, лён", "сталь, дублёная кожа, шерсть", "калёная сталь, кожа с пластинами, шёлк", "мастерская ковка, позолота", "пепельная сталь, звёздный шёлк"],
-    "plate": { "base": ["iron", "steel60", "steel_temper", "steel_master", "ash_steel"], "trim": ["brass", "brass", "gold", "gold", "ash_gold"], "cloth": ["wool_grey", "cloth_blue", "cloth_purple", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "ash_glow"] },
-    "leather": { "base": ["rawhide", "leather", "rogue_leather", "leather_master", "leather_myth"], "plate": ["iron", "steel60", "steel_temper", "steel_master", "ash_steel"], "trim": ["brass", "brass", "gold", "gold", "ash_gold"], "cloth": ["wool_brown", "dye_green", "cloth_crimson", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "ash_glow"] },
+    "plate": { "base": ["iron", "steel60", "steel_temper", "steel_master", "ash_steel"], "trim": ["brass", "brass", "gold", "gold", "ash_gold"], "cloth": ["dye_green", "cloth_blue", "cloth_purple", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "ash_glow"] },
+    "leather": { "base": ["rawhide", "leather", "rogue_leather", "leather_master", "leather_myth"], "plate": ["iron", "steel60", "steel_temper", "steel_master", "ash_steel"], "trim": ["brass", "brass", "gold", "gold", "ash_gold"], "cloth": ["cloth_blue", "dye_green", "cloth_crimson", "cloth_crimson", "star_silk"], "glow": [null, null, null, null, "ash_glow"] },
     "cloth": { "base": ["linen", "wool_blue", "cloth_purple", "cloth_crimson", "star_silk"], "trim": ["tan", "brass", "gold", "gold", "ash_gold"], "cloth": ["wool_brown", "cloth_blue", "cloth_blue", "cloth_purple", "ash_steel"], "glow": [null, null, null, null, "ash_glow"] },
     "scale": [0.64, 0.69, 0.74, 0.79, 0.84]
   },

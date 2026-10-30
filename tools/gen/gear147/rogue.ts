@@ -150,12 +150,12 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
 export function scarf(ctx: GearCtx, it: any) {
   const { sk, PJ, push, anim, u } = ctx, M = backMount(ctx), R = ramp(it.cloth);
   const start = sum(M.o, mul(M.U, 1.5), mul(M.F, 0.3));
-  const sw = anim === "run" ? 3.0 : anim === "walk" ? 1.4 : anim === "ride" ? 2.4 : anim === "atk1h" || anim === "atk2h" ? 1.0 : 0.5;
+  const calm = (ctx.l as any).calmCloth, sw = calm ? 0.3 : anim === "run" ? 3.0 : anim === "walk" ? 1.4 : anim === "ride" ? 2.4 : anim === "atk1h" || anim === "atk2h" ? 1.0 : 0.5;
   const len = it.length ?? 7;
   for (const j of [0, 1]) {
     const pts: V3[] = [];
     for (let k = 0; k <= len; k++) {
-      const t = k / len, wv = Math.sin(2 * Math.PI * (u * (sw > 1 ? 2 : 1) - t * 0.8) + j * 1.9) * (0.5 + sw * 0.35) * t;
+      const t = k / len, wv = calm ? 0.25 * t * (j ? -1 : 1) : Math.sin(2 * Math.PI * (u * (sw > 1 ? 2 : 1) - t * 0.8) + j * 1.9) * (0.5 + sw * 0.35) * t;
       // висит вниз и чуть назад, при движении — парусит назад волной
       const back = 0.5 + t * t * (0.4 + sw * 0.9) * len * 0.35;
       pts.push(sum(start, mul(M.A, (j ? -1 : 1) * (0.6 + t * 0.9) + wv * 0.6), [0, k * (2.05 - sw * 0.2 * t), 0], mul(M.F, -back - Math.abs(wv) * 0.4)));
