@@ -11,63 +11,51 @@ import { text } from "../mobs/lib";
 import { FY, frameOf, type Look } from "../hero147/base_b";
 import { GD, dress, renderView, type SetDef, type Slot } from "./gear";
 import { cell, icon } from "./icons";
+import { LV, clothRobe, leatherCoat, plateArmor, plateHelm, platePauldrons } from "./tiers";
 
 const T = GD.tiers, RAR = ["common", "rare", "epic", "legendary"], RN = ["ОБЫЧНАЯ", "РЕДКАЯ", "ЭПИЧЕСКАЯ", "ЛЕГЕНДАРНАЯ"];
 const RC: RGBA[] = [[200, 206, 216, 255], [110, 160, 240, 255], [190, 120, 240, 255], [255, 160, 50, 255]];
-/** уровень богатства: ступень весит больше редкости (легендарка N ≈ эпик N+1, ступень N+2 богаче любой вещи N) */
-const LV = (t: number, r: number) => 2.2 * t + 0.8 * r;
-const sc = (t: number, r: number) => 0.58 + 0.065 * t + 0.008 * r; // силуэт растёт со ступенью
-
-// ---------- вещи из ступени и редкости: конструкция растёт с L, редкость даёт свои знаки (ткань и заклёпки → самоцвет и герб → шипы и свечение) ----------
-function plateArmor(t: number, r: number) {
-  const m = T.plate, L = LV(t, r);
-  return { style: "plate", plate: m.base[t], accent: r >= 2 ? (t >= 3 ? m.trim[t] : m.cloth[t]) : m.base[t], trim: r >= 1 || t >= 3 ? m.trim[t] : "leather", cloth: m.cloth[t], mail: "mail", thick: 0.4 + 0.035 * L, tassets: m.base[t],
-    rivets: L >= 0.8, kant: L >= 1.6 && r >= 1 ? m.trim[t] : undefined, tabard: r >= 1, chestPlate: L >= 3.0, inlay: r >= 2 && L >= 2.4, crest: r >= 2, gemColor: r === 2 ? "sapphire" : undefined,
-    cracks: m.glow[t] ?? (r === 3 ? "chaos_crack" : undefined), spikes: r === 3, spike: "chaos_spike", pauldronsOnIcon: L >= 2.0, iconScale: sc(t, r) };
-}
-function plateHelm(t: number, r: number) {
-  const m = T.plate, L = LV(t, r);
-  if (r === 3) return { style: "horned", plate: m.base[t], accent: t >= 3 ? "chaos_red" : m.cloth[t], trim: m.trim[t], horn: "chaos_spike", glow: m.glow[t] ?? "eye_glow", spikes: L >= 5 ? 3 : 1, horns: 0.5 + 0.045 * L, iconScale: sc(t, r) };
-  if (L < 1) return { style: "kettle", plate: m.base[t], accent: m.base[t], trim: m.base[t], mail: "mail", iconScale: sc(t, r) };
-  return { style: "great", plate: m.base[t], accent: m.base[t], trim: r >= 1 || t >= 3 ? m.trim[t] : m.base[t], slit: true, rivets: L >= 1.6, plume: r >= 1 || L >= 4.4 ? m.cloth[t] : undefined, wings: r >= 2 && L >= 3.8, gem: r >= 2 ? "sapphire" : undefined, engrave: L >= 3.8, iconScale: sc(t, r) };
-}
-function platePauldrons(t: number, r: number) {
-  const m = T.plate, L = LV(t, r);
-  return { plate: m.base[t], accent: r >= 2 ? (t >= 3 ? m.trim[t] : m.cloth[t]) : m.base[t], trim: r >= 1 || t >= 3 ? m.trim[t] : m.base[t], size: 0.76 + 0.035 * L, lames: L >= 3 ? 2 : 1, spikes: r === 3 ? (L >= 5 ? 3 : 2) : 0, spike: "chaos_spike", rivets: L >= 0.8, filigree: r >= 2, gem: r === 2 ? "sapphire" : undefined, cracks: m.glow[t] ?? undefined };
-}
-function leatherCoat(t: number, r: number) {
-  const m = T.leather, L = LV(t, r);
-  return { style: "coat", leather: m.base[t], plate: m.plate[t], accent: r >= 1 ? m.cloth[t] : m.base[t], trim: m.trim[t], sash: r >= 1 ? m.cloth[t] : "leather_dark", sashTails: r >= 1 && L >= 1.6, strap: L >= 1.6, strapMat: "leather_dark",
-    breast: L >= 3.0, crest: r >= 2, gem: r === 2 ? "sapphire" : r === 3 ? "eye_glow" : undefined, cracks: m.glow[t] ?? (r === 3 ? "chaos_crack" : undefined), lacing: L < 3 ? "tan" : undefined, pouch: L < 5 ? "leather_dark" : undefined,
-    spikes: r === 3, spike: "chaos_spike", pauldronsOnIcon: L >= 2.0, stitch: "tan", wear: L < 4, iconScale: sc(t, r) };
-}
-function clothRobe(t: number, r: number) {
-  const m = T.cloth, L = LV(t, r);
-  return { style: "robe", cloth: m.base[t], trim: r >= 1 || t >= 3 ? m.trim[t] : m.base[t], sash: r >= 1 ? m.cloth[t] : m.base[t], panel: L >= 1.6 ? m.cloth[t] : undefined, embroid: L >= 0.8, hemTrim: L >= 2.4, mantle: L >= 3.0 ? m.cloth[t] : undefined,
-    gem: r === 2 ? "sapphire" : r === 3 ? "eye_glow" : undefined, crest: r >= 2, runes: m.glow[t] ?? (r === 3 ? "eye_glow" : undefined), spikes: r === 3, spike: m.trim[t], collar: r >= 1 ? m.trim[t] : m.base[t], sashTails: r >= 2, iconScale: sc(t, r) };
-}
 
 // ---------- богатство вида ----------
 /** площадь силуэта (px), число деталей (частей), число цветов, свечение (px) → одно число */
 function richness(img: PC, parts: number, emis: number) {
   let area = 0; const cols = new Set<number>();
   for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) { const q = img.get(x, y); if (!q || !q[3]) continue; area++; cols.add((q[0] << 16) | (q[1] << 8) | q[2]); }
-  const score = area / 12 + parts * 0.6 + cols.size * 0.12 + emis * 0.1;
+  const score = area / 9 + parts * 0.5 + cols.size * 0.1 + emis * 0.08;
   return { area, parts, colors: cols.size, glow: emis, score: +score.toFixed(1) };
 }
 type Row = { mat: string; slot: Slot; make: (t: number, r: number) => any };
 const ROWS: Row[] = [
   { mat: "ЛАТЫ", slot: "armor", make: plateArmor }, { mat: "ЛАТЫ", slot: "helm", make: plateHelm },
-  { mat: "КОЖА", slot: "armor", make: leatherCoat }, { mat: "ТКАНЬ", slot: "armor", make: clothRobe },
+  { mat: "ЛАТЫ", slot: "pauldrons", make: platePauldrons }, { mat: "КОЖА", slot: "armor", make: leatherCoat }, { mat: "ТКАНЬ", slot: "armor", make: clothRobe },
 ];
-const res: any = { _doc: "Оценка богатства вида: score = площадь силуэта/12 + детали×0,6 + цвета×0,12 + свечение×0,1 (цвета весят мало: их число раздувает сглаживание). Правила: ступень N+2 богаче любой вещи ступени N (min(N+2) > max(N)); легендарка N не богаче эпика N+1 больше чем на допуск 8 %.", tol: 0.08, rows: [] as any[], fails: [] as string[] };
+const res: any = { _doc: "Оценка богатства вида: score = площадь силуэта/9 + детали×0,5 + цвета×0,1 + свечение×0,08 (цвета весят мало: их число раздувает сглаживание). Сходство: IoU масок иконок одного слота и ступени — не выше simThreshold (разные редкости — разные сеты). Правила: ступень N+2 богаче любой вещи ступени N (min(N+2) > max(N)); легендарка N не богаче эпика N+1 больше чем на допуск 8 %.", tol: 0.08, rows: [] as any[], fails: [] as string[] };
+/** сходство силуэтов: IoU масок (непрозрачные пиксели) двух иконок */
+export function iou(a: PC, b: PC) { let i = 0, u = 0; for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) { const p = (a.get(x, y)?.[3] ?? 0) > 0, q = (b.get(x, y)?.[3] ?? 0) > 0; if (p && q) i++; if (p || q) u++; } return u ? i / u : 0; }
+const SIM = 0.8, CSIM = 0.72, CIOU = 0.62;
+/** сходство цвета: пересечение гистограмм (тон 12 × светлота 3, серые — отдельно) непрозрачных пикселей */
+export function colorSim(a: PC, b: PC) {
+  const h = (im: PC) => { const o = new Map<number, number>(); let n = 0; for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) { const q = im.get(x, y); if (!q || !q[3]) continue; const [r, g, bb] = q, mx = Math.max(r, g, bb), mn = Math.min(r, g, bb), l = (mx + mn) / 510, sat = mx - mn; let k: number; if (sat < 28) k = 100 + Math.min(2, Math.floor(l * 3)); else { let hu = mx === r ? (g - bb) / sat : mx === g ? 2 + (bb - r) / sat : 4 + (r - g) / sat; hu = (hu * 60 + 360) % 360; k = Math.floor(hu / 30) * 3 + Math.min(2, Math.floor(l * 3)); } o.set(k, (o.get(k) ?? 0) + 1); n++; } for (const [k, v] of o) o.set(k, v / n); return o; };
+  const A = h(a), B = h(b), chroma = (o: Map<number, number>) => [...o].filter(([k]) => k < 100).reduce((q, [, v]) => q + v, 0);
+  // латы одной ступени — один металл: серые пиксели не сравниваем, только цветные (ткань, кожа, кант, самоцветы); почти бесцветные вещи — нейтрально
+  const ca = chroma(A), cb = chroma(B); if (ca < 0.12 || cb < 0.12) return 0.5;
+  let s = 0; for (const [k, v] of A) if (k < 100) s += Math.min(v / ca, (B.get(k) ?? 0) / cb); return s;
+}
+/** похожи: силуэт почти совпадает, или силуэт близок и цвет тот же */
+const similar = (a: PC, b: PC) => { const i = iou(a, b), c = colorSim(a, b); return { i: +i.toFixed(2), c: +c.toFixed(2), bad: i > SIM || (i > CIOU && c > CSIM) }; };
+res.simThreshold = SIM; res.colorRule = `IoU > ${SIM} или (IoU > ${CIOU} и цвет > ${CSIM})`; res.similarity = [];
 const icons: PC[][][] = [];
 for (const row of ROWS) {
-  const grid: any[][] = [], ig: PC[][] = [];
+  const grid: any[][] = [], ig: PC[][] = [], rawT: PC[][] = [];
   for (let t = 0; t < 5; t++) {
     grid.push([]); ig.push([]);
-    for (let r = 0; r < 4; r++) { const it = row.make(t, r), ic = icon(row.slot, it, "sol"); grid[t].push(richness(ic.img, ic.parts, ic.emis.length)); ig[t].push(cell(ic.img, RAR[r])); }
+    const raw: PC[] = []; rawT.push(raw);
+    for (let r = 0; r < 4; r++) { const it = row.make(t, r), ic = icon(row.slot, it, "sol"); raw.push(ic.img); grid[t].push(richness(ic.img, ic.parts, ic.emis.length)); ig[t].push(cell(ic.img, RAR[r])); }
+    // разные редкости — разные сеты: попарное сходство силуэтов внутри ступени ниже порога
+    for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) { const v = similar(raw[a], raw[b]); res.similarity.push([row.mat, row.slot, T.levels[t], RAR[a], RAR[b], v.i, v.c]); if (v.bad) res.fails.push(`${row.mat} ${row.slot} ${T.levels[t]} ур.: ${RAR[a]} и ${RAR[b]} похожи (IoU ${v.i}, цвет ${v.c})`); }
   }
+  // соседние ступени одной редкости — тоже разные вещи (свой набор форм у каждой ступени)
+  for (let t = 0; t + 1 < 5; t++) for (let r = 0; r < 4; r++) { const v = similar(rawT[t][r], rawT[t + 1][r]); res.similarity.push([row.mat, row.slot, `${T.levels[t]}→${T.levels[t + 1]}`, RAR[r], RAR[r], v.i, v.c]); if (v.bad) res.fails.push(`${row.mat} ${row.slot} ${RAR[r]}: ${T.levels[t]} и ${T.levels[t + 1]} ур. похожи (IoU ${v.i}, цвет ${v.c})`); }
   icons.push(ig);
   for (let t = 0; t + 2 < 5; t++) { const mx = Math.max(...grid[t].map((g) => g.score)), mn = Math.min(...grid[t + 2].map((g) => g.score)); if (!(mn > mx)) res.fails.push(`${row.mat} ${row.slot}: ступень ${t + 3} (min ${mn}) не богаче ступени ${t + 1} (max ${mx})`); }
   for (let t = 0; t + 1 < 5; t++) { const lg = grid[t][3].score, ep = grid[t + 1][2].score; if (lg > ep * (1 + res.tol)) res.fails.push(`${row.mat} ${row.slot}: легендарка ступени ${t + 1} (${lg}) богаче эпика ступени ${t + 2} (${ep}) больше допуска`); }
@@ -90,7 +78,7 @@ let y = 80;
 T.levels.forEach((lv: number, t: number) => { text(c, `${lv} УР.`, lw + t * blockW, y, 2, GOLD); text(c, T.names[t].toUpperCase(), lw + t * blockW, y + 18, 1, DIM); });
 y += 40;
 ROWS.forEach((row, ri) => {
-  text(c, `${row.mat}`, 10, y + 20, 2, GOLD); text(c, row.slot === "helm" ? "ШЛЕМ" : "КИРАСА", 10, y + 42, 2, DIM);
+  text(c, `${row.mat}`, 10, y + 20, 2, GOLD); text(c, ({ helm: "ШЛЕМ", armor: "КИРАСА", pauldrons: "НАПЛЕЧНИКИ" } as any)[row.slot], 10, y + 42, 2, DIM);
   for (let t = 0; t < 5; t++) for (let r = 0; r < 4; r++) {
     const x = lw + t * blockW + r * cw;
     blit(icons[ri][t][r], x, y, K);

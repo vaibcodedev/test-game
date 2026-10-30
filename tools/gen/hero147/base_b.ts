@@ -11,6 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Cv, Mk, paint, hx, type C } from "../bosses139/mino_lib";
+import { PLAYER_SPEED, MOVE_MUL } from "../../../shared/constants";
 
 export const Z = 2, FR = 48, W = FR * Z, FY = 45, CX = 24, KZ = 0.35;
 export type View = "down" | "up" | "side";
@@ -19,13 +20,15 @@ export type V2 = [number, number];
 export type Fac = "sol" | "umb";
 export type Sex = "m" | "f";
 export type AnimId = "idle" | "walk" | "run" | "atk1h" | "atk2h" | "bow" | "cast" | "block" | "hurt" | "death" | "ride" | "gather" | "special2h";
-export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** размер кадра (по умолчанию 48): под крупное оружие */ frame?: number; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
+export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** затемнение видимого лица под шлемом (0..1) */ faceShade?: number; /** размер кадра (по умолчанию 48): под крупное оружие */ frame?: number; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; /** клинок оружия сета для смаза удара: длина (px) и цвет */ blade?: { len: number; ramp?: C[] }; /** вес снаряжения 0..1 (латы 1, кожа ~0.35): глубже присед и тяжелее шаг, запаздывание пластин */ weight?: number; posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
 
 export const DATA = JSON.parse(fs.readFileSync(path.resolve("data/hero-base-b.json"), "utf8"));
 /** обычные анимации основы; особые (special: true) задаются оружием через posePatch */
 export const ANIMS: AnimId[] = (Object.keys(DATA.anims) as AnimId[]).filter((a) => !DATA.anims[a].special);
 export const SPECIAL_ANIMS: AnimId[] = (Object.keys(DATA.anims) as AnimId[]).filter((a) => DATA.anims[a].special);
 export const NF = (a: AnimId): number => DATA.anims[a].frames;
+/** Скорость шага в игре, px/с: run — герой пешком (shared PLAYER_SPEED), walk — горожане и NPC (townfolk × moveMul). */
+export const gaitSpeed = (a: "walk" | "run"): number => (a === "run" ? PLAYER_SPEED : DATA.gait.walk.speedBase * MOVE_MUL);
 const R5 = (a: string[]): C[] => a.map(hx);
 
 export interface Build { headW: number; headH: number; neck: number; chest: number; pelvis: number; thigh: number; shin: number; ankle: number; footL: number; shW: number; waist: number; hipW: number; uArm: number; fArm: number; thighT: number; shinT: number; armT: number; foreT: number; handR: number; neckT: number }
@@ -86,7 +89,8 @@ const easeOut = (t: number) => 1 - (1 - t) ** 3;
 const cl = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 
 // ---------------- поза ----------------
-interface Hand { rel?: V3; abs?: V3; fromL?: V3; pole?: V3 }
+/** fk — прямая кинематика руки в системе корпуса: ua — мах плеча вперёд (рад), fa — сгиб локтя вперёд, out — отвод в сторону */
+interface Hand { rel?: V3; abs?: V3; fromL?: V3; pole?: V3; fk?: { ua: number; fa: number; out?: number } }
 export interface Pose {
   hip: V3; lean: number; twist: number; roll: number; chestRise: number;
   ankL: V3; ankR: V3; pitchL: number; pitchR: number; kneeL?: V3; kneeR?: V3;
@@ -94,6 +98,8 @@ export interface Pose {
   G?: { axis: V3; ang: number; shift: V3 };
   weapon?: { kind: "sword" | "great" | "bow" | "staff"; dir: V3; up?: V3; draw?: number; glow?: number };
   twoHand?: boolean; shield?: { n: V3 }; eyes: "open" | "closed" | "squint";
+  /** поворот таза (иначе 0,3 поворота плеч); при шаге — против плеч */ pTwist?: number;
+  /** опорные точки ступней на земле (ходьба, бег): по ним проверка скольжения (tools/gen/hero147/gait.ts) */ plant?: { L?: V3; R?: V3 };
 }
 type KF = Record<string, number | number[]>;
 function kf(keys: [number, KF][], u: number, eases?: ((t: number) => number)[]): KF {
@@ -110,6 +116,92 @@ function kf(keys: [number, KF][], u: number, eases?: ((t: number) => number)[]):
 const V = (x: number | number[]) => x as unknown as V3;
 const N = (x: number | number[]) => x as number;
 
+/** Таз в позе: ось A (влево) — как в solve (поворот таза pTwist, наклон 0,35 lean). */
+const pelvisA = (P: Pose): V3 => { const tw = P.pTwist ?? P.twist * 0.3; return rot([Math.cos(tw), 0, -Math.sin(tw)], [Math.sin(tw), 0, Math.cos(tw)], P.roll); };
+const hermite = (p0: number, p1: number, m0: number, m1: number, t: number) => { const t2 = t * t, t3 = t2 * t; return (2 * t3 - 3 * t2 + 1) * p0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * p1 + (t3 - t2) * m1; };
+/**
+ * Ходьба и бег — эталон основы «Б». Опорная ступня стоит на земле: её точка опоры (пятка → вся стопа → носок) уезжает назад
+ * ровно на скорость героя / к/с за кадр (data/hero-base-b.json → gait), поэтому в игре ступня не скользит.
+ * Фазы: контакт (пятка, носок вверх) → опускание (стопа на земле, таз ниже) → проход (таз выше, опорная нога под телом) → подъём (носок, пятка вверх).
+ * Ходьба: таз — перевёрнутый маятник (выше всего над опорной ногой, ниже всего в двойной опоре). Бег: опора 2 кадра, фаза полёта, наклон корпуса.
+ * Плечи вращаются против таза, руки — в противофазе ногам (прямая кинематика), предплечье запаздывает за плечом, голова стабилизирована.
+ * Вес снаряжения (Look.weight): латы — ниже присед, короче мах рук, тяжелее приземление; кожа — легче и пружинистей.
+ */
+function gait(P: Pose, l: Look, b: Build, anim: AnimId, u: number, hipY: number, hipJ: number) {
+  const run = anim === "run", n = NF(anim), fps = DATA.anims[anim].fps, w = l.weight ?? 0;
+  const ga = anim as "walk" | "run"; // gait() зовётся только для ходьбы и бега
+  const d = gaitSpeed(ga) / fps, D: number = DATA.gait[ga].duty, Ls = d * n * D; // сдвиг земли за кадр, доля опоры, путь опоры
+  const leg = b.thigh + b.shin, hO: V3 = [0, b.ankle * 0.55, -0.6], tO: V3 = [0, b.ankle * 0.7, b.footL]; // пятка и носок от лодыжки (как в solve.foot)
+  const p0 = run ? 0.18 : 0.42, p1 = run ? 0.55 : 0.6; // носок вверх при контакте, пятка вверх при отрыве
+  const sH = run ? 0.12 : 0.18, sT = run ? 0.42 : 0.62; // доли опоры: перекат с пятки, перекат на носок
+  const aY = FY - b.ankle;
+  const rx = (v: V3, a: number) => rot(v, [1, 0, 0], a);
+  // опорная ступня: s ∈ [0,1) доля опоры → лодыжка, наклон стопы, точка опоры
+  const g0 = Ls / 2 - (run ? 0.2 : 0.7) + (run ? 0.6 : 0.2);
+  const stance = (s: number, x: number) => {
+    const hz = g0 - Ls * s; // пятка на земле (без наклона)
+    const heel: V3 = [x, aY + hO[1], hz + hO[2]];
+    if (s < sH) { const pit = p0 * (1 - ease(s / sH)); return { an: sub(heel, rx(hO, pit)), pit, g: heel }; }
+    if (s <= sT) return { an: sub(heel, hO), pit: 0, g: heel };
+    const toe: V3 = [x, aY + tO[1], hz + tO[2] - hO[2]];
+    const pit = -p1 * easeIn((s - sT) / (1 - sT)) ** 0.8;
+    return { an: sub(toe, rx(tO, pit)), pit, g: toe };
+  };
+  // таз: бег — пружина (ниже всего в середине опоры, выше всего в полёте); ходьба — маятник (подгоняется под длину ноги ниже)
+  const ph = (s: "L" | "R") => (u + (s === "L" ? 0 : 0.5)) % 1;
+  const crouch = run ? 0.9 + 0.35 * w : 0.25 + 0.2 * w;
+  const bob = run ? (0.95 - 0.25 * w) * Math.cos(4 * Math.PI * (u - D / 2)) : 0;
+  P.hip = [0, hipY + crouch + bob, 0];
+  P.lean += run ? 0.3 + 0.06 * w + 0.05 * Math.cos(4 * Math.PI * (u - D)) : 0.05 + 0.03 * w;
+  const sw = Math.cos(2 * Math.PI * u); // +1: левая нога впереди (контакт левой при u = 0)
+  P.pTwist = -(run ? 0.2 : 0.16) * Math.cos(2 * Math.PI * (u - 0.03));
+  P.twist = (run ? 0.17 : 0.1) * (1 - 0.3 * w) * Math.cos(2 * Math.PI * (u - 0.06));
+  P.plant = {};
+  const planted: { an: V3; s: "L" | "R" }[] = [];
+  for (const s of ["L", "R"] as const) {
+    const q = ph(s), x = (s === "L" ? 1 : -1) * (hipJ + 0.05);
+    let an: V3, pit: number;
+    if (q < D) { const st = stance(q / D, x); an = st.an; pit = st.pit; P.plant[s] = st.g; planted.push({ an, s }); }
+    else {
+      // мах: от отрыва к следующему контакту, скорость стопы на концах согласована с землёй (без рывка)
+      const t = (q - D) / (1 - D), Tsw = (1 - D) * n;
+      const A0 = stance(0.9999, x), A1 = stance(0, x);
+      const z = hermite(A0.an[2], A1.an[2], -d * Tsw * (run ? 0.6 : 0.8), -d * Tsw * (run ? 0.35 : 0.15), t);
+      const Lmax = run ? b.shin * (0.95 - 0.15 * w) : 1.5 + 0.2 * (1 - w);
+      const lift = Lmax * Math.sin(Math.PI * Math.pow(t, run ? 0.62 : 0.85)) ** (run ? 1 : 1.3);
+      const y = A0.an[1] + (A1.an[1] - A0.an[1]) * ease(t) - lift;
+      an = [x, y, z];
+      pit = A0.pit + (A1.pit - A0.pit) * ease(t) + (run ? -0.25 : 0.12) * Math.sin(Math.PI * t);
+    }
+    if (s === "L") { P.ankL = an; P.pitchL = pit; } else { P.ankR = an; P.pitchR = pit; }
+  }
+  // таз над опорой: не выше, чем позволяет нога (колено чуть согнуто), — иначе ступня поедет; ходьба: маятник
+  const reach = leg * (run ? 0.985 : 0.985 - 0.015 * w);
+  const A = pelvisA(P);
+  let need = run ? P.hip[1] : hipY - 0.15;
+  for (const p of planted) {
+    const J = add(P.hip, mul(A, (p.s === "L" ? 1 : -1) * hipJ)), dx = p.an[0] - J[0], dz = p.an[2] - J[2];
+    const r2 = reach * reach - dx * dx - dz * dz;
+    const yMax = p.an[1] - Math.sqrt(Math.max(0.01, r2)) - (J[1] - P.hip[1]);
+    if (!run) need = Math.max(need, yMax + crouch * 0.4); else need = Math.max(need, yMax);
+  }
+  P.hip = [0, need, 0];
+  // руки: прямая кинематика; латы — короче мах
+  const ua = (run ? 0.95 : 0.42) * (1 - 0.25 * w), lagA = run ? 0.06 : 0.09;
+  for (const s of ["L", "R"] as const) {
+    const sg = s === "L" ? -1 : 1, q = (k: number) => sg * Math.cos(2 * Math.PI * (u - k)); // левая рука назад, когда левая нога впереди
+    const th = ua * q(0.02), thF = ua * q(0.02 + lagA);
+    const fa = run ? 1.45 + 0.25 * thF : 0.18 + 0.22 * Math.max(0, thF / ua) + (thF - th) * 0.9;
+    const hand: Hand = { fk: { ua: th, fa: Math.max(0.05, fa), out: run ? 0.2 : 0.12 } };
+    if (s === "L") P.hL = hand; else P.hR = hand;
+  }
+  // голова: стабилизирована (гасит часть подскока таза), чуть вперёд в беге; волосы — с запаздыванием
+  const dy = P.hip[1] - (hipY + crouch);
+  P.headOff = [0, -0.35 * dy, run ? 0.5 : 0.1];
+  P.hairLag = 0.5 + 0.5 * Math.cos(4 * Math.PI * (u - (run ? 0.3 : 0.36)));
+  void sw;
+}
+
 export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
   const b = bodyOf(l), n = NF(anim), u = i / n;
   const leg = b.thigh + b.shin, arm = b.uArm + b.fArm, sx = b.shW - b.armT * 0.3;
@@ -125,36 +217,18 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
   const breathe = (k = 1) => { const e = (x: number) => 0.5 - 0.5 * Math.cos(2 * Math.PI * x); P.chestRise = 0.5 * e(u) * k; P.headOff = [0, -0.45 * e(u - 0.08) * k, 0]; P.hairLag = e(u - 0.12) * k; };
   switch (anim) {
     case "idle": {
+      // живой покой: дыхание (грудь, плечи, голова с запаздыванием), медленный перенос веса с ноги на ногу (таз в сторону, наклон),
+      // руки висят и отстают от корпуса; ступни стоят на месте (ноги — IK к неподвижным лодыжкам)
       breathe();
-      const e = 0.5 - 0.5 * Math.cos(2 * Math.PI * u);
-      P.hL.rel = [1.0, arm * 0.9 - 0.3 * e, 0.4 + 0.3 * Math.sin(2 * Math.PI * (u - 0.15))];
-      P.hR.rel = [-1.0, arm * 0.9 - 0.3 * e, 0.4 + 0.3 * Math.sin(2 * Math.PI * (u - 0.2))];
+      const e = 0.5 - 0.5 * Math.cos(2 * Math.PI * u), sh = Math.sin(2 * Math.PI * (u - 0.1)), w = l.weight ?? 0;
+      P.hip = [0.32 * sh, hipY + 0.12 + 0.18 * (0.5 - 0.5 * Math.cos(4 * Math.PI * u)) + 0.1 * w, 0];
+      P.roll = -0.035 * sh; P.pTwist = 0.04 * sh; P.twist = -0.03 * sh;
+      P.headOff = [-0.12 * sh, P.headOff[1], 0];
+      P.hL.rel = [1.0 + 0.15 * sh, arm * 0.9 - 0.3 * e, 0.4 + 0.3 * Math.sin(2 * Math.PI * (u - 0.15))];
+      P.hR.rel = [-1.0 + 0.15 * sh, arm * 0.9 - 0.3 * e, 0.4 + 0.3 * Math.sin(2 * Math.PI * (u - 0.2))];
       break;
     }
-    case "walk": case "run": {
-      const run = anim === "run";
-      const S = leg * (run ? 0.42 : 0.3), Lh = b.shin * (run ? 0.8 : 0.42), st = run ? 0.42 : 0.55;
-      const sw = Math.cos(2 * Math.PI * u);
-      P.hip = [0, hipY + (run ? 1.1 : 0.5) - (run ? 1.3 : 0.75) * (0.5 + 0.5 * Math.cos(4 * Math.PI * (u - (run ? 0.2 : 0.275)))), 0];
-      P.lean += run ? 0.3 : 0.06;
-      for (const s of ["L", "R"] as const) {
-        const ph = (u + (s === "L" ? 0 : 0.5)) % 1;
-        let z: number, lift = 0, pit = 0;
-        if (ph < st) z = S * (1 - (2 * ph) / st);
-        else { const t = (ph - st) / (1 - st); z = -S + 2 * S * ease(t); lift = Lh * Math.sin(Math.PI * t); pit = (run ? 0.7 : 0.45) * (1 - t) * Math.sin(Math.PI * Math.min(1, t * 1.6)); }
-        const a: V3 = [(s === "L" ? 1 : -1) * (hipJ + 0.1), FY - b.ankle - lift, z];
-        if (s === "L") { P.ankL = a; P.pitchL = pit; } else { P.ankR = a; P.pitchR = pit; }
-      }
-      if (run) {
-        P.hL = { rel: [0.6, arm * 0.55, -sw * arm * 0.6 + 0.6], pole: [0.3, 0.4, -1] }; P.hR = { rel: [-0.6, arm * 0.55, sw * arm * 0.6 + 0.6], pole: [-0.3, 0.4, -1] };
-        P.headOff = [0, 0.2, 0.6]; P.twist = 0.12 * sw;
-      } else {
-        P.hL.rel = [0.9, arm * (0.92 - 0.1 * Math.abs(sw)), -sw * arm * 0.38 + 0.3]; P.hR.rel = [-0.9, arm * (0.92 - 0.1 * Math.abs(sw)), sw * arm * 0.38 + 0.3];
-        P.twist = 0.06 * sw;
-      }
-      P.hairLag = 0.5 + 0.5 * Math.cos(4 * Math.PI * (u - 0.36));
-      break;
-    }
+    case "walk": case "run": gait(P, l, b, anim, u, hipY, hipJ); break;
     case "atk1h": case "block": {
       swordReady();
       const ready: KF = { h: [1.0, arm * 0.62, 2.0], d: [0.25, -0.25, 1], tw: 0, ln: 0.05, st: 0.7, dy: 0.3, hr: [-0.8, arm * 0.6, 1.8], sn: [-0.45, 0, 1], dz: 0 };
@@ -162,11 +236,13 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
       if (anim === "atk1h") {
         k = kf([
           [0, ready],
-          [0.3, { h: [1.5, -arm * 0.2, -1.0], d: [0.3, -1, -0.45], tw: 0.5, ln: -0.06, st: 0.2, dy: 0.2, hr: [-0.6, arm * 0.55, 2.2], sn: [-0.3, 0, 1], dz: -0.3 }],
-          [0.5, { h: [-0.4, arm * 0.55, arm * 0.9], d: [-0.35, 0.6, 0.75], tw: -0.42, ln: 0.22, st: 1.9, dy: 0.9, hr: [-1.2, arm * 0.6, 0.6], sn: [-0.7, 0, 0.7], dz: 0.6 }],
-          [0.66, { h: [-1.8, arm * 0.85, arm * 0.45], d: [-0.75, 0.55, 0.2], tw: -0.55, ln: 0.24, st: 1.9, dy: 1.0, hr: [-1.3, arm * 0.62, 0.4], sn: [-0.7, 0, 0.7], dz: 0.6 }],
+          // замах (медленно, с натяжением) → удар (2 кадра, смаз) → фиксация → плавный возврат; вес меча — в повороте корпуса и приседе
+          [0.3, { h: [1.4, -arm * 0.15, -0.9], d: [0.3, -1, -0.42], tw: 0.46, ln: -0.05, st: 0.25, dy: 0.25, hr: [-0.6, arm * 0.55, 2.2], sn: [-0.3, 0, 1], dz: -0.3 }],
+          [0.38, { h: [1.5, -arm * 0.2, -1.0], d: [0.3, -1, -0.45], tw: 0.5, ln: -0.06, st: 0.2, dy: 0.2, hr: [-0.6, arm * 0.55, 2.2], sn: [-0.3, 0, 1], dz: -0.3 }],
+          [0.55, { h: [-0.4, arm * 0.55, arm * 0.9], d: [-0.35, 0.6, 0.75], tw: -0.42, ln: 0.22, st: 1.9, dy: 0.9, hr: [-1.2, arm * 0.6, 0.6], sn: [-0.7, 0, 0.7], dz: 0.6 }],
+          [0.7, { h: [-1.8, arm * 0.85, arm * 0.45], d: [-0.75, 0.55, 0.2], tw: -0.55, ln: 0.24, st: 1.9, dy: 1.0, hr: [-1.3, arm * 0.62, 0.4], sn: [-0.7, 0, 0.7], dz: 0.6 }],
           [1, ready],
-        ], u, [ease, easeIn, easeOut, ease]);
+        ], u, [easeOut, ease, (t) => t, easeOut, ease]);
       } else {
         k = kf([
           [0, ready],
@@ -297,7 +373,7 @@ export function solve(l: Look, P: Pose): Sk {
     A = rot(A, F, rl); U = rot(U, F, rl);
     return { A, U, F };
   };
-  const tf = frame(P.twist, P.lean, P.roll), pf = frame(P.twist * 0.3, P.lean * 0.35, P.roll);
+  const tf = frame(P.twist, P.lean, P.roll), pf = frame(P.pTwist ?? P.twist * 0.3, P.lean * 0.35, P.roll);
   const { A, U, F } = tf;
   const hip = P.hip;
   const waist = add(hip, mul(pf.U, b.pelvis));
@@ -317,6 +393,13 @@ export function solve(l: Look, P: Pose): Sk {
   };
   const arm = (s: number, h: Hand, base?: V3) => {
     const S = s > 0 ? shL : shR;
+    if (h.fk) {
+      // прямая кинематика: плечо качается вокруг оси плеч корпуса, предплечье — с своим (запаздывающим) углом
+      const dn = mul(U, -1), o = h.fk.out ?? 0.12;
+      const du = rot(rot(dn, A, h.fk.ua), F, -s * o), df = rot(rot(dn, A, h.fk.ua + h.fk.fa), F, -s * o * 0.6);
+      const j = add(S, mul(du, b.uArm));
+      return { j, e: add(j, mul(df, b.fArm)) };
+    }
     const t = h.abs ?? (h.fromL && base ? add(base, h.fromL) : add(S, h.rel ?? [s, b.uArm + b.fArm, 0.4]));
     return ik3(S, t, b.uArm, b.fArm, h.pole ?? add(mul(A, s * 0.5), mul(F, -1)));
   };
@@ -642,7 +725,11 @@ function buildParts(l: Look, v: View, anim: AnimId, i: number) {
   if (style === "beard") for (const p of parts) if (p.g === "beard") p.slot = "hair";
   if (hv !== "side" && !longEar) for (const p of parts) if (p.g === "ear") p.slot = "hair";
   if (l.gear) l.gear({ l, v, anim, i, u: i / NF(anim), P, sk, b, M, PJ, D, facing, parts, push, loft, secs, surf, c, dW, hv, hw, hh, arm: ARM, leg: LEG, wpL0: WPL0 });
+  { const wl = parts.filter((p) => p.slot === "weapon" || (p.g === "weapon" && !p.slot)).map((p) => p.layer); smear(l, v, anim, i, P, sk, PJ, push, wl.length ? Math.min(...wl) : WPL0, M); }
   for (const p of parts) p.slot ??= "body";
+  // вторичное движение: наплечники и подвижные пластины (тассеты, юбка, табард, сумки) запаздывают за корпусом на 1 px, плавно
+  const dy = secOffsets(l, anim, v)[Math.min(i, NF(anim) - 1)] ?? 0;
+  if (dy) for (const p of parts) if (p.m && isLagPart(p)) { const m0 = p.m; p.m = (z) => { z.oy += dy; m0(z); z.oy -= dy; }; }
   return { parts, hc, theta, style, P, sk, M, v, l, hv, hw };
 }
 
@@ -764,12 +851,14 @@ function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: 
     if (q[0] >= 1 && q[0] < FRx && oid[q[1] * FRx + q[0] - 1] && isHead(q[0] - 1, q[1])) out.set(q[0] - 1, q[1], S[2]);
     px(fx - 0.5, ey + 3, beard ? M.hair[0] : und ? S[0] : fem ? M.lip : S[1]);
   }
+  // ---- лицо в тени шлема: видимые сквозь прорези кожа и глаза на тон темнее (свечение глаз Умбрата не трогаем) ----
+  if (l.faceShade) for (let y = 0; y < FRx; y++) for (let x = 0; x < FRx; x++) { const id = oid[y * FRx + x]; if (!id) continue; const g = order[id - 1].g; if (g === "head" || g === "beard" || g === "ear") { const q = out.get(x, y); if (!emis.some(([ex, ey]) => ex === x && ey === y)) out.set(x, y, mixC(q, order[id - 1].ramp[0], l.faceShade)); } }
   // ---- внутренний контур ----
   const grp = (id: number) => order[id - 1].g;
   const SAME = new Set(["torso|belt", "belt|torso", "torso|vest", "neck|head", "pelvis|belt", "belt|pelvis", "ear|head", "head|ear", "hairB|hair", "hair|hairB", "weapon|armL", "armL|weapon", "head|beard", "beard|hair", "vest|belt", "belt|vest"]);
   const res = new Cv(FRx, FRx); res.d.set(out.d);
   for (let y = 0; y < FRx; y++) for (let x = 0; x < FRx; x++) {
-    const a = oid[y * FRx + x]; if (!a) continue;
+    const a = oid[y * FRx + x]; if (!a) continue; if (l.faceShade && (order[a - 1].g === "head" || order[a - 1].g === "beard")) continue; // лицо в прорези шлема — без контура, иначе узкая прорезь чернеет целиком
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= FRx || yy >= FRx) continue;
       const cc = oid[yy * FRx + xx];
@@ -798,6 +887,50 @@ function compose(B: ReturnType<typeof buildParts>, order: Part[], paintOne: (p: 
 }
 export const mixC = (a: C, b: C, t: number): C => [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
 export const flipCv = (c: Cv): Cv => { const o = new Cv(c.w, c.h); for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) if (c.has(x, y)) o.set(c.w - 1 - x, y, c.get(x, y)); return o; };
+
+// ---------------- смаз удара ----------------
+const ATTACKS = new Set<AnimId>(["atk1h", "atk2h", "special2h"]);
+/**
+ * Смаз (smear) — 1–2 кадра удара, где клинок за кадр поворачивается больше чем на ~50°: дуга между прошлым и нынешним положением клинка,
+ * светлым тоном кромки, к «хвосту» сужается. Длина и цвет — от оружия (Look.blade из сета) или от меча основы.
+ */
+function smear(l: Look, v: View, anim: AnimId, i: number, P: Pose, sk: Sk, PJ: (p: V3) => V2, push: (p: Part) => void, L0: number, M: Mats) {
+  if (!ATTACKS.has(anim) || !P.weapon || i === 0 || i / NF(anim) > 0.8) return;
+  const P0 = pose(l, anim, i - 1, v); if (!P0.weapon) return;
+  const d1 = nrm(P.weapon.dir), d0 = nrm(P0.weapon.dir), ang = Math.acos(cl(dot(d0, d1), -1, 1));
+  if (ang < 0.9 || d1[1] - d0[1] < -0.05) return; // только сам удар (клинок идёт вниз или по кругу), не замах
+  const sk0 = solve(l, P0), len = l.blade?.len ?? (P.weapon.kind === "great" ? 15 : 10.5) + 0.9, r0 = len * 0.55;
+  const pts: V2[] = [], inn: V2[] = [];
+  for (let k = 0; k <= 8; k++) {
+    const t = k / 8, H = lerp3(sk0.hdL, sk.hdL, t), d = nrm(lerp3(d0, d1, t)), ri = r0 + (len - r0) * (1 - t) * 0.9;
+    pts.push(PJ(add(H, mul(d, len)))); inn.unshift(PJ(add(H, mul(d, ri))));
+  }
+  const ramp = l.blade?.ramp ?? [M.steel[2], M.steel[3], M.steel[4], hx("#eef2f8"), hx("#ffffff")];
+  push({ g: "smear", ramp, o: { dome: 1, bias: 1.4, dith: 0 }, layer: L0 - 0.004, slot: l.blade ? "weapon" : undefined, m: (z) => z.pg([...pts, ...inn]) });
+}
+
+// ---------------- вторичное движение ----------------
+/** Части, которые запаздывают за корпусом (общая маска для генератора и проверки review.ts). */
+export const isLagPart = (p: Part) => p.slot === "pauldrons" || /^(a_tas|a_fauld|a_tabard|a_tabH|c_skirt|c_skw|c_skst|c_tail|c_pouch|c_sashH)/.test(p.g);
+const secCache = new Map<string, number[]>();
+/**
+ * Смещение подвижных частей по y (px кадра, шаг 0,5) на каждый кадр анимации: грудь «отстаёт» на lag кадров (латы — дольше),
+ * не больше 1 px от тела и не больше 0,5 px между соседними кадрами (сводится в 1× — не больше 1 px за кадр).
+ */
+export function secOffsets(l: Look, anim: AnimId, v: View): number[] {
+  const n = NF(anim), loop = !!DATA.anims[anim].loop, w = l.weight ?? 0;
+  const key = `${l.fac}${l.sex}|${w}|${anim}|${v}|${l.mirrorX ? 1 : 0}|${l.posePatch?.toString() ?? ""}`;
+  const c = secCache.get(key); if (c) return c;
+  const chestY = (i: number) => { const P = pose(l, anim, i, v), sk = solve(l, P); return proj(sk.T(sk.chest), v)[1]; };
+  const lag = 1 + 0.6 * w, k = 0.7 + 0.5 * w;
+  const raw = Array.from({ length: n }, (_, i) => { const j = loop ? (((i - lag) % n) + n) % n : Math.max(0, i - lag); return cl(k * (chestY(j) - chestY(i)), -1, 1); });
+  const o = raw.map((x) => Math.round(x * 2) / 2);
+  for (let it = 0; it < 4; it++) for (let i = 0; i < n; i++) {
+    const pv = loop ? o[(i + n - 1) % n] : i ? o[i - 1] : 0;
+    if (o[i] - pv > 0.5) o[i] = pv + 0.5; else if (pv - o[i] > 0.5) o[i] = pv - 0.5;
+  }
+  secCache.set(key, o); return o;
+}
 
 // ---------------- точки для слоёв снаряжения ----------------
 const ANCH = ["head", "neck", "chest", "shoulderL", "shoulderR", "elbowL", "elbowR", "handL", "handR", "belt", "hipL", "hipR", "kneeL", "kneeR", "footL", "footR", "back", "weaponBack"] as const;

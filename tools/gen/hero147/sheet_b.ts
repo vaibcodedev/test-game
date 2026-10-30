@@ -5,7 +5,7 @@ const all: Look[] = [{ fac: "sol", sex: "m" }, { fac: "sol", sex: "f" }, { fac: 
 const l = { ...all[+(process.argv[2] ?? 0)], hair: process.env.HAIR };
 const views = (process.argv[3] ?? "down,side").split(",") as View[];
 const K = Number(process.env.K ?? 2), anims = process.env.AN ? process.env.AN.split(",") : ANIMS;
-const out = new PC(12 * FR * K, anims.length * views.length * FR * K);
+const out = new PC(Math.max(...(anims as any[]).map((a) => NF(a))) * FR * K, anims.length * views.length * FR * K);
 for (let i = 0; i < out.data.length; i += 4) { out.data[i] = 70; out.data[i + 1] = 92; out.data[i + 2] = 58; out.data[i + 3] = 255; }
 let r = 0;
 for (const a of anims as any[]) for (const v of views) {

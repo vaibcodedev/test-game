@@ -18,7 +18,7 @@ type Cls = "free" | "great";
 interface Entry { file: string; frame: number; origin: [number, number]; cls: Cls; z: (number | null)[][]; glow?: string }
 export interface ClothView { file: string; pins: number[][]; pinFrom: { key: string; offset: [number, number] }[]; layer: "behind" | "front"; z: number }
 export interface ClothDef { kind: string; frame: number; origin: [number, number]; views: Record<string, ClothView> }
-interface Man { special?: string[]; cloth?: Record<string, ClothDef>; pinKeys?: string[]; pins?: Record<string, Record<string, Record<string, number[][]>>>; rows: Record<Cls | "special", [string, string][]>; anims: Record<string, { frames: number; fps: number; loop: boolean }>; hair: Record<"m" | "f", { id: string }[]>; groups: Record<string, Record<string, Entry>> }
+interface Man { /** столбцов листа по классу позы (экспорт) */ cols?: Record<string, number>; special?: string[]; cloth?: Record<string, ClothDef>; pinKeys?: string[]; pins?: Record<string, Record<string, Record<string, number[][]>>>; rows: Record<Cls | "special", [string, string][]>; anims: Record<string, { frames: number; fps: number; loop: boolean }>; hair: Record<"m" | "f", { id: string }[]>; groups: Record<string, Record<string, Entry>> }
 const SLOTS = ["helm", "pauldrons", "armor", "gloves", "boots", "cloak", "weapon"] as const;
 type Slot147 = (typeof SLOTS)[number];
 const LIVE = live as unknown as { specialAttack: { every: number; chance: number; trail: { color: string; core: string } }; classes: Record<Cls, { anims: string[] }>; weaponClass: Record<string, { cls: Cls; atk: string }>; sets: string[]; models: Record<string, string>; slotMap: Record<string, Slot147>; stubs: Record<string, Partial<Record<Slot147, unknown>>> };
@@ -132,12 +132,13 @@ export function heroBSheet(scene: Phaser.Scene, u: { faction: string; gear: stri
 
 /** Слой сведения: лист, его строки начинаются со строки r0 листа облика (особый удар — свои строки после строк класса). */
 interface Layer { e: Entry; im: HTMLImageElement; gl: HTMLImageElement | null; ord: number; r0: number; n: number }
-/** Столбцов в листе облика: самая длинная анимация (особый удар — 14 кадров). */
-const COLS = 14;
+/** Столбцов в листе облика — из манифеста экспорта (cols по классу позы: самая длинная анимация класса); старый манифест — по кадрам строк. */
+const colsOf = (m: Man, rows: [string, string][], cls: string[]) => Math.max(1, ...cls.map((c) => m.cols?.[c] ?? 0), ...rows.map(([a]) => m.anims[a]?.frames ?? 0));
 async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbSheet | null> {
   const m = man!;
   const clsRows = m.rows[l.cls], spRows = l.special ? m.rows.special ?? [] : [];
   const rows = [...clsRows, ...spRows];
+  const COLS = colsOf(m, rows, l.special ? [l.cls, "special"] : [l.cls]);
   // ткань «Спины» с физикой (cloth в манифесте, экспорт gear147): плащ этого сета не сводится в лист — его рисует heroCloth (Rope + Verlet)
   const clothSet = l.slots.cloak && m.cloth?.[l.slots.cloak] ? l.slots.cloak : "";
   const want: { grp: string; filter: (k: string) => boolean; r0: number }[] = [];

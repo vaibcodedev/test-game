@@ -133,6 +133,8 @@ if (arg === "merge") {
   const man = {
     _doc: "Листы героя «Б» (задача 147): tools/gen/gear147-export.ts. groups[группа][слот@корзина] = { file, frame, origin (ступни в кадре), cls, z[строка][кадр] }; строки класса — rows[cls] ([анимация, вид]); влево — свой вид. Сведение: по возрастанию z; hair — только без шлема; crest@*-sol / -umb — герб фракции.",
     rows: { free: rowsOf("free"), great: rowsOf("great"), special: rowsOf("special") },
+    // столбцов листа по классу: самая длинная анимация класса (heroB.ts берёт отсюда, а не из константы)
+    cols: Object.fromEntries((["free", "great", "special"] as Cls[]).map((c) => [c, Math.max(...rowsOf(c).map(([a]) => NF(a)))])),
     special: SPECIAL_SETS,
     ...clothPart(),
     anims: Object.fromEntries(Object.entries(DATA.anims).map(([k, a]: [string, any]) => [k, { frames: a.frames, fps: a.fps, loop: a.loop }])),

@@ -29,13 +29,13 @@ export function hood(ctx: GearCtx, it: any, crest: CrestId) {
     loc("hd_lin", Ln, 6.16, (z) => { z.el([0, hh * 0.22], hw * 0.86, hh * 1.0); if (!Mk && !G) z.clip((x, y) => !(Math.hypot(x / (hw * 0.74), (y - hh * 0.28) / (hh * 0.9)) < 1)); }, { dome: 2, amp: 1.6, bias: 0.2 });
     // без маски лицо видно: кромка-кольцо и тень только сверху (от капюшона на лоб)
     if (Mk || G) loc("hd_sh", Sh, 6.17, (z) => z.el([0, hh * 0.28], hw * 0.74, hh * 0.9), { dome: 2, amp: 0.8, bias: -0.2 });
-    else loc("hd_sh", Sh, 6.17, (z) => { z.el([0, -hh * 0.25], hw * 0.78, hh * 0.55); z.clip((x, y) => y < -hh * 0.05 + Math.abs(x) * 0.25); }, { dome: 1, amp: 0.6, bias: 0.2 });
+    else loc("hd_sh", Sh, 6.17, (z) => { z.el([0, -hh * 0.42], hw * 0.72, hh * 0.38); z.clip((x, y) => y < -hh * 0.2 + Math.abs(x) * 0.2); }, { dome: 1, amp: 0.6, bias: 0.2 });
     if (G) loc("hd_eye", G, 6.18, (z) => { z.dot([-hw * 0.32, hh * 0.08], 0.55); z.dot([hw * 0.32, hh * 0.08], 0.55); }, { dome: 1, bias: 0.4 }, true, hx("#ff6a3a"));
     if (Mk) loc("hd_mask", Mk, 6.19, (z) => z.pg([[-hw * 0.74, hh * 0.52], [hw * 0.74, hh * 0.52], [hw * 0.5, hh + 0.7], [0, hh + 1.3], [-hw * 0.5, hh + 0.7]]), { dome: 2, amp: 1.8, bias: 0.15, kant: true });
     if (Mk && it.seam) loc("hd_seam", ramp(it.seam), 6.192, (z) => z.seg([-hw * 0.7, hh * 0.56], [hw * 0.7, hh * 0.56], 0.6), { dome: 1, bias: 0.4 }, true, hx("#ff6a3a"));
   } else if (hv === "back") {
     loc("hd_out", Cl, 6.15, (z) => z.pg([[-hw - 0.7, hh * 0.3], [-hw - 0.5, -hh * 0.6], [-hw * 0.45, -hh - 1.1], [0, -hh - 1.9], [hw * 0.45, -hh - 1.1], [hw + 0.5, -hh * 0.6], [hw + 0.7, hh * 0.3], [hw + 0.6, hh + 1.0], [-hw - 0.6, hh + 1.0]]), { dome: 3, amp: 1.8, bias: 0.2, kant: true });
-    loc("hd_seam", Cl, 6.151, (z) => z.seg([0, -hh - 1.8], [0, hh + 1.4], 0.65), { dome: 1, bias: -1.6 });
+    loc("hd_bfold", Cl, 6.151, (z) => z.seg([0, -hh - 1.8], [0, hh + 1.4], 0.65), { dome: 1, bias: -1.6 });
     if (it.crest) {
       const cr = GD.crests[crest], s = 1.35, P = (x: number, y: number): V2 => [x * s, hh * 0.15 + y * s];
       loc("crestR", ramp(cr.charge), 6.155, (z) => z.pg([P(-1.85, -1.95), P(1.85, -1.95), P(1.85, 0.15), P(0, 2.5), P(-1.85, 0.15)]), { dome: 1, bias: -0.6 });
@@ -82,16 +82,16 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
   if (it.stitch) {
     const St2 = ramp(it.stitch), sd = fF >= 0 ? 1 : -1;
     const dash = (z: Mz, a: V3, b2: V3, n: number) => { for (let k = 0; k < n; k++) { const t0 = k / n, t1 = t0 + 0.55 / n; z.seg(PJ(lerp(a, b2, t0)), PJ(lerp(a, b2, t1)), 0.6); } };
-    push({ g: "c_stitch", ramp: St2, o: { dome: 1, bias: 0.5 }, layer: 3.7612, m: (z) => { for (const o of [-0.55, 0.55]) dash(z, surf(o + sd * sw * 0.15, c * 0.92, sd, 0.3), surf(o + sd * sw * 0.05, -0.8, sd, 0.3), 5); dash(z, surf(-sw * 0.85, c * 0.75, sd, 0.3), surf(-sw * 0.8, c * 0.15, sd, 0.3), 3); dash(z, surf(sw * 0.85, c * 0.75, sd, 0.3), surf(sw * 0.8, c * 0.15, sd, 0.3), 3); } });
+    push({ g: "c_stitch", ramp: St2, o: { dome: 1, bias: 0.5 }, layer: 3.7619, m: (z) => { for (const o of [-0.55, 0.55]) dash(z, surf(o + sd * sw * 0.15, c * 0.92, sd, 0.3), surf(o + sd * sw * 0.05, -0.8, sd, 0.3), 5); dash(z, surf(-sw * 0.85, c * 0.75, sd, 0.3), surf(-sw * 0.8, c * 0.15, sd, 0.3), 3); dash(z, surf(sw * 0.85, c * 0.75, sd, 0.3), surf(sw * 0.8, c * 0.15, sd, 0.3), 3); } });
   }
   if (it.wear) push({ g: "c_wear", ramp: Lt, o: { dome: 1, bias: 1.6 }, layer: 3.7613, m: (z) => { const sd = fF >= 0 ? 1 : -1; for (const [a, h] of [[-0.55, 0.3], [0.62, 0.55], [0.3, 0.1]]) z.dot(PJ(surf(a * sw, h * c, sd, 0.3)), 0.75); } });
-  if (it.breast && fF > 0.3) push({ g: "c_riv", ramp: ramp("gold"), o: { dome: 1, bias: 1.2 }, layer: 3.7623, m: (z) => { for (const [a, h] of [[-0.6, 0.86], [0.6, 0.86], [-0.48, 0.48], [0.48, 0.48]]) z.dot(PJ(add(surf(a * sw, h * c), mul(F, 0.3))), 0.55); } });
+  if (it.breast && fF > 0.3) push({ g: "c_riv", ramp: ramp("gold"), o: { dome: 1, bias: 1.2 }, layer: 3.7657, m: (z) => { for (const [a, h] of [[-0.6, 0.86], [0.6, 0.86], [-0.48, 0.48], [0.48, 0.48]]) z.dot(PJ(add(surf(a * sw, h * c), mul(F, 0.3))), 0.55); } });
   // ремень через грудь (справа-налево) с пряжкой
   if (it.strap) {
     const sd = fF >= 0 ? 1 : -1;
     push({ g: "c_strap", ramp: ramp(it.strapMat ?? it.accent), o: { dome: 1, bias: 0.4 }, layer: 3.764, m: (z) => z.seg(PJ(surf(-sw * 0.85 * sd, c * 0.95, sd, 0.35)), PJ(surf(sw * 0.7 * sd, c * 0.05, sd, 0.35)), 1.0) });
     if (sd > 0) push({ g: "c_buck", ramp: ramp("gold"), o: { dome: 1, bias: 1.0 }, layer: 3.7641, m: (z) => { const q = PJ(surf(sw * 0.1, c * 0.5, 1, 0.45)); z.pg([[q[0] - 1.0, q[1] - 0.9], [q[0] + 1.0, q[1] - 0.9], [q[0] + 1.0, q[1] + 0.9], [q[0] - 1.0, q[1] + 0.9]]); } });
-    if (sd > 0) push({ g: "c_sriv", ramp: ramp("gold"), o: { dome: 1, bias: 1.4 }, layer: 3.7642, m: (z) => { for (const t of [0.2, 0.75]) z.dot(PJ(lerp(surf(-sw * 0.85, c * 0.95, 1, 0.45), surf(sw * 0.7, c * 0.05, 1, 0.45), t)), 0.5); } });
+    if (sd > 0) push({ g: "c_sriv", ramp: ramp("gold"), o: { dome: 1, bias: 1.4 }, layer: 3.7656, m: (z) => { for (const t of [0.2, 0.75]) z.dot(PJ(lerp(surf(-sw * 0.85, c * 0.95, 1, 0.45), surf(sw * 0.7, c * 0.05, 1, 0.45), t)), 0.5); } });
   }
   // кушак: широкий алый пояс с узлом и хвостами
   const sashC: Sec[] = [{ h: -1.45, a: b.waist + th + 0.45, d: dW + th + 0.45, f: 0 }, { h: 0.35, a: b.waist + th + 0.4, d: dW + th + 0.4, f: 0 }];
@@ -108,9 +108,9 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
       push({ g: "c_tail" + j, ramp: ramp(it.sash), o: { dome: 2, amp: 1.7, bias: 0.25 - 0.2 * j, kant: true }, layer: L + 0.001 * j, m: (z) => { for (let k = 0; k < 5; k++) z.seg(PJ(pts[k]), PJ(pts[k + 1]), 1.7 - 0.2 * k, 1.5 - 0.2 * k); } });
     }
     push({ g: "c_knot", ramp: ramp(it.sash), o: { dome: 2, bias: 0.4, kant: true }, layer: 3.9705, m: (z) => z.dot(PJ(knot), 1.2) });
-    if (it.gem) push({ g: "c_gem", ramp: ramp(it.gem), o: { dome: 1, bias: 0.5 }, layer: 3.971, emis: it.gem === "eye_glow", emisColor: hx("#ff6a3a"), m: (z) => z.dot(PJ(add(knot, mul(F, 0.6))), 0.6) });
+    if (it.gem) push({ g: "c_gem", ramp: ramp(it.gem), o: { dome: 1, bias: 0.5 }, layer: 3.971, emis: it.gem === "eye_glow", emisColor: hx("#ff6a3a"), m: (z) => z.dot(PJ(add(knot, mul(F, 0.6))), 0.8) });
   }
-  if (it.lacing && fF > 0.2) push({ g: "c_lace", ramp: ramp(it.lacing), o: { dome: 1, bias: 0.6 }, layer: 3.7615, m: (z) => { for (let k = 0; k < 4; k++) { const h0 = c * (0.85 - k * 0.17), h1 = h0 - c * 0.17; z.seg(PJ(surf(-sw * 0.16, h0, 1, 0.3)), PJ(surf(sw * 0.16, h1, 1, 0.3)), 0.55); z.seg(PJ(surf(sw * 0.16, h0, 1, 0.3)), PJ(surf(-sw * 0.16, h1, 1, 0.3)), 0.55); } } });
+  if (it.lacing && fF > 0.2) push({ g: "c_lace", ramp: ramp(it.lacing), o: { dome: 1, bias: 0.6 }, layer: 3.7643, m: (z) => { for (let k = 0; k < 4; k++) { const h0 = c * (0.85 - k * 0.17), h1 = h0 - c * 0.17; z.seg(PJ(surf(-sw * 0.18, h0, 1, 0.3)), PJ(surf(sw * 0.18, h1, 1, 0.3)), 0.75); z.seg(PJ(surf(sw * 0.18, h0, 1, 0.3)), PJ(surf(-sw * 0.18, h1, 1, 0.3)), 0.75); } } });
   if (!it.sashTails && fF > 0.25) push({ g: "c_buck", ramp: ramp("brass"), o: { dome: 1, bias: 0.6 }, layer: 3.7655, m: (z) => z.dot(PJ(H.mkSurf(waist, A, U, F, sashC)(0, -0.5, 1, 0.3)), 0.9) });
   if (it.pouch) { const pc = sum(waist, mul(A, b.waist + th + 0.6), mul(U, -1.6), mul(F, 0.6)); push({ g: "c_pouch", ramp: ramp(it.pouch), o: { dome: 2, amp: 1.7, bias: 0.2, kant: true }, layer: ctx.facing(A) > -0.3 ? 3.976 : 1.9, m: (z) => z.seg(PJ(add(pc, mul(U, 0.7))), PJ(add(pc, mul(U, -0.9))), 2.2, 2.5) }); }
   if (it.pants) for (const s of ["L", "R"] as const) {
@@ -119,8 +119,18 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
     push({ g: "c_pstrap" + s, ramp: ramp("grip"), o: { dome: 1, bias: 0.4 }, layer: L + 0.00006, m: (z) => { for (const t of [0.35, 0.7]) { const m = lerp(H0, K, t), q = mul(sk.Ap, b.thighT * 0.62 + 0.25); z.seg(PJ(sub(m, q)), PJ(add(m, q)), 0.85); } } });
     if (ctx.facing(sk.Fp) > -0.2) push({ g: "c_pbuck" + s, ramp: ramp("gold"), o: { dome: 1, bias: 1.0 }, layer: L + 0.00007, m: (z) => z.dot(PJ(add(lerp(H0, K, 0.35), mul(sk.Fp, b.thighT * 0.45 + 0.2))), 0.55) });
   }
-  // полы куртки: разрез спереди, полосы по кругу от пояса до колен, сзади парусят при движении
-  const hp = sk.hip, Ap = sk.Ap, Fp = sk.Fp, ky = (sk.kneeL[1] + sk.kneeR[1]) / 2 + (it.long ? 0.8 : -0.5);
+  // трещины по коже без нагрудника, высокий ворот, шипы и наплечья, мифическое сияние — те же, что на иконке
+  if (it.cracks && !it.breast && fF > -0.2) push({ g: "c_crack", ramp: ramp(it.cracks), o: { dome: 1, bias: 0.4 }, layer: 3.7648, emis: true, emisColor: hx("#ff9a5a"), m: (z) => { for (const sg of [-1, 1]) H.chain(ctx, z, [[0.55, 0.85], [0.42, 0.62], [0.52, 0.4]].map(([a, h]) => add(surf(sg * a * sw, h * c), mul(F, 0.3))), 0.6); } });
+  if (it.collarHigh) push({ g: "c_hcol", ramp: Lt, o: { dome: 2, amp: 1.8, bias: 0.3, kant: true }, layer: 5.12, m: (z) => loft(z, waist, A, U, F, [{ h: c - 0.6, a: b.neckT * 0.95 + 1.2, d: b.neckT * 0.75 + 1.1, f: 0.1 }, { h: c + 1.7, a: b.neckT * 0.9 + 1.2, d: b.neckT * 0.7 + 1.0, f: 0.1 }]) });
+  for (const s of ["L", "R"] as const) {
+    const Sh = s === "L" ? sk.shL : sk.shR, sg = s === "L" ? 1 : -1, Lsh = ctx.v === "side" ? (ctx.arm[s].far === 0 ? 6.39 : 1.21) : 5.21;
+    if (it.spikes) for (const [k, d] of [[0, [0.4, 1, 0]], [1, [1, 0.5, 0]]] as [number, number[]][]) H.hook(ctx, { g: "c_spk" + s + k, layer: Lsh + 0.001 * k, far: ctx.arm[s].far }, add(Sh, mul(U, 0.6)), sum(Sh, mul(U, 0.6 + 3.2 * d[1]), mul(A, sg * (0.4 + 2.8 * d[0]))), 0.75, 0.2 * sg, ramp(it.spike ?? it.plate));
+    else if (it.pauldronsOnIcon) push({ g: "c_spl" + s, ramp: St, o: { dome: 3, amp: 1.9, bias: ctx.arm[s].far + 0.25, kant: true }, layer: Lsh, m: (z) => z.dot(PJ(sum(Sh, mul(A, sg * 0.6), mul(U, 0.5))), 1.9) });
+    if (it.mythic) push({ g: "c_mythF" + s, ramp: Tr, o: { dome: 2, amp: 1.8, bias: 0.4, kant: true }, layer: Lsh + 0.005, m: (z) => z.pg([PJ(add(Sh, mul(U, 0.8))), PJ(sum(Sh, mul(U, 3.2), mul(A, sg * 1.6))), PJ(sum(Sh, mul(U, 0.9), mul(A, sg * 1.9)))]) });
+  }
+  if (it.mythic && fF > -0.2) push({ g: "c_myth", ramp: ramp(it.mythic), o: { dome: 1, bias: 1.2 }, layer: 3.7645, emis: true, m: (z) => { for (const sg of [-1, 1]) H.chain(ctx, z, [[0.62, 0.86], [0.42, 0.62], [0.55, 0.38]].map(([a, h]) => add(surf(sg * a * sw, h * c), mul(F, 0.35))), 0.6); z.dot(PJ(add(surf(0, c * 0.95), mul(F, 0.5))), 0.75); } });
+  // полы куртки: разрез спереди, полосы по кругу от пояса до колен (жилет — без пол, куртка — короткие), сзади парусят при движении
+  const hp = sk.hip, Ap = sk.Ap, Fp = sk.Fp, ky = it.cut === "jacket" ? hp[1] + ((sk.kneeL[1] + sk.kneeR[1]) / 2 - hp[1]) * 0.45 : (sk.kneeL[1] + sk.kneeR[1]) / 2 + (it.long ? 0.8 : -0.5);
   const swing = anim === "run" ? 2.6 : anim === "walk" ? 1.1 : 0.4, N = 10, open = it.open ?? 0.95;
   const ring = (phi: number, h: "t" | "b"): V3 => {
     const ra = b.hipW + th + 0.6, rd = dW * 1.05 + th + 0.5, spread = h === "b" ? 1.12 : 1;
@@ -129,7 +139,7 @@ export function coat(ctx: GearCtx, it: any, crest: CrestId) {
     const back = Math.max(0, -Math.cos(phi)) * swing, fl = 0.3 * Math.sin(2 * Math.PI * (u * 2) + phi * 2) * (swing > 0.5 ? 1 : 0.3);
     return [hp[0] + x, ky - (it.tatter ? 0.9 * hash(Math.round(phi * 10), 3) : 0), hp[2] + z - back + fl];
   };
-  for (let k = 0; k < N; k++) {
+  for (let k = 0; k < (it.cut === "vest" ? 0 : N); k++) {
     const p0 = open + ((2 * Math.PI - 2 * open) * k) / N, p1 = open + ((2 * Math.PI - 2 * open) * (k + 1)) / N;
     const quad = [ring(p0, "t"), ring(p1, "t"), ring(p1, "b"), ring(p0, "b")];
     const L = D(lerp(quad[0], quad[2], 0.5)) < -0.5 ? 1.95 : 3.975;
@@ -162,7 +172,7 @@ export function scarf(ctx: GearCtx, it: any) {
     }
     push({ g: "sc_" + j, ramp: R, o: { dome: 2, amp: 1.8, bias: 0.3 - 0.25 * j, kant: true }, layer: M.layer + 0.001 * j, m: (z) => { for (let k = 0; k < len; k++) z.seg(PJ(pts[k]), PJ(pts[k + 1]), 2.4 - 1.1 * (k / len), 2.4 - 1.1 * ((k + 1) / len)); } });
     // бахрома на конце
-    push({ g: "sc_" + j, ramp: R, o: { dome: 1, bias: -0.2 }, layer: M.layer + 0.001 * j + 0.0001, m: (z) => { const e = PJ(pts[len]), p = PJ(pts[len - 1]), dx = e[0] - p[0], dy = e[1] - p[1]; for (const s of [-0.7, 0, 0.7]) z.seg(e, [e[0] + dx * 0.9 - dy * s * 0.6, e[1] + dy * 0.9 + dx * s * 0.6], 0.55, 0.4); } });
+    push({ g: "sc_fr" + j, ramp: R, o: { dome: 1, bias: -0.2 }, layer: M.layer + 0.001 * j + 0.0001, m: (z) => { const e = PJ(pts[len]), p = PJ(pts[len - 1]), dx = e[0] - p[0], dy = e[1] - p[1]; for (const s of [-0.7, 0, 0.7]) z.seg(e, [e[0] + dx * 0.9 - dy * s * 0.6, e[1] + dy * 0.9 + dx * s * 0.6], 0.55, 0.4); } });
   }
   // узел у шеи
   push({ g: "sc_knot", ramp: R, o: { dome: 2, bias: 0.4, kant: true }, layer: M.layer + 0.003, m: (z) => z.dot(PJ(start), 1.4) });
@@ -185,7 +195,8 @@ export function dualPose(P: Pose, k: { anim: AnimId; u: number; arm: number; sx:
     const bob = k.anim === "idle" ? 0.25 * Math.sin(2 * Math.PI * u) : 0;
     const f = k.anim === "hurt" ? Math.sin(Math.PI * cl(u / 0.6)) : 0;
     const R = rest(1, bob), L = rest(-1, bob);
-    if (k.anim === "walk" || k.anim === "run") { const sw = Math.cos(2 * Math.PI * u) * (k.anim === "run" ? 1.6 : 0.8); R.h = [R.h[0], R.h[1], R.h[2] - sw]; L.h = [L.h[0], L.h[1], L.h[2] + sw]; }
+    // ходьба и бег: руки в противофазе ногам, кисти запаздывают за шагом
+    if (k.anim === "walk" || k.anim === "run") { const sw = Math.cos(2 * Math.PI * (u - 0.06)) * (k.anim === "run" ? 1.6 : 0.8); const up = k.anim === "run" ? 1.4 : 0.4; R.h = [R.h[0], R.h[1] - up, R.h[2] - sw]; L.h = [L.h[0], L.h[1] - up, L.h[2] + sw]; } // в беге локти согнуты — кинжалы выше (таз ниже, не за кадр)
     if (f) { R.h = [R.h[0] + 0.6 * f, R.h[1] - 0.6 * f, R.h[2] - 1.2 * f]; L.h = [L.h[0] + 0.6 * f, L.h[1] - 0.6 * f, L.h[2] - 1.2 * f]; }
     return set(R, L);
   }
@@ -194,7 +205,7 @@ export function dualPose(P: Pose, k: { anim: AnimId; u: number; arm: number; sx:
     // вбок рубящий читается сверху-вниз-вперёд (через корпус ушёл бы в глубину кадра)
     const sv = k.view === "side";
     const wind = (s: 1 | -1): { h: V3; d: V3 } => sv ? { h: [s * -0.6, a * 0.15, 0.4], d: [s * 0.1, -0.9, -0.45] } : { h: [s * 2.0, a * 0.25, 1.2], d: [s * 0.65, -0.65, 0.4] };
-    const cut = (s: 1 | -1): { h: V3; d: V3 } => sv ? { h: [s * -1.2, a * 0.72, a * 0.88], d: [s * -0.1, 0.55, 0.83] } : { h: [s * -(k.sx + 0.6), a * 0.78, 2.8], d: [s * -0.7, 0.4, 0.6] };
+    const cut = (s: 1 | -1): { h: V3; d: V3 } => sv ? { h: [s * -1.2, a * 0.72, a * 0.88], d: [s * -0.1, 0.55, 0.83] } : { h: [s * -(k.sx + 0.6), a * 0.7, 2.8], d: [s * -0.7, 0.36, 0.6] };
     const one = (s: 1 | -1, u0: number) => { const t = (u - u0) / 0.42; if (t <= 0 || t >= 1) return { st: rest(s), p: 0 }; if (t < 0.35) return { st: mix(rest(s), wind(s), ease(t / 0.35)), p: 0.3 }; if (t < 0.6) return { st: mix(wind(s), cut(s), (t - 0.35) / 0.25 * ((t - 0.35) / 0.25)), p: 1 }; return { st: mix(cut(s), rest(s), ease((t - 0.6) / 0.4)), p: 0.5 }; };
     const r1 = one(1, 0.04), l1 = one(-1, 0.47), pr = r1.p, pl = l1.p;
     const R = r1.st, L = l1.st;
@@ -235,12 +246,12 @@ function daggerTrail(ctx: GearCtx, it: any) {
 /** Рисование парных кинжалов: каждый — в своей руке, слой по глубине руки; без оружия в позе — в ножнах на пояснице, при гибели — выпали. */
 export function dual(ctx: GearCtx, it: any, draw: (ctx: GearCtx, it: any, Hd: V3, d: V3, Lg: number, Lb: number, PJ: (p: V3) => V2) => void) {
   const { sk, D, P, v, anim, u } = ctx, X = P as any;
-  const th = v === "side" ? 0.6 : -1.2, layerAt = (p: V3) => (D(p) < th ? 1.2 : 5.2);
+  const th = v === "side" ? 0.6 : -1.2, layerAt = (p: V3) => (D(p) < th ? 1.2 : 5.25), bladeAt = (p: V3) => (D(p) < th ? 1.2 : v === "side" ? 6.45 : 5.25);
   if (P.weapon && X.weapon2) {
     const d1 = nrm(P.weapon.dir), d2 = nrm(X.weapon2.dir);
     if ((anim === "atk1h" || anim === "atk2h") && it.trail) daggerTrail(ctx, it);
-    draw(ctx, it, sk.hdL, d1, layerAt(add(sk.hdL, mul(d1, 0.3))), layerAt(add(sk.hdL, mul(d1, 3))), ctx.PJ);
-    draw(ctx, it, sk.hdR, d2, layerAt(add(sk.hdR, mul(d2, 0.3))), layerAt(add(sk.hdR, mul(d2, 3))), ctx.PJ);
+    draw(ctx, it, sk.hdL, d1, layerAt(add(sk.hdL, mul(d1, 0.3))), bladeAt(add(sk.hdL, mul(d1, 3))), ctx.PJ);
+    draw(ctx, it, sk.hdR, d2, layerAt(add(sk.hdR, mul(d2, 0.3))), bladeAt(add(sk.hdR, mul(d2, 3))), ctx.PJ);
     return;
   }
   if (anim === "death") {

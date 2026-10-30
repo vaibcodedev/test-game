@@ -18,7 +18,13 @@ const SN: Record<string, string> = { helm: "ШЛЕМ", pauldrons: "НАПЛЕЧ�
 const BG: RGBA = [24, 20, 26, 255], GOLD: RGBA = [255, 216, 100, 255], DIM: RGBA = [200, 190, 170, 255];
 const fill = (c: PC, x: number, y: number, w: number, h: number, col: RGBA) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) c.set(x + i, y + j, col); };
 const blit = (d: PC, s: PC, ox: number, oy: number, k = 1, x0 = 0, y0 = 0, w = s.w, h = s.h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const c = s.get(x, y); if (!c || !c[3]) continue; for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) d.set(ox + (x - x0) * k + a, oy + (y - y0) * k + b, c); } };
-const icons = SETS.map(({ set }) => SLOTS.map((s) => cell(icon(s, set.items[s]).img, set.rarity)));
+const raws = SETS.map(({ set }) => SLOTS.map((s) => icon(s, set.items[s]).img));
+const icons = SETS.map(({ set }, r) => SLOTS.map((s, i) => cell(raws[r][i], set.rarity)));
+// разные редкости — разные сеты: IoU масок одного слота
+const iouM = (a: PC, b: PC) => { let i = 0, u = 0; for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) { const p = (a.get(x, y)?.[3] ?? 0) > 0, q = (b.get(x, y)?.[3] ?? 0) > 0; if (p && q) i++; if (p || q) u++; } return u ? i / u : 0; };
+const simFails: string[] = [];
+SLOTS.forEach((s, i) => { for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) { const v = iouM(raws[a][i], raws[b][i]); if (v > 0.8) simFails.push(`${s}: ${SETS[a].set.rarity}/${SETS[b].set.rarity} IoU ${v.toFixed(2)}`); } });
+console.log("сходство (порог 0,8):", simFails.length ? simFails.join("; ") : "нет совпадений");
 
 // ---------- иконки ----------
 {

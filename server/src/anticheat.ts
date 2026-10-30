@@ -119,7 +119,10 @@ export function originOk(origin: string | undefined, host: string | undefined, a
   if (!origin) return true;
   if (allowed.includes(origin)) return true;
   try {
-    return !!host && new URL(origin).host === host;
+    const u = new URL(origin);
+    // локальная разработка: любой порт localhost / 127.0.0.1 (Vite на занятом 5173 переезжает на другой порт, тестовые сборки — на свои)
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
+    return !!host && u.host === host;
   } catch {
     return false;
   }

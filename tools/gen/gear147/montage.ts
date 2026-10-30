@@ -122,7 +122,7 @@ for (const [a, nm] of CFG.atk) {
 // ---------- 2б. позы без удара: урон, гибель, сбор, верхом ----------
 {
   const K = 2, fw = DW * K, lw = 110, AN: [AnimId, string][] = CFG.poses;
-  const w = lw + 12 * fw + 20, VV: V4[] = ["down", "up", "side", "left"];
+  const w = lw + 16 * fw + 20, VV: V4[] = ["down", "up", "side", "left"];
   blocks.push({ w, h: AN.length * (30 + VV.length * fw), file: `${CFG.prefix}-poses.png`, draw: (c, y0) => {
     AN.forEach(([a, nm], k) => {
       const yb = y0 + k * (30 + VV.length * fw), n = NF(a);
