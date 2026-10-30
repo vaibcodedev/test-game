@@ -49,7 +49,7 @@
       "name": "Латы Рогатого Рыцаря Хаоса",
       "rarity": "legendary", "level": 100, "material": "plate", "source": "raid:horned-chaos-knight",
       "items": {
-        "helm": { "name": "Рогатый шлем Хаоса", "style": "horned", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "horn": "chaos_horn", "glow": "eye_glow", "spikes": 3, "horns": 1.0 },
+        "helm": { "name": "Рогатый шлем Хаоса", "style": "horned", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "horn": "chaos_spike", "glow": "eye_glow", "spikes": 3, "horns": 1.0 },
         "pauldrons": { "name": "Шипастые наплечники Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "size": 1.18, "lames": 2, "spikes": 3, "cracks": "chaos_crack", "spike": "chaos_spike" },
         "armor": { "name": "Кираса Рогатого Рыцаря", "plate": "chaos_steel", "accent": "chaos_red", "trim": "gold", "cloth": "chaos_tabard", "mail": "mail", "thick": 0.6, "chestPlate": true, "inlay": true, "crest": true, "cracks": "chaos_crack", "spikes": true, "spike": "chaos_spike", "tassets": "chaos_red", "tabard": true },
         "gloves": { "name": "Латные рукавицы Хаоса", "plate": "chaos_steel", "accent": "chaos_red", "cuff": true, "cuffSpike": true, "spike": "chaos_spike" },

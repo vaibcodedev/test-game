@@ -87,7 +87,7 @@ function carryGreat(P: Pose, k: { anim: AnimId; u: number; arm: number; view: st
   if (k.anim === "atk2h" && k.view !== "side") return slashGreat(P, k);
   if (k.anim === "atk2h") return sideGreat(P, k);
   // гибель: лежащее тело с латами, рогами и плащом выше нижней кромки кадра
-  if (k.anim === "death" && P.G) P.G = { ...P.G, shift: [P.G.shift[0], P.G.shift[1] - 4.4 * (P.G.ang / (Math.PI / 2)), P.G.shift[2]] };
+  if (k.anim === "death" && P.G) P.G = { ...P.G, shift: [P.G.shift[0], P.G.shift[1] - 5.8 * (P.G.ang / (Math.PI / 2)), P.G.shift[2]] };
   if (k.anim === "hurt" || (k.anim === "death" && k.u < DROP_U)) {
     // урон: меч остаётся в руке, кисть и клинок отдёргиваются вместе с телом; гибель: держит до DROP_U, затем роняет
     const f = Math.sin(Math.PI * cl(k.u / (k.anim === "hurt" ? 0.6 : DROP_U * 1.6)));
@@ -184,12 +184,13 @@ function helm(ctx: GearCtx, it: any) {
       z.bz(p0, p1, p2, 2.6, 0.45);
     };
     // вбок: рог от виска вверх и назад (дугой)
-    const hornS = (z: Mz, dx: number, dy: number) => z.bz([hw * 0.3 + dx, -hh * 0.5 + dy], [hw * 0.75 * k + dx, -hh * 2.5 * k + dy], [-hw * 0.75 * k + dx, -hh * 2.75 * k + dy], 3.6, 0.45);
+    const hornS = (z: Mz, dx: number, dy: number) => z.bz([hw * 0.3 + dx, -hh * 0.5 + dy], [hw * 0.62 * k + dx, -hh * 1.75 * k + dy], [-hw * 0.5 * k + dx, -hh * 2.05 * k + dy], 2.6, 0.4);
     const ridge = (z: Mz, xs: number[], tilt = 0) => xs.forEach((x, j) => { const tall = j === Math.floor(xs.length / 2) ? 3.0 : 2.1; tri(z, [x - 0.8, -hh * 0.82], [x + 0.8, -hh * 0.82], [x + tilt, -hh - tall]); });
     if (hv === "front" || hv === "back") {
       loc("h_spk", P, 6.13, (z) => ridge(z, it.spikes >= 3 ? [-2.3, 0, 2.3] : [0]), { dome: 1, amp: 1.8, bias: 0.5 });
       loc("h_shell", P, 6.15, (z) => { z.el([0, -hh * 0.08], hw + 0.8, hh + 0.55); z.pg([[-hw - 0.75, -hh * 0.1], [hw + 0.75, -hh * 0.1], [hw * 0.82, hh + 1.0], [0, hh + 1.5], [-hw * 0.82, hh + 1.0]]); }, { dome: 3, amp: 1.8, bias: 0.3, kant: true });
       loc("h_horn", Hn, 6.19, (z) => { horn(z, 1); horn(z, -1); }, { dome: 2, amp: 1.8, bias: 0.3 });
+      loc("h_hornK", Ac, 6.1905, (z) => { for (const sg of [1, -1]) z.bz([sg * hw * 0.85, -hh * 0.3], [sg * hw * 1.85 * k, -hh * 0.62], [sg * hw * 1.42 * k, -hh * 1.6 * k], 0.7, 0.45); }, { dome: 1, bias: 0.6 });
       loc("h_horn", Hn, 6.191, (z) => { for (const sg of [1, -1]) for (const t of [0.18, 0.34]) { const x = sg * hw * (0.72 + 1.0 * t), y = -hh * (0.5 + 0.55 * t); z.seg([x - 0.9, y - 0.5 * sg * 0], [x + 0.9 * 0.2, y + 1.0], 0.7); } }, { dome: 1, bias: -1.4 });
       if (hv === "front") {
         loc("h_face", Ac, 6.16, (z) => z.pg([[-hw * 0.8, -hh * 0.22], [hw * 0.8, -hh * 0.22], [hw * 0.6, hh * 0.55], [0, hh + 1.2], [-hw * 0.6, hh * 0.55]]), { dome: 2, amp: 1.8, bias: 0.25, kant: true });
@@ -203,7 +204,7 @@ function helm(ctx: GearCtx, it: any) {
       }
     } else {
       // профиль: забрало «клювом» вперёд, гребень шипов назад, рог от виска вперёд-вверх, назатыльник
-      loc("h_horn", Hn, 6.12, (z) => hornS(z, -1.6, 0.3), { dome: 2, amp: 1.6, bias: -0.6 });
+      loc("h_horn", Hn, 6.12, (z) => hornS(z, -1.3, 0.3), { dome: 2, amp: 1.6, bias: -0.5 });
       // гребень вбок убран: силуэт даёт рог
       loc("h_shell", P, 6.15, (z) => { z.el([-0.5, -hh * 0.1], hw + 0.6, hh + 0.5); z.pg([[-hw * 0.3, hh * 0.2], [-hw - 1.3, hh + 1.5], [-hw * 0.2, hh + 1.7], [hw * 0.3, hh + 0.9]]); }, { dome: 3, amp: 1.8, bias: 0.3, kant: true });
       loc("h_nape", P, 6.151, (z) => { z.seg([-hw * 0.9, hh * 0.55], [-hw * 0.15, hh * 0.95], 0.7); z.seg([-hw - 0.6, hh * 1.05], [-hw * 0.2, hh + 1.25], 0.7); }, { dome: 1, bias: -1.6 });
@@ -213,8 +214,9 @@ function helm(ctx: GearCtx, it: any) {
       loc("h_eye", G, 6.18, (z) => z.dot([hw * 0.72, hh * 0.14], 0.6), { dome: 1, bias: 0.3 }, true);
       loc("h_trim", Tr, 6.165, (z) => z.seg([hw * 0.15, -hh * 0.3], [hw + 0.85, -hh * 0.14], 0.75), { dome: 1, bias: 0.4 });
       loc("h_horn", Hn, 6.19, (z) => hornS(z, 0, 0), { dome: 2, amp: 1.9, bias: 0.35 });
-      loc("h_horn", Hn, 6.191, (z) => { z.seg([hw * 0.1, -hh * 0.95], [hw * 0.75, -hh * 1.0], 0.7); z.seg([hw * 0.2, -hh * 1.45], [hw * 0.75, -hh * 1.6], 0.7); }, { dome: 1, bias: -1.5 });
-      loc("h_horn", Hn, 6.192, (z) => z.bz([hw * 0.1, -hh * 0.7], [hw * 0.45, -hh * 2.2], [-hw * 0.6, -hh * 2.45], 0.6, 0.5), { dome: 1, bias: 2.3 });
+      loc("h_hornK", Ac, 6.1905, (z) => z.bz([hw * 0.45, -hh * 0.5], [hw * 0.75 * k * 0.72 + hw * 0.1, -hh * 1.55], [-hw * 0.45 * k + 0.4, -hh * 1.95 * k + 0.5], 0.75, 0.45), { dome: 1, bias: 0.6 });
+      loc("h_horn", Hn, 6.191, (z) => { z.seg([hw * 0.15, -hh * 0.85], [hw * 0.6, -hh * 0.92], 0.6); }, { dome: 1, bias: -1.5 });
+      loc("h_horn", Hn, 6.192, (z) => z.bz([hw * 0.12, -hh * 0.75], [hw * 0.4, -hh * 1.6], [-hw * 0.3, -hh * 1.85], 0.55, 0.45), { dome: 1, bias: 2.4 });
       loc("h_boss", Ac, 6.192, (z) => z.dot([hw * 0.15, -hh * 0.55], 1.0), { dome: 1, bias: 0.5 });
     }
   } else {
@@ -267,7 +269,7 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
   if (it.inlay && fF > 0.25) push({ g: "a_gem", ramp: ramp("eye_glow"), o: { dome: 1, bias: 0.4 }, layer: 3.825, emis: true, m: (z) => z.dot(PJ(add(surf(0, c + 0.2), mul(F, 0.9))), 1.0) });
   if (it.cracks) {
     // светящиеся прожилки-трещины: днём тёмно-алые, ночью светятся (emisColor)
-    const CR = ramp(it.cracks), glowC = hx("#ff5a32");
+    const CR = ramp(it.cracks), glowC = hx("#ff9a5a");
     const lines = (sd: number): [number, number][][] => sd > 0 ? [[[-0.62, 0.92], [-0.48, 0.72], [-0.58, 0.5], [-0.42, 0.3], [-0.5, 0.12]], [[0.62, 0.92], [0.5, 0.74], [0.6, 0.52], [0.44, 0.32]], [[0.08, 0.16], [-0.04, 0.02], [0.06, -0.1]]] : [[[-0.5, 0.95], [-0.3, 0.7], [-0.45, 0.45], [-0.25, 0.2]], [[0.5, 0.95], [0.32, 0.72], [0.46, 0.48]]];
     for (const sd of [1, -1]) {
       if (sd * fF < -0.2) continue;
@@ -352,12 +354,12 @@ function pauldrons(ctx: GearCtx, it: any) {
       push({ g: "p_fil" + s, ramp: Tr, o: { dome: 1, bias: 0.5 }, layer: L + 0.0051, m: (z) => { const a = PJ(add(C0, mul(e2, 1.7 * sz))), b2 = PJ(sum(C0, mul(A, sg * 1.6 * sz), mul(e2, 0.4 * sz))); z.bz(a, [(a[0] + b2[0]) / 2 + sg * 0.6, (a[1] + b2[1]) / 2 - 0.4], b2, 0.6, 0.6); } });
       push({ g: "p_gem" + s, ramp: ramp("eye_glow"), o: { dome: 1, bias: 0.4 }, layer: L + 0.0053, emis: true, m: (z) => z.dot(PJ(sum(C0, mul(e2, 0.9 * sz), mul(A, sg * 0.9 * sz), mul(F, ctx.v === "up" ? -1.2 : 1.2))), 0.95) });
     }
-    if (it.cracks) push({ g: "p_crack" + s, ramp: ramp(it.cracks), o: { dome: 1, bias: 0.4 }, layer: L + 0.0045, emis: true, emisColor: hx("#ff5a32"), m: (z) => { const fz = ctx.v === "up" ? -1 : 1; const pts = (u0: number, v0: number) => PJ(sum(C0, mul(A, sg * u0 * 2.4 * sz), mul(e2, v0 * 2.0 * sz), mul(F, fz * Math.sqrt(Math.max(0, 1 - u0 * u0 - v0 * v0)) * 2.4 * sz))); z.seg(pts(0.15, 0.75), pts(0.35, 0.45), 0.65); z.seg(pts(0.35, 0.45), pts(0.25, 0.15), 0.65); z.seg(pts(0.55, 0.6), pts(0.7, 0.3), 0.65); } });
+    if (it.cracks) push({ g: "p_crack" + s, ramp: ramp(it.cracks), o: { dome: 1, bias: 0.4 }, layer: L + 0.0045, emis: true, emisColor: hx("#ff9a5a"), m: (z) => { const fz = ctx.v === "up" ? -1 : 1; const pts = (u0: number, v0: number) => PJ(sum(C0, mul(A, sg * u0 * 2.4 * sz), mul(e2, v0 * 2.0 * sz), mul(F, fz * Math.sqrt(Math.max(0, 1 - u0 * u0 - v0 * v0)) * 2.4 * sz))); z.seg(pts(0.15, 0.75), pts(0.35, 0.45), 0.65); z.seg(pts(0.35, 0.45), pts(0.25, 0.15), 0.65); z.seg(pts(0.55, 0.6), pts(0.7, 0.3), 0.65); } });
     // шипы
-    const sp: [V3, number][] = [[nrm(sum(mul(U, 1), mul(A, sg * 0.55))), 3.9], [nrm(sum(mul(U, 0.3), mul(A, sg * 1.0), mul(F, 0.15))), 3.0], [nrm(sum(mul(U, 0.85), mul(A, sg * 0.25), mul(F, -0.7))), 2.6]];
+    const sp: [V3, number][] = [[nrm(sum(mul(U, 1), mul(A, sg * 0.85))), 5.6], [nrm(sum(mul(U, 0.15), mul(A, sg * 1.0), mul(F, 0.1))), 4.8], [nrm(sum(mul(U, 0.9), mul(A, sg * 0.3), mul(F, -0.7))), 4.2]];
     sp.slice(0, it.spikes ?? 0).forEach(([d, l], k) => {
-      const base = add(C0, mul(d, 1.7 * sz)), tip = add(C0, mul(d, (2.0 + l * 1.05) * sz));
-      hook(ctx, { g: "p_spike" + s + k, layer: L + 0.0039 - 0.0001 * k, far: ar.far }, base, tip, 0.8 * sz, 0.24 * sg * (ctx.v === "up" ? -1 : 1), ramp(it.spike ?? it.plate));
+      const base = add(C0, mul(d, 1.7 * sz)), tip = add(C0, mul(d, 1.7 * sz + l));
+      hook(ctx, { g: "p_spike" + s + k, layer: L + 0.0039 - 0.0001 * k, far: ar.far }, base, tip, 1.0 * sz, 0.2 * sg * (ctx.v === "up" ? -1 : 1), ramp(it.spike ?? it.plate));
     });
   }
 }

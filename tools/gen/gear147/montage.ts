@@ -153,6 +153,8 @@ function scene(night: boolean): PC {
     const glow = new Float32Array(SW * SH * 3);
     for (const [x, y, col] of emis) for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const d = Math.hypot(dx, dy); if (d > 6) continue; const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= SW || yy >= SH) continue; const k = 0.05 * (1 - d / 6) ** 2; const q = (yy * SW + xx) * 3; glow[q] += col[0] * k; glow[q + 1] += col[1] * k * 0.8; glow[q + 2] += col[2] * k * 0.5; }
     for (let p = 0; p < SW * SH; p++) { c.data[p * 4] = Math.min(255, c.data[p * 4] + glow[p * 3]); c.data[p * 4 + 1] = Math.min(255, c.data[p * 4 + 1] + glow[p * 3 + 1]); c.data[p * 4 + 2] = Math.min(255, c.data[p * 4 + 2] + glow[p * 3 + 2]); }
+    // мягкий ореол 1 px вокруг светящихся пикселей (прожилки, глаза, клинок)
+    for (const [x, y, col] of emis) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) c.set(x + dx, y + dy, [col[0], Math.round(col[1] * 0.6), Math.round(col[2] * 0.5), 110]);
     for (const [x, y, col] of emis) c.set(x, y, col);
   }
   return c;
