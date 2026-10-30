@@ -9,13 +9,24 @@ import { Cv, paint, hx, type C } from "../bosses139/mino_lib";
 import { Mz, mixC, type PO, type V2 } from "../hero147/base_b";
 import { GD, SLOTS, ramp, setOf, type CrestId, type Slot } from "./gear";
 
+/** маска с масштабом вокруг центра поля: формы рисуются в координатах 48×48, предмет вписывается в ~80 % (docs/icon-style.md, п. 8) */
+const KS = 0.82, CC = 24;
+class SMz extends Mz {
+  private f(p: V2): V2 { return [CC + (p[0] - CC) * KS, CC + (p[1] - CC) * KS]; }
+  override seg(a: V2, b: V2, t0: number, t1 = t0) { return super.seg(this.f(a), this.f(b), t0 * KS, t1 * KS); }
+  override dot(a: V2, r: number) { return super.dot(this.f(a), r * KS); }
+  override pg(pts: V2[]) { return super.pg(pts.map((q) => this.f(q))); }
+  override el(c: V2, rx: number, ry: number) { return super.el(this.f(c), rx * KS, ry * KS); }
+  override bz(p0: V2, p1: V2, p2: V2, t0: number, t1 = t0) { return super.bz(this.f(p0), this.f(p1), this.f(p2), t0 * KS, t1 * KS); }
+  override clip(fn: (x: number, y: number) => boolean) { return super.clip((x, y) => fn(CC + (x - CC) / KS, CC + (y - CC) / KS)); }
+}
 interface IP { g: string; ramp: C[]; o?: PO; m: (z: Mz) => void; emis?: boolean }
 const S = 48, W2 = 96;
 /** rim — кант редкости снаружи контура (легендарное — оранжевый, как в паке) */
 function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][] } {
   const cv = new Cv(W2, W2), ids = new Uint8Array(W2 * W2);
   parts.forEach((p, k) => {
-    const m = new Mz(); p.m(m); const c = new Cv(W2, W2); paint(c, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o });
+    const m = new SMz(); p.m(m); const c = new Cv(W2, W2); paint(c, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o });
     // отражённый свет снизу: нижняя кромка объёмных частей на тон светлее самых тёмных
     if ((p.o?.dome ?? 3) >= 2) {
       const dk = new Set([p.ramp[0].join(), p.ramp[1].join()]);
@@ -33,6 +44,15 @@ function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][] } {
     for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { const q = (y * 2 + j) * W2 + x * 2 + i; if (ids[q] !== best) continue; const cc = cv.get(x * 2 + i, y * 2 + j), key = cc.join(","), e = cols.get(key); if (e) e.n++; else cols.set(key, { n: 1, c: cc }); }
     for (const e of cols.values()) if (!bc || e.n > bcn || (e.n === bcn && e.c[0] + e.c[1] + e.c[2] < bc[0] + bc[1] + bc[2])) { bc = e.c; bcn = e.n; }
     out.set(x, y, bc!); oid[y * S + x] = best;
+  }
+  // контровой свет: кромка силуэта, обращённая вниз-вправо, — светлая линия (тёмная вещь читается на тёмном фоне)
+  const RIMC = hx("#b8a8cc");
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const a = oid[y * S + x]; if (!a || parts[a - 1].emis) continue;
+    const r = x + 1 >= S || !oid[y * S + x + 1], d = y + 1 >= S || !oid[(y + 1) * S + x];
+    if (!r && !d) continue;
+    const q = out.get(x, y), lum = q[0] * 0.3 + q[1] * 0.55 + q[2] * 0.15;
+    if (lum < 150) out.set(x, y, mixC(q, RIMC, r && d ? 0.55 : 0.4));
   }
   const res = new Cv(S, S); res.d.set(out.d);
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
@@ -84,6 +104,7 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
         add("breath", P, (z) => { for (const [x, y] of [[20.5, 33], [22, 36], [27.5, 33], [26, 36], [21.5, 39], [26.5, 39]] as V2[]) z.dot([x, y], 0.62); }, { dome: 1, bias: -2 });
         add("trim", Tr, (z) => z.bz([13, 22], [24, 15], [35, 22], 1.6, 1.6), { dome: 1, bias: 0.4 });
         add("gem", ramp(it.glow), (z) => z.dot([24, 18.2], 1.5), { dome: 2, bias: 0.6 }, true);
+        add("fil", Tr, (z) => { z.bz([14, 28], [12.5, 33], [15.5, 37], 0.9, 0.9); z.bz([34, 28], [35.5, 33], [32.5, 37], 0.9, 0.9); }, { dome: 1, bias: 0.6 });
         add("rivet", Tr, (z) => { for (const x of [15, 33]) z.dot([x, 24], 0.9); }, { dome: 1, bias: 1.2 });
         add("hornT", Hn, (z) => { z.seg([7.5, 6], [8, 3.5], 1.0); z.seg([40.5, 6], [40, 3.5], 1.0); z.bz([5, 17], [4, 12], [6.5, 8], 0.9, 0.7); }, { dome: 1, bias: 2.2 });
         add("gor", P, (z) => z.bz([15, 43], [24, 47.5], [33, 43], 2.4, 2.4), { dome: 2, bias: -0.2 });
@@ -112,6 +133,11 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       add("ridge", Ac, (z) => z.bz([24, 11.5], [25.5, 20], [24, 30], 1.4, 1.0), { dome: 1, bias: 1.4 });
       add("spec", Ac, (z) => z.bz([11, 22], [13, 15], [19, 12.5], 1.8, 0.9), { dome: 1, bias: 2.6 });
       add("trim", Tr, (z) => z.bz([6.5, 30], [24, 37.5], [41.5, 30], 1.9, 1.9), { dome: 1, bias: 0.3 });
+      if (sp >= 1) {
+        add("fil", Tr, (z) => { z.bz([12, 27], [15, 19], [21.5, 21], 1.0, 0.8); z.bz([36, 27], [33, 19], [26.5, 21], 1.0, 0.8); }, { dome: 1, bias: 0.6 });
+        add("gemS", ramp("gold"), (z) => z.el([24, 24.5], 3.2, 3.0), { dome: 2, bias: 0.3 });
+        add("gem", ramp("eye_glow"), (z) => z.el([24, 24.5], 2.0, 1.9), { dome: 2, bias: 0.5 }, true);
+      }
       add("rivet", Tr, (z) => { for (const x of [12, 24, 36]) z.dot([x, 32 + (x === 24 ? 2.6 : 0)], 1.0); }, { dome: 1, bias: 1.3 });
       if (sp >= 1) add("sp", P, (z) => { spk(z, [21.5, 17], [15, 0.5], 3.0); if (sp >= 2) spk(z, [32, 19], [46, 8], 2.8); if (sp >= 3) spk(z, [13, 22], [1.5, 13], 2.6); }, { dome: 1, amp: 2, bias: 0.6 });
       if (sp >= 1) add("spH", P, (z) => { z.seg([19, 14], [15.5, 3], 0.8); z.seg([33, 15.5], [43.5, 9], 0.8); }, { dome: 1, bias: 2.2 });
@@ -120,6 +146,7 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
     case "armor": {
       const cl = ramp(it.cloth);
       if (it.tabard) add("tab", cl, (z) => z.pg([[19, 36], [29, 36], [30, 46], [27.5, 43.5], [25, 47], [22.5, 44], [20, 47], [18, 44]]), { dome: 2, bias: -0.2 });
+      add("mail", ramp(it.mail ?? "mail"), (z) => z.pg([[15, 40], [33, 40], [32, 46], [16, 46]]), { dome: 2, bias: 0, dith: 0.75 });
       add("fauld", P, (z) => z.pg([[13, 34], [35, 34], [38, 41], [30, 43], [24, 42], [18, 43], [10, 41]]), { dome: 3, bias: 0 });
       add("faultL", P, (z) => z.bz([12, 38], [24, 41], [36, 38], 0.9, 0.9), { dome: 1, bias: -1.5 });
       add("cuir", P, (z) => { z.pg([[6, 9], [42, 9], [39, 22], [35, 35], [13, 35], [9, 22]]); z.el([24, 10], 18, 4); }, { dome: 4, amp: 1.8, bias: 0.2 });
@@ -127,10 +154,15 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       add("abs", P, (z) => { z.bz([14, 27], [24, 29.5], [34, 27], 1.0, 1.0); z.bz([14.5, 31], [24, 33.5], [33.5, 31], 1.0, 1.0); }, { dome: 1, bias: -1.5 });
       if (it.chestPlate) add("plate", Ac, (z) => z.pg([[9, 9.5], [39, 9.5], [36, 18], [28, 22], [24, 26], [20, 22], [12, 18]]), { dome: 3, amp: 2, bias: 0.15 });
       if (it.inlay) add("inlay", Tr, (z) => { z.seg([12, 18], [20, 22], 1.3); z.seg([20, 22], [24, 26], 1.3); z.seg([24, 26], [28, 22], 1.3); z.seg([28, 22], [36, 18], 1.3); }, { dome: 1, bias: 0.4 });
+      if (it.inlay) {
+        add("fil", Tr, (z) => { z.bz([11, 24], [13, 29.5], [18.5, 29], 0.9, 0.8); z.bz([37, 24], [35, 29.5], [29.5, 29], 0.9, 0.8); }, { dome: 1, bias: 0.6 });
+        add("riv", Tr, (z) => { for (const [x, y] of [[9.5, 11], [38.5, 11], [12, 20], [36, 20]] as V2[]) z.dot([x, y], 1.0); }, { dome: 1, bias: 1.2 });
+      } else add("riv", P, (z) => { for (const [x, y] of [[10, 11], [38, 11], [14, 33], [34, 33]] as V2[]) z.dot([x, y], 1.0); }, { dome: 1, bias: 2.0 });
       add("gorget", it.chestPlate ? Ac : P, (z) => { z.el([24, 7.5], 9, 4); z.clip((x, y) => !(Math.hypot((x - 24) / 5.5, (y - 6) / 2.4) < 1)); }, { dome: 2, bias: 0.1 });
       add("belt", it.chestPlate ? P : Tr, (z) => z.pg([[12.5, 32.5], [35.5, 32.5], [36, 36], [12, 36]]), { dome: 1, bias: -0.3 });
       add("buckle", it.chestPlate ? Tr : ramp("iron"), (z) => z.el([24, 34.2], 2.4, 2.0), { dome: 1, bias: 0.4 });
-      if (it.crest) crest(p, 24, 15.5, 2.3, cr);
+      if (it.inlay) add("gGem", ramp("eye_glow"), (z) => z.dot([24, 5.6], 1.4), { dome: 2, bias: 0.5 }, true);
+      if (it.crest) crest(p, 24, 15.5, 2.5, cr);
       break;
     }
     case "gloves": {
@@ -140,11 +172,14 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       if (it.cuffSpike) add("cspk", P, (z) => spk(z, [39, 12], [47, 2], 2.6), { dome: 1, amp: 2, bias: 0.7 });
       if (it.cuff) add("criv", ramp("gold"), (z) => { for (const [x, y] of [[29, 9], [35, 11], [38.5, 16]] as V2[]) z.dot([x, y], 0.85); }, { dome: 1, bias: 1.2 });
       add("wrist", P, (z) => z.pg([[22, 15.5], [38, 20.5], [34, 28], [19, 24]]), { dome: 3, amp: 1.9, bias: 0.15 });
+      add("wmail", ramp("mail"), (z) => z.seg([21, 21], [36, 25], 2.6), { dome: 2, bias: 0, dith: 0.75 });
+      if (it.cuff) add("cTrim", ramp("gold"), (z) => z.seg([23.5, 18.2], [40.5, 21.2], 1.1), { dome: 1, bias: 0.6 });
       add("back", P, (z) => z.pg([[13, 22.5], [32, 25.5], [30.5, 35], [12, 34]]), { dome: 4, amp: 1.9, bias: 0.25 });
       add("backH", P, (z) => z.seg([15, 24.5], [28, 26.6], 1.0), { dome: 1, bias: 2.3 });
       add("knk", it.cuff ? Ac : P, (z) => z.seg([11.5, 34.5], [30, 37], 3.0, 2.6), { dome: 2, amp: 1.9, bias: 0.3 });
       for (const [j, y, x0, x1, w] of [[0, 39.5, 11, 28.5, 3.2], [1, 42.8, 11.5, 27, 3.0], [2, 45.6, 13, 25, 2.5]] as [number, number, number, number, number][])
         add("fing" + j, P, (z) => z.seg([x0, y - 0.6], [x1, y + 0.8], w, w - 0.4), { dome: 2, amp: 1.8, bias: 0.15 - 0.2 * j });
+      add("kriv", it.cuff ? ramp("gold") : P, (z) => { for (const x of [15, 20, 25]) z.dot([x, 35.6 + (x - 15) * 0.12], 0.85); }, { dome: 1, bias: it.cuff ? 1.2 : 2.0 });
       add("thumb0", P, (z) => z.seg([14, 26], [7.5, 33], 4.4, 3.8), { dome: 3, amp: 1.8, bias: 0.15 });
       add("thumb1", P, (z) => z.seg([7.5, 33], [9.5, 39], 3.6, 3.0), { dome: 2, amp: 1.8, bias: 0 });
       break;
@@ -154,6 +189,9 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       add("greave", P, (z) => z.seg([20, 9], [21, 31], 12.5, 10.5), { dome: 4, amp: 1.9, bias: 0.15 });
       add("grH", P, (z) => z.seg([15.6, 13], [16.4, 29], 1.3), { dome: 1, bias: 2.3 });
       if (it.stripe) add("stripe", Ac, (z) => z.seg([24.5, 16], [25, 30], 2.0), { dome: 1, bias: 0.4 });
+      add("strap", ramp("grip"), (z) => z.seg([14.8, 22], [27, 23], 1.6), { dome: 1, bias: 0.3 });
+      add("buck", ramp("gold"), (z) => z.pg([[22.5, 20.6], [26, 20.9], [25.8, 24.6], [22.3, 24.3]]), { dome: 1, bias: 0.5 });
+      add("kmail", ramp("mail"), (z) => z.seg([14.5, 17], [15, 20], 2.4), { dome: 2, bias: 0, dith: 0.75 });
       add("ank0", P, (z) => z.seg([14.5, 31.5], [28.5, 32.5], 3.4), { dome: 2, amp: 1.8, bias: 0.1 });
       add("ank1", P, (z) => z.seg([14.5, 35], [30, 36], 3.2), { dome: 2, amp: 1.8, bias: -0.05 });
       add("sole", ramp("grip"), (z) => z.seg([14, 45.3], [44, 45.3], 2.0), { dome: 1, bias: -0.3 });
@@ -173,8 +211,10 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       add("lin", Ln, (z) => z.pg([[15, 6], [33, 6], [44, 38], [4, 38]]), { dome: 2, bias: -0.3 });
       add("cape", O, (z) => z.pg([[15, 5], [33, 5], [40, 20], [44, 38], ...tat.slice().reverse(), [4, 38], [8, 20]]), { dome: 4, amp: 1.6, bias: 0.2 });
       add("fold", O, (z) => { z.bz([20, 9], [18, 25], [15, 42], 1.0, 1.4); z.bz([28, 9], [30, 25], [33, 42], 1.0, 1.4); z.bz([24, 14], [24, 28], [24, 40], 0.9, 1.2); }, { dome: 1, bias: -1.5 });
+      add("hem", Ac, (z) => { z.pg([[15, 5], [8, 20], [4, 38], [5.6, 38.5], [9.6, 20.5], [16.4, 5.5]]); z.pg([[33, 5], [40, 20], [44, 38], [42.4, 38.5], [38.4, 20.5], [31.6, 5.5]]); }, { dome: 1, bias: 0.6 });
       add("collar", O, (z) => z.bz([14, 6], [24, 9.5], [34, 6], 3.4, 3.4), { dome: 2, bias: 0.4 });
-      add("clasp", Tr, (z) => { z.dot([14.5, 6.5], 2.0); z.dot([33.5, 6.5], 2.0); }, { dome: 2, bias: 0.4 });
+      add("clasp", Tr, (z) => { z.dot([14.5, 6.5], 2.4); z.dot([33.5, 6.5], 2.4); }, { dome: 2, bias: 0.4 });
+      add("claspG", ramp("eye_glow"), (z) => { z.dot([14.5, 6.5], 1.2); z.dot([33.5, 6.5], 1.2); }, { dome: 1, bias: 0.6 }, true);
       if (it.crest) crest(p, 24, 22, 3.0, cr);
       break;
     }
@@ -200,17 +240,46 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       add("guardH", H, (z) => { z.seg(at(-0.005, 1.2), at(-0.02, gl * 0.62), 0.8); }, { dome: 1, bias: 2.4 });
       add("gem", ramp(it.accent), (z) => z.dot(A, glow ? 2.3 : 1.6), { dome: 2, bias: 0.5 }, glow);
       add("pommel", H, (z) => { const pm = at(-0.27, 0); z.dot(pm, 2.2); if (glow) spk(z, pm, [pm[0] - dx * 4.5, pm[1] - dy * 4.5], 1.4); }, { dome: 2, bias: 0.5 });
+      if (glow) add("pGem", ramp("eye_glow"), (z) => z.dot(at(-0.27, 0), 1.1), { dome: 1, bias: 0.6 }, true);
       break;
     }
   }
-  return render(p, RARITY_RIM[rarity]);
+  void rarity;
+  return render(p);
+}
+/** Ячейка: фон-градиент и рамка по редкости (docs/icon-style.md, п. 10), предмет поверх. */
+const CELL: Record<string, { bg: C; frame: C; corner?: C }> = {
+  common: { bg: hx("#3a4250"), frame: hx("#7a8494") },
+  rare: { bg: hx("#1e3a66"), frame: hx("#4a8ae0") },
+  epic: { bg: hx("#3e1e5a"), frame: hx("#b05ae0") },
+  legendary: { bg: hx("#5a3010"), frame: hx("#f0901c"), corner: hx("#ffe0a0") },
+};
+export function cell(img: PC, rarity = "common"): PC {
+  const st = CELL[rarity] ?? CELL.common, o = new PC(S, S), dk = hx("#0c0a10");
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const d = Math.hypot(x + 0.5 - 24, y + 0.5 - 22) / 30, t = Math.min(1, d) ** 1.3;
+    const c = mixC(st.bg, dk, 0.15 + 0.8 * t), band = ((x * 3 + y * 7) & 7) === 0 && t > 0.7 ? 0.06 : 0;
+    o.set(x, y, [...mixC(c, dk, band), 255] as any);
+  }
+  for (let i = 0; i < S; i++) for (const [x, y] of [[i, 0], [i, S - 1], [0, i], [S - 1, i]]) o.set(x, y, [...st.frame, 255] as any);
+  for (let i = 1; i < S - 1; i++) for (const [x, y] of [[i, 1], [i, S - 2], [1, i], [S - 2, i]]) o.set(x, y, [...dk, 255] as any);
+  if (st.corner) for (const [x, y] of [[0, 0], [1, 0], [0, 1], [S - 1, 0], [S - 2, 0], [S - 1, 1], [0, S - 1], [1, S - 1], [0, S - 2], [S - 1, S - 1], [S - 2, S - 1], [S - 1, S - 2]]) o.set(x, y, [...st.corner, 255] as any);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const q = img.get(x, y); if (q && q[3]) o.set(x, y, q); }
+  return o;
 }
 
 if (process.argv[1]?.endsWith("icons.ts")) {
-  const id = process.argv[2] ?? "chaos-knight", set = setOf(id), K = 4;
+  const id = process.argv[2] ?? "chaos-knight", set = setOf(id);
   const list = SLOTS.filter((s) => set.items[s]);
-  const out = new PC(list.length * (S * K + 8) + 8, S * K * 2 + 24);
+  const W = 8 + list.length * (48 * 4 + 8), out = new PC(W, 8 + (48 + 8) + (96 + 8) + 2 * (192 + 8));
   for (let i = 0; i < out.data.length; i += 4) { out.data[i] = 30; out.data[i + 1] = 26; out.data[i + 2] = 32; out.data[i + 3] = 255; }
-  for (const [r, cr] of (["sol", "umb"] as CrestId[]).entries()) list.forEach((s, c) => { const im = icon(s, set.items[s], cr, set.rarity).img; for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const q = im.get(x, y); if (q && q[3]) for (let a = 0; a < K; a++) for (let b = 0; b < K; b++) out.set(8 + c * (S * K + 8) + x * K + a, 8 + r * (S * K + 8) + y * K + b, q); } });
+  const put = (im: PC, ox: number, oy: number, K: number) => { for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const q = im.get(x, y); if (q && q[3]) for (let a = 0; a < K; a++) for (let b = 0; b < K; b++) out.set(ox + x * K + a, oy + y * K + b, q); } };
+  list.forEach((sl, c) => {
+    const x = 8 + c * (48 * 4 + 8);
+    put(cell(icon(sl, set.items[sl], "sol").img, set.rarity), x, 8, 1);
+    put(cell(icon(sl, set.items[sl], "sol").img, set.rarity), x, 8 + 56, 2);
+    put(cell(icon(sl, set.items[sl], "sol").img, set.rarity), x, 8 + 56 + 104, 4);
+    put(cell(icon(sl, set.items[sl], "umb").img, set.rarity), x, 8 + 56 + 104 + 200, 4);
+  });
   out.save(path.resolve(`tools/out/gear147/icons-${id}.png`)); console.log("ok");
 }

@@ -9,24 +9,24 @@ import { PNG } from "pngjs";
 import { PC, type RGBA } from "../canvas";
 import { P as PAL } from "../palette";
 import { text } from "../mobs/lib";
-import { FR, FY, NF, flipCv, renderFrame, type AnimId, type Look, type View } from "../hero147/base_b";
-import { dress, setOf, SLOTS, type CrestId } from "./gear";
-import { icon } from "./icons";
+import { FR, FY, NF, type AnimId, type Look } from "../hero147/base_b";
+import { dress, renderView, setOf, SLOTS, type CrestId, type View4 } from "./gear";
+import { cell as iconCell, icon } from "./icons";
 
 const OUT = path.resolve("tools/out/gear147"); fs.mkdirSync(OUT, { recursive: true });
 const BG: RGBA = [24, 20, 26, 255], GOLD: RGBA = [255, 216, 100, 255], DIM: RGBA = [200, 190, 170, 255], RED: RGBA = [255, 110, 90, 255];
 const KN = setOf("chaos-knight"), RC = setOf("recruit-plate");
 const SOL: Look = { fac: "sol", sex: "m", hair: "tousled" }, UMB: Look = { fac: "umb", sex: "f", hair: "loose" };
-type V4 = View | "left";
+type V4 = View4;
 type Pack = { img: PC; emis: [number, number, RGBA][] };
 const cache = new Map<string, Pack>();
 function fr(l: Look, set: any, crest: CrestId, v: V4, a: AnimId, i: number): Pack {
   const key = JSON.stringify([l, set?.name, crest, v, a, i]);
   let p = cache.get(key);
   if (!p) {
-    const f = renderFrame(dress(l, set, crest), v === "left" ? "side" : v, a, i), cv = v === "left" ? flipCv(f.img) : f.img;
+    const f = renderView(dress(l, set, crest), v, a, i), cv = f.img;
     const img = new PC(FR, FR); for (let y = 0; y < FR; y++) for (let x = 0; x < FR; x++) if (cv.has(x, y)) { const q = cv.get(x, y); img.set(x, y, [q[0], q[1], q[2], 255]); }
-    p = { img, emis: f.emis.map(([x, y, c]) => [v === "left" ? FR - 1 - x : x, y, [c[0], c[1], c[2], 255]] as [number, number, RGBA]) };
+    p = { img, emis: f.emis.map(([x, y, c]) => [x, y, [c[0], c[1], c[2], 255]] as [number, number, RGBA]) };
     cache.set(key, p);
   }
   return p;
@@ -57,7 +57,7 @@ function loadScaled(f: string, H: number): PC {
 }
 const cell = (c: PC, x: number, y: number, w: number, h: number, alt = false) => fill(c, x, y, w, h, alt ? [40, 48, 54, 255] : [44, 54, 40, 255]);
 const blocks: { h: number; w: number; file?: string; draw: (c: PC, y: number) => void }[] = [];
-const V4S: V4[] = ["down", "up", "side", "left"], VN: Record<V4, string> = { down: "ВНИЗ", up: "ВВЕРХ", side: "ВБОК", left: "ВЛЕВО" };
+const V4S: V4[] = ["down", "up", "side", "left"], VN: Record<V4, string> = { down: "ВНИЗ", up: "ВВЕРХ", side: "ВПРАВО", left: "ВЛЕВО" };
 
 // ---------- 1. референс | наш, зум 3 ----------
 {
@@ -76,14 +76,27 @@ for (const [a, nm] of [["idle", "ПОКОЙ"], ["walk", "ХОДЬБА"], ["atk2h
   const n = NF(a), K = 2, fw = FR * K, lw = 110;
   const w = lw + n * fw + 20;
   blocks.push({ w, h: 30 + V4S.length * fw, file: `knight-chaos-${a}.png`, draw: (c, y0) => {
-    text(c, `${nm} · ${n} КАДРОВ · ЗУМ 2 · ВНИЗ | ВВЕРХ | ВБОК | ВЛЕВО (ЗЕРКАЛО)`, 20, y0, 2, GOLD);
+    text(c, `${nm} · ${n} КАДРОВ · ЗУМ 2 · ВНИЗ | ВВЕРХ | ВПРАВО | ВЛЕВО`, 20, y0, 2, GOLD);
     V4S.forEach((v, r) => { const y = y0 + 26 + r * fw; text(c, VN[v], 10, y + fw / 2 - 6, 2); for (let i = 0; i < n; i++) { const x = lw + i * fw; cell(c, x, y, fw - 2, fw - 2, r % 2 === 1); shadow(c, x + 24 * K, y + (FY - 1) * K, 6 * K, 2 * K, 70); blit(c, fr(SOL, KN, "sol", v, a, i).img, x, y, K); } });
+  } });
+}
+// ---------- 2а. правша: меч в правой руке, порядок слоёв по направлению ----------
+{
+  const K = 3, cw = 44 * K, AN: [AnimId, number][] = [["idle", 0], ["atk2h", 3], ["atk2h", 8]];
+  const NOTE: Record<V4, string> = { down: "ВНИЗ: ПРАВАЯ — СЛЕВА, МЕЧ СПЕРЕДИ", up: "ВВЕРХ: ПРАВАЯ — СПРАВА, РУКОЯТЬ ЗА КОРПУСОМ", side: "ВПРАВО: ПРАВАЯ БЛИЖНЯЯ — МЕЧ ПЕРЕД ТЕЛОМ", left: "ВЛЕВО: ПРАВАЯ ДАЛЬНЯЯ — МЕЧ ЗА ТЕЛОМ" };
+  blocks.push({ w: 40 + 4 * (3 * cw + 20), h: 40 + 44 * K + 30, file: "knight-chaos-hands.png", draw: (c, y0) => {
+    text(c, "ГЕРОЙ-ПРАВША · КАМЕРА С ЮГА · ДВУРУЧНИК ОБЕИМИ РУКАМИ, ПРАВАЯ ВЫШЕ · СВЕТ СВЕРХУ-СЛЕВА ВО ВСЕХ НАПРАВЛЕНИЯХ · ЗУМ 3", 20, y0, 2, GOLD);
+    V4S.forEach((v, j) => {
+      const x0 = 20 + j * (3 * cw + 20);
+      text(c, NOTE[v], x0, y0 + 24, 1, DIM);
+      AN.forEach(([a, i], k) => { const x = x0 + k * cw, y = y0 + 38; const g = ground(44, 44, 30 + j * 3 + k); blit(c, g, x, y, K); shadow(c, x + 22 * K, y + (FY - 2) * K, 7 * K, 2.4 * K, 80); blit(c, fr(SOL, KN, "sol", v, a, i).img, x, y, K, 2, 2, 44, 44); });
+    });
   } });
 }
 // ---------- 2б. позы без удара: урон, гибель, сбор, верхом ----------
 {
   const K = 2, fw = FR * K, lw = 110, AN: [AnimId, string][] = [["hurt", "УРОН — МЕЧ В РУКЕ"], ["death", "ГИБЕЛЬ — МЕЧ ПАДАЕТ РЯДОМ"], ["gather", "СБОР — МЕЧ ЗА СПИНОЙ"], ["ride", "ВЕРХОМ — МЕЧ ЗА СПИНОЙ"]];
-  const w = lw + 12 * fw + 20, VV: V4[] = ["down", "up", "side"];
+  const w = lw + 12 * fw + 20, VV: V4[] = ["down", "up", "side", "left"];
   blocks.push({ w, h: AN.length * (30 + VV.length * fw), file: "knight-chaos-poses.png", draw: (c, y0) => {
     AN.forEach(([a, nm], k) => {
       const yb = y0 + k * (30 + VV.length * fw), n = NF(a);
@@ -103,8 +116,7 @@ for (const [a, nm] of [["idle", "ПОКОЙ"], ["walk", "ХОДЬБА"], ["atk2h
     text(c, "ИКОНКИ 48×48 · ЗУМ 3 · ГЕРБ — МАСКА ФРАКЦИИ ИГРОКА (СОЛНЦЕ | ЛУНА), ЦВЕТ СЕТА НЕ МЕНЯЕТСЯ", 20, y0, 2, GOLD);
     (["sol", "umb"] as CrestId[]).forEach((cr, r) => list.forEach((s, i) => {
       const x = 20 + i * cw, y = y0 + 30 + r * (48 * K + 50);
-      fill(c, x - 4, y - 4, 48 * K + 8, 48 * K + 8, [120, 40, 20, 255]); fill(c, x - 2, y - 2, 48 * K + 4, 48 * K + 4, [34, 24, 30, 255]);
-      blit(c, icon(s, KN.items[s], cr, KN.rarity).img, x, y, K);
+      blit(c, iconCell(icon(s, KN.items[s], cr).img, KN.rarity), x, y, K);
       if (r === 0) text(c, KN.items[s].name.split(" ")[0], x, y + 48 * K + 10, 1, DIM);
     }));
   } });
@@ -113,15 +125,15 @@ for (const [a, nm] of [["idle", "ПОКОЙ"], ["walk", "ХОДЬБА"], ["atk2h
 {
   const K = 3, cw = 40 * K, list = SLOTS.filter((s) => RC.items[s]);
   const w = 40 + 8 * cw + 80;
-  blocks.push({ w, h: 40 + 44 * K + 30 + 48 * 2 + 40, file: "knight-chaos-rarity.png", draw: (c, y0) => {
+  blocks.push({ w: Math.max(w, 60 + 4 * cw + 7 * 104 + 20), h: 40 + 44 * K + 30 + 48 * 2 + 40 + 110, file: "knight-chaos-rarity.png", draw: (c, y0) => {
     text(c, "ОБЫЧНЫЕ ЛАТЫ 1 УР. (ЛАТЫ НОВОБРАНЦА)", 20, y0, 2, DIM); text(c, "ЛЕГЕНДАРНЫЕ 100 УР. (РОГАТЫЙ РЫЦАРЬ ХАОСА)", 60 + 4 * cw, y0, 2, RED);
     for (const [j, set] of [[0, RC], [1, KN]] as [number, any][]) V4S.forEach((v, i) => {
       const x = 20 + j * (4 * cw + 40) + i * cw, y = y0 + 26; const g = ground(40, 44, 20 + i); blit(c, g, x, y, K); shadow(c, x + 20 * K, y + (FY - 4) * K, 7 * K, 2.4 * K, 80); blit(c, fr(SOL, set, "sol", v, "idle", 0).img, x, y, K, 4, 4, 40, 44);
     });
     const yi = y0 + 26 + 44 * K + 20;
-    list.forEach((s, i) => blit(c, icon(s, RC.items[s], "sol", RC.rarity).img, 20 + i * 56, yi, 1));
-    SLOTS.forEach((s, i) => blit(c, icon(s, KN.items[s], "sol", KN.rarity).img, 60 + 4 * cw + i * 56, yi, 1));
-    text(c, "ИКОНКИ ×1 (КАК В ИГРЕ)", 20, yi + 56, 1, DIM);
+    list.forEach((s, i) => { blit(c, iconCell(icon(s, RC.items[s]).img, RC.rarity), 20 + i * 56, yi, 1); blit(c, iconCell(icon(s, RC.items[s]).img, RC.rarity), 20 + i * 104, yi + 60, 2); });
+    SLOTS.forEach((s, i) => { blit(c, iconCell(icon(s, KN.items[s]).img, KN.rarity), 60 + 4 * cw + i * 56, yi, 1); blit(c, iconCell(icon(s, KN.items[s]).img, KN.rarity), 60 + 4 * cw + i * 104, yi + 60, 2); });
+    text(c, "ИКОНКИ ×1 И ×2 · РЕДКОСТЬ — ФОН И РАМКА ЯЧЕЙКИ", 20, yi + 168, 2, DIM);
   } });
 }
 // ---------- 5. сцена день / ночь, зум 2 и 3 ----------

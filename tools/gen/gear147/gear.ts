@@ -8,7 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { hx, hash, type C } from "../bosses139/mino_lib";
-import { FY, proj, type AnimId, type Build, type GearCtx, type Look, type Mz, type Part, type Pose, type Sk, type V2, type V3, type View } from "../hero147/base_b";
+import { FY, FR, flipCv, proj, renderFrame, type Frame, type AnimId, type Build, type GearCtx, type Look, type Mz, type Part, type Pose, type Sk, type V2, type V3, type View } from "../hero147/base_b";
 
 export const GD = JSON.parse(fs.readFileSync(path.resolve("data/gear147.json"), "utf8"));
 export type Slot = "helm" | "pauldrons" | "armor" | "gloves" | "boots" | "cloak" | "weapon";
@@ -40,6 +40,20 @@ function mkSurf(o: V3, A: V3, U: V3, F: V3, S: Sec[]) {
   return (a: number, h: number, side = 1, out = 0.15): V3 => { const s = at(h); const q = cl(Math.abs(a) / s.a); return sum(o, mul(A, a), mul(U, h), mul(F, s.f + side * s.d * Math.sqrt(1 - q * q) + side * out)); };
 }
 
+/** Направления героя-правши: меч в ПРАВОЙ руке, щит в левой. Камера — сверху-спереди (с юга).
+ * Рука с оружием у основы — +X. Вниз/вверх: mirrorX (правая — слева на экране при виде вниз). Вправо (лицом на восток, правый бок к зрителю):
+ * без зеркала — правая рука ближняя, меч перед телом. Влево (правый бок на север): mirrorX + свет сверху-справа, затем flipX —
+ * правая рука дальняя, меч за телом, а свет в итоге сверху-слева, как во всех направлениях. Порядок слоёв считается по глубине. */
+export type View4 = View | "left";
+export const VIEWS4: View4[] = ["down", "up", "side", "left"];
+export const viewLook = (l: Look, v: View4): Look => ({ ...l, mirrorX: v !== "side", lightFlip: v === "left" });
+export const baseView = (v: View4): View => (v === "left" ? "side" : v);
+export function renderView(l: Look, v: View4, a: AnimId, i: number): Frame {
+  const f = renderFrame(viewLook(l, v), baseView(v), a, i);
+  if (v !== "left") return f;
+  return { ...f, img: flipCv(f.img), emis: f.emis.map(([x, y, c]) => [FR - 1 - x, y, c] as [number, number, C]) };
+}
+
 /** Сборка: look + сет (+ герб) → хуки основы (части снаряжения и поправка позы под оружие). */
 export function dress(base: Look, set: SetDef | null, crest: CrestId = "sol", only?: Slot[]): Look {
   if (!set) return base;
@@ -51,6 +65,11 @@ export function dress(base: Look, set: SetDef | null, crest: CrestId = "sol", on
     gear: (ctx) => {
       const tag = (slot: string) => (p: Part) => ctx.parts.push({ ...p, slot: p.slot ?? slot });
       const mk = (slot: string): GearCtx => ({ ...ctx, push: tag(slot) });
+      // кисть далеко за корпусом от зрителя (хват перед грудью при виде со спины, замах за голову при виде спереди) — вся рука за телом
+      if (ctx.v !== "side") for (const sd of ["L", "R"] as const) {
+        const Hd = sd === "L" ? ctx.sk.hdL : ctx.sk.hdR;
+        if (ctx.arm[sd].L0 >= 5 && ctx.D(Hd) < -1.5) { for (const p of ctx.parts) if (p.g === "arm" + sd) p.layer -= 4; ctx.arm[sd] = { ...ctx.arm[sd], L0: ctx.arm[sd].L0 - 4 }; }
+      }
       if (it("helm")) { helm(mk("helm"), it("helm")); for (let k = ctx.parts.length - 1; k >= 0; k--) if (ctx.parts[k].slot === "hair") ctx.parts.splice(k, 1); }
       if (it("armor")) armor(mk("armor"), it("armor"), crest);
       if (it("pauldrons")) pauldrons(mk("pauldrons"), it("pauldrons"));
@@ -66,12 +85,15 @@ export const DROP_U = 0.22;
 /** Двуручник: в покое, ходьбе и беге держится перед собой клинком вверх (левая рука на рукояти у пояса). */
 function carryGreat(P: Pose, k: { anim: AnimId; u: number; arm: number; view: string; sx: number }) {
   if (k.anim === "atk2h" && k.view !== "side") return slashGreat(P, k);
+  if (k.anim === "atk2h") return sideGreat(P, k);
+  // гибель: лежащее тело с латами, рогами и плащом выше нижней кромки кадра
+  if (k.anim === "death" && P.G) P.G = { ...P.G, shift: [P.G.shift[0], P.G.shift[1] - 3.2 * (P.G.ang / (Math.PI / 2)), P.G.shift[2]] };
   if (k.anim === "hurt" || (k.anim === "death" && k.u < DROP_U)) {
     // урон: меч остаётся в руке, кисть и клинок отдёргиваются вместе с телом; гибель: держит до DROP_U, затем роняет
     const f = Math.sin(Math.PI * cl(k.u / (k.anim === "hurt" ? 0.6 : DROP_U * 1.6)));
     P.weapon = { kind: "great", dir: nrm(k.view === "side" ? [0.2, -0.72, 0.66 - 0.6 * f] : [0.44 + 0.2 * f, -0.86, 0.28 - 0.55 * f]) };
     P.hL = { rel: [2.0 + 0.6 * f, k.arm * (0.8 - 0.2 * f), 2.6 - 1.6 * f], pole: [0.7, 0.3, -0.6] };
-    P.twoHand = false; return;
+    P.hR = { pole: [-0.7, 0.3, -0.7] }; P.twoHand = true; return;
   }
   if (k.anim !== "idle" && k.anim !== "walk" && k.anim !== "run") return;
   const bob = k.anim === "idle" ? 0.25 * Math.sin(2 * Math.PI * (k.u - 0.1)) : 0.35 * Math.sin(4 * Math.PI * (k.u - 0.3));
@@ -79,7 +101,7 @@ function carryGreat(P: Pose, k: { anim: AnimId; u: number; arm: number; view: st
   const side = k.view === "side";
   P.weapon = { kind: "great", dir: nrm(side ? [0.2, -0.72, 0.66 + 0.03 * bob] : run ? [0.45, -0.78, 0.45] : [0.44, -0.86, 0.28 + 0.03 * bob]) };
   P.hL = { rel: [2.0, k.arm * (run ? 0.62 : 0.8) + bob * 0.3, run ? 2.4 : 2.6], pole: [0.7, 0.3, -0.6] };
-  P.twoHand = false;
+  P.hR = { pole: [-0.7, 0.3, -0.7] }; P.twoHand = true; // двуручник — обеими руками, правая (ведущая) выше
 }
 
 /** Удар двуручным для видов вниз/вверх: диагональ из-за левого плеча вниз-вправо (на экране клинок не уходит «в камеру»). */
@@ -89,8 +111,8 @@ function slashGreat(P: Pose, k: { u: number; arm: number; sx: number }) {
   const keys: [number, K][] = [
     [0, ready],
     [0.35, { h: [1.2, -k.arm * 0.32, 0.7], d: [0.5, -0.78, -0.38], tw: 0.38, ln: -0.1 }],
-    [0.55, { h: [-5.0, k.arm * 0.7, 2.9], d: [-0.78, 0.42, 0.4], tw: -0.38, ln: 0.3 }],
-    [0.72, { h: [-5.3, k.arm * 0.76, 2.4], d: [-0.84, 0.36, 0.3], tw: -0.42, ln: 0.32 }],
+    [0.55, { h: [-4.6, k.arm * 0.55, 3.2], d: [-0.62, 0.12, 0.6], tw: -0.38, ln: 0.3 }],
+    [0.72, { h: [-4.9, k.arm * 0.6, 2.9], d: [-0.66, 0.08, 0.56], tw: -0.42, ln: 0.32 }],
     [1, ready],
   ];
   const eases = [(t: number) => t * t * (3 - 2 * t), (t: number) => t * t * t, (t: number) => t * t * (3 - 2 * t), (t: number) => t * t * (3 - 2 * t)];
@@ -102,6 +124,15 @@ function slashGreat(P: Pose, k: { u: number; arm: number; sx: number }) {
   P.twist = a.tw + (b.tw - a.tw) * e; P.lean = a.ln + (b.ln - a.ln) * e;
 }
 
+/** Удар двуручным вбок: та же поза основы, но клинок в кадре — замах вверх-назад, удар вниз-вперёд с уходом в глубину (не за край кадра, не в землю). */
+function sideGreat(P: Pose, k: { u: number }) {
+  const keys: [number, V3][] = [[0, [0.12, -0.75, 0.62]], [0.35, [0.3, -0.82, -0.48]], [0.55, [0.74, 0.36, 0.46]], [0.72, [0.74, 0.38, 0.44]], [0.86, [0.66, -0.32, 0.4]], [1, [0.12, -0.75, 0.62]]];
+  const eases = [(t: number) => t * t * (3 - 2 * t), (t: number) => t * t * t, (t: number) => t * t * (3 - 2 * t), (t: number) => t * t * (3 - 2 * t), (t: number) => t * t * (3 - 2 * t)];
+  let i = 0; while (i < keys.length - 2 && k.u > keys[i + 1][0]) i++;
+  const [t0, a] = keys[i], [t1, b] = keys[i + 1], e = eases[i](cl((k.u - t0) / (t1 - t0)));
+  if (P.weapon) P.weapon.dir = nrm([a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e]);
+}
+
 // ---- общие помощники рисования ----
 function spike(ctx: GearCtx, z: Mz, base: V3, tip: V3, w: number) {
   const a = ctx.PJ(base), t = ctx.PJ(tip), dx = t[0] - a[0], dy = t[1] - a[1], l = Math.hypot(dx, dy) || 1;
@@ -109,7 +140,8 @@ function spike(ctx: GearCtx, z: Mz, base: V3, tip: V3, w: number) {
   z.pg([[a[0] + n[0], a[1] + n[1]], t, [a[0] - n[0], a[1] - n[1]]]);
 }
 /** блик вдоль детали: отрезок, сдвинутый на экране к свету (вверх-влево) */
-function hiSeg(ctx: GearCtx, z: Mz, a: V3, b: V3, w: number, off: number) { const p = ctx.PJ(a), q = ctx.PJ(b); z.seg([p[0] - off, p[1] - off * 0.4], [q[0] - off, q[1] - off * 0.4], w); }
+const lx = (ctx: GearCtx) => (ctx.l.lightFlip ? -1 : 1);
+function hiSeg(ctx: GearCtx, z: Mz, a: V3, b: V3, w: number, off: number) { const p = ctx.PJ(a), q = ctx.PJ(b), o = off * lx(ctx); z.seg([p[0] - o, p[1] - off * 0.4], [q[0] - o, q[1] - off * 0.4], w); }
 const RIM: C[] = ["#0a0608", "#120a0e", "#1a0e14", "#22121a", "#2a1620"].map(hx);
 function chain(ctx: GearCtx, z: Mz, pts: V3[], w: number) { for (let k = 0; k + 1 < pts.length; k++) z.seg(ctx.PJ(pts[k]), ctx.PJ(pts[k + 1]), w); }
 function ellPts(c: V3, e1: V3, e2: V3, e3: V3, r: [number, number, number], keep: (q: V3) => boolean): V3[] {
@@ -218,6 +250,12 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
     push({ g: "a_plate", ramp: Ac, o: { dome: 1, bias: 1.0 }, layer: 3.763, m: (z) => z.seg(PJ(surf(0, c * 0.9, -1, 0.3)), PJ(surf(0, c * 0.34, -1, 0.3)), 0.8) });
   }
   if (fF > -0.2) push({ g: "a_plate", ramp: it.chestPlate ? Ac : P, o: { dome: 1, bias: 2.2 }, layer: 3.7625, m: (z) => z.seg(PJ(surf(-sw * 0.82, c * 0.9, 1, 0.3)), PJ(surf(-sw * 0.4, c * 0.66, 1, 0.3)), 0.8) });
+  if (it.inlay && fF > 0.3) {
+    // филигрань: завитки по бокам груди и самоцвет на горжете
+    push({ g: "a_fil", ramp: Tr, o: { dome: 1, bias: 0.6 }, layer: 3.7632, m: (z) => { for (const sg of [-1, 1]) z.bz(PJ(add(surf(sg * sw * 0.72, c * 0.86), mul(F, 0.25))), PJ(add(surf(sg * sw * 0.42, c * 1.02), mul(F, 0.25))), PJ(add(surf(sg * sw * 0.3, c * 0.74), mul(F, 0.25))), 0.75, 0.6); } });
+    push({ g: "a_riv", ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: 3.7633, m: (z) => { for (const sg of [-1, 1]) z.dot(PJ(add(surf(sg * sw * 0.8, c * 0.66), mul(F, 0.25))), 0.5); } });
+  }
+  if (it.inlay && fF > 0.25) push({ g: "a_gem", ramp: ramp("eye_glow"), o: { dome: 1, bias: 0.4 }, layer: 3.825, emis: true, m: (z) => z.dot(PJ(add(surf(0, c + 0.2), mul(F, 0.9))), 1.0) });
   if (it.crest && fF > 0.3) crestParts(ctx, add(surf(0, c * 0.4), mul(F, 0.35)), A, U, 1.5, 3.7655, crest);
   // горжет
   const nt = b.neckT;
@@ -227,6 +265,8 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
   if (fF > 0.25) push({ g: "a_buckle", ramp: it.chestPlate ? Tr : ramp("iron"), o: { dome: 1, bias: 0.4 }, layer: 3.766, m: (z) => z.dot(PJ(add(surf(0, -0.7), mul(F, th * 0.5 + 0.3))), 1.0) });
   // набедренная юбка (фолды) на тазе
   const hp = sk.hip, Ap = sk.Ap, Up = sk.Up, Fp = sk.Fp;
+  const Ml = ramp(it.mail ?? "mail");
+  push({ g: "a_mail", ramp: Ml, o: { dome: 2, bias: -0.2, dith: 0.55 }, layer: 3.7545, m: (z) => loft(z, hp, Ap, Up, Fp, [{ h: -3.3, a: b.hipW + th * 0.4 + 0.35, d: dW * 1.0 + th * 0.4 + 0.3, f: 0 }, { h: -1.8, a: b.hipW + th + 0.6, d: dW * 1.05 + th + 0.5, f: 0 }]) });
   push({ g: "a_fauld", ramp: P, o: { dome: 2, bias: -0.1 }, layer: 3.755, m: (z) => loft(z, hp, Ap, Up, Fp, [{ h: -2.3, a: b.hipW + th + 0.85, d: dW * 1.05 + th + 0.7, f: 0 }, { h: b.pelvis, a: b.waist + th + 0.2, d: dW + th + 0.2, f: 0 }]) });
   push({ g: "a_fauld", ramp: P, o: { dome: 1, bias: -1.4 }, layer: 3.7551, m: (z) => { const sf = mkSurf(hp, Ap, Up, Fp, [{ h: -2.3, a: b.hipW + th + 0.85, d: dW * 1.05 + th + 0.7, f: 0 }, { h: b.pelvis, a: b.waist + th + 0.2, d: dW + th + 0.2, f: 0 }]); const sd = facing(Fp) >= 0 ? 1 : -1; chain(ctx, z, [-0.85, -0.4, 0, 0.4, 0.85].map((a) => sf(a * (b.hipW + 0.4), -0.9, sd, 0.2)), 0.8); } });
   // ноги: набедренники и тассеты
@@ -245,7 +285,8 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
   // руки: наплечная часть рукава и налокотник
   for (const s of ["L", "R"] as const) {
     const Sh = s === "L" ? sk.shL : sk.shR, E = s === "L" ? sk.elL : sk.elR, ar = ctx.arm[s];
-    push({ g: "a_arm" + s, ramp: P, o: { dome: 2, bias: ar.far + 0.1 }, layer: ar.L0 + 0.005, m: (z) => z.seg(PJ(Sh), PJ(lerp(Sh, E, 0.95)), b.armT + 0.75, b.armT + 0.5) });
+    push({ g: "a_mailA" + s, ramp: Ml, o: { dome: 2, bias: ar.far - 0.1, dith: 0.55 }, layer: ar.L0 + 0.004, m: (z) => { z.seg(PJ(Sh), PJ(lerp(Sh, E, 0.4)), b.armT + 0.45, b.armT + 0.35); z.dot(PJ(E), b.foreT * 0.5 + 0.55); } });
+    push({ g: "a_arm" + s, ramp: P, o: { dome: 2, amp: 1.9, bias: ar.far + 0.15 }, layer: ar.L0 + 0.005, m: (z) => z.seg(PJ(lerp(Sh, E, 0.32)), PJ(lerp(Sh, E, 0.86)), b.armT + 0.75, b.armT + 0.5) });
     push({ g: "a_elb" + s, ramp: it.chestPlate ? Ac : P, o: { dome: 2, bias: ar.far + 0.2 }, layer: ar.L0 + 0.027, m: (z) => z.dot(PJ(E), b.foreT * 0.5 + 0.75) });
   }
   // табард спереди и сзади (рваная ткань)
@@ -269,7 +310,8 @@ function pauldrons(ctx: GearCtx, it: any) {
   for (const s of ["L", "R"] as const) {
     const sg = s === "L" ? 1 : -1, Sh = s === "L" ? sk.shL : sk.shR, E = s === "L" ? sk.elL : sk.elR, ar = ctx.arm[s];
     // вбок ближний наплечник ближе к камере, чем голова, — поверх неё
-    const L = ctx.v === "side" && ar.L0 >= 5 && ar.far === 0 ? 6.4 : ar.L0 + 0.22;
+    // наплечник — на плече, а не на кисти: вниз/вверх всегда поверх корпуса; вбок ближний поверх головы, дальний за телом
+    const L = ctx.v === "side" ? (ar.L0 >= 5 && ar.far === 0 ? 6.4 : 1.22) : 5.22;
     const ad = nrm(sub(E, Sh)), out = nrm(add(mul(A, sg), mul(U, 0.35)));
     const C0 = sum(Sh, mul(A, sg * 1.05 * sz), mul(U, (ctx.v === "side" ? 0.35 : 0.75) * sz));
     const e2 = nrm(add(mul(ad, -1), mul(U, 0.3))); // «вверх» купола — против руки
@@ -283,14 +325,20 @@ function pauldrons(ctx: GearCtx, it: any) {
     push({ g: "p_rim" + s, ramp: RIM, o: { dome: 1, bias: 0.3 }, layer: L + 0.0035, m: (z) => z.hull(ellPts(C0, mul(A, sg), e2, F, [2.55 * sz + 0.55, 2.2 * sz + 0.5, 2.5 * sz + 0.55], (q) => q[1] > -0.75).map(PJ)) });
     // купол
     push({ g: "p_dome" + s, ramp: Ac, o: { dome: 3, amp: 1.9, bias: ar.far + 0.15 }, layer: L + 0.004, m: (z) => z.hull(ellPts(C0, mul(A, sg), e2, F, [2.55 * sz, 2.2 * sz, 2.5 * sz], (q) => q[1] > -0.75).map(PJ)) });
-    push({ g: "p_dome" + s, ramp: Ac, o: { dome: 1, bias: 2.4 }, layer: L + 0.0041, m: (z) => { const c2 = PJ(add(C0, mul(e2, 1.1 * sz))); z.seg([c2[0] - 1.6 * sz, c2[1] - 0.2], [c2[0] - 0.4 * sz, c2[1] - 0.9 * sz], 0.75); } });
+    push({ g: "p_dome" + s, ramp: Ac, o: { dome: 1, bias: 2.4 }, layer: L + 0.0041, m: (z) => { const c2 = PJ(add(C0, mul(e2, 1.1 * sz))), lf = lx(ctx); z.seg([c2[0] - 1.6 * sz * lf, c2[1] - 0.2], [c2[0] - 0.4 * sz * lf, c2[1] - 0.9 * sz], 0.75); } });
     // кромка (инкрустация) по низу купола
     push({ g: "p_trim" + s, ramp: Tr, o: { dome: 1, bias: ar.far + 0.3 }, layer: L + 0.005, m: (z) => { const rim: V3[] = []; for (let j = 0; j <= 8; j++) { const ph = Math.PI * (0.5 + 0.45 * (j / 8)); rim.push(sum(C0, mul(A, sg * -Math.cos(ph) * 2.5 * sz), mul(e2, -1.2 * sz), mul(F, Math.sin(ph) * 2.3 * sz * (ctx.v === "up" ? -1 : 1)))); } chain(ctx, z, rim, 0.8); } });
+    if (it.spikes) {
+      push({ g: "p_riv" + s, ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: L + 0.0052, m: (z) => { for (const j of [0.58, 0.75, 0.92]) { const ph = Math.PI * j; z.dot(PJ(sum(C0, mul(A, sg * -Math.cos(ph) * 2.5 * sz), mul(e2, -1.2 * sz), mul(F, Math.sin(ph) * 2.3 * sz * (ctx.v === "up" ? -1 : 1)))), 0.5); } } });
+      push({ g: "p_fil" + s, ramp: Tr, o: { dome: 1, bias: 0.5 }, layer: L + 0.0051, m: (z) => { const a = PJ(add(C0, mul(e2, 1.7 * sz))), b2 = PJ(sum(C0, mul(A, sg * 1.6 * sz), mul(e2, 0.4 * sz))); z.bz(a, [(a[0] + b2[0]) / 2 + sg * 0.6, (a[1] + b2[1]) / 2 - 0.4], b2, 0.6, 0.6); } });
+      push({ g: "p_gem" + s, ramp: ramp("eye_glow"), o: { dome: 1, bias: 0.4 }, layer: L + 0.0053, emis: true, m: (z) => z.dot(PJ(sum(C0, mul(e2, 0.9 * sz), mul(A, sg * 0.9 * sz), mul(F, ctx.v === "up" ? -1.2 : 1.2))), 0.95) });
+    }
     // шипы
     const sp: [V3, number][] = [[nrm(sum(mul(U, 1), mul(A, sg * 0.55))), 3.9], [nrm(sum(mul(U, 0.3), mul(A, sg * 1.0), mul(F, 0.15))), 3.0], [nrm(sum(mul(U, 0.85), mul(A, sg * 0.25), mul(F, -0.7))), 2.6]];
     sp.slice(0, it.spikes ?? 0).forEach(([d, l], k) => {
       const base = add(C0, mul(d, 1.6 * sz)), tip = add(C0, mul(d, (1.6 + l) * sz));
       push({ g: "p_spike" + s + k, ramp: P, o: { dome: 1, amp: 2.0, bias: ar.far + 0.7 }, layer: L + 0.003 - 0.0005 * k, m: (z) => spike(ctx, z, base, tip, 1.25 * sz) });
+      push({ g: "p_spike" + s + k, ramp: P, o: { dome: 1, bias: ar.far + 2.4 }, layer: L + 0.0031 - 0.0005 * k, m: (z) => { const a = PJ(base), t = PJ(tip), lf = lx(ctx); z.seg([a[0] - 0.45 * lf, a[1] - 0.2], [t[0] - 0.15 * lf + (a[0] - t[0]) * 0.25, t[1] + (a[1] - t[1]) * 0.25], 0.6); } });
     });
   }
 }
@@ -322,6 +370,8 @@ function boots(ctx: GearCtx, it: any) {
     const toe = add(Ft[1], mul(nrm(sub(Ft[1], Ft[0])), 0.5));
     push({ g: "b_ft" + s, ramp: P, o: { dome: 2, amp: 1.9, bias: lg.far + 0.1 }, layer: L + 0.0006, m: (z) => z.seg(PJ(Ft[0]), PJ(toe), b.shinT * 1.1 + 0.6, b.shinT * 0.9 + 0.15) });
     if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_st" + s, ramp: Ac, o: { dome: 1, bias: lg.far + 0.3 }, layer: L + 0.00055, m: (z) => z.seg(PJ(add(lerp(K, An, 0.22), mul(fwd, b.shinT * 0.5 + 0.35))), PJ(add(lerp(K, An, 0.85), mul(fwd, b.shinT * 0.45 + 0.35))), 1.0) });
+    if (it.stripe) push({ g: "b_strap" + s, ramp: ramp("grip"), o: { dome: 1, bias: 0.4 }, layer: L + 0.00056, m: (z) => { const m = lerp(K, An, 0.6), q = mul(sk.Ap, b.shinT * 0.62 + 0.4); z.seg(PJ(sub(m, q)), PJ(add(m, q)), 1.3); } });
+    if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_buck" + s, ramp: ramp("gold"), o: { dome: 1, bias: 1.0 }, layer: L + 0.00057, m: (z) => z.dot(PJ(add(lerp(K, An, 0.6), mul(fwd, b.shinT * 0.5 + 0.4))), 0.95) });
     push({ g: "b_kn" + s, ramp: it.kneeSpike ? Ac : P, o: { dome: 2, amp: 1.8, bias: lg.far + 0.2 }, layer: L + 0.00065, m: (z) => z.dot(PJ(add(K, mul(fwd, 0.55))), b.thighT * 0.5 + 0.35) });
     if (it.kneeSpike) push({ g: "b_ks" + s, ramp: P, o: { dome: 1, bias: lg.far + 0.5 }, layer: L + 0.00066, m: (z) => spike(ctx, z, add(K, mul(fwd, 1.2)), sum(K, mul(fwd, 3.0), [0, -1.1, 0]), 0.8) });
   }
@@ -362,7 +412,7 @@ function cape(ctx: GearCtx, it: any, crest: CrestId) {
     top.push(add(M.o, mul(M.A, t * sx * 0.82)));
     const fl = flutter * 0.6 * Math.sin(2 * Math.PI * (u * 2 + k * 0.29)), bill = 0.5 + 0.5 * t; // правый край (герой) парусит сильнее
     mid.push(sum(sk.waist, mul(sk.Ap, t * sx * 1.2), mul(sk.Fp, -(dW + 2.1 + sw * (0.3 + 0.25 * bill)))));
-    bot.push([sk.hip[0] + t * sx * 1.6 + fl * 0.4 + sw * 0.25 * bill, FY - 1.6 - tat[k] + Math.abs(fl) * 0.4, sk.hip[2] - (dW + 3.6 + sw * (0.7 + 0.6 * bill) + fl)]);
+    bot.push([sk.hip[0] + t * sx * 1.6 + fl * 0.4 + sw * 0.25 * bill, FY - 1.6 - tat[k] + Math.abs(fl) * 0.4 - (anim === "death" ? 4.8 * cl((u - 0.3) / 0.4) : 0), sk.hip[2] - (dW + 3.6 + sw * (0.7 + 0.6 * bill) + fl)]);
   }
   const ramp0 = v === "down" ? lin : outer, L = M.layer;
   for (let k = 0; k + 1 < N; k++) {
@@ -375,9 +425,11 @@ function cape(ctx: GearCtx, it: any, crest: CrestId) {
   if (v !== "down") {
     // воротник и кайма
     push({ g: "cape_col", ramp: outer, o: { dome: 2, bias: -0.2 }, layer: L + 0.0003, m: (z) => chain(ctx, z, top, 1.5) });
+    // кайма по краям
+    push({ g: "cape_hem", ramp: ramp(it.hem ?? it.outer), o: { dome: 1, bias: 0.9 }, layer: L + 0.00035, m: (z) => { chain(ctx, z, [top[0], mid[0], lerp(mid[0], bot[0], 0.75)], 0.7); chain(ctx, z, [top[N - 1], mid[N - 1], lerp(mid[N - 1], bot[N - 1], 0.75)], 0.7); } });
     // застёжки у плеч
     if (Tr) push({ g: "cape_trim", ramp: Tr, o: { dome: 1, bias: 0.4 }, layer: L + 0.0004, m: (z) => { z.dot(PJ(top[1]), 0.9); z.dot(PJ(top[N - 2]), 0.9); } });
-    if (it.crest && v === "up") crestParts(ctx, add(lerp(top[4], mid[4], 0.62), mul(sk.F, -0.2)), sk.A, sk.U, 2.7, L + 0.0005, crest);
+    if (it.crest && v === "up") crestParts(ctx, sum(lerp(top[4], mid[4], 0.92), mul(sk.F, -0.2)), sk.A, sk.U, 2.5, L + 0.0005, crest);
   }
 }
 
@@ -388,24 +440,26 @@ export function weaponPlace(k: { sk: Sk; b: Build; v: View; anim: AnimId; u: num
   if (P.weapon) return { mode: "hand", Hd: sk.hdL, d: nrm(P.weapon.dir), world: false };
   if (anim === "death") {
     const t = cl((u - DROP_U) / 0.32), e = t * t * (3 - 2 * t), side = v === "side";
-    const h0: V3 = [4.5, FY - 13, 3.2], h1: V3 = side ? [3, FY - 0.8, 9] : [-3, FY - 0.8, 4.5];
-    const d0 = nrm([0.44, -0.86, 0.28]), d1 = nrm(side ? [0.1, 0, -1] : [1, 0, 0.18]);
+    const h0: V3 = [4.5, FY - 13, 3.2], h1: V3 = side ? [3, FY - 2.6, 9] : [-3, FY - 2.6, 1.2];
+    const d0 = nrm([0.44, -0.86, 0.28]), d1 = nrm(side ? [0.1, 0, -1] : [1, 0, -0.12]);
     const Hd: V3 = [h0[0] + (h1[0] - h0[0]) * e, h0[1] + (h1[1] - h0[1]) * e - 3.5 * Math.sin(Math.PI * t) * (1 - t), h0[2] + (h1[2] - h0[2]) * e];
     return { mode: "drop", Hd, d: nrm(lerp(d0, d1, e)), world: true };
   }
   const M = backMount(k), sx = k.b.shW - k.b.armT * 0.3;
-  return { mode: "back", Hd: sum(M.o, mul(M.U, 6.0), mul(M.A, -sx * 1.3), mul(M.F, -0.7)), d: nrm(add(mul(M.A, 0.62), mul(M.U, -1))), world: false };
+  return { mode: "back", Hd: sum(M.o, mul(M.U, 5.6), mul(M.A, -sx * 1.25), mul(M.F, -0.8)), d: nrm(add(mul(M.A, 1.25), mul(M.U, -1))), world: false };
 }
 function weapon(ctx: GearCtx, it: any) {
   const { D, v } = ctx, w = weaponPlace(ctx);
   if (w.mode === "hand") {
-    const layerAt = (p: V3) => (D(p) < -1.2 ? 1.2 : 5.2);
+    // вбок рукоять у груди — «за телом», если рука с оружием не ближе к зрителю, чем середина корпуса
+    const th = v === "side" ? 0.6 : -1.2, layerAt = (p: V3) => (D(p) < th ? 1.2 : 5.2);
     return drawWeapon(ctx, it, w.Hd, w.d, layerAt(add(w.Hd, mul(w.d, 0.4))), layerAt(add(w.Hd, mul(w.d, 6))), ctx.PJ);
   }
   if (w.mode === "drop") {
-    const Dr = (p: V3) => (v === "down" ? p[2] : v === "up" ? -p[2] : p[0]);
+    const Dr = (p: V3) => (v === "down" ? p[2] : v === "up" ? -p[2] : ctx.l.mirrorX ? -p[0] : p[0]);
     const L = Dr(add(w.Hd, mul(w.d, 6))) < -1.2 ? 1.2 : 5.2;
-    return drawWeapon(ctx, it, w.Hd, w.d, L, L, (p: V3) => proj(p, v));
+    const mx = (p: V3): V3 => (ctx.l.mirrorX ? [-p[0], p[1], p[2]] : p);
+    return drawWeapon(ctx, it, w.Hd, w.d, L, L, (p: V3) => proj(mx(p), v));
   }
   const L = backMount(ctx).layer + 0.01;
   return drawWeapon(ctx, it, w.Hd, w.d, L, L, ctx.PJ);

@@ -19,7 +19,7 @@ export type V2 = [number, number];
 export type Fac = "sol" | "umb";
 export type Sex = "m" | "f";
 export type AnimId = "idle" | "walk" | "run" | "atk1h" | "atk2h" | "bow" | "cast" | "block" | "hurt" | "death" | "ride" | "gather";
-export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
+export interface Look { fac: Fac; sex: Sex; hair?: string; hairColor?: string; props?: boolean; /** слои снаряжения (tools/gen/gear147) */ gear?: (ctx: GearCtx) => void; /** поправка позы под оружие снаряжения (хват двуручника в покое и т. п.) */ /** зеркало по X до проекции: для вида «влево» (рендер side + mirrorX, затем flipX) — рука с оружием остаётся той же и уходит на дальнюю сторону, порядок слоёв пересчитывается по глубине */ mirrorX?: boolean; /** свет сверху-СПРАВА при рендере — для кадров, которые затем отражаются flipX (итог: свет сверху-слева) */ lightFlip?: boolean; posePatch?: (P: Pose, k: { anim: AnimId; u: number; view: View; arm: number; sx: number; b: Build; hipY: number; hipJ: number }) => void }
 
 export const DATA = JSON.parse(fs.readFileSync(path.resolve("data/hero-base-b.json"), "utf8"));
 export const ANIMS: AnimId[] = Object.keys(DATA.anims) as AnimId[];
@@ -327,6 +327,7 @@ export function solve(l: Look, P: Pose): Sk {
     T = (p: V3) => add(add(piv, rot(sub(p, piv), g.axis, g.ang)), g.shift);
     Tv = (v: V3) => rot(v, g.axis, g.ang);
   }
+  if (l.mirrorX) { const T0 = T, Tv0 = Tv; T = (p: V3) => { const q = T0(p); return [-q[0], q[1], q[2]]; }; Tv = (v: V3) => { const q = Tv0(v); return [-q[0], q[1], q[2]]; }; }
   return {
     b, T, Tv, hip, hipL, hipR, kneeL: lL.j, kneeR: lR.j, ankL: lL.e, ankR: lR.e, footL: foot(lL.e, P.pitchL), footR: foot(lR.e, P.pitchR),
     waist, chest, shL, shR, elL: aL.j, elR: aR.j, hdL: aL.e, hdR: aR.e, neck, head, A, U, F, Ap: pf.A, Up: pf.U, Fp: pf.F, cRise: P.chestRise, hipJ,
@@ -656,11 +657,11 @@ export function renderLayers(l: Look, v: View, anim: AnimId, i: number, filters:
     r = { q: [], c: [] };
     if (p.m) {
       const m = new Mz(); p.m(m);
-      const cv = new Cv(W, W); paint(cv, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o });
+      const cv = new Cv(W, W); paint(cv, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
       for (let q = 0; q < m.d.length; q++) if (m.d[q]) { r.q.push(q); r.c.push(cv.get(q % W, Math.floor(q / W))); }
     } else if (p.loc) {
       const m = new Mz(LW * Z, LW * Z, LCX, LCY); p.loc(m);
-      const lc = new Cv(LW * Z, LW * Z); paint(lc, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o });
+      const lc = new Cv(LW * Z, LW * Z); paint(lc, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o, ...(l.lightFlip ? { light: [0.6, -0.8] as [number, number] } : {}) });
       if (Math.abs(theta) < 0.02) {
         for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (m.d[y * m.w + x]) { const gx = x + ox * Z, gy = y + oy * Z; if (gx >= 0 && gy >= 0 && gx < W && gy < W) { r.q.push(gy * W + gx); r.c.push(lc.get(x, y)); } }
       } else {
