@@ -141,11 +141,6 @@ if (process.argv[1]?.includes("wm-icons")) {
   buildCity("sol").save(path.join(W, "city_sol.png")); buildCity("umb").save(path.join(W, "city_umb.png"));
   buildSpecial("fort", 0, FSOL).save(path.join(W, "fort_sol.png")); buildSpecial("fort", 0, FUMB).save(path.join(W, "fort_umb.png"));
   buildSpecial("unknown", 2).save(path.join(W, "unknown.png"));
-  for (let i = 0; i < 3; i++) buildSpecial("heart2", i).save(path.resolve("tools/out/boss-dots/heart", `heart_${i}.png`));
-  const sp = path.resolve("tools/out/boss-dots/forts");
-  for (let i = 0; i < 3; i++) {
-    buildSpecial("fort", i, FSOL).save(path.join(sp, `fort_sol_${i}.png`)); buildSpecial("fort", i, FUMB).save(path.join(sp, `fort_umb_${i}.png`));
-    for (const k of ["heart", "ashen", "unknown"]) buildSpecial(k, i).save(path.join(sp, `${k}_${i}.png`));
-  }
+  buildSpecial("heart2", 2).save(path.join(W, "heart.png")); // «Сердце Севера» — кристаллы (выбор владельца)
   console.log("ok");
 }

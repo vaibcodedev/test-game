@@ -119,7 +119,7 @@ async function main() {
     const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: chromeArgs, defaultViewport: { width: 1366, height: 768 }, protocolTimeout: 1800000 });
     try {
       { const w = await newPage(browser, 1366, 768); await w.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" }); await sleep(12000); await w.close(); }
-      for (const [w, h, sc] of [[1366, 768, 100]] as const) await pass(browser, w, h, sc);
+      for (const [w, h, sc] of [[1366, 768, 100], [1920, 1080, 100], [1366, 768, 125]] as const) await pass(browser, w, h, sc);
       log(`ошибок консоли: ${errors.length}`); for (const e of [...new Set(errors)].slice(0, 8)) log(`  ${e}`);
     } finally { await browser.close(); await vite.close(); await stopServer(); }
   } finally { try { fs.unlinkSync(lock); } catch { /* ok */ } }
