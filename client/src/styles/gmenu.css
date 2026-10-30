@@ -117,6 +117,7 @@
 .wm-legend { margin-left: auto; font-size: var(--fs-sm); color: var(--dim); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-1h); }
 .wm-legend i { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--well); margin-left: var(--sp-2); }
 .wm-legend i.road { height: 3px; background: #f0d796; border: 0; width: 14px; }
+.wm-legend img.wm-skull { width: 9px; height: 9px; margin-left: var(--sp-2); image-rendering: pixelated; }
 .wm-legend i.river { height: 4px; background: #468cdc; border: 0; width: 14px; }
 .wm-view { position: relative; width: 100%; height: clamp(260px, calc(var(--vh, 100vh) - 220px), 800px); background: var(--well); border-radius: var(--r-1); overflow: hidden; }
 .wm-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: var(--cur-grab); touch-action: none; }
