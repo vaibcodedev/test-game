@@ -11,6 +11,7 @@ import { CharSelect } from "./ui/charselect";
 import { Hud } from "./ui/hud";
 import { loading } from "./ui/loading";
 import { T } from "../../shared/texts";
+import { versionBadge } from "./version";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -144,6 +145,7 @@ function enterWorld() {
   // экран загрузки (ui/loading.ts) закрывает HUD до готовности мира; уходит сам из GameScene
   loading.show(lastChar ? T("ui.main.741", { lastchar: lastChar }) : "", T("ui.loading.652"));
   $("ui").hidden = false;
+  versionBadge(false);
   if (!hud) hud = new Hud($("ui"));
   if (game && !broken) {
     if (booting(game)) return;
@@ -189,6 +191,7 @@ function hideWorld() {
   try { game?.scene.stop("game"); } catch { broken = true; }
   try { hud?.reset(); } catch {}
   $("ui").hidden = true;
+  versionBadge(true);
   reconnectBox.hide();
 }
 
@@ -389,6 +392,7 @@ window.addEventListener("unhandledrejection", (e) => crash("unhandledrejection",
 (window as any).__crash = (msg = T("ui.main.753")) => crash("test", new Error(msg));
 
 $("ui").hidden = true;
+versionBadge(true);
 (window as any).__net = net;
 if (session.token) void toCharSelect();
 else showLogin();

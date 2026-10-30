@@ -5,6 +5,7 @@ import { CreditsUI } from "./credits";
 import { T } from "../../../shared/texts";
 import { fillWarRules } from "./bannerWar";
 import { tabs } from "./kit";
+import { GAME_VERSION } from "../version";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 /** Подпись клавиши действия. */
@@ -135,6 +136,7 @@ export class GameMenu {
       if (fn) b.onclick = () => { this.close(); fn(); };
       p.append(b);
     }
+    const ver = document.createElement("p"); ver.className = "gm-ver"; ver.textContent = GAME_VERSION; p.append(ver);
     this.back.replaceChildren(p);
     this.back.hidden = false;
     p.querySelector<HTMLButtonElement>(".gm-item")?.focus();

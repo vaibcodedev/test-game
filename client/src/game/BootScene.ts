@@ -76,6 +76,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // повторный ключ (анимации боссов заводит и свой каталог) — пропускаем молча, а не «key already exists» в консоль
+    const mk = this.anims.create.bind(this.anims);
+    this.anims.create = ((c: Phaser.Types.Animations.Animation) => (c.key && this.anims.exists(c.key) ? false : mk(c))) as typeof this.anims.create;
     attachScorch(this.game);
     attachFloorsV2(this.game);
     attachCitadelV2(this.game);
