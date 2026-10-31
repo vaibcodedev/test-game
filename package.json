@@ -11,6 +11,7 @@
     "assets": "tsx tools/gen-assets.ts && tsx tools/gen/zb-icons-fix.ts",
     "editor": "tsx editor/server/index.ts",
     "predev": "npm run assets",
+    "dev:fast": "concurrently -k -n server,client -c cyan,magenta \"tsx watch --clear-screen=false server/src/index.ts\" \"vite\"",
     "dev": "concurrently -k -n server,client -c cyan,magenta \"tsx watch --clear-screen=false server/src/index.ts\" \"vite\"",
     "build": "npm run assets && vite build",
     "start": "npm run build && tsx server/src/index.ts",
