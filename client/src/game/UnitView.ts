@@ -1,7 +1,7 @@
 /** Отображение одного юнита: спрайт с анимациями, тень, имя, полоска здоровья, эффекты состояния. */
 import { wowHooks } from "./fx/hooks";
 import Phaser from "phaser";
-import { overlay } from "./overlay";
+import { enchantFxMode, overlay } from "./overlay";
 import { BUFF_BLEED, BUFF_CURSE, BUFF_STEALTH, BUFF_BURN, BUFF_ENRAGE, BUFF_HASTE, BUFF_POISON, BUFF_ROOT, BUFF_SLOW, BUFF_STUN, BUFF_WARCRY, Anim, Dir, UnitKind } from "../../../shared/protocol";
 import { net, type UnitState } from "../net";
 import { emptyBox, hitUnit, silhouette, Trail, TRAIL_MS, unionBox, type Box, type Hit } from "./hit";
@@ -30,6 +30,7 @@ import { heroBAnim, heroBAttack, heroBBridge, heroBDeadFrame, heroBNear, heroBSh
 const HB_WALK_SPEED = GAIT_B.walk.speedBase * MOVE_MUL;
 import { tryOnLook } from "./tryOn";
 import { HeroCloth } from "./heroCloth";
+import { HeroEnchant, weaponPlus } from "./heroEnchant";
 import { texDist } from "./objPick";
 import { PLATE_DEPTH, sweptDist } from "./hit";
 
@@ -197,6 +198,7 @@ export class UnitView {
   private hbAtk = 0;
   private hbPush = false;
   private cloth?: HeroCloth;
+  private ench?: HeroEnchant;
   private baseTex = "";
   private baseOy = 0;
   /** Герой Б, ритм и переходы: скорость отрисовки (px/с, сглаженная), прошлая позиция, начало прошлого удара и промежуток между ударами (мс),
@@ -615,6 +617,11 @@ export class UnitView {
       const cam = this.scene.cameras.main, near = this.isSelf || Math.hypot(this.x - cam.midPoint.x, this.y - cam.midPoint.y) < Math.max(cam.width, cam.height) / cam.zoom;
       (this.cloth ??= new HeroCloth(this.scene)).update(this.sprite, this.hb, dt, this.hbPush, near);
     } else this.cloth?.update(this.sprite, null, dt, false, false);
+    // заточка героя Б (вариант D, heroEnchant.ts): контур оружия по кадрам; настройка «Свечение заточки»: всё / только моё / выкл
+    if (this.hb?.ench && !this.dead) {
+      const em = enchantFxMode(), show = em === "all" || (em === "self" && this.isSelf);
+      (this.ench ??= new HeroEnchant(this.scene)).update(this.sprite, this.hb, weaponPlus(u.weapon), show, nightLevel(Date.now()), this.attacking && /-attack2?-/.test(this.sprite.anims.currentAnim?.key ?? ""));
+    } else this.ench?.hide();
     this.hbPush = false;
     // под курсором (вместо тинта спрайта): кольцо под ногами вдвое бледнее выбранного, красное у врага и зелёное у союзника; ник и полоска видны ниже
     const hov = this.hovered && !this.dead && !this.unseen;
@@ -962,6 +969,7 @@ export class UnitView {
 
   destroy() {
     this.dyn?.destroy();
+    this.ench?.destroy();
     if (zbViews.delete(this)) zbFx?.drop(this);
     this.sprite.destroy();
     this.mountSpr?.destroy();

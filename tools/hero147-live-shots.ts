@@ -164,16 +164,35 @@ async function animCheck(browser: Browser) {
   await sleep(5000);
   await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"); window.__hbLog = []; window.__hbDmg = [];
     s.events.on("postupdate", () => { const v = s.units.get(window.__net.id); if (!v) return; const a = v.sprite.anims, k = a.currentAnim ? a.currentAnim.key.split("-").slice(-2).join("-") : "";
-      window.__hbLog.push([Math.round(performance.now()), k, (a.currentFrame ? a.currentFrame.index : 1) - 1, +a.timeScale.toFixed(2), Math.round(v.hbSpeed || 0)]); if (window.__hbLog.length > 20000) window.__hbLog.splice(0, 5000); });
+      window.__hbLog.push([Math.round(performance.now()), k, (a.currentFrame ? a.currentFrame.index : 1) - 1, +a.timeScale.toFixed(2), Math.round(v.hbSpeed || 0), v.u.aseq, v.u.anim, v.attacking ? 1 : 0, v.hb ? 1 : 0]); if (window.__hbLog.length > 20000) window.__hbLog.splice(0, 5000); });
     window.__net.on("fx", (list) => list.forEach((f) => { if (f.t === "dmg") window.__hbDmg.push([Math.round(performance.now()), f.id, f.v]); })); })()`);
+  if (process.env.ENCH_ONLY) { await enchantShots(A); await A.close(); return; }
+  if (process.env.DIAG) {
+    const { PNG } = await import("pngjs");
+    const clip = async (tag: string) => { const buf = await A.screenshot({ clip: { x: 683 - 110, y: 384 - 150, width: 220, height: 220 } }) as Buffer; fs.writeFileSync(path.join(OUT, tag + ".png"), PNG.sync.write(PNG.sync.read(Buffer.from(buf)))); };
+    await A.evaluate('window.heroB.set("chaos-knight")');
+    await A.waitForFunction(() => { const v = (window as any).__game.scene.getScene("game").units.get((window as any).__net.id); return !!(v && v.hb && v.hb.key.includes("chaos")); }, { timeout: 300000, polling: 1000 });
+    await sleep(3000); await clip("diag-p0");
+    await A.evaluate('(() => { const v = window.__game.scene.getScene("game").units.get(window.__net.id); const p = v.u.weapon.split(":"); p[2] = "11"; v.u.weapon = p.join(":"); })()');
+    await sleep(2500); await clip("diag-p11");
+    log("diag: " + await A.evaluate('(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id), e = v.ench; const d = (o) => o ? [o.texture.key.slice(-12), o.frame.name, o.visible, +o.alpha.toFixed(2), o.depth.toFixed(1), o.tintTopLeft.toString(16), o.blendMode] : null; return JSON.stringify({ hero: d(v.sprite), s1: d(e && e.s1), s2: d(e && e.s2), s3: d(e && e.s3), ench: !!v.hb.ench, max: s.renderer.getMaxTextureSize ? s.renderer.getMaxTextureSize() : 0, dyn: v.dyn ? Object.keys(v.dyn).join(",") : "" }); })()'));
+    await A.evaluate('(() => { const v = window.__game.scene.getScene("game").units.get(window.__net.id); v.ench.s1.setVisible(false); if (v.ench.s2) v.ench.s2.setVisible(false); v.ench.update = () => {}; })()');
+    await sleep(800); await clip("diag-p11-hidden");
+    await A.close(); return;
+  }
+  const pos = async () => A.evaluate(`(() => { const v = window.__game.scene.getScene("game").units.get(window.__net.id); return Math.round(v.x) + "," + Math.round(v.y) + " " + v.u.anim; })()`);
+  const summary = async (tag: string, t0: number) => log(`${tag}: ` + await A.evaluate(`(() => { const L = window.__hbLog.filter((q) => q[0] >= ${t0}); const out = []; let prev = ""; for (const q of L) { const s = q[1] + ":" + q[2]; if (s !== prev) { out.push(s + (q[3] !== 1 ? "×" + q[3] : "") + (q[4] ? "@" + q[4] : "")); prev = s; } } return out.slice(0, 70).join(" "); })()`));
+  let t0 = 0;
+  if (!process.env.ATK_ONLY) {
   // переступ: разрешить сразу
   await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); v.hbIdle2At = 0; })()`);
   await sleep(1500);
   await record(A, "anim_idle_step", 16, 90);
-  const summary = async (tag: string, t0: number) => log(`${tag}: ` + await A.evaluate(`(() => { const L = window.__hbLog.filter((q) => q[0] >= ${t0}); const out = []; let prev = ""; for (const q of L) { const s = q[1] + ":" + q[2]; if (s !== prev) { out.push(s + (q[3] !== 1 ? "×" + q[3] : "") + (q[4] ? "@" + q[4] : "")); prev = s; } } return out.slice(0, 70).join(" "); })()`));
-  let t0 = await A.evaluate(`Math.round(performance.now())`) as number;
+  t0 = await A.evaluate(`Math.round(performance.now())`) as number;
   await A.mouse.click(683 + 300, 384 + 10);
+  log(`до бега ${await pos()}`);
   await record(A, "anim_run_stop", 14, 140);
+  log(`после бега ${await pos()}`);
   await summary("бег → остановка", t0);
   await dbg(A, { op: "slow", v: 60, ms: 9000 }); await sleep(300);
   t0 = await A.evaluate(`Math.round(performance.now())`) as number;
@@ -181,6 +200,8 @@ async function animCheck(browser: Browser) {
   await record(A, "anim_run_slowed", 12, 140);
   await summary("бег при замедлении 60 %", t0);
   await sleep(2500);
+  }
+  log(`позиция ${await pos()}`);
   // удар по ближайшему мобу
   const mob = await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), me = s.units.get(window.__net.id); let b = null, bd = 1e9;
     for (const v of s.units.values()) { if (v === me || v.dead || v.npc || v.u.kind === me.u.kind || !s.isEnemy || !s.isEnemy(v)) continue; const d = Math.hypot(v.x - me.x, v.y - me.y); if (d < bd) { bd = d; b = v; } }
@@ -188,6 +209,7 @@ async function animCheck(browser: Browser) {
   if (!mob) { log("моба рядом нет — удар не проверен"); await A.close(); return; }
   log(`моб ${mob.id} в ${mob.d} px`);
   await dbg(A, { op: "tp", x: mob.x - 34, y: mob.y + 2 }); await sleep(2500);
+  for (let k = 0; k < 3; k++) { log("переступ: " + await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); return Math.round(s.time.now) + " → " + Math.round(v.hbIdle2At) + " " + (v.sprite.anims.currentAnim ? v.sprite.anims.currentAnim.key.split("-").slice(-2).join("-") : "") + " моб " + JSON.stringify((() => { const m = s.units.get(${JSON.stringify(mob.id)}); return m ? [Math.round(m.x - v.x), Math.round(m.y - v.y), m.dead, s.isEnemy(m)] : null; })()); })()`)); await sleep(1500); }
   t0 = await A.evaluate(`Math.round(performance.now())`) as number;
   await A.evaluate(`window.__net.send("attack", { id: ${JSON.stringify(mob.id)} })`);
   await record(A, "anim_attack", 14, 60);
@@ -197,7 +219,43 @@ async function animCheck(browser: Browser) {
   await summary("удар → стойка → бег", t0);
   const sync = await A.evaluate(`(() => { const out = []; for (const [t, id, v] of window.__hbDmg) { if (id !== ${JSON.stringify(mob.id)} || t < ${t0}) continue; const L = window.__hbLog.filter((q) => q[0] <= t); const q = L[L.length - 1]; out.push((q ? q[1] + ":" + q[2] + (q[3] !== 1 ? "×" + q[3] : "") : "?") + "(" + v + ")"); } return out.join(" "); })()`);
   log(`кадр анимации в момент урона (контакт atk2h = 8): ${sync || "урона нет"}`);
+  log("хронология удара (мс от начала): " + await A.evaluate(`(() => { const out = []; let prev = ""; for (const q of window.__hbLog) { if (q[0] < ${t0} || q[0] > ${t0} + 6000) continue; const k = q[1] + ":" + q[2]; if (k !== prev && /attack/.test(q[1]) && (q[2] === 0 || q[2] === 8)) out.push((q[0] - ${t0}) + " " + k); prev = k; } for (const [t, id, v] of window.__hbDmg) if (id === ${JSON.stringify(mob.id)} && t >= ${t0} && t < ${t0} + 6000) out.push((t - ${t0}) + " УРОН " + v); return out.sort((a, b) => parseInt(a) - parseInt(b)).join(" | "); })()`));
+  log("перед уроном: " + await A.evaluate(`(() => { const out = []; for (const [t, id] of window.__hbDmg.filter((d) => d[1] === ${JSON.stringify(mob.id)}).slice(0, 2)) { const L = window.__hbLog.filter((q) => q[0] <= t).slice(-14); out.push("УРОН@" + t + ": " + L.map((q) => (t - q[0]) + "мс " + q[1] + ":" + q[2] + " a" + q[5] + " u" + q[6] + " at" + q[7] + " hb" + q[8]).join(", ")); } return out.join(" || "); })()`));
+  if (process.env.ATK_ONLY) { await A.close(); return; }
+  await enchantShots(A);
   await A.close();
+}
+
+/** Заточка героя Б (вариант D): +0/+5/+8/+11 на Рыцаре Хаоса и новобранце, покой и кадр контакта удара, день и ночь, зум 3 → enchant-*.png; удар +8/+11 — полоса кадров (шлейф). */
+async function enchantShots(A: Page) {
+  const { PNG } = await import("pngjs");
+  const clip = async (tag: string) => { const buf = await A.screenshot({ clip: { x: 683 - 110, y: 384 - 150, width: 220, height: 220 } }) as Buffer; fs.writeFileSync(path.join(OUT, `${tag}.png`), PNG.sync.write(PNG.sync.read(Buffer.from(buf)))); };
+  await sleep(1500);
+  for (const set of ["chaos-knight", "recruit-plate"]) {
+    await A.evaluate(`window.heroB.set(${JSON.stringify(set)})`);
+    await A.waitForFunction((st: string) => { const v = (window as any).__game.scene.getScene("game").units.get((window as any).__net.id); return !!(v && v.hb && v.hb.key.includes(st)); }, { timeout: 300000, polling: 1000 }, set);
+    await sleep(2000);
+    // день, затем ночь: фаза меняется один раз (резкий скачок Date.now раскачивает ткань — после него пауза)
+    for (const PH of [0.3, 0.83]) {
+      await A.evaluate(`window.__phase = ${PH}; window.__game.scene.getScene("game").cameras.main.setZoom(3);`); await sleep(4000);
+      for (const plus of [0, 5, 8, 11]) {
+        await A.waitForFunction((st: string) => { const v = (window as any).__game.scene.getScene("game").units.get((window as any).__net.id); return !!(v && v.hb && v.hb.key.includes(st)); }, { timeout: 300000, polling: 1000 }, set);
+        await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); const p = (v.u.weapon || "greatsword:0:0").split(":"); p[2] = "${plus}"; v.u.weapon = p.join(":"); })()`);
+        await sleep(1500);
+        await clip(`enchant-${set}-p${plus}-idle-${PH > 0.5 ? "night" : "day"}`);
+        // кадр контакта удара (atk2h.hit = 8): удар вбок стоит на кадре контакта
+        await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); v.attacking = true; v.sprite.setFlipX(false).play(v.hb.sid + "-attack-2"); v.sprite.anims.pause(v.sprite.anims.currentAnim.frames[8]); })()`); await sleep(900);
+        await clip(`enchant-${set}-p${plus}-hit-${PH > 0.5 ? "night" : "day"}`);
+        await A.evaluate(`(() => { const v = window.__game.scene.getScene("game").units.get(window.__net.id); v.sprite.anims.resume(); })()`); await sleep(1500);
+        if (plus >= 8 && PH > 0.5) {
+          await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); v.attacking = true; v.sprite.play(v.hb.sid + "-attack-2"); v.sprite.anims.timeScale = 0.5; })()`);
+          await record(A, `enchant-${set}-p${plus}-swing-night`, 12, 70);
+          await sleep(1500);
+        }
+      }
+    }
+  }
+  log("заточка: снимки enchant-*.png");
 }
 
 async function run(browser: Browser) {

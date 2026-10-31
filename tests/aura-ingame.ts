@@ -128,6 +128,19 @@ const thaw = () => run("const l = window.__game.loop; if (!l.running) l.wake(tru
 const fxOf = (id: string) => run<string>("const u = net.unit(a); return u ? u.fx : null", id);
 const decode = (s: string) => run<string[]>("return [...a].map((c) => { const code = c.charCodeAt(0) - 32; return afx.fx[code & 127].key + ((code >> 7) ? '×' + (code >> 7) : ''); })", s);
 const keysOnClient = async (id: string) => decode((await fxOf(id)) ?? "");
+/** Дождаться, пока набор эффектов героев дойдёт до клиента (игра идёт): под нагрузкой патч приходит позже фиксированной паузы. */
+async function waitKits(want: [string, string[]][], ms = 8000) {
+  await thaw();
+  const t0 = Date.now();
+  for (;;) {
+    let ok = true;
+    for (const [id, keys] of want) { const got = (await keysOnClient(id)).map((k) => k.split("×")[0]); if (!keys.every((k) => got.includes(k)) || got.length !== keys.length) ok = false; }
+    if (ok || Date.now() - t0 > ms) break;
+    await sleep(150);
+  }
+  await sleep(300);
+  await freeze();
+}
 /** Состояние обозначений юнита в клиенте: что выбрано, роль, плавность, число видимых спрайтов. */
 const stateOf = (id: string) => run<{ k: string; role: number; want: boolean; vis: number; imgs: number; n: number; hdx: number; lift: number }[]>(
   "const v = sc.units.get(a); const au = v && v.afxView; return au ? au.insts.map((i) => ({ k: i.fx.key, role: i.role, want: i.want, vis: +i.vis.toFixed(2), imgs: i.items.flat().filter((m) => m.im.visible).length + (i.beadImg && i.beadImg.visible ? 1 : 0), n: i.n, hdx: i.hdx, lift: i.lift })) : []", id);
@@ -216,7 +229,7 @@ async function scenario() {
   if (want("row")) {
     setKit(A, ["laststand", "venom"]); setKit(B, ["curse", "weak"]);
     W().update(50);
-    await thaw(); await sleep(900); await freeze();
+    await waitKits([[idA, ["laststand", "venom"]], [idB, ["curse", "weak"]]]);
     await look(spot.x + 28, spot.y - 30);
     await adv(900);
     for (const [who, id, a, b, lift] of [["А", idA, "laststand", "venom", -3], ["Б", idB, "weak", "curse", 0]] as const) {
@@ -240,7 +253,7 @@ async function scenario() {
   if (want("gap")) {
     setKit(A, ["laststand"]); setKit(B, []);
     W().update(50);
-    await thaw(); await sleep(900); await freeze();
+    await waitKits([[idA, ["laststand"]], [idB, []]]);
     const gapOf = (id: string) => run<number | null>(`const v = sc.units.get(a), au = v && v.afxView, it = au && au.insts.find((i) => i.fx.key === 'laststand' && i.role === 4), m = it && it.items[0] && it.items[0][0];
       if (!m || !m.im.visible) return null;
       return +((v.label.y - Math.round(v.label.height)) - (m.im.y + m.im.displayHeight)).toFixed(3);`, id);
@@ -260,7 +273,8 @@ async function scenario() {
     await run("sc.cameras.main.setZoom(2)");
     setKit(A, ["block"]); setKit(B, ["laststand", "venom"]);
     put(B, spot.x, spot.y); put(A, spot.x + 22, spot.y + 8);
-    await thaw(); await sleep(900); await freeze();
+    W().update(50);
+    await waitKits([[idA, ["block"]], [idB, ["laststand", "venom"]]]);
     await look(spot.x + 11, spot.y - 30);
     await adv(1500);
     const hit = await run<{ n: number; hits: number; own: number; blockH: number; blockUp: number }>(`const A = sc.units.get(a.A), B = sc.units.get(a.B), au = B.afxView;

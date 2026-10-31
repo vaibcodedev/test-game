@@ -86,7 +86,8 @@ async function main() {
       // drag-and-drop: умение 0 -> пустой слот Shift-блока (bar 1, слот 9), затем обратно
       const sk0 = await page.evaluate(() => JSON.stringify((window as any).__net.self.bars[0][0]));
       await drag(page, '.hb-slot[data-bar="0"][data-i="0"]', '.hb-slot[data-bar="1"][data-i="9"]');
-      await sleep(700);
+      // ответ сервера (self.bars) под нагрузкой приходит позже 700 мс: ждём условие до 6 с
+      await page.waitForFunction((want) => JSON.stringify((window as any).__net.self.bars[1][9]) === want, { timeout: 6000, polling: 100 }, sk0).catch(() => {});
       const moved = await page.evaluate(() => JSON.stringify((window as any).__net.self.bars[1][9]));
       must(moved === sk0, `${fac}: drag-and-drop в блок слева не сработал (${moved} vs ${sk0})`);
       console.log(`  ok   ${fac}: drag-and-drop в левый блок`);

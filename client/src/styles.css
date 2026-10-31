@@ -41,6 +41,6 @@
 @import "./styles/castbar.css";
 
 /* версия игры (client/src/version.ts) */
-#game-ver { position: fixed; right: var(--sp-2, 8px); bottom: var(--sp-2, 8px); z-index: 50; font-size: var(--fs-xs, 11px); color: var(--dim, #8a8090); opacity: .75; pointer-events: none; letter-spacing: .04em; }
+#game-ver { position: fixed; right: var(--sp-2, 8px); bottom: var(--sp-2, 8px); z-index: var(--z-hud); font-size: var(--fs-xs, 11px); color: var(--dim, #8a8090); opacity: .75; pointer-events: none; letter-spacing: .04em; }
 #game-ver[hidden] { display: none; }
 .gm-ver { margin: var(--sp-2, 8px) 0 0; text-align: center; font-size: var(--fs-xs, 11px); color: var(--dim, #8a8090); }

@@ -30,7 +30,7 @@ const DETAIL: Record<Slot, [string, RegExp, RegExp][]> = {
   ],
   pauldrons: [
     ["trim", /^trim$/, /^p_trim/], ["rivets", /^(rivet|riv|lameR\d)$/, /^p_riv/], ["filigree", /^fil$/, /^p_fil/], ["gem", /^gemS?$/, /^p_gem/],
-    ["cracks", /^crack$/, /^p_crack/], ["spikes", /^spH?$/, /^p_spike/], ["strap", /^(strap|buck)$/, /^p_(strap|buck)/], ["haute", /^haute$/, /^p_haute/], ["wing", /^pwingH?$/, /^p_wing/],
+    ["cracks", /^crack$/, /^p_crack/], ["spikes", /^spH?$/, /^p_spike/], ["strap", /^(strap|buck)$/, /^p_(strap|buck)/], ["haute", /^hauteH?$/, /^p_haute/], ["wing", /^pwingH?$/, /^p_wing/],
   ],
   armor: [
     ["breastplate", /^plate[HL]?$/, /^(a|c)_plate/], ["inlay", /^inlay$/, /^a_inlay$/], ["filigree", /^fil$/, /^a_fil$/], ["rivets", /^riv$/, /^(a_riv|c_riv|c_sriv)$/],
@@ -55,7 +55,7 @@ const DETAIL: Record<Slot, [string, RegExp, RegExp][]> = {
     ["cracks", /^crack$/, /^w_crack$/], ["lugs", /^lugs$/, /^w_lugs$/], ["beak", /^beak$/, /^w_beak$/], ["spike", /^spikeT$/, /^w_spike$/],
   ],
 };
-const featOf = (slot: Slot, g: string, ft: string | undefined, side: 0 | 1): string | undefined => { if (ft) return ft; for (const d of DETAIL[slot]) if ((d[1 + side] as RegExp).test(g)) return d[0]; return undefined; };
+export const featOf = (slot: Slot, g: string, ft: string | undefined, side: 0 | 1): string | undefined => { if (ft) return ft; for (const d of DETAIL[slot]) if ((d[1 + side] as RegExp).test(g)) return d[0]; return undefined; };
 
 const MATKEY = new Map<string, string>();
 for (const [k, v] of Object.entries(GD.materials) as [string, string[]][]) if (!MATKEY.has(v.join().toLowerCase())) MATKEY.set(v.join().toLowerCase(), k);
@@ -89,7 +89,7 @@ export function match(x: Item): Match {
     const full = imgs[0].img;
     fl.forEach((f, j) => { const wo = imgs[j + 1].img; let n = 0; for (let y = 0; y < full.h; y++) for (let xx = 0; xx < full.w; xx++) if (full.has(xx, y) && (!wo.has(xx, y) || full.get(xx, y).join() !== wo.get(xx, y).join())) n++; heroVis[f] = Math.max(heroVis[f] ?? 0, n); });
     // лицо в открытом шлеме: видимые пиксели головы основы
-    if (x.slot === "helm" && v === "down") { const [all, noHead] = renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [() => true, (p) => p.g !== "head"]); let n = 0; for (let y = 0; y < all.img.h; y++) for (let xx = 0; xx < all.img.w; xx++) if (all.img.has(xx, y) && (!noHead.img.has(xx, y) || all.img.get(xx, y).join() !== noHead.img.get(xx, y).join())) n++; if (n >= 3) { heroF.add("face"); heroVis.face = n; } }
+    if (x.slot === "helm" && v === "down") { const [all, noHead] = renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [() => true, (p) => p.g !== "head"]); let n = 0; for (let y = 0; y < all.img.h; y++) for (let xx = 0; xx < all.img.w; xx++) if (all.img.has(xx, y) && (!noHead.img.has(xx, y) || all.img.get(xx, y).join() !== noHead.img.get(xx, y).join())) n++; if (n >= 2) { heroF.add("face"); heroVis.face = n; } }
   }
   const fails: string[] = [];
   // шлем на иконке — пустой: тона кожи, глаз и бровей нет (icons.md §3); светящиеся глаза Рыцаря Хаоса — его деталь, не кожа
@@ -159,7 +159,7 @@ export function runMatch(filter?: string) {
   text(A, "ВСЕ ВЕЩИ · ИКОНКА ×2 И ГЕРОЙ ×2 · ПЕРВЫЕ ДВЕ — ЭТАЛОН ДЕТАЛИЗАЦИИ (РОГАТЫЙ ШЛЕМ ХАОСА, КОЖАНАЯ КИРАСА ХАОСА)", 20, 16, 2, GOLD);
   ord.forEach((r, n) => {
     const x0 = 10 + (n % AC) * aw, y0 = 50 + Math.floor(n / AC) * ah;
-    text(A, (n < 2 ? "ЭТАЛОН · " : "") + r.item.name.toUpperCase().slice(0, 30), x0, y0, 1, n < 2 ? GOLD : DIM);
+    const ref = refs.includes(r.item.id); text(A, (ref ? "ЭТАЛОН · " : "") + r.item.name.toUpperCase().slice(0, 30), x0, y0, 1, ref ? GOLD : DIM);
     blitPC(A, cell(icon(r.item.slot, r.item.it, "sol", r.item.rarity).img, r.item.rarity), x0, y0 + 14, 2);
     const h = heroCrop(r.item), bx = [h.body[0] - 1, h.body[1] - 1, h.body[2] + 1, h.body[3] + 1];
     blitCv(A, h.img, bx, x0 + 100, y0 + 14, (bx[3] - bx[1]) > 70 ? 1 : 2, GRASS);

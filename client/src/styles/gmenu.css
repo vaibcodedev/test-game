@@ -116,7 +116,7 @@
 .wm-btn { min-width: 36px; height: 28px; padding: 0 var(--sp-3); display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1h); }
 .wm-btn img { width: 14px; height: 14px; image-rendering: pixelated; }
 .wm-btn-ic { color: var(--gold); border-color: var(--line-hi); }
-.wm-legend { position: relative; z-index: 2; width: max-content; max-width: calc(100% - var(--sp-4)); margin: -15px auto 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; font-size: var(--fs-sm); color: var(--dim); padding: var(--sp-2) var(--sp-4); background: linear-gradient(var(--panel-2), var(--panel)); border: 1px solid var(--line-hi); border-radius: var(--r-1); box-shadow: 0 2px 0 #000; }
+.wm-legend { position: relative; z-index: var(--z-l2); width: max-content; max-width: calc(100% - var(--sp-4)); margin: -15px auto 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; font-size: var(--fs-sm); color: var(--dim); padding: var(--sp-2) var(--sp-4); background: linear-gradient(var(--panel-2), var(--panel)); border: 1px solid var(--line-hi); border-radius: var(--r-1); box-shadow: 0 2px 0 #000; }
 .wm-lg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); }
 .wm-lg + .wm-lg { margin-left: var(--sp-3); padding-left: var(--sp-3); border-left: 1px solid var(--line); }
 .wm-it { display: inline-flex; align-items: center; gap: var(--sp-1h); white-space: nowrap; }

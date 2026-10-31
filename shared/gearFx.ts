@@ -75,3 +75,14 @@ export function smithNextText(slot: Slot, plus: number): string {
   const next = slot === "ring" || slot === "amulet" ? null : nextTierPlus(plus);
   return next === null ? "" : data.texts.smithNext.replace("{plus}", String(next)).replace("{text}", tierText(slot, enchantTier(next)));
 }
+
+/** Заточка героя Б (вариант D, data/gear-fx.json → enchantB): ступень 0..3 по порогам +5/+8/+11; выключена — 0. */
+export const ENCHANT_B = data.enchantB;
+export function enchantTierB(plus: number): 0 | 1 | 2 | 3 {
+  if (!ENCHANT_B.visual) return 0;
+  let t = 0;
+  for (const th of ENCHANT_B.thresholds) if (plus >= th) t++;
+  return t as 0 | 1 | 2 | 3;
+}
+/** Цвет «+N» на иконке по ступени варианта D. */
+export const enchantIconColor = (plus: number): string => ENCHANT_B.iconColors[(() => { let t = 0; for (const th of ENCHANT_B.thresholds) if (plus >= th) t++; return t; })()];

@@ -6,7 +6,7 @@ import { initWindowDrag, resetWindowPositions, scaleOf } from "./drag";
 import { CLASSES, STAT_HINTS, STAT_NAMES, type StatKey } from "../../../shared/classes";
 import { FACTIONS, FOE_COLOR, factionColor, landLabel, zoneLand } from "../../../shared/factions";
 import * as sfx from "../game/sfx";
-import { gearFxMode, overlay, setGearFxMode, setOverlay, type GearFxMode } from "../game/overlay";
+import { enchantFxMode, gearFxMode, overlay, setEnchantFxMode, setGearFxMode, setOverlay, type EnchantFxMode, type GearFxMode } from "../game/overlay";
 import { setVfxMode, vfxMode, type VfxMode } from "../game/postfx";
 import { setShadowMode, shadowMode, type ShadowMode } from "../game/shadows";
 import { flashGear } from "../game/gearHooks";
@@ -671,6 +671,7 @@ export class Hud {
           ${checkRow("set-camLead", "Камера смотрит вперёд при беге", "Чуть смещается по ходу движения и не дёргается от мелких шагов")}
           ${checkRow("set-bossIntro", "Вступление босса", "Камера показывает босса, имя на весь экран, интерфейс прячется на 5 с")}
           ${segRow("set-gearfx", GEAR_FX.setting.label, GEAR_FX.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.setting.note)}
+          ${segRow("set-enchfx", GEAR_FX.enchantB.setting.label, GEAR_FX.enchantB.setting.modes.map((m): [string, string] => [m.id, m.label]), "m", GEAR_FX.enchantB.setting.note)}
           ${segRow("set-vfx", "Эффекты", [["full", "Полные"], ["simple", "Простые"]], "m", "Простые: без точечного света, Bloom, марева и блеска, дождь реже")}
           ${segRow("set-shadows", "Тени", [["off", "Выкл"], ["simple", "Простые"], ["dynamic", "Динамические"]], "m", "Динамические следуют за временем суток: утром длинные влево, в полдень короткие, вечером вправо")}
         </div>
@@ -706,6 +707,7 @@ export class Hud {
     }
     // режим эффектов — только свой #set-gearfx: у «Режима прицела» в controls.ts тоже data-m
     seg(q("#set-gearfx"), (m) => setGearFxMode(m as GearFxMode), "m").set(gearFxMode());
+    seg(q("#set-enchfx"), (m) => setEnchantFxMode(m as EnchantFxMode), "m").set(enchantFxMode());
     seg(q("#set-vfx"), (m) => setVfxMode(m as VfxMode), "m").set(vfxMode());
     seg(q("#set-shadows"), (m) => setShadowMode(m as ShadowMode), "m").set(shadowMode());
     // полный экран — Fullscreen API (браузер и десктоп-клиент; в клиенте F11 и запоминание режима — desktop/src/main.ts); выход по Esc или F11 обновляет переключатель
@@ -909,7 +911,7 @@ export class Hud {
       // строки модели (задача 147: «Особая анимация удара» у Пылающего клинка Хаоса — data/items-147.json tooltip)
       for (const t of (it.model ? ITEM_MODELS[it.model]?.tooltip : undefined) ?? []) lines.push(`<div class="fx theme">${esc(t)}</div>`);
       if (b.classes) lines.push(`<div class="${b.classes.includes(s.cls) || bare ? "d" : "warn"}">${TX("ui.hud.558", { map: b.classes.map((c) => CLASSES[c].name).join(", ") })}</div>`);
-      lines.push(`<div class="${it.req > s.level && !bare ? "warn" : "d"}">${TX("ui.hud.559", { req: it.req })}</div>`);
+      if (Number.isFinite(it.req) && it.req > 0) lines.push(`<div class="${it.req > s.level && !bare ? "warn" : "d"}">${TX("ui.hud.559", { req: it.req })}</div>`);
       if (isBound(it)) lines.push(`<div class="${bare ? "d" : "warn"}">${TX("ui.hud.560")}</div>`);
       if (it.legendary && LEGENDARIES[it.legendary]) lines.push(`<div class="legend">★ ${esc(LEGENDARIES[it.legendary].desc)}</div>`, `<div class="lore">${esc(LEGENDARIES[it.legendary].lore)}</div>`);
       if (it.unique) lines.push(`<div class="lore">${esc(UNIQUES[it.unique].lore)}</div>`);

@@ -19,6 +19,12 @@ import { Player, newSave } from "../server/src/game/Player";
 import { WorldState } from "../server/src/rooms/schema";
 import type { Folk } from "../server/src/game/townfolk";
 
+// выбор мест по весам случайный (8 жителей): с Math.random доля «на месте» гуляла 54–75 % около порога 60 % — тест падал через раз.
+// Свой генератор с постоянным зерном: прогон повторяем, поведение то же (5 зёрен 2026-10-31: утро 64–80 %, вечер 52–89 %, ночь 88–100 %, день 90–98 %).
+{
+  let s = 0x9e3779b9;
+  Math.random = () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 let bad = 0;
 const check = (name: string, ok: boolean, extra = "") => { if (!ok) bad++; console.log(`${ok ? "ok  " : "FAIL"} ${name}${extra ? ` — ${extra}` : ""}`); };
 

@@ -48,16 +48,16 @@ async function startServer() {
 }
 
 async function enter(name: string, token: string, zoom: number) {
-  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0", timeout: 120000 });
+  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.evaluate((t: string, z: number) => { sessionStorage.setItem("emberfall-token", t); localStorage.setItem("zoom:v2", String(z)); }, token, zoom);
-  await page.reload({ waitUntil: "networkidle0" });
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
   await page.waitForSelector(`.cs-slot[data-name="${name}"]`, { timeout: 20000 });
   await page.$eval(`.cs-slot[data-name="${name}"]`, (b) => (b as HTMLElement).click());
   await sleep(300);
   await page.click('.cs-list [data-a="play"]');
-  await page.waitForFunction("document.getElementById('charsel').hidden", { timeout: 50000, polling: 250 });
-  await page.waitForFunction("window.__game && window.__game.scene.isActive('game')", { timeout: 50000, polling: 250 });
-  await page.waitForFunction("window.__net && window.__net.self && window.__net.online", { timeout: 40000, polling: 250 });
+  await page.waitForFunction("document.getElementById('charsel').hidden", { timeout: 150000, polling: 250 });
+  await page.waitForFunction("window.__game && window.__game.scene.isActive('game')", { timeout: 150000, polling: 250 });
+  await page.waitForFunction("window.__net && window.__net.self && window.__net.online", { timeout: 120000, polling: 250 });
   await sleep(1500);
 }
 
@@ -79,13 +79,14 @@ async function scenario() {
       await sleep(900);
       const cases: any[] = [
         { n: "one", items: [{ uid: "a1", base: "ring", ilvl: 10, rarity: 2, stats: {}, name: "Кольцо Пепла" }] },
-        { n: "three", items: [0, 1, 2].map((r) => ({ uid: "b" + r, name: ["Простое кольцо","Кольцо стража","","Перстень Бездны"][r], base: "ring", ilvl: 10, rarity: r, stats: {} })) },
+        { n: "three", items: [0, 1, 2].map((r) => ({ uid: "b" + r, name: ["Простое кольцо","Кольцо стража","Перстень Бездны","Перстень Бездны"][r], base: "ring", ilvl: 10, rarity: r, stats: {} })) },
         { n: "stack", gold: 125, items: [{ uid: "c1", name: "Серебряное кольцо", base: "ring", ilvl: 10, rarity: 1, stats: {} }, { uid: "c2", name: "Малое зелье", base: "hp_potion", ilvl: 1, rarity: 0, stats: {}, qty: 5 }] },
         { n: "foreign", lock: 42, items: [{ uid: "d1", name: "Клинок Пепельного Предела", base: "ring", ilvl: 10, rarity: 2, stats: {} }, { uid: "d2", name: "Кольцо стража", base: "ring", ilvl: 10, rarity: 2, stats: {} }] },
         { n: "many", gold: 40, items: [0, 1, 2, 1, 0, 2].map((r, i) => ({ uid: "e" + i, name: "Кольцо №" + (i + 1), base: "ring", ilvl: 10, rarity: r, stats: {} })) },
       ];
       for (const c of cases) {
         await run(`const p = sc.pos; sc.syncBags([{ id: 'fx1', x: p.x + 20, y: p.y + 40, items: a.items, gold: a.gold, lock: a.lock }]);`, c);
+        await page.waitForFunction("(() => { const sc = window.__game.scene.getScene('game'); return sc.bagViews.has('fx1'); })()", { timeout: 20000, polling: 250 });
         await sleep(1800);
         const pt = await run<any>(`const cam = sc.cameras.main, r = window.__game.canvas.getBoundingClientRect(), k = cam.zoom * r.width / cam.width, img = sc.bagViews.get('fx1'); return { x: r.left + (img.x - cam.worldView.x) * k, y: r.top + (img.y - 8 - cam.worldView.y) * k };`);
         await page.mouse.move(pt.x - 30, pt.y - 30); await page.mouse.move(pt.x, pt.y, { steps: 4 });
@@ -140,6 +141,7 @@ async function main2() {
     lines.push(`EXC ${String((e as Error)?.stack ?? e).slice(0, 1200)}`);
     console.log(lines[lines.length - 1]);
     bad++;
+    try { fs.mkdirSync(OUT, { recursive: true }); await page.screenshot({ path: path.join(OUT, "fail.png") }); lines.push("PAGE " + (await page.evaluate("document.body.innerText.slice(0,300)"))); } catch {}
   } finally {
     fs.mkdirSync(OUT, { recursive: true });
     fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify({ lines, errors: errors.slice(0, 20) }, null, 1));

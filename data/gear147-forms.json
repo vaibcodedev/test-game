@@ -1,0 +1,569 @@
+{
+ "_doc": "Формы вещей таблицы «уровень × редкость» (ряд → [ступень][редкость] → ручки формы), подобраны tools/gen/gear147/tiersearch.ts; читает tools/gen/gear147/tiers.ts.",
+ "helm": [
+  [
+   {
+    "style": "chapel",
+    "neck": "none"
+   },
+   {
+    "style": "nasal",
+    "neck": "gorget"
+   },
+   {
+    "style": "armet",
+    "neck": "mail"
+   },
+   {
+    "style": "barbute",
+    "neck": "mail"
+   }
+  ],
+  [
+   {
+    "style": "bascinet",
+    "neck": "none"
+   },
+   {
+    "style": "great",
+    "neck": "none"
+   },
+   {
+    "style": "chapel",
+    "neck": "gorget"
+   },
+   {
+    "style": "nasal",
+    "neck": "none"
+   }
+  ],
+  [
+   {
+    "style": "nasal",
+    "neck": "gorget"
+   },
+   {
+    "style": "barbute",
+    "neck": "mail"
+   },
+   {
+    "style": "onion",
+    "neck": "mail"
+   },
+   {
+    "style": "great",
+    "neck": "none"
+   }
+  ],
+  [
+   {
+    "style": "great",
+    "neck": "mail"
+   },
+   {
+    "style": "nasal",
+    "neck": "none"
+   },
+   {
+    "style": "barbute",
+    "neck": "gorget"
+   },
+   {}
+  ],
+  [
+   {
+    "style": "bascinet",
+    "neck": "gorget"
+   },
+   {
+    "style": "chapel",
+    "neck": "none"
+   },
+   {
+    "style": "great",
+    "neck": "mail"
+   },
+   {
+    "style": "onion",
+    "neck": "none"
+   }
+  ]
+ ],
+ "armor": [
+  [
+   {
+    "len": 0,
+    "shoulders": 0,
+    "collar": 2,
+    "wide": 1
+   },
+   {
+    "len": 3,
+    "shoulders": 0,
+    "collar": 0,
+    "wide": 0.88
+   },
+   {
+    "len": 2,
+    "shoulders": 2,
+    "collar": 0,
+    "wide": 1.12
+   },
+   {
+    "len": 0,
+    "shoulders": 1,
+    "collar": 0,
+    "wide": 0.88
+   }
+  ],
+  [
+   {
+    "len": 3,
+    "shoulders": 0,
+    "collar": 1,
+    "wide": 0.88
+   },
+   {
+    "len": 0,
+    "shoulders": 2,
+    "collar": 0,
+    "wide": 0.88
+   },
+   {
+    "len": 0,
+    "shoulders": 0,
+    "collar": 1,
+    "wide": 0.88
+   },
+   {
+    "len": 3,
+    "shoulders": 1,
+    "collar": 1,
+    "wide": 0.88
+   }
+  ],
+  [
+   {
+    "len": 0,
+    "shoulders": 2,
+    "collar": 0,
+    "wide": 1
+   },
+   {
+    "len": 3,
+    "shoulders": 0,
+    "collar": 2,
+    "wide": 1
+   },
+   {
+    "len": 2,
+    "shoulders": 2,
+    "collar": 2,
+    "wide": 1.12
+   },
+   {
+    "len": 0,
+    "shoulders": 0,
+    "collar": 1,
+    "wide": 1.12
+   }
+  ],
+  [
+   {
+    "len": 2,
+    "shoulders": 2,
+    "collar": 2,
+    "wide": 1
+   },
+   {
+    "len": 0,
+    "shoulders": 0,
+    "collar": 0,
+    "wide": 1
+   },
+   {
+    "len": 3,
+    "shoulders": 0,
+    "collar": 2,
+    "wide": 0.88
+   },
+   {
+    "len": 3,
+    "shoulders": 1,
+    "collar": 0,
+    "wide": 0.88
+   }
+  ],
+  [
+   {
+    "len": 3,
+    "shoulders": 0,
+    "collar": 0,
+    "wide": 1
+   },
+   {
+    "len": 0,
+    "shoulders": 2,
+    "collar": 0,
+    "wide": 1
+   },
+   {
+    "len": 2,
+    "shoulders": 2,
+    "collar": 0,
+    "wide": 0.88
+   },
+   {
+    "len": 0,
+    "shoulders": 2,
+    "collar": 2,
+    "wide": 0.88
+   }
+  ]
+ ],
+ "cloth": [
+  [
+   {
+    "cut": "tunic",
+    "sleeves": true,
+    "mantle": true,
+    "wide": 1.14
+   },
+   {
+    "cut": "mid",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 1.14
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 1.14
+   }
+  ],
+  [
+   {
+    "cut": "long",
+    "sleeves": true,
+    "mantle": false,
+    "wide": 1.14
+   },
+   {
+    "cut": "tunic",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   },
+   {
+    "cut": "mid",
+    "sleeves": false,
+    "mantle": true,
+    "wide": 1.14
+   },
+   {
+    "cut": "mid",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 1.14
+   }
+  ],
+  [
+   {
+    "cut": "tunic",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   },
+   {
+    "cut": "tunic",
+    "sleeves": true,
+    "mantle": true,
+    "wide": 1.14
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   },
+   {
+    "cut": "mid",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   }
+  ],
+  [
+   {
+    "cut": "tunic",
+    "sleeves": true,
+    "mantle": false,
+    "wide": 1
+   },
+   {
+    "cut": "tunic",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": true,
+    "wide": 1.14
+   },
+   {
+    "cut": "mid",
+    "sleeves": true,
+    "mantle": false,
+    "wide": 1.14
+   }
+  ],
+  [
+   {
+    "cut": "tunic",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 1.14
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": true,
+    "wide": 0.86
+   },
+   {
+    "cut": "long",
+    "sleeves": false,
+    "mantle": false,
+    "wide": 0.86
+   }
+  ]
+ ],
+ "leather": [
+  [
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true
+   },
+   {
+    "cut": "long",
+    "collarHigh": true,
+    "pauldronsOnIcon": false
+   },
+   {
+    "cut": "vest",
+    "collarHigh": true,
+    "pauldronsOnIcon": true
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": false,
+    "spikes": true
+   }
+  ],
+  [
+   {
+    "cut": "long",
+    "collarHigh": true,
+    "pauldronsOnIcon": false,
+    "pants": "rogue_pants"
+   },
+   {
+    "cut": "vest",
+    "collarHigh": true,
+    "pauldronsOnIcon": false
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true,
+    "pants": "rogue_pants"
+   },
+   {
+    "cut": "long",
+    "collarHigh": true,
+    "pauldronsOnIcon": true,
+    "pants": "rogue_pants",
+    "spikes": "crown"
+   }
+  ],
+  [
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true
+   },
+   {
+    "cut": "long",
+    "collarHigh": true,
+    "pauldronsOnIcon": false
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true,
+    "spikes": true
+   }
+  ],
+  [
+   {
+    "cut": "vest",
+    "collarHigh": true,
+    "pauldronsOnIcon": false
+   },
+   {
+    "cut": "long",
+    "collarHigh": true,
+    "pauldronsOnIcon": false
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true
+   },
+   {
+    "cut": "vest",
+    "collarHigh": true,
+    "pauldronsOnIcon": true,
+    "spikes": "crown"
+   }
+  ],
+  [
+   {
+    "cut": "jacket",
+    "collarHigh": false,
+    "pauldronsOnIcon": false,
+    "pants": "rogue_pants"
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true
+   },
+   {
+    "cut": "long",
+    "collarHigh": true,
+    "pauldronsOnIcon": false
+   },
+   {
+    "cut": "vest",
+    "collarHigh": false,
+    "pauldronsOnIcon": true,
+    "spikes": true
+   }
+  ]
+ ],
+ "pauldrons": [
+  [
+   {
+    "form": "spaulder",
+    "lames": 3
+   },
+   {
+    "form": "cop",
+    "lames": 1
+   },
+   {
+    "form": "lamellar",
+    "lames": 1
+   },
+   {
+    "form": "angular",
+    "lames": 1
+   }
+  ],
+  [
+   {
+    "form": "cop",
+    "lames": 1
+   },
+   {
+    "form": "lamellar",
+    "lames": 1
+   },
+   {
+    "form": "spaulder",
+    "lames": 3
+   },
+   {
+    "form": "great",
+    "lames": 1
+   }
+  ],
+  [
+   {
+    "form": "lamellar",
+    "lames": 1
+   },
+   {
+    "form": "layered",
+    "lames": 1
+   },
+   {
+    "form": "great",
+    "lames": 1
+   },
+   {
+    "form": "spaulder",
+    "lames": 3
+   }
+  ],
+  [
+   {
+    "form": "cop",
+    "lames": 1
+   },
+   {
+    "form": "great",
+    "lames": 1
+   },
+   {
+    "form": "layered",
+    "lames": 1
+   },
+   {
+    "form": "angular",
+    "lames": 1
+   }
+  ],
+  [
+   {
+    "form": "lamellar",
+    "lames": 1
+   },
+   {
+    "form": "layered",
+    "lames": 1
+   },
+   {
+    "form": "spaulder",
+    "lames": 3
+   },
+   {
+    "form": "mythic",
+    "lames": 2
+   }
+  ]
+ ]
+}

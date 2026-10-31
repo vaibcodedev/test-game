@@ -12,7 +12,7 @@
 .xpb-flash { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .9) 50%, transparent); opacity: 0; pointer-events: none; transform: translateX(-100%); }
 .xpb-flash.on { animation: xpb-flash .7s ease-out; }
 @keyframes xpb-flash { 0% { opacity: 1; transform: translateX(-100%); } 100% { opacity: 0; transform: translateX(100%); } }
-.xpb-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translate(-50%, 4px); white-space: nowrap; padding: var(--sp-1h, 6px) var(--sp-3, 12px); border-radius: var(--r-2, 4px); background: var(--panel, #1a1420); border: 1px solid var(--line-hi, #6a5a3a); box-shadow: 0 4px 14px rgba(0, 0, 0, .5); color: var(--fg, #eee); font-size: var(--fs-sm, 13px); line-height: 1.4; text-shadow: var(--shadow-text, none); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s, transform .15s, visibility 0s .15s; z-index: 5; text-align: center; }
+.xpb-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translate(-50%, 4px); white-space: nowrap; padding: var(--sp-1h, 6px) var(--sp-3, 12px); border-radius: var(--r-2, 4px); background: var(--panel, #1a1420); border: 1px solid var(--line-hi, #6a5a3a); box-shadow: 0 4px 14px rgba(0, 0, 0, .5); color: var(--fg, #eee); font-size: var(--fs-sm, 13px); line-height: 1.4; text-shadow: var(--shadow-text, none); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s, transform .15s, visibility 0s .15s; z-index: var(--z-l5); text-align: center; }
 .xpb-tip b { color: var(--xp-hi, #e0c8ff); font-weight: var(--fw-b, 700); }
 .xpb-tip span { color: var(--dim, #a89c8c); }
 .xpb:hover .xpb-tip { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity .15s, transform .15s; }
@@ -23,7 +23,7 @@
 .xpb .xpb-fill::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: #fff; box-shadow: 0 0 6px 1px #d4b8ff; }
 
 /* ---- надпись «Уровень N» по центру (ui/levelLook.ts): полоса-подложка, золотой орнамент линий рамок Kenney B по бокам, строка наград ---- */
-.lvb { position: fixed; inset: 0; z-index: var(--z-announce, 3000); pointer-events: none; --lvb-dur: 2.8s; overflow: hidden; }
+.lvb { position: fixed; inset: 0; z-index: var(--z-announce); pointer-events: none; --lvb-dur: 2.8s; overflow: hidden; }
 .lvb-plate { position: absolute; left: 0; right: 0; top: 26%; display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--sp-4, 16px) 0 var(--sp-4, 16px);
   background: linear-gradient(90deg, transparent, rgba(8, 5, 12, .9) 14%, rgba(8, 5, 12, .9) 86%, transparent);
   border-block: 1px solid var(--line-hi, #6a5a3a); box-shadow: 0 0 0 1px #000; transform: translateY(-50%); opacity: 0; animation: lvb-in var(--lvb-dur) both; }

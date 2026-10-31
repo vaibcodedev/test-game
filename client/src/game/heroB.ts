@@ -26,7 +26,7 @@ const LIVE = live as unknown as { specialAttack: { every: number; chance: number
 /** Облик героя Б, из которого сводится лист. */
 export interface HbLook { fac: "sol" | "umb"; sex: "m" | "f"; hair: string; cls: Cls; atk: string; /** сет оружия с особым ударом (special2h) */ special?: string; slots: Partial<Record<Slot147, string>> }
 /** Готовый лист: sid прежних ключей анимаций (`${sid}-walk-${row}` и т. д.), sidL — то же для взгляда влево; frame — кадр, oy — опора по ногам, rise — макушка над ногами. */
-export interface HbSheet { /** удар класса позы (atk1h, atk2h, bow, cast) */ atk: string; /** силуэты кадров для переходов (heroBNear) */ masks: Map<string, Uint8Array[]>; key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[];
+export interface HbSheet { /** контур видимого оружия по кадрам (заточка, heroEnchant.ts): текстуры кольца 1 px (k1) и второго кольца (k2), точки контура кадра (x, y парами) для угольков */ ench: { k1: string; k2: string; pts: Map<number, number[]> } | null; /** удар класса позы (atk1h, atk2h, bow, cast) */ atk: string; /** силуэты кадров для переходов (heroBNear) */ masks: Map<string, Uint8Array[]>; key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[];
   /** ткань «Спины» с физикой (heroCloth.ts): сет, описание текстур и точек крепления, тело для pins */ cloth: { set: string; def: ClothDef; body: string } | null }
 
 /** Режим: off — прежний герой, self — только свой герой (проверка одним игроком, запоминается в браузере), all — все герои (флаг data/hero-b.json). */
@@ -131,7 +131,7 @@ export function heroBSheet(scene: Phaser.Scene, u: { faction: string; gear: stri
 }
 
 /** Слой сведения: лист, его строки начинаются со строки r0 листа облика (особый удар — свои строки после строк класса). */
-interface Layer { e: Entry; im: HTMLImageElement; gl: HTMLImageElement | null; ord: number; r0: number; n: number }
+interface Layer { e: Entry; im: HTMLImageElement; gl: HTMLImageElement | null; ord: number; r0: number; n: number; /** слой оружия (weapon@) — для контура заточки */ wp?: boolean }
 /** Столбцов в листе облика — из манифеста экспорта (cols по классу позы: самая длинная анимация класса); старый манифест — по кадрам строк. */
 const colsOf = (m: Man, rows: [string, string][], cls: string[]) => Math.max(1, ...cls.map((c) => m.cols?.[c] ?? 0), ...rows.map(([a]) => m.anims[a]?.frames ?? 0));
 async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbSheet | null> {
@@ -156,8 +156,8 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
   };
   add(l.cls, "", 0);
   if (l.special) add(l.cls, l.special, clsRows.length);
-  const list: { e: Entry; ord: number; r0: number; n: number }[] = [];
-  for (const w of want) { const g = m.groups[w.grp]; if (!g) continue; for (const [k, e] of Object.entries(g)) if (w.filter(k) && !k.startsWith("cloth@")) list.push({ e, ord: list.length, r0: w.r0, n: e.z.length }); }
+  const list: { e: Entry; ord: number; r0: number; n: number; wp?: boolean }[] = [];
+  for (const w of want) { const g = m.groups[w.grp]; if (!g) continue; for (const [k, e] of Object.entries(g)) if (w.filter(k) && !k.startsWith("cloth@")) list.push({ e, ord: list.length, r0: w.r0, n: e.z.length, wp: w.grp.startsWith("gear/") && k.startsWith("weapon@") }); }
   if (!list.length) return null;
   const layers: Layer[] = (await Promise.all(list.map(async (q) => ({ ...q, im: await img(q.e.file), gl: q.e.glow ? await img(q.e.glow) : null })))).filter((q): q is Layer => !!q.im);
   const F = Math.max(...layers.map((q) => q.e.frame));
@@ -170,6 +170,10 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
   const gcv = anyGlow ? document.createElement("canvas") : null;
   if (gcv) { gcv.width = cv.width; gcv.height = cv.height; }
   const gg = gcv?.getContext("2d") ?? null;
+  // видимая часть оружия (слои weapon@, закрытые слоями выше по z) — маска контура заточки (heroEnchant.ts)
+  const anyWp = layers.some((q) => q.wp), wcv = anyWp ? document.createElement("canvas") : null;
+  if (wcv) { wcv.width = cv.width; wcv.height = cv.height; }
+  const wg = wcv?.getContext("2d") ?? null;
   // клетка: кадр слоя (строка листа слоя rr) с его опорой → кадр листа облика (строка R) с опорой O
   const cell = (ctx: CanvasRenderingContext2D, q: Layer, im: HTMLImageElement, rr: number, R: number, i: number, left: boolean) => {
     const f = q.e.frame, dx = O[0] - q.e.origin[0], dy = O[1] - q.e.origin[1];
@@ -190,6 +194,7 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
           gg.globalCompositeOperation = "destination-out"; cell(gg, q, q.im, R - q.r0, R, i, left);
           gg.globalCompositeOperation = "source-over"; if (q.gl) cell(gg, q, q.gl, R - q.r0, R, i, left);
         }
+        if (wg) { wg.globalCompositeOperation = q.wp ? "source-over" : "destination-out"; cell(wg, q, q.im, R - q.r0, R, i, left); }
       }
     }
   });
@@ -244,8 +249,33 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
     });
   } catch { /* нет данных — переходы с кадра 0 */ }
   const bodyKey = `${l.fac}_${l.sex}`;
-  return { atk: l.atk, masks, key, sid, sidL, frame: F, ox: O[0] / F, oy: O[1] / F, origin: [O[0], O[1]], rise, glow: !!gtex, special: !!l.special, dead, rows: rows.map((q) => q[0] + ":" + q[1]),
+  const ench = wcv ? enchantTex(scene, key, wcv, F, COLS, rows.length) : null;
+  return { atk: l.atk, masks, ench, key, sid, sidL, frame: F, ox: O[0] / F, oy: O[1] / F, origin: [O[0], O[1]], rise, glow: !!gtex, special: !!l.special, dead, rows: rows.map((q) => q[0] + ":" + q[1]),
     cloth: clothSet ? { set: clothSet, def: m.cloth![clothSet], body: bodyKey } : null };
+}
+
+/** Контур оружия для заточки: кольцо 1 px снаружи видимого силуэта оружия (k1) и второе кольцо (k2), без заливки; точки кольца кадра (до 24) — для угольков. */
+function enchantTex(scene: Phaser.Scene, key: string, wcv: HTMLCanvasElement, F: number, COLS: number, R: number) {
+  const W = wcv.width, H = wcv.height, src = wcv.getContext("2d")!.getImageData(0, 0, W, H).data;
+  const a = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && src[(y * W + x) * 4 + 3] > 24;
+  const c1 = document.createElement("canvas"), c2 = document.createElement("canvas"); c1.width = c2.width = W; c1.height = c2.height = H;
+  const i1 = c1.getContext("2d")!.createImageData(W, H), i2 = c2.getContext("2d")!.createImageData(W, H), ring1 = new Uint8Array(W * H);
+  const pts = new Map<number, number[]>();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!a(x, y) && (a(x - 1, y) || a(x + 1, y) || a(x, y - 1) || a(x, y + 1))) {
+    ring1[y * W + x] = 1; const o = (y * W + x) * 4; i1.data[o] = i1.data[o + 1] = i1.data[o + 2] = i1.data[o + 3] = 255;
+    const fr = Math.floor(y / F) * COLS + Math.floor(x / F), p = pts.get(fr) ?? []; if (p.length < 48 && Math.random() < 0.35) p.push(x % F, y % F); pts.set(fr, p);
+  }
+  const r1 = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && ring1[y * W + x] === 1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!a(x, y) && !r1(x, y) && (r1(x - 1, y) || r1(x + 1, y) || r1(x, y - 1) || r1(x, y + 1))) { const o = (y * W + x) * 4; i2.data[o] = i2.data[o + 1] = i2.data[o + 2] = i2.data[o + 3] = 255; }
+  c1.getContext("2d")!.putImageData(i1, 0, 0); c2.getContext("2d")!.putImageData(i2, 0, 0);
+  if (!pts.size) return null;
+  const k1 = key + "_ench", k2 = key + "_ench2";
+  for (const [k, c] of [[k1, c1], [k2, c2]] as const) {
+    if (scene.textures.exists(k)) scene.textures.remove(k);
+    const t = scene.textures.addCanvas(k, c)!;
+    for (let r = 0; r < R; r++) for (let i = 0; i < COLS; i++) t.add(r * COLS + i, 0, i * F, r * F, F, F);
+  }
+  return { k1, k2, pts };
 }
 
 /** Имя анимации UnitView → анимация листа. */

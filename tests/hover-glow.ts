@@ -37,7 +37,7 @@ async function settle(page: Page) {
   }
 }
 
-const glowState = (page: Page) => page.evaluate(() => { const g = (window as any).__game.scene.getScene("game").hoverGlow.img; return { vis: g.visible as boolean, a: (g.visible ? g.alpha : 0) as number }; });
+const glowState = (page: Page) => page.evaluate(() => { const h = (window as any).__game.scene.getScene("game").hoverGlow, g = h.img; return { vis: g.visible as boolean, a: (g.visible ? g.alpha : 0) as number, key: h.key as string }; });
 
 async function main() {
   process.env.VITE_SERVER_URL = `ws://localhost:${PORT}`;
@@ -90,9 +90,11 @@ async function main() {
       await check(`${kind}: свечение включено при наведении (alpha ${st.a.toFixed(2)}, zoom ${p.zoom})`, () => assert(st.vis && st.a >= 0.55, JSON.stringify(st)));
       clips.push(Buffer.from(await page.screenshot({ clip: { x: Math.max(0, p.x - 110), y: Math.max(0, p.y - 150), width: 220, height: 250 } })));
       await page.mouse.move(p.x + 300, p.y + 200, { steps: 3 });
-      await sleep(900);
+      // угасание идёт по кадрам игры (game.loop.delta): под нагрузкой кадров мало и 900 мс не хватает — ждём условие до 5 с
+      await page.waitForFunction((was) => { const h = (window as any).__game.scene.getScene("game").hoverGlow; return !h.img.visible || h.key !== was; }, { timeout: 5000, polling: 100 }, st.key).catch(() => {});
       const off = await glowState(page);
-      await check(`${kind}: свечение погасло после ухода`, () => assert(!off.vis, JSON.stringify(off)));
+      // курсор в 360 px от цели может попасть на другой объект (у камня теперь декор рядом) — тогда светится он, а не прежняя цель
+      await check(`${kind}: свечение погасло после ухода`, () => assert(!off.vis || off.key !== st.key, JSON.stringify({ off, was: st.key })));
       if (kind === "shop") {
         // последовательность: наведение 0..180 мс, пик пульса, уход 0..150 мс; время шагается вручную
         const steps = [0, 30, 30, 30, 30, 60, 300, 0, 50, 50, 50];

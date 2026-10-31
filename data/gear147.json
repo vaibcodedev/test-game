@@ -126,9 +126,9 @@
       "name": "Стальные латы стража",
       "rarity": "common", "level": 60, "material": "plate", "source": "mobs",
       "items": {
-        "helm": { "name": "Стальной бацинет", "style": "bascinet", "plate": "steel60", "accent": "steel60", "trim": "steel60", "mail": "mail" },
+        "helm": { "name": "Стальной бацинет", "style": "bascinet", "shape": { "peak": 3.4 }, "plate": "steel60", "accent": "steel60", "trim": "steel60", "mail": "mail" },
         "pauldrons": { "name": "Стальные наплечники", "plate": "steel60", "accent": "steel60", "trim": "steel60", "size": 0.86, "lames": 1, "spikes": 0, "form": "small" },
-        "armor": { "name": "Стальная кираса", "cut": "plain", "plate": "steel60", "accent": "steel60", "trim": "leather", "cloth": "leather", "mail": "mail", "thick": 0.5, "tassets": "steel60" },
+        "armor": { "name": "Стальная кираса", "cut": "plain", "wide": 0.9, "plate": "steel60", "accent": "steel60", "trim": "leather", "cloth": "leather", "mail": "mail", "thick": 0.5, "tassets": "steel60" },
         "gloves": { "name": "Стальные рукавицы", "plate": "steel60", "accent": "steel60", "cuff": false },
         "boots": { "name": "Стальные башмаки", "plate": "steel60", "accent": "steel60", "low": true },
         "cloak": { "name": "Шерстяная пелерина", "kind": "cape", "outer": "wool_grey", "lining": "wool_grey", "trim": "iron", "tatter": 0, "crest": false, "short": true },
@@ -141,7 +141,7 @@
       "items": {
         "helm": { "name": "Барбют капитана", "style": "barbute", "plate": "steel60", "accent": "steel60", "trim": "brass", "rivets": true, "crestMat": "cloth_blue", "plume": "cloth_blue" },
         "pauldrons": { "name": "Наплечники капитана", "plate": "steel60", "accent": "steel60", "trim": "brass", "size": 0.98, "lames": 2, "spikes": 0, "rivets": true, "form": "lames" },
-        "armor": { "name": "Бригантина капитана", "cut": "brig", "plate": "steel60", "accent": "steel60", "trim": "brass", "cloth": "cloth_blue", "mail": "mail", "thick": 0.55, "tassets": "steel60", "tabard": true, "rivets": true, "kant": "brass" },
+        "armor": { "name": "Бригантина капитана", "cut": "brig", "len": 3, "wide": 1.12, "shoulders": 0, "collar": 2, "plate": "steel60", "accent": "steel60", "trim": "brass", "cloth": "cloth_blue", "mail": "mail", "thick": 0.55, "tassets": "steel60", "tabard": true, "rivets": true, "kant": "brass" },
         "gloves": { "name": "Наручи капитана", "plate": "steel60", "accent": "brass", "trim": "brass", "cuff": false, "bracer": true, "rivets": true },
         "boots": { "name": "Сапоги капитана", "plate": "steel60", "accent": "steel60", "stripe": true, "strapAccent": "brass", "topCuff": "leather" },
         "cloak": { "name": "Синий плащ заставы", "kind": "cape", "outer": "cloth_blue", "lining": "wool_grey", "trim": "brass", "hem": "brass", "tatter": 0, "crest": false },
@@ -153,7 +153,7 @@
       "rarity": "epic", "level": 60, "material": "plate", "source": "ring-boss",
       "items": {
         "helm": { "name": "Крылатый шлем клятвы", "style": "great", "plate": "steel60", "accent": "cloth_purple", "trim": "gold", "slit": true, "rivets": true, "wings": true, "gem": "sapphire", "engrave": true },
-        "pauldrons": { "name": "Наплечники клятвы", "plate": "steel60", "accent": "steel60", "trim": "gold", "size": 1.14, "lames": 2, "spikes": 0, "rivets": true, "filigree": true, "gem": "sapphire" },
+        "pauldrons": { "name": "Наплечники клятвы", "form": "great", "plate": "steel60", "accent": "steel60", "trim": "gold", "size": 1.14, "lames": 2, "spikes": 0, "rivets": true, "filigree": true, "gem": "sapphire" },
         "armor": { "name": "Кираса клятвы", "pauldronsOnIcon": true, "plate": "steel60", "accent": "cloth_purple", "trim": "gold", "cloth": "cloth_purple", "mail": "mail", "thick": 0.6, "tassets": "steel60", "tabard": false, "rivets": true, "chestPlate": true, "inlay": true, "crest": true, "gemColor": "sapphire" },
         "gloves": { "name": "Рукавицы клятвы", "plate": "steel60", "accent": "steel60", "trim": "gold", "cuff": true, "rivets": true, "gem": "sapphire" },
         "boots": { "name": "Сабатоны клятвы", "plate": "steel60", "accent": "gold", "stripe": true, "kneeAccent": "gold", "bigWing": true },

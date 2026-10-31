@@ -258,7 +258,7 @@ async function main() {
     const tpTo = async (p: Pt) => {
       const from = pos(adm);
       adm.send("admin:tp", { x: p.x, y: p.y });
-      await adm.until(() => dist(pos(adm), from) > 8, 8000, `телепорт в ${Math.round(p.x)},${Math.round(p.y)} из ${Math.round(from.x)},${Math.round(from.y)}, сейчас ${Math.round(pos(adm).x)},${Math.round(pos(adm).y)}`);
+      await adm.until(() => dist(pos(adm), from) > 8, 8000, `телепорт в ${Math.round(p.x)},${Math.round(p.y)} из ${Math.round(from.x)},${Math.round(from.y)}, сейчас ${Math.round(pos(adm).x)},${Math.round(pos(adm).y)}, тосты: ${adm.toasts.slice(-3).join(" | ")}, закрыт: ${adm.closeCode}`);
       let last = pos(adm), since = Date.now();
       await adm.until(() => {
         const q = pos(adm);

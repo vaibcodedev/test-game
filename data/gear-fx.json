@@ -42,6 +42,79 @@
   "heroColor": "#4a9488",
   "heroCore": "#a3d8ce"
  },
+ "enchantB": {
+  "_doc": "Заточка героя Б, вариант D «тлеющий клинок» (docs/art/gear.md §5; client/src/game/heroEnchant.ts). Светятся только оружие и щит (слои weapon@ листа героя Б — любое оружие gear147 автоматически), контур 1–2 px снаружи силуэта без заливки. visual — включено для героя Б (прежний герой — enchant.visual). thresholds — +5/+8/+11. tiers: 1 «Тление» — дыхание альфы контура; 2 «Угли» — золотой контур, бегущий блик (shineMs), шлейф удара (trail: кадров затухания, альфа); 3 «Пламя Предела» — перелив алый↔золотой (cycleMs), 2–3 уголька, ночью мягкий ореол (haloNight — альфа второго кольца в полную ночь). setting — настройка «Свечение заточки».",
+  "visual": true,
+  "thresholds": [
+   5,
+   8,
+   11
+  ],
+  "tiers": [
+   {
+    "name": "нет"
+   },
+   {
+    "name": "Тление",
+    "color": "#b86a24",
+    "alphaMin": 0.3,
+    "alphaMax": 0.6,
+    "periodMs": 2400
+   },
+   {
+    "name": "Угли",
+    "color": "#f0b440",
+    "core": "#fff2c0",
+    "alpha": 0.75,
+    "shineMs": 2500,
+    "trail": {
+     "frames": 4,
+     "alpha": 0.6
+    }
+   },
+   {
+    "name": "Пламя Предела",
+    "color": "#e0442a",
+    "color2": "#ffc848",
+    "core": "#fff2c0",
+    "alpha": 0.85,
+    "cycleMs": 1800,
+    "embers": 3,
+    "emberMs": 900,
+    "haloNight": 0.35,
+    "trail": {
+     "frames": 4,
+     "alpha": 0.7
+    }
+   }
+  ],
+  "iconColors": [
+   "#e8e2d0",
+   "#d8853a",
+   "#f0c040",
+   "#ff5a36"
+  ],
+  "setting": {
+   "key": "enchantFx",
+   "label": "Свечение заточки",
+   "default": "all",
+   "modes": [
+    {
+     "id": "all",
+     "label": "Всё"
+    },
+    {
+     "id": "self",
+     "label": "Только моё"
+    },
+    {
+     "id": "off",
+     "label": "Выкл"
+    }
+   ],
+   "note": "Тлеющий контур оружия и щита героя Б с +5, +8, +11"
+  }
+ },
  "limits": {
   "sources": 2,
   "particles": 8,

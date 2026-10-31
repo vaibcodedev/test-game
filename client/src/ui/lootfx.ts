@@ -84,7 +84,7 @@ export class LootRow {
         const room = MAX - lines.length, hidden = items.length > room ? items.length - (room - 1) : 0, shown = hidden ? items.slice(0, room - 1) : items;
         shown.forEach((it, j) => {
           const q = it.qty && it.qty > 1 ? `<span class="lr-q">×${it.qty}</span>` : "";
-          lines.push(`<div class="lr-it" data-i="${j}" style="--rc:${RARITY_COLORS[it.rarity]};--i:${lines.length}"><div class="lr-b"><img src="${icon(iconFor(it))}" alt=""></div><span class="lr-nm">${esc(itemName(it))}</span>${q}</div>`);
+          lines.push(`<div class="lr-it" data-i="${j}" style="--rc:${RARITY_COLORS[it.rarity]};--i:${lines.length}"><div class="lr-b"><img src="${icon(iconFor(it))}" alt=""></div><span class="lr-nm">${esc(itemName(it) || BASE_ITEMS[it.base]?.name || "")}</span>${q}</div>`);
         });
         if (hidden) lines.push(`<div class="lr-more">${esc(T("ui.loot.more", { n: hidden }))}</div>`);
         this.box.innerHTML = `<div class="lr-row">${lines.join("")}${lock ? `<div class="lr-lock">${esc(T("ui.loot.foreign", { sec: lock }))}</div>` : ""}</div>`;

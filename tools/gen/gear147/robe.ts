@@ -15,7 +15,7 @@ type Sec = { h: number; a: number; d: number; f: number };
 
 export function robe(ctx: GearCtx, it: any, crest: CrestId) {
   const { sk, b, PJ, facing, loft, c, dW, push, D, anim, u, v } = ctx, { A, U, F, waist } = sk;
-  const Cl = ramp(it.cloth), Tr = ramp(it.trim ?? it.cloth), Sa = ramp(it.sash ?? it.cloth), th = 0.3;
+  const Cl = ramp(it.cloth), Tr = ramp(it.trim ?? it.cloth), Sa = ramp(it.sash ?? it.cloth), th = it.thick ?? 0.3; // толщина ткани растёт со ступенью (tiers.ts → clothRobe)
   const S: Sec[] = ctx.secs.slice(0, 5).map((s) => ({ ...s, a: s.a + th, d: s.d + th * 0.9 }));
   S[0] = { ...S[0], h: -1.2 };
   const surf = H.mkSurf(waist, A, U, F, S), sw = b.shW, fF = facing(F), sd = fF >= 0 ? 1 : -1;
@@ -24,7 +24,7 @@ export function robe(ctx: GearCtx, it: any, crest: CrestId) {
   // подол: кольцо от таза до колен / голени / щиколоток, расклёшено
   const hp = sk.hip, Ap = sk.Ap, Fp = sk.Fp, kneeY = (sk.kneeL[1] + sk.kneeR[1]) / 2;
   const hemY = it.cut === "tunic" ? kneeY - 0.2 : it.cut === "mid" ? kneeY + (FY - kneeY) * 0.5 : FY - 1.4;
-  const flare = it.cut === "tunic" ? 1.08 : it.cut === "mid" ? 1.2 : 1.42, swing = anim === "run" ? 2.2 : anim === "walk" ? 0.9 : 0.3, N = 12;
+  const flare = (it.cut === "tunic" ? 1.08 : it.cut === "mid" ? 1.2 : 1.42) * (it.wide ?? 1), swing = anim === "run" ? 2.2 : anim === "walk" ? 0.9 : 0.3, N = 12;
   const ring = (phi: number, h: "t" | "b"): V3 => {
     const ra = b.hipW + th + 0.7, rd = dW * 1.05 + th + 0.6, sp = h === "b" ? flare : 1;
     const x = Math.sin(phi) * ra * sp, zz = Math.cos(phi) * rd * sp;

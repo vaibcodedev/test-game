@@ -37,3 +37,14 @@ export function setGearFxMode(m: GearFxMode) {
   gearMode = m;
   try { localStorage.setItem(GEAR_FX.setting.key, m); } catch {}
 }
+
+/** Свечение заточки героя Б (data/gear-fx.json → enchantB.setting): all — у всех, self — только своё, off — выкл. */
+export type EnchantFxMode = "all" | "self" | "off";
+const ENCH_SET = GEAR_FX.enchantB.setting, ENCH_MODES = ENCH_SET.modes.map((m) => m.id) as EnchantFxMode[];
+let enchMode: EnchantFxMode = (() => { try { const v = localStorage.getItem(ENCH_SET.key) as EnchantFxMode | null; if (v && ENCH_MODES.includes(v)) return v; } catch {} return ENCH_SET.default as EnchantFxMode; })();
+export const enchantFxMode = (): EnchantFxMode => enchMode;
+export function setEnchantFxMode(m: EnchantFxMode) {
+  if (!ENCH_MODES.includes(m) || m === enchMode) return;
+  enchMode = m;
+  try { localStorage.setItem(ENCH_SET.key, m); } catch {}
+}

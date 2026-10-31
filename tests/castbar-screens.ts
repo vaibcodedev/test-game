@@ -9,10 +9,12 @@ import path from "node:path";
 import puppeteer, { type Page } from "puppeteer-core";
 import { createServer } from "vite";
 import { ensureChar, PORT, sleep, startServer, stopServer } from "./harness";
+import { MOUNTS } from "../shared/mounts";
 
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5252;
 const OUT = path.resolve("tools/out/castbar");
-const NAME = "Латный дестриэ";
+// имя маунта — из каталога (маунты переименовываются под арт: «Латный дестриэ» стал «Парадный конь…»), иначе castLook не узнает призыв
+const NAME = (MOUNTS.destrier ?? Object.values(MOUNTS)[0]).name;
 const CLIP = { x: 380, y: 556, width: 520, height: 244 };
 
 function chromePath() {

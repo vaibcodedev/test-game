@@ -54,6 +54,7 @@ export function helmModel(it: any): HelmModel {
 
 /** Одна часть описания: g — группа (контур между группами), mat — материал, z — порядок (на герое слой 6.1 + z), ft — деталь (для автопроверки «иконка = герой»). */
 export interface HPart { g: string; mat: string | C[]; z: number; draw: (z: Mz) => void; o: PO; emis?: boolean; emisColor?: C; ft?: string; iconOnly?: boolean }
+const DARKV: C[] = ["#08060a", "#0e0a10", "#140f16", "#1c161e", "#241c26"].map(hx);
 export const SKIN: C[] = ["#4a2620", "#7e4636", "#b06c52", "#d99a76", "#f2c49e"].map(hx);
 
 /**
@@ -126,7 +127,8 @@ export function helmGeo(M: HelmModel, v: HView, hw: number, hh: number, u: numbe
   }
   // ---- купол и стенки ----
   const domeD = (z: Mz, cx = 0) => {
-    if (S.dome === "flat") { z.el([cx, -hh * 0.2], rx, hh * 0.85); z.pg([[cx - rx, -hh * 0.2], [cx + rx, -hh * 0.2], [cx + rx * 0.97, top + 1.4 * K], [cx - rx * 0.97, top + 1.4 * K]]); z.el([cx, top + 1.4 * K], rx * 0.97, 1.4 * K); return; }
+    // топфхельм: плоская крыша чуть уже плеч шлема, стенки слегка сходятся кверху (не «коробка»)
+    if (S.dome === "flat") { z.el([cx, -hh * 0.2], rx, hh * 0.85); z.pg([[cx - rx, -hh * 0.2], [cx + rx, -hh * 0.2], [cx + rx * 0.9, top + 1.4 * K], [cx - rx * 0.9, top + 1.4 * K]]); z.el([cx, top + 1.4 * K], rx * 0.9, 1.2 * K); return; }
     z.el([cx, -hh * 0.12], rx, hh * 0.92 + 0.45 * K);
     if (S.dome === "cone") z.pg([[cx - rx, -hh * 0.12], [cx - rx * 0.72, -hh * 0.82], [cx + (side ? -0.25 * hw : 0), top], [cx + rx * 0.72, -hh * 0.82], [cx + rx, -hh * 0.12]]);
     if (S.dome === "onion") { z.el([cx, -hh * 0.4], rx * 1.08, hh * 0.8); z.pg([[cx - rx * 0.5, -hh * 0.9], [cx, top], [cx + rx * 0.5, -hh * 0.9]]); }
@@ -136,9 +138,12 @@ export function helmGeo(M: HelmModel, v: HView, hw: number, hh: number, u: numbe
     add("h_shell", M.plate, 0.05, (z) => {
       domeD(z);
       if (S.cover === "cap") z.clip((x, y) => y < (v === "back" ? hh * 0.3 : bottom));
+      else if (S.dome === "flat") z.pg([[-rx, -hh * 0.12], [rx, -hh * 0.12], [rx * 0.92, bottom - 1.2 * K], [rx * 0.55, bottom + 0.2 * K], [0, bottom + 0.9 * K], [-rx * 0.55, bottom + 0.2 * K], [-rx * 0.92, bottom - 1.2 * K]]); // низ топфхельма сходится к подбородку
       else { z.pg([[-rx, -hh * 0.12], [rx, -hh * 0.12], [rx * 0.88, bottom], [0, bottom + (S.cover === "full" ? 0.5 * K : 0)], [-rx * 0.88, bottom]]); }
       if (S.cover !== "cap") z.clip((x, y) => !hole(x, y));
     }, { dome: 3, amp: 1.9, bias: 0.3, kant: true });
+    // топфхельм: вертикальное ребро по центру и дыхальца на правой щеке
+    if (S.dome === "flat" && front) { add("h_ridge", M.plate, 0.0515, (z) => z.seg([0, top + 1.2 * K], [0, chin], 0.55 * u), { dome: 1, bias: 1.6 }); add("h_brth", DARKV, 0.0516, (z) => { for (const [x, y] of [[0.4, 0.55], [0.6, 0.55], [0.4, 0.75], [0.6, 0.75]]) z.dot([x * hw, y * hh], 0.32 * u); }, { dome: 1, bias: -1 }); }
     if (icon) add("h_spec", M.plate, 0.051, (z) => z.bz([-rx * 0.82, -hh * 0.05], [-rx * 0.7, top * 0.75], [-rx * 0.15, top + 0.9 * K], 0.9 * u, 0.5 * u), { dome: 1, bias: 2.5 });
     if (S.face === "nasal" && front) add("h_nasal", M.plate, 0.055, (z) => z.seg([0, brow - 0.3 * K], [0, eyeY + hh * 0.4], 1.0 * K, 0.8 * K), { dome: 1, amp: 1.6, bias: 0.6, kant: true }, "nasal");
     if (S.cover === "cap" && front) add("h_browP", M.plate, 0.056, (z) => z.bz([-rx, bottom - 0.3 * K], [0, bottom + 0.4 * K], [rx, bottom - 0.3 * K], 1.0 * K, 1.0 * K), { dome: 1, bias: -0.3 });

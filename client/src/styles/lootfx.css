@@ -32,11 +32,11 @@
 @keyframes lr-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
 /* баннеры */
-.lb-wrap { position: fixed; left: 0; right: 0; top: 14%; z-index: calc(var(--z-modal) + 1); pointer-events: none; text-align: center; animation: lb-in 1s var(--ease-out-soft) both; }
+.lb-wrap { position: fixed; left: 0; right: 0; top: 14%; z-index: var(--z-modal-banner); pointer-events: none; text-align: center; animation: lb-in 1s var(--ease-out-soft) both; }
 .lb-wrap.out { animation: lb-out .5s ease-in forwards; }
 .lb-rays { position: absolute; left: 50%; top: 40px; width: 700px; height: 700px; margin: -350px 0 0 -350px; background: repeating-conic-gradient(rgba(255,154,46,.16) 0 6deg, transparent 6deg 18deg); border-radius: 50%; animation: lb-spin 14s linear infinite; -webkit-mask: radial-gradient(circle, #000, transparent 65%); mask: radial-gradient(circle, #000, transparent 65%); }
 .lb { position: relative; isolation: isolate; padding: 10px 0 12px; }
-.lb::before { content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1; background: linear-gradient(90deg, transparent, rgba(10,8,12,.82) 18%, rgba(10,8,12,.82) 82%, transparent); }
+.lb::before { content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: var(--z-under); background: linear-gradient(90deg, transparent, rgba(10,8,12,.82) 18%, rgba(10,8,12,.82) 82%, transparent); }
 .lb-t { font: 12px var(--font-head); letter-spacing: .3em; color: #ffb85a; text-shadow: 0 1px 0 #000, 0 0 8px var(--legend); }
 .lb-n { font: 24px var(--font-head); color: #ffe9a0; text-shadow: 0 2px 0 #3a1a08, 0 0 16px var(--legend); margin: 2px 0; }
 .lb-l { height: 2px; margin: 6px auto; background: linear-gradient(90deg, transparent, var(--legend), transparent); width: 80%; animation: lb-line .9s .25s var(--ease-out-soft) both; }
@@ -57,7 +57,7 @@
 @keyframes bc-out { 0% { opacity: 0; transform: translateY(20px) scale(.3); } 25% { opacity: 1; transform: translateY(-70px) scale(1.25); } 45% { transform: translateY(-56px) scale(1); } 85% { opacity: 1; transform: translateY(-56px); } 100% { opacity: 0; transform: translateY(-66px); } }
 
 /* выброс предметов: меню ПКМ по ячейке сумки и окно подтверждения (ui/dropui.ts) */
-.dmenu { position: fixed; z-index: calc(var(--z-modal) + 2); display: flex; flex-direction: column; min-width: 130px; padding: 3px; }
+.dmenu { position: fixed; z-index: var(--z-modal-menu); display: flex; flex-direction: column; min-width: 130px; padding: 3px; }
 .dmenu-i { text-align: left; padding: 6px 10px; background: transparent; border: 0; color: var(--fg); cursor: pointer; font: inherit; }
 .dmenu-i:hover { background: var(--btn-hover); }
 .dmenu-i.danger { color: var(--danger, #e06a5a); }

@@ -4,7 +4,7 @@ import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import type { SelfState } from "../../../shared/protocol";
 import { failLevel, MATERIAL_IDS, MATERIALS, MAX_PLUS, SMITH, SMITHS, stepFor } from "../../../shared/upgrade";
-import { visualTier as enchantTier, ENCHANT_VISUAL, GEAR_FX, smithNextText, tierText } from "../../../shared/gearFx";
+import { visualTier as enchantTier, ENCHANT_VISUAL, GEAR_FX, enchantIconColor, smithNextText, tierText } from "../../../shared/gearFx";
 import type { Net } from "../net";
 import { T } from "../../../shared/texts";
 
@@ -25,7 +25,8 @@ type Sel = { index: number } | { slot: Slot } | null;
 export function plusBadgeN(plus: number): string {
   if (!plus) return "";
   const t = enchantTier(plus);
-  return `<span class="plus pt${t}">+${plus}</span>`;
+  // цифра в цвет ступени заточки варианта D (+5 тление, +8 угли, +11 пламя; data/gear-fx.json enchantB.iconColors), подложка тёмная, рамка — за редкостью
+  return `<span class="plus pt${t}" style="color:${enchantIconColor(plus)}">+${plus}</span>`;
 }
 /** Значок «+N» на ячейке предмета. */
 export const plusBadge = (it: Pick<Item, "plus">) => plusBadgeN(it.plus || 0);

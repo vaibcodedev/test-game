@@ -1,6 +1,7 @@
 /** Цель ≠ атака (задача 115, шаг 2): TEST_PORT=2661 npx tsx tests/controls.ts */
 import { assert, Bot, check, passedCount, sleep, startServer, stopServer } from "./harness";
-import { generateMap } from "../shared/map";
+import { generateMap, walkable } from "../shared/map";
+import { segmentWalkable } from "../shared/path";
 import { homeCity } from "../shared/cities";
 import { MAP_SEED } from "../shared/constants";
 import { pickOrder, type PickCtx, type PickKind, type PickSource } from "../client/src/game/castResolve";
@@ -16,6 +17,9 @@ const home = homeCity("solgard").spawn;
 const spawns = MAP.spawns.filter((s) => s.mob === "ratfolk_cutter").sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
 /** Точка появления слизня, которого нашёл setup(): позиции проверок считаются от неё (убитый слизень возрождается не сразу, живой — на соседней точке). */
 let cur: { x: number; y: number } = spawns[0];
+/** Точка в d px от слизня по прямой видимости (без стен между): справа, слева, снизу или сверху — справа у точки 784,6032 теперь стена (подход шёл в обход 1850 px). */
+const side = (d: number) => [[d, 0], [-d, 0], [0, d], [0, -d]].map(([dx, dy]) => ({ x: cur.x + dx, y: cur.y + dy }))
+  .find((q) => walkable(MAP, q.x, q.y, 10) && segmentWalkable(MAP, q.x, q.y, cur.x, cur.y, 10)) ?? { x: cur.x + d, y: cur.y };
 
 /** Живой слизень у ближайшей точки появления, на которой он есть. */
 function slimeNear(b: Bot): { id: string; x: number; y: number } | null {
@@ -51,6 +55,9 @@ async function main() {
       a.send("attack", { id: null });
       a.send("chase", { on: false });
       a.send("dbg", { op: "tp", x: s.x + 160, y: s.y });
+      // ждём патч с новой позицией (под нагрузкой приходит позже 300 мс — иначе p0 снимается до телепорта)
+      const sx = s.x, sy = s.y;
+      await a.until(() => Math.hypot(a.me().x - (sx + 160), a.me().y - sy) < 48, 4000, "телепорт к слизню");
       await sleep(300);
       return s.id;
     }
@@ -79,6 +86,9 @@ async function main() {
       a.send("attack", { id });
       await sleep(300);
       a.send("moveTo", { x: cur.x + 330, y: cur.y + 160 });
+      // цель после moveTo — сразу, на ходу (позже слизня может добить стража столицы — тогда цель снимается честно)
+      await a.until(() => Math.hypot(a.me().x - cur.x, a.me().y - cur.y) > 200, 4000, "герой пошёл к точке moveTo");
+      { const mm = mob(a, id); assert(a.me().target === id || !mm || mm.anim === 4, `moveTo снял цель: цель «${a.me().target}»`); }
       // ждём, пока герой дойдёт и встанет (370 px — около 3 с, с обходом объектов и под нагрузкой дольше), вместо фиксированной паузы
       let last = { x: a.me().x, y: a.me().y }, since = Date.now();
       await sleep(500);
@@ -87,7 +97,9 @@ async function main() {
         if (Math.hypot(q.x - last.x, q.y - last.y) >= 1) { last = q; since = Date.now(); return false; }
         return Date.now() - since >= 600;
       }, 9000, "герой дошёл до точки moveTo");
-      assert(a.me().target === id, "moveTo снял цель");
+      const mm = mob(a, id);
+      // цель держится, пока слизень жив (умер — снята по правилу World: мёртвая цель сбрасывается)
+      if (mm && mm.anim !== 4) assert(a.me().target === id, `moveTo снял цель: цель «${a.me().target}», моб hp ${mm.hp}/${mm.maxHp}, до него ${Math.round(dist(a, id))} px`);
       const p1 = { x: a.me().x, y: a.me().y };
       await sleep(1200);
       assert(Math.hypot(a.me().x - p1.x, a.me().y - p1.y) < 5, "герой сам пошёл к цели без chase");
@@ -160,12 +172,18 @@ async function main() {
       a.send("dbg", { op: "tp", x: cur.x + 900, y: cur.y });
       await a.until(() => { const m = mob(a, id); return !!m && Math.hypot(m.x - cur.x, m.y - cur.y) < 70 && m.anim !== 1; }, 6000, "слизень вернулся домой");
       await sleep(400);
-      a.send("dbg", { op: "tp", x: cur.x + 420, y: cur.y });
+      const at = side(420);
+      a.send("dbg", { op: "tp", x: at.x, y: at.y });
+      await a.until(() => Math.hypot(a.me().x - at.x, a.me().y - at.y) < 48, 4000, "телепорт на 420 px");
       await sleep(300);
       const n0 = countCd(la, "taunt"), d0 = dist(a, id);
       a.send("skill", { id: "taunt", x: cur.x, y: cur.y, target: id, q: 400, ap: true });
       await a.until(() => la.queue.some((m) => m.pend), 1000, "подход начат");
-      await a.until(() => countCd(la, "taunt") > n0, 4500, "каст после подхода");
+      try {
+        await a.until(() => countCd(la, "taunt") > n0, 4500, "каст после подхода");
+      } catch (e) {
+        throw new Error(`${(e as Error).message}: до цели было ${Math.round(d0)}, стало ${Math.round(dist(a, id))} px, герой ${Math.round(a.me().x)},${Math.round(a.me().y)}, точка ${Math.round(cur.x)},${Math.round(cur.y)}, моб ${JSON.stringify((({ x, y, anim, hp }) => ({ x: Math.round(x), y: Math.round(y), anim, hp }))(mob(a, id) ?? { x: 0, y: 0, anim: -1, hp: 0 }))}, очередь ${JSON.stringify(la.queue.slice(-3))}, тосты ${la.toast.slice(-3).map((t) => t.text).join(" | ")}`);
+      }
       assert(dist(a, id) < d0 - 60, "герой не подошёл");
       assert(dist(a, id) <= 260 + 40, "каст вне дальности: " + dist(a, id));
     });
@@ -173,7 +191,9 @@ async function main() {
     await check("WASD отменяет подход", async () => {
       await sleep(8500);
       const id = await setup();
-      a.send("dbg", { op: "tp", x: cur.x + 420, y: cur.y });
+      const at = side(420);
+      a.send("dbg", { op: "tp", x: at.x, y: at.y });
+      await a.until(() => Math.hypot(a.me().x - at.x, a.me().y - at.y) < 48, 4000, "телепорт на 420 px");
       await sleep(300);
       const n0 = countCd(la, "taunt");
       la.queue.length = 0;

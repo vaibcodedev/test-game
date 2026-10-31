@@ -437,11 +437,8 @@ function pauldrons(ctx: GearCtx, it: any) {
       if (it.rivets) push({ g: "p_riv" + s, ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: L + 0.0047, m: (z) => { for (const k of [0, 2]) z.dot(PJ(sum(Sh, mul(A, sg * 2.2), mul(ad, 1.25 * k + 0.3), mul(U, 0.5))), 0.5); } });
       continue;
     }
-    if (form === "cop") {
-      push({ g: "p_dome" + s, ramp: Ac, o: { dome: 3, amp: 1.9, bias: ar.far + 0.25, kant: true }, layer: L + 0.004, m: (z) => z.hull(ellPts(C0, mul(A, sg), e2, F, [2.3 * sz, 1.9 * sz, 2.2 * sz], (q) => q[1] > -0.6).map(PJ)) });
-      continue;
-    }
-    const nl = form === "great" || form === "mythic" ? 2 : form === "angular" || form === "layered" ? 1 : it.lames ?? 1;
+    // cop — малая чашка без лам (украшения — как у остальных форм, как на иконке)
+    const nl = form === "cop" ? 0 : form === "great" || form === "mythic" ? 2 : form === "angular" || form === "layered" ? 1 : it.lames ?? 1;
     for (let k = nl; k >= 1; k--) {
       // angular — нижняя лама расширена (раструб), layered — ярусы шире и с загнутым кончиком
       const ck = add(C0, mul(ad, 1.25 * k * sz)), wf = form === "angular" ? 1.3 : form === "layered" ? 1.15 : 1;

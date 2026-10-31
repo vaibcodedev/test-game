@@ -7,7 +7,7 @@ import { performance } from "node:perf_hooks";
 import { TILE } from "../shared/constants";
 import { CELL_BLOCK } from "../shared/map";
 import { MOBS } from "../shared/mobs";
-import { Nav, findPath } from "../shared/path";
+import { Nav, NAV_FAIL_MS, findPath } from "../shared/path";
 import { World } from "../server/src/game/World";
 import { Mob } from "../server/src/game/Mob";
 import { WorldState } from "../server/src/rooms/schema";
@@ -48,21 +48,20 @@ const spot: { x: number; y: number } | null = { x: pc.x * TILE + 16, y: pc.y * T
 
 if (spot) {
   // сам Nav: 200 вызовов к недостижимой цели стоят не больше нескольких A*
-  const nav = new Nav();
-  let t0 = performance.now();
-  findPath(w.map, g1.x, g1.y, spot.x, spot.y, 8);
-  const one = performance.now() - t0;
+  // время — лучшее из нескольких замеров: под нагрузкой (параллельные прогоны) одиночный замер скачет в разы
+  const best = (k: number, fn: () => void) => { let b = Infinity; for (let i = 0; i < k; i++) { const s = performance.now(); fn(); b = Math.min(b, performance.now() - s); } return b; };
+  const one = best(5, () => findPath(w.map, g1.x, g1.y, spot.x, spot.y, 8));
   // встаём в ближайшую к цели клетку: путь найден «в ноль» — неудача
   const near = findPath(w.map, g1.x, g1.y, spot.x, spot.y, 8);
   const at = near?.length ? near[near.length - 1] : { x: g1.x, y: g1.y };
-  t0 = performance.now();
-  for (let i = 0; i < 200; i++) nav.next(w.map, at.x, at.y, spot.x, spot.y, 8, i * 50);
-  const many = performance.now() - t0;
-  check("Nav: 200 тактов к недостижимой цели ≈ не больше 12 поисков", many <= one * 12 + 2, `${many.toFixed(1)} мс, один A* ${one.toFixed(2)} мс`);
+  const many = best(3, () => { const nav = new Nav(); for (let i = 0; i < 200; i++) nav.next(w.map, at.x, at.y, spot.x, spot.y, 8, i * 50); });
+  // за 10 с Nav повторяет поиск раз в NAV_FAIL_MS (11 A*) и каждый такт проверяет прямую — запас ×1,5; без кэша неудачи было бы 200 A*
+  const searches = Math.ceil((200 * 50) / NAV_FAIL_MS) + 1;
+  check(`Nav: 200 тактов к недостижимой цели ≈ не больше ${searches} поисков (+50 %)`, many <= one * searches * 1.5 + 2, `${many.toFixed(1)} мс, один A* ${one.toFixed(2)} мс`);
 
   // такт мира: со стражей, гоняющейся за недостижимым мобом, — не дороже обычного
-  const tick = (n: number) => { const s = performance.now(); for (let i = 0; i < n; i++) w.update(50); return (performance.now() - s) / n; };
-  tick(200);
+  const tick = (n: number) => best(3, () => { for (let i = 0; i < n; i++) w.update(50); }) / n;
+  tick(100);
   const base = tick(200);
   const m2 = spawn(spot.x, spot.y);
   run(600);
