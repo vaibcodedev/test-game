@@ -14,6 +14,9 @@ import * as sfx from "./sfx";
 import { DUNGEON_GATES } from "../../../shared/dungeon";
 import { trackLight } from "./lights";
 import { addTreeFade, addBuildingFade, FADE_BUILDINGS } from "./treeFade";
+import COLLISION from "../../../data/collision.json";
+/** Объекты, чья картинка у земли шире следа коллизии (tools/gen/collision-boxes.ts): гаснут, когда герой позади них (treeFade.ts). */
+const FADE_WIDE = new Set<string>(COLLISION.fade);
 import { glowOn } from "./postfx";
 import { objAo, objFoot, objHas, objId, objTex, setObj } from "./objTex";
 import { setupWaterLava } from "./waterLava";
@@ -213,7 +216,9 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     }
     if (o.kind === "lilypad" || GROUND_OBJECTS.has(o.kind)) img.setDepth(DEPTH.ground - (GROUND_OBJECTS.has(o.kind) ? 1 : 0));
     else if (o.kind === "flowers" || o.kind === "tallgrass" || o.kind === "bones" || o.kind === "ember_vent") img.setDepth(o.y - 20);
-    else img.setDepth(by + (o.dz ?? 0));
+    // глубина — по той же линии основания, что и коллизия (objBox): у зданий крыльцо и ступени ниже фасада, и герой у фасада
+    // стоит ниже линии основания, но выше низа кадра — без этого дом рисовался поверх него (2026-10-31)
+    else img.setDepth(Math.min(by, objBox(o)?.[3] ?? by) + (o.dz ?? 0));
     if (SWAY_TREES.has(o.kind)) {
       // лёгкое покачивание крон (деревья Basic из shared/decor.ts)
       const sway = (cellHash(o.x, o.y) - 0.5) * 0.04;
@@ -222,7 +227,8 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     }
     // полупрозрачная крона, когда герой за деревом: у деревьев nature3d есть кадр ствола <id>_trunk (treeFade.ts)
     if (oid && objHas(scene, `${oid}_trunk`)) objs.push(addTreeFade(scene, img as Phaser.GameObjects.Image, `${oid}_trunk`));
-    if (FADE_BUILDINGS.has(o.kind) && img.type === "Image") addBuildingFade(img as Phaser.GameObjects.Image, objBox(o)); // здание полупрозрачно, когда герой за ним (treeFade.ts)
+    if (FADE_BUILDINGS.has(o.kind) && img.type === "Image") addBuildingFade(img as Phaser.GameObjects.Image, objBox(o));
+    else if (FADE_WIDE.has(o.kind) && (img.type === "Image" || img.type === "Sprite")) addBuildingFade(img as Phaser.GameObjects.Image); // картинка шире следа: гаснет, когда герой позади // здание полупрозрачно, когда герой за ним (treeFade.ts)
     const nid = nodeOf.get(o);
     if (nid !== undefined) {
       const mine: Phaser.GameObjects.GameObject[] = [img];

@@ -18,7 +18,7 @@ const DATA = path.join(ROOT, "data/collision.json");
 const FIRE_SHEET: Record<string, string> = { campfire: "fire-camp", brazier: "fire-brazier" };
 const isShadow = (r: number, g: number, b: number, a: number) => a <= 130 && r < 50 && g < 50 && b < 60;
 
-type Rules = { facade: string[]; facadeK: number; band: number; minPx: number; depthK: number; minDepth: number; maxDepth: number; cell: string[]; spanX: string[]; spanY: string[] };
+type Rules = { facade: string[]; facadeK: number; sideRows: number; band: number; minPx: number; depthK: number; minDepth: number; maxDepth: number; cell: string[]; spanX: string[]; spanY: string[] };
 export const matchKind = (list: string[], kind: string) => list.some((p) => (p.endsWith("*") ? kind.startsWith(p.slice(0, -1)) : kind === p));
 
 interface Frame { d: Buffer; W: number; H: number; fw: number; fh: number; ax: number; ay: number; src: string }
@@ -36,7 +36,7 @@ function frameOf(id: string, kind: string): Frame | null {
   return id === kind ? sheet(kind) : null;
 }
 
-export interface Measure { base: number; x0: number; x1: number; fw: number; fh: number; ax: number; ay: number; src: string }
+export interface Measure { base: number; x0: number; x1: number; solid: (x: number, y: number) => boolean; fw: number; fh: number; ax: number; ay: number; src: string }
 /** Основание кадра (первый кадр листа): нижний ряд непрозрачного не-тени и столбцы нижней полосы. */
 function measure(fr: Frame, R: Rules, kind: string): Measure | null {
   const a = (x: number, y: number) => { const i = (y * fr.W + x) * 4; return [fr.d[i], fr.d[i + 1], fr.d[i + 2], fr.d[i + 3]]; };
@@ -58,20 +58,35 @@ function measure(fr: Frame, R: Rules, kind: string): Measure | null {
     if (n >= R.minPx) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
   }
   if (x1 < x0) return null;
-  return { base, x0, x1, fw: fr.fw, fh: fr.fh, ax: fr.ax, ay: fr.ay, src: fr.src };
+  return { base, x0, x1, solid, fw: fr.fw, fh: fr.fh, ax: fr.ax, ay: fr.ay, src: fr.src };
 }
 
+/** Виды, чья картинка у земли шире следа (data/collision.json fade): гаснут, когда герой позади них по глубине и в пределах картинки. */
+const OVERFLOW = new Set<string>();
 /** Прямоугольник [x0, x1, y0, y1] от (o.x, o.y). */
-export function boxOf(kind: string, m: Measure, R: Rules): [number, number, number, number] {
+export function boxOf(kind: string, m: Measure, R: Rules, side = true): [number, number, number, number] {
   const fp = OBJECT_FOOTPRINT[kind]!;
   const ox = Math.round(m.ax * m.fw), oy = Math.round(m.ay * m.fh); // как Phaser: origin в целых px кадра
   let x0 = m.x0 - ox, x1 = m.x1 + 1 - ox;
   const y1 = Math.min(2, m.base + 1 - oy); // низ основания (o.y = низ клетки − 2: не ниже клетки)
   const wd = x1 - x0;
   let y0 = y1 - Math.max(R.minDepth, Math.min(R.maxDepth, Math.round(wd * R.depthK)));
+  // сбоку герой стоит позади основания по глубине (y < низа основания) и объект рисуется поверх него: края — по всем непрозрачным столбцам
+  // от низа основания до высоты героя над его верхом (sideRows), чтобы стена, свес, вывеска не перекрывали тело (2026-10-31, жалоба владельца).
+  // Не для деревьев (крона гаснет, ствол — отдельный кадр) и звеньев рядов (span).
+  if (side) {
+    let a = m.fw, b = -1;
+    for (let x = 0; x < m.fw; x++) {
+      let n = 0;
+      for (let y = Math.max(0, m.base - (y1 - y0) - R.sideRows); y <= m.base && n < R.minPx; y++) if (m.solid(x, y)) n++;
+      if (n >= R.minPx) { a = Math.min(a, x); b = Math.max(b, x); }
+    }
+    if (b >= a) { x0 = Math.min(x0, a - ox); x1 = Math.max(x1, b + 1 - ox); }
+  }
   if (matchKind(R.spanX, kind)) { x0 = -fp.w * TILE / 2; x1 = fp.w * TILE / 2; }
   if (matchKind(R.spanY, kind)) y0 = 2 - fp.h * TILE;
-  // не шире следа (поиск пути идёт по клеткам следа)
+  // не шире следа (поиск пути идёт по клеткам следа); картинка шире следа — герой сбоку заходит за её край, такой объект гаснет (rules → fade)
+  if (x0 < -fp.w * TILE / 2 - 1 || x1 > fp.w * TILE / 2 + 1) OVERFLOW.add(kind);
   x0 = Math.max(x0, -fp.w * TILE / 2); x1 = Math.min(x1, fp.w * TILE / 2); y0 = Math.max(y0, 2 - fp.h * TILE);
   return [x0, x1, y0, y1];
 }
@@ -90,7 +105,8 @@ function main() {
       if (!fr) continue;
       const m = measure(fr, R, kind);
       if (!m) continue;
-      const b = boxOf(kind, m, R);
+      const tree = files.includes(kind + "_trunk") || files.some((f) => f.startsWith(kind + "__") && f.endsWith("_trunk"));
+      const b = boxOf(kind, m, R, !tree && !matchKind(R.spanX, kind) && !matchKind(R.spanY, kind));
       if (id !== kind && boxes[kind] && boxes[kind].every((v, i) => v === b[i])) continue; // вариант с тем же основанием
       boxes[id] = b;
       if (id === kind) {
@@ -99,6 +115,7 @@ function main() {
       }
     }
   }
+  cfg.fade = [...OVERFLOW].sort();
   cfg.boxes = boxes;
   const body = JSON.stringify(cfg, null, 2).replace(/\[\s+(-?\d+),\s+(-?\d+),\s+(-?\d+),\s+(-?\d+)\s+\]/g, "[$1, $2, $3, $4]");
   fs.writeFileSync(DATA, body + "\n");

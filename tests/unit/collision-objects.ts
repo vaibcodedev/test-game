@@ -11,6 +11,8 @@ import { moveGated } from "../../shared/siege";
 import { PLAYER_SPEED, TICK_MS } from "../../shared/constants";
 import { PLAYER_RADIUS, TILE } from "../../shared/constants";
 import COLLISION from "../../data/collision.json";
+import fs from "node:fs";
+import { PNG } from "pngjs";
 
 const R = PLAYER_RADIUS, HH = R * 0.5; // тело юнита: ±R по x, ±R/2 по y (shared/map.ts walkIn)
 const N = 32;
@@ -159,6 +161,62 @@ for (const k of ["ledge_grass", "v_basic_fence_row", "v_graveyard_fence_long", "
     for (let i = 0; i < 3; i++) put(m, k, 4 + i * fw, 20);
     for (let x = 4 * TILE + 4; x < (4 + 3 * fw) * TILE - 4; x += 3) assert.ok(!segmentWalkable(m, x, 21 * TILE + 12, x, 18 * TILE, R), `поперёк в x=${x}`);
   });
+}
+
+section("глубина и перекрытие: у основания герой перед объектом, сбоку не внутри картинки, за объектом объект гаснет");
+{
+  // кадр как у клиента (terrain.ts makeImage): лист огня, objects/<id>.png, лист vfx (r: 1 — в vfx/r/)
+  const A = "client/public/assets", vfx = JSON.parse(fs.readFileSync(`${A}/vfx/manifest.json`, "utf8")) as Record<string, { frameW: number; frameH: number; anchor: [number, number]; r?: number }>;
+  const FIRE: Record<string, string> = { campfire: "fire-camp", brazier: "fire-brazier" };
+  const frame = (kind: string) => {
+    const sh = (id: string) => { const e = vfx[id], f = `${A}/vfx/${e?.r ? "r/" : ""}${id}.png`; if (!e || !fs.existsSync(f)) return null; const p = PNG.sync.read(fs.readFileSync(f)); return { p, fw: e.frameW, fh: e.frameH, ox: Math.round(e.anchor[0] * e.frameW), oy: Math.round(e.anchor[1] * e.frameH) }; };
+    if (FIRE[kind]) { const f = sh(FIRE[kind]); if (f) return f; }
+    const f = `${A}/objects/${kind}.png`;
+    if (fs.existsSync(f)) { const p = PNG.sync.read(fs.readFileSync(f)); return { p, fw: p.width, fh: p.height, ox: Math.round(p.width / 2), oy: p.height }; }
+    return sh(kind);
+  };
+  const fadeSrc = fs.readFileSync("client/src/game/treeFade.ts", "utf8");
+  const FADE_B = new Set((/FADE_BUILDINGS = new Set\(\[([^\]]*)\]/.exec(fadeSrc)?.[1] ?? "").match(/"[^"]+"/g)?.map((q) => q.slice(1, -1)) ?? []);
+  const trees = new Set(fs.readdirSync(`${A}/objects`).filter((f) => f.endsWith("_trunk.png")).map((f) => f.replace(/(__[^_]+)?_trunk\.png$/, "")));
+  assert.ok(FADE_B.has("house") && trees.has("v_basic_oak"), "списки гаснущих не найдены");
+  const WIDE = new Set<string>(COLLISION.fade as string[]);
+  const HERO_HW = 8, HERO_H = 32; // тело героя на экране: ±8 px, 32 px до ступней (docs/art/scale.md)
+  for (const k of KINDS.filter((k) => !(COLLISION.rules.spanX as string[]).concat(COLLISION.rules.spanY as string[]).some((q) => k.startsWith(q.replace("*", ""))))) {
+    await test(k, () => {
+      const fr = frame(k);
+      assert.ok(fr, "кадр не найден");
+      const { p, fw, fh, ox, oy } = fr!;
+      const m = emptyMap(), o = put(m, k, 10, 20), b = objBox(o)!;
+      const solid = (wx: number, wy: number) => { // непрозрачный пиксель кадра (не тень) в точке мира
+        const x = Math.floor(wx - o.x + ox), y = Math.floor(wy - o.y + oy);
+        if (x < 0 || y < 0 || x >= fw || y >= fh) return false;
+        const i = (y * p.width + x) * 4, [r, g, bl, a] = [p.data[i], p.data[i + 1], p.data[i + 2], p.data[i + 3]];
+        return a >= 160 && !(a <= 130 && r < 50 && g < 50 && bl < 60);
+      };
+      let base = -1;
+      for (let y = fh - 1; y >= 0 && base < 0; y--) for (let x = 0; x < fw; x++) if (solid(o.x - ox + x, o.y - oy + y)) { base = y; break; }
+      const by = o.y - oy + base + 1, depth = Math.min(by, b[3]); // terrain.ts: глубина = min(низ кадра по основанию, низ коллизии)
+      const top = o.y - oy;
+      const pts: [number, number][] = [];
+      for (let x = b[0] - R; x <= b[1] + R; x += 2) pts.push([x, b[3] + HH + 0.5], [x, b[2] - HH - 0.5]);
+      for (let y = b[2] - HH; y <= b[3] + HH; y += 2) pts.push([b[0] - R - 0.5, y], [b[1] + R + 0.5, y]);
+      const bad: string[] = [];
+      for (const [hx, hy] of pts) {
+        if (!walkable(m, hx, hy, R) || hy >= depth) continue; // перед объектом — рисуется поверх
+        // как client/src/game/treeFade.ts: здание — ноги севернее основания; дерево и картинка шире следа (fade) — позади по глубине в пределах кадра
+        const fades = (FADE_B.has(k) && hy < b[2] && hx >= b[0] - R - HERO_HW && hx <= b[1] + R + HERO_HW) ||
+          (trees.has(k) && hy < by && hy > top + 12 && Math.abs(hx - o.x) < fw * 0.5 + HERO_HW) ||
+          (WIDE.has(k) && hy < by && hy > top + 8 && Math.abs(hx - o.x) < fw * 0.5 + HERO_HW);
+        if (fades) continue;
+        // за низким объектом (бочка, ящик, повозка) — честное перекрытие 3/4: герой позади, часть тела закрыта; здания при этом обязаны гаснуть
+        if (hy < b[2] && !FADE_B.has(k)) continue;
+        let hit = 0;
+        for (let y = hy + 2 - HERO_H; y <= hy + 2 && !hit; y++) for (let x = hx - HERO_HW; x <= hx + HERO_HW; x++) if (y >= top && solid(x, y)) { hit = 1; break; }
+        if (hit) bad.push(`(${(hx - o.x).toFixed(1)}, ${(hy - o.y).toFixed(1)})`);
+      }
+      assert.deepEqual(bad.slice(0, 6), [], `герой позади и перекрыт объектом в ${bad.length} точках (от точки объекта)`);
+    });
+  }
 }
 
 section("поиск пути обходит объект");

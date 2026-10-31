@@ -2,7 +2,7 @@
  * Снимки «герой вплотную к объекту» (docs/art/perspective.md «Коллизии объектов»): бочка, дом, камень, дерево — с 4 сторон, зум 3, день.
  * Герой ставится в 50 px от основания и идёт клавишей к объекту до упора; в лог — зазор тела до прямоугольника основания (сервер и клиент).
  * Замок tools/out/scenario.lock2 (берёт сам, чужой не трогает), свой порт: $env:TEST_PORT="2961"; npx tsx tools/collision-shots.ts
- * → tools/out/collision/<объект>-<сторона>.png
+ * → tools/out/collision/<объект>-<сторона>-<TAG>.png (TAG=before|after, по умолчанию after); MONTAGE=1 — свести «до | после» в compare.png
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -11,7 +11,7 @@ import { DAY_CYCLE_MS } from "../shared/daynight";
 import { generateMap, moveWithCollision, objBox, walkable, type MapObject, type WorldMap } from "../shared/map";
 import { MAP_SEED, PLAYER_RADIUS, TILE } from "../shared/constants";
 
-const OUT = path.resolve("tools/out/collision"), LOCK = path.resolve("tools/out/scenario.lock2");
+const TAG = process.env.TAG ?? "after", OUT = path.resolve("tools/out/collision"), LOCK = path.resolve("tools/out/scenario.lock2");
 const W = 1366, H = 768, CW = 520, CH = 400, VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5361, R = PLAYER_RADIUS, HH = R / 2;
 type Side = "south" | "north" | "west" | "east";
 const SIDES: [Side, number, number, string][] = [["south", 0, 1, "ArrowUp"], ["north", 0, -1, "ArrowDown"], ["west", -1, 0, "ArrowRight"], ["east", 1, 0, "ArrowLeft"]];
@@ -50,7 +50,8 @@ async function main() {
   fs.writeFileSync(path.join(LOCK, "owner"), `collision-shots ${process.pid} ${new Date().toISOString()}\n`);
   try {
     try { os.setPriority(0, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* ok */ }
-    await shots(res);
+    if (!process.env.MONTAGE) await shots(res);
+    await montage(res.map((t) => t.id));
   } finally { fs.rmSync(LOCK, { recursive: true, force: true }); }
 }
 
@@ -110,13 +111,29 @@ async function shots(res: ReturnType<typeof targets>["res"]) {
         const g = Math.max(b[0] - (hp[0] + R), (hp[0] - R) - b[1], b[2] - (hp[1] + HH), (hp[1] - HH) - b[3]);
         const [ox, oy] = (await page.evaluate(`(() => { const sc = window.__game.scene.getScene("game"), cam = sc.cameras.main, cv = window.__game.canvas, r = cv.getBoundingClientRect(), k = r.width / cv.width; return [r.left + (${(b[0] + b[1]) / 2} - cam.worldView.x) * cam.zoom * k, r.top + (${b[3]} - cam.worldView.y) * cam.zoom * k]; })()`)) as number[];
         const clip = { x: Math.round(Math.max(0, Math.min(W - CW, ox - CW / 2))), y: Math.round(Math.max(0, Math.min(H - CH, oy - CH * 0.62))), width: CW, height: CH };
-        await page.screenshot({ path: path.join(OUT, `${t.id}-${s.side}.png`) as `${string}.png`, clip });
+        await page.screenshot({ path: path.join(OUT, `${t.id}-${s.side}-${TAG}.png`) as `${string}.png`, clip });
         console.log(`${t.id} ${s.side}: герой (${hp[0].toFixed(1)}, ${hp[1].toFixed(1)}), ожидали (${s.ex.toFixed(1)}, ${s.ey.toFixed(1)}), зазор ${g.toFixed(2)} px`);
       }
     }
   } finally {
     await browser.close(); await vite.close(); await stopServer();
   }
+}
+/** «до | после» по каждому объекту и стороне → tools/out/collision/compare.png (Chrome — под тем же замком). */
+async function montage(ids: string[]) {
+  const puppeteer = (await import("puppeteer-core")).default;
+  const chrome = ["C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"].find((p) => fs.existsSync(p))!;
+  const img = (f: string) => fs.existsSync(path.join(OUT, f)) ? `<img src="data:image/png;base64,${fs.readFileSync(path.join(OUT, f)).toString("base64")}">` : `<div class=miss>нет ${f}</div>`;
+  let rows = "";
+  for (const id of ids) {
+    rows += `<h4>${id}</h4><div class=row>`;
+    for (const [side] of SIDES) rows += `<figure><div class=pair>${img(`${id}-${side}-before.png`)}${img(`${id}-${side}-after.png`)}</div><figcaption>${side}: слева до · справа после</figcaption></figure>`;
+    rows += "</div>";
+  }
+  const html = `<html><body><h3>Коллизии объектов: герой вплотную, зум 3 (до | после)</h3>${rows}<style>body{margin:0;padding:8px;background:#14121a;color:#f0e2c0;font:13px "Segoe UI",sans-serif}h3,h4{margin:6px 4px;color:#ffd890}.row{display:flex;flex-wrap:wrap;gap:8px}figure{margin:0;background:#1e1a26;padding:4px;border:1px solid #3a3448}.pair{display:flex;gap:4px}.pair img{width:260px;height:200px}img{image-rendering:pixelated;display:block}figcaption{padding-top:3px;color:#9be08a}.miss{width:260px;height:200px;color:#f66}</style></body></html>`;
+  const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox"], defaultViewport: { width: 2200, height: 900 } });
+  try { const page = await browser.newPage(); await page.setContent(html); await page.screenshot({ path: path.join(OUT, "compare.png") as `${string}.png`, fullPage: true }); } finally { await browser.close(); }
+  console.log("compare.png");
 }
 void TILE;
 main().catch((e) => { console.error(e); process.exit(1); });
