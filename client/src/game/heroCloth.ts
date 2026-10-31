@@ -70,7 +70,7 @@ export class HeroCloth {
   update(sp: Phaser.GameObjects.Sprite, sh: HbSheet | null, dt: number, push: boolean, near: boolean) {
     const c = sh?.cloth;
     if (!sh || !c || !sp.visible || sp.alpha < 0.05) { this.rope?.setVisible(false); return; }
-    const COLS = 14, fn = Number(sp.frame.name) || 0, rowName = sh.rows[Math.floor(fn / COLS)] ?? "idle:down", fi = fn % COLS;
+    const COLS = sh.cols, fn = Number(sp.frame.name) || 0, rowName = sh.rows[Math.floor(fn / COLS)] ?? "idle:down", fi = fn % COLS;
     const view = rowName.split(":")[1], v = c.def.views[view];
     const t = v ? texOf(this.scene, c.def, view) : null;
     if (!t || !v) { this.rope?.setVisible(false); return; }

@@ -153,11 +153,17 @@ async function main() {
       must(st.hp && st.mp, "зелья не заблокированы: " + JSON.stringify(st));
       must(!st.skill, "умение заблокировано");
       must(st.mount, "маунт/питомец не заблокированы");
+      // бот успевает убить стоящего героя за время проверок вступления (бой ~7 с) — окна итогов и смерти закрывают панель; замок слотов от них не зависит
+      const modal = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".arena-modal, .death")].filter((e) => !e.hidden).map((e) => { e.hidden = true; return e.innerText.replace(/\s+/g, " ").slice(0, 120); }));
+      if (modal.length) console.log("  (окно арены поверх панели закрыто: " + modal.join(" | ") + ")");
       const box = await (await page.$('.hb-slot[data-bar="0"][data-i="9"]'))!.boundingBox();
       await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-      await sleep(600);
-      const tip = await page.evaluate(() => document.body.innerText.includes("Недоступно на арене"));
-      must(tip, "нет подсказки «Недоступно на арене»");
+      // подсказка появляется с задержкой; при 3 к/с в Chrome без окна — дольше
+      const tip = await page.waitForFunction(() => document.body.innerText.includes("Недоступно на арене"), { timeout: 8000 }).then(() => true, () => false);
+      if (!tip) {
+        const why = await page.evaluate((x: number, y: number) => { const e = document.elementFromPoint(x, y) as HTMLElement | null; const t = document.querySelector<HTMLElement>(".tip"); return { at: e ? e.className + " < " + (e.parentElement?.className ?? "") : null, tip: t ? [t.hidden, t.innerText.slice(0, 80)] : null, ph: (window as any).__net.room?.state?.phase }; }, box!.x + box!.width / 2, box!.y + box!.height / 2);
+        must(false, "нет подсказки «Недоступно на арене»: " + JSON.stringify(why));
+      }
       await shot(page, "locked-slots.png");
     });
 

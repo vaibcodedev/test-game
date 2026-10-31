@@ -84,6 +84,7 @@ if (process.argv.includes("--compose")) { compose(); process.exit(0); }
 const { default: puppeteer } = await import("puppeteer-core");
 const { createServer } = await import("vite");
 const { dbFile, ensureChar, PORT, sleep } = await import("./harness");
+const { DAY_CYCLE_MS } = await import("../shared/daynight");
 type Page = import("puppeteer-core").Page;
 type Player = import("../server/src/game/Player").Player;
 type World = import("../server/src/game/World").World;
@@ -156,7 +157,7 @@ async function scenario() {
   try {
     // DAY_ONLY=1 — только дневные снимки (задача 141: «было | стало» днём)
     for (const [tod, frac] of ([["day", 0.3], ["night", 0.82]] as const).filter(([t]) => !process.env.DAY_ONLY || t === "day")) {
-      await page.evaluate((f: number) => { const C = 20 * 60 * 1000, r = (window as any).__realNow(); (window as any).__dshift = f * C - (r % C); }, frac);
+      await page.evaluate(([f, C]: [number, number]) => { const r = (window as any).__realNow(); (window as any).__dshift = f * C - (r % C); }, [frac, DAY_CYCLE_MS] as [number, number]); // цикл суток — data/gameplay.json (был 20 мин, стал 60)
       // ONLY=id,id — снять только эти места
       for (const s of SPOTS.filter((q) => !process.env.ONLY || process.env.ONLY.split(",").includes(q.id))) {
         const cx = s.x * TILE, cy = s.y * TILE;

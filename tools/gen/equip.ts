@@ -426,7 +426,7 @@ const OLD_KINDS = new Set(["sword", "axe", "staff", "scepter", "dagger", "bow", 
 export function buildEquipIcons(): Record<string, PC> {
   const out: Record<string, PC> = {};
   for (const b of Object.values(BASE_ITEMS)) {
-    if (b.slot === "consumable") continue;
+    if (b.slot === "consumable" || b.slot === "shoulders" || b.slot === "gloves") continue; // наплечники и перчатки — tools/gen/slot-arms.ts
     // новые базы рисует генератор моделей (equip-models.ts); старые — прежний рисовальщик
     if (MODEL_CATS.includes(b.id) && !OLD_KINDS.has(b.icon)) continue;
     const variants = ICON_VARIANT_SLOTS.includes(b.icon) ? ICON_VARIANTS : [ICON_VARIANTS[0]];

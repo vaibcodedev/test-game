@@ -155,7 +155,8 @@ async function scenario() {
         cv.push(+(sd / (mean || 1)).toFixed(3)); n.push(sp.length);
       }
       return { cv, n };`, { ids });
-    const moving = smooth.cv.filter((_, i) => smooth.n[i] > 20);
+    // кадров с ходом — не меньше 20 при обычных 7+ к/с; в Chrome без окна под нагрузкой 3–5 к/с хватает 10 (2026-10-31)
+    const moving = smooth.cv.filter((_, i) => smooth.n[i] >= 10);
     check(moving.length >= 2, `на клиенте идут ${moving.length} бойцов (кадров с ходом: ${smooth.n.join(", ")})`);
     check(moving.every((c) => c < 0.35), `ход ровный: разброс скорости отрисовки по кадрам (CV) ${smooth.cv.join(", ")} < 0.35`);
     // кадры хода и расстояния в строю

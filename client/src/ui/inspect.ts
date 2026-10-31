@@ -1,7 +1,7 @@
 /** Осмотр игрока: имя, класс, уровень, фракция и 7 вещей. ПКМ → «Осмотреть» или клик по рамке цели (docs/art/gear.md, раздел 3). */
 import { CLASSES } from "../../../shared/classes";
 import { FACTIONS, factionColor } from "../../../shared/factions";
-import type { Item } from "../../../shared/items";
+import { iconFor, slotGhost, type Item } from "../../../shared/items";
 import type { InspectReply, SelfState } from "../../../shared/protocol";
 import type { Net } from "../net";
 import { gearRows } from "./gearfx";
@@ -56,6 +56,7 @@ export class InspectUI {
     const body = this.win.querySelector<HTMLElement>(".gear-block")!;
     body.append(gearRows(m.equip.map((e) => ({ slot: e.slot, item: e.item })), m.sid, {
       tip: (elm, it) => this.host.tipFor(elm, () => this.host.itemTip(it, this.net.self!)),
+      ghost: (slot) => (CLASSES[m.cls] ? iconFor({ base: slotGhost(m.cls, slot), stats: {}, uid: "slot", rarity: 0 }) : undefined),
     }));
   }
 }

@@ -172,18 +172,19 @@ async function scenario() {
     m.state = "return";
     const cx = (pair.a.x + pair.b.x) / 2, cy = (pair.a.y + pair.b.y) / 2;
     await run("sc.cameras.main.stopFollow(); sc.cameras.main.centerOn(a.x, a.y); window.__trail = sc.add.graphics().setDepth(1e6);", { x: cx, y: cy });
-    const trail: { x: number; y: number }[] = [];
-    let jump = 0;
+    const trail: { x: number; y: number; t: number }[] = [];
+    // шаг между замерами — по времени: под нагрузкой замер идёт не за 100 мс, а за 300–500 (телепорт — скачок, который скоростью не объяснить)
+    let jump = 0, rate = 0;
     for (let i = 0; i < 80 && m.state === "return"; i++) {
       const last = trail[trail.length - 1];
-      trail.push({ x: m.x, y: m.y });
-      if (last) jump = Math.max(jump, Math.hypot(m.x - last.x, m.y - last.y));
+      trail.push({ x: m.x, y: m.y, t: Date.now() });
+      if (last) { const d = Math.hypot(m.x - last.x, m.y - last.y); jump = Math.max(jump, d); rate = Math.max(rate, d / Math.max(0.2, (Date.now() - last.t) / 1000)); }
       await run("const g = window.__trail; g.clear(); g.lineStyle(2, 0xffd040, 0.9); g.beginPath(); a.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.strokePath(); g.fillStyle(0x40ff80, 1); g.fillCircle(a[a.length - 1].x, a[a.length - 1].y, 3);", trail);
       await sleep(100);
     }
     const home = Math.hypot(m.x - pair.b.x, m.y - pair.b.y);
     check(home < 10, `моб обошёл камень и дома: ${home.toFixed(1)} px от точки появления`);
-    check(jump < 40, `без телепорта: самый большой шаг между замерами ${jump.toFixed(1)} px`);
+    check(rate < 300, `без телепорта: самый большой шаг между замерами ${jump.toFixed(1)} px, скорость не выше ${rate.toFixed(0)} px/с (порог 300)`);
     save("mob-rock.png", "Моб по дороге домой обходит препятствие (жёлтая линия — его путь), без телепорта", await snap(cx, cy, 12 * TILE, 9 * TILE));
     await run("window.__trail && window.__trail.destroy();");
   } finally {

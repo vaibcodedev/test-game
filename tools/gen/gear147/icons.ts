@@ -10,6 +10,8 @@ import { Mz, mixC, type PO, type V2 } from "../hero147/base_b";
 import { GD, SLOTS, ramp, setOf, type CrestId, type Slot } from "./gear";
 import { PARAM_STYLES, helmGeo, helmModel } from "./helm";
 import { armorShape, bodyMat, pdForm } from "./armorgeo";
+import { bossAt, shieldGeo, shieldModel } from "./shield";
+import { axeGeo, axeModel } from "./axe";
 
 /**
  * Маска с масштабом и сдвигом: формы рисуются в координатах 48×48 (исходные, центр SX, SY), предмет вписывается так,
@@ -129,6 +131,8 @@ function fit(parts: IP[]) {
     if (Math.abs(k - 1) < 0.015) break;
     ks *= k; place(); KS = ks; SX = sx; SY = sy; r = render(parts);
   }
+  // предел стороны строгий: после округления маски сторона могла выйти на 1 px за предел — дожимаем
+  for (let n = 0; n < 3 && sideOf(r.box.body) > SMAX; n++) { ks *= (SMAX - 1.5) / Math.max(1, sideOf(r.box.body) - 0.5); place(); KS = ks; SX = sx; SY = sy; r = render(parts); }
   // центр корпуса — по центру поля (±1 px), если весь предмет помещается
   const dx = Math.round(23.5 - (r.box.body[0] + r.box.body[2]) / 2), dy = Math.round(23.5 - (r.box.body[1] + r.box.body[3]) / 2);
   if ((dx || dy) && r.box.all[0] + dx >= 1 && r.box.all[2] + dx <= S - 2 && r.box.all[1] + dy >= 1 && r.box.all[3] + dy <= S - 2) { SX -= dx / KS; SY -= dy / KS; r = render(parts); }
@@ -222,6 +226,12 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
         if (it.halo) addW("halo", ramp(it.halo), (z) => { z.el([24, 4], 13, 3.6); z.clip((x, y) => !(Math.hypot((x - 24) / 10.5, (y - 4) / 2.2) < 1)); }, { dome: 1, bias: 1.0 }, true);
         addW("fold", Cl, (z) => { z.bz([15, 24], [13, 35], [11, 45], 0.8, 0.8); z.bz([33, 24], [35, 35], [37, 45], 0.8, 0.8); }, { dome: 1, bias: -1.5 });
         addW("spec", Cl, (z) => z.bz([12.5, 21], [11, 32], [9, 43], 1.0, 0.7), { dome: 1, bias: 2.3 });
+        // фактура ткани (ровная планка по эталону, icons.md §4): глубокие складки от кушака вниз с гребнями света, тень по подолу, строчка боковых швов
+        const yb = it.cut === "tunic" ? 36 : it.cut === "mid" ? 38 : 46, xs = it.cut === "tunic" ? [16, 20.5, 27.5, 32] : it.cut === "mid" ? [15.5, 20.5, 27.5, 32.5] : [14, 20, 28, 34];
+        addW("rfold", Cl, (z) => { for (const x of xs) z.bz([x + (x < 24 ? 1 : -1), 25], [x + (x < 24 ? -0.8 : 0.8), (25 + yb) / 2], [x + (x < 24 ? -2.2 : 2.2) * (yb - 25) / 21, yb - 0.6], 0.75, 1.0); }, { dome: 1, bias: -1.7 });
+        addW("rfoldH", Cl, (z) => { for (const x of [xs[0] + 2.2, xs[2] + 2.2]) z.bz([x, 26], [x - 0.4, (26 + yb) / 2], [x - 0.6 * (yb - 25) / 21, yb - 1.5], 0.6, 0.5); }, { dome: 1, bias: 2.0 });
+        addW("rhemS", Cl, (z) => { const w0 = it.cut === "tunic" ? 12.5 : it.cut === "mid" ? 12 : 8, w1 = 48 - w0; z.bz([w0, yb - 1.2], [24, yb + 0.4], [w1, yb - 1.2], 1.1, 1.1); }, { dome: 1, bias: -1.3 });
+        addW("rseam", Cl, (z) => { for (const [x0, x1] of [[13.4, 12.2], [34.6, 35.8]] as V2[]) for (let y = 10; y < 19; y += 2.6) z.seg([x0 + (x1 - x0) * (y - 10) / 9, y], [x0 + (x1 - x0) * (y + 1.2 - 10) / 9, y + 1.2], 0.5); }, { dome: 1, bias: 1.4 });
         if (it.panel) addW("panel", ramp(it.panel), (z) => z.pg([[20, 22], [28, 22], [30, 46], [18, 46]]), { dome: 3, amp: 1.7, bias: 0.25 });
         if (it.embroid) addW("emb", Tr, (z) => { for (let y = 25; y < 45; y += 4) { z.seg([20, y], [24, y + 2], 0.8); z.seg([24, y + 2], [28, y], 0.8); } }, { dome: 1, bias: 0.6 });
         if (it.hemTrim) addW("hem", Tr, (z) => z.bz([7.5, 45], [24, 47.5], [40.5, 45], 1.5, 1.5), { dome: 1, bias: 0.5 });
@@ -433,18 +443,19 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       if (it.crest) crest(p, 24, 22, 3.0, cr);
       break;
     }
+    case "offhand": {
+      // щит фасадом с лёгким поворотом 3/4 (дальний край чуть уже и выше): то же описание, что на герое (shield.ts)
+      const M = shieldModel(it), SC = 2.7, P2 = (u: number, v: number): V2 => [24 + u * SC * (u > 0 ? 0.86 : 1), 24 + v * SC - u * SC * 0.07];
+      for (const q of shieldGeo(M, true, true)) add(q.g, ramp(q.mat), (z) => q.draw(z, P2, SC * 0.62), q.o, false, q.ft);
+      if (M.crest && M.kind === "heater") { const b = bossAt(M), c = P2(b[0], b[1]); crest(p, c[0], c[1] + 0.3, 0.98 * SC * M.size, cr); }
+      break;
+    }
     case "weapon": {
       if (it.head === "axe") {
-        // секира на древке: длинное древко по диагонали, широкое лезвие у верха, обух-клюв, навершие-пика
-        const H = ramp(it.hilt), gr = ramp(it.grip), bl = ramp(it.blade);
-        add("shaft", gr, (z) => z.seg([9, 44], [38, 7], 2.6), { dome: 2, amp: 1.6, bias: 0.2 });
-        add("wrap", gr, (z) => { for (const t of [0.15, 0.3, 0.45]) z.seg([9 + 29 * t - 1.5, 44 - 37 * t - 1], [9 + 29 * t + 1.5, 44 - 37 * t + 1], 0.8); }, { dome: 1, bias: -1.4 });
-        add("head", bl, (z) => z.pg([[33, 13], [24, 6], [21, 15], [27, 24], [36, 21]]), { dome: 3, amp: 1.9, bias: 0.35 });
-        add("edge", bl, (z) => z.bz([24, 6.5], [20, 15], [27.5, 23.5], 1.2, 1.2), { dome: 1, bias: 2.5 });
-        add("beak", H, (z) => z.pg([[37, 12], [44, 16], [38, 15.5]]), { dome: 2, bias: 0.4 });
-        add("spikeT", H, (z) => z.pg([[37, 8], [42, 1], [39.5, 9.5]]), { dome: 2, bias: 0.5 });
-        add("socket", H, (z) => z.seg([33, 12.5], [37.5, 9.5], 3.4), { dome: 2, bias: 0.4 });
-        add("butt", H, (z) => z.dot([8.5, 45], 1.8), { dome: 2, bias: 0.4 });
+        // топор / секира: то же описание, что на герое (axe.ts) — древко по диагонали, рукоять внизу слева, лезвие вправо-вверх
+        const M = axeModel(it), L = M.len, ux = 0.66, uy = -0.75, SC = 40 / (L + 5), x0 = 24 - ux * SC * (L - 2.2) / 2, y0 = 24 - uy * SC * (L - 2.2) / 2;
+        const P2 = (a: number, n: number): V2 => [x0 + (ux * a + 0.75 * n) * SC, y0 + (uy * a + 0.66 * n) * SC];
+        for (const q of axeGeo(M, true).filter((q) => !q.rim).sort((a, b) => (a.z === b.z ? a.dz - b.dz : a.z === "g" ? -1 : 1))) add(q.g, ramp(q.mat), (z) => q.draw(z as any, P2, SC * 0.8), q.o, !!q.emis, q.ft);
         break;
       }
       if (it.kind === "dual") {

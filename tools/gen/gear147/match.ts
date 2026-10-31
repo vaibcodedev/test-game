@@ -50,6 +50,7 @@ const DETAIL: Record<Slot, [string, RegExp, RegExp][]> = {
     ["bigWing", /^bwing$/, /^b_bw/], ["spurs", /^spur$/, /^b_spur/], ["kneeRivet", /^riv$/, /^b_kriv/], ["stitch", /^bstitch$/, /^b_stitch/],
   ],
   cloak: [["hem", /^(hem|hemB)$/, /^cape_hem$/], ["mantle", /^mantT?$/, /^cape_mant/], ["clasps", /^clasp$/, /^cape_trim$/], ["claspGem", /^claspG$/, /^cape_gem$/], ["crest", /^crest/, /^crest/], ["fringe", /^fringe$/, /^sc_fr/]],
+  offhand: [["crest", /^crest/, /^crest/]], // остальные детали щита — поле ft общего описания (shield.ts)
   weapon: [
     ["gem", /^gem$/, /^w_gem$/], ["pommelGem", /^pGem$/, /^w_pgem$/], ["fuller", /^fuller$/, /^w_fuller$/], ["fire", /^fire$/, /^w_fire$/], ["rune", /^(rn\d|pg\d)$/, /^w_rune$/],
     ["cracks", /^crack$/, /^w_crack$/], ["lugs", /^lugs$/, /^w_lugs$/], ["beak", /^beak$/, /^w_beak$/], ["spike", /^spikeT$/, /^w_spike$/],

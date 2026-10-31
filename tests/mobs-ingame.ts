@@ -102,7 +102,10 @@ async function scenario() {
   await enter("Эйра", token);
   const H = heroOf("Эйра");
   for (const id of MOBS) {
-    const mob = [...W().mobs.values()].find((m) => m.def.id === id && !m.dead && !m.soldier) as Mob | undefined;
+    // первый моб списка мог быть убит стражей или ещё не возродиться — ждём живого до 20 с
+    const find = () => [...W().mobs.values()].find((m) => m.def.id === id && !m.dead && !m.soldier) as Mob | undefined;
+    let mob = find();
+    for (let k = 0; !mob && k < 40; k++) { await sleep(500); mob = find(); }
     check(!!mob, `${id}: моб есть в мире`);
     if (!mob) continue;
     mob.respawnAt = 0;

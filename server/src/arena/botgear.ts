@@ -6,9 +6,9 @@ import { CLASSES, type ClassId, type ClassRole, type Stats } from "../../../shar
 import { activeSkills, classSkills, SKILLS, type SkillDef } from "../../../shared/skills";
 import { armorReduction, derive, skillPointsAt, statPointsAt } from "../../../shared/formulas";
 import * as itemsMod from "../../../shared/items";
-import { BASE_ITEMS, makeItem, OFFHAND_CLASSES, Rarity, type BaseItem, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
+import { BASE_ITEMS, fillSlots, makeItem, OFFHAND_CLASSES, Rarity, type BaseItem, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
 import { LEGENDARIES, legendaryFits, makeLegendary } from "../../../shared/legendary";
-import { MAX_PLUS } from "../../../shared/upgrade";
+import { REF_PLUS } from "../../../shared/upgrade";
 import type { PlayerSave } from "../db";
 import { newSave } from "../game/Player";
 
@@ -113,7 +113,7 @@ function gearItem(baseId: string, level: number, cls: ClassId, gear: GearMode = 
   // максимальная: эпическая +10, аффиксы — главная характеристика, крит/Выносливость (танк — Выносливость и здоровье)
   const prefer: ItemStatKey[] = !max ? [main, "vit"] : role(cls) === "tank" ? [main, "vit", "hp", "crit"] : [main, "crit", "vit", "hp"];
   const it = makeItem(baseId, level, max ? Rarity.Epic : Rarity.Rare, () => 0.5, prefer);
-  if (max) it.plus = MAX_PLUS;
+  if (max) it.plus = REF_PLUS;
   it.req = Math.min(it.req, level);
   const roll = loose.rollModel as ((cat: string, ilvl: number, c?: ClassId, f?: string, r?: () => number) => ModelLike | undefined) | undefined;
   if (roll) {
@@ -136,9 +136,9 @@ function power(cls: ClassId, level: number, alloc: Stats, skills: Record<string,
 function legendsFor(cls: ClassId, level: number, slot: Slot): Item[] {
   return Object.values(LEGENDARIES)
     .filter((l) => l.tier <= level && l.req <= level && legendaryFits(l.id, cls) && BASE_ITEMS[l.base]?.slot === slot)
-    .map((l) => ({ ...makeLegendary(l.id), plus: MAX_PLUS }));
+    .map((l) => ({ ...makeLegendary(l.id), plus: REF_PLUS }));
 }
-export const GEAR_SLOTS: Slot[] = ["helmet", "armor", "boots", "cloak", "ring", "amulet"];
+export const GEAR_SLOTS: Slot[] = ["helmet", "shoulders", "armor", "gloves", "boots", "cloak", "ring", "amulet"];
 /**
  * Экипировка: оружие(+вторая рука) и каждый слот брони — лучшая база по оценке power (танк — одноручное + щит).
  * level — редкая уровня; max — эпическая +10 уровня и легендарки +10 (ярус ≤ уровня; у легендарки есть свойство, поэтому
@@ -148,7 +148,7 @@ export function pickGear(cls: ClassId, level: number, alloc: Stats, skills: Reco
   const cats = categories(cls);
   const tank = role(cls) === "tank";
   const max = gear === "max";
-  const eq: Record<Slot, Item | null> = { weapon: null, offhand: null, helmet: null, armor: null, boots: null, cloak: null, ring: null, amulet: null };
+  const eq: Record<Slot, Item | null> = fillSlots({});
   const of = (slot: Slot) => cats.filter((b) => b.slot === slot);
   const cands = (slot: Slot): Item[] => [...of(slot).map((b) => gearItem(b.id, level, cls, gear)), ...(max ? legendsFor(cls, level, slot) : [])];
   const bias = (it: Item | null) => (it?.legendary ? 1.03 : 1);

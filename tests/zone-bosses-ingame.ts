@@ -122,9 +122,13 @@ async function scenario() {
       for (const a of boss.abilities) a.at = 1e9;
       boss.run(ab);
       const total = [ab, ...(ab.then ?? [])].reduce((s, wv) => s + wv.windupMs + ((wv.at === "path" || wv.at === "hunt") && wv.count ? (wv.count - 1) * (wv.stepMs ?? 0) : 0), 0);
-      await sleep(Math.round(ab.windupMs * 0.65));
+      // под нагрузкой (3–5 к/с) событие zb и смена кадра запаздывают — опрос с 40 % замаха до его конца, а не один замер на 65 %
+      const t0 = Date.now();
+      await sleep(Math.round(ab.windupMs * 0.4));
       // замах (сразу, до снимка: снимок под SwiftShader идёт долго): кадр босса — из связки умения (событие zb дошло и запустило анимацию)
-      const fr = await run<{ col: number; ok: boolean } | null>("const m = sc.cache.json.get('zbm').bosses[a.id]; for (const v of sc.units.values()) if (v.u.sprite === a.id) { const col = Number(v.sprite.frame.name) % m.cols; const w0 = m.skills[a.ab].waves[0]; const ok = [...(w0.pre || []), w0.strike].some((k) => { const q = m.anims[k]; return col >= q.col && col < q.col + q.n; }); return { col, ok }; } return null", { id: c.id, ab: ab.id });
+      let fr: { col: number; ok: boolean } | null = null;
+      do fr = await run<{ col: number; ok: boolean } | null>("const m = sc.cache.json.get('zbm').bosses[a.id]; for (const v of sc.units.values()) if (v.u.sprite === a.id) { const col = Number(v.sprite.frame.name) % m.cols; const w0 = m.skills[a.ab].waves[0]; const ok = [...(w0.pre || []), w0.strike].some((k) => { const q = m.anims[k]; return col >= q.col && col < q.col + q.n; }); return { col, ok }; } return null", { id: c.id, ab: ab.id });
+      while (!fr?.ok && Date.now() - t0 < ab.windupMs && (await sleep(80), true));
       check(!!fr?.ok, `${c.id}.${ab.id}: замах из связки умения (столбец ${fr?.col})`);
       save(`${c.id}-${ab.id}-wind.png`, await snap(bx, by - 10, 440, 330));
       await sleep(Math.round(ab.windupMs * 0.35) + 120);

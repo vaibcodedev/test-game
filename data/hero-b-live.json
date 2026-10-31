@@ -76,7 +76,7 @@
       "atk": "atk1h"
     }
   },
-  "sets": ["chaos-knight", "recruit-plate", "rogue-chaos", "leather-novice", "plate60-common", "plate60-rare", "plate60-epic"],
+  "sets": ["chaos-knight", "recruit-plate", "rogue-chaos", "leather-novice", "plate60-common", "plate60-rare", "plate60-epic", "shield-scutum", "shield-buckler", "shield-knight", "axe1-common", "axe1-rare", "axe1-epic", "axe1-legendary", "axe2-common", "axe2-epic", "axe2-legendary"],
   "models": {
     "hb147_chaos_helm": "chaos-knight",
     "hb147_chaos_armor": "chaos-knight",
@@ -86,14 +86,65 @@
     "hb147_recruit_helm": "recruit-plate",
     "hb147_recruit_armor": "recruit-plate",
     "hb147_recruit_boots": "recruit-plate",
-    "hb147_recruit_weapon": "recruit-plate"
+    "hb147_recruit_weapon": "recruit-plate",
+    "hb147_chaos_pauldrons": "chaos-knight",
+    "hb147_chaos_gloves": "chaos-knight",
+    "hb147_recruit_pauldrons": "recruit-plate",
+    "hb147_recruit_gloves": "recruit-plate",
+    "hb147_shield_scutum": "shield-scutum",
+    "hb147_shield_buckler": "shield-buckler",
+    "hb147_shield_knight": "shield-knight",
+    "hb147_roguechaos_helm": "rogue-chaos",
+    "hb147_roguechaos_pauldrons": "rogue-chaos",
+    "hb147_roguechaos_armor": "rogue-chaos",
+    "hb147_roguechaos_gloves": "rogue-chaos",
+    "hb147_roguechaos_boots": "rogue-chaos",
+    "hb147_roguechaos_cloak": "rogue-chaos",
+    "hb147_roguechaos_weapon": "rogue-chaos",
+    "hb147_novice_helm": "leather-novice",
+    "hb147_novice_pauldrons": "leather-novice",
+    "hb147_novice_armor": "leather-novice",
+    "hb147_novice_gloves": "leather-novice",
+    "hb147_novice_boots": "leather-novice",
+    "hb147_novice_weapon": "leather-novice",
+    "hb147_p60c_helm": "plate60-common",
+    "hb147_p60c_pauldrons": "plate60-common",
+    "hb147_p60c_armor": "plate60-common",
+    "hb147_p60c_gloves": "plate60-common",
+    "hb147_p60c_boots": "plate60-common",
+    "hb147_p60c_cloak": "plate60-common",
+    "hb147_p60c_weapon": "plate60-common",
+    "hb147_p60r_helm": "plate60-rare",
+    "hb147_p60r_pauldrons": "plate60-rare",
+    "hb147_p60r_armor": "plate60-rare",
+    "hb147_p60r_gloves": "plate60-rare",
+    "hb147_p60r_boots": "plate60-rare",
+    "hb147_p60r_cloak": "plate60-rare",
+    "hb147_p60r_weapon": "plate60-rare",
+    "hb147_p60e_helm": "plate60-epic",
+    "hb147_p60e_pauldrons": "plate60-epic",
+    "hb147_p60e_armor": "plate60-epic",
+    "hb147_p60e_gloves": "plate60-epic",
+    "hb147_p60e_boots": "plate60-epic",
+    "hb147_p60e_cloak": "plate60-epic",
+    "hb147_p60e_weapon": "plate60-epic",
+    "hb147_axe1common_weapon": "axe1-common",
+    "hb147_axe1rare_weapon": "axe1-rare",
+    "hb147_axe1epic_weapon": "axe1-epic",
+    "hb147_axe1legendary_weapon": "axe1-legendary",
+    "hb147_axe2common_weapon": "axe2-common",
+    "hb147_axe2epic_weapon": "axe2-epic",
+    "hb147_axe2legendary_weapon": "axe2-legendary"
   },
   "slotMap": {
     "helmet": "helm",
+    "shoulders": "pauldrons",
     "armor": "armor",
+    "gloves": "gloves",
     "boots": "boots",
     "cloak": "cloak",
-    "weapon": "weapon"
+    "weapon": "weapon",
+    "offhand": "offhand"
   },
   "stubs": {
     "plate": {
@@ -148,6 +199,12 @@
         "lining": "wool_grey",
         "tatter": 0,
         "crest": false
+      },
+      "offhand": {
+        "name": "Щит",
+        "style": "heater",
+        "face": "shield_wood",
+        "rim": "iron"
       }
     },
     "leather": {

@@ -199,5 +199,30 @@ export function helmGeo(M: HelmModel, v: HView, hw: number, hh: number, u: numbe
     add("h_brim", M.plate, 0.058, (z) => side ? z.el([-0.2 * K, by], hw + S.brim * K + 0.3 * K, 1.0 * K) : z.el([0, by], hw + S.brim * K, 1.15 * K), { dome: 1, amp: 1.6, bias: 0.1, kant: true });
     if (icon) add("h_brimS", M.plate, 0.059, (z) => z.bz([-hw - S.brim * K * 0.8, by + 0.6 * K], [0, by + 1.4 * K], [hw + S.brim * K * 0.8, by + 0.6 * K], 0.5 * u), { dome: 1, bias: -1.6 });
   }
+  // ---- фактура простых шлемов (ровная планка по эталону, docs/art/icons.md §4): шов-гребень купола шапеля, завёрнутая кромка полей,
+  // шов крыши и выступ над смотровой щелью топфхельма, вмятины и царапины (царапины и вмятины — на иконке: на герое это шум в 1 px) ----
+  // у конического шапеля (капеллина) своя форма — без шва и кромки: иначе по цвету сливается с барбютом той же ступени (tier.ts)
+  const kettle = S.brim > 0 && S.dome !== "cone";
+  if (kettle && v !== "side") add("h_seamC", M.plate, 0.0575, (z) => z.seg([0, top + 0.5 * K], [0, bottom - 0.6 * K], 0.5 * u), { dome: 1, bias: 1.5 });
+  if (kettle && v === "side") add("h_seamC", M.plate, 0.0575, (z) => z.bz([-rx * 0.85, -hh * 0.2], [-0.2 * K, top - 0.2 * K], [rx * 0.8, -hh * 0.2], 0.5 * u, 0.5 * u), { dome: 1, bias: 1.5 });
+  if (kettle && icon) {
+    const by = bottom - 0.2 * K, bw = hw + S.brim * K;
+    add("h_brimE", M.plate, 0.0595, (z) => { z.bz([-bw * 0.9, by + 0.45 * K], [0, by + 0.95 * K], [bw * 0.9, by + 0.45 * K], 0.32 * u, 0.32 * u); z.clip((x, y) => (x / (bw)) ** 2 + ((y - by) / (1.15 * K)) ** 2 < 0.92); }, { dome: 1, bias: -2.0 });
+    add("h_brimH", M.plate, 0.0596, (z) => { z.bz([-bw * 0.85, by - 0.3 * K], [-bw * 0.3, by - 0.75 * K], [bw * 0.2, by - 0.7 * K], 0.32 * u, 0.28 * u); z.clip((x, y) => (x / bw) ** 2 + ((y - by) / (1.15 * K)) ** 2 < 0.9); }, { dome: 1, bias: 2.4 });
+    add("h_seamS", M.plate, 0.0576, (z) => z.seg([0.32 * u, top + 0.8 * K], [0.32 * u, bottom - 0.9 * K], 0.32 * u), { dome: 1, bias: -1.8 });
+  }
+  if (S.dome === "flat" && v !== "back") {
+    // выступ-козырёк над смотровой щелью: отдельная накладка (на герое — 1 px света над щелью)
+    if (S.face === "slit") add("h_lip", M.plate, 0.0517, (z) => side ? z.seg([hw * 0.25, eyeY - sh - 0.45 * K], [hw + 0.8 * K, eyeY - sh - 0.45 * K], 0.55 * u) : z.seg([-rx * 0.86, eyeY - sh - 0.45 * K], [rx * 0.86, eyeY - sh - 0.45 * K], 0.55 * u), { dome: 1, amp: 1.6, bias: 1.2, kant: true });
+    if (icon && !side) {
+      add("h_seamT", M.plate, 0.0518, (z) => z.bz([-rx * 0.9, top + 2.1 * K], [0, top + 2.6 * K], [rx * 0.9, top + 2.1 * K], 0.4 * u, 0.4 * u), { dome: 1, bias: -1.8 });
+      add("h_seamTH", M.plate, 0.0519, (z) => z.bz([-rx * 0.85, top + 1.6 * K], [-rx * 0.2, top + 1.95 * K], [rx * 0.3, top + 1.85 * K], 0.35 * u, 0.3 * u), { dome: 1, bias: 2.3 });
+      add("h_seamV", M.plate, 0.0519, (z) => { for (const sg of [-1, 1]) z.seg([sg * rx * 0.62, top + 2.4 * K], [sg * rx * 0.58, chin - 0.8 * K], 0.32 * u); }, { dome: 1, bias: -1.6 });
+    }
+  }
+  if (icon && ((S.brim && S.dome === "round") || S.dome === "flat") && v === "front") {
+    add("h_wear", M.plate, 0.0597, (z) => { for (const [x, y, dx, dy] of [[-0.55, -0.55, 0.22, 0.12], [0.35, -0.3, 0.18, -0.1], [-0.2, 0.05, 0.16, 0.1]]) z.seg([x * rx, y * hh], [(x + dx) * rx, (y + dy) * hh], 0.3 * u); }, { dome: 1, bias: 1.0 });
+    add("h_dent", M.plate, 0.0598, (z) => { z.dot([0.5 * rx, -0.62 * hh], 0.42 * u); z.dot([-0.3 * rx, -0.15 * hh], 0.36 * u); }, { dome: 1, bias: -1.7 });
+  }
   return out;
 }

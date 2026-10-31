@@ -134,7 +134,7 @@ export interface InspectSlot {
   item: Item | null;
 }
 
-/** Ответ сервера на "inspect": герой и 7 вещей в порядке SLOTS. */
+/** Ответ сервера на "inspect": герой и вещи всех слотов в порядке SLOTS (с наплечниками и перчатками — 10). */
 export interface InspectReply {
   sid: string;
   name: string;

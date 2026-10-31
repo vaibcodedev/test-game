@@ -411,23 +411,23 @@ button.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); }
   text-shadow: var(--outline-text);
 }
 .cell .qty { position: absolute; right: var(--sp-0); bottom: 0; font-size: var(--fs); line-height: 1.2; }
-/* значок заточки +N: только значок, без рамки и заливки (перенесено из rumor.css без изменений; .sell-cell уйдёт вместе с окном продажи) */
+/* значок заточки +N (вариант D, docs/art/gear.md §5, icons.md §6): правый верхний угол на тёмной подложке, цифра в цвет ступени
+   (инлайн-цвет из data/gear-fx.json enchantB.iconColors), рамка ячейки — за редкостью; двузначные +10…+15 помещаются (узкий кегль, подложка по тексту) */
 .cell .plus,
 .sell-cell .plus {
   position: absolute;
-  left: 2px;
-  top: 0;
+  right: 2px;
+  top: 2px;
   z-index: var(--z-l1);
-  font-size: var(--fs);
-  line-height: 1.2;
-}
-.cell .plus.pt1,
-.cell .plus.pt2,
-.cell .plus.pt3,
-.sell-cell .plus.pt1,
-.sell-cell .plus.pt2,
-.sell-cell .plus.pt3 {
-  color: var(--enchant);
+  font-size: var(--fs-xs);
+  line-height: 1;
+  padding: 1px 2px;
+  border-radius: 2px;
+  background: rgba(10, 8, 12, .78);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .55);
+  letter-spacing: -.5px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .cell.r1 { border-color: var(--rare); }
 .cell.r2 { border-color: var(--epic); }

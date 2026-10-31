@@ -31,6 +31,7 @@ const setDef = (id: string): SetDef => STUBS[id] ?? setOf(id);
 const withCls = (s: SetDef, c: Cls): SetDef => {
   const it = { ...s.items } as any;
   if (c === "great" && it.weapon?.kind !== "great") it.weapon = LIVE.stubWeapon;
+  if (c === "great") delete it.offhand; // щит с двуручником не носится
   if (c === "free") delete it.weapon;
   return { ...s, items: it };
 };
@@ -43,6 +44,7 @@ function jobs(): Job[] {
     hairStyles(sex).forEach((h, i) => J.push({ id: `base-${fac}-${sex}-${cls}-${h.id}`, kind: "base", fac, sex, cls, hair: h.id, withBody: i === 0 }));
   for (const set of [...LIVE.sets, ...Object.keys(STUBS)]) for (const sex of ["m", "f"] as const) for (const cls of ["free", "great"] as Cls[]) {
     if (!STUBS[set] && cls === "free" && setOf(set).items.weapon?.kind === "great") continue;
+    if (cls === "great" && !Object.keys(setDef(set).items).some((k) => k !== "offhand")) continue; // сет из одного щита — только free
     G.push({ id: `gear-${set}-${sex}-${cls}`, kind: "gear", fac: "sol", sex, cls, set });
   }
   for (const set of SPECIAL_SETS) {
@@ -76,7 +78,7 @@ function runJob(j: Job): Record<string, Record<string, Entry>> {
       const look0 = dress({ ...base, props: j.cls === "free" ? !!DATA.anims[a].props : undefined }, set, crest);
       const minL = new Map<string, number>();
       const filt = keys.map((k) => (p: Part) => { if (`${p.slot}@${binOf(p.layer)}` !== k) return false; minL.set(k, Math.min(minL.get(k) ?? 99, p.layer)); return true; });
-      const fr0 = renderLayers(viewLook(look0, v), baseView(v), a, i, filt), frames = v === "left" ? fr0.map((f) => ({ ...f, img: flipCv(f.img) })) : fr0;
+      const fr0 = renderLayers(viewLook(look0, v), baseView(v), a, i, filt), frames = v === "left" ? fr0.map((f) => ({ ...f, img: flipCv(f.img), emis: f.emis.map(([x, y, c]) => [f.img.w - 1 - x, y, c] as typeof f.emis[number]) })) : fr0; // «влево» — свечение ночью отражается вместе с кадром (иначе два клинка «галкой»)
       keys.forEach((k, q) => {
         if (!minL.has(k)) return;
         const slot = k.split("@")[0];

@@ -8,7 +8,7 @@ import { derive, skillPointsAt, statPointsAt, xpToNext, type Derived } from "../
 import { FOOD } from "../../../shared/food";
 import { MOUNTS } from "../../../shared/mounts";
 import { petXpToNext } from "../../../shared/pets";
-import { makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
+import { fillSlots, makeItem, Rarity, SLOTS, type Item, type Slot } from "../../../shared/items";
 import { gearStrings } from "../../../shared/transmog";
 import { Anim, UnitKind, type LootBag, type SelfState } from "../../../shared/protocol";
 import { hasUnknownSkills, starterSkill } from "../../../shared/skills";
@@ -227,6 +227,7 @@ export class Player {
     save.gold = Number.isFinite(save.gold) ? Math.max(0, Math.floor(save.gold)) : 0;
     save.equip.offhand ??= null; // старые сохранения без второй руки
     save.equip.cloak ??= null; // и без плаща (задача 79)
+    fillSlots(save.equip); // и без наплечников и перчаток (задача 147): пустые слоты, ничего не теряется
     const u = this.unit;
     u.kind = UnitKind.Player;
     u.name = name;

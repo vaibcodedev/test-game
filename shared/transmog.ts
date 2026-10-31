@@ -7,7 +7,7 @@ import data from "../data/transmog.json";
 import { TILE } from "./constants";
 import { TOWN } from "./map";
 import { LEGENDARIES } from "./legendary";
-import { BASE_ITEMS, ITEM_MODELS, iconVariant, lookItem, newUid, Rarity, SHELL_BASE, UNIQUES, type Appearance, type Item, type Slot } from "./items";
+import { BASE_ITEMS, ITEM_MODELS, iconVariant, lookItem, newUid, Rarity, SHELL_BASE, SLOTS, UNIQUES, type Appearance, type Item, type Slot } from "./items";
 import { T } from "./texts";
 
 /** Перековщик в Эмберхолле (нейтральный город: служит обеим фракциям), у кузницы. */
@@ -26,12 +26,14 @@ export const FAMILY_NAMES = data.familyNames as Record<string, string>;
 
 /** Семейство базы (латы, кожа, ткань, одноручное, двуручное…) или null — перековать нельзя (расходники, «Оболочка»). */
 export function familyOf(base: string): string | null {
+  if (typeof base !== "string" || !Object.hasOwn(BASE_ITEMS, base)) return null;
   const b = BASE_ITEMS[base];
   if (!b || b.slot === "consumable") return null;
-  return FAMILIES[base] ?? null;
+  return Object.hasOwn(FAMILIES, base) ? FAMILIES[base] : null;
 }
 /** Слот базы для перековки (оружие Рыцаря смерти во второй руке остаётся оружием — по базе, а не по месту). */
 export const slotOf = (base: string): Slot | null => {
+  if (typeof base !== "string" || !Object.hasOwn(BASE_ITEMS, base)) return null;
   const s = BASE_ITEMS[base]?.slot;
   return s && s !== "consumable" ? s : null;
 };
@@ -72,14 +74,23 @@ export function makeShell(donor: Item): Item {
 }
 
 type PriceRule = { base: number; perLevel: number; rarity: number[] };
-const priceBy = (r: PriceRule, ilvl: number, rarity: number) => Math.max(0, Math.round((r.base + Math.max(1, ilvl) * r.perLevel) * (r.rarity[Math.max(0, Math.min(r.rarity.length - 1, rarity | 0))] ?? 1)));
+/** Уровень вещи для цены: ilvl, при битом (нет, NaN, ≤0 в старом сохранении) — требуемый уровень вещи, иначе 1 (B62). */
+const lvlOf = (it: { ilvl?: unknown; req?: unknown }): number => {
+  for (const v of [it.ilvl, it.req]) if (typeof v === "number" && Number.isFinite(v) && v >= 1) return v;
+  return 1;
+};
+const priceBy = (r: PriceRule, ilvl: number, rarity: number) => {
+  const lvl = Number.isFinite(ilvl) ? Math.max(1, ilvl) : 1;
+  const v = Math.round((r.base + lvl * r.perLevel) * (r.rarity[Math.max(0, Math.min(r.rarity.length - 1, rarity | 0))] ?? 1));
+  return Number.isFinite(v) ? Math.max(0, v) : 0;
+};
 /** Снять оболочку: по уровню и редкости донора. */
-export const extractPrice = (donor: Pick<Item, "ilvl" | "rarity">): number => priceBy(data.price.extract, donor.ilvl, donor.rarity);
+export const extractPrice = (donor: Pick<Item, "ilvl" | "rarity">): number => priceBy(data.price.extract, lvlOf(donor), donor.rarity);
 /** Наложить: по большему из уровней и редкостей вещи и оболочки (вид легендарки 100 стоит как легендарка 100). */
 export const applyPrice = (shell: Pick<Item, "ilvl" | "rarity">, target: Pick<Item, "ilvl" | "rarity">): number =>
-  priceBy(data.price.apply, Math.max(shell.ilvl, target.ilvl), Math.max(shell.rarity, target.rarity));
+  priceBy(data.price.apply, Math.max(lvlOf(shell), lvlOf(target)), Math.max(shell.rarity | 0, target.rarity | 0));
 /** Вернуть вещи её вид. */
-export const resetPrice = (it: Pick<Item, "ilvl" | "rarity">): number => priceBy(data.price.reset, it.ilvl, it.rarity);
+export const resetPrice = (it: Pick<Item, "ilvl" | "rarity">): number => priceBy(data.price.reset, lvlOf(it), it.rarity);
 
 /** Почему вещь не годится в доноры (null — годится). */
 export function extractRefusal(it: Item | null | undefined): string | null {
@@ -111,7 +122,10 @@ export function gearStrings(equip: Partial<Record<Slot, Item | null>>): { weapon
   const gear = (["helmet", "armor", "boots", "offhand", "cloak"] as const).map((k) => piece(L(equip[k])));
   // кольцо и амулет — 6-й и 7-й куски, только когда хоть одно из них легендарное (тема «вокруг героя»); иначе строка из 5 кусков
   const jewel = (["ring", "amulet"] as const).map((k) => { const e = L(equip[k]); return e?.legendary ? piece(e) : ""; });
-  return { weapon, gear: (jewel.some(Boolean) ? [...gear, ...jewel] : gear).join("|") };
+  // наплечники и перчатки (задача 147) — 8-й и 9-й куски, только когда надеты (старые клиенты и строки NPC — без них)
+  const arms = (["shoulders", "gloves"] as const).map((k) => piece(L(equip[k])));
+  const out = arms.some(Boolean) ? [...gear, ...jewel, ...arms] : jewel.some(Boolean) ? [...gear, ...jewel] : gear;
+  return { weapon, gear: out.join("|") };
 }
 
 /** Снаряжение с наложенным видом на вещь в слоте slot (превью «станет» и «примерить»; вещь не меняется). */
@@ -125,7 +139,7 @@ export function withLook(equip: Partial<Record<Slot, Item | null>>, slot: Slot, 
 
 /** Куда примерить вид: слот надетой вещи того же слота и семейства (у Рыцаря смерти одноручное может быть во второй руке). */
 export function tryOnSlot(equip: Partial<Record<Slot, Item | null>>, ap: Appearance): Slot | null {
-  for (const s of ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"] as Slot[]) {
+  for (const s of SLOTS) {
     const it = equip[s];
     if (it && fits(ap, it)) return s;
   }

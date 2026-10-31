@@ -1,5 +1,5 @@
 {
- "_doc": "Задача 147: вещи сетов героя «Б» для проверки (выдача из админки, вкладка «Выдача», поиск «hb147»). noRoll — не выпадают с мобов и у торговцев. set — сет листов героя Б (data/gear147.json, data/hero-b-live.json models). look — запасной вид прежнего героя (флаг выключен). Наплечники и перчатки рисуются с кирасой сета, пока у сервера нет этих слотов.",
+ "_doc": "Задача 147: вещи сетов героя «Б» для проверки (выдача из админки, вкладка «Выдача», поиск «hb147»). noRoll — не выпадают с мобов и у торговцев. set — сет листов героя Б (data/gear147.json, data/hero-b-live.json models). look — запасной вид прежнего героя (флаг выключен). Наплечники (id …_pauldrons) и перчатки (…_gloves) — отдельные вещи своих слотов (shoulders, gloves); суффикс id = слот листа gear147 (иконки — tools/gen/hero147-itemicons.ts).",
  "models": [
   {
    "id": "hb147_chaos_helm",
@@ -51,6 +51,68 @@
    "set": "chaos-knight",
    "look": {
     "shape": "plate",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_chaos_pauldrons",
+   "name": "Шипастые наплечники Хаоса",
+   "cat": "plate_shoulders",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "spiked",
+    "mat": "blackiron",
+    "trim": "iron",
+    "cloth": "shroud",
+    "gem": "fel",
+    "haft": "darkwood",
+    "deco": "horns",
+    "rich": 3,
+    "fx": "fel",
+    "guard": "claw",
+    "pommel": "spike"
+   }
+  },
+  {
+   "id": "hb147_chaos_gloves",
+   "name": "Латные рукавицы Хаоса",
+   "cat": "plate_gloves",
+   "lvl": 100,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "chaos-knight",
+   "look": {
+    "shape": "gauntlet",
     "mat": "blackiron",
     "trim": "iron",
     "cloth": "shroud",
@@ -218,6 +280,64 @@
    }
   },
   {
+   "id": "hb147_recruit_pauldrons",
+   "name": "Железные наплечники",
+   "cat": "plate_shoulders",
+   "lvl": 1,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "recruit-plate",
+   "look": {
+    "shape": "plain",
+    "rich": 0,
+    "mat": "rust",
+    "trim": "iron",
+    "cloth": "brown",
+    "haft": "wood",
+    "fx": "diamond",
+    "guard": "cross",
+    "pommel": "ring"
+   }
+  },
+  {
+   "id": "hb147_recruit_gloves",
+   "name": "Кожаные рукавицы",
+   "cat": "plate_gloves",
+   "lvl": 1,
+   "fac": "",
+   "cls": [
+    "warrior",
+    "deathknight",
+    "reaver"
+   ],
+   "affix": [
+    "vit",
+    "str"
+   ],
+   "noRoll": true,
+   "set": "recruit-plate",
+   "look": {
+    "shape": "mitten",
+    "rich": 0,
+    "mat": "rust",
+    "trim": "iron",
+    "cloth": "brown",
+    "haft": "wood",
+    "fx": "diamond",
+    "guard": "cross",
+    "pommel": "ring"
+   }
+  },
+  {
    "id": "hb147_recruit_boots",
    "name": "Железные поножи",
    "cat": "plate_boots",
@@ -274,6 +394,50 @@
     "guard": "cross",
     "pommel": "ring"
    }
-  }
+  },
+  {"id": "hb147_shield_scutum", "name": "Окованный скутум", "cat": "shield", "lvl": 10, "fac": "", "cls": ["warrior", "deathknight"], "affix": ["vit", "str"], "noRoll": true, "set": "shield-scutum", "look": {"shape": "tower", "mat": "iron", "trim": "iron"}},
+  {"id": "hb147_shield_buckler", "name": "Стальной баклер", "cat": "shield", "lvl": 30, "fac": "", "cls": ["warrior", "deathknight"], "affix": ["vit", "str"], "noRoll": true, "set": "shield-buckler", "look": {"shape": "buckler", "mat": "iron", "trim": "iron"}},
+  {"id": "hb147_shield_knight", "name": "Рыцарский щит клятвы", "cat": "shield", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight"], "affix": ["vit", "str"], "noRoll": true, "set": "shield-knight", "look": {"shape": "kite", "mat": "iron", "trim": "iron"}},
+  {"id": "hb147_roguechaos_helm", "name": "Капюшон Хаоса", "cat": "leather_helm", "lvl": 100, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "cowl", "rich": 0, "mat": "iron", "trim": "bronze", "cloth": "white", "hide": "leather", "haft": "wood", "fx": "sun", "guard": "ornate", "pommel": "ball"}},
+  {"id": "hb147_roguechaos_pauldrons", "name": "Наплечники ловчего Хаоса", "cat": "leather_shoulders", "lvl": 100, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "spiked", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_roguechaos_armor", "name": "Куртка ловчего Хаоса", "cat": "leather_armor", "lvl": 100, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "mantle", "rich": 0, "mat": "iron", "trim": "bronze", "cloth": "white", "hide": "leather", "haft": "wood", "fx": "sun", "guard": "wings", "pommel": "gem"}},
+  {"id": "hb147_roguechaos_gloves", "name": "Перчатки ловчего Хаоса", "cat": "leather_gloves", "lvl": 100, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "gauntlet", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_roguechaos_boots", "name": "Сапоги ловчего Хаоса", "cat": "leather_boots", "lvl": 100, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "shoe", "rich": 0, "mat": "iron", "trim": "bronze", "cloth": "white", "hide": "leather", "haft": "wood", "fx": "sun", "guard": "wings", "pommel": "ball"}},
+  {"id": "hb147_roguechaos_cloak", "name": "Алый шарф Хаоса", "cat": "cloak", "lvl": 100, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "crest", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "bar", "pommel": "skull"}},
+  {"id": "hb147_roguechaos_weapon", "name": "Клыки Хаоса", "cat": "twinblades", "lvl": 100, "fac": "", "cls": ["rogue", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "rogue-chaos", "look": {"shape": "claws", "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "cross", "pommel": "ring"}},
+  {"id": "hb147_novice_helm", "name": "Холщовый капюшон", "cat": "leather_helm", "lvl": 1, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "leather-novice", "look": {"shape": "cowl", "rich": 0, "mat": "iron", "trim": "bronze", "cloth": "white", "hide": "leather", "haft": "wood", "fx": "sun", "guard": "ornate", "pommel": "ball"}},
+  {"id": "hb147_novice_pauldrons", "name": "Кожаные наплечники", "cat": "leather_shoulders", "lvl": 1, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "leather-novice", "look": {"shape": "spiked", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_novice_armor", "name": "Кожаная куртка", "cat": "leather_armor", "lvl": 1, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "leather-novice", "look": {"shape": "mantle", "rich": 0, "mat": "iron", "trim": "bronze", "cloth": "white", "hide": "leather", "haft": "wood", "fx": "sun", "guard": "wings", "pommel": "gem"}},
+  {"id": "hb147_novice_gloves", "name": "Кожаные перчатки", "cat": "leather_gloves", "lvl": 1, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "leather-novice", "look": {"shape": "gauntlet", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_novice_boots", "name": "Кожаные сапоги", "cat": "leather_boots", "lvl": 1, "fac": "", "cls": ["rogue", "ranger", "darkranger", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "leather-novice", "look": {"shape": "shoe", "rich": 0, "mat": "iron", "trim": "bronze", "cloth": "white", "hide": "leather", "haft": "wood", "fx": "sun", "guard": "wings", "pommel": "ball"}},
+  {"id": "hb147_novice_weapon", "name": "Пара ножей", "cat": "twinblades", "lvl": 1, "fac": "", "cls": ["rogue", "reaver"], "affix": ["agi", "vit"], "noRoll": true, "set": "leather-novice", "look": {"shape": "claws", "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "cross", "pommel": "ring"}},
+  {"id": "hb147_p60c_helm", "name": "Стальной бацинет", "cat": "plate_helm", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "sallet", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "ring"}},
+  {"id": "hb147_p60c_pauldrons", "name": "Стальные наплечники", "cat": "plate_shoulders", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "spiked", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_p60c_armor", "name": "Стальная кираса", "cat": "plate_armor", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "brigandine", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "curved", "pommel": "ring"}},
+  {"id": "hb147_p60c_gloves", "name": "Стальные рукавицы", "cat": "plate_gloves", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "gauntlet", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_p60c_boots", "name": "Стальные башмаки", "cat": "plate_boots", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "winged", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "cross", "pommel": "gem"}},
+  {"id": "hb147_p60c_cloak", "name": "Шерстяная пелерина", "cat": "cloak", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "crest", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "bar", "pommel": "skull"}},
+  {"id": "hb147_p60c_weapon", "name": "Стальной полуторник", "cat": "greatsword", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-common", "look": {"shape": "claymore", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "cross", "pommel": "ring"}},
+  {"id": "hb147_p60r_helm", "name": "Барбют капитана", "cat": "plate_helm", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "sallet", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "ring"}},
+  {"id": "hb147_p60r_pauldrons", "name": "Наплечники капитана", "cat": "plate_shoulders", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "spiked", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_p60r_armor", "name": "Бригантина капитана", "cat": "plate_armor", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "brigandine", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "curved", "pommel": "ring"}},
+  {"id": "hb147_p60r_gloves", "name": "Наручи капитана", "cat": "plate_gloves", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "gauntlet", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_p60r_boots", "name": "Сапоги капитана", "cat": "plate_boots", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "winged", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "cross", "pommel": "gem"}},
+  {"id": "hb147_p60r_cloak", "name": "Синий плащ заставы", "cat": "cloak", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "crest", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "bar", "pommel": "skull"}},
+  {"id": "hb147_p60r_weapon", "name": "Секира капитана", "cat": "greataxe", "lvl": 60, "fac": "", "cls": ["deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-rare", "look": {"shape": "bonecleaver", "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "gem"}},
+  {"id": "hb147_p60e_helm", "name": "Крылатый шлем клятвы", "cat": "plate_helm", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "sallet", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "ring"}},
+  {"id": "hb147_p60e_pauldrons", "name": "Наплечники клятвы", "cat": "plate_shoulders", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "spiked", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_p60e_armor", "name": "Кираса клятвы", "cat": "plate_armor", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "brigandine", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "curved", "pommel": "ring"}},
+  {"id": "hb147_p60e_gloves", "name": "Рукавицы клятвы", "cat": "plate_gloves", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "gauntlet", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "gem": "fel", "haft": "darkwood", "deco": "horns", "rich": 3, "fx": "fel", "guard": "claw", "pommel": "spike"}},
+  {"id": "hb147_p60e_boots", "name": "Сабатоны клятвы", "cat": "plate_boots", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "winged", "rich": 0, "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "cross", "pommel": "gem"}},
+  {"id": "hb147_p60e_cloak", "name": "Плащ клятвы", "cat": "cloak", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "crest", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "bar", "pommel": "skull"}},
+  {"id": "hb147_p60e_weapon", "name": "Фламберг клятвы", "cat": "greatsword", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "plate60-epic", "look": {"shape": "claymore", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "cross", "pommel": "ring"}},
+  {"id": "hb147_axe1common_weapon", "name": "Колун лесоруба", "cat": "axe", "lvl": 5, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe1-common", "look": {"shape": "francisca", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "curved", "pommel": "ball"}},
+  {"id": "hb147_axe1rare_weapon", "name": "Топор стражника", "cat": "axe", "lvl": 30, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe1-rare", "look": {"shape": "francisca", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "curved", "pommel": "ball"}},
+  {"id": "hb147_axe1epic_weapon", "name": "Лабрис присяги", "cat": "axe", "lvl": 60, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe1-epic", "look": {"shape": "francisca", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "curved", "pommel": "ball"}},
+  {"id": "hb147_axe1legendary_weapon", "name": "Рогатый топор Хаоса", "cat": "axe", "lvl": 90, "fac": "", "cls": ["warrior", "deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe1-legendary", "look": {"shape": "francisca", "mat": "blackiron", "trim": "iron", "cloth": "shroud", "haft": "darkwood", "fx": "fel", "guard": "curved", "pommel": "ball"}},
+  {"id": "hb147_axe2common_weapon", "name": "Бородовидная секира", "cat": "greataxe", "lvl": 10, "fac": "", "cls": ["deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe2-common", "look": {"shape": "bonecleaver", "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "gem"}},
+  {"id": "hb147_axe2epic_weapon", "name": "Двуручный лабрис", "cat": "greataxe", "lvl": 70, "fac": "", "cls": ["deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe2-epic", "look": {"shape": "bonecleaver", "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "gem"}},
+  {"id": "hb147_axe2legendary_weapon", "name": "Рогатая секира Предела", "cat": "greataxe", "lvl": 100, "fac": "", "cls": ["deathknight", "reaver"], "affix": ["vit", "str"], "noRoll": true, "set": "axe2-legendary", "look": {"shape": "bonecleaver", "mat": "rust", "trim": "iron", "cloth": "brown", "haft": "wood", "fx": "diamond", "guard": "disc", "pommel": "gem"}}
  ]
 }

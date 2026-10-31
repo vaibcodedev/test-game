@@ -66,8 +66,8 @@ const ROBES = new Set(["mage", "healer", "bloodweaver", "warlock"]);
 export interface Piece { r: number; plus: number; leg: string; rag: boolean; base: string; model: string }
 export function parseGear(gear: string): Piece[] {
   const parts = (gear || "").split("|");
-  // старая строка без плаща: пятая деталь пуста; 6-я и 7-я (кольцо, амулет) приходят, только если одно из них легендарное
-  while (parts.length < 7) parts.push("");
+  // старая строка без плаща: пятая деталь пуста; 6-я и 7-я (кольцо, амулет) приходят, только если одно из них легендарное; 8-я и 9-я — наплечники и перчатки (если надеты)
+  while (parts.length < 9) parts.push("");
   return parts.map((s) => { const [r, p, l, g, bs, md] = s.split(":"); return s ? { r: Number(r || 0), plus: Number(p || 0), leg: l || "", rag: g === "1", base: bs || "", model: md || "" } : { r: -1, plus: 0, leg: "", rag: false, base: "", model: "" }; });
 }
 

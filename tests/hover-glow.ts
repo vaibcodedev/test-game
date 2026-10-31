@@ -86,7 +86,9 @@ async function main() {
       await page.mouse.move(p.x - 40, p.y - 40); await sleep(300);
       await page.mouse.move(p.x, p.y, { steps: 4 });
       await sleep(900);
-      const st = await glowState(page);
+      // проявление идёт по кадрам: при 3–5 к/с (Chrome без окна под нагрузкой) 900 мс мало — ждём до 6 с
+      let st = await glowState(page);
+      for (let k = 0; k < 12 && !(st.vis && st.a >= 0.55); k++) { await sleep(500); st = await glowState(page); }
       await check(`${kind}: свечение включено при наведении (alpha ${st.a.toFixed(2)}, zoom ${p.zoom})`, () => assert(st.vis && st.a >= 0.55, JSON.stringify(st)));
       clips.push(Buffer.from(await page.screenshot({ clip: { x: Math.max(0, p.x - 110), y: Math.max(0, p.y - 150), width: 220, height: 250 } })));
       await page.mouse.move(p.x + 300, p.y + 200, { steps: 3 });

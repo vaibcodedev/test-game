@@ -1,4 +1,4 @@
-/** Улучшение предметов +1…+10: таблицы из /data/upgrade.json, кузнец Гром в Эмберхолле и кузнецы столиц (/data/cities.json). */
+/** Улучшение предметов +1…+15 (+11…+15 — рискованные, владелец 2026-10-31): таблицы из /data/upgrade.json, кузнец Гром в Эмберхолле и кузнецы столиц (/data/cities.json). */
 import data from "../data/upgrade.json";
 import { CITIES, type CityNpc } from "./cities";
 import { TILE } from "./constants";
@@ -13,6 +13,8 @@ export interface UpgradeStep {
 export const MAX_PLUS = data.levels.length;
 export const UPGRADE_LEVELS: UpgradeStep[] = data.levels;
 export const PLUS_BONUS = data.bonusPerLevel;
+/** Заточка «максимальной экипировки» ботов арены и симулятора — эталон баланса (+10), не растёт вместе с MAX_PLUS. */
+export const REF_PLUS: number = data.refPlus;
 /** Материалы: id предмета -> описание. */
 export const MATERIALS: Record<string, { id: string; name: string; price: number; dropPct: number; icon: string }> = Object.fromEntries(
   Object.entries(data.materials).map(([id, m]) => [id, { id, name: m.name, price: m.price, dropPct: m.dropPct, icon: `mat_${id}` }]),

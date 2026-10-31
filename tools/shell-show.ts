@@ -179,14 +179,22 @@ async function run(browser: Browser) {
   await ev(A, `${hud}.transmog.close()`); await sleep(300);
 
   // 4) примерка ПКМ на герое: обычный и герой Б
-  const tryOn = async (tag: string, slots: Record<string, unknown>, shellIdx: number) => {
+  const tryOn = async (tag: string, slots: Record<string, unknown>, apBase: string) => {
     await dbg(A, { op: "gear", slots }); await sleep(900);
+    // индексы сумки сдвигаются после «Наложить» (оболочка расходуется) и смены снаряжения — ячейку ищем по виду оболочки
+    const sh = (await inv(A)).find((q: any) => q.base === "tm_shell" && q.ap && q.ap.startsWith(apBase + "/"));
+    if (!sh) { log(`нет оболочки ${apBase} для примерки: ${tag}`); return false; }
+    const shellIdx = sh.i as number;
     await ev(A, `${hud}.toggle('inv')`); await sleep(500);
-    const c = await A.$(cellSel(shellIdx)); if (!c) { log("нет ячейки для примерки"); await ev(A, `${hud}.toggle('inv')`); return; }
+    let c = await A.$(cellSel(shellIdx));
+    // сумка могла остаться открытой после окна Перековщика — toggle её закрыл: открыть снова
+    if (!c || !(await c.boundingBox())) { await ev(A, `${hud}.toggle('inv')`); await sleep(500); c = await A.$(cellSel(shellIdx)); }
+    if (!c) { log("нет ячейки для примерки"); await ev(A, `${hud}.toggle('inv')`); return; }
     await c.evaluate((e) => e.scrollIntoView({ block: "center" }));
-    const b = (await c.boundingBox())!;
+    const b = await c.boundingBox();
+    if (!b) { log("ячейка примерки не видна: " + tag); await ev(A, `${hud}.toggle('inv')`); return false; }
     await A.mouse.click(b.x + b.width / 2, b.y + b.height / 2, { button: "right" }); await sleep(400);
-    const items = await A.$$(".ctx button, .ctx-menu button, .menu button, [role=menu] button, .ctx div, .ctx li");
+    const items = await A.$$(".dmenu button, .ctx button, .ctx-menu button, .menu button, [role=menu] button, .ctx div, .ctx li");
     let hit = false;
     for (const it of items) { const t = await it.evaluate((e) => (e as HTMLElement).textContent || ""); if (t.includes("Примерить")) { await it.click(); hit = true; break; } }
     if (!hit) log("пункт «Примерить» не найден: " + tag);
@@ -195,11 +203,11 @@ async function run(browser: Browser) {
     await A.mouse.move(5, 5);
     return hit;
   };
-  const CASES: { tag: string; slots: Record<string, unknown>; shell: number }[] = [
-    { tag: "sword-on-axe", slots: { weapon: { base: "axe", r: 1 } }, shell: donorIdx[0] },
-    { tag: "chaos-blade-on-greatsword", slots: { weapon: { base: "greatsword", r: 1 } }, shell: donorIdx[2] },
-    { tag: "dagger-on-twinblades", slots: { weapon: { base: "twinblades", r: 1 } }, shell: donorIdx[3] },
-    { tag: "plate-armor-on-plate", slots: { weapon: { base: "sword", r: 1 }, armor: { base: "plate_armor", r: 1 } }, shell: donorIdx[8] },
+  const CASES: { tag: string; slots: Record<string, unknown>; shell: string }[] = [
+    { tag: "sword-on-axe", slots: { weapon: { base: "axe", r: 1 } }, shell: "sword" },
+    { tag: "chaos-blade-on-greatsword", slots: { weapon: { base: "greatsword", r: 1 } }, shell: "hb147_chaos_weapon" },
+    { tag: "dagger-on-twinblades", slots: { weapon: { base: "twinblades", r: 1 } }, shell: "dagger" },
+    { tag: "plate-armor-on-plate", slots: { weapon: { base: "sword", r: 1 }, armor: { base: "plate_armor", r: 1 } }, shell: "plate_armor" },
   ];
   // герой в удобном месте и без помех
   await ev(A, `window.__phase = 0.3; window.__game.scene.getScene("game").cameras.main.setZoom(3);`);

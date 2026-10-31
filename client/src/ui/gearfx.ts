@@ -17,6 +17,8 @@ export interface GearRowsHost {
   tip(elm: HTMLElement, it: Item): void;
   /** Курсор вошёл в строку (slot) или вышел (null). */
   hover?(slot: Slot | null): void;
+  /** Бледный силуэт пустой ячейки: имя иконки (shared/items.ts slotGhost → iconFor); нет — пустая ячейка. */
+  ghost?(slot: Slot): string | undefined;
 }
 
 /** Эффект детали на герое одной строкой: «Заточка +7: … · Тема: …». Заточка бирюзовая с ступени 1 (+4), тема — цветом легендарки. */
@@ -42,7 +44,8 @@ export function gearRows(rows: GearRow[], sid: string, host: GearRowsHost): HTML
     row.dataset.slot = slot;
     if (!item) {
       row.classList.add("empty");
-      row.innerHTML = `<div class="cell md gr-cell"></div><div class="row-main"><span class="row-title c-dim">${SLOT_NAMES[slot]}</span><span class="row-sub gr-fx">${T("ui.gearfx.514")}</span></div>`;
+      const g = host.ghost?.(slot);
+      row.innerHTML = `<div class="cell md gr-cell">${g ? `<img class="ghost" src="${icon(g)}" alt="" onerror="this.remove()">` : ""}</div><div class="row-main"><span class="row-title c-dim">${SLOT_NAMES[slot]}</span><span class="row-sub gr-fx">${T("ui.gearfx.514")}</span></div>`;
     } else {
       row.innerHTML = `<div class="cell md r${item.rarity} gr-cell"><img src="${icon(iconFor(item))}" alt="">${plusBadge(item)}</div>
         <div class="row-main"><span class="row-title gr-name c-r${item.rarity}">${esc(itemName(item))}</span>

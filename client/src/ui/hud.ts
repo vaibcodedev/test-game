@@ -13,7 +13,7 @@ import { flashGear } from "../game/gearHooks";
 import { visualTier as enchantTier, GEAR_FX, legendText, nextStepText, tierText } from "../../../shared/gearFx";
 import { FORTS, MAX_LEVEL, RESPAWN_DELAY_MS, TILE } from "../../../shared/constants";
 import { LEGENDARIES } from "../../../shared/legendary";
-import { OFFHAND_CLASSES, offhandGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, ITEM_MODELS, type Item, type ItemStatKey } from "../../../shared/items";
+import { OFFHAND_CLASSES, slotGhost, itemTypeName, isTwoHanded, BASE_ITEMS, iconFor, canEquip, isBound, effStats, ITEM_STAT_NAMES, itemName, itemValue, baseSellValue, RARITY_NAMES, SLOT_NAMES, SLOTS, UNIQUES, ITEM_MODELS, type Item, type ItemStatKey } from "../../../shared/items";
 import { DUNGEON_DOOR, isTownZone, T, Zone, ZONES, zoneAtPx, zoneDanger, type WorldMap } from "../../../shared/map";
 import { DUNGEON_EXIT } from "../../../shared/dungeon";
 import { drawDgIcon } from "./dungeonIcon";
@@ -1154,6 +1154,7 @@ export class Hud {
     gear.append(gearRows(slots.map((slot) => ({ slot, item: s.equip[slot] })), s.id, {
       tip: (elm, it) => this.tipFor(elm, () => this.itemTip(it, this.ctx.net.self!, true, true)),
       hover: (slot) => { if (slot) flashGear(s.id, slot); },
+      ghost: (slot) => iconFor({ base: slotGhost(s.cls, slot), stats: {}, uid: "slot", rarity: 0 }),
     }));
     b.querySelector(".char-side")!.append(gear, legendBlock(this.legendOpen, (open) => this.setLegendOpen(open)));
     // характеристики: название, значение, «+» (1 очко) и «+10» (сервер вкладывает не больше, чем есть свободных); без свободных очков кнопки выключены
@@ -1276,21 +1277,24 @@ export class Hud {
   private renderInv(s: SelfState) {
     const b = this.body("inv");
     const mode = this.invMode();
-    // надето: те же 6 колонок, что у сумки. Четыре вещи и питомец, ещё до четырёх вещей и маунт; питомец и маунт стоят в 6-й колонке (.cell.comp)
+    // надето: те же 6 колонок, что у сумки. половина вещей и питомец, остальные вещи и маунт; питомец и маунт стоят в 6-й колонке (.cell.comp)
     // в бою снаряжение не меняется (сервер: inventory.ts, IN_COMBAT): чип в шапке раздела и замок на надетых вещах
     const eqSec = el("section", "sec", `<div class="sec-head"><h3 class="sec-h">${TX("ui.hud.602")}</h3>${this.inCombat ? `<span class="chip bad" title="В бою снаряжение не меняется">В бою</span>` : ""}</div>`);
     const eq = el("div", "equip");
     const comp = this.renderCompanions(s);
-    SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls)).forEach((slot, n) => {
+    const eqSlots = SLOTS.filter((sl) => sl !== "offhand" || OFFHAND_CLASSES.includes(s.cls));
+    // две строки по 6 колонок: половина вещей и питомец, остальные вещи и маунт (10 слотов — 5 + 5)
+    const half = Math.ceil(eqSlots.length / 2) - 1;
+    eqSlots.forEach((slot, n) => {
       const it = s.equip[slot];
-      ghostBase[SLOT_NAMES[slot]] = slot === "weapon" ? CLASSES[s.cls].startWeapon : slot === "offhand" ? offhandGhost(s.cls) : slot;
+      ghostBase[SLOT_NAMES[slot]] = slotGhost(s.cls, slot);
       const c = this.cell(it, s, it && this.inCombat ? "lock" : "", SLOT_NAMES[slot]);
       if (it) {
         c.onclick = () => this.ctx.net.send("unequip", { slot });
         this.tipFor(c, () => this.itemTip(it, this.ctx.net.self!, true));
       }
       eq.append(c);
-      if (n === 3) eq.append(comp.cells[0]);
+      if (n === half) eq.append(comp.cells[0]);
     });
     eq.append(comp.cells[1]);
     eqSec.append(eq);

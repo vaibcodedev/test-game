@@ -14,6 +14,7 @@ import {
 import items147 from "../../../data/items-147.json";
 import { LEGENDARIES, makeLegendary, TIER_LIST } from "../../../shared/legendary";
 import { MATERIALS, MAX_PLUS } from "../../../shared/upgrade";
+import { plusBadgeN } from "./smith";
 import { RESOURCES } from "../../../shared/biomes";
 import type { Net } from "../net";
 import "./admin.css";
@@ -25,7 +26,7 @@ const PAGE = 120;
 
 type Group = "weapon" | "offhand" | "armor" | "cloak" | "jewelry" | "unique" | "legend" | "stuff" | "mount";
 const GROUPS: [Group, string][] = [["weapon", "Оружие"], ["offhand", "Вторая рука"], ["armor", "Броня"], ["cloak", "Спина"], ["jewelry", "Бижутерия"], ["unique", "Уникальные боссов"], ["legend", "Легендарные"], ["stuff", "Расходники и материалы"], ["mount", "Маунты"]];
-const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", armor: "Броня", boots: "Броня", cloak: "Спина", ring: "Бижутерия", amulet: "Бижутерия" };
+const GROUP_TYPE: Record<string, string> = { weapon: "Оружие", offhand: "Вторая рука", helmet: "Броня", shoulders: "Броня", armor: "Броня", gloves: "Броня", boots: "Броня", cloak: "Спина", ring: "Бижутерия", amulet: "Бижутерия" };
 /** Подписи видов предметов (typeName у секиры — «Двуручный топор», а игрок знает «Секира»). */
 const CHIP: Record<string, string> = { sword: "Одноручный меч", greatsword: "Двуручный меч", twinblades: "Парные мечи", dagger: "Кинжалы", axe: "Топор", greataxe: "Секира", mace: "Булава", hammer: "Молот", spear: "Копьё", scythe: "Коса", bow: "Лук", crossbow: "Арбалет", staff: "Посох", scepter: "Жезл", shield: "Щит", orb: "Сфера", tome: "Книга", ring: "Кольцо", amulet: "Амулет" };
 const STUFF: [string, string][] = [["potion", "Зелья"], ["food", "Еда"], ["material", "Материалы улучшения"], ["resource", "Ресурсы биомов"]];
@@ -382,7 +383,7 @@ export class GiveTab {
     const label = (k: string) => (s.group === "mount" ? MOUNT_TIERS[k as "common"] : s.group === "stuff" ? STUFF.find((x) => x[0] === k)![1] : BASE_ITEMS[k] && !BASE_ITEMS[k].armorType && s.group === "armor" ? "Простой" : typeLabel(k));
     const chipOf = (k: string) => this.chip(label(k), s.cat === k, "cat", k, { n: cc.get(k) ?? 0, title: s.group === "mount" ? label(k) : typeLabel(k) });
     if (s.group === "armor") {
-      this.q("#ag-cats").innerHTML = (["helmet", "armor", "boots"] as Slot[]).map((sl) => `<div class="ag-row"><span class="ag-rl">${SLOT_NAMES[sl]}</span>${ids.filter((k) => BASE_ITEMS[k].slot === sl).map(chipOf).join("")}</div>`).join("");
+      this.q("#ag-cats").innerHTML = (["helmet", "shoulders", "armor", "gloves", "boots"] as Slot[]).map((sl) => `<div class="ag-row"><span class="ag-rl">${SLOT_NAMES[sl]}</span>${ids.filter((k) => BASE_ITEMS[k].slot === sl).map(chipOf).join("")}</div>`).join("");
     } else this.q("#ag-cats").innerHTML = `<div class="ag-chips">${ids.map(chipOf).join("")}</div>`;
   }
   private renderFilters() {
@@ -515,7 +516,7 @@ export class GiveTab {
     const badges = `${this.badge(e, true)}${gear ? `<span class="ag-ilvl${this.ilvlOf(e) >= 90 ? " hi" : ""}" id="ag-ilbadge">ур. предмета ${this.ilvlOf(e)}</span>` : ""}`;
     box.innerHTML = `
       <div class="ag-iscroll">
-      <div class="ag-selhead"><div class="cell r${r} ag-big" data-ch="${esc(e.name.charAt(0))}"><img src="${ic.src}" data-fb="${ic.fb}" alt="">${gear && s.plus ? `<span class="plus">+${s.plus}</span>` : ""}</div>
+      <div class="ag-selhead"><div class="cell r${r} ag-big" data-ch="${esc(e.name.charAt(0))}"><img src="${ic.src}" data-fb="${ic.fb}" alt="">${gear ? plusBadgeN(s.plus) : ""}</div>
         <div class="ag-selmain"><div class="ag-selname" style="color:${RARITY_COLORS[r]}">${esc(itemName(it))}</div>
         <div class="ag-ty">${esc(e.typeLabel)}${e.allowed ? " · " + esc(e.allowed.map((c) => SHORT[c]).join(", ")) : gear ? " · любой класс" : ""}</div>
         <div class="ag-badges">${badges}</div></div></div>

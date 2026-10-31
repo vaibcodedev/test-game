@@ -70,7 +70,7 @@ const anims: AnimId[] = [...ANIMS.filter((a) => !(two ? ["atk1h", "block", "bow"
 const { FRx: FR, OX } = frameOf(l);
 const K = 2, fw = FR * K, lw = 150, out = new PC(lw + Math.max(...anims.map((a) => NF(a))) * fw + 10, anims.length * VIEWS4.length * fw + anims.length * 24 + 10);
 for (let i = 0; i < out.data.length; i += 4) { out.data[i] = 24; out.data[i + 1] = 20; out.data[i + 2] = 26; out.data[i + 3] = 255; }
-const edge: string[] = [], over: string[] = [];
+const edge: string[] = [], over: string[] = [], grip: string[] = [];
 let y = 6;
 for (const a of anims) {
   text(out, a.toUpperCase(), 6, y, 2, [255, 216, 100, 255]); y += 24;
@@ -85,6 +85,18 @@ for (const a of anims) {
         const q = f.get(xx, yy); for (let p = 0; p < K; p++) for (let b = 0; b < K; b++) out.set(x0 + xx * K + p, y + yy * K + b, [q[0], q[1], q[2], 255]);
       }
       if (touch) edge.push(`${a}/${v}/${i}`);
+      // кулак на рукояти (gear.md §7): видна рукоять оружия в руке — видны и пальцы поверх неё (пиксели кисти пересекаются с рукоятью)
+      if (!["gather", "ride", "death"].includes(a)) {
+        const isFist = (p: any) => /^w_(fist|fistL|thumb)$/.test(p.g), isGrip = (p: any) => (p.slot === "weapon" || p.g === "weapon") && /^(w_grip|w_shaft|w_wrap|weapon)$/.test(p.g);
+        const [full, fs, gp] = renderLayers(viewLook(l, v), baseView(v), a, i, [() => true, isFist, isGrip]);
+        // рукоять рядом с кулаком (рамка пальцев +1 px) видна, а пальцев не видно — ошибка; кулак за корпусом вместе с рукоятью — норма
+        let fv = 0, gv = 0, any = 0, x0 = FR, y0 = FR, x1 = -1, y1 = -1;
+        for (let yy = 0; yy < FR; yy++) for (let xx = 0; xx < FR; xx++) if (fs.img.has(xx, yy)) { any++; x0 = Math.min(x0, xx); y0 = Math.min(y0, yy); x1 = Math.max(x1, xx); y1 = Math.max(y1, yy); if (full.img.has(xx, yy) && full.img.get(xx, yy).join() === fs.img.get(xx, yy).join()) fv++; }
+        for (let yy = y0 - 1; yy <= y1 + 1; yy++) for (let xx = x0 - 1; xx <= x1 + 1; xx++) if (gp.img.has(xx, yy) && full.img.has(xx, yy) && full.img.get(xx, yy).join() === gp.img.get(xx, yy).join()) gv++;
+        // кулак закрыт корпусом (кисть за телом) — не ошибка: проверяем, что пальцы не скрыты самой рукоятью (рукоять поверх кулака)
+        let underGrip = 0; for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (fs.img.has(xx, yy) && gp.img.has(xx, yy) && full.img.has(xx, yy) && full.img.get(xx, yy).join() === gp.img.get(xx, yy).join()) underGrip++;
+        if (any && gv >= 4 && fv < 2 && underGrip >= 2) grip.push(`${a}/${v}/${i}`);
+      }
       // оружие спереди не должно перекрываться наплечником (вид вниз)
       if (v === "down" && !["gather", "ride"].includes(a) && !(a === "death" && i / NF(a) > 0.22)) {
         const [full, wpn, pd] = renderLayers(viewLook(l, v), baseView(v), a, i, [() => true, (p) => p.slot === "weapon" && p.layer >= 5, (p) => p.slot === "pauldrons"]);
@@ -99,10 +111,11 @@ for (const a of anims) {
 out.save(path.resolve(`tools/out/gear147/review-${id}.png`));
 console.log("край кадра:", edge.length ? edge.join(" ") : "нет");
 console.log("клинок под наплечником (вниз):", over.length ? over.join(" ") : "нет");
+console.log("рукоять без кулака:", grip.length ? grip.join(" ") : "нет");
 // шаг основы «Б»: опорная ступня не скользит (сдвиг больше 1 px — ошибка), части на корпусе не дёргаются (больше 1 px за кадр — ошибка)
 const slide = (["walk", "run", "idle2", "stance"] as AnimId[]).flatMap((a) => slideCheck(l, a));
 const jerk = (["idle", "idle2", "stance", "walk", "run"] as AnimId[]).flatMap((a) => lagCheck(l, a));
 console.log("скольжение ступни:", slide.length ? slide.join(" ") : "нет");
 console.log("рывки наплечников и пластин:", jerk.length ? jerk.join(" ") : "нет");
-if (slide.length || jerk.length) process.exitCode = 1;
+if (slide.length || jerk.length || grip.length) process.exitCode = 1;
 }

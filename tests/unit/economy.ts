@@ -8,7 +8,7 @@ import { buyMaterial, upgradeItem } from "../../server/src/game/smith";
 import { sellPrice, recordSale, demandMult } from "../../server/src/game/market";
 import { expandBag } from "../../server/src/game/bags";
 import { BASE_ITEMS, Rarity, makeItem, isBound, canEquip, effStats, baseSellValue, makeUnique, UNIQUES } from "../../shared/items";
-import { MATERIALS, MAX_PLUS, SMITH, failLevel, stepFor } from "../../shared/upgrade";
+import { MATERIALS, MAX_PLUS, REF_PLUS, SMITH, failLevel, stepFor } from "../../shared/upgrade";
 import { BAGMAN, BAG_MAX, BAG_STEP, bagPrice } from "../../shared/bags";
 import { FOOD, COOKS } from "../../shared/food";
 import { QUESTS } from "../../shared/quests";
@@ -357,6 +357,24 @@ await test("заточка неудачная: до +5 уровень сохра
     assert.equal(p.save.gold, 1e7 - st.gold);
     drop(w, p);
   }
+});
+
+await test("заточка до +15 (владелец 2026-10-31): +11…+15 рискованные — шанс ниже +10 и падает, цена растёт, бонус по той же кривой; эталон ботов +10", () => {
+  assert.equal(MAX_PLUS, 15);
+  assert.equal(stepFor(15), undefined);
+  for (let p = 1; p < MAX_PLUS; p++) {
+    const a = stepFor(p - 1)!, b = stepFor(p)!;
+    assert.ok(b.gold > a.gold && b.ore >= a.ore && b.dust >= a.dust, `цена +${p + 1} выше +${p}`);
+    assert.ok(b.chance <= a.chance, `шанс +${p + 1} не выше +${p}`);
+  }
+  for (let p = 10; p < MAX_PLUS; p++) assert.ok(stepFor(p)!.chance < stepFor(9)!.chance && stepFor(p)!.chance > 0, `+${p + 1} рискованнее +10`);
+  assert.equal(failLevel(14), 13);
+  const it = gear();
+  const base = effStats(it).armor || effStats(it).dmgMax || 0;
+  it.plus = 15; const v15 = effStats(it).armor || effStats(it).dmgMax || 0;
+  it.plus = 10; const v10 = effStats(it).armor || effStats(it).dmgMax || 0;
+  assert.ok(v15 > v10 && v10 > base, "бонус растёт и после +10");
+  assert.equal(REF_PLUS, 10);
 });
 
 await test("заточка: максимум, нехватка золота или материалов, расходник, пустая ячейка, чужой индекс — ничего не списано", () => {

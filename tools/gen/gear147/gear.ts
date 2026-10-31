@@ -11,12 +11,14 @@ import { hx, hash, type C } from "../bosses139/mino_lib";
 import { coat, dual, dualPose, hood, scarf } from "./rogue";
 import { helmGeo, helmModel } from "./helm";
 import { robe } from "./robe";
+import { bossAt, bulgeOf, shieldGeo, shieldModel } from "./shield";
+import { axeGeo, axeModel } from "./axe";
 import { armorShape, bodyMat, pdForm } from "./armorgeo";
 import { FY, FR, flipCv, proj, renderFrame, type Frame, type AnimId, type Build, type GearCtx, type Look, type Mz, type Part, type Pose, type Sk, type V2, type V3, type View } from "../hero147/base_b";
 
 export const GD = JSON.parse(fs.readFileSync(path.resolve("data/gear147.json"), "utf8"));
-export type Slot = "helm" | "pauldrons" | "armor" | "gloves" | "boots" | "cloak" | "weapon";
-export const SLOTS: Slot[] = ["helm", "pauldrons", "armor", "gloves", "boots", "cloak", "weapon"];
+export type Slot = "helm" | "pauldrons" | "armor" | "gloves" | "boots" | "cloak" | "weapon" | "offhand";
+export const SLOTS: Slot[] = ["helm", "pauldrons", "armor", "gloves", "boots", "cloak", "weapon", "offhand"];
 export type CrestId = "sol" | "umb";
 export interface SetDef { name: string; rarity: string; level: number; items: Partial<Record<Slot, any>> }
 export const setOf = (id: string): SetDef => GD.sets[id];
@@ -71,7 +73,7 @@ export function dress(base: Look, set: SetDef | null, crest: CrestId = "sol", on
     weight: it("armor") ? (it("armor").style === "coat" ? 0.35 : 1) : base.weight,
     // смаз удара (base_b.ts smear): длина клинка и светлые тона клинка
     blade: wp ? { len: (wp.length ?? 12) + 0.9, ramp: ((r) => [r[1], r[2], r[3], r[4], r[4]])(ramp(wp.blade ?? "dagger_steel")) } : base.blade,
-    posePatch: wp?.kind === "great" ? (P, k) => carryGreat(P, k) : wp?.kind === "dual" ? (P, k) => dualPose(P, k) : undefined,
+    posePatch: wp?.kind === "great" ? (P, k) => carryGreat(P, k) : wp?.kind === "dual" ? (P, k) => dualPose(P, k) : wp?.kind === "one" ? (P, k) => carryOne(P, k) : undefined,
     gear: (ctx) => {
       const tag = (slot: string) => (p: Part) => ctx.parts.push({ ...p, slot: p.slot ?? slot });
       const mk = (slot: string): GearCtx => ({ ...ctx, push: tag(slot) });
@@ -86,14 +88,23 @@ export function dress(base: Look, set: SetDef | null, crest: CrestId = "sol", on
       if (it("gloves")) gloves(mk("gloves"), it("gloves"));
       if (it("boots")) boots(mk("boots"), it("boots"));
       if (it("cloak")) back(mk("cloak"), it("cloak"), crest);
+      // щит — во второй руке (правило левой руки); с двуручником не носится
+      if (it("offhand") && wp?.kind !== "great" && wp?.kind !== "dual") shieldLayer(mk("offhand"), it("offhand"), crest);
       if (wp) {
-        for (let k = ctx.parts.length - 1; k >= 0; k--) if ((ctx.parts[k].g === "weapon" || ctx.parts[k].g === "shield") && !ctx.parts[k].slot) ctx.parts.splice(k, 1);
+        for (let k = ctx.parts.length - 1; k >= 0; k--) if ((ctx.parts[k].g === "weapon" || /^w_(fist|fistL|thumb)$/.test(ctx.parts[k].g)) && !ctx.parts[k].slot) ctx.parts.splice(k, 1);
         if (wp.kind === "dual") dual(mk("weapon"), wp, drawWeapon); else weapon(mk("weapon"), wp);
       }
     },
   };
 }
 
+/** Одноручное оружие сета (топор): в покое, ходьбе и беге — в правой руке древком вниз-вперёд (не за спиной: меч за спиной — только в сборе и верхом);
+ *  в ударе и блоке — поза основы (swordReady). */
+function carryOne(P: Pose, k: { anim: AnimId; stance?: boolean; u: number }) {
+  if (P.weapon || !["idle", "walk", "run", "hurt"].includes(k.anim)) return;
+  const bob = k.anim === "idle" ? 0.03 * Math.sin(2 * Math.PI * (k.u - 0.1)) : 0.05 * Math.sin(4 * Math.PI * (k.u - 0.3));
+  P.weapon = { kind: "sword", dir: nrm([0.18, -0.55 + bob, 0.8]) };
+}
 export const DROP_U = 0.22;
 /** Двуручник: в покое, ходьбе и беге держится перед собой клинком вверх (левая рука на рукояти у пояса). */
 function carryGreat(P: Pose, k: { anim: AnimId; stance?: boolean; u: number; arm: number; view: string; sx: number }) {
@@ -580,6 +591,26 @@ function cape(ctx: GearCtx, it: any, crest: CrestId) {
   }
 }
 
+// =============== ЩИТ (вторая рука) ===============
+/**
+ * Щит на предплечье второй руки (у основы — рука R; оружие — в руке L = правой руке героя). Плоскость щита: нормаль из позы (P.shield — удар и блок
+ * одноручным) или по умолчанию — наружу и вперёд; «верх» щита — мировой верх. Слой — по глубине: щит перед корпусом — поверх кисти и тела (5.4),
+ * за корпусом — за всем (0.8); изнанка видна, если щит смотрит от зрителя. Описание общее с иконкой (shield.ts).
+ */
+const SHIELD_N: V3 = nrm([-0.6, 0, 0.8]);
+function shieldLayer(ctx: GearCtx, it: any, crest: CrestId) {
+  const { sk, PJ, D, facing, push, P } = ctx, M = shieldModel(it);
+  let n = nrm(P.shield?.n ?? SHIELD_N);
+  let up = sub([0, -1, 0], mul(n, -n[1])); up = nrm(len(up) < 0.2 ? [0, 0, 1] : up);
+  const right: V3 = nrm([n[1] * up[2] - n[2] * up[1], n[2] * up[0] - n[0] * up[2], n[0] * up[1] - n[1] * up[0]]);
+  const cen = add(lerp(sk.elR, sk.hdR, 0.55), mul(n, 1.1)), bulge = bulgeOf(M);
+  const at = (u: number, v: number): V3 => sum(cen, mul(right, u), mul(up, -v), mul(n, bulge(u, v)));
+  const P2 = (u: number, v: number) => PJ(at(u, v)), front = facing(n) > 0;
+  const L0 = D(cen) < -1.2 ? 0.8 : 5.4;
+  for (const q of shieldGeo(M, front)) push({ g: q.g, ramp: ramp(q.mat), o: { ...q.o, bias: (q.o.bias ?? 0) + (front ? 0 : -0.5) }, layer: L0 + q.z, m: (z) => q.draw(z, P2, 1), ft: q.ft } as Part);
+  if (M.crest && front && M.kind === "heater") { const b = bossAt(M); crestParts(ctx, add(at(b[0], b[1]), mul(n, 0.15)), right, up, 1.05 * M.size, L0 + 0.035, crest); }
+}
+
 // =============== ОРУЖИЕ ===============
 /** Где оружие в кадре: в руке (поза), за спиной (крепление «Спина») или выпало при гибели (в мире, без поворота тела). Общая для рендера и data/hero-skeleton-b.json. */
 export function weaponPlace(k: { sk: Sk; b: Build; v: View; anim: AnimId; u: number; P: Pose }): { mode: "hand" | "back" | "drop"; Hd: V3; d: V3; world: boolean } {
@@ -628,20 +659,33 @@ function fireTrail(ctx: GearCtx, it: any, Hd: V3) {
     push({ g: "w_trail", ramp: fire, o: { dome: 1, bias: 1.4 - 1.6 * age }, layer: layer + 0.0001 * j, emis: age < 0.7, emisColor: glowC, m: (z) => z.pg([PJ(at(ta, R0)), PJ(at(ta, R1)), PJ(at(tb, R1)), PJ(at(tb, R0))]) });
   }
 }
+/**
+ * Кулак на рукояти (владелец 2026-10-31, gear.md §7): пальцы обхватывают рукоять — три фаланги поперёк рукояти поверх неё и большой палец,
+ * рукоять проходит сквозь кулак; у двуручного — вторая кисть на древке (P.twoHand). Тон — кожа основы или перчатка, если надета.
+ * Слой — над рукоятью и над кистью основы (пальцы спереди); кисть за телом — вместе с рукоятью за телом. Не часть оружия: g «w_fist» (маска заточки его обходит).
+ */
+function fist(ctx: GearCtx, Hd: V3, d: V3, Lg: number, PJ: (p: V3) => V2, gw: number) {
+  const gl = ctx.parts.find((p) => p.slot === "gloves" && /^gl_/.test(p.g)), rp = gl?.ramp ?? ctx.M.skin;
+  const one = (H: V3, L: number) => {
+    const a2 = PJ(H), b2 = PJ(add(H, mul(d, 2))), ux = b2[0] - a2[0], uy = b2[1] - a2[1], l = Math.hypot(ux, uy) || 1, nx = -uy / l, ny = ux / l, dx = ux / l, dy = uy / l;
+    const at = (al: number, ac: number): V2 => [a2[0] + dx * al + nx * ac, a2[1] + dy * al + ny * ac], w = gw / 2 + 0.55;
+    ctx.push({ g: "w_fist", slot: "weapon", ramp: rp, o: { dome: 2, amp: 1.6, bias: 0.3 }, layer: L, m: (z) => { for (const al of [-0.75, 0, 0.75]) z.seg(at(al, -w), at(al, w), 0.62); } });
+    ctx.push({ g: "w_fistL", slot: "weapon", ramp: rp, o: { dome: 1, bias: -1.4 }, layer: L + 0.0001, m: (z) => { for (const al of [-0.38, 0.38]) z.seg(at(al, -w + 0.2), at(al, w - 0.2), 0.3); } });
+    ctx.push({ g: "w_thumb", slot: "weapon", ramp: rp, o: { dome: 1, amp: 1.5, bias: 0.6 }, layer: L + 0.0002, m: (z) => z.seg(at(1.0, w - 0.1), at(1.6, w * 0.3), 0.55) });
+  };
+  const L = Math.max(Lg + 0.02, Lg >= 5 ? 5.32 : 1.32); // над кистью основы (рука спереди 5.3, за телом 1.3)
+  one(Hd, L);
+  if (ctx.P.twoHand) { const t = (ctx.sk.hdR[0] - Hd[0]) * d[0] + (ctx.sk.hdR[1] - Hd[1]) * d[1] + (ctx.sk.hdR[2] - Hd[2]) * d[2]; if (Math.abs(t) > 1.2) one(add(Hd, mul(d, t)), L); }
+}
 function drawWeapon(ctx: GearCtx, it: any, Hd: V3, d: V3, Lg: number, Lb: number, PJ: (p: V3) => V2) {
   const { push, i } = ctx;
+  const inHand = !!ctx.P.weapon && PJ === ctx.PJ && ctx.anim !== "death";
+  if (inHand) fist(ctx, Hd, d, Lg, PJ, it.head === "axe" ? 1.25 : it.kind === "great" ? 1.2 : 1.2);
   if (it.head === "axe") {
-    // секира на древке: древко через кисть, лезвие у верха, обух-клюв, пика; тёмная обводка
-    const len = it.length ?? 20, top = add(Hd, mul(d, len * 0.75)), bot = add(Hd, mul(d, -len * 0.25)), a2 = PJ(top), b2 = PJ(add(top, mul(d, 2)));
-    const ux = b2[0] - a2[0], uy = b2[1] - a2[1], l = Math.hypot(ux, uy) || 1, nx = -uy / l, ny = ux / l, dx = ux / l, dy = uy / l;
-    const hp = (al: number, ac: number): V2 => [a2[0] + dx * al + nx * ac, a2[1] + dy * al + ny * ac];
-    const headPoly = [hp(1.5, 0.6), hp(0.5, 5.2), hp(-3.6, 5.6), hp(-4.6, 0.6)];
-    push({ g: "w_hrim", ramp: RIM, o: { dome: 1, bias: 0.4 }, layer: Lb - 0.0005, m: (z) => { z.seg(PJ(bot), PJ(add(top, mul(d, 2.5))), 2.4); z.pg([hp(2.2, 1), hp(1.2, 6.2), hp(-4.4, 6.6), hp(-5.4, 0.6)]); } });
-    push({ g: "w_shaft", ramp: ramp(it.grip), o: { dome: 1, bias: 0.2 }, layer: Lg, m: (z) => z.seg(PJ(bot), PJ(add(top, mul(d, 2))), 1.2) });
-    push({ g: "w_head", ramp: ramp(it.blade), o: { dome: 2, amp: 1.8, bias: 0.6, kant: true }, layer: Lb + 0.001, m: (z) => z.pg(headPoly) });
-    push({ g: "w_blik", ramp: ramp(it.blade), o: { dome: 1, bias: 2.8 }, layer: Lb + 0.002, m: (z) => z.seg(hp(0.4, 5.0), hp(-3.4, 5.4), 0.6) });
-    push({ g: "w_beak", ramp: ramp(it.hilt), o: { dome: 1, bias: 0.4 }, layer: Lb + 0.001, m: (z) => z.pg([hp(-0.5, -0.4), hp(-1.5, -3.2), hp(-2.6, -0.4)]) });
-    push({ g: "w_spike", ramp: ramp(it.hilt), o: { dome: 1, bias: 0.5 }, layer: Lb + 0.001, m: (z) => z.pg([hp(1.2, 0.5), hp(4.6, 0), hp(1.2, -0.5)]) });
+    // топор / секира: общее описание с иконкой (axe.ts); a — вдоль древка от кисти, n — поперёк на экране (сторона лезвия)
+    const M = axeModel(it), a2 = PJ(Hd), b2 = PJ(add(Hd, mul(d, 2))), ux = b2[0] - a2[0], uy = b2[1] - a2[1], l = Math.hypot(ux, uy) || 1, nx = -uy / l, ny = ux / l;
+    const P2 = (a: number, n: number): V2 => { const q = PJ(add(Hd, mul(d, a))); return [q[0] + nx * n, q[1] + ny * n]; };
+    for (const q of axeGeo(M)) push({ g: q.g, ramp: q.rim ? RIM : ramp(q.mat), o: q.o, layer: (q.z === "g" ? Lg : Lb) + q.dz, emis: q.emis, emisColor: q.emis ? hx("#ff8a3a") : undefined, m: (z) => q.draw(z, P2, 1), ft: q.ft } as Part);
     return;
   }
   const bl = it.length ?? 16, W0 = it.width ?? 3, glow = !!it.glow;

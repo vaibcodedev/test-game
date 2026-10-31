@@ -5,7 +5,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import fs from "node:fs";
 import path from "node:path";
 import { classFaction, type ClassId, type FactionId, type Stats } from "../../shared/classes";
-import type { Item, Slot } from "../../shared/items";
+import { fillSlots, type Item, type Slot } from "../../shared/items";
 import type { BankSave } from "../../shared/bank";
 import type { QuestSave } from "../../shared/quests";
 import { migratePets } from "../../shared/pets";
@@ -263,7 +263,12 @@ export class GameDB {
     if (!r?.bank) return null;
     try {
       const v = JSON.parse(r.bank);
-      return Array.isArray(v) ? v : null;
+      if (!Array.isArray(v)) return null;
+      // перековка: битый вид на общем складе снимается так же, как в сумке и банке героя (B61)
+      let tm = false;
+      for (const it of v as (Item | null)[]) tm = sanitizeItem(it) || tm;
+      if (tm) this.saveAccountBank(accountId, v);
+      return v;
     } catch {
       return null;
     }
@@ -340,11 +345,13 @@ export class GameDB {
       this.save(name, save);
     }
     save.faction ??= classFaction(save.cls);
+    // задача 147: старые герои без слотов наплечников и перчаток — пустые слоты (вещи в сумке и надетые не трогаются)
+    save.equip = fillSlots(save.equip);
     // задача 150: Волчонок, Огонёк и Черепашка заменены новыми питомцами (data/pets.json migrate) — уровень и опыт переносятся, запись сразу
     if (migratePets(save)) this.save(name, save);
     // перековка (docs/art/gear.md): вид хранится в самом предмете (поле appearance в JSON); битый вид (модель или легендарка ушли из данных) снимается
     let tm = false;
-    for (const it of [...(save.inventory ?? []), ...Object.values(save.equip ?? {})]) tm = sanitizeItem(it) || tm;
+    for (const it of [...(save.inventory ?? []), ...Object.values(save.equip ?? {}), ...(save.bank?.tabs ?? []).flat()]) tm = sanitizeItem(it) || tm;
     if (tm) this.save(name, save);
     return save;
   }

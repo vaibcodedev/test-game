@@ -52,6 +52,10 @@ function done(p: Player, ref: Ref, text: string) {
 }
 
 /** Снять оболочку: донор из сумки распадается, на его месте — «Оболочка: <имя>»; золото по уровню и редкости донора. */
+/** Страховка списания (B62): цена и золото — конечные неотрицательные числа, золота хватает; иначе отказ. */
+const canPay = (p: Player, price: number): boolean =>
+  Number.isFinite(price) && price >= 0 && Number.isFinite(p.save.gold) && p.save.gold >= price;
+
 export function tmExtract(w: World, p: Player, index: unknown, locked: Locked) {
   if (!ready(w, p)) return;
   // донор — только из сумки: надетую вещь сначала снимают (иначе герой остался бы без вещи в бою)
@@ -62,7 +66,7 @@ export function tmExtract(w: World, p: Player, index: unknown, locked: Locked) {
   const why = extractRefusal(donor);
   if (why) return err(p, why);
   const price = extractPrice(donor);
-  if (p.save.gold < price) return err(p, T("srv.bags.58"));
+  if (!canPay(p, price)) return err(p, T("srv.bags.58"));
   // транзакция: золото и предмет меняются вместе, место в сумке — то же, что у донора (нехватки места не бывает)
   const shell = makeShell(donor);
   p.save.gold -= price;
@@ -83,7 +87,7 @@ export function tmApply(w: World, p: Player, shellIndex: unknown, index: unknown
   const why = applyRefusal(shell, ref.item);
   if (why) return err(p, why);
   const price = applyPrice(shell!, ref.item);
-  if (p.save.gold < price) return err(p, T("srv.bags.58"));
+  if (!canPay(p, price)) return err(p, T("srv.bags.58"));
   // транзакция: золото, вид вещи и оболочка — разом
   p.save.gold -= price;
   ref.item.appearance = { ...shell!.appearance! };
@@ -98,7 +102,7 @@ export function tmReset(w: World, p: Player, index: unknown, slot: unknown, lock
   if (!ref) return;
   if (isShell(ref.item) || !ref.item.appearance) return err(p, T("srv.transmog.noLook"));
   const price = resetPrice(ref.item);
-  if (p.save.gold < price) return err(p, T("srv.bags.58"));
+  if (!canPay(p, price)) return err(p, T("srv.bags.58"));
   p.save.gold -= price;
   delete ref.item.appearance;
   done(p, ref, T("srv.transmog.reset", { name: itemName(ref.item) }));

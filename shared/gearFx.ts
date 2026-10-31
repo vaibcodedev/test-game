@@ -86,3 +86,40 @@ export function enchantTierB(plus: number): 0 | 1 | 2 | 3 {
 }
 /** Цвет «+N» на иконке по ступени варианта D. */
 export const enchantIconColor = (plus: number): string => ENCHANT_B.iconColors[(() => { let t = 0; for (const th of ENCHANT_B.thresholds) if (plus >= th) t++; return t; })()];
+
+/** Вид контура заточки на конкретном оружии: цвета ступени, приведённые к контрасту с оружием (data/gear-fx.json enchantB.contrast). */
+export interface EnchantLook { color: string; color2?: string; core?: string; gap: string; gapAlpha: number; kind: "dark" | "red" | "light" | "mid" }
+const hex2 = (h: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
+const rgb2hex = (c: number[]) => "#" + c.map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, "0")).join("");
+const mixHex = (a: string, b: string, t: number) => { const A = hex2(a), B = hex2(b); return rgb2hex(A.map((v, k) => v + (B[k] - v) * t)); };
+function hsv(c: number[]): [number, number, number] {
+  const [r, g, b] = c.map((x) => x / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d > 0) h = mx === r ? 60 * (((g - b) / d) % 6) : mx === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
+  return [(h + 360) % 360, mx ? d / mx : 0, mx];
+}
+function fromHsv(h: number, s: number, v: number): number[] {
+  const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [r + m, g + m, b + m].map((q) => q * 255);
+}
+/** Яркость 0..1 (как в heroB.ts enchantTex — среднее по видимым пикселям оружия без тёмной обводки). */
+export const lum01 = (c: number[]) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255;
+/**
+ * Цвет контура заточки по среднему цвету оружия avg (RGB 0..255) — «свечение контрастно к оружию» (владелец 2026-10-31):
+ * тёмные и красные клинки — светлее (тёплое золото/белое с цветом ступени), светлая сталь — насыщенный цвет ступени, между клинком и контуром — тёмная прослойка.
+ * Чем выше ступень и плюс, тем ярче.
+ */
+export function enchantContrast(tier: 1 | 2 | 3, plus: number, avg: number[] | null): EnchantLook {
+  const C = ENCHANT_B.contrast, T = ENCHANT_B.tiers[tier] as { color?: string; color2?: string; core?: string };
+  const base = T.color ?? "#ffffff";
+  const L = avg ? lum01(avg) : 0.5, [h, s] = avg ? hsv(avg) : [0, 0];
+  const red = !!avg && s >= C.redSat && (h >= C.redHue[0] || h <= C.redHue[1]);
+  const kind: EnchantLook["kind"] = red ? "red" : L < C.darkLum ? "dark" : L > C.lightLum && s < 0.3 ? "light" : "mid";
+  const over = Math.max(0, plus - ENCHANT_B.thresholds[tier - 1]), up = Math.min(1, over * C.plusLight);
+  // тёмное и красное оружие — светлее (к тёплому белому); сталь и среднее — насыщенный цвет ступени, ярче с плюсом (не к белому: красный не уходит в розовый)
+  const lighten = (c: string, k: number) => mixHex(c, C.light, Math.min(0.9, k + up));
+  const satur = (c: string, ks: number, dv: number) => { const [hh, ss, vv] = hsv(hex2(c)); return rgb2hex(fromHsv(hh, Math.min(1, ss + ks), Math.min(1, Math.max(0, vv * (1 - dv) + up)))); };
+  const f = kind === "light" ? (c: string) => satur(c, C.satK, C.deepen) : kind === "mid" ? (c: string) => satur(c, C.satK * 0.5, -C.neutralK) : (c: string) => lighten(c, C.lightK[tier - 1]);
+  return { color: f(base), color2: T.color2 ? f(T.color2) : undefined, core: T.core, gap: C.gap.color, gapAlpha: C.gap.alpha[tier - 1], kind };
+}

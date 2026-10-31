@@ -108,9 +108,9 @@ async function clothAndSpecial(A: Page) {
   await sleep(3500);
   await record(A, "cloth_idle_wind", 10, 300);
   // бег: клик по земле вправо (герой бежит ~3 с), затем остановка
-  await A.mouse.click(683 + 330, 384 + 20);
+  await A.mouse.click(683 + 330, 384 + 20, { button: "right" }); // ЛКМ по земле ведёт героя только в раскладке «Классика»
   await record(A, "cloth_run_stop", 14, 220);
-  await A.mouse.click(683 - 330, 384 + 20);
+  await A.mouse.click(683 - 330, 384 + 20, { button: "right" }); // ЛКМ по земле ведёт героя только в раскладке «Классика»
   await record(A, "cloth_run_back", 14, 220);
   await A.keyboard.press("Escape");
   await sleep(2500);
@@ -189,14 +189,14 @@ async function animCheck(browser: Browser) {
   await sleep(1500);
   await record(A, "anim_idle_step", 16, 90);
   t0 = await A.evaluate(`Math.round(performance.now())`) as number;
-  await A.mouse.click(683 + 300, 384 + 10);
+  await A.mouse.click(683 + 300, 384 + 10, { button: "right" }); // ЛКМ по земле ведёт героя только в раскладке «Классика»
   log(`до бега ${await pos()}`);
   await record(A, "anim_run_stop", 14, 140);
   log(`после бега ${await pos()}`);
   await summary("бег → остановка", t0);
   await dbg(A, { op: "slow", v: 60, ms: 9000 }); await sleep(300);
   t0 = await A.evaluate(`Math.round(performance.now())`) as number;
-  await A.mouse.click(683 - 300, 384 + 10);
+  await A.mouse.click(683 - 300, 384 + 10, { button: "right" }); // ЛКМ по земле ведёт героя только в раскладке «Классика»
   await record(A, "anim_run_slowed", 12, 140);
   await summary("бег при замедлении 60 %", t0);
   await sleep(2500);
@@ -214,14 +214,15 @@ async function animCheck(browser: Browser) {
   await A.evaluate(`window.__net.send("attack", { id: ${JSON.stringify(mob.id)} })`);
   await record(A, "anim_attack", 14, 60);
   for (let k = 0; k < 6; k++) { await dbg(A, { op: "mobhp", id: mob.id, v: 1 }); await sleep(800); }
-  await A.mouse.click(683 - 300, 384 + 10);
+  await A.mouse.click(683 - 300, 384 + 10, { button: "right" }); // ЛКМ по земле ведёт героя только в раскладке «Классика»
   await record(A, "anim_attack_to_run", 10, 120);
   await summary("удар → стойка → бег", t0);
   const sync = await A.evaluate(`(() => { const out = []; for (const [t, id, v] of window.__hbDmg) { if (id !== ${JSON.stringify(mob.id)} || t < ${t0}) continue; const L = window.__hbLog.filter((q) => q[0] <= t); const q = L[L.length - 1]; out.push((q ? q[1] + ":" + q[2] + (q[3] !== 1 ? "×" + q[3] : "") : "?") + "(" + v + ")"); } return out.join(" "); })()`);
   log(`кадр анимации в момент урона (контакт atk2h = 8): ${sync || "урона нет"}`);
   log("хронология удара (мс от начала): " + await A.evaluate(`(() => { const out = []; let prev = ""; for (const q of window.__hbLog) { if (q[0] < ${t0} || q[0] > ${t0} + 6000) continue; const k = q[1] + ":" + q[2]; if (k !== prev && /attack/.test(q[1]) && (q[2] === 0 || q[2] === 8)) out.push((q[0] - ${t0}) + " " + k); prev = k; } for (const [t, id, v] of window.__hbDmg) if (id === ${JSON.stringify(mob.id)} && t >= ${t0} && t < ${t0} + 6000) out.push((t - ${t0}) + " УРОН " + v); return out.sort((a, b) => parseInt(a) - parseInt(b)).join(" | "); })()`));
   log("перед уроном: " + await A.evaluate(`(() => { const out = []; for (const [t, id] of window.__hbDmg.filter((d) => d[1] === ${JSON.stringify(mob.id)}).slice(0, 2)) { const L = window.__hbLog.filter((q) => q[0] <= t).slice(-14); out.push("УРОН@" + t + ": " + L.map((q) => (t - q[0]) + "мс " + q[1] + ":" + q[2] + " a" + q[5] + " u" + q[6] + " at" + q[7] + " hb" + q[8]).join(", ")); } return out.join(" || "); })()`));
-  if (process.env.ATK_ONLY) { await A.close(); return; }
+  log(`FPS страницы: ${await A.evaluate("Math.round(window.__game.loop.actualFps)")}`);
+  if (process.env.ATK_ONLY || process.env.NO_ENCH) { await A.close(); return; }
   await enchantShots(A);
   await A.close();
 }

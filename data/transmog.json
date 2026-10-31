@@ -11,7 +11,9 @@
   "shell": {
     "name": "Оболочка",
     "typeName": "Оболочка вида",
-    "price": 40
+    "price": 40,
+    "icon": "mat_star_dust",
+    "_icon": "иконка оболочки, у которой вид битый (после чистки данных); годная оболочка рисуется иконкой донора"
   },
   "families": {
     "sword": "onehand", "axe": "onehand", "mace": "onehand",
@@ -27,7 +29,7 @@
     "helmet": "legacy", "armor": "legacy", "boots": "legacy",
     "plate_helm": "plate", "plate_armor": "plate", "plate_boots": "plate",
     "leather_helm": "leather", "leather_armor": "leather", "leather_boots": "leather",
-    "cloth_helm": "cloth", "cloth_armor": "cloth", "cloth_boots": "cloth",
+    "cloth_helm": "cloth", "cloth_armor": "cloth", "cloth_boots": "cloth", "plate_shoulders": "plate", "leather_shoulders": "leather", "cloth_shoulders": "cloth", "plate_gloves": "plate", "leather_gloves": "leather", "cloth_gloves": "cloth",
     "cloak": "cloak",
     "ring": "ring",
     "amulet": "amulet"

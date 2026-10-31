@@ -67,4 +67,17 @@ ok(/gearOn = [^\n]*!this\.hb/.test(uv), "GearLayers при герое Б не р
   ok(bad === 0, `Рыцарь: один клинок в кадре (${bad} из ${frames} кадров с двумя)`);
 }
 
+// 5) lookOf не падает для обеих фракций и полов: индекс причёски по хешу имени в пределах списка (хеш беззнаковый — сдвиг >>>, а не >>)
+{
+  const hashSrc = hb.match(/const hash = \(s: string\) => \{[^\n]+\};/)?.[0];
+  ok(!!hashSrc && /styles\[\(h >>> 3\) % styles\.length\]/.test(hb), "lookOf: причёска по хешу — беззнаковый сдвиг");
+  const hash = new Function("return " + hashSrc!.replace(/^const hash = /, "").replace(/: string/g, "").replace(/;$/, ""))() as (s: string) => number;
+  let bad = 0;
+  for (const fac of ["solgard", "umbrath"]) for (const sex of ["m", "f"] as const) for (let k = 0; k < 4000; k++) {
+    const h = hash(`${fac}-Герой${k}x${k * 7919}`), styles = man.hair[sex] as { id: string }[];
+    if (!styles?.length || !styles[(h >>> 3) % styles.length]?.id) bad++;
+  }
+  ok(bad === 0, `lookOf: причёска найдена для любых имён обеих фракций и полов (${bad} промахов)`);
+}
+
 console.log(`heroB-weapon: ${n} ok`);

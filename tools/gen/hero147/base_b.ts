@@ -680,12 +680,20 @@ function buildParts(l: Look, v: View, anim: AnimId, i: number) {
     push({ g, ramp: M.skin, o: { dome: 2, bias: far + 0.3 }, layer: L0 + 0.3, m: (z) => z.seg(PJ(add(Hd, mul(dir, -0.1))), PJ(add(Hd, mul(dir, b.handR * 0.9))), b.handR * 1.9, b.handR * 1.6) });
   }
 
-  // ---- оружие и щит ----
+  // ---- оружие ----
   if (wp) {
     const Hd = sk.hdL, d = nrm(wp.dir);
     const dW0 = D(add(Hd, mul(d, 4)));
     const L0 = dW0 < -1.2 ? 1.2 : 5.2; WPL0 = L0;
     const gv = mul(nrm(cross(d, sk.U)), 1);
+    // кулак на рукояти (gear.md §7): пальцы поперёк рукояти поверх неё и большой палец — рукоять проходит сквозь кулак (слой над кистью основы)
+    if (wp.kind !== "bow") {
+      const a2 = PJ(Hd), b2 = PJ(add(Hd, mul(d, 2))), ux = b2[0] - a2[0], uy = b2[1] - a2[1], ll = Math.hypot(ux, uy) || 1, nx = -uy / ll, ny = ux / ll, dx = ux / ll, dy = uy / ll;
+      const at = (al: number, ac: number): V2 => [a2[0] + dx * al + nx * ac, a2[1] + dy * al + ny * ac], w = 1.15, FL = (L0 > 3 ? 5.31 : 1.31);
+      push({ g: "w_fist", ramp: M.skin, o: { dome: 2, amp: 1.6, bias: 0.3 }, layer: FL, m: (z) => { for (const al of [-0.75, 0, 0.75]) z.seg(at(al, -w), at(al, w), 0.62); } });
+      push({ g: "w_fistL", ramp: M.skin, o: { dome: 1, bias: -1.4 }, layer: FL + 0.0001, m: (z) => { for (const al of [-0.38, 0.38]) z.seg(at(al, -w + 0.2), at(al, w - 0.2), 0.3); } });
+      push({ g: "w_thumb", ramp: M.skin, o: { dome: 1, amp: 1.5, bias: 0.6 }, layer: FL + 0.0002, m: (z) => z.seg(at(1.0, w - 0.1), at(1.6, w * 0.3), 0.55) });
+    }
     if (wp.kind === "sword" || wp.kind === "great") {
       const big = wp.kind === "great", bl = big ? 15 : 10.5, gl = big ? 2.6 : 1.9, gr = big ? 3.4 : 1.6;
       const g0 = add(Hd, mul(d, 0.9));
@@ -712,19 +720,7 @@ function buildParts(l: Look, v: View, anim: AnimId, i: number) {
       }
     }
   }
-  if (P.shield) {
-    const n = nrm(P.shield.n), cen = add(lerp3(sk.elR, sk.hdR, 0.55), mul(n, 1.1)), r = 4.3;
-    const e1 = nrm(cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])), e2 = cross(n, e1);
-    const circ = (rr: number, off = 0): V2[] => { const o: V2[] = []; for (let k = 0; k < 24; k++) { const t = (k / 24) * Math.PI * 2; o.push(PJ(add(add(cen, mul(n, off)), add(mul(e1, rr * Math.cos(t)), mul(e2, rr * Math.sin(t)))))); } return o; };
-    const front = facing(n) > 0;
-    const L0 = D(cen) < -1.2 ? 0.8 : 5.4;
-    push({ g: "shield", ramp: M.steel, o: { dome: 2, bias: front ? 0 : -0.6 }, layer: L0, m: (z) => z.hull([...circ(r), ...circ(r, -0.7)]) });
-    push({ g: "shield", ramp: M.wood, o: { dome: 3, bias: front ? 0 : -1 }, layer: L0 + 0.01, m: (z) => z.hull(circ(r - 0.95, front ? 0.05 : -0.75)) });
-    if (front) {
-      push({ g: "shield", ramp: M.steel, o: { dome: 1, bias: -0.8 }, layer: L0 + 0.02, m: (z) => z.seg(PJ(add(cen, mul(e1, -(r - 1.2)))), PJ(add(cen, mul(e1, r - 1.2))), 0.8) });
-      push({ g: "shield", ramp: M.trim, o: { dome: 2, bias: 0.3 }, layer: L0 + 0.03, m: (z) => z.hull(circ(1.15, 0.3)) });
-    }
-  }
+  // щит — не часть основы: слой второй руки снаряжения (tools/gen/gear147/shield.ts, gear.ts → shieldLayer); поза держит P.shield (нормаль щита в ударе и блоке)
 
   // ---- голова (локально) ----
   const hc = PJ(sk.head), hu = PJ(add(sk.head, mul(U, 1)));

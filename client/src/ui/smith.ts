@@ -1,4 +1,4 @@
-/** Кузнец Гром: окно улучшения предметов (+1…+10) и покупки материалов. */
+/** Кузнец Гром: окно улучшения предметов (+1…+15, +11…+15 — рискованные) и покупки материалов. */
 import { npcRefuses } from "./npcGate";
 import { gold } from "./gold";
 import { BASE_ITEMS, effStats, iconFor, itemName, ITEM_STAT_NAMES, SLOT_NAMES, SLOTS, type Item, type ItemStatKey, type Slot } from "../../../shared/items";
@@ -19,8 +19,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", html = ""):
 type Sel = { index: number } | { slot: Slot } | null;
 
 /**
- * Значок «+N» на ячейке по ступеням заточки (docs/art/gear.md, 2.2): +1…+3 белый, +4…+10 бирюза (--enchant),
- * без заливки и контура ячейки (решение пользователя). Стили: .plus.pt0…pt3.
+ * Значок «+N» на ячейке (docs/art/gear.md §5, icons.md §6): правый верхний угол, тёмная подложка, цифра в цвет ступени варианта D
+ * (+1…+4 светлая, +5 тление, +8 угли, +11…+15 пламя); рамка ячейки — за редкостью. Стили: kit.css .cell .plus.
  */
 export function plusBadgeN(plus: number): string {
   if (!plus) return "";

@@ -14,7 +14,7 @@ import { PNG } from "pngjs";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { createServer } from "vite";
 import { dbFile, ensureChar, PORT, sleep } from "./harness";
-import { warBase } from "../shared/bannerWar";
+import { WAR_RADIUS, warBase } from "../shared/bannerWar";
 import type { Player } from "../server/src/game/Player";
 import type { World } from "../server/src/game/World";
 
@@ -115,8 +115,8 @@ async function scenario() {
     w.addPlayer(p);
     allies.push(p);
   }
-  let at = { x: base.x - 330, y: base.y + 60 };
-  const allyAt = (inside: boolean, i: number) => (inside ? { x: base.x - 70 + i * 60, y: base.y + 70 + (i % 2) * 30 } : { x: base.x - 380 - i * 40, y: base.y + 120 });
+  let at = { x: base.x - WAR_RADIUS - 80, y: base.y + 60 }; // за кругом: радиус — data/faction-war.json capture.radius (с 2026-10-27 — 14 клеток, было 6)
+  const allyAt = (inside: boolean, i: number) => (inside ? { x: base.x - 70 + i * 60, y: base.y + 70 + (i % 2) * 30 } : { x: base.x - WAR_RADIUS - 130 - i * 40, y: base.y + 120 });
   let inside = false;
   const keep = setInterval(() => {
     for (const p of [H, ...allies]) { if (p.dead) { p.dead = false; p.unit.anim = 0; } p.unit.hp = p.unit.maxHp; p.inputAt = w.time; p.moveTo = null; }
@@ -129,7 +129,7 @@ async function scenario() {
     await sleep(2500);
     // 1. до захвата: пустое основание, нейтральный круг
     save("base-before.png", await snap(base.x, base.y - 40, 420, 300));
-    check(!war.bases.get("center_w")!.banner, "основание пустое до захвата");
+    { const r0 = war.bases.get("center_w")! as any; check(!r0.banner, `основание пустое до захвата (знамя ${r0.banner}, владелец ${r0.owner}, в круге ${r0.inside.map((q: any) => (q.name ?? q.unit?.name ?? q.id) + ":" + q.faction).join(",")}, n ${r0.n})`); }
     // 2. подъём: герой и союзники в круге
     at = { x: base.x + 50, y: base.y + 40 };
     inside = true;

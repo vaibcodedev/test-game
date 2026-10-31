@@ -18,8 +18,15 @@ function sealNamed<T extends { name: string }>(b: T, m: { name: string; desc: st
   return b;
 }
 
-export type Slot = "weapon" | "offhand" | "helmet" | "armor" | "boots" | "cloak" | "ring" | "amulet";
-export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "armor", "boots", "cloak", "ring", "amulet"];
+export type Slot = "weapon" | "offhand" | "helmet" | "shoulders" | "armor" | "gloves" | "boots" | "cloak" | "ring" | "amulet";
+/** Порядок слотов: окно «Герой», осмотр, сводка персонажа. Наплечники и перчатки — отдельные слоты (задача 147: прежде рисовались вместе с кирасой). */
+export const SLOTS: Slot[] = ["weapon", "offhand", "helmet", "shoulders", "armor", "gloves", "boots", "cloak", "ring", "amulet"];
+/** Пустой слот снаряжения по слотам: старые сохранения без новых слотов дополняются null (ничего не теряется). */
+export function fillSlots(equip: Partial<Record<Slot, Item | null>> | null | undefined): Record<Slot, Item | null> {
+  const e = (equip ?? {}) as Record<Slot, Item | null>;
+  for (const s of SLOTS) if (e[s] === undefined) e[s] = null;
+  return e;
+}
 /** Вторая рука: щит или второй клинок у Храмовника и Рыцаря смерти, сфера или книга у заклинателей. */
 export const OFFHAND_CLASSES: ClassId[] = ["warrior", "deathknight", "mage", "healer", "warlock", "bloodweaver"];
 /** Одноручное оружие: у Рыцаря смерти может занять вторую руку. */
@@ -30,7 +37,9 @@ export const SLOT_NAMES: Record<Slot, string> = {
   weapon: "Оружие",
   offhand: "Вторая рука",
   helmet: "Шлем",
+  shoulders: "Наплечники",
   armor: "Доспех",
+  gloves: "Перчатки",
   boots: "Сапоги",
   cloak: "Спина",
   ring: "Кольцо",
@@ -123,6 +132,8 @@ export interface BaseItem {
   roll?: (ilvl: number) => ItemStats;
   price?: number;
   stack?: number;
+  /** Падает с мобов и у торговцев и без моделей каталога (голой базой): новые слоты наплечников и перчаток. */
+  lootBare?: boolean;
 }
 
 const r1 = (v: number) => Math.round(v);
@@ -166,12 +177,19 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   plate_boots: { id: "plate_boots", name: "Сабатоны", typeName: "Латные сапоги", slot: "boots", icon: "plate_boots", armorType: "plate", classes: STR_MELEE, roll: statRoll(IR.rolls.plate_boots) },
   leather_boots: { id: "leather_boots", name: "Ботинки", typeName: "Кожаные сапоги", slot: "boots", icon: "leather_boots", armorType: "leather", classes: LEATHER, roll: statRoll(IR.rolls.leather_boots) },
   cloth_boots: { id: "cloth_boots", name: "Туфли", typeName: "Тканевые туфли", slot: "boots", icon: "cloth_boots", armorType: "cloth", classes: CASTERS, roll: statRoll(IR.rolls.cloth_boots) },
+  // наплечники и перчатки (задача 147): свой слот, материал по классу брони; без моделей каталога — падают голой базой (lootBare), вклад — data/items-rules.json
+  plate_shoulders: { id: "plate_shoulders", name: "Наплечники", typeName: "Латные наплечники", slot: "shoulders", icon: "plate_shoulders", armorType: "plate", classes: STR_MELEE, lootBare: true, roll: statRoll(IR.rolls.plate_shoulders) },
+  leather_shoulders: { id: "leather_shoulders", name: "Наплечники", typeName: "Кожаные наплечники", slot: "shoulders", icon: "leather_shoulders", armorType: "leather", classes: LEATHER, lootBare: true, roll: statRoll(IR.rolls.leather_shoulders) },
+  cloth_shoulders: { id: "cloth_shoulders", name: "Оплечье", typeName: "Тканевое оплечье", slot: "shoulders", icon: "cloth_shoulders", armorType: "cloth", classes: CASTERS, lootBare: true, roll: statRoll(IR.rolls.cloth_shoulders) },
+  plate_gloves: { id: "plate_gloves", name: "Рукавицы", typeName: "Латные рукавицы", slot: "gloves", icon: "plate_gloves", armorType: "plate", classes: STR_MELEE, lootBare: true, roll: statRoll(IR.rolls.plate_gloves) },
+  leather_gloves: { id: "leather_gloves", name: "Перчатки", typeName: "Кожаные перчатки", slot: "gloves", icon: "leather_gloves", armorType: "leather", classes: LEATHER, lootBare: true, roll: statRoll(IR.rolls.leather_gloves) },
+  cloth_gloves: { id: "cloth_gloves", name: "Перчатки", typeName: "Тканевые перчатки", slot: "gloves", icon: "cloth_gloves", armorType: "cloth", classes: CASTERS, lootBare: true, roll: statRoll(IR.rolls.cloth_gloves) },
   // плащ: отдельный слот, общий для всех классов; броня + аффиксы модели (docs/plan/balance.md «Экипировка»)
   cloak: { id: "cloak", name: "Плащ", typeName: "Плащ", slot: "cloak", icon: "cloak", roll: statRoll(IR.rolls.cloak) },
   ring: { id: "ring", name: "Кольцо", typeName: "Кольцо", slot: "ring", icon: "ring", roll: () => ({}) },
   amulet: { id: "amulet", name: "Амулет", typeName: "Амулет", slot: "amulet", icon: "amulet", roll: statRoll(IR.rolls.amulet) },
   // «Оболочка» перековки (docs/art/gear.md, data/transmog.json shell): не складывается, иконка — вида, который несёт
-  [SHELL_BASE]: { id: SHELL_BASE, name: tmData.shell.name, typeName: tmData.shell.typeName, slot: "consumable", icon: "tm_shell", price: tmData.shell.price },
+  [SHELL_BASE]: { id: SHELL_BASE, name: tmData.shell.name, typeName: tmData.shell.typeName, slot: "consumable", icon: tmData.shell.icon, price: tmData.shell.price },
   hp_potion: { id: "hp_potion", name: "Зелье здоровья", slot: "consumable", icon: "potion_red", price: 15, stack: 20 },
   mp_potion: { id: "mp_potion", name: "Зелье маны", slot: "consumable", icon: "potion_blue", price: 15, stack: 20 },
   ...Object.fromEntries(Object.values(MATERIALS).map((m) => [m.id, { id: m.id, name: m.name, slot: "consumable", icon: m.icon, price: m.price, stack: 99 } as BaseItem])),
@@ -185,6 +203,16 @@ export const BASE_ITEMS: Record<string, BaseItem> = {
   ...Object.fromEntries(Object.entries(mountData.parts).map(([id, d]) => [`mpart_${id}`, { id: `mpart_${id}`, name: d.name, typeName: "Деталь для конюшего", slot: "consumable", icon: d.icon, price: d.price, stack: (d as { stack?: number }).stack ?? 20 } as BaseItem])),
 };
 export const isTwoHanded = (baseId: string | undefined): boolean => !!baseId && BASE_ITEMS[baseId]?.hands === 2;
+/**
+ * База бледного силуэта пустой ячейки снаряжения: оружие — стартовое класса, вторая рука — щит / сфера / книга,
+ * наплечники и перчатки — материала класса (латы, кожа, ткань), прочее — старая универсальная база слота.
+ */
+export function slotGhost(cls: ClassId, slot: Slot): string {
+  if (slot === "weapon") return CLASSES[cls]?.startWeapon ?? "sword";
+  if (slot === "offhand") return offhandGhost(cls);
+  if (slot === "shoulders" || slot === "gloves") return Object.values(BASE_ITEMS).find((b) => b.slot === slot && b.classes?.includes(cls))?.id ?? `plate_${slot}`;
+  return slot;
+}
 
 // ---------------- каталог моделей (data/items.json) ----------------
 /** Параметры вида модели: силуэт (архетип), материалы (ключи ITEM_PALETTES), украшение, богатство отделки. */
@@ -253,9 +281,12 @@ function weighted<T>(cand: [T, number][], rand: () => number): T | undefined {
   return cand[cand.length - 1]?.[0];
 }
 
+/** Вес слота при выборе добычи (data/items-rules.json slotWeight). */
+export const slotWeight = (slot: string): number => (IR.slotWeight as Record<string, number>)[slot] ?? 1;
+
 /** Категории (базы с моделями), которые может надеть класс. */
 export function lootCategories(cls: ClassId): BaseItem[] {
-  return Object.values(BASE_ITEMS).filter((b) => b.slot !== "consumable" && MODELS_BY_CAT[b.id]?.length && (!b.classes || b.classes.includes(cls)));
+  return Object.values(BASE_ITEMS).filter((b) => b.slot !== "consumable" && (MODELS_BY_CAT[b.id]?.length || b.lootBare) && (!b.classes || b.classes.includes(cls)));
 }
 
 /**
@@ -268,8 +299,9 @@ export function makeLoot(cls: ClassId, ilvl: number, rarity: Rarity, rand: () =>
   let pool = cats.filter((b) => (b.slot === "weapon") === wantWeapon);
   if (!pool.length) pool = cats;
   if (!wantWeapon) {
+    // слот — по весу data/items-rules.json slotWeight (нет записи — 1): наплечники и перчатки падают реже прочей брони
     const slots = [...new Set(pool.map((b) => b.slot))];
-    const slot = slots[Math.floor(rand() * slots.length)];
+    const slot = weighted(slots.map((sl) => [sl, slotWeight(sl)] as [Slot | "consumable", number]), rand)!;
     pool = pool.filter((b) => b.slot === slot);
   }
   const base = weighted(pool.map((b) => [b, b.rec ? (b.rec.includes(cls) ? 3 : 1) : 2] as [BaseItem, number]), rand)!;
@@ -313,8 +345,8 @@ function affixValue(k: ItemStatKey, ilvl: number, mult: number): number {
 const SUFFIX: Record<string, string> = { str: "силы", agi: "ловкости", int: "мудрости", vit: "стойкости", hp: "жизни", crit: "точности" };
 const EPIC_PREFIX = ["Древний", "Пылающий", "Звёздный", "Проклятый", "Королевский", "Сумеречный", "Громовой"];
 const EPIC_PREFIX_N = ["Древнее", "Пылающее", "Звёздное", "Проклятое", "Королевское", "Сумеречное", "Громовое"];
-const NEUTER = new Set(["ring", "spear"]);
-const PLURAL = new Set(["boots", "twinblades", "dagger", "plate_armor", "plate_boots", "leather_boots", "cloth_boots"]);
+const NEUTER = new Set(["ring", "spear", "cloth_shoulders"]);
+const PLURAL = new Set(["boots", "twinblades", "dagger", "plate_armor", "plate_boots", "leather_boots", "cloth_boots", "plate_shoulders", "leather_shoulders", "plate_gloves", "leather_gloves", "cloth_gloves"]);
 const FEM = new Set(["mace", "greataxe", "scythe", "orb", "tome", "cloth_armor", "leather_armor"]);
 const EPIC_PREFIX_F = ["Древняя", "Пылающая", "Звёздная", "Проклятая", "Королевская", "Сумеречная", "Громовая"];
 const EPIC_PREFIX_P = ["Древние", "Пылающие", "Звёздные", "Проклятые", "Королевские", "Сумеречные", "Громовые"];
@@ -338,8 +370,7 @@ export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () 
   const stats: ItemStats = {};
   const main = base.roll ? base.roll(ilvl) : {};
   for (const [k, v] of Object.entries(main)) stats[k as ItemStatKey] = Math.max(1, Math.round((v as number) * (k.startsWith("dmg") || k === "armor" ? mult : 1)));
-  let affixes = IR.affixCount[rarity];
-  if (base.slot === "ring" || base.slot === "amulet") affixes += IR.ringAmuletBonus;
+  const affixes = affixCount(base.slot as Slot, rarity);
   const pool = [...AFFIX_KEYS];
   const picked: ItemStatKey[] = [];
   for (let i = 0; i < affixes && pool.length; i++) {
@@ -359,7 +390,12 @@ export function makeItem(baseId: string, ilvl: number, rarity: Rarity, rand: () 
 }
 
 /** Сколько аффиксов получает предмет слота и редкости (то же правило, что в makeItem; сверяется тестом tests/admin.ts). */
-export const affixCount = (slot: Slot, rarity: Rarity): number => IR.affixCount[rarity] + (slot === "ring" || slot === "amulet" ? 1 : 0);
+/** Наплечники и перчатки — на аффикс меньше (data/items-rules.json slotAffix, у редкой и выше — не меньше одного), чтобы полный сет вырос умеренно. */
+export function affixCount(slot: Slot, rarity: Rarity): number {
+  const n = IR.affixCount[rarity] + (slot === "ring" || slot === "amulet" ? IR.ringAmuletBonus : 0);
+  const d = (IR.slotAffix as Record<string, number>)[slot] ?? 0;
+  return d ? Math.max(rarity >= Rarity.Rare ? 1 : 0, n + d) : n;
+}
 
 /**
  * Для админ-панели: что выдаст сервер, без случайного. Основные характеристики и гарантированные аффиксы (у модели это model.affix,

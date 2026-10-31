@@ -199,6 +199,8 @@ export class UnitView {
   private hbPush = false;
   private cloth?: HeroCloth;
   private ench?: HeroEnchant;
+  /** заточка щита героя Б (слой offhand, своя ступень по плюсу щита) */
+  private enchOff?: HeroEnchant;
   private baseTex = "";
   private baseOy = 0;
   /** Герой Б, ритм и переходы: скорость отрисовки (px/с, сглаженная), прошлая позиция, начало прошлого удара и промежуток между ударами (мс),
@@ -622,6 +624,10 @@ export class UnitView {
       const em = enchantFxMode(), show = em === "all" || (em === "self" && this.isSelf);
       (this.ench ??= new HeroEnchant(this.scene)).update(this.sprite, this.hb, weaponPlus(u.weapon), show, nightLevel(Date.now()), this.attacking && /-attack2?-/.test(this.sprite.anims.currentAnim?.key ?? ""));
     } else this.ench?.hide();
+    if (this.hb?.enchOff && !this.dead) {
+      const em = enchantFxMode(), show = em === "all" || (em === "self" && this.isSelf);
+      (this.enchOff ??= new HeroEnchant(this.scene, "enchOff")).update(this.sprite, this.hb, parseGear(u.gear)[3].plus, show, nightLevel(Date.now()), false);
+    } else this.enchOff?.hide();
     this.hbPush = false;
     // под курсором (вместо тинта спрайта): кольцо под ногами вдвое бледнее выбранного, красное у врага и зелёное у союзника; ник и полоска видны ниже
     const hov = this.hovered && !this.dead && !this.unseen;
@@ -970,6 +976,7 @@ export class UnitView {
   destroy() {
     this.dyn?.destroy();
     this.ench?.destroy();
+    this.enchOff?.destroy();
     if (zbViews.delete(this)) zbFx?.drop(this);
     this.sprite.destroy();
     this.mountSpr?.destroy();

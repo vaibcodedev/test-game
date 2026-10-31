@@ -15,6 +15,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { createServer } from "vite";
+import { DAY_CYCLE_MS } from "../shared/daynight";
 import { dbFile, ensureChar, PORT, sleep } from "./harness";
 import { TILE } from "../shared/constants";
 import { Dir } from "../shared/protocol";
@@ -103,8 +104,8 @@ async function scenario() {
   const patrol = town.folk.filter((f) => f.guard && !f.post && f.site === town.folk[0].site);
   if (patrol.length < 5) throw new Error(`патрульных Эмберхолла мало: ${patrol.length}`);
   const figs = [0, 1, 2, 3, 0].map((k, i) => {
-    const f = patrol[i], s = EMBER_SETS[k], g = npcGearStrings(s, i === 4), u = f.unit;
-    u.sprite = s.cls; u.gear = g.gear; u.weapon = g.weapon; u.herald = g.herald; u.name = i === 4 ? "Знаменосец" : s.title;
+    const f = patrol[i], s = EMBER_SETS[k], g = npcGearStrings(s, false), u = f.unit; // знаменосцев в городе нет (решение пользователя 2026-10-24) — и в строю теста тоже
+    u.sprite = s.cls; u.gear = g.gear; u.weapon = g.weapon; u.herald = g.herald; u.name = s.title;
     const x = row.x + (i + 1) * DX, y = row.y;
     f.post = { x, y, dir: Dir.Down }; f.route = []; f.foe = null; f.x = x; f.y = y; u.x = x; u.y = y; u.dir = Dir.Down; f.dir = Dir.Down;
     return f;
@@ -123,7 +124,7 @@ async function scenario() {
       H = heroOf("Эйра");
       H.unit.gear = heroGear; H.unit.weapon = "greatsword:1:0::greatsword_24";
       for (const [tod, frac] of [["day", 0.3], ["night", 0.82]] as const) {
-        await page.evaluate((f: number) => { const C = 20 * 60 * 1000, r = (window as any).__realNow(); (window as any).__dshift = f * C - (r % C); }, frac);
+        await page.evaluate(([f, C]: [number, number]) => { const r = (window as any).__realNow(); (window as any).__dshift = f * C - (r % C); }, [frac, DAY_CYCLE_MS] as [number, number]); // цикл суток — data/gameplay.json (был 20 мин, стал 60)
         // строй
         at = row; hold();
         await run("sc.cameras.main.stopFollow(); sc.cameras.main.centerOn(a.x, a.y);", { x: row.x + 3 * DX, y: row.y - 30 });

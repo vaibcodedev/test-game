@@ -26,14 +26,17 @@ export class HeroEnchant {
   /** бегущий блик: копия контура цветом core, видна полоса 4 px (setCrop), проходит по кадру сверху вниз раз в shineMs */
   private s3?: Phaser.GameObjects.Sprite;
   private lastFr = -1;
+  /** текущий след удара (не больше одного) */
+  private ghost?: Phaser.GameObjects.Image;
   private emberAt = 0;
   private embers = 0;
   tier = 0;
-  constructor(private scene: Phaser.Scene) {}
+  /** which — чей контур: ench — оружие, enchOff — щит (вторая рука, своя заточка) */
+  constructor(private scene: Phaser.Scene, private which: "ench" | "enchOff" = "ench") {}
 
   /** Каждый кадр после спрайта героя: show — по настройке «Свечение заточки», night 0..1, attack — идёт анимация удара. */
   update(sp: Phaser.GameObjects.Sprite, sh: HbSheet | null, plus: number, show: boolean, night: number, attack: boolean) {
-    const e = sh?.ench, tier = e && show && sp.visible ? enchantTierB(plus) : 0;
+    const e = sh?.[this.which], tier = e && show && sp.visible ? enchantTierB(plus) : 0;
     if (!e || !tier) { this.hide(); return; }
     const d = TIERS[tier], now = this.scene.time.now, fr = Number(sp.frame.name) || 0;
     const place = (s: Phaser.GameObjects.Sprite, key: string, dz: number) => {
@@ -55,10 +58,12 @@ export class HeroEnchant {
     if (tier === 3 && night > 0.05) place(this.s2 ??= this.scene.add.sprite(sp.x, sp.y, e.k2, fr), e.k2, 0.01).setTint(hex(d.color2!)).setAlpha((d.haloNight ?? 0.3) * night * (0.8 + 0.2 * ease(now / d.cycleMs!))).setBlendMode(Phaser.BlendModes.ADD);
     else this.s2?.setVisible(false);
     // шлейф удара: контур прошлых кадров удара гаснет за trail.frames кадров (easing)
+    // один след за раз (прежний гасится сразу): копии контура нескольких кадров удара складывались в «паутину» линий вокруг оружия
     if (d.trail && attack && fr !== this.lastFr && this.lastFr >= 0) {
-      const g = this.scene.add.image(sp.x, sp.y, e.k1, this.lastFr).setOrigin(sp.originX, sp.originY).setFlipX(sp.flipX).setDepth(sp.depth + 0.015)
+      this.ghost?.destroy();
+      const g = this.ghost = this.scene.add.image(sp.x, sp.y, e.k1, this.lastFr).setOrigin(sp.originX, sp.originY).setFlipX(sp.flipX).setDepth(sp.depth + 0.015)
         .setTint(hex(d.core ?? d.color!)).setAlpha(d.trail.alpha).setBlendMode(Phaser.BlendModes.ADD);
-      this.scene.tweens.add({ targets: g, alpha: 0, duration: (d.trail.frames * 1000) / 16, ease: "Quad.easeOut", onComplete: () => g.destroy() });
+      this.scene.tweens.add({ targets: g, alpha: 0, duration: (d.trail.frames * 1000) / 16, ease: "Quad.easeOut", onComplete: () => { g.destroy(); if (this.ghost === g) this.ghost = undefined; } });
     }
     this.lastFr = fr;
     // угольки «Пламени»: 2–3 точки по 1 px с контура клинка, поднимаются и гаснут
@@ -75,5 +80,5 @@ export class HeroEnchant {
     }
   }
   hide() { this.s1?.setVisible(false); this.s2?.setVisible(false); this.s3?.setVisible(false); this.lastFr = -1; }
-  destroy() { this.s1?.destroy(); this.s2?.destroy(); this.s3?.destroy(); this.s1 = this.s2 = this.s3 = undefined; }
+  destroy() { this.ghost?.destroy(); this.s1?.destroy(); this.s2?.destroy(); this.s3?.destroy(); this.s1 = this.s2 = this.s3 = undefined; }
 }

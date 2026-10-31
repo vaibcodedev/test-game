@@ -7,7 +7,8 @@
     { "id": "gloves", "name": "Перчатки", "new": true },
     { "id": "boots", "name": "Сапоги" },
     { "id": "cloak", "name": "Спина", "kinds": ["cape", "banner", "shieldBack", "swordsCross", "halo"] },
-    { "id": "weapon", "name": "Оружие" }
+    { "id": "weapon", "name": "Оружие" },
+    { "id": "offhand", "name": "Вторая рука", "new": true, "kinds": ["buckler", "heater", "scutum"] }
   ],
   "back": {
     "_doc": "Слот «Спина» (id cloak): общая точка крепления — спина у лопаток (кадр торса A/U/F) или голова (ореол). Слой: вид вниз — позади всего (0.40), вид вверх — поверх спины и рук, под оружием, наплечниками, кистями и головой (5.15), вбок — за телом (0.90). Вещь задаёт только форму; порядок и привязка общие для всех видов.",
@@ -22,6 +23,8 @@
     "bins": [0, 0.95, 1.15, 1.22, 1.28, 1.9, 4.9, 5.1, 5.18, 5.22, 5.28, 5.9, 99]
   },
   "materials": {
+    "shield_wood": ["#2a160c", "#4a2a16", "#6e4424", "#966236", "#b8844c"],
+    "paint_red": ["#3a0e0c", "#5e1814", "#82261c", "#a63a26", "#c45838"],
     "star_silver": ["#2a3448", "#56688a", "#8aa2c4", "#c4d8f0", "#f4faff"],
     "star_glow": ["#0a3a5a", "#1a7aaa", "#40c0ff", "#a0f0ff", "#f0ffff"],
     "star_gold": ["#5a4a20", "#a08840", "#e0c870", "#fff0a8", "#fffbe8"],
@@ -145,7 +148,7 @@
         "gloves": { "name": "Наручи капитана", "plate": "steel60", "accent": "brass", "trim": "brass", "cuff": false, "bracer": true, "rivets": true },
         "boots": { "name": "Сапоги капитана", "plate": "steel60", "accent": "steel60", "stripe": true, "strapAccent": "brass", "topCuff": "leather" },
         "cloak": { "name": "Синий плащ заставы", "kind": "cape", "outer": "cloth_blue", "lining": "wool_grey", "trim": "brass", "hem": "brass", "tatter": 0, "crest": false },
-        "weapon": { "name": "Секира капитана", "kind": "great", "head": "axe", "style": "zwei", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "brass", "grip": "leather", "accent": "brass", "length": 18, "width": 2.9, "fuller": true }
+        "weapon": { "name": "Секира капитана", "kind": "great", "head": "axe", "axe": "crescent", "blade": "steel60", "edge": "dagger_steel", "hilt": "brass", "grip": "shield_wood", "wrap": "leather_dark", "length": 18, "langets": true, "beak": true }
       }
     },
     "plate60-epic": {
@@ -185,6 +188,46 @@
         "boots": { "name": "Железные поножи", "plate": "iron", "accent": "iron", "kneeSpike": false, "stripe": false },
         "weapon": { "name": "Железный двуручник", "kind": "great", "blade": "dagger_steel", "edge": "dagger_steel", "hilt": "leather_dark", "grip": "leather", "accent": "iron", "length": 15, "width": 2.4, "serrate": false, "flames": false, "glow": false }
       }
+    },
+    "shield-scutum": {
+      "name": "Окованный скутум", "rarity": "common", "level": 10,
+      "items": { "offhand": { "name": "Окованный скутум", "style": "scutum", "face": "shield_wood", "paint": "paint_red", "rim": "iron", "boss": "iron", "band": "iron" } }
+    },
+    "shield-buckler": {
+      "name": "Стальной баклер", "rarity": "rare", "level": 30,
+      "items": { "offhand": { "name": "Стальной баклер", "style": "buckler", "face": "steel60", "paint": "wool_blue", "rim": "iron", "boss": "brass", "rivets": "brass", "spike": "steel60" } }
+    },
+    "shield-knight": {
+      "name": "Рыцарский щит клятвы", "rarity": "epic", "level": 60,
+      "items": { "offhand": { "name": "Рыцарский щит клятвы", "style": "heater", "face": "shield_wood", "paint": "cloth_blue", "rim": "steel_temper", "rivets": "gold", "gem": "sapphire", "crest": true } }
+    },
+    "axe1-common": {
+      "name": "Колун лесоруба", "rarity": "common", "level": 5,
+      "items": { "weapon": { "name": "Колун лесоруба", "kind": "one", "head": "axe", "axe": "bearded", "blade": "iron", "edge": "dagger_steel", "hilt": "iron", "grip": "shield_wood", "wrap": "leather_dark", "length": 11 } }
+    },
+    "axe1-rare": {
+      "name": "Топор стражника", "rarity": "rare", "level": 30,
+      "items": { "weapon": { "name": "Топор стражника", "kind": "one", "head": "axe", "axe": "crescent", "blade": "steel60", "edge": "dagger_steel", "hilt": "brass", "grip": "shield_wood", "wrap": "leather_dark", "length": 11.5, "langets": true } }
+    },
+    "axe1-epic": {
+      "name": "Лабрис присяги", "rarity": "epic", "level": 60,
+      "items": { "weapon": { "name": "Лабрис присяги", "kind": "one", "head": "axe", "axe": "double", "blade": "steel_master", "edge": "star_silver", "hilt": "gold", "grip": "shield_wood", "wrap": "leather_dark", "length": 12, "langets": true, "engrave": true, "gem": "sapphire" } }
+    },
+    "axe1-legendary": {
+      "name": "Рогатый топор Хаоса", "rarity": "legendary", "level": 90,
+      "items": { "weapon": { "name": "Рогатый топор Хаоса", "kind": "one", "head": "axe", "axe": "horned", "blade": "chaos_steel", "edge": "dagger_steel", "hilt": "chaos_steel", "grip": "shield_wood", "wrap": "leather_dark", "length": 12.5, "langets": true, "beak": true, "spike": true, "rune": "hellfire", "gem": "eye_glow" } }
+    },
+    "axe2-common": {
+      "name": "Бородовидная секира", "rarity": "common", "level": 10,
+      "items": { "weapon": { "name": "Бородовидная секира", "kind": "great", "head": "axe", "axe": "bearded", "blade": "iron", "edge": "dagger_steel", "hilt": "iron", "grip": "shield_wood", "wrap": "leather_dark", "length": 18 } }
+    },
+    "axe2-epic": {
+      "name": "Двуручный лабрис", "rarity": "epic", "level": 70,
+      "items": { "weapon": { "name": "Двуручный лабрис", "kind": "great", "head": "axe", "axe": "double", "blade": "steel_master", "edge": "star_silver", "hilt": "gold", "grip": "shield_wood", "wrap": "leather_dark", "length": 20, "langets": true, "engrave": true, "gem": "sapphire", "spike": true } }
+    },
+    "axe2-legendary": {
+      "name": "Рогатая секира Предела", "rarity": "legendary", "level": 100,
+      "items": { "weapon": { "name": "Рогатая секира Предела", "kind": "great", "head": "axe", "axe": "horned", "blade": "ash_steel", "edge": "star_silver", "hilt": "ash_gold", "grip": "shield_wood", "wrap": "leather_dark", "length": 21, "langets": true, "beak": true, "spike": true, "rune": "ash_glow", "gem": "ash_glow" } }
     }
   }
 }

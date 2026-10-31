@@ -1483,6 +1483,7 @@ export function buildBaseIcons(): Record<string, PC> {
 }
 export function buildAllModelIcons(): Record<string, PC> {
   const out: Record<string, PC> = {};
-  for (const m of Object.values(ITEM_MODELS)) for (const r of [0, 1, 2]) out[`im_${m.id}_${r}`] = buildModelIcon(m, r);
+  // категории без рисовальщика (наплечники и перчатки) — иконки рисует tools/gen/slot-arms.ts
+  for (const m of Object.values(ITEM_MODELS)) if (DRAW[m.cat]) for (const r of [0, 1, 2]) out[`im_${m.id}_${r}`] = buildModelIcon(m, r);
   return out;
 }
