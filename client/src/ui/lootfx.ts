@@ -54,7 +54,7 @@ export function banner(root: HTMLElement, o: { title: string; name: string; sub?
   window.setTimeout(() => { b.classList.add("out"); window.setTimeout(() => b.remove(), 500); }, o.ms ?? 6500);
 }
 
-export interface RowHost { self(): SelfState | undefined; take(bagId: string): void; tipFor(elm: HTMLElement, html: () => string): void; itemTip(it: Item, s: SelfState): string }
+export interface RowHost { self(): SelfState | undefined; take(bagId: string): void; tipFor(elm: HTMLElement, html: () => string): void; itemTip(it: Item, s: SelfState): string; hideTip(): void }
 /** Карточка содержимого над мешком: строки «иконка в рамке редкости · имя · ×N», золото с монетой, до 5 строк, при наведении на строку — подсказка предмета как в сумке. Подсказка G — общая плашка hud.setInteractTip. */
 export class LootRow {
   private box = document.createElement("div");
@@ -65,7 +65,7 @@ export class LootRow {
   constructor(root: HTMLElement, private host: RowHost) {
     this.box.className = "lr";
     this.box.hidden = true;
-    this.box.addEventListener("pointerenter", () => { this.over = true; clearTimeout(this.hideT); });
+    this.box.addEventListener("pointerenter", () => { this.over = true; clearTimeout(this.hideT); this.hideT = 0; });
     this.box.addEventListener("pointerleave", () => { this.over = false; this.hover(null, null, 0); });
     this.box.addEventListener("click", () => { if (this.id) this.host.take(this.id); });
     root.append(this.box);
@@ -73,7 +73,7 @@ export class LootRow {
   /** Каждый кадр: id мешка под курсором (или null) и экранная точка над его верхом. */
   hover(bagId: string | null, items: Item[] | null, sx: number, sy = 0, gold = 0, lock = 0) {
     if (bagId && items) {
-      clearTimeout(this.hideT);
+      clearTimeout(this.hideT); this.hideT = 0; // иначе отменённый таймер остаётся «занятым» и карточка больше не прячется
       this.id = bagId;
       const key = bagId + "|" + gold + "|" + lock + "|" + items.map((i) => i.uid + (i.qty ?? 1)).join(",");
       if (key !== this.key) {
@@ -103,7 +103,11 @@ export class LootRow {
       return;
     }
     if (this.over || this.hideT || this.box.hidden) return;
-    this.hideT = window.setTimeout(() => { this.hideT = 0; if (this.over) return; this.box.hidden = true; this.key = ""; this.id = null; }, 260);
+    this.hideT = window.setTimeout(() => { this.hideT = 0; if (this.over) return; this.hide(); }, 260);
+  }
+  /** Спрятать карточку и подсказку предмета (подсказка висит отдельно в hud и сама не уходит, если строка исчезла под курсором). */
+  hide() {
+    this.box.hidden = true; this.over = false; this.key = ""; this.id = null; this.host.hideTip();
   }
 }
 
