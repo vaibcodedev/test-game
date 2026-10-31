@@ -26,7 +26,7 @@ const LIVE = live as unknown as { specialAttack: { every: number; chance: number
 /** Облик героя Б, из которого сводится лист. */
 export interface HbLook { fac: "sol" | "umb"; sex: "m" | "f"; hair: string; cls: Cls; atk: string; /** сет оружия с особым ударом (special2h) */ special?: string; slots: Partial<Record<Slot147, string>> }
 /** Готовый лист: sid прежних ключей анимаций (`${sid}-walk-${row}` и т. д.), sidL — то же для взгляда влево; frame — кадр, oy — опора по ногам, rise — макушка над ногами. */
-export interface HbSheet { key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[];
+export interface HbSheet { /** удар класса позы (atk1h, atk2h, bow, cast) */ atk: string; /** силуэты кадров для переходов (heroBNear) */ masks: Map<string, Uint8Array[]>; key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[];
   /** ткань «Спины» с физикой (heroCloth.ts): сет, описание текстур и точек крепления, тело для pins */ cloth: { set: string; def: ClothDef; body: string } | null }
 
 /** Режим: off — прежний герой, self — только свой герой (проверка одним игроком, запоминается в браузере), all — все герои (флаг data/hero-b.json). */
@@ -210,6 +210,9 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
   };
   for (const [s, left] of [[sid, false], [sidL, true]] as const) for (let view = 0; view < 3; view++) {
     mk(s, "rest", "idle", view, left, -1);
+    mk(s, "rest2", "idle2", view, left, 0); // редкий переступ в покое
+    mk(s, "stance", "stance", view, left, -1); // боевая стойка между ударами
+    mk(s, "stroll", "walk", view, left, -1); // шаг (медленный ход: замедление, ходьба)
     mk(s, "walk", "run", view, left, -1);
     mk(s, "attack", l.atk, view, left, 0);
     if (l.special) mk(s, "attack2", "special2h", view, left, 0);
@@ -223,9 +226,56 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
     const r0 = rowOf("idle", "down"), d = g.getImageData(O[0] - 7, r0 * F, 15, O[1]).data;
     for (let y = 0; y < O[1]; y++) { let hit = false; for (let x = 0; x < 15; x++) if (d[(y * 15 + x) * 4 + 3] > 24) { hit = true; break; } if (hit) { rise = O[1] - y; break; } }
   } catch { /* нет данных — рост по умолчанию */ }
+  // силуэты кадров (сетка 48×48, ноги — вес 2) для переходов «старт со ближайшей позы»: циклы целиком, у остальных — последний кадр
+  const masks = new Map<string, Uint8Array[]>();
+  try {
+    const st = F / 48, legY = O[1] - 14 * st;
+    rows.forEach(([a, v], R) => {
+      const n = Math.min(COLS, m.anims[a]?.frames ?? 0); if (!n) return;
+      const all = ["idle", "stance", "run", "walk", "idle2"].includes(a);
+      const d = g.getImageData(0, R * F, n * F, F).data, W = n * F, arr: Uint8Array[] = [];
+      for (let i = 0; i < n; i++) {
+        if (!all && i !== n - 1) { arr.push(new Uint8Array(0)); continue; }
+        const mm = new Uint8Array(48 * 48);
+        for (let y = 0; y < 48; y++) for (let x = 0; x < 48; x++) { const px = Math.floor(i * F + x * st), py = Math.floor(y * st); if (d[(py * W + px) * 4 + 3] > 24) mm[y * 48 + x] = py >= legY ? 2 : 1; }
+        arr.push(mm);
+      }
+      masks.set(a + ":" + v, arr);
+    });
+  } catch { /* нет данных — переходы с кадра 0 */ }
   const bodyKey = `${l.fac}_${l.sex}`;
-  return { key, sid, sidL, frame: F, ox: O[0] / F, oy: O[1] / F, origin: [O[0], O[1]], rise, glow: !!gtex, special: !!l.special, dead, rows: rows.map((q) => q[0] + ":" + q[1]),
+  return { atk: l.atk, masks, key, sid, sidL, frame: F, ox: O[0] / F, oy: O[1] / F, origin: [O[0], O[1]], rise, glow: !!gtex, special: !!l.special, dead, rows: rows.map((q) => q[0] + ":" + q[1]),
     cloth: clothSet ? { set: clothSet, def: m.cloth![clothSet], body: bodyKey } : null };
+}
+
+/** Имя анимации UnitView → анимация листа. */
+const ANIM_OF: Record<string, string> = { rest: "idle", rest2: "idle2", stance: "stance", walk: "run", stroll: "walk", hurt: "hurt", death: "death", attack2: "special2h" };
+export const heroBAnim = (sh: HbSheet, name: string) => (name === "attack" ? sh.atk : ANIM_OF[name] ?? name);
+const viewName = (row: number, left: boolean) => (row === 0 ? "down" : row === 1 ? "up" : left ? "left" : "side");
+const maskDist = (a: Uint8Array, b: Uint8Array) => { let s = 0; for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) s += Math.max(a[k], b[k]); return s; };
+/**
+ * Переход без рывка (пиксель-арт: старт со ближайшей позы, без альфа-смешивания): кадр анимации to, ближайший по силуэту (ноги — вес 2)
+ * к кадру frame анимации from того же вида. Нет данных — -1.
+ */
+export function heroBNear(sh: HbSheet, from: string, frame: number, to: string, row: number, left: boolean): number {
+  const v = viewName(row, left), A = sh.masks.get(heroBAnim(sh, from) + ":" + v), B = sh.masks.get(heroBAnim(sh, to) + ":" + v);
+  const a = A?.[Math.min(frame, (A?.length ?? 1) - 1)];
+  if (!a?.length || !B?.length) return -1;
+  let best = -1, bd = Infinity;
+  B.forEach((b, j) => { if (!b.length) return; const d = maskDist(a, b); if (d < bd) { bd = d; best = j; } });
+  return best;
+}
+/** Мост перед сменой: через сколько кадров (0..max) вперёд по текущему циклу from поза ближе всего к анимации to (стоп из бега — доиграть до опоры). */
+export function heroBBridge(sh: HbSheet, from: string, frame: number, to: string, row: number, left: boolean, max = 2): number {
+  const v = viewName(row, left), A = sh.masks.get(heroBAnim(sh, from) + ":" + v), B = sh.masks.get(heroBAnim(sh, to) + ":" + v);
+  if (!A?.length || !B?.length) return 0;
+  let best = 0, bd = Infinity;
+  for (let k = 0; k <= max; k++) {
+    const a = A[(frame + k) % A.length]; if (!a.length) continue;
+    let d = Infinity; for (const b of B) if (b.length) d = Math.min(d, maskDist(a, b));
+    if (d < bd * 0.85) { bd = d; best = k; } // дальше — только заметно ближе
+  }
+  return best;
 }
 
 /** Кадр смерти (последний) для мгновенной смерти без анимации: строка вида row (0 вниз, 1 вверх, 2 вбок). */

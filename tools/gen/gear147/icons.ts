@@ -9,25 +9,35 @@ import { Cv, paint, hx, type C } from "../bosses139/mino_lib";
 import { Mz, mixC, type PO, type V2 } from "../hero147/base_b";
 import { GD, SLOTS, ramp, setOf, type CrestId, type Slot } from "./gear";
 import { PARAM_STYLES, helmGeo, helmModel } from "./helm";
-import { armorShape, bodyMat } from "./armorgeo";
+import { armorShape, bodyMat, pdForm } from "./armorgeo";
 
-/** маска с масштабом вокруг центра поля: формы рисуются в координатах 48×48, предмет вписывается в ~80 % (docs/art/icons.md, п. 8) */
-let KS = 0.82; const CC = 24;
+/**
+ * Маска с масштабом и сдвигом: формы рисуются в координатах 48×48 (исходные, центр SX, SY), предмет вписывается так,
+ * что корпус (без рогов, крыльев, плюмажа, шипов) занимает ICON_FILL поля по большей стороне и стоит по центру (docs/art/icons.md §2).
+ */
+let KS = 0.82, SX = 24, SY = 24; const CC = 24;
+/** доля поля 48×48, которую занимает корпус предмета по большей стороне (выбор владельца 2026-10-31 — 60 %) */
+export let ICON_FILL = 0.6;
+export const setIconFill = (f: number) => { ICON_FILL = f; };
 class SMz extends Mz {
-  private f(p: V2): V2 { return [CC + (p[0] - CC) * KS, CC + (p[1] - CC) * KS]; }
+  private f(p: V2): V2 { return [CC + (p[0] - SX) * KS, CC + (p[1] - SY) * KS]; }
   override seg(a: V2, b: V2, t0: number, t1 = t0) { return super.seg(this.f(a), this.f(b), Math.max(t0 * KS, Math.min(t0, 0.75)), Math.max(t1 * KS, Math.min(t1, 0.75))); }
   override dot(a: V2, r: number) { return super.dot(this.f(a), Math.max(r * KS, Math.min(r, 0.85))); }
   override pg(pts: V2[]) { return super.pg(pts.map((q) => this.f(q))); }
   override el(c: V2, rx: number, ry: number) { return super.el(this.f(c), rx * KS, ry * KS); }
   override bz(p0: V2, p1: V2, p2: V2, t0: number, t1 = t0) { return super.bz(this.f(p0), this.f(p1), this.f(p2), t0 * KS, t1 * KS); }
-  override clip(fn: (x: number, y: number) => boolean) { return super.clip((x, y) => fn(CC + (x - CC) / KS, CC + (y - CC) / KS)); }
+  override clip(fn: (x: number, y: number) => boolean) { return super.clip((x, y) => fn(SX + (x - CC) / KS, SY + (y - CC) / KS)); }
 }
+/** части «сверх корпуса»: рога, крылья, плюмаж, гребень, шипы, ореол — не входят в размер корпуса (icons.md §2) */
+export const EXTRA = /^(horn|hornR|hornT|spk|h_horn|h_wing|h_wingL|h_plume|h_plumeF|h_comb|h_combL|h_spike|fins|finsH|mFin|rSp|wingsB|halo|sp|spH|haute|pwing|pwingH|fsp|fhaute|fpwing|fpwingH|spT|armSp|cspk|claws|kspk|spur|bwing|lugs|spikeT|beak|fire)$/;
+/** рамка корпуса и всего предмета на иконке (px, включительно, с контуром) */
+export interface IconBox { body: [number, number, number, number]; all: [number, number, number, number] }
 export interface IP { g: string; ramp: C[]; o?: PO; m: (z: Mz) => void; emis?: boolean; ft?: string }
 /** сдвиг системы координат (шлем-конструктор рисует в системе головы, иконка — в поле 48×48) */
 const shift = (z: Mz, dx: number, dy: number): Mz => ({ seg: (a: V2, b: V2, t0: number, t1?: number) => z.seg([a[0] + dx, a[1] + dy], [b[0] + dx, b[1] + dy], t0, t1), dot: (a: V2, r: number) => z.dot([a[0] + dx, a[1] + dy], r), pg: (p: V2[]) => z.pg(p.map((q) => [q[0] + dx, q[1] + dy] as V2)), el: (c: V2, rx: number, ry: number) => z.el([c[0] + dx, c[1] + dy], rx, ry), bz: (a: V2, b: V2, c: V2, t0: number, t1?: number) => z.bz([a[0] + dx, a[1] + dy], [b[0] + dx, b[1] + dy], [c[0] + dx, c[1] + dy], t0, t1), clip: (f: (x: number, y: number) => boolean) => z.clip((x, y) => f(x - dx, y - dy)), hull: (p: V2[]) => z.hull(p.map((q) => [q[0] + dx, q[1] + dy] as V2)) } as unknown as Mz);
 const S = 48, W2 = 96;
 /** rim — кант редкости снаружи контура (легендарное — оранжевый, как в паке) */
-function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][]; parts: number; ip: IP[]; vis: number[] } {
+function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][]; parts: number; ip: IP[]; vis: number[]; box: IconBox } {
   const cv = new Cv(W2, W2), ids = new Uint8Array(W2 * W2);
   parts.forEach((p, k) => {
     const m = new SMz(); p.m(m); const c = new Cv(W2, W2); paint(c, m, p.ramp, { dith: 0.12, amp: 1.5, ...p.o });
@@ -79,7 +89,49 @@ function render(parts: IP[], rim?: C): { img: PC; emis: [number, number][]; part
   const img = new PC(S, S), emis: [number, number][] = [];
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (res.has(x, y)) { const q = res.get(x, y); img.set(x, y, [q[0], q[1], q[2], 255]); if (oid[y * S + x] && parts[oid[y * S + x] - 1].emis) emis.push([x, y]); }
   const vis = parts.map(() => 0); for (let q = 0; q < oid.length; q++) if (oid[q]) vis[oid[q] - 1]++;
-  return { img, emis, parts: parts.length, ip: parts, vis };
+  // рамки: корпус (без частей EXTRA) и весь предмет; +1 px контура
+  const bb = (keep: (k: number) => boolean): [number, number, number, number] => { let x0 = S, y0 = S, x1 = -1, y1 = -1; for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const a = oid[y * S + x]; if (!a || !keep(a - 1)) continue; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return [Math.max(0, x0 - 1), Math.max(0, y0 - 1), Math.min(S - 1, x1 + 1), Math.min(S - 1, y1 + 1)]; };
+  const box: IconBox = { body: bb((k) => !EXTRA.test(parts[k].g)), all: bb(() => true) };
+  return { img, emis, parts: parts.length, ip: parts, vis, box };
+}
+/** рамка частей в исходных координатах 48×48 (мерим маски при мелком масштабе, чтобы ничего не обрезалось) */
+function srcBox(parts: IP[], keep: (p: IP) => boolean) {
+  KS = 0.4; SX = 24; SY = 24;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const p of parts) { if (!keep(p)) continue; const m = new SMz(); p.m(m); for (let q = 0; q < m.d.length; q++) if (m.d[q]) { const x = 24 + ((q % W2) / 2 - 24) / KS, y = 24 + (Math.floor(q / W2) / 2 - 24) / KS; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x + 0.5 / KS); y1 = Math.max(y1, y + 0.5 / KS); } }
+  return [x0, y0, x1, y1];
+}
+/** вписать предмет: корпус = ICON_FILL поля по большей стороне, по центру; рога/крылья — сверх, но в пределах поля (не ближе 1 px к краю) */
+function fit(parts: IP[]) {
+  const T = ICON_FILL * S, b = srcBox(parts, (p) => !EXTRA.test(p.g)), a = srcBox(parts, () => true);
+  const bw = b[2] - b[0], bh = b[3] - b[1];
+  let ks = (T - 2) / Math.max(bw, bh), sx = (b[0] + b[2]) / 2, sy = (b[1] + b[3]) / 2;
+  const place = () => {
+    // весь предмет должен влезть: сдвиг в пределах поля, иначе уменьшаем
+    const lim = (lo: number, hi: number, c: number) => { const L = CC + (lo - c) * ks, H = CC + (hi - c) * ks; if (L < 1 && H > S - 1) return null; if (L < 1) return c - (1 - L) / ks; if (H > S - 1) return c + (H - (S - 1)) / ks; return c; };
+    for (let n = 0; n < 40; n++) { const nx = lim(a[0], a[2], sx), ny = lim(a[1], a[3], sy); if (nx !== null && ny !== null) { const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2; if (Math.abs((nx - cx) * ks) <= 6 && Math.abs((ny - cy) * ks) <= 6) { sx = nx; sy = ny; return; } } ks *= 0.97; sx = (b[0] + b[2]) / 2; sy = (b[1] + b[3]) / 2; }
+  };
+  place();
+  KS = ks; SX = sx; SY = sy;
+  let r = render(parts);
+  // уточнение по готовой картинке (контур, минимальные толщины)
+  const side = Math.max(r.box.body[2] - r.box.body[0] + 1, r.box.body[3] - r.box.body[1] + 1), want = Math.round(T);
+  if (Math.abs(side - want) >= 1) {
+    ks *= (want - 2) / Math.max(1, side - 2); place(); KS = ks; SX = sx; SY = sy; r = render(parts);
+    // центр корпуса — по центру поля (±1 px), если весь предмет помещается
+    const dx = Math.round(23.5 - (r.box.body[0] + r.box.body[2]) / 2), dy = Math.round(23.5 - (r.box.body[1] + r.box.body[3]) / 2);
+    if ((dx || dy) && r.box.all[0] + dx >= 1 && r.box.all[2] + dx <= S - 2 && r.box.all[1] + dy >= 1 && r.box.all[3] + dy <= S - 2) { SX -= dx / KS; SY -= dy / KS; r = render(parts); }
+  }
+  // рога и крылья не касаются края: сдвиг на 1–2 px, иначе чуть меньше
+  for (let n = 0; n < 6; n++) {
+    const A = r.box.all, ex = A[0] < 1 ? 1 - A[0] : A[2] > S - 2 ? S - 2 - A[2] : 0, ey = A[1] < 1 ? 1 - A[1] : A[3] > S - 2 ? S - 2 - A[3] : 0;
+    if (!ex && !ey) break;
+    const B = r.box.body;
+    if ((!ex || (A[2] - A[0] <= S - 3 && B[0] + ex >= 4 && B[2] + ex <= S - 5)) && (!ey || (A[3] - A[1] <= S - 3 && B[1] + ey >= 4 && B[3] + ey <= S - 5))) { SX -= ex / KS; SY -= ey / KS; }
+    else KS *= 0.97;
+    r = render(parts);
+  }
+  return r;
 }
 const tri = (z: Mz, a: V2, b: V2, t: V2) => z.pg([a, t, b]);
 const spk = (z: Mz, b: V2, t: V2, w: number) => { const dx = t[0] - b[0], dy = t[1] - b[1], l = Math.hypot(dx, dy); const n: V2 = [(-dy / l) * w, (dx / l) * w]; tri(z, [b[0] + n[0], b[1] + n[1]], [b[0] - n[0], b[1] - n[1]], t); };
@@ -92,7 +144,6 @@ function crest(parts: IP[], cx: number, cy: number, s: number, id: CrestId) {
 
 export const RARITY_RIM: Record<string, C | undefined> = { legendary: hx("#f0901c"), epic: hx("#b05ae0"), rare: hx("#4a8ae0") };
 export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common") {
-  KS = it.iconScale ?? 0.82; // ступень: мелкий простой силуэт внизу, крупный на 81–100
   const p: IP[] = [], add = (g: string, rp: C[], m: (z: Mz) => void, o: PO = { dome: 3, amp: 1.7, bias: 0.2 }, emis = false, ft?: string) => p.push({ g, ramp: rp, m, o, emis, ft });
   const P = ramp(it.plate ?? it.hilt ?? "iron"), Ac = ramp(it.accent ?? it.outer ?? "iron"), Tr = ramp(it.trim ?? "gold");
   switch (slot) {
@@ -109,7 +160,7 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
         add("shell", P, (z) => { z.el([24, 24], 12, 12.5); z.pg([[12.2, 25], [35.8, 25], [33, 40], [24, 45], [15, 40]]); });
         add("face", Ac, (z) => z.pg([[15, 22], [33, 22], [31, 33], [24, 43.5], [17, 33]]), { dome: 3, amp: 1.9, bias: 0.15 });
         add("faceR", Ac, (z) => z.seg([24, 22.5], [24, 42], 1.1), { dome: 1, bias: 1.5 });
-        // в прорезях видно лицо (на тон темнее в тени забрала)
+        // в прорезях — тёмная глубина шлема и светящиеся глаза Рыцаря Хаоса (его деталь; лица на иконке нет)
         add("slitD", ["#0c0608", "#140a0c", "#1e1416", "#2a1c1e", "#3a2628"].map(hx), (z) => { z.seg([16.5, 26.5], [22.3, 28.5], 2.2); z.seg([31.5, 26.5], [25.7, 28.5], 2.2); }, { dome: 1, bias: -1.2 });
         add("eye", G, (z) => { z.dot([19.6, 27.6], 1.15); z.dot([28.4, 27.6], 1.15); }, { dome: 1, bias: 1.3 }, true);
         add("spec", P, (z) => z.bz([14.5, 19], [16, 13.5], [21, 12], 1.4, 0.8), { dome: 1, bias: 2.4 });
@@ -130,11 +181,10 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
         add("lin", Ln, (z) => z.el([24.5, 26], 10, 12), { dome: 3, amp: 1.6, bias: 0.4 });
         if (it.mask || it.glow) add("shadow", Shd, (z) => z.el([24.5, 27], 7.6, 9.8), { dome: 3, amp: 0.8, bias: -0.1 });
         else {
-          // без маски лицо открыто (как на герое): кожа, глаза, тень капюшона на лбу
-          const SKN = ["#4a2620", "#7e4636", "#b06c52", "#d99a76", "#f2c49e"].map(hx);
-          add("skin", SKN, (z) => z.el([24.5, 28], 7.4, 9.4), { dome: 4, amp: 1.3, bias: 0.3 }, false, "face");
-          add("eyesF", ["#140a0c", "#1e1416", "#2a1c1e", "#3a2628", "#4a3234"].map(hx), (z) => { z.seg([20, 27], [22.6, 27], 1.2); z.seg([26.4, 27], [29, 27], 1.2); z.seg([22.5, 34.5], [26.5, 34.5], 0.7); }, { dome: 1, bias: 0 }, false, "face");
-          add("skinN", SKN, (z) => z.seg([24.5, 28], [25, 31.5], 1.0), { dome: 1, bias: -1.5 }, false, "face");
+          // без маски — пустой капюшон: глубокая тень с подкладкой (лица на иконке нет — icons.md §3; на герое лицо видно)
+          const IN = ["#040306", "#08060a", "#0e0a10", "#161016", "#20181e"].map(hx);
+          add("inner", IN, (z) => z.el([24.5, 28], 7.4, 9.4), { dome: 3, amp: 1.0, bias: -1.0, dith: 0 }, false, "face");
+          add("innerP", ramp(it.lining), (z) => { z.bz([17.6, 22], [16.6, 29], [18.4, 36], 0.7, 0.7); z.bz([31.4, 22], [32.4, 29], [30.6, 36], 0.7, 0.7); }, { dome: 1, bias: -1.2 }, false, "face");
           add("shadow", Shd, (z) => { z.el([24.5, 22], 8, 5.2); z.clip((x, y) => y < 24.5); }, { dome: 1, amp: 0.6, bias: 0.2 });
         }
         if (it.glow) add("eye", ramp(it.glow), (z) => { z.el([21, 25.5], 1.4, 1.0); z.el([28, 25.5], 1.4, 1.0); }, { dome: 1, bias: 0.8 }, true);
@@ -145,45 +195,7 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       break;
     }
     case "pauldrons": {
-      if (it.form === "small") {
-        // обычный: одна округлая пластина без лам
-        add("dome", Ac, (z) => { z.el([24, 26], 14, 11); z.clip((x, y) => y < 31); }, { dome: 4, amp: 2.0, bias: 0.25 });
-        add("rim", Ac, (z) => z.bz([10.5, 30.5], [24, 34], [37.5, 30.5], 1.6, 1.6), { dome: 1, bias: -0.6 });
-        add("spec", Ac, (z) => z.bz([13, 24], [15, 18], [21, 16], 1.4, 0.8), { dome: 1, bias: 2.4 });
-        break;
-      }
-      if (it.form === "lames") {
-        // редкий: широкие ламы-полосы без купола, ремень с пряжкой
-        for (let k = 0; k < 4; k++) add("lm" + k, P, (z) => { const y = 12 + k * 7; z.pg([[6 + k * 1.5, y], [42 - k * 1.5, y], [40 - k * 1.5, y + 7], [8 + k * 1.5, y + 7]]); }, { dome: 3, amp: 1.9, bias: 0.25 - 0.12 * k });
-        for (let k = 0; k < 4; k++) add("lmH" + k, P, (z) => z.seg([7 + k * 1.5, 12.8 + k * 7], [41 - k * 1.5, 12.8 + k * 7], 0.8), { dome: 1, bias: 2.2 });
-        add("strap", ramp("leather_dark"), (z) => z.seg([24, 9], [24, 42], 3.0), { dome: 1, bias: 0.3 });
-        add("buck", Tr, (z) => z.pg([[21.5, 18], [26.5, 18], [26.5, 23], [21.5, 23]]), { dome: 1, bias: 0.6 });
-        if (it.rivets) add("riv", Tr, (z) => { for (let k = 0; k < 4; k++) { z.dot([10 + k * 1.5, 15.5 + k * 7], 0.85); z.dot([38 - k * 1.5, 15.5 + k * 7], 0.85); } }, { dome: 1, bias: 1.3 });
-        break;
-      }
-      const sp = it.spikes ?? 0, big = (it.size ?? 1) > 1, n = it.lames ?? 1;
-      // ламы снизу вверх: у каждой — тень у нижней кромки и блик по верхней
-      for (let k = n; k >= 1; k--) {
-        const cy = 27 + 6.2 * k, rx = 17.5 - 2.2 * k, ry = 7 - 0.7 * k;
-        add("lame" + k, P, (z) => { z.el([24, cy], rx, ry); z.clip((x, y) => y > cy - ry * 0.25); }, { dome: 3, amp: 1.9, bias: 0.1 - 0.15 * k });
-        add("lameH" + k, P, (z) => z.bz([24 - rx * 0.85, cy + 0.5], [24, cy + ry * 0.62], [24 + rx * 0.85, cy + 0.5], 0.9, 0.9), { dome: 1, bias: 2.0 });
-        if (it.rivets || sp >= 1) add("lameR" + k, Tr, (z) => { for (const x of [-0.55, 0, 0.55]) z.dot([24 + x * rx, cy + ry * 0.55 * (1 - Math.abs(x)) + 1.8], 0.8); }, { dome: 1, bias: 1.0 });
-      }
-      const dw = sp >= 1 ? 14.5 : big ? 18.5 : 16, dh = sp >= 1 ? 12 : big ? 15 : 13;
-      add("dome", Ac, (z) => { z.el([24, 25], dw, dh); z.clip((x, y) => y < 31 - Math.abs(x - 24) * 0.05); }, { dome: 5, amp: 2.1, bias: 0.25 });
-      add("ridge", Ac, (z) => z.bz([24, 11.5], [25.5, 20], [24, 30], 1.4, 1.0), { dome: 1, bias: 1.4 });
-      add("spec", Ac, (z) => z.bz([11, 22], [13, 15], [19, 12.5], 1.8, 0.9), { dome: 1, bias: 2.6 });
-      if (it.trim !== it.plate) add("trim", Tr, (z) => z.bz([6.5, 30], [24, 37.5], [41.5, 30], 1.9, 1.9), { dome: 1, bias: 0.3 });
-      if (it.filigree || it.gem || sp >= 1) {
-        if (it.filigree || sp >= 1) add("fil", Tr, (z) => { z.bz([12, 27], [15, 19], [21.5, 21], 1.0, 0.8); z.bz([36, 27], [33, 19], [26.5, 21], 1.0, 0.8); }, { dome: 1, bias: 0.6 });
-        add("gemS", Tr, (z) => z.el([24, 24.5], 3.2, 3.0), { dome: 2, bias: 0.3 });
-        add("gem", ramp(it.gem ?? "eye_glow"), (z) => z.el([24, 24.5], 2.0, 1.9), { dome: 2, bias: it.gem ? 0.7 : 0.5 }, !it.gem);
-      }
-      if (it.cracks) add("crack", ramp(it.cracks), (z) => { z.seg([15, 20], [18, 25], 1.0); z.seg([18, 25], [16.5, 29], 1.0); z.seg([31, 19], [29, 24], 1.0); }, { dome: 1, bias: 0.4 }, true);
-      if (it.rivets || sp >= 1) add("rivet", Tr, (z) => { for (const x of [12, 24, 36]) z.dot([x, 32 + (x === 24 ? 2.6 : 0)], 1.0); }, { dome: 1, bias: 1.3 });
-      const ssc = it.spikeScale ? 0.62 : 1.35, sk = (b: V2, t: V2): V2 => [b[0] + (t[0] - b[0]) * ssc, b[1] + (t[1] - b[1]) * ssc];
-      if (sp >= 1) add("sp", it.spike ? ramp(it.spike) : P, (z) => { spk(z, [21.5, 17], sk([21.5, 17], [15, 0.5]), 3.0 * ssc); if (sp >= 2) spk(z, [32, 19], sk([32, 19], [46, 8]), 2.8 * ssc); if (sp >= 3) spk(z, [13, 22], sk([13, 22], [1.5, 13]), 2.6 * ssc); }, { dome: 1, amp: 2, bias: 0.6 });
-      if (sp >= 1 && !it.spikeScale) add("spH", P, (z) => { z.seg([19, 14], [15.5, 3], 0.8); z.seg([33, 15.5], [43.5, 9], 0.8); }, { dome: 1, bias: 2.2 });
+      pauldronIcon(add, it, P, Ac, Tr);
       break;
     }
     case "armor": {
@@ -245,8 +257,8 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
         if (it.collarHigh) add("hcol", Lt, (z) => z.pg([[13, 10], [17, -1], [24, 5], [31, -1], [35, 10], [24, 12]]), { dome: 3, amp: 1.8, bias: 0.3 });
         if (it.lacing) add("lace", ramp(it.lacing), (z) => { for (let y = 14; y < 28; y += 3.5) { z.seg([21.5, y], [26.5, y + 3], 0.7); z.seg([26.5, y], [21.5, y + 3], 0.7); } }, { dome: 1, bias: 0.6 });
         if (it.pouch) add("pouch", ramp(it.pouch), (z) => z.pg([[29, 34], [35, 34], [35.5, 41], [28.5, 41]]), { dome: 3, amp: 1.8, bias: 0.2 });
-        if (it.breast || it.strap) add("riv", ramp("gold"), (z) => { if (it.breast) for (const [x, y] of [[15, 13], [33, 13], [16.5, 18.5], [31.5, 18.5]] as V2[]) z.dot([x, y], 0.85); if (it.strap) for (const t of [0.2, 0.75]) z.dot([11 + 24 * t, 11 + 20 * t - 1.2], 0.85); }, { dome: 1, bias: 1.3 });
         if (it.strap) { add("strap", ramp(it.strapMat ?? it.accent), (z) => z.seg([11, 11], [35, 31], 2.4), { dome: 2, bias: 0.4 }); add("buck", ramp("gold"), (z) => z.el([22, 20.5], 1.9, 1.7), { dome: 1, bias: 0.6 }); }
+        if (it.breast || it.strap) add("riv", ramp("gold"), (z) => { if (it.breast) for (const [x, y] of [[15, 13], [33, 13], [16.5, 18.5], [31.5, 18.5]] as V2[]) z.dot([x, y], 0.85); if (it.strap) for (const t of [0.2, 0.75]) z.dot([11 + 24 * t, 11 + 20 * t], 1.0); }, { dome: 1, bias: 1.3 });
         add("sash", Sa, (z) => z.pg([[11.5, 29], [36.5, 29], [37, 35], [11, 35]]), { dome: 3, amp: 1.9, bias: 0.3 });
         add("sashF", Sa, (z) => { z.seg([13, 31], [35, 32], 0.8); z.seg([13, 33.5], [35, 33.5], 0.7); }, { dome: 1, bias: -1.4 });
         if (it.sashTails) { add("tail", Sa, (z) => { z.bz([15, 33], [13, 39], [16, 46], 2.6, 1.6); z.bz([17, 33], [18, 40], [21, 45], 2.2, 1.4); }, { dome: 2, amp: 1.7, bias: 0.2 }); add("knot", Sa, (z) => z.el([15.5, 32.5], 2.6, 2.4), { dome: 2, bias: 0.4 }); }
@@ -269,7 +281,8 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
       // кольчуга под доспехом: на бёдрах (если подол короткий) и в проймах (как a_mail / a_mailA у героя)
       if (SH.len < 2) add("mail", Ml, (z) => z.pg([[15, 40], [33, 40], [32, 46], [16, 46]]), { dome: 2, bias: 0, dith: 0.75 });
       add("mailA", Ml, (z) => { z.el([8.5, 21], 3.4, 4.5); z.el([39.5, 21], 3.4, 4.5); }, { dome: 2, bias: -0.2, dith: 0.75 });
-      if (it.tabard && it.cracks) add("tab", cl, (z) => z.pg([[19, 36], [29, 36], [30, 46], [27.5, 43.5], [25, 47], [22.5, 44], [20, 47], [18, 44]]), { dome: 2, bias: -0.2 });
+      // верх наручей (как a_arm на герое): пластина плеча под проймой — у всех лат
+      add("armP", P, (z) => { z.seg([7.5, 20], [6.5, 29], 3.0, 2.6); z.seg([40.5, 20], [41.5, 29], 3.0, 2.6); }, { dome: 3, amp: 1.8, bias: 0.15 });
       // подол
       if (SH.len === 1) {
         add("fauld", P, (z) => z.pg([[13, 34], [35, 34], [38, 41], [30, 43], [24, 42], [18, 43], [10, 41]]), { dome: 3, bias: 0 });
@@ -281,6 +294,8 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
         add("skirt", B, (z) => z.pg([[12, 32], [36, 32], [36 + fl, yb], [12 - fl, yb]]), { dome: 3, amp: 1.6, bias: 0, dith: SH.body === "mail" ? 0.75 : undefined });
         add("skirtL", B, (z) => { if (SH.body === "quilt") for (const x of [-9, -3, 3, 9]) z.seg([24 + x, 33], [24 + x * 1.2, yb - 0.5], 0.8); else if (soft) z.seg([24, 33], [24, yb], 0.9); else for (const y of [36, 40, 44].filter((q) => q < yb)) z.bz([12 - fl * (y - 32) / (yb - 32), y], [24, y + 1.5], [36 + fl * (y - 32) / (yb - 32), y], 0.8, 0.8); }, { dome: 1, bias: -1.5 });
       }
+      // рваный табард легендарки — поверх юбки (на герое он спереди юбки)
+      if (it.tabard && it.cracks) add("tab", cl, (z) => z.pg([[19, 34], [29, 34], [30, 46], [27.5, 43.5], [25, 47], [22.5, 44], [20, 47], [18, 44]]), { dome: 2, bias: -0.2 });
       if (it.tabard && !it.cracks) { add("tab", cl, (z) => z.pg([[18.5, 34], [29.5, 34], [30.5, 47], [17.5, 47]]), { dome: 3, amp: 1.7, bias: 0.15 }); if (it.trim !== it.plate) add("tabH", Tr, (z) => { z.seg([17.8, 46], [30.2, 46], 1.4); z.seg([18.6, 34.8], [18.6, 45], 0.9); z.seg([29.4, 34.8], [29.4, 45], 0.9); }, { dome: 1, bias: 0.5 }); }
       // тело и фактура
       add("cuir", B, (z) => { z.pg(TOR[SH.body].map(([x, y]) => [24 + (x - 24) * SH.wide, y] as V2)); z.el([24, 10], 17 * SH.wide, 4); }, { dome: 4, amp: 1.8, bias: 0.2, kant: !soft, dith: SH.body === "mail" ? 0.75 : undefined });
@@ -466,7 +481,73 @@ export function icon(slot: Slot, it: any, cr: CrestId = "sol", rarity = "common"
     }
   }
   void rarity;
-  return render(p);
+  return fit(p);
+}
+/**
+ * Наплечники на иконке — ПАРА в 3/4 (ближний крупнее, дальний чуть меньше и выше), а не один купол «сундуком» (icons.md §3).
+ * Форма — общая с героем (gear.ts → pauldrons, pdForm): cop — малая чашка; lamellar — ламы-полосы на ремне; spaulder — купол и ламы;
+ * great — крупный купол с поднятой гардой у шеи (haute); angular — гранёный с расширенной нижней ламой; layered — ярусы с загнутыми кончиками (восточный);
+ * mythic — стреловидный с крылом-лезвием. Украшения: trim, rivets, filigree, gem, spikes (1–3), cracks.
+ */
+/** детали наплечника по группе (у дальнего наплечника группа с префиксом f — свой контур, деталь та же) */
+const PD_FT: Record<string, string> = { trim: "trim", riv: "rivets", fil: "filigree", gem: "gem", gemS: "gem", crack: "cracks", sp: "spikes", strap: "strap", buck: "strap", haute: "haute", pwing: "wing", pwingH: "wing" };
+function pauldronIcon(add: (g: string, rp: C[], m: (z: Mz) => void, o?: PO, emis?: boolean, ft?: string) => void, it: any, P: C[], Ac: C[], Tr: C[]) {
+  // пара внахлёст в 3/4: сначала дальний (справа, мельче и выше), затем ближний (слева) — ближний перекрывает внутренний край дальнего
+  for (const d of [{ s: 1, k: 0.84, dy: -3.2, cx: 29.5, pre: "f" }, { s: -1, k: 1, dy: 0, cx: 18.5, pre: "" }])
+    pauldronSide((g, rp, m, o, e, ft) => add(d.pre + g, rp, m, o, e, ft ?? (d.pre ? PD_FT[g] : undefined)), it, P, Ac, Tr, d);
+}
+function pauldronSide(add: (g: string, rp: C[], m: (z: Mz) => void, o?: PO, emis?: boolean, ft?: string) => void, it: any, P: C[], Ac: C[], Tr: C[], d: { s: number; k: number; dy: number; cx: number }) {
+  const form = pdForm(it), sp = it.spikes ?? 0, n = form === "great" ? 2 : Math.max(1, it.lames ?? 1);
+  // u — наружу от шеи, v — вниз от верха плеча
+  const both = (f: (G: (u: number, v: number) => V2, k: number, z: Mz) => void) => (z: Mz) => f((u, v) => [d.cx + d.s * u * d.k, 11 + d.dy + v * d.k], d.k, z);
+  const vOf = (x: number, y: number) => (y - 11 - d.dy) / d.k;
+  const R = form === "cop" ? 8 : form === "great" ? 10.5 : 9, cut = form === "cop" ? 12 : 11, cyD = 8;
+  const pg = (G: (u: number, v: number) => V2, pts: number[][]) => pts.map(([u, v]) => G(u, v));
+  if (form === "great") add("haute", P, both((G, k, z) => z.pg(pg(G, [[-8, 5], [-8.5, -4.5], [-6, -6.5], [-2.5, -5], [-2.5, 4]]))), { dome: 3, amp: 1.8, bias: 0.3, kant: true });
+  if (form === "lamellar") {
+    for (let j = 3; j >= 0; j--) add("lm" + j, P, both((G, k, z) => z.pg(pg(G, [[-6 + 0.6 * j, 2 + 5.2 * j], [9 + 1.1 * j, 1 + 5.2 * j], [10 + 1.1 * j, 6.6 + 5.2 * j], [-5.5 + 0.6 * j, 7.4 + 5.2 * j]]))), { dome: 3, amp: 1.9, bias: 0.25 - 0.12 * j });
+    add("lmH", P, both((G, k, z) => { for (let j = 0; j < 4; j++) z.seg(G(-5 + 0.6 * j, 2.8 + 5.2 * j), G(8.5 + 1.1 * j, 1.8 + 5.2 * j), 0.8); }), { dome: 1, bias: 2.2 });
+    add("strap", ramp("leather_dark"), both((G, k, z) => z.seg(G(1.5, -1), G(2.5, 23.5), 2.6)), { dome: 1, bias: 0.3 });
+    add("buck", Tr, both((G, k, z) => z.pg(pg(G, [[-0.6, 6.5], [4, 6.5], [4, 10.5], [-0.6, 10.5]]))), { dome: 1, bias: 0.6 });
+    if (it.rivets) add("riv", Tr, both((G, k, z) => { for (let j = 0; j < 4; j++) { z.dot(G(-3.5 + 0.6 * j, 4.6 + 5.2 * j), 0.9); z.dot(G(7.5 + 1.1 * j, 3.8 + 5.2 * j), 0.9); } }), { dome: 1, bias: 1.3 });
+    return;
+  }
+  if (form === "layered") {
+    // три яруса, кончики наружу загнуты вверх; верхний ярус — акцентный
+    for (let j = 2; j >= 0; j--) add("ly" + j, j === 0 ? Ac : P, both((G, k, z) => z.pg(pg(G, [[-6, 3 + 6.5 * j], [7 + j, 1 + 6.5 * j], [12 + 1.5 * j, -3.5 + 6.5 * j], [12 + 1.2 * j, 3 + 6.5 * j], [8 + j, 7.5 + 6.5 * j], [-5.5, 8.6 + 6.5 * j]]))), { dome: 3, amp: 1.9, bias: 0.3 - 0.12 * j, kant: true });
+    add("lyH", P, both((G, k, z) => { for (let j = 0; j < 3; j++) z.bz(G(-5, 4 + 6.5 * j), G(6, 2.2 + 6.5 * j), G(11 + 1.3 * j, -2 + 6.5 * j), 0.8, 0.6); }), { dome: 1, bias: 2.2 });
+  } else if (form === "angular") {
+    add("flare", P, both((G, k, z) => z.pg(pg(G, [[-6, 11.5], [12, 9.5], [15, 17], [5, 20.5], [-5, 17.5]]))), { dome: 3, amp: 1.9, bias: 0.05, kant: true });
+    add("flareH", P, both((G, k, z) => z.seg(G(-4.5, 13), G(12.5, 11), 0.8)), { dome: 1, bias: 2.1 });
+    add("dome", Ac, both((G, k, z) => z.pg(pg(G, [[-7, 11.5], [-6, 3], [1, -1.5], [10, 1.5], [12.5, 10.5], [3, 13.5]]))), { dome: 4, amp: 2.0, bias: 0.25, kant: true });
+    add("ridge", Ac, both((G, k, z) => { z.seg(G(1, -1), G(3, 13), 1.1); z.seg(G(-6, 3.5), G(1, -0.8), 0.8); }), { dome: 1, bias: 1.6 });
+  } else if (form === "mythic") {
+    for (let j = 2; j >= 1; j--) add("lame" + j, P, both((G, k, z) => z.pg(pg(G, [[-5 + j, 11 + 4 * j], [12 + j, 9 + 4 * j], [13 + j, 13.5 + 4 * j], [-4 + j, 15 + 4 * j]]))), { dome: 3, amp: 1.9, bias: 0.1 - 0.15 * j });
+    add("dome", Ac, both((G, k, z) => z.pg(pg(G, [[-6.5, 12], [-5.5, 3], [3, -1], [9, -2], [13, 3], [14, 10], [11, 14.5], [2, 15]]))), { dome: 4, amp: 2.0, bias: 0.25, kant: true });
+    add("pwing", Tr, both((G, k, z) => { z.pg(pg(G, [[4, 1], [12, -6], [21, -11], [17, -2], [20, 1], [13, 5]])); }), { dome: 3, amp: 1.9, bias: 0.4, kant: true });
+    add("pwingH", Tr, both((G, k, z) => z.seg(G(6, 0), G(19, -9.5), 0.8)), { dome: 1, bias: 2.2 });
+  } else {
+    // чашка (cop) / купол с ламами (spaulder, great)
+    if (form !== "cop") for (let j = n; j >= 1; j--) {
+      const cy = cut - 1 + 3.8 * j, rx = R + 0.4 - 0.7 * j;
+      add("lame" + j, P, both((G, k, z) => { z.el(G(2 + 0.9 * j, cy), rx * k, 3.6 * k); z.clip((x, y) => vOf(x, y) > cy - 1.2); }), { dome: 3, amp: 1.9, bias: 0.1 - 0.15 * j });
+      add("lameH" + j, P, both((G, k, z) => z.bz(G(2 + 0.9 * j - rx * 0.85, cy + 0.3), G(2 + 0.9 * j, cy + 2.4), G(2 + 0.9 * j + rx * 0.85, cy + 0.3), 0.8, 0.8)), { dome: 1, bias: 2.0 });
+    }
+    add("dome", Ac, both((G, k, z) => { z.el(G(1.5, cyD), R * k, R * 0.82 * k); z.clip((x, y) => vOf(x, y) < cut); }), { dome: 5, amp: 2.1, bias: 0.25, kant: true });
+    add("ridge", Ac, both((G, k, z) => z.bz(G(1.5, cyD - R * 0.78), G(3, cyD - 1), G(2.5, cut - 0.6), 1.1, 0.8)), { dome: 1, bias: 1.5 });
+    add("rim", Ac, both((G, k, z) => z.bz(G(1.5 - R * 0.95, cut - 1), G(1.5, cut + 1.2), G(1.5 + R * 0.95, cut - 1), 1.2, 1.2)), { dome: 1, bias: -0.8 });
+  }
+  const top = form === "angular" || form === "mythic" ? -1 : form === "layered" ? 1 : cyD - R * 0.82;
+  if (form !== "layered") add("spec", Ac, both((G, k, z) => { const a = G(-4, top + 4.5), b = G(-1, top + 1.2); z.bz(a, [(a[0] + b[0]) / 2 - 1, (a[1] + b[1]) / 2 - 1], b, 1.2, 0.7); }), { dome: 1, bias: 2.5 });
+  if (it.trim && it.trim !== it.plate) add("trim", Tr, both((G, k, z) => form === "layered" ? z.bz(G(-5.5, 8.4), G(3, 8.6), G(12, 3), 1.4, 1.2) : form === "angular" ? z.seg(G(-6.5, 11.6), G(12.5, 10), 1.5) : form === "mythic" ? z.bz(G(-6, 12), G(4, 15.4), G(13.5, 11), 1.5, 1.5) : z.bz(G(1.5 - R * 0.92, cut - 0.8), G(1.5, cut + 1.6), G(1.5 + R * 0.92, cut - 0.8), 1.6, 1.6)), { dome: 1, bias: 0.4 });
+  if (it.rivets || sp >= 1) add("riv", Tr, both((G, k, z) => { for (const u of [-4.5, 2, 8.5]) z.dot(G(u, (form === "layered" ? 6 : form === "angular" ? 10 : cut) - 0.4 + (u === 2 ? 0.8 : 0)), 1.0); }), { dome: 1, bias: 1.3 });
+  if (it.filigree || sp >= 1) add("fil", Tr, both((G, k, z) => { z.bz(G(-4, top + 9), G(-3.5, top + 4), G(1, top + 3.5), 1.0, 0.8); z.bz(G(7, top + 9), G(7, top + 4.5), G(3.5, top + 3.5), 1.0, 0.8); }), { dome: 1, bias: 0.6 });
+  if (it.gem || sp >= 1) { add("gemS", Tr, both((G, k, z) => z.el(G(1.8, top + 6.5), 2.8 * k, 2.6 * k)), { dome: 2, bias: 0.3 }); add("gem", ramp(it.gem ?? "eye_glow"), both((G, k, z) => z.el(G(1.8, top + 6.5), 1.7 * k, 1.6 * k)), { dome: 2, bias: it.gem ? 0.7 : 0.5 }, !it.gem); }
+  if (it.cracks) add("crack", ramp(it.cracks), both((G, k, z) => { z.seg(G(-3.5, top + 5), G(-1.5, top + 9), 1.0); z.seg(G(-1.5, top + 9), G(-3, top + 12), 1.0); z.seg(G(8, top + 5), G(6.5, top + 9.5), 1.0); }), { dome: 1, bias: 0.4 }, true);
+  if (sp >= 1) {
+    const Sm = ramp(it.spike ?? it.plate), sc = it.spikeScale ? 0.62 : 1;
+    add("sp", Sm, both((G, k, z) => { spk(z, G(1.5, top + 1.5), G(3.5, top + 1.5 - 13 * sc), 2.6 * k * sc); if (sp >= 2) spk(z, G(8, top + 4), G(8 + 10 * sc, top - 5 * sc), 2.3 * k * sc); if (sp >= 3) spk(z, G(-4, top + 3.5), G(-7, top - 6 * sc), 2.0 * k * sc); }), { dome: 1, amp: 2, bias: 0.6 });
+  }
 }
 /** Ячейка: фон-градиент и рамка по редкости (docs/art/icons.md, п. 10), предмет поверх. */
 const CELL: Record<string, { bg: C; frame: C; corner?: C }> = {

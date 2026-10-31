@@ -15,7 +15,9 @@ const mk = (save = newSave("warrior", { x: 100, y: 100 }), send: (t: string, m: 
 
 async function main() {
   await check("каталог: 15 ярусов 1–100, 6–8 архетипов, стили поровну, броня + аффиксы", () => {
-    const ms = Object.values(ITEM_MODELS).filter((m) => m.cat === "cloak");
+    // каталог ярусов — без плащей сетов (gear147: hb147_chaos_cloak и т. п. — noRoll, своё поле set)
+    const all = Object.values(ITEM_MODELS).filter((m) => m.cat === "cloak" && !m.noRoll); // noRoll не в случайной добыче и не в listItemCategories
+    const ms = all.filter((m) => !(m as { set?: string }).set);
     assert(SLOTS.includes("cloak") && BASE_ITEMS.cloak.slot === "cloak", "слот не объявлен");
     assert(new Set(ms.map((m) => m.lvl)).size === 15 && Math.min(...ms.map((m) => m.lvl)) === 1 && Math.max(...ms.map((m) => m.lvl)) === 100, "ярусы");
     const shapes = new Set(ms.map((m) => m.look.shape));
@@ -24,7 +26,7 @@ async function main() {
     assert(f("solgard") === f("umbrath") && f("umbrath") === f("") && f("") === 15, `стили ${f("solgard")}/${f("umbrath")}/${f("")}`);
     const it = makeItem(ms[0].id, 30, Rarity.Epic);
     assert((it.stats.armor || 0) > 0 && Object.keys(it.stats).length >= 4, "броня и аффиксы: " + JSON.stringify(it.stats));
-    assert(listItemCategories().some((c) => c.base === "cloak" && c.slot === "cloak" && c.models === 45), "listItemCategories");
+    assert(listItemCategories().some((c) => c.base === "cloak" && c.slot === "cloak" && c.models === ms.length), "listItemCategories");
   });
 
   await check("надеть и снять плащ: слот, броня, сумка", () => {

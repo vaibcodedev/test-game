@@ -41,7 +41,8 @@ export function helmModel(it: any): HelmModel {
   if (it.horns) f.horns = typeof it.horns === "string" ? it.horns : it.horn ?? "chaos_horn";
   if (it.crown) f.crown = it.crown === true ? trim : it.crown;
   if (it.spike) f.spike = it.spike === true ? plate : it.spike;
-  if (it.rimTrim) f.rimTrim = it.rimTrim === true ? trim : it.rimTrim;
+  // венец сидит на кромке купола — отдельный кант под ним не читается на герое (1 px), его роль играет обод венца
+  if (it.rimTrim && !it.crown) f.rimTrim = it.rimTrim === true ? trim : it.rimTrim;
   if (it.rivets) f.rivets = fancy ? trim : plate;
   if (it.gem) f.gem = it.gem;
   if (it.engrave) f.engrave = trim;
@@ -54,7 +55,6 @@ export function helmModel(it: any): HelmModel {
 /** Одна часть описания: g — группа (контур между группами), mat — материал, z — порядок (на герое слой 6.1 + z), ft — деталь (для автопроверки «иконка = герой»). */
 export interface HPart { g: string; mat: string | C[]; z: number; draw: (z: Mz) => void; o: PO; emis?: boolean; emisColor?: C; ft?: string; iconOnly?: boolean }
 export const SKIN: C[] = ["#4a2620", "#7e4636", "#b06c52", "#d99a76", "#f2c49e"].map(hx);
-const DARK: C[] = ["#140a0c", "#1e1416", "#2a1c1e", "#3a2628", "#4a3234"].map(hx);
 
 /**
  * Геометрия шлема в виде v. K — масштаб формы (1 на герое), u — толщина мелких деталей (1 на герое, ~1,7 на иконке).
@@ -88,16 +88,12 @@ export function helmGeo(M: HelmModel, v: HView, hw: number, hh: number, u: numbe
       default: return false;
     }
   };
-  // ---- лицо на иконке ----
-  // лицо видно только там, где оно видно и на герое: светящаяся щель закрывает его
-  if (icon && !(F.slitGlow && (S.face === "slit" || S.face === "visor"))) {
-    const SC: C[] = ["#5a3024", "#94563e", "#c8825e", "#e6a882", "#f8d0aa"].map(hx), WH: C[] = ["#8a7e78", "#b4aaa2", "#d8d0c8", "#eee8e0", "#fffaf2"].map(hx);
-    add("skin", SC, -0.2, (z) => z.el([0, hh * 0.24], hw * 0.84, hh * 1.0), { dome: 5, amp: 1.5, bias: S.face === "open" || S.face === "nasal" ? 0.55 : -0.2 }, "face");
-    add("skinN", SC, -0.195, (z) => { z.seg([0.2 * K, eyeY + 0.12 * hh], [0.45 * K, eyeY + 0.5 * hh], 0.7 * u); z.bz([-hw * 0.62, eyeY + 0.55 * hh], [-hw * 0.5, eyeY + 0.75 * hh], [-hw * 0.3, eyeY + 0.8 * hh], 0.5 * u, 0.5 * u); }, { dome: 1, bias: -1.4 }, "face");
-    add("skinH", SC, -0.194, (z) => { z.seg([-0.35 * K, eyeY + 0.1 * hh], [-0.25 * K, eyeY + 0.45 * hh], 0.55 * u); z.dot([-hw * 0.5, eyeY + 0.42 * hh], 0.7 * u); }, { dome: 1, bias: 2.0 }, "face");
-    add("eyeW", WH, -0.19, (z) => { for (const sg of [-1, 1]) z.el([sg * hw * 0.42, eyeY], 0.95 * u, 0.55 * u); }, { dome: 1, bias: 0.6 }, "face");
-    add("eyesF", DARK, -0.185, (z) => { for (const sg of [-1, 1]) z.dot([sg * hw * 0.42 + 0.25 * u, eyeY + 0.05 * u], 0.48 * u); z.seg([-0.3 * hw, chin - 2.0 * K], [0.3 * hw, chin - 2.0 * K], 0.42 * u); }, { dome: 1, bias: 0 }, "face");
-    add("brows", ["#2a1810", "#3e2418", "#523020", "#6a4028", "#80503a"].map(hx), -0.18, (z) => { for (const sg of [-1, 1]) z.seg([sg * hw * 0.2, eyeY - 0.95 * u], [sg * hw * 0.64, eyeY - 1.15 * u], 0.5 * u); }, { dome: 1, bias: 0.4 }, "face");
+  // ---- внутренность на иконке (лица на иконке нет — docs/art/icons.md §3) ----
+  // в прорезях и открытой части — тёмная подкладка: стёганая (вертикальные швы), сверху тень от купола, снизу слабый рефлекс; у светящейся щели тьма видна по краям, как лицо на герое
+  if (icon) {
+    const IN: C[] = ["#060408", "#0c080c", "#140e12", "#1e1519", "#2a1e22"].map(hx), PAD: C[] = ["#0a070a", "#140e10", "#20171a", "#2c2023", "#3a2b2c"].map(hx);
+    add("inner", IN, -0.2, (z) => z.el([0, hh * 0.24], hw * 0.84, hh * 1.0), { dome: 3, amp: 1.2, bias: -0.9, dith: 0 }, "face");
+    add("innerP", PAD, -0.195, (z) => { for (const x of [-0.5, 0, 0.5]) z.seg([x * hw, brow + 0.6 * K], [x * hw * 0.92, chin - 0.6 * K], 0.42 * u); z.bz([-hw * 0.7, chin - 0.9 * K], [0, chin - 0.2 * K], [hw * 0.7, chin - 0.9 * K], 0.5 * u, 0.5 * u); }, { dome: 1, bias: -0.6 }, "face");
   }
   // ---- шея: кольчуга или горжет ----
   if (S.neck === "mail") {
@@ -179,7 +175,9 @@ export function helmGeo(M: HelmModel, v: HView, hw: number, hh: number, u: numbe
   if (F.engrave && v !== "back") add("h_eng", F.engrave, 0.069, (z) => { if (!side) for (const sg of [-1, 1]) z.bz([sg * rx * 0.8, -hh * 0.55], [sg * rx * 0.35, top * 0.85], [sg * rx * 0.2, -hh * 0.35], 0.5 * u, 0.5 * u); else z.bz([-rx * 0.6, -hh * 0.5], [0, top * 0.8], [rx * 0.4, -hh * 0.45], 0.5 * u, 0.5 * u); }, { dome: 1, bias: 0.6 }, "engrave");
   if (F.slitGlow && v !== "back" && (S.face === "slit" || S.face === "visor" || S.face === "tslit")) add("h_sGlow", F.slitGlow, 0.07, (z) => { if (side) z.seg([hw * 0.45, eyeY], [hw + 0.8 * K, eyeY], 0.5 * u); else { z.seg([-hw * 0.72, eyeY], [-hw * 0.18, eyeY], 0.5 * u); z.seg([hw * 0.18, eyeY], [hw * 0.72, eyeY], 0.5 * u); } }, { dome: 1, bias: 1.2 }, "slitGlow", true);
   if (F.eyes && v !== "back") add("h_eye", F.eyes, 0.071, (z) => { if (!side) { z.dot([-hw * 0.42, eyeY], 0.6 * u); z.dot([hw * 0.42, eyeY], 0.6 * u); } else z.dot([hw * 0.8, eyeY], 0.6 * u); }, { dome: 1, bias: 0.6 }, "eyes", true, hx("#ff6a3a"));
-  if (F.gem && front) { add("h_gemS", M.trim, 0.075, (z) => z.dot([0, -hh * 0.55 + (S.dome === "cone" ? -0.4 * K : 0)], 1.25 * u), { dome: 2, bias: 0.3 }, "gem"); add("h_gem", F.gem, 0.076, (z) => z.dot([0, -hh * 0.55 + (S.dome === "cone" ? -0.4 * K : 0)], 0.8 * u), { dome: 2, bias: 0.7 }, "gem", M.gemGlow); }
+  // самоцвет на лбу; при венце — в его центральном зубце, поверх венца
+  const gy = F.crown ? brow - 1.5 * K : -hh * 0.55 + (S.dome === "cone" ? -0.4 * K : 0), gz = F.crown ? 0.082 : 0.075;
+  if (F.gem && front) { add("h_gemS", M.trim, gz, (z) => z.dot([0, gy], 1.25 * u), { dome: 2, bias: 0.3 }, "gem"); add("h_gem", F.gem, gz + 0.001, (z) => z.dot([0, gy], 0.8 * u), { dome: 2, bias: 0.7 }, "gem", M.gemGlow); }
   if (F.gem && side) add("h_gem", F.gem, 0.076, (z) => z.dot([hw * 0.55, -hh * 0.5], 0.75 * u), { dome: 1, bias: 0.7 }, "gem", M.gemGlow);
   if (F.crown) {
     const pts = (cx: number, w: number): V2[] => { const o: V2[] = [[cx - w, brow - 0.2 * K]]; for (let k = 0; k <= 4; k++) { const x = cx - w + (2 * w * k) / 4; o.push([x, brow - (k % 2 ? 1.2 : 2.6) * K]); } o.push([cx + w, brow - 0.2 * K]); return o; };

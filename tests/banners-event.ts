@@ -6,7 +6,7 @@
  */
 import D from "../data/faction-war.json";
 import { TILE } from "../shared/constants";
-import { CITIES } from "../shared/cities";
+import { CITIES, TELEPORT_CAST_MS } from "../shared/cities";
 import { FORTS } from "../shared/constants";
 import { walkable, zoneAtPx, Zone } from "../shared/map";
 import { nextWarStart, raiseSec, WAR_BASES, WAR_RADIUS, warBase, weekKey } from "../shared/bannerWar";
@@ -110,7 +110,9 @@ const B = (id: string) => war.bases.get(id)!;
   fake = day(3, 19, 46); W2.update();
   const fort = CITIES.find((c) => c.id === "fort_solgard")!;
   W2.teleport(s1);
-  check("за 15 мин — телепорт в свой форт", s1.x === fort.spawn.x && s1.y === fort.spawn.y);
+  // «В форт» — каст телепорта (TELEPORT_CAST_MS, shared/cities.ts castTeleport), перенос — по его окончании
+  run(TELEPORT_CAST_MS + 2000, () => s1.x === fort.spawn.x && s1.y === fort.spawn.y);
+  check("за 15 мин — телепорт в свой форт", s1.x === fort.spawn.x && s1.y === fort.spawn.y, `${s1.x},${s1.y}`);
   fake = day(3, 20, 0) + 100; W2.update();
   check("в 20:00 — битва, отряды не выходят", W2.phase === "battle" && w.soldiers!.bannerBattle === true);
   fake += 45 * 60000; W2.update();
@@ -212,6 +214,8 @@ war.debug("owner", { base: "center_e", f: "solgard" });
   check("«В форт» в бою — отказ", !atFort() && msgs.get(p.id)!.some((m) => m.type === "toast" && m.msg.kind === "error"));
   p.combatAt = -1e9;
   war.teleport(p);
+  check("«В форт» — сначала каст, не мгновенно", !atFort() && !!p.tele);
+  run(TELEPORT_CAST_MS + 2000, atFort);
   check("«В форт» вне боя — в своём форте, клиенту перезарядка", atFort() && msgs.get(p.id)!.some((m) => m.type === "war:tpcd" && m.msg.ms === D.schedule.teleportCdSec * 1000));
   p.unit.x = 520 * TILE; p.unit.y = 200 * TILE;
   war.teleport(p);
@@ -219,6 +223,7 @@ war.debug("owner", { base: "center_e", f: "solgard" });
   run(D.schedule.teleportCdSec * 1000 + 500);
   p.combatAt = -1e9;
   war.teleport(p);
+  run(TELEPORT_CAST_MS + 2000, atFort);
   check("«В форт» после перезарядки — снова можно", atFort());
   park(p);
 }

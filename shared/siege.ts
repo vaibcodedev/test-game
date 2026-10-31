@@ -67,10 +67,13 @@ export function gateBlocks(x: number, y: number, r: number, faction: string): bo
 export function moveGated(m: WorldMap, x: number, y: number, dx: number, dy: number, r: number, faction: string) {
   const stuck = gateBlocks(x, y, r, faction);
   const ok = (px: number, py: number) => walkable(m, px, py, r) && (stuck || !gateBlocks(px, py, r, faction));
+  // упёрся — шаг укорачивается 3 делениями пополам, как в moveWithCollision: герой доходит до основания объекта вплотную (зазор ≤ 1 px),
+  // а не останавливается за целый шаг тика (до 8–10 px; docs/art/perspective.md «Коллизии объектов», 2026-10-30)
+  const cut = (f: (k: number) => boolean) => { let lo = 0, hi = 1; for (let k = 0; k < 3; k++) { const mid = (lo + hi) / 2; if (f(mid)) lo = mid; else hi = mid; } return lo; };
   let nx = x + dx, ny = y;
-  if (!ok(nx, ny)) nx = x;
+  if (!ok(nx, ny)) nx = x + dx * cut((k) => ok(x + dx * k, y));
   ny = y + dy;
-  if (!ok(nx, ny)) ny = y;
+  if (!ok(nx, ny)) ny = y + dy * cut((k) => ok(nx, y + dy * k));
   return { x: nx, y: ny };
 }
 /** Прошёл ли отрезок (рывок, прыжок) сквозь закрытые для фракции ворота. */

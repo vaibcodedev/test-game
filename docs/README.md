@@ -11,8 +11,9 @@
 | process | [tests.md](process/tests.md) | `npm run test:unit`, карта «модуль → тесты», что не покрыто |
 | art | [quality-bar.md](art/quality-bar.md) | общая планка арта (Warspear, стиль свой), хитбокс, генератор, паки, проверка перед показом |
 | art | [perspective.md](art/perspective.md) | 3/4, основание и тень, высоты, здания (гаснут, коллизия по основанию), вода и берега, стены, ворота |
+| art | [objects.md](art/objects.md) | каталог всех объектов мира (собирается из data/objects-catalog.json): категории, где стоят, генератор, коллизия |
 | art | [scale.md](art/scale.md) | рост юнитов и объектов под героя Б, флаг, аудит (генерируется) |
-| art | [icons.md](art/icons.md) | иконки вещей и умений: 65–70 % поля, без лица, иконка = вещь на герое |
+| art | [icons.md](art/icons.md) | иконки вещей и умений: 60 % поля, без лица, иконка = вещь на герое |
 | art | [gear.md](art/gear.md) | сеты, ступени и редкость, оружие, «Спина», заточка D, легендарки, перековка, герой Б в игре |
 | art | [animation.md](art/animation.md) | анимация основы Б, ткань Verlet + Rope, мобы, эффекты умений |
 | art | [ui-style.md](art/ui-style.md) | дизайн-система интерфейса, шрифты, токены, подписи в мире |
@@ -50,7 +51,7 @@
 | docs/dungeon-doors.md | слит | art/perspective.md §14 |
 | docs/volume-audit-1030.md | одноразовый аудит удалён, очередь — в «Не сделано» | art/perspective.md |
 | docs/scale-147.md | перенесён | art/scale.md |
-| docs/icon-style.md | слит; «80 % поля» заменено на 65–70 % | art/icons.md |
+| docs/icon-style.md | слит; «80 % поля» заменено на 60 % | art/icons.md |
 | docs/gear-sets-spec.md | слит | art/gear.md, art/icons.md, art/animation.md |
 | docs/gear-visuals.md | правила редкости и легендарок слиты; бирюзовая заточка и аудит устарели | art/gear.md §5 |
 | docs/enchant-visual-research.md | исследование удалено, решение (вариант D) слито | art/gear.md §5 |

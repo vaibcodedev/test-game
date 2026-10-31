@@ -67,14 +67,16 @@ async function main() {
       await b.until(() => b.room.state.players.get(a.id)?.name === "Алиса", 2000, "Алиса у Бориса");
     });
     await check("движение синхронизируется", async () => {
-      const x0 = a.me().x;
+      // ждём, пока Борис увидит сдвиг (под нагрузкой такты и патчи запаздывают), потолок скорости — от реально прошедшего времени
+      const x0 = a.me().x, t0 = Date.now();
       a.send("input", { mx: 1, my: 0 });
-      await sleep(600);
+      await b.until(() => b.room.state.players.get(a.id).x > x0 + 40, 4000, "Борис видит сдвиг Алисы");
       a.send("input", { mx: 0, my: 0 });
+      const dt = (Date.now() - t0) / 1000;
       await sleep(150);
       const seen = b.room.state.players.get(a.id).x;
       assert(seen > x0 + 40, `Алиса сдвинулась на ${seen - x0}`);
-      assert(seen < x0 + 150 * 0.8 + 30, "скорость выше допустимой");
+      assert(seen < x0 + 150 * (dt + 0.2) + 30, `скорость выше допустимой: ${Math.round(seen - x0)} px за ${dt.toFixed(2)} с`);
     });
     await check("сервер ограничивает скорость (input > 1)", async () => {
       const x0 = a.me().x;

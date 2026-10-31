@@ -14,7 +14,7 @@ import { TILE } from "../shared/constants";
 
 const mkWorld = () => new World(new WorldState(), () => {}, { map: generateArenaMap(), mobs: false, quiet: true });
 function cleric(w: World): Player {
-  const save = newSave("healer", { x: 5 * TILE, y: 8.5 * TILE });
+  const save = newSave("healer", { x: 15 * TILE, y: 17.5 * TILE }); // арена круглая (2026-10): стены по краю, старая точка 5×8.5 — в стене
   save.level = 40;
   save.skills.cl_hymn = 1;
   const p = new Player("c1", "Клирик", save, () => {});

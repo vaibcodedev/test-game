@@ -5,7 +5,7 @@
  */
 import Phaser from "phaser";
 import { TILE } from "../../../shared/constants";
-import { GROUND_OBJECTS, SHORE_GID, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
+import { GROUND_OBJECTS, objBox, SHORE_GID, TERRAIN_COUNT, Zone, zoneStyle, type MapObject, type WorldMap } from "../../../shared/map";
 import { FLIP_TREES, SWAY_TREES } from "../../../shared/decor";
 import { CHUNK, cellHash, chunkRect, chunkRows, shoreSpillLayer, terrainLayers } from "./terrainTiles";
 import { placeText, worldText } from "./worldText";
@@ -222,7 +222,7 @@ export function buildWorld(scene: Phaser.Scene, m: WorldMap): WorldView {
     }
     // полупрозрачная крона, когда герой за деревом: у деревьев nature3d есть кадр ствола <id>_trunk (treeFade.ts)
     if (oid && objHas(scene, `${oid}_trunk`)) objs.push(addTreeFade(scene, img as Phaser.GameObjects.Image, `${oid}_trunk`));
-    if (FADE_BUILDINGS.has(o.kind) && img.type === "Image") addBuildingFade(img as Phaser.GameObjects.Image); // здание полупрозрачно, когда герой за ним (treeFade.ts)
+    if (FADE_BUILDINGS.has(o.kind) && img.type === "Image") addBuildingFade(img as Phaser.GameObjects.Image, objBox(o)); // здание полупрозрачно, когда герой за ним (treeFade.ts)
     const nid = nodeOf.get(o);
     if (nid !== undefined) {
       const mine: Phaser.GameObjects.GameObject[] = [img];

@@ -12,6 +12,7 @@
  * Зоны, уровни, раскладка, реки, дороги, стены, поселения (shared/settlements.ts), лагеря, руины и указатели — в /data/world.json.
  */
 import world from "../data/world.json";
+import COLLISION from "../data/collision.json";
 import { WATER_COVER_B64 } from "./waterCover";
 import { SHORE_WALK_B64 } from "./shoreWalk";
 import PATROLS from "../data/patrols.json";
@@ -161,6 +162,12 @@ export const CELL_WATER = 8;
 export const CELL_BRIDGE = 16;
 /** Центр клетки — лава (вместе с CELL_BLOCK): как CELL_WATER, проход решает видимая кромка (waterAtFeet по лаве). */
 export const CELL_LAVA = 32;
+/**
+ * Клетку занимает только объект с коллизией по основанию (вместе с CELL_BLOCK; data/collision.json, docs/art/perspective.md «Коллизии объектов»):
+ * поиск пути считает её закрытой, а ноги упираются не в клетку, а в прямоугольник основания объекта (objBoxHit). Подойти вплотную и зайти
+ * за верх здания или кроны можно, внутрь — нельзя.
+ */
+export const CELL_OBJ = 64;
 
 export interface MapObject {
   kind: string;
@@ -294,6 +301,21 @@ export const OBJECT_FOOTPRINT: Record<string, { w: number; h: number } | undefin
   campfire: { w: 1, h: 1 },
 };
 /** Объекты, лежащие на земле (под юнитами): мосты, лестницы, лазы, могилы. */
+/** Прямоугольник основания [x0, x1, y0, y1] в px от (o.x, o.y): data/collision.json boxes (tools/gen/collision-boxes.ts). */
+export type ObjBox = [number, number, number, number];
+const OBJ_BOXES = COLLISION.boxes as unknown as Record<string, ObjBox>;
+/** Коллизия объекта по основанию в координатах мира или null (вид без прямоугольника — непроходима вся клетка следа). Вариант кадра o.v — свой прямоугольник, если основание другое. */
+export function objBox(o: MapObject): ObjBox | null {
+  const b = (o.v && OBJ_BOXES[`${o.kind}__${o.v}`]) || OBJ_BOXES[o.kind];
+  if (!b) return null;
+  return o.flip ? [o.x - b[1], o.x - b[0], o.y + b[2], o.y + b[3]] : [o.x + b[0], o.x + b[1], o.y + b[2], o.y + b[3]];
+}
+export const hasObjBox = (kind: string) => !!OBJ_BOXES[kind];
+/** Занять клетку следом объекта: свободная клетка под объектом с прямоугольником — CELL_OBJ; занятая чем-то иным или объект без прямоугольника — сплошная. */
+function blockObjCell(cell: Uint8Array, i: number, kind: string) {
+  const c = cell[i];
+  cell[i] = hasObjBox(kind) && (!(c & CELL_BLOCK) || c & CELL_OBJ) ? c | CELL_BLOCK | CELL_OBJ : (c | CELL_BLOCK) & ~CELL_OBJ;
+}
 export const GROUND_OBJECTS = new Set(["bridge_h", "bridge_v", "bridge_h_mid", "bridge_h_mid2", "bridge_h_end_w", "bridge_h_end_e", "bridge_v_mid", "bridge_v_mid2", "bridge_v_end_n", "bridge_v_end_s", "umb_barrow", "dg_dais", ...D.VENDOR_GROUND, ...D.BF_GROUND]);
 
 // ---------- раскладка мира (data/world.json: layout, rivers, roads, walls; задача 132) ----------
@@ -1068,7 +1090,7 @@ function generateMap0(seed: number): WorldMap {
   const placedAt = new Map<number, [number, number]>();
   const place = (kind: string, x: number, y: number, jitter = 0) => {
     const fp = OBJECT_FOOTPRINT[kind];
-    if (fp) for (let j = 0; j < fp.h; j++) for (let i = 0; i < fp.w; i++) cell[(y - j) * w + x + i] |= CELL_BLOCK;
+    if (fp) for (let j = 0; j < fp.h; j++) for (let i = 0; i < fp.w; i++) blockObjCell(cell, (y - j) * w + x + i, kind);
     if (fp) placedAt.set(objects.length, [x, y]);
     const fw = fp ? fp.w : 1;
     objects.push({ kind, x: (x + fw / 2) * TILE + jitter, y: (y + 1) * TILE - 2 });
@@ -1310,8 +1332,8 @@ function generateMap0(seed: number): WorldMap {
   // (поверхность и зоны Полей — тоже), поэтому Поля остаются симметричными.
   {
     const ctx = decorCtxOf({ w, h, vtx, zone });
-    const setFoot = (ax: number, ay: number, fp: { w: number; h: number }, on: boolean) => {
-      for (let j = 0; j < fp.h; j++) for (let k = 0; k < fp.w; k++) if (on) cell[(ay - j) * w + ax + k] |= CELL_BLOCK; else cell[(ay - j) * w + ax + k] &= ~CELL_BLOCK;
+    const setFoot = (ax: number, ay: number, fp: { w: number; h: number }, on: boolean, kind = "") => {
+      for (let j = 0; j < fp.h; j++) for (let k = 0; k < fp.w; k++) if (on) blockObjCell(cell, (ay - j) * w + ax + k, kind); else cell[(ay - j) * w + ax + k] &= ~(CELL_BLOCK | CELL_OBJ);
     };
     /** Снять объекты, где keep[i] = false: след освобождается, id узлов добычи и привязки placedAt пересчитываются. */
     const compact = (keep: boolean[]) => {
@@ -1351,7 +1373,7 @@ function generateMap0(seed: number): WorldMap {
       const t = tries.find(([dx, dy]) => ok(x0 + dx, y0 + dy));
       if (!t) { keep[i] = false; placedAt.delete(i); continue; }
       o.x += t[0] * TILE; o.y += t[1] * TILE;
-      if (a) { setFoot(x0 + t[0], y0 + t[1], fp, true); placedAt.set(i, [x0 + t[0], y0 + t[1]]); }
+      if (a) { setFoot(x0 + t[0], y0 + t[1], fp, true, o.kind); placedAt.set(i, [x0 + t[0], y0 + t[1]]); }
     }
     compact(keep);
   }
@@ -1419,7 +1441,7 @@ function generateMap0(seed: number): WorldMap {
   // постаменты «Знамён Предела» (шаг 14): след 4×2 клетки под постаментом непроходим (круг захвата вокруг — проходим); зеркально (i ↔ 1099 − i).
   // Постамент стоит на look.plinthDrop px ниже центра круга (середина тела — в центре кольца): след — ряды под ним
   // только каменное ядро: 2×1 клетки под фасадом постамента (ступени и место знамени проходимы, за постаментом встать можно — сортировка по глубине)
-  for (const b of WAR_BASES) { const y = Math.floor(b.ty + WAR.look.plinthDrop / TILE); for (let x = Math.round(b.tx) - 1; x <= Math.round(b.tx); x++) cell[y * w + x] |= CELL_BLOCK; }
+  for (const b of WAR_BASES) { const y = Math.floor(b.ty + WAR.look.plinthDrop / TILE); for (let x = Math.round(b.tx) - 1; x <= Math.round(b.tx); x++) cell[y * w + x] = (cell[y * w + x] | CELL_BLOCK) & ~CELL_OBJ; }
 
   return {
     w,
@@ -1578,14 +1600,57 @@ const waterUnderFoot = (m: WorldMap, px: number, py: number): boolean =>
   waterAtFeet(m, px, py + FOOT_DY) || waterAtFeet(m, px - FOOT_HW, py + FOOT_DY) || waterAtFeet(m, px + FOOT_HW, py + FOOT_DY);
 const solidCell = (m: WorldMap, px: number, py: number): boolean => {
   const c = cellAt(m, px, py);
-  return (c & CELL_BLOCK) !== 0 && (!EDGE_COLLISION || (c & (CELL_WATER | CELL_LAVA)) === 0); // вода и лава решаются ногами, не углами тела
+  // вода и лава решаются ногами, не углами тела; клетка объекта (CELL_OBJ) — прямоугольником основания (objBoxHit)
+  return (c & CELL_BLOCK) !== 0 && (c & CELL_OBJ) === 0 && (!EDGE_COLLISION || (c & (CELL_WATER | CELL_LAVA)) === 0);
 };
+/** Прямоугольники оснований по клеткам CELL_OBJ (строится один раз на карту; пересобирается, если сменился список объектов). */
+const boxIndex = new WeakMap<WorldMap, { objs: MapObject[]; n: number; at: Map<number, number[]> }>();
+function boxesOf(m: WorldMap): Map<number, number[]> {
+  const c = boxIndex.get(m);
+  if (c && c.objs === m.objects && c.n === m.objects.length) return c.at;
+  const at = new Map<number, number[]>();
+  const obj = (x: number, y: number) => x >= 0 && y >= 0 && x < m.w && y < m.h && (m.cell[y * m.w + x] & (CELL_BLOCK | CELL_OBJ)) === (CELL_BLOCK | CELL_OBJ);
+  for (const o of m.objects) {
+    const b = objBox(o);
+    if (!b) continue;
+    let [x0, x1, y0, y1] = b;
+    const ax = Math.floor((x0 + x1) / 2 / TILE), ay = Math.floor((y1 - 0.5) / TILE);
+    if (!obj(ax, ay)) continue; // объект без своего следа (лежит в чужой клетке, снят правилами) — не мешает
+    // не шире своих клеток следа: поиск пути идёт по клеткам, ноги — по прямоугольнику, они не должны расходиться
+    let l = ax, r = ax, t = ay;
+    while (l * TILE > x0 && obj(l - 1, ay)) l--;
+    while ((r + 1) * TILE < x1 && obj(r + 1, ay)) r++;
+    while (t * TILE > y0 && obj(ax, t - 1)) t--;
+    x0 = Math.max(x0, l * TILE); x1 = Math.min(x1, (r + 1) * TILE); y0 = Math.max(y0, t * TILE); y1 = Math.min(y1, (ay + 1) * TILE);
+    for (let y = t; y <= ay; y++) for (let x = l; x <= r; x++) {
+      if (!obj(x, y)) continue;
+      const k = y * m.w + x;
+      (at.get(k) ?? at.set(k, []).get(k)!).push(x0, x1, y0, y1);
+    }
+  }
+  boxIndex.set(m, { objs: m.objects, n: m.objects.length, at });
+  return at;
+}
+/** Тело юнита [x0, x1] × [y0, y1] пересекает основание объекта в клетках CELL_OBJ (касание — не пересечение: можно встать вплотную). */
+export function objBoxHit(m: WorldMap, x0: number, x1: number, y0: number, y1: number): boolean {
+  const cx0 = Math.max(0, Math.floor(x0 / TILE)), cx1 = Math.min(m.w - 1, Math.floor(x1 / TILE));
+  const cy0 = Math.max(0, Math.floor(y0 / TILE)), cy1 = Math.min(m.h - 1, Math.floor(y1 / TILE));
+  let idx: Map<number, number[]> | null = null;
+  for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+    const k = cy * m.w + cx;
+    if ((m.cell[k] & (CELL_BLOCK | CELL_OBJ)) !== (CELL_BLOCK | CELL_OBJ)) continue;
+    const bs = (idx ??= boxesOf(m)).get(k);
+    if (bs) for (let i = 0; i < bs.length; i += 4) if (x0 < bs[i + 1] && x1 > bs[i] && y0 < bs[i + 3] && y1 > bs[i + 2]) return true;
+  }
+  return false;
+}
 function walkIn(m: WorldMap, px: number, py: number, r: number, skipWater: boolean): boolean {
   return !(
     solidCell(m, px - r, py - r * 0.5) ||
     solidCell(m, px + r, py - r * 0.5) ||
     solidCell(m, px - r, py + r * 0.5) ||
     solidCell(m, px + r, py + r * 0.5) ||
+    objBoxHit(m, px - r, px + r, py - r * 0.5, py + r * 0.5) ||
     (EDGE_COLLISION && !skipWater && waterUnderFoot(m, px, py))
   );
 }
@@ -1609,6 +1674,19 @@ export function moveWithCollision(m: WorldMap, x: number, y: number, dx: number,
     ny = y + dy * lo;
   }
   return { x: nx, y: ny };
+}
+/**
+ * Округлить позицию после moveWithCollision до 0,1 px, не задевая стену: Math.round мог сдвинуть точку на ≤0,05 px за кромку
+ * (x + r ровно на границе клетки), и юнит застревал навсегда — из непроходимой точки moveWithCollision не выпускает (баг npc-ai, 2026-10-30).
+ * Если округлённая точка непроходима — округляем к старой позиции (ox, oy), иначе оставляем без округления.
+ */
+export function roundPos(m: WorldMap, ox: number, oy: number, n: { x: number; y: number }, r: number) {
+  const q = (v: number, o: number, toward: boolean) => (toward ? (v < o ? Math.ceil(v * 10) : Math.floor(v * 10)) : Math.round(v * 10)) / 10;
+  const x = q(n.x, ox, false), y = q(n.y, oy, false);
+  if (walkIn(m, x, y, r, false)) return { x, y };
+  const tx = q(n.x, ox, true), ty = q(n.y, oy, true);
+  if (walkIn(m, tx, ty, r, false)) return { x: tx, y: ty };
+  return { x: n.x, y: n.y };
 }
 /** Есть ли прямая видимость (для снарядов и рывков): проверка шагами по полтайла, стены блокируют, вода нет. */
 export function lineClear(m: WorldMap, x0: number, y0: number, x1: number, y1: number): boolean {

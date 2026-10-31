@@ -18,17 +18,17 @@
 /* ряд над мешком */
 .lr { position: fixed; z-index: var(--z-tooltip); transform: translate(-50%, -100%); padding-bottom: 2px; }
 .lr[hidden] { display: none; }
-.lr-row { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line-hi); box-shadow: var(--shadow-panel); padding: 6px 8px; border-radius: var(--r-2); }
+.lr-row { display: flex; flex-direction: column; gap: 4px; min-width: 170px; max-width: 260px; background: var(--panel); border: 1px solid var(--line-hi); box-shadow: var(--shadow-panel); padding: 6px 8px; border-radius: var(--r-2); }
 .lr.show .lr-row { animation: lr-up .3s var(--ease-out-soft) both; }
-.lr-it { position: relative; width: 38px; text-align: center; }
-.lr.show .lr-it { animation: lr-up .4s var(--ease-out-soft) both; animation-delay: calc(var(--i) * 70ms + 80ms); }
-.lr-b { position: relative; width: 38px; height: 38px; border: 2px solid var(--rc); background: var(--well); display: grid; place-items: center; box-shadow: 0 0 8px color-mix(in srgb, var(--rc) 50%, transparent); transition: transform .15s var(--ease-out-soft), box-shadow .15s; }
-.lr-b img { width: 30px; height: 30px; image-rendering: pixelated; }
-.lr-b em { position: absolute; right: -1px; bottom: -1px; font: normal 10px var(--font-head); background: rgba(10,8,12,.92); color: var(--fg); padding: 0 3px; border: 1px solid var(--rc); line-height: 13px; }
-.lr-it:hover .lr-b { transform: translateY(-2px); box-shadow: 0 0 12px var(--rc); }
-.lr-card { display: none; position: absolute; left: 50%; bottom: calc(100% + 8px); width: 250px; transform: translateX(-50%); text-align: left; z-index: 2; }
-.lr-it:hover .lr-card { display: block; animation: lr-up .2s var(--ease-out-soft) both; }
-.lr-hint { text-align: center; color: var(--dim); font-size: 11px; margin-top: 3px; text-shadow: var(--shadow-text); }
+.lr-it { position: relative; display: flex; align-items: center; gap: 8px; padding: 2px 4px 2px 2px; border-radius: var(--r-1, 2px); cursor: pointer; }
+.lr.show .lr-it { animation: lr-up .4s var(--ease-out-soft) both; animation-delay: calc(var(--i) * 60ms + 80ms); }
+.lr-it:hover { background: var(--btn-hover); }
+.lr-b { position: relative; flex: none; width: 32px; height: 32px; border: 2px solid var(--rc); background: var(--well); display: grid; place-items: center; box-shadow: 0 0 6px color-mix(in srgb, var(--rc) 45%, transparent); }
+.lr-b img { width: 24px; height: 24px; image-rendering: pixelated; }
+.lr-nm { flex: 1; min-width: 0; color: var(--rc); font-family: var(--font-head); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: var(--shadow-text); }
+.lr-q { flex: none; color: var(--fg); font-size: 12px; }
+.lr-more, .lr-lock { color: var(--dim); font-size: 11px; text-align: center; }
+.lr-lock { color: var(--warn, #e0a630); border-top: 1px solid var(--line); padding-top: 4px; }
 @keyframes lr-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
 /* баннеры */

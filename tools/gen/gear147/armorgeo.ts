@@ -17,3 +17,5 @@ export function armorShape(it: any): ArmorShape {
 }
 /** материал тела доспеха по виду */
 export const bodyMat = (it: any, s: ArmorShape): string => (s.body === "mail" ? it.mail ?? "mail" : s.body === "quilt" || s.body === "brig" ? it.cloth : it.plate);
+/** форма наплечника (общая для иконки и героя): старые поля form small/lames и size приводятся к новым названиям */
+export function pdForm(it: any): string { return it.form === "small" ? "cop" : it.form === "lames" ? "lamellar" : it.form ?? "spaulder"; }

@@ -11,13 +11,14 @@ import { GD } from "./gear";
 const T = GD.tiers;
 /** уровень богатства: ступень весит больше редкости (легендарка N ≈ эпик N+1, ступень N+2 богаче любой вещи N) */
 export const LV = (t: number, r: number) => 2.2 * t + 0.8 * r;
+/** прежний масштаб иконки по ступени — больше не используется: все иконки одного размера (icons.ts → fit) */
 export const sc = (t: number, r: number) => (0.66 + 0.055 * t) * [1.03, 0.97, 0.93, 0.87][r];
 const pick = <X>(t: number, r: number, m: X[][]): X => m[t][r];
 
 // ---------------- шлемы: 20 разных форм ----------------
 export function plateHelm(t: number, r: number) {
-  const m = T.plate, P = m.base[t], Tr = m.trim[t], Cl = m.cloth[t], G = m.glow[t] ?? "eye_glow", s = sc(t, r);
-  const base = { plate: P, accent: P, trim: P, mail: "mail", iconScale: s };
+  const m = T.plate, P = m.base[t], Tr = m.trim[t], Cl = m.cloth[t], G = m.glow[t] ?? "eye_glow";
+  const base = { plate: P, accent: P, trim: P, mail: "mail" };
   const H: any[][] = [
     [ // 1–20: шапель, норманнский с наносником, ранний топфхельм, рогатый конус
       { ...base, style: "chapel", shape: { brim: 2.6, peak: 0 } },
@@ -41,7 +42,7 @@ export function plateHelm(t: number, r: number) {
       { ...base, style: "great" },
       { ...base, style: "onion", trim: Tr, crown: true, rimTrim: true, engrave: true },
       { ...base, style: "armet", accent: Tr, trim: Tr, wings: true, engrave: true, gem: "sapphire", rimTrim: true },
-      { style: "horned", plate: P, accent: "chaos_red", trim: Tr, horn: "chaos_spike", glow: G, spikes: 3, horns: 0.95, iconScale: s },
+      { style: "horned", plate: P, accent: "chaos_red", trim: Tr, horn: "chaos_spike", glow: G, spikes: 3, horns: 0.95 },
     ],
     [ // 81–100 (звёздное серебро): конус с забралом, саллет со свечением, барбют с короной, крылатый топфхельм с венцом
       { ...base, style: "nasal", trim: Tr, shape: { cover: "full", face: "visor", neck: "gorget", peak: 3.0 }, rimTrim: true },
@@ -64,7 +65,7 @@ export function plateArmor(t: number, r: number) {
 }
 function plateArmor0(t: number, r: number) {
   const m = T.plate, P = m.base[t], Tr = m.trim[t], Cl = m.cloth[t], G = m.glow[t];
-  const base = { style: "plate", plate: P, accent: P, trim: P, cloth: Cl, mail: "mail", tassets: P, thick: 0.4 + 0.035 * LV(t, r), iconScale: sc(t, r) };
+  const base = { style: "plate", plate: P, accent: P, trim: P, cloth: Cl, mail: "mail", tassets: P, thick: 0.4 + 0.035 * LV(t, r) };
   const leg = { cracks: G ?? "chaos_crack", spikes: true, spike: "chaos_spike" };
   const A: any[][] = [
     [ // 1–20: стёганка, кольчуга с табардом, кольчуга до колен с нагрудником, кольчуга с пластинами и шипами
@@ -101,10 +102,16 @@ function plateArmor0(t: number, r: number) {
   return pick(t, r, A);
 }
 
+/**
+ * Наплечники: у каждой ступени и редкости своя форма (латинский квадрат — соседние ступени одной редкости и редкости одной ступени не совпадают):
+ * cop — малая чашка, lamellar — ламы на ремне, spaulder — купол с ламами, angular — гранёный, great — крупный с гардой у шеи,
+ * layered — ярусы с загнутыми кончиками, mythic — стреловидный с крылом-лезвием (только 81–100). Описание общее для иконки и героя (icons.ts → pauldronIcon, gear.ts → pauldrons).
+ */
+const PD_FORM = [["cop", "lamellar", "spaulder", "spaulder"], ["lamellar", "spaulder", "angular", "great"], ["spaulder", "angular", "great", "layered"], ["angular", "great", "layered", "great"], ["great", "layered", "angular", "mythic"]];
 export function platePauldrons(t: number, r: number) {
-  const m = T.plate, L = LV(t, r);
-  const form = r === 0 ? (t % 2 ? "lames" : "small") : undefined;
-  return { plate: m.base[t], accent: r >= 2 ? (t >= 3 ? m.trim[t] : m.cloth[t]) : m.base[t], trim: r >= 1 || t >= 3 ? m.trim[t] : m.base[t], size: 0.76 + 0.035 * L, lames: L >= 3 ? 2 : 1, form, spikes: r === 3 ? (L >= 5 ? 3 : 2) : 0, spike: "chaos_spike", rivets: L >= 0.8, filigree: r >= 2, gem: r === 2 ? "sapphire" : undefined, cracks: m.glow[t] ?? undefined };
+  const m = T.plate, L = LV(t, r), form = PD_FORM[t][r];
+  return { form, plate: m.base[t], accent: r >= 2 ? (t >= 3 ? m.trim[t] : m.cloth[t]) : m.base[t], trim: r >= 1 || t >= 2 ? m.trim[t] : m.base[t], size: 0.8 + 0.03 * L, lames: form === "spaulder" ? (t >= 2 ? 2 : 1) : 1,
+    spikes: r === 3 ? (t >= 3 ? 3 : t >= 1 ? 2 : 1) : 0, spike: "chaos_spike", rivets: L >= 0.8 || t >= 2, filigree: r === 2 || (r === 3 && t >= 2), gem: r === 2 ? "sapphire" : undefined, cracks: m.glow[t] ?? (r === 3 && t >= 2 ? "chaos_crack" : undefined) };
 }
 
 // ---------------- кожа: покрой (жилет, куртка, длинная), ворот, наплечья, нагрудник; цвет кожи и ткани — свой у каждой вещи ступени ----------------
@@ -117,7 +124,10 @@ export function leatherCoat(t: number, r: number) {
     breast: (r >= 1 && L >= 3.0) || (t >= 3 && r === 0), crest: r >= 2, gem: r === 2 ? "sapphire" : r === 3 ? "eye_glow" : undefined, lacing: L < 3 ? "tan" : undefined, pouch: L < 5 ? "leather_dark" : undefined,
     collarHigh: [[false, false, true, false], [false, false, false, true], [false, false, true, false], [false, false, true, true], [true, false, true, false]][t][r],
     pauldronsOnIcon: [[false, false, false, false], [false, false, true, false], [false, false, true, false], [false, true, false, false], [false, true, false, false]][t][r],
-    spikes: r === 3, spike: "chaos_spike", cracks: m.glow[t] ?? (r === 3 ? "chaos_crack" : undefined), stitch: "tan", wear: L < 4, mythic: t === 4 && r !== 2 ? m.glow[t] : undefined, iconScale: sc(t, r) };
+    spikes: r === 3, spike: "chaos_spike", cracks: m.glow[t] ?? (r === 3 ? "chaos_crack" : undefined), stitch: "tan", wear: L < 4, mythic: t === 4 && r !== 2 ? m.glow[t] : undefined };
+  // на герое грудь куртки — 6–8 px: нагрудник не перекрываем перевязью и высоким воротом, строчку у жилета с нагрудником не прячем под сталь
+  // (иначе на иконке деталь есть, а на герое её не видно — review.ts match)
+  if (C.breast) { C.strap = false; C.collarHigh = false; if (cut === "vest") C.stitch = undefined; }
   return C;
 }
 
@@ -131,5 +141,5 @@ export function clothRobe(t: number, r: number) {
     wings: r === 3 && t % 2 === 0 ? Tr : undefined, wingGlow: false, halo: r === 3 && t % 2 === 1 ? (m.glow[t] ?? "eye_glow") : r === 3 && t === 4 ? m.glow[t] : undefined,
     cloth: CL, trim: r >= 1 || t >= 3 ? Tr : CL, sash: r >= 1 ? AC : CL, panel: L >= 1.6 ? AC : undefined, embroid: L >= 0.8, hemTrim: L >= 2.4,
     mantle: [[false, false, true, false], [false, true, false, false], [false, false, true, true], [false, false, true, false], [true, false, true, false]][t][r] ? AC : undefined,
-    gem: r === 2 ? "sapphire" : r === 3 ? "eye_glow" : undefined, crest: r >= 2, runes: m.glow[t] ?? (r === 3 ? "eye_glow" : undefined), spikes: r === 3 && t >= 2, spike: Tr, collar: r >= 1 ? Tr : CL, sashTails: r >= 2, mythic: t === 4 ? m.glow[t] : undefined, iconScale: sc(t, r) };
+    gem: r === 2 ? "sapphire" : r === 3 ? "eye_glow" : undefined, crest: r >= 2, runes: m.glow[t] ?? (r === 3 ? "eye_glow" : undefined), spikes: r === 3 && t >= 2, spike: Tr, collar: r >= 1 ? Tr : CL, sashTails: r >= 2, mythic: t === 4 ? m.glow[t] : undefined };
 }

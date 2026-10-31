@@ -1262,7 +1262,7 @@ export class GameScene extends Phaser.Scene {
     const reset = () => { this.pendingPickup = null; this.pendingNpc = null; this.pendingGather = null; };
     for (const [id, img] of this.bagViews) {
       const d = Math.hypot(img.x - hx, img.y - hy);
-      out.push({ rank: 0, d, ref: id, cx: img.x, cy: img.y - 10, text: T("ui.GameScene.261"), go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
+      out.push({ rank: 0, d, ref: id, cx: img.x, cy: img.y - 10, text: this.bagText(id), go: () => { reset(); this.pendingPickup = id; if (d > PICKUP_RANGE - 8) net.send("moveTo", { x: img.x, y: img.y }); } });
     }
     for (const n of this.map.nodes) {
       if (this.depletedNodes.has(n.id)) continue;
@@ -1274,6 +1274,11 @@ export class GameScene extends Phaser.Scene {
       out.push({ ref: n, rank: n.kind === "stone" || n.kind === "door" || n.kind === "statue" || n.kind === "dgdoor" || n.kind === "dgexit" ? 3 : n.kind === "enc" ? 4 : 2, d, cx: n.sprite.x, cy: n.sprite.y - (n.hit?.dy ?? 14), r: n.hit?.r, text: n.kind === "stone" ? T("ui.GameScene.759") : n.kind === "dgdoor" ? this.dungeonHint(n.name ?? "") : n.kind === "dgexit" ? n.name ?? "" : n.kind === "door" || n.kind === "statue" ? n.name ?? T("ui.GameScene.760") : T("ui.GameScene.761", { name: n.name ?? "собеседник" }), go: () => { reset(); this.talk(n); } });
     }
     return out;
+  }
+  /** Текст общей подсказки G у мешка: «Подобрать» или «Подобрать всё (N)». */
+  private bagText(id: string): string {
+    const b = this.lastBags.find((x) => x.id === id), n = b ? b.items.length + (b.gold ? 1 : 0) : 1;
+    return n > 1 ? T("ui.loot.takeAll", { n }) : T("ui.GameScene.261");
   }
   private interactPick() {
     const list = this.interactList();

@@ -783,6 +783,7 @@ export class WorldRoom extends Room<OpenWorldState> {
         case "hurt": w().applyDamage(p, Number(m.v)); break;
         case "qp": questProgress(p, m.kind === "gather" ? "gather" : "kill", String(m.target), Number(m.n || 1)); break;
         case "calm": p.combatAt = -1e9; break;
+        case "slow": p.slowUntil = w().time + Number(m.ms || 5000); p.slowPct = Number(m.v || 50); break; // проверка шага героя Б при замедлении
         case "fight": p.combatAt = w().time; break;
         case "fill": for (let i = 0; i < p.save.inventory.length; i++) if (!p.save.inventory[i]) p.save.inventory[i] = makeItem("ring", 1, Rarity.Common); break;
         case "rating": services.arena.setRating(p.name.toLowerCase(), p.name, p.cls, m.mode as ArenaMode, Number(m.v)); this.sendArenaInfo(p.name.toLowerCase()); break;

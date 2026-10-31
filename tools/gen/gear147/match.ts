@@ -30,11 +30,11 @@ const DETAIL: Record<Slot, [string, RegExp, RegExp][]> = {
   ],
   pauldrons: [
     ["trim", /^trim$/, /^p_trim/], ["rivets", /^(rivet|riv|lameR\d)$/, /^p_riv/], ["filigree", /^fil$/, /^p_fil/], ["gem", /^gemS?$/, /^p_gem/],
-    ["cracks", /^crack$/, /^p_crack/], ["spikes", /^spH?$/, /^p_spike/], ["strap", /^(strap|buck)$/, /^p_(strap|buck)/],
+    ["cracks", /^crack$/, /^p_crack/], ["spikes", /^spH?$/, /^p_spike/], ["strap", /^(strap|buck)$/, /^p_(strap|buck)/], ["haute", /^haute$/, /^p_haute/], ["wing", /^pwingH?$/, /^p_wing/],
   ],
   armor: [
     ["breastplate", /^plate[HL]?$/, /^(a|c)_plate/], ["inlay", /^inlay$/, /^a_inlay$/], ["filigree", /^fil$/, /^a_fil$/], ["rivets", /^riv$/, /^(a_riv|c_riv|c_sriv)$/],
-    ["gem", /^(gGem|gem)$/, /^(a|c|r)_gem$/], ["cracks", /^crack$/, /^(a|c)_crack$/], ["crest", /^crest/, /^crest/], ["spikes", /^(fins|finsH|rSp)$/, /^(a_elbS|c_spk|r_spk)/],
+    ["gem", /^(gGem|gem)$/, /^(a|c|r)_gem$/], ["cracks", /^crack$/, /^(a|c)_crack$/], ["crest", /^crest/, /^crest/], ["spikes", /^(fins|finsH|rSp)$/, /^(a_shS|c_spk|r_spk)/],
     ["tabard", /^tab$/, /^a_tabard$/], ["tabardTrim", /^tabH$/, /^a_tabH$/], ["kant", /^kant$/, /^a_kant$/], ["mythic", /^(m(Fin|Halo|Seam|Cry)|star)$/, /^(a|c|r)_myth/],
     ["engrave", /^eng$/, /^a_engr$/], ["strap", /^strap$/, /^c_strap$/], ["sashTails", /^(tail|knot)$/, /^(c|r)_(tail|knot)/], ["lacing", /^lace$/, /^c_lace$/],
     ["pouch", /^pouch$/, /^c_pouch$/], ["stitch", /^stitch$/, /^c_(stitch|skst)$/], ["collarHigh", /^hcol$/, /^c_hcol$/],
@@ -62,12 +62,16 @@ for (const [k, v] of Object.entries(GD.materials) as [string, string[]][]) if (!
 const hex = (c: number[]) => "#" + c.slice(0, 3).map((x) => x.toString(16).padStart(2, "0")).join("");
 export const matOf = (ramp: number[][]): string | undefined => MATKEY.get(ramp.map(hex).join());
 
+/** тона кожи основы (тёплые тона Сольгарда и прежнего лица иконок; серо-зелёная кожа Умбрата совпадает со сталью — её ловит проверка частей): на иконке шлема — ошибка */
+const SKINC: number[][] = ["#b06c52", "#d99a76", "#f2c49e", "#c8825e", "#e6a882", "#f8d0aa"].map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
 export const LOOK: Look = { fac: "sol", sex: "m", hair: "tousled" };
 const VIEWS: View4[] = ["down", "side", "up"];
 export function heroLook(x: Item) { const set: SetDef = { name: x.name, rarity: x.rarity, level: x.level, items: { [x.slot]: x.it } }; return dress(LOOK, set, "sol", [x.slot]); }
 
 export interface Match { item: Item; iconF: Set<string>; heroF: Set<string>; iconM: Set<string>; heroM: Set<string>; heroVis: Record<string, number>; iconVis: Record<string, number>; fails: string[] }
 /** детали, которые на герое физически точка (1 px): им хватает 1 px */
+/** крупные детали силуэта: на герое не меньше 6 px */
+const BIG = new Set(["horns", "spikes", "wings", "haute", "wing", "plume", "comb", "halo", "bigWing", "claws", "cuffSpike", "kneeSpike", "spurs", "crown", "mantle"]);
 const TINY = new Set(["rivets", "gem", "eyes", "pommelGem", "claspGem", "kneeRivet", "seam"]);
 export function match(x: Item): Match {
   const ic = icon(x.slot, x.it, "sol", x.rarity);
@@ -80,17 +84,26 @@ export function match(x: Item): Match {
     renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [(p) => { cap.push(p); return false; }]);
     const fs = new Set<string>();
     for (const p of cap) { if (!mine(p)) continue; const m = matOf(p.ramp as any); if (m) heroM.add(m); const f = featOf(x.slot, p.g, (p as any).ft, 1); if (f) { heroF.add(f); fs.add(f); } }
-    const fl = [...fs], imgs = renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [() => true, ...fl.map((f) => (p: Part) => mine(p) && featOf(x.slot, p.g, (p as any).ft, 1) === f)]);
+    // видимость детали на герое: сколько пикселей кадра меняется, если её убрать (сама деталь и тёмный контур, который она режет на нижней части)
+    const fl = [...fs], imgs = renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [() => true, ...fl.map((f) => (p: Part) => !(mine(p) && featOf(x.slot, p.g, (p as any).ft, 1) === f))]);
     const full = imgs[0].img;
-    fl.forEach((f, j) => { const fi = imgs[j + 1].img; let n = 0; for (let y = 0; y < fi.h; y++) for (let xx = 0; xx < fi.w; xx++) if (fi.has(xx, y) && full.get(xx, y).join() === fi.get(xx, y).join()) n++; heroVis[f] = Math.max(heroVis[f] ?? 0, n); });
+    fl.forEach((f, j) => { const wo = imgs[j + 1].img; let n = 0; for (let y = 0; y < full.h; y++) for (let xx = 0; xx < full.w; xx++) if (full.has(xx, y) && (!wo.has(xx, y) || full.get(xx, y).join() !== wo.get(xx, y).join())) n++; heroVis[f] = Math.max(heroVis[f] ?? 0, n); });
     // лицо в открытом шлеме: видимые пиксели головы основы
     if (x.slot === "helm" && v === "down") { const [all, noHead] = renderLayers(viewLook(lk, v), baseView(v), "idle", 0, [() => true, (p) => p.g !== "head"]); let n = 0; for (let y = 0; y < all.img.h; y++) for (let xx = 0; xx < all.img.w; xx++) if (all.img.has(xx, y) && (!noHead.img.has(xx, y) || all.img.get(xx, y).join() !== noHead.img.get(xx, y).join())) n++; if (n >= 3) { heroF.add("face"); heroVis.face = n; } }
   }
   const fails: string[] = [];
+  // шлем на иконке — пустой: тона кожи, глаз и бровей нет (icons.md §3); светящиеся глаза Рыцаря Хаоса — его деталь, не кожа
+  if (x.slot === "helm") {
+    const named = ic.ip.filter((p: IP) => /^(skin|skinN|skinH|eyeW|eyesF|brows)$/.test(p.g)).length;
+    let n = 0; for (let y = 0; y < ic.img.h; y++) for (let xx = 0; xx < ic.img.w; xx++) { const q = ic.img.get(xx, y); if (q && q[3] && SKINC.some((c) => Math.abs(c[0] - q[0]) + Math.abs(c[1] - q[1]) + Math.abs(c[2] - q[2]) <= 14)) n++; }
+    if (named || n >= 3) fails.push(`на иконке шлема лицо или тон кожи (${n} px${named ? `, частей лица ${named}` : ""})`);
+  }
   for (const f of iconF) if (!heroF.has(f)) fails.push(`деталь «${f}» на иконке есть, на герое нет`);
   for (const f of heroF) if (!iconF.has(f)) fails.push(`деталь «${f}» на герое есть, на иконке нет`);
   for (const f of heroF) if (iconF.has(f) && (heroVis[f] ?? 0) < (TINY.has(f) ? 1 : 2)) fails.push(`деталь «${f}» на герое не читается (${heroVis[f] ?? 0} px)`);
   for (const f of iconF) if ((iconVis[f] ?? 0) < 2) fails.push(`деталь «${f}» на иконке не видна (${iconVis[f] ?? 0} px)`);
+  // крупные детали силуэта (шипы, рога, крылья, плюмаж, гребень, ореол) — заметны и на герое, а не точкой
+  for (const f of heroF) if (BIG.has(f) && iconF.has(f) && (heroVis[f] ?? 0) < 6) fails.push(`крупная деталь «${f}» на герое почти не видна (${heroVis[f] ?? 0} px < 6)`);
   for (const m of iconM) if (!heroM.has(m)) fails.push(`материал «${m}» на иконке есть, на герое нет`);
   for (const m of heroM) if (!iconM.has(m)) fails.push(`материал «${m}» на герое есть, на иконке нет`);
   return { item: x, iconF, heroF, iconM, heroM, heroVis, iconVis, fails };

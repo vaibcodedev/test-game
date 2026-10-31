@@ -243,7 +243,7 @@ export function pose(l: Look, anim: AnimId, i: number, view: View): Pose {
         const q = kf([[0, { w: 0, f: 0, l: 0 }], [0.2, { w: 1, f: 0, l: 0 }], [0.3, { w: 1, f: 0.5, l: 1 }], [0.4, { w: 0.9, f: 1, l: 0 }], [0.5, { w: 0.35, f: 1, l: 0 }],
           [0.6, { w: 1, f: 1, l: 0 }], [0.7, { w: 1, f: 0.5, l: 1 }], [0.8, { w: 1, f: 0, l: 0 }], [1, { w: 0, f: 0, l: 0 }]], u);
         const W = N(q.w), Fz = N(q.f), Lf = N(q.l);
-        P.hip = [P.hip[0] + 0.6 * W, P.hip[1] + 0.12 * W - 0.1 * Lf, 0];
+        P.hip = [P.hip[0] + 0.6 * W, P.hip[1] + 0.12 * W, 0];
         P.roll += -0.03 * W; P.headOff = [P.headOff[0] - 0.15 * W, P.headOff[1], 0];
         P.ankR = [P.ankR[0] + 0.25 * Fz, P.ankR[1] - 1.1 * Lf, P.ankR[2] + 1.0 * Fz]; P.pitchR = -0.22 * Lf;
         P.hR.rel = [P.hR.rel![0] - 0.2 * W, P.hR.rel![1], P.hR.rel![2] + 0.3 * Lf];

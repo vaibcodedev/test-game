@@ -151,8 +151,58 @@ async function quick(browser: Browser) {
   await A.close();
 }
 
+/**
+ * ANIM=1: анимация основы Б в игре (Рыцарь Хаоса, зум 3): переступ в покое, бег → остановка, бег при замедлении (timeScale),
+ * удар по мобу: кадр анимации в момент урона (цифры) — в лог; полосы кадров anim_*.png.
+ */
+async function animCheck(browser: Browser) {
+  const A = await newPage(browser);
+  await login(A, "Анимбэ", "warrior");
+  await dbg(A, { op: "god" });
+  log(await A.evaluate(`window.heroB.self()`) as string);
+  await A.evaluate(`window.heroB.set("chaos-knight"); window.__phase = 0.3; window.__game.scene.getScene("game").cameras.main.setZoom(3);`);
+  await sleep(5000);
+  await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"); window.__hbLog = []; window.__hbDmg = [];
+    s.events.on("postupdate", () => { const v = s.units.get(window.__net.id); if (!v) return; const a = v.sprite.anims, k = a.currentAnim ? a.currentAnim.key.split("-").slice(-2).join("-") : "";
+      window.__hbLog.push([Math.round(performance.now()), k, (a.currentFrame ? a.currentFrame.index : 1) - 1, +a.timeScale.toFixed(2), Math.round(v.hbSpeed || 0)]); if (window.__hbLog.length > 20000) window.__hbLog.splice(0, 5000); });
+    window.__net.on("fx", (list) => list.forEach((f) => { if (f.t === "dmg") window.__hbDmg.push([Math.round(performance.now()), f.id, f.v]); })); })()`);
+  // переступ: разрешить сразу
+  await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); v.hbIdle2At = 0; })()`);
+  await sleep(1500);
+  await record(A, "anim_idle_step", 16, 90);
+  const summary = async (tag: string, t0: number) => log(`${tag}: ` + await A.evaluate(`(() => { const L = window.__hbLog.filter((q) => q[0] >= ${t0}); const out = []; let prev = ""; for (const q of L) { const s = q[1] + ":" + q[2]; if (s !== prev) { out.push(s + (q[3] !== 1 ? "×" + q[3] : "") + (q[4] ? "@" + q[4] : "")); prev = s; } } return out.slice(0, 70).join(" "); })()`));
+  let t0 = await A.evaluate(`Math.round(performance.now())`) as number;
+  await A.mouse.click(683 + 300, 384 + 10);
+  await record(A, "anim_run_stop", 14, 140);
+  await summary("бег → остановка", t0);
+  await dbg(A, { op: "slow", v: 60, ms: 9000 }); await sleep(300);
+  t0 = await A.evaluate(`Math.round(performance.now())`) as number;
+  await A.mouse.click(683 - 300, 384 + 10);
+  await record(A, "anim_run_slowed", 12, 140);
+  await summary("бег при замедлении 60 %", t0);
+  await sleep(2500);
+  // удар по ближайшему мобу
+  const mob = await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), me = s.units.get(window.__net.id); let b = null, bd = 1e9;
+    for (const v of s.units.values()) { if (v === me || v.dead || v.npc || v.u.kind === me.u.kind || !s.isEnemy || !s.isEnemy(v)) continue; const d = Math.hypot(v.x - me.x, v.y - me.y); if (d < bd) { bd = d; b = v; } }
+    return b ? { id: b.id, x: b.x, y: b.y, d: Math.round(bd) } : null; })()`) as { id: string; x: number; y: number; d: number } | null;
+  if (!mob) { log("моба рядом нет — удар не проверен"); await A.close(); return; }
+  log(`моб ${mob.id} в ${mob.d} px`);
+  await dbg(A, { op: "tp", x: mob.x - 34, y: mob.y + 2 }); await sleep(2500);
+  t0 = await A.evaluate(`Math.round(performance.now())`) as number;
+  await A.evaluate(`window.__net.send("attack", { id: ${JSON.stringify(mob.id)} })`);
+  await record(A, "anim_attack", 14, 60);
+  for (let k = 0; k < 6; k++) { await dbg(A, { op: "mobhp", id: mob.id, v: 1 }); await sleep(800); }
+  await A.mouse.click(683 - 300, 384 + 10);
+  await record(A, "anim_attack_to_run", 10, 120);
+  await summary("удар → стойка → бег", t0);
+  const sync = await A.evaluate(`(() => { const out = []; for (const [t, id, v] of window.__hbDmg) { if (id !== ${JSON.stringify(mob.id)} || t < ${t0}) continue; const L = window.__hbLog.filter((q) => q[0] <= t); const q = L[L.length - 1]; out.push((q ? q[1] + ":" + q[2] + (q[3] !== 1 ? "×" + q[3] : "") : "?") + "(" + v + ")"); } return out.join(" "); })()`);
+  log(`кадр анимации в момент урона (контакт atk2h = 8): ${sync || "урона нет"}`);
+  await A.close();
+}
+
 async function run(browser: Browser) {
   if (process.env.QUICK) return quick(browser);
+  if (process.env.ANIM) return animCheck(browser);
   // Причина зависания прежнего прогона: три вкладки открывались сразу, вход шёл в фоновых — у фоновой вкладки requestAnimationFrame
   // стоит, Phaser не стартует, ожидание сцены (120 с × 3 попытки) на каждой. Теперь вкладка создаётся перед входом и выводится вперёд,
   // а у Chrome выключено торможение фоновых вкладок (флаги в launch).

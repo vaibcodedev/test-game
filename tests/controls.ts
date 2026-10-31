@@ -79,7 +79,14 @@ async function main() {
       a.send("attack", { id });
       await sleep(300);
       a.send("moveTo", { x: cur.x + 330, y: cur.y + 160 });
-      await sleep(2500);
+      // ждём, пока герой дойдёт и встанет (370 px — около 3 с, с обходом объектов и под нагрузкой дольше), вместо фиксированной паузы
+      let last = { x: a.me().x, y: a.me().y }, since = Date.now();
+      await sleep(500);
+      await a.until(() => {
+        const q = { x: a.me().x, y: a.me().y };
+        if (Math.hypot(q.x - last.x, q.y - last.y) >= 1) { last = q; since = Date.now(); return false; }
+        return Date.now() - since >= 600;
+      }, 9000, "герой дошёл до точки moveTo");
       assert(a.me().target === id, "moveTo снял цель");
       const p1 = { x: a.me().x, y: a.me().y };
       await sleep(1200);

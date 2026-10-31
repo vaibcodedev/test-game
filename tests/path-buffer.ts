@@ -3,7 +3,7 @@
  * Прежняя версия — копией ниже (findPathRef); сравнение на случайных запросах и замер времени.
  */
 import { MAP_SEED, TILE } from "../shared/constants";
-import { CELL_BLOCK, generateMap, walkable, type WorldMap } from "../shared/map";
+import { CELL_BLOCK, CELL_OBJ, generateMap, walkable, type WorldMap } from "../shared/map";
 import { findPath, segmentWalkable } from "../shared/path";
 
 // ---------- прежняя реализация (до буфера) ----------
@@ -57,7 +57,28 @@ function findPathRef(m: WorldMap, sx: number, sy: number, tx: number, ty: number
   const s = Math.floor(sy / TILE) * W + Math.floor(sx / TILE);
   const tcx = Math.floor(tx / TILE), tcy = Math.floor(ty / TILE);
   const goal = tcy * W + tcx;
-  const open = (i: number) => !(m.cell[i] & CELL_BLOCK);
+  // клетки объектов с коллизией по основанию (CELL_OBJ, 2026-10-30) — как в shared/path.ts: закрыты, кроме выхода от старта по клеткам объекта
+  const OBJ = CELL_BLOCK | CELL_OBJ, cxOf = (i: number) => (i % W) * TILE + TILE / 2, cyOf = (i: number) => Math.floor(i / W) * TILE + TILE / 2;
+  const esc = new Set<number>();
+  if ((m.cell[s] & OBJ) === OBJ) esc.add(s);
+  let cur = s;
+  const px = (i: number) => (i === s ? sx : i === goal ? tx : cxOf(i)), py = (i: number) => (i === s ? sy : i === goal ? ty : cyOf(i));
+  const gre = new Set<number>();
+  if ((m.cell[goal] & OBJ) === OBJ && walkable(m, tx, ty, r)) {
+    const q = [goal];
+    gre.add(goal);
+    for (let k = 0; k < q.length && q.length < 64; k++) {
+      const c = q[k], x0 = c % W, y0 = Math.floor(c / W);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x0 + dx, ny = y0 + dy, n = ny * W + nx;
+        if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= W || ny >= H || gre.has(n) || (m.cell[n] & OBJ) !== OBJ) continue;
+        if (!walkable(m, cxOf(n), cyOf(n), r) || !segmentWalkable(m, px(c), py(c), cxOf(n), cyOf(n), r)) continue;
+        gre.add(n);
+        q.push(n);
+      }
+    }
+  }
+  const open = (i: number) => !(m.cell[i] & CELL_BLOCK) || gre.has(i) || ((m.cell[i] & OBJ) === OBJ && esc.has(cur) && walkable(m, cxOf(i), cyOf(i), r));
   const g = new Map<number, number>();
   const from = new Map<number, number>();
   const heap = new Heap(W * H);
@@ -71,7 +92,7 @@ function findPathRef(m: WorldMap, sx: number, sy: number, tx: number, ty: number
   let best = s, bestH = h(s), expanded = 0;
   const closed = new Set<number>();
   while (heap.size) {
-    const cur = heap.pop();
+    cur = heap.pop();
     if (closed.has(cur)) continue;
     closed.add(cur);
     if (cur === goal) { best = cur; break; }
@@ -87,10 +108,12 @@ function findPathRef(m: WorldMap, sx: number, sy: number, tx: number, ty: number
       if (!open(n) && n !== goal) continue;
       if (!open(n)) continue;
       if (dx && dy && (!open(cy * W + nx) || !open(ny * W + cx))) continue;
+      if ((esc.has(cur) || gre.has(n)) && !segmentWalkable(m, px(cur), py(cur), px(n), py(n), r)) continue;
       const ng = g.get(cur)! + (dx && dy ? 1.414 : 1);
       if (ng < (g.get(n) ?? Infinity)) {
         g.set(n, ng);
         from.set(n, cur);
+        if (esc.has(cur) && (m.cell[n] & OBJ) === OBJ) esc.add(n);
         heap.f[n] = ng + h(n);
         heap.push(n);
       }
@@ -136,12 +159,13 @@ for (const [sx, sy, tx, ty, r] of queries) {
   if (a !== b) { if (++bad <= 5) console.log("FAIL путь различается", sx, sy, tx, ty, r); }
   else if (a !== "null") found++;
 }
+// замер — справочный, на части запросов и одним проходом (сравнение выше уже прогрело обе версии): весь набор ×3 с прогревом шёл минутами под нагрузкой
+const TIMED = queries.slice(0, 300);
 const time = (fn: typeof findPath) => {
   const t = performance.now();
-  for (let k = 0; k < 3; k++) for (const [sx, sy, tx, ty, r] of queries) fn(m, sx, sy, tx, ty, r);
-  return (performance.now() - t) / (queries.length * 3);
+  for (const [sx, sy, tx, ty, r] of TIMED) fn(m, sx, sy, tx, ty, r);
+  return (performance.now() - t) / TIMED.length;
 };
-time(findPathRef); time(findPath); // прогрев
 const before = time(findPathRef), after = time(findPath);
 console.log(`A*: ${queries.length} запросов, путей ${found}, различий ${bad}; до ${before.toFixed(3)} мс, после ${after.toFixed(3)} мс на запрос (×${(before / after).toFixed(1)})`);
 if (bad) process.exit(1);

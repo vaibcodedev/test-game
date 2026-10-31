@@ -11,7 +11,7 @@ import { hx, hash, type C } from "../bosses139/mino_lib";
 import { coat, dual, dualPose, hood, scarf } from "./rogue";
 import { helmGeo, helmModel } from "./helm";
 import { robe } from "./robe";
-import { armorShape, bodyMat } from "./armorgeo";
+import { armorShape, bodyMat, pdForm } from "./armorgeo";
 import { FY, FR, flipCv, proj, renderFrame, type Frame, type AnimId, type Build, type GearCtx, type Look, type Mz, type Part, type Pose, type Sk, type V2, type V3, type View } from "../hero147/base_b";
 
 export const GD = JSON.parse(fs.readFileSync(path.resolve("data/gear147.json"), "utf8"));
@@ -96,7 +96,7 @@ export function dress(base: Look, set: SetDef | null, crest: CrestId = "sol", on
 
 export const DROP_U = 0.22;
 /** Двуручник: в покое, ходьбе и беге держится перед собой клинком вверх (левая рука на рукояти у пояса). */
-function carryGreat(P: Pose, k: { anim: AnimId; u: number; arm: number; view: string; sx: number }) {
+function carryGreat(P: Pose, k: { anim: AnimId; stance?: boolean; u: number; arm: number; view: string; sx: number }) {
   if (k.anim === "special2h") return spinGreat(P, k as any);
   if (k.anim === "atk2h" && k.view !== "side") return slashGreat(P, k);
   if (k.anim === "atk2h") return sideGreat(P, k);
@@ -110,6 +110,13 @@ function carryGreat(P: Pose, k: { anim: AnimId; u: number; arm: number; view: st
     P.hR = { pole: [-0.7, 0.3, -0.7] }; P.twoHand = true; return;
   }
   if (k.anim !== "idle" && k.anim !== "walk" && k.anim !== "run") return;
+  if (k.stance) {
+    // боевая стойка: двуручник наготове (= кадр 0 удара atk2h), дыхание чуть качает клинок
+    const r = readyGreat(k.view, k.arm), bb = 0.25 * Math.sin(2 * Math.PI * (k.u - 0.1));
+    P.weapon = { kind: "great", dir: nrm([r.d[0], r.d[1], r.d[2] + 0.03 * bb]) };
+    P.hL = { rel: [r.h[0], r.h[1] + bb * 0.3, r.h[2]], pole: [0.7, 0.3, -0.7] }; P.hR = { pole: [-0.7, 0.3, -0.7] }; P.twoHand = true;
+    return;
+  }
   const bob = k.anim === "idle" ? 0.25 * Math.sin(2 * Math.PI * (k.u - 0.1)) : 0.35 * Math.sin(4 * Math.PI * (k.u - 0.3));
   const run = k.anim === "run";
   const side = k.view === "side";
@@ -118,33 +125,50 @@ function carryGreat(P: Pose, k: { anim: AnimId; u: number; arm: number; view: st
   P.hR = { pole: [-0.7, 0.3, -0.7] }; P.twoHand = true; // двуручник — обеими руками, правая (ведущая) выше
 }
 
-/** Удар двуручным для видов вниз/вверх: диагональ из-за левого плеча вниз-вправо (на экране клинок не уходит «в камеру»). */
-function slashGreat(P: Pose, k: { u: number; arm: number; sx: number }) {
+/** Готовность двуручника (боевая стойка stance, кадр 0 и конец удара atk2h): клинок вперёд-вверх перед корпусом, хват у пояса. */
+function readyGreat(view: string, arm: number): { h: V3; d: V3 } {
+  return { h: [2.0, arm * 0.72, 2.8], d: view === "side" ? [0.2, -0.68, 0.7] : [0.42, -0.8, 0.45] };
+}
+/** Покадровые ключи с easing по участкам: значение в u. */
+function keyed<T extends Record<string, number | V3>>(keys: [number, T][], eases: ((t: number) => number)[], u: number): T {
+  let i = 0; while (i < keys.length - 2 && u > keys[i + 1][0]) i++;
+  const [t0, a] = keys[i], [t1, b] = keys[i + 1], e = eases[i](cl((u - t0) / (t1 - t0)));
+  const o = {} as Record<string, number | V3>;
+  for (const key of Object.keys(a)) { const x = a[key], y = b[key]; o[key] = typeof x === "number" ? x + ((y as number) - x) * e : (x as V3).map((v, j) => v + ((y as V3)[j] - v) * e) as V3; }
+  return o as T;
+}
+const sm = (t: number) => t * t * (3 - 2 * t), eOut = (t: number) => 1 - (1 - t) ** 3, lin = (t: number) => t;
+/**
+ * Удар двуручным для видов вниз/вверх: диагональ из-за левого плеча вниз-вправо (на экране клинок не уходит «в камеру»).
+ * Ритм тяжёлого оружия (кадр контакта — data/hero-base-b.json atk2h.hit = 8): медленный замах 5 кадров (u 0 → 0,42), натяжение (0,5),
+ * удар 2 кадра со смазом (7, 8), контакт и фиксация (8, 9), возврат 2 кадра в стойку. Вес клинка — в корпусе (поворот, наклон; присед и шаг — основа atk2h).
+ */
+function slashGreat(P: Pose, k: { u: number; arm: number; sx: number; view: string }) {
   type K = { h: V3; d: V3; tw: number; ln: number };
-  const ready: K = { h: [-1.6, k.arm * 0.74, 2.6], d: [0.42, -0.78, 0.45], tw: 0.1, ln: 0.06 };
-  const keys: [number, K][] = [
+  const r = readyGreat(k.view, k.arm), ready: K = { h: r.h, d: r.d, tw: 0.1, ln: 0.06 };
+  const q = keyed<K>([
     [0, ready],
-    [0.35, { h: [1.2, -k.arm * 0.32, 0.7], d: [0.5, -0.78, -0.38], tw: 0.38, ln: -0.1 }],
-    [0.55, { h: [-4.6, k.arm * 0.55, 3.2], d: [-0.62, 0.12, 0.6], tw: -0.38, ln: 0.3 }],
-    [0.72, { h: [-4.9, k.arm * 0.6, 2.9], d: [-0.66, 0.08, 0.56], tw: -0.42, ln: 0.32 }],
+    [0.25, { h: [1.7, k.arm * 0.12, 1.5], d: [0.5, -0.85, -0.05], tw: 0.28, ln: -0.04 }],
+    [0.42, { h: [1.25, -k.arm * 0.32, 0.7], d: [0.5, -0.78, -0.4], tw: 0.4, ln: -0.12 }],
+    [0.5, { h: [1.3, -k.arm * 0.36, 0.55], d: [0.52, -0.74, -0.46], tw: 0.43, ln: -0.14 }],
+    [0.667, { h: [-4.6, k.arm * 0.55, 3.2], d: [-0.62, 0.12, 0.6], tw: -0.4, ln: 0.32 }],
+    [0.75, { h: [-4.9, k.arm * 0.6, 2.9], d: [-0.66, 0.08, 0.56], tw: -0.44, ln: 0.34 }],
     [1, ready],
-  ];
-  const eases = [(t: number) => t * t * (3 - 2 * t), (t: number) => t * t * t, (t: number) => t * t * (3 - 2 * t), (t: number) => t * t * (3 - 2 * t)];
-  let i = 0; while (i < keys.length - 2 && k.u > keys[i + 1][0]) i++;
-  const [t0, a] = keys[i], [t1, b] = keys[i + 1], e = eases[i](cl((k.u - t0) / (t1 - t0)));
-  const L3 = (x: V3, y: V3): V3 => [x[0] + (y[0] - x[0]) * e, x[1] + (y[1] - x[1]) * e, x[2] + (y[2] - x[2]) * e];
-  P.weapon = { kind: "great", dir: nrm(L3(a.d, b.d)) }; P.twoHand = true;
-  P.hL = { rel: L3(a.h, b.h), pole: [0.7, 0.3, -0.7] }; P.hR = { pole: [-0.7, 0.3, -0.7] };
-  P.twist = a.tw + (b.tw - a.tw) * e; P.lean = a.ln + (b.ln - a.ln) * e;
+  ], [sm, eOut, sm, lin, sm, sm], k.u);
+  P.weapon = { kind: "great", dir: nrm(q.d) }; P.twoHand = true;
+  P.hL = { rel: q.h, pole: [0.7, 0.3, -0.7] }; P.hR = { pole: [-0.7, 0.3, -0.7] };
+  P.twist = q.tw; P.lean = q.ln;
 }
 
-/** Удар двуручным вбок: та же поза основы, но клинок в кадре — замах вверх-назад, удар вниз-вперёд с уходом в глубину (не за край кадра, не в землю). */
-function sideGreat(P: Pose, k: { u: number }) {
-  const keys: [number, V3][] = [[0, [0.12, -0.75, 0.62]], [0.35, [0.3, -0.82, -0.48]], [0.55, [0.74, 0.36, 0.46]], [0.72, [0.74, 0.38, 0.44]], [0.86, [0.66, -0.32, 0.4]], [1, [0.12, -0.75, 0.62]]];
-  const eases = [(t: number) => t * t * (3 - 2 * t), (t: number) => t * t * t, (t: number) => t * t * (3 - 2 * t), (t: number) => t * t * (3 - 2 * t), (t: number) => t * t * (3 - 2 * t)];
-  let i = 0; while (i < keys.length - 2 && k.u > keys[i + 1][0]) i++;
-  const [t0, a] = keys[i], [t1, b] = keys[i + 1], e = eases[i](cl((k.u - t0) / (t1 - t0)));
-  if (P.weapon) P.weapon.dir = nrm([a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e]);
+/** Удар двуручным вбок: та же поза основы (ритм atk2h), клинок в кадре — замах вверх-назад, удар вниз-вперёд с уходом в глубину (не за край кадра, не в землю);
+ *  кисть у концов — в хвате стойки (переход стойка ↔ удар без рывка). */
+function sideGreat(P: Pose, k: { u: number; arm: number; view: string }) {
+  const r = readyGreat("side", k.arm);
+  const q = keyed<{ d: V3 }>([[0, { d: r.d }], [0.25, { d: [0.25, -0.88, 0.05] }], [0.42, { d: [0.3, -0.82, -0.48] }], [0.5, { d: [0.3, -0.78, -0.56] }], [0.583, { d: [0.4, -0.9, 0.18] }],
+    [0.667, { d: [0.74, 0.36, 0.46] }], [0.75, { d: [0.74, 0.4, 0.44] }], [0.875, { d: [0.6, -0.3, 0.5] }], [1, { d: r.d }]], [sm, eOut, sm, lin, lin, sm, sm, sm], k.u);
+  if (P.weapon) P.weapon.dir = nrm(q.d);
+  const w = k.u < 0.25 ? 1 - sm(k.u / 0.25) : k.u > 0.75 ? sm((k.u - 0.75) / 0.25) : 0, h = P.hL.rel;
+  if (h && w > 0) P.hL = { ...P.hL, rel: [h[0] + (r.h[0] - h[0]) * w, h[1] + (r.h[1] - h[1]) * w, h[2] + (r.h[2] - h[2]) * w] };
 }
 
 /** Особый удар: широкий рубящий с разворотом — клинок обходит героя по кругу на уровне груди (θ — угол в плоскости XZ, 0 — вперёд). */
@@ -286,7 +310,7 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
   if (it.chestPlate && fF > -0.2) {
     const pl = [surf(-sw * 0.95, c * 0.97), surf(sw * 0.95, c * 0.97), surf(sw * 0.66, c * 0.6), surf(sw * 0.22, c * 0.36), surf(0, c * 0.2), surf(-sw * 0.22, c * 0.36), surf(-sw * 0.66, c * 0.6)];
     push({ g: "a_plate", ramp: Ac, o: { dome: 2, amp: 1.8, bias: 0.25, kant: true }, layer: 3.762, m: (z) => z.pg(pl.map((p) => PJ(add(p, mul(F, 0.12))))) });
-    if (it.inlay) push({ g: "a_inlay", ramp: Tr, o: { dome: 1, bias: 0.4 }, layer: 3.763, m: (z) => chain(ctx, z, [pl[6], pl[5], pl[4], pl[3], pl[2]].map((p) => add(p, mul(F, 0.2))), 0.95) });
+    if (it.inlay) push({ g: "a_inlay", ramp: Tr, o: { dome: 1, bias: 0.4 }, layer: 3.763, m: (z) => chain(ctx, z, [pl[6], pl[5], pl[4], pl[3], pl[2]].map((p) => add(p, mul(F, 0.2))), 1.3) });
   }
   if (it.chestPlate && fF < 0.2) {
     push({ g: "a_plate", ramp: Ac, o: { dome: 2, bias: -0.1 }, layer: 3.762, m: (z) => z.pg([surf(-sw * 0.62, c * 0.92, -1), surf(sw * 0.62, c * 0.92, -1), surf(sw * 0.3, c * 0.5, -1), surf(0, c * 0.3, -1), surf(-sw * 0.3, c * 0.5, -1)].map(PJ)) });
@@ -298,8 +322,9 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
     push({ g: "a_fil", ramp: Tr, o: { dome: 1, bias: 0.6 }, layer: 3.7667, m: (z) => { for (const sg of [-1, 1]) z.bz(PJ(add(surf(sg * sw * 0.64, c * 0.45), mul(F, 0.3))), PJ(add(surf(sg * sw * 0.56, c * 0.78), mul(F, 0.3))), PJ(add(surf(sg * sw * 0.38, c * 0.7), mul(F, 0.3))), 1.0, 0.9); } });
     push({ g: "a_riv", ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: 3.7668, m: (z) => { for (const sg of [-1, 1]) z.dot(PJ(add(surf(sg * sw * 0.5, c * 0.32), mul(F, 0.3))), 0.65); } });
   }
-  if (it.rivets && !it.inlay && SH.body !== "brig" && fF > 0.3) push({ g: "a_riv", ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: 3.7668, m: (z) => { for (const sg of [-1, 1]) for (const h of [0.9, 0.5]) z.dot(PJ(add(surf(sg * sw * 0.55, c * h), mul(F, 0.25))), 0.6); } });
-  if (it.inlay && fF > 0.25) push({ g: "a_gem", ramp: ramp(it.gemColor ?? "eye_glow"), o: { dome: 1, bias: it.gemColor ? 0.7 : 0.4 }, layer: 3.825, emis: !it.gemColor, m: (z) => z.dot(PJ(add(surf(0, c + 0.2), mul(F, 0.9))), 1.0) });
+  if (it.rivets && !it.inlay && SH.body !== "brig" && fF > 0.3) push({ g: "a_riv", ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: 3.7668, m: (z) => { for (const sg of [-1, 1]) for (const h of [0.9, 0.5]) z.dot(PJ(add(surf(sg * sw * 0.55, c * h), mul(F, 0.25))), 0.8); } });
+  // самоцвет горжета; у высокого ворота — на его передней пластине (иначе ворот его закрывает)
+  if (it.inlay && fF > 0.25) push({ g: "a_gem", ramp: ramp(it.gemColor ?? "eye_glow"), o: { dome: 1, bias: it.gemColor ? 0.7 : 0.4 }, layer: SH.collar === 2 ? 5.125 : 3.825, emis: !it.gemColor, m: (z) => z.dot(PJ(add(surf(0, c + (SH.collar === 2 ? 0.5 : 0.2)), mul(F, SH.collar === 2 ? b.neckT * 0.6 + 0.95 : 0.9))), 1.0) });
   if (it.cracks) {
     // светящиеся прожилки-трещины: днём тёмно-алые, ночью светятся (emisColor)
     const CR = ramp(it.cracks), glowC = hx("#ff9a5a");
@@ -309,7 +334,7 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
       push({ g: "a_crack", ramp: CR, o: { dome: 1, bias: 0.4 }, layer: 3.7634, emis: true, emisColor: glowC, m: (z) => { for (const ln of lines(sd)) chain(ctx, z, ln.map(([a, h]) => add(surf(a * sw, h * c, sd), mul(F, sd * 0.3))), 0.7); } });
     }
   }
-  if (it.crest && fF > 0.3) crestParts(ctx, add(surf(0, c * 0.38), mul(F, 0.35)), A, U, 1.15, 3.7655, crest);
+  if (it.crest && fF > 0.3) crestParts(ctx, add(surf(0, c * 0.6), mul(F, 0.35)), A, U, 1.15, 3.7655, crest); // герб над вершиной инкрустации, как на иконке
   // боковые ремни кирасы с пряжками (все латы) и гравировка нагрудника (эпик и выше)
   for (const sg of [-1, 1]) {
     if (sg * facing(A) < -0.3 && Math.abs(fF) > 0.3) continue;
@@ -318,7 +343,7 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
   }
   // горжет
   const nt = b.neckT;
-  if (SH.collar === 2) push({ g: "a_collar", ramp: it.chestPlate ? Ac : P, o: { dome: 2, amp: 1.8, bias: 0.25, kant: true }, layer: 5.12, m: (z) => loft(z, waist, A, U, F, [{ h: c - 0.5, a: nt * 0.95 + 1.3, d: nt * 0.75 + 1.2, f: 0.1 }, { h: c + 1.6, a: nt * 0.9 + 1.2, d: nt * 0.7 + 1.1, f: 0.1 }]) });
+  if (SH.collar === 2) push({ g: "a_collar", ramp: it.chestPlate ? Ac : P, o: { dome: 2, amp: 1.8, bias: 0.25, kant: true }, layer: 5.12, m: (z) => loft(z, waist, A, U, F, [{ h: c - 0.1, a: nt * 0.85 + 1.1, d: nt * 0.6 + 0.9, f: 0.1 }, { h: c + 1.7, a: nt * 0.85 + 1.1, d: nt * 0.6 + 0.85, f: 0.1 }]) });
   if (SH.collar >= 1) push({ g: "a_gorget", ramp: it.chestPlate ? Ac : P, o: { dome: 2, bias: 0.1 }, layer: 3.82, m: (z) => loft(z, waist, A, U, F, [{ h: c - 0.5, a: nt * 0.8 + 1.0, d: nt * 0.6 + 0.9, f: 0.1 }, { h: c + 0.75, a: nt * 0.7 + 0.75, d: nt * 0.55 + 0.7, f: 0.1 }]) });
   // пояс
   push({ g: "a_belt", ramp: SH.body === "brig" ? ramp("leather_dark") : it.chestPlate ? P : it.rivets ? ramp("leather") : Tr, o: { dome: 1, bias: -0.2 }, layer: 3.765, m: (z) => loft(z, waist, A, U, F, [{ h: -1.15, a: b.waist + th + 0.3, d: dW + th + 0.3, f: 0 }, { h: -0.25, a: b.waist + th + 0.25, d: dW + th + 0.25, f: 0 }]) });
@@ -358,7 +383,11 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
     push({ g: "a_mailA" + s, ramp: Ml, o: { dome: 2, bias: ar.far - 0.1, dith: 0.55 }, layer: ar.L0 + 0.004, m: (z) => { z.seg(PJ(Sh), PJ(lerp(Sh, E, 0.4)), b.armT + 0.45, b.armT + 0.35); z.dot(PJ(E), b.foreT * 0.5 + 0.55); } });
     push({ g: "a_arm" + s, ramp: P, o: { dome: 2, amp: 1.9, bias: ar.far + 0.15, kant: true }, layer: ar.L0 + 0.005, m: (z) => z.seg(PJ(lerp(Sh, E, 0.32)), PJ(lerp(Sh, E, 0.86)), b.armT + 0.75, b.armT + 0.5) });
     push({ g: "a_elb" + s, ramp: it.chestPlate ? Ac : P, o: { dome: 2, bias: ar.far + 0.35, kant: true }, layer: ar.L0 + 0.027, m: (z) => z.dot(PJ(E), b.foreT * 0.5 + 0.75) });
-    if (it.spikes) { const sg = s === "L" ? 1 : -1, ad = nrm(sub(E, Sh)); hook(ctx, { g: "a_elbS" + s, layer: ar.L0 + 0.0275, far: ar.far }, E, sum(E, mul(ad, -1.4), mul(A, sg * 2.4), mul(F, -0.8)), 0.85, 0.25 * sg, ramp(it.spike ?? it.plate)); }
+  }
+  // наплечные шипы (легендарка): два рога-плавника над каждым плечом, выходят за контур плеча — как на иконке (fins) и у Рыцаря Хаоса
+  if (it.spikes) for (const s of ["L", "R"] as const) {
+    const Sh = s === "L" ? sk.shL : sk.shR, sg = s === "L" ? 1 : -1, ar = ctx.arm[s], Lsh = ctx.v === "side" ? (ar.far === 0 ? 6.396 : 1.215) : 5.216, o = sum(Sh, mul(A, sg * 0.5), mul(U, SH.shoulders ? 1.3 : 0.7));
+    for (const [k, d, l] of [[0, [0.35, 1], 4.4], [1, [1, 0.55], 3.4]] as [number, number[], number][]) hook(ctx, { g: "a_shS" + s + k, layer: Lsh + 0.0005 * k, far: ar.far }, add(o, mul(A, sg * 0.9 * k)), sum(o, mul(A, sg * (0.9 * k + l * d[0])), mul(U, l * d[1])), 1.0, 0.25 * sg, ramp(it.spike ?? it.plate));
   }
   // наплечья самого доспеха (малые/крупные) — те же, что на иконке
   if (SH.shoulders) for (const s of ["L", "R"] as const) {
@@ -378,9 +407,10 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
       const top = add(add(waist, mul(U, -1.0)), mul(F, sd * (dW + th + 0.45)));
       const wv = mul(A, 1.7), bot = (x: number, d: number): V3 => [top[0] + x, ky + 2.2 - d, top[2] + sd * 0.6];
       const pts: V3[] = it.cracks ? [add(top, wv), bot(1.9, 0.6), bot(1.1, -0.6), bot(0.4, 0.8), bot(-0.4, -0.4), bot(-1.2, 0.9), bot(-1.9, 0.1), sub(top, wv)] : [add(top, wv), bot(1.8, 0), bot(-1.8, 0), sub(top, wv)];
-      push({ g: "a_tabard", ramp: cloth, o: { dome: 2, bias: -0.1 }, layer: sd > 0 ? 3.95 : 3.0, m: (z) => z.pg(pts.map(PJ)) });
-      push({ g: "a_tabard", ramp: cloth, o: { dome: 1, bias: -1.3 }, layer: (sd > 0 ? 3.95 : 3.0) + 0.001, m: (z) => z.seg(PJ(add(top, mul(U, -0.8))), PJ(bot(0.1, 1.6)), 0.7) });
-      if (!it.cracks && it.trim !== it.plate) push({ g: "a_tabH", ramp: Tr, o: { dome: 1, bias: 0.5 }, layer: (sd > 0 ? 3.95 : 3.0) + 0.002, m: (z) => z.seg(PJ(bot(1.8, 0.3)), PJ(bot(-1.8, 0.3)), 0.8) });
+      const TL = sd > 0 ? (SH.len >= 2 ? 3.985 : 3.95) : 3.0; // спереди поверх юбки
+      push({ g: "a_tabard", ramp: cloth, o: { dome: 2, bias: -0.1 }, layer: TL, m: (z) => z.pg(pts.map(PJ)) });
+      push({ g: "a_tabard", ramp: cloth, o: { dome: 1, bias: -1.3 }, layer: TL + 0.001, m: (z) => z.seg(PJ(add(top, mul(U, -0.8))), PJ(bot(0.1, 1.6)), 0.7) });
+      if (!it.cracks && it.trim !== it.plate) push({ g: "a_tabH", ramp: Tr, o: { dome: 1, bias: 0.5 }, layer: TL + 0.002, m: (z) => z.seg(PJ(bot(1.7, 0.9)), PJ(bot(-1.7, 0.9)), 1.0) });
     }
   }
 }
@@ -388,7 +418,7 @@ function armor(ctx: GearCtx, it: any, crest: CrestId) {
 // =============== НАПЛЕЧНИКИ ===============
 function pauldrons(ctx: GearCtx, it: any) {
   const { sk, PJ, push } = ctx, { A, U, F } = sk;
-  const P = ramp(it.plate), Ac = ramp(it.accent), Tr = ramp(it.trim), sz = it.size ?? 1;
+  const P = ramp(it.plate), Ac = ramp(it.accent), Tr = ramp(it.trim), sz = it.size ?? 1, form = pdForm(it); // форма — та же, что на иконке (icons.ts → pauldronIcon)
   for (const s of ["L", "R"] as const) {
     const sg = s === "L" ? 1 : -1, Sh = s === "L" ? sk.shL : sk.shR, E = s === "L" ? sk.elL : sk.elR, ar = ctx.arm[s];
     // вбок ближний наплечник ближе к камере, чем голова, — поверх неё
@@ -399,7 +429,7 @@ function pauldrons(ctx: GearCtx, it: any) {
     const e2 = nrm(add(mul(ad, -1), mul(U, 0.3))); // «вверх» купола — против руки
     const keep = (q: V3) => q[1] > -0.35;
     // ламы под куполом (вниз по руке)
-    if (it.form === "lames") {
+    if (form === "lamellar") {
       // ламы-полосы без купола, ремень с пряжкой (как на иконке)
       for (let k = 0; k < 3; k++) { const ck = add(sum(Sh, mul(A, sg * 0.7), mul(U, 0.5)), mul(ad, 1.25 * k)); push({ g: "p_lm" + s + k, ramp: P, o: { dome: 2, amp: 1.9, bias: ar.far + 0.25 - 0.12 * k, kant: true }, layer: L + 0.004 - 0.0002 * k, m: (z) => z.hull(ellPts(ck, mul(A, sg), e2, F, [2.3 * sz - 0.2 * k, 0.9 * sz, 2.2 * sz - 0.2 * k], () => true).map(PJ)) }); }
       push({ g: "p_strap" + s, ramp: ramp("leather_dark"), o: { dome: 1, bias: 0.3 }, layer: L + 0.0045, m: (z) => z.seg(PJ(sum(Sh, mul(A, sg * 0.7), mul(U, 1.3))), PJ(sum(Sh, mul(A, sg * 0.7), mul(ad, 2.8))), 0.9) });
@@ -407,21 +437,31 @@ function pauldrons(ctx: GearCtx, it: any) {
       if (it.rivets) push({ g: "p_riv" + s, ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: L + 0.0047, m: (z) => { for (const k of [0, 2]) z.dot(PJ(sum(Sh, mul(A, sg * 2.2), mul(ad, 1.25 * k + 0.3), mul(U, 0.5))), 0.5); } });
       continue;
     }
-    if (it.form === "small") {
+    if (form === "cop") {
       push({ g: "p_dome" + s, ramp: Ac, o: { dome: 3, amp: 1.9, bias: ar.far + 0.25, kant: true }, layer: L + 0.004, m: (z) => z.hull(ellPts(C0, mul(A, sg), e2, F, [2.3 * sz, 1.9 * sz, 2.2 * sz], (q) => q[1] > -0.6).map(PJ)) });
       continue;
     }
-    for (let k = it.lames ?? 1; k >= 1; k--) {
-      const ck = add(C0, mul(ad, 1.25 * k * sz));
-      push({ g: "p_lame" + s + k, ramp: P, o: { dome: 2, amp: 1.9, bias: ar.far + 0.25 - 0.15 * k, kant: true }, layer: L + 0.001 * (3 - k), m: (z) => z.hull(ellPts(ck, mul(A, sg), e2, F, [2.45 * sz - 0.25 * k, 1.4 * sz, 2.35 * sz - 0.25 * k], keep).map(PJ)) });
+    const nl = form === "great" || form === "mythic" ? 2 : form === "angular" || form === "layered" ? 1 : it.lames ?? 1;
+    for (let k = nl; k >= 1; k--) {
+      // angular — нижняя лама расширена (раструб), layered — ярусы шире и с загнутым кончиком
+      const ck = add(C0, mul(ad, 1.25 * k * sz)), wf = form === "angular" ? 1.3 : form === "layered" ? 1.15 : 1;
+      push({ g: "p_lame" + s + k, ramp: P, o: { dome: 2, amp: 1.9, bias: ar.far + 0.25 - 0.15 * k, kant: true }, layer: L + 0.001 * (3 - k), m: (z) => z.hull(ellPts(ck, mul(A, sg), e2, F, [(2.45 * sz - 0.25 * k) * wf, 1.4 * sz, (2.35 * sz - 0.25 * k) * wf], keep).map(PJ)) });
     }
+    if (form === "layered") for (const k of [0, 1]) push({ g: "p_lame" + s + "t" + k, ramp: k ? P : Ac, o: { dome: 1, amp: 1.8, bias: ar.far + 0.4, kant: true }, layer: L + 0.0045 + 0.0001 * k, m: (z) => { const b0 = sum(C0, mul(ad, 1.25 * k * sz), mul(A, sg * 2.2 * sz)), t0 = sum(b0, mul(A, sg * 1.3 * sz), mul(U, 1.4 * sz)); spike(ctx, z, b0, t0, 0.9 * sz); } });
+    // great — гарда у шеи: поднятая пластина над внутренним краем купола
+    if (form === "great") push({ g: "p_haute" + s, ramp: P, o: { dome: 2, amp: 1.8, bias: ar.far + 0.3, kant: true }, layer: L + 0.0038, m: (z) => z.pg([sum(Sh, mul(A, sg * 0.3), mul(U, 1.2)), sum(Sh, mul(A, sg * 0.25), mul(U, 3.9 * sz)), sum(Sh, mul(A, sg * 1.5), mul(U, 4.4 * sz)), sum(Sh, mul(A, sg * 2.0), mul(U, 2.0 * sz))].map(PJ)) });
+    // mythic — крыло-лезвие наружу и вверх
+    if (form === "mythic") push({ g: "p_wing" + s, ramp: Tr, o: { dome: 2, amp: 1.9, bias: ar.far + 0.4, kant: true }, layer: L + 0.0059, m: (z) => z.pg([sum(C0, mul(U, 0.9 * sz)), sum(C0, mul(A, sg * 3.2 * sz), mul(U, 3.4 * sz)), sum(C0, mul(A, sg * 4.6 * sz), mul(U, 4.6 * sz)), sum(C0, mul(A, sg * 3.4 * sz), mul(U, 1.6 * sz)), sum(C0, mul(A, sg * 2.4 * sz), mul(U, 0.2))].map(PJ)) });
     // тёмная кромка вокруг купола — отделяет наплечник от кирасы и клинка
     push({ g: "p_rim" + s, ramp: RIM, o: { dome: 1, bias: 0.3 }, layer: L + 0.0035, m: (z) => z.hull(ellPts(C0, mul(A, sg), e2, F, [2.55 * sz + 0.55, 2.2 * sz + 0.5, 2.5 * sz + 0.55], (q) => q[1] > -0.75).map(PJ)) });
     // купол
-    push({ g: "p_dome" + s, ramp: Ac, o: { dome: 3, amp: 1.9, bias: ar.far + 0.25, kant: true }, layer: L + 0.004, m: (z) => z.hull(ellPts(C0, mul(A, sg), e2, F, [2.55 * sz, 2.2 * sz, 2.5 * sz], (q) => q[1] > -0.75).map(PJ)) });
+    // купол: angular и mythic — гранёный (мало вершин), остальные — округлый
+    const domeP = (r: [number, number, number]) => { const pts = ellPts(C0, mul(A, sg), e2, F, r, (q) => q[1] > -0.75); return form === "angular" || form === "mythic" ? pts.filter((_, i) => i % 5 === 0) : pts; };
+    push({ g: "p_dome" + s, ramp: Ac, o: { dome: 3, amp: 1.9, bias: ar.far + 0.25, kant: true }, layer: L + 0.004, m: (z) => z.hull(domeP([2.55 * sz, 2.2 * sz, 2.5 * sz]).map(PJ)) });
     push({ g: "p_dome" + s, ramp: Ac, o: { dome: 1, bias: 2.4 }, layer: L + 0.0041, m: (z) => { const c2 = PJ(add(C0, mul(e2, 1.1 * sz))), lf = lx(ctx); z.seg([c2[0] - 1.6 * sz * lf, c2[1] - 0.2], [c2[0] - 0.4 * sz * lf, c2[1] - 0.9 * sz], 0.75); } });
     // кромка (инкрустация) по низу купола
-    if (it.trim !== it.plate) push({ g: "p_trim" + s, ramp: Tr, o: { dome: 1, bias: ar.far + 0.3 }, layer: L + 0.005, m: (z) => { const rim: V3[] = []; for (let j = 0; j <= 8; j++) { const ph = Math.PI * (0.5 + 0.45 * (j / 8)); rim.push(sum(C0, mul(A, sg * -Math.cos(ph) * 2.5 * sz), mul(e2, -1.2 * sz), mul(F, Math.sin(ph) * 2.3 * sz * (ctx.v === "up" ? -1 : 1)))); } chain(ctx, z, rim, 0.8); } });
+    // кромка (инкрустация) по нижнему краю купола в кадре: нижние точки контура купола (видна в любом направлении)
+    if (it.trim !== it.plate) push({ g: "p_trim" + s, ramp: Tr, o: { dome: 1, bias: ar.far + 0.3 }, layer: L + 0.005, m: (z) => { const pp = domeP([2.5 * sz, 2.15 * sz, 2.45 * sz]).map(PJ), xs = pp.map((q) => q[0]), x0 = Math.min(...xs), x1 = Math.max(...xs), N = 6, pts: V2[] = []; for (let j = 0; j <= N; j++) { const x = x0 + 0.6 + ((x1 - x0 - 1.2) * j) / N; let y = -1e9; for (const q of pp) if (Math.abs(q[0] - x) < (x1 - x0) / N) y = Math.max(y, q[1]); if (y > -1e9) pts.push([x, y - 0.6]); } for (let j = 0; j + 1 < pts.length; j++) z.seg(pts[j], pts[j + 1], 1.0); } });
     if (it.spikes || it.rivets || it.filigree || it.gem) {
       if (it.spikes || it.rivets) push({ g: "p_riv" + s, ramp: Tr, o: { dome: 1, bias: 1.2 }, layer: L + 0.0052, m: (z) => { for (const j of [0.58, 0.75, 0.92]) { const ph = Math.PI * j; z.dot(PJ(sum(C0, mul(A, sg * -Math.cos(ph) * 2.5 * sz), mul(e2, -1.2 * sz), mul(F, Math.sin(ph) * 2.3 * sz * (ctx.v === "up" ? -1 : 1)))), 0.5); } } });
       if (it.spikes || it.filigree) push({ g: "p_fil" + s, ramp: Tr, o: { dome: 1, bias: 0.5 }, layer: L + 0.00535, m: (z) => { const a = PJ(sum(C0, mul(e2, 1.9 * sz), mul(A, sg * -0.5 * sz))), b2 = PJ(sum(C0, mul(A, sg * 1.9 * sz), mul(e2, 0.9 * sz))); z.bz(a, [(a[0] + b2[0]) / 2 + sg * 0.6, (a[1] + b2[1]) / 2 - 0.4], b2, 0.85, 0.85); } });
@@ -470,7 +510,7 @@ function boots(ctx: GearCtx, it: any) {
     const toe = add(Ft[1], mul(nrm(sub(Ft[1], Ft[0])), 0.5));
     push({ g: "b_ft" + s, ramp: P, o: { dome: 2, amp: 1.9, bias: lg.far + 0.45, kant: true }, layer: L + 0.0006, m: (z) => z.seg(PJ(Ft[0]), PJ(toe), b.shinT * 1.1 + 0.6, b.shinT * 0.9 + 0.15) });
     if (it.stitch) push({ g: "b_stitch" + s, ramp: ramp(it.stitch), o: { dome: 1, bias: 0.6 }, layer: L + 0.000575, m: (z) => { const o = add(mul(sk.Ap, (s === "L" ? 1 : -1) * (b.shinT * 0.38)), mul(fwd, b.shinT * 0.4)); for (let k = 0; k < 4; k++) { const t0 = 0.2 + k * 0.17; z.seg(PJ(add(lerp(K, An, t0), o)), PJ(add(lerp(K, An, t0 + 0.08), o)), 0.6); } } });
-    if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_st" + s, ramp: Ac, o: { dome: 1, bias: lg.far + 0.55 }, layer: L + 0.000565, m: (z) => z.seg(PJ(add(lerp(K, An, 0.22), mul(fwd, b.shinT * 0.5 + 0.35))), PJ(add(lerp(K, An, 0.85), mul(fwd, b.shinT * 0.45 + 0.35))), 1.8) });
+    if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_st" + s, ramp: Ac, o: { dome: 1, bias: lg.far + 0.55 }, layer: L + 0.00062, m: (z) => z.seg(PJ(add(lerp(K, An, 0.22), mul(fwd, b.shinT * 0.5 + 0.35))), PJ(add(lerp(K, An, 1.0), mul(fwd, b.shinT * 0.55 + 0.45))), 1.9) }); // полоса по голени до подъёма стопы, поверх стопы (иначе в покое её почти не видно)
     if (it.stripe) push({ g: "b_strap" + s, ramp: ramp("grip"), o: { dome: 1, bias: 0.4 }, layer: L + 0.00056, m: (z) => { const m = lerp(K, An, 0.6), q = mul(sk.Ap, b.shinT * 0.62 + 0.4); z.seg(PJ(sub(m, q)), PJ(add(m, q)), 1.3); } });
     if (it.stripe && facing(sk.Fp) > -0.2) push({ g: "b_buck" + s, ramp: ramp(it.strapAccent ?? "gold"), o: { dome: 1, bias: 1.0 }, layer: L + 0.00057, m: (z) => z.dot(PJ(add(lerp(K, An, 0.6), mul(fwd, b.shinT * 0.5 + 0.4))), 0.95) });
     if (it.topCuff) push({ g: "b_tc" + s, ramp: ramp(it.topCuff), o: { dome: 2, amp: 1.8, bias: lg.far + 0.3, kant: true }, layer: L + 0.00064, m: (z) => z.seg(PJ(lerp(K, An, 0.02)), PJ(lerp(K, An, 0.3)), b.shinT * 1.2 + 1.1, b.shinT * 1.1 + 0.9) });
@@ -495,7 +535,8 @@ const swingOf = (anim: AnimId, u: number): number => {
     case "idle": return 0.5 + 0.35 * s(2 * Math.PI * u);
     case "walk": return 1.9 + 0.6 * s(4 * Math.PI * u);
     case "run": return 4.2 + 0.8 * s(4 * Math.PI * u);
-    case "atk2h": case "atk1h": { const k = [[0, 0.9], [0.35, 0.3], [0.55, 3.4], [0.75, 2.6], [1, 0.9]]; let i = 0; while (i < k.length - 2 && u > k[i + 1][0]) i++; const t = cl((u - k[i][0]) / (k[i + 1][0] - k[i][0])), e = t * t * (3 - 2 * t); return k[i][1] + (k[i + 1][1] - k[i][1]) * e; }
+    case "atk2h": { const k = [[0, 0.9], [0.42, 0.3], [0.5, 0.3], [0.667, 3.4], [0.8, 2.6], [1, 0.9]]; let i = 0; while (i < k.length - 2 && u > k[i + 1][0]) i++; const t = cl((u - k[i][0]) / (k[i + 1][0] - k[i][0])), e = t * t * (3 - 2 * t); return k[i][1] + (k[i + 1][1] - k[i][1]) * e; }
+    case "atk1h": { const k = [[0, 0.9], [0.35, 0.3], [0.55, 3.4], [0.75, 2.6], [1, 0.9]]; let i = 0; while (i < k.length - 2 && u > k[i + 1][0]) i++; const t = cl((u - k[i][0]) / (k[i + 1][0] - k[i][0])), e = t * t * (3 - 2 * t); return k[i][1] + (k[i + 1][1] - k[i][1]) * e; }
     case "hurt": return 0.8 + 1.8 * s(Math.PI * cl(u / 0.6));
     case "ride": return 2.6 + 0.5 * s(4 * Math.PI * u);
     default: return 0.9;

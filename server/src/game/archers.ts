@@ -12,7 +12,7 @@ import { SKILLS, SUMMONS } from "../../../shared/skills";
 import { NO_LOS, RAY_MIN, rayLen, trapErr, trapRadius as trapRadiusOf } from "../../../shared/skillShape";
 import { anyPetOf, dismissPet, Pet } from "./Pet";
 import type { Player } from "./Player";
-import { addDot, dots, endDot, type CastCtx } from "./umbrath";
+import { addDot, dotOf, endDot, type CastCtx } from "./umbrath";
 import { applyHaste, applyRoot, applySlow, applyWeaken } from "./effects";
 import { noteAuraSource, registerAuraHook } from "./auras";
 import type { Actor, HitOpts, World } from "./World";
@@ -92,11 +92,7 @@ function shoot(w: World, p: Player, t: Actor, k: string, speed: number, onHit: (
 }
 
 // ---------- проклятия (общая механика с umbrath.ts) ----------
-const curseKey = (p: Player, t: Actor) => `${p.id}|${t.id}|curse`;
-const curseOf = (w: World, p: Player, t: Actor) => {
-  const e = dots.get(curseKey(p, t));
-  return e && e.until > w.time ? e : undefined;
-};
+const curseOf = (w: World, p: Player, t: Actor) => dotOf(w, p, t, "curse");
 /** Сила тика «Проклятой стрелы» героя (по её рангу, минимум 1). */
 const cursedTick = (p: Player) => (weaponAvg(p) * SKILLS.dr_cursed_arrow.v(Math.max(1, rk(p, "dr_cursed_arrow"))).tick) / 100;
 /** Наложить проклятие: тик dmg в секунду на durS секунд (+ «Усиление проклятий»). */

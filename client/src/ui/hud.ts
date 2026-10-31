@@ -269,7 +269,7 @@ export class Hud {
 
   constructor(readonly root: HTMLElement) {
     this.dropUi = new DropUI((t, m) => this.ctx?.net.send(t, m));
-    this.lootRow = new LootRow(root, { self: () => this.ctx?.net.self ?? undefined, take: (id) => this.onTakeBag?.(id) });
+    this.lootRow = new LootRow(root, { self: () => this.ctx?.net.self ?? undefined, take: (id) => this.onTakeBag?.(id), tipFor: (e, h) => this.tipFor(e, h), itemTip: (it, s) => this.itemTip(it, s, false, true) });
     this.lootToasts = new LootToasts(root, () => this.ctx?.net.self ?? undefined);
     this.bar.append(this.hotbar.el);
     this.bar.append(this.levelLook.bar);   // над лентой умений (сама лента перестраивается, поэтому не внутри неё)

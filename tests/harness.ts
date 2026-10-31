@@ -9,6 +9,8 @@ import type { SelfState } from "../shared/protocol";
 import { GAME_VERSION } from "../shared/version";
 
 export const PORT = Number(process.env.TEST_PORT) || 2601;
+/** Множитель ожиданий Bot.until (TEST_SLOW=2..3 — машина нагружена параллельными прогонами других агентов): только пределы ожидания, не проверки скорости. */
+export const SLOW = Math.max(1, Number(process.env.TEST_SLOW) || 1);
 let server: ChildProcess | null = null;
 export const dbFile = path.join(os.tmpdir(), `emberfall-test-${process.pid}.sqlite`);
 
@@ -36,7 +38,8 @@ export async function startServer(fresh = true, env: Record<string, string> = {}
   });
   let exited = false;
   server.once("exit", () => (exited = true));
-  for (let i = 0; i < 100 && !exited; i++) {
+  // старт сервера (tsx + генерация карты) под нагрузкой идёт десятки секунд: ждём до 40 с × TEST_SLOW, пока процесс жив
+  for (const end = Date.now() + 40_000 * SLOW; Date.now() < end && !exited; ) {
     try {
       const r = await fetch(`http://localhost:${PORT}/health`);
       if (r.ok) return;
@@ -120,7 +123,7 @@ export class Bot {
     b.token = token;
     b.client = new Client(`ws://localhost:${PORT}`);
     b.attach(await b.client.joinOrCreate("world", { token, character, version: GAME_VERSION }));
-    await b.until(() => !!b.self && b.room.state.players?.size > 0, 3000, "self");
+    await b.until(() => !!b.self && b.room.state.players?.size > 0, 8000, "self"); // первый вход на свежем сервере под нагрузкой — секунды
     return b;
   }
 
@@ -166,9 +169,9 @@ export class Bot {
     this.room.send(type, msg);
   }
   async until(cond: () => boolean, ms = 3000, what = "условие") {
-    const t0 = Date.now();
+    const t0 = Date.now(), lim = ms * SLOW;
     while (!cond()) {
-      if (Date.now() - t0 > ms) throw new Error(`таймаут: ${what}`);
+      if (Date.now() - t0 > lim) throw new Error(`таймаут: ${what}`);
       await sleep(30);
     }
   }

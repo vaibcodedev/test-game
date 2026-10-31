@@ -10,12 +10,12 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { CELL_BLOCK, CELL_RESERVED, CELL_WALL, GROUND_OBJECTS, OBJECT_FOOTPRINT, TERRAIN_COUNT, TERRAIN_KEYS, type WorldMap } from "../../shared/map";
+import { CELL_BLOCK, CELL_BRIDGE, CELL_LAVA, CELL_OBJ, CELL_RESERVED, CELL_WALL, CELL_WATER, GROUND_OBJECTS, OBJECT_FOOTPRINT, TERRAIN_COUNT, TERRAIN_KEYS, type WorldMap } from "../../shared/map";
 import { FORMAT_VERSION, Img, OUT_DIR, TILED_VERSION, TS, prop, rel, xmlEsc, xmlProps, type TProp } from "./common";
 
 const ASSETS = "client/public/assets";
 const OBJ_DIR = `${ASSETS}/objects`;
-export const TERRAIN_RU = ["Вода", "Лава", "Песок", "Болото", "Пепел", "Грязь", "Трава", "Лесная подстилка", "Брусчатка", "Пол", "Снег", "Лёд", "Обсидиан", "Дюны", "Морское дно", "Мрамор", "Треснувший мрамор", "Базальт", "Вытертая дорожка"];
+export const TERRAIN_RU = ["Вода", "Лава", "Песок", "Болото", "Пепел", "Грязь", "Трава", "Лесная подстилка", "Брусчатка", "Пол", "Снег", "Лёд", "Обсидиан", "Дюны", "Морское дно", "Мрамор", "Треснувший мрамор", "Базальт", "Вытертая дорожка", "Брусчатка Солнца", "Брусчатка Умбры", "Брусчатка Пепла", "Опалённая трава", "Гарь", "Пепельное поле"];
 /** Поверхности мира (без полов данжа 15–18): для них есть все пары переходов. */
 const MAIN_TERRAINS = 15;
 const COLS = 18; // столбцов в terrain.png
@@ -110,17 +110,17 @@ export function groundTile(g: GroundSet, c: number[], x: number, y: number): num
   return ids[h < 0.55 ? 0 : Math.min(ids.length - 1, 1 + Math.floor(((h - 0.55) / 0.45) * 3))];
 }
 
-/** Маска проходимости: плитки для флагов 1..7 (id = флаги − 1). */
-export const CELL_TILES = 7;
+/** Маска проходимости: плитки для всех сочетаний флагов CELL_* (id = флаги − 1): BLOCK, WALL, RESERVED, WATER, BRIDGE, LAVA, OBJ. Новый флаг — поднять старший. */
+export const CELL_TILES = CELL_OBJ * 2 - 1;
 export function buildCells(dir = OUT_DIR) {
   const img = new Img(CELL_TILES * TS, TS);
   const names: string[] = [];
   for (let f = 1; f <= CELL_TILES; f++) {
-    const c = f & CELL_WALL ? [120, 60, 200] : f & CELL_BLOCK ? [220, 40, 40] : [240, 200, 40];
+    const c = f & CELL_WALL ? [120, 60, 200] : f & CELL_LAVA ? [255, 110, 20] : f & CELL_WATER ? [40, 110, 230] : f & CELL_BRIDGE ? [150, 100, 50] : f & CELL_BLOCK ? [220, 40, 40] : [240, 200, 40];
     const ox = (f - 1) * TS;
     img.rect(ox, 0, TS, TS, c, 150);
     if (f & CELL_RESERVED && f & CELL_BLOCK) for (let i = 0; i < TS; i += 4) img.rect(ox + i, 0, 2, TS, [240, 200, 40], 200);
-    names.push([f & CELL_BLOCK ? "непроходимо" : "", f & CELL_WALL ? "стена" : "", f & CELL_RESERVED ? "резерв" : ""].filter(Boolean).join(" + "));
+    names.push([f & CELL_BLOCK ? "непроходимо" : "", f & CELL_WALL ? "стена" : "", f & CELL_RESERVED ? "резерв" : "", f & CELL_WATER ? "вода" : "", f & CELL_BRIDGE ? "мост" : "", f & CELL_LAVA ? "лава" : "", f & CELL_OBJ ? "объект" : ""].filter(Boolean).join(" + "));
   }
   img.write(path.join(dir, "cell.png"));
   let x = `<?xml version="1.0" encoding="UTF-8"?>\n<tileset version="${FORMAT_VERSION}" tiledversion="${TILED_VERSION}" name="Проходимость" tilewidth="${TS}" tileheight="${TS}" tilecount="${CELL_TILES}" columns="${CELL_TILES}">\n`;
