@@ -6,7 +6,7 @@ import { armorReduction } from "../../../shared/formulas";
 import { meleeTiming } from "../../../shared/attackTiming";
 import { BAL, leechMult, pvpClassMult, pvpDamageMult, pvpHealMult } from "../../../shared/balance";
 import { PLUS_BONUS } from "../../../shared/upgrade";
-import { generateMap, lineClear, moveWithCollision, terrainSpeedMul, isTownZone, walkable, zoneAtPx, Zone, type WorldMap } from "../../../shared/map";
+import { generateMap, lineClear, moveWithCollision, roundPos, terrainSpeedMul, isTownZone, walkable, zoneAtPx, Zone, type WorldMap } from "../../../shared/map";
 import { segmentWalkable } from "../../../shared/path";
 import { tickBiomes } from "./biomes";
 import { tickCities } from "./cities";
@@ -43,7 +43,7 @@ import { BannerWar, type WarStore } from "./bannerWar";
 import { FortSiege } from "./siege";
 import { EventClock } from "./eventClock";
 import { WorldBosses, type WbStore } from "../worldboss";
-import { moveGated } from "../../../shared/siege";
+import { gateBlocks, moveGated } from "../../../shared/siege";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissAllPets, type Pet } from "./Pet";
 import { applySlow, breakFear, endShield, fearDir, tickEffects } from "./effects";
 import { CC, slowMul, slowPctCap } from "../../../shared/cc";
@@ -819,6 +819,11 @@ export class World {
   move(x: number, y: number, dx: number, dy: number, r: number, faction: string) {
     return this.siege ? moveGated(this.map, x, y, dx, dy, r, faction) : moveWithCollision(this.map, x, y, dx, dy, r);
   }
+  /** Место после шага move(): до 0,1 px, но не в стену и не в закрытые ворота (shared/map.ts roundPos; голый Math.round ставил на кромку — застревал). */
+  place(ox: number, oy: number, n: { x: number; y: number }, r: number, faction: string) {
+    const ok = this.siege ? (x: number, y: number) => walkable(this.map, x, y, r) && !gateBlocks(x, y, r, faction) : undefined;
+    return roundPos(this.map, ox, oy, n, r, ok);
+  }
 
   // ---------- игроки ----------
   playerSpeed(p: Player): number {
@@ -841,10 +846,10 @@ export class World {
     const sp = Math.min(this.playerSpeed(p) * dt, final ? d - stopAt : d);
     const n = this.move(u.x, u.y, (dx / d) * sp, (dy / d) * sp, PLAYER_RADIUS, p.faction);
     // сравниваем уже округлённые координаты: иначе добавка <0,05 px давала «движение» вечно
-    const rx = Math.round(n.x * 10) / 10, ry = Math.round(n.y * 10) / 10;
-    const moved = rx !== u.x || ry !== u.y;
-    u.x = rx;
-    u.y = ry;
+    const q = this.place(u.x, u.y, n, PLAYER_RADIUS, p.faction);
+    const moved = q.x !== u.x || q.y !== u.y;
+    u.x = q.x;
+    u.y = q.y;
     u.dir = World.dirTo(dx, dy);
     return moved;
   }
@@ -968,8 +973,9 @@ export class World {
         const fd = fearDir(this, p), sp = this.playerSpeed(p) * CC.fear.speedMul * dt;
         const n = this.move(u.x, u.y, fd.x * sp, fd.y * sp, PLAYER_RADIUS, p.faction);
         moving = n.x !== u.x || n.y !== u.y;
-        u.x = Math.round(n.x * 10) / 10;
-        u.y = Math.round(n.y * 10) / 10;
+        const q = this.place(u.x, u.y, n, PLAYER_RADIUS, p.faction);
+        u.x = q.x;
+        u.y = q.y;
         u.dir = World.dirTo(fd.x, fd.y);
       }
     } else if (canMove) {
@@ -978,8 +984,9 @@ export class World {
         const sp = this.playerSpeed(p) * dt;
         const n = this.move(u.x, u.y, (p.input.mx / len) * sp, (p.input.my / len) * sp, PLAYER_RADIUS, p.faction);
         moving = n.x !== u.x || n.y !== u.y;
-        u.x = Math.round(n.x * 10) / 10;
-        u.y = Math.round(n.y * 10) / 10;
+        const q = this.place(u.x, u.y, n, PLAYER_RADIUS, p.faction);
+        u.x = q.x;
+        u.y = q.y;
         u.dir = World.dirTo(p.input.mx, p.input.my);
         p.moveTo = null;
         p.pend = null;
@@ -1058,8 +1065,9 @@ export class World {
     const n = this.move(u.x, u.y, s.x, s.y, r, m.faction);
     if (this.inTown(n.x, n.y)) return false;
     const moved = Math.abs(n.x - u.x) + Math.abs(n.y - u.y) > 0.01;
-    u.x = Math.round(n.x * 10) / 10;
-    u.y = Math.round(n.y * 10) / 10;
+    const q = this.place(u.x, u.y, n, r, m.faction);
+    u.x = q.x;
+    u.y = q.y;
     u.dir = World.dirTo(dx, dy);
     return moved;
   }
@@ -1073,8 +1081,9 @@ export class World {
     if (!s.x && !s.y) return;
     const n = this.move(u.x, u.y, s.x, s.y, r, m.faction);
     if (this.inTown(n.x, n.y)) return;
-    u.x = Math.round(n.x * 10) / 10;
-    u.y = Math.round(n.y * 10) / 10;
+    const q = this.place(u.x, u.y, n, r, m.faction);
+    u.x = q.x;
+    u.y = q.y;
   }
 
   /** Самая «угрожающая» живая цель рядом, иначе ближайший игрок в радиусе агрессии. */

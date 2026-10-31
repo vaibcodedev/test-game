@@ -1,6 +1,6 @@
 /** Питомцы: серверные союзники игрока (следуют, бьют цель хозяина, умения, опыт, призыв). */
 import { armorReduction } from "../../../shared/formulas";
-import { lineClear, moveWithCollision } from "../../../shared/map";
+import { lineClear, moveWithCollision, roundPos } from "../../../shared/map";
 import { Nav } from "../../../shared/path";
 import { MOVE_MUL } from "../../../shared/constants";
 import {
@@ -230,7 +230,7 @@ function strike(w: World, pet: Pet, mob: Actor, mult: number, kind: "phys" | "fi
   return v;
 }
 
-function step(w: World, pet: Pet, gx: number, gy: number, dt: number, speed: number, stopAt: number): boolean {
+export function petStep(w: World, pet: Pet, gx: number, gy: number, dt: number, speed: number, stopAt: number): boolean {
   const u = pet.unit;
   if (Math.hypot(gx - u.x, gy - u.y) <= stopAt + 0.5) return false;
   const wp = pet.nav.next(w.map, u.x, u.y, gx, gy, PET_MOVE_R, w.time);
@@ -240,8 +240,9 @@ function step(w: World, pet: Pet, gx: number, gy: number, dt: number, speed: num
   const sp = Math.min(speed * dt, final ? d - stopAt : d);
   const n = moveWithCollision(w.map, u.x, u.y, (dx / d) * sp, (dy / d) * sp, PET_MOVE_R);
   const moved = Math.abs(n.x - u.x) + Math.abs(n.y - u.y) > 0.01;
-  u.x = Math.round(n.x * 10) / 10;
-  u.y = Math.round(n.y * 10) / 10;
+  const q = roundPos(w.map, u.x, u.y, n, PET_MOVE_R); // не Math.round: мог поставить на кромку стены — застревал
+  u.x = q.x;
+  u.y = q.y;
   u.dir = World.dirTo(dx, dy);
   return moved;
 }
@@ -395,7 +396,7 @@ export function updatePet(w: World, pet: Pet, dt: number) {
     const clear = lineClear(w.map, u.x, u.y, target.x, target.y);
     if (t >= pet.attackAt && useSkill(w, pet, target, d)) {
       u.dir = World.dirTo(target.x - u.x, target.y - u.y);
-    } else if (d > reach || !clear) moving = step(w, pet, target.x, target.y, dt, pet.def.speed * MOVE_MUL * 1.1, pet.def.projectile ? reach * 0.7 : reach - 6);
+    } else if (d > reach || !clear) moving = petStep(w, pet, target.x, target.y, dt, pet.def.speed * MOVE_MUL * 1.1, pet.def.projectile ? reach * 0.7 : reach - 6);
     else if (t >= pet.attackAt) {
       u.dir = World.dirTo(target.x - u.x, target.y - u.y);
       u.aseq = (u.aseq + 1) % 65535;
@@ -409,7 +410,7 @@ export function updatePet(w: World, pet: Pet, dt: number) {
   } else {
     u.target = "";
     // не толпимся: свободно держимся в ~2 тайлах от хозяина
-    if (od > PET_FOLLOW_DIST) moving = step(w, pet, o.x, o.y, dt, follow, PET_FOLLOW_DIST * 0.6);
+    if (od > PET_FOLLOW_DIST) moving = petStep(w, pet, o.x, o.y, dt, follow, PET_FOLLOW_DIST * 0.6);
     useSkill(w, pet, null, od);
   }
   if (moving) u.anim = Anim.Walk;

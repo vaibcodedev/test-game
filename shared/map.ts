@@ -1679,13 +1679,16 @@ export function moveWithCollision(m: WorldMap, x: number, y: number, dx: number,
  * Округлить позицию после moveWithCollision до 0,1 px, не задевая стену: Math.round мог сдвинуть точку на ≤0,05 px за кромку
  * (x + r ровно на границе клетки), и юнит застревал навсегда — из непроходимой точки moveWithCollision не выпускает (баг npc-ai, 2026-10-30).
  * Если округлённая точка непроходима — округляем к старой позиции (ox, oy), иначе оставляем без округления.
+ * ok — своя проверка проходимости (ворота осады: World.place); по умолчанию — стены и вода. Применяется везде, где шаг округляется:
+ * игроки и мобы (World.place), питомцы, бойцы фракций, таран осады, жители (2026-10-31, tests/unit/move-round.ts).
  */
-export function roundPos(m: WorldMap, ox: number, oy: number, n: { x: number; y: number }, r: number) {
+export function roundPos(m: WorldMap, ox: number, oy: number, n: { x: number; y: number }, r: number, ok?: (x: number, y: number) => boolean) {
+  const can = ok ?? ((x: number, y: number) => walkIn(m, x, y, r, false));
   const q = (v: number, o: number, toward: boolean) => (toward ? (v < o ? Math.ceil(v * 10) : Math.floor(v * 10)) : Math.round(v * 10)) / 10;
   const x = q(n.x, ox, false), y = q(n.y, oy, false);
-  if (walkIn(m, x, y, r, false)) return { x, y };
+  if (can(x, y)) return { x, y };
   const tx = q(n.x, ox, true), ty = q(n.y, oy, true);
-  if (walkIn(m, tx, ty, r, false)) return { x: tx, y: ty };
+  if (can(tx, ty)) return { x: tx, y: ty };
   return { x: n.x, y: n.y };
 }
 /** Есть ли прямая видимость (для снарядов и рывков): проверка шагами по полтайла, стены блокируют, вода нет. */

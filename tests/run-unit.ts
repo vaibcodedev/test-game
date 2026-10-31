@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const UNIT = ["economy", "bank-trade", "combat", "persistence", "anticheat", "teleport", "rewards", "stable", "legendary", "transmog", "admin", "drop",
   ...["warrior", "healer", "ranger", "mage", "rogue", "deathknight", "bloodweaver", "darkranger", "warlock", "reaver"].map((c) => `classes-${c}`), // механики классов (общие заготовки — classes-kit.ts)
-  "world-map", "world-visibility", "world-format", "pvp-world", "pvp-arena", "events-muster", "events-raid", "events-wboss", "social-party", // мир, PvP, события, группа/чат/задания
+  "world-map", "move-round", "world-visibility", "world-format", "pvp-world", "pvp-arena", "events-muster", "events-raid", "events-wboss", "social-party", // мир, PvP, события, группа/чат/задания
 ].map((f) => `tests/unit/${f}.ts`);
 /** Прежние тесты без сервера (проверено: не поднимают сервер и браузер). */
 const LEGACY = [

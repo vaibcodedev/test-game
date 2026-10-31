@@ -24,7 +24,7 @@ import { derive } from "../../../shared/formulas";
 import { raidBotSave } from "../arena/botgear";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { soldierHostile } from "../../../shared/factions";
-import { lineClear, moveWithCollision, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
+import { lineClear, moveWithCollision, roundPos, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
 import { crowdStep } from "../../../shared/crowd";
 import { BELT_HALF, GUARD_RANGE_TILES, TOWN } from "../../../shared/town";
 import { NPC_GEAR, npcGearStrings, type NpcTier } from "../../../shared/npcGear";
@@ -1054,8 +1054,9 @@ export class Soldiers {
     const c = fight ? crowdStep(this.w.crowd, m, x, y, r, (dx / d) * sp, (dy / d) * sp, 0, gx, gy) : { x: (dx / d) * sp, y: (dy / d) * sp };
     const n = moveWithCollision(map, x, y, c.x, c.y, r);
     const moved = Math.abs(n.x - x) + Math.abs(n.y - y) > 0.01;
-    s.px = Math.round(n.x * 10) / 10;
-    s.py = Math.round(n.y * 10) / 10;
+    const q = roundPos(map, x, y, n, r); // не Math.round: мог поставить на кромку стены — застревал
+    s.px = q.x;
+    s.py = q.y;
     const dir = dirTo(dx, dy);
     // в бою — каждый такт (точность ударов), вне боя — не чаще SYNC_MS и при повороте
     this.sync(m, !!s.foe || !!s.mobFoe || !moved || dir !== u.dir);

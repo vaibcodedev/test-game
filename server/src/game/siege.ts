@@ -259,7 +259,8 @@ export class FortSiege {
         if (wp) {
           const dx = wp.x - m.x, dy = wp.y - m.y, dd = Math.hypot(dx, dy) || 1, sp = Math.min(D.ram.speed * (dt / 1000), dd);
           const n = this.w.move(m.x, m.y, (dx / dd) * sp, (dy / dd) * sp, 10, this.att);
-          m.unit.x = Math.round(n.x * 10) / 10; m.unit.y = Math.round(n.y * 10) / 10;
+          const q = this.w.place(m.x, m.y, n, 10, this.att);
+          m.unit.x = q.x; m.unit.y = q.y;
           m.unit.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? Dir.Left : Dir.Right) : dy < 0 ? Dir.Up : Dir.Down;
         }
         return;
