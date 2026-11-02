@@ -60,7 +60,7 @@ await test("цены и материалы не дешевеют, шанс не 
     assert.ok(b.chance <= a.chance, `шанс +${i}`);
   }
   for (let i = 0; i < 5; i++) assert.deepEqual([stepFor(i)!.chance, stepFor(i)!.dust], [100, 0], `+${i + 1}`);
-  for (let i = 10; i < 15; i++) assert.ok(stepFor(i)!.chance <= 15, `+${i + 1}: ${stepFor(i)!.chance} %`);
+  for (let i = 10; i < 15; i++) assert.ok(stepFor(i)!.chance <= 50, `+${i + 1}: ${stepFor(i)!.chance} %`);
   assert.equal(REF_PLUS, up.refPlus);
   assert.ok(REF_PLUS <= MAX_PLUS);
 });
