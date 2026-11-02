@@ -28,8 +28,10 @@ export interface Heraldry {
 export interface Herald { fac: string; tabard: Tabard; arms: boolean; banner: boolean; H: Heraldry }
 
 export const NPC_GEAR = NG as unknown as {
-  tiers: { patrol: NpcTier; settlement: NpcTier; bridge: NpcTier; fort: NpcTier; capitalRanks: NpcTier[]; champion: NpcTier };
+  tiers: { patrol: NpcTier; settlement: NpcTier; bridge: NpcTier; fort: NpcTier; capitalRanks: NpcTier[]; champion: NpcTier; leaders: Record<string, NpcTier> };
   championTitle: Record<string, string>;
+  /** Титул вожака группы по месту (patrol, settlement, bridge, fort). */
+  leaderTitle: Record<string, string>;
   sets: Record<string, Record<NpcTier, { melee: NpcSet[]; ranged: NpcSet[] }>>;
   heraldry: Record<string, Heraldry>;
 };

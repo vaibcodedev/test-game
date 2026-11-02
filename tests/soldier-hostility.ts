@@ -14,6 +14,7 @@ import { soldierHostile } from "../shared/factions";
 import { lineClear, walkable } from "../shared/map";
 import { World } from "../server/src/game/World";
 import type { Mob } from "../server/src/game/Mob";
+import { applyNpcPower } from "../server/src/game/soldiers";
 import { Player } from "../server/src/game/Player";
 import { raidBotSave } from "../server/src/arena/botgear";
 import { registerCombat } from "../server/src/rooms/common";
@@ -56,20 +57,27 @@ check("клиент: isEnemy для бойца — то же правило (sol
   isEnemySoldier.includes("soldierHostile(net.self.faction, net.unit(net.id)?.team ?? 0, v.u.faction)") && isEnemySoldier.includes("inEmberWalls("), isEnemySoldier.trim());
 
 // ---------- 1. уровень чемпиона уходит клиенту ----------
-const champs = S.list.filter((m) => m.faction === "umbrath" && m.soldier!.power === "champion");
-check("чемпионы Умбрата есть", champs.length > 0, `${champs.length}`);
-check("уровень чемпиона в юните — 100 (рамка цели не «ур. 0»)", champs.every((m) => m.unit.level === 100 && m.level === 100));
+// чемпионов вне отрядов Полей нет (вожаки групп — первые и ближники, решение владельца 2026-11-02): меткого чемпиона делаем из одного
+// дальника-поста (мост, поселение) у края его зоны — только одного, чтобы соседи-«чемпионы» не убивали мага залпом
+const posts = S.list.filter((m) => m.faction === "umbrath" && m.soldier!.ranged && !!m.soldier!.post && !m.soldier!.site?.city && !m.soldier!.power);
 
 // ---------- 2. маг бьёт меткого чемпиона из-за края его зоны ----------
-/** Точка в 190–220 px от бойца, вне его зоны, проходимая и с прямой видимостью. */
+/** Точка в 190–220 px от бойца, вне его зоны, но в полосе ответного боя (slack + retaliate), проходимая и с прямой видимостью. */
 function outside(m: Mob): { x: number; y: number } | null {
   for (const r of [200, 215, 190]) for (let a = 0; a < 32; a++) {
     const x = m.x + Math.cos((a / 32) * Math.PI * 2) * r, y = m.y + Math.sin((a / 32) * Math.PI * 2) * r;
-    if (!inZone(m, x, y) && walkable(w.map, x, y, 10) && lineClear(w.map, m.x, m.y, x, y)) return { x, y };
+    if (!inZone(m, x, y) && (S as unknown as Priv).inZone(m, x, y, P.zones.slack + P.zones.retaliate) && walkable(w.map, x, y, 10) && lineClear(w.map, m.x, m.y, x, y)) return { x, y };
   }
   return null;
 }
-const pick = champs.filter((m) => m.soldier!.ranged).map((m) => ({ m, at: outside(m) })).find((c) => c.at);
+const pick = posts.map((m) => ({ m, at: outside(m) })).find((c) => c.at);
+if (pick) {
+  applyNpcPower(pick.m, "umbrath", "ranged", { kind: "champion" });
+  pick.m.soldier!.power = "champion";
+}
+const champs = S.list.filter((m) => m.faction === "umbrath" && m.soldier!.power === "champion");
+check("чемпион Умбрата есть", champs.length === 1, `${champs.length}`);
+check("уровень чемпиона в юните — 100 (рамка цели не «ур. 0»)", champs.every((m) => m.unit.level === 100 && m.level === 100));
 check("нашёлся меткий чемпион и точка у края его зоны", !!pick);
 
 function duel(retaliate: number) {

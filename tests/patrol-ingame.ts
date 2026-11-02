@@ -19,6 +19,7 @@ import { dbFile, ensureChar, PORT, sleep } from "./harness";
 import type { Mob } from "../server/src/game/Mob";
 import type { Player } from "../server/src/game/Player";
 import type { World } from "../server/src/game/World";
+import { isLeaderPower } from "../server/src/game/soldiers";
 
 const VITE_PORT = Number(process.env.VITE_TEST_PORT) || 5253;
 const VIEW = { width: 1280, height: 800 };
@@ -123,7 +124,7 @@ async function scenario() {
     // строй собирается
     await sleep(6000);
     // зазор строя на сервере каждые 50 мс: наименьший и обстановка в тот миг
-    const lead = () => group.find((m) => m.soldier!.power === "champion" && !m.dead) ?? group.find((m) => !m.soldier!.ranged && !m.dead)!;
+    const lead = () => group.find((m) => (m.soldier!.power === "champion" || isLeaderPower(m.soldier!.power)) && !m.dead) ?? group.find((m) => !m.soldier!.ranged && !m.dead)!;
     let worst = { g: Infinity, why: "" };
     const probe = setInterval(() => {
       const a = group.filter((m) => !m.dead);

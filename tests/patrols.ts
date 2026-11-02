@@ -7,7 +7,7 @@
  */
 import P from "../data/patrols.json";
 import NR from "../data/npc-ranks.json";
-import { npcPowerStats } from "../server/src/game/soldiers";
+import { isLeaderPower, npcPowerStats } from "../server/src/game/soldiers";
 import { revealedLeft, WARDS } from "../server/src/game/wards";
 import { castSkill } from "../server/src/game/skills";
 import { TILE } from "../shared/constants";
@@ -68,14 +68,13 @@ check("башни с лучниками на стенах обеих фракц�
   const patrolGroups = [...new Set(S.list.filter((m) => m.soldier!.role === "patrol").map((m) => m.soldier!.group))];
   check("патрули по 4: 2 ближника и 2 дальника", patrolGroups.length > 0 && patrolGroups.every((g) => g.length === 4 && g.filter((m) => m.soldier!.ranged).length === 2), `${patrolGroups.length} патрулей`);
   const bridgeGroups = [...new Set(bridgePosts.map((m) => m.soldier!.group))];
-  check("на мосту 5–6 бойцов с дальниками и минимум один чемпион", bridgeGroups.every((g) => g.length >= 5 && g.some((m) => m.soldier!.ranged) && g.some((m) => m.soldier!.power === "champion")),
+  check("на мосту 5–6 бойцов с дальниками и вожак-капитан", bridgeGroups.every((g) => g.length >= 5 && g.some((m) => m.soldier!.ranged) && g.filter((m) => m.soldier!.power === "captain").length === 1),
     bridgeGroups.map((g) => g.length).join(","));
   const bridgeRegular = bridgePosts.find((m) => !m.soldier!.power && !m.soldier!.ranged)!, roadRegular = S.list.find((m) => m.soldier!.role === "patrol" && !m.soldier!.power && !m.soldier!.ranged && m.level === bridgeRegular.level);
   check("обычный боец моста сильнее патрульного того же уровня", !roadRegular || (bridgeRegular.stats.maxHp > roadRegular.stats.maxHp && bridgeRegular.stats.dmg > roadRegular.stats.dmg));
-  const pool = S.list.filter((m) => !m.soldier!.power.startsWith("rank")), champs = pool.filter((m) => m.soldier!.power === "champion");
-  check("чемпион — в среднем каждый 6-й", champs.length / pool.length > 1 / 8 && champs.length / pool.length < 1 / 4, `${champs.length} из ${pool.length}`);
-  const champ = champs[0];
-  check("чемпион: статы героя 100 ур., уровень 100 уходит клиенту (рамка цели)", champ.level === 100 && champ.unit.level === 100 && champ.dmgTakenMul < 1 && champ.stats.maxHp === npcPowerStats(champ.faction as "solgard", champ.soldier!.ranged ? "ranged" : "melee", { kind: "champion" }, champ.def.attackCd).maxHp);
+  // вожаки групп (решение владельца 2026-11-02; подробно — tests/unit/npc-leaders.ts): чемпионов вне отрядов Полей нет
+  const champ = bridgeGroups[0][0];
+  check("вожак моста: статы героя 100 ур., уровень 100 уходит клиенту (рамка цели)", isLeaderPower(champ.soldier!.power) && champ.level === 100 && champ.unit.level === 100 && champ.dmgTakenMul < 1 && champ.stats.maxHp === npcPowerStats(champ.faction as "solgard", champ.soldier!.ranged ? "ranged" : "melee", { kind: "leader", place: "bridge" }, champ.def.attackCd).maxHp);
   const settle = S.sites.filter((s) => !s.city);
   check("в поселениях посты по периметру и у ворот (≥ 8 стражи)", settle.every((s) => s.guards.length >= 8 && s.guards.some((g) => g.soldier!.ranged)), settle.map((s) => s.guards.length).join(","));
   check("стражи: столица > форт > поселение", capital.guards.length > fort.guards.length && fort.guards.length > Math.max(...settle.map((s) => s.guards.length)), `${capital.guards.length} > ${fort.guards.length}`);

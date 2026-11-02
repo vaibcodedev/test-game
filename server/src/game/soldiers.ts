@@ -94,7 +94,7 @@ export interface SoldierState {
   /** Ведущий патруля: направление хода (единичный вектор, сглажено) — от него считается строй (follow). */
   hx: number;
   hy: number;
-  /** Сила (шаг 7, data/npc-ranks.json): "" — обычный боец, "champion" — чемпион, "rankN" — звание стражи столицы. */
+  /** Сила (шаг 7, data/npc-ranks.json): "" — обычный боец, "champion" — чемпион, "sergeant"/"captain" — вожак группы (leaders), "rankN" — звание стражи столицы. */
   power: string;
   /** Отряд Полей (шаг 11): боец — патруль по дороге из форта, у отряда свой выход, стычка и уход. */
   squad?: Squad;
@@ -140,18 +140,28 @@ export function npcHeroStats(cls: ClassId, plus: number) {
   HERO.set(key, h);
   return h;
 }
-/** Сила NPC: champion — чемпион, rank — звание стражи столицы (индекс в data/npc-ranks.json capital.ranks), ember — стража Эмберхолла. */
-export type NpcPower = { kind: "champion" } | { kind: "rank"; rank: number } | { kind: "ember" };
+/** Место группы с вожаком (data/npc-ranks.json leaders.places): патруль, стража поселения, пост моста, стража форта. */
+export type LeaderPlace = "patrol" | "settlement" | "bridge" | "fort";
+type LeaderRank = { plus: number; hp: number; dmg: number; names: Record<string, Record<Kind, string>> };
+const LEADER_RANKS = NR.leaders.ranks as Record<string, LeaderRank>;
+/** Звание вожака места (sergeant, captain). */
+export const leaderRank = (place: LeaderPlace): string => NR.leaders.places[place];
+/** Вожак ли боец с такой силой (SoldierState.power): звание из data/npc-ranks.json leaders.ranks. */
+export const isLeaderPower = (power: string): boolean => Object.hasOwn(LEADER_RANKS, power);
+/** Сила NPC: champion — чемпион, leader — вожак группы по месту, rank — звание стражи столицы (индекс в data/npc-ranks.json capital.ranks), ember — стража Эмберхолла. */
+export type NpcPower = { kind: "champion" } | { kind: "leader"; place: LeaderPlace } | { kind: "rank"; rank: number } | { kind: "ember" };
+/** Строка силы бойца (SoldierState.power). */
+const powerTag = (p: NpcPower | null): string => (!p ? "" : p.kind === "rank" ? `rank${p.rank}` : p.kind === "leader" ? leaderRank(p.place) : p.kind);
 /**
  * Статы героя 100 ур. для NPC (data/npc-ranks.json): здоровье и броня героя, урон автоатаки на перезарядку бойца, входящий урон — как герою
  * в PvP (pvp.damage на 100-м). Их же берёт стража Эмберхолла (townfolk.ts).
  */
 export function npcPowerStats(f: Faction, kind: Kind, power: NpcPower, attackCd: number) {
   const cls = NR.classes[f][kind] as ClassId;
-  const C = NR.champion, E = NR.ember;
-  const plus = power.kind === "rank" ? NR.capital.ranks[power.rank].plus : power.kind === "ember" ? E.plus : C.plus;
+  const C = NR.champion, E = NR.ember, L = power.kind === "leader" ? LEADER_RANKS[leaderRank(power.place)] : null;
+  const plus = power.kind === "rank" ? NR.capital.ranks[power.rank].plus : power.kind === "ember" ? E.plus : L ? L.plus : C.plus;
   const F = C.faction[f];
-  const kh = C.hp * F.hp * (power.kind === "ember" ? E.hp : 1), kd = C.dmg * F.dmg * (power.kind === "ember" ? E.dmg : 1);
+  const kh = (L ? L.hp : C.hp) * F.hp * (power.kind === "ember" ? E.hp : 1), kd = (L ? L.dmg : C.dmg) * F.dmg * (power.kind === "ember" ? E.dmg : 1);
   const h = npcHeroStats(cls, plus), taken = pvpDamageMult(100);
   return { maxHp: Math.round(h.hp * kh), armor: h.armor, dmg: h.hit * (attackCd / h.cd) * taken * kd, taken };
 }
@@ -164,6 +174,7 @@ export function applyNpcPower(m: Mob, f: Faction, kind: Kind, power: NpcPower) {
   m.unit.level = 100;
   m.unit.maxHp = m.unit.hp = st.maxHp;
   if (power.kind === "champion") m.unit.name = NR.champion.names[f][kind];
+  else if (power.kind === "leader") m.unit.name = LEADER_RANKS[leaderRank(power.place)].names[f][kind];
   else if (power.kind === "rank") m.unit.name = NR.capital.ranks[power.rank].name;
 }
 /** Поправка силы обычного бойца (пост моста): множители здоровья и урона к мобу уровня. */
@@ -255,11 +266,8 @@ export class Soldiers {
   }
 
   // ---------- расстановка ----------
-  /** Сколько бойцов прошло через счёт чемпионов (каждый NR.champion.every-й — чемпион). */
-  private nth = 0;
-  /** power: champion/rank — явно; "auto" — каждый every-й чемпион; null — обычный боец. */
-  private add(f: Faction, kind: Kind, level: number, at: Pt, st: Partial<SoldierState> & { role: SoldierRole; group: Mob[] }, name?: string, sprite?: string, power: NpcPower | "auto" | null = "auto"): Mob {
-    if (power === "auto") power = ++this.nth % NR.champion.every === 0 ? { kind: "champion" } : null;
+  /** power: champion/leader/rank — сила бойца; null — обычный боец. Вожак — первый боец группы (решение владельца 2026-11-02). */
+  private add(f: Faction, kind: Kind, level: number, at: Pt, st: Partial<SoldierState> & { role: SoldierRole; group: Mob[] }, name?: string, sprite?: string, power: NpcPower | null = null): Mob {
     const m = new Mob(this.w.uid("s"), soldierDef(f, kind, name, sprite), Math.max(1, level), { x: at.x, y: at.y });
     m.faction = f;
     m.unit.kind = UnitKind.Soldier;
@@ -267,7 +275,7 @@ export class Soldiers {
     m.soldier = {
       ranged: kind === "ranged", site: null, sector: -1, post: null, route: [], loop: false, idx: 0, step: 1, waitUntil: 0,
       anchor: { x: at.x, y: at.y }, chase: P.units[kind].chaseSpeed, foe: null, mobFoe: null, scanAt: 0, near: false, nearAt: 0,
-      px: m.unit.x, py: m.unit.y, wx: m.unit.x, wy: m.unit.y, syncAt: 0, hx: 1, hy: 0, power: power ? (power.kind === "rank" ? `rank${power.rank}` : power.kind) : "", ...st,
+      px: m.unit.x, py: m.unit.y, wx: m.unit.x, wy: m.unit.y, syncAt: 0, hx: 1, hy: 0, power: powerTag(power), ...st,
     };
     if (power) applyNpcPower(m, f, kind, power);
     this.dress(m, f, kind, st, power);
@@ -283,18 +291,19 @@ export class Soldiers {
   private banners = new WeakSet<Mob[]>();
   /**
    * Снаряжение бойца (шаг 8, data/npc-gear.json): ранг по силе и месту, вариант по очереди; тело — класс набора (u.sprite), слои — u.gear и
-   * u.weapon в формате Player.recalc с plus = 0, геральдика — u.herald. Первый не-чемпион отряда — знаменосец, чемпион — с титулом над именем.
+   * u.weapon в формате Player.recalc с plus = 0, геральдика — u.herald. Первый не-чемпион и не-вожак отряда — знаменосец; чемпион и вожак — с титулом над именем,
+   * вожак — в ранге leaders места (выше остальных бойцов места).
    * Пишется один раз при расстановке: снаряжение не меняется, в схеме уходит только с полным состоянием при входе.
    */
   private dress(m: Mob, f: Faction, kind: Kind, st: Partial<SoldierState> & { group: Mob[] }, power: NpcPower | null) {
     const T = NPC_GEAR.tiers;
-    const tier: NpcTier = power?.kind === "champion" ? T.champion : power?.kind === "rank" ? T.capitalRanks[power.rank] ?? T.champion
+    const tier: NpcTier = power?.kind === "champion" ? T.champion : power?.kind === "leader" ? T.leaders[power.place] ?? T.champion : power?.kind === "rank" ? T.capitalRanks[power.rank] ?? T.champion
       : st.squad ? T.fort : st.role === "patrol" ? T.patrol : st.site?.city ? T.fort : st.site ? T.settlement : T.bridge;
     const list = NPC_GEAR.sets[f][tier][kind], key = `${f}:${tier}:${kind}`, n = this.variant.get(key) ?? 0;
     this.variant.set(key, n + 1);
     const set = list[n % list.length];
     // в городах (столицы и форты) знаменосцев нет (решение пользователя 2026-10-24) — только в патрулях, на мостах и в поселениях
-    const bannerman = power?.kind !== "champion" && !st.site?.city && !this.banners.has(st.group);
+    const bannerman = power?.kind !== "champion" && power?.kind !== "leader" && !st.site?.city && !this.banners.has(st.group);
     if (bannerman) this.banners.add(st.group);
     const g = npcGearStrings(set, bannerman), u = m.unit;
     u.sprite = set.cls;
@@ -302,6 +311,7 @@ export class Soldiers {
     u.weapon = g.weapon;
     u.herald = g.herald;
     if (power?.kind === "champion") u.title = NPC_GEAR.championTitle[f] ?? "";
+    else if (power?.kind === "leader") u.title = NPC_GEAR.leaderTitle[power.place] ?? "";
   }
 
   /** Патрули на дорогах: участок дороги Сольгарда и его зеркало у Умбрата, уровень — по середине участка Сольгарда. */
@@ -320,7 +330,8 @@ export class Soldiers {
         for (let i = 0; i < r.size; i++) {
           const h0 = route.length > 1 ? Math.hypot(route[1].x - route[0].x, route[1].y - route[0].y) || 1 : 1;
           const hx = route.length > 1 ? (route[1].x - route[0].x) / h0 : 1, hy = route.length > 1 ? (route[1].y - route[0].y) / h0 : 0;
-          this.add(f, i % 2 ? "ranged" : "melee", level, route[0], { role: "patrol", group, route, idx: Math.min(1, route.length - 1), hx, hy });
+          this.add(f, i % 2 ? "ranged" : "melee", level, route[0], { role: "patrol", group, route, idx: Math.min(1, route.length - 1), hx, hy },
+            undefined, undefined, i === 0 ? { kind: "leader", place: "patrol" } : null);
         }
       }
     }
@@ -339,9 +350,9 @@ export class Soldiers {
       for (let i = 0; i < P.bridges.size; i++) {
         const back = Math.floor(i / 2) * (west ? -1 : 1); // третий и дальше — на клетку ближе к стене
         const at = free(map, (px + back) * TILE + 16, (cy + (i % 2 ? 1 : -1)) * TILE + 16, taken);
-        // на каждом мосту минимум один чемпион — первый ближник; остальные сильнее обычных (bridges.hp/dmg)
+        // первый — вожак-капитан (data/npc-ranks.json leaders); остальные сильнее обычных (bridges.hp/dmg)
         const m = this.add(f, i % 2 ? "ranged" : "melee", P.bridges.level, at, { role: "post", group, post: { ...at, dir: west ? Dir.Right : Dir.Left } }, undefined, undefined,
-          i === 0 ? { kind: "champion" } : null);
+          i === 0 ? { kind: "leader", place: "bridge" } : null);
         if (i) boost(m, P.bridges);
       }
     }
@@ -366,7 +377,7 @@ export class Soldiers {
         const kind: Kind = i % 2 ? "ranged" : "melee";
         const dir = i < s.posts.length ? (side ? (dx < 0 ? Dir.Left : Dir.Right) : Dir.Down) : outward(dx, dy);
         this.add(s.faction, kind, level, at, { role: "post", group: site.guards, site, post: { ...at, dir } },
-          kind === "melee" ? s.guard.name : undefined, kind === "melee" ? s.guard.sprite : undefined);
+          kind === "melee" ? s.guard.name : undefined, kind === "melee" ? s.guard.sprite : undefined, i === 0 ? { kind: "leader", place: "settlement" } : null);
       });
       const route = s.patrol.map(([dx, dy]) => ({ x: (s.x + dx) * TILE, y: (s.y + dy) * TILE }));
       // патрули по улицам: ближник и дальник по очереди, стартуют с разных точек круга
@@ -387,11 +398,12 @@ export class Soldiers {
       const site: SoldierSite = { x: c.x, y: c.y, half: c.half, faction: f, guards: [], lines: c.guard?.lines ?? [], city: { c, cols: cfg.cols, rows: cfg.rows, min: cfg.min } };
       this.sites.push(site);
       const taken = new Set<number>();
-      // столица — звания (data/npc-ranks.json capital), форт — обычные бойцы и каждый every-й чемпион
-      let nr = 0;
+      // столица — звания (data/npc-ranks.json capital), форт — вожак-капитан (первый пост) и обычные бойцы
+      let nr = 0, lead = !!c.fort;
       const put = (x: number, y: number, kind: Kind, dir: Dir, gate: boolean) => {
         const at = free(map, x, y, taken);
-        const power: NpcPower | "auto" = c.fort ? "auto" : { kind: "rank", rank: gate ? NR.capital.gateRank : RANK_CYCLE[nr++ % RANK_CYCLE.length] };
+        const power: NpcPower | null = c.fort ? (lead ? { kind: "leader", place: "fort" } : null) : { kind: "rank", rank: gate ? NR.capital.gateRank : RANK_CYCLE[nr++ % RANK_CYCLE.length] };
+        lead = false;
         this.add(f, kind, cfg.level, at, { role: "guard", group: site.guards, site, sector: this.sectorOf(site, at.x, at.y), post: { ...at, dir } },
           kind === "melee" ? c.guard?.name : undefined, kind === "melee" ? c.guard?.sprite : undefined, power);
       };
@@ -983,12 +995,12 @@ export class Soldiers {
     s.hx = Math.cos(a);
     s.hy = Math.sin(a);
   }
-  /** Ведущий патруля: живой чемпион, иначе первый живой ближник, иначе первый живой. */
+  /** Ведущий патруля: живой чемпион или вожак, иначе первый живой ближник, иначе первый живой. */
   private leader(group: Mob[]): Mob | null {
     let melee: Mob | null = null, any: Mob | null = null;
     for (const g of group) {
       if (!this.alive(g)) continue;
-      if (g.soldier!.power === "champion") return g;
+      if (g.soldier!.power === "champion" || isLeaderPower(g.soldier!.power)) return g;
       if (!g.soldier!.ranged) melee ??= g;
       any ??= g;
     }
