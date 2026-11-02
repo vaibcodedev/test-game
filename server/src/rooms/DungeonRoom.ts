@@ -9,8 +9,7 @@ import { RECONNECT_SEC } from "../../../shared/accounts";
 import { PATCH_MS, TICK_MS } from "../../../shared/constants";
 import { DUNGEON_ENTRY, DUNGEON_EXIT, DUNGEON_GATES, bossLootStatus, generateDungeonMap } from "../../../shared/dungeon";
 import { CELL_BLOCK } from "../../../shared/map";
-import { gateAllows, gatePassable, newGate, stepGate } from "../../../shared/gates";
-import { TILE } from "../../../shared/constants";
+import { DungeonGates } from "../game/dungeonGates";
 import { DOOR_FADE_MS, DOOR_RANGE } from "../../../shared/interiors";
 import { DUNGEON_DOOR, MAP_VERSION } from "../../../shared/map";
 import { ROOM_NAME } from "../../../shared/protocol";
@@ -38,28 +37,19 @@ export class DungeonRoom extends Room<WorldState> {
   world!: World;
   private homeBound = new Set<string>();
   private saveTimer = 0;
-  /** Ворота данжа на общей модели (shared/gates.ts): нейтральные, автооткрытие при подходе героя, закрытие при пустом проёме; клетки проёма блокируются по состоянию. */
-  private gates = DUNGEON_GATES.map((g) => ({ g, m: newGate(g.id, g.kind === "wood" ? "doors" : "portcullis", g.cells.length) }));
+  /** Ворота данжа (server/src/game/dungeonGates.ts): автомат shared/gates.ts, клетки просвета по проходимости; клиенту — open и pass. */
+  private gates!: DungeonGates;
   private gateTick(dtMs: number) {
-    const w = this.world;
-    for (const s of this.gates) {
-      const near = [...w.players.values()].some((p) => !p.dead && gateAllows(s.m.owner, undefined) && Math.abs(p.unit.x - s.g.cx) <= 96 && Math.abs(p.unit.y - s.g.cy) <= 80);
-      const busy = (u: { x: number; y: number }) => s.g.cells.some(([cx, cy]) => Math.abs(u.x - (cx + 0.5) * TILE) < TILE * 0.75 && Math.abs(u.y - (cy + 0.5) * TILE) < TILE * 0.75);
-      const was = s.m.state;
-      const changed = stepGate(s.m, dtMs, near, [...w.players.values()].some((p) => busy(p.unit)) || [...w.mobs.values()].some((m) => busy(m.unit)));
-      const m = w.map, pass = gatePassable(s.m);
-      for (const [cx, cy] of s.g.cells) { if (pass) m.cell[cy * m.w + cx] &= ~CELL_BLOCK; else m.cell[cy * m.w + cx] |= CELL_BLOCK; }
-      if (changed && (s.m.state === "opening" || s.m.state === "closing" || was === "open")) this.broadcast("dg:gate", { id: s.g.id, open: s.m.state === "opening" || s.m.state === "open" });
-    }
+    for (const m of this.gates.tick(dtMs)) this.broadcast("dg:gate", m);
   }
-  private sendGates(c: Client) { c.send("dg:gates", { open: this.gates.filter((s) => s.m.state === "open" || s.m.state === "opening").map((s) => s.g.id) }); }
+  private sendGates(c: Client) { c.send("dg:gates", this.gates.snapshot()); }
 
   override onCreate() {
     this.setPrivate(true);
     this.setSeatReservationTime(20);
     this.setState(new WorldState());
     this.world = new World(this.state, (t, m) => this.broadcast(t, m), { map: generateDungeonMap(), dungeon: true, quiet: true });
-    for (const s of this.gates) for (const [cx, cy] of s.g.cells) this.world.map.cell[cy * this.world.map.w + cx] |= CELL_BLOCK; // ворота закрыты
+    this.gates = new DungeonGates(this.world); // ворота закрыты
     const on = makeOn(this, () => this.world);
     registerCombat(on, () => this.world);
     registerItems(on, () => this.world);

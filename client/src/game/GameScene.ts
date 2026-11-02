@@ -59,7 +59,7 @@ import { FortScenes } from "./fortScenes";
 import { Bubble, setBubbleObstacles, type LabelRect } from "./bubble";
 import { BannerBases } from "./bannerBases";
 import { SiegeView } from "./siegeView";
-import { moveGated } from "../../../shared/siege";
+import { gateBlocker, moveGated } from "../../../shared/siege";
 import { STATUES, type StatueKey } from "../ui/statue";
 import { T } from "../../../shared/texts";
 import { objHas, objTex } from "./objTex";
@@ -361,16 +361,17 @@ export class GameScene extends Phaser.Scene {
     }
     // ворота подземелья: сервер шлёт состояние; клиент зеркалит проходимость клеток просвета (клик-ход и расчёт пути)
     if (net.kind === "dungeon") {
-      const apply = (id: string, open: boolean) => {
+      // open — картинка, pass — проходимость (как CELL_BLOCK на сервере, server/src/game/dungeonGates.ts): иначе шаг расходился с сервером
+      const apply = (id: string, open: boolean, pass: boolean) => {
         dgGateOpen.set(id, open);
         const g = DUNGEON_GATES.find((q) => q.id === id);
-        if (g) for (const [cx, cy] of g.cells) { const i = cy * this.map.w + cx; if (open) this.map.cell[i] &= ~CELL_BLOCK; else this.map.cell[i] |= CELL_BLOCK; }
+        if (g) for (const [cx, cy] of g.cells) { const i = cy * this.map.w + cx; if (pass) this.map.cell[i] &= ~CELL_BLOCK; else this.map.cell[i] |= CELL_BLOCK; }
       };
       dgGateOpen.clear();
-      for (const g of DUNGEON_GATES) apply(g.id, net.dgGates.get(g.id) ?? false); // то, что сервер уже прислал, пока сцена создавалась
+      for (const g of DUNGEON_GATES) apply(g.id, net.dgGates.get(g.id) ?? false, net.dgPass.get(g.id) ?? false); // то, что сервер уже прислал, пока сцена создавалась
       net.send("dg:sync", {}); // и на всякий случай запросить состояние заново: ответ придёт dg:gates
-      this.cleanup.push(net.on("dg:gate", (m) => apply(m.id, m.open)));
-      this.cleanup.push(net.on("dg:gates", (m) => { for (const g of DUNGEON_GATES) apply(g.id, m.open.includes(g.id)); }));
+      this.cleanup.push(net.on("dg:gate", (m) => apply(m.id, m.open, m.pass)));
+      this.cleanup.push(net.on("dg:gates", (m) => { for (const g of DUNGEON_GATES) apply(g.id, m.open.includes(g.id), m.pass.includes(g.id)); }));
     }
     // затемнение перед переходом в подземелье и обратно (сервер шлёт dungeon:fade, затем резервацию — сцена пересоздаётся)
     this.cleanup.push(net.on("dungeon:fade", (m) => { this.clickGoal = null; this.pendingNpc = null; this.cameras.main.fadeOut(m.ms ?? 300, 0, 0, 0); this.wow?.dungeonFade(m.ms ?? 300); }));
@@ -1537,7 +1538,7 @@ export class GameScene extends Phaser.Scene {
         const goal = this.clickGoal;
         if (Math.hypot(goal.x - this.pos.x, goal.y - this.pos.y) <= 2.5) this.clickGoal = null;
         else {
-          const wp = this.clickNav.next(this.map, this.pos.x, this.pos.y, goal.x, goal.y, PLAYER_RADIUS, now);
+          const wp = this.clickNav.next(this.map, this.pos.x, this.pos.y, goal.x, goal.y, PLAYER_RADIUS, now, net.kind === "world" && this.siegeView ? gateBlocker(net.self?.faction ?? "") : undefined); // путь обходит закрытые ворота, как сервер
           if (!wp) this.clickGoal = null;
           else {
             const dx = wp.x - this.pos.x, dy = wp.y - this.pos.y, d = Math.hypot(dx, dy) || 1;

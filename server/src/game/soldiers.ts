@@ -24,7 +24,7 @@ import { derive } from "../../../shared/formulas";
 import { raidBotSave } from "../arena/botgear";
 import { SETTLEMENTS } from "../../../shared/settlements";
 import { soldierHostile } from "../../../shared/factions";
-import { lineClear, moveWithCollision, roundPos, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
+import { lineClear, walkable, zoneAtPx, ZONES, type WorldMap } from "../../../shared/map";
 import { crowdStep } from "../../../shared/crowd";
 import { BELT_HALF, GUARD_RANGE_TILES, TOWN } from "../../../shared/town";
 import { NPC_GEAR, npcGearStrings, type NpcTier } from "../../../shared/npcGear";
@@ -1043,7 +1043,7 @@ export class Soldiers {
     const x = s.px, y = s.py;
     if (Math.hypot(gx - x, gy - y) <= stopAt + 0.5) return this.sync(m, true), false;
     const r = Math.min(12, m.def.radius * 0.6);
-    const wp = m.nav.next(map, x, y, gx, gy, r, t);
+    const wp = m.nav.next(map, x, y, gx, gy, r, t, this.w.gateBlk(m.faction)); // ворота городов: чужие обходят, как World.moveMob
     if (!wp) return this.sync(m, true), false;
     const final = wp.x === gx && wp.y === gy;
     const dx = wp.x - x, dy = wp.y - y, d = Math.hypot(dx, dy) || 1;
@@ -1052,9 +1052,10 @@ export class Soldiers {
     // разведение толпы (shared/crowd.ts) — только в бою (не слипаются у цели); в походе строй держат слоты формации
     const fight = !!s.foe || !!s.mobFoe;
     const c = fight ? crowdStep(this.w.crowd, m, x, y, r, (dx / d) * sp, (dy / d) * sp, 0, gx, gy) : { x: (dx / d) * sp, y: (dy / d) * sp };
-    const n = moveWithCollision(map, x, y, c.x, c.y, r);
+    // шаг с воротами городов (World.move: чужие упираются в закрытые, свои проходят), раньше бойцы шли сквозь чужие ворота
+    const n = this.w.move(x, y, c.x, c.y, r, m.faction);
     const moved = Math.abs(n.x - x) + Math.abs(n.y - y) > 0.01;
-    const q = roundPos(map, x, y, n, r); // не Math.round: мог поставить на кромку стены — застревал
+    const q = this.w.place(x, y, n, r, m.faction); // не Math.round: мог поставить на кромку стены — застревал
     s.px = q.x;
     s.py = q.y;
     const dir = dirTo(dx, dy);

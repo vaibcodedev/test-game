@@ -8,7 +8,8 @@ import { gateAllows } from "./gates";
 import data from "../data/siege.json";
 import { CITIES, layoutOf } from "./cities";
 import { TILE } from "./constants";
-import { walkable, type WorldMap } from "./map";
+import { moveWithCollision, type WorldMap } from "./map";
+import type { PathBlock } from "./path";
 import type { WarBaseView, WarFaction, WarTopRow } from "./bannerWar";
 
 export const SIEGE = data;
@@ -63,18 +64,52 @@ export function gateBlocks(x: number, y: number, r: number, faction: string): bo
   }
   return false;
 }
-/** Шаг с учётом стен и ворот (скольжение по осям, как moveWithCollision). Уже стоящего в проёме (ворота починили) выпускает. */
+/**
+ * Шаг с учётом стен и ворот — тот же moveWithCollision (скольжение по осям, 3 деления пополам у кромки, выход из воды) с воротами поверх карты.
+ * Уже стоящего в проёме (ворота починили) выпускает.
+ */
 export function moveGated(m: WorldMap, x: number, y: number, dx: number, dy: number, r: number, faction: string) {
-  const stuck = gateBlocks(x, y, r, faction);
-  const ok = (px: number, py: number) => walkable(m, px, py, r) && (stuck || !gateBlocks(px, py, r, faction));
-  // упёрся — шаг укорачивается 3 делениями пополам, как в moveWithCollision: герой доходит до основания объекта вплотную (зазор ≤ 1 px),
-  // а не останавливается за целый шаг тика (до 8–10 px; docs/art/perspective.md «Коллизии объектов», 2026-10-30)
-  const cut = (f: (k: number) => boolean) => { let lo = 0, hi = 1; for (let k = 0; k < 3; k++) { const mid = (lo + hi) / 2; if (f(mid)) lo = mid; else hi = mid; } return lo; };
-  let nx = x + dx, ny = y;
-  if (!ok(nx, ny)) nx = x + dx * cut((k) => ok(x + dx * k, y));
-  ny = y + dy;
-  if (!ok(nx, ny)) ny = y + dy * cut((k) => ok(nx, y + dy * k));
-  return { x: nx, y: ny };
+  if (gateBlocks(x, y, r, faction)) return moveWithCollision(m, x, y, dx, dy, r);
+  return moveWithCollision(m, x, y, dx, dy, r, (px, py) => gateBlocks(px, py, r, faction));
+}
+/** Клетки проёмов ворот (ty * 65536 + tx → ворота): быстрый отказ в A* для всех прочих клеток. */
+const GATE_CELLS = new Map<number, GateDef>();
+for (const g of GATES) for (let tx = g.tx0; tx <= g.tx1; tx++) GATE_CELLS.set(g.ty * 65536 + tx, g);
+/** Закрыта ли клетка (тайлы) воротами для фракции. */
+export function gateCellBlocks(cx: number, cy: number, faction: string): boolean {
+  const g = GATE_CELLS.get(cy * 65536 + cx);
+  return !!g && !gateAllows(g.faction, faction, GATE_BROKEN.has(g.id));
+}
+/** Ворота для поиска пути (shared/path.ts PathBlock): A* и прямая видимость обходят закрытые для фракции ворота, как шаг moveGated. */
+export function gateBlocker(faction: string): PathBlock {
+  return { cell: (cx, cy) => gateCellBlocks(cx, cy, faction), at: (x, y, r) => gateBlocks(x, y, r, faction) };
+}
+/**
+ * Куда тянуть створки на экране (0 — закрыто, 1 — открыто): у сломанных — 0 (кадр пролома), открываются, только когда свой у ворот (ownNear)
+ * и смотрящий сам может пройти. Чужой видит ворота закрытыми всегда — картинка совпадает с проходимостью (2026-11-02).
+ */
+export function gateVisTarget(gateFaction: string, viewerFaction: string | undefined, broken: boolean, ownNear: boolean): 0 | 1 {
+  if (broken) return 0;
+  return ownNear && gateAllows(gateFaction, viewerFaction) ? 1 : 0;
+}
+/**
+ * Чужой заперт в городе с воротами: точка внутри стен (|dx| < wall.x, |dy| < wall.y от центра), ворота закрыты для фракции, пролома нет.
+ * Возвращает точку перед ближайшими воротами снаружи (куда вывести), иначе null. Сервер выводит так чужих после починки ворот (конец осады)
+ * и при входе в мир (сохранились внутри) — иначе герой стоял бы в форте без выхода (2026-11-02, tests/unit/gates.ts).
+ */
+export function trappedOut(x: number, y: number, faction: string): { x: number; y: number } | null {
+  const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+  for (const id of data.gates.cities) {
+    const c = CITIES.find((q) => q.id === id);
+    if (!c) continue;
+    const L = layoutOf(c);
+    if (Math.abs(tx - c.x) >= L.wall.x || Math.abs(ty - c.y) >= L.wall.y) continue;
+    const gs = GATES.filter((g) => g.city === id);
+    if (!gs.length || gs.some((g) => gateAllows(g.faction, faction, GATE_BROKEN.has(g.id)))) return null;
+    const g = gs.reduce((a, b) => (Math.hypot(b.x - x, b.y - y) < Math.hypot(a.x - x, a.y - y) ? b : a));
+    return { x: g.ox, y: g.oy };
+  }
+  return null;
 }
 /** Прошёл ли отрезок (рывок, прыжок) сквозь закрытые для фракции ворота. */
 export function crossesGate(x0: number, y0: number, x1: number, y1: number, faction: string): GateDef | null {

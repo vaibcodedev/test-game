@@ -1660,19 +1660,21 @@ export function walkable(m: WorldMap, px: number, py: number, r: number): boolea
   return walkIn(m, px, py, r, false);
 }
 /** Двигает точку с учётом стен, скользя вдоль препятствий; у кромки шаг укорачивается (3 деления пополам), чтобы дойти до неё вплотную. */
-export function moveWithCollision(m: WorldMap, x: number, y: number, dx: number, dy: number, r: number) {
+export function moveWithCollision(m: WorldMap, x: number, y: number, dx: number, dy: number, r: number, block?: (x: number, y: number) => boolean) {
   // уже стоим в воде (телепорт, старое сохранение): выходить можно куда угодно, иначе юнит застрял бы навсегда
   const sw = EDGE_COLLISION && waterUnderFoot(m, x, y);
+  // block — препятствие поверх карты (закрытые ворота городов, shared/siege.ts moveGated): так выход из воды работает и в мире с воротами
+  const ok = (px: number, py: number) => walkIn(m, px, py, r, sw) && !block?.(px, py);
   let nx = x + dx, ny = y;
-  if (!walkIn(m, nx, ny, r, sw)) {
+  if (!ok(nx, ny)) {
     let lo = 0, hi = 1;
-    for (let k = 0; k < 3; k++) { const mid = (lo + hi) / 2; if (walkIn(m, x + dx * mid, y, r, sw)) lo = mid; else hi = mid; }
+    for (let k = 0; k < 3; k++) { const mid = (lo + hi) / 2; if (ok(x + dx * mid, y)) lo = mid; else hi = mid; }
     nx = x + dx * lo;
   }
   ny = y + dy;
-  if (!walkIn(m, nx, ny, r, sw)) {
+  if (!ok(nx, ny)) {
     let lo = 0, hi = 1;
-    for (let k = 0; k < 3; k++) { const mid = (lo + hi) / 2; if (walkIn(m, nx, y + dy * mid, r, sw)) lo = mid; else hi = mid; }
+    for (let k = 0; k < 3; k++) { const mid = (lo + hi) / 2; if (ok(nx, y + dy * mid)) lo = mid; else hi = mid; }
     ny = y + dy * lo;
   }
   return { x: nx, y: ny };

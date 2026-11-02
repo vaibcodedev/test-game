@@ -196,6 +196,7 @@ export class WorldRoom extends Room<OpenWorldState> {
     p.admin = WorldRoom.db.isAdmin(p.name);
     p.accountId = auth.accountId ?? WorldRoom.db.ownerOf(p.name) ?? 0;
     this.world.addPlayer(p, auth.fromArena ? T("srv.WorldRoom.848", { name: p.name }) : auth.fromRaid ? T("srv.WorldRoom.849", { name: p.name }) : undefined);
+    this.world.unTrap(p); // вход в мир внутри чужого города с закрытыми воротами (вышел в осаду, ворота починили) — у ворот снаружи
     this.vis.attach(client, p); // до полного состояния: клиенту сразу уходят юниты вокруг героя
     client.send("welcome", { id: client.sessionId, seed: this.world.map.seed, created: auth.created });
     sendNodes(this.world, p);

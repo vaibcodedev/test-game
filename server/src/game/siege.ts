@@ -255,7 +255,7 @@ export class FortSiege {
     if (ram) {
       const gx = e.gate.ox, gy = e.gate.oy, d = Math.hypot(gx - m.x, gy - m.y);
       if (d > 6) {
-        const wp = m.nav.next(this.w.map, m.x, m.y, gx, gy, 10, this.w.time);
+        const wp = m.nav.next(this.w.map, m.x, m.y, gx, gy, 10, this.w.time, this.w.gateBlk(this.att));
         if (wp) {
           const dx = wp.x - m.x, dy = wp.y - m.y, dd = Math.hypot(dx, dy) || 1, sp = Math.min(D.ram.speed * (dt / 1000), dd);
           const n = this.w.move(m.x, m.y, (dx / dd) * sp, (dy / dd) * sp, 10, this.att);
@@ -374,6 +374,8 @@ export class FortSiege {
   private finish() {
     const fixed = this.gates.filter((g) => g.broken);
     for (const g of this.gates) GATE_BROKEN.delete(g.def.id);
+    // ворота снова закрыты для чужих: оставшиеся в форте нападающие выходят к воротам снаружи, а не сидят взаперти
+    for (const p of this.w.players.values()) this.w.unTrap(p);
     this.clearUnits();
     this.phase = "idle";
     if (fixed.length) {

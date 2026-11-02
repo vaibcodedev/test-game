@@ -1,6 +1,6 @@
 /** Питомцы: серверные союзники игрока (следуют, бьют цель хозяина, умения, опыт, призыв). */
 import { armorReduction } from "../../../shared/formulas";
-import { lineClear, moveWithCollision, roundPos } from "../../../shared/map";
+import { lineClear } from "../../../shared/map";
 import { Nav } from "../../../shared/path";
 import { MOVE_MUL } from "../../../shared/constants";
 import {
@@ -233,14 +233,16 @@ function strike(w: World, pet: Pet, mob: Actor, mult: number, kind: "phys" | "fi
 export function petStep(w: World, pet: Pet, gx: number, gy: number, dt: number, speed: number, stopAt: number): boolean {
   const u = pet.unit;
   if (Math.hypot(gx - u.x, gy - u.y) <= stopAt + 0.5) return false;
-  const wp = pet.nav.next(w.map, u.x, u.y, gx, gy, PET_MOVE_R, w.time);
+  // ворота городов — по фракции хозяина (World.move / gateBlk): питомец не проходит сквозь закрытые для хозяина ворота
+  const fac = pet.owner.faction;
+  const wp = pet.nav.next(w.map, u.x, u.y, gx, gy, PET_MOVE_R, w.time, w.gateBlk(fac));
   if (!wp) return false;
   const final = wp.x === gx && wp.y === gy;
   const dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy) || 1;
   const sp = Math.min(speed * dt, final ? d - stopAt : d);
-  const n = moveWithCollision(w.map, u.x, u.y, (dx / d) * sp, (dy / d) * sp, PET_MOVE_R);
+  const n = w.move(u.x, u.y, (dx / d) * sp, (dy / d) * sp, PET_MOVE_R, fac);
   const moved = Math.abs(n.x - u.x) + Math.abs(n.y - u.y) > 0.01;
-  const q = roundPos(w.map, u.x, u.y, n, PET_MOVE_R); // не Math.round: мог поставить на кромку стены — застревал
+  const q = w.place(u.x, u.y, n, PET_MOVE_R, fac); // не Math.round: мог поставить на кромку стены — застревал
   u.x = q.x;
   u.y = q.y;
   u.dir = World.dirTo(dx, dy);

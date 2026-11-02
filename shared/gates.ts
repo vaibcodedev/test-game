@@ -37,7 +37,8 @@ export function stepGate(g: GateModel, dtMs: number, near: boolean, busy: boolea
   if (g.state === "broken") return false;
   const want = near && !g.locked;
   if (g.state === "closed") { if (want) g.state = "opening"; }
-  else if (g.state === "opening") { g.t = Math.min(1, g.t + dtMs / GATE_OPEN_MS); if (g.t >= 1) g.state = "open"; }
+  // открылись — выдержка с полного срока: ушедший, пока створки шли, не захлопывает их сразу (2026-11-02)
+  else if (g.state === "opening") { g.t = Math.min(1, g.t + dtMs / GATE_OPEN_MS); if (g.t >= 1) { g.state = "open"; g.hold = GATE_HOLD_MS; } }
   else if (g.state === "open") { g.hold = want ? GATE_HOLD_MS : Math.max(0, g.hold - dtMs); if (g.hold <= 0 && !busy) g.state = "closing"; }
   else if (g.state === "closing") { if (want) g.state = "opening"; else { g.t = Math.max(0, g.t - dtMs / GATE_CLOSE_MS); if (g.t <= 0) g.state = "closed"; } }
   return g.state !== was;

@@ -43,7 +43,7 @@ import { BannerWar, type WarStore } from "./bannerWar";
 import { FortSiege } from "./siege";
 import { EventClock } from "./eventClock";
 import { WorldBosses, type WbStore } from "../worldboss";
-import { gateBlocks, moveGated } from "../../../shared/siege";
+import { gateBlocker, gateBlocks, moveGated, trappedOut } from "../../../shared/siege";
 import { grantPets, mobAttackPet, tickPetCast, updatePet, dismissAllPets, type Pet } from "./Pet";
 import { applySlow, breakFear, endShield, fearDir, tickEffects } from "./effects";
 import { CC, slowMul, slowPctCap } from "../../../shared/cc";
@@ -819,6 +819,20 @@ export class World {
   move(x: number, y: number, dx: number, dy: number, r: number, faction: string) {
     return this.siege ? moveGated(this.map, x, y, dx, dy, r, faction) : moveWithCollision(this.map, x, y, dx, dy, r);
   }
+  /** Чужой внутри стен города с целыми воротами (shared/siege.ts trappedOut) — на точку перед воротами снаружи. */
+  unTrap(p: Player): boolean {
+    const out = trappedOut(p.unit.x, p.unit.y, p.faction);
+    if (!out) return false;
+    p.unit.x = out.x;
+    p.unit.y = out.y;
+    p.moveTo = null;
+    p.nav.reset();
+    return true;
+  }
+  /** Ворота для поиска пути (Nav.next): в мире A* обходит закрытые для фракции ворота так же, как их держит move(). */
+  gateBlk(faction: string) {
+    return this.siege ? gateBlocker(faction) : undefined;
+  }
   /** Место после шага move(): до 0,1 px, но не в стену и не в закрытые ворота (shared/map.ts roundPos; голый Math.round ставил на кромку — застревал). */
   place(ox: number, oy: number, n: { x: number; y: number }, r: number, faction: string) {
     const ok = this.siege ? (x: number, y: number) => walkable(this.map, x, y, r) && !gateBlocks(x, y, r, faction) : undefined;
@@ -838,7 +852,7 @@ export class World {
     const u = p.unit;
     const gd = Math.hypot(gx - u.x, gy - u.y);
     if (gd <= stopAt + 0.5) return false;
-    const wp = p.nav.next(this.map, u.x, u.y, gx, gy, PLAYER_RADIUS, this.time);
+    const wp = p.nav.next(this.map, u.x, u.y, gx, gy, PLAYER_RADIUS, this.time, this.gateBlk(p.faction));
     if (!wp) return false;
     const final = wp.x === gx && wp.y === gy;
     const tx = wp.x, ty = wp.y;
@@ -1053,7 +1067,7 @@ export class World {
     const u = m.unit;
     if (Math.hypot(gx - u.x, gy - u.y) <= stopAt + 0.5) return false;
     const r = Math.min(12, m.def.radius * 0.6);
-    const wp = m.nav.next(this.map, u.x, u.y, gx, gy, r, this.time);
+    const wp = m.nav.next(this.map, u.x, u.y, gx, gy, r, this.time, this.gateBlk(m.faction));
     if (!wp) return false;
     const final = wp.x === gx && wp.y === gy;
     const tx = wp.x, ty = wp.y;

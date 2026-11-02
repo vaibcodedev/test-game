@@ -12,7 +12,7 @@
 import Phaser from "phaser";
 import { WAR, type WarFaction } from "../../../shared/bannerWar";
 import { TILE } from "../../../shared/constants";
-import { GATES, GATE_BROKEN, SIEGE, siegeBannerAt, type GateDef, type SiegeFxMsg } from "../../../shared/siege";
+import { GATES, GATE_BROKEN, SIEGE, gateVisTarget, siegeBannerAt, type GateDef, type SiegeFxMsg } from "../../../shared/siege";
 import { net } from "../net";
 import { siegeView, siegeNow } from "../ui/siege";
 import { DEPTH } from "./terrain";
@@ -168,7 +168,7 @@ export class SiegeView {
 
     const near = Math.abs(v.g.x - camX) < 1400 && Math.abs(v.g.y - camY) < 1000;
     const broken = GATE_BROKEN.has(v.g.id);
-    const target = broken ? 0 : near && this.ownNear(v.g, units) ? 1 : 0;
+    const target = gateVisTarget(v.g.faction, net.self?.faction, broken, near && this.ownNear(v.g, units)); // чужому — закрыты всегда, как проходимость
     // ~0,55 с на полный ход створок
     // при k == target — стоим: иначе открытые ворота (k = 1, target = 1) уходили в ветку закрытия и моргали створками каждые ~3 кадра
     v.k = target > v.k ? Math.min(1, v.k + dt / 0.55) : target < v.k ? Math.max(0, v.k - dt / 0.7) : v.k;

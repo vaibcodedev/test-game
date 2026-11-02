@@ -68,8 +68,8 @@ type Events = {
   /** Подземелье «Пепельные чертоги»: затемнение перед переходом и статус трофеев босса на сегодня. */
   "dungeon:fade": { ms?: number };
   "dungeon:status": { looted: boolean; leftMs: number; at: number };
-  "dg:gate": { id: string; open: boolean };
-  "dg:gates": { open: string[] };
+  "dg:gate": { id: string; open: boolean; pass: boolean };
+  "dg:gates": { open: string[]; pass: string[] };
   "raid:muster": RaidMusterMsg;
   /** Мировые боссы и лента событий (задача 151; окно — следующая партия). */
   wboss: WbStateMsg;
@@ -196,6 +196,8 @@ export class Net {
   dungeon: { looted: boolean; leftMs: number; at: number } | null = null;
   /** Ворота подземелья: id → открыты (по последнему сообщению сервера), и приходил ли полный список. */
   dgGates = new Map<string, boolean>();
+  /** Проходим ли просвет ворот данжа (id → да); картинка — dgGates. */
+  dgPass = new Map<string, boolean>();
   dgGatesKnown = false;
   arena: ArenaWelcome | null = null;
   raid: RaidWelcome | null = null;
@@ -451,8 +453,14 @@ export class Net {
     room.onMessage("dungeon:go", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     room.onMessage("dungeon:return", (m: { reservation: Reservation }) => void this.switchTo(m.reservation));
     // состояние ворот подземелья хранит сам Net: сообщения приходят сразу после welcome, раньше, чем сцена успевает подписаться; источник правды — сервер
-    room.onMessage("dg:gate", (m: { id: string; open: boolean }) => { this.dgGates.set(m.id, m.open); this.emit("dg:gate", m); });
-    room.onMessage("dg:gates", (m: { open: string[] }) => { this.dgGates.clear(); for (const id of m.open) this.dgGates.set(id, true); this.dgGatesKnown = true; this.emit("dg:gates", m); });
+    // open — картинка (куда идут створки), pass — проходимость просвета (сервер server/src/game/dungeonGates.ts): клетки клиент ставит по pass
+    room.onMessage("dg:gate", (m: { id: string; open: boolean; pass: boolean }) => { this.dgGates.set(m.id, m.open); this.dgPass.set(m.id, m.pass); this.emit("dg:gate", m); });
+    room.onMessage("dg:gates", (m: { open: string[]; pass: string[] }) => {
+      this.dgGates.clear(); this.dgPass.clear();
+      for (const id of m.open) this.dgGates.set(id, true);
+      for (const id of m.pass) this.dgPass.set(id, true);
+      this.dgGatesKnown = true; this.emit("dg:gates", m);
+    });
     room.onMessage("dungeon:fade", (m: { ms?: number }) => this.emit("dungeon:fade", m));
     room.onMessage("dungeon:status", (m: { looted: boolean; leftMs: number; at: number }) => { this.dungeon = m; this.emit("dungeon:status", m); });
     room.onMessage("logout:wait", (m: { ms: number }) => this.emit("logout:wait", m));

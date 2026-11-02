@@ -4,13 +4,20 @@ import { CELL_BLOCK, CELL_OBJ, walkable, type WorldMap } from "./map";
 import { interiorAt, interiorGrid } from "./interiors";
 import { GP } from "./gameplay";
 
-/** Проходима ли прямая для круга радиуса r (проверка шагами по 8 px). */
-export function segmentWalkable(m: WorldMap, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
+/**
+ * Препятствия поверх карты для поиска пути — закрытые для фракции юнита ворота городов (shared/siege.ts gateBlocker): A* и прямая видимость
+ * учитывают их так же, как шаг (moveGated), иначе путь вёл в закрытые ворота и юнит упирался в них (2026-11-02, tests/unit/gates.ts).
+ * cell — клетка (тайлы) закрыта; at — тело радиуса r в точке упирается.
+ */
+export interface PathBlock { cell(cx: number, cy: number): boolean; at(x: number, y: number, r: number): boolean }
+
+/** Проходима ли прямая для круга радиуса r (проверка шагами по 8 px); blk — ворота поверх карты. */
+export function segmentWalkable(m: WorldMap, x0: number, y0: number, x1: number, y1: number, r: number, blk?: PathBlock): boolean {
   const d = Math.hypot(x1 - x0, y1 - y0);
   const steps = Math.max(1, Math.ceil(d / 8));
   for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    if (!walkable(m, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r)) return false;
+    const t = i / steps, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+    if (!walkable(m, x, y, r) || blk?.at(x, y, r)) return false;
   }
   return true;
 }
@@ -83,7 +90,7 @@ function getScratch(size: number): Scratch {
  * Путь от (sx,sy) к (tx,ty) в пикселях. Возвращает точки (без стартовой) или null.
  * Если цель в непроходимой клетке — идём к ближайшей достигнутой клетке.
  */
-export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: number, r: number, maxNodes = 6000): { x: number; y: number }[] | null {
+export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: number, r: number, maxNodes = 6000, blk?: PathBlock): { x: number; y: number }[] | null {
   // зал интерьера за краем карты мира: A* по его сетке в его координатах
   if (sx >= m.w * TILE) {
     const room = interiorAt(sx, sy);
@@ -107,7 +114,8 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
   // точка пути клетки: старт и цель — сами точки, остальные — центры
   const px = (i: number) => (i === s ? sx : i === goal ? tx : cxOf(i)), py = (i: number) => (i === s ? sy : i === goal ? ty : cyOf(i));
   /** Клетка открыта для шага из cur: обычная свободная, (выход от старта) клетка объекта, в центре которой можно стоять, или клетка подхода к цели. */
-  const open = (i: number, cur: number) => !(cell[i] & CELL_BLOCK) || gre[i] === gen || ((cell[i] & OBJ) === OBJ && esc[cur] === gen && walkable(m, cxOf(i), cyOf(i), r));
+  // закрытые для юнита ворота (blk) закрыты всегда, даже как клетка подхода к цели
+  const open = (i: number, cur: number) => !(blk && blk.cell(i % W, Math.floor(i / W))) && (!(cell[i] & CELL_BLOCK) || gre[i] === gen || ((cell[i] & OBJ) === OBJ && esc[cur] === gen && walkable(m, cxOf(i), cyOf(i), r)));
   if ((cell[s] & OBJ) === OBJ) esc[s] = gen;
   // цель за домом или у ствола (в клетке объекта): клетки объекта, связные с целью и проходимые, тоже открыты (gre); не больше 64 клеток
   if ((cell[goal] & OBJ) === OBJ && walkable(m, tx, ty, r)) {
@@ -150,7 +158,7 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
       const n = ny * W + nx;
       if (!open(n, cur)) continue;
       if (dx && dy && (!open(cy * W + nx, cur) || !open(ny * W + cx, cur))) continue;
-      if ((esc[cur] === gen || gre[n] === gen) && !segmentWalkable(m, px(cur), py(cur), px(n), py(n), r)) continue;
+      if ((esc[cur] === gen || gre[n] === gen) && !segmentWalkable(m, px(cur), py(cur), px(n), py(n), r, blk)) continue;
       const ng = gc + (dx && dy ? 1.414 : 1);
       if (seen[n] !== gen || ng < g[n]) {
         seen[n] = gen;
@@ -167,13 +175,13 @@ export function findPath(m: WorldMap, sx: number, sy: number, tx: number, ty: nu
   for (let c = best; c !== s; c = from[c]) cells.push(c);
   cells.reverse();
   const pts = cells.map((c) => ({ x: (c % W) * TILE + TILE / 2, y: Math.floor(c / W) * TILE + TILE / 2 }));
-  if (best === goal && walkable(m, tx, ty, r)) pts[pts.length - 1] = { x: tx, y: ty };
+  if (best === goal && walkable(m, tx, ty, r) && !blk?.at(tx, ty, r)) pts[pts.length - 1] = { x: tx, y: ty };
   // сглаживание: выкидываем точки, до которых видно по прямой
   const out: { x: number; y: number }[] = [];
   let ax = sx, ay = sy, i = 0;
   while (i < pts.length) {
     let j = pts.length - 1;
-    while (j > i && !segmentWalkable(m, ax, ay, pts[j].x, pts[j].y, r)) j--;
+    while (j > i && !segmentWalkable(m, ax, ay, pts[j].x, pts[j].y, r, blk)) j--;
     out.push(pts[j]);
     ax = pts[j].x;
     ay = pts[j].y;
@@ -207,8 +215,9 @@ export class Nav {
     this.failGoal = null;
   }
 
-  next(m: WorldMap, x: number, y: number, gx: number, gy: number, r: number, now: number): { x: number; y: number } | null {
-    if (segmentWalkable(m, x, y, gx, gy, r)) {
+  /** blk — закрытые для юнита ворота (World.gateBlk): путь их обходит, как шаг. */
+  next(m: WorldMap, x: number, y: number, gx: number, gy: number, r: number, now: number, blk?: PathBlock): { x: number; y: number } | null {
+    if (segmentWalkable(m, x, y, gx, gy, r, blk)) {
       this.path = [];
       return { x: gx, y: gy };
     }
@@ -218,7 +227,7 @@ export class Nav {
     if (!failing && (moved || !this.path.length || now - this.at > 800)) {
       this.goal = { x: gx, y: gy };
       this.at = now;
-      this.path = findPath(m, x, y, gx, gy, r) ?? [];
+      this.path = findPath(m, x, y, gx, gy, r, undefined, blk) ?? [];
       fresh = true;
     }
     while (this.path.length && Math.hypot(this.path[0].x - x, this.path[0].y - y) < 6) this.path.shift();
@@ -227,7 +236,7 @@ export class Nav {
       this.failGoal = { x: gx, y: gy };
     }
     // срезаем путь, если следующая точка уже видна
-    while (this.path.length > 1 && segmentWalkable(m, x, y, this.path[1].x, this.path[1].y, r)) this.path.shift();
+    while (this.path.length > 1 && segmentWalkable(m, x, y, this.path[1].x, this.path[1].y, r, blk)) this.path.shift();
     return this.path[0] ?? null;
   }
 }
