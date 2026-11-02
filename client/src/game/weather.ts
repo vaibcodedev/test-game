@@ -40,6 +40,7 @@ export class Weather {
   private cur = 0;
   private lastMs = Date.now();
   private acc = 0;
+  private bolts: { g: Phaser.GameObjects.Graphics; born: number }[] = [];
   /** Тёмная пелена для GameScene: добавляется к затемнению мира. */
   dim = 0;
   /** Сейчас идёт дождь заметной силы (для реплик NPC). */
@@ -47,6 +48,8 @@ export class Weather {
 
   constructor(private scene: Phaser.Scene, private map: WorldMap) {
     makeTex(scene);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.killBolts());
+    scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.killBolts());
     const depth = 1e6 - 14;
     this.puddles = new Puddles(scene, map);
     this.drops = scene.add.particles(0, 0, "fx_raindrop", { emitting: false, emitZone: { type: "random", source: new Phaser.Geom.Rectangle(0, 0, 900, 400) } as any, lifespan: 480, speedX: { min: -95, max: -75 }, speedY: { min: 680, max: 780 }, rotate: 7, alpha: { start: 0.55, end: 0.35 } }).setDepth(depth).setAlpha(0); // капли полупрозрачные: дождь не закрывает мир
@@ -76,13 +79,28 @@ export class Weather {
     const pts = [{ x, y }], end = v.y + v.height * (0.45 + Math.random() * 0.25);
     while (y < end) { y += 18 + Math.random() * 26; x += (Math.random() - 0.5) * 46; pts.push({ x, y }); }
     for (const [w, a, c] of [[9, 0.3, 0x8ab4ff], [4, 0.6, 0xc8dcff], [2, 1, 0xffffff]] as const) { g.lineStyle(w, c, a); g.beginPath(); g.moveTo(pts[0].x, pts[0].y); for (const p of pts) g.lineTo(p.x, p.y); g.strokePath(); }
-    this.scene.tweens.add({ targets: g, alpha: 0, duration: 350, delay: 60, onComplete: () => g.destroy() });
+    const b = { g, born: Date.now() };
+    this.bolts.push(b);
+    // твин может не дойти до onComplete (остановка твинов сцены, пауза, перезапуск) — страхует прунинг по времени в update/killBolts
+    this.scene.tweens.add({ targets: g, alpha: 0, duration: 350, delay: 60, onComplete: () => this.dropBolt(b), onStop: () => this.dropBolt(b) });
+  }
+
+  private dropBolt(b: { g: Phaser.GameObjects.Graphics; born: number }) {
+    const i = this.bolts.indexOf(b); if (i >= 0) this.bolts.splice(i, 1);
+    if (b.g.scene) { this.scene.tweens.killTweensOf(b.g); b.g.destroy(); }
+  }
+
+  /** Погасить и уничтожить все молнии (смена погоды, день, уход сцены). */
+  killBolts(olderThan = 0) {
+    const now = Date.now();
+    for (const b of this.bolts.slice()) if (now - b.born >= olderThan) this.dropBolt(b);
   }
 
   update(dt: number, zone: Zone, indoor: boolean) {
     const now = Date.now(), cam = this.scene.cameras.main, v = cam.worldView;
     const ws = debugFx.rain >= 0 ? { rain: debugFx.rain, storm: debugFx.storm } : weatherAt(now);
     const wantZone = !indoor && (W.zones as string[]).includes(Zone[zone]);
+    this.killBolts(wantZone && ws.storm ? 700 : 0); // не в грозу/не в зоне — гасим сразу; иначе — зависшие дольше 0,7 с
     const target = wantZone ? ws.rain : 0;
     const prev = this.cur;
     this.cur += (target - this.cur) * Math.min(1, dt * 0.8);
