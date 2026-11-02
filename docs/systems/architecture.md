@@ -6,7 +6,7 @@
 ## Где что лежит
 - `data/` — весь контент и числа в JSON (см. «Всё в конфигах»).
 - `shared/` — общий код клиента и сервера: constants, map (генератор мира), town, formulas, classes, skills, skillShape, items, mobs, protocol, path (A*), arena, trade, bestiary, rumors, food, elites, upgrade, mounts, legendary, bank, cities, settlements, factions, npcs, quests, hotbar, texts (`T()`), palette, bannerWar, siege.
-- `server/src/index.ts` — HTTP + WebSocket (транспорт с `maxPayload` и `verifyClient`). `db.ts` — accounts (до 6 героев, общий склад), players (`account_id`), trade_log, admin_log, market_demand (таблицу suspicion ведёт anticheat.ts).
+- `server/src/index.ts` — HTTP + WebSocket (транспорт с `maxPayload` и `verifyClient`). `db.ts` — accounts (до 6 героев, общий склад), players (`account_id`), trade_log, admin_log, market_demand (таблицу suspicion ведёт anticheat.ts). Схема — `migrations.ts`: шаги по `PRAGMA user_version`, каждый одной транзакцией с откатом; изменение схемы — только новым шагом в конец списка (2026-11-02).
 - `server/src/accounts.ts` — HTTP API `/api` (login, chars, delete, logout), сессии-токены в памяти, лимиты; `WorldRoom.onAuth({token, character})`. `shared/accounts.ts` — типы и внешность (LOOKS). `POST /api/client-error` — лог ошибок клиента.
 - `server/src/rooms/` — WorldRoom, ArenaRoom, RaidRoom, DungeonRoom, schema, common (`makeOn`, `floodCheck`, `num`, `cleanText`), schemas (схемы сообщений).
 - `server/src/game/` — World, Player, Mob, Pet, skills, effects, auras, bosses, zoneBosses, rewards, inventory, rumors, smith, market, legendary, admin, bank, rogue, townfolk, soldiers, cities, biomes, mountDrops, bannerWar, siege, ai/brain.ts (mistreevous, горожане).

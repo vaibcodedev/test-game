@@ -10,6 +10,7 @@ import type { BankSave } from "../../shared/bank";
 import type { QuestSave } from "../../shared/quests";
 import { migratePets } from "../../shared/pets";
 import { sanitizeItem } from "../../shared/transmog";
+import { migrate } from "./migrations";
 
 export interface PlayerSave {
   cls: ClassId;
@@ -91,120 +92,9 @@ export class GameDB {
     this.file = file;
     if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
     this.db = new DatabaseSync(file);
-    this.db.exec(`
-      PRAGMA busy_timeout = 5000;
-      PRAGMA journal_mode = WAL;
-      CREATE TABLE IF NOT EXISTS players (
-        name_key TEXT PRIMARY KEY,
-        name     TEXT NOT NULL,
-        salt     TEXT NOT NULL,
-        hash     TEXT NOT NULL,
-        cls      TEXT NOT NULL,
-        level    INTEGER NOT NULL DEFAULT 1,
-        data     TEXT NOT NULL,
-        created  INTEGER NOT NULL,
-        updated  INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS trade_log (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
-        at      INTEGER NOT NULL,
-        a       TEXT NOT NULL,
-        b       TEXT NOT NULL,
-        a_items TEXT NOT NULL,
-        b_items TEXT NOT NULL,
-        a_gold  INTEGER NOT NULL,
-        b_gold  INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS drop_log (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
-        at      INTEGER NOT NULL,
-        kind    TEXT NOT NULL,
-        who     TEXT NOT NULL,
-        x       INTEGER NOT NULL,
-        y       INTEGER NOT NULL,
-        items   TEXT NOT NULL,
-        gold    INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS admin_log (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
-        at      INTEGER NOT NULL,
-        admin   TEXT NOT NULL,
-        action  TEXT NOT NULL,
-        target  TEXT NOT NULL,
-        details TEXT NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS market_demand (
-        key        TEXT PRIMARY KEY,
-        sold       REAL NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-    `);
-    const cols = (this.db.prepare("PRAGMA table_info(players)").all() as { name: string }[]).map((c) => c.name);
-    if (!cols.includes("admin")) this.db.exec("ALTER TABLE players ADD COLUMN admin INTEGER NOT NULL DEFAULT 0");
-    if (!cols.includes("banned_until")) this.db.exec("ALTER TABLE players ADD COLUMN banned_until INTEGER NOT NULL DEFAULT 0");
-    if (!cols.includes("ban_reason")) this.db.exec("ALTER TABLE players ADD COLUMN ban_reason TEXT NOT NULL DEFAULT ''");
-    // задача 30: аккаунты (до 6 героев), у героя — account_id
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS accounts (
-        id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        login_key TEXT NOT NULL UNIQUE,
-        login     TEXT NOT NULL,
-        salt      TEXT NOT NULL,
-        hash      TEXT NOT NULL,
-        created   INTEGER NOT NULL
-      );
-    `);
-    const acols = (this.db.prepare("PRAGMA table_info(accounts)").all() as { name: string }[]).map((c) => c.name);
-    if (!acols.includes("bank")) this.db.exec("ALTER TABLE accounts ADD COLUMN bank TEXT NOT NULL DEFAULT ''");
-    if (!cols.includes("account_id")) this.db.exec("ALTER TABLE players ADD COLUMN account_id INTEGER NOT NULL DEFAULT 0");
-    this.db.exec("CREATE INDEX IF NOT EXISTS players_account ON players(account_id)");
-    // задача 38: фракции; все прежние герои — Сольгард (классы те же, меняются только названия)
-    if (!cols.includes("faction")) this.db.exec("ALTER TABLE players ADD COLUMN faction TEXT NOT NULL DEFAULT 'solgard'");
-    this.migrateAccounts(file);
-    // админка на аккаунте: все герои аккаунта (и новые) — админы. Разовый перенос: аккаунт, у любого героя которого был players.admin = 1,
-    // становится админом. Колонка players.admin остаётся для совместимости со старыми базами, сервер её больше не читает.
-    if (!acols.includes("admin")) {
-      this.db.exec("BEGIN IMMEDIATE");
-      try {
-        this.db.exec("ALTER TABLE accounts ADD COLUMN admin INTEGER NOT NULL DEFAULT 0");
-        const n = Number(this.db.prepare("UPDATE accounts SET admin = 1 WHERE id IN (SELECT account_id FROM players WHERE admin = 1 AND account_id != 0)").run().changes);
-        this.db.exec("COMMIT");
-        if (n) console.log(`[db] админка перенесена на аккаунты: ${n}`);
-      } catch (e) {
-        this.db.exec("ROLLBACK");
-        throw e;
-      }
-    }
-  }
-
-  /** Каждый герой без аккаунта становится аккаунтом: логин = имя героя, тот же пароль. Перед переносом — копия базы. */
-  private migrateAccounts(file: string) {
-    const rows = this.db.prepare("SELECT name_key, name, salt, hash, created FROM players WHERE account_id = 0 AND hash != ''").all() as { name_key: string; name: string; salt: string; hash: string; created: number }[];
-    if (!rows.length) return;
-    if (file !== ":memory:") {
-      const d = new Date(), z = (n: number) => String(n).padStart(2, "0");
-      const stamp = `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
-      const bak = path.join(path.dirname(file), `${path.basename(file, ".sqlite")}.backup-${stamp}.sqlite`);
-      this.db.exec(`VACUUM INTO '${bak.replace(/'/g, "''")}'`);
-      console.log(`[db] копия базы перед переносом в аккаунты: ${bak}`);
-    }
-    const ins = this.db.prepare("INSERT INTO accounts (login_key, login, salt, hash, created) VALUES (?, ?, ?, ?, ?)");
-    const upd = this.db.prepare("UPDATE players SET account_id = ? WHERE name_key = ?");
-    const taken = this.db.prepare("SELECT 1 AS x FROM accounts WHERE login_key = ?");
-    this.db.exec("BEGIN IMMEDIATE");
-    try {
-      for (const r of rows) {
-        let key = r.name_key, login = r.name;
-        for (let i = 2; taken.get(key); i++) (key = `${r.name_key}${i}`), (login = `${r.name}${i}`);
-        const id = Number(ins.run(key, login, r.salt, r.hash, r.created).lastInsertRowid);
-        upd.run(id, r.name_key);
-      }
-      this.db.exec("COMMIT");
-    } catch (e) {
-      this.db.exec("ROLLBACK");
-      throw e;
-    }
-    console.log(`[db] героев перенесено в аккаунты: ${rows.length}`);
+    this.db.exec("PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL;");
+    // схема — по PRAGMA user_version (server/src/migrations.ts): каждый шаг одной транзакцией с откатом
+    migrate(this.db, file);
   }
 
   // ---------- аккаунты ----------
