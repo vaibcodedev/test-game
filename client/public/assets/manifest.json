@@ -1,5 +1,11 @@
 {
  "units": {
+  "wl_skeleton_b147_glow": {
+   "frame": 40
+  },
+  "wl_skeleton_b147": {
+   "frame": 40
+  },
   "pet_wolf": {
    "frame": 32
   },

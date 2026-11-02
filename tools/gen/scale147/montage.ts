@@ -95,3 +95,8 @@ if (MOBS40) {
     row("ЗВЕРИ БЫЛО СТАЛО ×2", [H(), ...pair(beasts)], 2, null),
   ], "mobs40-100.png");
 }
+// 5. партия 3, остаток: старые листы данжа 85–95 и призывы чернокнижника — было | стало (REST=1)
+if (process.env.REST === "1") {
+  const pair = (ids: string[]): Fig[] => ids.flatMap((id) => { const n = sc.remap[id]; return n ? [{ img: unit(id), cap: "БЫЛО" }, { img: unit(n), cap: id.slice(0, 9).toUpperCase() }] : []; });
+  row("ДАНЖ 85 95 И ПРИЗЫВЫ БЫЛО СТАЛО ×3", [H(), ...pair(["skeleton", "skeleton_knight", "drowned", "imp", "wl_skeleton"]), { img: unit("wl_demon"), cap: "WL_DEMON" }], 3, "dungeon-summons.png");
+}

@@ -611,5 +611,47 @@
     "loop": false
    }
   }
+ },
+ "wl_skeleton_b147": {
+  "scale": 1,
+  "glow": true,
+  "anims": {
+   "idle": {
+    "col": 0,
+    "n": 12,
+    "fps": 10,
+    "loop": true
+   },
+   "walk": {
+    "col": 12,
+    "n": 12,
+    "fps": 12,
+    "loop": true
+   },
+   "attack": {
+    "col": 24,
+    "n": 9,
+    "fps": 14,
+    "loop": false
+   },
+   "hurt": {
+    "col": 33,
+    "n": 8,
+    "fps": 14,
+    "loop": false
+   },
+   "spawn": {
+    "col": 41,
+    "n": 14,
+    "fps": 12,
+    "loop": false
+   },
+   "death": {
+    "col": 55,
+    "n": 12,
+    "fps": 12,
+    "loop": false
+   }
+  }
  }
 }

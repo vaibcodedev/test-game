@@ -1,6 +1,8 @@
 import world from "../data/world.json";
 import ai from "../data/mobAI.json";
 import raid from "../data/raid.json";
+import heroB from "../data/hero-b.json";
+import sc147 from "../data/scale147.json";
 import { bossBal } from "./balance";
 import { ZB_CARDS, ZB_MOB } from "./zoneBosses";
 import { WB_BOSSES, wbMobId, wbShardId } from "./worldBoss";
@@ -136,3 +138,16 @@ for (const b of WB_BOSSES) {
     xp: 0, gold: 0, speed: sh.mob.speed, aggro: 600, range: sh.mob.range, attackCd: sh.mob.attackCd, radius: sh.mob.radius, color: "#5a4a40",
   };
 }
+
+// масштаб мира под героя Б (задача 147, docs/art/scale.md): под флагом data/hero-b.json листы мобов перерисованы крупнее (data/scale147.json → remap),
+// тело на сервере растёт по основанию — радиус × k по ключу рига (самый длинный префикс листа), иначе × default. Без флага числа прежние.
+/** Радиус тела моба под ростом героя Б; лист без замены (боссы, призывы со своими числами) — прежний. */
+export function radius147(sprite: string, radius: number): number {
+  const remap = sc147.remap as Record<string, string>, R = sc147.radius as { default: number; by: Record<string, number> };
+  if (!remap[sprite]) return radius;
+  const key = Object.keys(R.by).filter((k) => sprite.startsWith(k + "_")).sort((a, b) => b.length - a.length)[0];
+  return Math.round(radius * (key ? R.by[key] : R.default));
+}
+// HERO_B=1 — флаг только на прогон снимков (tools/scale147-shots.ts), файл флага не меняется
+const HERO_B_ON = !!(heroB as { enabled?: boolean }).enabled || (typeof process !== "undefined" && process.env?.HERO_B === "1");
+if (HERO_B_ON) for (const m of Object.values(MOBS)) m.radius = radius147(m.sprite, m.radius);

@@ -4,7 +4,7 @@ import { attachFloorsV2, preloadFloorsV2 } from "./floorsV2";
 import { attachCitadelV2, preloadCitadelV2 } from "./citadelV2";
 import { MOVE_MUL } from "../../../shared/constants";
 import unitAnims from "../../../data/unit-anims.json";
-import { isScaledSheet, skipUnitSheet } from "./scale147";
+import { isScaledSheet, scaledAttackFps, skipUnitSheet } from "./scale147";
 
 /** Листы со своей раскладкой анимаций (призывы чернокнижника, data/unit-anims.json): покой → rest, остальные по имени. */
 export const UNIT_ART = unitAnims as unknown as Record<string, { scale?: number; glow?: boolean; anims: Record<string, { col: number; n: number; fps: number; loop: boolean }> }>;
@@ -105,7 +105,8 @@ export class BootScene extends Phaser.Scene {
           const f = (a: number, b: number) => this.anims.generateFrameNumbers(`u_${id}`, { start: row * wide + a, end: row * wide + b });
           this.anims.create({ key: `${id}-rest-${row}`, frames: f(0, 11), frameRate: 10, repeat: -1 });
           this.anims.create({ key: `${id}-walk-${row}`, frames: f(12, 23), frameRate: 12 * MOVE_MUL, repeat: -1 });
-          this.anims.create({ key: `${id}-attack-${row}`, frames: f(24, wide - 13), frameRate: 14, repeat: 0 });
+          // листы масштаба героя Б: атака 12 кадров — к/с из листа (data/scale147.json → afps), длительность удара прежняя
+          this.anims.create({ key: `${id}-attack-${row}`, frames: f(24, wide - 13), frameRate: scaledAttackFps(id) ?? 14, repeat: 0 });
           this.anims.create({ key: `${id}-death-${row}`, frames: f(wide - 12, wide - 1), frameRate: 12, repeat: 0 });
         }
         continue;

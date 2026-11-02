@@ -12,6 +12,7 @@ import { buildCreature, camOf, type Creature } from "../mobs/rig";
 import { BATCH1 } from "../mobs/batch1-list";
 import { BATCH2 } from "../mobs/batch2-list";
 import { A, ROOT, unitHeight } from "./measure";
+import { refreshAfps } from "./meta";
 
 const DF = path.join(ROOT, "data/scale147.json");
 const DATA = JSON.parse(fs.readFileSync(DF, "utf8"));
@@ -67,5 +68,6 @@ fs.writeFileSync(MAN, utext);
 const fresh = JSON.parse(fs.readFileSync(DF, "utf8"));
 fresh.remap = Object.fromEntries(Object.entries(remap).sort(([a], [b]) => a.localeCompare(b)));
 fs.writeFileSync(DF, JSON.stringify(fresh, null, 2) + "\n");
+refreshAfps(); // к/с атаки новых листов → data/scale147.json afps
 console.log(problems ? `  замечаний по кадрам: ${problems}` : "  кадры чисты");
 if (problems) process.exitCode = 1;
