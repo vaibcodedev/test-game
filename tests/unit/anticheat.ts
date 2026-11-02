@@ -4,9 +4,9 @@
  * Запуск: npx tsx tests/unit/anticheat.ts
  */
 import { Player, newSave } from "../../server/src/game/Player";
-import { cleanText, floodCheck, invalidCount, makeOn, num } from "../../server/src/rooms/common";
+import { cleanText, floodCheck, invalidCount, makeOn, MSG_LIMIT, num } from "../../server/src/rooms/common";
 import { checkMsg, schemaOf } from "../../server/src/rooms/schemas";
-import { clientIp, IpLimit, makeVerifyClient, originOk, setSuspicionLog, SuspicionLog, versionError } from "../../server/src/anticheat";
+import { AC, clientIp, IpLimit, makeVerifyClient, MsgRate, originOk, setSuspicionLog, SuspicionLog, versionError } from "../../server/src/anticheat";
 import { GAME_VERSION } from "../../shared/version";
 import { GameDB } from "../../server/src/db";
 import { EventEmitter } from "node:events";
@@ -176,6 +176,66 @@ await test("журнал: виды раздельно, повтор копитс
   } finally {
     setSuspicionLog(null);
     db.close();
+  }
+});
+
+section("Частота отдельных сообщений (msgRate)");
+
+await test("MsgRate: n за окно проходят, сверх — отброс; новое окно — снова; типы без правила и прототипные ключи не ограничены", () => {
+  const r = new MsgRate({ "trade:request": [2, 1000] });
+  assert.equal(r.check("trade:request", 0), true);
+  assert.equal(r.check("trade:request", 500), true);
+  assert.equal(r.check("trade:request", 900), false, "третий за окно прошёл");
+  assert.equal(r.check("trade:request", 999), false);
+  assert.equal(r.dropped, 2);
+  assert.equal(r.check("trade:request", 1000), true, "новое окно не открылось");
+  for (let i = 0; i < 100; i++) assert.equal(r.check("input", i), true, "тип без правила ограничен");
+  for (const k of ["__proto__", "constructor", "toString", "hasOwnProperty"]) assert.equal(r.check(k, 0), true, k);
+  const off = new MsgRate({ x: [0, 1000], y: [5, 0], z: [NaN, NaN] });
+  for (let i = 0; i < 20; i++) assert.ok(off.check("x", 0) && off.check("y", 0) && off.check("z", 0), "нулевое/битое правило отбрасывает");
+});
+
+await test("MsgRate: превышение пишется в журнал flood раз за окно", () => {
+  const db = new GameDB(":memory:");
+  const log = new SuspicionLog(db.raw, 0);
+  setSuspicionLog(log);
+  try {
+    const r = new MsgRate({ inspect: [1, 1000] });
+    for (let i = 0; i < 10; i++) r.check("inspect", 10 + i, "Спамер");
+    for (let i = 0; i < 10; i++) r.check("inspect", 2000 + i, "Спамер");
+    const row = log.rows("Спамер").find((x) => x.kind === "flood");
+    assert.equal(row?.count, 2, "не одна запись на окно");
+    assert.match(row!.detail, /inspect/);
+  } finally {
+    setSuspicionLog(null);
+    db.close();
+  }
+});
+
+await test("makeOn: лимит типа из data/anticheat.json режет только свой тип и своё соединение", () => {
+  const [max] = AC.msgRate.rules.inspect;
+  const r = fakeRoom("Шпион");
+  let inspects = 0, chats = 0;
+  r.on<{ sid: unknown }>("inspect", () => void inspects++);
+  r.on<{ text: unknown }>("chat", () => void chats++);
+  for (let i = 0; i < max + 5; i++) r.call("inspect", { sid: "s2" });
+  assert.equal(inspects, max, "сверх лимита дошло до обработчика");
+  r.call("chat", { text: "привет" });
+  assert.equal(chats, 1, "лимит одного типа задел другой");
+  const r2 = fakeRoom("Сосед");
+  let other = 0;
+  r2.on<{ sid: unknown }>("inspect", () => void other++);
+  r2.call("inspect", { sid: "s1" });
+  assert.equal(other, 1, "лимит общий на всех");
+});
+
+await test("data/anticheat.json msgRate: у каждого правила есть схема сообщения, n ≥ 1, окно 0,5–60 с, лимит ниже общего", () => {
+  for (const [type, rule] of Object.entries(AC.msgRate.rules)) {
+    assert.ok(schemaOf(type), `нет схемы у «${type}» (опечатка в типе?)`);
+    const [n, ms] = rule;
+    assert.ok(Number.isInteger(n) && n >= 1, `${type}: n=${n}`);
+    assert.ok(ms >= 500 && ms <= 60_000, `${type}: ms=${ms}`);
+    assert.ok(n / (ms / 1000) < MSG_LIMIT.general, `${type}: не строже общего лимита — правило лишнее`);
   }
 });
 

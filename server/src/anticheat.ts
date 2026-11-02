@@ -168,3 +168,36 @@ export function makeVerifyClient(limit = new IpLimit(), allowed: readonly string
     cb(true);
   };
 }
+
+// ---------- частота отдельных сообщений ----------
+
+/** Правило частоты: [не больше n сообщений этого типа, за ms] (data/anticheat.json msgRate.rules). */
+export type RateRules = Readonly<Record<string, readonly number[]>>;
+
+/**
+ * Лимит частоты по типу сообщения на одно соединение (идея — FloodProtector Lineage 2: свой интервал на действие; троттлинг
+ * опкодов WoW). Поверх общего floodCheck (rooms/common.ts): дорогие и социальные сообщения — запросы обмена и группы, осмотр,
+ * таблицы арены, рынок, телепорты, заточка — ограничены своим окном. Сверх лимита — отброс без ответа; первое превышение
+ * в окне — запись в журнал (flood).
+ */
+export class MsgRate {
+  private win = new Map<string, { start: number; n: number; marked: boolean }>();
+  dropped = 0;
+  constructor(private rules: RateRules = AC.msgRate.rules) {}
+
+  /** false — сообщение сверх лимита своего типа, отбросить. Типы без правила не ограничиваются. */
+  check(type: string, now = Date.now(), name = ""): boolean {
+    if (!Object.hasOwn(this.rules, type)) return true;
+    const [max, ms] = this.rules[type];
+    if (!(max > 0) || !(ms > 0)) return true;
+    let e = this.win.get(type);
+    if (!e || now - e.start >= ms) this.win.set(type, (e = { start: now, n: 0, marked: false }));
+    if (++e.n <= max) return true;
+    this.dropped++;
+    if (!e.marked) {
+      e.marked = true;
+      flag(name, "flood", `${type}: больше ${max} за ${ms} мс`);
+    }
+    return false;
+  }
+}

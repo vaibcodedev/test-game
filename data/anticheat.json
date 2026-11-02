@@ -1,7 +1,42 @@
 {
-  "_doc": "Античит, шаг 1 (docs/systems/architecture.md, «Рекомендация»), server/src/anticheat.ts. maxPayloadBytes — предел кадра WebSocket (обычное сообщение < 1 КБ, запас ×16). origins — разрешённые Origin кроме своего хоста (dev-клиент Vite); без Origin (боты, тесты, node) — пускаем: подделать заголовок вне браузера всё равно можно. maxConnPerIp — одновременных WebSocket с одного IP (семья за одним NAT + вкладки + переходы комнат), loopback без X-Forwarded-For не считается (тесты, боты, нагрузка). suspicion — журнал подозрительного: flushMs — как часто копится в базу, adminRows — строк в админке. Каждое невалидное сообщение (схема, server/src/rooms/schemas.ts) — отказ и +1 в журнал.",
+  "_doc": "Античит, шаг 1 (docs/systems/architecture.md, «Рекомендация»), server/src/anticheat.ts. maxPayloadBytes — предел кадра WebSocket (обычное сообщение < 1 КБ, запас ×16). origins — разрешённые Origin кроме своего хоста (dev-клиент Vite); без Origin (боты, тесты, node) — пускаем: подделать заголовок вне браузера всё равно можно. maxConnPerIp — одновременных WebSocket с одного IP (семья за одним NAT + вкладки + переходы комнат), loopback без X-Forwarded-For не считается (тесты, боты, нагрузка). suspicion — журнал подозрительного: flushMs — как часто копится в базу, adminRows — строк в админке. Каждое невалидное сообщение (схема, server/src/rooms/schemas.ts) — отказ и +1 в журнал. msgRate (шаг 2, 2026-11-02) — лимит частоты отдельных сообщений на соединение (server/src/anticheat.ts MsgRate, проверка в makeOn после общего лимита data/server.json msgLimit): rules — тип сообщения → [сколько, за сколько мс]; сверх — отброс без ответа и запись flood в журнал (раз за окно). Идея — FloodProtector Lineage 2 (свой интервал на действие) и троттлинг опкодов WoW. Лимиты — с запасом к обычной игре (клики по кнопкам окна); типы без правила ограничивает только общий лимит.",
   "maxPayloadBytes": 16384,
-  "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+  "origins": [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+  ],
   "maxConnPerIp": 12,
-  "suspicion": { "flushMs": 5000, "adminRows": 200 }
+  "suspicion": {
+    "flushMs": 5000,
+    "adminRows": 200
+  },
+  "msgRate": {
+    "rules": {
+      "trade:request": [4, 10000],
+      "party:invite": [5, 10000],
+      "inspect": [6, 3000],
+      "arena:info": [5, 3000],
+      "arena:top": [5, 3000],
+      "arena:history": [5, 3000],
+      "arena:title": [3, 3000],
+      "arena:queue": [4, 3000],
+      "raid:info": [5, 3000],
+      "wboss:info": [5, 3000],
+      "wboss:chronicle": [5, 3000],
+      "market:get": [5, 3000],
+      "rumor": [5, 3000],
+      "war:tp": [3, 3000],
+      "siege:tp": [3, 3000],
+      "wboss:tp": [3, 3000],
+      "dungeon:enter": [3, 3000],
+      "respawn": [3, 2000],
+      "logout:request": [3, 5000],
+      "mount:select": [5, 2000],
+      "pet:select": [5, 2000],
+      "pet:toggle": [5, 2000],
+      "bag:expand": [3, 2000],
+      "bank:buy": [3, 2000],
+      "smith:upgrade": [8, 1000]
+    }
+  }
 }

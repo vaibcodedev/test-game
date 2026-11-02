@@ -10,7 +10,7 @@ import { cleanRef, setSlot, validPos } from "../../../shared/hotbar";
 import { KICK_CODE } from "../../../shared/accounts";
 import serverCfg from "../../../data/server.json";
 import { T } from "../../../shared/texts";
-import { flag } from "../anticheat";
+import { flag, MsgRate } from "../anticheat";
 import { checkMsg, schemaOf } from "./schemas";
 import { SKILLS } from "../../../shared/skills";
 
@@ -98,6 +98,7 @@ export const invalidCount = new WeakMap<Client, number>();
 export function makeOn(room: Room<any>, world: () => World): On {
   // по объекту соединения: после переподключения счёт заново, закрытые соединения уходят сборщику мусора
   const flood = new WeakMap<Client, Flood>();
+  const rates = new WeakMap<Client, MsgRate>();
   // сообщение без обработчика: Colyseus 0.16 по умолчанию отключает клиента (4002) — тот переподключается с экраном загрузки.
   // Здесь его просто отбрасываем (с тем же лимитом): кнопка, которой нет в этой комнате, не должна ронять сессию
   room.onMessage("*", (client: Client, type: string | number) => {
@@ -112,6 +113,10 @@ export function makeOn(room: Room<any>, world: () => World): On {
         if (p && flood.get(client)?.kicked) p.noReconnect = true;
         return;
       }
+      // своя частота у дорогих и социальных сообщений (data/anticheat.json msgRate): сверх — отброс и журнал
+      let r = rates.get(client);
+      if (!r) rates.set(client, (r = new MsgRate()));
+      if (!r.check(type, Date.now(), p?.name)) return;
       if (!p || msg === null || typeof msg !== "object") return;
       // форма сообщения: не та — отказ без вызова обработчика, счётчик и журнал подозрительного
       const bad = checkMsg(type, msg);
