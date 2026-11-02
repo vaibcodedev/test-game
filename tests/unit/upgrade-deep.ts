@@ -65,13 +65,17 @@ await test("цены и материалы не дешевеют, шанс не 
   assert.ok(REF_PLUS <= MAX_PLUS);
 });
 
-await test("failLevel: до +5 уровень сохраняется, выше — минус один; никогда не ниже 0 и не выше текущего", () => {
+await test("failLevel: на +0…+7 уровень сохраняется, с +8 — минус один, не ниже +7 (владелец 2026-11-02)", () => {
   for (const p of PLUS) {
     const f = failLevel(p);
-    assert.equal(f, p + 1 <= 5 ? p : p - 1, `+${p}`);
+    assert.equal(f, p < 8 ? p : p - 1, `+${p}`);
+    assert.ok(p < 8 || f >= 7, `+${p} не ниже +7`);
     assert.ok(f >= 0 && f <= p);
   }
   assert.equal(failLevel(0), 0);
+  assert.equal(failLevel(7), 7);
+  assert.equal(failLevel(8), 7);
+  assert.equal(failLevel(9), 8);
 });
 
 await test("бонус effStats по всем уровням: урон, броня и главная характеристика +ceil(x × bonus × plus), остальное не меняется", () => {

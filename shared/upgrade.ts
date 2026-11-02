@@ -22,8 +22,10 @@ export const MATERIALS: Record<string, { id: string; name: string; price: number
 export const MATERIAL_IDS = Object.keys(MATERIALS);
 /** Условие шага: что нужно, чтобы перейти с уровня plus на plus+1. */
 export const stepFor = (plus: number): UpgradeStep | undefined => UPGRADE_LEVELS[plus];
-/** Куда падает уровень при неудаче. */
-export const failLevel = (plus: number) => Math.max(0, plus + 1 <= 5 ? plus : plus - 1);
+/** Неудача на +0…+(SAFE_BELOW−1) уровень не снимает (владелец 2026-11-02: до +8 без потерь). */
+export const SAFE_BELOW: number = data.safeBelow;
+/** Куда падает уровень при неудаче: ниже SAFE_BELOW — остаётся, выше — минус 1 (с +8 на +7, не ниже). */
+export const failLevel = (plus: number) => (plus < SAFE_BELOW ? plus : Math.max(SAFE_BELOW - 1, plus - 1));
 
 export const SMITH = {
   id: "smith",

@@ -341,9 +341,9 @@ await test("заточка удачная: +1, списаны ровно зол�
   drop(w, p);
 });
 
-await test("заточка неудачная: до +5 уровень сохраняется, выше — падает на 1 (failLevel); ресурсы списаны", () => {
-  for (const plus of [0, 3, 5, 6, 9]) {
-    assert.equal(failLevel(plus), plus + 1 <= 5 ? plus : plus - 1);
+await test("заточка неудачная: на +0…+7 уровень сохраняется, с +8 — падает на 1, не ниже +7 (failLevel); ресурсы списаны", () => {
+  for (const plus of [0, 3, 5, 6, 7, 8, 9]) {
+    assert.equal(failLevel(plus), plus < 8 ? plus : plus - 1);
     const p = smithHero();
     giveMats(p);
     const it = gear();
