@@ -1,5 +1,5 @@
 /**
- * ПРОБА (в игру не встроено до подтверждения владельца, 2026-10-31): заточка «ступени + рост внутри» и «свечение контрастно к оружию».
+ * Проба (утверждена владельцем 2026-10-31 — вариант «середина», встроено в игру: client/src/game/heroEnchant.ts; числа общие — shared/gearFx.ts enchantLookB): заточка «ступени + рост внутри» и «свечение контрастно к оружию».
  * Ступени +5 «Тление», +8 «Угли», +11 «Пламя» остаются; внутри каждой ступени каждый +1 — заметный шаг (альфа, толщина, угольки, частота блика,
  * на +11…+15 — размах перелива и искры). Цвет контура — по средней яркости и оттенку пикселей оружия (shared/gearFx.ts enchantContrast),
  * тёмная прослойка 1 px между оружием и контуром. Числа — data/gear-fx.json → enchantB.steps / enchantB.contrast.
@@ -16,7 +16,7 @@ import { PC, type RGBA } from "../canvas";
 import { text } from "../mobs/lib";
 import { NF, renderLayers, type AnimId } from "../hero147/base_b";
 import { baseView, dress, setOf, viewLook, type View4 } from "../gear147/gear";
-import { ENCHANT_B, enchantContrast, lum01 } from "../../../shared/gearFx";
+import { ENCHANT_B, enchantContrast, enchantLookB, lum01 } from "../../../shared/gearFx";
 
 const OUT = path.resolve("tools/out/gear147/enchant-steps");
 fs.mkdirSync(OUT, { recursive: true });
@@ -32,7 +32,7 @@ const ST = ENCHANT_B.steps, TIERS = ENCHANT_B.tiers as any[];
 
 // ---------------- рендер эффекта: одна функция для PNG (node) и страницы (её текст встраивается в index.html) ----------------
 export interface FxLook { tier: number; color: string; color2?: string; core?: string; gap: string; gapAlpha: number; alpha: number; alphaMin?: number; alphaMax?: number; periodMs?: number;
-  width: number; embers: number; emberMs: number; shineMs: number; cycleMs: number; swing: number; sparks: number; haloNight: number; useGap: boolean }
+  width: number; glowA: number; glowW: number; flowBias: number; embers: number; emberMs: number; shineMs: number; cycleMs: number; swing: number; sparks: number; haloNight: number; useGap: boolean }
 /** base, mask (1 — видимое оружие), emis (1 — светится ночью): кадр W×H; t — мс; night 0..1; out — RGBA результата. Без внешних ссылок (встраивается в страницу). */
 export function fxFrame(base: Uint8ClampedArray, mask: Uint8Array, emis: Uint8Array, W: number, H: number, L: FxLook | null, t: number, night: number, out: Uint8ClampedArray) {
   const hx = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -68,15 +68,17 @@ export function fxFrame(base: Uint8ClampedArray, mask: Uint8Array, emis: Uint8Ar
   if (L.tier === 1) al = (L.alphaMin ?? 0.3) + ((L.alphaMax ?? 0.6) - (L.alphaMin ?? 0.3)) * ease(t / (L.periodMs ?? 2400));
   if (L.tier === 2) al = L.alpha * (0.85 + 0.15 * ease(t / 2400));
   // перелив «Пламени»: волна алый↔золото бежит вдоль оружия (по y и x), размах swing растёт с плюсом
-  const flow = (q: number) => { const x = q % W, y = (q / W) | 0, m = 0.5 + 0.5 * L.swing * Math.sin(2 * Math.PI * (t / Math.max(1, L.cycleMs)) + (x + y) * 0.35); return c1.map((v, k) => v + (c2[k] - v) * m); };
+  const flow = (q: number) => { const x = q % W, y = (q / W) | 0, m = Math.min(1, 0.5 + L.flowBias + 0.5 * L.swing * Math.sin(2 * Math.PI * (t / Math.max(1, L.cycleMs)) + (x + y) * 0.35)); return c1.map((v, k) => v + (c2[k] - v) * m); };
   if (night > 0) al = Math.min(1, al + 0.15 * night);
   const ring: number[] = [];
   for (let q = 0; q < W * H; q++) {
     const d = mask[q] === 2 ? 99 : D[q]; // пальцы на рукояти (2): контур обходит кисть
-    if (d === 1 && L.useGap) blend(q, gap, L.gapAlpha);
-    const lo = L.useGap ? 2 : 1, hi = lo + L.width - 1;
+    if (d === 1 && L.useGap && L.gapAlpha > 0) blend(q, gap, L.gapAlpha);
+    const lo = L.useGap && L.gapAlpha > 0 ? 2 : 1, hi = lo + L.width - 1;
     if (d >= lo && d <= hi) { blend(q, L.tier === 3 && L.useGap ? flow(q) : L.tier === 3 ? c1.map((v, k) => v + (c2[k] - v) * ease(t / Math.max(1, L.cycleMs))) : col, Math.min(1, al * (d === hi && L.width > 1 ? 0.55 : 1))); ring.push(q); }
-    if (d === hi + 1 && L.tier === 3 && night > 0) blend(q, c2, L.haloNight * night * (0.8 + 0.2 * ease(t / Math.max(1, L.cycleMs))), true);
+    // мягкое свечение снаружи контура (+11…+15): полупрозрачное, 1–2 px, внешний пиксель слабее — герой под ним виден
+    if (L.glowW && d > hi && d <= hi + L.glowW) blend(q, L.tier === 3 ? flow(q) : col, L.glowA * (d === hi + 1 ? 1 : 0.5) * (0.85 + 0.15 * ease(t / Math.max(1, L.cycleMs))));
+    else if (!L.glowW && d === hi + 1 && L.tier === 3 && night > 0) blend(q, c2, L.haloNight * night * (0.8 + 0.2 * ease(t / Math.max(1, L.cycleMs))), true);
   }
   if (!ring.length) return;
   // бегущий блик по контуру сверху вниз за 450 мс раз в shineMs
@@ -91,7 +93,7 @@ export function fxFrame(base: Uint8ClampedArray, mask: Uint8Array, emis: Uint8Ar
       const q0 = ring[Math.floor(h1 * ring.length)], x = (q0 % W) + (h2 - 0.5) * 3 * ph, y = ((q0 / W) | 0) - (rise + 3 * h2) * ph;
       const xi = Math.round(x), yi = Math.round(y); if (xi < 0 || yi < 0 || xi >= W || yi >= H) continue;
       const c = c1.map((v, k) => v + (c2[k] - v) * h2), a = (1 - ph) * bright;
-      blend(yi * W + xi, bright > 1 ? core : c, Math.min(1, a), true);
+      blend(yi * W + xi, bright > 1 ? c2 : c, Math.min(1, a), true);
     }
   };
   if (L.embers) parts(L.embers, L.emberMs, 5, 1, 1);
@@ -103,10 +105,9 @@ export function lookAt(plus: number, avg: number[] | null, proba: boolean): FxLo
   let tier = 0; for (const th of ENCHANT_B.thresholds) if (plus >= th) tier++;
   if (!tier) return null;
   const T = TIERS[tier], k = plus - ENCHANT_B.thresholds[tier - 1];
-  if (!proba) return { tier, color: T.color, color2: T.color2, core: T.core, gap: "#000000", gapAlpha: 0, alpha: T.alpha ?? 0.6, alphaMin: T.alphaMin, alphaMax: T.alphaMax, periodMs: T.periodMs, width: 1, embers: T.embers ?? 0, emberMs: T.emberMs ?? 900, shineMs: T.shineMs ?? 0, cycleMs: T.cycleMs ?? 1800, swing: 1, sparks: 0, haloNight: T.haloNight ?? 0, useGap: false };
-  const c = enchantContrast(tier as 1 | 2 | 3, plus, avg), up = ST.alphaStep * k;
-  return { tier, color: c.color, color2: c.color2, core: c.core, gap: c.gap, gapAlpha: c.gapAlpha, alpha: Math.min(1, Math.max(T.alpha ?? 0.6, ST.alphaFloor[tier - 1]) + up), alphaMin: tier === 1 ? ST.alphaFloor[0] + up : undefined, alphaMax: tier === 1 ? Math.min(1, ST.alphaFloor[0] + 0.25 + up) : undefined, periodMs: T.periodMs,
-    width: ST.width[plus], embers: ST.embers[plus], emberMs: T.emberMs ?? 900, shineMs: ST.shineMs[plus], cycleMs: ST.cycleMs[plus] || 1800, swing: ST.swing[plus], sparks: ST.sparks[plus], haloNight: Math.min(0.3, (T.haloNight ?? 0) * 0.7 + ST.haloK * k), useGap: true };
+  if (!proba) return { tier, color: T.color, color2: T.color2, core: T.core, gap: "#000000", gapAlpha: 0, alpha: T.alpha ?? 0.6, alphaMin: T.alphaMin, alphaMax: T.alphaMax, periodMs: T.periodMs, width: 1, embers: T.embers ?? 0, emberMs: T.emberMs ?? 900, shineMs: T.shineMs ?? 0, cycleMs: T.cycleMs ?? 1800, swing: 1, sparks: 0, haloNight: T.haloNight ?? 0, useGap: false, flowBias: 0, glowA: 0, glowW: 0 };
+  const L = enchantLookB(plus, avg)!; // тот же источник, что в игре (shared/gearFx.ts enchantLookB)
+  return { ...L, useGap: true };
 }
 
 // ---------------- кадры героя с оружием ----------------

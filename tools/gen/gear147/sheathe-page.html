@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Оружие вне боя</title>
+<style>
+  :root { --bg: #18141a; --panel: #231d26; --line: #3a3040; --text: #ece4d2; --dim: #a89c8c; --gold: #ffd864; --on: #6a4a1a; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+  h1 { font-size: 16px; margin: 0; color: var(--gold); }
+  .grp { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .grp span { color: var(--dim); margin-right: 4px; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; font: inherit; }
+  button.on { background: var(--on); border-color: var(--gold); color: #fff; }
+  #enemy.on { background: #7a1f1f; border-color: #ff8060; }
+  main { padding: 16px; display: flex; flex-wrap: wrap; gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; width: max-content; max-width: 100%; }
+  .card h2 { margin: 0 0 2px; font-size: 22px; color: var(--gold); }
+  .card h2 small { font-size: 14px; color: var(--text); margin-left: 6px; }
+  .card p { margin: 0 0 8px; color: var(--dim); font-size: 12px; max-width: 360px; }
+  canvas { image-rendering: pixelated; display: block; border-radius: 4px; }
+  .state { font-size: 12px; color: var(--dim); margin-top: 6px; }
+  .note { padding: 0 16px 16px; color: var(--dim); font-size: 12px; max-width: 900px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Оружие вне боя / в бою — герой Б (проба)</h1>
+  <div class="grp" id="weapons"><span>Оружие:</span></div>
+  <div class="grp" id="views"><span>Сторона:</span></div>
+  <div class="grp" id="zooms"><span>Зум:</span></div>
+  <div class="grp"><button id="run">Бег</button><button id="enemy">Враг рядом: нет</button><button id="auto">Авто-смена</button></div>
+  <div class="grp" id="bgs"><span>Фон:</span></div>
+</header>
+<main id="cards"></main>
+<div class="note">«Враг рядом» — герой достаёт оружие (8 кадров, ~0,55 с) и встаёт в боевую стойку; «нет» — убирает (те же кадры в обратном порядке). Сферы мага — призыв из искр и растворение. Посох не убирается. Выберите буквы A/B/C для каждого оружия.</div>
+<script>
+const META = /*META*/null;
+const F = META.frame;
+const st = { w: META.specs[0].w, view: 0, zoom: 3, run: false, enemy: false, auto: false, bg: "#3e5434" };
+const imgs = {};
+for (const s of META.specs) { const im = new Image(); im.src = s.id + ".png"; imgs[s.id] = im; }
+const off = {}; { let o = 0; for (const s of META.states) { off[s.key] = o; o += s.n; } }
+const stOf = (k) => META.states.find((s) => s.key === k);
+function btns(id, items, get, set) {
+  const g = document.getElementById(id);
+  for (const [val, cap] of items) { const b = document.createElement("button"); b.textContent = cap; b.onclick = () => { set(val); refresh(); }; b.dataset.v = val; g.appendChild(b); }
+  g._sync = () => g.querySelectorAll("button").forEach((b) => b.classList.toggle("on", String(get()) === b.dataset.v));
+}
+const ws = []; for (const s of META.specs) if (!ws.find((w) => w[0] === s.w)) ws.push([s.w, s.wName]);
+btns("weapons", ws, () => st.w, (v) => { st.w = v; build(); });
+btns("views", META.views.map((v, i) => [String(i), v]), () => st.view, (v) => (st.view = +v));
+btns("zooms", [["2", "×2"], ["3", "×3"]], () => st.zoom, (v) => { st.zoom = +v; build(); });
+btns("bgs", [["#3e5434", "трава"], ["#d8dde4", "снег"], ["#5a5650", "камень"], ["#141018", "ночь"]], () => st.bg, (v) => (st.bg = v));
+const $run = document.getElementById("run"), $enemy = document.getElementById("enemy"), $auto = document.getElementById("auto");
+$run.onclick = () => { st.run = !st.run; refresh(); };
+$enemy.onclick = () => setEnemy(!st.enemy);
+$auto.onclick = () => { st.auto = !st.auto; refresh(); };
+let cards = [];
+function setEnemy(v) {
+  if (v === st.enemy) return; st.enemy = v;
+  for (const c of cards) { c.trans = v ? "draw" : "sheathe"; c.k = 0; c.acc = 0; }
+  refresh();
+}
+function refresh() {
+  for (const id of ["weapons", "views", "zooms", "bgs"]) document.getElementById(id)._sync();
+  $run.classList.toggle("on", st.run); $enemy.classList.toggle("on", st.enemy); $auto.classList.toggle("on", st.auto);
+  $enemy.textContent = "Враг рядом: " + (st.enemy ? "да" : "нет");
+}
+function build() {
+  const box = document.getElementById("cards"); box.innerHTML = ""; cards = [];
+  for (const s of META.specs.filter((x) => x.w === st.w)) {
+    const d = document.createElement("div"); d.className = "card";
+    d.innerHTML = `<h2>${s.tag}<small>${s.label}</small></h2><p>${s.idea}</p>`;
+    const cv = document.createElement("canvas"); cv.width = F * st.zoom; cv.height = F * st.zoom; d.appendChild(cv);
+    const lb = document.createElement("div"); lb.className = "state"; d.appendChild(lb);
+    box.appendChild(d);
+    cards.push({ s, cv, lb, k: 0, acc: 0, trans: null });
+  }
+  refresh();
+}
+let last = performance.now(), autoT = 0;
+function tick(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (st.auto) { autoT += dt; if (autoT > 2.6) { autoT = 0; setEnemy(!st.enemy); } }
+  for (const c of cards) {
+    let key, frame;
+    if (c.trans) {
+      const s = stOf("draw"); c.acc += dt * s.fps;
+      while (c.acc >= 1) { c.acc -= 1; c.k++; }
+      if (c.k >= s.n) { c.trans = null; c.k = 0; }
+      else { key = "draw"; frame = c.trans === "draw" ? c.k : s.n - 1 - c.k; }
+    }
+    if (!c.trans) {
+      key = (st.enemy ? "combat" : "stow") + (st.run ? "Run" : "Idle");
+      const s = stOf(key); c.acc += dt * s.fps; while (c.acc >= 1) { c.acc -= 1; c.k = (c.k + 1) % s.n; } frame = c.k % s.n;
+    }
+    const g = c.cv.getContext("2d"); g.imageSmoothingEnabled = false;
+    g.fillStyle = st.bg; g.fillRect(0, 0, c.cv.width, c.cv.height);
+    const im = imgs[c.s.id];
+    if (im.complete && im.naturalWidth) g.drawImage(im, (off[key] + frame) * F, st.view * F, F, F, 0, 0, F * st.zoom, F * st.zoom);
+    c.lb.textContent = { stowIdle: "вне боя · покой", stowRun: "вне боя · бег", combatIdle: "в бою · стойка", combatRun: "в бою · бег", draw: c.trans === "sheathe" ? "убрать" : "достать" }[key] + ` · кадр ${frame + 1}`;
+  }
+  requestAnimationFrame(tick);
+}
+build(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>

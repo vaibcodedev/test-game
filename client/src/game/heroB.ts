@@ -13,6 +13,7 @@ import heroFlag from "../../../data/hero-b.json";
 import live from "../../../data/hero-b-live.json";
 import { BASE_ITEMS } from "../../../shared/items";
 import { parseGear } from "./GearLayers";
+import { ENCHANT_B, lum01 } from "../../../shared/gearFx";
 
 type Cls = "free" | "great";
 interface Entry { file: string; frame: number; origin: [number, number]; cls: Cls; z: (number | null)[][]; glow?: string }
@@ -23,10 +24,13 @@ const SLOTS = ["helm", "pauldrons", "armor", "gloves", "boots", "cloak", "weapon
 type Slot147 = (typeof SLOTS)[number];
 const LIVE = live as unknown as { specialAttack: { every: number; chance: number; trail: { color: string; core: string } }; classes: Record<Cls, { anims: string[] }>; weaponClass: Record<string, { cls: Cls; atk: string }>; sets: string[]; models: Record<string, string>; slotMap: Record<string, Slot147>; stubs: Record<string, Partial<Record<Slot147, unknown>>> };
 
+/** Кольца снаружи видимого силуэта оружия: rings[d-1] — ключ текстуры кольца на расстоянии d px (1…4), pts — точки 1-го кольца кадра (x, y парами) для угольков,
+ *  avg — средний цвет видимого оружия без тёмной обводки (контраст заточки, shared/gearFx.ts enchantLookB). */
+export interface EnchTex { rings: string[]; pts: Map<number, number[]>; avg: number[] | null }
 /** Облик героя Б, из которого сводится лист. */
 export interface HbLook { fac: "sol" | "umb"; sex: "m" | "f"; hair: string; cls: Cls; atk: string; /** сет оружия с особым ударом (special2h) */ special?: string; slots: Partial<Record<Slot147, string>> }
 /** Готовый лист: sid прежних ключей анимаций (`${sid}-walk-${row}` и т. д.), sidL — то же для взгляда влево; frame — кадр, oy — опора по ногам, rise — макушка над ногами. */
-export interface HbSheet { /** контур видимого оружия по кадрам (заточка, heroEnchant.ts): текстуры кольца 1 px (k1) и второго кольца (k2), точки контура кадра (x, y парами) для угольков */ ench: { k1: string; k2: string; pts: Map<number, number[]> } | null; /** то же для щита (вторая рука) — заточка щита, своя ступень */ enchOff: { k1: string; k2: string; pts: Map<number, number[]> } | null; /** удар класса позы (atk1h, atk2h, bow, cast) */ atk: string; /** силуэты кадров для переходов (heroBNear) */ masks: Map<string, Uint8Array[]>; key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[]; /** столбцов листа облика (кадр n строки r — r·cols + n) */ cols: number;
+export interface HbSheet { /** контур видимого оружия по кадрам (заточка, heroEnchant.ts) */ ench: EnchTex | null; /** то же для щита (вторая рука) — заточка щита, своя ступень */ enchOff: EnchTex | null; /** удар класса позы (atk1h, atk2h, bow, cast) */ atk: string; /** силуэты кадров для переходов (heroBNear) */ masks: Map<string, Uint8Array[]>; key: string; sid: string; sidL: string; frame: number; ox: number; oy: number; origin: [number, number]; rise: number; glow: boolean; special: boolean; dead: number[]; /** строки листа: "анимация:вид" */ rows: string[]; /** столбцов листа облика (кадр n строки r — r·cols + n) */ cols: number;
   /** ткань «Спины» с физикой (heroCloth.ts): сет, описание текстур и точек крепления, тело для pins */ cloth: { set: string; def: ClothDef; body: string } | null }
 
 /** Режим: off — прежний герой, self — только свой герой (проверка одним игроком, запоминается в браузере), all — все герои (флаг data/hero-b.json). */
@@ -255,28 +259,39 @@ async function bake(scene: Phaser.Scene, key: string, l: HbLook): Promise<HbShee
     cloth: clothSet ? { set: clothSet, def: m.cloth![clothSet], body: bodyKey } : null };
 }
 
-/** Контур оружия для заточки: кольцо 1 px снаружи видимого силуэта оружия (k1) и второе кольцо (k2), без заливки; точки кольца кадра (до 24) — для угольков. */
-function enchantTex(scene: Phaser.Scene, key: string, wcv: HTMLCanvasElement, F: number, COLS: number, R: number) {
+/** Контур оружия для заточки: кольца 1…4 px снаружи видимого силуэта (без заливки), точки 1-го кольца (до 48 на кадр) для угольков, средний цвет оружия. */
+function enchantTex(scene: Phaser.Scene, key: string, wcv: HTMLCanvasElement, F: number, COLS: number, R: number): EnchTex | null {
   const W = wcv.width, H = wcv.height, src = wcv.getContext("2d")!.getImageData(0, 0, W, H).data;
-  const a = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && src[(y * W + x) * 4 + 3] > 24;
-  const c1 = document.createElement("canvas"), c2 = document.createElement("canvas"); c1.width = c2.width = W; c1.height = c2.height = H;
-  const i1 = c1.getContext("2d")!.createImageData(W, H), i2 = c2.getContext("2d")!.createImageData(W, H), ring1 = new Uint8Array(W * H);
-  const pts = new Map<number, number[]>();
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!a(x, y) && (a(x - 1, y) || a(x + 1, y) || a(x, y - 1) || a(x, y + 1))) {
-    ring1[y * W + x] = 1; const o = (y * W + x) * 4; i1.data[o] = i1.data[o + 1] = i1.data[o + 2] = i1.data[o + 3] = 255;
-    const fr = Math.floor(y / F) * COLS + Math.floor(x / F), p = pts.get(fr) ?? []; if (p.length < 48 && Math.random() < 0.35) p.push(x % F, y % F); pts.set(fr, p);
+  const D = new Uint8Array(W * H).fill(9);
+  let front: number[] = [];
+  const acc = [0, 0, 0]; let na = 0;
+  for (let q = 0; q < W * H; q++) if (src[q * 4 + 3] > 24) {
+    D[q] = 0; front.push(q);
+    const r = src[q * 4], g = src[q * 4 + 1], b = src[q * 4 + 2];
+    if (lum01([r, g, b]) >= ENCHANT_B.contrast.ignoreLum) { acc[0] += r; acc[1] += g; acc[2] += b; na++; }
   }
-  const r1 = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && ring1[y * W + x] === 1;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!a(x, y) && !r1(x, y) && (r1(x - 1, y) || r1(x + 1, y) || r1(x, y - 1) || r1(x, y + 1))) { const o = (y * W + x) * 4; i2.data[o] = i2.data[o + 1] = i2.data[o + 2] = i2.data[o + 3] = 255; }
-  c1.getContext("2d")!.putImageData(i1, 0, 0); c2.getContext("2d")!.putImageData(i2, 0, 0);
-  if (!pts.size) return null;
-  const k1 = key + "_ench", k2 = key + "_ench2";
-  for (const [k, c] of [[k1, c1], [k2, c2]] as const) {
+  if (!front.length) return null;
+  for (let d = 1; d <= 4 && front.length; d++) {
+    const nx: number[] = [];
+    for (const q of front) { const x = q % W, y = (q / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const p = yy * W + xx; if (D[p] > d) { D[p] = d; nx.push(p); } } }
+    front = nx;
+  }
+  const pts = new Map<number, number[]>(), rings: string[] = [];
+  for (let d = 1; d <= 4; d++) {
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const im = c.getContext("2d")!.createImageData(W, H);
+    for (let q = 0; q < W * H; q++) if (D[q] === d) {
+      const o = q * 4; im.data[o] = im.data[o + 1] = im.data[o + 2] = im.data[o + 3] = 255;
+      if (d === 1) { const x = q % W, y = (q / W) | 0, fr = Math.floor(y / F) * COLS + Math.floor(x / F), p = pts.get(fr) ?? []; if (p.length < 48 && Math.random() < 0.35) p.push(x % F, y % F); pts.set(fr, p); }
+    }
+    c.getContext("2d")!.putImageData(im, 0, 0);
+    const k = `${key}_ench${d}`;
     if (scene.textures.exists(k)) scene.textures.remove(k);
     const t = scene.textures.addCanvas(k, c)!;
     for (let r = 0; r < R; r++) for (let i = 0; i < COLS; i++) t.add(r * COLS + i, 0, i * F, r * F, F, F);
+    rings.push(k);
   }
-  return { k1, k2, pts };
+  return { rings, pts, avg: na ? acc.map((v) => v / na) : null };
 }
 
 /** Имя анимации UnitView → анимация листа. */

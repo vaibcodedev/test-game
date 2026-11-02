@@ -105,6 +105,8 @@ function carryOne(P: Pose, k: { anim: AnimId; stance?: boolean; u: number }) {
   const bob = k.anim === "idle" ? 0.03 * Math.sin(2 * Math.PI * (k.u - 0.1)) : 0.05 * Math.sin(4 * Math.PI * (k.u - 0.3));
   P.weapon = { kind: "sword", dir: nrm([0.18, -0.55 + bob, 0.8]) };
 }
+/** Журнал ориентации лезвия топора по кадрам (review.ts — проверка «лезвие вперёд»): fwd > 0 — лезвие на стороне «вперёд» корпуса на экране. */
+export const AXE_LOG: { anim: string; v: string; i: number; fwd: number; used: string }[] = [];
 export const DROP_U = 0.22;
 /** Двуручник: в покое, ходьбе и беге держится перед собой клинком вверх (левая рука на рукояти у пояса). */
 function carryGreat(P: Pose, k: { anim: AnimId; stance?: boolean; u: number; arm: number; view: string; sx: number }) {
@@ -683,7 +685,17 @@ function drawWeapon(ctx: GearCtx, it: any, Hd: V3, d: V3, Lg: number, Lb: number
   if (inHand) fist(ctx, Hd, d, Lg, PJ, it.head === "axe" ? 1.25 : it.kind === "great" ? 1.2 : 1.2);
   if (it.head === "axe") {
     // топор / секира: общее описание с иконкой (axe.ts); a — вдоль древка от кисти, n — поперёк на экране (сторона лезвия)
-    const M = axeModel(it), a2 = PJ(Hd), b2 = PJ(add(Hd, mul(d, 2))), ux = b2[0] - a2[0], uy = b2[1] - a2[1], l = Math.hypot(ux, uy) || 1, nx = -uy / l, ny = ux / l;
+    // лезвие смотрит ВПЕРЁД и наружу от тела, по направлению удара (владелец 2026-10-31): сторона лезвия на экране — проекция «вперёд» корпуса (sk.F),
+    // перпендикулярная древку; если «вперёд» почти вдоль древка или в камеру — наружу (ось плеч A — в сторону правой руки, +A), затем вниз по экрану
+    const M = axeModel(it), a2 = PJ(Hd), b2 = PJ(add(Hd, mul(d, 2))), ux = b2[0] - a2[0], uy = b2[1] - a2[1], l = Math.hypot(ux, uy) || 1;
+    let nx = -uy / l, ny = ux / l;
+    const scr = (v: V3): V2 => { const q = PJ(add(Hd, v)); return [q[0] - a2[0], q[1] - a2[1]]; };
+    const along = (w: V2) => (w[0] * ux + w[1] * uy) / l, perp = (w: V2) => w[0] * nx + w[1] * ny;
+    const fwd = scr(mul(ctx.sk.F, 3)), out = scr(mul(ctx.sk.A, 3)), pf = perp(fwd), po = perp(out);
+    const pick = Math.abs(pf) > 0.3 ? pf : Math.abs(po) > 0.3 ? po : -ny;
+    if (pick < 0) { nx = -nx; ny = -ny; }
+    void along;
+    AXE_LOG.push({ anim: ctx.anim, v: ctx.v, i: ctx.i, fwd: pf * (pick < 0 ? -1 : 1), used: Math.abs(pf) > 0.3 ? "F" : Math.abs(po) > 0.3 ? "A" : "screen" });
     const P2 = (a: number, n: number): V2 => { const q = PJ(add(Hd, mul(d, a))); return [q[0] + nx * n, q[1] + ny * n]; };
     for (const q of axeGeo(M)) push({ g: q.g, ramp: q.rim ? RIM : ramp(q.mat), o: q.o, layer: (q.z === "g" ? Lg : Lb) + q.dz, emis: q.emis, emisColor: q.emis ? hx("#ff8a3a") : undefined, m: (z) => q.draw(z, P2, 1), ft: q.ft } as Part);
     return;

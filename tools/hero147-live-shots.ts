@@ -230,25 +230,29 @@ async function animCheck(browser: Browser) {
 /** Заточка героя Б (вариант D): +0/+5/+8/+11 на Рыцаре Хаоса и новобранце, покой и кадр контакта удара, день и ночь, зум 3 → enchant-*.png; удар +8/+11 — полоса кадров (шлейф). */
 async function enchantShots(A: Page) {
   const { PNG } = await import("pngjs");
-  const clip = async (tag: string) => { const buf = await A.screenshot({ clip: { x: 683 - 110, y: 384 - 150, width: 220, height: 220 } }) as Buffer; fs.writeFileSync(path.join(OUT, `${tag}.png`), PNG.sync.write(PNG.sync.read(Buffer.from(buf)))); };
+  // ENCH_OUT — каталог снимков (по умолчанию OUT), ENCH_PLUS — уровни через запятую, ENCH_SETS — сеты, ENCH_ZOOMS — зумы (вариант «середина»: tools/out/gear147/enchant-ingame)
+  const dir = process.env.ENCH_OUT ? path.resolve(process.env.ENCH_OUT) : OUT; fs.mkdirSync(dir, { recursive: true });
+  const pluses = (process.env.ENCH_PLUS ?? "0,5,8,11").split(",").map(Number), sets = (process.env.ENCH_SETS ?? "chaos-knight,recruit-plate").split(","), zooms = (process.env.ENCH_ZOOMS ?? "3").split(",").map(Number);
+  const clip = async (tag: string) => { const buf = await A.screenshot({ clip: { x: 683 - 110, y: 384 - 150, width: 220, height: 220 } }) as Buffer; fs.writeFileSync(path.join(dir, `${tag}.png`), PNG.sync.write(PNG.sync.read(Buffer.from(buf)))); };
   await sleep(1500);
-  for (const set of ["chaos-knight", "recruit-plate"]) {
+  for (const set of sets) {
     await A.evaluate(`window.heroB.set(${JSON.stringify(set)})`);
     await A.waitForFunction((st: string) => { const v = (window as any).__game.scene.getScene("game").units.get((window as any).__net.id); return !!(v && v.hb && v.hb.key.includes(st)); }, { timeout: 300000, polling: 1000 }, set);
     await sleep(2000);
     // день, затем ночь: фаза меняется один раз (резкий скачок Date.now раскачивает ткань — после него пауза)
-    for (const PH of [0.3, 0.83]) {
-      await A.evaluate(`window.__phase = ${PH}; window.__game.scene.getScene("game").cameras.main.setZoom(3);`); await sleep(4000);
-      for (const plus of [0, 5, 8, 11]) {
+    for (const PH of [0.3, 0.83]) for (const Z of zooms) {
+      await A.evaluate(`window.__phase = ${PH}; window.__game.scene.getScene("game").cameras.main.setZoom(${Z});`); await sleep(4000);
+      for (const plus of pluses) {
+        const tag = `enchant-${set}-p${plus}`, tail = `${PH > 0.5 ? "night" : "day"}${zooms.length > 1 ? `-z${Z}` : ""}`;
         await A.waitForFunction((st: string) => { const v = (window as any).__game.scene.getScene("game").units.get((window as any).__net.id); return !!(v && v.hb && v.hb.key.includes(st)); }, { timeout: 300000, polling: 1000 }, set);
         await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); const p = (v.u.weapon || "greatsword:0:0").split(":"); p[2] = "${plus}"; v.u.weapon = p.join(":"); })()`);
         await sleep(1500);
-        await clip(`enchant-${set}-p${plus}-idle-${PH > 0.5 ? "night" : "day"}`);
+        await clip(`${tag}-idle-${tail}`);
         // кадр контакта удара (atk2h.hit = 8): удар вбок стоит на кадре контакта
         await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); v.attacking = true; v.sprite.setFlipX(false).play(v.hb.sid + "-attack-2"); v.sprite.anims.pause(v.sprite.anims.currentAnim.frames[8]); })()`); await sleep(900);
-        await clip(`enchant-${set}-p${plus}-hit-${PH > 0.5 ? "night" : "day"}`);
+        await clip(`${tag}-hit-${tail}`);
         await A.evaluate(`(() => { const v = window.__game.scene.getScene("game").units.get(window.__net.id); v.sprite.anims.resume(); })()`); await sleep(1500);
-        if (plus >= 8 && PH > 0.5) {
+        if (!process.env.ENCH_OUT && plus >= 8 && PH > 0.5) {
           await A.evaluate(`(() => { const s = window.__game.scene.getScene("game"), v = s.units.get(window.__net.id); v.attacking = true; v.sprite.play(v.hb.sid + "-attack-2"); v.sprite.anims.timeScale = 0.5; })()`);
           await record(A, `enchant-${set}-p${plus}-swing-night`, 12, 70);
           await sleep(1500);
@@ -256,7 +260,7 @@ async function enchantShots(A: Page) {
       }
     }
   }
-  log("заточка: снимки enchant-*.png");
+  log(`заточка: снимки enchant-*.png → ${dir}`);
 }
 
 async function run(browser: Browser) {

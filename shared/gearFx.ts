@@ -88,7 +88,7 @@ export function enchantTierB(plus: number): 0 | 1 | 2 | 3 {
 export const enchantIconColor = (plus: number): string => ENCHANT_B.iconColors[(() => { let t = 0; for (const th of ENCHANT_B.thresholds) if (plus >= th) t++; return t; })()];
 
 /** Вид контура заточки на конкретном оружии: цвета ступени, приведённые к контрасту с оружием (data/gear-fx.json enchantB.contrast). */
-export interface EnchantLook { color: string; color2?: string; core?: string; gap: string; gapAlpha: number; kind: "dark" | "red" | "light" | "mid" }
+export interface EnchantLook { color: string; color2?: string; core?: string; gap: string; gapAlpha: number; kind: "dark" | "red" | "light" | "mid"; /** сдвиг перелива «Пламени» к color2 (золоту) на красном и тёмном оружии */ flowBias: number }
 const hex2 = (h: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
 const rgb2hex = (c: number[]) => "#" + c.map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, "0")).join("");
 const mixHex = (a: string, b: string, t: number) => { const A = hex2(a), B = hex2(b); return rgb2hex(A.map((v, k) => v + (B[k] - v) * t)); };
@@ -110,16 +110,40 @@ export const lum01 = (c: number[]) => (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) /
  * тёмные и красные клинки — светлее (тёплое золото/белое с цветом ступени), светлая сталь — насыщенный цвет ступени, между клинком и контуром — тёмная прослойка.
  * Чем выше ступень и плюс, тем ярче.
  */
-export function enchantContrast(tier: 1 | 2 | 3, plus: number, avg: number[] | null): EnchantLook {
+export function enchantContrast(tier: 1 | 2 | 3, plus: number, avg: number[] | null, baseColor?: string): EnchantLook {
   const C = ENCHANT_B.contrast, T = ENCHANT_B.tiers[tier] as { color?: string; color2?: string; core?: string };
-  const base = T.color ?? "#ffffff";
+  const base = baseColor ?? T.color ?? "#ffffff";
   const L = avg ? lum01(avg) : 0.5, [h, s] = avg ? hsv(avg) : [0, 0];
   const red = !!avg && s >= C.redSat && (h >= C.redHue[0] || h <= C.redHue[1]);
   const kind: EnchantLook["kind"] = red ? "red" : L < C.darkLum ? "dark" : L > C.lightLum && s < 0.3 ? "light" : "mid";
   const over = Math.max(0, plus - ENCHANT_B.thresholds[tier - 1]), up = Math.min(1, over * C.plusLight);
   // тёмное и красное оружие — светлее (к тёплому белому); сталь и среднее — насыщенный цвет ступени, ярче с плюсом (не к белому: красный не уходит в розовый)
-  const lighten = (c: string, k: number) => mixHex(c, C.light, Math.min(0.9, k + up));
-  const satur = (c: string, ks: number, dv: number) => { const [hh, ss, vv] = hsv(hex2(c)); return rgb2hex(fromHsv(hh, Math.min(1, ss + ks), Math.min(1, Math.max(0, vv * (1 - dv) + up)))); };
-  const f = kind === "light" ? (c: string) => satur(c, C.satK, C.deepen) : kind === "mid" ? (c: string) => satur(c, C.satK * 0.5, -C.neutralK) : (c: string) => lighten(c, C.lightK[tier - 1]);
-  return { color: f(base), color2: T.color2 ? f(T.color2) : undefined, core: T.core, gap: C.gap.color, gapAlpha: C.gap.alpha[tier - 1], kind };
+  // контраст — только светлотой в пределах оттенка ступени (янтарь, золото, алый), без перехода в белый: тёмное и красное оружие — контур светлее
+  // (HSL-светлота до maxL, насыщенность сохраняется), сталь — насыщеннее и чуть темнее; у «Пламени» на красном перелив смещён к золоту ступени
+  const hsl = (c: string, dl: number, ds: number) => {
+    const [r, g, b] = hex2(c).map((x) => x / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1)), [h] = hsv(hex2(c));
+    const L = Math.max(0.12, Math.min(C.maxL, l + dl)), S = Math.max(0, Math.min(1, sat + ds)), cc = (1 - Math.abs(2 * L - 1)) * S, x = cc * (1 - Math.abs(((h / 60) % 2) - 1)), m = L - cc / 2;
+    const [rr, gg, bb] = h < 60 ? [cc, x, 0] : h < 120 ? [x, cc, 0] : h < 180 ? [0, cc, x] : h < 240 ? [0, x, cc] : h < 300 ? [x, 0, cc] : [cc, 0, x];
+    return rgb2hex([rr + m, gg + m, bb + m].map((q) => q * 255));
+  };
+  const f = kind === "light" ? (c: string) => hsl(c, -C.deepen + up * 0.5, C.satK) : kind === "mid" ? (c: string) => hsl(c, C.neutralK + up, C.satK * 0.5) : (c: string) => hsl(c, C.lightK[tier - 1] + up, 0);
+  const gapOn = (C.gapKinds as string[]).includes(kind);
+  return { color: f(base), color2: T.color2 ? f(T.color2) : undefined, core: T.color2 ? f(T.color2) : f(base), gap: C.gap.color, gapAlpha: gapOn ? C.gap.alpha[tier - 1] : 0, kind, flowBias: kind === "red" || kind === "dark" ? C.flowBias : 0 };
+}
+
+/** Вид заточки героя Б на уровне plus (вариант «середина», утверждён владельцем 2026-10-31): один источник чисел для игры (heroEnchant.ts)
+ *  и пробы (tools/gen/enchant-fx/steps.ts) — data/gear-fx.json enchantB.tiers / steps / contrast. avg — средний цвет видимого оружия (RGB) или null. */
+export interface EnchantStepLook { tier: 1 | 2 | 3; color: string; color2?: string; core?: string; gap: string; gapAlpha: number; alpha: number; alphaMin?: number; alphaMax?: number; periodMs?: number;
+  width: number; glowA: number; glowW: number; flowBias: number; embers: number; emberMs: number; shineMs: number; cycleMs: number; swing: number; sparks: number; haloNight: number; trail?: { frames: number; alpha: number } }
+export function enchantLookB(plus: number, avg: number[] | null): EnchantStepLook | null {
+  const tier = enchantTierB(plus);
+  if (!tier) return null;
+  const ST = ENCHANT_B.steps, T = ENCHANT_B.tiers[tier] as { alpha?: number; emberMs?: number; haloNight?: number; periodMs?: number; trail?: { frames: number; alpha: number } };
+  const p = Math.min(plus, ST.width.length - 1), k = plus - ENCHANT_B.thresholds[tier - 1];
+  const c = enchantContrast(tier, plus, avg, tier === 3 ? ST.scarlet : undefined), up = ST.alphaStep * k;
+  return { tier, color: c.color, color2: c.color2, core: c.core, gap: c.gap, gapAlpha: c.gapAlpha, alpha: Math.min(1, Math.max(T.alpha ?? 0.6, ST.alphaFloor[tier - 1]) + up),
+    alphaMin: tier === 1 ? ST.alphaFloor[0] + up : undefined, alphaMax: tier === 1 ? Math.min(1, ST.alphaFloor[0] + 0.25 + up) : undefined, periodMs: T.periodMs,
+    width: ST.width[p], glowA: ST.glowAlpha[p], glowW: ST.glowW[p], flowBias: c.flowBias, embers: ST.embers[p], emberMs: T.emberMs ?? 900, shineMs: ST.shineMs[p], cycleMs: ST.cycleMs[p] || 1800,
+    swing: ST.swing[p], sparks: ST.sparks[p], haloNight: Math.min(0.3, (T.haloNight ?? 0) * 0.7 + ST.haloK * k), trail: T.trail };
 }

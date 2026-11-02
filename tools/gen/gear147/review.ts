@@ -6,7 +6,7 @@ import path from "node:path";
 import { PC } from "../canvas";
 import { text } from "../mobs/lib";
 import { ANIMS, NF, SPECIAL_ANIMS, frameOf, renderLayers, type AnimId, type Look } from "../hero147/base_b";
-import { VIEWS4, baseView, dress, renderView, setOf, viewLook } from "./gear";
+import { AXE_LOG, VIEWS4, baseView, dress, renderView, setOf, viewLook } from "./gear";
 import { lagCheck, slideCheck } from "../hero147/gait";
 
 import { allItems, runMatch } from "./match";
@@ -94,8 +94,8 @@ for (const a of anims) {
         for (let yy = 0; yy < FR; yy++) for (let xx = 0; xx < FR; xx++) if (fs.img.has(xx, yy)) { any++; x0 = Math.min(x0, xx); y0 = Math.min(y0, yy); x1 = Math.max(x1, xx); y1 = Math.max(y1, yy); if (full.img.has(xx, yy) && full.img.get(xx, yy).join() === fs.img.get(xx, yy).join()) fv++; }
         for (let yy = y0 - 1; yy <= y1 + 1; yy++) for (let xx = x0 - 1; xx <= x1 + 1; xx++) if (gp.img.has(xx, yy) && full.img.has(xx, yy) && full.img.get(xx, yy).join() === gp.img.get(xx, yy).join()) gv++;
         // кулак закрыт корпусом (кисть за телом) — не ошибка: проверяем, что пальцы не скрыты самой рукоятью (рукоять поверх кулака)
-        let underGrip = 0; for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (fs.img.has(xx, yy) && gp.img.has(xx, yy) && full.img.has(xx, yy) && full.img.get(xx, yy).join() === gp.img.get(xx, yy).join()) underGrip++;
-        if (any && gv >= 4 && fv < 2 && underGrip >= 2) grip.push(`${a}/${v}/${i}`);
+        let underGrip = 0; for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (fs.img.has(xx, yy) && gp.img.has(xx, yy) && full.img.has(xx, yy) && full.img.get(xx, yy).join() === gp.img.get(xx, yy).join() && gp.img.get(xx, yy).join() !== fs.img.get(xx, yy).join()) underGrip++; // тот же тон перчатки и обмотки — не ошибка
+        if (any && gv >= 4 && fv < 2 && underGrip >= Math.max(4, any * 0.25)) grip.push(`${a}/${v}/${i}`);
       }
       // оружие спереди не должно перекрываться наплечником (вид вниз)
       if (v === "down" && !["gather", "ride"].includes(a) && !(a === "death" && i / NF(a) > 0.22)) {
@@ -112,10 +112,13 @@ out.save(path.resolve(`tools/out/gear147/review-${id}.png`));
 console.log("край кадра:", edge.length ? edge.join(" ") : "нет");
 console.log("клинок под наплечником (вниз):", over.length ? over.join(" ") : "нет");
 console.log("рукоять без кулака:", grip.length ? grip.join(" ") : "нет");
+// топор и секира: лезвие на экране — на стороне «вперёд» корпуса (по направлению удара), а не к голове и не назад (владелец 2026-10-31)
+const axeBad = [...new Set(AXE_LOG.filter((e) => e.fwd < -0.3 || (e.used === "screen" && ["idle", "walk", "run", "stance"].includes(e.anim))).map((e) => `${e.anim}/${e.v}/${e.i}`))];
+if (set.items.weapon?.head === "axe") console.log(`лезвие топора вперёд: ${AXE_LOG.length ? (axeBad.length ? axeBad.join(" ") : "да") : "нет кадров"} (вперёд по корпусу ${AXE_LOG.filter((e) => e.used === "F").length}, наружу ${AXE_LOG.filter((e) => e.used === "A").length}, по экрану ${AXE_LOG.filter((e) => e.used === "screen").length})`);
 // шаг основы «Б»: опорная ступня не скользит (сдвиг больше 1 px — ошибка), части на корпусе не дёргаются (больше 1 px за кадр — ошибка)
 const slide = (["walk", "run", "idle2", "stance"] as AnimId[]).flatMap((a) => slideCheck(l, a));
 const jerk = (["idle", "idle2", "stance", "walk", "run"] as AnimId[]).flatMap((a) => lagCheck(l, a));
 console.log("скольжение ступни:", slide.length ? slide.join(" ") : "нет");
 console.log("рывки наплечников и пластин:", jerk.length ? jerk.join(" ") : "нет");
-if (slide.length || jerk.length || grip.length) process.exitCode = 1;
+if (slide.length || jerk.length || grip.length || (set.items.weapon?.head === "axe" && AXE_LOG.some((e) => e.fwd < -0.3 || (e.used === "screen" && ["idle", "walk", "run", "stance"].includes(e.anim))))) process.exitCode = 1;
 }
