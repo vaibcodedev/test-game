@@ -1486,12 +1486,14 @@ export function cellAt(m: WorldMap, px: number, py: number): number {
 }
 export function zoneAtPx(m: WorldMap, px: number, py: number): Zone {
   const x = Math.floor(px / TILE), y = Math.floor(py / TILE);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return Zone.Meadow; // NaN/Infinity (позиция ещё не задана) — индекс NaN дал бы undefined
   if (x < 0 || y < 0 || x >= m.w || y >= m.h) {
     // зал интерьера — зона улицы перед его дверью (город: мирно, без PvP)
     const r = m.w === MAP_W ? interiorAt(px, py) : null;
     return r ? zoneAtPx(m, r.outSpot.x, r.outSpot.y) : Zone.Meadow;
   }
-  return m.zone[y * m.w + x] as Zone;
+  const z = m.zone[y * m.w + x] as Zone | undefined;
+  return z !== undefined && z < ZONE_COUNT ? z : Zone.Meadow; // пустая/короткая карта или чужой номер — не падать на ZONES[z]
 }
 /** Множитель скорости от поверхности: в снегах вне дорог медленнее. */
 export function terrainSpeedMul(m: WorldMap, px: number, py: number): number {

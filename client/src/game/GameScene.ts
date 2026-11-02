@@ -1651,7 +1651,7 @@ export class GameScene extends Phaser.Scene {
     if (z !== this.zone) {
       this.zone = z;
       if (z === Zone.Arena) this.hud.showZone(T("ui.GameScene.762", { v1: MODE_NAMES[net.arena?.mode ?? "1v1"] }), T("ui.GameScene.763"));
-      else {
+      else if (ZONES[z]) {
         // фракции: спорная зона (PvP с противоположной фракцией) и нейтральный город (бой запрещён)
         const place = net.kind === "world" || net.kind === "dungeon" ? pvpPlace(this.map, this.pos.x, this.pos.y) : "peace";
         // опасность (кольцо 40–80 — «Небезопасная зона», Поля — «Опасная зона») или земли фракции, затем уровни — как на карте мира и миникарте
